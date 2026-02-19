@@ -1,0 +1,18 @@
+/* Dark themed scrollbars for frame panels */
+.frame-scrollbar::-webkit-scrollbar {
+  width: 4px;
+}
+.frame-scrollbar::-webkit-scrollbar-track {
+  background: transparent;
+}
+.frame-scrollbar::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.08);
+  border-radius: 2px;
+}
+.frame-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.15);
+}
+.frame-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.08) transparent;
+}

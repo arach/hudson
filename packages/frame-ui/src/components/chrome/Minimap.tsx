@@ -1,0 +1,192 @@
+import React, { useCallback, useRef } from 'react';
+import { ChevronDown, ChevronUp, Maximize, Map } from 'lucide-react';
+
+interface MinimapProps {
+  pan: { x: number; y: number };
+  zoom: number;
+  viewportSize: { width: number; height: number };
+  isCollapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onNavigate?: (pos: { x: number; y: number }) => void;
+  /** Callback to fit all content in view */
+  onFitAll?: () => void;
+  children?: React.ReactNode;
+  height?: number;
+  footer?: React.ReactNode;
+}
+
+const MINIMAP_HEIGHT = 160;
+const WORLD_SIZE = 4000;
+
+const Minimap: React.FC<MinimapProps> = ({
+  pan,
+  zoom,
+  viewportSize,
+  isCollapsed = false,
+  onToggleCollapse,
+  onNavigate,
+  onFitAll,
+  children,
+  height = MINIMAP_HEIGHT,
+  footer,
+}) => {
+  const mapRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  const handleClick = useCallback(
+    (e: React.MouseEvent<HTMLDivElement>) => {
+      if (!onNavigate || !mapRef.current) return;
+      const rect = mapRef.current.getBoundingClientRect();
+      const mx = e.clientX - rect.left;
+      const my = e.clientY - rect.top;
+      const mapWidth = rect.width;
+      const wx = (mx / mapWidth) * WORLD_SIZE - WORLD_SIZE / 2;
+      const wy = (my / height) * WORLD_SIZE - WORLD_SIZE / 2;
+      onNavigate({ x: wx, y: wy });
+    },
+    [onNavigate, height]
+  );
+
+  return (
+    <div
+      ref={containerRef}
+      data-frame-panel="minimap"
+      className="select-none font-mono text-[10px] flex flex-col border-t border-neutral-800/50"
+    >
+      {/* Header (always visible) */}
+      <div
+        className={`shrink-0 flex items-center justify-between px-3 py-1.5 ${isCollapsed ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
+        onClick={isCollapsed ? onToggleCollapse : undefined}
+      >
+        <div className="flex items-center gap-1.5 text-neutral-400">
+          <Map size={12} className="text-neutral-500" />
+          <span className="tracking-widest font-bold uppercase text-[10px]">Map</span>
+        </div>
+        <div className="flex items-center gap-1">
+          {!isCollapsed && onFitAll && (
+            <button
+              onClick={onFitAll}
+              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-500 hover:text-white"
+              title="Fit all in view"
+            >
+              <Maximize size={10} />
+            </button>
+          )}
+          {onToggleCollapse && (
+            <button
+              onClick={isCollapsed ? undefined : onToggleCollapse}
+              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-500 hover:text-white"
+              title={isCollapsed ? 'Expand minimap' : 'Collapse minimap'}
+            >
+              {isCollapsed ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
+            </button>
+          )}
+        </div>
+      </div>
+
+      {/* Map area + footer (hidden when collapsed) */}
+      {!isCollapsed && (
+        <>
+          <MinimapCanvas
+            ref={mapRef}
+            pan={pan}
+            zoom={zoom}
+            viewportSize={viewportSize}
+            height={height}
+            onClick={handleClick}
+          >
+            {children}
+          </MinimapCanvas>
+
+          {footer && (
+            <div className="shrink-0 border-t border-neutral-800/50">
+              {footer}
+            </div>
+          )}
+        </>
+      )}
+    </div>
+  );
+};
+
+interface MinimapCanvasProps {
+  pan: { x: number; y: number };
+  zoom: number;
+  viewportSize: { width: number; height: number };
+  height: number;
+  onClick: (e: React.MouseEvent<HTMLDivElement>) => void;
+  children?: React.ReactNode;
+}
+
+const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
+  ({ pan, zoom, viewportSize, height, onClick, children }, ref) => {
+    // Use a resize-aware approach: measure width from the container
+    const [width, setWidth] = React.useState(0);
+    const internalRef = useRef<HTMLDivElement>(null);
+    const mergedRef = React.useCallback((node: HTMLDivElement | null) => {
+      (internalRef as React.MutableRefObject<HTMLDivElement | null>).current = node;
+      if (typeof ref === 'function') ref(node);
+      else if (ref) (ref as React.MutableRefObject<HTMLDivElement | null>).current = node;
+    }, [ref]);
+
+    React.useEffect(() => {
+      const el = internalRef.current;
+      if (!el) return;
+      const ro = new ResizeObserver(([entry]) => setWidth(entry.contentRect.width));
+      ro.observe(el);
+      return () => ro.disconnect();
+    }, []);
+
+    const safeWidth = width || 260;
+
+    const vpWidth = (viewportSize.width / zoom / WORLD_SIZE) * safeWidth;
+    const vpHeight = (viewportSize.height / zoom / WORLD_SIZE) * height;
+    const vpCenterX = ((pan.x + WORLD_SIZE / 2) / WORLD_SIZE) * safeWidth;
+    const vpCenterY = ((pan.y + WORLD_SIZE / 2) / WORLD_SIZE) * height;
+    const vpX = vpCenterX - vpWidth / 2;
+    const vpY = vpCenterY - vpHeight / 2;
+
+    return (
+      <div
+        ref={mergedRef}
+        className="relative cursor-crosshair overflow-hidden"
+        style={{ height: `${height}px` }}
+        onClick={onClick}
+      >
+        {/* Grid background */}
+        <div
+          className="absolute inset-0 opacity-30"
+          style={{
+            backgroundImage: 'radial-gradient(circle, #444 0.5px, transparent 0.5px)',
+            backgroundSize: '14px 14px',
+          }}
+        />
+
+        {/* Center crosshair */}
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-neutral-700/30" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-neutral-700/30" />
+
+        {/* Viewport rectangle */}
+        <div
+          className="absolute border border-emerald-500/50 bg-emerald-500/5 rounded-[1px] transition-all duration-75 ease-out"
+          style={{
+            left: `${vpX}px`,
+            top: `${vpY}px`,
+            width: `${Math.max(vpWidth, 4)}px`,
+            height: `${Math.max(vpHeight, 4)}px`,
+          }}
+        >
+          <div className="absolute -top-[1px] -left-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
+          <div className="absolute -top-[1px] -right-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
+          <div className="absolute -bottom-[1px] -left-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
+          <div className="absolute -bottom-[1px] -right-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
+        </div>
+
+        {children}
+      </div>
+    );
+  }
+);
+MinimapCanvas.displayName = 'MinimapCanvas';
+
+export default Minimap;
