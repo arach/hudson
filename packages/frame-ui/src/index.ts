@@ -5,8 +5,8 @@ export { Frame, Minimap, NavigationBar, SidePanel, StatusBar, CommandDock, ZoomC
 export { Canvas } from './components/canvas';
 
 // Overlays (modals/drawers)
-export { TerminalDrawer, CommandPalette } from './components/overlays';
-export type { CommandOption } from './components/overlays';
+export { TerminalDrawer, CommandPalette, HudsonContextMenu } from './components/overlays';
+export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSeparator, ContextMenuGroup } from './components/overlays';
 
 // Design tokens
 export { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from './lib/chrome';
