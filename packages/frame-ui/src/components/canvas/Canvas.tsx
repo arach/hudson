@@ -20,13 +20,9 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
   const lastPanRef = useRef({ x: 0, y: 0 });
   const pendingPanRef = useRef({ active: false, startX: 0, startY: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
-  const isSpaceDownRef = useRef(false);
   const panThreshold = 4;
   const mousePosRef = useRef({ x: 0, y: 0 });
   const buttonsRef = useRef(0);
-  const spaceTimeoutRef = useRef<number | null>(null);
-  const lastSpaceAtRef = useRef(0);
-  const spaceStaleMs = 2500;
   const didPanRef = useRef(false);
 
   // Sync from prop
@@ -52,27 +48,17 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
   }, []);
 
   useEffect(() => {
-    const scheduleSpaceRelease = () => {
-      if (spaceTimeoutRef.current) window.clearTimeout(spaceTimeoutRef.current);
-      spaceTimeoutRef.current = window.setTimeout(() => {
-        if (Date.now() - lastSpaceAtRef.current < spaceStaleMs) return;
-        if (isPanningRef.current) { setPanning(false); pendingPanRef.current.active = false; onPanEnd?.(); }
-        isSpaceDownRef.current = false;
-        document.body.style.cursor = 'default';
-      }, spaceStaleMs + 50);
-    };
-
     const handleMouseMove = (e: MouseEvent) => {
       buttonsRef.current = e.buttons;
       if (pendingPanRef.current.active && (e.buttons & 1) !== 1) { pendingPanRef.current.active = false; }
-      if (isPanningRef.current && ((e.buttons & 1) !== 1 || !isSpaceDownRef.current)) {
+      if (isPanningRef.current && (e.buttons & 1) !== 1) {
         setPanning(false); pendingPanRef.current.active = false; onPanEnd?.();
-        document.body.style.cursor = isSpaceDownRef.current ? 'grab' : 'default';
+        document.body.style.cursor = '';
         return;
       }
       if (isPanLocked && isPanningRef.current) {
         setPanning(false); pendingPanRef.current.active = false; onPanEnd?.();
-        document.body.style.cursor = isSpaceDownRef.current ? 'grab' : 'default';
+        document.body.style.cursor = '';
         return;
       }
       const rect = containerRef.current?.getBoundingClientRect();
@@ -103,37 +89,21 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       pendingPanRef.current.active = false;
       if (!isPanningRef.current) return;
       setPanning(false); onPanEnd?.();
-      document.body.style.cursor = isSpaceDownRef.current ? 'grab' : 'default';
+      document.body.style.cursor = '';
     };
 
     const handleKeyDown = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key === '\\') { e.preventDefault(); setGuidesVisible(prev => { const next = !prev; onGuidesChange?.(next); return next; }); }
-      if (e.code === 'Space' && !isEditableTarget(e.target)) {
-        e.preventDefault();
-        if (!isSpaceDownRef.current) { isSpaceDownRef.current = true; if (!isPanningRef.current) document.body.style.cursor = 'grab'; }
-        lastSpaceAtRef.current = Date.now();
-        scheduleSpaceRelease();
-      }
-    };
-
-    const handleKeyUp = (e: KeyboardEvent) => {
-      if (e.code === 'Space') {
-        isSpaceDownRef.current = false;
-        if (spaceTimeoutRef.current) { window.clearTimeout(spaceTimeoutRef.current); spaceTimeoutRef.current = null; }
-        if (!isPanningRef.current) document.body.style.cursor = 'default';
-      }
     };
 
     const handleBlur = () => {
-      isSpaceDownRef.current = false; pendingPanRef.current.active = false;
-      if (spaceTimeoutRef.current) { window.clearTimeout(spaceTimeoutRef.current); spaceTimeoutRef.current = null; }
+      pendingPanRef.current.active = false;
       handleMouseUp(new MouseEvent('mouseup'));
     };
 
     window.addEventListener('mousemove', handleMouseMove);
     window.addEventListener('mouseup', handleMouseUp);
     window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
     window.addEventListener('blur', handleBlur);
     document.addEventListener('visibilitychange', handleBlur);
 
@@ -141,26 +111,23 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
       window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
       window.removeEventListener('blur', handleBlur);
       document.removeEventListener('visibilitychange', handleBlur);
-      if (spaceTimeoutRef.current) window.clearTimeout(spaceTimeoutRef.current);
     };
   }, [onPan, onPanEnd, onPanStart, scale, isEditableTarget, isInteractiveTarget, isPanLocked, setPanning, onGuidesChange]);
 
   useEffect(() => {
     if (!isPanLocked || !isPanningRef.current) return;
     setPanning(false); onPanEnd?.();
-    document.body.style.cursor = isSpaceDownRef.current ? 'grab' : 'default';
+    document.body.style.cursor = '';
   }, [isPanLocked, onPanEnd, setPanning]);
 
   const handleMouseDown = (e: React.MouseEvent) => {
     didPanRef.current = false;
-    if (isPanLocked || e.button !== 0 || !isSpaceDownRef.current) return;
+    if (isPanLocked || e.button !== 0) return;
     if (isEditableTarget(e.target) || isInteractiveTarget(e.target)) return;
     buttonsRef.current = e.buttons;
     pendingPanRef.current = { active: true, startX: e.clientX, startY: e.clientY };
-    document.body.style.cursor = 'grab';
     e.preventDefault();
   };
 
@@ -169,14 +136,20 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
     didPanRef.current = false;
   };
 
+  const [vpSize, setVpSize] = useState({ w: 0, h: 0 });
+  useEffect(() => {
+    const update = () => setVpSize({ w: window.innerWidth, h: window.innerHeight });
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, []);
+
   const clampedScale = Math.max(0.4, Math.min(2, scale));
   const majorGridSize = 100 * clampedScale;
   const minorGridSize = 20 * clampedScale;
   // World origin screen position: vpCenter + pan * scale
-  const vpW = typeof window !== 'undefined' ? window.innerWidth : 0;
-  const vpH = typeof window !== 'undefined' ? window.innerHeight : 0;
-  const bgPosX = (vpW / 2 + panOffset.x * scale) % majorGridSize;
-  const bgPosY = (vpH / 2 + panOffset.y * scale) % majorGridSize;
+  const bgPosX = (vpSize.w / 2 + panOffset.x * scale) % majorGridSize;
+  const bgPosY = (vpSize.h / 2 + panOffset.y * scale) % majorGridSize;
 
   return (
     <div

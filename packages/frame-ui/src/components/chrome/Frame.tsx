@@ -27,7 +27,7 @@ interface FrameProps {
   canvasProps?: CanvasConfig;
   /** Multiplier for zoom wheel sensitivity (default 1.0) */
   zoomSensitivity?: number;
-  /** Right offset for zoom controls (tracks right panel width) */
+  /** Right offset for zoom controls in px (tracks right panel width) */
   zoomControlsRightOffset?: number;
 }
 
@@ -134,7 +134,9 @@ const Frame: React.FC<FrameProps> = ({
       </div>
 
       {/* Zoom controls (canvas mode) */}
-      <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} rightOffset={zoomControlsRightOffset} />
+      <div className="fixed bottom-[36px] z-30" style={{ right: (zoomControlsRightOffset ?? 280) + 16 }}>
+        <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
+      </div>
 
       {/* Layer 2: Static HUD chrome (fixed, never scales) */}
       <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">

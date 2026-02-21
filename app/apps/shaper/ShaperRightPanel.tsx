@@ -1,6 +1,7 @@
 'use client';
 
 import { useShaper } from './ShaperProvider';
+import { Target } from 'lucide-react';
 
 export function ShaperRightPanel() {
   const ctx = useShaper();
@@ -102,7 +103,7 @@ export function ShaperRightPanel() {
                           <span className="font-mono">{anchor.name}</span>
                           <span className={isNearSelected ? 'text-blue-400/60' : 'text-neutral-600'}>{anchor.x.toFixed(0)}, {anchor.y.toFixed(0)}</span>
                         </button>
-                        <button onClick={() => selectAndFocusAnchor(anchor)} title="Focus" className="flex h-5 w-5 items-center justify-center rounded text-[10px] text-neutral-600 hover:text-blue-400 hover:bg-white/5">{'\u25CE'}</button>
+                        <button onClick={() => selectAndFocusAnchor(anchor)} title="Focus" className="flex h-5 w-5 items-center justify-center rounded text-neutral-600 hover:text-blue-400 hover:bg-white/5"><Target size={12} /></button>
                       </div>
                     );
                   })

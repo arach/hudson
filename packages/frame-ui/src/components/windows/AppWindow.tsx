@@ -135,10 +135,15 @@ const AppWindow: React.FC<AppWindowProps> = ({
       setPreMaxBounds(null);
     } else {
       setPreMaxBounds(bounds);
-      onBoundsChange({ x: 0, y: 0, w: 1600, h: 1000 });
+      const zoom = worldScale ?? 1;
+      const maxW = window.innerWidth / zoom;
+      const maxH = window.innerHeight / zoom;
+      const maxX = -(maxW / 2);
+      const maxY = -(maxH / 2);
+      onBoundsChange({ x: maxX, y: maxY, w: maxW, h: maxH });
       setIsMaximized(true);
     }
-  }, [isMaximized, preMaxBounds, bounds, onBoundsChange]);
+  }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale]);
 
   const GRIP = 6;
 

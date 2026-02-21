@@ -12,7 +12,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
     {
       app: shaperApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 400, y: 0, w: 800, h: 600 },
+      defaultWindowBounds: { x: -400, y: -300, w: 800, h: 600 },
     },
   ],
   defaultFocusedAppId: 'hudson-docs',

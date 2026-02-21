@@ -98,12 +98,10 @@ export function ShaperContent() {
 
       {/* Zoom controls */}
       {showEditor && (
-        <div style={{
-          position: 'absolute',
-          bottom: `${12 + (animationModeEnabled ? 64 : 0)}px`,
-          right: 16,
-          zIndex: 30,
-        }}>
+        <div
+          className="absolute right-3 z-30 transition-all duration-200"
+          style={{ bottom: `${12 + (animationModeEnabled ? 64 : 0)}px` }}
+        >
           <ZoomControls
             scale={zoom}
             onZoom={(newScale) => ctx.setZoom(newScale)}

@@ -7,8 +7,6 @@ interface ZoomControlsProps {
   min?: number;
   max?: number;
   step?: number;
-  /** Right offset in px (accounts for side panel width) */
-  rightOffset?: number;
 }
 
 const ZoomControls: React.FC<ZoomControlsProps> = ({
@@ -17,7 +15,6 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   min = 0.2,
   max = 3,
   step = 0.1,
-  rightOffset,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -60,8 +57,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
 
   return (
     <div
-      className="fixed bottom-[36px] z-30 pointer-events-auto flex flex-col items-center bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden transition-[right] duration-200 ease-in-out"
-      style={{ right: (rightOffset ?? 280) + 16 }}
+      className="pointer-events-auto flex flex-col items-center bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden"
     >
       <button
         onClick={handleZoomIn}
