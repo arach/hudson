@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import {
   Frame,
   Minimap,
@@ -15,8 +15,8 @@ import {
   sounds,
   setMuted as setSoundMuted,
 } from 'frame-ui';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig } from 'frame-ui';
-import { Volume2, VolumeX, Settings } from 'lucide-react';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'frame-ui';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map } from 'lucide-react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ShellLayoutProvider } from './ShellLayoutContext';
@@ -160,6 +160,29 @@ function WorkspaceInner({
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', false);
   const [showGuides, setShowGuides] = useState(false);
 
+  // --- Window bounds tracking (for fit-all + minimap indicators) ---
+  // Ref holds the live truth — updated synchronously, zero re-renders.
+  // handleFitAll reads from the ref (it's event-driven, doesn't need reactivity).
+  // Minimap indicators read from state, updated via a debounced flush so
+  // dragging/resizing a window doesn't re-render the entire shell each frame.
+  type Bounds = { x: number; y: number; w: number; h: number };
+  const windowBoundsRef = useRef<Record<string, Bounds>>({});
+  const [windowBoundsMap, setWindowBoundsMap] = useState<Record<string, Bounds>>({});
+  const boundsFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const reportWindowBounds = useCallback((appId: string, bounds: Bounds) => {
+    const old = windowBoundsRef.current[appId];
+    if (old && old.x === bounds.x && old.y === bounds.y &&
+        old.w === bounds.w && old.h === bounds.h) return;
+    windowBoundsRef.current = { ...windowBoundsRef.current, [appId]: bounds };
+
+    // Debounced flush to state for minimap rendering (60 ms ≈ ~16 fps)
+    if (boundsFlushTimer.current) clearTimeout(boundsFlushTimer.current);
+    boundsFlushTimer.current = setTimeout(() => {
+      setWindowBoundsMap({ ...windowBoundsRef.current });
+    }, 60);
+  }, []);
+
   // --- Terminal tab state (multi-app only) ---
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
   const hasMultipleTerminals = appsWithTerminal.length > 1;
@@ -226,10 +249,32 @@ function WorkspaceInner({
   }, []);
 
   const handleFitAll = useCallback(() => {
-    setPanOffset({ x: 0, y: 0 });
-    setScale(1);
+    // Read live bounds from ref — no dependency on state, always fresh
+    const allBounds = Object.values(windowBoundsRef.current);
+    if (allBounds.length === 0) {
+      setPanOffset({ x: 0, y: 0 });
+      setScale(1);
+      playSound('blipUp');
+      return;
+    }
+    const minX = Math.min(...allBounds.map(b => b.x));
+    const maxX = Math.max(...allBounds.map(b => b.x + b.w));
+    const minY = Math.min(...allBounds.map(b => b.y));
+    const maxY = Math.max(...allBounds.map(b => b.y + b.h));
+    const centerX = (minX + maxX) / 2;
+    const centerY = (minY + maxY) / 2;
+
+    const padding = 120;
+    const bboxW = maxX - minX;
+    const bboxH = maxY - minY;
+    const fitScaleX = bboxW > 0 ? (viewport.width - padding) / bboxW : 1;
+    const fitScaleY = bboxH > 0 ? (viewport.height - padding) / bboxH : 1;
+    const fitScale = Math.max(0.2, Math.min(fitScaleX, fitScaleY, 1));
+
+    setPanOffset({ x: -centerX, y: -centerY });
+    setScale(fitScale);
     playSound('blipUp');
-  }, [playSound]);
+  }, [viewport, playSound]);
 
   // --- Resize ---
   const handleResizeStart = useCallback(
@@ -253,6 +298,20 @@ function WorkspaceInner({
     },
     [leftWidth, rightWidth, setLeftWidth, setRightWidth],
   );
+
+  // --- Reset all windows to defaults ---
+  const [windowResetKey, setWindowResetKey] = useState(0);
+  const handleResetAllWindows = useCallback(() => {
+    for (const config of workspace.apps) {
+      const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
+      try { localStorage.removeItem(key); } catch {}
+    }
+    setPanOffset({ x: 0, y: 0 });
+    setScale(1);
+    // Bump key to force WindowedApp remount → re-reads defaults from localStorage
+    setWindowResetKey(k => k + 1);
+    playSound('blipUp');
+  }, [workspace, playSound]);
 
   // --- Shell commands ---
   const shellCommands: CommandOption[] = useMemo(
@@ -300,6 +359,12 @@ function WorkspaceInner({
         action: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
       },
       {
+        id: 'shell:reset-all-windows',
+        label: 'Reset All Windows',
+        icon: <RotateCcw size={14} />,
+        action: handleResetAllWindows,
+      },
+      {
         id: 'shell:toggle-mute',
         label: muted ? 'Unmute Sounds' : 'Mute Sounds',
         shortcut: 'Cmd+M',
@@ -319,6 +384,7 @@ function WorkspaceInner({
       minimapCollapsed,
       muted,
       handleToggleMute,
+      handleResetAllWindows,
       workspaces,
       activeWorkspaceId,
       onSwitchWorkspace,
@@ -359,6 +425,43 @@ function WorkspaceInner({
     return () => window.removeEventListener('keydown', handler);
   }, []);
 
+  // --- Canvas context menu ---
+  const canvasContextMenuItems: ContextMenuEntry[] = useMemo(() => [
+    {
+      id: 'canvas:reset-view',
+      label: 'Reset View',
+      shortcut: '⌘0',
+      icon: <RotateCcw size={12} />,
+      action: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
+    },
+    {
+      id: 'canvas:fit-all',
+      label: 'Fit All in View',
+      icon: <Maximize2 size={12} />,
+      action: handleFitAll,
+    },
+    {
+      id: 'canvas:reset-all-windows',
+      label: 'Reset All Windows',
+      icon: <RotateCcw size={12} />,
+      action: handleResetAllWindows,
+    },
+    { type: 'separator' },
+    {
+      id: 'canvas:toggle-guides',
+      label: showGuides ? 'Hide Guides' : 'Show Guides',
+      shortcut: '⌘\\',
+      icon: <Crosshair size={12} />,
+      action: () => setShowGuides(g => !g),
+    },
+    {
+      id: 'canvas:toggle-minimap',
+      label: minimapCollapsed ? 'Show Minimap' : 'Hide Minimap',
+      icon: <Map size={12} />,
+      action: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
+    },
+  ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed]);
+
   // --- Shell layout context ---
   const shellLayout = useMemo(
     () => ({
@@ -388,7 +491,24 @@ function WorkspaceInner({
           onToggleCollapse={() => { setMinimapCollapsed(c => !c); playSound('thock'); }}
           onNavigate={handleMinimapNavigate}
           onFitAll={handleFitAll}
-        />
+        >
+          {Object.entries(windowBoundsMap).map(([appId, b]) => (
+            <div
+              key={appId}
+              className={`absolute rounded-[0.5px] pointer-events-none ${
+                appId === focusedAppId
+                  ? 'border border-emerald-400/60 bg-emerald-400/10'
+                  : 'border border-neutral-400/40 bg-neutral-400/10'
+              }`}
+              style={{
+                left: `${((b.x + 2000) / 4000) * 100}%`,
+                top:  `${((b.y + 2000) / 4000) * 100}%`,
+                width:  `${(b.w / 4000) * 100}%`,
+                height: `${(b.h / 4000) * 100}%`,
+              }}
+            />
+          ))}
+        </Minimap>
       )}
     </>
   );
@@ -521,6 +641,9 @@ function WorkspaceInner({
           focusedAppId={focusedAppId}
           onFocusApp={setFocusedAppId}
           worldScale={scale}
+          onResetView={() => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); }}
+          windowResetKey={windowResetKey}
+          onReportBounds={reportWindowBounds}
         />
       )}
     </div>
@@ -537,7 +660,10 @@ function WorkspaceInner({
         onViewportChange={setViewport}
         zoomSensitivity={shellSettings.zoomSensitivity}
         zoomControlsRightOffset={rightCollapsed ? 0 : rightWidth}
-        {...(isCanvasMode ? { canvasProps: { showGuides, onGuidesChange: setShowGuides } } : {})}
+        {...(isCanvasMode ? {
+          canvasProps: { showGuides, onGuidesChange: setShowGuides },
+          canvasContextMenuItems,
+        } : {})}
         hud={
           <>
             <NavigationBar
@@ -660,11 +786,17 @@ function MultiAppCanvas({
   focusedAppId,
   onFocusApp,
   worldScale,
+  onResetView,
+  windowResetKey,
+  onReportBounds,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
   onFocusApp: (id: string) => void;
   worldScale: number;
+  onResetView: () => void;
+  windowResetKey: number;
+  onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
 }) {
   // Separate native vs windowed apps
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -682,12 +814,14 @@ function MultiAppCanvas({
       {/* Windowed apps render inside AppWindow */}
       {windowedApps.map(config => (
         <WindowedApp
-          key={config.app.id}
+          key={`${config.app.id}-${windowResetKey}`}
           config={config}
           workspaceId={workspace.id}
           isFocused={config.app.id === focusedAppId}
           onFocus={() => onFocusApp(config.app.id)}
           worldScale={worldScale}
+          onResetView={onResetView}
+          onReportBounds={onReportBounds}
         />
       ))}
     </>
@@ -703,15 +837,93 @@ function WindowedApp({
   isFocused,
   onFocus,
   worldScale,
+  onResetView,
+  onReportBounds,
 }: {
   config: WorkspaceAppConfig;
   workspaceId: string;
   isFocused: boolean;
   onFocus: () => void;
   worldScale: number;
+  onResetView: () => void;
+  onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
 }) {
   const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
   const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
+
+  // Report bounds upstream for minimap + fit-all
+  useEffect(() => {
+    onReportBounds(config.app.id, bounds);
+  }, [bounds, config.app.id, onReportBounds]);
+
+  // Lifted maximize state so context menu + title bar button stay in sync
+  const [isMaximized, setIsMaximized] = useState(false);
+  const [preMaxBounds, setPreMaxBounds] = useState<typeof defaults | null>(null);
+
+  const handleToggleMaximize = useCallback(() => {
+    if (isMaximized && preMaxBounds) {
+      setBounds(preMaxBounds);
+      setIsMaximized(false);
+      setPreMaxBounds(null);
+    } else {
+      setBounds(prev => {
+        setPreMaxBounds(prev);
+        const zoom = worldScale || 1;
+        const maxW = window.innerWidth / zoom;
+        const maxH = window.innerHeight / zoom;
+        return { x: -(maxW / 2), y: -(maxH / 2), w: maxW, h: maxH };
+      });
+      setIsMaximized(true);
+    }
+  }, [isMaximized, preMaxBounds, setBounds, worldScale]);
+
+  const handleResetWindow = useCallback(() => {
+    setBounds(defaults);
+    setIsMaximized(false);
+    setPreMaxBounds(null);
+  }, [defaults, setBounds]);
+
+  const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
+    {
+      id: `${config.app.id}:bring-to-center`,
+      label: 'Bring to Center',
+      icon: <Crosshair size={12} />,
+      action: () => {
+        setBounds(prev => ({
+          ...prev,
+          x: -(prev.w / 2),
+          y: -(prev.h / 2),
+        }));
+      },
+    },
+    {
+      id: `${config.app.id}:maximize`,
+      label: isMaximized ? 'Restore' : 'Maximize',
+      icon: isMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />,
+      action: handleToggleMaximize,
+    },
+    {
+      id: `${config.app.id}:reset-window`,
+      label: 'Reset Window',
+      icon: <RotateCcw size={12} />,
+      action: handleResetWindow,
+    },
+    { type: 'separator' },
+    {
+      id: `${config.app.id}:reset-view`,
+      label: 'Reset View',
+      shortcut: '⌘0',
+      icon: <RotateCcw size={12} />,
+      action: onResetView,
+    },
+    {
+      id: `${config.app.id}:inspect`,
+      label: 'Inspect',
+      icon: <ScanSearch size={12} />,
+      disabled: true,
+      action: () => {},
+    },
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView]);
 
   return (
     <AppWindow
@@ -721,6 +933,9 @@ function WindowedApp({
       isFocused={isFocused}
       onFocus={onFocus}
       worldScale={worldScale}
+      isMaximized={isMaximized}
+      onToggleMaximize={handleToggleMaximize}
+      contextMenuItems={contextMenuItems}
     >
       <config.app.slots.Content />
     </AppWindow>
