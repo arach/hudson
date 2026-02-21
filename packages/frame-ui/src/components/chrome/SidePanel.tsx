@@ -33,10 +33,10 @@ const SidePanel: React.FC<SidePanelProps> = ({
         onClick={onToggleCollapse}
         className={`fixed top-1/2 -translate-y-1/2 z-40 ${
           side === 'left' ? 'left-3' : 'right-3'
-        } p-2.5 rounded bg-black/95 border border-neutral-800/80 hover:border-emerald-500/60 backdrop-blur-xl shadow-[0_0_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.05)] hover:shadow-[0_0_30px_rgba(16,185,129,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group pointer-events-auto`}
+        } p-2.5 rounded bg-neutral-950/95 border border-neutral-700/80 hover:border-emerald-500/60 backdrop-blur-xl shadow-[0_0_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_0_30px_rgba(16,185,129,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group pointer-events-auto`}
         title={`Expand ${title || 'panel'}`}
       >
-        <ExpandIcon size={14} className="text-neutral-500 group-hover:text-emerald-400 transition-colors" strokeWidth={1.5} />
+        <ExpandIcon size={14} className="text-neutral-400 group-hover:text-emerald-400 transition-colors" strokeWidth={1.5} />
       </button>
     );
   }
@@ -44,7 +44,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
   const CollapseIcon = side === 'left' ? PanelLeftClose : PanelRightClose;
 
   // Build className manually to avoid any conflicts
-  const baseClasses = 'bg-black/95 backdrop-blur-xl border border-neutral-800/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)] fixed top-[48px] bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)] fixed top-[48px] bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0' : 'border-r-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
@@ -73,15 +73,15 @@ const SidePanel: React.FC<SidePanelProps> = ({
         </div>
       )}
       {/* Top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/10 to-transparent z-10" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent z-10" />
 
       <div className="pointer-events-auto flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         {title && (
-          <div className="shrink-0 p-4 border-b border-neutral-800/50">
-            <div className="flex items-center justify-between text-neutral-400 text-[10px]">
+          <div className="shrink-0 p-4 border-b border-neutral-700/50">
+            <div className="flex items-center justify-between text-neutral-200 text-[11px]">
               <div className="flex items-center gap-1.5">
-                {icon && <span className="text-neutral-500">{icon}</span>}
+                {icon && <span className="text-neutral-400">{icon}</span>}
                 <span className="tracking-widest font-bold uppercase">{title}</span>
               </div>
               <div className="flex items-center gap-2">
@@ -89,7 +89,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
                 {onToggleCollapse && (
                   <button
                     onClick={onToggleCollapse}
-                    className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-500 hover:text-white"
+                    className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
                     title="Collapse panel"
                   >
                     <CollapseIcon size={12} />

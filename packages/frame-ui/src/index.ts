@@ -15,6 +15,14 @@ export { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } fro
 export * from './lib/sounds';
 export { logEvent, FRAME_LOG_EVENT } from './lib/logger';
 export type { FrameLogEntry } from './lib/logger';
+export { worldToScreen, screenToWorld } from './lib/viewport';
+
+// Types
+export type { HudsonApp, StatusColor, SearchConfig } from './types/app';
+export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from './types/workspace';
+
+// Windows
+export { AppWindow } from './components/windows';
 
 // Hooks
 export { usePersistentState } from './hooks/usePersistentState';

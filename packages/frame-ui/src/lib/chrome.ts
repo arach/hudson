@@ -5,9 +5,9 @@
 
 export const CHROME = {
   blur: 'backdrop-blur-xl',
-  bg: 'bg-black/95',
-  border: 'border border-neutral-800/80',
-  shadow: 'shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.05)]',
+  bg: 'bg-neutral-950/95',
+  border: 'border border-neutral-700/80',
+  shadow: 'shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]',
   topHighlight: 'before:absolute before:top-0 before:left-0 before:right-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent',
 } as const;
 
@@ -17,9 +17,9 @@ export const PANEL_STYLES = {
   navigationStack: `fixed top-0 left-0 right-0 z-50`,
   manifest: `${CHROME_BASE} fixed top-[48px] left-0 bottom-[28px] w-[280px] z-40 rounded-none border-l-0 border-t-0 overflow-hidden`,
   inspector: `${CHROME_BASE} fixed top-[48px] right-0 bottom-[28px] w-[280px] z-40 rounded-none border-r-0 border-t-0 overflow-hidden`,
-  minimap: `bg-black/90 backdrop-blur-xl border border-neutral-800/80 shadow-[0_0_20px_rgba(0,0,0,0.7)] fixed left-0 bottom-[28px] z-[45] rounded-none border-l-0 border-b-0 overflow-hidden`,
-  statusBar: `bg-[#09090b]/95 backdrop-blur-xl border-t border-neutral-800 shadow-[0_-5px_30px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.03)] fixed bottom-0 left-0 right-0 z-[60]`,
-  commandDock: `bg-black/90 backdrop-blur-xl border-t border-l border-neutral-800/80 fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
+  minimap: `bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[0_0_20px_rgba(0,0,0,0.7)] fixed left-0 bottom-[28px] z-[45] rounded-none border-l-0 border-b-0 overflow-hidden`,
+  statusBar: `bg-neutral-950/95 backdrop-blur-xl border-t border-neutral-700 shadow-[0_-5px_30px_rgba(0,0,0,0.6),inset_0_1px_0_rgba(255,255,255,0.06)] fixed bottom-0 left-0 right-0 z-[60]`,
+  commandDock: `bg-neutral-950/95 backdrop-blur-xl border-t border-l border-neutral-700/80 fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
 } as const;
 
 export const EDGE_EFFECTS = {

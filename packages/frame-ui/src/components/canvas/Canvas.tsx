@@ -172,8 +172,11 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
   const clampedScale = Math.max(0.4, Math.min(2, scale));
   const majorGridSize = 100 * clampedScale;
   const minorGridSize = 20 * clampedScale;
-  const bgPosX = (panOffset.x * scale) % majorGridSize;
-  const bgPosY = (panOffset.y * scale) % majorGridSize;
+  // World origin screen position: vpCenter + pan * scale
+  const vpW = typeof window !== 'undefined' ? window.innerWidth : 0;
+  const vpH = typeof window !== 'undefined' ? window.innerHeight : 0;
+  const bgPosX = (vpW / 2 + panOffset.x * scale) % majorGridSize;
+  const bgPosY = (vpH / 2 + panOffset.y * scale) % majorGridSize;
 
   return (
     <div
@@ -182,10 +185,10 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       onMouseDown={handleMouseDown}
       onClick={handleClick}
     >
-      <div className="absolute opacity-[0.4] pointer-events-none"
-        style={{ inset: '-100px', backgroundImage: `radial-gradient(circle, #333 1px, transparent 1px)`, backgroundSize: `${minorGridSize}px ${minorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
-      <div className="absolute opacity-[0.15] pointer-events-none"
-        style={{ inset: '-100px', backgroundImage: `radial-gradient(circle, #444 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
+      <div className="absolute opacity-[0.5] pointer-events-none"
+        style={{ inset: '-100px', backgroundImage: `radial-gradient(circle, #444 1px, transparent 1px)`, backgroundSize: `${minorGridSize}px ${minorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
+      <div className="absolute opacity-[0.25] pointer-events-none"
+        style={{ inset: '-100px', backgroundImage: `radial-gradient(circle, #555 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       {guidesVisible && (
         <>
           <div className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: mousePos.x }} />

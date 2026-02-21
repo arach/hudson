@@ -29,7 +29,7 @@ const STATUS_COLORS = {
   emerald: { dot: 'bg-emerald-500', ping: 'bg-emerald-400', text: 'text-emerald-500' },
   amber: { dot: 'bg-amber-500', ping: 'bg-amber-400', text: 'text-amber-500' },
   red: { dot: 'bg-red-500', ping: 'bg-red-400', text: 'text-red-500' },
-  neutral: { dot: 'bg-neutral-500', ping: 'bg-neutral-400', text: 'text-neutral-500' },
+  neutral: { dot: 'bg-neutral-500', ping: 'bg-neutral-400', text: 'text-neutral-400' },
 };
 
 const StatusBar: React.FC<StatusBarProps> = ({
@@ -67,7 +67,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[10px] text-neutral-500 pointer-events-auto`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[11px] text-neutral-200 pointer-events-auto`}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
       <div className="flex items-center gap-4">
@@ -80,10 +80,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
               title="Expand minimap"
             >
               <Map size={10} />
-              <span className="text-[9px] font-bold">MAP</span>
+              <span className="text-[10px] font-bold">MAP</span>
               <Maximize2 size={8} className="opacity-60" />
             </button>
-            <div className="h-3 w-px bg-neutral-800" />
+            <div className="h-3 w-px bg-neutral-700" />
           </>
         )}
 
@@ -98,7 +98,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         {left && (
           <>
-            <div className="h-3 w-px bg-neutral-800" />
+            <div className="h-3 w-px bg-neutral-700" />
             {left}
           </>
         )}
@@ -113,21 +113,21 @@ const StatusBar: React.FC<StatusBarProps> = ({
             title="Copy viewport data"
           >
             <div className="flex items-center gap-1">
-              <span className="text-neutral-600">PAN:</span>
+              <span className="text-neutral-400">PAN:</span>
               <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
                 {viewport.pan.x.toFixed(0)},{viewport.pan.y.toFixed(0)}
               </span>
             </div>
-            <div className="h-3 w-px bg-neutral-800" />
+            <div className="h-3 w-px bg-neutral-700" />
             <div className="flex items-center gap-1">
-              <span className="text-neutral-600">SIZE:</span>
+              <span className="text-neutral-400">SIZE:</span>
               <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
                 {viewport.canvasSize?.w ?? 1024}x{viewport.canvasSize?.h ?? 1024}
               </span>
             </div>
-            <div className="h-3 w-px bg-neutral-800" />
+            <div className="h-3 w-px bg-neutral-700" />
             <div className="flex items-center gap-1">
-              <span className="text-neutral-600">ZOOM:</span>
+              <span className="text-neutral-400">ZOOM:</span>
               <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
                 {(viewport.zoom * 100).toFixed(0)}%
               </span>
@@ -140,7 +140,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <div className="flex items-center gap-4">
         {right}
 
-        {right && <div className="h-3 w-px bg-neutral-800" />}
+        {right && <div className="h-3 w-px bg-neutral-700" />}
 
         {onToggleTerminal && (
           <>
@@ -149,28 +149,28 @@ const StatusBar: React.FC<StatusBarProps> = ({
               className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${
                 isTerminalOpen
                   ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5 border border-transparent'
+                  : 'text-neutral-400 hover:text-neutral-100 hover:bg-white/5 border border-transparent'
               }`}
               title="Toggle Terminal (Ctrl+`)"
             >
               <span className="text-[12px]">{'>'}_</span>
-              <span className="uppercase text-[9px] font-semibold tracking-wider">
+              <span className="uppercase text-[10px] font-semibold tracking-wider">
                 {isTerminalOpen ? 'Console' : 'Console'}
               </span>
             </button>
-            <div className="h-3 w-px bg-neutral-800" />
+            <div className="h-3 w-px bg-neutral-700" />
           </>
         )}
 
         <div className="flex items-center gap-1.5">
-          <Activity size={10} className="text-neutral-600" />
-          <span className="uppercase text-neutral-400">System: Nominal</span>
+          <Activity size={10} className="text-neutral-400" />
+          <span className="uppercase text-neutral-200">System: Nominal</span>
         </div>
 
-        <div className="h-3 w-px bg-neutral-800" />
+        <div className="h-3 w-px bg-neutral-700" />
 
-        <div className="flex items-center gap-1.5 text-neutral-300 min-w-[60px] justify-end">
-          <Clock size={10} className="text-neutral-600" />
+        <div className="flex items-center gap-1.5 text-neutral-200 min-w-[60px] justify-end">
+          <Clock size={10} className="text-neutral-400" />
           <span>{mounted ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
         </div>
       </div>

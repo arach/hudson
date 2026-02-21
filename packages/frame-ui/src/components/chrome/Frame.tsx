@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useRef } from 'react';
 import Canvas from '../canvas/Canvas';
 import ZoomControls from './ZoomControls';
 
@@ -25,6 +25,10 @@ interface FrameProps {
   onCanvasClick?: (e: React.MouseEvent) => void;
   /** Canvas configuration (crosshair guides, etc.) */
   canvasProps?: CanvasConfig;
+  /** Multiplier for zoom wheel sensitivity (default 1.0) */
+  zoomSensitivity?: number;
+  /** Right offset for zoom controls (tracks right panel width) */
+  zoomControlsRightOffset?: number;
 }
 
 const noop = () => {};
@@ -40,27 +44,39 @@ const Frame: React.FC<FrameProps> = ({
   onPanStart, onPanEnd, isTransitioning = false,
   onViewportChange, onCanvasClick,
   canvasProps,
+  zoomSensitivity,
+  zoomControlsRightOffset,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
 
-  // Zoom to cursor (canvas mode only)
+  // Track scale in a ref so rapid wheel events between React renders
+  // always compute deltas from the latest value (avoids stale closure).
+  const scaleRef = useRef(scale);
+  scaleRef.current = scale;
+
+  // Stable refs for callbacks to avoid re-registering the listener on every render
+  const onZoomRef = useRef(onZoom);
+  onZoomRef.current = onZoom;
+  const sensitivityRef = useRef(zoomSensitivity);
+  sensitivityRef.current = zoomSensitivity;
+
+  // Zoom (canvas mode only) — only changes scale, no pan adjustment needed.
+  // The world layer is positioned at 50%/50% so CSS zoom anchors at viewport center.
   useEffect(() => {
     if (mode !== 'canvas') return;
     const handleWheel = (e: WheelEvent) => {
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
-        const delta = -e.deltaY * 0.001;
-        const newScale = Math.min(Math.max(0.2, scale + delta), 3);
-        const centerX = window.innerWidth / 2;
-        const centerY = window.innerHeight / 2;
-        const panAdjustX = (e.clientX - centerX) * (1 / newScale - 1 / scale);
-        const panAdjustY = (e.clientY - centerY) * (1 / newScale - 1 / scale);
-        onZoom(newScale, { x: panAdjustX, y: panAdjustY });
+        const prevScale = scaleRef.current;
+        const delta = -e.deltaY * 0.001 * (sensitivityRef.current ?? 1);
+        const newScale = Math.min(Math.max(0.2, prevScale + delta), 3);
+        scaleRef.current = newScale;
+        onZoomRef.current(newScale);
       }
     };
     window.addEventListener('wheel', handleWheel, { passive: false });
     return () => window.removeEventListener('wheel', handleWheel);
-  }, [scale, onZoom, mode]);
+  }, [mode]);
 
   // Viewport resize
   useEffect(() => {
@@ -80,12 +96,9 @@ const Frame: React.FC<FrameProps> = ({
   if (mode === 'panel') {
     return (
       <div ref={frameRef} className="fixed inset-0 bg-black text-neutral-200 overflow-hidden font-sans select-none z-0">
-        {/* Panel mode: scrollable content, no canvas */}
         <div className="absolute inset-0 z-10 overflow-auto frame-scrollbar">
           {children}
         </div>
-
-        {/* HUD chrome still renders */}
         <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
           {hud}
         </div>
@@ -108,17 +121,20 @@ const Frame: React.FC<FrameProps> = ({
         onGuidesChange={canvasProps?.onGuidesChange}
       />
 
-      {/* Layer 1: World content (scaled) */}
+      {/* Layer 1: World content — zoom anchored at viewport center.
+          The outer div sits at 50%/50% so CSS zoom scales from viewport center.
+          The inner div applies pan offset in world space. */}
       <div
-        className={`absolute inset-0 z-10 w-full h-full pointer-events-none origin-top-left will-change-transform
-          ${isTransitioning ? 'transition-transform duration-700 ease-[cubic-bezier(0.25,0.1,0.25,1.0)]' : 'transition-transform duration-75 ease-out'}`}
-        style={{ transform: `scale(${scale})` }}
+        className="absolute z-10 pointer-events-none"
+        style={{ left: '50%', top: '50%', zoom: scale }}
       >
-        {children}
+        <div style={{ position: 'absolute', left: panOffset.x, top: panOffset.y }}>
+          {children}
+        </div>
       </div>
 
       {/* Zoom controls (canvas mode) */}
-      <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
+      <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} rightOffset={zoomControlsRightOffset} />
 
       {/* Layer 2: Static HUD chrome (fixed, never scales) */}
       <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">

@@ -7,6 +7,8 @@ interface ZoomControlsProps {
   min?: number;
   max?: number;
   step?: number;
+  /** Right offset in px (accounts for side panel width) */
+  rightOffset?: number;
 }
 
 const ZoomControls: React.FC<ZoomControlsProps> = ({
@@ -15,6 +17,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   min = 0.2,
   max = 3,
   step = 0.1,
+  rightOffset,
 }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [editValue, setEditValue] = useState('');
@@ -56,16 +59,19 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
   }, [isEditing]);
 
   return (
-    <div className="fixed bottom-[36px] right-[296px] z-30 pointer-events-auto flex flex-col items-center bg-black/90 backdrop-blur-xl border border-neutral-800/80 rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden">
+    <div
+      className="fixed bottom-[36px] z-30 pointer-events-auto flex flex-col items-center bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden transition-[right] duration-200 ease-in-out"
+      style={{ right: (rightOffset ?? 280) + 16 }}
+    >
       <button
         onClick={handleZoomIn}
-        className="w-9 h-8 flex items-center justify-center hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+        className="w-9 h-8 flex items-center justify-center hover:bg-white/10 text-neutral-300 hover:text-white transition-colors"
         title="Zoom in"
       >
         <Plus size={14} />
       </button>
 
-      <div className="w-full border-t border-b border-neutral-800/50">
+      <div className="w-full border-t border-b border-neutral-700/50">
         {isEditing ? (
           <input
             ref={inputRef}
@@ -74,12 +80,12 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
             onChange={e => setEditValue(e.target.value.replace(/[^0-9]/g, ''))}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
-            className="w-9 py-1.5 text-center text-[9px] font-mono text-white bg-black/60 outline-none tabular-nums"
+            className="w-9 py-1.5 text-center text-[10px] font-mono text-white bg-black/60 outline-none tabular-nums"
           />
         ) : (
           <button
             onClick={startEditing}
-            className="w-9 py-1.5 text-center text-[9px] font-mono text-neutral-400 hover:text-white hover:bg-white/10 transition-colors cursor-text tabular-nums"
+            className="w-9 py-1.5 text-center text-[10px] font-mono text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-text tabular-nums"
             title="Click to set zoom"
           >
             {Math.round(scale * 100)}%
@@ -89,7 +95,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
 
       <button
         onClick={handleZoomOut}
-        className="w-9 h-8 flex items-center justify-center hover:bg-white/10 text-neutral-400 hover:text-white transition-colors"
+        className="w-9 h-8 flex items-center justify-center hover:bg-white/10 text-neutral-300 hover:text-white transition-colors"
         title="Zoom out"
       >
         <Minus size={14} />

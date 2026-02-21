@@ -51,22 +51,22 @@ const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={containerRef}
       data-frame-panel="minimap"
-      className="select-none font-mono text-[10px] flex flex-col border-t border-neutral-800/50"
+      className="select-none font-mono text-[11px] flex flex-col border-t border-neutral-700/50"
     >
       {/* Header (always visible) */}
       <div
         className={`shrink-0 flex items-center justify-between px-3 py-1.5 ${isCollapsed ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
         onClick={isCollapsed ? onToggleCollapse : undefined}
       >
-        <div className="flex items-center gap-1.5 text-neutral-400">
-          <Map size={12} className="text-neutral-500" />
-          <span className="tracking-widest font-bold uppercase text-[10px]">Map</span>
+        <div className="flex items-center gap-1.5 text-neutral-300">
+          <Map size={12} className="text-neutral-400" />
+          <span className="tracking-widest font-bold uppercase text-[11px]">Map</span>
         </div>
         <div className="flex items-center gap-1">
           {!isCollapsed && onFitAll && (
             <button
               onClick={onFitAll}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-500 hover:text-white"
+              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
               title="Fit all in view"
             >
               <Maximize size={10} />
@@ -75,7 +75,7 @@ const Minimap: React.FC<MinimapProps> = ({
           {onToggleCollapse && (
             <button
               onClick={isCollapsed ? undefined : onToggleCollapse}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-500 hover:text-white"
+              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
               title={isCollapsed ? 'Expand minimap' : 'Collapse minimap'}
             >
               {isCollapsed ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
@@ -99,7 +99,7 @@ const Minimap: React.FC<MinimapProps> = ({
           </MinimapCanvas>
 
           {footer && (
-            <div className="shrink-0 border-t border-neutral-800/50">
+            <div className="shrink-0 border-t border-neutral-700/50">
               {footer}
             </div>
           )}
@@ -157,14 +157,14 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
         <div
           className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: 'radial-gradient(circle, #444 0.5px, transparent 0.5px)',
+            backgroundImage: 'radial-gradient(circle, #555 0.5px, transparent 0.5px)',
             backgroundSize: '14px 14px',
           }}
         />
 
         {/* Center crosshair */}
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-neutral-700/30" />
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-neutral-700/30" />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-neutral-600/40" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-neutral-600/40" />
 
         {/* Viewport rectangle */}
         <div
