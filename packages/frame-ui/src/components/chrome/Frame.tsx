@@ -1,6 +1,8 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import Canvas from '../canvas/Canvas';
 import ZoomControls from './ZoomControls';
+import { HudsonContextMenu } from '../overlays/ContextMenu';
+import type { ContextMenuEntry } from '../overlays/ContextMenu';
 
 interface CanvasConfig {
   showGuides?: boolean;
@@ -29,6 +31,8 @@ interface FrameProps {
   zoomSensitivity?: number;
   /** Right offset for zoom controls in px (tracks right panel width) */
   zoomControlsRightOffset?: number;
+  /** Context menu items shown on right-click on canvas background */
+  canvasContextMenuItems?: ContextMenuEntry[];
 }
 
 const noop = () => {};
@@ -46,6 +50,7 @@ const Frame: React.FC<FrameProps> = ({
   canvasProps,
   zoomSensitivity,
   zoomControlsRightOffset,
+  canvasContextMenuItems,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -57,8 +62,104 @@ const Frame: React.FC<FrameProps> = ({
   // Stable refs for callbacks to avoid re-registering the listener on every render
   const onZoomRef = useRef(onZoom);
   onZoomRef.current = onZoom;
+  const onPanRef = useRef(onPan);
+  onPanRef.current = onPan;
+  const onPanStartRef = useRef(onPanStart);
+  onPanStartRef.current = onPanStart;
+  const onPanEndRef = useRef(onPanEnd);
+  onPanEndRef.current = onPanEnd;
   const sensitivityRef = useRef(zoomSensitivity);
   sensitivityRef.current = zoomSensitivity;
+
+  // --- Space+Hold hand tool ---
+  const [spaceHeld, setSpaceHeld] = useState(false);
+  const spaceHeldRef = useRef(false);
+  const [isSpacePanning, setIsSpacePanning] = useState(false);
+  const isSpacePanningRef = useRef(false);
+  const spacePanLastRef = useRef({ x: 0, y: 0 });
+
+  const isEditable = useCallback((el: Element | null) => {
+    if (!el) return false;
+    const tag = (el as HTMLElement).tagName;
+    return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable;
+  }, []);
+
+  useEffect(() => {
+    if (mode !== 'canvas') return;
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key !== ' ' || e.repeat) return;
+      if (isEditable(document.activeElement)) return;
+      if (isTransitioning) return;
+      e.preventDefault();
+      spaceHeldRef.current = true;
+      setSpaceHeld(true);
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      if (e.key !== ' ') return;
+      if (!spaceHeldRef.current) return;
+      spaceHeldRef.current = false;
+      setSpaceHeld(false);
+      if (isSpacePanningRef.current) {
+        isSpacePanningRef.current = false;
+        setIsSpacePanning(false);
+        onPanEndRef.current?.();
+      }
+    };
+    const onBlur = () => {
+      if (!spaceHeldRef.current) return;
+      spaceHeldRef.current = false;
+      setSpaceHeld(false);
+      if (isSpacePanningRef.current) {
+        isSpacePanningRef.current = false;
+        setIsSpacePanning(false);
+        onPanEndRef.current?.();
+      }
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, [mode, isTransitioning, isEditable]);
+
+  const handleSpaceOverlayMouseDown = useCallback((e: React.MouseEvent) => {
+    if (e.button !== 0) return;
+    e.preventDefault();
+    isSpacePanningRef.current = true;
+    setIsSpacePanning(true);
+    spacePanLastRef.current = { x: e.clientX, y: e.clientY };
+    onPanStartRef.current?.();
+  }, []);
+
+  useEffect(() => {
+    if (!spaceHeld) return;
+
+    const onMouseMove = (e: MouseEvent) => {
+      if (!isSpacePanningRef.current) return;
+      const dx = (e.clientX - spacePanLastRef.current.x) / scaleRef.current;
+      const dy = (e.clientY - spacePanLastRef.current.y) / scaleRef.current;
+      spacePanLastRef.current = { x: e.clientX, y: e.clientY };
+      onPanRef.current({ x: dx, y: dy });
+    };
+    const onMouseUp = () => {
+      if (!isSpacePanningRef.current) return;
+      isSpacePanningRef.current = false;
+      setIsSpacePanning(false);
+      onPanEndRef.current?.();
+    };
+
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+    return () => {
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+  }, [spaceHeld]);
 
   // Zoom (canvas mode only) — only changes scale, no pan adjustment needed.
   // The world layer is positioned at 50%/50% so CSS zoom anchors at viewport center.
@@ -109,17 +210,19 @@ const Frame: React.FC<FrameProps> = ({
   return (
     <div ref={frameRef} className="fixed inset-0 bg-black text-neutral-200 overflow-hidden font-sans select-none z-0">
       {/* Layer 0: Canvas (pan/zoom background) */}
-      <Canvas
-        panOffset={panOffset}
-        scale={scale}
-        onPan={onPan}
-        onPanStart={onPanStart}
-        onPanEnd={onPanEnd}
-        isPanLocked={isTransitioning}
-        onClick={onCanvasClick}
-        showGuides={canvasProps?.showGuides}
-        onGuidesChange={canvasProps?.onGuidesChange}
-      />
+      <HudsonContextMenu items={canvasContextMenuItems ?? []}>
+        <Canvas
+          panOffset={panOffset}
+          scale={scale}
+          onPan={onPan}
+          onPanStart={onPanStart}
+          onPanEnd={onPanEnd}
+          isPanLocked={isTransitioning}
+          onClick={onCanvasClick}
+          showGuides={canvasProps?.showGuides}
+          onGuidesChange={canvasProps?.onGuidesChange}
+        />
+      </HudsonContextMenu>
 
       {/* Layer 1: World content — zoom anchored at viewport center.
           The outer div sits at 50%/50% so CSS zoom scales from viewport center.
@@ -132,6 +235,14 @@ const Frame: React.FC<FrameProps> = ({
           {children}
         </div>
       </div>
+
+      {/* Space+Hold pan overlay */}
+      {spaceHeld && (
+        <div
+          className={`fixed inset-0 z-20 ${isSpacePanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+          onMouseDown={handleSpaceOverlayMouseDown}
+        />
+      )}
 
       {/* Zoom controls (canvas mode) */}
       <div className="fixed bottom-[36px] z-30" style={{ right: (zoomControlsRightOffset ?? 280) + 16 }}>

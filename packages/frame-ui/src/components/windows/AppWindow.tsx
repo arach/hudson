@@ -1,7 +1,9 @@
 'use client';
 
-import React, { useCallback, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { GripHorizontal, Minus, Maximize2, Minimize2 } from 'lucide-react';
+import { HudsonContextMenu } from '../overlays/ContextMenu';
+import type { ContextMenuEntry } from '../overlays/ContextMenu';
 
 // ---------------------------------------------------------------------------
 // AppWindow — draggable/resizable window that lives in world space (Layer 1)
@@ -23,6 +25,11 @@ interface AppWindowProps {
   onMinimize?: () => void;
   /** CSS zoom of the parent world layer — used for 1:1 drag/resize at any zoom */
   worldScale?: number;
+  /** Controlled maximize state (lifted from parent) */
+  isMaximized?: boolean;
+  onToggleMaximize?: () => void;
+  /** Context menu items shown on right-click */
+  contextMenuItems?: ContextMenuEntry[];
   children: React.ReactNode;
 }
 
@@ -50,11 +57,61 @@ const AppWindow: React.FC<AppWindowProps> = ({
   onFocus,
   onMinimize,
   worldScale,
+  isMaximized: isMaximizedProp,
+  onToggleMaximize: onToggleMaximizeProp,
+  contextMenuItems,
   children,
 }) => {
   const windowRef = useRef<HTMLDivElement>(null);
-  const [isMaximized, setIsMaximized] = useState(false);
+  // Internal maximize state (used when not controlled by parent)
+  const [isMaximizedInternal, setIsMaximizedInternal] = useState(false);
   const [preMaxBounds, setPreMaxBounds] = useState<Bounds | null>(null);
+  const isMaximized = isMaximizedProp ?? isMaximizedInternal;
+  const [altHeld, setAltHeld] = useState(false);
+
+  // --- Track Alt key ---
+  useEffect(() => {
+    const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(true); };
+    const onKeyUp = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(false); };
+    const onBlur = () => setAltHeld(false);
+    window.addEventListener('keydown', onKeyDown);
+    window.addEventListener('keyup', onKeyUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keydown', onKeyDown);
+      window.removeEventListener('keyup', onKeyUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  // --- Option+Drag (move window from anywhere on body) ---
+  const handleWindowMouseDown = useCallback(
+    (e: React.MouseEvent) => {
+      onFocus();
+      if (!e.altKey || e.button !== 0) return;
+      e.preventDefault();
+      e.stopPropagation();
+      const startX = e.clientX;
+      const startY = e.clientY;
+      const startBounds = { ...bounds };
+      const zoom = worldScale ?? 1;
+      document.body.style.cursor = 'grabbing';
+
+      const onMouseMove = (ev: MouseEvent) => {
+        const dx = (ev.clientX - startX) / zoom;
+        const dy = (ev.clientY - startY) / zoom;
+        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
+      };
+      const onMouseUp = () => {
+        document.body.style.cursor = '';
+        document.removeEventListener('mousemove', onMouseMove);
+        document.removeEventListener('mouseup', onMouseUp);
+      };
+      document.addEventListener('mousemove', onMouseMove);
+      document.addEventListener('mouseup', onMouseUp);
+    },
+    [bounds, onBoundsChange, onFocus, worldScale],
+  );
 
   // --- Drag ---
   const handleDragStart = useCallback(
@@ -129,9 +186,13 @@ const AppWindow: React.FC<AppWindowProps> = ({
   );
 
   const handleToggleMaximize = useCallback(() => {
+    if (onToggleMaximizeProp) {
+      onToggleMaximizeProp();
+      return;
+    }
     if (isMaximized && preMaxBounds) {
       onBoundsChange(preMaxBounds);
-      setIsMaximized(false);
+      setIsMaximizedInternal(false);
       setPreMaxBounds(null);
     } else {
       setPreMaxBounds(bounds);
@@ -141,16 +202,16 @@ const AppWindow: React.FC<AppWindowProps> = ({
       const maxX = -(maxW / 2);
       const maxY = -(maxH / 2);
       onBoundsChange({ x: maxX, y: maxY, w: maxW, h: maxH });
-      setIsMaximized(true);
+      setIsMaximizedInternal(true);
     }
-  }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale]);
+  }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale, onToggleMaximizeProp]);
 
   const GRIP = 6;
 
-  return (
+  const windowEl = (
     <div
       ref={windowRef}
-      className="absolute pointer-events-auto"
+      className={`absolute pointer-events-auto${altHeld ? ' cursor-grab' : ''}`}
       data-app-window
       style={{
         left: bounds.x,
@@ -158,7 +219,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
         width: bounds.w,
         height: bounds.h,
       }}
-      onMouseDown={onFocus}
+      onMouseDown={handleWindowMouseDown}
     >
       {/* Window chrome */}
       <div
@@ -226,6 +287,12 @@ const AppWindow: React.FC<AppWindowProps> = ({
       })}
     </div>
   );
+
+  if (contextMenuItems && contextMenuItems.length > 0) {
+    return <HudsonContextMenu items={contextMenuItems}>{windowEl}</HudsonContextMenu>;
+  }
+
+  return windowEl;
 };
 
 export default AppWindow;
