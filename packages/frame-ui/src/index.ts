@@ -20,6 +20,7 @@ export { worldToScreen, screenToWorld } from './lib/viewport';
 // Types
 export type { HudsonApp, StatusColor, SearchConfig } from './types/app';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from './types/workspace';
+export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 
 // Windows
 export { AppWindow } from './components/windows';

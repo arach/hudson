@@ -13,12 +13,14 @@ import {
   useDocsNavActions,
   useDocsFrameMode,
 } from './hooks';
+import { docsIntents } from './intents';
 
 export const hudsonDocsApp: HudsonApp = {
   id: 'hudson-docs',
   name: 'Hudson Docs',
   description: 'Component documentation & explorer',
   mode: 'canvas',
+  intents: docsIntents,
 
   leftPanel: { title: 'Navigation', icon: createElement(Compass, { size: 12 }) },
   rightPanel: { title: 'Inspector', icon: createElement(ScanSearch, { size: 12 }) },

@@ -16,12 +16,14 @@ import {
   useShaperNavActions,
   useShaperFrameMode,
 } from './hooks';
+import { shaperIntents } from './intents';
 
 export const shaperApp: HudsonApp = {
   id: 'shaper',
   name: 'Shaper',
   description: 'Bezier curve editor for vector shapes',
   mode: 'panel',
+  intents: shaperIntents,
 
   leftPanel: {
     title: 'Project',

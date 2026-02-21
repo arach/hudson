@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
+import type { AppIntent } from './intent';
 
 // ---------------------------------------------------------------------------
 // Status colors supported by StatusBar
@@ -44,6 +45,9 @@ export interface HudsonApp {
     LeftFooter?: React.FC;
     Terminal?: React.FC;
   };
+
+  /** Static intent declarations for LLM/voice/search indexing */
+  intents?: AppIntent[];
 
   /** Hooks called inside Provider via Bridge component */
   hooks: {

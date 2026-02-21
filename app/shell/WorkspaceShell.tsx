@@ -22,6 +22,8 @@ import { SidebarSection } from './SidebarSection';
 import { ShellLayoutProvider } from './ShellLayoutContext';
 import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
+import { useIntentCatalog } from '../hooks/useIntentCatalog';
+import { useIntentExecutor } from '../hooks/useIntentExecutor';
 
 // ---------------------------------------------------------------------------
 // Default settings
@@ -405,6 +407,10 @@ function WorkspaceInner({
     }
     return merged;
   }, [shellCommands, allAppHooks]);
+
+  // --- Intent catalog + executor (plumbing for voice/LLM layer) ---
+  const catalog = useIntentCatalog(workspace);
+  useIntentExecutor(allCommands, catalog);
 
   // --- Keyboard shortcuts ---
   useEffect(() => {
