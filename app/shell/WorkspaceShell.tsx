@@ -1,6 +1,10 @@
 'use client';
 
 import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { motion, AnimatePresence } from 'motion/react';
+import { BootSplash, phaseAtLeast } from './BootSplash';
+import type { BootPhase } from './BootSplash';
+import { AppLauncher, loadSession, saveSession } from './HomeScreen';
 import {
   Frame,
   Minimap,
@@ -54,11 +58,32 @@ function useWindowBounds(
 interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
+  bootMode?: 'full' | 'condensed';
 }
 
-export function WorkspaceShell({ workspaces, defaultWorkspaceId }: WorkspaceShellProps) {
+export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'condensed' }: WorkspaceShellProps) {
+  // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(defaultWorkspaceId);
+  const [hasSession, setHasSession] = useState(false);
+  const [bootPhase, setBootPhase] = useState<BootPhase>('brand');
+  const [booted, setBooted] = useState(false);
+
+  // Read session from localStorage after mount (avoids SSR hydration mismatch)
+  useEffect(() => {
+    const session = loadSession();
+    if (session && workspaces.some(w => w.id === session.activeWorkspaceId)) {
+      setActiveWorkspaceId(session.activeWorkspaceId);
+      setHasSession(true);
+    }
+  }, [workspaces]);
+
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
+
+  // Save session on workspace switch
+  const handleSwitchWorkspace = useCallback((id: string) => {
+    setActiveWorkspaceId(id);
+    saveSession(id);
+  }, []);
 
   // Nest all app Providers recursively
   let tree: ReactNode = (
@@ -67,7 +92,10 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId }: WorkspaceShel
       workspace={workspace}
       workspaces={workspaces}
       activeWorkspaceId={activeWorkspaceId}
-      onSwitchWorkspace={setActiveWorkspaceId}
+      onSwitchWorkspace={handleSwitchWorkspace}
+      bootPhase={bootPhase}
+      bootMode={bootMode}
+      initialShowLauncher={!hasSession}
     />
   );
 
@@ -76,8 +104,23 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId }: WorkspaceShel
     tree = <app.Provider>{tree}</app.Provider>;
   }
 
-  // Key on workspace.id to force clean remount on switch
-  return <div key={workspace.id}>{tree}</div>;
+  return (
+    <>
+      {/* Workspace content — always rendered */}
+      <div key={workspace.id}>{tree}</div>
+
+      {/* Boot splash overlay */}
+      <AnimatePresence>
+        {!booted && (
+          <BootSplash
+            mode={bootMode}
+            onPhaseChange={setBootPhase}
+            onBooted={() => setBooted(true)}
+          />
+        )}
+      </AnimatePresence>
+    </>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -119,14 +162,26 @@ function WorkspaceInner({
   workspaces,
   activeWorkspaceId,
   onSwitchWorkspace,
+  bootPhase,
+  bootMode,
+  initialShowLauncher,
 }: {
   workspace: HudsonWorkspace;
   workspaces: HudsonWorkspace[];
   activeWorkspaceId: string;
   onSwitchWorkspace: (id: string) => void;
+  bootPhase: BootPhase;
+  bootMode: 'full' | 'condensed';
+  initialShowLauncher: boolean;
 }) {
+  // Derived visibility flags from boot phase
+  const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
+  const panelsVisible = phaseAtLeast(bootPhase, 'panels-in');
   const isSingleApp = workspace.apps.length === 1;
   const isMultiApp = !isSingleApp;
+
+  // --- Grid opacity: invisible during boot, fade in with chrome ---
+  const gridOpacity = phaseAtLeast(bootPhase, 'chrome-in') ? 1 : 0;
 
   // --- Hook merging ---
   // Safe: workspace.apps is static per workspace, component keyed by workspace.id
@@ -138,6 +193,42 @@ function WorkspaceInner({
   );
   const focusedIdx = allAppHooks.findIndex(h => h.appId === focusedAppId);
   const focused = allAppHooks[focusedIdx >= 0 ? focusedIdx : 0];
+
+  // --- Activated apps tracking (demo progressive reveal) ---
+  const isFullBoot = bootMode === 'full';
+  const [activatedAppIds, setActivatedAppIds] = useState<Set<string>>(
+    isFullBoot && initialShowLauncher
+      ? new Set<string>()
+      : new Set(workspace.apps.map(c => c.app.id)),
+  );
+
+  // --- App launcher state ---
+  const [showLauncher, setShowLauncher] = useState(initialShowLauncher);
+  // Gate launcher visibility on boot completion (full mode)
+  const [launcherReady, setLauncherReady] = useState(bootMode !== 'full');
+
+  // Set launcherReady when boot splash is dismissed (full mode)
+  useEffect(() => {
+    if (bootMode === 'full' && phaseAtLeast(bootPhase, 'done')) {
+      setLauncherReady(true);
+    }
+  }, [bootMode, bootPhase]);
+
+  const handleActivateApp = useCallback((appId: string) => {
+    setActivatedAppIds(prev => new Set([...prev, appId]));
+    setFocusedAppId(appId);
+    sounds.blipUp();
+  }, []);
+
+  const handleDismissLauncher = useCallback(() => {
+    setActivatedAppIds(prev => {
+      if (prev.size === 0) return new Set(workspace.apps.map(c => c.app.id));
+      return prev;
+    });
+    setShowLauncher(false);
+    saveSession(activeWorkspaceId);
+    sounds.whoosh();
+  }, [workspace.apps, activeWorkspaceId]);
 
   // --- Mode resolution ---
   const frameMode = isSingleApp ? focused.frameMode : workspace.mode;
@@ -635,7 +726,7 @@ function WorkspaceInner({
     );
   })();
 
-  // --- World content ---
+  // --- World content (always rendered — launcher overlays on top) ---
   const SingleContent = singleApp?.slots.Content ?? null;
   const worldContent = (
     <div data-hudson-world>
@@ -650,6 +741,8 @@ function WorkspaceInner({
           onResetView={() => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); }}
           windowResetKey={windowResetKey}
           onReportBounds={reportWindowBounds}
+          activatedAppIds={activatedAppIds}
+          showLauncher={showLauncher}
         />
       )}
     </div>
@@ -667,72 +760,96 @@ function WorkspaceInner({
         zoomSensitivity={shellSettings.zoomSensitivity}
         zoomControlsRightOffset={rightCollapsed ? 0 : rightWidth}
         {...(isCanvasMode ? {
-          canvasProps: { showGuides, onGuidesChange: setShowGuides },
+          canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
         } : {})}
         hud={
           <>
-            <NavigationBar
-              title="HUDSON"
-              subtitle={
-                <WorkspaceSwitcher
-                  workspaces={workspaces}
-                  activeId={activeWorkspaceId}
-                  onSwitch={onSwitchWorkspace}
-                />
-              }
-              search={focused.search ?? undefined}
-              center={focused.navCenter}
-              actions={
-                <>
-                  {focused.navActions}
-                  <button
-                    onClick={handleToggleMute}
-                    className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
-                    title={muted ? 'Unmute' : 'Mute'}
-                  >
-                    {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-                  </button>
-                </>
-              }
-            />
-
-            <SidePanel
-              side="left"
-              title={leftPanelTitle}
-              icon={leftPanelIcon}
-              isCollapsed={leftCollapsed}
-              onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
-              width={leftWidth}
-              onResizeStart={handleResizeStart('left')}
-              footer={leftFooter}
-              headerActions={leftHeaderActions}
+            <motion.div
+              initial={{ y: -48, opacity: 0 }}
+              animate={chromeVisible ? { y: 0, opacity: 1 } : { y: -48, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              {leftPanelContent}
-            </SidePanel>
+              <NavigationBar
+                title="HUDSON"
+                subtitle={
+                  <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    activeId={activeWorkspaceId}
+                    onSwitch={onSwitchWorkspace}
+                  />
+                }
+                search={focused.search ?? undefined}
+                center={focused.navCenter}
+                actions={
+                  <>
+                    {focused.navActions}
+                    <button
+                      onClick={handleToggleMute}
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+                      title={muted ? 'Unmute' : 'Mute'}
+                    >
+                      {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    </button>
+                  </>
+                }
+              />
+            </motion.div>
 
-            <SidePanel
-              side="right"
-              title={rightPanelTitle}
-              icon={rightPanelIcon}
-              isCollapsed={rightCollapsed}
-              onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
-              width={rightWidth}
-              onResizeStart={handleResizeStart('right')}
+            <motion.div
+              initial={{ x: -leftWidth, opacity: 0 }}
+              animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              {rightPanelContent}
-            </SidePanel>
+              <SidePanel
+                side="left"
+                title={leftPanelTitle}
+                icon={leftPanelIcon}
+                isCollapsed={leftCollapsed}
+                onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
+                width={leftWidth}
+                onResizeStart={handleResizeStart('left')}
+                footer={leftFooter}
+                headerActions={leftHeaderActions}
+              >
+                {leftPanelContent}
+              </SidePanel>
+            </motion.div>
 
-            <StatusBar
-              status={focused.status}
-              viewport={{
-                pan: panOffset,
-                zoom: scale,
-                canvasSize: { w: viewport.width, h: viewport.height },
-              }}
-              onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
-              isTerminalOpen={showTerminal}
-            />
+            <motion.div
+              initial={{ x: rightWidth, opacity: 0 }}
+              animate={panelsVisible ? { x: 0, opacity: 1 } : { x: rightWidth, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            >
+              <SidePanel
+                side="right"
+                title={rightPanelTitle}
+                icon={rightPanelIcon}
+                isCollapsed={rightCollapsed}
+                onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
+                width={rightWidth}
+                onResizeStart={handleResizeStart('right')}
+              >
+                {rightPanelContent}
+              </SidePanel>
+            </motion.div>
+
+            <motion.div
+              initial={{ y: 28, opacity: 0 }}
+              animate={chromeVisible ? { y: 0, opacity: 1 } : { y: 28, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            >
+              <StatusBar
+                status={focused.status}
+                viewport={{
+                  pan: panOffset,
+                  zoom: scale,
+                  canvasSize: { w: viewport.width, h: viewport.height },
+                }}
+                onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
+                isTerminalOpen={showTerminal}
+              />
+            </motion.div>
 
             {/* Terminal — inset between panels */}
             <div
@@ -775,6 +892,18 @@ function WorkspaceInner({
               onClose={() => setShowCommandPalette(false)}
               commands={allCommands}
             />
+
+            {/* App launcher overlay (rendered in HUD layer to escape canvas transform) */}
+            {showLauncher && launcherReady && (
+              <div className="fixed inset-0 z-[5] pointer-events-auto">
+                <AppLauncher
+                  workspace={workspace}
+                  activatedAppIds={activatedAppIds}
+                  onActivateApp={handleActivateApp}
+                  onDismiss={handleDismissLauncher}
+                />
+              </div>
+            )}
           </>
         }
       >
@@ -795,6 +924,8 @@ function MultiAppCanvas({
   onResetView,
   windowResetKey,
   onReportBounds,
+  activatedAppIds,
+  showLauncher,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -803,33 +934,58 @@ function MultiAppCanvas({
   onResetView: () => void;
   windowResetKey: number;
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
+  activatedAppIds: Set<string>;
+  showLauncher: boolean;
 }) {
-  // Separate native vs windowed apps
+  // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
   const windowedApps = workspace.apps.filter(c => c.canvasMode === 'windowed');
+
+  // When launcher is dismissed, show all; otherwise only activated
+  const visibleNative = showLauncher ? nativeApps.filter(c => activatedAppIds.has(c.app.id)) : nativeApps;
+  const visibleWindowed = showLauncher ? windowedApps.filter(c => activatedAppIds.has(c.app.id)) : windowedApps;
 
   return (
     <>
       {/* Native apps render directly on canvas */}
-      {nativeApps.map(config => (
-        <div key={config.app.id} data-native-app={config.app.name} onClick={() => onFocusApp(config.app.id)}>
-          <config.app.slots.Content />
-        </div>
-      ))}
+      <AnimatePresence>
+        {visibleNative.map(config => (
+          <motion.div
+            key={config.app.id}
+            data-native-app={config.app.name}
+            onClick={() => onFocusApp(config.app.id)}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <config.app.slots.Content />
+          </motion.div>
+        ))}
+      </AnimatePresence>
 
       {/* Windowed apps render inside AppWindow */}
-      {windowedApps.map(config => (
-        <WindowedApp
-          key={`${config.app.id}-${windowResetKey}`}
-          config={config}
-          workspaceId={workspace.id}
-          isFocused={config.app.id === focusedAppId}
-          onFocus={() => onFocusApp(config.app.id)}
-          worldScale={worldScale}
-          onResetView={onResetView}
-          onReportBounds={onReportBounds}
-        />
-      ))}
+      <AnimatePresence>
+        {visibleWindowed.map(config => (
+          <motion.div
+            key={`${config.app.id}-${windowResetKey}`}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <WindowedApp
+              config={config}
+              workspaceId={workspace.id}
+              isFocused={config.app.id === focusedAppId}
+              onFocus={() => onFocusApp(config.app.id)}
+              worldScale={worldScale}
+              onResetView={onResetView}
+              onReportBounds={onReportBounds}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </>
   );
 }

@@ -7,6 +7,7 @@ import type { ContextMenuEntry } from '../overlays/ContextMenu';
 interface CanvasConfig {
   showGuides?: boolean;
   onGuidesChange?: (visible: boolean) => void;
+  gridOpacity?: number;
 }
 
 interface FrameProps {
@@ -221,6 +222,7 @@ const Frame: React.FC<FrameProps> = ({
           onClick={onCanvasClick}
           showGuides={canvasProps?.showGuides}
           onGuidesChange={canvasProps?.onGuidesChange}
+          gridOpacity={canvasProps?.gridOpacity}
         />
       </HudsonContextMenu>
 
