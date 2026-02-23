@@ -44,8 +44,9 @@ const SidePanel: React.FC<SidePanelProps> = ({
   const CollapseIcon = side === 'left' ? PanelLeftClose : PanelRightClose;
 
   // Build className manually to avoid any conflicts
+  // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
   const baseClasses = 'bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)] fixed top-[48px] bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
-  const sideSpecificClasses = side === 'left' ? 'border-l-0' : 'border-r-0';
+  const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
   const finalStyle: React.CSSProperties = {
@@ -63,14 +64,25 @@ const SidePanel: React.FC<SidePanelProps> = ({
       className={`${panelClass} pointer-events-none select-none font-mono text-[10px] flex flex-col`}
       style={finalStyle}
     >
-      {/* Resize handle */}
+      {/* Resize handle — sits flush at inner edge, line on the outermost side */}
       {onResizeStart && (
         <div
-          className={`absolute top-0 ${side === 'left' ? 'right-0' : 'left-0'} bottom-0 w-1 cursor-ew-resize hover:bg-blue-500/20 transition-colors z-50 pointer-events-auto group`}
+          className={`absolute top-0 ${side === 'left' ? 'right-0' : 'left-0'} bottom-0 w-[7px] cursor-ew-resize z-50 pointer-events-auto group flex items-center justify-center`}
           onMouseDown={onResizeStart}
         >
-          <div className="absolute inset-y-0 left-1/2 -translate-x-1/2 w-px bg-neutral-700 group-hover:bg-blue-500 transition-colors" />
+          {/* Border line flush at panel edge */}
+          <div className={`absolute top-0 bottom-0 ${side === 'left' ? 'right-0' : 'left-0'} w-px bg-neutral-700/80 group-hover:bg-emerald-500/50 transition-colors`} />
+          {/* Grip dots */}
+          <div className="flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity">
+            <div className="w-[3px] h-[3px] rounded-full bg-neutral-500 group-hover:bg-emerald-400/70" />
+            <div className="w-[3px] h-[3px] rounded-full bg-neutral-500 group-hover:bg-emerald-400/70" />
+            <div className="w-[3px] h-[3px] rounded-full bg-neutral-500 group-hover:bg-emerald-400/70" />
+          </div>
         </div>
+      )}
+      {/* Static border line when no resize handle */}
+      {!onResizeStart && (
+        <div className={`absolute top-0 ${side === 'left' ? 'right-0' : 'left-0'} bottom-0 w-px bg-neutral-700/80`} />
       )}
       {/* Top highlight */}
       <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/12 to-transparent z-10" />

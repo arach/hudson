@@ -37,3 +37,9 @@ body {
   scrollbar-width: thin;
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
+
+/* Breathing bar — GPU-composited scale + opacity */
+@keyframes breathe {
+  0%, 100% { transform: scaleX(0.67); opacity: 0.5; }
+  50% { transform: scaleX(1); opacity: 1; }
+}

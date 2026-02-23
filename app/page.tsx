@@ -8,7 +8,7 @@ export default function Page() {
     <WorkspaceShell
       workspaces={[hudsonOSWorkspace, shaperDevWorkspace]}
       defaultWorkspaceId="hudson-os"
-      bootMode="condensed"
+      bootMode="none"
     />
   );
 }

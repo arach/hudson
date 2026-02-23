@@ -58,15 +58,15 @@ function useWindowBounds(
 interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
-  bootMode?: 'full' | 'condensed';
+  bootMode?: 'full' | 'condensed' | 'none';
 }
 
-export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'condensed' }: WorkspaceShellProps) {
+export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'none' }: WorkspaceShellProps) {
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(defaultWorkspaceId);
   const [hasSession, setHasSession] = useState(false);
-  const [bootPhase, setBootPhase] = useState<BootPhase>('brand');
-  const [booted, setBooted] = useState(false);
+  const [bootPhase, setBootPhase] = useState<BootPhase>(bootMode === 'none' ? 'done' : 'brand');
+  const [booted, setBooted] = useState(bootMode === 'none');
 
   // Read session from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -95,7 +95,7 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'con
       onSwitchWorkspace={handleSwitchWorkspace}
       bootPhase={bootPhase}
       bootMode={bootMode}
-      initialShowLauncher={!hasSession}
+      initialShowLauncher={bootMode !== 'none' && !hasSession}
     />
   );
 
@@ -171,7 +171,7 @@ function WorkspaceInner({
   activeWorkspaceId: string;
   onSwitchWorkspace: (id: string) => void;
   bootPhase: BootPhase;
-  bootMode: 'full' | 'condensed';
+  bootMode: 'full' | 'condensed' | 'none';
   initialShowLauncher: boolean;
 }) {
   // Derived visibility flags from boot phase
@@ -217,7 +217,20 @@ function WorkspaceInner({
   const handleActivateApp = useCallback((appId: string) => {
     setActivatedAppIds(prev => new Set([...prev, appId]));
     setFocusedAppId(appId);
-    sounds.blipUp();
+  }, []);
+
+  const handleToggleAppVisibility = useCallback((appId: string) => {
+    setActivatedAppIds(prev => {
+      const next = new Set(prev);
+      if (next.has(appId)) {
+        // Don't allow hiding the last visible app
+        if (next.size <= 1) return prev;
+        next.delete(appId);
+      } else {
+        next.add(appId);
+      }
+      return next;
+    });
   }, []);
 
   const handleDismissLauncher = useCallback(() => {
@@ -227,8 +240,18 @@ function WorkspaceInner({
     });
     setShowLauncher(false);
     saveSession(activeWorkspaceId);
-    sounds.whoosh();
   }, [workspace.apps, activeWorkspaceId]);
+
+  // Auto fit-all on first load after launcher dismiss
+  const pendingFitAllRef = useRef(false);
+  const prevShowLauncherRef = useRef(showLauncher);
+  useEffect(() => {
+    // Detect launcher going from visible → hidden
+    if (prevShowLauncherRef.current && !showLauncher) {
+      pendingFitAllRef.current = true;
+    }
+    prevShowLauncherRef.current = showLauncher;
+  }, [showLauncher]);
 
   // --- Mode resolution ---
   const frameMode = isSingleApp ? focused.frameMode : workspace.mode;
@@ -368,6 +391,14 @@ function WorkspaceInner({
     setScale(fitScale);
     playSound('blipUp');
   }, [viewport, playSound]);
+
+  // Fire delayed fit-all after launcher dismiss (gives apps time to render + report bounds)
+  useEffect(() => {
+    if (!pendingFitAllRef.current) return;
+    pendingFitAllRef.current = false;
+    const timer = setTimeout(handleFitAll, 600);
+    return () => clearTimeout(timer);
+  }, [showLauncher, handleFitAll]);
 
   // --- Resize ---
   const handleResizeStart = useCallback(
@@ -578,7 +609,6 @@ function WorkspaceInner({
   const leftFooter = (
     <>
       {isSingleApp && singleApp?.slots.LeftFooter && <singleApp.slots.LeftFooter />}
-      <CommandDock onOpenCommandPalette={() => { setShowCommandPalette(true); playSound('pop'); }} />
       {isCanvasMode && (
         <Minimap
           pan={panOffset}
@@ -610,6 +640,11 @@ function WorkspaceInner({
     </>
   );
 
+  // --- Right panel footer ---
+  const rightFooter = (
+    <CommandDock onOpenCommandPalette={() => { setShowCommandPalette(true); playSound('pop'); }} />
+  );
+
   // --- Left/Right sidebar content ---
   const leftPanelContent = isSingleApp ? (
     singleApp?.slots.LeftPanel && <singleApp.slots.LeftPanel />
@@ -625,6 +660,8 @@ function WorkspaceInner({
           isFocused={app.id === focusedAppId}
           onFocus={() => setFocusedAppId(app.id)}
           defaultExpanded={app.id === focusedAppId}
+          isVisible={activatedAppIds.has(app.id)}
+          onToggleVisibility={() => handleToggleAppVisibility(app.id)}
         >
           <app.slots.LeftPanel />
         </SidebarSection>
@@ -766,7 +803,7 @@ function WorkspaceInner({
         hud={
           <>
             <motion.div
-              initial={{ y: -48, opacity: 0 }}
+              initial={bootMode === 'none' ? false : { y: -48, opacity: 0 }}
               animate={chromeVisible ? { y: 0, opacity: 1 } : { y: -48, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
@@ -797,7 +834,7 @@ function WorkspaceInner({
             </motion.div>
 
             <motion.div
-              initial={{ x: -leftWidth, opacity: 0 }}
+              initial={bootMode === 'none' ? false : { x: -leftWidth, opacity: 0 }}
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
@@ -817,7 +854,7 @@ function WorkspaceInner({
             </motion.div>
 
             <motion.div
-              initial={{ x: rightWidth, opacity: 0 }}
+              initial={bootMode === 'none' ? false : { x: rightWidth, opacity: 0 }}
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: rightWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
@@ -829,13 +866,14 @@ function WorkspaceInner({
                 onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
                 width={rightWidth}
                 onResizeStart={handleResizeStart('right')}
+                footer={rightFooter}
               >
                 {rightPanelContent}
               </SidePanel>
             </motion.div>
 
             <motion.div
-              initial={{ y: 28, opacity: 0 }}
+              initial={bootMode === 'none' ? false : { y: 28, opacity: 0 }}
               animate={chromeVisible ? { y: 0, opacity: 1 } : { y: 28, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >

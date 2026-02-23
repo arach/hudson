@@ -69,31 +69,19 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
   // --- Condensed sequence ---
   // brand (600ms) → chrome-in (350ms) → panels-in (300ms) → auto-dismiss (200ms)
   useEffect(() => {
-    sounds.boot();
-
     if (mode === 'full') {
+      // Full cinematic: boot sound + timed sequence
+      sounds.boot();
       const t1 = setTimeout(() => advance('loading'), 1800);
-      const t2 = setTimeout(() => {
-        sounds.slideIn();
-        advance('chrome-in');
-      }, 3200); // 1800 + 1400
-      const t3 = setTimeout(() => {
-        sounds.slideIn();
-        advance('panels-in');
-      }, 3800); // 3200 + 600
-      const t4 = setTimeout(() => advance('dismissible'), 4600); // 3800 + 800
+      const t2 = setTimeout(() => advance('chrome-in'), 3200);
+      const t3 = setTimeout(() => advance('panels-in'), 3800);
+      const t4 = setTimeout(() => advance('dismissible'), 4600);
       return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); clearTimeout(t4); };
     } else {
-      // Condensed
-      const t1 = setTimeout(() => {
-        sounds.slideIn();
-        advance('chrome-in');
-      }, 600);
-      const t2 = setTimeout(() => {
-        sounds.slideIn();
-        advance('panels-in');
-      }, 950); // 600 + 350
-      const t3 = setTimeout(() => advance('done'), 1450); // 950 + 300 + 200 auto-dismiss
+      // Condensed: quick reveal, no sounds
+      const t1 = setTimeout(() => advance('chrome-in'), 600);
+      const t2 = setTimeout(() => advance('panels-in'), 950);
+      const t3 = setTimeout(() => advance('done'), 1450);
       return () => { clearTimeout(t1); clearTimeout(t2); clearTimeout(t3); };
     }
   }, [mode, advance]);
@@ -134,7 +122,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
                 style={{
-                  background: 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(16,185,129,0.06) 0%, #0a0a0a 70%)',
+                  background: '#0a0a0a',
                 }}
               />
             )}
@@ -145,27 +133,27 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
             key="splash-overlay"
             className="fixed inset-0 z-[200] flex items-center justify-center pointer-events-none"
             initial={{ opacity: 1 }}
-            exit={{ opacity: 0, scale: 1.04 }}
-            transition={{ duration: 0.25, ease: 'easeIn' }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.3, ease: 'easeIn' }}
             style={{
               // Semi-transparent background persists after chrome-in so logo is visible on top
               background: phaseAtLeast(phase, 'chrome-in')
-                ? 'radial-gradient(ellipse 80% 60% at 50% 40%, rgba(16,185,129,0.04) 0%, rgba(10,10,10,0.85) 70%)'
+                ? 'rgba(10,10,10,0.85)'
                 : 'transparent',
             }}
           >
             {/* Floating card with glass + metallic treatment */}
             <motion.div
               className="relative flex flex-col items-center gap-4 px-16 py-12 rounded-2xl"
-              initial={{ opacity: 0, scale: 0.94 }}
-              animate={{ opacity: 1, scale: 1 }}
-              transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              transition={{ duration: 0.4, ease: 'easeOut' }}
               style={{
                 background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
                 backdropFilter: 'blur(24px) saturate(1.4)',
                 WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
                 border: '1px solid rgba(255,255,255,0.08)',
-                boxShadow: '0 0 80px rgba(16,185,129,0.08), 0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)',
+                boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)',
               }}
             >
               {/* Metallic sheen highlight */}
@@ -196,23 +184,36 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 OS
               </span>
 
-              {/* Braille spinner — full mode only, loading phase */}
-              <AnimatePresence>
-                {showSpinner && (
-                  <motion.div
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.2 }}
-                    className="mt-2"
-                  >
-                    <BrailleSpinner />
-                  </motion.div>
-                )}
-              </AnimatePresence>
+              {/* Fixed-height slot for spinner / dismiss hint — prevents card height shifts */}
+              <div className="h-8 mt-2 flex items-center justify-center relative">
+                {/* Braille spinner — only mounted during loading phase to avoid idle interval */}
+                <AnimatePresence>
+                  {showSpinner && (
+                    <motion.div
+                      key="spinner"
+                      initial={{ opacity: 0 }}
+                      animate={{ opacity: 1 }}
+                      exit={{ opacity: 0 }}
+                      transition={{ duration: 0.2 }}
+                      className="absolute"
+                    >
+                      <BrailleSpinner />
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+
+                {/* Click to dismiss hint */}
+                <motion.span
+                  animate={{ opacity: phase === 'dismissible' ? 1 : 0 }}
+                  transition={{ duration: 0.3 }}
+                  className="absolute text-[9px] font-mono tracking-[0.2em] text-neutral-600"
+                >
+                  click or press any key
+                </motion.span>
+              </div>
 
               {/* Domain + credit */}
-              <div className="flex flex-col items-center gap-1.5 mt-4">
+              <div className="flex flex-col items-center gap-1.5">
                 <span className="text-[10px] font-mono tracking-[0.2em] text-neutral-600">
                   hudson.arach.dev
                 </span>
@@ -220,21 +221,6 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   by @arach
                 </span>
               </div>
-
-              {/* Click to dismiss hint — full mode, dismissible phase */}
-              <AnimatePresence>
-                {phase === 'dismissible' && (
-                  <motion.span
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    exit={{ opacity: 0 }}
-                    transition={{ duration: 0.3 }}
-                    className="text-[9px] font-mono tracking-[0.2em] text-neutral-600 mt-2"
-                  >
-                    click or press any key
-                  </motion.span>
-                )}
-              </AnimatePresence>
             </motion.div>
           </motion.div>
         </>

@@ -93,20 +93,17 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
           <h1 className="text-[28px] font-mono font-bold tracking-[0.3em] text-white/90">
             HUDSON
           </h1>
-          {/* Breathing bar */}
-          <motion.div
-            className="relative h-px"
-            animate={{ width: [24, 36, 24] }}
-            transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
+          {/* Breathing bar — pure CSS, GPU-composited via transform */}
+          <div
+            className="h-px w-9 relative"
+            style={{ animation: 'breathe 3s ease-in-out infinite', willChange: 'transform, opacity' }}
           >
             <div className="absolute inset-0 bg-emerald-400/50" />
-            <motion.div
+            <div
               className="absolute inset-0"
               style={{ background: 'rgba(16,185,129,0.4)', filter: 'blur(4px)' }}
-              animate={{ opacity: [0.4, 0.8, 0.4] }}
-              transition={{ duration: 3, repeat: Infinity, ease: 'easeInOut' }}
             />
-          </motion.div>
+          </div>
           <span className="text-[11px] font-mono tracking-[0.2em] text-neutral-500">
             arach.dev
           </span>
@@ -126,17 +123,18 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
                 key={app.id}
                 onClick={() => onActivateApp(app.id)}
                 className="group relative flex flex-col items-start gap-4 p-6 rounded-xl text-left cursor-pointer"
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 0.85 }}
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 0.85, y: 0 }}
                 whileHover={{
                   opacity: 1,
-                  borderColor: isActive ? 'rgba(16,185,129,0.6)' : 'rgba(16,185,129,0.5)',
-                  background: isActive
-                    ? 'linear-gradient(170deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.06) 100%)'
-                    : 'linear-gradient(170deg, rgba(16,185,129,0.12) 0%, rgba(16,185,129,0.04) 100%)',
                   scale: 1.02,
                 }}
-                transition={{ duration: 0.4, delay: 0.15 + i * 0.08, ease: [0.25, 1, 0.5, 1] }}
+                transition={{
+                  // Entrance uses delay; hover/tap override with immediate timing
+                  default: { duration: 0.35, delay: 0.1 + i * 0.06, ease: [0.25, 1, 0.5, 1] },
+                  opacity: { duration: 0.15 },
+                  scale: { duration: 0.15 },
+                }}
                 style={{
                   background: isActive
                     ? 'linear-gradient(170deg, rgba(16,185,129,0.10) 0%, rgba(16,185,129,0.03) 100%)'
@@ -148,7 +146,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
                     ? '0 0 30px rgba(16,185,129,0.12), 0 0 60px rgba(16,185,129,0.06)'
                     : 'none',
                 }}
-                whileTap={{ scale: 0.98 }}
+                whileTap={{ scale: 0.97 }}
               >
                 {/* Active indicator */}
                 {isActive && (
@@ -233,7 +231,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.3 }}
               >
-                select apps to open
+                initialize modules
               </motion.p>
             )}
           </AnimatePresence>

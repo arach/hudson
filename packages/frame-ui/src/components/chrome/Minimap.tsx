@@ -40,9 +40,10 @@ const Minimap: React.FC<MinimapProps> = ({
       const mx = e.clientX - rect.left;
       const my = e.clientY - rect.top;
       const mapWidth = rect.width;
+      // Map click position to world coordinate, then negate for panOffset
       const wx = (mx / mapWidth) * WORLD_SIZE - WORLD_SIZE / 2;
       const wy = (my / height) * WORLD_SIZE - WORLD_SIZE / 2;
-      onNavigate({ x: wx, y: wy });
+      onNavigate({ x: -wx, y: -wy });
     },
     [onNavigate, height]
   );
@@ -141,8 +142,9 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
 
     const vpWidth = (viewportSize.width / zoom / WORLD_SIZE) * safeWidth;
     const vpHeight = (viewportSize.height / zoom / WORLD_SIZE) * height;
-    const vpCenterX = ((pan.x + WORLD_SIZE / 2) / WORLD_SIZE) * safeWidth;
-    const vpCenterY = ((pan.y + WORLD_SIZE / 2) / WORLD_SIZE) * height;
+    // pan is world-origin offset; camera looks at (-pan.x, -pan.y), so negate to match window indicators
+    const vpCenterX = ((-pan.x + WORLD_SIZE / 2) / WORLD_SIZE) * safeWidth;
+    const vpCenterY = ((-pan.y + WORLD_SIZE / 2) / WORLD_SIZE) * height;
     const vpX = vpCenterX - vpWidth / 2;
     const vpY = vpCenterY - vpHeight / 2;
 
