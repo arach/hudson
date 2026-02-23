@@ -1,0 +1,36 @@
+# hudson
+
+> Multi-app canvas workspace platform for React
+
+## Documentation
+
+- Overview: /docs/overview
+- Quickstart: /docs/quickstart
+- Building Apps: /docs/building-apps
+- API Reference: /docs/api
+- Architecture: /docs/architecture
+- Skills: /docs/skill
+
+## Overview
+
+Hudson is a **multi-app canvas workspace platform** built with React 19, Next.js 16, and Tailwind CSS v4. It provides a shared shell where multiple applications coexist — each rendering in draggable, resizable windows on an infinite pan/zoom canvas, or in a static panel layout.
+
+## Quickstart
+
+Get Hudson running locally and create your first app.
+
+## Building Apps
+
+This guide covers everything you need to build a Hudson app — from the interface contract to workspace registration.
+
+## API Reference
+
+Everything exported from the `frame-ui` package.
+
+## Architecture
+
+Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **frame-ui component library**.
+
+## Skills
+
+Pre-built skill definitions that agents can use when working with Hudson.
