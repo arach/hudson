@@ -28,14 +28,6 @@ export function Footer() {
           >
             llms.txt
           </Link>
-          <a
-            href="https://github.com/arachsys/hudson"
-            target="_blank"
-            rel="noopener noreferrer"
-            className="text-neutral-600 hover:text-neutral-400 transition-colors"
-          >
-            GitHub
-          </a>
         </nav>
       </div>
     </footer>

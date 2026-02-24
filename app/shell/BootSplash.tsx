@@ -117,8 +117,8 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
             >
               <motion.div
                 className="relative flex flex-col items-center gap-4 px-16 py-12 rounded-2xl"
-                initial={{ opacity: 0, y: -40 }}
-                animate={{ opacity: 1, y: -40 }}
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
                 style={{
                   background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
@@ -244,7 +244,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
                   style={{
-                    marginTop: '38vh',
+                    marginTop: '33vh',
                     background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
                     backdropFilter: 'blur(24px) saturate(1.4)',
                     WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
@@ -288,7 +288,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   animate={{ opacity: 1 }}
                   exit={{ opacity: 0 }}
                   transition={{ duration: 0.5 }}
-                  className="mt-8 text-[9px] font-mono tracking-[0.2em] text-neutral-500"
+                  className="mt-19 text-[9px] font-mono tracking-[0.2em] text-neutral-500"
                 >
                   click or press any key
                 </motion.span>
