@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { GripHorizontal, X } from 'lucide-react';
-import type { AppIntent } from 'frame-ui';
+import type { AppIntent } from '@hudson/sdk';
 import { CATEGORY_COLORS } from './types';
 
 interface IntentFloatingCardProps {

@@ -34,9 +34,9 @@ export function DocsLeftPanel() {
           );
         })}
       </div>
-      {/* Component explorer */}
+      {/* Reference cards */}
       <div className="border-t border-neutral-700/50 pt-2 pb-2">
-        <div className="px-4 py-2 text-[10px] font-mono text-neutral-300 tracking-widest uppercase">Components</div>
+        <div className="px-4 py-2 text-[10px] font-mono text-neutral-300 tracking-widest uppercase">Reference</div>
         {COMPONENTS.map(c => {
           const Icon = c.icon;
           const isOpen = openSheets.has(c.id);

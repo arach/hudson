@@ -48,7 +48,7 @@ hudson/
     lib/                      # Shared utilities (intent catalog, etc.)
     hooks/                    # Shared hooks (intent executor, etc.)
   packages/
-    frame-ui/                 # Component library + types
+    @hudson/sdk/                 # Component library + types
       src/
         components/           # Chrome, Canvas, Windows, Overlays
         types/                # HudsonApp, HudsonWorkspace, AppIntent
@@ -58,101 +58,56 @@ hudson/
 
 ## Create Your First App
 
-The fastest way to add an app is to scaffold it in `app/apps/`:
-
-### 1. Create the app directory
+The fastest way to create an app is with the scaffolding CLI:
 
 ```bash
-mkdir -p app/apps/my-app
+bun run packages/create-hudson-app/src/index.ts my-app
 ```
 
-### 2. Create the Provider
+This prompts for a description, tier, and mode, then generates all the files you need. See [Scaffolding](./scaffolding.md) for the full guide.
+
+For this quickstart, we'll use the **minimal** tier:
+
+```bash
+bun run packages/create-hudson-app/src/index.ts my-app \
+  --tier minimal --mode panel --description "A counter app"
+```
+
+This generates 5 files + a dev workspace:
+
+```
+app/apps/my-app/
+  index.ts              # HudsonApp declaration
+  MyAppProvider.tsx      # React context (owns state)
+  MyAppContent.tsx       # Main content slot
+  hooks.ts              # useCommands + useStatus
+  types.ts              # Type skeleton
+
+app/workspaces/myAppDev.ts   # Dev workspace
+```
+
+### Register the workspace
+
+Open `app/page.tsx` and add your workspace:
 
 ```tsx
-// app/apps/my-app/MyAppProvider.tsx
-'use client';
+import { myAppDevWorkspace } from './workspaces/myAppDev';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
-
-interface MyAppState {
-  count: number;
-  increment: () => void;
-}
-
-const Ctx = createContext<MyAppState | null>(null);
-export const useMyApp = () => {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useMyApp must be inside MyAppProvider');
-  return ctx;
-};
-
-export function MyAppProvider({ children }: { children: ReactNode }) {
-  const [count, setCount] = useState(0);
-  return (
-    <Ctx.Provider value={{ count, increment: () => setCount(c => c + 1) }}>
-      {children}
-    </Ctx.Provider>
-  );
-}
+// Add to the workspaces array:
+<WorkspaceShell
+  workspaces={[hudsonOSWorkspace, shaperDevWorkspace, myAppDevWorkspace]}
+  ...
+/>
 ```
 
-### 3. Create the Content slot
+### Start building
 
-```tsx
-// app/apps/my-app/MyAppContent.tsx
-'use client';
+The scaffolded app renders a centered placeholder. Start editing:
 
-import { useMyApp } from './MyAppProvider';
+1. **`MyAppProvider.tsx`** — Add your state (e.g. `count`, `increment`)
+2. **`MyAppContent.tsx`** — Build your UI using that state
+3. **`hooks.ts`** — Wire commands for the palette, update the status label
 
-export function MyAppContent() {
-  const { count, increment } = useMyApp();
-  return (
-    <div className="flex items-center justify-center h-full gap-4">
-      <span className="text-4xl font-bold text-white">{count}</span>
-      <button onClick={increment} className="px-4 py-2 bg-emerald-600 rounded">
-        +1
-      </button>
-    </div>
-  );
-}
-```
+The `HudsonApp` interface in `@hudson/sdk` enforces the contract — TypeScript will tell you if you're missing a required slot or hook.
 
-### 4. Define the app
-
-```tsx
-// app/apps/my-app/index.ts
-import type { HudsonApp } from 'frame-ui';
-import { MyAppProvider } from './MyAppProvider';
-import { MyAppContent } from './MyAppContent';
-
-export const myApp: HudsonApp = {
-  id: 'my-app',
-  name: 'My App',
-  description: 'A minimal counter app',
-  mode: 'panel',
-
-  Provider: MyAppProvider,
-  slots: { Content: MyAppContent },
-
-  hooks: {
-    useCommands: () => [],
-    useStatus: () => ({ label: 'OK', color: 'emerald' }),
-  },
-};
-```
-
-### 5. Register in a workspace
-
-```tsx
-// app/workspaces/hudsonOS.ts — add to apps array
-import { myApp } from '../apps/my-app';
-
-// Inside the apps array:
-{
-  app: myApp,
-  canvasMode: 'windowed',
-  defaultWindowBounds: { x: 0, y: 0, w: 400, h: 300 },
-}
-```
-
-Save, and your app appears as a draggable window on the canvas. See [Building Apps](./building-apps.md) for the full guide.
+Save, run `bun dev`, and your app appears in the workspace switcher. See [Building Apps](./building-apps.md) for the full guide.

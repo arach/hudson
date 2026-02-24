@@ -1,0 +1,12 @@
+'use client';
+
+import { useMemo } from 'react';
+import type { CommandOption, StatusColor } from '@hudson/sdk';
+
+export function use__APP_NAME__Commands(): CommandOption[] {
+  return useMemo(() => [], []);
+}
+
+export function use__APP_NAME__Status(): { label: string; color: StatusColor } {
+  return { label: 'READY', color: 'emerald' };
+}

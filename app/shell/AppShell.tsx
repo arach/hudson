@@ -10,11 +10,13 @@ import {
   CommandPalette,
   CommandDock,
   TerminalDrawer,
+} from '@hudson/sdk/shell';
+import {
   usePersistentState,
   sounds,
   setMuted as setSoundMuted,
-} from 'frame-ui';
-import type { HudsonApp, CommandOption } from 'frame-ui';
+} from '@hudson/sdk';
+import type { HudsonApp, CommandOption } from '@hudson/sdk';
 import {
   Volume2,
   VolumeX,
@@ -24,6 +26,8 @@ import { AppSwitcher } from './AppSwitcher';
 import { ShellLayoutProvider } from './ShellLayoutContext';
 import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
+import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
+import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Default settings
@@ -50,14 +54,16 @@ export function AppShell({ apps, defaultAppId }: AppShellProps) {
   const activeApp = apps.find(a => a.id === activeAppId) ?? apps[0];
 
   return (
-    <activeApp.Provider>
-      <AppShellInner
-        app={activeApp}
-        apps={apps}
-        activeAppId={activeAppId}
-        onSwitchApp={setActiveAppId}
-      />
-    </activeApp.Provider>
+    <WorkspaceErrorBoundary workspaceName={activeApp.name}>
+      <activeApp.Provider>
+        <AppShellInner
+          app={activeApp}
+          apps={apps}
+          activeAppId={activeAppId}
+          onSwitchApp={setActiveAppId}
+        />
+      </activeApp.Provider>
+    </WorkspaceErrorBoundary>
   );
 }
 
@@ -76,8 +82,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
-  const frameMode = app.hooks.useFrameMode?.() ?? app.mode;
-  const isCanvasMode = frameMode === 'canvas';
+  const layoutMode = app.hooks.useLayoutMode?.() ?? app.mode;
+  const isCanvasMode = layoutMode === 'canvas';
 
   // Shell state
   const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', false);
@@ -225,7 +231,11 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   // Left panel footer: LeftFooter slot + CommandDock + Minimap (shell chrome)
   const leftFooter = (
     <>
-      {app.slots.LeftFooter && <app.slots.LeftFooter />}
+      {app.slots.LeftFooter && (
+        <AppSlotErrorBoundary appName={app.name} slotName="LeftFooter">
+          <app.slots.LeftFooter />
+        </AppSlotErrorBoundary>
+      )}
       <CommandDock
         onOpenCommandPalette={() => { setShowCommandPalette(true); playSound('pop'); }}
       />
@@ -287,7 +297,11 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
             footer={leftFooter}
             headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
           >
-            {app.slots.LeftPanel && <app.slots.LeftPanel />}
+            {app.slots.LeftPanel && (
+              <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
+                <app.slots.LeftPanel />
+              </AppSlotErrorBoundary>
+            )}
           </SidePanel>
 
           <SidePanel
@@ -299,7 +313,11 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
             width={rightWidth}
             onResizeStart={handleResizeStart('right')}
           >
-            {app.slots.RightPanel && <app.slots.RightPanel />}
+            {app.slots.RightPanel && (
+              <AppSlotErrorBoundary appName={app.name} slotName="RightPanel">
+                <app.slots.RightPanel />
+              </AppSlotErrorBoundary>
+            )}
           </SidePanel>
 
           <StatusBar
@@ -336,7 +354,9 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
               onHeightChange={setTerminalHeight}
             >
               {app.slots.Terminal ? (
-                <app.slots.Terminal />
+                <AppSlotErrorBoundary appName={app.name} slotName="Terminal">
+                  <app.slots.Terminal />
+                </AppSlotErrorBoundary>
               ) : (
                 <div className="p-4 font-mono text-[12px] space-y-3 overflow-y-auto frame-scrollbar">
                   <div className="text-neutral-300 uppercase tracking-widest text-[10px] mb-2">Keyboard Shortcuts</div>
@@ -383,7 +403,9 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
       }
     >
       <div data-hudson-world>
-        <app.slots.Content />
+        <AppSlotErrorBoundary appName={app.name} slotName="Content">
+          <app.slots.Content />
+        </AppSlotErrorBoundary>
       </div>
     </Frame>
     </ShellLayoutProvider>

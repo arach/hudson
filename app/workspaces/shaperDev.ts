@@ -1,4 +1,4 @@
-import type { HudsonWorkspace } from 'frame-ui';
+import type { HudsonWorkspace } from '@hudson/sdk';
 import { shaperApp } from '../apps/shaper';
 
 export const shaperDevWorkspace: HudsonWorkspace = {

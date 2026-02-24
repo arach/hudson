@@ -1,0 +1,27 @@
+'use client';
+
+import { use__APP_NAME__ } from './__APP_NAME__Provider';
+
+export function __APP_NAME__Inspector() {
+  const { selectedItem } = use__APP_NAME__();
+
+  return (
+    <div className="p-4 space-y-4">
+      <div className="space-y-2">
+        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
+          Selected
+        </div>
+        {selectedItem ? (
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] font-mono">
+            <div className="text-neutral-200">id</div>
+            <div className="text-cyan-400 truncate">{selectedItem}</div>
+          </div>
+        ) : (
+          <div className="text-[11px] font-mono text-neutral-300">
+            Click an item to inspect
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

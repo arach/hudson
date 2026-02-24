@@ -1,4 +1,4 @@
-import type { IntentCategory } from 'frame-ui';
+import type { IntentCategory } from '@hudson/sdk';
 
 // ---------------------------------------------------------------------------
 // Category badge colors (shared across components)

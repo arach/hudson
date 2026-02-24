@@ -10,10 +10,10 @@ This guide covers everything you need to build a Hudson app — from the interfa
 
 ## The HudsonApp Interface
 
-Every app implements the `HudsonApp` interface exported from `frame-ui`:
+Every app implements the `HudsonApp` interface exported from `@hudson/sdk`:
 
 ```typescript
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 ```
 
 ### Full Interface
@@ -32,7 +32,7 @@ interface HudsonApp {
     icon?: ReactNode;
     headerActions?: React.FC;    // Rendered in left panel header
   };
-  rightPanel?: {
+  rightPanel?: {               // @deprecated — use Inspector + tools instead
     title: string;
     icon?: ReactNode;
   };
@@ -44,7 +44,7 @@ interface HudsonApp {
   slots: {
     Content: React.FC;           // Main content area (required)
     LeftPanel?: React.FC;        // Left sidebar content
-    RightPanel?: React.FC;       // Right sidebar content
+    RightPanel?: React.FC;       // @deprecated — use Inspector + tools instead
     LeftFooter?: React.FC;       // Footer of left panel
     Terminal?: React.FC;         // Terminal drawer content
   };
@@ -59,7 +59,7 @@ interface HudsonApp {
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
-    useFrameMode?: () => 'canvas' | 'panel';
+    useLayoutMode?: () => 'canvas' | 'panel';
   };
 }
 ```
@@ -73,9 +73,9 @@ interface HudsonApp {
 | `slots.Content` | Yes | Main UI |
 | `hooks.useCommands` | Yes | Commands for palette (can return `[]`) |
 | `hooks.useStatus` | Yes | Status bar label and color |
-| `leftPanel`, `rightPanel` | No | Panel header config |
-| `slots.LeftPanel`, `RightPanel`, `LeftFooter`, `Terminal` | No | Additional UI slots |
-| `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useFrameMode` | No | Nav bar integration |
+| `leftPanel`, `rightPanel` (deprecated) | No | Panel header config. `rightPanel` is deprecated — use `Inspector` + `tools` instead |
+| `slots.LeftPanel`, `RightPanel` (deprecated), `LeftFooter`, `Terminal` | No | Additional UI slots. `RightPanel` is deprecated — use `Inspector` + `tools` instead |
+| `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useLayoutMode` | No | Nav bar integration |
 | `intents` | No | LLM/voice/search declarations |
 
 ## Architecture Pattern
@@ -87,7 +87,7 @@ WorkspaceShell
   └── App.Provider            ← Your context wraps everything
         ├── slots.Content     ← Rendered in main area
         ├── slots.LeftPanel   ← Rendered in left SidePanel
-        ├── slots.RightPanel  ← Rendered in right SidePanel
+        ├── slots.RightPanel  ← (deprecated) Rendered in right SidePanel — use Inspector + tools
         ├── slots.Terminal    ← Rendered in TerminalDrawer
         └── hooks.*           ← Called via Bridge component inside Provider
 ```
@@ -198,9 +198,11 @@ export function GlyphEditorLeftPanel() {
 }
 ```
 
-### RightPanel
+### RightPanel (deprecated)
 
-Inspector, properties, metadata. Rendered inside the right SidePanel.
+> **Deprecated.** `RightPanel` is deprecated. Use `Inspector` combined with `tools` instead. The `Inspector` slot provides a structured way to display properties and metadata, while `tools` allows apps to register tool panels that appear in the right sidebar. See the Shaper app's `ShaperInspector.tsx` and `tools/` directory for a reference implementation.
+
+Previously used for inspector, properties, and metadata. Rendered inside the right SidePanel.
 
 ### LeftFooter
 
@@ -220,7 +222,7 @@ Return an array of `CommandOption` objects. These appear in the command palette 
 
 ```tsx
 import { useMemo } from 'react';
-import type { CommandOption } from 'frame-ui';
+import type { CommandOption } from '@hudson/sdk';
 import { useGlyphEditor } from './GlyphEditorProvider';
 
 export function useGlyphCommands(): CommandOption[] {
@@ -282,12 +284,12 @@ Returns content rendered in the center of the navigation bar (between left/right
 
 Returns content rendered on the right side of the navigation bar. Good for action buttons.
 
-### useFrameMode (optional)
+### useLayoutMode (optional)
 
 Overrides the workspace-level mode for this app. Useful when an app needs canvas mode even in a panel workspace, or vice versa.
 
 ```tsx
-export function useGlyphFrameMode(): 'canvas' | 'panel' {
+export function useGlyphLayoutMode(): 'canvas' | 'panel' {
   const { view } = useGlyphEditor();
   return view === 'editor' ? 'canvas' : 'panel';
 }
@@ -298,7 +300,7 @@ export function useGlyphFrameMode(): 'canvas' | 'panel' {
 Intents declare structured metadata about your commands for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent } from 'frame-ui';
+import type { AppIntent } from '@hudson/sdk';
 
 export const glyphIntents: AppIntent[] = [
   {
@@ -367,7 +369,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
 
 ```typescript
 // app/workspaces/glyphDev.ts
-import type { HudsonWorkspace } from 'frame-ui';
+import type { HudsonWorkspace } from '@hudson/sdk';
 import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const glyphDevWorkspace: HudsonWorkspace = {
@@ -413,14 +415,14 @@ export default function Page() {
 - Full-width layout between side panels
 - Best for: dashboards, admin interfaces, documentation
 
-Apps can dynamically switch modes using `useFrameMode()`.
+Apps can dynamically switch modes using `useLayoutMode()`.
 
 ## Persistent State
 
-Use `usePersistentState` from frame-ui for state that survives page reloads:
+Use `usePersistentState` from @hudson/sdk for state that survives page reloads:
 
 ```tsx
-import { usePersistentState } from 'frame-ui';
+import { usePersistentState } from '@hudson/sdk';
 
 function MyComponent() {
   const [gridVisible, setGridVisible] = usePersistentState('my-app.grid', true);
@@ -433,7 +435,7 @@ function MyComponent() {
 Hudson includes a Web Audio synthesizer for UI feedback:
 
 ```tsx
-import { sounds } from 'frame-ui';
+import { sounds } from '@hudson/sdk';
 
 // Available sounds
 sounds.blipUp();    // Positive feedback
@@ -452,7 +454,9 @@ app/apps/my-app/
   intents.ts               # Intent declarations
   MyAppContent.tsx          # Content slot
   MyAppLeftPanel.tsx        # Left panel slot
-  MyAppRightPanel.tsx       # Right panel slot
+  MyAppRightPanel.tsx       # Right panel slot (deprecated — use Inspector + tools)
+  MyAppInspector.tsx        # Inspector slot (replaces RightPanel)
+  tools/                    # Tool panel implementations
   MyAppTerminal.tsx         # Terminal slot
   components/               # App-specific components
     ComponentA.tsx
@@ -476,4 +480,5 @@ The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if yo
 
 - [Overview](./overview.md) — Architecture and key concepts
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
-- [API Reference](./api.md) — Complete reference for all frame-ui exports
+- [Scaffolding](./scaffolding.md) — Generate apps with `create-hudson-app`
+- [API Reference](./api.md) — Complete reference for all @hudson/sdk exports

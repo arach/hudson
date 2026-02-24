@@ -1,0 +1,48 @@
+'use client';
+
+import { useState } from 'react';
+
+const TABS = ['Output', 'Info'] as const;
+type Tab = typeof TABS[number];
+
+export function __APP_NAME__Terminal() {
+  const [activeTab, setActiveTab] = useState<Tab>('Output');
+
+  return (
+    <div className="h-full flex flex-col bg-neutral-900/50">
+      {/* Tab bar */}
+      <div className="flex border-b border-neutral-700/50">
+        {TABS.map(tab => (
+          <button
+            key={tab}
+            onClick={() => setActiveTab(tab)}
+            className={`px-3 py-1.5 text-[10px] font-mono tracking-wider transition-colors ${
+              activeTab === tab
+                ? 'text-cyan-400 border-b border-cyan-400'
+                : 'text-neutral-400 hover:text-neutral-200'
+            }`}
+          >
+            {tab}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab content */}
+      <div className="flex-1 overflow-auto p-3">
+        {activeTab === 'Output' && (
+          <div className="text-[11px] font-mono text-neutral-400">
+            No output yet.
+          </div>
+        )}
+        {activeTab === 'Info' && (
+          <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[11px] font-mono">
+            <span className="text-neutral-200">app</span>
+            <span className="text-cyan-400">__APP_ID__</span>
+            <span className="text-neutral-200">mode</span>
+            <span className="text-white">__APP_MODE__</span>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}

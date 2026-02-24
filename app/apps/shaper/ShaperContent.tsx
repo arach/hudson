@@ -1,7 +1,7 @@
 'use client';
 
 import { useShaper } from './ShaperProvider';
-import { ZoomControls } from 'frame-ui';
+import { ZoomControls } from '@hudson/sdk';
 import { CanvasRenderer } from './components/CanvasRenderer';
 import { ToolPalette } from './components/ToolPalette';
 import { DropZone } from './components/DropZone';

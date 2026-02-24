@@ -9,7 +9,7 @@
 - Hudson uses bun as its package manager — never use npm or pnpm
 - All UI components are custom-built — do not replace with library components
 - Use @base-ui/react for context menu only, motion sparingly
-- Every app must implement the HudsonApp interface from frame-ui
+- Every app must implement the HudsonApp interface from @hudson/sdk
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 - State is owned by each app Provider via React context
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald color ranges
@@ -21,16 +21,16 @@
 | Shell | `app/shell/` | |
 | Apps | `app/apps/` | |
 | Workspaces | `app/workspaces/` | |
-| Frame Ui | `packages/frame-ui/src/` | |
-| Types | `packages/frame-ui/src/types/` | |
+| Hudson SDK | `packages/hudson-sdk/src/` | |
+| Types | `packages/hudson-sdk/src/types/` | |
 
 ## Quick Navigation
 
 - Working with **new app**? → See docs/building-apps.md and app/apps/shaper/ as reference
 - Working with **workspace**? → Check app/workspaces/ for workspace definitions
-- Working with **intent**? → See packages/frame-ui/src/types/intent.ts and app/lib/intent-catalog.ts
-- Working with **component**? → Check packages/frame-ui/src/components/ for chrome, canvas, windows, and overlays
-- Working with **styling**? → Uses Tailwind v4, design tokens in packages/frame-ui/src/lib/chrome.ts
+- Working with **intent**? → See packages/hudson-sdk/src/types/intent.ts and app/lib/intent-catalog.ts
+- Working with **component**? → Check packages/hudson-sdk/src/components/ for chrome, canvas, windows, and overlays
+- Working with **styling**? → Uses Tailwind v4, design tokens in packages/hudson-sdk/src/lib/theme.ts
 
 ## Overview
 
@@ -47,7 +47,7 @@ Think of it as a desktop environment in the browser: apps register themselves, t
 A Hudson app is a plain object satisfying the `HudsonApp` interface:
 
 ```tsx
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 
 export const counterApp: HudsonApp = {
   id: 'counter',
@@ -68,7 +68,7 @@ Register it in a workspace and it immediately gets panels, command palette, stat
 
 Hudson has three layers:
 
-### 1. Frame UI (`packages/frame-ui`)
+### 1. Hudson SDK (`packages/hudson-sdk`)
 
 The component library and type system. Provides:
 
@@ -119,7 +119,7 @@ Apps can render in two modes:
 | `canvas` | Infinite pan/zoom world space | Editors, graph UIs, spatial tools |
 | `panel` | Static scrollable viewport | Dashboards, admin interfaces, docs |
 
-Individual apps can override the workspace-level mode via the `useFrameMode` hook.
+Individual apps can override the workspace-level mode via the `useLayoutMode` hook.
 
 ### Canvas Participation
 
@@ -146,7 +146,7 @@ Hudson includes an intent catalog for LLM/voice integration. Apps declare intent
 
 - [Quickstart](./quickstart.md) — Get Hudson running locally and create your first app
 - [Building Apps](./building-apps.md) — Full integration guide (Provider, slots, hooks, intents, workspaces)
-- [API Reference](./api.md) — Complete reference for frame-ui exports
+- [API Reference](./api.md) — Complete reference for @hudson/sdk exports
 
 ## Tech Stack
 
@@ -208,7 +208,7 @@ hudson/
     lib/                      # Shared utilities (intent catalog, etc.)
     hooks/                    # Shared hooks (intent executor, etc.)
   packages/
-    frame-ui/                 # Component library + types
+    hudson-sdk/                  # Component library + types
       src/
         components/           # Chrome, Canvas, Windows, Overlays
         types/                # HudsonApp, HudsonWorkspace, AppIntent
@@ -281,7 +281,7 @@ export function MyAppContent() {
 
 ```tsx
 // app/apps/my-app/index.ts
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 import { MyAppProvider } from './MyAppProvider';
 import { MyAppContent } from './MyAppContent';
 
@@ -327,10 +327,10 @@ This guide covers everything you need to build a Hudson app — from the interfa
 
 ## The HudsonApp Interface
 
-Every app implements the `HudsonApp` interface exported from `frame-ui`:
+Every app implements the `HudsonApp` interface exported from `@hudson/sdk`:
 
 ```typescript
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 ```
 
 ### Full Interface
@@ -376,7 +376,7 @@ interface HudsonApp {
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
-    useFrameMode?: () => 'canvas' | 'panel';
+    useLayoutMode?: () => 'canvas' | 'panel';
   };
 }
 ```
@@ -392,7 +392,7 @@ interface HudsonApp {
 | `hooks.useStatus` | Yes | Status bar label and color |
 | `leftPanel`, `rightPanel` | No | Panel header config |
 | `slots.LeftPanel`, `RightPanel`, `LeftFooter`, `Terminal` | No | Additional UI slots |
-| `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useFrameMode` | No | Nav bar integration |
+| `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useLayoutMode` | No | Nav bar integration |
 | `intents` | No | LLM/voice/search declarations |
 
 ## Architecture Pattern
@@ -537,7 +537,7 @@ Return an array of `CommandOption` objects. These appear in the command palette 
 
 ```tsx
 import { useMemo } from 'react';
-import type { CommandOption } from 'frame-ui';
+import type { CommandOption } from '@hudson/sdk';
 import { useGlyphEditor } from './GlyphEditorProvider';
 
 export function useGlyphCommands(): CommandOption[] {
@@ -599,12 +599,12 @@ Returns content rendered in the center of the navigation bar (between left/right
 
 Returns content rendered on the right side of the navigation bar. Good for action buttons.
 
-### useFrameMode (optional)
+### useLayoutMode (optional)
 
 Overrides the workspace-level mode for this app. Useful when an app needs canvas mode even in a panel workspace, or vice versa.
 
 ```tsx
-export function useGlyphFrameMode(): 'canvas' | 'panel' {
+export function useGlyphLayoutMode(): 'canvas' | 'panel' {
   const { view } = useGlyphEditor();
   return view === 'editor' ? 'canvas' : 'panel';
 }
@@ -615,7 +615,7 @@ export function useGlyphFrameMode(): 'canvas' | 'panel' {
 Intents declare structured metadata about your commands for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent } from 'frame-ui';
+import type { AppIntent } from '@hudson/sdk';
 
 export const glyphIntents: AppIntent[] = [
   {
@@ -684,7 +684,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
 
 ```typescript
 // app/workspaces/glyphDev.ts
-import type { HudsonWorkspace } from 'frame-ui';
+import type { HudsonWorkspace } from '@hudson/sdk';
 import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const glyphDevWorkspace: HudsonWorkspace = {
@@ -730,14 +730,14 @@ export default function Page() {
 - Full-width layout between side panels
 - Best for: dashboards, admin interfaces, documentation
 
-Apps can dynamically switch modes using `useFrameMode()`.
+Apps can dynamically switch modes using `useLayoutMode()`.
 
 ## Persistent State
 
-Use `usePersistentState` from frame-ui for state that survives page reloads:
+Use `usePersistentState` from @hudson/sdk for state that survives page reloads:
 
 ```tsx
-import { usePersistentState } from 'frame-ui';
+import { usePersistentState } from '@hudson/sdk';
 
 function MyComponent() {
   const [gridVisible, setGridVisible] = usePersistentState('my-app.grid', true);
@@ -750,7 +750,7 @@ function MyComponent() {
 Hudson includes a Web Audio synthesizer for UI feedback:
 
 ```tsx
-import { sounds } from 'frame-ui';
+import { sounds } from '@hudson/sdk';
 
 // Available sounds
 sounds.blipUp();    // Positive feedback
@@ -793,18 +793,18 @@ The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if yo
 
 - [Overview](./overview.md) — Architecture and key concepts
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
-- [API Reference](./api.md) — Complete reference for all frame-ui exports
+- [API Reference](./api.md) — Complete reference for all @hudson/sdk exports
 
 ## API Reference
 
-> Complete API reference for the frame-ui package
+> Complete API reference for the @hudson/sdk package
 
 # API Reference
 
-Everything exported from the `frame-ui` package.
+Everything exported from the `@hudson/sdk` package.
 
 ```tsx
-import { Frame, NavigationBar, SidePanel, ... } from 'frame-ui';
+import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
 ```
 
 ## Types
@@ -814,7 +814,7 @@ import { Frame, NavigationBar, SidePanel, ... } from 'frame-ui';
 The core interface every app must implement. See [Building Apps](./building-apps.md) for full details.
 
 ```typescript
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -835,7 +835,7 @@ import type { HudsonApp } from 'frame-ui';
 Defines a collection of apps in a shared shell.
 
 ```typescript
-import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'frame-ui';
+import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -860,7 +860,7 @@ import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'f
 Structured metadata for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent, IntentCategory, IntentParameter } from 'frame-ui';
+import type { AppIntent, IntentCategory, IntentParameter } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -1086,7 +1086,7 @@ Right-click context menu (powered by @base-ui/react + motion).
 localStorage-backed state hook. Works like `useState` but persists across reloads.
 
 ```tsx
-import { usePersistentState } from 'frame-ui';
+import { usePersistentState } from '@hudson/sdk';
 
 const [value, setValue] = usePersistentState('storage-key', defaultValue);
 ```
@@ -1098,7 +1098,7 @@ const [value, setValue] = usePersistentState('storage-key', defaultValue);
 Web Audio synthesizer for UI feedback.
 
 ```tsx
-import { sounds } from 'frame-ui';
+import { sounds } from '@hudson/sdk';
 
 sounds.blipUp();     // Positive feedback / success
 sounds.click();      // Button press
@@ -1111,7 +1111,7 @@ sounds.thock();      // Heavy press / confirm
 Event bus for Frame activity logging.
 
 ```tsx
-import { logEvent, FRAME_LOG_EVENT } from 'frame-ui';
+import { logEvent, FRAME_LOG_EVENT } from '@hudson/sdk';
 
 logEvent({ type: 'app:action', detail: 'something happened' });
 
@@ -1126,7 +1126,7 @@ window.addEventListener(FRAME_LOG_EVENT, (e) => {
 Coordinate conversion between world and screen space.
 
 ```tsx
-import { worldToScreen, screenToWorld } from 'frame-ui';
+import { worldToScreen, screenToWorld } from '@hudson/sdk';
 
 const screenPos = worldToScreen(worldPos, panOffset, scale);
 const worldPos = screenToWorld(screenPos, panOffset, scale);
@@ -1137,7 +1137,7 @@ const worldPos = screenToWorld(screenPos, panOffset, scale);
 Design tokens and styling constants.
 
 ```tsx
-import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from 'frame-ui';
+import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from '@hudson/sdk';
 
 // CHROME — computed styles (borders, backgrounds, shadows)
 // CHROME_BASE — raw color values
@@ -1153,7 +1153,7 @@ import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } fro
 
 # Architecture
 
-Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **frame-ui component library**.
+Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **hudson-sdk component library**.
 
 ## Monorepo Structure
 
@@ -1194,7 +1194,7 @@ hudson/
     api/                        # API routes
       shaper/save/route.ts      # Shaper save endpoint
   packages/
-    frame-ui/                   # Component library
+    hudson-sdk/                    # Component library
       src/
         index.ts                # Public exports
         components/
@@ -1294,7 +1294,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 **When to use:** When asked to create a new app for the Hudson platform.
 
 **Steps:**
-1. Read `packages/frame-ui/src/types/app.ts` to understand the HudsonApp interface
+1. Read `packages/hudson-sdk/src/types/app.ts` to understand the HudsonApp interface
 2. Read `app/apps/shaper/index.ts` as the reference implementation
 3. Follow the task template in `docs/prompts/create-app.md`
 4. Create all required files (Provider, Content, hooks, index.ts)
@@ -1326,7 +1326,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 **When to use:** When asked to create or modify a workspace.
 
 **Steps:**
-1. Read `packages/frame-ui/src/types/workspace.ts` for the HudsonWorkspace interface
+1. Read `packages/hudson-sdk/src/types/workspace.ts` for the HudsonWorkspace interface
 2. Read `app/workspaces/hudsonOS.ts` as reference
 3. Create workspace file in `app/workspaces/`
 4. Register in `app/page.tsx` workspaces array
@@ -1336,15 +1336,15 @@ Pre-built skill definitions that agents can use when working with Hudson.
 - Apps specify canvasMode: 'native' or 'windowed'
 - Windowed apps need defaultWindowBounds: { x, y, w, h }
 
-## hudson-frame-ui-contributor
+## hudson-sdk-contributor
 
-**When to use:** When asked to add or modify frame-ui components.
+**When to use:** When asked to add or modify hudson-sdk components.
 
 **Steps:**
-1. Read `packages/frame-ui/src/index.ts` for current exports
-2. Check `packages/frame-ui/src/lib/chrome.ts` for design tokens
+1. Read `packages/hudson-sdk/src/index.ts` for current exports
+2. Check `packages/hudson-sdk/src/lib/theme.ts` for design tokens
 3. Follow existing component patterns (stateless, callback-based)
-4. Export from `packages/frame-ui/src/index.ts`
+4. Export from `packages/hudson-sdk/src/index.ts`
 
 **Key rules:**
 - Components are stateless — apps manage all state

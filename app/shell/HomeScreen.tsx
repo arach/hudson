@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import type { HudsonWorkspace } from 'frame-ui';
+import type { HudsonWorkspace } from '@hudson/sdk';
 
 // ---------------------------------------------------------------------------
 // Session helpers

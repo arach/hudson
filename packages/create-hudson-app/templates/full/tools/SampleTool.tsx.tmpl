@@ -1,0 +1,20 @@
+'use client';
+
+import { use__APP_NAME__ } from '../__APP_NAME__Provider';
+
+export function SampleTool() {
+  const { selectedItem } = use__APP_NAME__();
+
+  return (
+    <div className="p-3 space-y-3">
+      <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
+        Sample Tool
+      </div>
+      <div className="text-[11px] font-mono text-neutral-400">
+        {selectedItem
+          ? `Working on: ${selectedItem}`
+          : 'Select an item to use this tool'}
+      </div>
+    </div>
+  );
+}

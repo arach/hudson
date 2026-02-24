@@ -1,0 +1,13 @@
+{
+  "name": "create-hudson-app",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Scaffold a new Hudson app",
+  "type": "module",
+  "bin": {
+    "create-hudson-app": "./src/index.ts"
+  },
+  "scripts": {
+    "create": "bun run src/index.ts"
+  }
+}

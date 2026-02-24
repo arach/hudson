@@ -1,11 +1,11 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
-import { usePersistentState, sounds } from 'frame-ui';
-import { setMuted as setSoundMuted } from 'frame-ui';
+import { usePersistentState, sounds } from '@hudson/sdk';
+import { setMuted as setSoundMuted } from '@hudson/sdk';
 import { useEffect } from 'react';
 import type { ComponentEntry, ViewMode, HudsonSettings } from './types';
-import { COMPONENTS, DEFAULT_SETTINGS } from './data';
+import { COMPONENTS, AGENT_DOCS, DEFAULT_SETTINGS } from './data';
 
 // ---------------------------------------------------------------------------
 // Context shape
@@ -40,7 +40,7 @@ interface DocsContextValue {
 
   // Sheet positions (canvas dragging)
   sheetPositions: Record<string, { x: number; y: number }>;
-  getSheetPos: (c: ComponentEntry) => { x: number; y: number };
+  getSheetPos: (id: string) => { x: number; y: number };
   handleSheetDragStart: (id: string, e: React.MouseEvent) => void;
   isDraggingRef: React.RefObject<boolean>;
 
@@ -77,7 +77,7 @@ export function DocsProvider({ children }: { children: ReactNode }) {
   const [searchValue, setSearchValue] = useState('');
 
   // Nav
-  const [activeNav, setActiveNav] = useState('dashboard');
+  const [activeNav, setActiveNav] = useState('overview');
 
   // Settings
   const [settings, setSettings] = usePersistentState<HudsonSettings>('hudson.settings', DEFAULT_SETTINGS);
@@ -138,8 +138,17 @@ export function DocsProvider({ children }: { children: ReactNode }) {
     playSound('thock');
   }, [playSound]);
 
-  // Get sheet position (overridden or default)
-  const getSheetPos = useCallback((c: ComponentEntry) => sheetPositions[c.id] ?? c.position, [sheetPositions]);
+  // Get sheet position (overridden or default) — works for both component and agent doc IDs
+  const getSheetPos = useCallback((id: string) => {
+    if (sheetPositions[id]) return sheetPositions[id];
+    if (id.startsWith('agent:')) {
+      const slug = id.slice(6);
+      const doc = AGENT_DOCS.find(d => d.slug === slug);
+      return doc?.position ?? { x: 0, y: 0 };
+    }
+    const comp = COMPONENTS.find(c => c.id === id);
+    return comp?.position ?? { x: 0, y: 0 };
+  }, [sheetPositions]);
 
   // Drag handler
   const handleSheetDragStart = useCallback((id: string, e: React.MouseEvent) => {
@@ -152,12 +161,16 @@ export function DocsProvider({ children }: { children: ReactNode }) {
 
     const startX = e.clientX;
     const startY = e.clientY;
-    const startPos = sheetPositions[id] ?? COMPONENTS.find(c => c.id === id)?.position ?? { x: 0, y: 0 };
+    const startPos = sheetPositions[id] ?? (id.startsWith('agent:')
+      ? AGENT_DOCS.find(d => d.slug === id.slice(6))?.position
+      : COMPONENTS.find(c => c.id === id)?.position) ?? { x: 0, y: 0 };
     let dragged = false;
 
-    // Read current scale from the DOM (set by shell)
+    // Read current CSS zoom from the world layer.
+    // The zoom is applied two levels above [data-hudson-world]: zoom-div > pan-div > world-div
     const worldEl = document.querySelector('[data-hudson-world]');
-    const currentScale = worldEl ? parseFloat(getComputedStyle(worldEl).zoom || '1') : 1;
+    const zoomEl = worldEl?.parentElement?.parentElement;
+    const currentScale = zoomEl ? parseFloat(zoomEl.style.zoom || '1') : 1;
 
     const onMouseMove = (ev: MouseEvent) => {
       const dx = ev.clientX - startX;

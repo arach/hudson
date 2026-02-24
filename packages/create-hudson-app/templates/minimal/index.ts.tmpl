@@ -1,0 +1,27 @@
+import { __APP_ICON__ } from 'lucide-react';
+import { createElement } from 'react';
+import type { HudsonApp } from '@hudson/sdk';
+import { __APP_NAME__Provider } from './__APP_NAME__Provider';
+import { __APP_NAME__Content } from './__APP_NAME__Content';
+import {
+  use__APP_NAME__Commands,
+  use__APP_NAME__Status,
+} from './hooks';
+
+export const __APP_VAR__App: HudsonApp = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: '__APP_MODE__',
+
+  Provider: __APP_NAME__Provider,
+
+  slots: {
+    Content: __APP_NAME__Content,
+  },
+
+  hooks: {
+    useCommands: use__APP_NAME__Commands,
+    useStatus: use__APP_NAME__Status,
+  },
+};

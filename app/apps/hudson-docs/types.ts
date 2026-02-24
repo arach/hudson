@@ -16,6 +16,14 @@ export interface ComponentEntry {
   position: { x: number; y: number };
 }
 
+export interface AgentDocEntry {
+  slug: string;
+  title: string;
+  description: string;
+  file: string;
+  position: { x: number; y: number };
+}
+
 export interface HudsonSettings {
   glowIntensity: number;
   connectorStyle: 'dashed' | 'solid' | 'dotted';

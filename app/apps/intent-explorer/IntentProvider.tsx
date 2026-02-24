@@ -9,7 +9,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import type { AppIntent, IntentCatalog } from 'frame-ui';
+import type { AppIntent, IntentCatalog } from '@hudson/sdk';
 import { buildIntentCatalog } from '../../lib/intent-catalog';
 import { hudsonOSWorkspace } from '../../workspaces/hudsonOS';
 import type { FloatingCard } from './types';

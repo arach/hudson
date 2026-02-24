@@ -1,15 +1,15 @@
 ---
 title: API Reference
-description: Complete API reference for the frame-ui package
+description: Complete API reference for the @hudson/sdk package
 order: 4
 ---
 
 # API Reference
 
-Everything exported from the `frame-ui` package.
+Everything exported from the `@hudson/sdk` package.
 
 ```tsx
-import { Frame, NavigationBar, SidePanel, ... } from 'frame-ui';
+import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
 ```
 
 ## Types
@@ -19,7 +19,7 @@ import { Frame, NavigationBar, SidePanel, ... } from 'frame-ui';
 The core interface every app must implement. See [Building Apps](./building-apps.md) for full details.
 
 ```typescript
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -40,7 +40,7 @@ import type { HudsonApp } from 'frame-ui';
 Defines a collection of apps in a shared shell.
 
 ```typescript
-import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'frame-ui';
+import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -65,7 +65,7 @@ import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'f
 Structured metadata for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent, IntentCategory, IntentParameter } from 'frame-ui';
+import type { AppIntent, IntentCategory, IntentParameter } from '@hudson/sdk';
 ```
 
 | Field | Type | Required | Description |
@@ -291,7 +291,7 @@ Right-click context menu (powered by @base-ui/react + motion).
 localStorage-backed state hook. Works like `useState` but persists across reloads.
 
 ```tsx
-import { usePersistentState } from 'frame-ui';
+import { usePersistentState } from '@hudson/sdk';
 
 const [value, setValue] = usePersistentState('storage-key', defaultValue);
 ```
@@ -303,7 +303,7 @@ const [value, setValue] = usePersistentState('storage-key', defaultValue);
 Web Audio synthesizer for UI feedback.
 
 ```tsx
-import { sounds } from 'frame-ui';
+import { sounds } from '@hudson/sdk';
 
 sounds.blipUp();     // Positive feedback / success
 sounds.click();      // Button press
@@ -316,7 +316,7 @@ sounds.thock();      // Heavy press / confirm
 Event bus for Frame activity logging.
 
 ```tsx
-import { logEvent, FRAME_LOG_EVENT } from 'frame-ui';
+import { logEvent, FRAME_LOG_EVENT } from '@hudson/sdk';
 
 logEvent({ type: 'app:action', detail: 'something happened' });
 
@@ -331,7 +331,7 @@ window.addEventListener(FRAME_LOG_EVENT, (e) => {
 Coordinate conversion between world and screen space.
 
 ```tsx
-import { worldToScreen, screenToWorld } from 'frame-ui';
+import { worldToScreen, screenToWorld } from '@hudson/sdk';
 
 const screenPos = worldToScreen(worldPos, panOffset, scale);
 const worldPos = screenToWorld(screenPos, panOffset, scale);
@@ -342,7 +342,7 @@ const worldPos = screenToWorld(screenPos, panOffset, scale);
 Design tokens and styling constants.
 
 ```tsx
-import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from 'frame-ui';
+import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from '@hudson/sdk';
 
 // CHROME — computed styles (borders, backgrounds, shadows)
 // CHROME_BASE — raw color values

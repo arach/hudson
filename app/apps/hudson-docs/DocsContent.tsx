@@ -1,8 +1,9 @@
 'use client';
 
 import { useDocs } from './DocsProvider';
-import { COMPONENTS } from './data';
-import { ComponentSheet, ListView, TilesView } from './components';
+import { COMPONENTS, AGENT_DOCS } from './data';
+import { Bot } from 'lucide-react';
+import { ComponentSheet, AgentDocSheet, ListView, TilesView } from './components';
 
 export function DocsContent() {
   const {
@@ -12,6 +13,9 @@ export function DocsContent() {
   } = useDocs();
 
   const isCanvasMode = viewMode === 'canvas';
+
+  // Collect open agent doc IDs for canvas/tiles
+  const openAgentDocs = AGENT_DOCS.filter(d => openSheets.has(`agent:${d.slug}`));
 
   return (
     <>
@@ -42,7 +46,7 @@ export function DocsContent() {
             >
               <h1 className="text-xl font-bold text-white mb-1 font-mono tracking-wider">HUDSON</h1>
               <p className="text-neutral-300 text-[11px] font-mono mb-5">
-                HUD-style chrome components. Click a card to open its doc sheet.
+                Reference cards for the Hudson component library. Click to open.
               </p>
               <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
                 {COMPONENTS.map(c => {
@@ -68,6 +72,34 @@ export function DocsContent() {
                   );
                 })}
               </div>
+
+              {/* Guides section */}
+              <div className="mt-5 pt-4 border-t border-neutral-700/30">
+                <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Guides</div>
+                <div className="space-y-1.5">
+                  {AGENT_DOCS.map(doc => {
+                    const sheetId = `agent:${doc.slug}`;
+                    const isOpen = openSheets.has(sheetId);
+                    return (
+                      <button
+                        key={doc.slug}
+                        onClick={() => toggleSheet(sheetId)}
+                        className={`w-full p-2 rounded border text-left transition-all cursor-pointer pointer-events-auto flex items-center gap-2 ${
+                          isOpen
+                            ? 'border-emerald-500/50 bg-emerald-500/5'
+                            : 'border-neutral-700/50 bg-neutral-900/40 hover:border-neutral-700 hover:bg-black/50'
+                        }`}
+                      >
+                        <Bot size={10} className={isOpen ? 'text-emerald-400' : 'text-neutral-400'} />
+                        <div className="min-w-0">
+                          <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-emerald-400' : 'text-emerald-400/70'}`}>{doc.title}</span>
+                          <div className="text-neutral-300 text-[10px] leading-tight">{doc.description}</div>
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
             </div>
           </div>
         );
@@ -75,7 +107,7 @@ export function DocsContent() {
 
       {/* Floating component doc sheets */}
       {isCanvasMode && COMPONENTS.filter(c => openSheets.has(c.id)).map(c => {
-        const pos = getSheetPos(c);
+        const pos = getSheetPos(c.id);
         return (
           <div
             key={c.id}
@@ -92,6 +124,32 @@ export function DocsContent() {
               isSelected={selectedCard === c.id}
               onSelect={() => { if (!isDraggingRef.current) setSelectedCard(c.id); }}
               onDragStart={(e) => handleSheetDragStart(c.id, e)}
+              glowIntensity={settings.glowIntensity}
+            />
+          </div>
+        );
+      })}
+
+      {/* Floating agent doc sheets */}
+      {isCanvasMode && openAgentDocs.map(doc => {
+        const sheetId = `agent:${doc.slug}`;
+        const pos = getSheetPos(sheetId);
+        return (
+          <div
+            key={sheetId}
+            className="absolute pointer-events-none"
+            style={{
+              left: `calc(50% + ${pos.x}px)`,
+              top: `calc(50% + ${pos.y}px)`,
+              transform: 'translate(-50%, -50%)',
+            }}
+          >
+            <AgentDocSheet
+              slug={doc.slug}
+              onClose={() => closeSheet(sheetId)}
+              isSelected={selectedCard === sheetId}
+              onSelect={() => { if (!isDraggingRef.current) setSelectedCard(sheetId); }}
+              onDragStart={(e) => handleSheetDragStart(sheetId, e)}
               glowIntensity={settings.glowIntensity}
             />
           </div>
@@ -116,15 +174,19 @@ export function DocsContent() {
 function ConnectorLines() {
   const { openSheets, selectedCard, settings, sheetPositions, getSheetPos } = useDocs();
 
+  // Collect all open sheet IDs (both component and agent docs)
+  const allOpenIds: string[] = [
+    ...COMPONENTS.filter(c => openSheets.has(c.id)).map(c => c.id),
+    ...AGENT_DOCS.filter(d => openSheets.has(`agent:${d.slug}`)).map(d => `agent:${d.slug}`),
+  ];
+
   return (
     <svg
       className="absolute inset-0 w-full h-full pointer-events-none"
       style={{ zIndex: -1 }}
     >
-      {COMPONENTS.filter(c => openSheets.has(c.id)).map(c => {
-        const pos = getSheetPos(c);
-        // Use the SVG's own dimensions for coordinate space
-        // The SVG fills the world content area, so 50% = center
+      {allOpenIds.map(id => {
+        const pos = getSheetPos(id);
         const svgEl = document.querySelector('[data-hudson-world] svg');
         const svgW = svgEl?.clientWidth ?? window.innerWidth;
         const svgH = svgEl?.clientHeight ?? window.innerHeight;
@@ -154,12 +216,12 @@ function ConnectorLines() {
           sheetAnchor = { x: sheetCenter.x, y: sheetCenter.y - dir * SHEET_HH };
         }
 
-        const isSelected = selectedCard === c.id;
+        const isSelected = selectedCard === id;
         const lineColor = isSelected ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.08)';
         const dotColor = isSelected ? 'rgba(16,185,129,0.5)' : 'rgba(16,185,129,0.2)';
         const dash = { dashed: '4 4', solid: undefined, dotted: '2 2' }[settings.connectorStyle];
         return (
-          <g key={c.id}>
+          <g key={id}>
             <line
               x1={hubAnchor.x} y1={hubAnchor.y}
               x2={sheetAnchor.x} y2={sheetAnchor.y}

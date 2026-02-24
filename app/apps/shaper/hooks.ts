@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, createElement } from 'react';
-import type { CommandOption, SearchConfig, StatusColor } from 'frame-ui';
-import { sounds } from 'frame-ui';
+import type { CommandOption, SearchConfig, StatusColor } from '@hudson/sdk';
+import { sounds } from '@hudson/sdk';
 import { useShaper } from './ShaperProvider';
 
 // ---------------------------------------------------------------------------
@@ -107,8 +107,18 @@ export function useShaperNavActions() {
 }
 
 // ---------------------------------------------------------------------------
-// useFrameMode — always 'panel'
+// useLayoutMode — always 'panel'
 // ---------------------------------------------------------------------------
-export function useShaperFrameMode(): 'canvas' | 'panel' {
+export function useShaperLayoutMode(): 'canvas' | 'panel' {
   return 'panel';
+}
+
+// ---------------------------------------------------------------------------
+// useActiveToolHint — suggest which tool to auto-expand
+// ---------------------------------------------------------------------------
+export function useShaperActiveToolHint(): string | null {
+  const { selectedPoint, animationModeEnabled } = useShaper();
+  if (selectedPoint) return 'appearance';
+  if (animationModeEnabled) return 'animation';
+  return null;
 }

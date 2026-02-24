@@ -7,16 +7,15 @@ import {
   TerminalSquare,
   Move,
   Map,
-  Layers,
+  Compass,
   Settings,
-  FileText,
-  Box,
-  Palette,
-  Grid3X3,
-  LayoutDashboard,
+  BookOpen,
+  Library,
+  Paintbrush,
+  LayoutTemplate,
   type LucideIcon,
 } from 'lucide-react';
-import type { ComponentEntry, HudsonSettings } from './types';
+import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
 
 export const DEFAULT_SETTINGS: HudsonSettings = {
   glowIntensity: 30,
@@ -28,12 +27,11 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
 };
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
-  { id: 'dashboard', label: 'Dashboard', icon: LayoutDashboard },
-  { id: 'layers', label: 'Layers', icon: Layers },
-  { id: 'components', label: 'Components', icon: Box },
-  { id: 'styles', label: 'Styles', icon: Palette },
-  { id: 'grid', label: 'Grid', icon: Grid3X3 },
-  { id: 'docs', label: 'Documentation', icon: FileText },
+  { id: 'overview', label: 'Overview', icon: Compass },
+  { id: 'reference', label: 'Reference', icon: Library },
+  { id: 'guides', label: 'Guides', icon: BookOpen },
+  { id: 'theming', label: 'Theming', icon: Paintbrush },
+  { id: 'layout', label: 'Layout', icon: LayoutTemplate },
   { id: 'settings', label: 'Settings', icon: Settings },
 ];
 
@@ -154,4 +152,10 @@ export const COMPONENTS: ComponentEntry[] = [
     notes: ['Width adapts to parent via ResizeObserver', 'Collapsed state shows a clickable header bar'],
     position: { x: 380, y: 880 },
   },
+];
+
+export const AGENT_DOCS: AgentDocEntry[] = [
+  { slug: 'overview-agent', title: 'Agent Overview', description: 'Dense, structured overview for AI agents', file: 'agent/overview.agent.md', position: { x: 0, y: 1280 } },
+  { slug: 'create-app', title: 'Create App', description: 'Task template for creating a new app', file: 'prompts/create-app.md', position: { x: -380, y: 1580 } },
+  { slug: 'add-intents', title: 'Add Intents', description: 'Task template for adding intents', file: 'prompts/add-intents.md', position: { x: 380, y: 1580 } },
 ];

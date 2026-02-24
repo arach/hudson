@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CommandOption, StatusColor, SearchConfig } from 'frame-ui';
+import type { CommandOption, StatusColor, SearchConfig } from '@hudson/sdk';
 import { useExplorer } from './IntentProvider';
 
 export function useExplorerCommands(): CommandOption[] {
@@ -17,6 +17,6 @@ export function useExplorerSearch(): SearchConfig {
   return { value: searchQuery, onChange: setSearchQuery, placeholder: 'Search intents...' };
 }
 
-export function useExplorerFrameMode(): 'canvas' | 'panel' {
+export function useExplorerLayoutMode(): 'canvas' | 'panel' {
   return 'panel';
 }

@@ -1,6 +1,6 @@
 import { FileText, Compass, ScanSearch } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 import { DocsProvider } from './DocsProvider';
 import { DocsContent } from './DocsContent';
 import { DocsLeftPanel } from './DocsLeftPanel';
@@ -11,7 +11,7 @@ import {
   useDocsSearch,
   useDocsNavCenter,
   useDocsNavActions,
-  useDocsFrameMode,
+  useDocsLayoutMode,
 } from './hooks';
 import { docsIntents } from './intents';
 
@@ -30,7 +30,7 @@ export const hudsonDocsApp: HudsonApp = {
   slots: {
     Content: DocsContent,
     LeftPanel: DocsLeftPanel,
-    RightPanel: DocsRightPanel,
+    Inspector: DocsRightPanel,
     // LeftFooter is handled specially by AppMount (needs shell state)
   },
 
@@ -40,6 +40,6 @@ export const hudsonDocsApp: HudsonApp = {
     useSearch: useDocsSearch,
     useNavCenter: useDocsNavCenter,
     useNavActions: useDocsNavActions,
-    useFrameMode: useDocsFrameMode,
+    useLayoutMode: useDocsLayoutMode,
   },
 };

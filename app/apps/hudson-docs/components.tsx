@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useCallback, useRef } from 'react';
 import {
   X,
   ChevronDown,
@@ -10,9 +10,69 @@ import {
   LayoutGrid,
   Settings,
   RotateCcw,
+  Bot,
+  Copy,
+  Check,
+  ExternalLink,
 } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
-import type { ComponentEntry, ViewMode, HudsonSettings } from './types';
+import type { AgentDocEntry, ComponentEntry, ViewMode, HudsonSettings } from './types';
+import { AGENT_DOCS } from './data';
+import '@/app/docs/docs.css';
+
+// ---------------------------------------------------------------------------
+// Shared resize hook + handle
+// ---------------------------------------------------------------------------
+function useResize(defaults: { w: number; h: number }, min: { w: number; h: number }) {
+  const [size, setSize] = useState(defaults);
+  const resizingRef = useRef(false);
+
+  const onResizeStart = useCallback((e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizingRef.current = true;
+    const startX = e.clientX;
+    const startY = e.clientY;
+    const startW = size.w;
+    const startH = size.h;
+
+    // Read zoom from the world layer
+    const worldEl = document.querySelector('[data-hudson-world]');
+    const zoomEl = worldEl?.parentElement?.parentElement;
+    const scale = zoomEl ? parseFloat((zoomEl as HTMLElement).style.zoom || '1') : 1;
+
+    const onMove = (ev: MouseEvent) => {
+      const dw = (ev.clientX - startX) / scale;
+      const dh = (ev.clientY - startY) / scale;
+      setSize({
+        w: Math.max(min.w, startW + dw),
+        h: Math.max(min.h, startH + dh),
+      });
+    };
+    const onUp = () => {
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+      setTimeout(() => { resizingRef.current = false; }, 0);
+    };
+    document.addEventListener('mousemove', onMove);
+    document.addEventListener('mouseup', onUp);
+  }, [size.w, size.h, min.w, min.h]);
+
+  return { size, onResizeStart, resizingRef };
+}
+
+function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => void }) {
+  return (
+    <div
+      onMouseDown={onMouseDown}
+      className="absolute bottom-0 right-0 w-3 h-3 cursor-nwse-resize pointer-events-auto z-10 group"
+    >
+      <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-0.5 right-0.5 text-neutral-600 group-hover:text-neutral-400 transition-colors">
+        <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
+      </svg>
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Component doc sheet (floating card in world space)
@@ -25,6 +85,7 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
   onDragStart: (e: React.MouseEvent) => void;
   glowIntensity?: number;
 }) {
+  const { size, onResizeStart } = useResize({ w: 340, h: 420 }, { w: 260, h: 200 });
   const Icon = entry.icon;
   const g = glowIntensity / 100;
   const selectedShadow = `0 0 40px rgba(16,185,129,${(0.3*g).toFixed(3)}), 0 0 80px rgba(16,185,129,${(0.15*g).toFixed(3)}), inset 0 1px 0 rgba(16,185,129,${(0.2*g).toFixed(3)})`;
@@ -32,15 +93,15 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
     <div
       onClick={onSelect}
       onMouseDown={onDragStart}
-      style={{ boxShadow: isSelected ? selectedShadow : '0 0 40px rgba(0,0,0,0.6)' }}
-      className={`w-[340px] border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden transition-all pointer-events-auto cursor-grab active:cursor-grabbing ${
+      style={{ boxShadow: isSelected ? selectedShadow : '0 0 40px rgba(0,0,0,0.6)', width: size.w, height: size.h }}
+      className={`relative border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
         isSelected
           ? 'border-emerald-500/80'
           : 'border-neutral-700/60 hover:border-neutral-600/80'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700/50">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700/50 shrink-0">
         <div className="flex items-center gap-2">
           <Icon size={14} className="text-emerald-400" />
           <div>
@@ -56,47 +117,185 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
         </button>
       </div>
 
-      {/* Overview */}
-      <div className="px-4 py-3 border-b border-neutral-700/30">
-        <div className="text-[11px] font-mono text-neutral-200 leading-relaxed">{entry.overview}</div>
-      </div>
+      {/* Scrollable body */}
+      <div className="flex-1 overflow-y-auto frame-scrollbar">
+        {/* Overview */}
+        <div className="px-4 py-3 border-b border-neutral-700/30">
+          <div className="text-[11px] font-mono text-neutral-200 leading-relaxed">{entry.overview}</div>
+        </div>
 
-      {/* Props table */}
-      <div className="px-4 py-3 border-b border-neutral-700/30">
-        <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Props</div>
-        <div className="space-y-2">
-          {entry.props.map(p => (
-            <div key={p.name}>
-              <div className="flex items-baseline gap-2">
-                <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
-                <span className="text-[10px] font-mono text-neutral-400">{p.type}</span>
+        {/* Props table */}
+        <div className="px-4 py-3 border-b border-neutral-700/30">
+          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Props</div>
+          <div className="space-y-2">
+            {entry.props.map(p => (
+              <div key={p.name}>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
+                  <span className="text-[10px] font-mono text-neutral-400">{p.type}</span>
+                </div>
+                <div className="text-[10px] font-mono text-neutral-300 mt-0.5">{p.desc}</div>
               </div>
-              <div className="text-[10px] font-mono text-neutral-300 mt-0.5">{p.desc}</div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Usage */}
-      <div className="px-4 py-3 border-b border-neutral-700/30">
-        <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Usage</div>
-        <pre className="text-[10px] font-mono text-neutral-200 bg-neutral-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre">{entry.usage}</pre>
-      </div>
-
-      {/* Notes */}
-      {entry.notes && entry.notes.length > 0 && (
-        <div className="px-4 py-3">
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Notes</div>
-          <ul className="space-y-1">
-            {entry.notes.map((n, i) => (
-              <li key={i} className="text-[10px] font-mono text-neutral-300 flex items-start gap-1.5">
-                <span className="text-emerald-500/60 mt-px">-</span>
-                <span>{n}</span>
-              </li>
             ))}
-          </ul>
+          </div>
         </div>
-      )}
+
+        {/* Usage */}
+        <div className="px-4 py-3 border-b border-neutral-700/30">
+          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Usage</div>
+          <pre className="text-[10px] font-mono text-neutral-200 bg-neutral-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre">{entry.usage}</pre>
+        </div>
+
+        {/* Notes */}
+        {entry.notes && entry.notes.length > 0 && (
+          <div className="px-4 py-3">
+            <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Notes</div>
+            <ul className="space-y-1">
+              {entry.notes.map((n, i) => (
+                <li key={i} className="text-[10px] font-mono text-neutral-300 flex items-start gap-1.5">
+                  <span className="text-emerald-500/60 mt-px">-</span>
+                  <span>{n}</span>
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+      </div>
+
+      <ResizeHandle onMouseDown={onResizeStart} />
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Agent doc sheet (floating card in world space — fetches markdown content)
+// ---------------------------------------------------------------------------
+export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart, glowIntensity = 30 }: {
+  slug: string;
+  onClose: () => void;
+  isSelected: boolean;
+  onSelect: () => void;
+  onDragStart: (e: React.MouseEvent) => void;
+  glowIntensity?: number;
+}) {
+  const { size, onResizeStart } = useResize({ w: 340, h: 420 }, { w: 260, h: 200 });
+  const entry = AGENT_DOCS.find(d => d.slug === slug);
+  const [html, setHtml] = useState<string | null>(null);
+  const [raw, setRaw] = useState<string>('');
+  const [loading, setLoading] = useState(true);
+  const [copied, setCopied] = useState(false);
+
+  useEffect(() => {
+    setLoading(true);
+    setHtml(null);
+    fetch(`/api/agent-docs/${slug}`)
+      .then(r => r.json())
+      .then(d => { setHtml(d.html); setRaw(d.raw); })
+      .finally(() => setLoading(false));
+  }, [slug]);
+
+  const handleCopy = useCallback(async () => {
+    if (!raw) return;
+    await navigator.clipboard.writeText(raw);
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  }, [raw]);
+
+  const g = glowIntensity / 100;
+  const selectedShadow = `0 0 40px rgba(16,185,129,${(0.3*g).toFixed(3)}), 0 0 80px rgba(16,185,129,${(0.15*g).toFixed(3)}), inset 0 1px 0 rgba(16,185,129,${(0.2*g).toFixed(3)})`;
+
+  return (
+    <div
+      onClick={onSelect}
+      onMouseDown={onDragStart}
+      style={{ boxShadow: isSelected ? selectedShadow : '0 0 40px rgba(0,0,0,0.6)', width: size.w, height: size.h }}
+      className={`relative border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
+        isSelected
+          ? 'border-emerald-500/80'
+          : 'border-neutral-700/60 hover:border-neutral-600/80'
+      }`}
+    >
+      {/* Title bar */}
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-neutral-700/50 shrink-0 bg-neutral-800/90">
+        <div className="flex items-center gap-1.5 min-w-0">
+          <Bot size={9} className="text-emerald-400/50 shrink-0" />
+          <span className="text-[8px] font-mono text-neutral-500 tracking-widest uppercase truncate">{entry?.title ?? slug}</span>
+        </div>
+        <div className="flex items-center gap-0 shrink-0">
+          <a
+            href="/docs"
+            target="_blank"
+            rel="noopener noreferrer"
+            onClick={(e) => e.stopPropagation()}
+            onMouseDown={(e) => e.stopPropagation()}
+            className="p-0.5 rounded transition-colors text-neutral-600 hover:bg-white/10 hover:text-neutral-300 pointer-events-auto"
+            title="Open docs site"
+          >
+            <ExternalLink size={9} />
+          </a>
+          <button
+            onClick={(e) => { e.stopPropagation(); handleCopy(); }}
+            className={`p-0.5 rounded transition-colors ${
+              copied ? 'text-emerald-400' : 'text-neutral-600 hover:bg-white/10 hover:text-neutral-300'
+            } pointer-events-auto`}
+            title={copied ? 'Copied!' : 'Copy raw markdown'}
+          >
+            {copied ? <Check size={9} /> : <Copy size={9} />}
+          </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); onClose(); }}
+            className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-600 hover:text-neutral-300 pointer-events-auto"
+            title="Close"
+          >
+            <X size={9} />
+          </button>
+        </div>
+      </div>
+
+      {/* Metadata preamble — warm tint to distinguish from content */}
+      <div className="px-2.5 py-1.5 border-b border-amber-900/20 shrink-0 bg-amber-950/20 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-px text-[8px] font-mono">
+        <span className="text-amber-600/70">title</span>
+        <span className="text-amber-200/70 truncate">{entry?.title ?? slug}</span>
+        <span className="text-amber-600/70">desc</span>
+        <span className="text-amber-200/70 truncate">{entry?.description ?? ''}</span>
+        <span className="text-amber-600/70">source</span>
+        <span className="text-amber-200/50 truncate">{entry?.file ?? slug}</span>
+      </div>
+
+      {/* Content — dark inset surface, sans-serif, scaled down for sheet context */}
+      <div className="flex-1 overflow-y-auto frame-scrollbar bg-black/40 px-3 py-2 [&>div>*:first-child]:!mt-0
+        [&_.docs-prose]:!text-[10px] [&_.docs-prose]:!leading-[1.5]
+        [&_.docs-prose_h2]:!text-[11px] [&_.docs-prose_h2]:!mt-3 [&_.docs-prose_h2]:!mb-1.5 [&_.docs-prose_h2]:!pb-1 [&_.docs-prose_h2]:!font-semibold
+        [&_.docs-prose_h3]:!text-[10px] [&_.docs-prose_h3]:!mt-2.5 [&_.docs-prose_h3]:!mb-1 [&_.docs-prose_h3]:!font-semibold
+        [&_.docs-prose_h4]:!text-[10px] [&_.docs-prose_h4]:!mt-2 [&_.docs-prose_h4]:!mb-1
+        [&_.docs-prose_p]:!mb-2 [&_.docs-prose_p]:!text-[10px]
+        [&_.docs-prose_li]:!text-[10px] [&_.docs-prose_li]:!mb-0.5
+        [&_.docs-prose_ul]:!mb-2 [&_.docs-prose_ol]:!mb-2 [&_.docs-prose_ul]:!pl-3 [&_.docs-prose_ol]:!pl-3
+        [&_.docs-prose_pre]:!text-[9px] [&_.docs-prose_pre]:!p-2 [&_.docs-prose_pre]:!mb-2 [&_.docs-prose_pre]:!rounded
+        [&_.docs-prose_table]:!text-[9px] [&_.docs-prose_table]:!mb-2
+        [&_.docs-prose_th]:!px-1.5 [&_.docs-prose_th]:!py-1 [&_.docs-prose_td]:!px-1.5 [&_.docs-prose_td]:!py-1
+        [&_.docs-prose_code]:!text-[9px] [&_.docs-prose_code]:!px-1 [&_.docs-prose_code]:!py-0
+        [&_.docs-prose_blockquote]:!mb-2 [&_.docs-prose_hr]:!my-3
+        [&_.docs-prose_strong]:!font-medium
+      ">
+        {loading ? (
+          <div className="flex items-center justify-center py-8">
+            <div className="flex items-center gap-2 text-neutral-500 font-mono text-[9px]">
+              <div className="w-2.5 h-2.5 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+              Loading...
+            </div>
+          </div>
+        ) : html ? (
+          <div
+            className="docs-prose font-sans"
+            dangerouslySetInnerHTML={{ __html: html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/, '') }}
+          />
+        ) : (
+          <div className="text-neutral-600 font-mono text-[9px] text-center py-8">Document not found.</div>
+        )}
+      </div>
+
+      <ResizeHandle onMouseDown={onResizeStart} />
     </div>
   );
 }

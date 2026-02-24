@@ -1,0 +1,40 @@
+import { __APP_ICON__, Layers, ScanSearch } from 'lucide-react';
+import { createElement } from 'react';
+import type { HudsonApp } from '@hudson/sdk';
+import { __APP_NAME__Provider } from './__APP_NAME__Provider';
+import { __APP_NAME__Content } from './__APP_NAME__Content';
+import { __APP_NAME__LeftPanel } from './__APP_NAME__LeftPanel';
+import { __APP_NAME__Inspector } from './__APP_NAME__Inspector';
+import {
+  use__APP_NAME__Commands,
+  use__APP_NAME__Status,
+  use__APP_NAME__Search,
+  use__APP_NAME__LayoutMode,
+} from './hooks';
+import { __APP_VAR__Intents } from './intents';
+
+export const __APP_VAR__App: HudsonApp = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: '__APP_MODE__',
+  intents: __APP_VAR__Intents,
+
+  leftPanel: { title: '__APP_DISPLAY_NAME__', icon: createElement(Layers, { size: 12 }) },
+  rightPanel: { title: 'Inspector', icon: createElement(ScanSearch, { size: 12 }) },
+
+  Provider: __APP_NAME__Provider,
+
+  slots: {
+    Content: __APP_NAME__Content,
+    LeftPanel: __APP_NAME__LeftPanel,
+    Inspector: __APP_NAME__Inspector,
+  },
+
+  hooks: {
+    useCommands: use__APP_NAME__Commands,
+    useStatus: use__APP_NAME__Status,
+    useSearch: use__APP_NAME__Search,
+    useLayoutMode: use__APP_NAME__LayoutMode,
+  },
+};

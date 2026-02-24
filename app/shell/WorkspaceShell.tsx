@@ -15,19 +15,24 @@ import {
   CommandDock,
   TerminalDrawer,
   AppWindow,
+} from '@hudson/sdk/shell';
+import {
   usePersistentState,
   sounds,
   setMuted as setSoundMuted,
-} from 'frame-ui';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'frame-ui';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map } from 'lucide-react';
+} from '@hudson/sdk';
+import type { HudsonWorkspace, WorkspaceAppConfig, AppTool, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen } from 'lucide-react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
+import { ToolAccordion } from './ToolAccordion';
 import { ShellLayoutProvider } from './ShellLayoutContext';
 import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 import { useIntentCatalog } from '../hooks/useIntentCatalog';
 import { useIntentExecutor } from '../hooks/useIntentExecutor';
+import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
+import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 
 // ---------------------------------------------------------------------------
 // Default settings
@@ -107,11 +112,13 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
   return (
     <>
       {/* Workspace content — always rendered */}
-      <div key={workspace.id}>{tree}</div>
+      <WorkspaceErrorBoundary workspaceName={workspace.name}>
+        <div key={workspace.id}>{tree}</div>
+      </WorkspaceErrorBoundary>
 
       {/* Boot splash overlay */}
       <AnimatePresence>
-        {!booted && (
+        {!booted && bootMode !== 'none' && (
           <BootSplash
             mode={bootMode}
             onPhaseChange={setBootPhase}
@@ -134,7 +141,8 @@ interface AppHookData {
   search: SearchConfig | null;
   navCenter: ReactNode | null;
   navActions: ReactNode | null;
-  frameMode: 'canvas' | 'panel';
+  layoutMode: 'canvas' | 'panel';
+  activeToolHint: string | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -150,7 +158,8 @@ function useAppHooks(config: WorkspaceAppConfig): AppHookData {
     search: app.hooks.useSearch?.() ?? null,
     navCenter: app.hooks.useNavCenter?.() ?? null,
     navActions: app.hooks.useNavActions?.() ?? null,
-    frameMode: app.hooks.useFrameMode?.() ?? app.mode,
+    layoutMode: app.hooks.useLayoutMode?.() ?? app.mode,
+    activeToolHint: app.hooks.useActiveToolHint?.() ?? null,
   };
 }
 
@@ -193,6 +202,29 @@ function WorkspaceInner({
   );
   const focusedIdx = allAppHooks.findIndex(h => h.appId === focusedAppId);
   const focused = allAppHooks[focusedIdx >= 0 ? focusedIdx : 0];
+
+  // --- Tool expansion state (right sidebar accordion) ---
+  const [expandedToolId, setExpandedToolId] = useState<string | null>(null);
+
+  // Reset expanded tool when focused app changes
+  const prevFocusedAppIdRef = useRef(focusedAppId);
+  useEffect(() => {
+    if (prevFocusedAppIdRef.current !== focusedAppId) {
+      setExpandedToolId(null);
+      prevFocusedAppIdRef.current = focusedAppId;
+    }
+  }, [focusedAppId]);
+
+  // Auto-expand tool based on app's activeToolHint
+  useEffect(() => {
+    if (focused.activeToolHint) {
+      setExpandedToolId(focused.activeToolHint);
+    }
+  }, [focused.activeToolHint]);
+
+  const handleToggleTool = useCallback((toolId: string) => {
+    setExpandedToolId(prev => prev === toolId ? null : toolId);
+  }, []);
 
   // --- Activated apps tracking (demo progressive reveal) ---
   const isFullBoot = bootMode === 'full';
@@ -254,8 +286,8 @@ function WorkspaceInner({
   }, [showLauncher]);
 
   // --- Mode resolution ---
-  const frameMode = isSingleApp ? focused.frameMode : workspace.mode;
-  const isCanvasMode = frameMode === 'canvas';
+  const layoutMode = isSingleApp ? focused.layoutMode : workspace.mode;
+  const isCanvasMode = layoutMode === 'canvas';
 
   // --- Shell state (same as AppShell) ---
   const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', false);
@@ -494,6 +526,12 @@ function WorkspaceInner({
         shortcut: 'Cmd+M',
         action: handleToggleMute,
       },
+      {
+        id: 'shell:docs',
+        label: 'Open Documentation',
+        icon: <BookOpen size={14} />,
+        action: () => window.open('/docs', '_blank'),
+      },
       // Workspace switch commands
       ...workspaces
         .filter(ws => ws.id !== activeWorkspaceId)
@@ -608,7 +646,11 @@ function WorkspaceInner({
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const leftFooter = (
     <>
-      {isSingleApp && singleApp?.slots.LeftFooter && <singleApp.slots.LeftFooter />}
+      {isSingleApp && singleApp?.slots.LeftFooter && (
+        <AppSlotErrorBoundary appName={singleApp.name} slotName="LeftFooter">
+          <singleApp.slots.LeftFooter />
+        </AppSlotErrorBoundary>
+      )}
       {isCanvasMode && (
         <Minimap
           pan={panOffset}
@@ -647,7 +689,11 @@ function WorkspaceInner({
 
   // --- Left/Right sidebar content ---
   const leftPanelContent = isSingleApp ? (
-    singleApp?.slots.LeftPanel && <singleApp.slots.LeftPanel />
+    singleApp?.slots.LeftPanel && (
+      <AppSlotErrorBoundary appName={singleApp.name} slotName="LeftPanel">
+        <singleApp.slots.LeftPanel />
+      </AppSlotErrorBoundary>
+    )
   ) : (
     workspace.apps.map(config => {
       const { app } = config;
@@ -663,31 +709,40 @@ function WorkspaceInner({
           isVisible={activatedAppIds.has(app.id)}
           onToggleVisibility={() => handleToggleAppVisibility(app.id)}
         >
-          <app.slots.LeftPanel />
+          <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
+            <app.slots.LeftPanel />
+          </AppSlotErrorBoundary>
         </SidebarSection>
       );
     })
   );
 
-  const rightPanelContent = isSingleApp ? (
-    singleApp?.slots.RightPanel && <singleApp.slots.RightPanel />
+  // --- Right panel content: Inspector + Tools split ---
+  const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const hasInspectorOrTools = focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length);
+
+  const rightPanelContent = hasInspectorOrTools ? (
+    <>
+      {focusedApp.slots.Inspector && (
+        <AppSlotErrorBoundary appName={focusedApp.name} slotName="Inspector">
+          <focusedApp.slots.Inspector />
+        </AppSlotErrorBoundary>
+      )}
+      {focusedApp.tools && focusedApp.tools.length > 0 && (
+        <ToolAccordion
+          tools={focusedApp.tools}
+          expandedToolId={expandedToolId}
+          onToggle={handleToggleTool}
+        />
+      )}
+    </>
   ) : (
-    workspace.apps.map(config => {
-      const { app } = config;
-      if (!app.slots.RightPanel) return null;
-      return (
-        <SidebarSection
-          key={app.id}
-          appName={app.name}
-          appIcon={app.rightPanel?.icon}
-          isFocused={app.id === focusedAppId}
-          onFocus={() => setFocusedAppId(app.id)}
-          defaultExpanded={app.id === focusedAppId}
-        >
-          <app.slots.RightPanel />
-        </SidebarSection>
-      );
-    })
+    // Backward compat: fall back to RightPanel slot
+    focusedApp?.slots.RightPanel ? (
+      <AppSlotErrorBoundary appName={focusedApp.name} slotName="RightPanel">
+        <focusedApp.slots.RightPanel />
+      </AppSlotErrorBoundary>
+    ) : null
   );
 
   // --- Panel titles ---
@@ -735,7 +790,11 @@ function WorkspaceInner({
     if (!hasMultipleTerminals) {
       // Single terminal — render directly
       const TermSlot = appsWithTerminal[0].app.slots.Terminal!;
-      return <TermSlot />;
+      return (
+        <AppSlotErrorBoundary appName={appsWithTerminal[0].app.name} slotName="Terminal">
+          <TermSlot />
+        </AppSlotErrorBoundary>
+      );
     }
 
     // Multiple terminals — tab bar
@@ -757,7 +816,11 @@ function WorkspaceInner({
           ))}
         </div>
         <div className="flex-1 overflow-hidden">
-          {activeTerminalApp?.slots.Terminal && <activeTerminalApp.slots.Terminal />}
+          {activeTerminalApp?.slots.Terminal && (
+            <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
+              <activeTerminalApp.slots.Terminal />
+            </AppSlotErrorBoundary>
+          )}
         </div>
       </div>
     );
@@ -768,7 +831,9 @@ function WorkspaceInner({
   const worldContent = (
     <div data-hudson-world>
       {isSingleApp && SingleContent ? (
-        <SingleContent />
+        <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
+          <SingleContent />
+        </AppSlotErrorBoundary>
       ) : (
         <MultiAppCanvas
           workspace={workspace}
@@ -821,6 +886,14 @@ function WorkspaceInner({
                 actions={
                   <>
                     {focused.navActions}
+                    <a
+                      href="/docs"
+                      target="_blank"
+                      className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+                      title="Documentation"
+                    >
+                      <BookOpen size={14} />
+                    </a>
                     <button
                       onClick={handleToggleMute}
                       className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
@@ -979,9 +1052,9 @@ function MultiAppCanvas({
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
   const windowedApps = workspace.apps.filter(c => c.canvasMode === 'windowed');
 
-  // When launcher is dismissed, show all; otherwise only activated
-  const visibleNative = showLauncher ? nativeApps.filter(c => activatedAppIds.has(c.app.id)) : nativeApps;
-  const visibleWindowed = showLauncher ? windowedApps.filter(c => activatedAppIds.has(c.app.id)) : windowedApps;
+  // Filter to only show activated (visible) apps
+  const visibleNative = nativeApps.filter(c => activatedAppIds.has(c.app.id));
+  const visibleWindowed = windowedApps.filter(c => activatedAppIds.has(c.app.id));
 
   return (
     <>
@@ -997,7 +1070,9 @@ function MultiAppCanvas({
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
           >
-            <config.app.slots.Content />
+            <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+              <config.app.slots.Content />
+            </AppSlotErrorBoundary>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -1137,7 +1212,9 @@ function WindowedApp({
       onToggleMaximize={handleToggleMaximize}
       contextMenuItems={contextMenuItems}
     >
-      <config.app.slots.Content />
+      <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+        <config.app.slots.Content />
+      </AppSlotErrorBoundary>
     </AppWindow>
   );
 }

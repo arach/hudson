@@ -2,8 +2,8 @@
 
 import { useMemo, type ReactNode, createElement } from 'react';
 import { Move, LayoutList, LayoutGrid } from 'lucide-react';
-import type { CommandOption } from 'frame-ui';
-import type { StatusColor, SearchConfig } from 'frame-ui';
+import type { CommandOption } from '@hudson/sdk';
+import type { StatusColor, SearchConfig } from '@hudson/sdk';
 import { useDocs } from './DocsProvider';
 import { ViewModeToggle } from './components';
 
@@ -38,7 +38,7 @@ export function useDocsNavActions(): ReactNode | null {
   return null; // Mute button is shell-level
 }
 
-export function useDocsFrameMode(): 'canvas' | 'panel' {
+export function useDocsLayoutMode(): 'canvas' | 'panel' {
   const { viewMode } = useDocs();
   return viewMode === 'canvas' ? 'canvas' : 'panel';
 }

@@ -1,0 +1,22 @@
+'use client';
+
+import { use__APP_NAME__ } from './__APP_NAME__Provider';
+
+export function __APP_NAME__Content() {
+  const { selectedItem } = use__APP_NAME__();
+
+  return (
+    <div className="h-full flex items-center justify-center">
+      <div className="text-center space-y-3">
+        <div className="text-[11px] font-mono text-neutral-300 tracking-widest uppercase">
+          __APP_DISPLAY_NAME__
+        </div>
+        <div className="text-[10px] font-mono text-neutral-500">
+          {selectedItem
+            ? `Selected: ${selectedItem}`
+            : 'No item selected'}
+        </div>
+      </div>
+    </div>
+  );
+}

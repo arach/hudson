@@ -1,4 +1,4 @@
-import type { HudsonWorkspace } from 'frame-ui';
+import type { HudsonWorkspace } from '@hudson/sdk';
 import { hudsonDocsApp } from '../apps/hudson-docs';
 import { shaperApp } from '../apps/shaper';
 import { intentExplorerApp } from '../apps/intent-explorer';

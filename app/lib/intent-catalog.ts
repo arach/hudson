@@ -1,4 +1,4 @@
-import type { HudsonWorkspace, IntentCatalog, AppIntent } from 'frame-ui';
+import type { HudsonWorkspace, IntentCatalog, AppIntent } from '@hudson/sdk';
 import { shellIntents } from '../shell/intents';
 
 /**

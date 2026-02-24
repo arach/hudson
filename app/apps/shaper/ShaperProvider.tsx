@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
-import { sounds } from 'frame-ui';
+import { sounds } from '@hudson/sdk';
 import type {
   BezierData,
   BezierSegment,

@@ -2,7 +2,7 @@
 
 import { useRef, useCallback } from 'react';
 import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
-import type { AppIntent } from 'frame-ui';
+import type { AppIntent } from '@hudson/sdk';
 import { useExplorer } from './IntentProvider';
 import { CATEGORY_COLORS } from './types';
 

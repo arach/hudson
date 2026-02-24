@@ -1,0 +1,39 @@
+'use client';
+
+import { useState, useRef, useEffect } from 'react';
+import { MoreHorizontal } from 'lucide-react';
+
+export function __APP_NAME__HeaderActions() {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handler = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, [open]);
+
+  return (
+    <div className="relative" ref={ref}>
+      <button
+        onClick={() => setOpen(!open)}
+        className="p-1 rounded hover:bg-white/10 transition-colors"
+      >
+        <MoreHorizontal size={14} className="text-neutral-400" />
+      </button>
+      {open && (
+        <div className="absolute right-0 top-full mt-1 w-48 py-1 bg-neutral-800 border border-neutral-700 rounded-md shadow-xl z-50">
+          <button
+            onClick={() => setOpen(false)}
+            className="w-full px-3 py-1.5 text-left text-[11px] font-mono text-neutral-300 hover:bg-white/5"
+          >
+            Action placeholder
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}

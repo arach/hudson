@@ -1,0 +1,12 @@
+[
+  {
+    "template": "editor-dark",
+    "title": "Hudson",
+    "subtitle": "Multi-app canvas workspace for React",
+    "accent": "#10b981",
+    "tag": "Open Source",
+    "fonts": ["JetBrains Mono:wght@400;700", "Inter:wght@400;500"],
+    "scale": 2,
+    "output": "public/og.png"
+  }
+]

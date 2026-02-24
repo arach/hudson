@@ -1,0 +1,43 @@
+'use client';
+
+import { use__APP_NAME__ } from './__APP_NAME__Provider';
+
+const PLACEHOLDER_ITEMS = [
+  { id: 'item-1', label: 'Item One' },
+  { id: 'item-2', label: 'Item Two' },
+  { id: 'item-3', label: 'Item Three' },
+];
+
+export function __APP_NAME__LeftPanel() {
+  const { selectedItem, setSelectedItem, searchQuery } = use__APP_NAME__();
+
+  const filtered = searchQuery
+    ? PLACEHOLDER_ITEMS.filter(i => i.label.toLowerCase().includes(searchQuery.toLowerCase()))
+    : PLACEHOLDER_ITEMS;
+
+  return (
+    <div className="py-2">
+      <div className="px-4 py-2 text-[10px] font-mono text-neutral-300 tracking-widest uppercase">
+        Items
+      </div>
+      {filtered.map(item => (
+        <button
+          key={item.id}
+          onClick={() => setSelectedItem(item.id)}
+          className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
+            selectedItem === item.id
+              ? 'bg-cyan-500/10 text-cyan-400 border-l-2 border-cyan-500'
+              : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-200 border-l-2 border-transparent'
+          }`}
+        >
+          <span className="text-[12px] font-mono tracking-wider">{item.label}</span>
+        </button>
+      ))}
+      {filtered.length === 0 && (
+        <div className="px-4 py-3 text-[11px] font-mono text-neutral-500">
+          No results
+        </div>
+      )}
+    </div>
+  );
+}

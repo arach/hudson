@@ -1,6 +1,6 @@
 import { Zap, ScanSearch } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from 'frame-ui';
+import type { HudsonApp } from '@hudson/sdk';
 import { IntentProvider } from './IntentProvider';
 import { IntentContent } from './IntentContent';
 import { IntentLeftPanel } from './IntentLeftPanel';
@@ -9,7 +9,7 @@ import {
   useExplorerCommands,
   useExplorerStatus,
   useExplorerSearch,
-  useExplorerFrameMode,
+  useExplorerLayoutMode,
 } from './hooks';
 
 export const intentExplorerApp: HudsonApp = {
@@ -26,13 +26,13 @@ export const intentExplorerApp: HudsonApp = {
   slots: {
     Content: IntentContent,
     LeftPanel: IntentLeftPanel,
-    RightPanel: IntentRightPanel,
+    Inspector: IntentRightPanel,
   },
 
   hooks: {
     useCommands: useExplorerCommands,
     useStatus: useExplorerStatus,
     useSearch: useExplorerSearch,
-    useFrameMode: useExplorerFrameMode,
+    useLayoutMode: useExplorerLayoutMode,
   },
 };

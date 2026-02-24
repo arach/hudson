@@ -1,4 +1,4 @@
-import type { AppIntent } from 'frame-ui';
+import type { AppIntent } from '@hudson/sdk';
 
 export const shaperIntents: AppIntent[] = [
   // --- Tools ---

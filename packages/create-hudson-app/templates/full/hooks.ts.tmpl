@@ -1,0 +1,34 @@
+'use client';
+
+import { useMemo, type ReactNode, createElement } from 'react';
+import type { CommandOption, StatusColor, SearchConfig } from '@hudson/sdk';
+import { use__APP_NAME__ } from './__APP_NAME__Provider';
+
+export function use__APP_NAME__Commands(): CommandOption[] {
+  return useMemo(() => [], []);
+}
+
+export function use__APP_NAME__Status(): { label: string; color: StatusColor } {
+  return { label: 'READY', color: 'emerald' };
+}
+
+export function use__APP_NAME__Search(): SearchConfig {
+  const { searchQuery, setSearchQuery } = use__APP_NAME__();
+  return { value: searchQuery, onChange: setSearchQuery, placeholder: 'Search...' };
+}
+
+export function use__APP_NAME__NavCenter(): ReactNode | null {
+  return null;
+}
+
+export function use__APP_NAME__NavActions(): ReactNode | null {
+  return null;
+}
+
+export function use__APP_NAME__LayoutMode(): 'canvas' | 'panel' {
+  return '__APP_MODE__';
+}
+
+export function use__APP_NAME__ActiveToolHint(): string | null {
+  return null;
+}

@@ -20,7 +20,7 @@ description: Dense, structured overview of Hudson for AI agent consumption
 
 | Layer | Location | Role |
 |-------|----------|------|
-| frame-ui | `packages/frame-ui/src/` | Component library + type contracts |
+| @hudson/sdk | `packages/hudson-sdk/src/` | Component library + type contracts |
 | Shell | `app/shell/` | Runtime orchestrator (WorkspaceShell) |
 | Apps | `app/apps/` | Self-contained apps implementing HudsonApp |
 
@@ -54,7 +54,7 @@ description: Dense, structured overview of Hudson for AI agent consumption
 | `hooks.useSearch` | () => SearchConfig | Nav bar search |
 | `hooks.useNavCenter` | () => ReactNode | Nav center content |
 | `hooks.useNavActions` | () => ReactNode | Nav right actions |
-| `hooks.useFrameMode` | () => 'canvas'|'panel' | Mode override |
+| `hooks.useLayoutMode` | () => 'canvas'|'panel' | Mode override |
 | `intents` | AppIntent[] | LLM/voice declarations |
 
 ## StatusColor valid values

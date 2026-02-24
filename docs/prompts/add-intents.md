@@ -7,7 +7,7 @@ description: Task template for adding intent declarations to an existing app
 
 ## Context
 
-Intents declare structured metadata about app commands for LLM/voice/search integration. Read `packages/frame-ui/src/types/intent.ts` for the full type.
+Intents declare structured metadata about app commands for LLM/voice/search integration. Read `packages/hudson-sdk/src/types/intent.ts` for the full type.
 
 ## Inputs
 
@@ -20,7 +20,7 @@ Intents declare structured metadata about app commands for LLM/voice/search inte
 
 2. **Create intents file** (`app/apps/{app}/intents.ts`):
    ```typescript
-   import type { AppIntent } from 'frame-ui';
+   import type { AppIntent } from '@hudson/sdk';
 
    export const {app}Intents: AppIntent[] = [
      {

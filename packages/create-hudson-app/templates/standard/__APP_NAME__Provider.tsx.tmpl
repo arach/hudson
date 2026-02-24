@@ -1,0 +1,45 @@
+'use client';
+
+import {
+  createContext,
+  useContext,
+  useState,
+  type ReactNode,
+} from 'react';
+
+// ---------------------------------------------------------------------------
+// Context
+// ---------------------------------------------------------------------------
+interface __APP_NAME__ContextValue {
+  selectedItem: string | null;
+  setSelectedItem: (id: string | null) => void;
+  searchQuery: string;
+  setSearchQuery: (q: string) => void;
+}
+
+const __APP_NAME__Context = createContext<__APP_NAME__ContextValue | null>(null);
+
+export function use__APP_NAME__(): __APP_NAME__ContextValue {
+  const ctx = useContext(__APP_NAME__Context);
+  if (!ctx) throw new Error('use__APP_NAME__ must be used within __APP_NAME__Provider');
+  return ctx;
+}
+
+// ---------------------------------------------------------------------------
+// Provider
+// ---------------------------------------------------------------------------
+export function __APP_NAME__Provider({ children }: { children: ReactNode }) {
+  const [selectedItem, setSelectedItem] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
+
+  const value: __APP_NAME__ContextValue = {
+    selectedItem,
+    setSelectedItem,
+    searchQuery,
+    setSearchQuery,
+  };
+
+  return (
+    <__APP_NAME__Context.Provider value={value}>{children}</__APP_NAME__Context.Provider>
+  );
+}

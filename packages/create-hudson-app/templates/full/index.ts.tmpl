@@ -1,0 +1,77 @@
+import { createElement } from 'react';
+import { __APP_ICON__, Layers, ScanSearch, Wrench } from 'lucide-react';
+import type { HudsonApp, AppTool, AppManifest } from '@hudson/sdk';
+import { __APP_NAME__Provider } from './__APP_NAME__Provider';
+import { __APP_NAME__Content } from './__APP_NAME__Content';
+import { __APP_NAME__LeftPanel } from './__APP_NAME__LeftPanel';
+import { __APP_NAME__Inspector } from './__APP_NAME__Inspector';
+import { __APP_NAME__LeftFooter } from './__APP_NAME__LeftFooter';
+import { __APP_NAME__Terminal } from './__APP_NAME__Terminal';
+import { __APP_NAME__HeaderActions } from './__APP_NAME__HeaderActions';
+import { SampleTool } from './tools/SampleTool';
+import {
+  use__APP_NAME__Commands,
+  use__APP_NAME__Status,
+  use__APP_NAME__Search,
+  use__APP_NAME__NavCenter,
+  use__APP_NAME__NavActions,
+  use__APP_NAME__LayoutMode,
+  use__APP_NAME__ActiveToolHint,
+} from './hooks';
+import { __APP_VAR__Intents } from './intents';
+
+const __APP_VAR__Tools: AppTool[] = [
+  { id: 'sample', name: 'Sample', icon: createElement(Wrench, { size: 12 }), Component: SampleTool },
+];
+
+const __APP_VAR__Manifest: AppManifest = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: '__APP_MODE__',
+  commands: [],
+  tools: [
+    { id: 'sample', name: 'Sample' },
+  ],
+};
+
+export const __APP_VAR__App: HudsonApp = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: '__APP_MODE__',
+  manifest: __APP_VAR__Manifest,
+  intents: __APP_VAR__Intents,
+
+  leftPanel: {
+    title: '__APP_DISPLAY_NAME__',
+    icon: createElement(Layers, { size: 12 }),
+    headerActions: __APP_NAME__HeaderActions,
+  },
+  rightPanel: {
+    title: 'Inspector',
+    icon: createElement(ScanSearch, { size: 12 }),
+  },
+
+  tools: __APP_VAR__Tools,
+
+  Provider: __APP_NAME__Provider,
+
+  slots: {
+    Content: __APP_NAME__Content,
+    LeftPanel: __APP_NAME__LeftPanel,
+    Inspector: __APP_NAME__Inspector,
+    LeftFooter: __APP_NAME__LeftFooter,
+    Terminal: __APP_NAME__Terminal,
+  },
+
+  hooks: {
+    useCommands: use__APP_NAME__Commands,
+    useStatus: use__APP_NAME__Status,
+    useSearch: use__APP_NAME__Search,
+    useNavCenter: use__APP_NAME__NavCenter,
+    useNavActions: use__APP_NAME__NavActions,
+    useLayoutMode: use__APP_NAME__LayoutMode,
+    useActiveToolHint: use__APP_NAME__ActiveToolHint,
+  },
+};

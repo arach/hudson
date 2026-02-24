@@ -21,7 +21,7 @@ bun run lint   # ESLint
 - All UI components are custom-built — do not replace with library components
 - Use `@base-ui/react` for context menu only, `motion` sparingly
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald
-- Every app must implement the `HudsonApp` interface from `frame-ui`
+- Every app must implement the `HudsonApp` interface from `@hudson/sdk`
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 
 ## Key Paths
@@ -32,10 +32,10 @@ bun run lint   # ESLint
 | `app/shell/WorkspaceShell.tsx` | Main shell orchestrator |
 | `app/apps/` | App implementations |
 | `app/workspaces/` | Workspace definitions |
-| `packages/frame-ui/src/types/app.ts` | HudsonApp interface |
-| `packages/frame-ui/src/types/workspace.ts` | HudsonWorkspace interface |
-| `packages/frame-ui/src/types/intent.ts` | AppIntent interface |
-| `packages/frame-ui/src/` | Component library source |
+| `packages/hudson-sdk/src/types/app.ts` | HudsonApp interface |
+| `packages/hudson-sdk/src/types/workspace.ts` | HudsonWorkspace interface |
+| `packages/hudson-sdk/src/types/intent.ts` | AppIntent interface |
+| `packages/hudson-sdk/src/` | Component library source |
 
 ## Adding a New App
 

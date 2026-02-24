@@ -7,7 +7,7 @@ description: Task template for creating a new app in the Hudson platform
 
 ## Context
 
-You are building an app for the Hudson workspace platform. Read `docs/building-apps.md` and `packages/frame-ui/src/types/app.ts` before starting.
+You are building an app for the Hudson workspace platform. Read `docs/building-apps.md` and `packages/hudson-sdk/src/types/app.ts` before starting.
 
 ## Inputs
 
@@ -38,7 +38,7 @@ You are building an app for the Hudson workspace platform. Read `docs/building-a
 5. **Create hooks** (`hooks.ts`):
    - `use{Name}Commands()` — return CommandOption[] for palette
    - `use{Name}Status()` — return { label, color }
-   - Optional: `use{Name}Search()`, `use{Name}NavCenter()`, `use{Name}FrameMode()`
+   - Optional: `use{Name}Search()`, `use{Name}NavCenter()`, `use{Name}LayoutMode()`
 
 6. **Create intents** (`intents.ts`, optional):
    - Declare AppIntent[] with commandId matching CommandOption.id values
