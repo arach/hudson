@@ -291,14 +291,16 @@ export function GlyphWaves(props: GlyphWavesProps) {
   paramsRef.current = p;
 
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
+    const _canvas = canvasRef.current;
+    if (!_canvas) return;
+    const canvas = _canvas;
 
-    const gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
-    if (!gl) {
+    const _gl = canvas.getContext('webgl2', { antialias: false, alpha: false });
+    if (!_gl) {
       console.warn('WebGL2 not available');
       return;
     }
+    const gl = _gl;
 
     const params = paramsRef.current;
 
