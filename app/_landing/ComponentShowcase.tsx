@@ -37,7 +37,9 @@ export function ComponentShowcase() {
   const { params, update, reset } = useGlyphWavesParams();
   const [controlsOpen, setControlsOpen] = useState(false);
   const [copiedTsx, setCopiedTsx] = useState(false);
+  const [expanded, setExpanded] = useState(false);
   const panelRef = useRef<HTMLDivElement>(null);
+  const cardRef = useRef<HTMLDivElement>(null);
 
   const copyTsx = useCallback(() => {
     const lines = Object.entries(params)
@@ -57,6 +59,7 @@ export function ComponentShowcase() {
       if (e.ctrlKey && e.shiftKey && e.key === 'G') {
         e.preventDefault();
         setControlsOpen((o) => !o);
+        setExpanded(true);
         return;
       }
       // Cmd/Ctrl+Shift+C — copy TSX (only if no text selected)
@@ -70,6 +73,20 @@ export function ComponentShowcase() {
     window.addEventListener('keydown', onKeyDown);
     return () => window.removeEventListener('keydown', onKeyDown);
   }, [copyTsx]);
+
+  // Collapse when clicking outside
+  useEffect(() => {
+    function onClickOutside(e: MouseEvent) {
+      if (!expanded) return;
+      const root = cardRef.current?.parentElement;
+      if (root && !root.contains(e.target as Node)) {
+        setExpanded(false);
+        setControlsOpen(false);
+      }
+    }
+    document.addEventListener('mousedown', onClickOutside);
+    return () => document.removeEventListener('mousedown', onClickOutside);
+  }, [expanded]);
 
   const [mod, setMod] = useState('Ctrl');
   useEffect(() => {
@@ -97,7 +114,10 @@ export function ComponentShowcase() {
   };
 
   return (
-    <div className="fixed bottom-5 right-5 z-50 w-[260px] flex flex-col items-stretch gap-2">
+    <div
+      className="fixed bottom-5 right-5 z-50 flex flex-col items-stretch gap-2 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+      style={{ width: expanded ? 260 : 220 }}
+    >
       {/* ── Controls panel (slides up above card) ─────────── */}
       <AnimatePresence>
         {controlsOpen && (
@@ -192,10 +212,18 @@ export function ComponentShowcase() {
         )}
       </AnimatePresence>
 
-      {/* ── Showcase card (always visible) ────────────────── */}
-      <div className="relative rounded-xl overflow-hidden" style={glassStyle}>
+      {/* ── Showcase card ──────────────────────────────────── */}
+      <div
+        ref={cardRef}
+        className="relative rounded-xl overflow-hidden cursor-pointer"
+        style={glassStyle}
+        onClick={() => !expanded && setExpanded(true)}
+      >
         {/* Mini animation preview */}
-        <div className="relative h-[100px] overflow-hidden">
+        <div
+          className="relative overflow-hidden transition-[height] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
+          style={{ height: expanded ? 100 : 56 }}
+        >
           <GlyphWaves {...previewProps} />
           <div
             className="absolute bottom-0 left-0 right-0 h-8"
@@ -207,57 +235,70 @@ export function ComponentShowcase() {
         </div>
 
         {/* Card body */}
-        <div className="px-4 pb-4 pt-1 space-y-3">
-          {/* Title row */}
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono font-medium tracking-wide text-neutral-200">
-                GlyphWaves
-              </span>
-              <span className="text-[9px] font-mono tracking-wider text-neutral-500 uppercase">
-                React + WebGL
-              </span>
-            </div>
-            <p className="text-[10px] font-mono text-neutral-400 mt-0.5 leading-relaxed">
-              Perlin noise glyph dithering with mouse interaction. Free to use.
-            </p>
+        <div className="px-3 pb-3 pt-1">
+          {/* Title row — always visible */}
+          <div className="flex items-center gap-2">
+            <span className="text-[10px] font-mono font-medium tracking-wide text-neutral-200">
+              GlyphWaves
+            </span>
+            <span className="text-[8px] font-mono tracking-wider text-neutral-600 uppercase">
+              React + WebGL
+            </span>
           </div>
+          <p className="text-[9px] font-mono text-neutral-500 mt-0.5 leading-relaxed">
+            Perlin noise glyph dithering with mouse interaction.
+          </p>
 
-          {/* Copy TSX */}
-          <button onClick={copyTsx} className="showcase-btn w-full group/btn">
-            <span className="showcase-btn-label">
-              {copiedTsx ? 'Copied' : 'Copy TSX'}
-            </span>
-            <kbd className="showcase-kbd">
-              {mod}&#x21e7;C
-            </kbd>
-          </button>
-
-          {/* View / Hide Controls */}
-          <button
-            onClick={() => setControlsOpen((o) => !o)}
-            className="showcase-btn w-full group/btn"
-          >
-            <span className="showcase-btn-label">
-              {controlsOpen ? 'Hide Controls' : 'View Controls'}
-            </span>
-            <span
-              className="text-[9px] transition-transform duration-200"
-              style={{
-                display: 'inline-block',
-                transform: controlsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-              }}
-            >
-              ▲
-            </span>
-          </button>
-
-          {/* Attribution */}
-          <div className="flex items-center justify-center gap-1.5 pt-0.5">
-            <span className="text-[9px] font-mono tracking-widest text-neutral-500 uppercase">
+          {/* Attribution — always visible */}
+          <div className="flex items-center gap-1.5 mt-1.5">
+            <span className="text-[8px] font-mono tracking-widest text-neutral-600 uppercase">
               Powered by Hudson
             </span>
           </div>
+
+          {/* Buttons — revealed on expand */}
+          <AnimatePresence>
+            {expanded && (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+                className="overflow-hidden"
+              >
+                <div className="pt-2.5 space-y-2">
+                  {/* Copy TSX */}
+                  <button onClick={(e) => { e.stopPropagation(); copyTsx(); }} className="showcase-btn w-full group/btn">
+                    <span className="showcase-btn-label">
+                      {copiedTsx ? 'Copied' : 'Copy TSX'}
+                    </span>
+                    <kbd className="showcase-kbd">
+                      {mod}&#x21e7;C
+                    </kbd>
+                  </button>
+
+                  {/* View / Hide Controls */}
+                  <button
+                    onClick={(e) => { e.stopPropagation(); setControlsOpen((o) => !o); }}
+                    className="showcase-btn w-full group/btn"
+                  >
+                    <span className="showcase-btn-label">
+                      {controlsOpen ? 'Hide Controls' : 'View Controls'}
+                    </span>
+                    <span
+                      className="text-[9px] transition-transform duration-200"
+                      style={{
+                        display: 'inline-block',
+                        transform: controlsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                      }}
+                    >
+                      ▲
+                    </span>
+                  </button>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
         </div>
       </div>
     </div>
