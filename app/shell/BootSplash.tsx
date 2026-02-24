@@ -162,7 +162,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 {/* Domain + credit */}
                 <div className="flex flex-col items-center gap-1.5">
                   <span className="text-[10px] font-mono tracking-[0.2em] text-neutral-600">
-                    hudson.arach.dev
+                    hudsonos.com
                   </span>
                   <span className="text-[9px] font-mono tracking-[0.15em] text-neutral-700">
                     by @arach

@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://hudson.arach.dev"),
+  metadataBase: new URL("https://hudsonos.com"),
   title: "Hudson",
   description: "HUD-style chrome components for canvas and panel-based applications",
   openGraph: {

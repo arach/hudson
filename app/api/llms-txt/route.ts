@@ -9,11 +9,11 @@ export async function GET() {
     "",
     "## Documentation",
     ...docs.map(
-      (d) => `- ${d.title}: https://hudson.arach.dev/docs/${d.slug}`
+      (d) => `- ${d.title}: https://hudsonos.com/docs/${d.slug}`
     ),
     "",
     "## Full documentation",
-    "https://hudson.arach.dev/llms-full.txt",
+    "https://hudsonos.com/llms-full.txt",
     "",
   ];
 

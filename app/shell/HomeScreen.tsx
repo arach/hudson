@@ -105,7 +105,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
             />
           </div>
           <span className="text-[11px] font-mono tracking-[0.2em] text-neutral-500">
-            arach.dev
+            hudsonos.com
           </span>
         </motion.div>
 
