@@ -6,6 +6,8 @@ import { Features } from './_landing/Features';
 import { CodePreview } from './_landing/CodePreview';
 import { CallToAction } from './_landing/CallToAction';
 import { Footer } from './_landing/Footer';
+import { ComponentShowcase } from './_landing/ComponentShowcase';
+import { LandingGlyphWaves } from './_landing/LandingGlyphWaves';
 import './_landing/landing.css';
 
 export const metadata: Metadata = {
@@ -16,14 +18,17 @@ export const metadata: Metadata = {
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-[#0a0a0a] text-neutral-200">
-      <NavHeader />
-      <Hero />
-      <VideoSection />
-      <Features />
-      <CodePreview />
-      <CallToAction />
-      <Footer />
-    </div>
+    <LandingGlyphWaves>
+      <div className="min-h-screen bg-[#0a0a0a] text-neutral-200">
+        <NavHeader />
+        <Hero />
+        <VideoSection />
+        <Features />
+        <CodePreview />
+        <CallToAction />
+        <Footer />
+        <ComponentShowcase />
+      </div>
+    </LandingGlyphWaves>
   );
 }
