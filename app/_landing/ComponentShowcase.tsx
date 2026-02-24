@@ -38,8 +38,7 @@ export function ComponentShowcase() {
   const [controlsOpen, setControlsOpen] = useState(false);
   const [copiedTsx, setCopiedTsx] = useState(false);
   const [expanded, setExpanded] = useState(false);
-  const panelRef = useRef<HTMLDivElement>(null);
-  const cardRef = useRef<HTMLDivElement>(null);
+  const rootRef = useRef<HTMLDivElement>(null);
 
   const copyTsx = useCallback(() => {
     const lines = Object.entries(params)
@@ -55,14 +54,12 @@ export function ComponentShowcase() {
   // Keyboard shortcuts
   useEffect(() => {
     function onKeyDown(e: KeyboardEvent) {
-      // Ctrl+Shift+G — toggle controls
       if (e.ctrlKey && e.shiftKey && e.key === 'G') {
         e.preventDefault();
-        setControlsOpen((o) => !o);
         setExpanded(true);
+        setControlsOpen((o) => !o);
         return;
       }
-      // Cmd/Ctrl+Shift+C — copy TSX (only if no text selected)
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'c') {
         const sel = window.getSelection();
         if (sel && sel.toString().length > 0) return;
@@ -78,8 +75,7 @@ export function ComponentShowcase() {
   useEffect(() => {
     function onClickOutside(e: MouseEvent) {
       if (!expanded) return;
-      const root = cardRef.current?.parentElement;
-      if (root && !root.contains(e.target as Node)) {
+      if (rootRef.current && !rootRef.current.contains(e.target as Node)) {
         setExpanded(false);
         setControlsOpen(false);
       }
@@ -93,7 +89,7 @@ export function ComponentShowcase() {
     if (/Mac/.test(navigator.userAgent)) setMod('\u2318');
   }, []);
 
-  /* ── Preview props (slightly tweaked for mini card) ────────── */
+  /* ── Preview props ────────────────────────────────────────── */
   const previewProps: GlyphWavesProps = {
     ...params,
     cellSize: Math.max(6, Math.min((params.cellSize ?? 10) - 2, 14)),
@@ -114,34 +110,38 @@ export function ComponentShowcase() {
   };
 
   return (
-    <div
-      className="fixed bottom-5 right-5 z-50 flex flex-col items-stretch gap-2 transition-[width] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-      style={{ width: expanded ? 260 : 220 }}
-    >
+    <div ref={rootRef} className="fixed bottom-5 right-5 z-50 flex flex-col items-end gap-2">
       {/* ── Controls panel (slides up above card) ─────────── */}
       <AnimatePresence>
         {controlsOpen && (
           <motion.div
-            ref={panelRef}
             initial={{ opacity: 0, y: 16, scale: 0.97 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 16, scale: 0.97 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            className="rounded-xl overflow-hidden max-h-[50vh] overflow-y-auto"
+            className="w-[280px] rounded-xl overflow-hidden max-h-[50vh] overflow-y-auto"
             style={glassStyle}
           >
             <div className="p-3 space-y-2">
-              {/* Header */}
+              {/* Header + Quick Copy */}
               <div className="flex items-center justify-between">
                 <span className="text-[10px] font-mono font-bold tracking-widest text-neutral-400 uppercase">
                   Controls
                 </span>
-                <button
-                  onClick={reset}
-                  className="text-[9px] font-mono tracking-wider uppercase px-1.5 py-0.5 rounded border border-neutral-700 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
-                >
-                  Reset
-                </button>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    onClick={copyTsx}
+                    className="text-[9px] font-mono tracking-wider uppercase px-1.5 py-0.5 rounded border border-emerald-800/60 text-emerald-500/80 hover:text-emerald-400 hover:border-emerald-700 transition-colors cursor-pointer"
+                  >
+                    {copiedTsx ? 'Copied!' : `Copy TSX`}
+                  </button>
+                  <button
+                    onClick={reset}
+                    className="text-[9px] font-mono tracking-wider uppercase px-1.5 py-0.5 rounded border border-neutral-700 text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+                  >
+                    Reset
+                  </button>
+                </div>
               </div>
 
               {/* Colors */}
@@ -212,95 +212,83 @@ export function ComponentShowcase() {
         )}
       </AnimatePresence>
 
-      {/* ── Showcase card ──────────────────────────────────── */}
-      <div
-        ref={cardRef}
-        className="relative rounded-xl overflow-hidden cursor-pointer"
-        style={glassStyle}
-        onClick={() => !expanded && setExpanded(true)}
-      >
-        {/* Mini animation preview */}
-        <div
-          className="relative overflow-hidden transition-[height] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]"
-          style={{ height: expanded ? 100 : 56 }}
-        >
-          <GlyphWaves {...previewProps} />
-          <div
-            className="absolute bottom-0 left-0 right-0 h-8"
-            style={{
-              background:
-                'linear-gradient(to top, rgba(10,10,10,0.95), transparent)',
-            }}
-          />
-        </div>
+      {/* ── Expanded card ────────────────────────────────────── */}
+      <AnimatePresence>
+        {expanded && (
+          <motion.div
+            initial={{ opacity: 0, y: 8, scale: 0.97 }}
+            animate={{ opacity: 1, y: 0, scale: 1 }}
+            exit={{ opacity: 0, y: 8, scale: 0.97 }}
+            transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
+            className="w-[280px] rounded-xl overflow-hidden"
+            style={glassStyle}
+          >
+            {/* GlyphWaves preview */}
+            <div className="relative h-[100px] overflow-hidden">
+              <GlyphWaves {...previewProps} />
+              <div
+                className="absolute bottom-0 left-0 right-0 h-8"
+                style={{
+                  background:
+                    'linear-gradient(to top, rgba(10,10,10,0.95), transparent)',
+                }}
+              />
+            </div>
 
-        {/* Card body */}
-        <div className="px-3 pb-3 pt-1">
-          {/* Title row — always visible */}
-          <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono font-medium tracking-wide text-neutral-200">
-              GlyphWaves
-            </span>
-            <span className="text-[8px] font-mono tracking-wider text-neutral-600 uppercase">
-              React + WebGL
-            </span>
-          </div>
-          <p className="text-[9px] font-mono text-neutral-500 mt-0.5 leading-relaxed">
-            Perlin noise glyph dithering with mouse interaction.
-          </p>
-
-          {/* Attribution — always visible */}
-          <div className="flex items-center gap-1.5 mt-1.5">
-            <span className="text-[8px] font-mono tracking-widest text-neutral-600 uppercase">
-              Powered by Hudson
-            </span>
-          </div>
-
-          {/* Buttons — revealed on expand */}
-          <AnimatePresence>
-            {expanded && (
-              <motion.div
-                initial={{ opacity: 0, height: 0 }}
-                animate={{ opacity: 1, height: 'auto' }}
-                exit={{ opacity: 0, height: 0 }}
-                transition={{ duration: 0.25, ease: [0.4, 0, 0.2, 1] }}
-                className="overflow-hidden"
-              >
-                <div className="pt-2.5 space-y-2">
-                  {/* Copy TSX */}
-                  <button onClick={(e) => { e.stopPropagation(); copyTsx(); }} className="showcase-btn w-full group/btn">
-                    <span className="showcase-btn-label">
-                      {copiedTsx ? 'Copied' : 'Copy TSX'}
-                    </span>
-                    <kbd className="showcase-kbd">
-                      {mod}&#x21e7;C
-                    </kbd>
-                  </button>
-
-                  {/* View / Hide Controls */}
-                  <button
-                    onClick={(e) => { e.stopPropagation(); setControlsOpen((o) => !o); }}
-                    className="showcase-btn w-full group/btn"
-                  >
-                    <span className="showcase-btn-label">
-                      {controlsOpen ? 'Hide Controls' : 'View Controls'}
-                    </span>
-                    <span
-                      className="text-[9px] transition-transform duration-200"
-                      style={{
-                        display: 'inline-block',
-                        transform: controlsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
-                      }}
-                    >
-                      ▲
-                    </span>
-                  </button>
+            {/* Card body */}
+            <div className="px-4 pb-4 pt-1.5 space-y-3">
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-mono font-medium tracking-wide text-neutral-200">
+                    GlyphWaves
+                  </span>
+                  <span className="text-[9px] font-mono tracking-wider text-neutral-500 uppercase">
+                    React + WebGL
+                  </span>
                 </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
-      </div>
+                <p className="text-[11px] font-mono text-neutral-400 mt-1 leading-relaxed">
+                  Perlin noise glyph dithering with mouse interaction. Free to use.
+                </p>
+              </div>
+
+              {/* Controls CTA */}
+              <button
+                onClick={() => setControlsOpen((o) => !o)}
+                className="showcase-btn w-full group/btn"
+              >
+                <span className="showcase-btn-label">
+                  {controlsOpen ? 'Hide Controls' : 'View Controls'}
+                </span>
+                <span
+                  className="text-[9px] transition-transform duration-200"
+                  style={{
+                    display: 'inline-block',
+                    transform: controlsOpen ? 'rotate(180deg)' : 'rotate(0deg)',
+                  }}
+                >
+                  ▲
+                </span>
+              </button>
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── Collapsed pill — always visible ───────────────── */}
+      <button
+        onClick={() => setExpanded((o) => !o)}
+        className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg font-mono cursor-pointer transition-all duration-200 hover:scale-[1.02]"
+        style={{
+          background: 'rgba(255,255,255,0.05)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          backdropFilter: 'blur(12px)',
+          boxShadow: '0 4px 16px rgba(0,0,0,0.3)',
+        }}
+      >
+        <span className="text-[10px] tracking-widest text-neutral-500 uppercase">
+          Powered by Hudson
+        </span>
+      </button>
     </div>
   );
 }
