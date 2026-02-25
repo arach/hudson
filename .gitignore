@@ -102,3 +102,7 @@ storybook-static/
 
 # docker
 docker-compose.override.yml
+
+# local database
+local.db
+local.db-*

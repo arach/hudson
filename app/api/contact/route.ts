@@ -1,8 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { Resend } from 'resend';
+import { db } from '@/lib/db';
+import { signups } from '@/lib/db/schema';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NOTIFY_TO = process.env.NOTIFY_EMAIL || 'hello@hudsonos.com';
+const NOTIFY_TO = process.env.NOTIFY_EMAIL || 'arach@hudsonos.com';
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -36,7 +38,7 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  const { email, message, honeypot } = await request.json();
+  const { email, message, useCase, context, honeypot } = await request.json();
 
   // Honeypot
   if (honeypot) {
@@ -53,15 +55,25 @@ export async function POST(request: NextRequest) {
   const cleanEmail = email.toLowerCase().trim();
 
   try {
+    // Store in database
+    await db.insert(signups).values({
+      email: cleanEmail,
+      useCase: useCase || null,
+      context: context || null,
+      ip: ip === 'unknown' ? null : ip,
+    });
+
     if (process.env.RESEND_API_KEY) {
       await getResend().emails.send({
-        from: 'Hudson <notifications@hudsonos.com>',
+        from: 'Hudson <hello@hudsonos.com>',
         to: NOTIFY_TO,
         subject: `Hudson interest from ${cleanEmail}`,
         html: `
 <div style="font-family: monospace; padding: 20px;">
   <h2>New Hudson Interest</h2>
   <p><strong>Email:</strong> ${cleanEmail}</p>
+  ${useCase ? `<p><strong>Use case:</strong> ${useCase}</p>` : ''}
+  ${context ? `<p><strong>Context:</strong> ${context}</p>` : ''}
   ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
   <p style="color: #666; font-size: 12px;">Sent from hudsonos.com</p>
 </div>`.trim(),

@@ -12,7 +12,9 @@
   },
   "dependencies": {
     "@base-ui-components/react": "^1.0.0-rc.0",
+    "@libsql/client": "^0.17.0",
     "@shikijs/rehype": "^3.22.0",
+    "drizzle-orm": "^0.45.1",
     "gray-matter": "^4.0.3",
     "lucide-react": "^0.574.0",
     "motion": "^12.34.3",
@@ -40,6 +42,7 @@
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
