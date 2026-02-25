@@ -1,2 +1,1 @@
-export { hudsonOSWorkspace } from './hudsonOS';
-export { shaperDevWorkspace } from './shaperDev';
+export { hudsonOSWorkspace, allWorkspaces } from '../apps/registry';

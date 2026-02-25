@@ -1,12 +1,12 @@
 'use client';
 
 import { WorkspaceShell } from '../shell/WorkspaceShell';
-import { hudsonOSWorkspace, shaperDevWorkspace } from '../workspaces';
+import { allWorkspaces } from '../workspaces';
 
 export default function AppPage() {
   return (
     <WorkspaceShell
-      workspaces={[hudsonOSWorkspace, shaperDevWorkspace]}
+      workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="none"
     />

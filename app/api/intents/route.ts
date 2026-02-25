@@ -1,11 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildIntentCatalog } from '../../lib/intent-catalog';
-import { hudsonOSWorkspace, shaperDevWorkspace } from '../../workspaces';
+import { allWorkspaces } from '../../workspaces';
 
-const workspaceMap: Record<string, typeof hudsonOSWorkspace> = {
-  'hudson-os': hudsonOSWorkspace,
-  'shaper-dev': shaperDevWorkspace,
-};
+const workspaceMap = Object.fromEntries(
+  allWorkspaces.map((ws) => [ws.id, ws]),
+);
 
 export async function GET(req: NextRequest) {
   const workspaceId = req.nextUrl.searchParams.get('workspace') ?? 'hudson-os';

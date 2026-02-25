@@ -22,6 +22,7 @@ node_modules/
 # env & secrets — never commit these
 .env
 .env.*
+.cf
 !.env.example
 *.pem
 *.key
@@ -39,6 +40,9 @@ appsettings.local.*
 *.local.yaml
 *.local.yml
 *.local.toml
+
+# local app directory (developer-specific, auto-created on first run)
+app/local/
 
 # OS files
 .DS_Store
