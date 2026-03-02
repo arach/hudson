@@ -228,7 +228,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
           {/* Badge + hint overlay — the element AnimatePresence tracks for onExitComplete */}
           <motion.div
             key="splash-overlay"
-            className="fixed inset-0 z-[202] flex flex-col items-center pointer-events-none"
+            className="fixed inset-0 z-[202] flex flex-col items-center justify-center pointer-events-none"
             initial={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.3, ease: 'easeIn' }}
@@ -244,7 +244,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   exit={{ opacity: 0, y: -10 }}
                   transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
                   style={{
-                    marginTop: '33vh',
+                    marginTop: '-8vh',
                     background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
                     backdropFilter: 'blur(24px) saturate(1.4)',
                     WebkitBackdropFilter: 'blur(24px) saturate(1.4)',

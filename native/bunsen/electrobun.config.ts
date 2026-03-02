@@ -10,6 +10,13 @@ const config: ElectrobunConfig = {
     bun: {
       entrypoint: "src/bun/index.ts",
     },
+    mac: {
+      codesign: true,
+      notarize: true,
+    },
+  },
+  scripts: {
+    postPackage: "scripts/post-package.sh",
   },
 };
 
