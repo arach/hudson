@@ -1,0 +1,46 @@
+{
+  "name": "hudson-docs",
+  "groups": [
+    {
+      "id": "getting-started",
+      "title": "Getting Started",
+      "items": [
+        {
+          "id": "overview",
+          "title": "Overview",
+          "description": "Introduction to Hudson — a multi-app canvas workspace platform for React"
+        },
+        {
+          "id": "quickstart",
+          "title": "Quickstart",
+          "description": "Get Hudson running locally in under 5 minutes"
+        },
+        {
+          "id": "scaffolding",
+          "title": "Scaffolding",
+          "description": "Generate new Hudson apps with create-hudson-app"
+        },
+        {
+          "id": "building-apps",
+          "title": "Building Apps",
+          "description": "Complete guide to building apps for the Hudson platform"
+        },
+        {
+          "id": "api",
+          "title": "API Reference",
+          "description": "Complete API reference for the @hudson/sdk package"
+        },
+        {
+          "id": "architecture",
+          "title": "Architecture",
+          "description": "Hudson project structure and architectural decisions"
+        },
+        {
+          "id": "skill",
+          "title": "Skills",
+          "description": "Pre-built skill definitions for AI agents working with Hudson"
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,78 @@
+{
+  "deweyVersion": "0.3.1",
+  "createdAt": "2026-02-24T04:04:27.782Z",
+  "updatedAt": "2026-02-24T04:27:23.035Z",
+  "template": "nextjs",
+  "theme": "ocean",
+  "projectName": "hudson-docs",
+  "defaultPage": "overview",
+  "files": {
+    "next.config.js": {
+      "owner": "dewey",
+      "hash": "169a0be5a7f0829f34c0693ca466a9a23c2dee10b9735ce41f75ecafd7fc79b1",
+      "version": "0.3.1"
+    },
+    "tsconfig.json": {
+      "owner": "dewey",
+      "hash": "61994acc0e2f05f3a61a1f6ec9e0afc4de1a77ea31fa82c32f2ebac1f0928020",
+      "version": "0.3.1"
+    },
+    "src/app/layout.tsx": {
+      "owner": "dewey",
+      "hash": "c1879ab854e47b47974f54fecfdebd6c2be512aa26c30480629e7a9c8d4d352a",
+      "version": "0.3.1"
+    },
+    "src/app/globals.css": {
+      "owner": "dewey",
+      "hash": "c673b50c28d530ad23345f5561e909f38e2433f52100b9edb0507e39d602e5eb",
+      "version": "0.3.1"
+    },
+    "src/app/providers.tsx": {
+      "owner": "dewey",
+      "hash": "e41ea8d9ebd4195ab38e91b16620f3627fc408a954037136fdc271181cae6dcb",
+      "version": "0.3.1"
+    },
+    "src/app/page.tsx": {
+      "owner": "dewey",
+      "hash": "39ad55ccb8fe83d8e6093417ae8e663a4496c3490ef792f017a6bfe3d7336c19",
+      "version": "0.3.1"
+    },
+    "src/app/docs/layout.tsx": {
+      "owner": "dewey",
+      "hash": "ec90dcb788d329683b3142f9ff10b392c0d1e39c6ebf2f9496a4fef7984ce2fc",
+      "version": "0.3.1"
+    },
+    "src/app/docs/[...slug]/page.tsx": {
+      "owner": "dewey",
+      "hash": "44f6e25dc31389062db8a039b66a0720707191682d8dabde6b23642c589b664d",
+      "version": "0.3.1"
+    },
+    "src/app/docs/[...slug]/content.tsx": {
+      "owner": "dewey",
+      "hash": "e9b31e04b017fd00130fea51cd8576059d36d0e95887a77d06d22fa3fa9a3d66",
+      "version": "0.3.1"
+    },
+    "src/lib/docs.ts": {
+      "owner": "dewey",
+      "hash": "33efb470b811d6790fcb10fe4d9af34eb25e426b1093ccac4bfc874a41da6b18",
+      "version": "0.3.1"
+    },
+    "src/lib/navigation.ts": {
+      "owner": "dewey",
+      "hash": "e5c3e01a922f585973a70df4004580eecd8fc5fdd9779617cb729b5eb830a1ad",
+      "version": "0.3.1"
+    },
+    "src/lib/dewey.tsx": {
+      "owner": "consumer"
+    },
+    "package.json": {
+      "owner": "consumer"
+    },
+    ".gitignore": {
+      "owner": "consumer"
+    },
+    "docs.json": {
+      "owner": "consumer"
+    }
+  }
+}
