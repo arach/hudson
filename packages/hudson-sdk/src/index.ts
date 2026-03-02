@@ -19,5 +19,9 @@ export { worldToScreen, screenToWorld } from './lib/viewport';
 // Manifest
 export { deriveManifest } from './lib/manifest';
 
+// Platform adapter
+export type { PlatformAdapter, PlatformLayout } from './platform';
+export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from './platform';
+
 // Reusable widget (used by apps like Shaper directly)
 export { ZoomControls } from './components/chrome';

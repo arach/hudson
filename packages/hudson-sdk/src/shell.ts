@@ -13,5 +13,8 @@ export { TerminalDrawer, CommandPalette, HudsonContextMenu } from './components/
 // Windows
 export { AppWindow } from './components/windows';
 
+// Solo shell (single-app standalone chrome)
+export { SoloShell } from './components/SoloShell';
+
 // Design tokens
 export { SHELL_THEME, CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from './lib/theme';

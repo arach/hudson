@@ -1,6 +1,7 @@
 import React from 'react';
 import { PanelLeftClose, PanelRightClose, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
 import { PANEL_STYLES } from '../../lib/theme';
+import { usePlatformLayout } from '../../platform/usePlatformLayout';
 
 interface SidePanelProps {
   side: 'left' | 'right';
@@ -42,10 +43,11 @@ const SidePanel: React.FC<SidePanelProps> = ({
   }
 
   const CollapseIcon = side === 'left' ? PanelLeftClose : PanelRightClose;
+  const { panelTopOffset } = usePlatformLayout();
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
-  const baseClasses = 'bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)] fixed top-[48px] bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
@@ -53,6 +55,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
     ...style,
     // Explicitly set positioning and width via inline styles
     position: 'fixed',
+    top: panelTopOffset,
     left: side === 'left' ? 0 : undefined,
     right: side === 'right' ? 0 : undefined,
     width: `${width || 280}px`

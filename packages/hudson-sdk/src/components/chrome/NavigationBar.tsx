@@ -1,5 +1,7 @@
 import React from 'react';
 import { Search, X } from 'lucide-react';
+import { usePlatform } from '../../platform/PlatformContext';
+import { usePlatformLayout } from '../../platform/usePlatformLayout';
 
 interface NavigationBarProps {
   /** App title/branding */
@@ -22,18 +24,24 @@ interface NavigationBarProps {
 const NavigationBar: React.FC<NavigationBarProps> = ({
   title, subtitle, center, actions, onTitleClick, search,
 }) => {
+  const { dragRegionProps, onInteractiveMouseDown } = usePlatform();
+  const { navTotalHeight } = usePlatformLayout();
   const isFiltered = search && search.value && search.value.length > 0;
 
   return (
     <div
       data-frame-panel="navigation"
       className="fixed top-0 left-0 right-0 z-50 pointer-events-auto"
+      {...dragRegionProps}
     >
-      <div className="h-12 bg-neutral-950/95 backdrop-blur-xl border-b border-neutral-700/80 shadow-[0_4px_30px_rgba(0,0,0,0.5)] flex items-center px-4">
+      <div
+        className="bg-neutral-950/95 backdrop-blur-xl border-b border-neutral-700/80 shadow-[0_4px_30px_rgba(0,0,0,0.5)] flex items-end px-4"
+        style={{ height: navTotalHeight }}
+      >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-white/8 to-transparent" />
 
         {/* Left: Branding */}
-        <div className="absolute left-4 top-0 bottom-0 z-10 flex items-center gap-3 select-none">
+        <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
           <button
             onClick={onTitleClick}
             className="text-[22px] font-bold text-white tracking-[0.25em] font-mono leading-none bg-transparent border-none cursor-pointer"
@@ -47,13 +55,13 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
         {/* Center */}
         {center && (
-          <div className="flex-1 flex justify-center">
+          <div className="flex-1 flex justify-center h-12 items-center" onMouseDown={onInteractiveMouseDown}>
             {center}
           </div>
         )}
 
         {/* Right: Actions + Search */}
-        <div className="absolute right-4 top-0 bottom-0 z-10 flex items-center gap-3">
+        <div className="absolute right-4 bottom-0 h-12 z-10 flex items-center gap-3" onMouseDown={onInteractiveMouseDown}>
           {actions}
 
           {/* Search / Scope filter */}

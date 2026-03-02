@@ -197,11 +197,10 @@ const AppWindow: React.FC<AppWindowProps> = ({
     } else {
       setPreMaxBounds(bounds);
       const zoom = worldScale ?? 1;
-      const maxW = window.innerWidth / zoom;
-      const maxH = window.innerHeight / zoom;
-      const maxX = -(maxW / 2);
-      const maxY = -(maxH / 2);
-      onBoundsChange({ x: maxX, y: maxY, w: maxW, h: maxH });
+      // 98% of viewport — leaves a thin padding around the edges
+      const maxW = (window.innerWidth / zoom) * 0.98;
+      const maxH = (window.innerHeight / zoom) * 0.98;
+      onBoundsChange({ x: -(maxW / 2), y: -(maxH / 2), w: maxW, h: maxH });
       setIsMaximizedInternal(true);
     }
   }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale, onToggleMaximizeProp]);
@@ -218,6 +217,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
         top: bounds.y,
         width: bounds.w,
         height: bounds.h,
+        // Expanded windows float above all siblings
+        ...(isMaximized ? { zIndex: 50 } : undefined),
       }}
       onMouseDown={handleWindowMouseDown}
     >
