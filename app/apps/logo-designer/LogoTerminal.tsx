@@ -1,14 +1,28 @@
 'use client';
 
 import { useHudsonAI, AI } from '@hudson/sdk';
+import type { AIAttachment } from '@hudson/sdk';
 import { useLogo } from './LogoProvider';
+import { useMemo } from 'react';
 
 export function LogoTerminal() {
   const { params, setParam, setVariant, resetDefaults, presets } = useLogo();
 
+  const attachments: AIAttachment[] = useMemo(() => [
+    {
+      label: 'SVG',
+      content: () => {
+        // Grab the largest (first) SVG from the logo preview
+        const svg = document.querySelector('svg[viewBox]');
+        return svg ? svg.outerHTML : null;
+      },
+    },
+  ], []);
+
   const chat = useHudsonAI({
     toolset: 'logo',
-    context: { params, presetNames: presets.map(p => p.label) },
+    context: { params, presets },
+    attachments,
     onToolCall: (name, args) => {
       switch (name) {
         case 'set_param':

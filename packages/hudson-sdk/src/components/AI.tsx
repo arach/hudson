@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
-import { Square, Trash2, AlertCircle } from 'lucide-react';
+import { Square, Trash2, AlertCircle, Paperclip } from 'lucide-react';
 import type { HudsonAIChat } from '../hooks/useHudsonAI';
 
 interface AIProps {
@@ -10,11 +10,15 @@ interface AIProps {
 }
 
 export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
-  const { messages, sendMessage, stop, status, setMessages, error } = chat;
+  const {
+    messages, sendMessage, stop, status, setMessages, error,
+    attachments, activeAttachments, toggleAttachment,
+  } = chat;
   const [input, setInput] = useState('');
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isStreaming = status === 'streaming' || status === 'submitted';
+  const hasAttachments = attachments.length > 0;
 
   // Auto-scroll on new content
   useEffect(() => {
@@ -36,6 +40,8 @@ export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
   };
 
   const onKeyDown = (e: KeyboardEvent) => {
+    // Stop all key events from bubbling to shell handlers (e.g. space → canvas pan)
+    e.stopPropagation();
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault();
       onSubmit(e);
@@ -104,6 +110,32 @@ export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
 
       {/* Input bar */}
       <div className="px-3 py-2.5 border-t border-neutral-700/50 bg-neutral-900/50">
+        {/* Attachment toggles */}
+        {hasAttachments && (
+          <div className="flex items-center gap-1.5 mb-2">
+            <Paperclip size={11} className="text-neutral-500 shrink-0" />
+            {attachments.map((att) => {
+              const isActive = activeAttachments.has(att.label);
+              return (
+                <button
+                  key={att.label}
+                  type="button"
+                  onClick={() => toggleAttachment(att.label)}
+                  className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+                    isActive
+                      ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                      : 'text-neutral-500 border-neutral-700 hover:text-neutral-300 hover:border-neutral-600'
+                  }`}
+                >
+                  {att.label}
+                </button>
+              );
+            })}
+            {activeAttachments.size > 0 && (
+              <span className="text-[10px] text-neutral-600 ml-1">attached</span>
+            )}
+          </div>
+        )}
         <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 py-2 focus-within:border-emerald-500/40 transition-colors">
           {messages.length > 0 && (
             <button
