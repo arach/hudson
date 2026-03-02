@@ -24,6 +24,8 @@ export interface AgentDocEntry {
   position: { x: number; y: number };
 }
 
+export type AIMode = 'cli' | 'api';
+
 export interface HudsonSettings {
   glowIntensity: number;
   connectorStyle: 'dashed' | 'solid' | 'dotted';
@@ -31,4 +33,5 @@ export interface HudsonSettings {
   masterMute: boolean;
   uiClickSounds: boolean;
   uiTransitionSounds: boolean;
+  aiMode: AIMode;
 }

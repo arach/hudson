@@ -39,6 +39,7 @@ const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   masterMute: false,
   uiClickSounds: true,
   uiTransitionSounds: true,
+  aiMode: 'cli',
 };
 
 // ---------------------------------------------------------------------------

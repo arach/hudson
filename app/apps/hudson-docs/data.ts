@@ -24,6 +24,7 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   masterMute: false,
   uiClickSounds: true,
   uiTransitionSounds: true,
+  aiMode: 'cli',
 };
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
