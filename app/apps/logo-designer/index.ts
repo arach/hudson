@@ -4,6 +4,7 @@ import type { HudsonApp } from '@hudson/sdk';
 import { LogoProvider } from './LogoProvider';
 import { LogoContent } from './LogoContent';
 import { LogoLeftPanel } from './LogoLeftPanel';
+import { LogoTerminal } from './LogoTerminal';
 import { useLogoCommands, useLogoStatus } from './hooks';
 
 export const logoDesignerApp: HudsonApp = {
@@ -19,6 +20,7 @@ export const logoDesignerApp: HudsonApp = {
   slots: {
     Content: LogoContent,
     LeftPanel: LogoLeftPanel,
+    Terminal: LogoTerminal,
   },
 
   hooks: {

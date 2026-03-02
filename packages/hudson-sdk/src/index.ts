@@ -9,6 +9,11 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 
 // Hooks
 export { usePersistentState } from './hooks/usePersistentState';
+export { useHudsonAI } from './hooks/useHudsonAI';
+export type { HudsonAIChat, UseHudsonAIOptions } from './hooks/useHudsonAI';
+
+// AI
+export { AI } from './components/AI';
 
 // Utilities
 export * from './lib/sounds';
