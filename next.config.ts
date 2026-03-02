@@ -45,7 +45,10 @@ if (!existsSync(localAppsFile)) {
 const nextConfig: NextConfig = {
   transpilePackages: ["@hudson/sdk"],
   turbopack: {
-    root: __dirname,
+    root: join(__dirname, ".."),
+    resolveAlias: {
+      tailwindcss: join(__dirname, "node_modules", "tailwindcss"),
+    },
   },
   async rewrites() {
     return [

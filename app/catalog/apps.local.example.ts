@@ -9,25 +9,25 @@
 // The registry (app/apps/registry.ts) merges these into the workspace
 // automatically — no other files need editing.
 //
+// Prerequisites:
+//   1. Clone hero and shaper repos alongside hudson:
+//        ~/dev/hero/
+//        ~/dev/shaper/
+//   2. In each repo, fix bun's @hudson/sdk symlink for Turbopack:
+//        cd ~/dev/hero/web && rm -rf node_modules/@hudson/sdk && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/@hudson/sdk
+//        cd ~/dev/shaper   && rm -rf node_modules/@hudson/sdk && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/@hudson/sdk
+//   3. Install hero's unique deps in hudson: bun add fonteditor-core opentype.js @google/genai
+//
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { WorkspaceAppConfig, HudsonWorkspace } from '@hudson/sdk';
 
-// ─── Shaper (catalog app, ships with the repo) ──────────────────────────────
-// Shaper lives in app/catalog/shaper/ — a complete Hudson app implementation
-// you can study and load locally to see it in action.
+// ─── Shaper ─────────────────────────────────────────────────────────────────
+// Relative path to sibling repo (turbopack root is ~/dev/)
+import { shaperApp } from '../../../shaper/src/hudson';
 
-import { shaperApp } from '../catalog/shaper';
-
-// ─── Hero (external app, requires separate clone + symlink) ──────────────────
-// Hero is an external repo. To use it:
-//   1. Clone it:    git clone <hero-repo> ~/dev/hero
-//   2. Symlink it:  ln -s ~/dev/hero/web node_modules/hero
-//   3. Create the adapter: app/local/hero/index.ts
-//
-// Uncomment the import below once the adapter exists:
-//
-// import { heroApp } from './hero';
+// ─── Hero ───────────────────────────────────────────────────────────────────
+import { heroApp } from '../../../hero/web/src/hudson';
 
 // ─── App Registration ────────────────────────────────────────────────────────
 
@@ -39,12 +39,12 @@ export const localApps: WorkspaceAppConfig[] = [
     defaultWindowBounds: { x: -400, y: -300, w: 800, h: 600 },
   },
 
-  // Hero — font viewer (uncomment when adapter is ready)
-  // {
-  //   app: heroApp,
-  //   canvasMode: 'windowed',
-  //   defaultWindowBounds: { x: -350, y: 150, w: 900, h: 650 },
-  // },
+  // Hero — font viewer
+  {
+    app: heroApp,
+    canvasMode: 'windowed',
+    defaultWindowBounds: { x: -350, y: 150, w: 900, h: 650 },
+  },
 ];
 
 // ─── Standalone Workspaces ───────────────────────────────────────────────────
@@ -60,12 +60,12 @@ export const localWorkspaces: HudsonWorkspace[] = [
     apps: [{ app: shaperApp }],
   },
 
-  // Hero standalone (uncomment when adapter is ready)
-  // {
-  //   id: 'hero-dev',
-  //   name: 'Hero',
-  //   description: 'Font viewer and glyph editor',
-  //   mode: 'panel',
-  //   apps: [{ app: heroApp }],
-  // },
+  // Hero standalone
+  {
+    id: 'hero-dev',
+    name: 'Hero',
+    description: 'Font viewer and glyph editor',
+    mode: 'panel',
+    apps: [{ app: heroApp }],
+  },
 ];
