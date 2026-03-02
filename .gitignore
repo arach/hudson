@@ -106,3 +106,12 @@ docker-compose.override.yml
 # local database
 local.db
 local.db-*
+
+# fonts (bundled locally, not committed)
+public/fonts/
+
+# resend config
+.resend
+
+# native build artifacts
+native/bunsen/artifacts/
