@@ -1,0 +1,35 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    "jsx": "react-jsx",
+    "strict": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "isolatedModules": true,
+    "noEmit": true,
+    "paths": {
+      "@hudson/sdk": ["../../packages/hudson-sdk/src/index.ts"],
+      "@hudson/sdk/shell": ["../../packages/hudson-sdk/src/shell.ts"],
+      "@hudson/sdk/styles": ["../../packages/hudson-sdk/src/styles/frame.css"],
+      "@hudson/shell/*": ["../../app/shell/*"],
+      "@hudson/apps/*": ["../../app/apps/*"],
+      "@/*": ["../../*"]
+    },
+    "types": ["bun"]
+  },
+  "include": [
+    "src/**/*.ts",
+    "src/**/*.tsx",
+    "../../app/shell/**/*.ts",
+    "../../app/shell/**/*.tsx",
+    "../../app/apps/**/*.ts",
+    "../../app/apps/**/*.tsx",
+    "../../packages/hudson-sdk/src/**/*.ts",
+    "../../packages/hudson-sdk/src/**/*.tsx"
+  ],
+  "exclude": ["node_modules", "dist"]
+}

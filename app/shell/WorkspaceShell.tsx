@@ -18,6 +18,7 @@ import {
 } from '@hudson/sdk/shell';
 import {
   usePersistentState,
+  usePlatformLayout,
   sounds,
   setMuted as setSoundMuted,
 } from '@hudson/sdk';
@@ -26,7 +27,7 @@ import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw,
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
-import { ShellLayoutProvider } from './ShellLayoutContext';
+import { ShellLayoutProvider, useShellLayout } from './ShellLayoutContext';
 import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 import { useIntentCatalog } from '../hooks/useIntentCatalog';
@@ -265,14 +266,64 @@ function WorkspaceInner({
     });
   }, []);
 
+  // --- Window reset key (bumped to force WindowedApp remount) ---
+  const [windowResetKey, setWindowResetKey] = useState(0);
+
+  // --- Smart tiling: compute clean window positions on first launch ---
+  const tileWindowBounds = useCallback((ids: Set<string>) => {
+    const windowed = workspace.apps.filter(
+      c => ids.has(c.app.id) && c.canvasMode === 'windowed',
+    );
+    const n = windowed.length;
+    if (n === 0) return;
+
+    const gap = 40;
+
+    if (n === 1) {
+      const w = 960, h = 680;
+      const key = `hudson.ws.${workspace.id}.win.${windowed[0].app.id}`;
+      try { localStorage.setItem(key, JSON.stringify({ x: -w / 2, y: -h / 2, w, h })); } catch {}
+    } else if (n === 2) {
+      const w = 800, h = 600;
+      const totalW = w * 2 + gap;
+      windowed.forEach((config, i) => {
+        const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
+        const x = -totalW / 2 + i * (w + gap);
+        const y = -h / 2;
+        try { localStorage.setItem(key, JSON.stringify({ x, y, w, h })); } catch {}
+      });
+    } else {
+      // Grid layout for 3+
+      const cols = Math.ceil(Math.sqrt(n));
+      const rows = Math.ceil(n / cols);
+      const w = 800, h = 600;
+      const totalW = cols * w + (cols - 1) * gap;
+      const totalH = rows * h + (rows - 1) * gap;
+      windowed.forEach((config, i) => {
+        const col = i % cols;
+        const row = Math.floor(i / cols);
+        const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
+        const x = -totalW / 2 + col * (w + gap);
+        const y = -totalH / 2 + row * (h + gap);
+        try { localStorage.setItem(key, JSON.stringify({ x, y, w, h })); } catch {}
+      });
+    }
+  }, [workspace]);
+
   const handleDismissLauncher = useCallback(() => {
-    setActivatedAppIds(prev => {
-      if (prev.size === 0) return new Set(workspace.apps.map(c => c.app.id));
-      return prev;
-    });
+    const finalIds = activatedAppIds.size === 0
+      ? new Set(workspace.apps.map(c => c.app.id))
+      : activatedAppIds;
+
+    setActivatedAppIds(finalIds);
+
+    // Compute smart tiled positions and force window remount
+    tileWindowBounds(finalIds);
+    setWindowResetKey(k => k + 1);
+
     setShowLauncher(false);
     saveSession(activeWorkspaceId);
-  }, [workspace.apps, activeWorkspaceId]);
+  }, [workspace.apps, activeWorkspaceId, activatedAppIds, tileWindowBounds]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
@@ -456,7 +507,6 @@ function WorkspaceInner({
   );
 
   // --- Reset all windows to defaults ---
-  const [windowResetKey, setWindowResetKey] = useState(0);
   const handleResetAllWindows = useCallback(() => {
     for (const config of workspace.apps) {
       const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
@@ -1125,6 +1175,8 @@ function WindowedApp({
 }) {
   const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
   const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
+  const layout = useShellLayout();
+  const { navTotalHeight } = usePlatformLayout();
 
   // Report bounds upstream for minimap + fit-all
   useEffect(() => {
@@ -1141,16 +1193,33 @@ function WindowedApp({
       setIsMaximized(false);
       setPreMaxBounds(null);
     } else {
+      // Reset the canvas view so the expanded window lands centered on screen
+      onResetView();
       setBounds(prev => {
         setPreMaxBounds(prev);
-        const zoom = worldScale || 1;
-        const maxW = window.innerWidth / zoom;
-        const maxH = window.innerHeight / zoom;
-        return { x: -(maxW / 2), y: -(maxH / 2), w: maxW, h: maxH };
+        // Account for shell chrome: nav bar, status bar, sidebars, terminal
+        const STATUS_H = 28;
+        const termH = layout.isTerminalOpen ? layout.terminalHeight : 0;
+        const chromeLeft = layout.leftWidth;
+        const chromeRight = layout.rightWidth;
+        const chromeTop = navTotalHeight;
+        const chromeBottom = STATUS_H + termH;
+
+        // Available viewport minus chrome, with a small inset so canvas peeks through
+        const pad = 8;
+        const availW = window.innerWidth - chromeLeft - chromeRight - pad * 2;
+        const availH = window.innerHeight - chromeTop - chromeBottom - pad * 2;
+
+        // After onResetView(), world origin (0,0) sits at viewport center.
+        // Convert the top-left of the available area from screen to world coords.
+        const worldX = chromeLeft + pad - window.innerWidth / 2;
+        const worldY = chromeTop + pad - window.innerHeight / 2;
+
+        return { x: worldX, y: worldY, w: availW, h: availH };
       });
       setIsMaximized(true);
     }
-  }, [isMaximized, preMaxBounds, setBounds, worldScale]);
+  }, [isMaximized, preMaxBounds, setBounds, onResetView, layout]);
 
   const handleResetWindow = useCallback(() => {
     setBounds(defaults);
