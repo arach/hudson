@@ -1,5 +1,8 @@
 import React, { useCallback, useRef } from 'react';
 import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
+import { SHELL_THEME } from '../../lib/theme';
+
+const { statusBarHeight } = SHELL_THEME.layout;
 
 interface TerminalDrawerProps {
   isOpen: boolean;
@@ -16,7 +19,6 @@ interface TerminalDrawerProps {
 }
 
 const MIN_HEIGHT = 120;
-const MAX_HEIGHT_RATIO = 0.8; // 80% of container
 
 const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   isOpen, onClose, onToggleMaximize, isMaximized = false,
@@ -34,7 +36,8 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
 
     const onMouseMove = (ev: MouseEvent) => {
       const delta = startY - ev.clientY;
-      const maxH = window.innerHeight * MAX_HEIGHT_RATIO;
+      // Max height: full viewport minus status bar and some padding
+      const maxH = window.innerHeight - statusBarHeight;
       onHeightChange(Math.max(MIN_HEIGHT, Math.min(maxH, startHeight + delta)));
     };
 
@@ -48,17 +51,23 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
     document.addEventListener('mouseup', onMouseUp);
   }, [height, onHeightChange]);
 
+  // Drawer sits directly above the status bar, using the shared layout token.
+  const computedHeight = isMaximized
+    ? `calc(100vh - ${statusBarHeight}px)`
+    : `${height}px`;
+
   return (
     <div
       className={`
-        fixed left-0 right-0 bottom-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t border-neutral-700
+        fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t border-neutral-700
         bg-neutral-950/95 backdrop-blur-xl
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
         ${draggingRef.current ? '' : 'transition-all duration-300 ease-in-out'}
       `}
       style={{
-        height: isMaximized ? 'calc(100% - 28px)' : `${height}px`,
-        zIndex: 70,
+        bottom: statusBarHeight,
+        height: computedHeight,
+        zIndex: SHELL_THEME.zIndex.drawer,
       }}
     >
       {/* Header */}
@@ -78,7 +87,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
           title="Drag to Resize"
           onMouseDown={handleGripMouseDown}
         >
-          <div className="w-16 h-1 rounded-full bg-neutral-700 group-hover:bg-neutral-700 transition-colors" />
+          <div className="w-16 h-1 rounded-full bg-neutral-700 group-hover:bg-neutral-500 transition-colors" />
         </div>
 
         {/* Controls */}
