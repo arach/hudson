@@ -624,6 +624,35 @@ export function SettingsSegment<T extends string>({ label, value, options, onCha
   );
 }
 
+// ---------------------------------------------------------------------------
+// App settings entry passed from WorkspaceShell
+// ---------------------------------------------------------------------------
+export interface AppSettingsEntry {
+  appId: string;
+  appName: string;
+  config: import('@hudson/sdk').AppSettingsConfig;
+  values: import('@hudson/sdk').AppSettingsValues;
+  onUpdate: (patch: Partial<import('@hudson/sdk').AppSettingsValues>) => void;
+}
+
+export function SettingsText({ label, value, onChange }: {
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
+      <input
+        type="text"
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] font-mono text-neutral-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+      />
+    </div>
+  );
+}
+
 export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: {
   isOpen: boolean;
   onClose: () => void;
@@ -660,6 +689,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
             <X size={14} />
           </button>
         </div>
+
         <div className="overflow-y-auto max-h-[60vh] frame-scrollbar">
           <SettingsSection label="Appearance">
             <SettingsSlider
@@ -703,6 +733,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
                 ['Cmd + 1 / 2 / 3', 'Canvas / List / Tiles view'],
                 ['Cmd + K', 'Command palette'],
                 ['Cmd + ,', 'Settings'],
+                ['Cmd + Shift + ,', 'Workspace Manager'],
                 ['Cmd + [', 'Toggle left panel'],
                 ['Cmd + ]', 'Toggle right panel'],
                 ['Cmd + \\', 'Toggle crosshair guides'],
@@ -732,5 +763,26 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
         </div>
       </div>
     </div>
+  );
+}
+
+export function ServiceActionButton({ label, variant = 'primary', onClick }: {
+  label: string;
+  variant?: 'primary' | 'secondary' | 'danger';
+  onClick: () => void;
+}) {
+  const colors = {
+    primary: 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border-emerald-500/20',
+    secondary: 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 border-neutral-700',
+    danger: 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border-red-500/20',
+  };
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`px-3 py-1 text-[11px] font-mono font-medium rounded border transition-colors ${colors[variant]}`}
+    >
+      {label}
+    </button>
   );
 }

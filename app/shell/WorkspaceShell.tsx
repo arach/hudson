@@ -21,19 +21,26 @@ import {
   usePlatformLayout,
   sounds,
   setMuted as setSoundMuted,
+  useAppSettings,
 } from '@hudson/sdk';
-import type { HudsonWorkspace, WorkspaceAppConfig, AppTool, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
 import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen } from 'lucide-react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
 import { ShellLayoutProvider, useShellLayout } from './ShellLayoutContext';
 import { SettingsPanel } from '../apps/hudson-docs/components';
+import type { AppSettingsEntry } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 import { useIntentCatalog } from '../hooks/useIntentCatalog';
 import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
+import { useServiceRegistry } from '../services/useServiceRegistry';
+import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
+import { ServiceBanner } from './ServiceBanner';
+import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-manager';
+import type { ServiceStatus } from '@hudson/sdk';
 
 // ---------------------------------------------------------------------------
 // Default settings
@@ -47,6 +54,34 @@ const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   uiTransitionSounds: true,
   aiMode: 'cli',
 };
+
+// ---------------------------------------------------------------------------
+// Service status indicator (rendered in StatusBar right slot)
+// ---------------------------------------------------------------------------
+function ServiceStatusIndicator({ registry, onOpenSettings }: {
+  registry: ReturnType<typeof useServiceRegistry>;
+  onOpenSettings: () => void;
+}) {
+  const { catalog, records } = registry;
+  const total = catalog.length;
+  const running = catalog.filter(s => records[s.id]?.status === 'running').length;
+  const hasError = catalog.some(s => records[s.id]?.status === 'error');
+  const color = hasError ? 'text-red-500' : running === total ? 'text-emerald-500' : 'text-neutral-400';
+  const dotColor = hasError ? 'bg-red-500' : running === total ? 'bg-emerald-500' : 'bg-neutral-500';
+
+  return (
+    <button
+      onClick={onOpenSettings}
+      className={`flex items-center gap-1.5 ${color} hover:opacity-80 transition-opacity`}
+      title="Open Services settings"
+    >
+      <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
+      <span className="uppercase text-[10px] font-semibold tracking-wider">
+        Services {running}/{total}
+      </span>
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Window bounds hook
@@ -165,6 +200,18 @@ function useAppHooks(config: WorkspaceAppConfig): AppHookData {
   };
 }
 
+// Empty settings config used as stable default for apps without settings
+const EMPTY_SETTINGS = { sections: [] };
+
+/** Calls useAppSettings for one app (must be called unconditionally). */
+function useAppSettingsBridge(config: WorkspaceAppConfig): AppSettingsEntry | null {
+  const { app } = config;
+  const settingsConfig = app.settings ?? EMPTY_SETTINGS;
+  const [values, update] = useAppSettings(app.id, settingsConfig);
+  if (!app.settings) return null;
+  return { appId: app.id, appName: app.name, config: app.settings, values, onUpdate: update };
+}
+
 // ---------------------------------------------------------------------------
 // WorkspaceInner — renders inside all Providers, can call all app hooks
 // ---------------------------------------------------------------------------
@@ -197,6 +244,14 @@ function WorkspaceInner({
   // --- Hook merging ---
   // Safe: workspace.apps is static per workspace, component keyed by workspace.id
   const allAppHooks: AppHookData[] = workspace.apps.map(config => useAppHooks(config));
+
+  // --- App-level settings (called unconditionally for each app) ---
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const appSettings = workspace.apps.map(config => useAppSettingsBridge(config))
+    .filter((e): e is AppSettingsEntry => e !== null);
+
+  // --- Service registry (global, not tied to any app) ---
+  const serviceRegistry = useServiceRegistry();
 
   // --- Focus state ---
   const [focusedAppId, setFocusedAppId] = useState(
@@ -353,6 +408,7 @@ function WorkspaceInner({
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', 480);
@@ -520,6 +576,16 @@ function WorkspaceInner({
     playSound('blipUp');
   }, [workspace, playSound]);
 
+  // --- Open settings helper ---
+  const openSettings = useCallback(() => {
+    setShowSettings(true);
+  }, []);
+
+  // --- Open workspace manager ---
+  const openWorkspaceManager = useCallback(() => {
+    setShowWorkspaceManager(true);
+  }, []);
+
   // --- Shell commands ---
   const shellCommands: CommandOption[] = useMemo(
     () => [
@@ -528,7 +594,14 @@ function WorkspaceInner({
         label: 'Settings',
         shortcut: 'Cmd+,',
         icon: <Settings size={14} />,
-        action: () => setShowSettings(true),
+        action: () => openSettings(),
+      },
+      {
+        id: 'shell:workspace-manager',
+        label: 'Workspace Manager',
+        shortcut: 'Cmd+Shift+,',
+        icon: <Settings size={14} />,
+        action: () => openWorkspaceManager(),
       },
       {
         id: 'shell:toggle-left',
@@ -606,18 +679,35 @@ function WorkspaceInner({
       setRightCollapsed,
       setMinimapCollapsed,
       setShowTerminal,
-      setShowSettings,
+      openSettings,
+      openWorkspaceManager,
     ],
   );
 
+  // --- Service commands for Cmd+K palette ---
+  const serviceCommands = useMemo((): CommandOption[] => {
+    const cmds: CommandOption[] = [];
+    for (const svc of serviceRegistry.catalog) {
+      const status = serviceRegistry.records[svc.id]?.status;
+      if (status !== 'running') {
+        cmds.push({ id: `svc:start:${svc.id}`, label: `Start ${svc.name}`, action: () => serviceRegistry.executeAction(svc.id, 'start') });
+      }
+      if (status === 'running') {
+        cmds.push({ id: `svc:stop:${svc.id}`, label: `Stop ${svc.name}`, action: () => serviceRegistry.executeAction(svc.id, 'stop') });
+      }
+      cmds.push({ id: `svc:check:${svc.id}`, label: `Check ${svc.name}`, action: () => serviceRegistry.executeAction(svc.id, 'check') });
+    }
+    return cmds;
+  }, [serviceRegistry.catalog, serviceRegistry.records, serviceRegistry.executeAction]);
+
   // --- Merge all commands ---
   const allCommands = useMemo(() => {
-    const merged: CommandOption[] = [...shellCommands];
+    const merged: CommandOption[] = [...shellCommands, ...serviceCommands];
     for (const hookData of allAppHooks) {
       merged.push(...hookData.commands);
     }
     return merged;
-  }, [shellCommands, allAppHooks]);
+  }, [shellCommands, serviceCommands, allAppHooks]);
 
   // --- Intent catalog + executor (plumbing for voice/LLM layer) ---
   const catalog = useIntentCatalog(workspace);
@@ -629,6 +719,11 @@ function WorkspaceInner({
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setShowCommandPalette(true);
+      }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ',') {
+        e.preventDefault();
+        setShowWorkspaceManager(s => !s);
+        return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault();
@@ -749,6 +844,11 @@ function WorkspaceInner({
     workspace.apps.map(config => {
       const { app } = config;
       if (!app.slots.LeftPanel) return null;
+      const deps = app.services;
+      const serviceDeps = deps?.map(dep => ({
+        serviceId: dep.serviceId,
+        status: (serviceRegistry.records[dep.serviceId]?.status ?? 'unknown') as ServiceStatus,
+      }));
       return (
         <SidebarSection
           key={app.id}
@@ -759,6 +859,8 @@ function WorkspaceInner({
           defaultExpanded={app.id === focusedAppId}
           isVisible={activatedAppIds.has(app.id)}
           onToggleVisibility={() => handleToggleAppVisibility(app.id)}
+          serviceDeps={serviceDeps}
+          onOpenManager={openWorkspaceManager}
         >
           <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
             <app.slots.LeftPanel />
@@ -879,12 +981,15 @@ function WorkspaceInner({
 
   // --- World content (always rendered — launcher overlays on top) ---
   const SingleContent = singleApp?.slots.Content ?? null;
+  const singleAppConfig = isSingleApp ? workspace.apps[0] : null;
   const worldContent = (
     <div data-hudson-world>
-      {isSingleApp && SingleContent ? (
-        <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
-          <SingleContent />
-        </AppSlotErrorBoundary>
+      {isSingleApp && SingleContent && singleAppConfig ? (
+        <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
+          <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
+            <SingleContent />
+          </AppSlotErrorBoundary>
+        </ServiceBanner>
       ) : (
         <MultiAppCanvas
           workspace={workspace}
@@ -896,12 +1001,26 @@ function WorkspaceInner({
           onReportBounds={reportWindowBounds}
           activatedAppIds={activatedAppIds}
           showLauncher={showLauncher}
+          onOpenServices={openWorkspaceManager}
         />
       )}
     </div>
   );
 
+  // --- Workspace Manager context value ---
+  const wmData = useMemo(() => ({
+    workspace,
+    activatedAppIds,
+    focusedAppId,
+    onToggleAppVisibility: handleToggleAppVisibility,
+    onFocusApp: setFocusedAppId,
+    serviceRegistry,
+    appSettings,
+  }), [workspace, activatedAppIds, focusedAppId, handleToggleAppVisibility, serviceRegistry, appSettings]);
+
   return (
+    <ServiceRegistryProvider value={serviceRegistry}>
+    <WorkspaceManagerProvider value={wmData}>
     <ShellLayoutProvider value={shellLayout}>
       <Frame
         mode={isCanvasMode ? 'canvas' : 'panel'}
@@ -1010,6 +1129,17 @@ function WorkspaceInner({
                 }}
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
+                left={
+                  <button
+                    onClick={() => openSettings()}
+                    className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                    title="Settings (⌘,)"
+                  >
+                    <Settings size={10} />
+                    <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
+                  </button>
+                }
+                right={<ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />}
               />
             </motion.div>
 
@@ -1048,6 +1178,12 @@ function WorkspaceInner({
               onReset={resetShellSettings}
             />
 
+            {/* Workspace Manager */}
+            <WorkspaceManagerPanel
+              isOpen={showWorkspaceManager}
+              onClose={() => setShowWorkspaceManager(false)}
+            />
+
             {/* Command palette */}
             <CommandPalette
               isOpen={showCommandPalette}
@@ -1072,6 +1208,8 @@ function WorkspaceInner({
         {worldContent}
       </Frame>
     </ShellLayoutProvider>
+    </WorkspaceManagerProvider>
+    </ServiceRegistryProvider>
   );
 }
 
@@ -1088,6 +1226,7 @@ function MultiAppCanvas({
   onReportBounds,
   activatedAppIds,
   showLauncher,
+  onOpenServices,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -1098,6 +1237,7 @@ function MultiAppCanvas({
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   activatedAppIds: Set<string>;
   showLauncher: boolean;
+  onOpenServices: () => void;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -1121,9 +1261,11 @@ function MultiAppCanvas({
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
           >
-            <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-              <config.app.slots.Content />
-            </AppSlotErrorBoundary>
+            <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
+              <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+                <config.app.slots.Content />
+              </AppSlotErrorBoundary>
+            </ServiceBanner>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -1146,6 +1288,7 @@ function MultiAppCanvas({
               worldScale={worldScale}
               onResetView={onResetView}
               onReportBounds={onReportBounds}
+              onOpenServices={onOpenServices}
             />
           </motion.div>
         ))}
@@ -1165,6 +1308,7 @@ function WindowedApp({
   worldScale,
   onResetView,
   onReportBounds,
+  onOpenServices,
 }: {
   config: WorkspaceAppConfig;
   workspaceId: string;
@@ -1173,6 +1317,7 @@ function WindowedApp({
   worldScale: number;
   onResetView: () => void;
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
+  onOpenServices: () => void;
 }) {
   const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
   const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
@@ -1282,9 +1427,11 @@ function WindowedApp({
       onToggleMaximize={handleToggleMaximize}
       contextMenuItems={contextMenuItems}
     >
-      <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-        <config.app.slots.Content />
-      </AppSlotErrorBoundary>
+      <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
+        <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+          <config.app.slots.Content />
+        </AppSlotErrorBoundary>
+      </ServiceBanner>
     </AppWindow>
   );
 }

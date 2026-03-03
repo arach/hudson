@@ -10,9 +10,9 @@ import { useMemo, useState } from 'react';
 // ---------------------------------------------------------------------------
 // Server-side compile helper
 // ---------------------------------------------------------------------------
-async function compileTemplate(source: string): Promise<{ js: string } | { error: string }> {
+async function compileTemplate(source: string, endpoint: string): Promise<{ js: string } | { error: string }> {
   try {
-    const res = await fetch('/api/logo/compile', {
+    const res = await fetch(endpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ source }),
@@ -42,13 +42,17 @@ export function LogoTerminal() {
     params, setParam, setVariant, resetDefaults, presets,
     templates, addTemplate, updateTemplate, deleteTemplate,
     customParamValues, setCustomParam,
+    appSettings, apiBaseUrl,
   } = useLogo();
+
+  const relayUrl = String(appSettings.relayUrl || 'ws://localhost:3600');
+  const compileEndpoint = `${apiBaseUrl}${String(appSettings.compileEndpoint || '/api/logo/compile')}`;
 
   const [mode, setMode] = useState<TerminalMode>('relay');
 
   // ---- Relay mode ----
   const relay = useTerminalRelay({
-    url: 'ws://localhost:3600',
+    url: relayUrl,
     systemPrompt: RELAY_SYSTEM_PROMPT,
   });
 
@@ -94,7 +98,7 @@ export function LogoTerminal() {
           const customParams = (args.params as TemplateParam[]) ?? [];
 
           // Compile via server
-          const result = await compileTemplate(source);
+          const result = await compileTemplate(source, compileEndpoint);
           if ('error' in result) {
             console.warn('[logo] Template compilation failed:', result.error);
             // Still create with raw source so AI can see error and fix
@@ -126,7 +130,7 @@ export function LogoTerminal() {
             updates.sourceCode = source;
 
             // Compile via server
-            const result = await compileTemplate(source);
+            const result = await compileTemplate(source, compileEndpoint);
             if ('error' in result) {
               console.warn('[logo] Template update compilation failed:', result.error);
               updates.renderBody = source; // fallback to raw source

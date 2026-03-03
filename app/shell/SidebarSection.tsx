@@ -1,7 +1,16 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Eye, EyeOff } from 'lucide-react';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Settings as GearIcon } from 'lucide-react';
+import type { ServiceStatus } from '@hudson/sdk';
+
+const SVC_DOT_COLORS: Record<ServiceStatus, string> = {
+  unknown: 'bg-neutral-500',
+  not_installed: 'bg-neutral-500',
+  installed: 'bg-amber-500',
+  running: 'bg-emerald-500',
+  error: 'bg-red-500',
+};
 
 interface SidebarSectionProps {
   appName: string;
@@ -13,6 +22,10 @@ interface SidebarSectionProps {
   isVisible?: boolean;
   /** Toggle app visibility on/off */
   onToggleVisibility?: () => void;
+  /** Service dependency statuses for health dots */
+  serviceDeps?: { serviceId: string; status: ServiceStatus }[];
+  /** Opens the Workspace Manager focused on this app */
+  onOpenManager?: () => void;
   children: React.ReactNode;
 }
 
@@ -24,6 +37,8 @@ export function SidebarSection({
   defaultExpanded = true,
   isVisible,
   onToggleVisibility,
+  serviceDeps,
+  onOpenManager,
   children,
 }: SidebarSectionProps) {
   const [expanded, setExpanded] = useState(defaultExpanded);
@@ -46,7 +61,32 @@ export function SidebarSection({
           {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
           {appIcon && <span className="text-neutral-500">{appIcon}</span>}
           <span className="flex-1 text-left">{appName}</span>
+          {/* Service health dots */}
+          {serviceDeps && serviceDeps.length > 0 && (
+            <span className="flex items-center gap-0.5 ml-1">
+              {serviceDeps.map(d => (
+                <span
+                  key={d.serviceId}
+                  className={`w-1.5 h-1.5 rounded-full ${SVC_DOT_COLORS[d.status]}`}
+                  title={`${d.serviceId}: ${d.status}`}
+                />
+              ))}
+            </span>
+          )}
         </button>
+        {/* Gear icon — opens Workspace Manager */}
+        {onOpenManager && (
+          <button
+            onClick={(e) => {
+              e.stopPropagation();
+              onOpenManager();
+            }}
+            className="px-1.5 py-2 transition-colors text-neutral-600 hover:text-neutral-300"
+            title="Open Workspace Manager"
+          >
+            <GearIcon size={10} />
+          </button>
+        )}
         {showToggle && (
           <button
             onClick={(e) => {

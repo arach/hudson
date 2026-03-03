@@ -1,0 +1,21 @@
+{
+  "name": "@hudson/relay",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "bin": {
+    "hudson-relay": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node --no-warnings --import tsx src/index.ts"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "node-pty": "^1.0.0",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.19.0"
+  }
+}

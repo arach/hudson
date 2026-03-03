@@ -11,4 +11,8 @@ export interface PlatformAdapter {
   onInteractiveMouseDown?: (e: React.MouseEvent) => void;
   /** Whether the host uses SSR (true for Next.js, false for native). */
   isSSR: boolean;
+  /** Base URL for API calls. Empty string = same-origin (web). Native hosts set e.g. 'http://localhost:3600'. */
+  apiBaseUrl: string;
+  /** Base URL for service management API. Empty string = same-origin (web). Native hosts set e.g. 'http://localhost:3601'. */
+  serviceApiUrl: string;
 }

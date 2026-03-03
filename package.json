@@ -9,7 +9,8 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "relay": "node --no-warnings scripts/ai-relay.ts"
+    "relay": "node --no-warnings --import tsx packages/hudson-relay/src/index.ts",
+    "relay:legacy": "node --no-warnings scripts/ai-relay.ts"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",

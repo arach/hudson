@@ -1,6 +1,35 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
 import type { AppIntent } from './intent';
+import type { ServiceDependency } from './service';
+
+// ---------------------------------------------------------------------------
+// App-level settings
+// ---------------------------------------------------------------------------
+
+export interface AppSettingField {
+  key: string;
+  label: string;
+  type: 'text' | 'number' | 'toggle' | 'slider' | 'segment';
+  default: string | number | boolean;
+  /** For segment type */
+  options?: { value: string; label: string }[];
+  /** For slider/number type */
+  min?: number;
+  max?: number;
+  step?: number;
+  /** For slider: format display string */
+  format?: (v: number) => string;
+}
+
+export interface AppSettingsSection {
+  label: string;
+  fields: AppSettingField[];
+}
+
+export interface AppSettingsConfig {
+  sections: AppSettingsSection[];
+}
 
 // ---------------------------------------------------------------------------
 // Status colors supported by StatusBar
@@ -78,6 +107,12 @@ export interface HudsonApp {
 
   /** Serializable manifest for tooling/LLM introspection */
   manifest?: AppManifest;
+
+  /** App-level settings rendered in the Settings panel */
+  settings?: AppSettingsConfig;
+
+  /** Services this app depends on */
+  services?: ServiceDependency[];
 
   /** Hooks called inside Provider via Bridge component */
   hooks: {

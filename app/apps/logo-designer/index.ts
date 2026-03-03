@@ -7,6 +7,7 @@ import { LogoLeftPanel } from './LogoLeftPanel';
 import { LogoInspector } from './LogoInspector';
 import { LogoTerminal } from './LogoTerminal';
 import { useLogoCommands, useLogoStatus } from './hooks';
+import { logoSettings } from './settings';
 
 export const logoDesignerApp: HudsonApp = {
   id: 'logo-designer',
@@ -18,6 +19,12 @@ export const logoDesignerApp: HudsonApp = {
   rightPanel: { title: 'Export', icon: createElement(ScanSearch, { size: 12 }) },
 
   Provider: LogoProvider,
+
+  settings: logoSettings,
+
+  services: [
+    { serviceId: 'relay', optional: true, reason: 'Required for AI terminal sessions and template compilation' },
+  ],
 
   slots: {
     Content: LogoContent,

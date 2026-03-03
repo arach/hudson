@@ -1,6 +1,9 @@
 import { BrowserWindow } from "electrobun/bun";
+import { startServiceServer } from "./service-server";
 
 const isDev = process.env.ELECTROBUN_BUILD_ENV === "dev";
+
+startServiceServer();
 
 const mainWindow = new BrowserWindow({
   title: "Hudson",

@@ -1,7 +1,9 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState, useAppSettings, usePlatform } from '@hudson/sdk';
+import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoTemplate } from './types';
+import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';
 import { builtinRenderBodies } from './builtinRenderBodies';
 
@@ -61,6 +63,10 @@ interface LogoState {
   deleteTemplate: (id: string) => void;
   customParamValues: Record<string, Record<string, number | string>>;
   setCustomParam: (templateId: string, key: string, value: number | string) => void;
+  // App settings (relay URL, compile endpoint, etc.)
+  appSettings: AppSettingsValues;
+  /** Resolved API base URL from platform adapter */
+  apiBaseUrl: string;
 }
 
 const Ctx = createContext<LogoState | null>(null);
@@ -158,6 +164,8 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
 ];
 
 export function LogoProvider({ children }: { children: ReactNode }) {
+  const [appSettings] = useAppSettings('logo-designer', logoSettings);
+  const { apiBaseUrl } = usePlatform();
   const [params, setParams] = useState<LogoParams>(defaults);
 
   // All templates (built-in + custom), persisted
@@ -236,6 +244,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       params, setParam, setVariant, resetDefaults, presets,
       templates, addTemplate, updateTemplate, deleteTemplate,
       customParamValues, setCustomParam,
+      appSettings, apiBaseUrl,
     }}>
       {children}
     </Ctx.Provider>

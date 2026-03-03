@@ -29,7 +29,8 @@
     "../../app/apps/**/*.ts",
     "../../app/apps/**/*.tsx",
     "../../packages/hudson-sdk/src/**/*.ts",
-    "../../packages/hudson-sdk/src/**/*.tsx"
+    "../../packages/hudson-sdk/src/**/*.tsx",
+    "../../app/services/**/*.ts"
   ],
   "exclude": ["node_modules", "dist"]
 }

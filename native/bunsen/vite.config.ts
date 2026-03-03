@@ -20,12 +20,32 @@ function stubCssImports(files: string[]): Plugin {
   };
 }
 
+/** Electrobun's views:// protocol rejects 0-byte files. Pad empty CSS. */
+function padEmptyCss(): Plugin {
+  return {
+    name: "pad-empty-css",
+    async writeBundle(options) {
+      const fs = await import("fs");
+      const outDir = options.dir || path.resolve(__dirname, "dist/mainview");
+      const assetsDir = path.join(outDir, "assets");
+      if (!fs.existsSync(assetsDir)) return;
+      for (const file of fs.readdirSync(assetsDir)) {
+        if (!file.endsWith(".css")) continue;
+        const fp = path.join(assetsDir, file);
+        const stat = fs.statSync(fp);
+        if (stat.size === 0) fs.writeFileSync(fp, "/* empty */");
+      }
+    },
+  };
+}
+
 export default defineConfig({
   root: "src/mainview",
   plugins: [
     stubCssImports(["../../app/docs/docs.css"]),
     react(),
     tailwindcss(),
+    padEmptyCss(),
   ],
   resolve: {
     alias: {

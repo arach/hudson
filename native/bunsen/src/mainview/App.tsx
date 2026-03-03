@@ -7,6 +7,8 @@ const ELECTROBUN: PlatformAdapter = {
   dragRegionProps: { className: 'electrobun-webkit-app-region-drag' },
   onInteractiveMouseDown: (e) => e.stopPropagation(),
   isSSR: false,
+  apiBaseUrl: 'http://localhost:3600',
+  serviceApiUrl: 'http://localhost:3601',
 };
 
 /**

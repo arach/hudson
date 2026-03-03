@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, useCallback } from 'react';
 import type { TerminalRelayHandle } from '../hooks/useTerminalRelay';
+import { usePlatform } from '../platform/PlatformContext';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -129,6 +130,7 @@ export function TerminalRelay({
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
 }: TerminalRelayProps) {
   const { status, sendInput, resize, onData } = relay;
+  const { apiBaseUrl } = usePlatform();
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
@@ -171,7 +173,7 @@ export function TerminalRelay({
     for (const file of files) {
       try {
         const base64 = await fileToBase64(file);
-        const res = await fetch('/api/relay/upload', {
+        const res = await fetch(`${apiBaseUrl}/api/relay/upload`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ name: file.name, data: base64 }),
@@ -184,7 +186,7 @@ export function TerminalRelay({
         console.error('Image upload failed:', err);
       }
     }
-  }, [sendInput]);
+  }, [sendInput, apiBaseUrl]);
 
   // ---- Load xterm.js dynamically (SSR-safe) and create terminal ----
   useEffect(() => {

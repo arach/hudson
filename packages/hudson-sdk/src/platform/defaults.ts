@@ -6,4 +6,6 @@ export const WEB_ADAPTER: PlatformAdapter = {
   dragRegionProps: {},
   onInteractiveMouseDown: undefined,
   isSSR: true,
+  apiBaseUrl: '',
+  serviceApiUrl: '',
 };

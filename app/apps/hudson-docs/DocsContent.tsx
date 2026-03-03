@@ -40,7 +40,7 @@ export function DocsContent() {
               onMouseDown={(e) => handleSheetDragStart('hub', e)}
               onClick={() => { if (!isDraggingRef.current) setSelectedCard('hub'); }}
               style={{ boxShadow: hubShadow }}
-              className={`w-[340px] p-6 border rounded-lg bg-neutral-800/40 backdrop-blur-sm pointer-events-auto cursor-grab active:cursor-grabbing transition-all ${
+              className={`w-[480px] p-6 border rounded-lg bg-neutral-800/40 backdrop-blur-sm pointer-events-auto cursor-grab active:cursor-grabbing transition-all ${
                 isHubSelected ? 'border-emerald-500/80' : 'border-neutral-700/50 hover:border-neutral-600/80'
               }`}
             >
