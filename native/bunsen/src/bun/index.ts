@@ -1,6 +1,6 @@
 import { BrowserWindow } from "electrobun/bun";
 
-const isDev = process.env.NODE_ENV !== "production";
+const isDev = process.env.ELECTROBUN_BUILD_ENV === "dev";
 
 const mainWindow = new BrowserWindow({
   title: "Hudson",
