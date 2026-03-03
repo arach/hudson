@@ -10,6 +10,9 @@ const config: ElectrobunConfig = {
     bun: {
       entrypoint: "src/bun/index.ts",
     },
+    copy: {
+      "dist/mainview": "views/mainview",
+    },
     mac: {
       codesign: true,
       notarize: false,
