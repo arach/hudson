@@ -1,5 +1,7 @@
 'use client';
-import { useLogo, type Variant } from './LogoProvider';
+import { X } from 'lucide-react';
+import { useLogo } from './LogoProvider';
+import { isBuiltinVariant } from './types';
 
 function Slider({ label, value, min, max, step, onChange }: {
   label: string; value: number; min: number; max: number; step: number;
@@ -40,37 +42,52 @@ function ColorInput({ label, value, onChange }: {
   );
 }
 
-const variants: { id: Variant; label: string; desc: string }[] = [
-  { id: 'negative-space', label: 'Negative space L', desc: 'White panes, dark L channel' },
-  { id: 'green-channel', label: 'Green channel', desc: 'Dark panes, green L accent' },
-  { id: 'grid-color', label: '2x2 grid', desc: '4 panes, brightness contrast' },
-  { id: 'interlocking', label: 'Interlocking', desc: 'L-shaped pieces from reference' },
-  { id: 'lattice-grid', label: 'Lattice Grid', desc: '3x3 blocks, L from color layers' },
-  { id: 'app-windows', label: 'App Windows', desc: 'Layered app windows forming L' },
-];
-
 export function LogoLeftPanel() {
-  const { params, setParam, setVariant, resetDefaults, presets } = useLogo();
+  const {
+    params, setParam, setVariant, resetDefaults, presets,
+    templates, deleteTemplate, customParamValues, setCustomParam,
+  } = useLogo();
+
+  const activeTemplate = templates.find(t => t.id === params.variant);
 
   return (
     <div className="flex flex-col gap-4 p-3 text-sm overflow-y-auto h-full">
-      {/* Variant picker */}
+      {/* Template picker */}
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] uppercase tracking-widest text-white/30">Variant</span>
-        {variants.map(v => (
-          <button
-            key={v.id}
-            onClick={() => setVariant(v.id)}
-            className={`text-left px-2.5 py-2 rounded-lg border text-[12px] transition-colors ${
-              params.variant === v.id
-                ? 'border-emerald-500/40 bg-emerald-500/10 text-white'
-                : 'border-white/6 bg-white/3 text-white/50 hover:bg-white/5'
-            }`}
-          >
-            <div className="font-medium">{v.label}</div>
-            <div className="text-[10px] text-white/30 mt-0.5">{v.desc}</div>
-          </button>
-        ))}
+        {templates.map(t => {
+          const isActive = params.variant === t.id;
+          const isBuiltin = isBuiltinVariant(t.id);
+          return (
+            <div key={t.id} className="flex items-stretch gap-1">
+              <button
+                onClick={() => setVariant(t.id)}
+                className={`flex-1 text-left px-2.5 py-2 rounded-lg border text-[12px] transition-colors ${
+                  isActive
+                    ? 'border-emerald-500/40 bg-emerald-500/10 text-white'
+                    : 'border-white/6 bg-white/3 text-white/50 hover:bg-white/5'
+                }`}
+              >
+                <div className="flex items-center gap-1.5">
+                  <span className="font-medium">{t.name}</span>
+                  {isBuiltin && (
+                    <span className="text-[8px] px-1 py-0.5 rounded bg-white/5 text-white/25 uppercase tracking-wider">built-in</span>
+                  )}
+                </div>
+                <div className="text-[10px] text-white/30 mt-0.5">{t.description}</div>
+              </button>
+              {!isBuiltin && (
+                <button
+                  onClick={() => deleteTemplate(t.id)}
+                  className="flex items-center px-1.5 rounded-lg border border-white/6 bg-white/3 text-white/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-colors"
+                  title="Delete template"
+                >
+                  <X size={12} />
+                </button>
+              )}
+            </div>
+          );
+        })}
       </div>
 
       {/* Presets */}
@@ -80,7 +97,7 @@ export function LogoLeftPanel() {
           {presets.map(p => (
             <button
               key={p.label}
-              onClick={() => { setParam('variant', params.variant); Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof typeof params, v as never)); }}
+              onClick={() => { Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof typeof params, v as never)); }}
               className="px-2 py-1 rounded text-[10px] border border-white/6 bg-white/3 text-white/40 hover:bg-white/6 hover:text-white/60 transition-colors"
             >
               {p.label}
@@ -88,6 +105,43 @@ export function LogoLeftPanel() {
           ))}
         </div>
       </div>
+
+      {/* Custom template params */}
+      {activeTemplate && activeTemplate.params.length > 0 && (
+        <div className="flex flex-col gap-2">
+          <span className="text-[10px] uppercase tracking-widest text-white/30">
+            {activeTemplate.name} params
+          </span>
+          {activeTemplate.params.map(p => {
+            const values = customParamValues[activeTemplate.id] ?? {};
+            const val = values[p.key] ?? p.default;
+            if (p.type === 'number') {
+              return (
+                <Slider
+                  key={p.key}
+                  label={p.label}
+                  value={val as number}
+                  min={p.min ?? 0}
+                  max={p.max ?? 100}
+                  step={p.step ?? 1}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
+                />
+              );
+            }
+            if (p.type === 'color') {
+              return (
+                <ColorInput
+                  key={p.key}
+                  label={p.label}
+                  value={val as string}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
+                />
+              );
+            }
+            return null;
+          })}
+        </div>
+      )}
 
       {/* Proportions */}
       <div className="flex flex-col gap-2">

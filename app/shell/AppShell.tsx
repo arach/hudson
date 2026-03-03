@@ -100,7 +100,7 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   const [showSettings, setShowSettings] = useState(false);
   const [showTerminal, setShowTerminal] = useState(false);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', 320);
+  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', 480);
 
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', false);
   const [showGuides, setShowGuides] = useState(false);

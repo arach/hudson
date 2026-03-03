@@ -4,11 +4,11 @@ import { loadToolset } from '../toolsets';
 import { streamFromCLI } from './cli';
 
 export async function POST(req: Request) {
-  const { messages, toolset, context = {}, mode: requestedMode } = await req.json();
+  const { messages, toolset, context = {}, mode: requestedMode, sessionId } = await req.json();
   const mode = requestedMode ?? process.env.AI_DEFAULT_MODE ?? 'cli';
 
   if (mode === 'cli') {
-    return streamFromCLI(messages, toolset, context);
+    return streamFromCLI(messages, toolset, context, sessionId);
   }
 
   const { tools, system } = loadToolset(toolset, context);

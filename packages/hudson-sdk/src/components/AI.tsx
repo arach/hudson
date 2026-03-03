@@ -2,6 +2,7 @@
 
 import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { Square, Trash2, AlertCircle, Paperclip } from 'lucide-react';
+import { isToolUIPart, getToolName } from 'ai';
 import type { HudsonAIChat } from '../hooks/useHudsonAI';
 
 interface AIProps {
@@ -11,7 +12,7 @@ interface AIProps {
 
 export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
   const {
-    messages, sendMessage, stop, status, setMessages, error,
+    messages, sendMessage, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
   } = chat;
   const [input, setInput] = useState('');
@@ -71,17 +72,16 @@ export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
                 if (part.type === 'text') {
                   return <span key={i}>{part.text}</span>;
                 }
-                // Tool parts have type "tool-<name>" in AI SDK v6
-                if (part.type.startsWith('tool-')) {
-                  const p = part as { type: string; toolCallId: string; input?: unknown };
-                  const toolName = p.type.replace(/^tool-/, '');
-                  const argStr = Object.entries((p.input ?? {}) as Record<string, unknown>)
+                // Tool parts: static (type "tool-<name>") or dynamic (type "dynamic-tool")
+                if (isToolUIPart(part)) {
+                  const name = getToolName(part);
+                  const argStr = Object.entries((part.input ?? {}) as Record<string, unknown>)
                     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
                     .join(', ');
                   return (
                     <div key={i} className="text-[11px] text-cyan-400/70 mt-1 font-mono">
                       <span className="text-neutral-500">{'↳ '}</span>
-                      {toolName}({argStr})
+                      {name}({argStr})
                     </div>
                   );
                 }
@@ -140,7 +140,7 @@ export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
           {messages.length > 0 && (
             <button
               type="button"
-              onClick={() => setMessages([])}
+              onClick={() => clearChat()}
               className="p-1 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700 transition-colors"
               title="Clear"
             >

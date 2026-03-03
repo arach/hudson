@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport } from 'ai';
+import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
 
@@ -20,7 +20,7 @@ export interface UseHudsonAIOptions {
   /** Dynamic context sent with each request (current app state) */
   context?: Record<string, unknown>;
   /** Called when the model invokes a tool — apply state changes here */
-  onToolCall?: (toolName: string, args: Record<string, unknown>) => void;
+  onToolCall?: (toolName: string, args: Record<string, unknown>) => void | Promise<void>;
   /** Override inference mode per-call. If omitted, reads the platform default from settings. */
   mode?: AIMode;
   /** Attachable context the user can toggle on per-message */
@@ -29,19 +29,12 @@ export interface UseHudsonAIOptions {
 
 export type HudsonAIChat = ReturnType<typeof useHudsonAI>;
 
-/** Check if a message part is a tool invocation (type starts with "tool-") */
-function isToolPart(part: { type: string }): part is {
-  type: string;
-  toolCallId: string;
-  input: unknown;
-  state: string;
-} {
-  return part.type.startsWith('tool-');
-}
-
 export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }: UseHudsonAIOptions) {
   const onToolCallRef = useRef(onToolCall);
   onToolCallRef.current = onToolCall;
+
+  // CLI session ID — one per chat lifetime, regenerated on clear
+  const sessionIdRef = useRef(crypto.randomUUID());
 
   // Track which attachments are toggled on
   const [activeAttachments, setActiveAttachments] = useState<Set<string>>(new Set());
@@ -82,6 +75,7 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }:
           toolset,
           context: { ...context, ...resolved },
           mode: resolvedMode,
+          sessionId: sessionIdRef.current,
         };
       },
     }),
@@ -90,6 +84,11 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }:
   );
 
   const chat = useChat({ transport });
+
+  const clearChat = useCallback(() => {
+    sessionIdRef.current = crypto.randomUUID();
+    chat.setMessages([]);
+  }, [chat]);
 
   // Watch for tool parts in messages and fire the callback
   const { messages } = chat;
@@ -101,13 +100,13 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }:
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue;
       for (const part of msg.parts) {
-        if (isToolPart(part)) {
+        if (isToolUIPart(part)) {
           const key = part.toolCallId;
           if (!processedRef.current.has(key)) {
             processedRef.current.add(key);
-            const toolName = part.type.replace(/^tool-/, '');
+            const name = getToolName(part);
             onToolCallRef.current(
-              toolName,
+              name,
               (part.input ?? {}) as Record<string, unknown>,
             );
           }
@@ -122,6 +121,7 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }:
     stop: chat.stop,
     status: chat.status,
     setMessages: chat.setMessages,
+    clearChat,
     error: chat.error,
     mode: resolvedMode,
     /** Available attachments defined by the app */

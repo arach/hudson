@@ -3,52 +3,109 @@ import { z } from 'zod';
 import type { ToolsetDefinition } from './index';
 
 // ---------------------------------------------------------------------------
-// Parameter keys and variant names (shared between tools and prompt)
+// Parameter keys (shared between tools and prompt)
 // ---------------------------------------------------------------------------
 const paramKeys = [
   'bgColor', 'paneColor', 'dimPaneColor', 'channelColor',
   'borderRadius', 'paneRadius', 'gapWidth', 'splitX', 'splitY', 'padding',
 ] as const;
 
-const variants = [
-  'negative-space', 'green-channel', 'grid-color',
-  'interlocking', 'lattice-grid', 'app-windows',
-] as const;
+const templateParamSchema = z.object({
+  key: z.string().describe('Param key (camelCase, no spaces)'),
+  label: z.string().describe('Human-readable label'),
+  type: z.enum(['number', 'color']).describe('Control type'),
+  default: z.union([z.number(), z.string()]).describe('Default value'),
+  min: z.number().optional().describe('Min value (for number type)'),
+  max: z.number().optional().describe('Max value (for number type)'),
+  step: z.number().optional().describe('Step increment (for number type)'),
+});
 
 // ---------------------------------------------------------------------------
-// App-level system prompt — static knowledge about the Logo Designer
+// App-level system prompt
 // ---------------------------------------------------------------------------
-const system = `You are an assistant for the Hudson Logo Designer app.
+const system = `You are the design assistant for the Hudson Logo Designer.
 
-## App overview
-The Logo Designer creates lattice-style logos built from an L-shaped arrangement of rectangular panes. The design is fully parametric — every visual aspect is controlled by named parameters.
+## How this works
+The logo is procedurally generated SVG rendered live from parameters. All designs — both the 6 built-in variants and AI-created templates — are editable templates. When you call tools, the logo re-renders instantly.
 
-## Parameters
-| Parameter     | Type   | Description                                       |
-|---------------|--------|---------------------------------------------------|
-| bgColor       | color  | Canvas background color                           |
-| paneColor     | color  | Primary pane fill color                           |
-| dimPaneColor  | color  | Secondary/dim pane fill (often translucent)       |
-| channelColor  | color  | Color of the L-shaped channel (green-channel variant) |
-| borderRadius  | number | Outer container border radius (px)                |
-| paneRadius    | number | Individual pane corner radius (px)                |
-| gapWidth      | number | Gap between panes (px)                            |
-| splitX        | 0-1    | Horizontal split position of the L arm            |
-| splitY        | 0-1    | Vertical split position of the L arm              |
-| padding       | number | Inner padding from container edge (px)            |
+You have two modes of operation:
 
-## Variants
-- **negative-space**: White panes on dark background, L-shape formed by the gap between panes.
-- **green-channel**: Dark panes with a translucent green channel forming the L-shape.
-- **grid-color**: 2x2 colored grid with dimmed quadrants.
-- **interlocking**: Two interlocking L-shaped pieces.
-- **lattice-grid**: Multi-pane lattice grid with color accents — the most versatile variant.
-- **app-windows**: Panes styled as app windows with simulated title bars.
+1. **Parameter tweaking** — Change colors, dimensions, and layout using set_param, set_variant, apply_preset.
+2. **Template authoring** — Create entirely new logo designs or modify any existing template (including built-ins) by writing TypeScript render functions using create_template and update_template.
 
-## Behavior
-- Use tools to make changes. Multiple tool calls in one response are encouraged for compound edits.
-- When adjusting colors, keep dimPaneColor visually consistent with paneColor (similar hue, lower opacity).
-- Be concise. Describe what you changed and why in 1-2 sentences.`;
+## Built-in Parameters
+| Parameter     | Type   | Range/Format | Description                               |
+|---------------|--------|--------------|-------------------------------------------|
+| bgColor       | color  | hex/rgba     | Canvas background color                   |
+| paneColor     | color  | hex/rgba     | Primary pane fill color                   |
+| dimPaneColor  | color  | hex/rgba     | Secondary pane fill (often translucent)   |
+| channelColor  | color  | hex/rgba     | L-channel color (green-channel variant)   |
+| borderRadius  | number | 0-200 px     | Outer container corner radius             |
+| paneRadius    | number | 0-50 px      | Individual pane corner radius             |
+| gapWidth      | number | 2-40 px      | Gap between panes                         |
+| splitX        | number | 0.1-0.9      | Horizontal split position of the L arm    |
+| splitY        | number | 0.1-0.9      | Vertical split position of the L arm      |
+| padding       | number | 20-120 px    | Inner padding from container edge         |
+
+## Templates
+All variants are templates. The 6 built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows) are pre-seeded templates that can be edited like any other.
+
+To switch between templates, use set_variant with the template ID.
+
+## Creating & Editing Templates
+
+Write **TypeScript** for your render functions. The backend compiles TS → JS via esbuild. If there's a type error or syntax error, you'll get a clear error message — fix it and retry.
+
+### How renderBody works
+- Receives \`p\` (object with ALL standard params + your custom params) and \`vb\` (viewBox size, always 512)
+- Must **return a string** of SVG elements (the inner content — no outer \`<svg>\` tag)
+- Use template literals for SVG markup
+- Full TypeScript: loops, conditionals, Math functions, type annotations, variables
+
+### Example renderBody (TypeScript)
+\`\`\`typescript
+const { bgColor, borderRadius, padding, paneColor } = p;
+const cx: number = vb / 2;
+const cy: number = vb / 2;
+const r: number = (vb - padding * 2) / 2;
+let svg: string = \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`;
+for (let i = 0; i < 5; i++) {
+  const ri = r * (1 - i * 0.18);
+  const opacity = 1 - i * 0.15;
+  svg += \`<circle cx="\${cx}" cy="\${cy}" r="\${ri}" fill="none" stroke="\${paneColor}" stroke-width="3" opacity="\${opacity}"/>\`;
+}
+return svg;
+\`\`\`
+
+### Custom parameters
+Declare template-specific params that appear as sliders/pickers in the UI. Use standard params (bgColor, padding, etc.) for shared properties — only add custom params for template-specific values.
+
+### Rules for writing renderBody
+- Always start with a background rect: \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`
+- Use the 512×512 coordinate space. Center = (256, 256).
+- Reference \`p.bgColor\`, \`p.paneColor\`, etc. for consistency with standard controls
+- After creating a template, it auto-activates. Use set_param/set_custom_param to refine.
+- If a template errors, you'll see the error in context — fix it with update_template.
+
+## Editing Templates In Place
+
+**IMPORTANT: When modifying an existing template, ALWAYS use update_template — do NOT create a new template.** The active template's full source code is shown in your context under "Active Template Source." Read it, make your changes, and call update_template with the modified renderBody.
+
+Workflow for iterating on a design:
+1. Create a template with create_template (only once, for the initial design)
+2. For ALL subsequent changes, use update_template with the existing templateId
+3. Read the current source from context, modify it, pass the full updated code
+4. You can also add/remove custom params by passing a new params array
+
+## Editing Built-in Variants
+
+All 6 built-in variants are editable templates. Use update_template with the built-in's ID (e.g. "negative-space", "lattice-grid") to modify them directly.
+
+## General Rules
+- When the user asks you to change the logo, DO IT immediately by calling tools.
+- Use multiple tool calls in one response for compound edits.
+- Keep dimPaneColor consistent with paneColor (same hue, lower opacity).
+- Be concise. Say what you changed and why in 1-2 sentences.`;
 
 // ---------------------------------------------------------------------------
 // Instance context — dynamic state rendered per-request
@@ -57,13 +114,14 @@ function context(ctx: Record<string, unknown>): string {
   const params = ctx.params ?? {};
   const presets = ctx.presets ?? ctx.presetNames ?? [];
   const svg = ctx.svg;
+  const templates = ctx.templates as { id: string; name: string; description: string; renderBody: string; sourceCode?: string; params: unknown[] }[] | undefined;
+  const customParamValues = ctx.customParamValues as Record<string, Record<string, unknown>> | undefined;
 
   const sections: string[] = [];
 
   sections.push(`## Current parameters\n\`\`\`json\n${JSON.stringify(params, null, 2)}\n\`\`\``);
 
   if (Array.isArray(presets) && presets.length > 0) {
-    // If presets are objects with label+params, render them richly
     if (typeof presets[0] === 'object' && presets[0] !== null && 'label' in presets[0]) {
       const lines = (presets as { label: string; params: Record<string, unknown> }[])
         .map(p => `- **${p.label}**: ${JSON.stringify(p.params)}`);
@@ -75,6 +133,32 @@ function context(ctx: Record<string, unknown>): string {
 
   if (typeof svg === 'string') {
     sections.push(`## Current SVG\n\`\`\`svg\n${svg}\n\`\`\``);
+  }
+
+  // Templates
+  if (templates && templates.length > 0) {
+    const activeVariant = (params as Record<string, unknown>).variant as string;
+
+    const lines = templates.map(t => {
+      const active = t.id === activeVariant ? ' **(active)**' : '';
+      return `- **${t.name}** (id: \`${t.id}\`)${active}: ${t.description} — ${t.params.length} custom params`;
+    });
+    sections.push(`## Templates\n${lines.join('\n')}`);
+
+    // Include source of active template so AI can read/edit it
+    const active = templates.find(t => t.id === activeVariant);
+    if (active) {
+      // Show sourceCode if available, otherwise renderBody
+      const code = active.sourceCode || active.renderBody;
+      sections.push(
+        `## Active Template Source: ${active.name}\n` +
+        `\`\`\`typescript\n${code}\n\`\`\`\n` +
+        `Custom params: \`${JSON.stringify(active.params)}\``
+      );
+      if (customParamValues && customParamValues[active.id]) {
+        sections.push(`Custom param values: \`${JSON.stringify(customParamValues[active.id])}\``);
+      }
+    }
   }
 
   return sections.join('\n\n');
@@ -95,9 +179,9 @@ function tools(_ctx: Record<string, unknown>) {
     }),
 
     set_variant: tool({
-      description: 'Switch to a different logo variant style.',
+      description: 'Switch to a template by its ID (e.g. "negative-space", "lattice-grid", or a custom template ID).',
       inputSchema: z.object({
-        variant: z.enum(variants).describe('The variant to switch to'),
+        variant: z.string().describe('Template ID'),
       }),
       execute: async ({ variant }) => ({ applied: true, variant }),
     }),
@@ -114,6 +198,46 @@ function tools(_ctx: Record<string, unknown>) {
       description: 'Reset all logo parameters back to default values.',
       inputSchema: z.object({}),
       execute: async () => ({ applied: true }),
+    }),
+
+    create_template: tool({
+      description: 'Create a new logo template. Write the renderBody in TypeScript — the backend compiles it. The template auto-activates after creation.',
+      inputSchema: z.object({
+        name: z.string().describe('Human-readable template name'),
+        description: z.string().describe('Short description of the design'),
+        renderBody: z.string().describe('TypeScript function body: receives (p, vb), must return SVG inner string'),
+        params: z.array(templateParamSchema).describe('Custom parameter declarations for this template'),
+      }),
+      execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
+    }),
+
+    update_template: tool({
+      description: 'Modify any template (including built-ins). Only include fields you want to change. Write renderBody in TypeScript.',
+      inputSchema: z.object({
+        templateId: z.string().describe('The template ID to update'),
+        name: z.string().optional().describe('New name'),
+        description: z.string().optional().describe('New description'),
+        renderBody: z.string().optional().describe('New render function body (TypeScript)'),
+        params: z.array(templateParamSchema).optional().describe('New param declarations (replaces all)'),
+      }),
+      execute: async (args) => ({ applied: true, action: 'update_template', ...args }),
+    }),
+
+    delete_template: tool({
+      description: 'Delete a custom template (cannot delete built-in templates).',
+      inputSchema: z.object({
+        templateId: z.string().describe('The template ID to delete'),
+      }),
+      execute: async (args) => ({ applied: true, action: 'delete_template', ...args }),
+    }),
+
+    set_custom_param: tool({
+      description: 'Set the value of a custom parameter on the currently active template.',
+      inputSchema: z.object({
+        key: z.string().describe('The custom param key'),
+        value: z.union([z.string(), z.number()]).describe('The new value'),
+      }),
+      execute: async (args) => ({ applied: true, action: 'set_custom_param', ...args }),
     }),
   };
 }

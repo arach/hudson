@@ -44,6 +44,7 @@ if (!existsSync(localAppsFile)) {
 
 const nextConfig: NextConfig = {
   transpilePackages: ["@hudson/sdk"],
+  serverExternalPackages: ["esbuild"],
   turbopack: {
     root: join(__dirname, ".."),
     resolveAlias: {

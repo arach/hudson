@@ -30,5 +30,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "hudson-docs", "native", "drizzle.config.ts", "app/catalog/apps.local.example.ts"]
+  "exclude": ["node_modules", "hudson-docs", "native", "scripts", "drizzle.config.ts", "app/catalog/apps.local.example.ts"]
 }

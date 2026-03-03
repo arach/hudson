@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect } from 'react';
+import { useCallback, useEffect, useRef } from 'react';
 import type { CommandOption, IntentCatalog } from '@hudson/sdk';
 
 /**
@@ -11,12 +11,14 @@ export function useIntentExecutor(
   allCommands: CommandOption[],
   catalog: IntentCatalog,
 ) {
-  // Dev-mode: warn when an intent commandId has no matching live command
+  // Dev-mode: warn once per missing commandId (not on every render)
+  const warnedRef = useRef(new Set<string>());
   useEffect(() => {
     if (process.env.NODE_ENV !== 'development') return;
     const liveIds = new Set(allCommands.map(c => c.id));
-    for (const [commandId] of Object.entries(catalog.index)) {
-      if (!liveIds.has(commandId)) {
+    for (const commandId of Object.keys(catalog.index)) {
+      if (!liveIds.has(commandId) && !warnedRef.current.has(commandId)) {
+        warnedRef.current.add(commandId);
         console.warn(`[IntentExecutor] intent "${commandId}" has no matching live command`);
       }
     }

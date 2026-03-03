@@ -11,9 +11,12 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 export { usePersistentState } from './hooks/usePersistentState';
 export { useHudsonAI } from './hooks/useHudsonAI';
 export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/useHudsonAI';
+export { useTerminalRelay } from './hooks/useTerminalRelay';
+export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
 
 // AI
 export { AI } from './components/AI';
+export { TerminalRelay } from './components/TerminalRelay';
 
 // Utilities
 export * from './lib/sounds';
