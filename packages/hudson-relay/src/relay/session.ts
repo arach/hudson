@@ -81,7 +81,7 @@ export function createSession(ws: WebSocket, msg: SessionInitMessage): Session {
     name: 'xterm-256color',
     cols,
     rows,
-    cwd: process.cwd(),
+    cwd: (msg.cwd || process.env.HOME || process.cwd()).replace(/^~/, process.env.HOME || ''),
     env,
   });
 

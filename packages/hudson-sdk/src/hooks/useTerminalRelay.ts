@@ -13,6 +13,8 @@ export interface UseTerminalRelayOptions {
   url?: string;
   /** System prompt to pass to the Claude CLI session */
   systemPrompt?: string;
+  /** Working directory for the PTY session. Defaults to $HOME on the server. */
+  cwd?: string;
   /** Auto-connect on mount. Defaults to false. */
   autoConnect?: boolean;
 }
@@ -44,6 +46,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const {
     url = 'ws://localhost:3600',
     systemPrompt,
+    cwd,
     autoConnect = false,
   } = options;
 
@@ -100,9 +103,10 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
         cols: dimsRef.current.cols,
         rows: dimsRef.current.rows,
         ...(systemPrompt ? { systemPrompt } : {}),
+        ...(cwd ? { cwd } : {}),
       });
     }
-  }, [send, systemPrompt]);
+  }, [send, systemPrompt, cwd]);
 
   const connect = useCallback(() => {
     if (wsRef.current) {
@@ -139,6 +143,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
               cols: dimsRef.current.cols,
               rows: dimsRef.current.rows,
               ...(systemPrompt ? { systemPrompt } : {}),
+              ...(cwd ? { cwd } : {}),
             });
             initSentRef.current = true;
             break;

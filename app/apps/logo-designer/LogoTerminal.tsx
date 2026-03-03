@@ -47,6 +47,7 @@ export function LogoTerminal() {
 
   const relayUrl = String(appSettings.relayUrl || 'ws://localhost:3600');
   const compileEndpoint = `${apiBaseUrl}${String(appSettings.compileEndpoint || '/api/logo/compile')}`;
+  const homeFolder = String(appSettings.homeFolder || '~/hudson/logos');
 
   const [mode, setMode] = useState<TerminalMode>('relay');
 
@@ -54,6 +55,7 @@ export function LogoTerminal() {
   const relay = useTerminalRelay({
     url: relayUrl,
     systemPrompt: RELAY_SYSTEM_PROMPT,
+    cwd: homeFolder,
   });
 
   // ---- Chat mode (fallback) ----

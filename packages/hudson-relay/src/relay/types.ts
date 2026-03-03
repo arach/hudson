@@ -3,6 +3,8 @@ export interface SessionInitMessage {
   cols: number;
   rows: number;
   systemPrompt?: string;
+  /** Working directory for the PTY session. Defaults to $HOME. */
+  cwd?: string;
 }
 
 export interface SessionReconnectMessage {
