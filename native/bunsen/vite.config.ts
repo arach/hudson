@@ -39,6 +39,7 @@ export default defineConfig({
     },
   },
   publicDir: path.resolve(__dirname, "../../public"),
+  base: "./",
   build: {
     outDir: "../../dist/mainview",
     emptyOutDir: true,
