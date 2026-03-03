@@ -5,18 +5,28 @@ cd "$(dirname "$0")/.."
 
 # ── Signing identity ──────────────────────────────────────────────
 export ELECTROBUN_DEVELOPER_ID="Developer ID Application: Arach Tchoupani (2U83JFPW66)"
-export ELECTROBUN_TEAMID="2U83JFPW66"
-
-# Uncomment these + set notarize: true in electrobun.config.ts to enable notarization:
-# export ELECTROBUN_APPLEID="your@apple.id"
-# export ELECTROBUN_APPLEIDPASS="xxxx-xxxx-xxxx-xxxx"  # app-specific password from appleid.apple.com
+NOTARY_PROFILE="notarytool"
 
 # ── Read version from config ─────────────────────────────────────
 VERSION=$(grep -o '"[0-9]*\.[0-9]*\.[0-9]*"' electrobun.config.ts | tr -d '"')
-echo "Building Hudson v${VERSION}"
+echo "═══════════════════════════════════════════"
+echo "  Hudson v${VERSION}"
+echo "═══════════════════════════════════════════"
+
+# ── Parse flags ───────────────────────────────────────────────────
+BUMP=false
+NO_OPEN=false
+SKIP_NOTARIZE=false
+for arg in "$@"; do
+  case "$arg" in
+    --bump)          BUMP=true ;;
+    --no-open)       NO_OPEN=true ;;
+    --skip-notarize) SKIP_NOTARIZE=true ;;
+  esac
+done
 
 # ── Optional: bump version ────────────────────────────────────────
-if [[ "${1:-}" == "--bump" ]]; then
+if $BUMP; then
   MAJOR=$(echo "$VERSION" | cut -d. -f1)
   MINOR=$(echo "$VERSION" | cut -d. -f2)
   PATCH=$(echo "$VERSION" | cut -d. -f3)
@@ -28,35 +38,60 @@ if [[ "${1:-}" == "--bump" ]]; then
   sed -i '' "s/Hudson-${VERSION}/Hudson-${NEW_VERSION}/" scripts/post-package.sh
 
   VERSION="$NEW_VERSION"
-  echo "Bumped to v${VERSION}"
+  echo "  → Bumped to v${VERSION}"
 fi
 
 # ── Clean ─────────────────────────────────────────────────────────
-echo "Cleaning previous stable build..."
+echo ""
+echo "▸ Cleaning previous stable build..."
 rm -rf build/stable-macos-arm64 artifacts
 
 # ── Build ─────────────────────────────────────────────────────────
-echo "Running Vite + Electrobun build..."
+echo "▸ Building (Vite + Electrobun)..."
 bun run build:stable
 
-# ── Verify ────────────────────────────────────────────────────────
 DMG="artifacts/Hudson-${VERSION}.dmg"
+APP="build/stable-macos-arm64/Hudson.app"
+
 if [[ ! -f "$DMG" ]]; then
   echo "ERROR: $DMG not found"
   exit 1
 fi
 
+# ── Verify signature ─────────────────────────────────────────────
 echo ""
-echo "Verifying code signature..."
-codesign -dv build/stable-macos-arm64/Hudson.app 2>&1 | grep -E "Authority|TeamIdentifier|Identifier"
-echo ""
+echo "▸ Verifying code signature..."
+codesign --verify --deep --strict "$APP" 2>&1
+codesign -dv "$APP" 2>&1 | grep -E "Authority|TeamIdentifier"
 
+# ── Notarize ──────────────────────────────────────────────────────
+if $SKIP_NOTARIZE; then
+  echo ""
+  echo "▸ Skipping notarization (--skip-notarize)"
+else
+  echo ""
+  echo "▸ Submitting DMG for notarization..."
+  xcrun notarytool submit "$DMG" \
+    --keychain-profile "$NOTARY_PROFILE" \
+    --wait
+
+  echo ""
+  echo "▸ Stapling notarization ticket..."
+  xcrun stapler staple "$DMG"
+
+  echo ""
+  echo "▸ Gatekeeper check..."
+  spctl --assess --verbose=2 --type open --context context:primary-signature "$DMG" 2>&1 || true
+fi
+
+# ── Summary ───────────────────────────────────────────────────────
 SIZE=$(du -h "$DMG" | cut -f1)
-echo "✓ ${DMG} (${SIZE})"
 echo ""
+echo "═══════════════════════════════════════════"
+echo "  ✓ ${DMG} (${SIZE})"
+echo "═══════════════════════════════════════════"
 
 # ── Open ──────────────────────────────────────────────────────────
-if [[ "${1:-}" != "--no-open" && "${2:-}" != "--no-open" ]]; then
-  echo "Opening DMG..."
+if ! $NO_OPEN; then
   open "$DMG"
 fi
