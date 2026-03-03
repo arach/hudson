@@ -95,6 +95,7 @@ export function startServer(port: number) {
             if (prev) detachSession(prev);
           }
           const session = createSession(ws, msg);
+          if (!session) break; // Pre-flight failed — error already sent to client
           sessionId = session.id;
           send(ws, { type: 'session:ready', sessionId: session.id });
           break;

@@ -24,6 +24,10 @@ export interface TerminalRelayHandle {
   status: RelayStatus;
   /** Session ID assigned by server */
   sessionId: string | null;
+  /** Human-readable error when session fails or crashes */
+  error: string | null;
+  /** Exit code from the last session (null if still running or never started) */
+  exitCode: number | null;
   /** Register a callback for incoming terminal data */
   onData: (cb: (data: string) => void) => void;
   /** Send raw keystrokes (for keyboard events) */
@@ -52,6 +56,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
 
   const [status, setStatus] = useState<RelayStatus>('disconnected');
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [exitCode, setExitCode] = useState<number | null>(null);
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -116,6 +122,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
 
     initSentRef.current = false;
     setStatus('connecting');
+    setError(null);
+    setExitCode(null);
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -132,6 +140,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
           case 'session:ready':
             sessionIdRef.current = msg.sessionId;
             setSessionId(msg.sessionId);
+            setError(null);
+            setExitCode(null);
             break;
 
           case 'session:expired':
@@ -148,6 +158,12 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
             initSentRef.current = true;
             break;
 
+          case 'session:error':
+            // Pre-flight failure — session was never created
+            setStatus('error');
+            setError(msg.error || 'Session failed to start');
+            break;
+
           case 'terminal:data':
             // Forward raw terminal data to the registered callback
             if (dataCallbackRef.current && msg.data) {
@@ -157,8 +173,14 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
 
           case 'session:exit':
             sessionIdRef.current = null;
-            setStatus('disconnected');
             setSessionId(null);
+            setExitCode(msg.exitCode ?? null);
+            if (msg.exitCode !== 0) {
+              setStatus('error');
+              setError(msg.reason || `Process exited with code ${msg.exitCode}`);
+            } else {
+              setStatus('disconnected');
+            }
             break;
 
           case 'session:detached':
@@ -173,13 +195,15 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     ws.onclose = () => {
       wsRef.current = null;
       initSentRef.current = false;
-      setStatus('disconnected');
+      // Don't overwrite an error status on close
+      setStatus((prev) => prev === 'error' ? prev : 'disconnected');
     };
 
     ws.onerror = () => {
       setStatus('error');
+      setError('Could not connect to relay');
     };
-  }, [url, sendInitOrReconnect, send, systemPrompt]);
+  }, [url, sendInitOrReconnect, send, systemPrompt, cwd]);
 
   const sendInput = useCallback((data: string) => {
     send({ type: 'terminal:input', data });
@@ -213,6 +237,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   return {
     status,
     sessionId,
+    error,
+    exitCode,
     onData,
     sendInput,
     sendLine,

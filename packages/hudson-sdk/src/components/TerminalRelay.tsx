@@ -129,7 +129,7 @@ export function TerminalRelay({
   fontSize = 12,
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
 }: TerminalRelayProps) {
-  const { status, sendInput, resize, onData } = relay;
+  const { status, error, exitCode, sendInput, resize, onData, connect } = relay;
   const { apiBaseUrl } = usePlatform();
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
@@ -299,16 +299,32 @@ export function TerminalRelay({
 
   // ---- Overlay for non-active states ----
   let overlay: React.ReactNode = null;
-  if (status === 'disconnected') {
+  if (status === 'error' && error) {
+    overlay = (
+      <div className="flex flex-col items-center gap-3 max-w-md text-center px-4">
+        <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
+          <span className="text-red-400 text-sm">!</span>
+        </div>
+        <span className="text-red-400 text-[12px] font-medium">Session failed</span>
+        <code className="text-[11px] text-neutral-400 bg-neutral-800/80 px-3 py-2 rounded-md whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto w-full text-left">
+          {error}
+        </code>
+        {exitCode !== null && exitCode !== 0 && (
+          <span className="text-[10px] text-neutral-600">Exit code {exitCode}</span>
+        )}
+        <button
+          type="button"
+          onClick={() => connect()}
+          className="text-[11px] px-3 py-1 rounded-full border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-colors"
+        >
+          Retry
+        </button>
+      </div>
+    );
+  } else if (status === 'disconnected') {
     overlay = <span className="text-neutral-500">Terminal relay disconnected</span>;
   } else if (status === 'connecting') {
     overlay = <span className="text-neutral-500 animate-pulse">Connecting to relay...</span>;
-  } else if (status === 'error') {
-    overlay = (
-      <span className="text-red-400">
-        Failed to connect. Is <code className="bg-neutral-800 px-1 rounded">bun run relay</code> running?
-      </span>
-    );
   }
 
   return (
@@ -320,7 +336,7 @@ export function TerminalRelay({
       onDrop={handleDrop}
     >
       {overlay && (
-        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10">
+        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10 bg-neutral-900/90">
           {overlay}
         </div>
       )}
