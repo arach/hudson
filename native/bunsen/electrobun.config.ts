@@ -4,7 +4,7 @@ const config: ElectrobunConfig = {
   app: {
     name: "Hudson",
     identifier: "dev.hudson.bunsen",
-    version: "0.0.1",
+    version: "0.0.2",
   },
   build: {
     bun: {
@@ -12,8 +12,11 @@ const config: ElectrobunConfig = {
     },
     mac: {
       codesign: true,
-      notarize: true,
+      notarize: false,
     },
+  },
+  release: {
+    generatePatch: false,
   },
   scripts: {
     postPackage: "scripts/post-package.sh",
