@@ -5,6 +5,22 @@ import { signups } from '@/lib/db/schema';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 const NOTIFY_TO = process.env.NOTIFY_EMAIL || 'arach@hudsonos.com';
+const ALLOWED_ORIGINS = ['https://hudsonos.com', 'https://www.hudsonos.com'];
+
+function corsHeaders(origin: string | null) {
+  const headers: Record<string, string> = {};
+  if (origin && ALLOWED_ORIGINS.includes(origin)) {
+    headers['Access-Control-Allow-Origin'] = origin;
+    headers['Access-Control-Allow-Methods'] = 'POST, OPTIONS';
+    headers['Access-Control-Allow-Headers'] = 'Content-Type';
+  }
+  return headers;
+}
+
+export async function OPTIONS(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  return new NextResponse(null, { status: 204, headers: corsHeaders(origin) });
+}
 
 function getResend() {
   return new Resend(process.env.RESEND_API_KEY);
@@ -26,6 +42,9 @@ function isRateLimited(ip: string): boolean {
 }
 
 export async function POST(request: NextRequest) {
+  const origin = request.headers.get('origin');
+  const cors = corsHeaders(origin);
+
   const ip =
     request.headers.get('x-forwarded-for')?.split(',')[0]?.trim() ||
     request.headers.get('x-real-ip') ||
@@ -34,7 +53,7 @@ export async function POST(request: NextRequest) {
   if (isRateLimited(ip)) {
     return NextResponse.json(
       { error: 'Too many requests. Please try again later.' },
-      { status: 429 }
+      { status: 429, headers: cors }
     );
   }
 
@@ -42,13 +61,13 @@ export async function POST(request: NextRequest) {
 
   // Honeypot
   if (honeypot) {
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: cors });
   }
 
   if (!email || !EMAIL_REGEX.test(email)) {
     return NextResponse.json(
       { error: 'Please enter a valid email address.' },
-      { status: 400 }
+      { status: 400, headers: cors }
     );
   }
 
@@ -80,12 +99,12 @@ export async function POST(request: NextRequest) {
       });
     }
 
-    return NextResponse.json({ success: true });
+    return NextResponse.json({ success: true }, { headers: cors });
   } catch (error) {
     console.error('Contact form error:', error);
     return NextResponse.json(
       { error: 'Something went wrong. Please try again.' },
-      { status: 500 }
+      { status: 500, headers: cors }
     );
   }
 }
