@@ -4,7 +4,7 @@ const config: ElectrobunConfig = {
   app: {
     name: "Hudson",
     identifier: "dev.hudson.bunsen",
-    version: "0.0.4",
+    version: "0.0.5",
   },
   build: {
     bun: {
