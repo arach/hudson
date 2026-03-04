@@ -79,21 +79,24 @@ const Frame: React.FC<FrameProps> = ({
   const isSpacePanningRef = useRef(false);
   const spacePanLastRef = useRef({ x: 0, y: 0 });
 
-  const isEditable = useCallback((el: Element | null) => {
+  // Check whether the focused/target element is a text input or terminal —
+  // stored in a ref so the window-level keydown listener always uses the latest logic
+  // without needing useEffect re-registration (important for HMR).
+  const shouldSkipSpaceRef = useRef((e: KeyboardEvent) => {
+    const el = (e.target || document.activeElement) as HTMLElement | null;
     if (!el) return false;
-    const tag = (el as HTMLElement).tagName;
-    if (tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable) return true;
-    // xterm.js uses a hidden textarea — check if focus is inside a terminal
-    if ((el as HTMLElement).closest?.('.xterm')) return true;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable) return true;
+    if (el.closest?.('.xterm')) return true;
     return false;
-  }, []);
+  });
 
   useEffect(() => {
     if (mode !== 'canvas') return;
 
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key !== ' ' || e.repeat) return;
-      if (isEditable(document.activeElement)) return;
+      if (shouldSkipSpaceRef.current(e)) return;
       if (isTransitioning) return;
       e.preventDefault();
       spaceHeldRef.current = true;
@@ -129,7 +132,7 @@ const Frame: React.FC<FrameProps> = ({
       window.removeEventListener('keyup', onKeyUp);
       window.removeEventListener('blur', onBlur);
     };
-  }, [mode, isTransitioning, isEditable]);
+  }, [mode, isTransitioning]);
 
   const handleSpaceOverlayMouseDown = useCallback((e: React.MouseEvent) => {
     if (e.button !== 0) return;

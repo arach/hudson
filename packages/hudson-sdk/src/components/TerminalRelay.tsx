@@ -146,12 +146,28 @@ export function TerminalRelay({
   const { status, error, exitCode, sendInput, resize, onData, connect } = relay;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
+  const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
+
+  // ---- Prevent unmodified Space from propagating to Frame's space+pan handler ----
+  // This is more robust than Frame trying to detect .xterm — the terminal
+  // guards its own events so the space key always works reliably.
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+    const stopSpace = (e: KeyboardEvent) => {
+      if (e.key === ' ' && !e.metaKey && !e.ctrlKey && !e.altKey) {
+        e.stopPropagation();
+      }
+    };
+    el.addEventListener('keydown', stopSpace);
+    return () => el.removeEventListener('keydown', stopSpace);
+  }, []);
 
   // ---- Image drop handlers ----
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -312,6 +328,13 @@ export function TerminalRelay({
     }
   }, [status]);
 
+  // ---- Click anywhere on wrapper → focus xterm ----
+  const handleWrapperClick = useCallback(() => {
+    if (status === 'connected' && termRef.current) {
+      termRef.current.focus();
+    }
+  }, [status]);
+
   // ---- Overlay for non-active states ----
   const isServiceDown = status === 'error' && error === 'Relay service is not running';
 
@@ -443,7 +466,9 @@ export function TerminalRelay({
 
   return (
     <div
+      ref={wrapperRef}
       className="relative flex flex-col h-full overflow-hidden"
+      onClick={handleWrapperClick}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
