@@ -82,7 +82,10 @@ const Frame: React.FC<FrameProps> = ({
   const isEditable = useCallback((el: Element | null) => {
     if (!el) return false;
     const tag = (el as HTMLElement).tagName;
-    return tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || (el as HTMLElement).isContentEditable) return true;
+    // xterm.js uses a hidden textarea — check if focus is inside a terminal
+    if ((el as HTMLElement).closest?.('.xterm')) return true;
+    return false;
   }, []);
 
   useEffect(() => {

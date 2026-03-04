@@ -1,6 +1,6 @@
 'use client';
 
-import { useHudsonAI, AI, useTerminalRelay, TerminalRelay } from '@hudson/sdk';
+import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform } from '@hudson/sdk';
 import type { AIAttachment } from '@hudson/sdk';
 import { useLogo, defaults } from './LogoProvider';
 import { isBuiltinVariant } from './types';
@@ -294,6 +294,22 @@ Save any logo explorations, exported SVGs, or template drafts here.
     { label: 'CWD', value: homeFolder },
   ], [relayUrl, homeFolder]);
 
+  // Start relay service via the service API
+  const { serviceApiUrl } = usePlatform();
+  const handleStartRelay = useCallback(async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${serviceApiUrl}/api/services/execute`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ serviceId: 'relay', action: 'start', triggeredBy: 'user' }),
+      });
+      const data = await res.json();
+      return data.success === true;
+    } catch {
+      return false;
+    }
+  }, [serviceApiUrl]);
+
   // Open workspace manager via keyboard shortcut dispatch
   const openSettings = useCallback(() => {
     window.dispatchEvent(new KeyboardEvent('keydown', {
@@ -360,7 +376,7 @@ Save any logo explorations, exported SVGs, or template drafts here.
       {/* Content */}
       <div className="flex-1 min-h-0">
         {mode === 'relay' ? (
-          <TerminalRelay relay={relay} configItems={relayConfigItems} onOpenSettings={openSettings} />
+          <TerminalRelay relay={relay} configItems={relayConfigItems} onOpenSettings={openSettings} onStartService={handleStartRelay} />
         ) : (
           <AI chat={chat} placeholder="Describe a logo design or ask me to create one..." />
         )}

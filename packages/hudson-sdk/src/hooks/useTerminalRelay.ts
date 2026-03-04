@@ -118,7 +118,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     }
   }, [send, systemPrompt, cwd, workspaceFiles]);
 
-  const connect = useCallback(() => {
+  const connect = useCallback(async () => {
     if (wsRef.current) {
       wsRef.current.close();
       wsRef.current = null;
@@ -128,6 +128,16 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     setStatus('connecting');
     setError(null);
     setExitCode(null);
+
+    // Pre-flight: check if the relay server is reachable before opening WebSocket
+    const httpUrl = url.replace(/^ws(s?):\/\//, 'http$1://');
+    try {
+      await fetch(`${httpUrl}/health`, { signal: AbortSignal.timeout(2000) });
+    } catch {
+      setStatus('error');
+      setError('Relay service is not running');
+      return;
+    }
 
     const ws = new WebSocket(url);
     wsRef.current = ws;

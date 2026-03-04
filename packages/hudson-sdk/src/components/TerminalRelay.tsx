@@ -21,6 +21,8 @@ interface TerminalRelayProps {
   configItems?: TerminalRelayConfigItem[];
   /** Called when the user clicks "Settings" in the disconnected overlay */
   onOpenSettings?: () => void;
+  /** Called when the relay service is not running and the user clicks "Start Service". If provided, shows the button. */
+  onStartService?: () => Promise<boolean>;
 }
 
 // ---------------------------------------------------------------------------
@@ -139,8 +141,10 @@ export function TerminalRelay({
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
   configItems,
   onOpenSettings,
+  onStartService,
 }: TerminalRelayProps) {
   const { status, error, exitCode, sendInput, resize, onData, connect } = relay;
+  const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
@@ -309,8 +313,69 @@ export function TerminalRelay({
   }, [status]);
 
   // ---- Overlay for non-active states ----
+  const isServiceDown = status === 'error' && error === 'Relay service is not running';
+
+  const handleStartAndConnect = useCallback(async () => {
+    if (!onStartService) return;
+    setStarting(true);
+    try {
+      const ok = await onStartService();
+      if (ok) {
+        // Give service a moment to be ready, then connect
+        setTimeout(() => connect(), 500);
+      }
+    } finally {
+      setStarting(false);
+    }
+  }, [onStartService, connect]);
+
   let overlay: React.ReactNode = null;
-  if (status === 'error' && error) {
+  if (isServiceDown) {
+    // Service not running — show helpful CTA
+    overlay = (
+      <div className="flex flex-col items-center gap-4 max-w-xs text-center px-4">
+        <div className="w-8 h-8 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+          <span className="text-amber-400 text-[14px]">!</span>
+        </div>
+        <div>
+          <div className="text-[12px] text-neutral-300 font-medium mb-1">Relay service not running</div>
+          <div className="text-[11px] text-neutral-500 leading-relaxed">
+            {onStartService
+              ? 'Start the relay service to open a terminal session.'
+              : 'Start the relay service from the Workspace Manager.'}
+          </div>
+        </div>
+        <div className="flex items-center gap-2">
+          {onStartService && (
+            <button
+              type="button"
+              onClick={handleStartAndConnect}
+              disabled={starting}
+              className="text-[11px] px-4 py-1.5 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors font-medium disabled:opacity-50"
+            >
+              {starting ? 'Starting...' : 'Start Service'}
+            </button>
+          )}
+          <button
+            type="button"
+            onClick={() => connect()}
+            className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+          >
+            Retry
+          </button>
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            >
+              Settings
+            </button>
+          )}
+        </div>
+      </div>
+    );
+  } else if (status === 'error' && error) {
     overlay = (
       <div className="flex flex-col items-center gap-3 max-w-md text-center px-4">
         <div className="w-8 h-8 rounded-full bg-red-500/10 flex items-center justify-center">
