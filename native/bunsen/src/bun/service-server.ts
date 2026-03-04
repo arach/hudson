@@ -3,6 +3,24 @@ import { SERVICE_CATALOG } from '../../../../app/services/catalog';
 
 const PORT = parseInt(process.env.HUDSON_SERVICE_PORT ?? '3601', 10);
 
+// Electrobun apps launch with a minimal macOS PATH (/usr/bin:/bin:/usr/sbin:/sbin).
+// Augment PATH so spawned processes (bun, node, claude) can be found.
+const HOME = process.env.HOME || '';
+const EXTRA_PATHS = [
+  `${HOME}/.bun/bin`,       // bun
+  `${HOME}/.local/bin`,     // claude, pip-installed tools
+  '/opt/homebrew/bin',      // Homebrew (Apple Silicon)
+  '/opt/homebrew/sbin',
+  '/usr/local/bin',         // Homebrew (Intel) / system tools
+  `${HOME}/.nvm/current/bin`, // nvm
+  `${HOME}/.cargo/bin`,     // Rust
+];
+const currentPath = process.env.PATH || '/usr/bin:/bin';
+const missing = EXTRA_PATHS.filter((p) => !currentPath.includes(p));
+if (missing.length > 0) {
+  process.env.PATH = [...missing, currentPath].join(':');
+}
+
 // Walk up from cwd to find the project root (contains packages/hudson-sdk).
 // In dev mode, cwd is inside the app bundle but still within the project tree.
 import { existsSync } from 'fs';
