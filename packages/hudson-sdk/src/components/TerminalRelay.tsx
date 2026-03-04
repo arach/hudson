@@ -8,10 +8,19 @@ import { usePlatform } from '../platform/PlatformContext';
 // Props
 // ---------------------------------------------------------------------------
 
+interface TerminalRelayConfigItem {
+  label: string;
+  value: string;
+}
+
 interface TerminalRelayProps {
   relay: TerminalRelayHandle;
   fontSize?: number;
   fontFamily?: string;
+  /** Key/value pairs shown in the disconnected state so users can see current config at a glance */
+  configItems?: TerminalRelayConfigItem[];
+  /** Called when the user clicks "Settings" in the disconnected overlay */
+  onOpenSettings?: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -128,6 +137,8 @@ export function TerminalRelay({
   relay,
   fontSize = 12,
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
+  configItems,
+  onOpenSettings,
 }: TerminalRelayProps) {
   const { status, error, exitCode, sendInput, resize, onData, connect } = relay;
   const { apiBaseUrl } = usePlatform();
@@ -322,7 +333,45 @@ export function TerminalRelay({
       </div>
     );
   } else if (status === 'disconnected') {
-    overlay = <span className="text-neutral-500">Terminal relay disconnected</span>;
+    overlay = (
+      <div className="flex flex-col items-center gap-4 max-w-xs text-center px-4">
+        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
+          <span className="text-neutral-500 text-[14px]">&#9655;</span>
+        </div>
+        <div>
+          <div className="text-[12px] text-neutral-300 font-medium mb-1">Terminal relay disconnected</div>
+          <div className="text-[11px] text-neutral-500 leading-relaxed">Connect to start an interactive terminal session.</div>
+        </div>
+        {configItems && configItems.length > 0 && (
+          <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-neutral-800/60 border border-neutral-700/40 rounded-md px-3 py-2">
+            {configItems.map(item => (
+              <div key={item.label} className="contents">
+                <span className="text-neutral-500">{item.label}</span>
+                <span className="text-neutral-400 truncate text-left">{item.value}</span>
+              </div>
+            ))}
+          </div>
+        )}
+        <div className="flex items-center gap-2">
+          <button
+            type="button"
+            onClick={() => connect()}
+            className="text-[11px] px-4 py-1.5 rounded-full border border-cyan-500/30 text-cyan-400 hover:bg-cyan-500/10 transition-colors font-medium"
+          >
+            Connect
+          </button>
+          {onOpenSettings && (
+            <button
+              type="button"
+              onClick={onOpenSettings}
+              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            >
+              Settings
+            </button>
+          )}
+        </div>
+      </div>
+    );
   } else if (status === 'connecting') {
     overlay = <span className="text-neutral-500 animate-pulse">Connecting to relay...</span>;
   }
@@ -347,7 +396,7 @@ export function TerminalRelay({
       )}
       <div
         ref={containerRef}
-        className="flex-1 min-h-0"
+        className="flex-1 min-h-0 min-w-0 overflow-hidden"
         style={{
           visibility: overlay ? 'hidden' : 'visible',
           padding: '4px 8px',

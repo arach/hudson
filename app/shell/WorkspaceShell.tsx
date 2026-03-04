@@ -448,6 +448,20 @@ function WorkspaceInner({
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? appsWithTerminal[0]?.app;
 
+  // Auto-switch terminal tab when the focused app changes (if it has a terminal)
+  useEffect(() => {
+    if (hasMultipleTerminals && appsWithTerminal.some(c => c.app.id === focusedAppId)) {
+      setActiveTerminalAppId(focusedAppId);
+    }
+  }, [focusedAppId, hasMultipleTerminals, appsWithTerminal]);
+
+  // Sort terminal tabs: active (visible) apps first, inactive at the end
+  const sortedTerminalApps = useMemo(() => {
+    const active = appsWithTerminal.filter(c => activatedAppIds.has(c.app.id));
+    const inactive = appsWithTerminal.filter(c => !activatedAppIds.has(c.app.id));
+    return [...active, ...inactive];
+  }, [appsWithTerminal, activatedAppIds]);
+
   // --- Settings ---
   const [shellSettings, setShellSettings] = usePersistentState<HudsonSettings>(
     'hudson.settings',
@@ -950,11 +964,14 @@ function WorkspaceInner({
       );
     }
 
-    // Multiple terminals — tab bar
+    // Multiple terminals — tab bar (active apps first, inactive dimmed at end)
+    const activeApps = sortedTerminalApps.filter(c => activatedAppIds.has(c.app.id));
+    const inactiveApps = sortedTerminalApps.filter(c => !activatedAppIds.has(c.app.id));
+
     return (
-      <div className="flex flex-col h-full">
-        <div className="shrink-0 flex border-b border-neutral-700/50">
-          {appsWithTerminal.map(config => (
+      <div className="flex flex-col h-full overflow-hidden">
+        <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
+          {activeApps.map(config => (
             <button
               key={config.app.id}
               onClick={() => setActiveTerminalAppId(config.app.id)}
@@ -967,8 +984,24 @@ function WorkspaceInner({
               {config.app.name}
             </button>
           ))}
+          {inactiveApps.length > 0 && activeApps.length > 0 && (
+            <div className="h-3 w-px bg-neutral-700/50 mx-1" />
+          )}
+          {inactiveApps.map(config => (
+            <button
+              key={config.app.id}
+              onClick={() => setActiveTerminalAppId(config.app.id)}
+              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors opacity-30 ${
+                config.app.id === activeTerminalAppId
+                  ? 'text-emerald-400 border-b border-emerald-400 bg-emerald-500/5 opacity-100'
+                  : 'text-neutral-500 hover:text-neutral-400 hover:opacity-60'
+              }`}
+            >
+              {config.app.name}
+            </button>
+          ))}
         </div>
-        <div className="flex-1 overflow-hidden">
+        <div className="flex-1 overflow-hidden min-w-0">
           {activeTerminalApp?.slots.Terminal && (
             <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
               <activeTerminalApp.slots.Terminal />
@@ -1121,7 +1154,15 @@ function WorkspaceInner({
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
               <StatusBar
-                status={focused.status}
+                status={(() => {
+                  const { catalog, records } = serviceRegistry;
+                  const hasError = catalog.some(s => records[s.id]?.status === 'error');
+                  const allRunning = catalog.length > 0 && catalog.every(s => records[s.id]?.status === 'running');
+                  if (hasError) return { label: 'ERROR', color: 'red' as const };
+                  if (allRunning) return { label: 'NOMINAL', color: 'emerald' as const };
+                  if (catalog.length === 0) return { label: 'READY', color: 'emerald' as const };
+                  return { label: 'DEGRADED', color: 'amber' as const };
+                })()}
                 viewport={{
                   pan: panOffset,
                   zoom: scale,
@@ -1130,16 +1171,19 @@ function WorkspaceInner({
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
                 left={
-                  <button
-                    onClick={() => openSettings()}
-                    className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
-                    title="Settings (⌘,)"
-                  >
-                    <Settings size={10} />
-                    <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
-                  </button>
+                  <div className="flex items-center gap-4">
+                    <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
+                    <div className="h-3 w-px bg-neutral-700" />
+                    <button
+                      onClick={() => openSettings()}
+                      className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                      title="Settings (⌘,)"
+                    >
+                      <Settings size={10} />
+                      <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
+                    </button>
+                  </div>
                 }
-                right={<ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />}
               />
             </motion.div>
 

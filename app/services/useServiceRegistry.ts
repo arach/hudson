@@ -22,6 +22,12 @@ export function useServiceRegistry() {
     'hudson.services.history',
     [],
   );
+  const [autoStartIds, setAutoStartIds] = usePersistentState<string[]>(
+    'hudson.services.autoStart',
+    [],
+  );
+  // Track which services we auto-started this session so we can stop them on quit
+  const autoStartedRef = useRef<Set<string>>(new Set());
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
 
@@ -110,6 +116,7 @@ export function useServiceRegistry() {
         updateRecord(serviceId, {
           status: data.status ?? 'unknown',
           pid: data.pid,
+          logFile: data.logFile,
           error: data.error,
         });
 
@@ -151,6 +158,21 @@ export function useServiceRegistry() {
     [serviceApiUrl, updateRecord, appendHistory],
   );
 
+  const toggleAutoStart = useCallback(
+    (serviceId: string) => {
+      setAutoStartIds((prev) => {
+        const set = new Set(prev);
+        if (set.has(serviceId)) {
+          set.delete(serviceId);
+        } else {
+          set.add(serviceId);
+        }
+        return [...set];
+      });
+    },
+    [setAutoStartIds],
+  );
+
   // Initial health check + polling
   useEffect(() => {
     checkAll();
@@ -160,12 +182,63 @@ export function useServiceRegistry() {
     };
   }, [checkAll]);
 
+  // Auto-start services after initial health check
+  const autoStartDone = useRef(false);
+  useEffect(() => {
+    if (autoStartDone.current || autoStartIds.length === 0) return;
+    autoStartDone.current = true;
+
+    // Small delay to let the initial checkAll complete
+    const timer = setTimeout(async () => {
+      for (const sid of autoStartIds) {
+        const svc = SERVICE_CATALOG.find((s) => s.id === sid);
+        if (!svc) continue;
+
+        // Check health first
+        let alive = false;
+        if (svc.check.healthUrl) {
+          try {
+            const res = await fetch(svc.check.healthUrl, { signal: AbortSignal.timeout(2000) });
+            alive = res.ok;
+          } catch { /* not running */ }
+        }
+
+        if (!alive) {
+          console.log(`[services] Auto-starting ${sid}`);
+          await executeAction(sid, 'start', 'system');
+          autoStartedRef.current.add(sid);
+        }
+      }
+    }, 1500);
+
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoStartIds]);
+
+  // Stop auto-started services on page unload (app quit)
+  useEffect(() => {
+    const handleUnload = () => {
+      for (const sid of autoStartedRef.current) {
+        // Fire-and-forget stop via sendBeacon (fetch may be cancelled during unload)
+        const blob = new Blob(
+          [JSON.stringify({ serviceId: sid, action: 'stop', triggeredBy: 'system' })],
+          { type: 'application/json' },
+        );
+        navigator.sendBeacon(`${serviceApiUrl}/api/services/execute`, blob);
+      }
+    };
+    window.addEventListener('beforeunload', handleUnload);
+    return () => window.removeEventListener('beforeunload', handleUnload);
+  }, [serviceApiUrl]);
+
   return {
     catalog: SERVICE_CATALOG,
     records,
     history,
+    autoStartIds,
     checkHealth,
     checkAll,
     executeAction,
+    toggleAutoStart,
   };
 }

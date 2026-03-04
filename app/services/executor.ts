@@ -1,9 +1,22 @@
 import { SERVICE_CATALOG } from './catalog';
+import { existsSync, mkdirSync, openSync, closeSync, appendFileSync } from 'fs';
+import { join } from 'path';
 
 // In-memory PID tracking (survives within a single process lifecycle)
 const pidMap = new Map<string, number>();
 
 const isBun = typeof Bun !== 'undefined';
+
+// Logs directory: ~/hudson/logs/
+const LOGS_DIR = join(process.env.HOME || '/tmp', 'hudson', 'logs');
+
+function ensureLogsDir() {
+  if (!existsSync(LOGS_DIR)) mkdirSync(LOGS_DIR, { recursive: true });
+}
+
+function logPathFor(serviceId: string): string {
+  return join(LOGS_DIR, `${serviceId}.log`);
+}
 
 export interface ServiceActionResult {
   serviceId: string;
@@ -16,6 +29,7 @@ export interface ServiceActionResult {
   output?: string;
   exitCode?: number | null;
   error?: string;
+  logFile?: string;
   durationMs: number;
 }
 
@@ -44,38 +58,32 @@ function shellExecSync(command: string, opts: { cwd?: string; timeout?: number }
 function spawnDetached(
   cmd: string,
   args: string[],
-  opts: { cwd?: string; env?: Record<string, string | undefined> },
-): { pid: number; stdout: ReadableStream | null; stderr: ReadableStream | null; nodeProc?: import('child_process').ChildProcess } {
+  opts: { cwd?: string; env?: Record<string, string | undefined>; logFd?: number },
+): { pid: number } {
   if (isBun) {
+    const stdioTarget = opts.logFd != null ? opts.logFd : 'ignore';
     const proc = Bun.spawn([cmd, ...args], {
       cwd: opts.cwd,
       env: opts.env as Record<string, string>,
-      stdout: 'pipe',
-      stderr: 'pipe',
+      stdin: 'ignore',
+      stdout: stdioTarget,
+      stderr: stdioTarget,
     });
     // Allow parent process to exit without waiting for this child
     proc.unref();
-    return {
-      pid: proc.pid,
-      stdout: proc.stdout as ReadableStream | null,
-      stderr: proc.stderr as ReadableStream | null,
-    };
+    return { pid: proc.pid };
   }
   // Node.js fallback
   const { spawn } = require('child_process');
+  const stdioTarget = opts.logFd != null ? opts.logFd : 'ignore';
   const child = spawn(cmd, args, {
     cwd: opts.cwd,
     env: opts.env,
     detached: true,
-    stdio: ['ignore', 'pipe', 'pipe'],
+    stdio: ['ignore', stdioTarget, stdioTarget],
   });
   child.unref();
-  return {
-    pid: child.pid!,
-    stdout: null,
-    stderr: null,
-    nodeProc: child,
-  };
+  return { pid: child.pid! };
 }
 
 export async function probeHealth(
@@ -190,11 +198,19 @@ export async function executeServiceAction(params: {
             success: true,
             status: 'running',
             pid: pid ?? undefined,
+            logFile: logPathFor(serviceId),
             output: 'Service already running',
             durationMs: Date.now() - startTime,
           };
         }
       }
+
+      // Set up log file
+      ensureLogsDir();
+      const logFile = logPathFor(serviceId);
+      const logFd = openSync(logFile, 'a');
+      const banner = `\n--- ${svc.name ?? serviceId} started at ${new Date().toISOString()} ---\n`;
+      appendFileSync(logFd, banner);
 
       const [cmd, ...args] = svc.start.command.split(' ');
       const cwd = svc.start.cwd
@@ -203,18 +219,14 @@ export async function executeServiceAction(params: {
       const spawned = spawnDetached(cmd, args, {
         cwd,
         env: { ...process.env, ...svc.start.env },
+        logFd,
       });
 
       const pid = spawned.pid;
       pidMap.set(serviceId, pid);
 
-      // Collect early output
-      let output = '';
-      if (spawned.nodeProc) {
-        // Node.js: use event-based streams
-        spawned.nodeProc.stdout?.on('data', (d: Buffer) => { output += d.toString(); });
-        spawned.nodeProc.stderr?.on('data', (d: Buffer) => { output += d.toString(); });
-      }
+      // The fd is inherited by the child — close our copy so the file isn't held open
+      closeSync(logFd);
 
       // Wait for health
       await new Promise((r) => setTimeout(r, 2000));
@@ -230,9 +242,8 @@ export async function executeServiceAction(params: {
         status: alive ? 'running' : 'error',
         pid,
         command: svc.start.command,
-        output:
-          output ||
-          (alive ? 'Started successfully' : 'Health check failed after start'),
+        logFile,
+        output: alive ? 'Started successfully' : 'Health check failed after start',
         durationMs: Date.now() - startTime,
       };
     }

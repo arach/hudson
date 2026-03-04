@@ -766,10 +766,11 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
   );
 }
 
-export function ServiceActionButton({ label, variant = 'primary', onClick }: {
+export function ServiceActionButton({ label, variant = 'primary', onClick, loading = false }: {
   label: string;
   variant?: 'primary' | 'secondary' | 'danger';
   onClick: () => void;
+  loading?: boolean;
 }) {
   const colors = {
     primary: 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border-emerald-500/20',
@@ -780,8 +781,12 @@ export function ServiceActionButton({ label, variant = 'primary', onClick }: {
     <button
       type="button"
       onClick={onClick}
-      className={`px-3 py-1 text-[11px] font-mono font-medium rounded border transition-colors ${colors[variant]}`}
+      disabled={loading}
+      className={`px-3 py-1 text-[11px] font-mono font-medium rounded border transition-colors inline-flex items-center gap-1.5 ${colors[variant]} ${loading ? 'opacity-60 cursor-not-allowed' : ''}`}
     >
+      {loading && (
+        <div className="w-2.5 h-2.5 border border-current border-t-transparent rounded-full animate-spin" />
+      )}
       {label}
     </button>
   );

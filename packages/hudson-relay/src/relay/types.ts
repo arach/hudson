@@ -5,6 +5,8 @@ export interface SessionInitMessage {
   systemPrompt?: string;
   /** Working directory for the PTY session. Defaults to $HOME. */
   cwd?: string;
+  /** Files to bootstrap in the CWD before spawning the CLI. Keys are relative paths, values are file contents. Only written if the file doesn't already exist. */
+  workspaceFiles?: Record<string, string>;
 }
 
 export interface SessionReconnectMessage {

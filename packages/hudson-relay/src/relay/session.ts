@@ -1,6 +1,7 @@
 import { createRequire } from 'module';
 import { execSync } from 'child_process';
-import { existsSync, mkdirSync } from 'fs';
+import { existsSync, mkdirSync, writeFileSync } from 'fs';
+import { join, dirname as pathDirname } from 'path';
 import type { WebSocket } from 'ws';
 import type { IPty } from 'node-pty';
 
@@ -108,6 +109,23 @@ export function createSession(ws: WebSocket, msg: SessionInitMessage): Session |
 
   // ---- Pre-flight: resolve working directory ----
   const cwd = resolveCwd(msg.cwd);
+
+  // ---- Bootstrap workspace files (only if they don't exist) ----
+  if (msg.workspaceFiles) {
+    for (const [relPath, content] of Object.entries(msg.workspaceFiles)) {
+      const absPath = join(cwd, relPath);
+      if (!existsSync(absPath)) {
+        try {
+          const dir = pathDirname(absPath);
+          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+          writeFileSync(absPath, content, 'utf-8');
+          console.log(`[relay] Session ${id}: bootstrapped ${relPath}`);
+        } catch (err) {
+          console.warn(`[relay] Session ${id}: failed to bootstrap ${relPath}:`, err);
+        }
+      }
+    }
+  }
 
   const args: string[] = ['--verbose'];
   if (msg.systemPrompt) {

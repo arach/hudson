@@ -29,6 +29,7 @@ export interface ServiceRecord {
   serviceId: string;
   status: ServiceStatus;
   pid?: number;
+  logFile?: string;
   lastChecked: number;
   lastChanged: number;
   error?: string;

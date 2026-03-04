@@ -15,6 +15,8 @@ export interface UseTerminalRelayOptions {
   systemPrompt?: string;
   /** Working directory for the PTY session. Defaults to $HOME on the server. */
   cwd?: string;
+  /** Files to bootstrap in the CWD before spawning. Keys are relative paths, values are content. Only created if missing. */
+  workspaceFiles?: Record<string, string>;
   /** Auto-connect on mount. Defaults to false. */
   autoConnect?: boolean;
 }
@@ -51,6 +53,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     url = 'ws://localhost:3600',
     systemPrompt,
     cwd,
+    workspaceFiles,
     autoConnect = false,
   } = options;
 
@@ -110,9 +113,10 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
         rows: dimsRef.current.rows,
         ...(systemPrompt ? { systemPrompt } : {}),
         ...(cwd ? { cwd } : {}),
+        ...(workspaceFiles ? { workspaceFiles } : {}),
       });
     }
-  }, [send, systemPrompt, cwd]);
+  }, [send, systemPrompt, cwd, workspaceFiles]);
 
   const connect = useCallback(() => {
     if (wsRef.current) {
@@ -154,6 +158,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
               rows: dimsRef.current.rows,
               ...(systemPrompt ? { systemPrompt } : {}),
               ...(cwd ? { cwd } : {}),
+              ...(workspaceFiles ? { workspaceFiles } : {}),
             });
             initSentRef.current = true;
             break;
@@ -203,7 +208,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       setStatus('error');
       setError('Could not connect to relay');
     };
-  }, [url, sendInitOrReconnect, send, systemPrompt, cwd]);
+  }, [url, sendInitOrReconnect, send, systemPrompt, cwd, workspaceFiles]);
 
   const sendInput = useCallback((data: string) => {
     send({ type: 'terminal:input', data });

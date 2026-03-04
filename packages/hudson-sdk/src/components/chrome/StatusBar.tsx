@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Activity, Clock, Map, Maximize2, Terminal } from 'lucide-react';
+import { Clock, Map, Maximize2 } from 'lucide-react';
 import { PANEL_STYLES } from '../../lib/theme';
 
 interface StatusBarProps {
@@ -87,7 +87,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
           </>
         )}
 
-        {/* Status indicator */}
+        {/* System status indicator */}
         <div className={`flex items-center gap-2 ${colors.text}`}>
           <div className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colors.ping} opacity-75`} />
@@ -136,7 +136,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       )}
 
-      {/* RIGHT: App-specific + System info + Clock */}
+      {/* RIGHT: Console toggle + Clock */}
       <div className="flex items-center gap-4">
         {right}
 
@@ -154,20 +154,11 @@ const StatusBar: React.FC<StatusBarProps> = ({
               title="Toggle Terminal (Ctrl+`)"
             >
               <span className="text-[12px]">{'>'}_</span>
-              <span className="uppercase text-[10px] font-semibold tracking-wider">
-                {isTerminalOpen ? 'Console' : 'Console'}
-              </span>
+              <span className="uppercase text-[10px] font-semibold tracking-wider">Console</span>
             </button>
             <div className="h-3 w-px bg-neutral-700" />
           </>
         )}
-
-        <div className="flex items-center gap-1.5">
-          <Activity size={10} className="text-neutral-400" />
-          <span className="uppercase text-neutral-200">System: Nominal</span>
-        </div>
-
-        <div className="h-3 w-px bg-neutral-700" />
 
         <div className="flex items-center gap-1.5 text-neutral-200 min-w-[60px] justify-end">
           <Clock size={10} className="text-neutral-400" />
