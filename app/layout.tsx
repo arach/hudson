@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import localFont from "next/font/local";
 import { Geist_Mono } from "next/font/google";
 import Script from "next/script";
+import { Analytics } from "@vercel/analytics/next";
 import "./globals.css";
 
 const astroMono = localFont({
@@ -59,6 +60,7 @@ export default function RootLayout({
       </head>
       <body className={`${astroMono.variable} ${geistMono.variable} antialiased`}>
         {children}
+        <Analytics />
       </body>
     </html>
   );
