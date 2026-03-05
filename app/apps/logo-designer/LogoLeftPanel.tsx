@@ -158,14 +158,17 @@ export function LogoLeftPanel() {
             const values = customParamValues[activeTemplate.id] ?? {};
             const val = values[p.key] ?? p.default;
             if (p.type === 'number') {
+              const pMin = p.min ?? 0;
+              const pMax = p.max ?? 100;
+              const pStep = p.step ?? ((pMax - pMin) < 10 ? 0.01 : 1);
               return (
                 <Slider
                   key={p.key}
                   label={p.label}
                   value={val as number}
-                  min={p.min ?? 0}
-                  max={p.max ?? 100}
-                  step={p.step ?? 1}
+                  min={pMin}
+                  max={pMax}
+                  step={pStep}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
                 />
               );

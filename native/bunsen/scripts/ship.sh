@@ -84,11 +84,21 @@ else
   spctl --assess --verbose=2 --type open --context context:primary-signature "$DMG" 2>&1 || true
 fi
 
+# ── Upload to GitHub ──────────────────────────────────────────────
+echo ""
+echo "▸ Creating GitHub release v${VERSION}..."
+gh release create "v${VERSION}" \
+  --repo arach/hudsonos \
+  --title "Hudson v${VERSION}" \
+  --notes "Hudson v${VERSION}" \
+  "$DMG"
+
 # ── Summary ───────────────────────────────────────────────────────
 SIZE=$(du -h "$DMG" | cut -f1)
 echo ""
 echo "═══════════════════════════════════════════"
 echo "  ✓ ${DMG} (${SIZE})"
+echo "  ✓ https://github.com/arach/hudsonos/releases/tag/v${VERSION}"
 echo "═══════════════════════════════════════════"
 
 # ── Open ──────────────────────────────────────────────────────────

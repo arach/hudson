@@ -187,7 +187,29 @@ export function LogoProvider({ children }: { children: ReactNode }) {
         // Only update state if data actually changed
         if (json !== lastFetchRef.current) {
           lastFetchRef.current = json;
-          if (active) setTemplates(data.templates);
+          if (active) {
+            setTemplates(data.templates);
+            // Initialize custom param defaults for any template that has params
+            // but no values stored yet (e.g. freshly created by relay agent)
+            setCustomParamValues(cpv => {
+              let changed = false;
+              const next = { ...cpv };
+              for (const t of data.templates as { id: string; params: { key: string; default: number | string | boolean }[] }[]) {
+                if (!t.params || t.params.length === 0) continue;
+                const existing = next[t.id] ?? {};
+                let filled = existing;
+                for (const p of t.params) {
+                  if (!(p.key in filled)) {
+                    if (filled === existing) filled = { ...existing };
+                    filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
+                    changed = true;
+                  }
+                }
+                if (filled !== existing) next[t.id] = filled;
+              }
+              return changed ? next : cpv;
+            });
+          }
         }
       } catch { /* network error, retry next interval */ }
     }

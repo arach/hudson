@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback, useRef } from 'react';
-import { Download, Copy, Check, Image } from 'lucide-react';
+import { Download, Copy, Check, Image, Apple, Smartphone, Loader2 } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
 
@@ -98,7 +98,7 @@ function ExportButton({
 // ---------------------------------------------------------------------------
 
 export function LogoInspector() {
-  const { params, templates } = useLogo();
+  const { params, templates, customParamValues, apiBaseUrl } = useLogo();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const activeTemplate = templates.find(t => t.id === params.variant);
@@ -134,6 +134,43 @@ export function LogoInspector() {
       new ClipboardItem({ 'image/png': blob }),
     ]);
   }, []);
+
+  const [platformExporting, setPlatformExporting] = useState<'macos' | 'ios' | null>(null);
+
+  const handlePlatformExport = useCallback(async (platform: 'macos' | 'ios') => {
+    const activeTemplate = templates.find(t => t.id === params.variant);
+    if (!activeTemplate) return;
+
+    setPlatformExporting(platform);
+    try {
+      // Merge standard params + custom param values (same logic as TemplateSvg)
+      const merged: Record<string, unknown> = { ...params };
+      const cpv = customParamValues[activeTemplate.id] ?? {};
+      for (const decl of activeTemplate.params) {
+        merged[decl.key] = cpv[decl.key] ?? decl.default;
+      }
+
+      const res = await fetch(`${apiBaseUrl}/api/logo/export`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          renderBody: activeTemplate.renderBody,
+          params: merged,
+          platform,
+        }),
+      });
+
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({ error: 'Export failed' }));
+        throw new Error(err.error || 'Export failed');
+      }
+
+      const blob = await res.blob();
+      downloadBlob(blob, platform === 'macos' ? 'AppIcon-macOS.zip' : 'AppIcon-iOS.zip');
+    } finally {
+      setPlatformExporting(null);
+    }
+  }, [params, templates, customParamValues, apiBaseUrl]);
 
   return (
     <div className="p-4 space-y-4 overflow-y-auto h-full frame-scrollbar">
@@ -241,6 +278,44 @@ export function LogoInspector() {
               <Image size={10} className="text-neutral-500" />
             </button>
           ))}
+        </div>
+      </div>
+
+      <div className="h-px bg-neutral-600/50" />
+
+      {/* Platform Export */}
+      <div className="space-y-2">
+        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
+          Platform Export
+        </div>
+        <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
+          Generate all required icon sizes as a ready-to-use bundle.
+        </div>
+        <div className="grid grid-cols-2 gap-2">
+          <button
+            onClick={() => handlePlatformExport('macos')}
+            disabled={platformExporting !== null}
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] disabled:opacity-40 disabled:pointer-events-none transition-colors text-[11px] font-mono text-neutral-300"
+          >
+            {platformExporting === 'macos' ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Apple size={12} />
+            )}
+            macOS
+          </button>
+          <button
+            onClick={() => handlePlatformExport('ios')}
+            disabled={platformExporting !== null}
+            className="flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] disabled:opacity-40 disabled:pointer-events-none transition-colors text-[11px] font-mono text-neutral-300"
+          >
+            {platformExporting === 'ios' ? (
+              <Loader2 size={12} className="animate-spin" />
+            ) : (
+              <Smartphone size={12} />
+            )}
+            iOS
+          </button>
         </div>
       </div>
     </div>
