@@ -219,6 +219,52 @@ for (let r = 0; r < rows; r++) {
 return svg;`,
 };
 
+const mosaic: BuiltinDef = {
+  name: 'Mosaic',
+  description: 'Dissolving 5×5 tile grid. L emerges through size and opacity falloff.',
+  renderBody: `\
+const { bgColor, paneColor, dimPaneColor, borderRadius, paneRadius, gapWidth, padding } = p;
+const content = vb - padding * 2;
+const cols = 5;
+const cellSize = (content - gapWidth * (cols - 1)) / cols;
+const r = Math.min(paneRadius, cellSize / 2);
+
+// L-shape: left column (col 0) and bottom row (row 4)
+function dist(col, row) {
+  // distance from nearest L-cell
+  const dCol = col; // distance from left column
+  const dRow = (cols - 1) - row; // distance from bottom row
+  return Math.min(dCol, dRow);
+}
+
+let svg = \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`;
+
+for (let row = 0; row < cols; row++) {
+  for (let col = 0; col < cols; col++) {
+    const cx = padding + col * (cellSize + gapWidth) + cellSize / 2;
+    const cy = padding + row * (cellSize + gapWidth) + cellSize / 2;
+    const d = dist(col, row);
+
+    if (d === 0) {
+      // L-shape tiles: full size, full color
+      const x = cx - cellSize / 2;
+      const y = cy - cellSize / 2;
+      svg += \`<rect x="\${x}" y="\${y}" width="\${cellSize}" height="\${cellSize}" rx="\${r}" fill="\${paneColor}"/>\`;
+    } else {
+      // Scale and fade based on distance
+      const scale = Math.max(0.2, 1 - d * 0.28);
+      const opacity = Math.max(0.06, 1 - d * 0.32);
+      const s = cellSize * scale;
+      const x = cx - s / 2;
+      const y = cy - s / 2;
+      const sr = Math.min(r * scale, s / 2);
+      svg += \`<rect x="\${x}" y="\${y}" width="\${s}" height="\${s}" rx="\${sr}" fill="\${dimPaneColor}" opacity="\${opacity.toFixed(2)}"/>\`;
+    }
+  }
+}
+return svg;`,
+};
+
 export const builtinRenderBodies: Record<string, BuiltinDef> = {
   'negative-space': negativeSpace,
   'green-channel': greenChannel,
@@ -227,4 +273,5 @@ export const builtinRenderBodies: Record<string, BuiltinDef> = {
   'lattice-grid': latticeGrid,
   'app-windows': appWindows,
   'dot-matrix': dotMatrix,
+  'mosaic': mosaic,
 };
