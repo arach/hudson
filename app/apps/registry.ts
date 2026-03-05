@@ -26,6 +26,8 @@ import type { HudsonWorkspace, WorkspaceAppConfig } from '@hudson/sdk';
 
 import { hudsonDocsApp } from './hudson-docs';
 import { intentExplorerApp } from './intent-explorer';
+import { logoDesignerApp } from './logo-designer';
+import { shaperApp } from './shaper';
 
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
@@ -34,6 +36,16 @@ function getCoreApps(): WorkspaceAppConfig[] {
       app: intentExplorerApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 200, y: -200, w: 680, h: 500 },
+    },
+    {
+      app: logoDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 100, y: -200, w: 900, h: 700 },
+    },
+    {
+      app: shaperApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -400, y: -300, w: 800, h: 600 },
     },
   ];
 }

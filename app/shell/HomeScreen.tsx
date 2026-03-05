@@ -2,6 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
+import { X, Info } from 'lucide-react';
 import type { HudsonWorkspace } from '@hudson/sdk';
 
 // ---------------------------------------------------------------------------
@@ -38,6 +39,211 @@ export function saveSession(workspaceId: string) {
 }
 
 // ---------------------------------------------------------------------------
+// App info blurbs — keyed by app id
+// ---------------------------------------------------------------------------
+interface AppInfo {
+  summary: string;
+  bullets: string[];
+  link?: { label: string; url: string };
+}
+
+const APP_INFO: Record<string, AppInfo> = {
+  'hudson-docs': {
+    summary: 'Interactive documentation and component explorer for the Hudson platform.',
+    bullets: [
+      'Browse SDK components, hooks, and types',
+      'Live previews with editable props',
+      'Search across all documentation pages',
+    ],
+  },
+  'intent-explorer': {
+    summary: 'Inspect and test the intent routing system across all registered apps.',
+    bullets: [
+      'View all registered intents and their handlers',
+      'Fire test intents and observe responses',
+      'Debug cross-app communication in real time',
+    ],
+  },
+  'logo-designer': {
+    summary: 'Design and export lattice-based logos with live preview and AI-powered template generation.',
+    bullets: [
+      'Multiple built-in variants: lattice grid, dot matrix, mosaic',
+      'Custom template creation via AI relay',
+      'SVG and PNG export at any resolution',
+    ],
+  },
+  'shaper': {
+    summary: 'Vector bezier curve editor for tracing, editing, and animating shapes.',
+    bullets: [
+      'Import images and auto-trace contours to editable paths',
+      'Pen tool for manual bezier drawing',
+      'Built-in animation timeline with easing controls',
+    ],
+  },
+  'openclaw': {
+    summary: 'OpenClaw is an open-source local AI assistant. Use Telegram for quick chat-level access — use Hudson when you need a complex, structured UI for your claws.',
+    bullets: [
+      'Formatted, browsable views of agent responses and tool outputs',
+      'Visual task queue — see scheduled jobs, heartbeats, and background work at a glance',
+      'Structured input forms for skills and commands instead of free-text prompts',
+      'Memory inspector to review and edit what your claw remembers',
+      'Socket-level communication via Tailscale and the Hudson OS CLI',
+    ],
+    link: { label: 'openclaw.ai', url: 'https://openclaw.ai' },
+  },
+};
+
+// ---------------------------------------------------------------------------
+// InfoPopout — detail overlay anchored to the grid
+// ---------------------------------------------------------------------------
+function InfoPopout({ appId, name, onClose }: { appId: string; name: string; onClose: () => void }) {
+  const info = APP_INFO[appId];
+  const [email, setEmail] = useState('');
+  const [submitted, setSubmitted] = useState(false);
+  const [submitting, setSubmitting] = useState(false);
+  const [error, setError] = useState('');
+
+  const handleContact = useCallback(async () => {
+    if (!email.trim()) return;
+    setSubmitting(true);
+    setError('');
+    try {
+      const res = await fetch('/api/contact', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: email.trim(),
+          useCase: `Interest in ${name} (${appId})`,
+          context: `Module info popout on ${typeof window !== 'undefined' ? window.location.href : 'app'}`,
+          message: `User expressed interest in the ${name} module from the Hudson app launcher.`,
+        }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || 'Something went wrong');
+      }
+      setSubmitted(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Something went wrong');
+    } finally {
+      setSubmitting(false);
+    }
+  }, [email, name, appId]);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') { e.stopPropagation(); onClose(); }
+    };
+    window.addEventListener('keydown', handler, true);
+    return () => window.removeEventListener('keydown', handler, true);
+  }, [onClose]);
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      exit={{ opacity: 0 }}
+      transition={{ duration: 0.15 }}
+      onClick={onClose}
+    >
+      <motion.div
+        className="w-[420px] max-w-[90vw] rounded-xl overflow-hidden"
+        style={{
+          background: 'linear-gradient(170deg, rgba(30,30,30,0.98) 0%, rgba(20,20,20,0.98) 100%)',
+          border: '1px solid rgba(255,255,255,0.10)',
+          boxShadow: '0 24px 80px rgba(0,0,0,0.6)',
+        }}
+        initial={{ opacity: 0, scale: 0.95, y: 8 }}
+        animate={{ opacity: 1, scale: 1, y: 0 }}
+        exit={{ opacity: 0, scale: 0.95, y: 8 }}
+        transition={{ duration: 0.2, ease: [0.25, 1, 0.5, 1] }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-white/[0.06]">
+          <h3 className="text-[16px] font-mono font-semibold tracking-wide text-white">{name}</h3>
+          <button
+            onClick={onClose}
+            className="p-1 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white cursor-pointer"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        {/* Body */}
+        <div className="px-5 py-4 space-y-4">
+          {info ? (
+            <>
+              <p className="text-[13px] font-mono text-neutral-300 leading-relaxed">
+                {info.summary}
+              </p>
+              <ul className="space-y-2">
+                {info.bullets.map((b) => (
+                  <li key={b} className="flex items-start gap-2.5 text-[13px] font-mono text-neutral-400 leading-relaxed">
+                    <span className="mt-1.5 w-1 h-1 rounded-full bg-emerald-500/60 shrink-0" />
+                    {b}
+                  </li>
+                ))}
+              </ul>
+              {info.link && (
+                <a
+                  href={info.link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-block text-[12px] font-mono text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  {info.link.label} &rarr;
+                </a>
+              )}
+            </>
+          ) : (
+            <p className="text-[13px] font-mono text-neutral-500">No additional info available.</p>
+          )}
+        </div>
+
+        {/* Contact / intent capture */}
+        <div className="px-5 py-4 border-t border-white/[0.06]">
+          {submitted ? (
+            <p className="text-[13px] font-mono text-emerald-400">
+              Thanks — we&apos;ll be in touch.
+            </p>
+          ) : (
+            <>
+              <p className="text-[12px] font-mono text-neutral-500 mb-3">
+                Want to learn more? Drop your email and we&apos;ll reach out.
+              </p>
+              <form
+                className="flex gap-2"
+                onSubmit={(e) => { e.preventDefault(); handleContact(); }}
+              >
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="you@email.com"
+                  className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-md px-3 py-1.5 text-[12px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-emerald-500/40 transition-colors"
+                />
+                <button
+                  type="submit"
+                  disabled={submitting || !email.trim()}
+                  className="px-3 py-1.5 rounded-md text-[12px] font-mono tracking-wide cursor-pointer transition-colors bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-default"
+                >
+                  {submitting ? 'Sending...' : 'Contact us'}
+                </button>
+              </form>
+              {error && (
+                <p className="text-[11px] font-mono text-red-400 mt-2">{error}</p>
+              )}
+            </>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // AppLauncher — frosted overlay with multi-select cards
 // ---------------------------------------------------------------------------
 interface AppLauncherProps {
@@ -49,6 +255,7 @@ interface AppLauncherProps {
 
 export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismiss }: AppLauncherProps) {
   const [exiting, setExiting] = useState(false);
+  const [infoAppId, setInfoAppId] = useState<{ id: string; name: string } | null>(null);
   const hasActivated = activatedAppIds.size > 0;
 
   const handleDismiss = useCallback(() => {
@@ -58,9 +265,10 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
     setTimeout(onDismiss, 400);
   }, [exiting, onDismiss]);
 
-  // Keyboard: Escape or Enter to dismiss
+  // Keyboard: Escape or Enter to dismiss (only when info popout is closed)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (infoAppId) return; // let popout handle its own Escape
       if (e.key === 'Escape' || e.key === 'Enter') {
         e.preventDefault();
         handleDismiss();
@@ -68,7 +276,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [handleDismiss]);
+  }, [handleDismiss, infoAppId]);
 
   return (
     <motion.div
@@ -90,7 +298,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
         >
-          <h1 className="text-[28px] font-mono font-bold tracking-[0.3em] text-white/90">
+          <h1 className="text-[32px] font-mono font-bold tracking-[0.3em] text-white/90">
             HUDSON
           </h1>
           {/* Breathing bar — pure CSS, GPU-composited via transform */}
@@ -104,7 +312,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
               style={{ background: 'rgba(16,185,129,0.4)', filter: 'blur(4px)' }}
             />
           </div>
-          <span className="text-[11px] font-mono tracking-[0.2em] text-neutral-500">
+          <span className="text-[12px] font-mono tracking-[0.2em] text-neutral-500">
             hudsonos.com
           </span>
         </motion.div>
@@ -112,7 +320,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
         {/* App cards */}
         <div
           className="grid gap-5 w-full"
-          style={{ gridTemplateColumns: `repeat(${Math.min(workspace.apps.length, 3)}, 1fr)` }}
+          style={{ gridTemplateColumns: `repeat(${Math.min(workspace.apps.length + 1, 3)}, 1fr)` }}
         >
           {workspace.apps.map((config, i) => {
             const { app } = config;
@@ -156,7 +364,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
                 )}
 
                 {/* App name */}
-                <h2 className={`text-[16px] font-mono font-semibold tracking-wide transition-colors ${
+                <h2 className={`text-[18px] font-mono font-semibold tracking-wide transition-colors ${
                   isActive ? 'text-emerald-300' : 'text-neutral-100 group-hover:text-white'
                 }`}>
                   {app.name}
@@ -164,17 +372,21 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
 
                 {/* Description */}
                 {app.description && (
-                  <p className="text-[12px] font-mono text-neutral-400 leading-relaxed">
+                  <p className="text-[13px] font-mono text-neutral-400 leading-relaxed">
                     {app.description}
                   </p>
                 )}
 
-                {/* Open action */}
+                {/* Footer */}
                 <div className="flex items-center justify-between w-full mt-auto pt-3">
-                  <span className="text-[10px] font-mono tracking-[0.12em] uppercase px-2.5 py-1 rounded-md bg-white/[0.04] text-neutral-500 border border-white/[0.06]">
-                    {app.mode}
+                  <span
+                    onClick={(e) => { e.stopPropagation(); setInfoAppId({ id: app.id, name: app.name }); }}
+                    className="flex items-center gap-1.5 text-[11px] font-mono tracking-[0.08em] text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+                  >
+                    <Info size={10} />
+                    More info
                   </span>
-                  <span className={`text-[11px] font-mono transition-colors ${
+                  <span className={`text-[12px] font-mono transition-colors ${
                     isActive ? 'text-emerald-400' : 'text-neutral-500 group-hover:text-emerald-400'
                   }`}>
                     {isActive ? 'Active' : 'Open \u2192'}
@@ -193,6 +405,37 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
               </motion.button>
             );
           })}
+
+          {/* Coming soon — OpenClaw */}
+          <motion.div
+            className="group relative flex flex-col items-start gap-4 p-6 rounded-xl text-left"
+            initial={{ opacity: 0, y: 8 }}
+            animate={{ opacity: 0.85, y: 0 }}
+            transition={{ duration: 0.35, delay: 0.1 + workspace.apps.length * 0.06, ease: [0.25, 1, 0.5, 1] }}
+            style={{
+              background: 'linear-gradient(170deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.02) 100%)',
+              border: '1px solid rgba(255,255,255,0.10)',
+            }}
+          >
+            <h2 className="text-[18px] font-mono font-semibold tracking-wide text-neutral-100">
+              OpenClaw
+            </h2>
+            <p className="text-[13px] font-mono text-neutral-400 leading-relaxed">
+              UI for collaborating with your claws
+            </p>
+            <div className="flex items-center justify-between w-full mt-auto pt-3">
+              <span
+                onClick={() => setInfoAppId({ id: 'openclaw', name: 'OpenClaw' })}
+                className="flex items-center gap-1.5 text-[11px] font-mono tracking-[0.08em] text-neutral-500 hover:text-neutral-300 transition-colors cursor-pointer"
+              >
+                <Info size={10} />
+                More info
+              </span>
+              <span className="text-[11px] font-mono tracking-[0.12em] uppercase text-neutral-500">
+                Coming soon
+              </span>
+            </div>
+          </motion.div>
         </div>
 
         {/* Hint + Enter button */}
@@ -207,7 +450,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
               <motion.button
                 key="enter"
                 onClick={handleDismiss}
-                className="px-6 py-2 rounded-lg font-mono text-[12px] tracking-[0.15em] uppercase cursor-pointer transition-colors"
+                className="px-6 py-2 rounded-lg font-mono text-[13px] tracking-[0.15em] uppercase cursor-pointer transition-colors"
                 style={{
                   background: 'linear-gradient(170deg, rgba(16,185,129,0.15) 0%, rgba(16,185,129,0.06) 100%)',
                   border: '1px solid rgba(16,185,129,0.3)',
@@ -225,7 +468,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
             ) : (
               <motion.p
                 key="hint"
-                className="text-[13px] font-mono tracking-[0.15em] text-neutral-500"
+                className="text-[14px] font-mono tracking-[0.15em] text-neutral-500"
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 exit={{ opacity: 0 }}
@@ -236,7 +479,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
             )}
           </AnimatePresence>
           <motion.p
-            className="text-[10px] font-mono tracking-[0.15em] text-neutral-600"
+            className="text-[11px] font-mono tracking-[0.15em] text-neutral-600"
             initial={{ opacity: 0 }}
             animate={{ opacity: hasActivated ? 1 : 0 }}
             transition={{ duration: 0.3 }}
@@ -245,6 +488,17 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
           </motion.p>
         </motion.div>
       </div>
+
+      {/* Info popout */}
+      <AnimatePresence>
+        {infoAppId && (
+          <InfoPopout
+            appId={infoAppId.id}
+            name={infoAppId.name}
+            onClose={() => setInfoAppId(null)}
+          />
+        )}
+      </AnimatePresence>
     </motion.div>
   );
 }
