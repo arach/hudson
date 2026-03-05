@@ -13,11 +13,12 @@ const paramKeys = [
 const templateParamSchema = z.object({
   key: z.string().describe('Param key (camelCase, no spaces)'),
   label: z.string().describe('Human-readable label'),
-  type: z.enum(['number', 'color']).describe('Control type'),
-  default: z.union([z.number(), z.string()]).describe('Default value'),
+  type: z.enum(['number', 'color', 'toggle', 'enum']).describe('Control type: number=slider, color=picker, toggle=on/off, enum=dropdown'),
+  default: z.union([z.number(), z.string(), z.boolean()]).describe('Default value'),
   min: z.number().optional().describe('Min value (for number type)'),
   max: z.number().optional().describe('Max value (for number type)'),
   step: z.number().optional().describe('Step increment (for number type)'),
+  options: z.array(z.string()).optional().describe('Allowed values (for enum type)'),
 });
 
 // ---------------------------------------------------------------------------
@@ -105,7 +106,9 @@ All 6 built-in variants are editable templates. Use update_template with the bui
 - When the user asks you to change the logo, DO IT immediately by calling tools.
 - Use multiple tool calls in one response for compound edits.
 - Keep dimPaneColor consistent with paneColor (same hue, lower opacity).
-- Be concise. Say what you changed and why in 1-2 sentences.`;
+- Be concise. Say what you changed and why in 1-2 sentences.
+
+`;
 
 // ---------------------------------------------------------------------------
 // Instance context — dynamic state rendered per-request
@@ -239,6 +242,7 @@ function tools(_ctx: Record<string, unknown>) {
       }),
       execute: async (args) => ({ applied: true, action: 'set_custom_param', ...args }),
     }),
+
   };
 }
 

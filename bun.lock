@@ -56,7 +56,7 @@
     },
     "native/bunsen": {
       "name": "bunsen",
-      "version": "0.0.2",
+      "version": "0.0.6",
       "dependencies": {
         "@base-ui-components/react": "^1.0.0-rc.0",
         "lucide-react": "^0.574.0",

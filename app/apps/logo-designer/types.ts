@@ -4,11 +4,13 @@
 export interface TemplateParam {
   key: string;
   label: string;
-  type: 'number' | 'color';
-  default: number | string;
+  type: 'number' | 'color' | 'toggle' | 'enum';
+  default: number | string | boolean;
   min?: number;
   max?: number;
   step?: number;
+  /** For enum type: list of allowed values */
+  options?: string[];
 }
 
 // ---------------------------------------------------------------------------
@@ -39,6 +41,7 @@ export const BUILTIN_IDS = new Set([
   'lattice-grid',
   'app-windows',
   'dot-matrix',
+  'mosaic',
 ]);
 
 export function isBuiltinVariant(id: string): boolean {

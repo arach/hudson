@@ -1,11 +1,10 @@
 'use client';
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoTemplate } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';
-import { builtinRenderBodies } from './builtinRenderBodies';
 
 export interface LogoParams {
   variant: string;
@@ -35,20 +34,8 @@ export const defaults: LogoParams = {
   padding: 72,
 };
 
-// ---------------------------------------------------------------------------
-// Seed built-in templates from builtinRenderBodies
-// ---------------------------------------------------------------------------
-function createBuiltinTemplates(): LogoTemplate[] {
-  return Object.entries(builtinRenderBodies).map(([id, def]) => ({
-    id,
-    name: def.name,
-    description: def.description,
-    renderBody: def.renderBody,
-    params: [],
-    createdAt: 0,
-    updatedAt: 0,
-  }));
-}
+// Poll interval for syncing templates from the server
+const TEMPLATE_POLL_MS = 5000;
 
 interface LogoState {
   params: LogoParams;
@@ -148,6 +135,19 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
     label: 'Dot matrix — ocean',
     params: { variant: 'dot-matrix', paneColor: '#38bdf8', dimPaneColor: 'rgba(56,189,248,0.18)', bgColor: '#0a0d14' },
   },
+  // ── Mosaic presets ──
+  {
+    label: 'Mosaic',
+    params: { variant: 'mosaic', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.45)', bgColor: '#111113' },
+  },
+  {
+    label: 'Mosaic — emerald',
+    params: { variant: 'mosaic', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.35)', bgColor: '#0a0f0d' },
+  },
+  {
+    label: 'Mosaic — violet',
+    params: { variant: 'mosaic', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.35)', bgColor: '#0d0a14' },
+  },
   // ── Other variant presets ──
   {
     label: 'App windows',
@@ -168,20 +168,33 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   const { apiBaseUrl } = usePlatform();
   const [params, setParams] = useState<LogoParams>(defaults);
 
-  // All templates (built-in + custom), persisted
-  const [templates, setTemplates] = usePersistentState<LogoTemplate[]>('logo.templates', []);
+  // Templates fetched from server-side JSON files
+  const [templates, setTemplates] = useState<LogoTemplate[]>([]);
   const [customParamValues, setCustomParamValues] = usePersistentState<Record<string, Record<string, number | string>>>('logo.customParamValues', {});
 
-  // Ensure built-in templates are always present (merge with any existing custom templates)
+  // Poll the template API for changes (picks up relay-created templates)
+  const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
+  const lastFetchRef = useRef('');
+
   useEffect(() => {
-    setTemplates(prev => {
-      const existingIds = new Set(prev.map(t => t.id));
-      const builtins = createBuiltinTemplates();
-      const missing = builtins.filter(b => !existingIds.has(b.id));
-      if (missing.length === 0) return prev; // all built-ins already present
-      return [...missing, ...prev];
-    });
-  }, [setTemplates]);
+    let active = true;
+    async function fetchTemplates() {
+      try {
+        const res = await fetch(templateEndpoint);
+        if (!res.ok) return;
+        const data = await res.json();
+        const json = JSON.stringify(data.templates);
+        // Only update state if data actually changed
+        if (json !== lastFetchRef.current) {
+          lastFetchRef.current = json;
+          if (active) setTemplates(data.templates);
+        }
+      } catch { /* network error, retry next interval */ }
+    }
+    fetchTemplates();
+    const id = setInterval(fetchTemplates, TEMPLATE_POLL_MS);
+    return () => { active = false; clearInterval(id); };
+  }, [templateEndpoint]);
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));
@@ -195,7 +208,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
         const existing = cpv[v] ?? {};
         const filled = { ...existing };
         for (const p of tmpl.params) {
-          if (!(p.key in filled)) filled[p.key] = p.default;
+          if (!(p.key in filled)) filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
         }
         return { ...cpv, [v]: filled };
       });
@@ -212,25 +225,62 @@ export function LogoProvider({ children }: { children: ReactNode }) {
 
   const resetDefaults = useCallback(() => setParams(defaults), []);
 
-  // Template CRUD
-  const addTemplate = useCallback((template: LogoTemplate) => {
+  // Template CRUD — writes go through the API, polling picks up changes
+  const addTemplate = useCallback(async (template: LogoTemplate) => {
+    // Optimistically add to local state
     setTemplates(prev => [...prev, template]);
-  }, [setTemplates]);
+    // Persist to server
+    try {
+      await fetch(templateEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id: template.id,
+          name: template.name,
+          description: template.description,
+          renderBody: template.sourceCode || template.renderBody,
+          params: template.params,
+        }),
+      });
+    } catch { /* next poll will reconcile */ }
+  }, [templateEndpoint]);
 
-  const updateTemplate = useCallback((id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => {
+  const updateTemplate = useCallback(async (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => {
+    // Optimistically update local state
     setTemplates(prev => prev.map(t =>
       t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t
     ));
-  }, [setTemplates]);
+    // Persist to server
+    try {
+      await fetch(templateEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id,
+          name: updates.name,
+          description: updates.description,
+          renderBody: updates.sourceCode || updates.renderBody,
+          params: updates.params,
+        }),
+      });
+    } catch { /* next poll will reconcile */ }
+  }, [templateEndpoint]);
 
-  const deleteTemplate = useCallback((id: string) => {
+  const deleteTemplate = useCallback(async (id: string) => {
     setTemplates(prev => prev.filter(t => t.id !== id));
     setCustomParamValues(prev => {
       const next = { ...prev };
       delete next[id];
       return next;
     });
-  }, [setTemplates, setCustomParamValues]);
+    try {
+      await fetch(templateEndpoint, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, action: 'delete' }),
+      });
+    } catch { /* next poll will reconcile */ }
+  }, [templateEndpoint, setCustomParamValues]);
 
   const setCustomParam = useCallback((templateId: string, key: string, value: number | string) => {
     setCustomParamValues(prev => ({

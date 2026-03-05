@@ -22,6 +22,48 @@ function Slider({ label, value, min, max, step, onChange }: {
   );
 }
 
+function Toggle({ label, value, onChange }: {
+  label: string; value: boolean; onChange: (v: boolean) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2 cursor-pointer">
+      <span className="text-[11px] text-white/50">{label}</span>
+      <button
+        type="button"
+        role="switch"
+        aria-checked={value}
+        onClick={() => onChange(!value)}
+        className={`relative w-8 h-[18px] rounded-full transition-colors ${
+          value ? 'bg-emerald-500/60' : 'bg-white/10'
+        }`}
+      >
+        <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform ${
+          value ? 'translate-x-[16px]' : 'translate-x-[2px]'
+        }`} />
+      </button>
+    </label>
+  );
+}
+
+function EnumSelect({ label, value, options, onChange }: {
+  label: string; value: string; options: string[]; onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex items-center justify-between gap-2">
+      <span className="text-[11px] text-white/50">{label}</span>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="text-[11px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-white/70 outline-none"
+      >
+        {options.map(opt => (
+          <option key={opt} value={opt}>{opt}</option>
+        ))}
+      </select>
+    </label>
+  );
+}
+
 function ColorInput({ label, value, onChange }: {
   label: string; value: string; onChange: (v: string) => void;
 }) {
@@ -134,6 +176,27 @@ export function LogoLeftPanel() {
                   key={p.key}
                   label={p.label}
                   value={val as string}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
+                />
+              );
+            }
+            if (p.type === 'toggle') {
+              return (
+                <Toggle
+                  key={p.key}
+                  label={p.label}
+                  value={Boolean(val)}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v ? 1 : 0)}
+                />
+              );
+            }
+            if (p.type === 'enum' && p.options) {
+              return (
+                <EnumSelect
+                  key={p.key}
+                  label={p.label}
+                  value={String(val)}
+                  options={p.options}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
                 />
               );

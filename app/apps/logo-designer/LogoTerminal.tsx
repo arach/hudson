@@ -73,7 +73,22 @@ All variants are templates. Built-in variants (negative-space, green-channel, gr
 ### Rules
 - Keep dimPaneColor consistent with paneColor (same hue, lower opacity)
 - When modifying an existing template, update the existing file — don't create a new one
-- Be concise. Say what you changed and why in 1-2 sentences.`;
+- Be concise. Say what you changed and why in 1-2 sentences.
+
+## Creating & Editing Templates
+Templates are \`.js\` files in \`.data/logo-templates/\`. The app polls this directory every few seconds. Each file is a JS function body (receives \`p\` and \`vb\`, must return SVG string) with a \`meta\` object for metadata.
+
+The filename (minus .js) becomes the template ID. To update a template, edit the file. To delete, remove it.
+
+See existing templates in \`.data/logo-templates/\` for reference. The pattern is:
+1. Declare a \`const meta = { name, description, params? }\` at the top
+2. Write the render logic using \`p\` (params object) and \`vb\` (viewBox size, 512)
+3. Return an SVG inner content string
+
+Custom params go in \`meta.params\` as a dictionary:
+\`\`\`
+params: { rings: { type: "number", label: "Ring Count", default: 5, min: 1, max: 20 } }
+\`\`\``;
 
 /**
  * Build the dynamic context section from current app state.

@@ -1,3 +1,6 @@
+# runtime data
+.data/
+
 # dependencies
 node_modules/
 /.pnp
