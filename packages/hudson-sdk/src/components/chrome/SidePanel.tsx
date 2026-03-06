@@ -64,7 +64,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
   return (
     <div
       data-frame-panel={side === 'left' ? 'manifest' : 'inspector'}
-      className={`${panelClass} pointer-events-none select-none font-mono text-[10px] flex flex-col`}
+      className={`${panelClass} pointer-events-none select-none font-mono text-[11px] flex flex-col`}
       style={finalStyle}
     >
       {/* Resize handle — sits flush at inner edge, line on the outermost side */}
@@ -94,7 +94,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
         {/* Header */}
         {title && (
           <div className="shrink-0 p-4 border-b border-neutral-700/50">
-            <div className="flex items-center justify-between text-neutral-200 text-[11px]">
+            <div className="flex items-center justify-between text-neutral-200 text-[12px]">
               <div className="flex items-center gap-1.5">
                 {icon && <span className="text-neutral-400">{icon}</span>}
                 <span className="tracking-widest font-bold uppercase">{title}</span>

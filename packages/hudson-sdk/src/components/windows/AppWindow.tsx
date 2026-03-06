@@ -236,8 +236,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
           className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50 cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleDragStart}
         >
-          <GripHorizontal size={12} className="text-neutral-500" />
-          <span className="flex-1 text-[11px] font-mono tracking-wider text-neutral-300 truncate">
+          <GripHorizontal size={12} className="text-neutral-400" />
+          <span className="flex-1 text-[12px] font-mono tracking-wider text-neutral-200 truncate">
             {title}
           </span>
           <div className="flex items-center gap-1">
@@ -245,17 +245,17 @@ const AppWindow: React.FC<AppWindowProps> = ({
               <button
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={onMinimize}
-                className="p-1 rounded hover:bg-white/10 text-neutral-500 hover:text-neutral-300 transition-colors"
+                className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
               >
-                <Minus size={10} />
+                <Minus size={11} />
               </button>
             )}
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleToggleMaximize}
-              className="p-1 rounded hover:bg-white/10 text-neutral-500 hover:text-neutral-300 transition-colors"
+              className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
             >
-              {isMaximized ? <Minimize2 size={10} /> : <Maximize2 size={10} />}
+              {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
             </button>
           </div>
         </div>

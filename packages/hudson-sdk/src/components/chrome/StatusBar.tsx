@@ -67,7 +67,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[11px] text-neutral-200 pointer-events-auto`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[12px] text-neutral-200 pointer-events-auto`}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
       <div className="flex items-center gap-4">
@@ -80,7 +80,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
               title="Expand minimap"
             >
               <Map size={10} />
-              <span className="text-[10px] font-bold">MAP</span>
+              <span className="text-[11px] font-bold">MAP</span>
               <Maximize2 size={8} className="opacity-60" />
             </button>
             <div className="h-3 w-px bg-neutral-700" />
@@ -154,14 +154,14 @@ const StatusBar: React.FC<StatusBarProps> = ({
               title="Toggle Terminal (Ctrl+`)"
             >
               <span className="text-[12px]">{'>'}_</span>
-              <span className="uppercase text-[10px] font-semibold tracking-wider">Console</span>
+              <span className="uppercase text-[11px] font-semibold tracking-wider">Console</span>
             </button>
             <div className="h-3 w-px bg-neutral-700" />
           </>
         )}
 
         <div className="flex items-center gap-1.5 text-neutral-200 min-w-[60px] justify-end">
-          <Clock size={10} className="text-neutral-400" />
+          <Clock size={11} className="text-neutral-400" />
           <span>{mounted ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
         </div>
       </div>

@@ -6,6 +6,7 @@ export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSet
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
+export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
 export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSeparator, ContextMenuGroup } from './components/overlays';
 
 // Hooks

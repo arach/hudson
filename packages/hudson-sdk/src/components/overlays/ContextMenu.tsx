@@ -51,12 +51,12 @@ function MenuItemRow({ item }: { item: ContextMenuAction }) {
     <ContextMenu.Item
       disabled={item.disabled}
       onClick={item.action}
-      className="flex items-center gap-3 px-3 py-1.5 text-[11px] font-mono text-neutral-300 outline-none select-none data-[highlighted]:bg-neutral-700/50 data-[highlighted]:text-white data-[disabled]:opacity-40 data-[disabled]:pointer-events-none cursor-default"
+      className="flex items-center gap-3 px-3 py-1.5 text-[12px] font-mono text-neutral-300 outline-none select-none data-[highlighted]:bg-neutral-700/50 data-[highlighted]:text-white data-[disabled]:opacity-40 data-[disabled]:pointer-events-none cursor-default"
     >
       {item.icon && <span className="w-4 h-4 flex items-center justify-center text-neutral-400">{item.icon}</span>}
       <span className="flex-1">{item.label}</span>
       {item.shortcut && (
-        <span className="text-neutral-500 text-[9px] ml-4 tracking-wider">{item.shortcut}</span>
+        <span className="text-neutral-400 text-[10px] ml-4 tracking-wider">{item.shortcut}</span>
       )}
     </ContextMenu.Item>
   );
@@ -79,7 +79,7 @@ const PopupContent = React.forwardRef<HTMLDivElement, { items: ContextMenuEntry[
           if (isGroup(entry)) {
             return (
               <ContextMenu.Group key={`grp-${idx}`}>
-                <ContextMenu.GroupLabel className="px-3 py-1 text-[9px] font-mono uppercase tracking-widest text-neutral-500">
+                <ContextMenu.GroupLabel className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-neutral-400">
                   {entry.label}
                 </ContextMenu.GroupLabel>
                 {entry.items.map(item => (

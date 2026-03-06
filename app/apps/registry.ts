@@ -28,6 +28,7 @@ import { hudsonDocsApp } from './hudson-docs';
 import { intentExplorerApp } from './intent-explorer';
 import { logoDesignerApp } from './logo-designer';
 import { shaperApp } from './shaper';
+import { traceViewerApp } from './trace-viewer';
 
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
@@ -46,6 +47,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       app: shaperApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -400, y: -300, w: 800, h: 600 },
+    },
+    {
+      app: traceViewerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -500, y: -100, w: 900, h: 650 },
     },
   ];
 }

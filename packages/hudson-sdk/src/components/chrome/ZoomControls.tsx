@@ -76,12 +76,12 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
             onChange={e => setEditValue(e.target.value.replace(/[^0-9]/g, ''))}
             onBlur={commitEdit}
             onKeyDown={handleKeyDown}
-            className="w-9 py-1.5 text-center text-[10px] font-mono text-white bg-black/60 outline-none tabular-nums"
+            className="w-9 py-1.5 text-center text-[11px] font-mono text-white bg-black/60 outline-none tabular-nums"
           />
         ) : (
           <button
             onClick={startEditing}
-            className="w-9 py-1.5 text-center text-[10px] font-mono text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-text tabular-nums"
+            className="w-9 py-1.5 text-center text-[11px] font-mono text-neutral-200 hover:text-white hover:bg-white/10 transition-colors cursor-text tabular-nums"
             title="Click to set zoom"
           >
             {Math.round(scale * 100)}%

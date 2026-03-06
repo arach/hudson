@@ -80,6 +80,14 @@ const APP_INFO: Record<string, AppInfo> = {
       'Built-in animation timeline with easing controls',
     ],
   },
+  'trace-viewer': {
+    summary: 'Visualize and inspect agent execution traces — see what your AI agents did, step by step.',
+    bullets: [
+      'Timeline view with waterfall duration bars for every tool call',
+      'Drill into any step to inspect inputs, outputs, and token usage',
+      'Works with any agent: Claude Code, OpenClaw, or custom traces',
+    ],
+  },
   'openclaw': {
     summary: 'OpenClaw is an open-source local AI assistant. Use Telegram for quick chat-level access — use Hudson when you need a complex, structured UI for your claws.',
     bullets: [

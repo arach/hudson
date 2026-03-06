@@ -54,6 +54,9 @@ interface LogoState {
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
   apiBaseUrl: string;
+  /** SVG string piped in from another app (e.g. Shaper) */
+  backgroundSvg: string | null;
+  setBackgroundSvg: (svg: string | null) => void;
 }
 
 const Ctx = createContext<LogoState | null>(null);
@@ -167,6 +170,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   const [appSettings] = useAppSettings('logo-designer', logoSettings);
   const { apiBaseUrl } = usePlatform();
   const [params, setParams] = useState<LogoParams>(defaults);
+  const [backgroundSvg, setBackgroundSvg] = useState<string | null>(null);
 
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
@@ -317,6 +321,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       templates, addTemplate, updateTemplate, deleteTemplate,
       customParamValues, setCustomParam,
       appSettings, apiBaseUrl,
+      backgroundSvg, setBackgroundSvg,
     }}>
       {children}
     </Ctx.Provider>

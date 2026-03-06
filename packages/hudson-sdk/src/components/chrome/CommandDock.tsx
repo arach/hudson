@@ -11,7 +11,7 @@ const CommandDock: React.FC<CommandDockProps> = ({
   onOpenCommandPalette, extraControls
 }) => {
   return (
-    <div className="select-none font-mono text-[11px] border-t border-neutral-700/50">
+    <div className="select-none font-mono text-[12px] border-t border-neutral-700/50">
       <div className="px-3 py-2 flex items-center justify-between">
         <button
           onClick={onOpenCommandPalette}
@@ -23,7 +23,7 @@ const CommandDock: React.FC<CommandDockProps> = ({
 
         <div className="flex items-center gap-2">
           {extraControls}
-          <kbd className="text-[10px] text-neutral-400 font-mono">⌘K</kbd>
+          <kbd className="text-[11px] text-neutral-400 font-mono">⌘K</kbd>
         </div>
       </div>
     </div>

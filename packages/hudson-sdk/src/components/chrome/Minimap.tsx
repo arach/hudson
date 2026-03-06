@@ -52,7 +52,7 @@ const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={containerRef}
       data-frame-panel="minimap"
-      className="select-none font-mono text-[11px] flex flex-col border-t border-neutral-700/50"
+      className="select-none font-mono text-[12px] flex flex-col border-t border-neutral-700/50"
     >
       {/* Header (always visible) */}
       <div
@@ -61,7 +61,7 @@ const Minimap: React.FC<MinimapProps> = ({
       >
         <div className="flex items-center gap-1.5 text-neutral-300">
           <Map size={12} className="text-neutral-400" />
-          <span className="tracking-widest font-bold uppercase text-[11px]">Map</span>
+          <span className="tracking-widest font-bold uppercase text-[12px]">Map</span>
         </div>
         <div className="flex items-center gap-1">
           {!isCollapsed && onFitAll && (

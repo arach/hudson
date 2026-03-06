@@ -74,7 +74,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                 onChange={(e) => search.onChange(e.target.value)}
                 placeholder={search.placeholder ?? 'Search...'}
                 className={`
-                  w-full h-7 pl-5 pr-6 bg-transparent text-[11px] font-mono tracking-wider
+                  w-full h-7 pl-5 pr-6 bg-transparent text-[12px] font-mono tracking-wider
                   placeholder:text-neutral-400 text-neutral-200
                   focus:outline-none transition-all duration-200
                   ${isFiltered ? 'text-emerald-400' : ''}

@@ -36,6 +36,8 @@ import { useIntentCatalog } from '../hooks/useIntentCatalog';
 import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
+import { HudsonTerminal } from './HudsonTerminal';
+import { DataBusProvider, usePortBridge } from './DataBusContext';
 import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
@@ -146,6 +148,9 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
     tree = <app.Provider>{tree}</app.Provider>;
   }
 
+  // DataBusProvider wraps above all app Providers so port hooks can register
+  tree = <DataBusProvider workspace={workspace}>{tree}</DataBusProvider>;
+
   return (
     <>
       {/* Workspace content — always rendered */}
@@ -244,6 +249,10 @@ function WorkspaceInner({
   // --- Hook merging ---
   // Safe: workspace.apps is static per workspace, component keyed by workspace.id
   const allAppHooks: AppHookData[] = workspace.apps.map(config => useAppHooks(config));
+
+  // --- Port bridge (registers output/input hooks with DataBus) ---
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  workspace.apps.forEach(config => usePortBridge(config));
 
   // --- App-level settings (called unconditionally for each app) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -439,21 +448,19 @@ function WorkspaceInner({
     }, 60);
   }, []);
 
-  // --- Terminal tab state (multi-app only) ---
+  // --- Terminal tab state (Hudson global + per-app) ---
+  const HUDSON_TERMINAL_ID = '__hudson__';
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
-  const hasMultipleTerminals = appsWithTerminal.length > 1;
-  const [activeTerminalAppId, setActiveTerminalAppId] = useState(
-    appsWithTerminal[0]?.app.id ?? '',
-  );
+  const [activeTerminalAppId, setActiveTerminalAppId] = useState(HUDSON_TERMINAL_ID);
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
-    ?? appsWithTerminal[0]?.app;
+    ?? null;
 
-  // Auto-switch terminal tab when the focused app changes (if it has a terminal)
+  // Auto-switch terminal tab when the focused app changes — but only if user is on an app tab
   useEffect(() => {
-    if (hasMultipleTerminals && appsWithTerminal.some(c => c.app.id === focusedAppId)) {
+    if (activeTerminalAppId !== HUDSON_TERMINAL_ID && appsWithTerminal.some(c => c.app.id === focusedAppId)) {
       setActiveTerminalAppId(focusedAppId);
     }
-  }, [focusedAppId, hasMultipleTerminals, appsWithTerminal]);
+  }, [focusedAppId, activeTerminalAppId, appsWithTerminal]);
 
   // Sort terminal tabs: active (visible) apps first, inactive at the end
   const sortedTerminalApps = useMemo(() => {
@@ -926,51 +933,35 @@ function WorkspaceInner({
     : undefined;
 
   // --- Terminal content ---
+  const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
+
   const terminalContent = (() => {
+    // No app terminals — render Hudson terminal directly, no tab bar
     if (appsWithTerminal.length === 0) {
-      // Default keyboard shortcuts display
-      return (
-        <div className="p-4 font-mono text-[12px] space-y-3 overflow-y-auto frame-scrollbar">
-          <div className="text-neutral-300 uppercase tracking-widest text-[10px] mb-2">Keyboard Shortcuts</div>
-          <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5">
-            {[
-              ['Space + Drag', 'Pan canvas'],
-              ['Cmd + Scroll', 'Zoom in / out'],
-              ['Cmd + 0', 'Reset view'],
-              ['Cmd + K', 'Command palette'],
-              ['Cmd + [', 'Toggle left panel'],
-              ['Cmd + ]', 'Toggle right panel'],
-              ['Cmd + \\', 'Toggle crosshair guides'],
-              ['Ctrl + `', 'Toggle terminal'],
-              ['Cmd + M', 'Toggle mute'],
-            ].map(([key, desc]) => (
-              <div key={key} className="contents">
-                <div className="text-emerald-400 whitespace-nowrap">{key}</div>
-                <div className="text-neutral-300">{desc}</div>
-              </div>
-            ))}
-          </div>
-        </div>
-      );
+      return hudsonTerminalNode;
     }
 
-    if (!hasMultipleTerminals) {
-      // Single terminal — render directly
-      const TermSlot = appsWithTerminal[0].app.slots.Terminal!;
-      return (
-        <AppSlotErrorBoundary appName={appsWithTerminal[0].app.name} slotName="Terminal">
-          <TermSlot />
-        </AppSlotErrorBoundary>
-      );
-    }
-
-    // Multiple terminals — tab bar (active apps first, inactive dimmed at end)
+    // Has app terminals — always show tab bar with Hudson first
     const activeApps = sortedTerminalApps.filter(c => activatedAppIds.has(c.app.id));
     const inactiveApps = sortedTerminalApps.filter(c => !activatedAppIds.has(c.app.id));
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
+          {/* Hudson global tab */}
+          <button
+            onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
+            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
+              activeTerminalAppId === HUDSON_TERMINAL_ID
+                ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+            }`}
+          >
+            Hudson
+          </button>
+          {/* Separator between Hudson and app tabs */}
+          <div className="h-3 w-px bg-neutral-700/50 mx-1" />
+          {/* Active app tabs */}
           {activeApps.map(config => (
             <button
               key={config.app.id}
@@ -984,6 +975,7 @@ function WorkspaceInner({
               {config.app.name}
             </button>
           ))}
+          {/* Inactive app tabs */}
           {inactiveApps.length > 0 && activeApps.length > 0 && (
             <div className="h-3 w-px bg-neutral-700/50 mx-1" />
           )}
@@ -1002,11 +994,13 @@ function WorkspaceInner({
           ))}
         </div>
         <div className="flex-1 overflow-hidden min-w-0">
-          {activeTerminalApp?.slots.Terminal && (
+          {activeTerminalAppId === HUDSON_TERMINAL_ID ? (
+            hudsonTerminalNode
+          ) : activeTerminalApp?.slots.Terminal ? (
             <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
               <activeTerminalApp.slots.Terminal />
             </AppSlotErrorBoundary>
-          )}
+          ) : null}
         </div>
       </div>
     );

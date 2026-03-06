@@ -83,7 +83,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
 
         {/* Center grip — drag to resize */}
         <div
-          className="flex-1 flex items-center justify-center h-full cursor-ns-resize text-neutral-600 hover:text-neutral-400 transition-colors group"
+          className="flex-1 flex items-center justify-center h-full cursor-ns-resize text-neutral-500 hover:text-neutral-300 transition-colors group"
           title="Drag to Resize"
           onMouseDown={handleGripMouseDown}
         >

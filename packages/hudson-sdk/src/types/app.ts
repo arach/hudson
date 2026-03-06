@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
 import type { AppIntent } from './intent';
+import type { AppPorts } from './port';
 import type { ServiceDependency } from './service';
 
 // ---------------------------------------------------------------------------
@@ -111,6 +112,9 @@ export interface HudsonApp {
   /** App-level settings rendered in the Settings panel */
   settings?: AppSettingsConfig;
 
+  /** Static port declarations for inter-app data piping */
+  ports?: AppPorts;
+
   /** Services this app depends on */
   services?: ServiceDependency[];
 
@@ -123,5 +127,9 @@ export interface HudsonApp {
     useNavActions?: () => ReactNode | null;
     useLayoutMode?: () => 'canvas' | 'panel';
     useActiveToolHint?: () => string | null;
+    /** Returns a getter: (portId) => data snapshot or null */
+    usePortOutput?: () => (portId: string) => unknown | null;
+    /** Returns a setter: (portId, data) => void */
+    usePortInput?: () => (portId: string, data: unknown) => void;
   };
 }

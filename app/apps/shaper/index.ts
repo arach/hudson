@@ -22,6 +22,7 @@ import {
   useShaperLayoutMode,
   useShaperActiveToolHint,
 } from './hooks';
+import { useShaperPortOutput } from './ports';
 import { shaperIntents } from './intents';
 
 const shaperTools: AppTool[] = [
@@ -62,6 +63,12 @@ export const shaperApp: HudsonApp = {
   manifest: shaperManifest,
   intents: shaperIntents,
 
+  ports: {
+    outputs: [
+      { id: 'svg', name: 'SVG Output', dataType: 'svg', description: 'Complete SVG of the current Shaper canvas' },
+    ],
+  },
+
   leftPanel: {
     title: 'Project',
     icon: createElement(Layers, { size: 12 }),
@@ -92,5 +99,6 @@ export const shaperApp: HudsonApp = {
     useNavActions: useShaperNavActions,
     useLayoutMode: useShaperLayoutMode,
     useActiveToolHint: useShaperActiveToolHint,
+    usePortOutput: useShaperPortOutput,
   },
 };

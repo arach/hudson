@@ -52,14 +52,14 @@ export function SidebarSection({
             setExpanded(e => !e);
             onFocus();
           }}
-          className={`flex-1 flex items-center gap-2 px-3 py-2 text-[10px] font-mono uppercase tracking-widest transition-colors ${
+          className={`flex-1 flex items-center gap-2 px-3 py-2 text-[11px] font-mono uppercase tracking-widest transition-colors ${
             isFocused
               ? 'text-emerald-400 bg-emerald-500/5'
               : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
           }`}
         >
           {expanded ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-          {appIcon && <span className="text-neutral-500">{appIcon}</span>}
+          {appIcon && <span className="text-neutral-400">{appIcon}</span>}
           <span className="flex-1 text-left">{appName}</span>
           {/* Service health dots */}
           {serviceDeps && serviceDeps.length > 0 && (
@@ -81,7 +81,7 @@ export function SidebarSection({
               e.stopPropagation();
               onOpenManager();
             }}
-            className="px-1.5 py-2 transition-colors text-neutral-600 hover:text-neutral-300"
+            className="px-1.5 py-2 transition-colors text-neutral-500 hover:text-neutral-200"
             title="Open Workspace Manager"
           >
             <GearIcon size={10} />
@@ -95,12 +95,12 @@ export function SidebarSection({
             }}
             className={`px-2 py-2 transition-colors ${
               isVisible === false
-                ? 'text-neutral-600 hover:text-neutral-400'
-                : 'text-neutral-500 hover:text-emerald-400'
+                ? 'text-neutral-500 hover:text-neutral-300'
+                : 'text-neutral-400 hover:text-emerald-400'
             }`}
             title={isVisible === false ? 'Show on canvas' : 'Hide from canvas'}
           >
-            {isVisible === false ? <EyeOff size={10} /> : <Eye size={10} />}
+            {isVisible === false ? <EyeOff size={11} /> : <Eye size={11} />}
           </button>
         )}
       </div>

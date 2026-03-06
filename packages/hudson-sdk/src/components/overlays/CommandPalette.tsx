@@ -63,7 +63,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
             onKeyDown={handleKeyDown}
             autoFocus
           />
-          <div className="px-1.5 py-0.5 rounded bg-neutral-700 border border-neutral-700 text-[11px] text-neutral-200 font-mono">ESC</div>
+          <div className="px-1.5 py-0.5 rounded bg-neutral-700 border border-neutral-700 text-[12px] text-neutral-200 font-mono">ESC</div>
         </div>
 
         {/* Results */}
@@ -87,7 +87,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
                   <div className={`text-sm ${idx === selectedIndex ? 'text-emerald-100' : 'text-neutral-200'}`}>{cmd.label}</div>
                 </div>
                 {cmd.shortcut && (
-                  <div className="text-[11px] font-mono text-neutral-300 bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">{cmd.shortcut}</div>
+                  <div className="text-[12px] font-mono text-neutral-300 bg-neutral-800 px-1.5 py-0.5 rounded border border-neutral-700">{cmd.shortcut}</div>
                 )}
                 {idx === selectedIndex && <CornerDownLeft size={14} className="text-emerald-500 ml-2" />}
               </div>
@@ -101,7 +101,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
         </div>
 
         {/* Footer */}
-        <div className="px-4 py-1.5 bg-neutral-800/90 backdrop-blur-sm border-t border-neutral-700 flex justify-between items-center text-[11px] text-neutral-300 font-mono relative z-10">
+        <div className="px-4 py-1.5 bg-neutral-800/90 backdrop-blur-sm border-t border-neutral-700 flex justify-between items-center text-[12px] text-neutral-300 font-mono relative z-10">
           <span>Command Palette</span>
           <span>{filteredCommands.length} matches</span>
         </div>

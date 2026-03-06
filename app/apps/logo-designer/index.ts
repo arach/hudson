@@ -7,6 +7,7 @@ import { LogoLeftPanel } from './LogoLeftPanel';
 import { LogoInspector } from './LogoInspector';
 import { LogoTerminal } from './LogoTerminal';
 import { useLogoCommands, useLogoStatus } from './hooks';
+import { useLogoPortOutput, useLogoPortInput } from './ports';
 import { logoSettings } from './settings';
 
 export const logoDesignerApp: HudsonApp = {
@@ -14,6 +15,15 @@ export const logoDesignerApp: HudsonApp = {
   name: 'Logo',
   description: 'Lattice logo designer and previewer',
   mode: 'panel',
+
+  ports: {
+    outputs: [
+      { id: 'params', name: 'Logo Params', dataType: 'json', description: 'Current logo parameters as JSON' },
+    ],
+    inputs: [
+      { id: 'background-svg', name: 'Background SVG', dataType: 'svg', description: 'SVG to use as logo background layer' },
+    ],
+  },
 
   leftPanel: { title: 'Controls', icon: createElement(Gem, { size: 12 }) },
   rightPanel: { title: 'Export', icon: createElement(ScanSearch, { size: 12 }) },
@@ -36,5 +46,7 @@ export const logoDesignerApp: HudsonApp = {
   hooks: {
     useCommands: useLogoCommands,
     useStatus: useLogoStatus,
+    usePortOutput: useLogoPortOutput,
+    usePortInput: useLogoPortInput,
   },
 };
