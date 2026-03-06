@@ -1,0 +1,36 @@
+{
+  "name": "@hudsonos/hx",
+  "version": "0.1.0",
+  "description": "Local service registry and smart router for Hudson",
+  "type": "module",
+  "license": "MIT",
+  "bin": {
+    "hx": "./dist/index.js"
+  },
+  "files": [
+    "dist",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "bun build src/index.ts --outdir dist --target node --splitting --format esm && node scripts/shebang.js",
+    "dev": "bun run src/index.ts up",
+    "prepublishOnly": "bun run build"
+  },
+  "keywords": [
+    "hudson",
+    "service-registry",
+    "service-discovery",
+    "daemon",
+    "proxy",
+    "cli"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/hudsonos/hudson",
+    "directory": "packages/hx"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}
