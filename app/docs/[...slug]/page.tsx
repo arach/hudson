@@ -7,16 +7,17 @@ import { TableOfContents } from "../_components/TableOfContents";
 import { DocPagination } from "../_components/DocPagination";
 
 interface Props {
-  params: Promise<{ slug: string }>;
+  params: Promise<{ slug: string[] }>;
 }
 
 export async function generateStaticParams() {
-  return getAllSlugs().map((slug) => ({ slug }));
+  return getAllSlugs().map((slug) => ({ slug: slug.split("/") }));
 }
 
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { slug } = await params;
-  const doc = getDocBySlug(slug);
+  const fullSlug = slug.join("/");
+  const doc = getDocBySlug(fullSlug);
   if (!doc) return {};
   return {
     title: `${doc.title} — Hudson Docs`,
@@ -26,7 +27,8 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function DocPage({ params }: Props) {
   const { slug } = await params;
-  const doc = getDocBySlug(slug);
+  const fullSlug = slug.join("/");
+  const doc = getDocBySlug(fullSlug);
   if (!doc) notFound();
 
   const [html, toc, docs] = await Promise.all([
@@ -43,7 +45,7 @@ export default async function DocPage({ params }: Props) {
             className="docs-prose"
             dangerouslySetInnerHTML={{ __html: html }}
           />
-          <DocPagination docs={docs} currentSlug={slug} />
+          <DocPagination docs={docs} currentSlug={fullSlug} />
         </div>
       </main>
       <TableOfContents entries={toc} />

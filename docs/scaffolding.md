@@ -1,7 +1,7 @@
 ---
 title: Scaffolding
 description: Generate new Hudson apps with create-hudson-app
-order: 2.5
+order: 6
 ---
 
 # Scaffolding

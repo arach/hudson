@@ -4,35 +4,93 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import type { DocMeta } from "@/app/lib/docs";
 
+interface SidebarSection {
+  label: string | null;
+  groups: SidebarGroup[];
+}
+
+interface SidebarGroup {
+  subsection: string | null;
+  docs: DocMeta[];
+}
+
+const SECTION_LABELS: Record<string, string> = {
+  npm: "NPM PACKAGES",
+  cli: "CLI TOOLS",
+};
+
+function buildSections(docs: DocMeta[]): SidebarSection[] {
+  const sections: SidebarSection[] = [];
+  let currentSection: SidebarSection | null = null;
+  let currentGroup: SidebarGroup | null = null;
+
+  for (const doc of docs) {
+    const sectionLabel = doc.section ?? null;
+    const subsectionLabel = doc.subsection ?? null;
+
+    // Start a new section if the section label changed
+    if (!currentSection || currentSection.label !== sectionLabel) {
+      currentGroup = { subsection: subsectionLabel, docs: [] };
+      currentSection = { label: sectionLabel, groups: [currentGroup] };
+      sections.push(currentSection);
+    }
+    // Within the same section, start a new group if the subsection changed
+    else if (!currentGroup || currentGroup.subsection !== subsectionLabel) {
+      currentGroup = { subsection: subsectionLabel, docs: [] };
+      currentSection.groups.push(currentGroup);
+    }
+
+    currentGroup.docs.push(doc);
+  }
+
+  return sections;
+}
+
 export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
   const pathname = usePathname();
+  const sections = buildSections(docs);
 
   return (
     <nav className="w-[260px] shrink-0 border-r border-neutral-800 overflow-y-auto py-4 px-3 hidden md:block sticky top-12 h-[calc(100vh-48px)] self-start">
-      <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-3 mb-2">
-        Documentation
-      </div>
-      <ul className="space-y-0.5">
-        {docs.map((doc) => {
-          const href = `/docs/${doc.slug}`;
-          const active = pathname === href;
-          return (
-            <li key={doc.slug}>
-              <Link
-                href={href}
-                className={`block px-3 py-1.5 rounded-md text-sm font-medium transition-colors ${
-                  active
-                    ? "bg-emerald-500/10 text-emerald-400"
-                    : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
-                }`}
-              >
-                {doc.title}
-              </Link>
-            </li>
-          );
-        })}
-      </ul>
-      <div className="mt-6 pt-4 border-t border-neutral-800">
+      {sections.map((section, i) => (
+        <div key={section.label ?? "root"} className={i > 0 ? "mt-5 pt-4 border-t border-neutral-800" : ""}>
+          <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-3 mb-2">
+            {SECTION_LABELS[section.label ?? ""] ?? "Documentation"}
+          </div>
+          {section.groups.map((group) => (
+            <div key={group.subsection ?? "default"}>
+              {group.subsection && (
+                <div className="text-[11px] font-mono font-medium text-neutral-400 px-3 mt-3 mb-1.5">
+                  {group.subsection}
+                </div>
+              )}
+              <ul className="space-y-0.5">
+                {group.docs.map((doc) => {
+                  const href = `/docs/${doc.slug}`;
+                  const active = pathname === href;
+                  return (
+                    <li key={doc.slug}>
+                      <Link
+                        href={href}
+                        className={`block py-1.5 rounded-md text-sm font-medium transition-colors ${
+                          group.subsection ? "px-5" : "px-3"
+                        } ${
+                          active
+                            ? "bg-emerald-500/10 text-emerald-400"
+                            : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                        }`}
+                      >
+                        {doc.title}
+                      </Link>
+                    </li>
+                  );
+                })}
+              </ul>
+            </div>
+          ))}
+        </div>
+      ))}
+      <div className="mt-5 pt-4 border-t border-neutral-800">
         <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-3 mb-2">
           For AI Agents
         </div>
