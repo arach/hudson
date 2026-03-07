@@ -1,7 +1,7 @@
 ---
 title: Building Apps
 description: Complete guide to building apps for the Hudson platform
-order: 3
+order: 4
 ---
 
 # Building Apps

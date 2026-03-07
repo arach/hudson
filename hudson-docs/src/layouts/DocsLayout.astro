@@ -1,0 +1,798 @@
+---
+import BaseLayout from './BaseLayout.astro'
+import { navGroups } from '../lib/nav'
+
+const {
+  title = 'Docs',
+  headings = [],
+  description,
+  rawMarkdown = '',
+  agentMarkdown = '',
+} = Astro.props
+
+const currentPath = Astro.url.pathname.replace(/\/$/, '') || '/'
+const filtered = headings.filter((h) => h.depth >= 2 && h.depth <= 3)
+---
+
+<BaseLayout title={title}>
+  <div class="dl">
+    <!-- Header bar -->
+    <header class="dl-header" data-pagefind-ignore>
+      <div class="dl-header-left">
+        <a href="/" class="dl-header-brand">Hudson</a>
+        <span class="dl-header-sep">/</span>
+        <a href="/" class="dl-header-brand dl-header-brand--active">Docs</a>
+      </div>
+      <div class="dl-header-right">
+        <a href="/llms.txt" target="_blank" rel="noopener noreferrer" class="dl-header-link">llms.txt</a>
+        <a href="https://github.com/arachsys/hudson" target="_blank" rel="noopener noreferrer" class="dl-header-icon" title="GitHub">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"/></svg>
+        </a>
+        <button class="dl-search-btn" type="button" data-search-toggle>
+          Search…
+          <span class="dl-search-key">⌘K</span>
+        </button>
+        <button class="dl-theme-btn" data-theme-toggle title="Toggle theme">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Body -->
+    <div class="dl-body">
+      <!-- Sidebar -->
+      <nav class="dl-sidebar" data-pagefind-ignore>
+        {navGroups.map((group, i) => {
+          // Group items by subsection (like old Hudson sidebar)
+          const subsections: { label: string | null; items: typeof group.items }[] = []
+          let currentSub: typeof subsections[0] | null = null
+
+          for (const item of group.items) {
+            const sub = item.subsection ?? null
+            if (!currentSub || currentSub.label !== sub) {
+              currentSub = { label: sub, items: [] }
+              subsections.push(currentSub)
+            }
+            currentSub.items.push(item)
+          }
+
+          return (
+            <div class={`dl-nav-section ${i > 0 ? 'dl-nav-section--bordered' : ''}`}>
+              <button class="dl-nav-label" data-nav-toggle aria-expanded="true">
+                {group.title}
+                <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"/></svg>
+              </button>
+              <div data-nav-list>
+              {subsections.map((sub) => (
+                <div>
+                  {sub.label && (
+                    <div class="dl-nav-subsection" set:html={sub.label.replace(/\/(sdk|hx)$/i, '/<strong>$1</strong>')} />
+                  )}
+                  <ul class="dl-nav-list">
+                    {sub.items.map((item) => {
+                      const isActive = currentPath === item.href
+                      return (
+                        <li>
+                          <a
+                            href={item.href}
+                            class={`dl-nav-item ${sub.label ? 'dl-nav-item--indented' : ''} ${isActive ? 'active' : ''}`}
+                          >
+                            {item.title}
+                          </a>
+                        </li>
+                      )
+                    })}
+                  </ul>
+                </div>
+              ))}
+              </div>
+            </div>
+          )
+        })}
+
+        <div class="dl-nav-section dl-nav-section--bordered">
+          <div class="dl-nav-label dl-nav-label--static">For AI Agents</div>
+          <ul class="dl-nav-list">
+            <li><a href="/llms.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms.txt</a></li>
+            <li><a href="/llms-full.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms-full.txt</a></li>
+          </ul>
+        </div>
+      </nav>
+
+      <!-- Main -->
+      <main class="dl-main">
+        <div class="dl-content-area">
+          {rawMarkdown && (
+            <div class="dl-page-actions" data-pagefind-ignore>
+              <button class="dl-copy-btn" data-copy-agent-button>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy for agent
+              </button>
+              <button class="dl-copy-btn" data-copy-markdown-button>
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+                Copy markdown
+              </button>
+            </div>
+          )}
+
+          <!-- Article -->
+          <article class="docs-prose" data-pagefind-body>
+            <slot />
+          </article>
+
+          <!-- Agent footer -->
+          <div class="dl-agent-footer">
+            <span class="dl-agent-footer-label">For AI agents</span>
+            <div class="dl-agent-footer-links">
+              <a href="/llms.txt" target="_blank" rel="noopener noreferrer">llms.txt</a>
+              <span class="dl-agent-footer-sep">|</span>
+              <a href="/llms-full.txt" target="_blank" rel="noopener noreferrer">llms-full.txt</a>
+            </div>
+          </div>
+        </div>
+      </main>
+
+      <!-- TOC -->
+      {filtered.length > 0 && (
+        <aside class="dl-toc" data-pagefind-ignore>
+          <p class="dl-toc-label">On this page</p>
+          <ul class="dl-toc-list">
+            {filtered.map((heading) => (
+              <li>
+                <a
+                  class="dl-toc-link"
+                  data-toc-link
+                  data-level={heading.depth}
+                  href={`#${heading.slug}`}
+                >
+                  {heading.text}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </aside>
+      )}
+    </div>
+  </div>
+
+  <style is:inline>
+    /* ── Header bar ── */
+    .dl-header {
+      height: 48px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-bg);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .dl-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dl-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dl-header-brand {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-brand:hover { color: var(--color-text); }
+    .dl-header-brand--active { color: var(--color-text); }
+
+    .dl-header-sep {
+      color: var(--color-border);
+      font-size: 14px;
+    }
+
+    .dl-header-link {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-link:hover { color: var(--color-accent); }
+
+    .dl-header-icon {
+      color: var(--color-text-muted);
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .dl-header-icon:hover { color: var(--color-text); }
+
+    .dl-search-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.15s;
+      height: 28px;
+    }
+
+    .dl-search-btn:hover {
+      border-color: var(--color-text-muted);
+      color: var(--color-text);
+    }
+
+    .dl-search-key {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+    }
+
+    .dl-theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    .dl-theme-btn:hover { color: var(--color-text); }
+
+    /* ── Layout shell ── */
+    .dl {
+      min-height: 100vh;
+      background: var(--color-bg);
+      color: var(--color-text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dl-body {
+      display: flex;
+      flex: 1;
+    }
+
+    /* ── Sidebar (tree nav) ── */
+    .dl-sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border);
+      overflow-y: auto;
+      padding: 16px 12px 20px 20px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      align-self: flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .dl-sidebar { display: none; }
+    }
+
+    .dl-nav-section { margin-bottom: 4px; }
+
+    .dl-nav-section--bordered {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .dl-nav-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 0 0 0;
+      margin-bottom: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .dl-nav-label:hover { color: var(--color-text); }
+
+    .dl-nav-label--static {
+      cursor: default;
+    }
+
+    .dl-nav-label--static:hover { color: var(--color-text-muted); }
+
+    .dl-nav-chevron {
+      transition: transform 0.2s;
+      opacity: 0.5;
+    }
+
+    .dl-nav-label[aria-expanded='false'] .dl-nav-chevron {
+      transform: rotate(-90deg);
+    }
+
+    [data-nav-list][data-collapsed='true'] {
+      display: none;
+    }
+
+    .dl-nav-subsection {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      padding: 0 0 0 8px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    .dl-nav-subsection strong {
+      font-weight: 700;
+    }
+
+    .dl-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2px;
+    }
+
+    .dl-nav-item {
+      display: block;
+      padding: 6px 8px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 300;
+      color: color-mix(in srgb, var(--color-text) 55%, transparent);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .dl-nav-item--indented {
+      padding-left: 16px;
+    }
+
+    .dl-nav-item:hover {
+      color: var(--color-text);
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .dl-nav-item.active {
+      color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    }
+
+    .dl-nav-item--muted {
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .dl-nav-item--muted:hover {
+      color: var(--color-text);
+    }
+
+    /* ── Main content ── */
+    .dl-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dl-content-area {
+      max-width: 768px;
+      margin: 0 auto;
+      padding: 16px 24px 80px;
+      position: relative;
+    }
+
+    /* ── Copy buttons (matching old Hudson) ── */
+    .dl-page-actions {
+      position: absolute;
+      top: 16px;
+      right: 24px;
+      display: flex;
+      gap: 8px;
+      z-index: 5;
+    }
+
+    .dl-copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: none;
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .dl-copy-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-text-muted);
+    }
+
+    /* ── Prose (matching old Hudson docs.css) ── */
+    .docs-prose {
+      color: var(--color-text);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .docs-prose h1 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 2rem;
+      color: var(--color-text);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+      padding-right: 280px;
+    }
+
+    .docs-prose h2 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.375rem;
+      color: var(--color-text);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.375rem;
+      border-bottom: 1px solid var(--color-border);
+      line-height: 1.3;
+    }
+
+    .docs-prose h3 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.125rem;
+      color: var(--color-text);
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .docs-prose h4 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      font-size: 1rem;
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .docs-prose p {
+      margin-top: 0;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .docs-prose a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .docs-prose ul {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose ol {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose li {
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose li > ul,
+    .docs-prose li > ol {
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose :not(pre) > code {
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.375rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      color: var(--color-accent);
+    }
+
+    .docs-prose pre {
+      background: #111111 !important;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 300;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .docs-prose pre code {
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      font-size: inherit;
+      font-family: inherit;
+      font-weight: inherit;
+      color: inherit;
+    }
+
+    .docs-prose blockquote {
+      border-left: 3px solid var(--color-accent);
+      padding-left: 1rem;
+      margin-left: 0;
+      margin-bottom: 1.25rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .docs-prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-family: 'Geist Mono', monospace;
+      font-size: 0.8125rem;
+    }
+
+    .docs-prose thead th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .docs-prose tbody td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .docs-prose tbody tr:hover {
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .docs-prose hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 2rem 0;
+    }
+
+    .docs-prose strong {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .docs-prose img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--color-border);
+    }
+
+    /* ── Agent footer ── */
+    .dl-agent-footer {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dl-agent-footer-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    .dl-agent-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dl-agent-footer-links a {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-agent-footer-links a:hover { color: var(--color-accent); }
+
+    .dl-agent-footer-sep {
+      color: var(--color-border);
+      font-size: 11px;
+    }
+
+    /* ── TOC ── */
+    .dl-toc {
+      width: 268px;
+      flex-shrink: 0;
+      padding: 16px 20px 40px 16px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      overflow-y: auto;
+      align-self: flex-start;
+    }
+
+    @media (max-width: 1280px) {
+      .dl-toc { display: none; }
+    }
+
+    .dl-toc-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+      margin: 0 0 16px;
+    }
+
+    .dl-toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-left: 1px solid var(--color-border);
+    }
+
+    .dl-toc-link {
+      display: block;
+      padding: 2px 0 2px 14px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+    }
+
+    .dl-toc-link:hover { color: var(--color-text); }
+
+    .dl-toc-link.is-active {
+      color: var(--color-text);
+      font-weight: 400;
+      border-left-color: var(--color-accent);
+    }
+
+    .dl-toc-link[data-level='3'] { padding-left: 26px; }
+  </style>
+
+  <script is:inline define:vars={{ rawMarkdown, agentMarkdown }}>
+    // Theme toggle
+    var themeToggle = document.querySelector('[data-theme-toggle]')
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function () {
+        var current = document.documentElement.getAttribute('data-theme') || 'light'
+        var next = current === 'dark' ? 'light' : 'dark'
+        document.documentElement.setAttribute('data-theme', next)
+        try { localStorage.setItem('theme', next) } catch (e) {}
+      })
+    }
+
+    // Collapsible nav sections
+    document.querySelectorAll('[data-nav-toggle]').forEach(function (btn) {
+      var list = btn.parentElement.querySelector('[data-nav-list]')
+      if (!list) return
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true'
+        btn.setAttribute('aria-expanded', String(!expanded))
+        list.dataset.collapsed = String(expanded)
+      })
+    })
+
+    // Copy buttons
+    var safeCopy = function (content, btn) {
+      if (!content) return
+      navigator.clipboard.writeText(content).then(function () {
+        if (btn) {
+          var orig = btn.innerHTML
+          btn.textContent = 'Copied!'
+          setTimeout(function () { btn.innerHTML = orig }, 2000)
+        }
+      }).catch(function () {})
+    }
+
+    document.querySelector('[data-copy-agent-button]')?.addEventListener('click', function () {
+      safeCopy(agentMarkdown || rawMarkdown, this)
+    })
+
+    document.querySelector('[data-copy-markdown-button]')?.addEventListener('click', function () {
+      safeCopy(rawMarkdown, this)
+    })
+
+    // TOC scroll spy
+    var initToc = function () {
+      var tocLinks = Array.from(document.querySelectorAll('[data-toc-link]'))
+      var headings = tocLinks
+        .map(function (link) { return document.querySelector(link.getAttribute('href')) })
+        .filter(Boolean)
+
+      if (!headings.length) return
+      var activeId = null
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return
+            activeId = entry.target.id
+            tocLinks.forEach(function (link) { link.classList.remove('is-active') })
+            var activeLink = document.querySelector('[data-toc-link][href="#' + entry.target.id + '"]')
+            if (activeLink) activeLink.classList.add('is-active')
+          })
+        },
+        { rootMargin: '-80px 0px -66% 0px' },
+      )
+
+      headings.forEach(function (heading) { observer.observe(heading) })
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initToc)
+    } else {
+      initToc()
+    }
+  </script>
+</BaseLayout>

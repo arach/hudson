@@ -1,77 +1,81 @@
 {
   "deweyVersion": "0.3.1",
-  "createdAt": "2026-02-24T04:04:27.782Z",
-  "updatedAt": "2026-02-24T04:27:23.035Z",
-  "template": "nextjs",
-  "theme": "ocean",
-  "projectName": "hudson-docs",
+  "createdAt": "2026-03-07T00:18:55.800Z",
+  "updatedAt": "2026-03-07T00:26:17.322Z",
+  "template": "astro",
+  "theme": "hudson",
+  "projectName": "Hudson",
   "defaultPage": "overview",
   "files": {
-    "next.config.js": {
+    "astro.config.mjs": {
       "owner": "dewey",
-      "hash": "169a0be5a7f0829f34c0693ca466a9a23c2dee10b9735ce41f75ecafd7fc79b1",
+      "hash": "9b984e8d3934ea532252fb481c318a24f24d22f5634c7d37a6294df8a84e35ce",
       "version": "0.3.1"
     },
     "tsconfig.json": {
       "owner": "dewey",
-      "hash": "61994acc0e2f05f3a61a1f6ec9e0afc4de1a77ea31fa82c32f2ebac1f0928020",
+      "hash": "4231804747c4ecd0059d6ecbc2f1d148d485024a2932651cb23805c7e09a7bd1",
       "version": "0.3.1"
     },
-    "src/app/layout.tsx": {
+    "src/styles/global.css": {
       "owner": "dewey",
-      "hash": "c1879ab854e47b47974f54fecfdebd6c2be512aa26c30480629e7a9c8d4d352a",
+      "hash": "c0805fa5bd0d87ed0d97b46927a95e0826e280233caab5b244c4014c31420c77",
       "version": "0.3.1"
     },
-    "src/app/globals.css": {
+    "src/styles/tokens.css": {
       "owner": "dewey",
-      "hash": "c673b50c28d530ad23345f5561e909f38e2433f52100b9edb0507e39d602e5eb",
+      "hash": "e605a380f19e82aa92c3a3ec38bf2d49bd646d846fa9836d8a6235349fc0ef89",
       "version": "0.3.1"
     },
-    "src/app/providers.tsx": {
+    "src/styles/base.css": {
       "owner": "dewey",
-      "hash": "e41ea8d9ebd4195ab38e91b16620f3627fc408a954037136fdc271181cae6dcb",
+      "hash": "6f93b2b976a58b7b6b174c0194f3c227e7a9ea6039ec2ded7c1a4829f990bf9b",
       "version": "0.3.1"
     },
-    "src/app/page.tsx": {
+    "src/styles/markdown.css": {
       "owner": "dewey",
-      "hash": "39ad55ccb8fe83d8e6093417ae8e663a4496c3490ef792f017a6bfe3d7336c19",
+      "hash": "9e7ad2d725a709058c1f5a64d4c4a3c3b888d9c1bd80972547fedb8959bcf0f7",
       "version": "0.3.1"
     },
-    "src/app/docs/layout.tsx": {
+    "src/layouts/BaseLayout.astro": {
       "owner": "dewey",
-      "hash": "ec90dcb788d329683b3142f9ff10b392c0d1e39c6ebf2f9496a4fef7984ce2fc",
+      "hash": "941906cdeddc1e73e4b710ebf8bdcd296b536ded2d50c1c24cf724fbc4acd3cf",
       "version": "0.3.1"
     },
-    "src/app/docs/[...slug]/page.tsx": {
+    "src/layouts/DocsLayout.astro": {
       "owner": "dewey",
-      "hash": "44f6e25dc31389062db8a039b66a0720707191682d8dabde6b23642c589b664d",
+      "hash": "6e29c69ebfd43fc8378cc5995f945f58a68219fe8168e0d308dc0214f25f4a09",
       "version": "0.3.1"
     },
-    "src/app/docs/[...slug]/content.tsx": {
+    "src/components/SidebarNav.astro": {
       "owner": "dewey",
-      "hash": "e9b31e04b017fd00130fea51cd8576059d36d0e95887a77d06d22fa3fa9a3d66",
+      "hash": "5af2eb3ed7ebba888b9b81290f59d92a169f6792dace06f7f32ca1431c78febc",
       "version": "0.3.1"
     },
-    "src/lib/docs.ts": {
+    "src/components/Toc.astro": {
       "owner": "dewey",
-      "hash": "33efb470b811d6790fcb10fe4d9af34eb25e426b1093ccac4bfc874a41da6b18",
+      "hash": "d051383c83b546d1d4039ed1e6b2d7091b13c4b6749758b5baa5ff72850b166c",
       "version": "0.3.1"
     },
-    "src/lib/navigation.ts": {
+    "src/lib/nav.ts": {
       "owner": "dewey",
-      "hash": "e5c3e01a922f585973a70df4004580eecd8fc5fdd9779617cb729b5eb830a1ad",
+      "hash": "929298bc6c429163608d5d3352b3b0fdf308841c39e517af9e16ff4df7f2b781",
       "version": "0.3.1"
     },
-    "src/lib/dewey.tsx": {
-      "owner": "consumer"
+    "src/pages/index.astro": {
+      "owner": "dewey",
+      "hash": "46296c1995245943d5e8fbc222442749f4f45371adaff858c449978a183a6a64",
+      "version": "0.3.1"
+    },
+    "src/pages/docs/[...slug].astro": {
+      "owner": "dewey",
+      "hash": "b3e29d544452874911aae1955b29f69639a5a50733b8464fc947022235a5869c",
+      "version": "0.3.1"
     },
     "package.json": {
       "owner": "consumer"
     },
     ".gitignore": {
-      "owner": "consumer"
-    },
-    "docs.json": {
       "owner": "consumer"
     }
   }

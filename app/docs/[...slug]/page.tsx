@@ -5,6 +5,8 @@ import { renderMarkdown } from "@/app/lib/markdown";
 import { extractToc } from "@/app/lib/toc";
 import { TableOfContents } from "../_components/TableOfContents";
 import { DocPagination } from "../_components/DocPagination";
+import { CopyCodeButton } from "../_components/CopyCodeButton";
+import { CopyPageButtons } from "../_components/CopyPageButtons";
 
 interface Props {
   params: Promise<{ slug: string[] }>;
@@ -41,11 +43,41 @@ export default async function DocPage({ params }: Props) {
     <>
       <main className="flex-1 min-w-0">
         <div className="max-w-3xl mx-auto px-6 py-10">
+          <div className="flex justify-end mb-4">
+            <CopyPageButtons markdown={doc.content} />
+          </div>
           <article
             className="docs-prose"
             dangerouslySetInnerHTML={{ __html: html }}
           />
+          <CopyCodeButton />
           <DocPagination docs={docs} currentSlug={fullSlug} />
+
+          {/* AI agent links */}
+          <div className="mt-10 pt-6 border-t border-neutral-800/50 flex items-center justify-between">
+            <span className="text-[11px] font-mono tracking-wide text-neutral-600 uppercase">
+              For AI agents
+            </span>
+            <div className="flex items-center gap-4">
+              <a
+                href="/llms.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-mono text-neutral-600 hover:text-emerald-400 transition-colors"
+              >
+                llms.txt
+              </a>
+              <span className="text-neutral-800">|</span>
+              <a
+                href="/llms-full.txt"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-[11px] font-mono text-neutral-600 hover:text-emerald-400 transition-colors"
+              >
+                llms-full.txt
+              </a>
+            </div>
+          </div>
         </div>
       </main>
       <TableOfContents entries={toc} />

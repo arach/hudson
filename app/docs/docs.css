@@ -183,3 +183,29 @@
   border-radius: 0.5rem;
   border: 1px solid theme(--color-neutral-800);
 }
+
+/* Copy button on code blocks */
+.copy-btn {
+  position: absolute;
+  top: 0.5rem;
+  right: 0.5rem;
+  padding: 0.25rem 0.5rem;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 0.6875rem;
+  color: theme(--color-neutral-500);
+  background: theme(--color-neutral-900);
+  border: 1px solid theme(--color-neutral-700);
+  border-radius: 0.25rem;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.15s, color 0.15s, background 0.15s;
+}
+
+.group:hover .copy-btn {
+  opacity: 1;
+}
+
+.copy-btn:hover {
+  color: theme(--color-neutral-200);
+  background: theme(--color-neutral-800);
+}

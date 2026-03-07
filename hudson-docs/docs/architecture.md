@@ -1,7 +1,7 @@
 ---
 title: Architecture
 description: Hudson project structure and architectural decisions
-order: 5
+order: 3
 ---
 
 # Architecture

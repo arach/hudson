@@ -2,9 +2,9 @@
 node_modules
 .pnpm-store
 
-# Next.js
-.next
-out
+# Astro
+dist
+.astro
 
 # Misc
 .DS_Store

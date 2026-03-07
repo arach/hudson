@@ -1,7 +1,7 @@
 ---
 title: Skills
 description: Pre-built skill definitions for AI agents working with Hudson
-order: 6
+order: 7
 ---
 
 # Skills

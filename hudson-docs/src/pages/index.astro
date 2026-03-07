@@ -1,0 +1,28 @@
+---
+import DocsLayout from '../layouts/DocsLayout.astro'
+import { navGroups } from '../lib/nav'
+---
+
+<DocsLayout title="Documentation" headings={[]} rawMarkdown="" agentMarkdown="">
+  <div class="space-y-10">
+    {navGroups.map((group) => (
+      <div>
+        <h2 id={group.id} class="text-xl font-semibold tracking-tight mb-4" style="border: none; margin-top: 0; padding-top: 0;">{group.title}</h2>
+        <div style="display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 12px;">
+          {group.items.map((item) => (
+            <a
+              href={item.href}
+              class="group block rounded-lg border border-[var(--color-border)] p-5 text-sm no-underline transition hover:border-[var(--color-text-muted)] hover:bg-[var(--color-surface)]"
+            >
+              <span class="font-medium text-[var(--color-text)]">{item.title}</span>
+              <span class="mt-2 flex items-center gap-1 text-xs text-[var(--color-text-muted)]">
+                Read more
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14M12 5l7 7-7 7"/></svg>
+              </span>
+            </a>
+          ))}
+        </div>
+      </div>
+    ))}
+  </div>
+</DocsLayout>

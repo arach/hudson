@@ -1,45 +1,47 @@
 {
-  "name": "hudson-docs",
+  "name": "Hudson",
   "groups": [
     {
-      "id": "getting-started",
-      "title": "Getting Started",
+      "id": "docs",
+      "title": "Documentation",
       "items": [
-        {
-          "id": "overview",
-          "title": "Overview",
-          "description": "Introduction to Hudson — a multi-app canvas workspace platform for React"
-        },
-        {
-          "id": "quickstart",
-          "title": "Quickstart",
-          "description": "Get Hudson running locally in under 5 minutes"
-        },
-        {
-          "id": "scaffolding",
-          "title": "Scaffolding",
-          "description": "Generate new Hudson apps with create-hudson-app"
-        },
-        {
-          "id": "building-apps",
-          "title": "Building Apps",
-          "description": "Complete guide to building apps for the Hudson platform"
-        },
-        {
-          "id": "api",
-          "title": "API Reference",
-          "description": "Complete API reference for the @hudson/sdk package"
-        },
-        {
-          "id": "architecture",
-          "title": "Architecture",
-          "description": "Hudson project structure and architectural decisions"
-        },
-        {
-          "id": "skill",
-          "title": "Skills",
-          "description": "Pre-built skill definitions for AI agents working with Hudson"
-        }
+        { "id": "overview", "title": "Overview", "description": "Introduction to Hudson" },
+        { "id": "quickstart", "title": "Quickstart", "description": "Get Hudson running locally in under 5 minutes" },
+        { "id": "architecture", "title": "Architecture", "description": "Project structure and architectural decisions" },
+        { "id": "building-apps", "title": "Building Apps", "description": "Complete guide to building apps for Hudson" },
+        { "id": "scaffolding", "title": "Scaffolding", "description": "Generate new Hudson apps with create-hudson-app" },
+        { "id": "skill", "title": "Skills", "description": "Skill definitions for AI agents" },
+        { "id": "api", "title": "API Reference", "description": "Complete API reference for @hudson/sdk" }
+      ]
+    },
+    {
+      "id": "npm",
+      "title": "NPM Packages",
+      "items": [
+        { "id": "npm/index", "title": "Packages Overview" },
+        { "id": "npm/sdk/getting-started", "title": "Getting Started", "subsection": "@hudsonos/sdk" },
+        { "id": "npm/sdk/building-apps", "title": "Building Apps", "subsection": "@hudsonos/sdk" },
+        { "id": "npm/sdk/api-reference", "title": "API Reference", "subsection": "@hudsonos/sdk" },
+        { "id": "npm/sdk/systems", "title": "Systems", "subsection": "@hudsonos/sdk" },
+        { "id": "npm/sdk/utilities", "title": "Utilities", "subsection": "@hudsonos/sdk" },
+        { "id": "npm/hx/hx", "title": "Guide", "subsection": "@hudsonos/hx" }
+      ]
+    },
+    {
+      "id": "cli",
+      "title": "CLI Tools",
+      "items": [
+        { "id": "cli/index", "title": "CLI Overview" },
+        { "id": "cli/create-hudson-app", "title": "create-hudson-app" },
+        { "id": "cli/relay", "title": "Relay: Terminal Server" }
+      ]
+    },
+    {
+      "id": "prompts",
+      "title": "Prompts",
+      "items": [
+        { "id": "prompts/create-app", "title": "Create a New App" },
+        { "id": "prompts/add-intents", "title": "Add Intents" }
       ]
     }
   ]
