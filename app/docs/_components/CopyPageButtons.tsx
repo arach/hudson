@@ -8,7 +8,7 @@ interface CopyPageButtonsProps {
 
 function CopyButton({ label, getText }: { label: string; getText: () => string }) {
   const [copied, setCopied] = useState(false);
-  const timeoutRef = useRef<ReturnType<typeof setTimeout>>();
+  const timeoutRef = useRef<ReturnType<typeof setTimeout>>(undefined);
 
   const handleCopy = useCallback(() => {
     navigator.clipboard.writeText(getText()).then(() => {
