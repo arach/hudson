@@ -29,10 +29,15 @@ import { intentExplorerApp } from './intent-explorer';
 import { logoDesignerApp } from './logo-designer';
 import { shaperApp } from './shaper';
 import { traceViewerApp } from './trace-viewer';
+import { terminalApp } from './terminal';
 
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
-    { app: hudsonDocsApp, canvasMode: 'native' },
+    {
+      app: hudsonDocsApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -450, y: -300, w: 900, h: 650 },
+    },
     {
       app: intentExplorerApp,
       canvasMode: 'windowed',
@@ -53,6 +58,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -500, y: -100, w: 900, h: 650 },
     },
+    {
+      app: terminalApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -300, y: 100, w: 700, h: 500 },
+    },
   ];
 }
 
@@ -70,7 +80,7 @@ export function getHudsonOSWorkspace(): HudsonWorkspace {
     description: 'Multi-app canvas workspace',
     mode: 'canvas',
     apps: [...getCoreApps(), ...localApps],
-    defaultFocusedAppId: 'hudson-docs',
+    defaultFocusedAppId: 'shaper',
   };
 }
 

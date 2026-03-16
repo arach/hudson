@@ -10,7 +10,7 @@ export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port
 export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSeparator, ContextMenuGroup } from './components/overlays';
 
 // Hooks
-export { usePersistentState } from './hooks/usePersistentState';
+export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';

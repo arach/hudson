@@ -97,6 +97,11 @@ export function LogoLeftPanel() {
       {/* Template picker */}
       <div className="flex flex-col gap-1.5">
         <span className="text-[10px] uppercase tracking-widest text-white/30">Variant</span>
+        {templates.length === 0 && (
+          <div className="text-[11px] text-white/25 px-2 py-3 text-center border border-dashed border-white/8 rounded-lg">
+            Loading templates...
+          </div>
+        )}
         {templates.map(t => {
           const isActive = params.variant === t.id;
           const isBuiltin = isBuiltinVariant(t.id);

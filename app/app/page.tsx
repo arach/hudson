@@ -8,7 +8,7 @@ export default function AppPage() {
     <WorkspaceShell
       workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
-      bootMode="full"
+      bootMode="none"
     />
   );
 }

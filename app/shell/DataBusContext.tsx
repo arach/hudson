@@ -86,8 +86,13 @@ export function DataBusProvider({
 
   useEffect(() => {
     fetchPipes();
-    const id = setInterval(fetchPipes, 5000);
-    return () => clearInterval(id);
+    let id: ReturnType<typeof setInterval>;
+    const start = () => { id = setInterval(fetchPipes, 30_000); };
+    const stop = () => clearInterval(id);
+    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchPipes(); start(); } };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
   }, [fetchPipes]);
 
   // --- Push execution ---

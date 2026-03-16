@@ -173,13 +173,15 @@ export function useServiceRegistry() {
     [setAutoStartIds],
   );
 
-  // Initial health check + polling
+  // Initial health check + polling (paused when tab hidden)
   useEffect(() => {
     checkAll();
-    pollRef.current = setInterval(checkAll, POLL_INTERVAL);
-    return () => {
-      if (pollRef.current) clearInterval(pollRef.current);
-    };
+    const start = () => { pollRef.current = setInterval(checkAll, POLL_INTERVAL); };
+    const stop = () => { if (pollRef.current) clearInterval(pollRef.current); };
+    const onVis = () => { stop(); if (document.visibilityState === 'visible') { checkAll(); start(); } };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
   }, [checkAll]);
 
   // Auto-start services after initial health check

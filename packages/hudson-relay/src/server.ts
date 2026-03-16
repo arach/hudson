@@ -4,7 +4,6 @@ import { createRequire } from 'module';
 
 const require = createRequire(import.meta.url);
 const { WebSocketServer } = require('ws') as typeof import('ws');
-type WebSocket = import('ws').WebSocket;
 
 import {
   sessions,
@@ -14,7 +13,7 @@ import {
   destroy,
   send,
 } from './relay/session';
-import type { ClientMessage } from './relay/types';
+import type { ClientMessage, RelaySocket } from './relay/types';
 import { handleCompile } from './routes/compile';
 import { handleUpload } from './routes/upload';
 import { handleHealth } from './routes/health';
@@ -80,7 +79,8 @@ export function startServer(port: number) {
   // WebSocket server on the same HTTP server
   const wss = new WebSocketServer({ server });
 
-  wss.on('connection', (ws: WebSocket, _req: IncomingMessage) => {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  wss.on('connection', (ws: any, _req: IncomingMessage) => {
     let sessionId: string | null = null;
 
     ws.on('message', (raw: Buffer | string) => {
@@ -155,7 +155,7 @@ export function startServer(port: number) {
       }
     });
 
-    ws.on('error', (err) => {
+    ws.on('error', (err: Error) => {
       console.error('[relay] WebSocket error:', err.message);
       if (sessionId) {
         const session = sessions.get(sessionId);

@@ -18,13 +18,16 @@ import {
 } from '@hudson/sdk/shell';
 import {
   usePersistentState,
+  useDebouncedPersistentState,
+  useSaveIndicator,
   usePlatformLayout,
   sounds,
   setMuted as setSoundMuted,
   useAppSettings,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare } from 'lucide-react';
+import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
@@ -45,8 +48,41 @@ import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-man
 import type { ServiceStatus } from '@hudson/sdk';
 
 // ---------------------------------------------------------------------------
-// Default settings
+// Shell configuration — all tuneable defaults and timing constants
 // ---------------------------------------------------------------------------
+
+/** How often high-frequency state (pan/zoom) flushes to localStorage (ms). */
+const PERSIST_DEBOUNCE_MS = 5_000;
+
+/** Debounce for flushing window bounds to state for minimap rendering (ms). */
+const BOUNDS_FLUSH_MS = 60;
+
+/** Delay before fit-all fires after launcher dismiss (ms). */
+const FIT_ALL_DELAY_MS = 600;
+
+/** Default sidebar and terminal dimensions. */
+const DEFAULTS = {
+  leftWidth: 260,
+  rightWidth: 280,
+  terminalHeight: 480,
+  leftCollapsed: true,
+  rightCollapsed: true,
+  minimapCollapsed: false,
+  showTerminal: false,
+  showGuides: false,
+  pan: { x: 0, y: 0 } as { x: number; y: number },
+  zoom: 1 as number,
+};
+
+/** Window sizes used by the smart-tiler on first launch. */
+const TILE = {
+  singleW: 960,
+  singleH: 680,
+  multiW: 800,
+  multiH: 600,
+  gap: 40,
+} as const;
+
 const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   glowIntensity: 30,
   connectorStyle: 'dashed',
@@ -261,10 +297,13 @@ function WorkspaceInner({
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
+  const showSaved = useSaveIndicator();
 
-  // --- Focus state ---
-  const [focusedAppId, setFocusedAppId] = useState(
-    workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '',
+  // --- Focus state (persisted per workspace) ---
+  const defaultFocus = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
+  const [focusedAppId, setFocusedAppId] = usePersistentState(
+    `hudson.ws.${workspace.id}.focus`,
+    defaultFocus,
   );
   const focusedIdx = allAppHooks.findIndex(h => h.appId === focusedAppId);
   const focused = allAppHooks[focusedIdx >= 0 ? focusedIdx : 0];
@@ -292,12 +331,28 @@ function WorkspaceInner({
     setExpandedToolId(prev => prev === toolId ? null : toolId);
   }, []);
 
-  // --- Activated apps tracking (demo progressive reveal) ---
+  // --- Activated apps tracking (persisted per workspace) ---
   const isFullBoot = bootMode === 'full';
-  const [activatedAppIds, setActivatedAppIds] = useState<Set<string>>(
-    isFullBoot && initialShowLauncher
-      ? new Set<string>()
-      : new Set(workspace.apps.map(c => c.app.id)),
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace.id]);
+  const [activatedAppIdsArr, setActivatedAppIdsArr] = usePersistentState<string[]>(
+    `hudson.ws.${workspace.id}.visible`,
+    isFullBoot && initialShowLauncher ? [] : allAppIds,
+  );
+  // Derive Set for fast lookups, filtered to only include current workspace's apps
+  const activatedAppIds = useMemo(
+    () => new Set(activatedAppIdsArr.filter(id => allAppIds.includes(id))),
+    [activatedAppIdsArr, allAppIds],
+  );
+  const setActivatedAppIds = useCallback(
+    (updater: Set<string> | ((prev: Set<string>) => Set<string>)) => {
+      setActivatedAppIdsArr(prev => {
+        const prevSet = new Set(prev.filter(id => allAppIds.includes(id)));
+        const next = typeof updater === 'function' ? updater(prevSet) : updater;
+        return [...next];
+      });
+    },
+    [setActivatedAppIdsArr, allAppIds],
   );
 
   // --- App launcher state ---
@@ -334,6 +389,30 @@ function WorkspaceInner({
   // --- Window reset key (bumped to force WindowedApp remount) ---
   const [windowResetKey, setWindowResetKey] = useState(0);
 
+  // --- Dynamic windows (e.g. spawned terminals, not tied to static workspace apps) ---
+  const [dynamicWindows, setDynamicWindows] = useState<DynamicWindowEntry[]>([]);
+  const dynamicCountRef = useRef(0);
+  const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
+
+  const spawnTerminal = useCallback((cwd = '~') => {
+    dynamicCountRef.current++;
+    const n = dynamicCountRef.current;
+    const offset = (n - 1) * 30;
+    const shortCwd = cwd.replace(/^\/Users\/[^/]+/, '~');
+    const win: DynamicWindowEntry = {
+      id: `dyn-terminal-${n}`,
+      title: `Terminal ${n} — ${shortCwd}`,
+      render: () => <TerminalContent initialCwd={cwd} />,
+      bounds: { x: -350 + offset, y: -250 + offset, w: 700, h: 500 },
+    };
+    setDynamicWindows(prev => [...prev, win]);
+    setFocusedAppId(win.id);
+  }, []);
+
+  const closeDynamicWindow = useCallback((id: string) => {
+    setDynamicWindows(prev => prev.filter(w => w.id !== id));
+  }, []);
+
   // --- Smart tiling: compute clean window positions on first launch ---
   const tileWindowBounds = useCallback((ids: Set<string>) => {
     const windowed = workspace.apps.filter(
@@ -342,14 +421,14 @@ function WorkspaceInner({
     const n = windowed.length;
     if (n === 0) return;
 
-    const gap = 40;
+    const { gap } = TILE;
 
     if (n === 1) {
-      const w = 960, h = 680;
+      const { singleW: w, singleH: h } = TILE;
       const key = `hudson.ws.${workspace.id}.win.${windowed[0].app.id}`;
       try { localStorage.setItem(key, JSON.stringify({ x: -w / 2, y: -h / 2, w, h })); } catch {}
     } else if (n === 2) {
-      const w = 800, h = 600;
+      const { multiW: w, multiH: h } = TILE;
       const totalW = w * 2 + gap;
       windowed.forEach((config, i) => {
         const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
@@ -361,7 +440,7 @@ function WorkspaceInner({
       // Grid layout for 3+
       const cols = Math.ceil(Math.sqrt(n));
       const rows = Math.ceil(n / cols);
-      const w = 800, h = 600;
+      const { multiW: w, multiH: h } = TILE;
       const totalW = cols * w + (cols - 1) * gap;
       const totalH = rows * h + (rows - 1) * gap;
       windowed.forEach((config, i) => {
@@ -406,24 +485,24 @@ function WorkspaceInner({
   const isCanvasMode = layoutMode === 'canvas';
 
   // --- Shell state (same as AppShell) ---
-  const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', false);
-  const [rightCollapsed, setRightCollapsed] = usePersistentState('hudson.right', false);
-  const [leftWidth, setLeftWidth] = usePersistentState('hudson.leftW', 260);
-  const [rightWidth, setRightWidth] = usePersistentState('hudson.rightW', 280);
+  const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', DEFAULTS.leftCollapsed);
+  const [rightCollapsed, setRightCollapsed] = usePersistentState('hudson.right', DEFAULTS.rightCollapsed);
+  const [leftWidth, setLeftWidth] = usePersistentState('hudson.leftW', DEFAULTS.leftWidth);
+  const [rightWidth, setRightWidth] = usePersistentState('hudson.rightW', DEFAULTS.rightWidth);
 
-  const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
-  const [scale, setScale] = useState(1);
+  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS);
+  const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, DEFAULTS.zoom, PERSIST_DEBOUNCE_MS);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
-  const [showTerminal, setShowTerminal] = useState(false);
+  const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', 480);
+  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
 
-  const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', false);
-  const [showGuides, setShowGuides] = useState(false);
+  const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed);
+  const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides);
 
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
@@ -441,11 +520,11 @@ function WorkspaceInner({
         old.w === bounds.w && old.h === bounds.h) return;
     windowBoundsRef.current = { ...windowBoundsRef.current, [appId]: bounds };
 
-    // Debounced flush to state for minimap rendering (60 ms ≈ ~16 fps)
+    // Debounced flush to state for minimap rendering
     if (boundsFlushTimer.current) clearTimeout(boundsFlushTimer.current);
     boundsFlushTimer.current = setTimeout(() => {
       setWindowBoundsMap({ ...windowBoundsRef.current });
-    }, 60);
+    }, BOUNDS_FLUSH_MS);
   }, []);
 
   // --- Terminal tab state (Hudson global + per-app) ---
@@ -557,7 +636,7 @@ function WorkspaceInner({
   useEffect(() => {
     if (!pendingFitAllRef.current) return;
     pendingFitAllRef.current = false;
-    const timer = setTimeout(handleFitAll, 600);
+    const timer = setTimeout(handleFitAll, FIT_ALL_DELAY_MS);
     return () => clearTimeout(timer);
   }, [showLauncher, handleFitAll]);
 
@@ -761,6 +840,13 @@ function WorkspaceInner({
   // --- Canvas context menu ---
   const canvasContextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
+      id: 'canvas:new-terminal',
+      label: 'New Terminal...',
+      icon: <TerminalSquare size={12} />,
+      action: () => setShowTerminalSpawn(true),
+    },
+    { type: 'separator' },
+    {
       id: 'canvas:reset-view',
       label: 'Reset View',
       shortcut: '⌘0',
@@ -793,7 +879,7 @@ function WorkspaceInner({
       icon: <Map size={12} />,
       action: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
     },
-  ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed]);
+  ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed, spawnTerminal]);
 
   // --- Shell layout context ---
   const shellLayout = useMemo(
@@ -1022,6 +1108,7 @@ function WorkspaceInner({
           workspace={workspace}
           focusedAppId={focusedAppId}
           onFocusApp={setFocusedAppId}
+          onCloseApp={handleToggleAppVisibility}
           worldScale={scale}
           onResetView={() => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); }}
           windowResetKey={windowResetKey}
@@ -1029,6 +1116,8 @@ function WorkspaceInner({
           activatedAppIds={activatedAppIds}
           showLauncher={showLauncher}
           onOpenServices={openWorkspaceManager}
+          dynamicWindows={dynamicWindows}
+          onCloseDynamicWindow={closeDynamicWindow}
         />
       )}
     </div>
@@ -1176,6 +1265,14 @@ function WorkspaceInner({
                       <Settings size={10} />
                       <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
                     </button>
+                    {showSaved && (
+                      <>
+                        <div className="h-3 w-px bg-neutral-700" />
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-500 animate-pulse">
+                          Saved
+                        </span>
+                      </>
+                    )}
                   </div>
                 }
               />
@@ -1229,6 +1326,14 @@ function WorkspaceInner({
               commands={allCommands}
             />
 
+            {/* Terminal spawn dialog */}
+            {showTerminalSpawn && (
+              <TerminalSpawnDialog
+                onSpawn={(cwd) => { spawnTerminal(cwd); setShowTerminalSpawn(false); }}
+                onClose={() => setShowTerminalSpawn(false)}
+              />
+            )}
+
             {/* App launcher overlay (rendered in HUD layer to escape canvas transform) */}
             {showLauncher && launcherReady && (
               <div className="fixed inset-0 z-[5] pointer-events-auto">
@@ -1254,10 +1359,18 @@ function WorkspaceInner({
 // ---------------------------------------------------------------------------
 // MultiAppCanvas — renders native + windowed apps together
 // ---------------------------------------------------------------------------
+interface DynamicWindowEntry {
+  id: string;
+  title: string;
+  render: () => ReactNode;
+  bounds: { x: number; y: number; w: number; h: number };
+}
+
 function MultiAppCanvas({
   workspace,
   focusedAppId,
   onFocusApp,
+  onCloseApp,
   worldScale,
   onResetView,
   windowResetKey,
@@ -1265,10 +1378,13 @@ function MultiAppCanvas({
   activatedAppIds,
   showLauncher,
   onOpenServices,
+  dynamicWindows,
+  onCloseDynamicWindow,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
   onFocusApp: (id: string) => void;
+  onCloseApp: (id: string) => void;
   worldScale: number;
   onResetView: () => void;
   windowResetKey: number;
@@ -1276,6 +1392,8 @@ function MultiAppCanvas({
   activatedAppIds: Set<string>;
   showLauncher: boolean;
   onOpenServices: () => void;
+  dynamicWindows: DynamicWindowEntry[];
+  onCloseDynamicWindow: (id: string) => void;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -1323,6 +1441,7 @@ function MultiAppCanvas({
               workspaceId={workspace.id}
               isFocused={config.app.id === focusedAppId}
               onFocus={() => onFocusApp(config.app.id)}
+              onClose={() => onCloseApp(config.app.id)}
               worldScale={worldScale}
               onResetView={onResetView}
               onReportBounds={onReportBounds}
@@ -1331,7 +1450,134 @@ function MultiAppCanvas({
           </motion.div>
         ))}
       </AnimatePresence>
+
+      {/* Dynamic windows (spawned terminals, etc.) */}
+      <AnimatePresence>
+        {dynamicWindows.map(dw => (
+          <motion.div
+            key={dw.id}
+            initial={{ opacity: 0, scale: 0.96 }}
+            animate={{ opacity: 1, scale: 1 }}
+            exit={{ opacity: 0, scale: 0.96 }}
+            transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+          >
+            <DynamicWindowedApp
+              win={dw}
+              isFocused={dw.id === focusedAppId}
+              onFocus={() => onFocusApp(dw.id)}
+              onClose={() => onCloseDynamicWindow(dw.id)}
+              worldScale={worldScale}
+            />
+          </motion.div>
+        ))}
+      </AnimatePresence>
     </>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// DynamicWindowedApp — standalone window not tied to an app Provider
+// ---------------------------------------------------------------------------
+function DynamicWindowedApp({
+  win,
+  isFocused,
+  onFocus,
+  onClose,
+  worldScale,
+}: {
+  win: DynamicWindowEntry;
+  isFocused: boolean;
+  onFocus: () => void;
+  onClose: () => void;
+  worldScale: number;
+}) {
+  const [bounds, setBounds] = useState(win.bounds);
+
+  return (
+    <AppWindow
+      title={win.title}
+      bounds={bounds}
+      onBoundsChange={setBounds}
+      isFocused={isFocused}
+      onFocus={onFocus}
+      onClose={onClose}
+      worldScale={worldScale}
+    >
+      {win.render()}
+    </AppWindow>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TerminalSpawnDialog — lightweight popover to set CWD before spawning
+// ---------------------------------------------------------------------------
+function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => void; onClose: () => void }) {
+  const [cwd, setCwd] = useState('~');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSpawn(cwd.trim() || '~');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div
+        className="rounded-lg border border-neutral-700/60 shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2 mb-3">
+              <TerminalSquare size={14} className="text-neutral-400" />
+              <span className="text-[12px] font-mono text-neutral-200 tracking-wider">New Terminal</span>
+            </div>
+            <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5 block">
+              Working Directory
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={cwd}
+              onChange={(e) => setCwd(e.target.value)}
+              placeholder="~/dev/my-project"
+              className="w-full bg-neutral-800/80 border border-neutral-700/50 rounded px-3 py-2 text-[12px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-emerald-500/40 transition-colors"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-700/30">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[11px] px-3 py-1.5 rounded border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors font-mono"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="text-[11px] px-4 py-1.5 rounded border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors font-mono"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 
@@ -1343,6 +1589,7 @@ function WindowedApp({
   workspaceId,
   isFocused,
   onFocus,
+  onClose,
   worldScale,
   onResetView,
   onReportBounds,
@@ -1352,6 +1599,7 @@ function WindowedApp({
   workspaceId: string;
   isFocused: boolean;
   onFocus: () => void;
+  onClose: () => void;
   worldScale: number;
   onResetView: () => void;
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
@@ -1451,7 +1699,15 @@ function WindowedApp({
       disabled: true,
       action: () => {},
     },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView]);
+    { type: 'separator' },
+    {
+      id: `${config.app.id}:close`,
+      label: 'Close',
+      shortcut: '⌘W',
+      icon: <X size={12} />,
+      action: onClose,
+    },
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose]);
 
   return (
     <AppWindow
@@ -1460,6 +1716,7 @@ function WindowedApp({
       onBoundsChange={setBounds}
       isFocused={isFocused}
       onFocus={onFocus}
+      onClose={onClose}
       worldScale={worldScale}
       isMaximized={isMaximized}
       onToggleMaximize={handleToggleMaximize}

@@ -143,7 +143,7 @@ export function TerminalRelay({
   onOpenSettings,
   onStartService,
 }: TerminalRelayProps) {
-  const { status, error, exitCode, sendInput, resize, onData, connect } = relay;
+  const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect } = relay;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -168,6 +168,53 @@ export function TerminalRelay({
     el.addEventListener('keydown', stopSpace);
     return () => el.removeEventListener('keydown', stopSpace);
   }, []);
+
+  // ---- Upload helper ----
+  const uploadUrl = `${apiBaseUrl}/api/relay/upload`;
+
+  const uploadFile = useCallback(async (file: File): Promise<string | null> => {
+    try {
+      const base64 = await fileToBase64(file);
+      const res = await fetch(uploadUrl, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, data: base64 }),
+      });
+      const { path } = (await res.json()) as { path: string };
+      return path || null;
+    } catch (err) {
+      console.error('File upload failed:', err);
+      return null;
+    }
+  }, [uploadUrl]);
+
+  // ---- Clipboard paste handler (images) ----
+  useEffect(() => {
+    const el = wrapperRef.current;
+    if (!el) return;
+
+    const handlePaste = async (e: ClipboardEvent) => {
+      if (!e.clipboardData) return;
+
+      const imageItems = Array.from(e.clipboardData.items).filter(
+        (item) => item.type.startsWith('image/'),
+      );
+      if (imageItems.length === 0) return; // text paste — let xterm handle it
+
+      e.preventDefault();
+      e.stopPropagation();
+
+      for (const item of imageItems) {
+        const file = item.getAsFile();
+        if (!file) continue;
+        const path = await uploadFile(file);
+        if (path) sendInput(path);
+      }
+    };
+
+    el.addEventListener('paste', handlePaste);
+    return () => el.removeEventListener('paste', handlePaste);
+  }, [sendInput, uploadFile]);
 
   // ---- Image drop handlers ----
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -202,22 +249,10 @@ export function TerminalRelay({
     if (files.length === 0) return;
 
     for (const file of files) {
-      try {
-        const base64 = await fileToBase64(file);
-        const res = await fetch(`${apiBaseUrl}/api/relay/upload`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ name: file.name, data: base64 }),
-        });
-        const { path } = (await res.json()) as { path: string };
-        if (path) {
-          sendInput(path);
-        }
-      } catch (err) {
-        console.error('Image upload failed:', err);
-      }
+      const path = await uploadFile(file);
+      if (path) sendInput(path);
     }
-  }, [sendInput, apiBaseUrl]);
+  }, [sendInput, uploadFile]);
 
   // ---- Load xterm.js dynamically (SSR-safe) and create terminal ----
   useEffect(() => {
@@ -225,9 +260,10 @@ export function TerminalRelay({
     let terminal: import('@xterm/xterm').Terminal | null = null;
 
     async function init() {
-      const [{ Terminal }, { FitAddon }] = await Promise.all([
+      const [{ Terminal }, { FitAddon }, webglMod] = await Promise.all([
         import('@xterm/xterm'),
         import('@xterm/addon-fit'),
+        import('@xterm/addon-webgl').catch(() => null),
       ]);
 
       injectXtermCss();
@@ -249,6 +285,15 @@ export function TerminalRelay({
       const fitAddon = new FitAddon();
       terminal.loadAddon(fitAddon);
       terminal.open(containerRef.current);
+
+      // GPU-accelerated rendering (graceful fallback to DOM renderer)
+      if (webglMod) {
+        try {
+          const webglAddon = new webglMod.WebglAddon();
+          webglAddon.onContextLoss(() => { webglAddon.dispose(); });
+          terminal.loadAddon(webglAddon);
+        } catch {}
+      }
 
       // Initial fit
       try { fitAddon.fit(); } catch {}
@@ -428,8 +473,23 @@ export function TerminalRelay({
         </div>
         <div>
           <div className="text-[12px] text-neutral-300 font-medium mb-1">Terminal relay disconnected</div>
-          <div className="text-[11px] text-neutral-500 leading-relaxed">Connect to start an interactive terminal session.</div>
+          <div className="text-[11px] text-neutral-500 leading-relaxed">Set working directory and connect.</div>
         </div>
+        {/* Editable CWD */}
+        <form className="w-full" onSubmit={(e) => { e.preventDefault(); connect(); }}>
+          <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1 block text-left">
+            Working Directory
+          </label>
+          <input
+            type="text"
+            value={cwd}
+            onChange={(e) => setCwd(e.target.value)}
+            placeholder="~/dev/my-project"
+            className="w-full bg-neutral-800/80 border border-neutral-700/50 rounded px-3 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-cyan-500/40 transition-colors"
+            spellCheck={false}
+            autoComplete="off"
+          />
+        </form>
         {configItems && configItems.length > 0 && (
           <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-neutral-800/60 border border-neutral-700/40 rounded-md px-3 py-2">
             {configItems.map(item => (

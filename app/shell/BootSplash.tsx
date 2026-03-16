@@ -136,7 +136,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   }}
                 />
 
-                <h1 className="text-[42px] font-mono font-bold tracking-[0.3em] text-white relative">
+                <h1 className="text-[42px] font-brand font-bold tracking-[0.3em] text-white relative">
                   HUDSON
                 </h1>
 
@@ -152,7 +152,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   />
                 </div>
 
-                <span className="text-[11px] font-mono tracking-[0.5em] text-neutral-500 uppercase">
+                <span className="text-[11px] font-brand tracking-[0.5em] text-neutral-500 uppercase">
                   OS
                 </span>
 
@@ -260,7 +260,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                     }}
                   />
 
-                  <h1 className="text-[42px] font-mono font-bold tracking-[0.3em] text-white relative">
+                  <h1 className="text-[42px] font-brand font-bold tracking-[0.3em] text-white relative">
                     HUDSON
                   </h1>
 

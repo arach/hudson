@@ -2,13 +2,12 @@ import { createRequire } from 'module';
 import { execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname as pathDirname } from 'path';
-import type { WebSocket } from 'ws';
 import type { IPty } from 'node-pty';
 
 const require = createRequire(import.meta.url);
 const pty = require('node-pty') as typeof import('node-pty');
 
-import type { SessionInitMessage } from './types';
+import type { SessionInitMessage, RelaySocket } from './types';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -28,7 +27,7 @@ export interface Session {
   id: string;
   pty: IPty;
   /** Currently attached WebSocket (null when detached/orphaned). */
-  ws: WebSocket | null;
+  ws: RelaySocket | null;
   /** Rolling buffer of raw PTY output for reconnect replay. */
   outputBuffer: string;
   /** Current terminal dimensions. */
@@ -47,7 +46,7 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 10);
 }
 
-export function send(ws: WebSocket, data: Record<string, unknown>) {
+export function send(ws: RelaySocket, data: Record<string, unknown>) {
   if (ws.readyState === 1) {
     ws.send(JSON.stringify(data));
   }
@@ -86,7 +85,7 @@ function findClaudeBin(): string | null {
   }
 }
 
-export function createSession(ws: WebSocket, msg: SessionInitMessage): Session | null {
+export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session | null {
   const id = generateId();
   const cols = Math.max(msg.cols || 80, 20);
   const rows = Math.max(msg.rows || 24, 4);
@@ -204,7 +203,7 @@ export function createSession(ws: WebSocket, msg: SessionInitMessage): Session |
 }
 
 /** Attach a WebSocket to an existing session (reconnect). */
-export function attachSession(session: Session, ws: WebSocket, cols?: number, rows?: number) {
+export function attachSession(session: Session, ws: RelaySocket, cols?: number, rows?: number) {
   // Cancel any pending reap
   if (session.reapTimer) {
     clearTimeout(session.reapTimer);

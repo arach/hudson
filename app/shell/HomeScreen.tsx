@@ -306,7 +306,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
         >
-          <h1 className="text-[32px] font-mono font-bold tracking-[0.3em] text-white/90">
+          <h1 className="text-[32px] font-brand font-bold tracking-[0.3em] text-white/90">
             HUDSON
           </h1>
           {/* Breathing bar — pure CSS, GPU-composited via transform */}

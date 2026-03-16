@@ -8,7 +8,7 @@ const ELECTROBUN: PlatformAdapter = {
   onInteractiveMouseDown: (e) => e.stopPropagation(),
   isSSR: false,
   apiBaseUrl: 'http://localhost:3600',
-  serviceApiUrl: 'http://localhost:3601',
+  serviceApiUrl: 'http://localhost:3600',
 };
 
 /**
@@ -17,12 +17,13 @@ const ELECTROBUN: PlatformAdapter = {
  * that causes TDZ errors with synchronous imports.
  */
 const LazyShell = lazy(async () => {
-  const [{ WorkspaceShell }, { hudsonDocsApp }, { intentExplorerApp }, { logoDesignerApp }] =
+  const [{ WorkspaceShell }, { hudsonDocsApp }, { intentExplorerApp }, { logoDesignerApp }, { terminalApp }] =
     await Promise.all([
       import('@hudson/shell/WorkspaceShell'),
       import('@hudson/apps/hudson-docs'),
       import('@hudson/apps/intent-explorer'),
       import('@hudson/apps/logo-designer'),
+      import('@hudson/apps/terminal'),
     ]);
 
   const workspace = {
@@ -30,7 +31,11 @@ const LazyShell = lazy(async () => {
     name: 'Hudson OS',
     mode: 'canvas' as const,
     apps: [
-      { app: hudsonDocsApp, canvasMode: 'native' as const },
+      {
+        app: hudsonDocsApp,
+        canvasMode: 'windowed' as const,
+        defaultWindowBounds: { x: -450, y: -300, w: 900, h: 650 },
+      },
       {
         app: intentExplorerApp,
         canvasMode: 'windowed' as const,
@@ -41,8 +46,13 @@ const LazyShell = lazy(async () => {
         canvasMode: 'windowed' as const,
         defaultWindowBounds: { x: 100, y: -200, w: 900, h: 700 },
       },
+      {
+        app: terminalApp,
+        canvasMode: 'windowed' as const,
+        defaultWindowBounds: { x: -300, y: 100, w: 700, h: 500 },
+      },
     ],
-    defaultFocusedAppId: 'hudson-docs',
+    defaultFocusedAppId: 'logo-designer',
   };
 
   return {
@@ -50,7 +60,7 @@ const LazyShell = lazy(async () => {
       <WorkspaceShell
         workspaces={[workspace]}
         defaultWorkspaceId="hudson-os"
-        bootMode="full"
+        bootMode="none"
       />
     ),
   };

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GripHorizontal, Minus, Maximize2, Minimize2 } from 'lucide-react';
+import { GripHorizontal, Minus, Maximize2, Minimize2, X } from 'lucide-react';
 import { HudsonContextMenu } from '../overlays/ContextMenu';
 import type { ContextMenuEntry } from '../overlays/ContextMenu';
 
@@ -23,6 +23,7 @@ interface AppWindowProps {
   isFocused: boolean;
   onFocus: () => void;
   onMinimize?: () => void;
+  onClose?: () => void;
   /** CSS zoom of the parent world layer — used for 1:1 drag/resize at any zoom */
   worldScale?: number;
   /** Controlled maximize state (lifted from parent) */
@@ -56,6 +57,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isFocused,
   onFocus,
   onMinimize,
+  onClose,
   worldScale,
   isMaximized: isMaximizedProp,
   onToggleMaximize: onToggleMaximizeProp,
@@ -236,27 +238,42 @@ const AppWindow: React.FC<AppWindowProps> = ({
           className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50 cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleDragStart}
         >
-          <GripHorizontal size={12} className="text-neutral-400" />
-          <span className="flex-1 text-[12px] font-mono tracking-wider text-neutral-200 truncate">
-            {title}
-          </span>
+          {/* Left controls: expand */}
           <div className="flex items-center gap-1">
+            <button
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={handleToggleMaximize}
+              className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
+              title={isMaximized ? 'Restore' : 'Expand'}
+            >
+              {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+            </button>
             {onMinimize && (
               <button
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={onMinimize}
                 className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
+                title="Minimize"
               >
                 <Minus size={11} />
               </button>
             )}
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={handleToggleMaximize}
-              className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
-            >
-              {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
-            </button>
+          </div>
+          <span className="flex-1 text-[12px] font-mono tracking-wider text-neutral-200 truncate text-center">
+            {title}
+          </span>
+          {/* Right controls: close */}
+          <div className="flex items-center gap-1">
+            {onClose && (
+              <button
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={onClose}
+                className="p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
+                title="Close"
+              >
+                <X size={11} />
+              </button>
+            )}
           </div>
         </div>
 

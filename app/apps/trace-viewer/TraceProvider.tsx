@@ -27,7 +27,7 @@ export function useTrace(): TraceState {
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
-const POLL_MS = 3000;
+const POLL_MS = 30_000;
 
 export function TraceProvider({ children }: { children: ReactNode }) {
   const [traces, setTraces] = useState<TraceSummary[]>([]);
@@ -37,7 +37,7 @@ export function TraceProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
 
-  // Poll trace summaries
+  // Poll trace summaries — only when tab is visible
   useEffect(() => {
     let cancelled = false;
     const fetchList = async () => {
@@ -48,9 +48,13 @@ export function TraceProvider({ children }: { children: ReactNode }) {
         if (!cancelled) setTraces(data.traces ?? []);
       } catch { /* ignore */ }
     };
+    const start = () => { pollRef.current = setInterval(fetchList, POLL_MS); };
+    const stop = () => clearInterval(pollRef.current);
+    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchList(); start(); } };
     fetchList();
-    pollRef.current = setInterval(fetchList, POLL_MS);
-    return () => { cancelled = true; clearInterval(pollRef.current); };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVis); };
   }, []);
 
   // Fetch full trace when selection changes

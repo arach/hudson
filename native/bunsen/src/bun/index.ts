@@ -35,6 +35,19 @@ ApplicationMenu.setApplicationMenu([
     ],
   },
   {
+    label: "View",
+    submenu: [
+      {
+        label: "Reload",
+        accelerator: "CmdOrCtrl+R",
+        click: () => {
+          const url = isDev ? "http://localhost:5188" : "views://mainview/index.html";
+          mainWindow.webview.loadURL(url);
+        },
+      },
+    ],
+  },
+  {
     label: "Window",
     submenu: [
       { role: "minimize" },

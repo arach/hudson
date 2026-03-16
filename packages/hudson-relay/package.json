@@ -3,6 +3,13 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./session": "./src/relay/session.ts",
+    "./types": "./src/relay/types.ts",
+    "./routes/compile": "./src/routes/compile.ts",
+    "./routes/upload": "./src/routes/upload.ts"
+  },
   "bin": {
     "hudson-relay": "./src/index.ts"
   },

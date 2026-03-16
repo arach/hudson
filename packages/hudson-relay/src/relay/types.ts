@@ -1,3 +1,9 @@
+/** Minimal WebSocket interface — satisfied by both `ws` and Bun's ServerWebSocket. */
+export interface RelaySocket {
+  readonly readyState: number;
+  send(data: string | Buffer): void;
+}
+
 export interface SessionInitMessage {
   type: 'session:init';
   cols: number;

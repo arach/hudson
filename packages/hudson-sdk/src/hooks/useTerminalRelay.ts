@@ -30,6 +30,10 @@ export interface TerminalRelayHandle {
   error: string | null;
   /** Exit code from the last session (null if still running or never started) */
   exitCode: number | null;
+  /** Current working directory (editable before connecting) */
+  cwd: string;
+  /** Update the CWD — only takes effect on next connect/session:init */
+  setCwd: (cwd: string) => void;
   /** Register a callback for incoming terminal data */
   onData: (cb: (data: string) => void) => void;
   /** Send raw keystrokes (for keyboard events) */
@@ -52,7 +56,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const {
     url = 'ws://localhost:3600',
     systemPrompt,
-    cwd,
+    cwd: initialCwd,
     workspaceFiles,
     autoConnect = false,
   } = options;
@@ -61,11 +65,14 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const [sessionId, setSessionId] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [exitCode, setExitCode] = useState<number | null>(null);
+  const [cwd, setCwd] = useState(initialCwd || '~');
 
   const wsRef = useRef<WebSocket | null>(null);
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dimsRef = useRef({ cols: 80, rows: 24 });
   const initSentRef = useRef(false);
+  const cwdRef = useRef(cwd);
+  cwdRef.current = cwd;
   // Persist sessionId across reconnects so we can resume
   const sessionIdRef = useRef<string | null>(null);
   // Data callback registered by the TerminalRelay component
@@ -106,17 +113,18 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
         rows: dimsRef.current.rows,
       });
     } else {
-      // Start a new session
+      // Start a new session — read CWD from ref so it reflects latest user edit
+      const activeCwd = cwdRef.current;
       send({
         type: 'session:init',
         cols: dimsRef.current.cols,
         rows: dimsRef.current.rows,
         ...(systemPrompt ? { systemPrompt } : {}),
-        ...(cwd ? { cwd } : {}),
+        ...(activeCwd ? { cwd: activeCwd } : {}),
         ...(workspaceFiles ? { workspaceFiles } : {}),
       });
     }
-  }, [send, systemPrompt, cwd, workspaceFiles]);
+  }, [send, systemPrompt, workspaceFiles]);
 
   const connect = useCallback(async () => {
     if (wsRef.current) {
@@ -158,20 +166,22 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
             setExitCode(null);
             break;
 
-          case 'session:expired':
+          case 'session:expired': {
             // Our old session is gone — start fresh
             sessionIdRef.current = null;
             initSentRef.current = false;
+            const activeCwd = cwdRef.current;
             send({
               type: 'session:init',
               cols: dimsRef.current.cols,
               rows: dimsRef.current.rows,
               ...(systemPrompt ? { systemPrompt } : {}),
-              ...(cwd ? { cwd } : {}),
+              ...(activeCwd ? { cwd: activeCwd } : {}),
               ...(workspaceFiles ? { workspaceFiles } : {}),
             });
             initSentRef.current = true;
             break;
+          }
 
           case 'session:error':
             // Pre-flight failure — session was never created
@@ -218,7 +228,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       setStatus('error');
       setError('Could not connect to relay');
     };
-  }, [url, sendInitOrReconnect, send, systemPrompt, cwd, workspaceFiles]);
+  }, [url, sendInitOrReconnect, send, systemPrompt, workspaceFiles]);
 
   const sendInput = useCallback((data: string) => {
     send({ type: 'terminal:input', data });
@@ -254,6 +264,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     sessionId,
     error,
     exitCode,
+    cwd,
+    setCwd,
     onData,
     sendInput,
     sendLine,

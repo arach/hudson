@@ -1,11 +1,16 @@
 import { NextResponse } from 'next/server';
-import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises';
+import { readFile, writeFile, readdir, unlink, mkdir, stat, copyFile } from 'fs/promises';
+import { existsSync } from 'fs';
 import { join } from 'path';
 
 // ---------------------------------------------------------------------------
 // Template directory — one .js file per template
+// User templates live in ~/hudson/logos/.data/logo-templates/
+// Bundled seed templates live in {project}/.data/logo-templates/
 // ---------------------------------------------------------------------------
-const TEMPLATES_DIR = join(process.cwd(), '.data', 'logo-templates');
+const HOME = process.env.HOME || '';
+const TEMPLATES_DIR = join(HOME, 'hudson', 'logos', '.data', 'logo-templates');
+const SEED_DIR = join(process.cwd(), '.data', 'logo-templates');
 
 interface TemplateMeta {
   name?: string;
@@ -80,8 +85,22 @@ function parseTemplate(id: string, source: string, mtime: number): ParsedTemplat
   };
 }
 
+let seeded = false;
 async function ensureDir() {
   await mkdir(TEMPLATES_DIR, { recursive: true });
+
+  // Copy any bundled templates that are missing from the user's dir
+  if (!seeded) {
+    seeded = true;
+    if (existsSync(SEED_DIR)) {
+      const existing = new Set((await readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.js')));
+      const seeds = (await readdir(SEED_DIR)).filter(f => f.endsWith('.js'));
+      const missing = seeds.filter(f => !existing.has(f));
+      if (missing.length > 0) {
+        await Promise.all(missing.map(f => copyFile(join(SEED_DIR, f), join(TEMPLATES_DIR, f))));
+      }
+    }
+  }
 }
 
 async function readAllTemplates(): Promise<ParsedTemplate[]> {

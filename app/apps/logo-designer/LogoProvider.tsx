@@ -34,8 +34,8 @@ export const defaults: LogoParams = {
   padding: 72,
 };
 
-// Poll interval for syncing templates from the server
-const TEMPLATE_POLL_MS = 5000;
+// Poll interval for syncing templates from the server (only when tab visible)
+const TEMPLATE_POLL_MS = 30_000;
 
 interface LogoState {
   params: LogoParams;
@@ -215,11 +215,18 @@ export function LogoProvider({ children }: { children: ReactNode }) {
             });
           }
         }
-      } catch { /* network error, retry next interval */ }
+      } catch (err) {
+        console.warn('[logo] Template fetch failed:', err);
+      }
     }
     fetchTemplates();
-    const id = setInterval(fetchTemplates, TEMPLATE_POLL_MS);
-    return () => { active = false; clearInterval(id); };
+    let id: ReturnType<typeof setInterval>;
+    const start = () => { id = setInterval(fetchTemplates, TEMPLATE_POLL_MS); };
+    const stop = () => clearInterval(id);
+    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchTemplates(); start(); } };
+    start();
+    document.addEventListener('visibilitychange', onVis);
+    return () => { active = false; stop(); document.removeEventListener('visibilitychange', onVis); };
   }, [templateEndpoint]);
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {

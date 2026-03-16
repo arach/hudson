@@ -20,6 +20,22 @@ export const logoSettings: AppSettingsConfig = {
       ],
     },
     {
+      label: 'Model',
+      fields: [
+        {
+          key: 'modelTier',
+          label: 'Context Depth',
+          type: 'segment',
+          default: 'comprehensive',
+          options: [
+            { label: 'Minimal', value: 'minimal' },
+            { label: 'Focused', value: 'focused' },
+            { label: 'Comprehensive', value: 'comprehensive' },
+          ],
+        },
+      ],
+    },
+    {
       label: 'Files',
       fields: [
         {
