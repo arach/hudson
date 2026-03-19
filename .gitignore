@@ -118,3 +118,4 @@ public/fonts/
 
 # native build artifacts
 native/bunsen/artifacts/
+.openscout/

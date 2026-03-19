@@ -13,6 +13,12 @@ export interface SessionInitMessage {
   cwd?: string;
   /** Files to bootstrap in the CWD before spawning the CLI. Keys are relative paths, values are file contents. Only written if the file doesn't already exist. */
   workspaceFiles?: Record<string, string>;
+  /** How long (ms) to keep the PTY alive after the client disconnects. Defaults to 30 min. */
+  orphanTTL?: number;
+  /** PTY backend. 'pty' spawns a fresh process (default). 'tmux' attaches to a named tmux session. */
+  backend?: 'pty' | 'tmux';
+  /** For tmux backend: the tmux session name. Required when backend is 'tmux'. */
+  tmuxSession?: string;
 }
 
 export interface SessionReconnectMessage {

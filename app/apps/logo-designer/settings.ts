@@ -17,6 +17,16 @@ export const logoSettings: AppSettingsConfig = {
           type: 'text',
           default: '/api/logo/compile',
         },
+        {
+          key: 'relayBackend',
+          label: 'Session Backend',
+          type: 'segment',
+          default: 'pty',
+          options: [
+            { label: 'PTY', value: 'pty' },
+            { label: 'tmux', value: 'tmux' },
+          ],
+        },
       ],
     },
     {

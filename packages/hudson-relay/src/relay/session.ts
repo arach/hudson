@@ -13,8 +13,8 @@ import type { SessionInitMessage, RelaySocket } from './types';
 // Constants
 // ---------------------------------------------------------------------------
 
-/** How long an orphaned session lives before being reaped (5 minutes). */
-const ORPHAN_TTL_MS = 5 * 60 * 1000;
+/** Default orphan TTL — how long a detached session lives before being reaped. */
+const DEFAULT_ORPHAN_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Maximum size of the raw output buffer for reconnect replay (~512 KB). */
 const MAX_BUFFER_SIZE = 512 * 1024;
@@ -33,8 +33,14 @@ export interface Session {
   /** Current terminal dimensions. */
   cols: number;
   rows: number;
-  /** Set when ws detaches — session is reaped after ORPHAN_TTL_MS. */
+  /** Set when ws detaches — session is reaped after orphanTTL. */
   reapTimer: ReturnType<typeof setTimeout> | null;
+  /** How long this session survives without a client (ms). */
+  orphanTTL: number;
+  /** PTY backend type. */
+  backend: 'pty' | 'tmux';
+  /** tmux session name (only set when backend is 'tmux'). */
+  tmuxSession?: string;
   /** Whether the PTY process has exited. */
   exited: boolean;
   exitCode: number | null;
@@ -75,20 +81,91 @@ function resolveCwd(raw?: string): string {
 // Session management
 // ---------------------------------------------------------------------------
 
-/** Locate the claude binary, returning null if not found. */
-function findClaudeBin(): string | null {
-  if (process.env.CLAUDE_BIN) return process.env.CLAUDE_BIN;
+/** Locate a binary by name, returning null if not found. */
+function findBin(name: string, envOverride?: string): string | null {
+  if (envOverride && process.env[envOverride]) return process.env[envOverride];
   try {
-    return execSync('which claude', { encoding: 'utf8' }).trim() || null;
+    return execSync(`which ${name}`, { encoding: 'utf8' }).trim() || null;
   } catch {
     return null;
   }
+}
+
+/** Locate the claude binary, returning null if not found. */
+function findClaudeBin(): string | null {
+  return findBin('claude', 'CLAUDE_BIN');
+}
+
+/** Check if a tmux session exists. */
+function tmuxSessionExists(name: string): boolean {
+  try {
+    execSync(`tmux has-session -t ${name} 2>/dev/null`, { encoding: 'utf8' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+/** Bootstrap workspace files into a directory (only creates if missing). */
+function bootstrapFiles(cwd: string, files: Record<string, string>, sessionId: string) {
+  for (const [relPath, content] of Object.entries(files)) {
+    const absPath = join(cwd, relPath);
+    if (!existsSync(absPath)) {
+      try {
+        const dir = pathDirname(absPath);
+        if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
+        writeFileSync(absPath, content, 'utf-8');
+        console.log(`[relay] Session ${sessionId}: bootstrapped ${relPath}`);
+      } catch (err) {
+        console.warn(`[relay] Session ${sessionId}: failed to bootstrap ${relPath}:`, err);
+      }
+    }
+  }
+}
+
+/** Spawn a PTY that attaches to a tmux session (creating it if needed). */
+function spawnTmuxSession(
+  tmuxName: string,
+  cols: number,
+  rows: number,
+  cwd: string,
+  claudeBin: string,
+  claudeArgs: string[],
+  env: Record<string, string | undefined>,
+): IPty {
+  const exists = tmuxSessionExists(tmuxName);
+
+  if (!exists) {
+    // Create the tmux session detached, running claude inside it
+    const shellCmd = [claudeBin, ...claudeArgs].map(a => a.includes(' ') ? `'${a}'` : a).join(' ');
+    execSync(
+      `tmux new-session -d -s ${tmuxName} -x ${cols} -y ${rows} -c '${cwd}' '${shellCmd}'`,
+      { env: env as NodeJS.ProcessEnv },
+    );
+    console.log(`[relay] Created tmux session: ${tmuxName}`);
+  } else {
+    // Resize existing session to match client
+    try { execSync(`tmux resize-window -t ${tmuxName} -x ${cols} -y ${rows} 2>/dev/null`); } catch {}
+    console.log(`[relay] Attaching to existing tmux session: ${tmuxName}`);
+  }
+
+  // Spawn a PTY bridge that attaches to the tmux session
+  // This gives us a PTY file descriptor that pipes tmux I/O to our WebSocket
+  return pty.spawn('tmux', ['attach', '-t', tmuxName], {
+    name: 'xterm-256color',
+    cols,
+    rows,
+    cwd,
+    env,
+  });
 }
 
 export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session | null {
   const id = generateId();
   const cols = Math.max(msg.cols || 80, 20);
   const rows = Math.max(msg.rows || 24, 4);
+  const backend = msg.backend || 'pty';
+  const tmuxName = msg.tmuxSession || `hudson-${id}`;
 
   // ---- Pre-flight: locate claude binary ----
   const claudeBin = findClaudeBin();
@@ -106,43 +183,48 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     return null;
   }
 
+  // ---- Pre-flight: tmux backend requires tmux ----
+  if (backend === 'tmux' && !findBin('tmux')) {
+    const reason = 'tmux not found. Install it with: brew install tmux';
+    console.error(`[relay] Session ${id} failed: ${reason}`);
+    send(ws, { type: 'session:error', error: reason });
+    return null;
+  }
+
   // ---- Pre-flight: resolve working directory ----
   const cwd = resolveCwd(msg.cwd);
 
-  // ---- Bootstrap workspace files (only if they don't exist) ----
+  // ---- Bootstrap workspace files ----
   if (msg.workspaceFiles) {
-    for (const [relPath, content] of Object.entries(msg.workspaceFiles)) {
-      const absPath = join(cwd, relPath);
-      if (!existsSync(absPath)) {
-        try {
-          const dir = pathDirname(absPath);
-          if (!existsSync(dir)) mkdirSync(dir, { recursive: true });
-          writeFileSync(absPath, content, 'utf-8');
-          console.log(`[relay] Session ${id}: bootstrapped ${relPath}`);
-        } catch (err) {
-          console.warn(`[relay] Session ${id}: failed to bootstrap ${relPath}:`, err);
-        }
-      }
-    }
+    bootstrapFiles(cwd, msg.workspaceFiles, id);
   }
 
-  const args: string[] = ['--verbose'];
+  const claudeArgs: string[] = ['--verbose'];
   if (msg.systemPrompt) {
-    args.push('--system-prompt', msg.systemPrompt);
+    claudeArgs.push('--system-prompt', msg.systemPrompt);
   }
 
   const env: Record<string, string | undefined> = { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' };
   delete env.CLAUDECODE;
 
-  console.log(`[relay] Session ${id}: spawning ${claudeBin} in ${cwd}`);
+  // ---- Spawn PTY (direct or tmux-backed) ----
+  let ptyProcess: IPty;
 
-  const ptyProcess = pty.spawn(claudeBin, args, {
-    name: 'xterm-256color',
-    cols,
-    rows,
-    cwd,
-    env,
-  });
+  if (backend === 'tmux') {
+    console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd}`);
+    ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, claudeBin, claudeArgs, env);
+  } else {
+    console.log(`[relay] Session ${id}: pty backend, spawning ${claudeBin} in ${cwd}`);
+    ptyProcess = pty.spawn(claudeBin, claudeArgs, {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd,
+      env,
+    });
+  }
+
+  const orphanTTL = msg.orphanTTL && msg.orphanTTL > 0 ? msg.orphanTTL : DEFAULT_ORPHAN_TTL_MS;
 
   const session: Session = {
     id,
@@ -152,6 +234,9 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     cols,
     rows,
     reapTimer: null,
+    orphanTTL,
+    backend,
+    ...(backend === 'tmux' ? { tmuxSession: tmuxName } : {}),
     exited: false,
     exitCode: null,
   };
@@ -240,8 +325,8 @@ export function detachSession(session: Session) {
   if (session.exited) {
     scheduleReap(session, 5_000);
   } else {
-    scheduleReap(session, ORPHAN_TTL_MS);
-    console.log(`[relay] Session ${session.id} detached (orphaned for ${ORPHAN_TTL_MS / 1000}s)`);
+    scheduleReap(session, session.orphanTTL);
+    console.log(`[relay] Session ${session.id} detached (orphaned for ${session.orphanTTL / 1000}s)`);
   }
 }
 
@@ -254,12 +339,17 @@ export function scheduleReap(session: Session, delay: number) {
   }, delay);
 }
 
-/** Hard destroy — kill PTY, remove from map. */
+/** Hard destroy — kill PTY bridge, remove from map.
+ *  For tmux sessions: only kills the attach bridge, not the tmux session itself. */
 export function destroy(sessionId: string) {
   const session = sessions.get(sessionId);
   if (!session) return;
   if (session.reapTimer) clearTimeout(session.reapTimer);
   try { session.pty.kill(); } catch {}
   sessions.delete(sessionId);
-  console.log(`[relay] Session ${sessionId} destroyed`);
+  if (session.backend === 'tmux') {
+    console.log(`[relay] Session ${sessionId} bridge destroyed (tmux session '${session.tmuxSession}' still alive)`);
+  } else {
+    console.log(`[relay] Session ${sessionId} destroyed`);
+  }
 }

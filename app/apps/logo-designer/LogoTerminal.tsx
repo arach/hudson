@@ -46,6 +46,7 @@ export function LogoTerminal() {
   const compileEndpoint = `${apiBaseUrl}${String(appSettings.compileEndpoint || '/api/logo/compile')}`;
   const homeFolder = String(appSettings.homeFolder || '~/hudson/logos');
   const modelTier = (appSettings.modelTier as ModelTier) || 'comprehensive';
+  const relayBackend = (appSettings.relayBackend as 'pty' | 'tmux') || 'pty';
 
   const [mode, setMode] = useState<TerminalMode>('relay');
 
@@ -71,6 +72,9 @@ export function LogoTerminal() {
     systemPrompt: relaySystemPrompt,
     cwd: homeFolder,
     workspaceFiles,
+    sessionKey: 'logo-designer',
+    backend: relayBackend,
+    tmuxSession: relayBackend === 'tmux' ? 'hudson-logos' : undefined,
   });
 
   // ---- Chat mode (fallback) ----

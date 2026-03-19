@@ -109,6 +109,7 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
     systemPrompt,
     cwd: '~/hudson',
     workspaceFiles,
+    sessionKey: 'hudson-terminal',
   });
 
   const configItems = useMemo(() => [

@@ -1,8 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react';
-
-// Inline context import to avoid circular deps — we read the raw context value.
-// PlatformContext defaults to WEB_ADAPTER (isSSR: true) when no provider is present.
-import { usePlatform } from '../platform/PlatformContext';
+import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
 function readStorage<T>(key: string): T | undefined {
   try {
@@ -19,29 +15,39 @@ function writeStorage(key: string, value: unknown) {
   } catch {}
 }
 
+// Hydration gate — ensures client and server render the same initial value,
+// then swaps to the persisted value in a single synchronous commit.
+const subscribeNoop = () => () => {};
+const getTrue = () => true;
+const getFalse = () => false;
+
+/** Returns false during SSR/hydration, true once the client has mounted. */
+function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeNoop, getTrue, getFalse);
+}
+
 export function usePersistentState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const { isSSR } = usePlatform();
+  const hydrated = useHydrated();
 
-  const [state, setState] = useState<T>(() => {
-    // In non-SSR environments (native hosts), read localStorage synchronously
-    // to avoid a flash of default values.
-    if (!isSSR) {
-      return readStorage<T>(key) ?? initialValue;
-    }
-    return initialValue;
-  });
+  const [state, setState] = useState<T>(initialValue);
 
-  // In SSR environments, sync with localStorage after hydration
-  useEffect(() => {
-    if (!isSSR) return; // already read synchronously above
+  // After hydration, synchronously swap in the persisted value (single commit, no flash)
+  const didRestore = useRef(false);
+  if (hydrated && !didRestore.current) {
+    didRestore.current = true;
     const saved = readStorage<T>(key);
-    if (saved !== undefined) setState(saved);
-  }, [key, isSSR]);
+    if (saved !== undefined) {
+      // Direct state mutation before render — React 19 allows this in render phase
+      // via the "if state changed during render, re-render with new state" path
+      setState(saved);
+    }
+  }
 
   // Persist changes to localStorage
   useEffect(() => {
+    if (!hydrated) return;
     writeStorage(key, state);
-  }, [key, state]);
+  }, [key, state, hydrated]);
 
   return [state, setState];
 }
@@ -55,30 +61,29 @@ export function useDebouncedPersistentState<T>(
   initialValue: T,
   delayMs = 300,
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const { isSSR } = usePlatform();
+  const hydrated = useHydrated();
 
-  const [state, setState] = useState<T>(() => {
-    if (!isSSR) {
-      return readStorage<T>(key) ?? initialValue;
-    }
-    return initialValue;
-  });
+  const [state, setState] = useState<T>(initialValue);
 
-  useEffect(() => {
-    if (!isSSR) return;
+  const didRestore = useRef(false);
+  if (hydrated && !didRestore.current) {
+    didRestore.current = true;
     const saved = readStorage<T>(key);
-    if (saved !== undefined) setState(saved);
-  }, [key, isSSR]);
+    if (saved !== undefined) {
+      setState(saved);
+    }
+  }
 
   // Debounced persist — only writes after state settles
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
+    if (!hydrated) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
       writeStorage(key, state);
     }, delayMs);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [key, state, delayMs]);
+  }, [key, state, delayMs, hydrated]);
 
   // Also flush on unmount (page navigation, workspace switch)
   const stateRef = useRef(state);

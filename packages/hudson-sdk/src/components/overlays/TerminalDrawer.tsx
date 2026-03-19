@@ -26,6 +26,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   title, children
 }) => {
   const draggingRef = useRef(false);
+  const drawerRef = useRef<HTMLDivElement>(null);
 
   const handleGripMouseDown = useCallback((e: React.MouseEvent) => {
     if (!onHeightChange) return;
@@ -34,17 +35,29 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
     const startY = e.clientY;
     const startHeight = height;
 
+    // Kill CSS transition during drag so DOM updates are instant
+    if (drawerRef.current) drawerRef.current.style.transition = 'none';
+
     const onMouseMove = (ev: MouseEvent) => {
       const delta = startY - ev.clientY;
-      // Max height: full viewport minus status bar and some padding
       const maxH = window.innerHeight - statusBarHeight;
-      onHeightChange(Math.max(MIN_HEIGHT, Math.min(maxH, startHeight + delta)));
+      const newH = Math.max(MIN_HEIGHT, Math.min(maxH, startHeight + delta));
+      // Direct DOM update — no React re-render, no xterm refit
+      if (drawerRef.current) {
+        drawerRef.current.style.height = `${newH}px`;
+      }
     };
 
-    const onMouseUp = () => {
+    const onMouseUp = (ev: MouseEvent) => {
       draggingRef.current = false;
       document.removeEventListener('mousemove', onMouseMove);
       document.removeEventListener('mouseup', onMouseUp);
+      // Restore CSS transition
+      if (drawerRef.current) drawerRef.current.style.transition = '';
+      // Commit final height to state (triggers one React re-render + xterm fit)
+      const delta = startY - ev.clientY;
+      const maxH = window.innerHeight - statusBarHeight;
+      onHeightChange(Math.max(MIN_HEIGHT, Math.min(maxH, startHeight + delta)));
     };
 
     document.addEventListener('mousemove', onMouseMove);
@@ -58,11 +71,12 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
 
   return (
     <div
+      ref={drawerRef}
       className={`
         fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t border-neutral-700
         bg-neutral-950/95 backdrop-blur-xl
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
-        ${draggingRef.current ? '' : 'transition-all duration-300 ease-in-out'}
+        transition-all duration-300 ease-in-out
       `}
       style={{
         bottom: statusBarHeight,

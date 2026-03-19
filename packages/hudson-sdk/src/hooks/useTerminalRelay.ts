@@ -19,6 +19,15 @@ export interface UseTerminalRelayOptions {
   workspaceFiles?: Record<string, string>;
   /** Auto-connect on mount. Defaults to false. */
   autoConnect?: boolean;
+  /** Stable key for persisting the sessionId across reloads and browser restarts.
+   *  If provided, the hook will attempt to reconnect to the previous session on mount. */
+  sessionKey?: string;
+  /** How long (ms) the server keeps the PTY alive after disconnect. Defaults to 30 min. */
+  orphanTTL?: number;
+  /** PTY backend: 'pty' (default) spawns a fresh process, 'tmux' attaches to a persistent tmux session. */
+  backend?: 'pty' | 'tmux';
+  /** For tmux backend: the named tmux session to create/attach to. */
+  tmuxSession?: string;
 }
 
 export interface TerminalRelayHandle {
@@ -59,7 +68,26 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     cwd: initialCwd,
     workspaceFiles,
     autoConnect = false,
+    sessionKey,
+    orphanTTL,
+    backend,
+    tmuxSession,
   } = options;
+
+  // Persist sessionId in localStorage so it survives reload + browser restart.
+  // The relay server keeps the PTY alive for orphanTTL (default 30 min).
+  const storageKey = sessionKey ? `hudson.relay.${sessionKey}` : null;
+  const readPersistedSession = () => {
+    if (!storageKey) return null;
+    try { return localStorage.getItem(storageKey); } catch { return null; }
+  };
+  const persistSession = (id: string | null) => {
+    if (!storageKey) return;
+    try {
+      if (id) localStorage.setItem(storageKey, id);
+      else localStorage.removeItem(storageKey);
+    } catch {}
+  };
 
   const [status, setStatus] = useState<RelayStatus>('disconnected');
   const [sessionId, setSessionId] = useState<string | null>(null);
@@ -74,7 +102,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const cwdRef = useRef(cwd);
   cwdRef.current = cwd;
   // Persist sessionId across reconnects so we can resume
-  const sessionIdRef = useRef<string | null>(null);
+  const sessionIdRef = useRef<string | null>(readPersistedSession());
   // Data callback registered by the TerminalRelay component
   const dataCallbackRef = useRef<((data: string) => void) | null>(null);
 
@@ -100,6 +128,21 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     // Keep sessionId so we can reconnect — don't clear it
   }, []);
 
+  const buildInitMessage = useCallback(() => {
+    const activeCwd = cwdRef.current;
+    return {
+      type: 'session:init' as const,
+      cols: dimsRef.current.cols,
+      rows: dimsRef.current.rows,
+      ...(systemPrompt ? { systemPrompt } : {}),
+      ...(activeCwd ? { cwd: activeCwd } : {}),
+      ...(workspaceFiles ? { workspaceFiles } : {}),
+      ...(orphanTTL ? { orphanTTL } : {}),
+      ...(backend ? { backend } : {}),
+      ...(tmuxSession ? { tmuxSession } : {}),
+    };
+  }, [systemPrompt, workspaceFiles, orphanTTL, backend, tmuxSession]);
+
   const sendInitOrReconnect = useCallback(() => {
     if (initSentRef.current) return;
     initSentRef.current = true;
@@ -113,18 +156,9 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
         rows: dimsRef.current.rows,
       });
     } else {
-      // Start a new session — read CWD from ref so it reflects latest user edit
-      const activeCwd = cwdRef.current;
-      send({
-        type: 'session:init',
-        cols: dimsRef.current.cols,
-        rows: dimsRef.current.rows,
-        ...(systemPrompt ? { systemPrompt } : {}),
-        ...(activeCwd ? { cwd: activeCwd } : {}),
-        ...(workspaceFiles ? { workspaceFiles } : {}),
-      });
+      send(buildInitMessage());
     }
-  }, [send, systemPrompt, workspaceFiles]);
+  }, [send, buildInitMessage]);
 
   const connect = useCallback(async () => {
     if (wsRef.current) {
@@ -151,7 +185,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     wsRef.current = ws;
 
     ws.onopen = () => {
-      setStatus('connected');
+      // Don't set 'connected' yet — wait for session:ready.
+      // This prevents showing an empty terminal while session is being created.
       sendInitOrReconnect();
     };
 
@@ -161,24 +196,23 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
         switch (msg.type) {
           case 'session:ready':
             sessionIdRef.current = msg.sessionId;
+            persistSession(msg.sessionId);
             setSessionId(msg.sessionId);
+            setStatus('connected');
             setError(null);
             setExitCode(null);
             break;
 
           case 'session:expired': {
-            // Our old session is gone — start fresh
+            // Old session was reaped — silently create a new one with same config
             sessionIdRef.current = null;
+            persistSession(null);
             initSentRef.current = false;
-            const activeCwd = cwdRef.current;
-            send({
-              type: 'session:init',
-              cols: dimsRef.current.cols,
-              rows: dimsRef.current.rows,
-              ...(systemPrompt ? { systemPrompt } : {}),
-              ...(activeCwd ? { cwd: activeCwd } : {}),
-              ...(workspaceFiles ? { workspaceFiles } : {}),
-            });
+            // Clear the terminal so stale content doesn't show
+            if (dataCallbackRef.current) {
+              dataCallbackRef.current('\x1b[2J\x1b[H'); // clear screen + cursor home
+            }
+            send(buildInitMessage());
             initSentRef.current = true;
             break;
           }
@@ -198,6 +232,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
 
           case 'session:exit':
             sessionIdRef.current = null;
+            persistSession(null);
             setSessionId(null);
             setExitCode(msg.exitCode ?? null);
             if (msg.exitCode !== 0) {
@@ -211,6 +246,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
           case 'session:detached':
             // Another client took over our session
             sessionIdRef.current = null;
+            persistSession(null);
             setSessionId(null);
             break;
         }
@@ -250,7 +286,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   }, []);
 
   useEffect(() => {
-    if (autoConnect) {
+    // Auto-reconnect if we have a persisted session from a previous page load
+    if (sessionIdRef.current || autoConnect) {
       connect();
     }
     return () => {

@@ -17,6 +17,7 @@ function TerminalSession({ id, cwd }: { id: string; cwd: string }) {
 Help the user with shell commands, file management, coding, and any other tasks.
 Be concise and action-oriented.`,
     cwd,
+    sessionKey: `terminal-${id}`,
   });
 
   const configItems = useMemo(() => [
