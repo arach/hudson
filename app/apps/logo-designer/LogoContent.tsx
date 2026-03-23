@@ -178,7 +178,7 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, templates } = useLogo();
+  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, templates } = useLogo();
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const canvas = useCanvasControls();
@@ -402,6 +402,27 @@ export function LogoContent() {
         <div className="absolute bottom-2 right-2 z-10 text-[10px] font-mono text-white/20">
           {Math.round(canvas.pan.zoom * 100)}%
         </div>
+
+        {/* AI activity ticker */}
+        {aiActivity.length > 0 && (
+          <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-0.5 max-w-[300px]">
+            {aiActivity.slice(-3).map((entry, i) => {
+              const age = Date.now() - entry.timestamp;
+              const fading = age > 5000;
+              return (
+                <div
+                  key={entry.timestamp}
+                  className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
+                    fading && i < aiActivity.slice(-3).length - 1 ? 'opacity-30' : 'opacity-80'
+                  }`}
+                >
+                  <span className="text-emerald-400/70">{entry.tool}</span>
+                  <span className="text-white/30 ml-1.5">{entry.summary}</span>
+                </div>
+              );
+            })}
+          </div>
+        )}
 
         {/* Canvas world */}
         <div

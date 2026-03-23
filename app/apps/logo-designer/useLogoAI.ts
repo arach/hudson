@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { useHudsonAI, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoParams } from './LogoProvider';
@@ -38,6 +38,12 @@ async function compileTemplate(source: string, endpoint: string): Promise<{ js: 
   }
 }
 
+export interface AiActivityEntry {
+  tool: string;
+  summary: string;
+  timestamp: number;
+}
+
 export function useLogoAI(opts: UseLogoAIOptions) {
   const {
     params, setParam, setVariant, resetDefaults, presets,
@@ -46,6 +52,12 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   } = opts;
   const { apiBaseUrl } = usePlatform();
   const compileEndpoint = `${apiBaseUrl}/api/logo/compile`;
+
+  // Activity log — tracks what the AI is doing
+  const [activity, setActivity] = useState<AiActivityEntry[]>([]);
+  const logActivity = useCallback((tool: string, summary: string) => {
+    setActivity(prev => [...prev.slice(-9), { tool, summary, timestamp: Date.now() }]);
+  }, []);
 
   const context = useMemo(() => ({
     params, presets, templates, customParamValues,
@@ -60,19 +72,23 @@ export function useLogoAI(opts: UseLogoAIOptions) {
       switch (name) {
         case 'set_param':
           setParam(args.key as keyof LogoParams, args.value as never);
+          logActivity('set_param', `${args.key} → ${JSON.stringify(args.value).slice(0, 30)}`);
           break;
         case 'set_variant':
           setVariant(args.variant as string);
+          logActivity('set_variant', String(args.variant));
           break;
         case 'apply_preset': {
           const p = presets.find(
             pr => pr.label.toLowerCase() === (args.preset_label as string).toLowerCase(),
           );
           if (p) Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof LogoParams, v as never));
+          logActivity('apply_preset', String(args.preset_label));
           break;
         }
         case 'reset_defaults':
           resetDefaults();
+          logActivity('reset', 'Reset to defaults');
           break;
         case 'create_template': {
           const source = args.renderBody as string;
@@ -91,7 +107,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           };
           addTemplate(template);
           setVariant(id);
-          // Trigger immediate refresh to sync with server
+          logActivity('create_template', `Created "${args.name}"`);
           setTimeout(refreshTemplates, 500);
           break;
         }
@@ -108,6 +124,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           }
           if (args.params) updates.params = args.params as TemplateParam[];
           updateTemplate(templateId, updates);
+          logActivity('update_template', `Updated "${args.name ?? templateId}"`);
           setTimeout(refreshTemplates, 500);
           break;
         }
@@ -116,10 +133,12 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           if (isBuiltinVariant(id)) break;
           if (params.variant === id) setVariant('negative-space');
           deleteTemplate(id);
+          logActivity('delete_template', `Deleted "${id}"`);
           break;
         }
         case 'set_custom_param': {
           setCustomParam(params.variant, args.key as string, args.value as number | string);
+          logActivity('set_custom_param', `${args.key} → ${JSON.stringify(args.value).slice(0, 30)}`);
           break;
         }
       }
@@ -132,7 +151,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
 
   return {
     sendAiMessage,
-    aiStatus: chat.status,
-    aiMessages: chat.messages,
+    aiStatus: chat?.status ?? 'ready',
+    aiMessages: chat?.messages ?? [],
+    aiActivity: activity,
   };
 }
