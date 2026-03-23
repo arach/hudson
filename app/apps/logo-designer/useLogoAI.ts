@@ -2,6 +2,7 @@
 
 import { useCallback, useMemo } from 'react';
 import { useHudsonAI, usePlatform } from '@hudson/sdk';
+import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
 import { isBuiltinVariant } from './types';
@@ -19,6 +20,7 @@ interface UseLogoAIOptions {
   customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
   setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
   refreshTemplates: () => void;
+  appSettings: AppSettingsValues;
 }
 
 async function compileTemplate(source: string, endpoint: string): Promise<{ js: string } | { error: string }> {
@@ -40,7 +42,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   const {
     params, setParam, setVariant, resetDefaults, presets,
     templates, addTemplate, updateTemplate, deleteTemplate,
-    customParamValues, setCustomParam, refreshTemplates,
+    customParamValues, setCustomParam, refreshTemplates, appSettings,
   } = opts;
   const { apiBaseUrl } = usePlatform();
   const compileEndpoint = `${apiBaseUrl}/api/logo/compile`;
@@ -52,6 +54,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   const chat = useHudsonAI({
     toolset: 'logo',
     context,
+    provider: String(appSettings.aiProvider || 'minimax'),
+    model: String(appSettings.aiModel || 'MiniMax-M2.7'),
     onToolCall: async (name, args) => {
       switch (name) {
         case 'set_param':

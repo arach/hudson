@@ -493,7 +493,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   const { sendAiMessage, aiStatus } = useLogoAI({
     params, setParam, setVariant, resetDefaults, presets,
     templates, addTemplate, updateTemplate, deleteTemplate,
-    customParamValues, setCustomParam, refreshTemplates,
+    customParamValues, setCustomParam, refreshTemplates, appSettings,
   });
 
   return (

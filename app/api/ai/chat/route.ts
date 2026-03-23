@@ -1,11 +1,11 @@
 import { streamText, createUIMessageStreamResponse } from 'ai';
-import { anthropic } from '@ai-sdk/anthropic';
 import { loadToolset } from '../toolsets';
+import { resolveModel } from '../providers';
 import { streamFromCLI } from './cli';
 
 export async function POST(req: Request) {
-  const { messages, toolset, context = {}, mode: requestedMode, sessionId } = await req.json();
-  const mode = requestedMode ?? process.env.AI_DEFAULT_MODE ?? 'cli';
+  const { messages, toolset, context = {}, mode: requestedMode, sessionId, provider, model } = await req.json();
+  const mode = requestedMode ?? process.env.AI_DEFAULT_MODE ?? 'api';
 
   if (mode === 'cli') {
     return streamFromCLI(messages, toolset, context, sessionId);
@@ -14,7 +14,7 @@ export async function POST(req: Request) {
   const { tools, system } = loadToolset(toolset, context);
 
   const result = streamText({
-    model: anthropic('claude-sonnet-4-20250514'),
+    model: resolveModel(provider, model),
     system,
     messages,
     tools: tools as Parameters<typeof streamText>[0]['tools'],

@@ -25,11 +25,15 @@ export interface UseHudsonAIOptions {
   mode?: AIMode;
   /** Attachable context the user can toggle on per-message */
   attachments?: AIAttachment[];
+  /** AI provider name (e.g. 'minimax', 'anthropic', 'openai', 'groq') */
+  provider?: string;
+  /** Model ID override (e.g. 'MiniMax-M2.7', 'claude-sonnet-4-20250514') */
+  model?: string;
 }
 
 export type HudsonAIChat = ReturnType<typeof useHudsonAI>;
 
-export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }: UseHudsonAIOptions) {
+export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, provider, model }: UseHudsonAIOptions) {
   const onToolCallRef = useRef(onToolCall);
   onToolCallRef.current = onToolCall;
 
@@ -76,11 +80,13 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments }:
           context: { ...context, ...resolved },
           mode: resolvedMode,
           sessionId: sessionIdRef.current,
+          provider,
+          model,
         };
       },
     }),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolset, resolvedMode, JSON.stringify(context)],
+    [toolset, resolvedMode, provider, model, JSON.stringify(context)],
   );
 
   const chat = useChat({ transport });

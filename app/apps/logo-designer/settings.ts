@@ -57,6 +57,29 @@ export const logoSettings: AppSettingsConfig = {
       ],
     },
     {
+      label: 'AI (Background)',
+      fields: [
+        {
+          key: 'aiProvider',
+          label: 'Provider',
+          type: 'segment',
+          default: 'minimax',
+          options: [
+            { label: 'MiniMax', value: 'minimax' },
+            { label: 'Anthropic', value: 'anthropic' },
+            { label: 'OpenAI', value: 'openai' },
+            { label: 'Groq', value: 'groq' },
+          ],
+        },
+        {
+          key: 'aiModel',
+          label: 'Model',
+          type: 'text',
+          default: 'MiniMax-M2.7',
+        },
+      ],
+    },
+    {
       label: 'Model',
       fields: [
         {
