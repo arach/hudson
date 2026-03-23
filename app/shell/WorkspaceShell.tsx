@@ -580,6 +580,7 @@ function WorkspaceInner({
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [workspaceEditorTab, setWorkspaceEditorTab] = useState<'overview' | 'apps' | 'settings'>('overview');
+  const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
@@ -759,6 +760,16 @@ function WorkspaceInner({
     playSound('blipUp');
   }, [workspace, playSound]);
 
+  // --- Fullscreen app mode ---
+  const enterFullscreen = useCallback((appId: string) => {
+    setFullscreenAppId(appId);
+    setFocusedAppId(appId);
+  }, [setFocusedAppId]);
+
+  const exitFullscreen = useCallback(() => {
+    setFullscreenAppId(null);
+  }, []);
+
   // --- Open settings helper (now opens workspace editor on settings tab) ---
   const openSettings = useCallback((tab: 'overview' | 'apps' | 'settings' = 'settings') => {
     setWorkspaceEditorTab(tab);
@@ -787,6 +798,19 @@ function WorkspaceInner({
         shortcut: 'Cmd+Shift+,',
         icon: <Settings size={14} />,
         action: () => openWorkspaceManager(),
+      },
+      {
+        id: 'shell:fullscreen-app',
+        label: fullscreenAppId ? 'Exit Focus Mode' : 'Focus App',
+        shortcut: 'Cmd+Shift+F',
+        icon: fullscreenAppId ? <Minimize2 size={14} /> : <Maximize2 size={14} />,
+        action: () => {
+          if (fullscreenAppId) {
+            exitFullscreen();
+          } else {
+            enterFullscreen(focusedAppId);
+          }
+        },
       },
       {
         id: 'shell:toggle-left',
@@ -916,13 +940,27 @@ function WorkspaceInner({
         setWorkspaceEditorTab('settings');
         setShowWorkspaceManager(s => !s);
       }
+      if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === 'f') {
+        e.preventDefault();
+        if (fullscreenAppId) {
+          setFullscreenAppId(null);
+        } else {
+          setFullscreenAppId(focusedAppId);
+        }
+        return;
+      }
       if (e.key === 'Escape') {
+        if (fullscreenAppId) {
+          e.preventDefault();
+          setFullscreenAppId(null);
+          return;
+        }
         e.preventDefault();
       }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, []);
+  }, [focusedAppId, fullscreenAppId]);
 
   // --- Canvas context menu ---
   const canvasContextMenuItems: ContextMenuEntry[] = useMemo(() => [
@@ -1209,6 +1247,7 @@ function WorkspaceInner({
           onCloseDynamicWindow={closeDynamicWindow}
           zOrderMap={zOrderMap}
           appHooksMap={Object.fromEntries(allAppHooks.map(h => [h.appId, h]))}
+          onEnterFullscreen={enterFullscreen}
         />
       )}
     </div>
@@ -1244,10 +1283,105 @@ function WorkspaceInner({
     onResetShellSettings: resetShellSettings,
   }), [fullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
 
+  // --- Fullscreen app config ---
+  const fullscreenConfig = fullscreenAppId
+    ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
+    : null;
+
   return (
     <ServiceRegistryProvider value={serviceRegistry}>
     <WorkspaceManagerProvider value={wmData}>
     <ShellLayoutProvider value={shellLayout}>
+      {/* Fullscreen app mode — escapes the canvas entirely */}
+      {fullscreenConfig ? (
+        <div className="h-screen flex flex-col" style={{ background: 'rgb(10, 10, 10)' }}>
+          {/* Header bar */}
+          <div className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-neutral-700/50"
+            style={{ background: 'rgba(14, 14, 14, 0.97)', backdropFilter: 'blur(20px)' }}>
+            <button
+              onClick={exitFullscreen}
+              className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-mono text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Back to canvas (Esc)"
+            >
+              <Minimize2 size={12} />
+              Canvas
+            </button>
+            <div className="h-5 w-px bg-neutral-700/50" />
+            <span className="text-[13px] font-mono font-bold text-white tracking-wider">{fullscreenConfig.app.name}</span>
+            {fullscreenConfig.app.description && (
+              <span className="text-[11px] font-mono text-neutral-500 hidden sm:block">{fullscreenConfig.app.description}</span>
+            )}
+            <div className="flex-1" />
+            {/* Status */}
+            {(() => {
+              const h = allAppHooksRaw.find(h => h.appId === fullscreenAppId);
+              return h ? (
+                <span className={`text-[10px] font-mono uppercase tracking-wider text-${h.status.color}-500`}>
+                  {h.status.label}
+                </span>
+              ) : null;
+            })()}
+          </div>
+          {/* App content — full viewport */}
+          <div className="flex-1 overflow-hidden relative">
+            <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
+              <fullscreenConfig.app.slots.Content />
+            </AppSlotErrorBoundary>
+          </div>
+          {/* Status bar — persists in fullscreen */}
+          <StatusBar
+            status={(() => {
+              const { catalog, records } = serviceRegistry;
+              const hasError = catalog.some(s => records[s.id]?.status === 'error');
+              const allRunning = catalog.length > 0 && catalog.every(s => records[s.id]?.status === 'running');
+              if (hasError) return { label: 'ERROR', color: 'red' as const };
+              if (allRunning) return { label: 'NOMINAL', color: 'emerald' as const };
+              if (catalog.length === 0) return { label: 'READY', color: 'emerald' as const };
+              return { label: 'DEGRADED', color: 'amber' as const };
+            })()}
+            onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
+            isTerminalOpen={showTerminal}
+            left={
+              <div className="flex items-center gap-4">
+                <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
+                <div className="h-3 w-px bg-neutral-700" />
+                <button
+                  onClick={() => openSettings()}
+                  className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                  title="Settings (⌘,)"
+                >
+                  <Settings size={10} />
+                  <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
+                </button>
+              </div>
+            }
+          />
+          {/* Terminal drawer — full width in fullscreen */}
+          <div
+            className="pointer-events-none"
+            style={{
+              position: 'fixed',
+              left: 0,
+              right: 0,
+              bottom: 0,
+              top: 0,
+              zIndex: 45,
+              transform: 'translateZ(0)',
+            }}
+          >
+            <TerminalDrawer
+              isOpen={showTerminal}
+              onClose={() => { setShowTerminal(false); playSound('slideOut'); }}
+              onToggleMaximize={() => setIsTerminalMaximized(m => !m)}
+              isMaximized={isTerminalMaximized}
+              height={terminalHeight}
+              onHeightChange={setTerminalHeight}
+            >
+              {terminalContent}
+            </TerminalDrawer>
+          </div>
+        </div>
+      ) : (
       <Frame
         mode={isCanvasMode ? 'canvas' : 'panel'}
         panOffset={panOffset}
@@ -1452,6 +1586,7 @@ function WorkspaceInner({
       >
         {worldContent}
       </Frame>
+      )}
     </ShellLayoutProvider>
     </WorkspaceManagerProvider>
     </ServiceRegistryProvider>
@@ -1484,6 +1619,7 @@ function MultiAppCanvas({
   onCloseDynamicWindow,
   zOrderMap,
   appHooksMap,
+  onEnterFullscreen,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -1500,6 +1636,7 @@ function MultiAppCanvas({
   onCloseDynamicWindow: (id: string) => void;
   zOrderMap: Record<string, number>;
   appHooksMap: Record<string, AppHookData>;
+  onEnterFullscreen: (appId: string) => void;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -1554,6 +1691,7 @@ function MultiAppCanvas({
               onReportBounds={onReportBounds}
               onOpenServices={onOpenServices}
               navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
+              onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
             />
           </motion.div>
         ))}
@@ -1704,6 +1842,7 @@ function WindowedApp({
   onReportBounds,
   onOpenServices,
   navCenter,
+  onEnterFullscreen,
 }: {
   config: WorkspaceAppConfig;
   workspaceId: string;
@@ -1715,6 +1854,7 @@ function WindowedApp({
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   onOpenServices: () => void;
   navCenter: ReactNode | null;
+  onEnterFullscreen: () => void;
 }) {
   const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
   const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
@@ -1772,6 +1912,13 @@ function WindowedApp({
 
   const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
+      id: `${config.app.id}:focus-mode`,
+      label: 'Focus Mode',
+      shortcut: '⌘⇧F',
+      icon: <Maximize2 size={12} />,
+      action: onEnterFullscreen,
+    },
+    {
       id: `${config.app.id}:bring-to-front`,
       label: 'Bring to Front',
       icon: <Layers size={12} />,
@@ -1824,7 +1971,7 @@ function WindowedApp({
       icon: <X size={12} />,
       action: onClose,
     },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus]);
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen]);
 
   return (
     <AppWindow
