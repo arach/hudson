@@ -37,7 +37,7 @@ export interface PromptContext {
   params: LogoParams;
   presets: { label: string; params: Partial<LogoParams> }[];
   templates: LogoTemplate[];
-  customParamValues: Record<string, Record<string, number | string>>;
+  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
   homeFolder: string;
 }
 
@@ -86,7 +86,7 @@ ${rows.join('\n')}`;
 function activeSource(
   templates: LogoTemplate[],
   activeId: string,
-  customParamValues: Record<string, Record<string, number | string>>,
+  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>,
 ): string | null {
   const t = templates.find(t => t.id === activeId);
   if (!t) return null;
@@ -122,7 +122,7 @@ function templateListShort(templates: LogoTemplate[], activeId: string): string 
 function templateListFull(
   templates: LogoTemplate[],
   activeId: string,
-  customParamValues: Record<string, Record<string, number | string>>,
+  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>,
 ): string | null {
   if (templates.length === 0) return null;
   const lines = templates.map(t => {
@@ -156,7 +156,9 @@ function presetList(presets: { label: string; params: Partial<LogoParams> }[]): 
 
 function templateGuideShort(): string {
   return `# Templates
-Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. Edit the file, the app picks up changes.`;
+Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. Edit the file, the app picks up changes.
+
+Param types: number (slider), color, toggle (boolean), enum (dropdown), text (freeform), repeatable (array of items with nested fields).`;
 }
 
 function templateGuideFull(): string {
@@ -175,7 +177,19 @@ const meta = {
   name: "My Template",
   description: "What it looks like",
   params: {
-    myParam: { type: "number", label: "My Param", default: 5, min: 1, max: 20 }
+    myParam: { type: "number", label: "My Param", default: 5, min: 1, max: 20 },
+    label: { type: "text", label: "Label", default: "", placeholder: "Enter text..." },
+    showBorder: { type: "toggle", label: "Show Border", default: true },
+    dots: {
+      type: "repeatable", label: "Dots",
+      default: [{ x: 100, y: 100, r: 20 }],
+      itemTemplate: { x: 256, y: 256, r: 10 },
+      itemFields: [
+        { key: "x", type: "number", label: "X", default: 256, min: 0, max: 512 },
+        { key: "y", type: "number", label: "Y", default: 256, min: 0, max: 512 },
+        { key: "r", type: "number", label: "Radius", default: 10, min: 1, max: 100 },
+      ]
+    }
   }
 };
 
@@ -183,7 +197,13 @@ const { bgColor, paneColor, dimPaneColor, borderRadius, paneRadius, gapWidth, sp
 return \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>...\`;
 \`\`\`
 
-**Param types:** \`number\` (with min/max/step), \`color\` (hex/rgba), \`toggle\` (boolean), \`enum\` (with options array).
+**Param types:**
+- \`number\` — slider with min/max/step
+- \`color\` — hex/rgba color picker
+- \`toggle\` — boolean switch
+- \`enum\` — dropdown with options array
+- \`text\` — freeform text input (with optional placeholder)
+- \`repeatable\` — array of items, each with nested fields (itemTemplate for defaults, itemFields for sub-controls)
 
 **Coordinate space:** 512×512. Center = (256, 256).
 

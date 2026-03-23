@@ -19,6 +19,12 @@ export interface SessionInitMessage {
   backend?: 'pty' | 'tmux';
   /** For tmux backend: the tmux session name. Required when backend is 'tmux'. */
   tmuxSession?: string;
+  /** CLI agent to spawn. 'claude' (default) or 'pi'. */
+  agent?: 'claude' | 'pi';
+  /** For pi agent: provider name (e.g. 'minimax', 'openai'). */
+  provider?: string;
+  /** For pi agent: model ID (e.g. 'MiniMax-M1'). */
+  model?: string;
 }
 
 export interface SessionReconnectMessage {

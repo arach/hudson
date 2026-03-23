@@ -1,10 +1,8 @@
-import { Gem, ScanSearch } from 'lucide-react';
+import { Gem } from 'lucide-react';
 import { createElement } from 'react';
 import type { HudsonApp } from '@hudson/sdk';
 import { LogoProvider } from './LogoProvider';
 import { LogoContent } from './LogoContent';
-import { LogoLeftPanel } from './LogoLeftPanel';
-import { LogoInspector } from './LogoInspector';
 import { LogoTerminal } from './LogoTerminal';
 import { useLogoCommands, useLogoStatus } from './hooks';
 import { useLogoPortOutput, useLogoPortInput } from './ports';
@@ -25,8 +23,7 @@ export const logoDesignerApp: HudsonApp = {
     ],
   },
 
-  leftPanel: { title: 'Controls', icon: createElement(Gem, { size: 12 }) },
-  rightPanel: { title: 'Export', icon: createElement(ScanSearch, { size: 12 }) },
+  leftPanel: { title: 'Logo', icon: createElement(Gem, { size: 12 }) },
 
   Provider: LogoProvider,
 
@@ -38,8 +35,6 @@ export const logoDesignerApp: HudsonApp = {
 
   slots: {
     Content: LogoContent,
-    LeftPanel: LogoLeftPanel,
-    Inspector: LogoInspector,
     Terminal: LogoTerminal,
   },
 

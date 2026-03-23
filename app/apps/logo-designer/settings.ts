@@ -3,6 +3,33 @@ import type { AppSettingsConfig } from '@hudson/sdk';
 export const logoSettings: AppSettingsConfig = {
   sections: [
     {
+      label: 'Agent',
+      fields: [
+        {
+          key: 'agent',
+          label: 'CLI Agent',
+          type: 'segment',
+          default: 'pi',
+          options: [
+            { label: 'Claude', value: 'claude' },
+            { label: 'Pi', value: 'pi' },
+          ],
+        },
+        {
+          key: 'provider',
+          label: 'Provider',
+          type: 'text',
+          default: 'minimax',
+        },
+        {
+          key: 'model',
+          label: 'Model',
+          type: 'text',
+          default: 'MiniMax-M2.7',
+        },
+      ],
+    },
+    {
       label: 'Relay',
       fields: [
         {

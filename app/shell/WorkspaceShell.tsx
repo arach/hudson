@@ -26,13 +26,12 @@ import {
   useAppSettings,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
 import { ShellLayoutProvider, useShellLayout } from './ShellLayoutContext';
-import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { AppSettingsEntry } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 import { useIntentCatalog } from '../hooks/useIntentCatalog';
@@ -159,17 +158,35 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
 
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
 
+  // --- Disabled apps (completely removed from Provider tree) ---
+  const [disabledAppIdsArr, setDisabledAppIdsArr] = usePersistentState<string[]>(
+    `hudson.ws.${workspace.id}.disabled`,
+    [],
+  );
+  const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
+
+  // Filter workspace to only enabled apps for Provider nesting + rendering
+  const enabledWorkspace = useMemo(() => ({
+    ...workspace,
+    apps: workspace.apps.filter(c => !disabledAppIds.has(c.app.id)),
+  }), [workspace, disabledAppIds]);
+
   // Save session on workspace switch
   const handleSwitchWorkspace = useCallback((id: string) => {
     setActiveWorkspaceId(id);
     saveSession(id);
   }, []);
 
-  // Nest all app Providers recursively
+  // Nest ALL app Providers (including disabled) to keep the tree stable.
+  // Removing a Provider from the nesting chain causes React to remount
+  // everything below it, losing all state (modal open, fetched templates, etc.).
   let tree: ReactNode = (
     <WorkspaceInner
       key={workspace.id}
-      workspace={workspace}
+      workspace={enabledWorkspace}
+      fullWorkspace={workspace}
+      disabledAppIds={disabledAppIds}
+      setDisabledAppIdsArr={setDisabledAppIdsArr}
       workspaces={workspaces}
       activeWorkspaceId={activeWorkspaceId}
       onSwitchWorkspace={handleSwitchWorkspace}
@@ -185,7 +202,7 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
   }
 
   // DataBusProvider wraps above all app Providers so port hooks can register
-  tree = <DataBusProvider workspace={workspace}>{tree}</DataBusProvider>;
+  tree = <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>;
 
   return (
     <>
@@ -258,6 +275,9 @@ function useAppSettingsBridge(config: WorkspaceAppConfig): AppSettingsEntry | nu
 // ---------------------------------------------------------------------------
 function WorkspaceInner({
   workspace,
+  fullWorkspace,
+  disabledAppIds,
+  setDisabledAppIdsArr,
   workspaces,
   activeWorkspaceId,
   onSwitchWorkspace,
@@ -266,6 +286,10 @@ function WorkspaceInner({
   initialShowLauncher,
 }: {
   workspace: HudsonWorkspace;
+  /** Full workspace including disabled apps (for workspace editor) */
+  fullWorkspace: HudsonWorkspace;
+  disabledAppIds: Set<string>;
+  setDisabledAppIdsArr: (v: string[] | ((prev: string[]) => string[])) => void;
   workspaces: HudsonWorkspace[];
   activeWorkspaceId: string;
   onSwitchWorkspace: (id: string) => void;
@@ -283,16 +307,18 @@ function WorkspaceInner({
   const gridOpacity = phaseAtLeast(bootPhase, 'chrome-in') ? 1 : 0;
 
   // --- Hook merging ---
-  // Safe: workspace.apps is static per workspace, component keyed by workspace.id
-  const allAppHooks: AppHookData[] = workspace.apps.map(config => useAppHooks(config));
+  // Hooks must be called for ALL apps (including disabled) to keep hook order stable.
+  // Results for disabled apps are filtered out downstream.
+  const allAppHooksRaw: AppHookData[] = fullWorkspace.apps.map(config => useAppHooks(config));
+  const allAppHooks = allAppHooksRaw.filter(h => !disabledAppIds.has(h.appId));
 
   // --- Port bridge (registers output/input hooks with DataBus) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  workspace.apps.forEach(config => usePortBridge(config));
+  fullWorkspace.apps.forEach(config => usePortBridge(config));
 
   // --- App-level settings (called unconditionally for each app) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const appSettings = workspace.apps.map(config => useAppSettingsBridge(config))
+  const appSettings = fullWorkspace.apps.map(config => useAppSettingsBridge(config))
     .filter((e): e is AppSettingsEntry => e !== null);
 
   // --- Service registry (global, not tied to any app) ---
@@ -301,12 +327,23 @@ function WorkspaceInner({
 
   // --- Focus state (persisted per workspace) ---
   const defaultFocus = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
-  const [focusedAppId, setFocusedAppId] = usePersistentState(
+  const [focusedAppId, setFocusedAppIdRaw] = usePersistentState(
     `hudson.ws.${workspace.id}.focus`,
     defaultFocus,
   );
   const focusedIdx = allAppHooks.findIndex(h => h.appId === focusedAppId);
   const focused = allAppHooks[focusedIdx >= 0 ? focusedIdx : 0];
+
+  // --- Z-order tracking (higher index = on top) ---
+  const zCounterRef = useRef(0);
+  const [zOrderMap, setZOrderMap] = useState<Record<string, number>>({});
+
+  const setFocusedAppId = useCallback((appId: string) => {
+    setFocusedAppIdRaw(appId);
+    // Bring to front by assigning the next z-counter value
+    zCounterRef.current += 1;
+    setZOrderMap(prev => ({ ...prev, [appId]: zCounterRef.current }));
+  }, [setFocusedAppIdRaw]);
 
   // --- Tool expansion state (right sidebar accordion) ---
   const [expandedToolId, setExpandedToolId] = useState<string | null>(null);
@@ -385,6 +422,52 @@ function WorkspaceInner({
       return next;
     });
   }, []);
+
+  // --- Disable/enable apps (removes from Provider tree entirely) ---
+  const handleToggleAppDisabled = useCallback((appId: string) => {
+    const isCurrentlyDisabled = disabledAppIds.has(appId);
+
+    // Update disabled set
+    setDisabledAppIdsArr(prev => {
+      const set = new Set(prev);
+      if (set.has(appId)) {
+        set.delete(appId);
+      } else {
+        set.add(appId);
+      }
+      return [...set];
+    });
+
+    // Separate state update (not nested in another updater)
+    if (!isCurrentlyDisabled) {
+      // Disabling — remove from visible
+      setActivatedAppIds(vis => {
+        const next = new Set(vis);
+        next.delete(appId);
+        return next;
+      });
+    } else {
+      // Re-enabling — add to visible
+      setActivatedAppIds(vis => new Set([...vis, appId]));
+    }
+  }, [disabledAppIds, setDisabledAppIdsArr, setActivatedAppIds]);
+
+  // --- App ordering (for workspace editor display) ---
+  const allFullAppIds = useMemo(() => fullWorkspace.apps.map(c => c.app.id), [fullWorkspace]);
+  const [appOrder, setAppOrder] = usePersistentState<string[]>(
+    `hudson.ws.${workspace.id}.appOrder`,
+    allFullAppIds,
+  );
+  // Ensure order includes all current apps (handles new apps added to workspace)
+  const normalizedAppOrder = useMemo(() => {
+    const ordered = appOrder.filter(id => allFullAppIds.includes(id));
+    const missing = allFullAppIds.filter(id => !ordered.includes(id));
+    return [...ordered, ...missing];
+  }, [appOrder, allFullAppIds]);
+
+  const handleReorderApps = useCallback((orderedIds: string[]) => {
+    setAppOrder(orderedIds);
+  }, [setAppOrder]);
 
   // --- Window reset key (bumped to force WindowedApp remount) ---
   const [windowResetKey, setWindowResetKey] = useState(0);
@@ -495,8 +578,8 @@ function WorkspaceInner({
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
-  const [showSettings, setShowSettings] = useState(false);
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
+  const [workspaceEditorTab, setWorkspaceEditorTab] = useState<'overview' | 'apps' | 'settings'>('overview');
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
@@ -676,13 +759,15 @@ function WorkspaceInner({
     playSound('blipUp');
   }, [workspace, playSound]);
 
-  // --- Open settings helper ---
-  const openSettings = useCallback(() => {
-    setShowSettings(true);
+  // --- Open settings helper (now opens workspace editor on settings tab) ---
+  const openSettings = useCallback((tab: 'overview' | 'apps' | 'settings' = 'settings') => {
+    setWorkspaceEditorTab(tab);
+    setShowWorkspaceManager(true);
   }, []);
 
   // --- Open workspace manager ---
   const openWorkspaceManager = useCallback(() => {
+    setWorkspaceEditorTab('overview');
     setShowWorkspaceManager(true);
   }, []);
 
@@ -694,11 +779,11 @@ function WorkspaceInner({
         label: 'Settings',
         shortcut: 'Cmd+,',
         icon: <Settings size={14} />,
-        action: () => openSettings(),
+        action: () => openSettings('settings'),
       },
       {
-        id: 'shell:workspace-manager',
-        label: 'Workspace Manager',
+        id: 'shell:workspace-editor',
+        label: 'Workspace Editor',
         shortcut: 'Cmd+Shift+,',
         icon: <Settings size={14} />,
         action: () => openWorkspaceManager(),
@@ -822,12 +907,14 @@ function WorkspaceInner({
       }
       if ((e.metaKey || e.ctrlKey) && e.shiftKey && e.key === ',') {
         e.preventDefault();
+        setWorkspaceEditorTab('overview');
         setShowWorkspaceManager(s => !s);
         return;
       }
       if ((e.metaKey || e.ctrlKey) && e.key === ',') {
         e.preventDefault();
-        setShowSettings(s => !s);
+        setWorkspaceEditorTab('settings');
+        setShowWorkspaceManager(s => !s);
       }
       if (e.key === 'Escape') {
         e.preventDefault();
@@ -950,7 +1037,7 @@ function WorkspaceInner({
   ) : (
     workspace.apps.map(config => {
       const { app } = config;
-      if (!app.slots.LeftPanel) return null;
+      if (!app.leftPanel && !app.slots.LeftPanel) return null;
       const deps = app.services;
       const serviceDeps = deps?.map(dep => ({
         serviceId: dep.serviceId,
@@ -969,9 +1056,11 @@ function WorkspaceInner({
           serviceDeps={serviceDeps}
           onOpenManager={openWorkspaceManager}
         >
-          <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
-            <app.slots.LeftPanel />
-          </AppSlotErrorBoundary>
+          {app.slots.LeftPanel && (
+            <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
+              <app.slots.LeftPanel />
+            </AppSlotErrorBoundary>
+          )}
         </SidebarSection>
       );
     })
@@ -1118,21 +1207,42 @@ function WorkspaceInner({
           onOpenServices={openWorkspaceManager}
           dynamicWindows={dynamicWindows}
           onCloseDynamicWindow={closeDynamicWindow}
+          zOrderMap={zOrderMap}
+          appHooksMap={Object.fromEntries(allAppHooks.map(h => [h.appId, h]))}
         />
       )}
     </div>
   );
 
+  // --- Reset layout: re-tile all windows and force remount ---
+  const handleResetLayout = useCallback(() => {
+    tileWindowBounds(activatedAppIds);
+    setWindowResetKey(k => k + 1);
+    // Delayed fit-all after windows remount
+    setTimeout(() => handleFitAll(), 300);
+  }, [activatedAppIds, tileWindowBounds, handleFitAll]);
+
   // --- Workspace Manager context value ---
   const wmData = useMemo(() => ({
-    workspace,
+    workspace: fullWorkspace,
+    workspaces,
     activatedAppIds,
+    disabledAppIds,
+    appOrder: normalizedAppOrder,
     focusedAppId,
     onToggleAppVisibility: handleToggleAppVisibility,
+    onToggleAppDisabled: handleToggleAppDisabled,
+    onReorderApps: handleReorderApps,
     onFocusApp: setFocusedAppId,
     serviceRegistry,
     appSettings,
-  }), [workspace, activatedAppIds, focusedAppId, handleToggleAppVisibility, serviceRegistry, appSettings]);
+    windowBoundsMap,
+    onResetLayout: handleResetLayout,
+    onFitAll: handleFitAll,
+    shellSettings,
+    onUpdateShellSettings: updateShellSettings,
+    onResetShellSettings: resetShellSettings,
+  }), [fullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
 
   return (
     <ServiceRegistryProvider value={serviceRegistry}>
@@ -1168,7 +1278,7 @@ function WorkspaceInner({
                   />
                 }
                 search={focused.search ?? undefined}
-                center={focused.navCenter}
+                center={isSingleApp ? focused.navCenter : undefined}
                 actions={
                   <>
                     {focused.navActions}
@@ -1304,19 +1414,11 @@ function WorkspaceInner({
               </TerminalDrawer>
             </div>
 
-            {/* Settings panel */}
-            <SettingsPanel
-              isOpen={showSettings}
-              onClose={() => setShowSettings(false)}
-              settings={shellSettings}
-              onUpdate={updateShellSettings}
-              onReset={resetShellSettings}
-            />
-
-            {/* Workspace Manager */}
+            {/* Workspace Editor (unified settings + workspace manager) */}
             <WorkspaceManagerPanel
               isOpen={showWorkspaceManager}
               onClose={() => setShowWorkspaceManager(false)}
+              defaultTab={workspaceEditorTab}
             />
 
             {/* Command palette */}
@@ -1380,6 +1482,8 @@ function MultiAppCanvas({
   onOpenServices,
   dynamicWindows,
   onCloseDynamicWindow,
+  zOrderMap,
+  appHooksMap,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -1394,6 +1498,8 @@ function MultiAppCanvas({
   onOpenServices: () => void;
   dynamicWindows: DynamicWindowEntry[];
   onCloseDynamicWindow: (id: string) => void;
+  zOrderMap: Record<string, number>;
+  appHooksMap: Record<string, AppHookData>;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -1435,6 +1541,7 @@ function MultiAppCanvas({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+            style={{ zIndex: zOrderMap[config.app.id] ?? 0, position: 'relative' }}
           >
             <WindowedApp
               config={config}
@@ -1446,6 +1553,7 @@ function MultiAppCanvas({
               onResetView={onResetView}
               onReportBounds={onReportBounds}
               onOpenServices={onOpenServices}
+              navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
             />
           </motion.div>
         ))}
@@ -1460,6 +1568,7 @@ function MultiAppCanvas({
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.96 }}
             transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
+            style={{ zIndex: zOrderMap[dw.id] ?? 0, position: 'relative' }}
           >
             <DynamicWindowedApp
               win={dw}
@@ -1594,6 +1703,7 @@ function WindowedApp({
   onResetView,
   onReportBounds,
   onOpenServices,
+  navCenter,
 }: {
   config: WorkspaceAppConfig;
   workspaceId: string;
@@ -1604,6 +1714,7 @@ function WindowedApp({
   onResetView: () => void;
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   onOpenServices: () => void;
+  navCenter: ReactNode | null;
 }) {
   const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
   const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
@@ -1661,6 +1772,12 @@ function WindowedApp({
 
   const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
+      id: `${config.app.id}:bring-to-front`,
+      label: 'Bring to Front',
+      icon: <Layers size={12} />,
+      action: onFocus,
+    },
+    {
       id: `${config.app.id}:bring-to-center`,
       label: 'Bring to Center',
       icon: <Crosshair size={12} />,
@@ -1707,11 +1824,12 @@ function WindowedApp({
       icon: <X size={12} />,
       action: onClose,
     },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose]);
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus]);
 
   return (
     <AppWindow
       title={config.app.name}
+      titleCenter={navCenter}
       bounds={bounds}
       onBoundsChange={setBounds}
       isFocused={isFocused}

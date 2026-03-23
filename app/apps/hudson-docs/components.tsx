@@ -713,9 +713,9 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
           <SettingsSection label="Navigation">
             <SettingsSlider
               label="Zoom Sensitivity"
-              value={settings.zoomSensitivity}
+              value={settings.zoomSensitivity ?? 1.0}
               min={0.5} max={3} step={0.1}
-              format={v => `${v.toFixed(1)}x`}
+              format={v => `${(v ?? 1.0).toFixed(1)}x`}
               onChange={v => onUpdate({ zoomSensitivity: v })}
             />
           </SettingsSection>

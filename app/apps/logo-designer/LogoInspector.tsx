@@ -97,7 +97,7 @@ function ExportButton({
 // Inspector
 // ---------------------------------------------------------------------------
 
-export function LogoInspector() {
+export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews?: boolean; onTogglePreviews?: () => void } = {}) {
   const { params, templates, customParamValues, apiBaseUrl } = useLogo();
   const previewRef = useRef<HTMLDivElement>(null);
 
@@ -174,6 +174,25 @@ export function LogoInspector() {
 
   return (
     <div className="p-4 space-y-4 overflow-y-auto h-full frame-scrollbar">
+      {/* View options */}
+      {onTogglePreviews && (
+        <div className="space-y-2">
+          <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">View</div>
+          <label className="flex items-center justify-between gap-2 cursor-pointer">
+            <span className="text-[11px] text-white/50">Size Previews</span>
+            <button
+              type="button"
+              role="switch"
+              aria-checked={showPreviews}
+              onClick={onTogglePreviews}
+              className={`relative w-8 h-[18px] rounded-full transition-colors ${showPreviews ? 'bg-emerald-500/60' : 'bg-white/10'}`}
+            >
+              <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform ${showPreviews ? 'translate-x-[16px]' : 'translate-x-[2px]'}`} />
+            </button>
+          </label>
+        </div>
+      )}
+
       {/* Preview */}
       <div className="space-y-2">
         <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">

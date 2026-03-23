@@ -28,6 +28,12 @@ export interface UseTerminalRelayOptions {
   backend?: 'pty' | 'tmux';
   /** For tmux backend: the named tmux session to create/attach to. */
   tmuxSession?: string;
+  /** CLI agent to spawn. 'claude' (default) or 'pi'. */
+  agent?: 'claude' | 'pi';
+  /** For pi agent: provider name (e.g. 'minimax', 'openai'). */
+  provider?: string;
+  /** For pi agent: model ID (e.g. 'MiniMax-M1'). */
+  model?: string;
 }
 
 export interface TerminalRelayHandle {
@@ -55,6 +61,8 @@ export interface TerminalRelayHandle {
   connect: () => void;
   /** Close the WebSocket connection (session stays alive on server) */
   disconnect: () => void;
+  /** Kill the current session and start a fresh one (new agent/model/settings take effect) */
+  restart: () => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -72,6 +80,9 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     orphanTTL,
     backend,
     tmuxSession,
+    agent,
+    provider,
+    model,
   } = options;
 
   // Persist sessionId in localStorage so it survives reload + browser restart.
@@ -140,8 +151,11 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       ...(orphanTTL ? { orphanTTL } : {}),
       ...(backend ? { backend } : {}),
       ...(tmuxSession ? { tmuxSession } : {}),
+      ...(agent ? { agent } : {}),
+      ...(provider ? { provider } : {}),
+      ...(model ? { model } : {}),
     };
-  }, [systemPrompt, workspaceFiles, orphanTTL, backend, tmuxSession]);
+  }, [systemPrompt, workspaceFiles, orphanTTL, backend, tmuxSession, agent, provider, model]);
 
   const sendInitOrReconnect = useCallback(() => {
     if (initSentRef.current) return;
@@ -296,6 +310,20 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Restart: disconnect, clear session, reconnect fresh
+  const restart = useCallback(() => {
+    disconnect();
+    sessionIdRef.current = null;
+    setSessionId(null);
+    if (sessionKey) {
+      try { sessionStorage.removeItem(`hudson.relay.${sessionKey}`); } catch {}
+    }
+    setError(null);
+    setExitCode(null);
+    // Small delay to let the WebSocket close before reconnecting
+    setTimeout(() => connect(), 200);
+  }, [disconnect, connect, sessionKey]);
+
   return {
     status,
     sessionId,
@@ -309,5 +337,6 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     resize,
     connect,
     disconnect,
+    restart,
   };
 }

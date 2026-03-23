@@ -47,6 +47,9 @@ export function LogoTerminal() {
   const homeFolder = String(appSettings.homeFolder || '~/hudson/logos');
   const modelTier = (appSettings.modelTier as ModelTier) || 'comprehensive';
   const relayBackend = (appSettings.relayBackend as 'pty' | 'tmux') || 'pty';
+  const relayAgent = (appSettings.agent as 'claude' | 'pi') || 'pi';
+  const relayProvider = String(appSettings.provider || 'minimax');
+  const relayModel = String(appSettings.model || 'MiniMax-M2.7');
 
   const [mode, setMode] = useState<TerminalMode>('relay');
 
@@ -75,6 +78,9 @@ export function LogoTerminal() {
     sessionKey: 'logo-designer',
     backend: relayBackend,
     tmuxSession: relayBackend === 'tmux' ? 'hudson-logos' : undefined,
+    agent: relayAgent,
+    provider: relayAgent === 'pi' ? relayProvider : undefined,
+    model: relayAgent === 'pi' ? relayModel : undefined,
   });
 
   // ---- Chat mode (fallback) ----
@@ -260,13 +266,23 @@ export function LogoTerminal() {
           </button>
         )}
         {mode === 'relay' && relay.status === 'connected' && (
-          <button
-            type="button"
-            onClick={() => relay.disconnect()}
-            className="text-[10px] px-2 py-0.5 rounded-full border text-red-400 border-red-500/30 hover:bg-red-500/10 transition-colors"
-          >
-            Disconnect
-          </button>
+          <>
+            <button
+              type="button"
+              onClick={() => relay.restart()}
+              className="text-[10px] px-2 py-0.5 rounded-full border text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 transition-colors"
+              title="Kill session and start fresh (picks up new agent/model settings)"
+            >
+              Restart
+            </button>
+            <button
+              type="button"
+              onClick={() => relay.disconnect()}
+              className="text-[10px] px-2 py-0.5 rounded-full border text-red-400 border-red-500/30 hover:bg-red-500/10 transition-colors"
+            >
+              Disconnect
+            </button>
+          </>
         )}
       </div>
       {/* Content */}

@@ -4,13 +4,18 @@
 export interface TemplateParam {
   key: string;
   label: string;
-  type: 'number' | 'color' | 'toggle' | 'enum';
-  default: number | string | boolean;
+  type: 'number' | 'color' | 'toggle' | 'enum' | 'text' | 'repeatable';
+  default: number | string | boolean | Record<string, unknown>[];
   min?: number;
   max?: number;
   step?: number;
   /** For enum type: list of allowed values */
   options?: string[];
+  /** For text type: placeholder text */
+  placeholder?: string;
+  /** For repeatable type: template for each item + fields within each item */
+  itemTemplate?: Record<string, unknown>;
+  itemFields?: TemplateParam[];
 }
 
 // ---------------------------------------------------------------------------

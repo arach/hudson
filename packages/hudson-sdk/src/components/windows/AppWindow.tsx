@@ -18,6 +18,8 @@ interface Bounds {
 
 interface AppWindowProps {
   title: string;
+  /** Content rendered in the center of the title bar (e.g. app-specific controls) */
+  titleCenter?: React.ReactNode;
   bounds: Bounds;
   onBoundsChange: (b: Bounds) => void;
   isFocused: boolean;
@@ -52,6 +54,7 @@ const EDGE_CURSORS: Record<Edge, string> = {
 
 const AppWindow: React.FC<AppWindowProps> = ({
   title,
+  titleCenter,
   bounds,
   onBoundsChange,
   isFocused,
@@ -262,6 +265,11 @@ const AppWindow: React.FC<AppWindowProps> = ({
           <span className="flex-1 text-[12px] font-mono tracking-wider text-neutral-200 truncate text-center">
             {title}
           </span>
+          {titleCenter && (
+            <div className="flex items-center shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+              {titleCenter}
+            </div>
+          )}
           {/* Right controls: close */}
           <div className="flex items-center gap-1">
             {onClose && (

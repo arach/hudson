@@ -27,11 +27,8 @@ export function useDocsSearch(): SearchConfig {
 }
 
 export function useDocsNavCenter(): ReactNode | null {
-  const { viewMode, setViewMode, playSound } = useDocs();
-  return createElement(ViewModeToggle, {
-    value: viewMode,
-    onChange: (v: 'canvas' | 'list' | 'tiles') => { setViewMode(v); playSound('click'); },
-  });
+  // View mode is switchable via Cmd+1/2/3 and the command palette
+  return null;
 }
 
 export function useDocsNavActions(): ReactNode | null {

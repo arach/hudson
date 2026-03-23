@@ -48,8 +48,8 @@ interface LogoState {
   addTemplate: (template: LogoTemplate) => void;
   updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => void;
   deleteTemplate: (id: string) => void;
-  customParamValues: Record<string, Record<string, number | string>>;
-  setCustomParam: (templateId: string, key: string, value: number | string) => void;
+  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
+  setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
   // App settings (relay URL, compile endpoint, etc.)
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
@@ -174,7 +174,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
 
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
-  const [customParamValues, setCustomParamValues] = usePersistentState<Record<string, Record<string, number | string>>>('logo.customParamValues', {});
+  const [customParamValues, setCustomParamValues] = usePersistentState<Record<string, Record<string, number | string | Record<string, unknown>[]>>>('logo.customParamValues', {});
 
   // Poll the template API for changes (picks up relay-created templates)
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
@@ -198,7 +198,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
             setCustomParamValues(cpv => {
               let changed = false;
               const next = { ...cpv };
-              for (const t of data.templates as { id: string; params: { key: string; default: number | string | boolean }[] }[]) {
+              for (const t of data.templates as { id: string; params: { key: string; default: number | string | Record<string, unknown>[] | boolean }[] }[]) {
                 if (!t.params || t.params.length === 0) continue;
                 const existing = next[t.id] ?? {};
                 let filled = existing;
@@ -315,7 +315,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     } catch { /* next poll will reconcile */ }
   }, [templateEndpoint, setCustomParamValues]);
 
-  const setCustomParam = useCallback((templateId: string, key: string, value: number | string) => {
+  const setCustomParam = useCallback((templateId: string, key: string, value: number | string | Record<string, unknown>[]) => {
     setCustomParamValues(prev => ({
       ...prev,
       [templateId]: { ...(prev[templateId] ?? {}), [key]: value },

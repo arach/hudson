@@ -96,6 +96,11 @@ function findClaudeBin(): string | null {
   return findBin('claude', 'CLAUDE_BIN');
 }
 
+/** Locate the pi binary, returning null if not found. */
+function findPiBin(): string | null {
+  return findBin('pi', 'PI_BIN');
+}
+
 /** Check if a tmux session exists. */
 function tmuxSessionExists(name: string): boolean {
   try {
@@ -166,18 +171,30 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   const rows = Math.max(msg.rows || 24, 4);
   const backend = msg.backend || 'pty';
   const tmuxName = msg.tmuxSession || `hudson-${id}`;
+  const agent = msg.agent || 'claude';
 
-  // ---- Pre-flight: locate claude binary ----
-  const claudeBin = findClaudeBin();
-  if (!claudeBin) {
-    const reason = 'Claude CLI not found. Install it with: npm install -g @anthropic-ai/claude-code';
-    console.error(`[relay] Session ${id} failed: ${reason}`);
-    send(ws, { type: 'session:error', error: reason });
-    return null;
+  // ---- Pre-flight: locate agent binary ----
+  let agentBin: string | null;
+  if (agent === 'pi') {
+    agentBin = findPiBin();
+    if (!agentBin) {
+      const reason = 'pi CLI not found. Install it with: npm install -g @mariozechner/pi-coding-agent';
+      console.error(`[relay] Session ${id} failed: ${reason}`);
+      send(ws, { type: 'session:error', error: reason });
+      return null;
+    }
+  } else {
+    agentBin = findClaudeBin();
+    if (!agentBin) {
+      const reason = 'Claude CLI not found. Install it with: npm install -g @anthropic-ai/claude-code';
+      console.error(`[relay] Session ${id} failed: ${reason}`);
+      send(ws, { type: 'session:error', error: reason });
+      return null;
+    }
   }
 
-  if (!existsSync(claudeBin)) {
-    const reason = `Claude binary not found at ${claudeBin}`;
+  if (!existsSync(agentBin)) {
+    const reason = `${agent} binary not found at ${agentBin}`;
     console.error(`[relay] Session ${id} failed: ${reason}`);
     send(ws, { type: 'session:error', error: reason });
     return null;
@@ -199,9 +216,17 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     bootstrapFiles(cwd, msg.workspaceFiles, id);
   }
 
-  const claudeArgs: string[] = ['--verbose'];
-  if (msg.systemPrompt) {
-    claudeArgs.push('--system-prompt', msg.systemPrompt);
+  // ---- Build CLI arguments based on agent type ----
+  let agentArgs: string[];
+
+  if (agent === 'pi') {
+    agentArgs = ['--verbose'];
+    if (msg.provider) agentArgs.push('--provider', msg.provider);
+    if (msg.model) agentArgs.push('--model', msg.model);
+    if (msg.systemPrompt) agentArgs.push('--system-prompt', msg.systemPrompt);
+  } else {
+    agentArgs = ['--verbose'];
+    if (msg.systemPrompt) agentArgs.push('--system-prompt', msg.systemPrompt);
   }
 
   const env: Record<string, string | undefined> = { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' };
@@ -211,11 +236,11 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   let ptyProcess: IPty;
 
   if (backend === 'tmux') {
-    console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd}`);
-    ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, claudeBin, claudeArgs, env);
+    console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd} [agent: ${agent}]`);
+    ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
   } else {
-    console.log(`[relay] Session ${id}: pty backend, spawning ${claudeBin} in ${cwd}`);
-    ptyProcess = pty.spawn(claudeBin, claudeArgs, {
+    console.log(`[relay] Session ${id}: pty backend, spawning ${agentBin} in ${cwd} [agent: ${agent}]`);
+    ptyProcess = pty.spawn(agentBin, agentArgs, {
       name: 'xterm-256color',
       cols,
       rows,

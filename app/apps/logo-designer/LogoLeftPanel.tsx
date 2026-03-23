@@ -1,7 +1,12 @@
 'use client';
-import { X } from 'lucide-react';
+import { X, Plus, Trash2 } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { isBuiltinVariant } from './types';
+import type { TemplateParam } from './types';
+
+// ---------------------------------------------------------------------------
+// Control components
+// ---------------------------------------------------------------------------
 
 function Slider({ label, value, min, max, step, onChange }: {
   label: string; value: number; min: number; max: number; step: number;
@@ -26,14 +31,17 @@ function Toggle({ label, value, onChange }: {
   label: string; value: boolean; onChange: (v: boolean) => void;
 }) {
   return (
-    <label className="flex items-center justify-between gap-2 cursor-pointer">
-      <span className="text-[11px] text-white/50">{label}</span>
+    <label className="flex flex-col gap-1 cursor-pointer">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/50">{label}</span>
+        <span className="text-[11px] font-mono text-white/30">{value ? 'on' : 'off'}</span>
+      </div>
       <button
         type="button"
         role="switch"
         aria-checked={value}
         onClick={() => onChange(!value)}
-        className={`relative w-8 h-[18px] rounded-full transition-colors ${
+        className={`relative w-8 h-[18px] rounded-full transition-colors self-start ${
           value ? 'bg-emerald-500/60' : 'bg-white/10'
         }`}
       >
@@ -42,6 +50,130 @@ function Toggle({ label, value, onChange }: {
         }`} />
       </button>
     </label>
+  );
+}
+
+function FreeformInput({ label, value, placeholder, onChange }: {
+  label: string; value: string; placeholder?: string; onChange: (v: string) => void;
+}) {
+  return (
+    <label className="flex flex-col gap-1">
+      <span className="text-[11px] text-white/50">{label}</span>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={e => onChange(e.target.value)}
+        className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] font-mono text-white/70 placeholder:text-white/20 outline-none focus:border-emerald-500/40 transition-colors"
+      />
+    </label>
+  );
+}
+
+function RepeatableControl({ label, value, itemFields, itemTemplate, onChange }: {
+  label: string;
+  value: Record<string, unknown>[];
+  itemFields?: TemplateParam[];
+  itemTemplate?: Record<string, unknown>;
+  onChange: (v: Record<string, unknown>[]) => void;
+}) {
+  const items = Array.isArray(value) ? value : [];
+  const template = itemTemplate ?? {};
+  const fields = itemFields ?? [];
+
+  const addItem = () => {
+    onChange([...items, { ...template }]);
+  };
+
+  const removeItem = (index: number) => {
+    onChange(items.filter((_, i) => i !== index));
+  };
+
+  const updateItem = (index: number, key: string, val: unknown) => {
+    const next = items.map((item, i) =>
+      i === index ? { ...item, [key]: val } : item,
+    );
+    onChange(next);
+  };
+
+  return (
+    <div className="flex flex-col gap-1.5">
+      <div className="flex items-center justify-between">
+        <span className="text-[11px] text-white/50">{label}</span>
+        <button
+          onClick={addItem}
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+        >
+          <Plus size={10} /> Add
+        </button>
+      </div>
+      {items.length === 0 && (
+        <div className="text-[10px] text-white/20 text-center py-2 border border-dashed border-white/8 rounded">
+          No items
+        </div>
+      )}
+      {items.map((item, index) => (
+        <div key={index} className="rounded border border-white/8 bg-white/[0.02] p-2 space-y-1.5">
+          <div className="flex items-center justify-between">
+            <span className="text-[9px] font-mono text-white/25 uppercase">#{index + 1}</span>
+            <button
+              onClick={() => removeItem(index)}
+              className="p-0.5 rounded text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+            >
+              <Trash2 size={10} />
+            </button>
+          </div>
+          {fields.map(field => {
+            const fieldVal = item[field.key] ?? field.default;
+            if (field.type === 'number') {
+              return (
+                <Slider
+                  key={field.key}
+                  label={field.label}
+                  value={fieldVal as number}
+                  min={field.min ?? 0}
+                  max={field.max ?? 100}
+                  step={field.step ?? 1}
+                  onChange={v => updateItem(index, field.key, v)}
+                />
+              );
+            }
+            if (field.type === 'color') {
+              return (
+                <ColorInput
+                  key={field.key}
+                  label={field.label}
+                  value={fieldVal as string}
+                  onChange={v => updateItem(index, field.key, v)}
+                />
+              );
+            }
+            if (field.type === 'toggle') {
+              return (
+                <Toggle
+                  key={field.key}
+                  label={field.label}
+                  value={Boolean(fieldVal)}
+                  onChange={v => updateItem(index, field.key, v)}
+                />
+              );
+            }
+            if (field.type === 'text') {
+              return (
+                <FreeformInput
+                  key={field.key}
+                  label={field.label}
+                  value={String(fieldVal ?? '')}
+                  placeholder={field.placeholder}
+                  onChange={v => updateItem(index, field.key, v)}
+                />
+              );
+            }
+            return null;
+          })}
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -56,9 +188,10 @@ function EnumSelect({ label, value, options, onChange }: {
         onChange={e => onChange(e.target.value)}
         className="text-[11px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-white/70 outline-none"
       >
-        {options.map(opt => (
-          <option key={opt} value={opt}>{opt}</option>
-        ))}
+        {options.map((opt, i) => {
+          const val = typeof opt === 'object' ? JSON.stringify(opt) : String(opt);
+          return <option key={val + i} value={val}>{val}</option>;
+        })}
       </select>
     </label>
   );
@@ -83,6 +216,10 @@ function ColorInput({ label, value, onChange }: {
     </label>
   );
 }
+
+// ---------------------------------------------------------------------------
+// Panel
+// ---------------------------------------------------------------------------
 
 export function LogoLeftPanel() {
   const {
@@ -168,12 +305,8 @@ export function LogoLeftPanel() {
               const pStep = p.step ?? ((pMax - pMin) < 10 ? 0.01 : 1);
               return (
                 <Slider
-                  key={p.key}
-                  label={p.label}
-                  value={val as number}
-                  min={pMin}
-                  max={pMax}
-                  step={pStep}
+                  key={p.key} label={p.label} value={val as number}
+                  min={pMin} max={pMax} step={pStep}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
                 />
               );
@@ -181,9 +314,7 @@ export function LogoLeftPanel() {
             if (p.type === 'color') {
               return (
                 <ColorInput
-                  key={p.key}
-                  label={p.label}
-                  value={val as string}
+                  key={p.key} label={p.label} value={val as string}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
                 />
               );
@@ -191,9 +322,7 @@ export function LogoLeftPanel() {
             if (p.type === 'toggle') {
               return (
                 <Toggle
-                  key={p.key}
-                  label={p.label}
-                  value={Boolean(val)}
+                  key={p.key} label={p.label} value={Boolean(val)}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v ? 1 : 0)}
                 />
               );
@@ -201,11 +330,31 @@ export function LogoLeftPanel() {
             if (p.type === 'enum' && p.options) {
               return (
                 <EnumSelect
-                  key={p.key}
-                  label={p.label}
-                  value={String(val)}
+                  key={p.key} label={p.label} value={String(val)}
                   options={p.options}
                   onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
+                />
+              );
+            }
+            if (p.type === 'text') {
+              return (
+                <FreeformInput
+                  key={p.key} label={p.label} value={String(val ?? '')}
+                  placeholder={p.placeholder}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v)}
+                />
+              );
+            }
+            if (p.type === 'repeatable') {
+              const items = Array.isArray(val) ? val : (Array.isArray(p.default) ? p.default : []);
+              return (
+                <RepeatableControl
+                  key={p.key}
+                  label={p.label}
+                  value={items as Record<string, unknown>[]}
+                  itemFields={p.itemFields}
+                  itemTemplate={p.itemTemplate}
+                  onChange={v => setCustomParam(activeTemplate.id, p.key, v as unknown as Record<string, unknown>[])}
                 />
               );
             }

@@ -7,7 +7,7 @@ import type { LogoParams } from './LogoProvider';
 interface Props {
   template: LogoTemplate;
   params: LogoParams;
-  customParamValues: Record<string, number | string>;
+  customParamValues: Record<string, number | string | Record<string, unknown>[]>;
   size: number;
 }
 
