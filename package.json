@@ -16,7 +16,6 @@
     "@ai-sdk/anthropic": "^3.0.50",
     "@ai-sdk/openai": "^3.0.48",
     "@ai-sdk/react": "^3.0.107",
-    "@arach/ai": "^0.1.0",
     "@base-ui-components/react": "^1.0.0-rc.0",
     "@google/genai": "^1.42.0",
     "@libsql/client": "^0.17.0",
