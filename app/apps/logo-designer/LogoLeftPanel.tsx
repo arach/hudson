@@ -1,5 +1,6 @@
 'use client';
-import { X } from 'lucide-react';
+import { useState } from 'react';
+import { X, RotateCcw, ChevronRight } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { isBuiltinVariant } from './types';
 
@@ -9,8 +10,14 @@ import { isBuiltinVariant } from './types';
 
 export function LogoLeftPanel() {
   const {
-    params, setParam, setVariant, resetDefaults, presets, templates, deleteTemplate,
+    params, setParam, setVariant, resetDefaults, presets,
+    templates, discardTemplate, restoreTemplate, discardedIds,
   } = useLogo();
+
+  const [showDiscarded, setShowDiscarded] = useState(false);
+
+  const activeTemplates = templates.filter(t => !discardedIds.has(t.id));
+  const discardedTemplates = templates.filter(t => discardedIds.has(t.id));
 
   return (
     <div className="flex flex-col gap-4 p-3 text-sm overflow-y-auto h-full">
@@ -22,7 +29,7 @@ export function LogoLeftPanel() {
             Loading templates...
           </div>
         )}
-        {templates.map(t => {
+        {activeTemplates.map(t => {
           const isActive = params.variant === t.id;
           const isBuiltin = isBuiltinVariant(t.id);
           return (
@@ -45,9 +52,9 @@ export function LogoLeftPanel() {
               </button>
               {!isBuiltin && (
                 <button
-                  onClick={() => deleteTemplate(t.id)}
-                  className="flex items-center px-1.5 rounded-lg border border-white/6 bg-white/3 text-white/20 hover:text-red-400 hover:bg-red-500/10 hover:border-red-500/30 transition-colors"
-                  title="Delete template"
+                  onClick={() => discardTemplate(t.id)}
+                  className="flex items-center px-1.5 rounded-lg border border-white/6 bg-white/3 text-white/20 hover:text-amber-400 hover:bg-amber-500/10 hover:border-amber-500/30 transition-colors"
+                  title="Discard template (recoverable for 7 days)"
                 >
                   <X size={12} />
                 </button>
@@ -56,6 +63,35 @@ export function LogoLeftPanel() {
           );
         })}
       </div>
+
+      {/* Discarded templates (collapsible) */}
+      {discardedTemplates.length > 0 && (
+        <div className="flex flex-col gap-1">
+          <button
+            onClick={() => setShowDiscarded(v => !v)}
+            className="flex items-center gap-1.5 text-[10px] uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors"
+          >
+            <ChevronRight size={10} className={`transition-transform ${showDiscarded ? 'rotate-90' : ''}`} />
+            Discarded ({discardedTemplates.length})
+          </button>
+          {showDiscarded && (
+            <div className="flex flex-col gap-1 pl-1">
+              {discardedTemplates.map(t => (
+                <div key={t.id} className="flex items-center gap-1.5 px-2 py-1.5 rounded border border-white/4 bg-white/[0.02] text-white/25">
+                  <span className="flex-1 text-[11px] truncate">{t.name}</span>
+                  <button
+                    onClick={() => restoreTemplate(t.id)}
+                    className="p-0.5 rounded text-white/20 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+                    title="Restore template"
+                  >
+                    <RotateCcw size={10} />
+                  </button>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
 
       {/* Presets */}
       <div className="flex flex-col gap-1.5">

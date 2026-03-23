@@ -83,6 +83,12 @@ interface LogoState {
   addTemplate: (template: LogoTemplate) => void;
   updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => void;
   deleteTemplate: (id: string) => void;
+  /** Soft-delete: move to discarded (recoverable for 7 days) */
+  discardTemplate: (id: string) => void;
+  /** Restore a discarded template */
+  restoreTemplate: (id: string) => void;
+  /** Currently discarded template IDs */
+  discardedIds: Set<string>;
   customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
   setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
   // App settings (relay URL, compile endpoint, etc.)
@@ -466,8 +472,53 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     } catch { /* next poll will reconcile */ }
   }, [templateEndpoint]);
 
+  // --- Soft delete: discard with 7-day recovery ---
+  const DISCARD_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
+  const [discardedMap, setDiscardedMap] = usePersistentState<Record<string, number>>('logo.discarded', {});
+
+  // Auto-purge expired discards
+  useEffect(() => {
+    const now = Date.now();
+    const expired = Object.entries(discardedMap).filter(([, ts]) => now - ts > DISCARD_TTL_MS);
+    if (expired.length > 0) {
+      // Hard delete expired templates
+      for (const [id] of expired) {
+        fetch(templateEndpoint, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ id, action: 'delete' }),
+        }).catch(() => {});
+      }
+      setDiscardedMap(prev => {
+        const next = { ...prev };
+        for (const [id] of expired) delete next[id];
+        return next;
+      });
+    }
+  }, [discardedMap, templateEndpoint]);
+
+  const discardedIds = useMemo(() => new Set(Object.keys(discardedMap)), [discardedMap]);
+
+  const discardTemplate = useCallback((id: string) => {
+    if (params.variant === id) setVariant('negative-space');
+    setDiscardedMap(prev => ({ ...prev, [id]: Date.now() }));
+  }, [params.variant, setVariant, setDiscardedMap]);
+
+  const restoreTemplate = useCallback((id: string) => {
+    setDiscardedMap(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+  }, [setDiscardedMap]);
+
   const deleteTemplate = useCallback(async (id: string) => {
     setTemplates(prev => prev.filter(t => t.id !== id));
+    setDiscardedMap(prev => {
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     setCustomParamValues(prev => {
       const next = { ...prev };
       delete next[id];
@@ -480,7 +531,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
         body: JSON.stringify({ id, action: 'delete' }),
       });
     } catch { /* next poll will reconcile */ }
-  }, [templateEndpoint, setCustomParamValues]);
+  }, [templateEndpoint, setCustomParamValues, setDiscardedMap]);
 
   const setCustomParam = useCallback((templateId: string, key: string, value: number | string | Record<string, unknown>[]) => {
     setCustomParamValues(prev => ({
@@ -500,6 +551,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     <Ctx.Provider value={{
       params, setParam, setVariant, resetDefaults, presets,
       templates, addTemplate, updateTemplate, deleteTemplate,
+      discardTemplate, restoreTemplate, discardedIds,
       customParamValues, setCustomParam,
       appSettings, apiBaseUrl,
       backgroundSvg, setBackgroundSvg,
