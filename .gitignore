@@ -44,6 +44,9 @@ appsettings.local.*
 *.local.yml
 *.local.toml
 
+# local agent state files
+.lattices.json
+
 # local app directory (developer-specific, auto-created on first run)
 app/local/
 
