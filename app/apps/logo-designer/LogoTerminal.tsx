@@ -5,7 +5,7 @@ import type { AIAttachment } from '@hudson/sdk';
 import { useLogo, defaults } from './LogoProvider';
 import { isBuiltinVariant } from './types';
 import type { LogoTemplate, TemplateParam } from './types';
-import { useMemo, useState, useCallback } from 'react';
+import { useMemo, useState, useCallback, useEffect } from 'react';
 import { buildSystemPrompt, buildClaudeMd } from './prompts';
 import type { ModelTier } from './prompts';
 
@@ -40,6 +40,7 @@ export function LogoTerminal() {
     templates, addTemplate, updateTemplate, deleteTemplate,
     customParamValues, setCustomParam,
     appSettings, apiBaseUrl,
+    consumeTerminalCommand,
   } = useLogo();
 
   const relayUrl = String(appSettings.relayUrl || 'ws://localhost:3600');
@@ -82,6 +83,17 @@ export function LogoTerminal() {
     provider: relayAgent === 'pi' ? relayProvider : undefined,
     model: relayAgent === 'pi' ? relayModel : undefined,
   });
+
+  // ---- Consume pending commands from toolbar (e.g. Refine button) ----
+  useEffect(() => {
+    const id = setInterval(() => {
+      const cmd = consumeTerminalCommand();
+      if (cmd && relay.status === 'connected') {
+        relay.sendLine(cmd);
+      }
+    }, 300);
+    return () => clearInterval(id);
+  }, [consumeTerminalCommand, relay]);
 
   // ---- Chat mode (fallback) ----
   const attachments: AIAttachment[] = useMemo(() => [

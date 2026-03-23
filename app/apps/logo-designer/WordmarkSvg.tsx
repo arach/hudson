@@ -1,0 +1,130 @@
+'use client';
+
+import { useMemo, useEffect } from 'react';
+import { useLogo } from './LogoProvider';
+import type { LogoParams } from './LogoProvider';
+import type { LogoTemplate } from './types';
+import { FONT_FAMILY_MAP, loadGoogleFont } from './types';
+
+const VB = 512;
+
+interface WordmarkSvgProps {
+  params: LogoParams;
+  size: number;
+  mode?: 'dark' | 'light';
+}
+
+/**
+ * Renders the icon + wordmark text composition.
+ * For 'horizontal': wider viewBox with icon left, text right.
+ * For 'stacked': taller viewBox with icon top, text below.
+ */
+export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
+  const { templates, customParamValues, lightParams } = useLogo();
+
+  const resolvedParams = mode === 'light' ? lightParams : params;
+  const textColor = mode === 'light' ? params.wordmark.lightColor : params.wordmark.color;
+
+  // Load Google Font on demand
+  useEffect(() => { loadGoogleFont(params.wordmark.fontFamily); }, [params.wordmark.fontFamily]);
+
+  const template = templates.find(t => t.id === params.variant);
+
+  // Render the icon SVG inner HTML
+  const iconInner = useMemo(() => {
+    if (!template) return '';
+    try {
+      const p: Record<string, unknown> = { ...resolvedParams };
+      const cpv = customParamValues[template.id] ?? {};
+      for (const decl of template.params) {
+        p[decl.key] = cpv[decl.key] ?? decl.default;
+      }
+      const fn = new Function('p', 'vb', template.renderBody);
+      const result = fn(p, VB);
+      return typeof result === 'string' ? result : '';
+    } catch {
+      return '';
+    }
+  }, [template, resolvedParams, customParamValues]);
+
+  const wm = params.wordmark;
+  const fontFamily = FONT_FAMILY_MAP[wm.fontFamily] ?? wm.fontFamily;
+  const textFontSize = VB * wm.fontSize;
+
+  if (wm.layout === 'horizontal') {
+    // Estimate text width: character count * fontSize * ~0.6
+    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.62 : 0.55;
+    const textWidth = Math.max(wm.text.length * textFontSize * charWidth, VB * 0.5);
+    const totalW = VB + wm.gap + textWidth;
+    const scale = size / VB; // scale based on icon height
+    const svgW = totalW * scale / (totalW / VB);
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${totalW} ${VB}`}
+        width={svgW}
+        height={size}
+      >
+        {/* Icon */}
+        <svg x="0" y="0" width={VB} height={VB} viewBox={`0 0 ${VB} ${VB}`}
+          dangerouslySetInnerHTML={{ __html: iconInner }}
+        />
+        {/* Text */}
+        <text
+          x={VB + wm.gap + wm.offsetX}
+          y={VB / 2 + wm.offsetY}
+          dominantBaseline="central"
+          fontFamily={fontFamily}
+          fontWeight={wm.fontWeight}
+          fontSize={textFontSize}
+          letterSpacing={`${wm.letterSpacing}em`}
+          fill={textColor}
+        >
+          {wm.text}
+        </text>
+      </svg>
+    );
+  }
+
+  if (wm.layout === 'stacked') {
+    const textHeight = textFontSize * 1.2;
+    const totalH = VB + wm.gap + textHeight;
+    const scale = size / VB;
+    const svgH = totalH * scale / (totalH / VB);
+    // Estimate text width for viewBox
+    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.62 : 0.55;
+    const textWidth = wm.text.length * textFontSize * charWidth;
+    const totalW = Math.max(VB, textWidth + 40);
+
+    return (
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        viewBox={`0 0 ${totalW} ${totalH}`}
+        width={size * (totalW / totalH)}
+        height={svgH}
+      >
+        {/* Icon centered */}
+        <svg x={(totalW - VB) / 2} y="0" width={VB} height={VB} viewBox={`0 0 ${VB} ${VB}`}
+          dangerouslySetInnerHTML={{ __html: iconInner }}
+        />
+        {/* Text centered below */}
+        <text
+          x={totalW / 2 + wm.offsetX}
+          y={VB + wm.gap + textHeight * 0.75 + wm.offsetY}
+          textAnchor="middle"
+          fontFamily={fontFamily}
+          fontWeight={wm.fontWeight}
+          fontSize={textFontSize}
+          letterSpacing={`${wm.letterSpacing}em`}
+          fill={textColor}
+        >
+          {wm.text}
+        </text>
+      </svg>
+    );
+  }
+
+  // icon-only fallback — shouldn't be used (LogoContent renders LogoSvg directly)
+  return null;
+}

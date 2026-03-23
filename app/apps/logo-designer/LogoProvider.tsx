@@ -1,10 +1,13 @@
 'use client';
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
-import type { LogoTemplate } from './types';
+import type { LogoTemplate, ColorSet, WordmarkConfig } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';
+import { useLogoAI } from './useLogoAI';
+
+export type { ColorSet, WordmarkConfig };
 
 export interface LogoParams {
   variant: string;
@@ -12,13 +15,41 @@ export interface LogoParams {
   paneColor: string;
   dimPaneColor: string;
   channelColor: string;
+  strokeColor: string;
   borderRadius: number;
   paneRadius: number;
   gapWidth: number;
   splitX: number; // 0-1, where the vertical L arm sits
   splitY: number; // 0-1, where the horizontal L arm sits
   padding: number;
+  // Light mode
+  lightEnabled: boolean;
+  lightColors: ColorSet;
+  // Wordmark
+  wordmark: WordmarkConfig;
 }
+
+export const defaultLightColors: ColorSet = {
+  bgColor: '#fafafa',
+  paneColor: '#1a1a1e',
+  dimPaneColor: 'rgba(0,0,0,0.18)',
+  channelColor: 'rgba(16,185,129,0.20)',
+  strokeColor: 'rgba(0,0,0,0.12)',
+};
+
+export const defaultWordmark: WordmarkConfig = {
+  text: '',
+  fontFamily: 'Inter',
+  fontWeight: 700,
+  fontSize: 0.40,
+  letterSpacing: 0.08,
+  color: '#ffffff',
+  lightColor: '#111113',
+  layout: 'icon-only',
+  gap: 40,
+  offsetX: 0,
+  offsetY: 0,
+};
 
 export const defaults: LogoParams = {
   variant: 'negative-space',
@@ -26,12 +57,16 @@ export const defaults: LogoParams = {
   paneColor: '#ffffff',
   dimPaneColor: 'rgba(255,255,255,0.55)',
   channelColor: 'rgba(51,199,115,0.3)',
+  strokeColor: 'rgba(255,255,255,0.08)',
   borderRadius: 80,
   paneRadius: 14,
   gapWidth: 14,
   splitX: 0.37,
   splitY: 0.60,
   padding: 72,
+  lightEnabled: false,
+  lightColors: defaultLightColors,
+  wordmark: defaultWordmark,
 };
 
 // Poll interval for syncing templates from the server (only when tab visible)
@@ -57,6 +92,21 @@ interface LogoState {
   /** SVG string piped in from another app (e.g. Shaper) */
   backgroundSvg: string | null;
   setBackgroundSvg: (svg: string | null) => void;
+  /** Whether size previews are visible on the canvas */
+  showPreviews: boolean;
+  togglePreviews: () => void;
+  /** Params with light-mode colors swapped in (for rendering light variant) */
+  lightParams: LogoParams;
+  /** Queue a command for the terminal relay to pick up */
+  sendTerminalCommand: (cmd: string) => void;
+  /** Read and clear the pending command (consumed by LogoTerminal) */
+  consumeTerminalCommand: () => string | null;
+  /** Send a message to the background AI (no terminal needed) */
+  sendAiMessage: (message: string) => void;
+  /** Background AI status */
+  aiStatus: string;
+  /** Force refresh templates from server */
+  refreshTemplates: () => void;
 }
 
 const Ctx = createContext<LogoState | null>(null);
@@ -70,91 +120,154 @@ export const useLogo = () => {
 const presets: { label: string; params: Partial<LogoParams> }[] = [
   {
     label: 'White panes, dark L',
-    params: { variant: 'negative-space', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.55)', bgColor: '#111113' },
+    params: {
+      variant: 'negative-space', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.55)', bgColor: '#111113',
+      lightColors: { bgColor: '#fafafa', paneColor: '#1a1a1e', dimPaneColor: 'rgba(0,0,0,0.18)', channelColor: 'rgba(16,185,129,0.20)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Dark panes, green L',
-    params: { variant: 'green-channel', paneColor: '#1c1c1e', dimPaneColor: '#1c1c1e', channelColor: 'rgba(51,199,115,0.3)', bgColor: '#111113' },
+    params: {
+      variant: 'green-channel', paneColor: '#1c1c1e', dimPaneColor: '#1c1c1e', channelColor: 'rgba(51,199,115,0.3)', bgColor: '#111113',
+      lightColors: { bgColor: '#f0fdf4', paneColor: '#e2e8f0', dimPaneColor: '#e2e8f0', channelColor: 'rgba(16,185,129,0.35)', strokeColor: 'rgba(16,185,129,0.15)' },
+    },
   },
   {
     label: '2x2 grid color',
-    params: { variant: 'grid-color', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.07)', bgColor: '#111113' },
+    params: {
+      variant: 'grid-color', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.07)', bgColor: '#111113',
+      lightColors: { bgColor: '#f8fafc', paneColor: '#0f172a', dimPaneColor: 'rgba(15,23,42,0.08)', channelColor: 'rgba(16,185,129,0.20)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Interlocking L-pieces',
-    params: { variant: 'interlocking', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.65)', bgColor: '#111113' },
+    params: {
+      variant: 'interlocking', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.65)', bgColor: '#111113',
+      lightColors: { bgColor: '#fafafa', paneColor: '#18181b', dimPaneColor: 'rgba(24,24,27,0.50)', channelColor: 'rgba(16,185,129,0.20)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   // ── Lattice Grid color presets ──
   {
     label: 'Monochrome',
-    params: { variant: 'lattice-grid', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.18)', bgColor: '#111113' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.18)', bgColor: '#111113',
+      lightColors: { bgColor: '#fafafa', paneColor: '#18181b', dimPaneColor: 'rgba(24,24,27,0.14)', channelColor: 'rgba(0,0,0,0.06)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Emerald',
-    params: { variant: 'lattice-grid', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.20)', bgColor: '#0a0f0d' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.20)', bgColor: '#0a0f0d',
+      lightColors: { bgColor: '#f0fdf4', paneColor: '#059669', dimPaneColor: 'rgba(5,150,105,0.18)', channelColor: 'rgba(5,150,105,0.10)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Emerald on white',
-    params: { variant: 'lattice-grid', paneColor: '#059669', dimPaneColor: 'rgba(5,150,105,0.18)', bgColor: '#f8faf9', borderRadius: 80, paneRadius: 14 },
+    params: {
+      variant: 'lattice-grid', paneColor: '#059669', dimPaneColor: 'rgba(5,150,105,0.18)', bgColor: '#f8faf9', borderRadius: 80, paneRadius: 14,
+      lightColors: { bgColor: '#ffffff', paneColor: '#047857', dimPaneColor: 'rgba(4,120,87,0.15)', channelColor: 'rgba(4,120,87,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Ocean',
-    params: { variant: 'lattice-grid', paneColor: '#38bdf8', dimPaneColor: 'rgba(56,189,248,0.18)', bgColor: '#0a0d14' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#38bdf8', dimPaneColor: 'rgba(56,189,248,0.18)', bgColor: '#0a0d14',
+      lightColors: { bgColor: '#f0f9ff', paneColor: '#0284c7', dimPaneColor: 'rgba(2,132,199,0.16)', channelColor: 'rgba(2,132,199,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Violet',
-    params: { variant: 'lattice-grid', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.18)', bgColor: '#0d0a14' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.18)', bgColor: '#0d0a14',
+      lightColors: { bgColor: '#f5f3ff', paneColor: '#7c3aed', dimPaneColor: 'rgba(124,58,237,0.15)', channelColor: 'rgba(124,58,237,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Sunset',
-    params: { variant: 'lattice-grid', paneColor: '#fb923c', dimPaneColor: 'rgba(251,146,60,0.18)', bgColor: '#140e0a' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#fb923c', dimPaneColor: 'rgba(251,146,60,0.18)', bgColor: '#140e0a',
+      lightColors: { bgColor: '#fff7ed', paneColor: '#ea580c', dimPaneColor: 'rgba(234,88,12,0.15)', channelColor: 'rgba(234,88,12,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Rose',
-    params: { variant: 'lattice-grid', paneColor: '#fb7185', dimPaneColor: 'rgba(251,113,133,0.18)', bgColor: '#140a0c' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#fb7185', dimPaneColor: 'rgba(251,113,133,0.18)', bgColor: '#140a0c',
+      lightColors: { bgColor: '#fff1f2', paneColor: '#e11d48', dimPaneColor: 'rgba(225,29,72,0.14)', channelColor: 'rgba(225,29,72,0.07)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Gold',
-    params: { variant: 'lattice-grid', paneColor: '#fbbf24', dimPaneColor: 'rgba(251,191,36,0.18)', bgColor: '#14120a' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#fbbf24', dimPaneColor: 'rgba(251,191,36,0.18)', bgColor: '#14120a',
+      lightColors: { bgColor: '#fefce8', paneColor: '#ca8a04', dimPaneColor: 'rgba(202,138,4,0.16)', channelColor: 'rgba(202,138,4,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Soft white',
-    params: { variant: 'lattice-grid', paneColor: 'rgba(255,255,255,0.85)', dimPaneColor: 'rgba(255,255,255,0.12)', bgColor: '#18181b', borderRadius: 96, paneRadius: 18, gapWidth: 16 },
+    params: {
+      variant: 'lattice-grid', paneColor: 'rgba(255,255,255,0.85)', dimPaneColor: 'rgba(255,255,255,0.12)', bgColor: '#18181b', borderRadius: 96, paneRadius: 18, gapWidth: 16,
+      lightColors: { bgColor: '#fafafa', paneColor: 'rgba(0,0,0,0.75)', dimPaneColor: 'rgba(0,0,0,0.08)', channelColor: 'rgba(0,0,0,0.04)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Neon mint',
-    params: { variant: 'lattice-grid', paneColor: '#6ee7b7', dimPaneColor: 'rgba(110,231,183,0.12)', bgColor: '#000000' },
+    params: {
+      variant: 'lattice-grid', paneColor: '#6ee7b7', dimPaneColor: 'rgba(110,231,183,0.12)', bgColor: '#000000',
+      lightColors: { bgColor: '#ecfdf5', paneColor: '#10b981', dimPaneColor: 'rgba(16,185,129,0.14)', channelColor: 'rgba(16,185,129,0.07)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   // ── Dot Matrix presets ──
   {
     label: 'Dot matrix',
-    params: { variant: 'dot-matrix', paneColor: 'rgba(255,255,255,0.85)', dimPaneColor: 'rgba(255,255,255,0.18)', bgColor: '#111113' },
+    params: {
+      variant: 'dot-matrix', paneColor: 'rgba(255,255,255,0.85)', dimPaneColor: 'rgba(255,255,255,0.18)', bgColor: '#111113',
+      lightColors: { bgColor: '#fafafa', paneColor: 'rgba(0,0,0,0.80)', dimPaneColor: 'rgba(0,0,0,0.12)', channelColor: 'rgba(0,0,0,0.05)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Dot matrix — emerald',
-    params: { variant: 'dot-matrix', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.20)', bgColor: '#0a0f0d' },
+    params: {
+      variant: 'dot-matrix', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.20)', bgColor: '#0a0f0d',
+      lightColors: { bgColor: '#f0fdf4', paneColor: '#059669', dimPaneColor: 'rgba(5,150,105,0.18)', channelColor: 'rgba(5,150,105,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Dot matrix — ocean',
-    params: { variant: 'dot-matrix', paneColor: '#38bdf8', dimPaneColor: 'rgba(56,189,248,0.18)', bgColor: '#0a0d14' },
+    params: {
+      variant: 'dot-matrix', paneColor: '#38bdf8', dimPaneColor: 'rgba(56,189,248,0.18)', bgColor: '#0a0d14',
+      lightColors: { bgColor: '#f0f9ff', paneColor: '#0284c7', dimPaneColor: 'rgba(2,132,199,0.16)', channelColor: 'rgba(2,132,199,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   // ── Mosaic presets ──
   {
     label: 'Mosaic',
-    params: { variant: 'mosaic', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.45)', bgColor: '#111113' },
+    params: {
+      variant: 'mosaic', paneColor: '#ffffff', dimPaneColor: 'rgba(255,255,255,0.45)', bgColor: '#111113',
+      lightColors: { bgColor: '#fafafa', paneColor: '#1e1e22', dimPaneColor: 'rgba(30,30,34,0.35)', channelColor: 'rgba(0,0,0,0.06)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Mosaic — emerald',
-    params: { variant: 'mosaic', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.35)', bgColor: '#0a0f0d' },
+    params: {
+      variant: 'mosaic', paneColor: '#34d399', dimPaneColor: 'rgba(52,211,153,0.35)', bgColor: '#0a0f0d',
+      lightColors: { bgColor: '#f0fdf4', paneColor: '#059669', dimPaneColor: 'rgba(5,150,105,0.30)', channelColor: 'rgba(5,150,105,0.10)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Mosaic — violet',
-    params: { variant: 'mosaic', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.35)', bgColor: '#0d0a14' },
+    params: {
+      variant: 'mosaic', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.35)', bgColor: '#0d0a14',
+      lightColors: { bgColor: '#f5f3ff', paneColor: '#7c3aed', dimPaneColor: 'rgba(124,58,237,0.28)', channelColor: 'rgba(124,58,237,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   // ── Other variant presets ──
   {
     label: 'App windows',
-    params: { variant: 'app-windows', paneColor: '#1c1c1e', dimPaneColor: '#16162a', bgColor: '#111113' },
+    params: {
+      variant: 'app-windows', paneColor: '#1c1c1e', dimPaneColor: '#16162a', bgColor: '#111113',
+      lightColors: { bgColor: '#f4f4f5', paneColor: '#e4e4e7', dimPaneColor: '#d4d4d8', channelColor: 'rgba(0,0,0,0.06)', strokeColor: 'rgba(0,0,0,0.10)' },
+    },
   },
   {
     label: 'Thin & airy',
@@ -169,8 +282,33 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
 export function LogoProvider({ children }: { children: ReactNode }) {
   const [appSettings] = useAppSettings('logo-designer', logoSettings);
   const { apiBaseUrl } = usePlatform();
-  const [params, setParams] = useState<LogoParams>(defaults);
+  const [params, setParams] = usePersistentState<LogoParams>('logo.params', defaults);
   const [backgroundSvg, setBackgroundSvg] = useState<string | null>(null);
+  const [showPreviews, setShowPreviews] = useState(false);
+  const togglePreviews = useCallback(() => setShowPreviews(v => !v), []);
+
+  // Pending terminal command queue (toolbar → terminal relay)
+  const pendingCmdRef = useRef<string | null>(null);
+  const sendTerminalCommand = useCallback((cmd: string) => { pendingCmdRef.current = cmd; }, []);
+  const consumeTerminalCommand = useCallback(() => {
+    const cmd = pendingCmdRef.current;
+    pendingCmdRef.current = null;
+    return cmd;
+  }, []);
+
+  // Derived: params with light-mode colors swapped in
+  const lightParams = useMemo<LogoParams>(() => ({
+    ...params,
+    bgColor: params.lightColors.bgColor,
+    paneColor: params.lightColors.paneColor,
+    dimPaneColor: params.lightColors.dimPaneColor,
+    channelColor: params.lightColors.channelColor,
+    strokeColor: params.lightColors.strokeColor,
+  }), [params]);
+
+  // Per-template tool config (light mode, wordmark) — saved/restored on variant switch
+  interface TemplateToolConfig { lightEnabled: boolean; lightColors: ColorSet; wordmark: WordmarkConfig }
+  const templateToolsRef = useRef<Record<string, TemplateToolConfig>>({});
 
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
@@ -179,61 +317,67 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   // Poll the template API for changes (picks up relay-created templates)
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
   const lastFetchRef = useRef('');
+  const activeRef = useRef(true);
+
+  const refreshTemplates = useCallback(async () => {
+    try {
+      const res = await fetch(templateEndpoint);
+      if (!res.ok) return;
+      const data = await res.json();
+      const json = JSON.stringify(data.templates);
+      if (json !== lastFetchRef.current) {
+        lastFetchRef.current = json;
+        if (activeRef.current) {
+          setTemplates(data.templates);
+          setCustomParamValues(cpv => {
+            let changed = false;
+            const next = { ...cpv };
+            for (const t of data.templates as { id: string; params: { key: string; default: number | string | Record<string, unknown>[] | boolean }[] }[]) {
+              if (!t.params || t.params.length === 0) continue;
+              const existing = next[t.id] ?? {};
+              let filled = existing;
+              for (const p of t.params) {
+                if (!(p.key in filled)) {
+                  if (filled === existing) filled = { ...existing };
+                  filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
+                  changed = true;
+                }
+              }
+              if (filled !== existing) next[t.id] = filled;
+            }
+            return changed ? next : cpv;
+          });
+        }
+      }
+    } catch (err) {
+      console.warn('[logo] Template fetch failed:', err);
+    }
+  }, [templateEndpoint]);
 
   useEffect(() => {
-    let active = true;
-    async function fetchTemplates() {
-      try {
-        const res = await fetch(templateEndpoint);
-        if (!res.ok) return;
-        const data = await res.json();
-        const json = JSON.stringify(data.templates);
-        // Only update state if data actually changed
-        if (json !== lastFetchRef.current) {
-          lastFetchRef.current = json;
-          if (active) {
-            setTemplates(data.templates);
-            // Initialize custom param defaults for any template that has params
-            // but no values stored yet (e.g. freshly created by relay agent)
-            setCustomParamValues(cpv => {
-              let changed = false;
-              const next = { ...cpv };
-              for (const t of data.templates as { id: string; params: { key: string; default: number | string | Record<string, unknown>[] | boolean }[] }[]) {
-                if (!t.params || t.params.length === 0) continue;
-                const existing = next[t.id] ?? {};
-                let filled = existing;
-                for (const p of t.params) {
-                  if (!(p.key in filled)) {
-                    if (filled === existing) filled = { ...existing };
-                    filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
-                    changed = true;
-                  }
-                }
-                if (filled !== existing) next[t.id] = filled;
-              }
-              return changed ? next : cpv;
-            });
-          }
-        }
-      } catch (err) {
-        console.warn('[logo] Template fetch failed:', err);
-      }
-    }
-    fetchTemplates();
-    let id: ReturnType<typeof setInterval>;
-    const start = () => { id = setInterval(fetchTemplates, TEMPLATE_POLL_MS); };
-    const stop = () => clearInterval(id);
-    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchTemplates(); start(); } };
-    start();
+    activeRef.current = true;
+    refreshTemplates();
+    const id = setInterval(refreshTemplates, TEMPLATE_POLL_MS);
+    const onVis = () => { if (document.visibilityState === 'visible') refreshTemplates(); };
     document.addEventListener('visibilitychange', onVis);
-    return () => { active = false; stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, [templateEndpoint]);
+    return () => { activeRef.current = false; clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
+  }, [refreshTemplates]);
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));
   }, []);
 
   const setVariant = useCallback((v: string) => {
+    // Save current template's tool config before switching
+    setParams(prev => {
+      templateToolsRef.current[prev.variant] = {
+        lightEnabled: prev.lightEnabled,
+        lightColors: prev.lightColors,
+        wordmark: prev.wordmark,
+      };
+      return prev;
+    });
+
     // Initialize custom param defaults when switching to a template with custom params
     const tmpl = templates.find(t => t.id === v);
     if (tmpl && tmpl.params.length > 0) {
@@ -247,12 +391,35 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       });
     }
 
+    // Restore tool config for the new variant (or use defaults)
+    const savedTools = templateToolsRef.current[v];
+    const toolConfig = savedTools ?? {
+      lightEnabled: false,
+      lightColors: defaultLightColors,
+      wordmark: defaultWordmark,
+    };
+
     // Apply preset params for built-in variants
     if (isBuiltinVariant(v)) {
       const preset = presets.find(p => p.params.variant === v);
-      setParams(prev => ({ ...prev, ...preset?.params, variant: v }));
+      // Preset lightColors override saved if present
+      const presetLightColors = preset?.params.lightColors;
+      setParams(prev => ({
+        ...prev,
+        ...preset?.params,
+        variant: v,
+        lightEnabled: toolConfig.lightEnabled,
+        lightColors: presetLightColors ?? toolConfig.lightColors,
+        wordmark: toolConfig.wordmark,
+      }));
     } else {
-      setParams(prev => ({ ...prev, variant: v }));
+      setParams(prev => ({
+        ...prev,
+        variant: v,
+        lightEnabled: toolConfig.lightEnabled,
+        lightColors: toolConfig.lightColors,
+        wordmark: toolConfig.wordmark,
+      }));
     }
   }, [templates, setCustomParamValues]);
 
@@ -322,6 +489,13 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     }));
   }, [setCustomParamValues]);
 
+  // Background AI (works without terminal)
+  const { sendAiMessage, aiStatus } = useLogoAI({
+    params, setParam, setVariant, resetDefaults, presets,
+    templates, addTemplate, updateTemplate, deleteTemplate,
+    customParamValues, setCustomParam, refreshTemplates,
+  });
+
   return (
     <Ctx.Provider value={{
       params, setParam, setVariant, resetDefaults, presets,
@@ -329,6 +503,10 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       customParamValues, setCustomParam,
       appSettings, apiBaseUrl,
       backgroundSvg, setBackgroundSvg,
+      showPreviews, togglePreviews,
+      lightParams,
+      sendTerminalCommand, consumeTerminalCommand,
+      sendAiMessage, aiStatus, refreshTemplates,
     }}>
       {children}
     </Ctx.Provider>

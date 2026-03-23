@@ -1,11 +1,81 @@
 'use client';
 
-import { useState, useCallback, useRef } from 'react';
-import { Download, Copy, Check, Image, Apple, Smartphone, Loader2 } from 'lucide-react';
+import { useState, useCallback, useRef, useMemo } from 'react';
+import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
+import {
+  ParamSection, ParamSlider, ParamToggle, ParamColor, ParamEnum, ParamText, ParamGrid,
+} from '@hudson/sdk/controls';
+import type { ParamDefinition } from '@hudson/sdk/controls';
+import { GOOGLE_FONTS, loadGoogleFont } from './types';
+import type { WordmarkConfig } from './types';
 
 const EXPORT_SIZES = [512, 256, 128, 64, 32, 16] as const;
+
+// ---------------------------------------------------------------------------
+// Font search picker
+// ---------------------------------------------------------------------------
+
+function FontPicker({ value, onChange }: { value: string; onChange: (v: string) => void }) {
+  const [query, setQuery] = useState('');
+  const [open, setOpen] = useState(false);
+
+  const filtered = useMemo(() => {
+    if (!query) return [...GOOGLE_FONTS];
+    const q = query.toLowerCase();
+    return GOOGLE_FONTS.filter(f => f.toLowerCase().includes(q));
+  }, [query]);
+
+  return (
+    <div className="flex flex-col gap-1">
+      <span className="text-[11px] text-white/50">Font</span>
+      <button
+        onClick={() => setOpen(o => !o)}
+        className="w-full flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/70 hover:border-emerald-500/40 transition-colors"
+      >
+        <span style={{ fontFamily: value }}>{value}</span>
+        <Search size={10} className="text-white/30" />
+      </button>
+      {open && (
+        <div className="flex flex-col border border-white/10 rounded bg-neutral-900/95 backdrop-blur-xl overflow-hidden">
+          <input
+            type="text"
+            value={query}
+            onChange={e => setQuery(e.target.value)}
+            placeholder="Search fonts..."
+            autoFocus
+            className="px-2 py-1.5 text-[11px] bg-transparent border-b border-white/10 text-white/80 placeholder:text-white/20 outline-none"
+          />
+          <div className="max-h-[200px] overflow-y-auto frame-scrollbar">
+            {filtered.map(font => (
+              <button
+                key={font}
+                onClick={() => {
+                  loadGoogleFont(font);
+                  onChange(font);
+                  setOpen(false);
+                  setQuery('');
+                }}
+                className={`w-full text-left px-2 py-1.5 text-[11px] transition-colors ${
+                  font === value
+                    ? 'bg-emerald-500/15 text-emerald-400'
+                    : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                }`}
+                style={{ fontFamily: font }}
+              >
+                {font}
+              </button>
+            ))}
+            {filtered.length === 0 && (
+              <div className="px-2 py-3 text-[10px] text-white/20 text-center">No fonts match</div>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // SVG helpers — grab the live SVG from the DOM, clone & resize for export
@@ -94,15 +164,14 @@ function ExportButton({
 }
 
 // ---------------------------------------------------------------------------
-// Inspector
+// Inspector — params + preview + export
 // ---------------------------------------------------------------------------
 
-export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews?: boolean; onTogglePreviews?: () => void } = {}) {
-  const { params, templates, customParamValues, apiBaseUrl } = useLogo();
+export function LogoInspector() {
+  const { params, setParam, templates, customParamValues, setCustomParam, apiBaseUrl, showPreviews, togglePreviews } = useLogo();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const activeTemplate = templates.find(t => t.id === params.variant);
-  const variantLabel = activeTemplate?.name ?? params.variant;
 
   const handleDownloadSvg = useCallback(() => {
     const markup = cloneSvgAtSize(previewRef, 512);
@@ -143,7 +212,6 @@ export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews
 
     setPlatformExporting(platform);
     try {
-      // Merge standard params + custom param values (same logic as TemplateSvg)
       const merged: Record<string, unknown> = { ...params };
       const cpv = customParamValues[activeTemplate.id] ?? {};
       for (const decl of activeTemplate.params) {
@@ -172,92 +240,139 @@ export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews
     }
   }, [params, templates, customParamValues, apiBaseUrl]);
 
+  // Convert custom template params to ParamDefinition[] for ParamGrid
+  const customParams: ParamDefinition[] | null = activeTemplate && activeTemplate.params.length > 0
+    ? activeTemplate.params.map(p => ({
+        key: p.key,
+        label: p.label,
+        type: p.type,
+        default: p.default,
+        min: p.min,
+        max: p.max,
+        step: p.step,
+        options: p.options,
+        placeholder: p.placeholder,
+        group: p.group,
+        itemTemplate: p.itemTemplate,
+        itemFields: p.itemFields?.map(f => ({
+          key: f.key,
+          label: f.label,
+          type: f.type as 'number' | 'color' | 'toggle' | 'enum' | 'text',
+          default: f.default as number | string | boolean,
+          min: f.min,
+          max: f.max,
+          step: f.step,
+          options: f.options,
+          placeholder: f.placeholder,
+        })),
+      }))
+    : null;
+
+  const customValues = activeTemplate ? (customParamValues[activeTemplate.id] ?? {}) : {};
+
   return (
-    <div className="p-4 space-y-4 overflow-y-auto h-full frame-scrollbar">
-      {/* View options */}
-      {onTogglePreviews && (
-        <div className="space-y-2">
-          <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">View</div>
-          <label className="flex items-center justify-between gap-2 cursor-pointer">
-            <span className="text-[11px] text-white/50">Size Previews</span>
-            <button
-              type="button"
-              role="switch"
-              aria-checked={showPreviews}
-              onClick={onTogglePreviews}
-              className={`relative w-8 h-[18px] rounded-full transition-colors ${showPreviews ? 'bg-emerald-500/60' : 'bg-white/10'}`}
-            >
-              <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform ${showPreviews ? 'translate-x-[16px]' : 'translate-x-[2px]'}`} />
-            </button>
-          </label>
-        </div>
+    <div className="p-3 space-y-1 overflow-y-auto h-full frame-scrollbar">
+      {/* ── Template-specific params (top) ── */}
+      {customParams && (
+        <ParamSection label={`${activeTemplate!.name} Params`} defaultExpanded={true}>
+          <ParamGrid
+            params={customParams}
+            values={customValues}
+            onChange={(key, value) => setCustomParam(activeTemplate!.id, key, value as number | string | Record<string, unknown>[])}
+            defaultExpanded={true}
+          />
+        </ParamSection>
       )}
 
+      {/* ── Tool config: Light Mode ── */}
+      {params.lightEnabled && (
+        <ParamSection label="Light Colors" defaultExpanded={true}>
+          <ParamColor label="Background" value={params.lightColors.bgColor}
+            onChange={v => setParam('lightColors', { ...params.lightColors, bgColor: v })} />
+          <ParamColor label="Pane fill" value={params.lightColors.paneColor}
+            onChange={v => setParam('lightColors', { ...params.lightColors, paneColor: v })} />
+          <ParamColor label="Dim pane" value={params.lightColors.dimPaneColor}
+            onChange={v => setParam('lightColors', { ...params.lightColors, dimPaneColor: v })} />
+          <ParamColor label="Channel" value={params.lightColors.channelColor}
+            onChange={v => setParam('lightColors', { ...params.lightColors, channelColor: v })} />
+          <ParamColor label="Stroke" value={params.lightColors.strokeColor}
+            onChange={v => setParam('lightColors', { ...params.lightColors, strokeColor: v })} />
+        </ParamSection>
+      )}
+
+      {/* ── Tool config: Wordmark ── */}
+      {params.wordmark.layout !== 'icon-only' && (
+        <ParamSection label="Wordmark" defaultExpanded={true}>
+          <ParamText label="Text" value={params.wordmark.text} placeholder="Brand name"
+            onChange={v => setParam('wordmark', { ...params.wordmark, text: v })} />
+          <FontPicker value={params.wordmark.fontFamily}
+            onChange={v => setParam('wordmark', { ...params.wordmark, fontFamily: v })} />
+          <ParamEnum label="Weight" value={String(params.wordmark.fontWeight)}
+            options={['400', '700']}
+            onChange={v => setParam('wordmark', { ...params.wordmark, fontWeight: Number(v) })} />
+          <ParamSlider label="Font size" value={params.wordmark.fontSize}
+            min={0.15} max={0.80} step={0.01}
+            format={v => `${Math.round(v * 100)}%`}
+            onChange={v => setParam('wordmark', { ...params.wordmark, fontSize: v })} />
+          <ParamSlider label="Letter spacing" value={params.wordmark.letterSpacing}
+            min={0} max={0.30} step={0.01}
+            format={v => `${v.toFixed(2)}em`}
+            onChange={v => setParam('wordmark', { ...params.wordmark, letterSpacing: v })} />
+          <ParamSlider label="Gap" value={params.wordmark.gap}
+            min={10} max={120} step={2}
+            onChange={v => setParam('wordmark', { ...params.wordmark, gap: v })} />
+          <ParamSlider label="Offset X" value={params.wordmark.offsetX}
+            min={-100} max={100} step={1}
+            onChange={v => setParam('wordmark', { ...params.wordmark, offsetX: v })} />
+          <ParamSlider label="Offset Y" value={params.wordmark.offsetY}
+            min={-100} max={100} step={1}
+            onChange={v => setParam('wordmark', { ...params.wordmark, offsetY: v })} />
+          <ParamColor label="Text color (dark)" value={params.wordmark.color}
+            onChange={v => setParam('wordmark', { ...params.wordmark, color: v })} />
+          {params.lightEnabled && (
+            <ParamColor label="Text color (light)" value={params.wordmark.lightColor}
+              onChange={v => setParam('wordmark', { ...params.wordmark, lightColor: v })} />
+          )}
+        </ParamSection>
+      )}
+
+      {/* ── Generic: Proportions ── */}
+      <ParamSection label="Proportions" defaultExpanded={false}>
+        <ParamSlider label="Gap width" value={params.gapWidth} min={4} max={32} step={1}
+          onChange={v => setParam('gapWidth', v)} />
+        <ParamSlider label="Split X (vertical arm)" value={params.splitX} min={0.2} max={0.5} step={0.01}
+          onChange={v => setParam('splitX', v)} />
+        <ParamSlider label="Split Y (horizontal arm)" value={params.splitY} min={0.4} max={0.8} step={0.01}
+          onChange={v => setParam('splitY', v)} />
+        <ParamSlider label="Padding" value={params.padding} min={40} max={120} step={2}
+          onChange={v => setParam('padding', v)} />
+        <ParamSlider label="Border radius (outer)" value={params.borderRadius} min={0} max={128} step={2}
+          onChange={v => setParam('borderRadius', v)} />
+        <ParamSlider label="Pane radius" value={params.paneRadius} min={0} max={32} step={1}
+          onChange={v => setParam('paneRadius', v)} />
+      </ParamSection>
+
+      {/* ── Generic: Colors (dark mode) ── */}
+      <ParamSection label="Colors" defaultExpanded={false}>
+        <ParamColor label="Background" value={params.bgColor} onChange={v => setParam('bgColor', v)} />
+        <ParamColor label="Pane fill" value={params.paneColor} onChange={v => setParam('paneColor', v)} />
+        <ParamColor label="Dim pane" value={params.dimPaneColor} onChange={v => setParam('dimPaneColor', v)} />
+        <ParamColor label="Channel" value={params.channelColor} onChange={v => setParam('channelColor', v)} />
+        <ParamColor label="Stroke" value={params.strokeColor} onChange={v => setParam('strokeColor', v)} />
+      </ParamSection>
+
       {/* Preview */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
-          Preview
-        </div>
+      <ParamSection label="Preview" defaultExpanded={true}>
         <div
           ref={previewRef}
           className="flex items-center justify-center rounded-lg bg-neutral-900/60 p-4"
         >
           <LogoSvg params={params} size={160} />
         </div>
-      </div>
-
-      <div className="h-px bg-neutral-600/50" />
-
-      {/* Current Config */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
-          Current
-        </div>
-        <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] font-mono">
-          <div className="text-neutral-400">variant</div>
-          <div className="text-white">{variantLabel}</div>
-
-          <div className="text-neutral-400">bg</div>
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block w-3 h-3 rounded-sm border border-white/10 shrink-0"
-              style={{ backgroundColor: params.bgColor }}
-            />
-            <span className="text-neutral-300 truncate">{params.bgColor}</span>
-          </div>
-
-          <div className="text-neutral-400">pane</div>
-          <div className="flex items-center gap-2">
-            <span
-              className="inline-block w-3 h-3 rounded-sm border border-white/10 shrink-0"
-              style={{ backgroundColor: params.paneColor }}
-            />
-            <span className="text-neutral-300 truncate">{params.paneColor}</span>
-          </div>
-
-          <div className="text-neutral-400">radius</div>
-          <div className="text-neutral-300">{params.borderRadius}px</div>
-
-          <div className="text-neutral-400">gap</div>
-          <div className="text-neutral-300">{params.gapWidth}px</div>
-
-          <div className="text-neutral-400">padding</div>
-          <div className="text-neutral-300">{params.padding}px</div>
-
-          <div className="text-neutral-400">split</div>
-          <div className="text-neutral-300">
-            {(params.splitX * 100).toFixed(0)}% &times; {(params.splitY * 100).toFixed(0)}%
-          </div>
-        </div>
-      </div>
-
-      <div className="h-px bg-neutral-600/50" />
+      </ParamSection>
 
       {/* Export SVG */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
-          Export SVG
-        </div>
+      <ParamSection label="Export SVG" defaultExpanded={false}>
         <div className="flex flex-wrap gap-2">
           <ExportButton
             icon={<Download size={12} />}
@@ -270,15 +385,10 @@ export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews
             onClick={handleCopySvg}
           />
         </div>
-      </div>
-
-      <div className="h-px bg-neutral-600/50" />
+      </ParamSection>
 
       {/* Export PNG */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
-          Export PNG
-        </div>
+      <ParamSection label="Export PNG" defaultExpanded={false}>
         <div className="flex flex-wrap gap-2">
           <ExportButton
             icon={<Copy size={12} />}
@@ -298,15 +408,10 @@ export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews
             </button>
           ))}
         </div>
-      </div>
-
-      <div className="h-px bg-neutral-600/50" />
+      </ParamSection>
 
       {/* Platform Export */}
-      <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">
-          Platform Export
-        </div>
+      <ParamSection label="Platform Export" defaultExpanded={false}>
         <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
           Generate all required icon sizes as a ready-to-use bundle.
         </div>
@@ -336,7 +441,7 @@ export function LogoInspector({ showPreviews, onTogglePreviews }: { showPreviews
             iOS
           </button>
         </div>
-      </div>
+      </ParamSection>
     </div>
   );
 }

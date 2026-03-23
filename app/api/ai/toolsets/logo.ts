@@ -13,12 +13,13 @@ const paramKeys = [
 const templateParamSchema = z.object({
   key: z.string().describe('Param key (camelCase, no spaces)'),
   label: z.string().describe('Human-readable label'),
-  type: z.enum(['number', 'color', 'toggle', 'enum']).describe('Control type: number=slider, color=picker, toggle=on/off, enum=dropdown'),
+  type: z.enum(['number', 'color', 'toggle', 'enum', 'text']).describe('Control type: number=slider, color=picker, toggle=on/off, enum=dropdown, text=freeform input'),
   default: z.union([z.number(), z.string(), z.boolean()]).describe('Default value'),
   min: z.number().optional().describe('Min value (for number type)'),
   max: z.number().optional().describe('Max value (for number type)'),
   step: z.number().optional().describe('Step increment (for number type)'),
   options: z.array(z.string()).optional().describe('Allowed values (for enum type)'),
+  group: z.string().optional().describe('Inspector section name — params with the same group render in a collapsible section'),
 });
 
 // ---------------------------------------------------------------------------
@@ -79,7 +80,9 @@ return svg;
 \`\`\`
 
 ### Custom parameters
-Declare template-specific params that appear as sliders/pickers in the UI. Use standard params (bgColor, padding, etc.) for shared properties — only add custom params for template-specific values.
+Declare template-specific params that appear as sliders/pickers in the inspector panel. Use standard params (bgColor, padding, etc.) for shared properties — only add custom params for template-specific values.
+
+**Grouping:** Set \`group: "Section Name"\` on params to organize them into collapsible sections in the inspector. Params with the same group render together under that heading (e.g. group all geometry params under "Geometry", colors under "Colors"). Ungrouped params render flat.
 
 ### Rules for writing renderBody
 - Always start with a background rect: \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`
@@ -101,6 +104,16 @@ Workflow for iterating on a design:
 ## Editing Built-in Variants
 
 All 6 built-in variants are editable templates. Use update_template with the built-in's ID (e.g. "negative-space", "lattice-grid") to modify them directly.
+
+## Light / Dark Mode
+Set \`lightEnabled: true\` via set_param to enable a light variant. Then use set_param to adjust \`lightColors\` (an object with bgColor, paneColor, dimPaneColor, channelColor for the light variant). The app renders both variants side-by-side. Templates are unaware of modes — they receive swapped colors automatically.
+
+## Wordmark
+Set \`wordmark\` via set_param with an object: \`{ text, fontFamily, fontWeight, fontSize, letterSpacing, color, lightColor, layout, gap }\`.
+- \`layout\`: "icon-only" (default), "horizontal", or "stacked"
+- Available fonts: Inter, AstroMono, Geist Mono, JetBrains Mono, Noto Serif Display
+- \`fontSize\`: ratio relative to icon height (0.40 = 40%)
+- \`color\` / \`lightColor\`: text color for dark / light mode
 
 ## General Rules
 - When the user asks you to change the logo, DO IT immediately by calling tools.

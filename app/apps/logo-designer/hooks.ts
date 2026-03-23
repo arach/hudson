@@ -20,7 +20,7 @@ export function useLogoStatus() {
   const { params, templates } = useLogo();
   const tmpl = templates.find(t => t.id === params.variant);
   return {
-    label: tmpl?.name?.toUpperCase().slice(0, 10) ?? 'UNKNOWN',
+    label: tmpl?.name?.toUpperCase() ?? 'UNKNOWN',
     color: 'emerald' as const,
   };
 }

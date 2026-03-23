@@ -26,7 +26,7 @@ import {
   useAppSettings,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -581,9 +581,33 @@ function WorkspaceInner({
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [workspaceEditorTab, setWorkspaceEditorTab] = useState<'overview' | 'apps' | 'settings'>('overview');
   const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
+  const [fsLeftOpen, setFsLeftOpen] = useState(true);
+  const [fsRightOpen, setFsRightOpen] = useState(true);
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
+
+  // --- URL hash sync (deep-link into focused/fullscreen app) ---
+  useEffect(() => {
+    const hash = window.location.hash.slice(1);
+    if (!hash) return;
+    const p = new URLSearchParams(hash);
+    const focus = p.get('focus');
+    const fs = p.get('fullscreen');
+    const allIds = new Set(workspace.apps.map(c => c.app.id));
+    if (focus && allIds.has(focus)) setFocusedAppId(focus);
+    if (fs && allIds.has(fs)) { setFullscreenAppId(fs); setFocusedAppId(fs); }
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps — mount only
+
+  useEffect(() => {
+    const parts: string[] = [];
+    if (focusedAppId) parts.push(`focus=${focusedAppId}`);
+    if (fullscreenAppId) parts.push(`fullscreen=${fullscreenAppId}`);
+    const hash = parts.length > 0 ? `#${parts.join('&')}` : '';
+    if (window.location.hash !== hash) {
+      window.history.replaceState(null, '', hash || window.location.pathname);
+    }
+  }, [focusedAppId, fullscreenAppId]);
 
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed);
   const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides);
@@ -1296,39 +1320,100 @@ function WorkspaceInner({
       {fullscreenConfig ? (
         <div className="h-screen flex flex-col" style={{ background: 'rgb(10, 10, 10)' }}>
           {/* Header bar */}
-          <div className="h-12 shrink-0 flex items-center px-4 gap-3 border-b border-neutral-700/50"
+          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50"
             style={{ background: 'rgba(14, 14, 14, 0.97)', backdropFilter: 'blur(20px)' }}>
+            {/* Left: back button + panel toggle */}
             <button
               onClick={exitFullscreen}
-              className="flex items-center gap-2 px-2.5 py-1.5 rounded-md text-[11px] font-mono text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
               title="Back to canvas (Esc)"
             >
-              <Minimize2 size={12} />
+              <Minimize2 size={11} />
               Canvas
             </button>
-            <div className="h-5 w-px bg-neutral-700/50" />
-            <span className="text-[13px] font-mono font-bold text-white tracking-wider">{fullscreenConfig.app.name}</span>
-            {fullscreenConfig.app.description && (
-              <span className="text-[11px] font-mono text-neutral-500 hidden sm:block">{fullscreenConfig.app.description}</span>
+            {fullscreenConfig.app.slots.LeftPanel && (
+              <button
+                onClick={() => setFsLeftOpen(v => !v)}
+                className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+                title={fsLeftOpen ? 'Hide left panel' : 'Show left panel'}
+              >
+                {fsLeftOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
+              </button>
             )}
-            <div className="flex-1" />
-            {/* Status */}
-            {(() => {
-              const h = allAppHooksRaw.find(h => h.appId === fullscreenAppId);
-              return h ? (
-                <span className={`text-[10px] font-mono uppercase tracking-wider text-${h.status.color}-500`}>
-                  {h.status.label}
-                </span>
-              ) : null;
-            })()}
+            <div className="h-4 w-px bg-neutral-700/40" />
+
+            {/* Center: app name + template */}
+            <div className="flex-1 flex items-center justify-center gap-2 min-w-0 overflow-hidden">
+              {fullscreenConfig.app.leftPanel?.icon && <span className="text-neutral-500 shrink-0">{fullscreenConfig.app.leftPanel.icon}</span>}
+              <span className="text-[12px] font-mono font-bold text-white tracking-wider shrink-0">{fullscreenConfig.app.name}</span>
+              {(() => {
+                const h = allAppHooksRaw.find(h => h.appId === fullscreenAppId);
+                return h ? (
+                  <span className={`text-[9px] font-mono uppercase tracking-wider text-${h.status.color}-500 truncate`}>
+                    {h.status.label}
+                  </span>
+                ) : null;
+              })()}
+            </div>
+
+            <div className="h-4 w-px bg-neutral-700/40" />
+            {/* Right: panel toggle + settings */}
+            <button
+              onClick={() => openSettings()}
+              className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+              title="Settings (⌘,)"
+            >
+              <Settings size={12} />
+            </button>
+            {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && (
+              <button
+                onClick={() => setFsRightOpen(v => !v)}
+                className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+                title={fsRightOpen ? 'Hide inspector' : 'Show inspector'}
+              >
+                {fsRightOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
+              </button>
+            )}
           </div>
-          {/* App content — full viewport */}
-          <div className="flex-1 overflow-hidden relative">
-            <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
-              <fullscreenConfig.app.slots.Content />
-            </AppSlotErrorBoundary>
+
+          {/* Body: left panel + content + right panel */}
+          <div className="flex-1 flex overflow-hidden min-h-0">
+            {/* Left panel */}
+            {fullscreenConfig.app.slots.LeftPanel && fsLeftOpen && (
+              <div className="w-[240px] shrink-0 border-r border-neutral-700/40 overflow-y-auto frame-scrollbar bg-neutral-950/80">
+                <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="LeftPanel">
+                  <fullscreenConfig.app.slots.LeftPanel />
+                </AppSlotErrorBoundary>
+              </div>
+            )}
+
+            {/* Main content */}
+            <div className="flex-1 overflow-hidden relative min-w-0">
+              <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
+                <fullscreenConfig.app.slots.Content />
+              </AppSlotErrorBoundary>
+            </div>
+
+            {/* Right panel: Inspector + tools */}
+            {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && fsRightOpen && (
+              <div className="w-[260px] shrink-0 border-l border-neutral-700/40 overflow-y-auto frame-scrollbar bg-neutral-950/80">
+                {fullscreenConfig.app.slots.Inspector && (
+                  <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Inspector">
+                    <fullscreenConfig.app.slots.Inspector />
+                  </AppSlotErrorBoundary>
+                )}
+                {fullscreenConfig.app.tools && fullscreenConfig.app.tools.length > 0 && (
+                  <ToolAccordion
+                    tools={fullscreenConfig.app.tools}
+                    expandedToolId={expandedToolId}
+                    onToggle={handleToggleTool}
+                  />
+                )}
+              </div>
+            )}
           </div>
-          {/* Status bar — persists in fullscreen */}
+
+          {/* Status bar */}
           <StatusBar
             status={(() => {
               const { catalog, records } = serviceRegistry;
@@ -1356,16 +1441,18 @@ function WorkspaceInner({
               </div>
             }
           />
-          {/* Terminal drawer — full width in fullscreen */}
+
+          {/* Terminal drawer */}
           <div
             className="pointer-events-none"
             style={{
               position: 'fixed',
-              left: 0,
-              right: 0,
+              left: fsLeftOpen && fullscreenConfig.app.slots.LeftPanel ? 240 : 0,
+              right: fsRightOpen && (fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) ? 260 : 0,
               bottom: 0,
               top: 0,
               zIndex: 45,
+              transition: 'left 200ms ease, right 200ms ease',
               transform: 'translateZ(0)',
             }}
           >

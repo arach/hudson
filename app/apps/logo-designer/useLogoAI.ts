@@ -1,0 +1,134 @@
+'use client';
+
+import { useCallback, useMemo } from 'react';
+import { useHudsonAI, usePlatform } from '@hudson/sdk';
+import type { LogoParams } from './LogoProvider';
+import type { LogoTemplate, TemplateParam } from './types';
+import { isBuiltinVariant } from './types';
+
+interface UseLogoAIOptions {
+  params: LogoParams;
+  setParam: <K extends keyof LogoParams>(key: K, value: LogoParams[K]) => void;
+  setVariant: (v: string) => void;
+  resetDefaults: () => void;
+  presets: { label: string; params: Partial<LogoParams> }[];
+  templates: LogoTemplate[];
+  addTemplate: (template: LogoTemplate) => void;
+  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => void;
+  deleteTemplate: (id: string) => void;
+  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
+  setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
+  refreshTemplates: () => void;
+}
+
+async function compileTemplate(source: string, endpoint: string): Promise<{ js: string } | { error: string }> {
+  try {
+    const res = await fetch(endpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ source }),
+    });
+    const data = await res.json();
+    if (!res.ok || data.error) return { error: data.error ?? `HTTP ${res.status}` };
+    return { js: data.js };
+  } catch (err) {
+    return { error: err instanceof Error ? err.message : String(err) };
+  }
+}
+
+export function useLogoAI(opts: UseLogoAIOptions) {
+  const {
+    params, setParam, setVariant, resetDefaults, presets,
+    templates, addTemplate, updateTemplate, deleteTemplate,
+    customParamValues, setCustomParam, refreshTemplates,
+  } = opts;
+  const { apiBaseUrl } = usePlatform();
+  const compileEndpoint = `${apiBaseUrl}/api/logo/compile`;
+
+  const context = useMemo(() => ({
+    params, presets, templates, customParamValues,
+  }), [params, presets, templates, customParamValues]);
+
+  const chat = useHudsonAI({
+    toolset: 'logo',
+    context,
+    onToolCall: async (name, args) => {
+      switch (name) {
+        case 'set_param':
+          setParam(args.key as keyof LogoParams, args.value as never);
+          break;
+        case 'set_variant':
+          setVariant(args.variant as string);
+          break;
+        case 'apply_preset': {
+          const p = presets.find(
+            pr => pr.label.toLowerCase() === (args.preset_label as string).toLowerCase(),
+          );
+          if (p) Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof LogoParams, v as never));
+          break;
+        }
+        case 'reset_defaults':
+          resetDefaults();
+          break;
+        case 'create_template': {
+          const source = args.renderBody as string;
+          const customParams = (args.params as TemplateParam[]) ?? [];
+          const result = await compileTemplate(source, compileEndpoint);
+          const id = crypto.randomUUID().slice(0, 8);
+          const template: LogoTemplate = {
+            id,
+            name: args.name as string,
+            description: (args.description as string) ?? '',
+            renderBody: 'js' in result ? result.js : source,
+            sourceCode: source,
+            params: customParams,
+            createdAt: Date.now(),
+            updatedAt: Date.now(),
+          };
+          addTemplate(template);
+          setVariant(id);
+          // Trigger immediate refresh to sync with server
+          setTimeout(refreshTemplates, 500);
+          break;
+        }
+        case 'update_template': {
+          const templateId = args.templateId as string;
+          const updates: Partial<Omit<LogoTemplate, 'id'>> = {};
+          if (args.name) updates.name = args.name as string;
+          if (args.description) updates.description = args.description as string;
+          if (args.renderBody) {
+            const source = args.renderBody as string;
+            updates.sourceCode = source;
+            const result = await compileTemplate(source, compileEndpoint);
+            updates.renderBody = 'js' in result ? result.js : source;
+          }
+          if (args.params) updates.params = args.params as TemplateParam[];
+          updateTemplate(templateId, updates);
+          setTimeout(refreshTemplates, 500);
+          break;
+        }
+        case 'delete_template': {
+          const id = args.templateId as string;
+          if (isBuiltinVariant(id)) break;
+          if (params.variant === id) setVariant('negative-space');
+          deleteTemplate(id);
+          break;
+        }
+        case 'set_custom_param': {
+          setCustomParam(params.variant, args.key as string, args.value as number | string);
+          break;
+        }
+      }
+    },
+  });
+
+  const sendAiMessage = useCallback((message: string) => {
+    chat.sendMessage({ text: message });
+  }, [chat]);
+
+  return {
+    sendAiMessage,
+    aiStatus: chat.status,
+    aiMessages: chat.messages,
+  };
+}

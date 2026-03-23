@@ -158,7 +158,9 @@ function templateGuideShort(): string {
   return `# Templates
 Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. Edit the file, the app picks up changes.
 
-Param types: number (slider), color, toggle (boolean), enum (dropdown), text (freeform), repeatable (array of items with nested fields).`;
+Param types: number (slider), color, toggle (boolean), enum (dropdown), text (freeform), repeatable (array of items with nested fields).
+
+Optional \`group\` field on any param groups it into a collapsible section in the inspector. Params with the same group string render together under that heading.`;
 }
 
 function templateGuideFull(): string {
@@ -177,9 +179,9 @@ const meta = {
   name: "My Template",
   description: "What it looks like",
   params: {
-    myParam: { type: "number", label: "My Param", default: 5, min: 1, max: 20 },
-    label: { type: "text", label: "Label", default: "", placeholder: "Enter text..." },
-    showBorder: { type: "toggle", label: "Show Border", default: true },
+    myParam: { type: "number", label: "My Param", default: 5, min: 1, max: 20, group: "Geometry" },
+    label: { type: "text", label: "Label", default: "", placeholder: "Enter text...", group: "Typography" },
+    showBorder: { type: "toggle", label: "Show Border", default: true, group: "Geometry" },
     dots: {
       type: "repeatable", label: "Dots",
       default: [{ x: 100, y: 100, r: 20 }],
@@ -204,6 +206,8 @@ return \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgC
 - \`enum\` — dropdown with options array
 - \`text\` — freeform text input (with optional placeholder)
 - \`repeatable\` — array of items, each with nested fields (itemTemplate for defaults, itemFields for sub-controls)
+
+**Grouping:** Add \`group: "Section Name"\` to any param to organize it into a collapsible section in the inspector. Params sharing the same group string are grouped together. Ungrouped params render flat.
 
 **Coordinate space:** 512×512. Center = (256, 256).
 
@@ -243,7 +247,14 @@ function paramReference(): string {
 | gapWidth | number | 2–40 px | Gap between panes |
 | splitX | number | 0.1–0.9 | Vertical arm position |
 | splitY | number | 0.1–0.9 | Horizontal arm position |
-| padding | number | 20–120 px | Inner padding |`;
+| padding | number | 20–120 px | Inner padding |
+| lightEnabled | boolean | — | Enable light mode variant |
+| lightColors | object | — | { bgColor, paneColor, dimPaneColor, channelColor } for light mode |
+| wordmark | object | — | { text, fontFamily, fontWeight, fontSize, letterSpacing, color, lightColor, layout, gap } |
+
+**Light mode:** When \`lightEnabled\` is true, the app renders both dark and light variants side-by-side. The light variant swaps the 4 color fields from \`lightColors\` into the template. Templates are unaware of modes — they just see different colors in \`p\`.
+
+**Wordmark:** Set \`wordmark.layout\` to \`"horizontal"\` or \`"stacked"\` and \`wordmark.text\` to a brand name. Available fonts: Inter, AstroMono, Geist Mono, JetBrains Mono, Noto Serif Display.`;
 }
 
 // ---------------------------------------------------------------------------
