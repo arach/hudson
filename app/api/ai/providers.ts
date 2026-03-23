@@ -1,7 +1,7 @@
 /**
- * Hudson AI provider — re-exports from @arach/infer.
+ * Hudson AI provider — re-exports from @arach/ai.
  *
- * The canonical inference module lives in @arach/infer.
+ * The canonical inference module lives in @arach/ai.
  * This file provides the Hudson-specific interface.
  */
 
@@ -13,6 +13,6 @@ export {
   DEFAULT_MODELS,
   infer,
   inferJSON,
-} from '@arach/infer';
+} from '@arach/ai';
 
-export type { ProviderName, InferOptions, InferResult } from '@arach/infer';
+export type { ProviderName, InferOptions, InferResult } from '@arach/ai';
