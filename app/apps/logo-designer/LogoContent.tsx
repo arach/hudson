@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useState } from 'react';
-import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X } from 'lucide-react';
+import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
 import type { WordmarkConfig } from './types';
@@ -199,6 +199,7 @@ export function LogoContent() {
 
   // --- AI action system ---
   const [aiMenuOpen, setAiMenuOpen] = useState(false);
+  const [editOpen, setEditOpen] = useState(false);
   const [editInput, setEditInput] = useState('');
   const editInputRef = useRef<HTMLInputElement>(null);
 
@@ -215,25 +216,45 @@ export function LogoContent() {
     return { svgMarkup, tmplName: tmpl?.name ?? params.variant, paramSummary };
   }, [params, templates]);
 
-  const handleAiAction = useCallback((action: 'vary' | 'refine' | 'edit', editText?: string) => {
+  type AiAction = 'polish' | 'explore' | 'simplify' | 'elevate' | 'remix' | 'edit';
+  const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string) => string }[] = [
+    {
+      id: 'polish', icon: Wand2, label: 'Polish', desc: 'Subtle refinements', color: 'text-emerald-400',
+      prompt: (ctx, name) => `Polish this logo with subtle improvements. Adjust colors for better harmony, refine proportions, improve spacing and balance. Keep the same concept — just make it cleaner and more intentional. Apply changes directly.\n\n${ctx}`,
+    },
+    {
+      id: 'explore', icon: Shuffle, label: 'Explore', desc: 'Create 3 variations', color: 'text-cyan-400',
+      prompt: (ctx, name) => `Create 3 distinct variations of this logo by modifying the template's renderBody. Explore different visual approaches — different geometries, compositions, or effects. Save each as "${name}-v1", "${name}-v2", "${name}-v3". Keep the color palette.\n\n${ctx}`,
+    },
+    {
+      id: 'simplify', icon: Minimize2, label: 'Simplify', desc: 'Remove complexity', color: 'text-amber-400',
+      prompt: (ctx) => `Simplify this logo. Remove decorative elements, reduce the number of shapes, increase negative space. The mark should read clearly at 16px. Less is more — find the essential geometry and remove everything else. Apply changes directly.\n\n${ctx}`,
+    },
+    {
+      id: 'elevate', icon: Maximize2, label: 'Elevate', desc: 'Add sophistication', color: 'text-violet-400',
+      prompt: (ctx) => `Elevate this logo to feel more premium and sophisticated. Add subtle depth through layered opacity, refine the geometry for better mathematical harmony, improve the color palette for more richness. Think Pentagram or Wolff Olins level. Apply changes directly.\n\n${ctx}`,
+    },
+    {
+      id: 'remix', icon: Zap, label: 'Remix', desc: 'Fresh take, same spirit', color: 'text-rose-400',
+      prompt: (ctx, name) => `Remix this logo — keep the core concept and color palette but reimagine the visual execution. Try a completely different geometric approach. Create a fresh take that feels related but distinctly new. Save as "${name}-remix". \n\n${ctx}`,
+    },
+  ];
+
+  const handleAiAction = useCallback((action: AiAction, editText?: string) => {
     const { svgMarkup, tmplName, paramSummary } = buildContext();
     const ctx = `Template: "${tmplName}"\nParams: ${paramSummary}\nCurrent SVG:\n\`\`\`svg\n${svgMarkup}\n\`\`\``;
 
     let prompt: string;
-    switch (action) {
-      case 'vary':
-        prompt = `Create 3 distinct variations of this logo by modifying the template's renderBody. Keep the same variant but explore different visual approaches — try different shapes, layouts, or effects. Save each as a variation (e.g. "${tmplName}-v1", "${tmplName}-v2", "${tmplName}-v3"). Keep the same color scheme.\n\n${ctx}`;
-        break;
-      case 'refine':
-        prompt = `Refine this logo to be more polished and professional. Make subtle improvements to colors, proportions, spacing, and visual balance. Don't change the variant or overall concept — just polish it. Apply changes directly.\n\n${ctx}`;
-        break;
-      case 'edit':
-        prompt = `${editText}\n\n${ctx}`;
-        break;
+    if (action === 'edit') {
+      prompt = `${editText}\n\n${ctx}`;
+    } else {
+      const actionDef = AI_ACTIONS.find(a => a.id === action)!;
+      prompt = actionDef.prompt(ctx, tmplName);
     }
 
     sendAiMessage(prompt);
     setAiMenuOpen(false);
+    setEditOpen(false);
     setEditInput('');
   }, [buildContext, sendAiMessage]);
 
@@ -336,53 +357,38 @@ export function LogoContent() {
               {aiStatus === 'streaming' ? 'Working...' : aiError ? 'Error' : 'AI'}
             </button>
             {aiMenuOpen && (
-              <div className="absolute top-full mt-1.5 right-0 w-[260px] rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur-xl shadow-xl overflow-hidden z-50">
-                {/* Vary */}
-                <button
-                  onClick={() => handleAiAction('vary')}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/5 transition-colors"
-                >
-                  <Shuffle size={13} className="text-cyan-400 shrink-0" />
-                  <div>
-                    <div className="text-[11px] text-white/80 font-medium">Vary</div>
-                    <div className="text-[9px] text-white/30">Create 3 variations of this design</div>
-                  </div>
-                </button>
-                {/* Refine */}
-                <button
-                  onClick={() => handleAiAction('refine')}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/5 transition-colors border-t border-white/[0.04]"
-                >
-                  <Wand2 size={13} className="text-emerald-400 shrink-0" />
-                  <div>
-                    <div className="text-[11px] text-white/80 font-medium">Refine</div>
-                    <div className="text-[9px] text-white/30">Polish colors, proportions, and balance</div>
-                  </div>
-                </button>
-                {/* Edit */}
-                <div className="border-t border-white/[0.04] px-3 py-2.5">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <Pencil size={13} className="text-amber-400 shrink-0" />
-                    <div className="text-[11px] text-white/80 font-medium">Edit</div>
-                  </div>
-                  <form onSubmit={e => { e.preventDefault(); if (editInput.trim()) handleAiAction('edit', editInput.trim()); }}>
-                    <input
-                      ref={editInputRef}
-                      type="text"
-                      value={editInput}
-                      onChange={e => setEditInput(e.target.value)}
-                      placeholder="Make the gaps wider and warmer..."
-                      className="w-full px-2.5 py-1.5 rounded bg-white/5 border border-white/10 text-[11px] text-white/80 placeholder:text-white/20 outline-none focus:border-emerald-500/40 transition-colors"
-                      autoFocus
-                    />
-                  </form>
+              <div className="absolute top-full mt-2 right-0 w-[220px] rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+                <div className="px-3 pt-2.5 pb-1.5">
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-white/20">Actions</div>
                 </div>
-                {/* Close */}
+                {AI_ACTIONS.map((action) => {
+                  const Icon = action.icon;
+                  return (
+                    <button
+                      key={action.id}
+                      onClick={() => handleAiAction(action.id)}
+                      disabled={aiStatus === 'streaming'}
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                    >
+                      <Icon size={14} className={`${action.color} shrink-0`} />
+                      <div className="min-w-0">
+                        <div className="text-[11px] text-white/80">{action.label}</div>
+                        <div className="text-[9px] text-white/25">{action.desc}</div>
+                      </div>
+                    </button>
+                  );
+                })}
+                <div className="border-t border-white/[0.05] mt-1" />
                 <button
-                  onClick={() => setAiMenuOpen(false)}
-                  className="w-full flex items-center justify-center py-1.5 text-white/20 hover:text-white/40 transition-colors border-t border-white/[0.04]"
+                  onClick={() => { setAiMenuOpen(false); setEditOpen(true); }}
+                  disabled={aiStatus === 'streaming'}
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors disabled:opacity-30"
                 >
-                  <X size={10} />
+                  <Pencil size={14} className="text-white/40 shrink-0" />
+                  <div className="min-w-0">
+                    <div className="text-[11px] text-white/80">Edit</div>
+                    <div className="text-[9px] text-white/25">Describe what to change</div>
+                  </div>
                 </button>
               </div>
             )}
@@ -398,6 +404,46 @@ export function LogoContent() {
             <RotateCcw size={11} />
           </button>
         </div>
+
+        {/* Edit modal */}
+        {editOpen && (
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+            onClick={e => { if (e.target === e.currentTarget) setEditOpen(false); }}>
+            <div className="w-[440px] rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-2xl shadow-2xl p-5">
+              <div className="flex items-center justify-between mb-4">
+                <div className="flex items-center gap-2">
+                  <Pencil size={14} className="text-white/40" />
+                  <span className="text-[13px] text-white/80 font-medium">Edit with AI</span>
+                </div>
+                <button onClick={() => setEditOpen(false)} className="p-1 text-white/20 hover:text-white/50 transition-colors">
+                  <X size={14} />
+                </button>
+              </div>
+              <form onSubmit={e => { e.preventDefault(); if (editInput.trim()) handleAiAction('edit', editInput.trim()); }}>
+                <input
+                  ref={editInputRef}
+                  type="text"
+                  value={editInput}
+                  onChange={e => setEditInput(e.target.value)}
+                  placeholder="Make the gaps wider, soften the corners, try a warmer palette..."
+                  autoFocus
+                  className="w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-white/10 text-[13px] text-white/90 placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-colors"
+                />
+                <div className="flex items-center justify-between mt-3">
+                  <span className="text-[9px] text-white/15 font-mono">Enter to send</span>
+                  <button
+                    type="submit"
+                    disabled={!editInput.trim()}
+                    className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-emerald-500/15 text-emerald-400 text-[11px] font-medium hover:bg-emerald-500/25 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+                  >
+                    <Send size={11} />
+                    Send
+                  </button>
+                </div>
+              </form>
+            </div>
+          </div>
+        )}
 
         {/* Zoom indicator */}
         <div className="absolute bottom-2 right-2 z-10 text-[10px] font-mono text-white/20">
