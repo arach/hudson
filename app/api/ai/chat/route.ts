@@ -1,4 +1,4 @@
-import { streamText, createUIMessageStreamResponse } from 'ai';
+import { streamText, createUIMessageStreamResponse, convertToModelMessages } from 'ai';
 import { loadToolset } from '../toolsets';
 import { resolveModel } from '../providers';
 import { streamFromCLI } from './cli';
@@ -13,10 +13,13 @@ export async function POST(req: Request) {
 
   const { tools, system } = loadToolset(toolset, context);
 
+  // Convert UI messages (from useChat) to model messages (for streamText)
+  const modelMessages = await convertToModelMessages(messages);
+
   const result = streamText({
     model: resolveModel(provider, model),
     system,
-    messages,
+    messages: modelMessages,
     tools: tools as Parameters<typeof streamText>[0]['tools'],
   });
 
