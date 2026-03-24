@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, useRef } from 'react';
+import { useCallback, useMemo, useState, useEffect } from 'react';
 import { useHudsonAI, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoParams } from './LogoProvider';
@@ -152,11 +152,9 @@ export function useLogoAI(opts: UseLogoAIOptions) {
 
   // Surface errors in the activity log
   const chatError = chat?.error;
-  const lastLoggedError = useRef<string | null>(null);
-  if (chatError && String(chatError) !== lastLoggedError.current) {
-    lastLoggedError.current = String(chatError);
-    logActivity('error', String(chatError).slice(0, 80));
-  }
+  useEffect(() => {
+    if (chatError) logActivity('error', String(chatError).slice(0, 80));
+  }, [chatError, logActivity]);
 
   return {
     sendAiMessage,
