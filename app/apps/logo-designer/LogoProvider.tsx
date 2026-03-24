@@ -112,7 +112,7 @@ interface LogoState {
   /** Background AI status */
   aiStatus: string;
   /** Recent AI tool call activity log */
-  aiActivity: { tool: string; summary: string; timestamp: number }[];
+  aiActivity: { id: number; tool: string; summary: string; timestamp: number }[];
   /** Last AI error */
   aiError: string | null;
   /** Streaming AI messages */

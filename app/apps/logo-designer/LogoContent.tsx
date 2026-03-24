@@ -429,7 +429,7 @@ export function LogoContent() {
                 const fading = age > 8000;
                 return (
                   <div
-                    key={`${entry.timestamp}-${i}`}
+                    key={entry.id}
                     className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
                       fading && i < 2 ? 'opacity-20' : 'opacity-70'
                     }`}

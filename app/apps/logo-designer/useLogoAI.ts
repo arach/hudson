@@ -38,7 +38,10 @@ async function compileTemplate(source: string, endpoint: string): Promise<{ js: 
   }
 }
 
+let _activityId = 0;
+
 export interface AiActivityEntry {
+  id: number;
   tool: string;
   summary: string;
   timestamp: number;
@@ -56,7 +59,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   // Activity log — tracks what the AI is doing
   const [activity, setActivity] = useState<AiActivityEntry[]>([]);
   const logActivity = useCallback((tool: string, summary: string) => {
-    setActivity(prev => [...prev.slice(-9), { tool, summary, timestamp: Date.now() }]);
+    setActivity(prev => [...prev.slice(-9), { id: ++_activityId, tool, summary, timestamp: Date.now() }]);
   }, []);
 
   const context = useMemo(() => ({
