@@ -300,8 +300,9 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   }, []);
 
   useEffect(() => {
-    // Auto-reconnect if we have a persisted session from a previous page load
-    if (sessionIdRef.current || autoConnect) {
+    // Only auto-connect if explicitly requested — don't auto-reconnect
+    // just because a stale session ID exists in localStorage
+    if (autoConnect) {
       connect();
     }
     return () => {
