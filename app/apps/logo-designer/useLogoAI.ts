@@ -75,7 +75,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
       switch (name) {
         case 'set_param':
           setParam(args.key as keyof LogoParams, args.value as never);
-          logActivity('set_param', `${args.key} → ${JSON.stringify(args.value).slice(0, 30)}`);
+          logActivity('set_param', `${args.key} → ${JSON.stringify(args.value ?? null).slice(0, 30)}`);
           break;
         case 'set_variant':
           setVariant(args.variant as string);
@@ -141,7 +141,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
         }
         case 'set_custom_param': {
           setCustomParam(params.variant, args.key as string, args.value as number | string);
-          logActivity('set_custom_param', `${args.key} → ${JSON.stringify(args.value).slice(0, 30)}`);
+          logActivity('set_custom_param', `${args.key} → ${JSON.stringify(args.value ?? null).slice(0, 30)}`);
           break;
         }
       }
