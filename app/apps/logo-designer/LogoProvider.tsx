@@ -290,7 +290,14 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
 export function LogoProvider({ children }: { children: ReactNode }) {
   const [appSettings] = useAppSettings('logo-designer', logoSettings);
   const { apiBaseUrl } = usePlatform();
-  const [params, setParams] = usePersistentState<LogoParams>('logo.params', defaults);
+  // Merge persisted params with defaults so new fields are backfilled
+  const [rawParams, setParams] = usePersistentState<LogoParams>('logo.params', defaults);
+  const params = useMemo<LogoParams>(() => ({
+    ...defaults,
+    ...rawParams,
+    lightColors: { ...defaults.lightColors, ...rawParams.lightColors },
+    wordmark: { ...defaults.wordmark, ...rawParams.wordmark },
+  }), [rawParams]);
   const [backgroundSvg, setBackgroundSvg] = useState<string | null>(null);
   const [showPreviews, setShowPreviews] = useState(false);
   const togglePreviews = useCallback(() => setShowPreviews(v => !v), []);

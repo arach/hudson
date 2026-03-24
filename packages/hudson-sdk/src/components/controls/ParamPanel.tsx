@@ -112,7 +112,7 @@ export interface ParamColorProps {
 }
 
 export function ParamColor({ label, value, onChange }: ParamColorProps) {
-  const isRgba = value.startsWith('rgba');
+  const isRgba = typeof value === 'string' && value.startsWith('rgba');
   return (
     <label className="flex items-center justify-between gap-2">
       <span className="text-[11px] text-white/50">{label}</span>
