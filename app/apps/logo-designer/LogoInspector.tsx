@@ -337,27 +337,29 @@ export function LogoInspector() {
       )}
 
       {/* ── Generic: Proportions ── */}
-      <ParamSection label="Proportions" defaultExpanded={false}>
-        <ParamSlider label="Gap width" value={params.gapWidth} min={4} max={32} step={1}
+      <ParamSection label="Layout" defaultExpanded={false}>
+        <ParamSlider label="Gap between panes" value={params.gapWidth} min={4} max={32} step={1}
           onChange={v => setParam('gapWidth', v)} />
-        <ParamSlider label="Split X (vertical arm)" value={params.splitX} min={0.2} max={0.5} step={0.01}
+        <ParamSlider label="Horizontal split" value={params.splitX} min={0.2} max={0.5} step={0.01}
+          format={v => `${Math.round(v * 100)}%`}
           onChange={v => setParam('splitX', v)} />
-        <ParamSlider label="Split Y (horizontal arm)" value={params.splitY} min={0.4} max={0.8} step={0.01}
+        <ParamSlider label="Vertical split" value={params.splitY} min={0.4} max={0.8} step={0.01}
+          format={v => `${Math.round(v * 100)}%`}
           onChange={v => setParam('splitY', v)} />
-        <ParamSlider label="Padding" value={params.padding} min={40} max={120} step={2}
+        <ParamSlider label="Inner padding" value={params.padding} min={40} max={120} step={2}
           onChange={v => setParam('padding', v)} />
-        <ParamSlider label="Border radius (outer)" value={params.borderRadius} min={0} max={128} step={2}
+        <ParamSlider label="Corner radius" value={params.borderRadius} min={0} max={128} step={2}
           onChange={v => setParam('borderRadius', v)} />
-        <ParamSlider label="Pane radius" value={params.paneRadius} min={0} max={32} step={1}
+        <ParamSlider label="Inner corner radius" value={params.paneRadius} min={0} max={32} step={1}
           onChange={v => setParam('paneRadius', v)} />
       </ParamSection>
 
       {/* ── Generic: Colors (dark mode) ── */}
       <ParamSection label="Colors" defaultExpanded={false}>
         <ParamColor label="Background" value={params.bgColor} onChange={v => setParam('bgColor', v)} />
-        <ParamColor label="Pane fill" value={params.paneColor} onChange={v => setParam('paneColor', v)} />
-        <ParamColor label="Dim pane" value={params.dimPaneColor} onChange={v => setParam('dimPaneColor', v)} />
-        <ParamColor label="Channel" value={params.channelColor} onChange={v => setParam('channelColor', v)} />
+        <ParamColor label="Primary fill" value={params.paneColor} onChange={v => setParam('paneColor', v)} />
+        <ParamColor label="Secondary fill" value={params.dimPaneColor} onChange={v => setParam('dimPaneColor', v)} />
+        <ParamColor label="Accent" value={params.channelColor} onChange={v => setParam('channelColor', v)} />
         <ParamColor label="Stroke" value={params.strokeColor} onChange={v => setParam('strokeColor', v)} />
       </ParamSection>
 

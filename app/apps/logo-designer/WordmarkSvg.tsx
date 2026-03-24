@@ -52,9 +52,10 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
   const textFontSize = VB * wm.fontSize;
 
   if (wm.layout === 'horizontal') {
-    // Estimate text width: character count * fontSize * ~0.6
-    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.62 : 0.55;
-    const textWidth = Math.max(wm.text.length * textFontSize * charWidth, VB * 0.5);
+    // Generous text width estimate — accounts for letter-spacing and wide characters
+    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.65 : 0.58;
+    const spacingExtra = wm.text.length * textFontSize * wm.letterSpacing;
+    const textWidth = Math.max(wm.text.length * textFontSize * charWidth + spacingExtra + textFontSize * 0.5, VB * 0.5);
     const totalW = VB + wm.gap + textWidth;
     const scale = size / VB; // scale based on icon height
     const svgW = totalW * scale / (totalW / VB);
@@ -92,9 +93,9 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
     const totalH = VB + wm.gap + textHeight;
     const scale = size / VB;
     const svgH = totalH * scale / (totalH / VB);
-    // Estimate text width for viewBox
-    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.62 : 0.55;
-    const textWidth = wm.text.length * textFontSize * charWidth;
+    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.65 : 0.58;
+    const spacingExtra = wm.text.length * textFontSize * wm.letterSpacing;
+    const textWidth = wm.text.length * textFontSize * charWidth + spacingExtra + textFontSize * 0.5;
     const totalW = Math.max(VB, textWidth + 40);
 
     return (
