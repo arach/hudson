@@ -147,7 +147,11 @@ export function useLogoAI(opts: UseLogoAIOptions) {
 
   const sendAiMessage = useCallback((message: string) => {
     logActivity('send', 'Sending to AI...');
-    chat.sendMessage({ text: message });
+    try {
+      chat.sendMessage({ text: message });
+    } catch (err) {
+      logActivity('error', err instanceof Error ? err.message : String(err));
+    }
   }, [chat, logActivity]);
 
   // Surface errors in the activity log
