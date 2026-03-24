@@ -133,9 +133,15 @@ export async function GET() {
 // ---------------------------------------------------------------------------
 // POST — create, update, or delete a template
 // ---------------------------------------------------------------------------
+function log(msg: string) {
+  const ts = new Date().toISOString().slice(11, 23);
+  console.log(`[${ts}] logo/template: ${msg}`);
+}
+
 export async function POST(request: Request) {
   try {
     const body = await request.json();
+    log(`POST: id=${body.id ?? 'none'} name=${body.name ?? 'none'} action=${body.action ?? 'save'} renderBody=${body.renderBody ? `${body.renderBody.length} chars` : 'none'}`);
     const { id, name, description, renderBody, params, action } = body as {
       id?: string;
       name?: string;

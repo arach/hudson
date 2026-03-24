@@ -1,13 +1,21 @@
 import { NextResponse } from 'next/server';
 import { transform } from 'esbuild';
 
+function log(msg: string) {
+  const ts = new Date().toISOString().slice(11, 23);
+  console.log(`[${ts}] logo/compile: ${msg}`);
+}
+
 export async function POST(request: Request) {
   try {
     const { source } = (await request.json()) as { source: string };
 
     if (typeof source !== 'string' || !source.trim()) {
+      log('ERROR: empty source');
       return NextResponse.json({ error: 'source is required' }, { status: 400 });
     }
+
+    log(`compiling ${source.length} chars`);
 
     // Compile TypeScript → JavaScript (strip types only)
     const result = await transform(source, {
@@ -35,23 +43,29 @@ export async function POST(request: Request) {
       };
       const output = fn(testParams, 512);
       if (typeof output !== 'string') {
+        log(`ERROR: renderBody returned ${typeof output} instead of string`);
         return NextResponse.json(
           { error: `renderBody must return a string, got ${typeof output}` },
           { status: 422 },
         );
       }
+      log(`OK: compiled ${js.length} chars, renders ${output.length} char SVG`);
     } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      log(`ERROR runtime: ${msg}`);
+      log(`source preview: ${source.slice(0, 200)}`);
       return NextResponse.json(
-        { error: `Runtime validation failed: ${err instanceof Error ? err.message : String(err)}` },
+        { error: `Runtime validation failed: ${msg}` },
         { status: 422 },
       );
     }
 
     return NextResponse.json({ js });
   } catch (err) {
-    // esbuild compilation error
+    const msg = err instanceof Error ? err.message : String(err);
+    log(`ERROR compile: ${msg}`);
     return NextResponse.json(
-      { error: `Compilation failed: ${err instanceof Error ? err.message : String(err)}` },
+      { error: `Compilation failed: ${msg}` },
       { status: 422 },
     );
   }
