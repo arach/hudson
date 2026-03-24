@@ -52,18 +52,25 @@ export interface WordmarkConfig {
 export const GOOGLE_FONTS = [
   // Local fonts (already loaded)
   'Inter', 'AstroMono', 'Geist Mono', 'JetBrains Mono', 'Noto Serif Display',
-  // Sans-serif
-  'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway',
-  'Nunito', 'Work Sans', 'DM Sans', 'Space Grotesk', 'Plus Jakarta Sans',
-  'Sora', 'Outfit', 'Figtree', 'Urbanist', 'Manrope',
-  // Serif
+  // Premium sans-serif
+  'DM Sans', 'Plus Jakarta Sans', 'Space Grotesk', 'Outfit', 'Sora',
+  'Figtree', 'Urbanist', 'Manrope', 'Work Sans', 'General Sans',
+  'Instrument Sans', 'Satoshi', 'Switzer', 'Cabinet Grotesk',
+  // Classic sans-serif
+  'Roboto', 'Open Sans', 'Lato', 'Montserrat', 'Poppins', 'Raleway', 'Nunito',
+  // Premium serif
+  'Fraunces', 'Instrument Serif', 'Newsreader', 'Literata', 'Brygada 1918',
+  'Gloock', 'Bodoni Moda', 'Young Serif',
+  // Classic serif
   'Playfair Display', 'Merriweather', 'Lora', 'Libre Baskerville',
   'Cormorant Garamond', 'EB Garamond', 'Crimson Text', 'Source Serif 4',
-  // Display
+  // Display / brand
   'Bebas Neue', 'Oswald', 'Anton', 'Abril Fatface', 'Righteous',
   'Archivo Black', 'Permanent Marker', 'Dela Gothic One',
+  'Unbounded', 'Bricolage Grotesque', 'Familjen Grotesk', 'Darker Grotesque',
   // Mono
   'Fira Code', 'Source Code Pro', 'IBM Plex Mono', 'Space Mono', 'Inconsolata',
+  'Commit Mono', 'Monaspace Neon',
 ] as const;
 
 /** Local fonts that don't need Google Fonts loading */
