@@ -54,7 +54,7 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
 
   // Read platform-level AI mode preference; per-call `mode` overrides it
   const [settings] = usePersistentState<{ aiMode?: AIMode }>('hudson.settings', {});
-  const resolvedMode = mode ?? settings.aiMode ?? 'cli';
+  const resolvedMode = mode ?? settings.aiMode ?? 'api';
 
   // Refs for values that change frequently but should NOT cause transport recreation.
   // The body function reads from refs at send time — always fresh, no re-init.
