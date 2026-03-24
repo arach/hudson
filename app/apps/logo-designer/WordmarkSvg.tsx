@@ -60,13 +60,22 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
     const scale = size / VB; // scale based on icon height
     const svgW = totalW * scale / (totalW / VB);
 
+    const pad = textFontSize * 0.3; // breathing room around edges
+    const fullW = totalW + pad;
+    const fullH = VB + pad * 2;
+    const svgWFull = fullW * (size / VB);
+
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox={`0 0 ${totalW} ${VB}`}
-        width={svgW}
-        height={size}
+        viewBox={`${-pad} ${-pad} ${fullW} ${fullH}`}
+        width={svgWFull}
+        height={size * (fullH / VB)}
       >
+        {/* Full composition background */}
+        <rect x={-pad} y={-pad} width={fullW} height={fullH}
+          rx={resolvedParams.borderRadius * 0.4}
+          fill={resolvedParams.bgColor} />
         {/* Icon */}
         <svg x="0" y="0" width={VB} height={VB} viewBox={`0 0 ${VB} ${VB}`}
           dangerouslySetInnerHTML={{ __html: iconInner }}
@@ -91,20 +100,25 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
   if (wm.layout === 'stacked') {
     const textHeight = textFontSize * 1.2;
     const totalH = VB + wm.gap + textHeight;
-    const scale = size / VB;
-    const svgH = totalH * scale / (totalH / VB);
     const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.65 : 0.58;
     const spacingExtra = wm.text.length * textFontSize * wm.letterSpacing;
     const textWidth = wm.text.length * textFontSize * charWidth + spacingExtra + textFontSize * 0.5;
     const totalW = Math.max(VB, textWidth + 40);
+    const pad = textFontSize * 0.3;
+    const fullW = totalW + pad * 2;
+    const fullH = totalH + pad * 2;
 
     return (
       <svg
         xmlns="http://www.w3.org/2000/svg"
-        viewBox={`0 0 ${totalW} ${totalH}`}
-        width={size * (totalW / totalH)}
-        height={svgH}
+        viewBox={`${-pad} ${-pad} ${fullW} ${fullH}`}
+        width={size * (fullW / fullH)}
+        height={size * (fullH / VB)}
       >
+        {/* Full composition background */}
+        <rect x={-pad} y={-pad} width={fullW} height={fullH}
+          rx={resolvedParams.borderRadius * 0.4}
+          fill={resolvedParams.bgColor} />
         {/* Icon centered */}
         <svg x={(totalW - VB) / 2} y="0" width={VB} height={VB} viewBox={`0 0 ${VB} ${VB}`}
           dangerouslySetInnerHTML={{ __html: iconInner }}
