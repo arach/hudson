@@ -236,27 +236,13 @@ export function LogoTerminal() {
 
   return (
     <div className="flex flex-col h-full">
-      {/* Mode toggle */}
+      {/* Header — right-aligned controls */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-700/50 bg-neutral-900/50">
+        <div className="flex-1" />
+        {/* Chat toggle */}
         <button
           type="button"
-          onClick={() => {
-            setMode('relay');
-            if (relay.status === 'disconnected' || relay.status === 'error') {
-              relay.connect();
-            }
-          }}
-          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-            mode === 'relay'
-              ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-              : 'text-neutral-500 border-neutral-700 hover:text-neutral-300 hover:border-neutral-600'
-          }`}
-        >
-          Relay
-        </button>
-        <button
-          type="button"
-          onClick={() => setMode('chat')}
+          onClick={() => setMode(m => m === 'chat' ? 'relay' : 'chat')}
           className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
             mode === 'chat'
               ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
@@ -265,14 +251,11 @@ export function LogoTerminal() {
         >
           Chat
         </button>
-        {mode === 'relay' && relay.status === 'connected' && relay.sessionId && (
-          <span className="text-[10px] text-neutral-600 ml-auto font-mono">{relay.sessionId}</span>
-        )}
         {mode === 'relay' && relay.status !== 'connected' && (
           <button
             type="button"
             onClick={() => relay.connect()}
-            className="text-[10px] px-2 py-0.5 rounded-full border text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 transition-colors ml-auto"
+            className="text-[10px] px-2 py-0.5 rounded-full border text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 transition-colors"
           >
             Connect
           </button>

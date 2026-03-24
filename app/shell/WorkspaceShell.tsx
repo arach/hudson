@@ -638,16 +638,20 @@ function WorkspaceInner({
   // --- Terminal tab state (Hudson global + per-app) ---
   const HUDSON_TERMINAL_ID = '__hudson__';
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
-  const [activeTerminalAppId, setActiveTerminalAppId] = useState(HUDSON_TERMINAL_ID);
+  // Default to the focused app's terminal if it has one
+  const focusedHasTerminal = appsWithTerminal.some(c => c.app.id === focusedAppId);
+  const [activeTerminalAppId, setActiveTerminalAppId] = useState(
+    focusedHasTerminal ? focusedAppId : HUDSON_TERMINAL_ID,
+  );
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? null;
 
-  // Auto-switch terminal tab when the focused app changes — but only if user is on an app tab
+  // Follow focused app — switch terminal tab when focus changes to an app with a terminal
   useEffect(() => {
-    if (activeTerminalAppId !== HUDSON_TERMINAL_ID && appsWithTerminal.some(c => c.app.id === focusedAppId)) {
+    if (appsWithTerminal.some(c => c.app.id === focusedAppId)) {
       setActiveTerminalAppId(focusedAppId);
     }
-  }, [focusedAppId, activeTerminalAppId, appsWithTerminal]);
+  }, [focusedAppId, appsWithTerminal]);
 
   // Sort terminal tabs: active (visible) apps first, inactive at the end
   const sortedTerminalApps = useMemo(() => {
