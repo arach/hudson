@@ -178,7 +178,7 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, templates } = useLogo();
+  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, templates } = useLogo();
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const canvas = useCanvasControls();
@@ -325,14 +325,15 @@ export function LogoContent() {
             <button
               onClick={() => setAiMenuOpen(o => !o)}
               className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-                aiStatus === 'streaming' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse'
+                aiError ? 'bg-red-500/15 text-red-400'
+                : aiStatus === 'streaming' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse'
                 : aiMenuOpen ? 'bg-emerald-500/15 text-emerald-400'
                 : 'text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10'
               }`}
               title="AI actions"
             >
               <Sparkles size={11} className={aiStatus === 'streaming' ? 'animate-spin' : ''} />
-              {aiStatus === 'streaming' ? 'Working...' : 'AI'}
+              {aiStatus === 'streaming' ? 'Working...' : aiError ? 'Error' : 'AI'}
             </button>
             {aiMenuOpen && (
               <div className="absolute top-full mt-1.5 right-0 w-[260px] rounded-lg border border-white/10 bg-neutral-900/95 backdrop-blur-xl shadow-xl overflow-hidden z-50">
@@ -416,8 +417,8 @@ export function LogoContent() {
                     fading && i < aiActivity.slice(-3).length - 1 ? 'opacity-30' : 'opacity-80'
                   }`}
                 >
-                  <span className="text-emerald-400/70">{entry.tool}</span>
-                  <span className="text-white/30 ml-1.5">{entry.summary}</span>
+                  <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/70'}>{entry.tool}</span>
+                  <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/40' : 'text-white/30'}`}>{entry.summary}</span>
                 </div>
               );
             })}

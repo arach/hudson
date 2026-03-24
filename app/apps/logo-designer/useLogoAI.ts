@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useMemo, useState, useRef } from 'react';
 import { useHudsonAI, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
 import type { LogoParams } from './LogoProvider';
@@ -146,13 +146,23 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   });
 
   const sendAiMessage = useCallback((message: string) => {
+    logActivity('send', 'Sending to AI...');
     chat.sendMessage({ text: message });
-  }, [chat]);
+  }, [chat, logActivity]);
+
+  // Surface errors in the activity log
+  const chatError = chat?.error;
+  const lastLoggedError = useRef<string | null>(null);
+  if (chatError && String(chatError) !== lastLoggedError.current) {
+    lastLoggedError.current = String(chatError);
+    logActivity('error', String(chatError).slice(0, 80));
+  }
 
   return {
     sendAiMessage,
     aiStatus: chat?.status ?? 'ready',
     aiMessages: chat?.messages ?? [],
     aiActivity: activity,
+    aiError: chatError ? String(chatError) : null,
   };
 }
