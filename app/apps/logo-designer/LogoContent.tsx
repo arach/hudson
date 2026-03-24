@@ -407,12 +407,12 @@ export function LogoContent() {
         {/* AI activity ticker */}
         {aiActivity.length > 0 && (
           <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-0.5 max-w-[300px]">
-            {aiActivity.slice(-3).map((entry, i) => {
+            {aiActivity.slice(-3).map((entry, i, arr) => {
               const age = Date.now() - entry.timestamp;
               const fading = age > 5000;
               return (
                 <div
-                  key={entry.timestamp}
+                  key={`${entry.timestamp}-${i}`}
                   className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
                     fading && i < aiActivity.slice(-3).length - 1 ? 'opacity-30' : 'opacity-80'
                   }`}
