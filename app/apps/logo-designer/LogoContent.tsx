@@ -178,7 +178,7 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, templates } = useLogo();
+  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates } = useLogo();
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [showOverlay, setShowOverlay] = useState(false);
   const canvas = useCanvasControls();
@@ -404,26 +404,44 @@ export function LogoContent() {
           {Math.round(canvas.pan.zoom * 100)}%
         </div>
 
-        {/* AI activity ticker */}
-        {aiActivity.length > 0 && (
-          <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-0.5 max-w-[300px]">
-            {aiActivity.slice(-3).map((entry, i, arr) => {
-              const age = Date.now() - entry.timestamp;
-              const fading = age > 5000;
-              return (
-                <div
-                  key={`${entry.timestamp}-${i}`}
-                  className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
-                    fading && i < aiActivity.slice(-3).length - 1 ? 'opacity-30' : 'opacity-80'
-                  }`}
-                >
-                  <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/70'}>{entry.tool}</span>
-                  <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/40' : 'text-white/30'}`}>{entry.summary}</span>
+        {/* AI HUD — streaming text + activity */}
+        {(aiStatus === 'streaming' || aiActivity.length > 0) && (() => {
+          // Extract latest assistant text (strip <think> blocks)
+          const lastAssistant = [...(aiMessages ?? [])].reverse().find(m => m.role === 'assistant');
+          const rawText = lastAssistant?.parts
+            ?.filter((p: { type: string }) => p.type === 'text')
+            .map((p: { text?: string }) => p.text ?? '')
+            .join('') ?? '';
+          const streamText = rawText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+
+          return (
+            <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-1 max-w-[380px]">
+              {/* Streaming thought */}
+              {aiStatus === 'streaming' && streamText && (
+                <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-black/60 backdrop-blur-xl border border-white/8 text-white/40 max-h-[120px] overflow-y-auto frame-scrollbar">
+                  {streamText.slice(-300)}
+                  <span className="inline-block w-1.5 h-3 bg-emerald-400/60 ml-0.5 animate-pulse" />
                 </div>
-              );
-            })}
-          </div>
-        )}
+              )}
+              {/* Tool calls */}
+              {aiActivity.slice(-3).map((entry, i) => {
+                const age = Date.now() - entry.timestamp;
+                const fading = age > 8000;
+                return (
+                  <div
+                    key={`${entry.timestamp}-${i}`}
+                    className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
+                      fading && i < 2 ? 'opacity-20' : 'opacity-70'
+                    }`}
+                  >
+                    <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/70'}>{entry.tool}</span>
+                    <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/40' : 'text-white/30'}`}>{entry.summary}</span>
+                  </div>
+                );
+              })}
+            </div>
+          );
+        })()}
 
         {/* Canvas world */}
         <div

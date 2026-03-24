@@ -115,6 +115,8 @@ interface LogoState {
   aiActivity: { tool: string; summary: string; timestamp: number }[];
   /** Last AI error */
   aiError: string | null;
+  /** Streaming AI messages */
+  aiMessages: { role: string; parts: { type: string; text?: string }[] }[];
   /** Force refresh templates from server */
   refreshTemplates: () => void;
 }
@@ -552,7 +554,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   }, [setCustomParamValues]);
 
   // Background AI (works without terminal)
-  const { sendAiMessage, aiStatus, aiActivity, aiError } = useLogoAI({
+  const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages } = useLogoAI({
     params, setParam, setVariant, resetDefaults, presets,
     templates, addTemplate, updateTemplate, deleteTemplate,
     customParamValues, setCustomParam, refreshTemplates, appSettings,
@@ -569,7 +571,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       showPreviews, togglePreviews,
       lightParams,
       sendTerminalCommand, consumeTerminalCommand,
-      sendAiMessage, aiStatus, aiActivity, aiError, refreshTemplates,
+      sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
     }}>
       {children}
     </Ctx.Provider>
