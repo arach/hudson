@@ -143,7 +143,7 @@ export function TerminalRelay({
   onOpenSettings,
   onStartService,
 }: TerminalRelayProps) {
-  const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect } = relay;
+  const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect, disconnect } = relay;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -521,7 +521,19 @@ export function TerminalRelay({
       </div>
     );
   } else if (status === 'connecting') {
-    overlay = <span className="text-neutral-500 animate-pulse">Connecting to relay...</span>;
+    overlay = (
+      <div className="flex flex-col items-center gap-3 text-center">
+        <div className="w-6 h-6 border-2 border-neutral-600 border-t-cyan-400 rounded-full animate-spin" />
+        <span className="text-[12px] text-neutral-400">Connecting to relay...</span>
+        <button
+          type="button"
+          onClick={() => { disconnect(); }}
+          className="text-[10px] px-3 py-1 rounded-full border border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+        >
+          Cancel
+        </button>
+      </div>
+    );
   }
 
   return (
