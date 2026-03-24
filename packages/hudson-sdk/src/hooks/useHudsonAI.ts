@@ -56,12 +56,18 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
   const [settings] = usePersistentState<{ aiMode?: AIMode }>('hudson.settings', {});
   const resolvedMode = mode ?? settings.aiMode ?? 'cli';
 
-  // Build context with active attachments resolved at send time.
-  // The transport body is rebuilt when context/attachments change.
+  // Refs for values that change frequently but should NOT cause transport recreation.
+  // The body function reads from refs at send time — always fresh, no re-init.
   const activeAttachmentsRef = useRef(activeAttachments);
   activeAttachmentsRef.current = activeAttachments;
   const attachmentsRef = useRef(attachments);
   attachmentsRef.current = attachments;
+  const contextRef = useRef(context);
+  contextRef.current = context;
+  const providerRef = useRef(provider);
+  providerRef.current = provider;
+  const modelRef = useRef(model);
+  modelRef.current = model;
 
   const transport = useMemo(
     () => new DefaultChatTransport({
@@ -77,16 +83,17 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
         }
         return {
           toolset,
-          context: { ...context, ...resolved },
+          context: { ...contextRef.current, ...resolved },
           mode: resolvedMode,
           sessionId: sessionIdRef.current,
-          provider,
-          model,
+          provider: providerRef.current,
+          model: modelRef.current,
         };
       },
     }),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [toolset, resolvedMode, provider, model, JSON.stringify(context)],
+    // Only recreate transport when toolset or mode changes — NOT on context/provider/model
+    // Those are read from refs at send time.
+    [toolset, resolvedMode],
   );
 
   const chat = useChat({ transport });
