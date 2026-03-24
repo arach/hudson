@@ -72,6 +72,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     provider: String(appSettings.aiProvider || 'minimax'),
     model: String(appSettings.aiModel || 'MiniMax-M2.7'),
     onToolCall: async (name, args) => {
+      try {
+      console.log('[useLogoAI] tool call:', name, JSON.stringify(args).slice(0, 200));
       switch (name) {
         case 'set_param':
           setParam(args.key as keyof LogoParams, args.value as never);
@@ -144,6 +146,10 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           logActivity('set_custom_param', `${args.key} → ${JSON.stringify(args.value ?? null).slice(0, 30)}`);
           break;
         }
+      }
+      } catch (err) {
+        console.error('[useLogoAI] tool call error:', name, err);
+        logActivity('error', `${name}: ${err instanceof Error ? err.message : String(err)}`);
       }
     },
   });
