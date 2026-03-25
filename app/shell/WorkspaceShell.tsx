@@ -1172,6 +1172,9 @@ function WorkspaceInner({
   const leftHeaderActions = isSingleApp && singleApp?.leftPanel?.headerActions
     ? <singleApp.leftPanel.headerActions />
     : undefined;
+  const rightHeaderActions = focusedApp?.rightPanel?.headerActions
+    ? <focusedApp.rightPanel.headerActions />
+    : undefined;
 
   // --- Terminal content ---
   const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
@@ -1561,6 +1564,7 @@ function WorkspaceInner({
                 width={rightWidth}
                 onResizeStart={handleResizeStart('right')}
                 footer={rightFooter}
+                headerActions={rightHeaderActions}
               >
                 {rightPanelContent}
               </SidePanel>

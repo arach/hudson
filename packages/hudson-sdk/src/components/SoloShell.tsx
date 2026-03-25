@@ -235,6 +235,7 @@ function SoloShellInner({ app }: { app: HudsonApp }) {
             onToggleCollapse={() => setRightCollapsed(!rightCollapsed)}
             width={rightWidth}
             onResizeStart={handleResizeStart('right')}
+            headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
           >
             {rightContent}
           </SidePanel>

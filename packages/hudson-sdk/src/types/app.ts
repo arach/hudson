@@ -84,7 +84,7 @@ export interface HudsonApp {
   /** Left panel header config */
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
   /** Right panel header config */
-  rightPanel?: { title: string; icon?: ReactNode };
+  rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
 
   /** Wraps all slots — owns app state via React context */
   Provider: React.FC<{ children: ReactNode }>;

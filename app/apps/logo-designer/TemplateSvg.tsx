@@ -13,12 +13,24 @@ interface Props {
 
 const VB = 512;
 
+// Params that must be numbers — string values from localStorage/inputs break
+// arithmetic (JS + operator concatenates strings instead of adding)
+const NUMERIC_KEYS = new Set([
+  'borderRadius', 'paneRadius', 'gapWidth', 'splitX', 'splitY', 'padding',
+]);
+
 export function TemplateSvg({ template, params, customParamValues, size }: Props) {
   const merged = useMemo(() => {
     const p: Record<string, unknown> = { ...params };
+    // Coerce numeric params — prevents string concatenation bugs in templates
+    for (const key of NUMERIC_KEYS) {
+      if (key in p && typeof p[key] !== 'number') p[key] = Number(p[key]);
+    }
     // Apply custom param defaults, then overrides
     for (const decl of template.params) {
-      p[decl.key] = customParamValues[decl.key] ?? decl.default;
+      let val = customParamValues[decl.key] ?? decl.default;
+      if (decl.type === 'number' && typeof val !== 'number') val = Number(val);
+      p[decl.key] = val;
     }
     return p;
   }, [params, template.params, customParamValues]);

@@ -111,9 +111,9 @@ Workflow for iterating on a design:
 3. Read the current source from context, modify it, pass the full updated code
 4. You can also add/remove custom params by passing a new params array
 
-## Editing Built-in Variants
+## Built-in Variants
 
-All 6 built-in variants are editable templates. Use update_template with the built-in's ID (e.g. "negative-space", "lattice-grid") to modify them directly.
+The 8 built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows, dot-matrix, mosaic) are **read-only**. You CANNOT modify or delete them. To create a variation, use create_template to make a new template inspired by a built-in.
 
 ## Light / Dark Mode
 Set \`lightEnabled: true\` via set_param to enable a light variant. Then use set_param to adjust \`lightColors\` (an object with bgColor, paneColor, dimPaneColor, channelColor for the light variant). The app renders both variants side-by-side. Templates are unaware of modes — they receive swapped colors automatically.
@@ -238,7 +238,7 @@ function tools(_ctx: Record<string, unknown>) {
     }),
 
     update_template: tool({
-      description: 'Modify any template (including built-ins). Only include fields you want to change. Write renderBody in TypeScript.',
+      description: 'Modify a custom template (NOT built-ins — they are read-only). Only include fields you want to change. Write renderBody in TypeScript.',
       inputSchema: z.object({
         templateId: z.string().describe('The template ID to update'),
         name: z.string().optional().describe('New name'),

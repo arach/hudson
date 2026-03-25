@@ -313,6 +313,7 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
             onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
             width={rightWidth}
             onResizeStart={handleResizeStart('right')}
+            headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
           >
             {app.slots.RightPanel && (
               <AppSlotErrorBoundary appName={app.name} slotName="RightPanel">

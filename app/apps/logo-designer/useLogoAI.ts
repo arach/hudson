@@ -66,6 +66,13 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     params, presets, templates, customParamValues,
   }), [params, presets, templates, customParamValues]);
 
+  // Coerce string-encoded numbers from AI (MiniMax sends "20" not 20)
+  const NUMERIC_PARAMS = new Set(['borderRadius', 'paneRadius', 'gapWidth', 'splitX', 'splitY', 'padding']);
+  const coerceParamValue = (key: string, value: unknown): unknown => {
+    if (NUMERIC_PARAMS.has(key) && typeof value === 'string') return Number(value);
+    return value;
+  };
+
   const chat = useHudsonAI({
     toolset: 'logo',
     context,
@@ -75,10 +82,13 @@ export function useLogoAI(opts: UseLogoAIOptions) {
       try {
       console.log('[useLogoAI] tool call:', name, JSON.stringify(args).slice(0, 200));
       switch (name) {
-        case 'set_param':
-          setParam(args.key as keyof LogoParams, args.value as never);
-          logActivity('set_param', `${args.key} → ${JSON.stringify(args.value ?? null).slice(0, 30)}`);
+        case 'set_param': {
+          const key = args.key as string;
+          const value = coerceParamValue(key, args.value);
+          setParam(key as keyof LogoParams, value as never);
+          logActivity('set_param', `${key} → ${JSON.stringify(value ?? null).slice(0, 30)}`);
           break;
+        }
         case 'set_variant':
           setVariant(args.variant as string);
           logActivity('set_variant', String(args.variant));
@@ -142,8 +152,12 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           break;
         }
         case 'set_custom_param': {
-          setCustomParam(params.variant, args.key as string, args.value as number | string);
-          logActivity('set_custom_param', `${args.key} → ${JSON.stringify(args.value ?? null).slice(0, 30)}`);
+          const key = args.key as string;
+          let val = args.value as number | string;
+          // Coerce string numbers (AI often sends "3" instead of 3)
+          if (typeof val === 'string' && val !== '' && !isNaN(Number(val))) val = Number(val);
+          setCustomParam(params.variant, key, val);
+          logActivity('set_custom_param', `${key} → ${JSON.stringify(val ?? null).slice(0, 30)}`);
           break;
         }
       }

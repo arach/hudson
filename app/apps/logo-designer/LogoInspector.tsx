@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useCallback, useRef, useMemo } from 'react';
-import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search } from 'lucide-react';
+import { useEffect } from 'react';
+import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search, Crosshair, Globe, Monitor, Package, ExternalLink } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
 import {
@@ -12,6 +13,26 @@ import { GOOGLE_FONTS, loadGoogleFont } from './types';
 import type { WordmarkConfig } from './types';
 
 const EXPORT_SIZES = [512, 256, 128, 64, 32, 16] as const;
+
+// ---------------------------------------------------------------------------
+// Inspector header actions — target/inspect button
+// ---------------------------------------------------------------------------
+export function LogoInspectorHeaderActions() {
+  const { inspectMode, toggleInspectMode } = useLogo();
+  return (
+    <button
+      onClick={toggleInspectMode}
+      className={`p-1 rounded transition-colors ${
+        inspectMode
+          ? 'text-cyan-400 bg-cyan-500/15'
+          : 'text-white/25 hover:text-white/50 hover:bg-white/5'
+      }`}
+      title={inspectMode ? 'Exit inspect mode' : 'Inspect element parameters'}
+    >
+      <Crosshair size={12} />
+    </button>
+  );
+}
 
 // ---------------------------------------------------------------------------
 // Font search picker
@@ -204,28 +225,51 @@ export function LogoInspector() {
     ]);
   }, []);
 
-  const [platformExporting, setPlatformExporting] = useState<'macos' | 'ios' | null>(null);
+  type ExportPlatform = 'macos' | 'ios' | 'web' | 'windows' | 'all' | 'icon-composer';
+  const [platformExporting, setPlatformExporting] = useState<ExportPlatform | null>(null);
+  const [iconComposerAvailable, setIconComposerAvailable] = useState(false);
+  const [iconComposerPath, setIconComposerPath] = useState<string | null>(null);
 
-  const handlePlatformExport = useCallback(async (platform: 'macos' | 'ios') => {
-    const activeTemplate = templates.find(t => t.id === params.variant);
-    if (!activeTemplate) return;
+  // Check Icon Composer availability on mount
+  useEffect(() => {
+    fetch(`${apiBaseUrl}/api/logo/export/icon-composer`)
+      .then(r => r.json())
+      .then(d => setIconComposerAvailable(d.available === true))
+      .catch(() => {});
+  }, [apiBaseUrl]);
+
+  const getMergedParams = useCallback(() => {
+    const tmpl = templates.find(t => t.id === params.variant);
+    if (!tmpl) return null;
+    const merged: Record<string, unknown> = { ...params };
+    const cpv = customParamValues[tmpl.id] ?? {};
+    for (const decl of tmpl.params) {
+      merged[decl.key] = cpv[decl.key] ?? decl.default;
+    }
+    return { renderBody: tmpl.renderBody, params: merged };
+  }, [params, templates, customParamValues]);
+
+  const handlePlatformExport = useCallback(async (platform: ExportPlatform) => {
+    const data = getMergedParams();
+    if (!data) return;
 
     setPlatformExporting(platform);
     try {
-      const merged: Record<string, unknown> = { ...params };
-      const cpv = customParamValues[activeTemplate.id] ?? {};
-      for (const decl of activeTemplate.params) {
-        merged[decl.key] = cpv[decl.key] ?? decl.default;
+      if (platform === 'icon-composer') {
+        const res = await fetch(`${apiBaseUrl}/api/logo/export/icon-composer`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(data),
+        });
+        const result = await res.json();
+        if (result.filePath) setIconComposerPath(result.filePath);
+        return;
       }
 
       const res = await fetch(`${apiBaseUrl}/api/logo/export`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          renderBody: activeTemplate.renderBody,
-          params: merged,
-          platform,
-        }),
+        body: JSON.stringify({ ...data, platform }),
       });
 
       if (!res.ok) {
@@ -233,12 +277,19 @@ export function LogoInspector() {
         throw new Error(err.error || 'Export failed');
       }
 
+      const filenames: Record<string, string> = {
+        macos: 'AppIcon-macOS.zip',
+        ios: 'AppIcon-iOS.zip',
+        web: 'favicon-bundle.zip',
+        windows: 'AppIcon-Windows.zip',
+        all: 'AppIcon-All-Platforms.zip',
+      };
       const blob = await res.blob();
-      downloadBlob(blob, platform === 'macos' ? 'AppIcon-macOS.zip' : 'AppIcon-iOS.zip');
+      downloadBlob(blob, filenames[platform] ?? 'export.zip');
     } finally {
       setPlatformExporting(null);
     }
-  }, [params, templates, customParamValues, apiBaseUrl]);
+  }, [getMergedParams, apiBaseUrl]);
 
   // Convert custom template params to ParamDefinition[] for ParamGrid
   const customParams: ParamDefinition[] | null = activeTemplate && activeTemplate.params.length > 0
@@ -272,6 +323,14 @@ export function LogoInspector() {
 
   return (
     <div className="p-3 space-y-1 overflow-y-auto h-full frame-scrollbar">
+      {/* ── Active template name ── */}
+      {activeTemplate && (
+        <div className="flex items-center gap-2 px-1 pb-2">
+          <span className="text-[12px] font-medium text-white/70 truncate">{activeTemplate.name}</span>
+          <span className="text-[9px] text-white/20 font-mono shrink-0">{activeTemplate.id}</span>
+        </div>
+      )}
+
       {/* ── Template-specific params (top) ── */}
       {customParams && (
         <ParamSection label={`${activeTemplate!.name} Params`} defaultExpanded={true}>
@@ -373,75 +432,83 @@ export function LogoInspector() {
         </div>
       </ParamSection>
 
-      {/* Export SVG */}
-      <ParamSection label="Export SVG" defaultExpanded={false}>
-        <div className="flex flex-wrap gap-2">
-          <ExportButton
-            icon={<Download size={12} />}
-            label="Download"
-            onClick={handleDownloadSvg}
-          />
-          <ExportButton
-            icon={<Copy size={12} />}
-            label="Copy markup"
-            onClick={handleCopySvg}
-          />
+      {/* ── Export ── */}
+      <ParamSection label="Export" defaultExpanded={false}>
+        {/* Quick actions — SVG/PNG */}
+        <div className="flex flex-wrap gap-1.5 mb-3">
+          <ExportButton icon={<Download size={11} />} label="SVG" onClick={handleDownloadSvg} />
+          <ExportButton icon={<Download size={11} />} label="PNG 512" onClick={() => handleDownloadPng(512)} />
+          <ExportButton icon={<Download size={11} />} label="Copy PNG" onClick={handleCopyPng} />
         </div>
-      </ParamSection>
 
-      {/* Export PNG */}
-      <ParamSection label="Export PNG" defaultExpanded={false}>
-        <div className="flex flex-wrap gap-2">
-          <ExportButton
-            icon={<Copy size={12} />}
-            label="Copy 512px"
-            onClick={handleCopyPng}
-          />
-        </div>
-        <div className="grid grid-cols-2 gap-2 mt-1">
+        {/* PNG size grid */}
+        <div className="grid grid-cols-3 gap-1.5 mb-3">
           {EXPORT_SIZES.map((size) => (
             <button
               key={size}
               onClick={() => handleDownloadPng(size)}
-              className="flex items-center justify-between px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] transition-colors text-[11px] font-mono text-neutral-300"
+              className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] transition-colors text-[10px] font-mono text-white/40 hover:text-white/60"
             >
-              <span>{size}&times;{size}</span>
-              <Image size={10} className="text-neutral-500" />
+              {size}
             </button>
           ))}
         </div>
-      </ParamSection>
 
-      {/* Platform Export */}
-      <ParamSection label="Platform Export" defaultExpanded={false}>
-        <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
-          Generate all required icon sizes as a ready-to-use bundle.
-        </div>
-        <div className="grid grid-cols-2 gap-2">
+        {/* Platform exports */}
+        <div className="space-y-1">
+          <div className="text-[9px] font-mono uppercase tracking-widest text-white/20 mb-1.5">Platforms</div>
+          {([
+            { id: 'macos' as ExportPlatform, icon: Apple, label: 'macOS', desc: '.icns + iconset bundle' },
+            { id: 'ios' as ExportPlatform, icon: Smartphone, label: 'iOS', desc: '.appiconset for Xcode' },
+            { id: 'web' as ExportPlatform, icon: Globe, label: 'Web', desc: 'favicon.ico + touch icon + manifest' },
+            { id: 'windows' as ExportPlatform, icon: Monitor, label: 'Windows', desc: '.ico with all sizes' },
+            { id: 'all' as ExportPlatform, icon: Package, label: 'All Platforms', desc: 'Everything in one zip' },
+          ]).map(({ id, icon: Icon, label, desc }) => (
+            <button
+              key={id}
+              onClick={() => handlePlatformExport(id)}
+              disabled={platformExporting !== null}
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] active:bg-white/[0.09] disabled:opacity-30 disabled:pointer-events-none transition-colors text-left"
+            >
+              <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
+                {platformExporting === id ? (
+                  <Loader2 size={13} className="animate-spin text-white/40" />
+                ) : (
+                  <Icon size={13} className="text-white/40" />
+                )}
+              </div>
+              <div className="min-w-0">
+                <div className="text-[11px] text-white/70 font-medium">{label}</div>
+                <div className="text-[9px] text-white/25 truncate">{desc}</div>
+              </div>
+              <Download size={11} className="ml-auto text-white/15 shrink-0" />
+            </button>
+          ))}
+
+          {/* Icon Composer */}
           <button
-            onClick={() => handlePlatformExport('macos')}
-            disabled={platformExporting !== null}
-            className="flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] disabled:opacity-40 disabled:pointer-events-none transition-colors text-[11px] font-mono text-neutral-300"
+            onClick={() => handlePlatformExport('icon-composer')}
+            disabled={platformExporting !== null || !iconComposerAvailable}
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] active:bg-white/[0.09] disabled:opacity-30 disabled:pointer-events-none transition-colors text-left mt-2 border-t border-white/[0.04] pt-3"
           >
-            {platformExporting === 'macos' ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Apple size={12} />
-            )}
-            macOS
+            <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
+              {platformExporting === 'icon-composer' ? (
+                <Loader2 size={13} className="animate-spin text-white/40" />
+              ) : (
+                <Apple size={13} className="text-white/40" />
+              )}
+            </div>
+            <div className="min-w-0">
+              <div className="text-[11px] text-white/70 font-medium">Icon Composer</div>
+              <div className="text-[9px] text-white/25 truncate">
+                {iconComposerAvailable ? 'Open 1024px in Icon Composer' : 'Not installed'}
+              </div>
+            </div>
+            <ExternalLink size={11} className="ml-auto text-white/15 shrink-0" />
           </button>
-          <button
-            onClick={() => handlePlatformExport('ios')}
-            disabled={platformExporting !== null}
-            className="flex items-center justify-center gap-2 px-3 py-2 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] disabled:opacity-40 disabled:pointer-events-none transition-colors text-[11px] font-mono text-neutral-300"
-          >
-            {platformExporting === 'ios' ? (
-              <Loader2 size={12} className="animate-spin" />
-            ) : (
-              <Smartphone size={12} />
-            )}
-            iOS
-          </button>
+          {iconComposerPath && (
+            <div className="text-[9px] font-mono text-white/20 px-2 mt-1 truncate">{iconComposerPath}</div>
+          )}
         </div>
       </ParamSection>
     </div>

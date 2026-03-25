@@ -178,9 +178,8 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates } = useLogo();
+  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates, inspectMode } = useLogo();
   const [spaceHeld, setSpaceHeld] = useState(false);
-  const [showOverlay, setShowOverlay] = useState(false);
   const canvas = useCanvasControls();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -531,13 +530,9 @@ export function LogoContent() {
               <div className="flex gap-8 items-start">
                 {/* Dark icon with geometry overlay */}
                 <div className="flex flex-col items-center gap-2">
-                  <div
-                    className="relative"
-                    onMouseEnter={() => setShowOverlay(true)}
-                    onMouseLeave={() => setShowOverlay(false)}
-                  >
+                  <div className="relative">
                     <LogoSvg params={params} size={512} />
-                    {showOverlay && <GeometryOverlay params={params} size={512} />}
+                    {inspectMode && <GeometryOverlay params={params} size={512} />}
                   </div>
                   <span className="text-[11px] text-white/20">
                     {params.lightEnabled ? 'Dark' : '512px'}

@@ -114,6 +114,9 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
       if (msg.role !== 'assistant') continue;
       for (const part of msg.parts) {
         if (isToolUIPart(part)) {
+          // Wait until input is fully available — during 'input-streaming'
+          // the input may be undefined or partial
+          if (part.state === 'input-streaming') continue;
           const key = part.toolCallId;
           if (!processedRef.current.has(key)) {
             processedRef.current.add(key);

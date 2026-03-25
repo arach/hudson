@@ -10,11 +10,12 @@ const DIR = join(import.meta.dirname, '..', '.data', 'logo-templates');
 mkdirSync(DIR, { recursive: true });
 
 for (const [id, def] of Object.entries(builtinRenderBodies)) {
-  const meta = {
+  const meta: Record<string, unknown> = {
     name: def.name,
     description: def.description,
     builtin: true,
   };
+  if (def.params) meta.params = def.params;
   const header = `const meta = ${JSON.stringify(meta, null, 2)};\n\n`;
   const path = join(DIR, `${id}.js`);
   writeFileSync(path, header + def.renderBody + '\n');

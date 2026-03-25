@@ -3,6 +3,11 @@ import { readFile, writeFile, readdir, unlink, mkdir, stat, copyFile } from 'fs/
 import { existsSync } from 'fs';
 import { join } from 'path';
 
+const BUILTIN_IDS = new Set([
+  'negative-space', 'green-channel', 'grid-color', 'interlocking',
+  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic',
+]);
+
 // ---------------------------------------------------------------------------
 // Template directory — one .js file per template
 // User templates live in ~/hudson/logos/.data/logo-templates/
@@ -152,6 +157,12 @@ export async function POST(request: Request) {
     };
 
     await ensureDir();
+
+    // Protect built-in templates from modification
+    if (id && BUILTIN_IDS.has(id)) {
+      log(`BLOCKED: cannot modify built-in template "${id}"`);
+      return NextResponse.json({ error: `Cannot modify built-in template "${id}"` }, { status: 403 });
+    }
 
     // Delete
     if (action === 'delete' && id) {

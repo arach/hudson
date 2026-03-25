@@ -119,6 +119,9 @@ interface LogoState {
   aiMessages: { role: string; parts: { type: string; text?: string }[] }[];
   /** Force refresh templates from server */
   refreshTemplates: () => void;
+  /** Element inspect mode — shows geometry overlay on canvas */
+  inspectMode: boolean;
+  toggleInspectMode: () => void;
 }
 
 const Ctx = createContext<LogoState | null>(null);
@@ -305,6 +308,8 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   const [backgroundSvg, setBackgroundSvg] = useState<string | null>(null);
   const [showPreviews, setShowPreviews] = useState(false);
   const togglePreviews = useCallback(() => setShowPreviews(v => !v), []);
+  const [inspectMode, setInspectMode] = useState(false);
+  const toggleInspectMode = useCallback(() => setInspectMode(v => !v), []);
 
   // Pending terminal command queue (toolbar → terminal relay)
   const pendingCmdRef = useRef<string | null>(null);
@@ -572,6 +577,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       lightParams,
       sendTerminalCommand, consumeTerminalCommand,
       sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
+      inspectMode, toggleInspectMode,
     }}>
       {children}
     </Ctx.Provider>

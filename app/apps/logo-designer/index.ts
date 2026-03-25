@@ -4,7 +4,7 @@ import type { HudsonApp } from '@hudson/sdk';
 import { LogoProvider } from './LogoProvider';
 import { LogoContent } from './LogoContent';
 import { LogoLeftPanel } from './LogoLeftPanel';
-import { LogoInspector } from './LogoInspector';
+import { LogoInspector, LogoInspectorHeaderActions } from './LogoInspector';
 import { LogoTerminal } from './LogoTerminal';
 import { useLogoCommands, useLogoStatus } from './hooks';
 import { useLogoPortOutput, useLogoPortInput } from './ports';
@@ -26,7 +26,7 @@ export const logoDesignerApp: HudsonApp = {
   },
 
   leftPanel: { title: 'Logo', icon: createElement(Gem, { size: 12 }) },
-  rightPanel: { title: 'Inspector', icon: createElement(SlidersHorizontal, { size: 12 }) },
+  rightPanel: { title: 'Inspector', icon: createElement(SlidersHorizontal, { size: 12 }), headerActions: LogoInspectorHeaderActions },
 
   Provider: LogoProvider,
 
