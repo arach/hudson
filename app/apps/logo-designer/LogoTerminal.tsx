@@ -1,6 +1,7 @@
 'use client';
 
-import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform } from '@hudson/sdk';
+import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from '@hudson/sdk';
+import { Camera, Loader2 } from 'lucide-react';
 import type { AIAttachment } from '@hudson/sdk';
 import { useLogo, defaults } from './LogoProvider';
 import { isBuiltinVariant } from './types';
@@ -234,10 +235,49 @@ export function LogoTerminal() {
     }));
   }, []);
 
+  const [snapping, setSnapping] = useState(false);
+  const handleScreenshot = useCallback(async () => {
+    if (snapping || relay.status !== 'connected') return;
+    setSnapping(true);
+    try {
+      const blob = await captureWorkspace();
+      if (!blob) return;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const file = new File([blob], `snap-${ts}.jpg`, { type: 'image/jpeg' });
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch(`${apiBaseUrl}/api/relay/upload`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, data: base64 }),
+      });
+      const { path } = (await res.json()) as { path: string };
+      if (path) relay.sendInput(path);
+    } finally {
+      setSnapping(false);
+    }
+  }, [snapping, relay, apiBaseUrl]);
+
   return (
     <div className="flex flex-col h-full">
       {/* Header — right-aligned controls */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-700/50 bg-neutral-900/50">
+        {/* Screenshot — left side of bar */}
+        {mode === 'relay' && relay.status === 'connected' && (
+          <button
+            type="button"
+            onClick={handleScreenshot}
+            disabled={snapping}
+            className="p-1 rounded text-white/25 hover:text-cyan-400/70 disabled:opacity-30 transition-colors"
+            title="Capture workspace screenshot and send to agent"
+          >
+            {snapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+          </button>
+        )}
         <div className="flex-1" />
         {/* Chat toggle */}
         <button

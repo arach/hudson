@@ -24,9 +24,10 @@ import {
   sounds,
   setMuted as setSoundMuted,
   useAppSettings,
+  captureWorkspace,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -39,7 +40,10 @@ import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 import { HudsonTerminal } from './HudsonTerminal';
-import { DataBusProvider, usePortBridge } from './DataBusContext';
+import { WorkspaceAI } from './WorkspaceAI';
+import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
+import { PipeConnectorLayer } from './PipeConnectorLayer';
+import { PortActivityLog } from './PortActivityLog';
 import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
@@ -84,12 +88,14 @@ const TILE = {
 
 const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   glowIntensity: 30,
+  gridOpacity: 60,
   connectorStyle: 'dashed',
   zoomSensitivity: 1.0,
   masterMute: false,
   uiClickSounds: true,
   uiTransitionSounds: true,
   aiMode: 'cli',
+  font: { fontSize: 13, fontFamily: 'system-ui' },
 };
 
 // ---------------------------------------------------------------------------
@@ -158,11 +164,41 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
 
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
 
-  // --- Disabled apps (completely removed from Provider tree) ---
-  const [disabledAppIdsArr, setDisabledAppIdsArr] = usePersistentState<string[]>(
-    `hudson.ws.${workspace.id}.disabled`,
-    [],
-  );
+  // --- Disabled apps (persisted to disk via workspace-state API) ---
+  const [disabledAppIdsArr, setDisabledAppIdsArr] = useState<string[]>([]);
+  const disabledLoaded = useRef(false);
+
+  // Load disabled apps from disk
+  useEffect(() => {
+    disabledLoaded.current = false;
+    fetch(`/api/workspace-state?id=${workspace.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (data.disabledApps && Array.isArray(data.disabledApps)) {
+          // Only keep IDs that exist in the workspace
+          const wsAppIds = new Set(workspace.apps.map(c => c.app.id));
+          setDisabledAppIdsArr((data.disabledApps as string[]).filter(id => wsAppIds.has(id)));
+        }
+        disabledLoaded.current = true;
+      })
+      .catch(() => { disabledLoaded.current = true; });
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [workspace.id]);
+
+  // Save disabled apps to disk (debounced)
+  const disabledSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!disabledLoaded.current) return;
+    if (disabledSaveRef.current) clearTimeout(disabledSaveRef.current);
+    disabledSaveRef.current = setTimeout(() => {
+      fetch('/api/workspace-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: workspace.id, state: { disabledApps: disabledAppIdsArr } }),
+      }).catch(() => {});
+    }, 1000);
+  }, [disabledAppIdsArr, workspace.id]);
+
   const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
 
   // Filter workspace to only enabled apps for Provider nesting + rendering
@@ -303,8 +339,7 @@ function WorkspaceInner({
   const isSingleApp = workspace.apps.length === 1;
   const isMultiApp = !isSingleApp;
 
-  // --- Grid opacity: invisible during boot, fade in with chrome ---
-  const gridOpacity = phaseAtLeast(bootPhase, 'chrome-in') ? 1 : 0;
+  // gridOpacity is computed below after shellSettings is declared
 
   // --- Hook merging ---
   // Hooks must be called for ALL apps (including disabled) to keep hook order stable.
@@ -325,6 +360,35 @@ function WorkspaceInner({
   const serviceRegistry = useServiceRegistry();
   const showSaved = useSaveIndicator();
 
+  // --- Auto-start required services for workspace apps ---
+  const autoStartedServicesRef = useRef(false);
+  useEffect(() => {
+    if (autoStartedServicesRef.current) return;
+    autoStartedServicesRef.current = true;
+
+    // Collect required (non-optional) service IDs from all workspace apps
+    const requiredServiceIds = new Set<string>();
+    for (const config of fullWorkspace.apps) {
+      for (const dep of config.app.services ?? []) {
+        if (!dep.optional) requiredServiceIds.add(dep.serviceId);
+      }
+    }
+    if (requiredServiceIds.size === 0) return;
+
+    // After a brief delay (let initial health check run), start any that aren't running
+    const timer = setTimeout(async () => {
+      for (const sid of requiredServiceIds) {
+        const rec = serviceRegistry.records[sid];
+        if (!rec || rec.status !== 'running') {
+          console.log(`[workspace] Auto-starting required service: ${sid}`);
+          await serviceRegistry.executeAction(sid, 'start', 'system');
+        }
+      }
+    }, 2000);
+    return () => clearTimeout(timer);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // --- Focus state (persisted per workspace) ---
   const defaultFocus = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
   const [focusedAppId, setFocusedAppIdRaw] = usePersistentState(
@@ -336,7 +400,20 @@ function WorkspaceInner({
 
   // --- Z-order tracking (higher index = on top) ---
   const zCounterRef = useRef(0);
-  const [zOrderMap, setZOrderMap] = useState<Record<string, number>>({});
+  const [zOrderMap, setZOrderMap] = useState<Record<string, number>>(() => {
+    // Initialize all apps with sequential z-indices so nothing starts at 0
+    const map: Record<string, number> = {};
+    for (const config of fullWorkspace.apps) {
+      zCounterRef.current += 1;
+      map[config.app.id] = zCounterRef.current;
+    }
+    // Focused app gets the highest initial z-index
+    if (focusedAppId) {
+      zCounterRef.current += 1;
+      map[focusedAppId] = zCounterRef.current;
+    }
+    return map;
+  });
 
   const setFocusedAppId = useCallback((appId: string) => {
     setFocusedAppIdRaw(appId);
@@ -368,14 +445,48 @@ function WorkspaceInner({
     setExpandedToolId(prev => prev === toolId ? null : toolId);
   }, []);
 
-  // --- Activated apps tracking (persisted per workspace) ---
+  // --- Activated apps tracking (persisted to disk via /api/workspace-state) ---
   const isFullBoot = bootMode === 'full';
+  const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace]);
+  const defaultVisible = isFullBoot && initialShowLauncher ? [] : allAppIds;
+  const [activatedAppIdsArr, setActivatedAppIdsArr] = useState<string[]>(defaultVisible);
+  const wsStateReady = useRef(false);
+  const savePending = useRef(0);
+
+  // Load from disk on mount / workspace switch
+  useEffect(() => {
+    wsStateReady.current = false;
+    savePending.current++;
+    const gen = savePending.current;
+    fetch(`/api/workspace-state?id=${workspace.id}`)
+      .then(r => r.json())
+      .then(data => {
+        if (gen !== savePending.current) return; // stale
+        if (data.visibleApps && Array.isArray(data.visibleApps)) {
+          const validIds = (data.visibleApps as string[]).filter(id => allAppIds.includes(id));
+          const missing = allAppIds.filter(id => !validIds.includes(id));
+          setActivatedAppIdsArr([...validIds, ...missing]);
+        }
+        wsStateReady.current = true;
+      })
+      .catch(() => { wsStateReady.current = true; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace.id]);
-  const [activatedAppIdsArr, setActivatedAppIdsArr] = usePersistentState<string[]>(
-    `hudson.ws.${workspace.id}.visible`,
-    isFullBoot && initialShowLauncher ? [] : allAppIds,
-  );
+  }, [workspace.id]);
+
+  // Save to disk on change (debounced, only after initial load completes)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!wsStateReady.current) return; // Don't save until disk load finishes
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      fetch('/api/workspace-state', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id: workspace.id, state: { visibleApps: activatedAppIdsArr } }),
+      }).catch(() => {});
+    }, 1000);
+  }, [activatedAppIdsArr, workspace.id]);
+
   // Derive Set for fast lookups, filtered to only include current workspace's apps
   const activatedAppIds = useMemo(
     () => new Set(activatedAppIdsArr.filter(id => allAppIds.includes(id))),
@@ -637,17 +748,22 @@ function WorkspaceInner({
 
   // --- Terminal tab state (Hudson global + per-app) ---
   const HUDSON_TERMINAL_ID = '__hudson__';
+  const HUDSON_AI_ID = '__hudson-ai__';
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
   // Default to the focused app's terminal if it has one
   const focusedHasTerminal = appsWithTerminal.some(c => c.app.id === focusedAppId);
   const [activeTerminalAppId, setActiveTerminalAppId] = useState(
-    focusedHasTerminal ? focusedAppId : HUDSON_TERMINAL_ID,
+    focusedHasTerminal ? focusedAppId : HUDSON_AI_ID,
   );
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? null;
 
-  // Follow focused app — switch terminal tab when focus changes to an app with a terminal
+  // Follow focused app — switch terminal tab when focus changes to an app with a terminal,
+  // but only if the user is already on an app-specific terminal tab (not AI or Hudson Terminal).
+  const activeTermRef = useRef(activeTerminalAppId);
+  activeTermRef.current = activeTerminalAppId;
   useEffect(() => {
+    if (activeTermRef.current === HUDSON_AI_ID || activeTermRef.current === HUDSON_TERMINAL_ID) return;
     if (appsWithTerminal.some(c => c.app.id === focusedAppId)) {
       setActiveTerminalAppId(focusedAppId);
     }
@@ -666,10 +782,18 @@ function WorkspaceInner({
     DEFAULT_SHELL_SETTINGS,
   );
   const muted = shellSettings.masterMute;
+  const gridOpacity = phaseAtLeast(bootPhase, 'chrome-in') ? (shellSettings.gridOpacity ?? 60) / 100 : 0;
 
   useEffect(() => {
     setSoundMuted(shellSettings.masterMute);
   }, [shellSettings.masterMute]);
+
+  // Apply font settings as CSS custom properties on :root
+  useEffect(() => {
+    const font = shellSettings.font ?? DEFAULT_SHELL_SETTINGS.font;
+    document.documentElement.style.setProperty('--hudson-font-size', `${font.fontSize}px`);
+    document.documentElement.style.setProperty('--hudson-font-family', font.fontFamily);
+  }, [shellSettings.font]);
 
   const updateShellSettings = useCallback(
     (patch: Partial<HudsonSettings>) => {
@@ -788,6 +912,15 @@ function WorkspaceInner({
     playSound('blipUp');
   }, [workspace, playSound]);
 
+  // --- Auto-layout: tile visible windows in a clean grid, then fit ---
+  const handleAutoLayout = useCallback(() => {
+    tileWindowBounds(activatedAppIds);
+    setWindowResetKey(k => k + 1);
+    // Delayed fit-all after windows remount with new positions
+    setTimeout(() => handleFitAll(), 100);
+    playSound('blipUp');
+  }, [activatedAppIds, tileWindowBounds, handleFitAll, playSound]);
+
   // --- Fullscreen app mode ---
   const enterFullscreen = useCallback((appId: string) => {
     setFullscreenAppId(appId);
@@ -880,6 +1013,12 @@ function WorkspaceInner({
         label: 'Reset All Windows',
         icon: <RotateCcw size={14} />,
         action: handleResetAllWindows,
+      },
+      {
+        id: 'shell:auto-layout',
+        label: 'Auto Layout Windows',
+        icon: <LayoutGrid size={14} />,
+        action: handleAutoLayout,
       },
       {
         id: 'shell:toggle-mute',
@@ -1066,6 +1205,7 @@ function WorkspaceInner({
           onToggleCollapse={() => { setMinimapCollapsed(c => !c); playSound('thock'); }}
           onNavigate={handleMinimapNavigate}
           onFitAll={handleFitAll}
+          onAutoLayout={handleAutoLayout}
         >
           {Object.entries(windowBoundsMap).map(([appId, b]) => (
             <div
@@ -1103,7 +1243,6 @@ function WorkspaceInner({
   ) : (
     workspace.apps.map(config => {
       const { app } = config;
-      if (!app.leftPanel && !app.slots.LeftPanel) return null;
       const deps = app.services;
       const serviceDeps = deps?.map(dep => ({
         serviceId: dep.serviceId,
@@ -1113,7 +1252,7 @@ function WorkspaceInner({
         <SidebarSection
           key={app.id}
           appName={app.name}
-          appIcon={app.leftPanel?.icon}
+          appIcon={app.leftPanel?.icon ?? app.rightPanel?.icon}
           isFocused={app.id === focusedAppId}
           onFocus={() => setFocusedAppId(app.id)}
           defaultExpanded={app.id === focusedAppId}
@@ -1176,23 +1315,180 @@ function WorkspaceInner({
     ? <focusedApp.rightPanel.headerActions />
     : undefined;
 
+  // --- Workspace AI tool call handler ---
+  const { pushPipe, pushDirect, pipes } = useDataBus();
+  const handleWorkspaceToolCall = useCallback(async (name: string, args: Record<string, unknown>) => {
+    switch (name) {
+      case 'push_pipe': {
+        const pipeName = args.pipeName as string;
+        const pipe = pipes.find(p => p.name === pipeName);
+        if (pipe) await pushPipe(pipe.id);
+        break;
+      }
+      case 'fetch_image': {
+        const url = args.url as string;
+        if (url) {
+          try {
+            const res = await fetch(`/api/fetch-image?url=${encodeURIComponent(url)}`);
+            const data = await res.json();
+            if (data.dataUrl) {
+              console.log('[WorkspaceAI] fetched image:', data.sourceUrl, data.size, 'bytes');
+            }
+          } catch (e) { console.error('[WorkspaceAI] fetch error:', e); }
+        }
+        break;
+      }
+      // Logo-specific tools are dispatched via a custom event that LogoProvider can listen to
+      case 'set_logo_param':
+      case 'set_logo_custom_param':
+      case 'set_logo_variant':
+      case 'create_template':
+        window.dispatchEvent(new CustomEvent('hudson:workspace-tool', { detail: { name, args } }));
+        break;
+      case 'create_pipe': {
+        try {
+          await fetch('/api/pipes', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              pipe: {
+                name: args.name,
+                source: { appId: args.sourceAppId, portId: args.sourcePortId },
+                sink: { appId: args.sinkAppId, portId: args.sinkPortId },
+                enabled: true,
+              },
+            }),
+          });
+        } catch (e) { console.error('[WorkspaceAI] create pipe error:', e); }
+        break;
+      }
+      case 'generate_image': {
+        const prompt = args.prompt as string;
+        if (!prompt) break;
+        try {
+          const res = await fetch('/api/ai/generate-image', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt, aspectRatio: args.aspectRatio }),
+          });
+          const data = await res.json();
+          if (data.image?.dataUrl) {
+            console.log('[WorkspaceAI] image generated');
+            // Dispatch event so WorkspaceAI can display the result
+            window.dispatchEvent(new CustomEvent('hudson:generated-image', {
+              detail: { dataUrl: data.image.dataUrl, prompt },
+            }));
+          } else if (data.error) {
+            console.error('[WorkspaceAI] generate error:', data.error);
+            window.dispatchEvent(new CustomEvent('hudson:generated-image', {
+              detail: { error: data.error, prompt },
+            }));
+          }
+        } catch (e) { console.error('[WorkspaceAI] generate error:', e); }
+        break;
+      }
+    }
+  }, [pushPipe, pipes]);
+
+  // --- Terminal screenshot button ---
+  const [termSnapping, setTermSnapping] = useState(false);
+  const handleTermScreenshot = useCallback(async () => {
+    if (termSnapping) return;
+    setTermSnapping(true);
+    try {
+      const blob = await captureWorkspace();
+      if (!blob) return;
+      const ts = new Date().toISOString().replace(/[:.]/g, '-').slice(0, 19);
+      const file = new File([blob], `snap-${ts}.jpg`, { type: 'image/jpeg' });
+      const base64 = await new Promise<string>((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve((reader.result as string).split(',')[1]);
+        reader.onerror = reject;
+        reader.readAsDataURL(file);
+      });
+      const res = await fetch('/api/relay/upload', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: file.name, data: base64 }),
+      });
+      const { path } = (await res.json()) as { path: string };
+      if (path) navigator.clipboard.writeText(path);
+    } finally {
+      setTermSnapping(false);
+    }
+  }, [termSnapping]);
+
+  const terminalHeaderActions = (
+    <button
+      type="button"
+      onClick={handleTermScreenshot}
+      disabled={termSnapping}
+      className="p-1 rounded text-neutral-500 hover:text-cyan-400 disabled:opacity-30 transition-colors"
+      title="Capture screenshot — copies file path to clipboard"
+    >
+      {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+    </button>
+  );
+
   // --- Terminal content ---
   const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
+  const workspaceAINode = <WorkspaceAI workspace={workspace} onToolCall={handleWorkspaceToolCall} />;
 
   const terminalContent = (() => {
-    // No app terminals — render Hudson terminal directly, no tab bar
+    // No app terminals — show AI + Terminal tabs
     if (appsWithTerminal.length === 0) {
-      return hudsonTerminalNode;
+      return (
+        <div className="flex flex-col h-full overflow-hidden">
+          <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
+            <button
+              onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
+              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
+                activeTerminalAppId === HUDSON_AI_ID
+                  ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+              }`}
+            >
+              <Sparkles size={10} />
+              AI
+            </button>
+            <button
+              onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
+              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
+                activeTerminalAppId === HUDSON_TERMINAL_ID
+                  ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
+                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+              }`}
+            >
+              Terminal
+            </button>
+          </div>
+          <div className="flex-1 overflow-hidden min-w-0">
+            {activeTerminalAppId === HUDSON_AI_ID ? workspaceAINode : hudsonTerminalNode}
+          </div>
+        </div>
+      );
     }
 
-    // Has app terminals — always show tab bar with Hudson first
+    // Has app terminals — AI first, then Hudson, then app terminals
     const activeApps = sortedTerminalApps.filter(c => activatedAppIds.has(c.app.id));
     const inactiveApps = sortedTerminalApps.filter(c => !activatedAppIds.has(c.app.id));
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
         <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
-          {/* Hudson global tab */}
+          {/* AI tab — primary */}
+          <button
+            onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
+            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
+              activeTerminalAppId === HUDSON_AI_ID
+                ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
+                : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+            }`}
+          >
+            <Sparkles size={10} />
+            AI
+          </button>
+          {/* Hudson terminal tab */}
           <button
             onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
             className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
@@ -1201,9 +1497,9 @@ function WorkspaceInner({
                 : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
             }`}
           >
-            Hudson
+            Terminal
           </button>
-          {/* Separator between Hudson and app tabs */}
+          {/* Separator between system and app tabs */}
           <div className="h-3 w-px bg-neutral-700/50 mx-1" />
           {/* Active app tabs */}
           {activeApps.map(config => (
@@ -1238,7 +1534,9 @@ function WorkspaceInner({
           ))}
         </div>
         <div className="flex-1 overflow-hidden min-w-0">
-          {activeTerminalAppId === HUDSON_TERMINAL_ID ? (
+          {activeTerminalAppId === HUDSON_AI_ID ? (
+            workspaceAINode
+          ) : activeTerminalAppId === HUDSON_TERMINAL_ID ? (
             hudsonTerminalNode
           ) : activeTerminalApp?.slots.Terminal ? (
             <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
@@ -1279,6 +1577,7 @@ function WorkspaceInner({
           zOrderMap={zOrderMap}
           appHooksMap={Object.fromEntries(allAppHooks.map(h => [h.appId, h]))}
           onEnterFullscreen={enterFullscreen}
+          windowBoundsMap={windowBoundsMap}
         />
       )}
     </div>
@@ -1470,6 +1769,7 @@ function WorkspaceInner({
               isMaximized={isTerminalMaximized}
               height={terminalHeight}
               onHeightChange={setTerminalHeight}
+              headerActions={terminalHeaderActions}
             >
               {terminalContent}
             </TerminalDrawer>
@@ -1715,6 +2015,7 @@ function MultiAppCanvas({
   zOrderMap,
   appHooksMap,
   onEnterFullscreen,
+  windowBoundsMap,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -1732,6 +2033,7 @@ function MultiAppCanvas({
   zOrderMap: Record<string, number>;
   appHooksMap: Record<string, AppHookData>;
   onEnterFullscreen: (appId: string) => void;
+  windowBoundsMap: Record<string, { x: number; y: number; w: number; h: number }>;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -1741,8 +2043,13 @@ function MultiAppCanvas({
   const visibleNative = nativeApps.filter(c => activatedAppIds.has(c.app.id));
   const visibleWindowed = windowedApps.filter(c => activatedAppIds.has(c.app.id));
 
+  // Pipes from DataBus
+  const { pipes } = useDataBus();
+
   return (
     <>
+      {/* Pipe connection arrows between apps */}
+      <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />
       {/* Native apps render directly on canvas */}
       <AnimatePresence>
         {visibleNative.map(config => (
@@ -1750,10 +2057,10 @@ function MultiAppCanvas({
             key={config.app.id}
             data-native-app={config.app.name}
             onClick={() => onFocusApp(config.app.id)}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
             <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
               <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
@@ -1769,11 +2076,11 @@ function MultiAppCanvas({
         {visibleWindowed.map(config => (
           <motion.div
             key={`${config.app.id}-${windowResetKey}`}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.5, ease: [0.25, 1, 0.5, 1] }}
-            style={{ zIndex: zOrderMap[config.app.id] ?? 0, position: 'relative' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ zIndex: zOrderMap[config.app.id] ?? 1, position: 'relative' }}
           >
             <WindowedApp
               config={config}
@@ -1797,11 +2104,11 @@ function MultiAppCanvas({
         {dynamicWindows.map(dw => (
           <motion.div
             key={dw.id}
-            initial={{ opacity: 0, scale: 0.96 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.96 }}
-            transition={{ duration: 0.3, ease: [0.25, 1, 0.5, 1] }}
-            style={{ zIndex: zOrderMap[dw.id] ?? 0, position: 'relative' }}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
+            style={{ zIndex: zOrderMap[dw.id] ?? 1, position: 'relative' }}
           >
             <DynamicWindowedApp
               win={dw}
@@ -2005,6 +2312,10 @@ function WindowedApp({
     setPreMaxBounds(null);
   }, [defaults, setBounds]);
 
+  // Port activity slide-down (auto-available for apps with ports)
+  const hasPorts = !!(config.app.ports?.outputs?.length || config.app.ports?.inputs?.length);
+  const [showPortLog, setShowPortLog] = useState(false);
+
   const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
       id: `${config.app.id}:focus-mode`,
@@ -2058,6 +2369,12 @@ function WindowedApp({
       disabled: true,
       action: () => {},
     },
+    ...(hasPorts ? [{
+      id: `${config.app.id}:port-activity`,
+      label: showPortLog ? 'Hide Port Activity' : 'Show Port Activity',
+      icon: <Activity size={12} />,
+      action: () => setShowPortLog(v => !v),
+    }] : []),
     { type: 'separator' },
     {
       id: `${config.app.id}:close`,
@@ -2069,24 +2386,40 @@ function WindowedApp({
   ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen]);
 
   return (
-    <AppWindow
-      title={config.app.name}
-      titleCenter={navCenter}
-      bounds={bounds}
-      onBoundsChange={setBounds}
-      isFocused={isFocused}
-      onFocus={onFocus}
-      onClose={onClose}
-      worldScale={worldScale}
-      isMaximized={isMaximized}
-      onToggleMaximize={handleToggleMaximize}
-      contextMenuItems={contextMenuItems}
-    >
-      <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
-        <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-          <config.app.slots.Content />
-        </AppSlotErrorBoundary>
-      </ServiceBanner>
-    </AppWindow>
+    <>
+      <AppWindow
+        title={config.app.name}
+        titleCenter={navCenter}
+        bounds={bounds}
+        onBoundsChange={setBounds}
+        isFocused={isFocused}
+        onFocus={onFocus}
+        onClose={onClose}
+        worldScale={worldScale}
+        isMaximized={isMaximized}
+        onToggleMaximize={handleToggleMaximize}
+        contextMenuItems={contextMenuItems}
+      >
+        <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
+          <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+            <config.app.slots.Content />
+          </AppSlotErrorBoundary>
+        </ServiceBanner>
+      </AppWindow>
+
+      {/* Port activity — slides down below the window, positioned absolutely */}
+      {hasPorts && (
+        <div
+          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-white/[0.06] bg-neutral-950/90 backdrop-blur-xl overflow-hidden"
+          style={{
+            left: bounds.x,
+            top: bounds.y + bounds.h,
+            width: bounds.w,
+          }}
+        >
+          <PortActivityLog appId={config.app.id} />
+        </div>
+      )}
+    </>
   );
 }

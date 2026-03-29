@@ -653,6 +653,87 @@ export function SettingsText({ label, value, onChange }: {
   );
 }
 
+export function SettingsSelect({ label, value, options, onChange }: {
+  label: string;
+  value: string;
+  options: { value: string; label: string }[];
+  onChange: (v: string) => void;
+}) {
+  return (
+    <div className="flex items-center gap-4">
+      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
+      <select
+        value={value}
+        onChange={e => onChange(e.target.value)}
+        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-[11px] font-mono text-neutral-200 focus:border-emerald-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+        style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
+      >
+        {options.map(opt => (
+          <option key={opt.value} value={opt.value}>{opt.label}</option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Reusable font settings card — use at shell (global) or workspace level
+// ---------------------------------------------------------------------------
+
+const FONT_FAMILIES = [
+  { value: 'system-ui', label: 'System UI' },
+  { value: "'SF Pro', system-ui", label: 'SF Pro' },
+  { value: "'SF Rounded', system-ui", label: 'SF Rounded' },
+  { value: "'Inter', system-ui", label: 'Inter' },
+  { value: "'JetBrains Mono', monospace", label: 'JetBrains Mono' },
+  { value: "'Hack Nerd Font', monospace", label: 'Hack Nerd Font' },
+  { value: "'SF Mono', monospace", label: 'SF Mono' },
+  { value: "'IBM Plex Sans', system-ui", label: 'IBM Plex Sans' },
+  { value: "'IBM Plex Mono', monospace", label: 'IBM Plex Mono' },
+];
+
+export function FontSettingsCard({ fontSize, fontFamily, onChangeFontSize, onChangeFontFamily }: {
+  fontSize: number;
+  fontFamily: string;
+  onChangeFontSize: (size: number) => void;
+  onChangeFontFamily: (family: string) => void;
+}) {
+  return (
+    <>
+      <SettingsSlider
+        label="Font Size"
+        value={fontSize}
+        min={10}
+        max={20}
+        step={1}
+        format={v => `${v}px`}
+        onChange={onChangeFontSize}
+      />
+      <SettingsSelect
+        label="Font Family"
+        value={fontFamily}
+        options={FONT_FAMILIES}
+        onChange={onChangeFontFamily}
+      />
+      {/* Live preview */}
+      <div className="mt-1 px-3 py-2 rounded bg-neutral-800/50 border border-neutral-700/30">
+        <div
+          className="text-neutral-300 leading-relaxed"
+          style={{ fontSize: `${fontSize}px`, fontFamily }}
+        >
+          The quick brown fox jumps over the lazy dog
+        </div>
+        <div
+          className="text-neutral-500 mt-1"
+          style={{ fontSize: `${Math.max(fontSize - 2, 9)}px`, fontFamily }}
+        >
+          0123456789 — ABCDEF abcdef
+        </div>
+      </div>
+    </>
+  );
+}
+
 export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: {
   isOpen: boolean;
   onClose: () => void;

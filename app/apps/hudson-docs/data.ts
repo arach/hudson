@@ -19,12 +19,14 @@ import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
 
 export const DEFAULT_SETTINGS: HudsonSettings = {
   glowIntensity: 30,
+  gridOpacity: 60,
   connectorStyle: 'dashed',
   zoomSensitivity: 1.0,
   masterMute: false,
   uiClickSounds: true,
   uiTransitionSounds: true,
   aiMode: 'cli',
+  font: { fontSize: 13, fontFamily: 'system-ui' },
 };
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [

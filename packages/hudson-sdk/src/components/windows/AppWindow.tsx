@@ -222,8 +222,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
         top: bounds.y,
         width: bounds.w,
         height: bounds.h,
-        // Expanded windows float above all siblings
-        ...(isMaximized ? { zIndex: 50 } : undefined),
+        // Maximized windows float above all siblings
+        ...(isMaximized ? { zIndex: 9999 } : undefined),
       }}
       onMouseDown={handleWindowMouseDown}
     >

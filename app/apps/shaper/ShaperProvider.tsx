@@ -372,6 +372,9 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const startProjectFromImage = useCallback(async (image: ProjectImage) => {
+    // Set projectImage state immediately — prevents session restore from overriding
+    setProjectImage(image);
+    setImageWarnings([]);
     setIsTracing(true);
     try {
       const result = await traceFromImage(image.url, traceOptions);
@@ -386,6 +389,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         setPan({ x: 0, y: 0 });
         setSelectedPoint(null);
         setShowDropZone(false);
+        setIsInitialLoad(false);
         // Persist image as data URL so it survives refresh
         const img = new Image();
         img.crossOrigin = 'anonymous';

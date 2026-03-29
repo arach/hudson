@@ -305,7 +305,7 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     lightColors: { ...defaults.lightColors, ...rawParams.lightColors },
     wordmark: { ...defaults.wordmark, ...rawParams.wordmark },
   }), [rawParams]);
-  const [backgroundSvg, setBackgroundSvg] = useState<string | null>(null);
+  const [backgroundSvg, setBackgroundSvg] = usePersistentState<string | null>('logo.backgroundSvg', null);
   const [showPreviews, setShowPreviews] = useState(false);
   const togglePreviews = useCallback(() => setShowPreviews(v => !v), []);
   const [inspectMode, setInspectMode] = useState(false);

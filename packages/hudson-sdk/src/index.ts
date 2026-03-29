@@ -20,7 +20,7 @@ export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from '
 
 // AI
 export { AI } from './components/AI';
-export { TerminalRelay } from './components/TerminalRelay';
+export { TerminalRelay, captureWorkspace } from './components/TerminalRelay';
 
 // Utilities
 export * from './lib/sounds';

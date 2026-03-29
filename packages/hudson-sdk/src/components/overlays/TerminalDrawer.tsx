@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
+import { X, Maximize2, Minimize2, Terminal, Camera, Loader2 } from 'lucide-react';
 import { SHELL_THEME } from '../../lib/theme';
 
 const { statusBarHeight } = SHELL_THEME.layout;
@@ -15,6 +15,8 @@ interface TerminalDrawerProps {
   onHeightChange?: (h: number) => void;
   /** Custom title content */
   title?: React.ReactNode;
+  /** Extra actions rendered in the header bar (right of title, left of grip) */
+  headerActions?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -23,7 +25,7 @@ const MIN_HEIGHT = 120;
 const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   isOpen, onClose, onToggleMaximize, isMaximized = false,
   height = 320, onHeightChange,
-  title, children
+  title, headerActions, children
 }) => {
   const draggingRef = useRef(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -86,13 +88,14 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
     >
       {/* Header */}
       <div className="h-9 bg-neutral-900/70 border-b border-neutral-700 flex items-center justify-between px-3 shrink-0 select-none backdrop-blur-sm">
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
           {title || (
             <div className="flex items-center gap-2 text-emerald-400">
               <Terminal size={14} />
               <span className="text-xs font-bold tracking-widest font-mono">TERMINAL</span>
             </div>
           )}
+          {headerActions}
         </div>
 
         {/* Center grip — drag to resize */}

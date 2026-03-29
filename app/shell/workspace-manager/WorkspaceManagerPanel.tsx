@@ -13,9 +13,11 @@ import {
   SettingsSlider,
   SettingsToggle,
   SettingsSegment,
+  SettingsSelect,
   SettingsText,
   SettingsSection,
   ServiceActionButton,
+  FontSettingsCard,
 } from '../../apps/hudson-docs/components';
 
 // ---------------------------------------------------------------------------
@@ -71,6 +73,8 @@ function AppSettingsInline({ entry }: { entry: AppSettingsEntry }) {
                   return <SettingsToggle key={field.key} label={field.label} checked={Boolean(value)} onChange={v => entry.onUpdate({ [field.key]: v })} />;
                 case 'segment':
                   return <SettingsSegment key={field.key} label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                case 'select':
+                  return <SettingsSelect key={field.key} label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
                 default:
                   return null;
               }
@@ -524,6 +528,7 @@ function SettingsTab() {
     <div className="flex-1 overflow-y-auto frame-scrollbar">
       <SettingsSection label="Appearance">
         <SettingsSlider label="Glow Intensity" value={shellSettings.glowIntensity} min={0} max={100} step={1} format={v => `${v}%`} onChange={v => onUpdateShellSettings({ glowIntensity: v })} />
+        <SettingsSlider label="Grid Opacity" value={shellSettings.gridOpacity ?? 60} min={0} max={100} step={5} format={v => `${v}%`} onChange={v => onUpdateShellSettings({ gridOpacity: v })} />
         <SettingsSegment
           label="Connector Style"
           value={shellSettings.connectorStyle}
@@ -533,6 +538,14 @@ function SettingsTab() {
             { value: 'dotted', label: 'Dotted' },
           ]}
           onChange={v => onUpdateShellSettings({ connectorStyle: v })}
+        />
+      </SettingsSection>
+      <SettingsSection label="Typography">
+        <FontSettingsCard
+          fontSize={shellSettings.font?.fontSize ?? 13}
+          fontFamily={shellSettings.font?.fontFamily ?? 'system-ui'}
+          onChangeFontSize={v => onUpdateShellSettings({ font: { ...(shellSettings.font ?? { fontSize: 13, fontFamily: 'system-ui' }), fontSize: v } })}
+          onChangeFontFamily={v => onUpdateShellSettings({ font: { ...(shellSettings.font ?? { fontSize: 13, fontFamily: 'system-ui' }), fontFamily: v } })}
         />
       </SettingsSection>
       <SettingsSection label="Navigation">

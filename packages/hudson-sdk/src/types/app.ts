@@ -11,9 +11,9 @@ import type { ServiceDependency } from './service';
 export interface AppSettingField {
   key: string;
   label: string;
-  type: 'text' | 'number' | 'toggle' | 'slider' | 'segment';
+  type: 'text' | 'number' | 'toggle' | 'slider' | 'segment' | 'select';
   default: string | number | boolean;
-  /** For segment type */
+  /** For segment/select type */
   options?: { value: string; label: string }[];
   /** For slider/number type */
   min?: number;

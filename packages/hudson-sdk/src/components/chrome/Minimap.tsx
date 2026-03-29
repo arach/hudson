@@ -1,5 +1,5 @@
 import React, { useCallback, useRef } from 'react';
-import { ChevronDown, ChevronUp, Maximize, Map } from 'lucide-react';
+import { ChevronDown, ChevronUp, Maximize, Map, LayoutGrid } from 'lucide-react';
 
 interface MinimapProps {
   pan: { x: number; y: number };
@@ -10,6 +10,8 @@ interface MinimapProps {
   onNavigate?: (pos: { x: number; y: number }) => void;
   /** Callback to fit all content in view */
   onFitAll?: () => void;
+  /** Callback to auto-tile all windows in a grid layout */
+  onAutoLayout?: () => void;
   children?: React.ReactNode;
   height?: number;
   footer?: React.ReactNode;
@@ -26,6 +28,7 @@ const Minimap: React.FC<MinimapProps> = ({
   onToggleCollapse,
   onNavigate,
   onFitAll,
+  onAutoLayout,
   children,
   height = MINIMAP_HEIGHT,
   footer,
@@ -64,6 +67,15 @@ const Minimap: React.FC<MinimapProps> = ({
           <span className="tracking-widest font-bold uppercase text-[12px]">Map</span>
         </div>
         <div className="flex items-center gap-1">
+          {!isCollapsed && onAutoLayout && (
+            <button
+              onClick={onAutoLayout}
+              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
+              title="Auto-layout windows"
+            >
+              <LayoutGrid size={10} />
+            </button>
+          )}
           {!isCollapsed && onFitAll && (
             <button
               onClick={onFitAll}

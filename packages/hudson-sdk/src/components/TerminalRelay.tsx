@@ -26,6 +26,33 @@ interface TerminalRelayProps {
 }
 
 // ---------------------------------------------------------------------------
+// Workspace screenshot capture (shared utility)
+// ---------------------------------------------------------------------------
+
+export async function captureWorkspace(): Promise<Blob | null> {
+  try {
+    const target = document.getElementById('__next') ?? document.body;
+    const mod = await import('html2canvas-pro');
+    const html2canvas = mod.default ?? mod;
+    const canvas = await (html2canvas as (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>)(target, {
+      backgroundColor: '#0a0a0a',
+      scale: 0.5,
+      useCORS: true,
+      logging: false,
+      allowTaint: true,
+      windowWidth: window.innerWidth,
+      windowHeight: window.innerHeight,
+    });
+    const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
+    if (!blob || blob.size < 200) return null;
+    return blob;
+  } catch (e) {
+    console.error('[TerminalRelay] screenshot failed:', e);
+    return null;
+  }
+}
+
+// ---------------------------------------------------------------------------
 // One Dark theme for xterm.js
 // ---------------------------------------------------------------------------
 

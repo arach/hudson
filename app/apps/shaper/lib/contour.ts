@@ -658,8 +658,14 @@ export function rdp(points: Pt[], epsilon: number): Pt[] {
   return [points[0], points[points.length - 1]];
 }
 
+export interface LoadedImage {
+  data: ImageData;
+  naturalWidth: number;
+  naturalHeight: number;
+}
+
 /** Load an image into an offscreen canvas and return pixel data at given resolution */
-export function loadImageData(src: string, size: number): Promise<ImageData> {
+export function loadImageData(src: string, size: number): Promise<LoadedImage> {
   return new Promise((resolve, reject) => {
     const img = new Image();
     img.crossOrigin = "anonymous";
@@ -669,7 +675,11 @@ export function loadImageData(src: string, size: number): Promise<ImageData> {
       canvas.height = size;
       const ctx = canvas.getContext("2d")!;
       ctx.drawImage(img, 0, 0, size, size);
-      resolve(ctx.getImageData(0, 0, size, size));
+      resolve({
+        data: ctx.getImageData(0, 0, size, size),
+        naturalWidth: img.naturalWidth,
+        naturalHeight: img.naturalHeight,
+      });
     };
     img.onerror = reject;
     img.src = src;

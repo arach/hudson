@@ -235,18 +235,25 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   // ---- Spawn PTY (direct or tmux-backed) ----
   let ptyProcess: IPty;
 
-  if (backend === 'tmux') {
-    console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd} [agent: ${agent}]`);
-    ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
-  } else {
-    console.log(`[relay] Session ${id}: pty backend, spawning ${agentBin} in ${cwd} [agent: ${agent}]`);
-    ptyProcess = pty.spawn(agentBin, agentArgs, {
-      name: 'xterm-256color',
-      cols,
-      rows,
-      cwd,
-      env,
-    });
+  try {
+    if (backend === 'tmux') {
+      console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd} [agent: ${agent}]`);
+      ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
+    } else {
+      console.log(`[relay] Session ${id}: pty backend, spawning ${agentBin} in ${cwd} [agent: ${agent}]`);
+      ptyProcess = pty.spawn(agentBin, agentArgs, {
+        name: 'xterm-256color',
+        cols,
+        rows,
+        cwd,
+        env,
+      });
+    }
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    console.error(`[relay] Session ${id}: failed to spawn PTY — ${message}`);
+    send(ws, { type: 'session:error', error: `Failed to spawn terminal: ${message}` });
+    return null;
   }
 
   const orphanTTL = msg.orphanTTL && msg.orphanTTL > 0 ? msg.orphanTTL : DEFAULT_ORPHAN_TTL_MS;

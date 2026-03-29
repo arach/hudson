@@ -247,8 +247,8 @@ export async function traceFromImage(
   const t0 = performance.now();
 
   // 1. Analyze at a small size first
-  const previewData = await loadImageData(src, 256);
-  const analysis: ImageAnalysis = analyzeImage(previewData);
+  const preview = await loadImageData(src, 256);
+  const analysis: ImageAnalysis = analyzeImage(preview.data);
 
   // 2. Resolve edge detection mode
   const edgeMode = options.edgeDetection === 'auto'
@@ -261,21 +261,41 @@ export async function traceFromImage(
     : options.resolution;
 
   // 4. Load at trace resolution
-  const imageData = await loadImageData(src, traceRes);
-  console.log("[trace] loaded image", traceRes, "x", traceRes, "kind:", analysis.kind, "edge:", edgeMode);
+  const loaded = await loadImageData(src, traceRes);
+  const { naturalWidth, naturalHeight } = loaded;
+  console.log("[trace] loaded image", traceRes, "x", traceRes, "natural:", naturalWidth, "x", naturalHeight, "kind:", analysis.kind, "edge:", edgeMode);
 
-  const scale = 1024 / traceRes;
+  // 5. Compute aspect-aware scale to match object-contain display in 1024x1024 canvas.
+  //    The trace squashes into a traceRes x traceRes square, but the display preserves
+  //    aspect ratio. We need separate x/y scales + centering offsets.
+  const aspect = naturalWidth / (naturalHeight || 1);
+  let scaleX: number, scaleY: number, offsetX: number, offsetY: number;
+  if (aspect >= 1) {
+    // Wide image: full width, reduced height, vertically centered
+    scaleX = 1024 / traceRes;
+    scaleY = (1024 / aspect) / traceRes;
+    offsetX = 0;
+    offsetY = (1024 - 1024 / aspect) / 2;
+  } else {
+    // Tall image: full height, reduced width, horizontally centered
+    scaleX = (1024 * aspect) / traceRes;
+    scaleY = 1024 / traceRes;
+    offsetX = (1024 - 1024 * aspect) / 2;
+    offsetY = 0;
+  }
 
-  // 5. Choose extraction strategy based on resolved edge detection
+  const transform: ContourTransform = { scaleX, scaleY, offsetX, offsetY };
+
+  // 6. Choose extraction strategy based on resolved edge detection
   let strokes: BezierSegment[][];
   if (edgeMode === 'canny') {
-    strokes = traceEdges(imageData, traceRes, scale, options, analysis);
+    strokes = traceEdges(loaded.data, traceRes, transform, options, analysis);
   } else {
     // 'otsu', 'alpha', or any mask-based detection
     const maxC = edgeMode === 'alpha'
       ? Math.min(options.maxContours, 1)
       : options.maxContours;
-    strokes = traceMask(imageData, traceRes, scale, options, maxC);
+    strokes = traceMask(loaded.data, traceRes, transform, options, maxC);
   }
 
   const elapsed = performance.now() - t0;
@@ -295,7 +315,7 @@ export async function traceFromImage(
 function traceMask(
   imageData: ImageData,
   traceRes: number,
-  scale: number,
+  transform: ContourTransform,
   options: TraceOptions,
   maxContours: number,
 ): BezierSegment[][] {
@@ -306,7 +326,7 @@ function traceMask(
   if (maxContours <= 1) {
     const contour = marchingSquares(mask, traceRes, traceRes);
     if (contour.length === 0) return [];
-    return [fitContour(contour, scale, options)].filter((s) => s.length > 0);
+    return [fitContour(contour, transform, options)].filter((s) => s.length > 0);
   }
 
   // Min length scales with resolution — filter out noise
@@ -316,7 +336,7 @@ function traceMask(
 
   const strokes: BezierSegment[][] = [];
   for (const contour of contours) {
-    const stroke = fitContour(contour, scale, options);
+    const stroke = fitContour(contour, transform, options);
     if (stroke.length > 0) strokes.push(stroke);
   }
   return strokes;
@@ -326,7 +346,7 @@ function traceMask(
 function traceEdges(
   imageData: ImageData,
   traceRes: number,
-  scale: number,
+  transform: ContourTransform,
   options: TraceOptions,
   analysis: ImageAnalysis,
 ): BezierSegment[][] {
@@ -349,15 +369,24 @@ function traceEdges(
 
   const strokes: BezierSegment[][] = [];
   for (const contour of contours) {
-    const stroke = fitContour(contour, scale, photoOptions);
+    const stroke = fitContour(contour, transform, photoOptions);
     if (stroke.length > 0) strokes.push(stroke);
   }
   return strokes;
 }
 
-/** Fit bezier curves to a single contour polyline, scaled to canvas */
-function fitContour(contour: Pt[], scale: number, options: TraceOptions): BezierSegment[] {
-  const scaled: Pt[] = contour.map(([x, y]) => [x * scale, y * scale]);
+/** Aspect-aware transform from trace-pixel space to 1024x1024 display space */
+interface ContourTransform {
+  scaleX: number;
+  scaleY: number;
+  offsetX: number;
+  offsetY: number;
+}
+
+/** Fit bezier curves to a single contour polyline, transformed to canvas */
+function fitContour(contour: Pt[], transform: ContourTransform, options: TraceOptions): BezierSegment[] {
+  const { scaleX, scaleY, offsetX, offsetY } = transform;
+  const scaled: Pt[] = contour.map(([x, y]) => [x * scaleX + offsetX, y * scaleY + offsetY]);
 
   const points = options.simplification === 'rdp'
     ? rdp(scaled, options.errorTolerance * 0.5)

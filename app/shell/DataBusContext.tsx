@@ -7,6 +7,7 @@ import {
   useEffect,
   useRef,
   useState,
+  useMemo,
   type ReactNode,
 } from 'react';
 import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from '@hudson/sdk';
@@ -22,25 +23,42 @@ export interface PortCatalogEntry {
 }
 
 // ---------------------------------------------------------------------------
+// Port activity log entry
+// ---------------------------------------------------------------------------
+export interface PortActivityEntry {
+  id: number;
+  timestamp: number;
+  direction: 'push' | 'receive';
+  appId: string;
+  portId: string;
+  peerAppId: string;
+  peerPortId: string;
+  pipeName?: string;
+  /** Preview of the data — truncated string representation */
+  dataPreview: string;
+  /** Data type hint */
+  dataType: string;
+  /** Byte size estimate */
+  dataSize: number;
+  success: boolean;
+}
+
+// ---------------------------------------------------------------------------
 // Context value
 // ---------------------------------------------------------------------------
 interface DataBusContextValue {
-  /** Register an output getter for an app (called by usePortBridge). */
   registerOutput: (appId: string, getter: (portId: string) => unknown | null) => void;
-  /** Register an input setter for an app (called by usePortBridge). */
   registerInput: (appId: string, setter: (portId: string, data: unknown) => void) => void;
-  /** Push data through a saved pipe by ID. */
   pushPipe: (pipeId: string) => Promise<boolean>;
-  /** Ad-hoc push without a saved pipe. */
   pushDirect: (srcAppId: string, srcPortId: string, sinkAppId: string, sinkPortId: string) => boolean;
-  /** All saved pipes. */
   pipes: PipeDefinition[];
-  /** Create and persist a new pipe. */
   createPipe: (pipe: Omit<PipeDefinition, 'id' | 'createdAt' | 'lastPushedAt'>) => Promise<PipeDefinition | null>;
-  /** Delete a saved pipe. */
   deletePipe: (id: string) => Promise<void>;
-  /** Get all declared ports across apps (for terminal prompt). */
   getPortCatalog: () => PortCatalogEntry[];
+  /** Activity log — all push/receive events across apps */
+  portActivity: PortActivityEntry[];
+  /** Activity for a specific app */
+  getAppActivity: (appId: string) => PortActivityEntry[];
 }
 
 const DataBusCtx = createContext<DataBusContextValue | null>(null);
@@ -49,6 +67,40 @@ export function useDataBus() {
   const ctx = useContext(DataBusCtx);
   if (!ctx) throw new Error('useDataBus must be inside DataBusProvider');
   return ctx;
+}
+
+/** Get activity log entries for a specific app (push or receive). */
+export function usePortActivity(appId: string): PortActivityEntry[] {
+  const { portActivity } = useDataBus();
+  return useMemo(() => portActivity.filter(e => e.appId === appId), [portActivity, appId]);
+}
+
+// ---------------------------------------------------------------------------
+// Helpers
+// ---------------------------------------------------------------------------
+
+let _activitySeq = 0;
+
+function summarizeData(data: unknown): { dataPreview: string; dataType: string; dataSize: number } {
+  if (data == null) return { dataPreview: 'null', dataType: 'null', dataSize: 0 };
+  if (typeof data === 'string') {
+    const isDataUrl = data.startsWith('data:');
+    const isSvg = data.includes('<svg');
+    const dataType = isDataUrl ? 'image (data URL)' : isSvg ? 'svg' : 'string';
+    const preview = isDataUrl
+      ? `data:${data.slice(5, 30)}... (${data.length} chars)`
+      : data.length > 120 ? data.slice(0, 120) + '...' : data;
+    return { dataPreview: preview, dataType, dataSize: data.length };
+  }
+  if (typeof data === 'object') {
+    const json = JSON.stringify(data);
+    return {
+      dataPreview: json.length > 120 ? json.slice(0, 120) + '...' : json,
+      dataType: 'json',
+      dataSize: json.length,
+    };
+  }
+  return { dataPreview: String(data), dataType: typeof data, dataSize: String(data).length };
 }
 
 // ---------------------------------------------------------------------------
@@ -61,9 +113,16 @@ export function DataBusProvider({
   workspace: HudsonWorkspace;
   children: ReactNode;
 }) {
-  // --- Port registries (mutable refs — no re-renders on registration) ---
   const outputGetters = useRef<Map<string, (portId: string) => unknown | null>>(new Map());
   const inputSetters = useRef<Map<string, (portId: string, data: unknown) => void>>(new Map());
+  const [portActivity, setPortActivity] = useState<PortActivityEntry[]>([]);
+
+  const logActivity = useCallback((entry: Omit<PortActivityEntry, 'id' | 'timestamp'>) => {
+    setPortActivity(prev => [
+      { ...entry, id: ++_activitySeq, timestamp: Date.now() },
+      ...prev,
+    ].slice(0, 50)); // Keep last 50 entries
+  }, []);
 
   const registerOutput = useCallback((appId: string, getter: (portId: string) => unknown | null) => {
     outputGetters.current.set(appId, getter);
@@ -73,7 +132,7 @@ export function DataBusProvider({
     inputSetters.current.set(appId, setter);
   }, []);
 
-  // --- Pipes state (polled from API) ---
+  // --- Pipes state ---
   const [pipes, setPipes] = useState<PipeDefinition[]>([]);
 
   const fetchPipes = useCallback(async () => {
@@ -95,23 +154,56 @@ export function DataBusProvider({
     return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
   }, [fetchPipes]);
 
-  // --- Push execution ---
-  const pushDirect = useCallback((srcAppId: string, srcPortId: string, sinkAppId: string, sinkPortId: string): boolean => {
+  // --- Push execution with logging ---
+  const pushDirect = useCallback((srcAppId: string, srcPortId: string, sinkAppId: string, sinkPortId: string, pipeName?: string): boolean => {
     const getter = outputGetters.current.get(srcAppId);
     const setter = inputSetters.current.get(sinkAppId);
-    if (!getter || !setter) return false;
+    if (!getter || !setter) {
+      logActivity({
+        direction: 'push', appId: srcAppId, portId: srcPortId,
+        peerAppId: sinkAppId, peerPortId: sinkPortId, pipeName,
+        dataPreview: getter ? 'No input handler registered' : 'No output handler registered',
+        dataType: 'error', dataSize: 0, success: false,
+      });
+      return false;
+    }
     const data = getter(srcPortId);
-    if (data == null) return false;
+    if (data == null) {
+      logActivity({
+        direction: 'push', appId: srcAppId, portId: srcPortId,
+        peerAppId: sinkAppId, peerPortId: sinkPortId, pipeName,
+        dataPreview: 'Output returned null', dataType: 'null', dataSize: 0, success: false,
+      });
+      return false;
+    }
+
+    const summary = summarizeData(data);
+
+    // Log push from source
+    logActivity({
+      direction: 'push', appId: srcAppId, portId: srcPortId,
+      peerAppId: sinkAppId, peerPortId: sinkPortId, pipeName,
+      ...summary, success: true,
+    });
+
+    // Execute transfer
     setter(sinkPortId, data);
+
+    // Log receive at sink
+    logActivity({
+      direction: 'receive', appId: sinkAppId, portId: sinkPortId,
+      peerAppId: srcAppId, peerPortId: srcPortId, pipeName,
+      ...summary, success: true,
+    });
+
     return true;
-  }, []);
+  }, [logActivity]);
 
   const pushPipe = useCallback(async (pipeId: string): Promise<boolean> => {
     const pipe = pipes.find(p => p.id === pipeId);
     if (!pipe || !pipe.enabled) return false;
-    const ok = pushDirect(pipe.source.appId, pipe.source.portId, pipe.sink.appId, pipe.sink.portId);
+    const ok = pushDirect(pipe.source.appId, pipe.source.portId, pipe.sink.appId, pipe.sink.portId, pipe.name);
     if (ok) {
-      // Update lastPushedAt on server
       try {
         await fetch('/api/pipes', {
           method: 'POST',
@@ -153,7 +245,7 @@ export function DataBusProvider({
     } catch { /* silent */ }
   }, [fetchPipes]);
 
-  // --- Port catalog (static declarations from workspace apps) ---
+  // --- Port catalog ---
   const getPortCatalog = useCallback((): PortCatalogEntry[] => {
     return workspace.apps
       .filter((c: WorkspaceAppConfig) => c.app.ports)
@@ -165,6 +257,10 @@ export function DataBusProvider({
       }));
   }, [workspace]);
 
+  const getAppActivity = useCallback((appId: string) => {
+    return portActivity.filter(e => e.appId === appId);
+  }, [portActivity]);
+
   const value: DataBusContextValue = {
     registerOutput,
     registerInput,
@@ -174,6 +270,8 @@ export function DataBusProvider({
     createPipe,
     deletePipe,
     getPortCatalog,
+    portActivity,
+    getAppActivity,
   };
 
   return <DataBusCtx.Provider value={value}>{children}</DataBusCtx.Provider>;
@@ -186,7 +284,6 @@ export function usePortBridge(config: WorkspaceAppConfig) {
   const { app } = config;
   const bus = useDataBus();
 
-  // Always call hooks unconditionally (React rules)
   const getter = app.hooks.usePortOutput?.() ?? null;
   const setter = app.hooks.usePortInput?.() ?? null;
 

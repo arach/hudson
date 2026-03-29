@@ -73,8 +73,9 @@ interface HudsonApp {
 | `slots.Content` | Yes | Main UI |
 | `hooks.useCommands` | Yes | Commands for palette (can return `[]`) |
 | `hooks.useStatus` | Yes | Status bar label and color |
-| `leftPanel`, `rightPanel` (deprecated) | No | Panel header config. `rightPanel` is deprecated — use `Inspector` + `tools` instead |
-| `slots.LeftPanel`, `RightPanel` (deprecated), `LeftFooter`, `Terminal` | No | Additional UI slots. `RightPanel` is deprecated — use `Inspector` + `tools` instead |
+| `leftPanel` | No | Sidebar navigation config — provides icon and title for the app's section in the left sidebar. All apps appear in the sidebar regardless, but `leftPanel` customizes how the entry looks |
+| `rightPanel` (deprecated) | No | Right panel header config — deprecated, use `Inspector` + `tools` instead |
+| `slots.LeftPanel`, `RightPanel` (deprecated), `LeftFooter`, `Terminal` | No | Additional UI slots. `LeftPanel` renders expandable content under the app's sidebar entry. `RightPanel` is deprecated — use `Inspector` + `tools` instead |
 | `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useLayoutMode` | No | Nav bar integration |
 | `intents` | No | LLM/voice/search declarations |
 
@@ -152,6 +153,24 @@ export function GlyphEditorProvider({ children }: { children: ReactNode }) {
   );
 }
 ```
+
+## Sidebar Navigation
+
+Every app in a workspace automatically appears in the left sidebar navigation. The sidebar section shows the app name with expand/collapse, visibility toggle, and service health dots.
+
+To customize the sidebar entry, configure `leftPanel`:
+
+```typescript
+leftPanel: {
+  title: 'Project',                        // Section label
+  icon: createElement(Layers, { size: 12 }), // Icon next to the name
+  headerActions: MyHeaderActions,           // Action buttons in the header
+},
+```
+
+If your app provides a `slots.LeftPanel` component, its content renders inside the expandable section. Apps without a `LeftPanel` slot still appear in the sidebar — they just show as a collapsible header with no expandable content.
+
+If `leftPanel` is not configured, the sidebar falls back to using the `rightPanel` icon (if available). The app name is always shown regardless.
 
 ## Slot Components
 

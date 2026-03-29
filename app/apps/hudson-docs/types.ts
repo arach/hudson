@@ -26,12 +26,19 @@ export interface AgentDocEntry {
 
 export type AIMode = 'cli' | 'api';
 
+export interface FontSettings {
+  fontSize: number;
+  fontFamily: string;
+}
+
 export interface HudsonSettings {
   glowIntensity: number;
+  gridOpacity: number;
   connectorStyle: 'dashed' | 'solid' | 'dotted';
   zoomSensitivity: number;
   masterMute: boolean;
   uiClickSounds: boolean;
   uiTransitionSounds: boolean;
   aiMode: AIMode;
+  font: FontSettings;
 }

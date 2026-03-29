@@ -34,12 +34,14 @@ import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 // ---------------------------------------------------------------------------
 const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   glowIntensity: 30,
+  gridOpacity: 60,
   connectorStyle: 'dashed',
   zoomSensitivity: 1.0,
   masterMute: false,
   uiClickSounds: true,
   uiTransitionSounds: true,
   aiMode: 'cli',
+  font: { fontSize: 13, fontFamily: 'system-ui' },
 };
 
 // ---------------------------------------------------------------------------

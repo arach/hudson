@@ -180,6 +180,7 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 export function LogoContent() {
   const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates, inspectMode } = useLogo();
   const [spaceHeld, setSpaceHeld] = useState(false);
+  const gridOpacity = 0.4; // Fixed — workspace-level grid opacity is in shell settings
   const canvas = useCanvasControls();
   const containerRef = useRef<HTMLDivElement>(null);
 
@@ -283,7 +284,8 @@ export function LogoContent() {
         onBlur={() => setSpaceHeld(false)}
       >
         {/* Dot grid background */}
-        <div className="absolute inset-0 pointer-events-none" style={{ opacity: 0.4 }}>
+        {gridOpacity > 0 && (
+        <div className="absolute inset-0 pointer-events-none" style={{ opacity: gridOpacity }}>
           <svg width="100%" height="100%">
             <defs>
               <pattern id="logo-grid" width={20 * canvas.pan.zoom} height={20 * canvas.pan.zoom} patternUnits="userSpaceOnUse"
@@ -294,6 +296,7 @@ export function LogoContent() {
             <rect width="100%" height="100%" fill="url(#logo-grid)" />
           </svg>
         </div>
+        )}
 
         {/* Floating toolbar */}
         <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-px rounded-lg border border-white/10 bg-black/60 backdrop-blur-xl p-0.5">
@@ -402,6 +405,7 @@ export function LogoContent() {
           >
             <RotateCcw size={11} />
           </button>
+
         </div>
 
         {/* Edit modal */}
@@ -599,6 +603,7 @@ export function LogoContent() {
           </div>
         </div>
       </div>
+
     </div>
   );
 }

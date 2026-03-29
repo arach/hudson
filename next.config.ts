@@ -40,6 +40,11 @@ if (!existsSync(localAppsFile)) {
   );
 }
 
+const localWorkspacesFile = join(localDir, "workspaces.json");
+if (!existsSync(localWorkspacesFile)) {
+  writeFileSync(localWorkspacesFile, "[]\\n");
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 
 const nextConfig: NextConfig = {

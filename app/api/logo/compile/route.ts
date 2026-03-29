@@ -23,7 +23,12 @@ export async function POST(request: Request) {
       target: 'es2020',
     });
 
-    const js = result.code;
+    let js = result.code;
+
+    // Strip redeclarations of function parameters (p, vb) — AI agents
+    // sometimes emit `const vb = 512;` which clashes with the function signature.
+    js = js.replace(/^(const|let|var)\s+vb\s*=\s*[^;]+;\n?/gm, '');
+    js = js.replace(/^(const|let|var)\s+p\s*=\s*[^;]+;\n?/gm, '');
 
     // Validate: the compiled JS must be executable as a function body (p, vb) => string
     try {

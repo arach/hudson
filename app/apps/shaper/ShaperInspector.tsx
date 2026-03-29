@@ -1,5 +1,6 @@
 'use client';
 
+import { RefreshCw } from 'lucide-react';
 import { useShaper } from './ShaperProvider';
 
 export function ShaperInspector() {
@@ -7,7 +8,7 @@ export function ShaperInspector() {
   const {
     openSections, toggleSection, selectedPointData,
     focusOnSelected, deleteSelectedPoint, updatePointCoord,
-    bezierData,
+    bezierData, projectImage, traceOptions, setTraceOptions, traceInfo, handleRetrace, isTracing,
   } = ctx;
 
   return (
@@ -70,6 +71,102 @@ export function ShaperInspector() {
           </div>
         )}
       </div>
+
+      {/* Trace Options — only when an image project is active */}
+      {projectImage && (
+        <div className="border-t border-neutral-800/50">
+          <button onClick={() => toggleSection('trace')} className="w-full flex items-center gap-2 px-3 py-2.5 text-[10px] font-semibold uppercase tracking-wider text-neutral-500 hover:text-neutral-300 bg-neutral-900/30 hover:bg-neutral-900/50 transition-colors">
+            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-cyan-500 shrink-0"><path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/></svg>
+            <span className="flex-1 text-left">Trace</span>
+            <svg xmlns="http://www.w3.org/2000/svg" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={`text-neutral-600 transition-transform ${openSections.trace ? 'rotate-0' : '-rotate-90'}`}><path d="m6 9 6 6 6-6"/></svg>
+          </button>
+          {openSections.trace && (
+            <div className="px-3 pt-2 pb-3 space-y-3 ml-2">
+              {/* Trace info (read-only) */}
+              {traceInfo && (
+                <div className="space-y-1 text-xs mb-3">
+                  <div className="flex justify-between px-1.5 py-0.5"><span className="text-neutral-500">Image type</span><span className="text-neutral-400">{traceInfo.imageKind}</span></div>
+                  <div className="flex justify-between px-1.5 py-0.5"><span className="text-neutral-500">Contours</span><span className="text-neutral-400 tabular-nums">{traceInfo.contourCount}</span></div>
+                  <div className="flex justify-between px-1.5 py-0.5"><span className="text-neutral-500">Points</span><span className="text-neutral-400 tabular-nums">{traceInfo.pointCount}</span></div>
+                  <div className="flex justify-between px-1.5 py-0.5"><span className="text-neutral-500">Trace time</span><span className="text-neutral-400 tabular-nums">{traceInfo.lastTraceMs}ms</span></div>
+                </div>
+              )}
+
+              {/* Error tolerance */}
+              <label className="block">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-neutral-500">Error tolerance</span>
+                  <span className="text-[10px] font-mono text-neutral-600">{traceOptions.errorTolerance}</span>
+                </div>
+                <input type="range" min={1} max={20} step={0.5} value={traceOptions.errorTolerance}
+                  onChange={e => setTraceOptions(prev => ({ ...prev, errorTolerance: Number(e.target.value) }))}
+                  className="w-full accent-cyan-500 h-1" />
+              </label>
+
+              {/* Max contours */}
+              <label className="block">
+                <div className="flex items-center justify-between mb-1">
+                  <span className="text-[10px] text-neutral-500">Max contours</span>
+                  <span className="text-[10px] font-mono text-neutral-600">{traceOptions.maxContours}</span>
+                </div>
+                <input type="range" min={1} max={50} step={1} value={traceOptions.maxContours}
+                  onChange={e => setTraceOptions(prev => ({ ...prev, maxContours: Number(e.target.value) }))}
+                  className="w-full accent-cyan-500 h-1" />
+              </label>
+
+              {/* Edge detection mode */}
+              <div>
+                <span className="text-[10px] text-neutral-500 block mb-1">Edge detection</span>
+                <div className="flex gap-1">
+                  {(['auto', 'otsu', 'canny', 'alpha'] as const).map(mode => (
+                    <button
+                      key={mode}
+                      onClick={() => setTraceOptions(prev => ({ ...prev, edgeDetection: mode }))}
+                      className={`flex-1 px-1.5 py-1 rounded text-[9px] font-mono transition-colors ${
+                        traceOptions.edgeDetection === mode
+                          ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                          : 'bg-neutral-800/50 text-neutral-500 border border-transparent hover:text-neutral-300'
+                      }`}
+                    >
+                      {mode}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Resolution */}
+              <div>
+                <span className="text-[10px] text-neutral-500 block mb-1">Resolution</span>
+                <div className="flex gap-1">
+                  {(['auto', 256, 512, 1024] as const).map(res => (
+                    <button
+                      key={res}
+                      onClick={() => setTraceOptions(prev => ({ ...prev, resolution: res }))}
+                      className={`flex-1 px-1.5 py-1 rounded text-[9px] font-mono transition-colors ${
+                        traceOptions.resolution === res
+                          ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/30'
+                          : 'bg-neutral-800/50 text-neutral-500 border border-transparent hover:text-neutral-300'
+                      }`}
+                    >
+                      {res}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Retrace button */}
+              <button
+                onClick={handleRetrace}
+                disabled={isTracing}
+                className="w-full flex items-center justify-center gap-2 px-3 py-2 rounded-lg bg-cyan-500/10 text-cyan-400 text-[11px] font-medium hover:bg-cyan-500/20 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+              >
+                <RefreshCw size={12} className={isTracing ? 'animate-spin' : ''} />
+                {isTracing ? 'Tracing...' : 'Retrace'}
+              </button>
+            </div>
+          )}
+        </div>
+      )}
     </>
   );
 }

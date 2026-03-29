@@ -98,9 +98,19 @@ You design at the level of Pentagram, Wolff Olins, and Collins. Every decision i
 function workingDir(homeFolder: string): string {
   return `# Working Directory
 \`${homeFolder}\`
-- \`.data/logo-templates/*.js\` — template files (the app polls this directory)
+- \`.data/logo-templates/*.js\` — **template files live here** (the app polls this directory). Always save templates to this path.
+- Workspace root — exports, experiments, SVG files, and notes. Files here do NOT appear in the app.
 - \`CLAUDE.md\` — workspace context (auto-generated)
-- Save exports, experiments, and notes here`;
+
+**Important:** Templates must be saved to \`.data/logo-templates/\` to appear in the app. Saving to the workspace root only creates a draft that the user cannot see.
+
+## Template Naming Convention
+Use structured prefixes: \`{project}-{phase}-{number}-{variant}.js\`
+- **concept** — initial exploration (e.g., \`relay-concept-3-pulse.js\`)
+- **refined** — polished version (e.g., \`relay-refined-1-baton.js\`)
+- **final** — production-ready (e.g., \`relay-final-baton.js\`)
+
+Keep variant names consistent across phases. Increment numbers for new ideas within a project.`;
 }
 
 function currentState(params: LogoParams, templates: LogoTemplate[]): string {
@@ -201,7 +211,7 @@ function presetList(presets: { label: string; params: Partial<LogoParams> }[]): 
 
 function templateGuideShort(): string {
   return `# Templates
-Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. Edit the file, the app picks up changes.
+Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. NEVER redeclare these — no \`const vb = 512\` or \`const p = ...\`. Edit the file, the app picks up changes.
 
 Param types: number (slider), color, toggle (boolean), enum (dropdown), text (freeform), repeatable (array of items with nested fields).
 
@@ -257,6 +267,8 @@ return \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgC
 **Coordinate space:** 512×512. Center = (256, 256).
 
 **Rules:**
+- **NEVER redeclare \`p\` or \`vb\`** — they are function parameters, not constants. Do NOT write \`const vb = 512\` or \`const p = ...\`. Use them directly.
+- **Always save templates to \`.data/logo-templates/\`** — this is the only directory the app reads from. Files saved to the workspace root will NOT appear in the app.
 - Edit the existing file when modifying a template — don't create duplicates
 - Keep \`dimPaneColor\` consistent with \`paneColor\` (same hue, lower opacity)
 - Start with a background rect: \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`

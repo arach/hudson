@@ -22,7 +22,7 @@ import {
   useShaperLayoutMode,
   useShaperActiveToolHint,
 } from './hooks';
-import { useShaperPortOutput } from './ports';
+import { useShaperPortOutput, useShaperPortInput } from './ports';
 import { shaperIntents } from './intents';
 
 const shaperTools: AppTool[] = [
@@ -67,6 +67,10 @@ export const shaperApp: HudsonApp = {
     outputs: [
       { id: 'svg', name: 'SVG Output', dataType: 'svg', description: 'Complete SVG of the current Shaper canvas' },
     ],
+    inputs: [
+      { id: 'image', name: 'Image Input', dataType: 'image', description: 'Image data URL to trace into vector paths' },
+      { id: 'svg', name: 'SVG Path', dataType: 'svg', description: 'SVG string — paths imported directly as bezier curves (no tracing)' },
+    ],
   },
 
   leftPanel: {
@@ -100,5 +104,6 @@ export const shaperApp: HudsonApp = {
     useLayoutMode: useShaperLayoutMode,
     useActiveToolHint: useShaperActiveToolHint,
     usePortOutput: useShaperPortOutput,
+    usePortInput: useShaperPortInput,
   },
 };
