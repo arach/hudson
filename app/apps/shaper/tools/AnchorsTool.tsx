@@ -19,7 +19,7 @@ export function AnchorsTool() {
         </div>
       )}
       <div className="relative">
-        <div className="overflow-y-auto space-y-0.5 frame-scrollbar" style={{ height: `${anchorListHeight}px` }}>
+        <div data-anchor-list className="overflow-y-auto space-y-0.5 frame-scrollbar" style={{ height: `${anchorListHeight}px` }}>
           {filteredAnchors.length === 0 ? (
             <div className="text-xs text-neutral-600 py-4 space-y-1">
               <div className="text-center">No anchors found</div>

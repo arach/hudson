@@ -89,6 +89,26 @@ const AppWindow: React.FC<AppWindowProps> = ({
     };
   }, []);
 
+  // --- Shared: compute bounds from edge drag ---
+  const computeEdgeBounds = (edge: Edge, startBounds: Bounds, dx: number, dy: number): Bounds => {
+    let { x, y, w, h } = startBounds;
+    if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
+    if (edge.includes('w')) { const newW = Math.max(MIN_W, w - dx); x = x + (w - newW); w = newW; }
+    if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
+    if (edge.includes('n')) { const newH = Math.max(MIN_H, h - dy); y = y + (h - newH); h = newH; }
+    return { x, y, w, h };
+  };
+
+  // --- Apply bounds directly to DOM (skip React) ---
+  const applyBoundsToDOM = useCallback((b: Bounds) => {
+    const el = windowRef.current;
+    if (!el) return;
+    el.style.left = `${b.x}px`;
+    el.style.top = `${b.y}px`;
+    el.style.width = `${b.w}px`;
+    el.style.height = `${b.h}px`;
+  }, []);
+
   // --- Option+Drag (move window from anywhere on body) ---
   const handleWindowMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -105,17 +125,20 @@ const AppWindow: React.FC<AppWindowProps> = ({
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
+        applyBoundsToDOM({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
       };
-      const onMouseUp = () => {
+      const onMouseUp = (ev: MouseEvent) => {
+        const dx = (ev.clientX - startX) / zoom;
+        const dy = (ev.clientY - startY) / zoom;
         document.body.style.cursor = '';
+        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale],
+    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
   );
 
   // --- Drag ---
@@ -127,25 +150,24 @@ const AppWindow: React.FC<AppWindowProps> = ({
       const startX = e.clientX;
       const startY = e.clientY;
       const startBounds = { ...bounds };
-
       const zoom = worldScale ?? 1;
+
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-        onBoundsChange({
-          ...startBounds,
-          x: startBounds.x + dx,
-          y: startBounds.y + dy,
-        });
+        applyBoundsToDOM({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
       };
-      const onMouseUp = () => {
+      const onMouseUp = (ev: MouseEvent) => {
+        const dx = (ev.clientX - startX) / zoom;
+        const dy = (ev.clientY - startY) / zoom;
+        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale],
+    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
   );
 
   // --- Resize ---
@@ -157,37 +179,24 @@ const AppWindow: React.FC<AppWindowProps> = ({
       const startX = e.clientX;
       const startY = e.clientY;
       const startBounds = { ...bounds };
-
       const zoom = worldScale ?? 1;
+
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-
-        let { x, y, w, h } = startBounds;
-
-        if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
-        if (edge.includes('w')) {
-          const newW = Math.max(MIN_W, w - dx);
-          x = x + (w - newW);
-          w = newW;
-        }
-        if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
-        if (edge.includes('n')) {
-          const newH = Math.max(MIN_H, h - dy);
-          y = y + (h - newH);
-          h = newH;
-        }
-
-        onBoundsChange({ x, y, w, h });
+        applyBoundsToDOM(computeEdgeBounds(edge, startBounds, dx, dy));
       };
-      const onMouseUp = () => {
+      const onMouseUp = (ev: MouseEvent) => {
+        const dx = (ev.clientX - startX) / zoom;
+        const dy = (ev.clientY - startY) / zoom;
+        onBoundsChange(computeEdgeBounds(edge, startBounds, dx, dy));
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale],
+    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
   );
 
   const handleToggleMaximize = useCallback(() => {

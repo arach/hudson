@@ -876,7 +876,7 @@ function WorkspaceInner({
     return () => clearTimeout(timer);
   }, [showLauncher, handleFitAll]);
 
-  // --- Resize ---
+  // --- Resize (ref-driven during drag, state flush on mouseup) ---
   const handleResizeStart = useCallback(
     (side: 'left' | 'right') => (e: React.MouseEvent) => {
       e.preventDefault();
@@ -884,12 +884,17 @@ function WorkspaceInner({
       const startWidth = side === 'left' ? leftWidth : rightWidth;
       const setter = side === 'left' ? setLeftWidth : setRightWidth;
       const direction = side === 'left' ? 1 : -1;
+      const attr = side === 'left' ? 'manifest' : 'inspector';
+      const panelEl = document.querySelector(`[data-frame-panel="${attr}"]`) as HTMLElement | null;
 
       const onMouseMove = (ev: MouseEvent) => {
         const delta = (ev.clientX - startX) * direction;
-        setter(Math.max(200, Math.min(500, startWidth + delta)));
+        const newWidth = Math.max(200, Math.min(500, startWidth + delta));
+        if (panelEl) panelEl.style.width = `${newWidth}px`;
       };
-      const onMouseUp = () => {
+      const onMouseUp = (ev: MouseEvent) => {
+        const delta = (ev.clientX - startX) * direction;
+        setter(Math.max(200, Math.min(500, startWidth + delta)));
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
       };

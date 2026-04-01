@@ -673,43 +673,60 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     setZoom((z) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z * delta)));
   }, []);
 
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const isPanningRef = useRef(false);
+
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (tool === 'hand' || e.button === 1 || e.altKey) {
       setIsPanning(true);
-      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      isPanningRef.current = true;
+      panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       e.preventDefault();
     }
   }, [tool, pan]);
 
   const handleMouseMove = useCallback((e: React.MouseEvent) => {
-    if (isPanning) setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
-  }, [isPanning, panStart]);
+    if (isPanningRef.current && canvasRef.current) {
+      const newX = e.clientX - panStartRef.current.x;
+      const newY = e.clientY - panStartRef.current.y;
+      canvasRef.current.style.transform = `translate(${newX}px, ${newY}px) scale(${zoom})`;
+    }
+  }, [zoom]);
 
-  const handleMouseUp = useCallback(() => { setIsPanning(false); }, []);
+  const handleMouseUp = useCallback(() => {
+    if (isPanningRef.current && canvasRef.current) {
+      const style = canvasRef.current.style.transform;
+      const match = style.match(/translate\((.+?)px,\s*(.+?)px\)/);
+      if (match) setPan({ x: parseFloat(match[1]), y: parseFloat(match[2]) });
+    }
+    setIsPanning(false);
+    isPanningRef.current = false;
+  }, []);
 
-  // ── Anchor resize ──
+  // ── Anchor resize (closure-based, DOM during drag, state on mouseup) ──
   const handleAnchorResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingAnchors(true);
-  }, []);
+    const startHeight = anchorListHeight;
+    const startY = e.clientY;
 
-  const handleAnchorResizeMove = useCallback((e: MouseEvent) => {
-    if (!isResizingAnchors) return;
-    setAnchorListHeight(prev => Math.max(100, Math.min(600, prev + e.movementY)));
-  }, [isResizingAnchors]);
-
-  const handleAnchorResizeEnd = useCallback(() => { setIsResizingAnchors(false); }, []);
-
-  useEffect(() => {
-    if (isResizingAnchors) {
-      window.addEventListener('mousemove', handleAnchorResizeMove);
-      window.addEventListener('mouseup', handleAnchorResizeEnd);
-      return () => {
-        window.removeEventListener('mousemove', handleAnchorResizeMove);
-        window.removeEventListener('mouseup', handleAnchorResizeEnd);
-      };
-    }
-  }, [isResizingAnchors, handleAnchorResizeMove, handleAnchorResizeEnd]);
+    const onMouseMove = (ev: MouseEvent) => {
+      const delta = ev.clientY - startY;
+      const newHeight = Math.max(100, Math.min(600, startHeight + delta));
+      // Direct DOM update — find the anchor list container
+      const el = document.querySelector('[data-anchor-list]') as HTMLElement | null;
+      if (el) el.style.height = `${newHeight}px`;
+    };
+    const onMouseUp = (ev: MouseEvent) => {
+      const delta = ev.clientY - startY;
+      setAnchorListHeight(Math.max(100, Math.min(600, startHeight + delta)));
+      setIsResizingAnchors(false);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  }, [anchorListHeight]);
 
   // ── Canvas coords ──
   const getCanvasCoords = useCallback((e: React.MouseEvent) => {
@@ -916,7 +933,8 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const handlePointMouseDown = useCallback((e: React.MouseEvent) => {
     if (tool === 'hand' || e.button === 1 || (tool !== 'pen' && e.button === 0 && e.altKey)) {
       setIsPanning(true);
-      setPanStart({ x: e.clientX - pan.x, y: e.clientY - pan.y });
+      isPanningRef.current = true;
+      panStartRef.current = { x: e.clientX - pan.x, y: e.clientY - pan.y };
       e.preventDefault();
       return;
     }
@@ -975,39 +993,74 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       setSelectedPoint(point);
       setIsDraggingPoint(true);
       setDragStart(coords);
+      dragStartRef.current = coords;
     } else {
       setSelectedPoint(null);
     }
   }, [tool, getCanvasCoords, findNearestPoint, pan, penStrokeIndex, penLastPoint]);
 
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mousePosRafRef = useRef<number | null>(null);
+
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
+    // Crosshair guides — rAF batched to avoid per-frame React re-renders
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
       const coords = getCanvasCoords(e);
-      setMousePos({ screen: { x: screenX, y: screenY }, canvas: { x: coords.x, y: coords.y } });
+      if (mousePosRafRef.current) cancelAnimationFrame(mousePosRafRef.current);
+      mousePosRafRef.current = requestAnimationFrame(() => {
+        setMousePos({ screen: { x: screenX, y: screenY }, canvas: { x: coords.x, y: coords.y } });
+        mousePosRafRef.current = null;
+      });
     }
     if (tool === 'pen') {
       const coords = getCanvasCoords(e);
       setPenPreviewPos([coords.x, coords.y]);
     }
-    if (isPanning) {
-      setPan({ x: e.clientX - panStart.x, y: e.clientY - panStart.y });
+    // Pan — direct DOM, no state
+    if (isPanningRef.current && canvasRef.current) {
+      const newX = e.clientX - panStartRef.current.x;
+      const newY = e.clientY - panStartRef.current.y;
+      canvasRef.current.style.transform = `translate(${newX}px, ${newY}px) scale(${zoom})`;
       return;
     }
-    if (isDraggingPoint && selectedPoint && dragStart) {
+    if (isDraggingPoint && selectedPoint && dragStartRef.current) {
       const coords = getCanvasCoords(e);
-      const dx = coords.x - dragStart.x;
-      const dy = coords.y - dragStart.y;
+      const dx = coords.x - dragStartRef.current.x;
+      const dy = coords.y - dragStartRef.current.y;
       const isAltHeld = e.altKey;
       const isShiftHeld = e.shiftKey;
       setBezierData((prev) => {
         if (!prev) return prev;
-        const newData = JSON.parse(JSON.stringify(prev));
+        // Targeted clone — only clone affected strokes/segments, not entire tree
         const { strokeIndex, segmentIndex, pointType } = selectedPoint;
-        const seg = newData.strokes[strokeIndex][segmentIndex];
+        const newStrokes = prev.strokes.map((stroke, si) => {
+          if (si !== strokeIndex) return stroke;
+          return stroke.map((seg, sei) => {
+            if (sei !== segmentIndex) return seg;
+            return { p0: [...seg.p0], c1: [...seg.c1], c2: [...seg.c2], p3: [...seg.p3] } as BezierSegment;
+          });
+        });
+        // Also clone linked segments
         const anchorKey = `${strokeIndex}-${segmentIndex}-${pointType === 'c1' ? 'p0' : pointType === 'c2' ? 'p3' : pointType}`;
+        if (pointType === 'p0' || pointType === 'p3') {
+          const myKey = `${strokeIndex}-${segmentIndex}-${pointType}`;
+          const linked = connectionMap.get(myKey) || [];
+          for (const lk of linked) {
+            const [lsi, lei] = lk.split('-').map(Number);
+            if (lsi !== strokeIndex || lei !== segmentIndex) {
+              newStrokes[lsi] = newStrokes[lsi] === prev.strokes[lsi]
+                ? [...prev.strokes[lsi]]
+                : newStrokes[lsi];
+              const origSeg = prev.strokes[lsi][lei];
+              newStrokes[lsi][lei] = { p0: [...origSeg.p0], c1: [...origSeg.c1], c2: [...origSeg.c2], p3: [...origSeg.p3] } as BezierSegment;
+            }
+          }
+        }
+        const newData = { strokes: newStrokes };
+        const seg = newData.strokes[strokeIndex][segmentIndex];
         if (pointType === 'c1' || pointType === 'c2') {
           seg[pointType][0] += dx;
           seg[pointType][1] += dy;
@@ -1048,13 +1101,21 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         }
         return newData;
       });
-      setDragStart(coords);
+      dragStartRef.current = coords;
     }
-  }, [isPanning, isDraggingPoint, selectedPoint, dragStart, getCanvasCoords, panStart, smoothStates, connectionMap, tool]);
+  }, [isDraggingPoint, selectedPoint, getCanvasCoords, smoothStates, connectionMap, tool, zoom]);
 
   const handleCanvasMouseUp = useCallback(() => {
+    // Flush pan from DOM to state
+    if (isPanningRef.current && canvasRef.current) {
+      const style = canvasRef.current.style.transform;
+      const match = style.match(/translate\((.+?)px,\s*(.+?)px\)/);
+      if (match) setPan({ x: parseFloat(match[1]), y: parseFloat(match[2]) });
+    }
     setIsPanning(false);
+    isPanningRef.current = false;
     setIsDraggingPoint(false);
+    dragStartRef.current = null;
   }, []);
 
   // ── Point editing ──

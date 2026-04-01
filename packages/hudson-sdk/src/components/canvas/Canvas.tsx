@@ -14,13 +14,14 @@ interface CanvasProps {
 }
 
 const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, onPanEnd, isPanLocked = false, onClick, showGuides: showGuidesProp = false, onGuidesChange, gridOpacity = 1 }) => {
-  const [mousePos, setMousePos] = useState({ x: 0, y: 0 });
   const [guidesVisible, setGuidesVisible] = useState(showGuidesProp);
   const [isPanning, setIsPanning] = useState(false);
   const isPanningRef = useRef(false);
   const lastPanRef = useRef({ x: 0, y: 0 });
   const pendingPanRef = useRef({ active: false, startX: 0, startY: 0 });
   const containerRef = useRef<HTMLDivElement>(null);
+  const guideVRef = useRef<HTMLDivElement>(null);
+  const guideHRef = useRef<HTMLDivElement>(null);
   const panThreshold = 4;
   const mousePosRef = useRef({ x: 0, y: 0 });
   const buttonsRef = useRef(0);
@@ -65,8 +66,10 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       const rect = containerRef.current?.getBoundingClientRect();
       const x = rect ? e.clientX - rect.left : e.clientX;
       const y = rect ? e.clientY - rect.top : e.clientY;
-      setMousePos({ x, y });
       mousePosRef.current = { x, y };
+      // Direct DOM updates for guide lines — skip React
+      if (guideVRef.current) guideVRef.current.style.left = `${x}px`;
+      if (guideHRef.current) guideHRef.current.style.top = `${y}px`;
 
       if (pendingPanRef.current.active && !isPanningRef.current) {
         const dx = e.clientX - pendingPanRef.current.startX;
@@ -165,8 +168,8 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
         style={{ inset: '-100px', opacity: 0.25 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #555 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       {guidesVisible && (
         <>
-          <div className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: mousePos.x }} />
-          <div className="absolute left-0 right-0 h-px pointer-events-none bg-emerald-500/10" style={{ top: mousePos.y }} />
+          <div ref={guideVRef} className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: 0 }} />
+          <div ref={guideHRef} className="absolute left-0 right-0 h-px pointer-events-none bg-emerald-500/10" style={{ top: 0 }} />
         </>
       )}
     </div>

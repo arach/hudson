@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Play, Pause, SkipBack } from 'lucide-react';
 
 interface AnimationTimelineProps {
@@ -22,41 +22,53 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   onSpeedChange,
   style,
 }) => {
-  const [isDragging, setIsDragging] = useState(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const playheadRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const isDraggingRef = useRef(false);
+  const latestProgressRef = useRef(progress);
+
+  const applyProgressToDOM = (p: number) => {
+    const pct = `${p * 100}%`;
+    if (progressBarRef.current) progressBarRef.current.style.width = pct;
+    if (playheadRef.current) playheadRef.current.style.left = pct;
+  };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    updateProgress(e);
-  };
-
-  const handleMouseMove = (e: MouseEvent) => {
-    if (!isDragging) return;
-    updateProgress(e as any);
-  };
-
-  const handleMouseUp = () => {
-    setIsDragging(false);
-  };
-
-  const updateProgress = (e: React.MouseEvent | MouseEvent) => {
+    isDraggingRef.current = true;
     if (!scrubberRef.current) return;
     const rect = scrubberRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const newProgress = x / rect.width;
-    onProgressChange(newProgress);
-  };
+    const p = x / rect.width;
+    applyProgressToDOM(p);
+    latestProgressRef.current = p;
+    onProgressChange(p);
 
-  React.useEffect(() => {
-    if (isDragging) {
-      window.addEventListener('mousemove', handleMouseMove);
-      window.addEventListener('mouseup', handleMouseUp);
-      return () => {
-        window.removeEventListener('mousemove', handleMouseMove);
-        window.removeEventListener('mouseup', handleMouseUp);
-      };
-    }
-  }, [isDragging]);
+    const onMouseMove = (ev: MouseEvent) => {
+      if (!scrubberRef.current) return;
+      const r = scrubberRef.current.getBoundingClientRect();
+      const mx = Math.max(0, Math.min(ev.clientX - r.left, r.width));
+      const np = mx / r.width;
+      applyProgressToDOM(np);
+      latestProgressRef.current = np;
+      // Batch state update to rAF
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        onProgressChange(np);
+        rafRef.current = null;
+      });
+    };
+    const onMouseUp = () => {
+      isDraggingRef.current = false;
+      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+      onProgressChange(latestProgressRef.current);
+      window.removeEventListener('mousemove', onMouseMove);
+      window.removeEventListener('mouseup', onMouseUp);
+    };
+    window.addEventListener('mousemove', onMouseMove);
+    window.addEventListener('mouseup', onMouseUp);
+  };
 
   const formatTime = (progress: number) => {
     const totalSeconds = 5 / speed; // Base 5 seconds at 1x
@@ -107,11 +119,13 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
             <div className="relative w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
               {/* Progress bar */}
               <div
-                className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-400 transition-all"
+                ref={progressBarRef}
+                className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-400"
                 style={{ width: `${progress * 100}%` }}
               />
               {/* Playhead */}
               <div
+                ref={playheadRef}
                 className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg border-2 border-blue-500 transition-transform group-hover:scale-125"
                 style={{ left: `${progress * 100}%` }}
               />
