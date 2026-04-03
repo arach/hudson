@@ -565,20 +565,34 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     customParamValues, setCustomParam, refreshTemplates, appSettings,
   });
 
+  const value = useMemo<LogoState>(() => ({
+    params, setParam, setVariant, resetDefaults, presets,
+    templates, addTemplate, updateTemplate, deleteTemplate,
+    discardTemplate, restoreTemplate, discardedIds,
+    customParamValues, setCustomParam,
+    appSettings, apiBaseUrl,
+    backgroundSvg, setBackgroundSvg,
+    showPreviews, togglePreviews,
+    lightParams,
+    sendTerminalCommand, consumeTerminalCommand,
+    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
+    inspectMode, toggleInspectMode,
+  }), [
+    params, setParam, setVariant, resetDefaults,
+    templates, addTemplate, updateTemplate, deleteTemplate,
+    discardTemplate, restoreTemplate, discardedIds,
+    customParamValues, setCustomParam,
+    appSettings, apiBaseUrl,
+    backgroundSvg, setBackgroundSvg,
+    showPreviews, togglePreviews,
+    lightParams,
+    sendTerminalCommand, consumeTerminalCommand,
+    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
+    inspectMode, toggleInspectMode,
+  ]);
+
   return (
-    <Ctx.Provider value={{
-      params, setParam, setVariant, resetDefaults, presets,
-      templates, addTemplate, updateTemplate, deleteTemplate,
-      discardTemplate, restoreTemplate, discardedIds,
-      customParamValues, setCustomParam,
-      appSettings, apiBaseUrl,
-      backgroundSvg, setBackgroundSvg,
-      showPreviews, togglePreviews,
-      lightParams,
-      sendTerminalCommand, consumeTerminalCommand,
-      sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
-      inspectMode, toggleInspectMode,
-    }}>
+    <Ctx.Provider value={value}>
       {children}
     </Ctx.Provider>
   );

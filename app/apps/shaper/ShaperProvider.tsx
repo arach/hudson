@@ -51,8 +51,8 @@ export interface ShaperContextValue {
   setPanStart: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
   dragStart: { x: number; y: number } | null;
   setDragStart: React.Dispatch<React.SetStateAction<{ x: number; y: number } | null>>;
-  mousePos: { screen: { x: number; y: number }; canvas: { x: number; y: number } } | null;
-  setMousePos: React.Dispatch<React.SetStateAction<{ screen: { x: number; y: number }; canvas: { x: number; y: number } } | null>>;
+  mousePosRef: React.RefObject<{ screen: { x: number; y: number }; canvas: { x: number; y: number } } | null>;
+  clearMousePos: () => void;
 
   // Tools
   tool: Tool;
@@ -230,7 +230,22 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const [isPanning, setIsPanning] = useState(false);
   const [panStart, setPanStart] = useState({ x: 0, y: 0 });
   const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null);
-  const [mousePos, setMousePos] = useState<{ screen: { x: number; y: number }; canvas: { x: number; y: number } } | null>(null);
+  const panStartRef = useRef({ x: 0, y: 0 });
+  const isPanningRef = useRef(false);
+  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
+  const mousePosRef = useRef<{ screen: { x: number; y: number }; canvas: { x: number; y: number } } | null>(null);
+  const clearMousePos = useCallback(() => {
+    mousePosRef.current = null;
+    // Hide guide elements
+    const container = containerRef.current;
+    if (!container) return;
+    const v = container.querySelector('[data-shaper-guide-v]') as HTMLElement | null;
+    const h = container.querySelector('[data-shaper-guide-h]') as HTMLElement | null;
+    const l = container.querySelector('[data-shaper-guide-label]') as HTMLElement | null;
+    if (v) v.style.display = 'none';
+    if (h) h.style.display = 'none';
+    if (l) l.style.display = 'none';
+  }, []);
   const [selectedPoint, setSelectedPoint] = useState<SelectedPoint | null>(null);
   const [isDraggingPoint, setIsDraggingPoint] = useState(false);
   const [pathColor, setPathColor] = useState('#ff4d4d');
@@ -673,9 +688,6 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     setZoom((z) => Math.max(MIN_ZOOM, Math.min(MAX_ZOOM, z * delta)));
   }, []);
 
-  const panStartRef = useRef({ x: 0, y: 0 });
-  const isPanningRef = useRef(false);
-
   const handleMouseDown = useCallback((e: React.MouseEvent) => {
     if (tool === 'hand' || e.button === 1 || e.altKey) {
       setIsPanning(true);
@@ -703,7 +715,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     isPanningRef.current = false;
   }, []);
 
-  // ── Anchor resize (closure-based, DOM during drag, state on mouseup) ──
+  // ── Anchor resize ──
   const handleAnchorResizeStart = useCallback((e: React.MouseEvent) => {
     e.preventDefault();
     setIsResizingAnchors(true);
@@ -713,10 +725,10 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     const onMouseMove = (ev: MouseEvent) => {
       const delta = ev.clientY - startY;
       const newHeight = Math.max(100, Math.min(600, startHeight + delta));
-      // Direct DOM update — find the anchor list container
       const el = document.querySelector('[data-anchor-list]') as HTMLElement | null;
       if (el) el.style.height = `${newHeight}px`;
     };
+
     const onMouseUp = (ev: MouseEvent) => {
       const delta = ev.clientY - startY;
       setAnchorListHeight(Math.max(100, Math.min(600, startHeight + delta)));
@@ -724,6 +736,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       window.removeEventListener('mousemove', onMouseMove);
       window.removeEventListener('mouseup', onMouseUp);
     };
+
     window.addEventListener('mousemove', onMouseMove);
     window.addEventListener('mouseup', onMouseUp);
   }, [anchorListHeight]);
@@ -999,27 +1012,26 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     }
   }, [tool, getCanvasCoords, findNearestPoint, pan, penStrokeIndex, penLastPoint]);
 
-  const dragStartRef = useRef<{ x: number; y: number } | null>(null);
-  const mousePosRafRef = useRef<number | null>(null);
-
   const handleCanvasMouseMove = useCallback((e: React.MouseEvent) => {
-    // Crosshair guides — rAF batched to avoid per-frame React re-renders
     if (containerRef.current) {
       const rect = containerRef.current.getBoundingClientRect();
       const screenX = e.clientX - rect.left;
       const screenY = e.clientY - rect.top;
       const coords = getCanvasCoords(e);
-      if (mousePosRafRef.current) cancelAnimationFrame(mousePosRafRef.current);
-      mousePosRafRef.current = requestAnimationFrame(() => {
-        setMousePos({ screen: { x: screenX, y: screenY }, canvas: { x: coords.x, y: coords.y } });
-        mousePosRafRef.current = null;
-      });
+      mousePosRef.current = { screen: { x: screenX, y: screenY }, canvas: { x: coords.x, y: coords.y } };
+      // Direct DOM updates for crosshair guides — no state, no re-render
+      const container = containerRef.current;
+      const vLine = container.querySelector('[data-shaper-guide-v]') as HTMLElement | null;
+      const hLine = container.querySelector('[data-shaper-guide-h]') as HTMLElement | null;
+      const label = container.querySelector('[data-shaper-guide-label]') as HTMLElement | null;
+      if (vLine) { vLine.style.left = `${screenX}px`; vLine.style.display = ''; }
+      if (hLine) { hLine.style.top = `${screenY}px`; hLine.style.display = ''; }
+      if (label) { label.style.left = `${screenX}px`; label.style.top = `${screenY}px`; label.textContent = `${coords.x.toFixed(0)}, ${coords.y.toFixed(0)}`; label.style.display = ''; }
     }
     if (tool === 'pen') {
       const coords = getCanvasCoords(e);
       setPenPreviewPos([coords.x, coords.y]);
     }
-    // Pan — direct DOM, no state
     if (isPanningRef.current && canvasRef.current) {
       const newX = e.clientX - panStartRef.current.x;
       const newY = e.clientY - panStartRef.current.y;
@@ -1034,7 +1046,6 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       const isShiftHeld = e.shiftKey;
       setBezierData((prev) => {
         if (!prev) return prev;
-        // Targeted clone — only clone affected strokes/segments, not entire tree
         const { strokeIndex, segmentIndex, pointType } = selectedPoint;
         const newStrokes = prev.strokes.map((stroke, si) => {
           if (si !== strokeIndex) return stroke;
@@ -1043,8 +1054,6 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
             return { p0: [...seg.p0], c1: [...seg.c1], c2: [...seg.c2], p3: [...seg.p3] } as BezierSegment;
           });
         });
-        // Also clone linked segments
-        const anchorKey = `${strokeIndex}-${segmentIndex}-${pointType === 'c1' ? 'p0' : pointType === 'c2' ? 'p3' : pointType}`;
         if (pointType === 'p0' || pointType === 'p3') {
           const myKey = `${strokeIndex}-${segmentIndex}-${pointType}`;
           const linked = connectionMap.get(myKey) || [];
@@ -1061,6 +1070,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         }
         const newData = { strokes: newStrokes };
         const seg = newData.strokes[strokeIndex][segmentIndex];
+        const anchorKey = `${strokeIndex}-${segmentIndex}-${pointType === 'c1' ? 'p0' : pointType === 'c2' ? 'p3' : pointType}`;
         if (pointType === 'c1' || pointType === 'c2') {
           seg[pointType][0] += dx;
           seg[pointType][1] += dy;
@@ -1106,7 +1116,6 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   }, [isDraggingPoint, selectedPoint, getCanvasCoords, smoothStates, connectionMap, tool, zoom]);
 
   const handleCanvasMouseUp = useCallback(() => {
-    // Flush pan from DOM to state
     if (isPanningRef.current && canvasRef.current) {
       const style = canvasRef.current.style.transform;
       const match = style.match(/translate\((.+?)px,\s*(.+?)px\)/);
@@ -1437,7 +1446,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   // ── Context value ──
   const value = useMemo<ShaperContextValue>(() => ({
     zoom, setZoom, pan, setPan, isPanning, setIsPanning, panStart, setPanStart,
-    dragStart, setDragStart, mousePos, setMousePos,
+    dragStart, setDragStart, mousePosRef, clearMousePos,
     tool, switchTool, penStrokeIndex, setPenStrokeIndex, penLastPoint, setPenLastPoint,
     penPreviewPos, setPenPreviewPos, finishPenStroke,
     bezierData, setBezierData, anchorsData, setAnchorsData, smoothStates, setSmoothStates,
@@ -1476,7 +1485,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     handleDragOver, handleDragLeave, handleDrop, handleFileSelect,
     handleGlobalDragOver, handleGlobalDrop,
   }), [
-    zoom, pan, isPanning, panStart, dragStart, mousePos,
+    zoom, pan, isPanning,
     tool, switchTool, penStrokeIndex, penLastPoint, penPreviewPos, finishPenStroke,
     bezierData, anchorsData, smoothStates, saveStatus, pathColor,
     selectedPoint, isDraggingPoint,
@@ -1497,7 +1506,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     handleRetrace, handlePointMouseDown, handleCanvasMouseMove, handleCanvasMouseUp,
     updatePointCoord, selectAnchorByName, focusOnPoint, selectAndFocusAnchor, focusOnSelected,
     handleAnchorResizeStart, handleMinimapClick, newProject,
-    processImageFile, selectRecentImage, startProjectFromImage,
+    processImageFile, selectRecentImage, startProjectFromImage, clearMousePos,
     handleDragOver, handleDragLeave, handleDrop, handleFileSelect,
     handleGlobalDragOver, handleGlobalDrop,
   ]);

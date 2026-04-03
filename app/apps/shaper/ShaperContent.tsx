@@ -12,15 +12,18 @@ export function ShaperContent() {
 
   const {
     showEditor, showDropScreen,
-    tool, isPanning, zoom, pan, showGrid, showGuides, mousePos,
+    tool, isPanning, zoom, pan, showGrid, showGuides,
     containerRef, canvasRef, fileInputRef,
     showOriginal, showSilhouette, displayImageSrc, projectImage,
     handleWheel, handlePointMouseDown, handleCanvasMouseMove, handleCanvasMouseUp,
-    setMousePos, handleGlobalDragOver, handleGlobalDrop, handleFileSelect,
+    clearMousePos, handleGlobalDragOver, handleGlobalDrop, handleFileSelect,
     zoomIn, zoomOut, resetZoom,
     animationModeEnabled, isAnimating, animationProgress, animationSpeed,
     setIsAnimating, setAnimationProgress, setAnimationSpeed,
   } = ctx;
+
+  // mousePos is tracked via ref + direct DOM manipulation in ShaperProvider.
+  // No React state needed — the provider updates these elements directly.
 
   return (
     <div
@@ -51,7 +54,7 @@ export function ShaperContent() {
           onMouseDown={handlePointMouseDown}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
-          onMouseLeave={() => { handleCanvasMouseUp(); setMousePos(null); }}
+          onMouseLeave={() => { handleCanvasMouseUp(); clearMousePos(); }}
         >
           <div
             ref={canvasRef}
@@ -80,14 +83,12 @@ export function ShaperContent() {
           {/* Tool palette */}
           <ToolPalette />
 
-          {/* Crosshair guides */}
-          {showGuides && mousePos && (
+          {/* Crosshair guides — positioned by ShaperProvider via direct DOM updates */}
+          {showGuides && (
             <>
-              <div className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: mousePos.screen.x }} />
-              <div className="absolute left-0 right-0 h-px pointer-events-none bg-emerald-500/10" style={{ top: mousePos.screen.y }} />
-              <div className="absolute text-[9px] font-mono text-emerald-500/50 pl-2 pt-1 whitespace-nowrap pointer-events-none" style={{ left: mousePos.screen.x, top: mousePos.screen.y }}>
-                {mousePos.canvas.x.toFixed(0)}<span className="mx-0.5 opacity-30">,</span>{mousePos.canvas.y.toFixed(0)}
-              </div>
+              <div data-shaper-guide-v className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ display: 'none' }} />
+              <div data-shaper-guide-h className="absolute left-0 right-0 h-px pointer-events-none bg-emerald-500/10" style={{ display: 'none' }} />
+              <div data-shaper-guide-label className="absolute text-[9px] font-mono text-emerald-500/50 pl-2 pt-1 whitespace-nowrap pointer-events-none" style={{ display: 'none' }} />
             </>
           )}
         </div>

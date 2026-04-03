@@ -58,7 +58,7 @@ import type { ServiceStatus } from '@hudson/sdk';
 const PERSIST_DEBOUNCE_MS = 5_000;
 
 /** Debounce for flushing window bounds to state for minimap rendering (ms). */
-const BOUNDS_FLUSH_MS = 60;
+const BOUNDS_FLUSH_MS = 500;
 
 /** Delay before fit-all fires after launcher dismiss (ms). */
 const FIT_ALL_DELAY_MS = 600;

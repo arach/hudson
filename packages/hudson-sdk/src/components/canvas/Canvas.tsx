@@ -67,7 +67,7 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       const x = rect ? e.clientX - rect.left : e.clientX;
       const y = rect ? e.clientY - rect.top : e.clientY;
       mousePosRef.current = { x, y };
-      // Direct DOM updates for guide lines — skip React
+      // Direct DOM updates for crosshair guides — no state, no re-render
       if (guideVRef.current) guideVRef.current.style.left = `${x}px`;
       if (guideHRef.current) guideHRef.current.style.top = `${y}px`;
 

@@ -26,48 +26,49 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   const progressBarRef = useRef<HTMLDivElement>(null);
   const playheadRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number | null>(null);
-  const isDraggingRef = useRef(false);
   const latestProgressRef = useRef(progress);
 
-  const applyProgressToDOM = (p: number) => {
-    const pct = `${p * 100}%`;
+  const applyProgressToDOM = (nextProgress: number) => {
+    const pct = `${nextProgress * 100}%`;
     if (progressBarRef.current) progressBarRef.current.style.width = pct;
     if (playheadRef.current) playheadRef.current.style.left = pct;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    isDraggingRef.current = true;
     if (!scrubberRef.current) return;
     const rect = scrubberRef.current.getBoundingClientRect();
     const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    const p = x / rect.width;
-    applyProgressToDOM(p);
-    latestProgressRef.current = p;
-    onProgressChange(p);
+    const nextProgress = x / rect.width;
+    applyProgressToDOM(nextProgress);
+    latestProgressRef.current = nextProgress;
+    onProgressChange(nextProgress);
 
-    const onMouseMove = (ev: MouseEvent) => {
+    const handleMouseMove = (ev: MouseEvent) => {
       if (!scrubberRef.current) return;
-      const r = scrubberRef.current.getBoundingClientRect();
-      const mx = Math.max(0, Math.min(ev.clientX - r.left, r.width));
-      const np = mx / r.width;
-      applyProgressToDOM(np);
-      latestProgressRef.current = np;
-      // Batch state update to rAF
+      const nextRect = scrubberRef.current.getBoundingClientRect();
+      const nextX = Math.max(0, Math.min(ev.clientX - nextRect.left, nextRect.width));
+      const nextProgressValue = nextX / nextRect.width;
+      applyProgressToDOM(nextProgressValue);
+      latestProgressRef.current = nextProgressValue;
       if (rafRef.current) cancelAnimationFrame(rafRef.current);
       rafRef.current = requestAnimationFrame(() => {
-        onProgressChange(np);
+        onProgressChange(nextProgressValue);
         rafRef.current = null;
       });
     };
-    const onMouseUp = () => {
-      isDraggingRef.current = false;
-      if (rafRef.current) { cancelAnimationFrame(rafRef.current); rafRef.current = null; }
+
+    const handleMouseUp = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
       onProgressChange(latestProgressRef.current);
-      window.removeEventListener('mousemove', onMouseMove);
-      window.removeEventListener('mouseup', onMouseUp);
+      window.removeEventListener('mousemove', handleMouseMove);
+      window.removeEventListener('mouseup', handleMouseUp);
     };
-    window.addEventListener('mousemove', onMouseMove);
-    window.addEventListener('mouseup', onMouseUp);
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
   };
 
   const formatTime = (progress: number) => {

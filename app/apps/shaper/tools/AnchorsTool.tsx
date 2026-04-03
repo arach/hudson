@@ -6,7 +6,7 @@ import { useShaper } from '../ShaperProvider';
 export function AnchorsTool() {
   const ctx = useShaper();
   const {
-    searchQuery, filteredAnchors, anchorsData, selectedPointData,
+    searchQuery, filteredAnchors, selectedPointData,
     selectAnchorByName, selectAndFocusAnchor,
     anchorListHeight, handleAnchorResizeStart, isResizingAnchors,
   } = ctx;

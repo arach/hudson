@@ -74,6 +74,29 @@ const AppWindow: React.FC<AppWindowProps> = ({
   const isMaximized = isMaximizedProp ?? isMaximizedInternal;
   const [altHeld, setAltHeld] = useState(false);
 
+  // Drag guard: when true, the component is being dragged/resized.
+  // During drag, liveBoundsRef holds the authoritative position and
+  // React renders read from it instead of the (stale) bounds prop.
+  const isDraggingRef = useRef(false);
+  const liveBoundsRef = useRef(bounds);
+  if (!isDraggingRef.current) {
+    liveBoundsRef.current = bounds;
+  }
+
+  // Ref to onBoundsChange so closures always call the latest version
+  const onBoundsChangeRef = useRef(onBoundsChange);
+  onBoundsChangeRef.current = onBoundsChange;
+
+  /** Apply bounds directly to DOM (no React re-render). */
+  const applyBoundsToDOM = useCallback((b: Bounds) => {
+    const el = windowRef.current;
+    if (!el) return;
+    el.style.left = `${b.x}px`;
+    el.style.top = `${b.y}px`;
+    el.style.width = `${b.w}px`;
+    el.style.height = `${b.h}px`;
+  }, []);
+
   // --- Track Alt key ---
   useEffect(() => {
     const onKeyDown = (e: KeyboardEvent) => { if (e.key === 'Alt') setAltHeld(true); };
@@ -89,26 +112,6 @@ const AppWindow: React.FC<AppWindowProps> = ({
     };
   }, []);
 
-  // --- Shared: compute bounds from edge drag ---
-  const computeEdgeBounds = (edge: Edge, startBounds: Bounds, dx: number, dy: number): Bounds => {
-    let { x, y, w, h } = startBounds;
-    if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
-    if (edge.includes('w')) { const newW = Math.max(MIN_W, w - dx); x = x + (w - newW); w = newW; }
-    if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
-    if (edge.includes('n')) { const newH = Math.max(MIN_H, h - dy); y = y + (h - newH); h = newH; }
-    return { x, y, w, h };
-  };
-
-  // --- Apply bounds directly to DOM (skip React) ---
-  const applyBoundsToDOM = useCallback((b: Bounds) => {
-    const el = windowRef.current;
-    if (!el) return;
-    el.style.left = `${b.x}px`;
-    el.style.top = `${b.y}px`;
-    el.style.width = `${b.w}px`;
-    el.style.height = `${b.h}px`;
-  }, []);
-
   // --- Option+Drag (move window from anywhere on body) ---
   const handleWindowMouseDown = useCallback(
     (e: React.MouseEvent) => {
@@ -118,27 +121,28 @@ const AppWindow: React.FC<AppWindowProps> = ({
       e.stopPropagation();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startBounds = { ...bounds };
+      const startBounds = { ...liveBoundsRef.current };
       const zoom = worldScale ?? 1;
+      isDraggingRef.current = true;
       document.body.style.cursor = 'grabbing';
 
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-        applyBoundsToDOM({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
+        liveBoundsRef.current = { ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy };
+        applyBoundsToDOM(liveBoundsRef.current);
       };
-      const onMouseUp = (ev: MouseEvent) => {
-        const dx = (ev.clientX - startX) / zoom;
-        const dy = (ev.clientY - startY) / zoom;
+      const onMouseUp = () => {
         document.body.style.cursor = '';
-        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+        isDraggingRef.current = false;
+        onBoundsChangeRef.current(liveBoundsRef.current);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
+    [onFocus, worldScale, applyBoundsToDOM],
   );
 
   // --- Drag ---
@@ -149,25 +153,26 @@ const AppWindow: React.FC<AppWindowProps> = ({
       onFocus();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startBounds = { ...bounds };
-      const zoom = worldScale ?? 1;
+      const startBounds = { ...liveBoundsRef.current };
+      isDraggingRef.current = true;
 
+      const zoom = worldScale ?? 1;
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-        applyBoundsToDOM({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
+        liveBoundsRef.current = { ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy };
+        applyBoundsToDOM(liveBoundsRef.current);
       };
-      const onMouseUp = (ev: MouseEvent) => {
-        const dx = (ev.clientX - startX) / zoom;
-        const dy = (ev.clientY - startY) / zoom;
-        onBoundsChange({ ...startBounds, x: startBounds.x + dx, y: startBounds.y + dy });
+      const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+        isDraggingRef.current = false;
+        onBoundsChangeRef.current(liveBoundsRef.current);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
+    [onFocus, worldScale, applyBoundsToDOM],
   );
 
   // --- Resize ---
@@ -178,25 +183,42 @@ const AppWindow: React.FC<AppWindowProps> = ({
       onFocus();
       const startX = e.clientX;
       const startY = e.clientY;
-      const startBounds = { ...bounds };
-      const zoom = worldScale ?? 1;
+      const startBounds = { ...liveBoundsRef.current };
+      isDraggingRef.current = true;
 
+      const zoom = worldScale ?? 1;
       const onMouseMove = (ev: MouseEvent) => {
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
-        applyBoundsToDOM(computeEdgeBounds(edge, startBounds, dx, dy));
+
+        let { x, y, w, h } = startBounds;
+
+        if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
+        if (edge.includes('w')) {
+          const newW = Math.max(MIN_W, w - dx);
+          x = x + (w - newW);
+          w = newW;
+        }
+        if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
+        if (edge.includes('n')) {
+          const newH = Math.max(MIN_H, h - dy);
+          y = y + (h - newH);
+          h = newH;
+        }
+
+        liveBoundsRef.current = { x, y, w, h };
+        applyBoundsToDOM(liveBoundsRef.current);
       };
-      const onMouseUp = (ev: MouseEvent) => {
-        const dx = (ev.clientX - startX) / zoom;
-        const dy = (ev.clientY - startY) / zoom;
-        onBoundsChange(computeEdgeBounds(edge, startBounds, dx, dy));
+      const onMouseUp = () => {
         document.removeEventListener('mousemove', onMouseMove);
         document.removeEventListener('mouseup', onMouseUp);
+        isDraggingRef.current = false;
+        onBoundsChangeRef.current(liveBoundsRef.current);
       };
       document.addEventListener('mousemove', onMouseMove);
       document.addEventListener('mouseup', onMouseUp);
     },
-    [bounds, onBoundsChange, onFocus, worldScale, applyBoundsToDOM],
+    [onFocus, worldScale, applyBoundsToDOM],
   );
 
   const handleToggleMaximize = useCallback(() => {
@@ -227,10 +249,10 @@ const AppWindow: React.FC<AppWindowProps> = ({
       className={`absolute pointer-events-auto${altHeld ? ' cursor-grab' : ''}`}
       data-app-window
       style={{
-        left: bounds.x,
-        top: bounds.y,
-        width: bounds.w,
-        height: bounds.h,
+        left: liveBoundsRef.current.x,
+        top: liveBoundsRef.current.y,
+        width: liveBoundsRef.current.w,
+        height: liveBoundsRef.current.h,
         // Maximized windows float above all siblings
         ...(isMaximized ? { zIndex: 9999 } : undefined),
       }}

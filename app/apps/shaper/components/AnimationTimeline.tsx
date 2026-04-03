@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState } from 'react';
+import React, { useRef } from 'react';
 import { Play, Pause, SkipBack } from 'lucide-react';
 
 interface AnimationTimelineProps {
@@ -19,32 +19,54 @@ export function AnimationTimeline({
   onPlayPause, onReset, onProgressChange, onSpeedChange,
   style,
 }: AnimationTimelineProps) {
-  const [isDragging, setIsDragging] = useState(false);
   const scrubberRef = useRef<HTMLDivElement>(null);
+  const progressBarRef = useRef<HTMLDivElement>(null);
+  const playheadRef = useRef<HTMLDivElement>(null);
+  const rafRef = useRef<number | null>(null);
+  const latestProgressRef = useRef(progress);
 
-  const updateProgress = (e: React.MouseEvent | MouseEvent) => {
-    if (!scrubberRef.current) return;
-    const rect = scrubberRef.current.getBoundingClientRect();
-    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    onProgressChange(x / rect.width);
+  const applyProgressToDOM = (nextProgress: number) => {
+    const pct = `${nextProgress * 100}%`;
+    if (progressBarRef.current) progressBarRef.current.style.width = pct;
+    if (playheadRef.current) playheadRef.current.style.left = pct;
   };
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    setIsDragging(true);
-    updateProgress(e);
-  };
+    if (!scrubberRef.current) return;
+    const rect = scrubberRef.current.getBoundingClientRect();
+    const x = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
+    const nextProgress = x / rect.width;
+    applyProgressToDOM(nextProgress);
+    latestProgressRef.current = nextProgress;
+    onProgressChange(nextProgress);
 
-  React.useEffect(() => {
-    if (!isDragging) return;
-    const handleMouseMove = (e: MouseEvent) => updateProgress(e);
-    const handleMouseUp = () => setIsDragging(false);
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
-    return () => {
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!scrubberRef.current) return;
+      const nextRect = scrubberRef.current.getBoundingClientRect();
+      const nextX = Math.max(0, Math.min(ev.clientX - nextRect.left, nextRect.width));
+      const nextProgressValue = nextX / nextRect.width;
+      applyProgressToDOM(nextProgressValue);
+      latestProgressRef.current = nextProgressValue;
+      if (rafRef.current) cancelAnimationFrame(rafRef.current);
+      rafRef.current = requestAnimationFrame(() => {
+        onProgressChange(nextProgressValue);
+        rafRef.current = null;
+      });
+    };
+
+    const handleMouseUp = () => {
+      if (rafRef.current) {
+        cancelAnimationFrame(rafRef.current);
+        rafRef.current = null;
+      }
+      onProgressChange(latestProgressRef.current);
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-  }, [isDragging]); // eslint-disable-line react-hooks/exhaustive-deps
+
+    window.addEventListener('mousemove', handleMouseMove);
+    window.addEventListener('mouseup', handleMouseUp);
+  };
 
   const formatTime = (p: number) => {
     const totalSeconds = 5 / speed;
@@ -78,8 +100,8 @@ export function AnimationTimeline({
           <span className="text-[10px] font-mono text-neutral-500 tabular-nums min-w-[35px]">{formatTime(progress)}</span>
           <div ref={scrubberRef} className="flex-1 h-8 flex items-center cursor-pointer group" onMouseDown={handleMouseDown}>
             <div className="relative w-full h-1 bg-neutral-800 rounded-full overflow-hidden">
-              <div className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-400 transition-all" style={{ width: `${progress * 100}%` }} />
-              <div className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg border-2 border-blue-500 transition-transform group-hover:scale-125" style={{ left: `${progress * 100}%` }} />
+              <div ref={progressBarRef} className="absolute inset-y-0 left-0 bg-gradient-to-r from-blue-500 to-blue-400" style={{ width: `${progress * 100}%` }} />
+              <div ref={playheadRef} className="absolute top-1/2 -translate-y-1/2 -translate-x-1/2 w-3 h-3 bg-white rounded-full shadow-lg border-2 border-blue-500 transition-transform group-hover:scale-125" style={{ left: `${progress * 100}%` }} />
             </div>
           </div>
           <span className="text-[10px] font-mono text-neutral-500 tabular-nums min-w-[35px]">{formatTime(1)}</span>
