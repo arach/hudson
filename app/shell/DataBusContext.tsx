@@ -134,12 +134,17 @@ export function DataBusProvider({
 
   // --- Pipes state ---
   const [pipes, setPipes] = useState<PipeDefinition[]>([]);
+  const lastPipesJsonRef = useRef('');
 
   const fetchPipes = useCallback(async () => {
     try {
       const res = await fetch('/api/pipes');
       const data = await res.json();
-      setPipes(data.pipes ?? []);
+      const json = JSON.stringify(data.pipes ?? []);
+      if (json !== lastPipesJsonRef.current) {
+        lastPipesJsonRef.current = json;
+        setPipes(data.pipes ?? []);
+      }
     } catch { /* silent */ }
   }, []);
 
@@ -261,7 +266,7 @@ export function DataBusProvider({
     return portActivity.filter(e => e.appId === appId);
   }, [portActivity]);
 
-  const value: DataBusContextValue = {
+  const value = useMemo<DataBusContextValue>(() => ({
     registerOutput,
     registerInput,
     pushPipe,
@@ -272,7 +277,11 @@ export function DataBusProvider({
     getPortCatalog,
     portActivity,
     getAppActivity,
-  };
+  }), [
+    registerOutput, registerInput, pushPipe, pushDirect,
+    pipes, createPipe, deletePipe, getPortCatalog,
+    portActivity, getAppActivity,
+  ]);
 
   return <DataBusCtx.Provider value={value}>{children}</DataBusCtx.Provider>;
 }

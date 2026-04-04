@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, type ReactNode } from 'react';
+import { createContext, useContext, useState, useMemo, type ReactNode } from 'react';
 import { useServiceRegistry } from '../../services/useServiceRegistry';
 
 type Registry = ReturnType<typeof useServiceRegistry>;
@@ -18,8 +18,14 @@ export function ServicesProvider({ children }: { children: ReactNode }) {
     registry.catalog[0]?.id ?? null,
   );
 
+  const value = useMemo<ServicesState>(() => ({
+    ...registry,
+    selectedId,
+    setSelectedId,
+  }), [registry, selectedId]);
+
   return (
-    <ServicesContext.Provider value={{ ...registry, selectedId, setSelectedId }}>
+    <ServicesContext.Provider value={value}>
       {children}
     </ServicesContext.Provider>
   );

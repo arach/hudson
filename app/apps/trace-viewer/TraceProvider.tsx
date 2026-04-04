@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
 import type { AgentTrace, TraceSummary } from './types';
 
 // ---------------------------------------------------------------------------
@@ -36,6 +36,7 @@ export function TraceProvider({ children }: { children: ReactNode }) {
   const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
   const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const lastTracesJsonRef = useRef('');
 
   // Poll trace summaries — only when tab is visible
   useEffect(() => {
@@ -45,7 +46,13 @@ export function TraceProvider({ children }: { children: ReactNode }) {
         const res = await fetch('/api/traces');
         if (!res.ok) return;
         const data = await res.json();
-        if (!cancelled) setTraces(data.traces ?? []);
+        if (!cancelled) {
+          const json = JSON.stringify(data.traces ?? []);
+          if (json !== lastTracesJsonRef.current) {
+            lastTracesJsonRef.current = json;
+            setTraces(data.traces ?? []);
+          }
+        }
       } catch { /* ignore */ }
     };
     const start = () => { pollRef.current = setInterval(fetchList, POLL_MS); };
@@ -85,16 +92,18 @@ export function TraceProvider({ children }: { children: ReactNode }) {
     setSelectedStepIndex(index);
   }, []);
 
+  const value = useMemo<TraceState>(() => ({
+    traces,
+    selectedTraceId,
+    selectedTrace,
+    selectedStepIndex,
+    setSelectedTraceId,
+    selectStep,
+    loading,
+  }), [traces, selectedTraceId, selectedTrace, selectedStepIndex, loading, selectStep]);
+
   return (
-    <TraceContext.Provider value={{
-      traces,
-      selectedTraceId,
-      selectedTrace,
-      selectedStepIndex,
-      setSelectedTraceId,
-      selectStep,
-      loading,
-    }}>
+    <TraceContext.Provider value={value}>
       {children}
     </TraceContext.Provider>
   );

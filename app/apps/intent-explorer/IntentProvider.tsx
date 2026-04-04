@@ -200,7 +200,7 @@ export function IntentProvider({ children }: { children: ReactNode }) {
     document.addEventListener('mouseup', onMouseUp);
   }, [cardPositions, bringCardToFront]);
 
-  const value: ExplorerContextValue = {
+  const value = useMemo<ExplorerContextValue>(() => ({
     catalog,
     groups,
     selectedIntentId,
@@ -220,7 +220,11 @@ export function IntentProvider({ children }: { children: ReactNode }) {
     cardPositions,
     handleCardDragStart,
     isDraggingCardRef,
-  };
+  }), [
+    catalog, groups, selectedIntentId, searchQuery, collapsedGroups, toggleGroup,
+    activeGroupId, detailOpen, floatingCards, addFloatingCard, removeFloatingCard,
+    bringCardToFront, cardPositions, handleCardDragStart,
+  ]);
 
   return (
     <ExplorerContext.Provider value={value}>{children}</ExplorerContext.Provider>

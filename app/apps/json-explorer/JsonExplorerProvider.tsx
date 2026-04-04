@@ -147,13 +147,18 @@ export function JsonExplorerProvider({ children }: { children: ReactNode }) {
   const nodeCount = useMemo(() => parsedData !== null ? countNodes(parsedData) : 0, [parsedData]);
   const depth = useMemo(() => parsedData !== null ? maxDepth(parsedData) : 0, [parsedData]);
 
-  const value: JsonExplorerContextValue = {
+  const value = useMemo<JsonExplorerContextValue>(() => ({
     rawInput, setRawInput, parsedData, parseError, loadJson, clear,
     expandedPaths, togglePath, expandAll, collapseAll,
     selectedPath, setSelectedPath,
     filter, setFilter,
     nodeCount, depth, dataLabel,
-  };
+  }), [
+    rawInput, setRawInput, parsedData, parseError, loadJson, clear,
+    expandedPaths, togglePath, expandAll, collapseAll,
+    selectedPath, filter,
+    nodeCount, depth, dataLabel,
+  ]);
 
   return (
     <JsonExplorerContext.Provider value={value}>

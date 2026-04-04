@@ -122,3 +122,5 @@ public/fonts/
 # native build artifacts
 native/bunsen/artifacts/
 .openscout/
+# OpenScout local state
+.openscout/project.json

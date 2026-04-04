@@ -86,8 +86,10 @@ export interface HudsonApp {
   /** Right panel header config */
   rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
 
-  /** Wraps all slots — owns app state via React context */
-  Provider: React.FC<{ children: ReactNode }>;
+  /** Wraps all slots — owns app state via React context.
+   *  `disabled` is true when the app is disabled in the workspace —
+   *  Providers should skip expensive work (polling, subscriptions) when disabled. */
+  Provider: React.FC<{ children: ReactNode; disabled?: boolean }>;
 
   /** Interactive tool panels for the right sidebar accordion */
   tools?: AppTool[];

@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
 import { usePlatform, usePersistentState } from '@hudson/sdk';
 
 export interface FetchResult {
@@ -91,8 +91,12 @@ export function WebFetchProvider({ children }: { children: ReactNode }) {
 
   const clearHistory = useCallback(() => setHistory([]), [setHistory]);
 
+  const value = useMemo<WebFetchState>(() => ({
+    url, setUrl, result, loading, error, fetchImage, history, clearHistory,
+  }), [url, setUrl, result, loading, error, fetchImage, history, clearHistory]);
+
   return (
-    <Ctx.Provider value={{ url, setUrl, result, loading, error, fetchImage, history, clearHistory }}>
+    <Ctx.Provider value={value}>
       {children}
     </Ctx.Provider>
   );

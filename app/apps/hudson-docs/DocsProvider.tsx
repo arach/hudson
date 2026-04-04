@@ -1,6 +1,6 @@
 'use client';
 
-import { createContext, useContext, useState, useCallback, useRef, type ReactNode } from 'react';
+import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react';
 import { usePersistentState, sounds } from '@hudson/sdk';
 import { setMuted as setSoundMuted } from '@hudson/sdk';
 import { useEffect } from 'react';
@@ -198,7 +198,7 @@ export function DocsProvider({ children }: { children: ReactNode }) {
     document.addEventListener('mouseup', onMouseUp);
   }, [sheetPositions]);
 
-  const value: DocsContextValue = {
+  const value = useMemo<DocsContextValue>(() => ({
     viewMode, setViewMode,
     openSheets, toggleSheet, closeSheet, closeAllSheets,
     selectedCard, setSelectedCard,
@@ -208,7 +208,11 @@ export function DocsProvider({ children }: { children: ReactNode }) {
     sheetPositions, getSheetPos, handleSheetDragStart, isDraggingRef,
     playSound, handleToggleMute,
     components: COMPONENTS,
-  };
+  }), [
+    viewMode, setViewMode, openSheets, toggleSheet, closeSheet, closeAllSheets,
+    selectedCard, searchValue, activeNav, settings, updateSettings, resetSettings,
+    sheetPositions, getSheetPos, handleSheetDragStart, playSound, handleToggleMute,
+  ]);
 
   return <DocsContext.Provider value={value}>{children}</DocsContext.Provider>;
 }

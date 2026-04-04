@@ -234,7 +234,7 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
 
   for (let i = workspace.apps.length - 1; i >= 0; i--) {
     const { app } = workspace.apps[i];
-    tree = <app.Provider>{tree}</app.Provider>;
+    tree = <app.Provider disabled={disabledAppIds.has(app.id)}>{tree}</app.Provider>;
   }
 
   // DataBusProvider wraps above all app Providers so port hooks can register

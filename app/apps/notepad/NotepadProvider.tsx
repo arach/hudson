@@ -134,11 +134,15 @@ export function NotepadProvider({ children }: { children: ReactNode }) {
   );
   const charCount = useMemo(() => activeNote?.content.length ?? 0, [activeNote?.content]);
 
-  const value: NotepadContextValue = {
+  const value = useMemo<NotepadContextValue>(() => ({
     notes, activeNoteId, activeNote, showPreview, setShowPreview,
     createNote, deleteNote, selectNote, updateContent, updateTitle, appendContent,
     wordCount, charCount,
-  };
+  }), [
+    notes, activeNoteId, activeNote, showPreview,
+    createNote, deleteNote, selectNote, updateContent, updateTitle, appendContent,
+    wordCount, charCount,
+  ]);
 
   return (
     <NotepadContext.Provider value={value}>

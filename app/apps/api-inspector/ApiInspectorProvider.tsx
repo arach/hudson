@@ -5,6 +5,7 @@ import {
   useContext,
   useCallback,
   useState,
+  useMemo,
   useRef,
   type ReactNode,
 } from 'react';
@@ -255,9 +256,12 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
   }, [setHistory]);
 
   // --- Assemble request object for reading ---
-  const request: ApiRequest = { method, url, headers, params, body, bodyType };
+  const request = useMemo<ApiRequest>(
+    () => ({ method, url, headers, params, body, bodyType }),
+    [method, url, headers, params, body, bodyType],
+  );
 
-  const value: ApiInspectorContextValue = {
+  const value = useMemo<ApiInspectorContextValue>(() => ({
     request, setMethod, setUrl, setHeaders, setParams, setBody, setBodyType,
     addHeader, removeHeader, updateHeader, toggleHeader,
     addParam, removeParam, updateParam, toggleParam,
@@ -266,7 +270,15 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
     requestTab, setRequestTab, responseTab, setResponseTab,
     history, clearHistory, loadFromHistory, deleteHistoryEntry,
     methodOpen, setMethodOpen,
-  };
+  }), [
+    request, setUrl, addHeader, removeHeader, updateHeader, toggleHeader,
+    addParam, removeParam, updateParam, toggleParam,
+    response, responseError, loading,
+    sendRequest, clearResponse,
+    requestTab, responseTab,
+    history, clearHistory, loadFromHistory, deleteHistoryEntry,
+    methodOpen,
+  ]);
 
   return (
     <ApiInspectorContext.Provider value={value}>

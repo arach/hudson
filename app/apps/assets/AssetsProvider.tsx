@@ -6,6 +6,7 @@ import {
   useState,
   useCallback,
   useEffect,
+  useMemo,
   useRef,
   type ReactNode,
 } from 'react';
@@ -324,31 +325,36 @@ export function AssetsProvider({ children }: { children: ReactNode }) {
     setDiscoveredPageTitle(null);
   }, []);
 
+  const value = useMemo<AssetsState>(() => ({
+    assets,
+    selectedAssetId,
+    selectedAsset,
+    selectAsset,
+    removeAsset,
+    clearAll,
+    addFromDataUrl,
+    addFromFile,
+    url,
+    setUrl,
+    discovering,
+    discoveryError,
+    discoverFromUrl,
+    discoveredImages,
+    discoveredPageTitle,
+    showPicker,
+    closePicker,
+    importDiscovered,
+    importing,
+    getDataUrl,
+  }), [
+    assets, selectedAssetId, selectedAsset, selectAsset, removeAsset, clearAll,
+    addFromDataUrl, addFromFile, url, setUrl, discovering, discoveryError,
+    discoverFromUrl, discoveredImages, discoveredPageTitle, showPicker,
+    closePicker, importDiscovered, importing, getDataUrl,
+  ]);
+
   return (
-    <Ctx.Provider
-      value={{
-        assets,
-        selectedAssetId,
-        selectedAsset,
-        selectAsset,
-        removeAsset,
-        clearAll,
-        addFromDataUrl,
-        addFromFile,
-        url,
-        setUrl,
-        discovering,
-        discoveryError,
-        discoverFromUrl,
-        discoveredImages,
-        discoveredPageTitle,
-        showPicker,
-        closePicker,
-        importDiscovered,
-        importing,
-        getDataUrl,
-      }}
-    >
+    <Ctx.Provider value={value}>
       {children}
     </Ctx.Provider>
   );
