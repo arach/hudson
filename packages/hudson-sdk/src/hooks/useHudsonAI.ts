@@ -19,6 +19,10 @@ export interface AIAttachment {
 export interface UseHudsonAIOptions {
   /** Toolset ID — matches a registered toolset on the server */
   toolset: string;
+  /** Stable chat identifier used to preserve the same chat across remounts. */
+  chatId?: string;
+  /** Restored chat messages for this chat instance. */
+  initialMessages?: UIMessage[];
   /** Dynamic context sent with each request (current app state) */
   context?: Record<string, unknown>;
   /** Called when the model invokes a tool — apply state changes here */
@@ -31,6 +35,10 @@ export interface UseHudsonAIOptions {
   provider?: string;
   /** Model ID override (e.g. 'MiniMax-M2.7', 'claude-sonnet-4-20250514') */
   model?: string;
+  /** Stable backend session ID used for CLI mode reconnection. */
+  sessionId?: string;
+  /** Called whenever the hook establishes or resets its session ID. */
+  onSessionIdChange?: (sessionId: string) => void;
   /** Called when the assistant response finishes streaming. */
   onFinish?: ChatOnFinishCallback<UIMessage>;
   /** Called when the chat stream errors. */
@@ -82,14 +90,33 @@ function invokeHudsonAIError(
   ref.current?.(error);
 }
 
+function collectProcessedToolCallIds(messages: UIMessage[] | undefined): Set<string> {
+  const processed = new Set<string>();
+
+  for (const message of messages ?? []) {
+    if (message.role !== 'assistant') continue;
+    for (const part of message.parts ?? []) {
+      if (part && isToolUIPart(part)) {
+        processed.add(part.toolCallId);
+      }
+    }
+  }
+
+  return processed;
+}
+
 export function useHudsonAI({
   toolset,
+  chatId,
+  initialMessages,
   context,
   onToolCall,
   mode,
   attachments,
   provider,
   model,
+  sessionId,
+  onSessionIdChange,
   onFinish,
   onError,
 }: UseHudsonAIOptions) {
@@ -98,7 +125,7 @@ export function useHudsonAI({
   const onErrorRef = useRef(onError);
 
   // CLI session ID — one per chat lifetime, regenerated on clear
-  const sessionIdRef = useRef(crypto.randomUUID());
+  const sessionIdRef = useRef(sessionId ?? crypto.randomUUID());
 
   // Track which attachments are toggled on
   const [activeAttachments, setActiveAttachments] = useState<Set<string>>(new Set());
@@ -134,6 +161,16 @@ export function useHudsonAI({
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
+
+  useEffect(() => {
+    if (sessionId && sessionId !== sessionIdRef.current) {
+      sessionIdRef.current = sessionId;
+    }
+  }, [sessionId]);
+
+  useEffect(() => {
+    onSessionIdChange?.(sessionIdRef.current);
+  }, [onSessionIdChange]);
 
   useEffect(() => {
     activeAttachmentsRef.current = activeAttachments;
@@ -185,30 +222,37 @@ export function useHudsonAI({
   /* eslint-enable react-hooks/refs */
 
   const chat = useChat({
+    id: chatId,
+    messages: initialMessages,
     transport,
     onFinish: event => invokeHudsonAIFinish(onFinishRef, event),
     onError: error => invokeHudsonAIError(onErrorRef, error),
   });
 
+  const processedRef = useRef(collectProcessedToolCallIds(initialMessages));
+
   const clearChat = useCallback(() => {
-    sessionIdRef.current = crypto.randomUUID();
+    const nextSessionId = crypto.randomUUID();
+    sessionIdRef.current = nextSessionId;
+    onSessionIdChange?.(nextSessionId);
+    processedRef.current.clear();
     chat.setMessages([]);
-  }, [chat]);
+  }, [chat, onSessionIdChange]);
 
   // Watch for tool parts in messages and fire the callback
   const { messages } = chat;
-  const processedRef = useRef(new Set<string>());
 
   useEffect(() => {
     if (!onToolCallRef.current) return;
 
     for (const msg of messages) {
       if (msg.role !== 'assistant') continue;
-      for (const part of msg.parts) {
+      for (const part of msg.parts ?? []) {
+        if (!part) continue;
         if (isToolUIPart(part)) {
           // Wait until input is fully available — during 'input-streaming'
           // the input may be undefined or partial
-          if (part.state === 'input-streaming') continue;
+          if ('state' in part && part.state === 'input-streaming') continue;
           const key = part.toolCallId;
           if (!processedRef.current.has(key)) {
             processedRef.current.add(key);

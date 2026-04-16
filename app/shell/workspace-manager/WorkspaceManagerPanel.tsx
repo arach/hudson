@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   X, Settings as SettingsIcon, LayoutGrid, AppWindow, RotateCcw,
   Maximize2, Eye, EyeOff, Crosshair, GripVertical, Power, Sliders,
@@ -20,6 +20,8 @@ import {
   FontSettingsCard,
 } from '../../apps/hudson-docs/components';
 import { DEFAULT_SHELL_SETTINGS } from '../shellSettings';
+import { HudsonVoiceSettingsEditor } from '../HudsonVoiceSettingsEditor';
+import { HudsonEnvironmentEditor } from '../HudsonEnvironmentEditor';
 
 // ---------------------------------------------------------------------------
 // Status color/label maps
@@ -50,28 +52,7 @@ const APP_COLORS = [
   { fill: '#f43f5e' },
 ];
 
-export type EditorTab = 'overview' | 'apps' | 'settings';
-
-type VoiceOption = {
-  label: string;
-  value: string;
-  previewText?: string;
-};
-
-const DEFAULT_VOICE_OPTIONS: VoiceOption[] = [
-  {
-    label: 'System Default',
-    value: '',
-    previewText: 'Hello from Hudson. This is the current reply voice.',
-  },
-];
-
-function pickReplyPreviewFormat(): 'aac' | 'wav' {
-  if (typeof document === 'undefined') return 'wav';
-  const audio = document.createElement('audio');
-  return audio.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'aac' : 'wav';
-}
-
+export type EditorTab = 'overview' | 'apps' | 'settings' | 'environment';
 // ---------------------------------------------------------------------------
 // Inline app settings renderer
 // ---------------------------------------------------------------------------
@@ -255,7 +236,6 @@ function LayoutMinimap({
 // ---------------------------------------------------------------------------
 function DraggableAppRow({
   appId,
-  index,
   draggedId,
   dragOverId,
   onDragStart,
@@ -265,7 +245,6 @@ function DraggableAppRow({
   children,
 }: {
   appId: string;
-  index: number;
   draggedId: string | null;
   dragOverId: string | null;
   onDragStart: (id: string) => void;
@@ -308,7 +287,6 @@ function DraggableAppRow({
 function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void }) {
   const {
     workspace,
-    workspaces,
     activatedAppIds,
     disabledAppIds,
     appOrder,
@@ -397,7 +375,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
         <div>
           <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Applications</div>
           <div className="space-y-1">
-            {enabledApps.map((config, i) => {
+            {enabledApps.map(config => {
               const { app } = config;
               const isVisible = activatedAppIds.has(app.id);
               const isFocused = app.id === focusedAppId;
@@ -409,7 +387,6 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                 <DraggableAppRow
                   key={app.id}
                   appId={app.id}
-                  index={i}
                   draggedId={draggedId}
                   dragOverId={dragOverId}
                   onDragStart={setDraggedId}
@@ -544,188 +521,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
 // ---------------------------------------------------------------------------
 function SettingsTab() {
   const { shellSettings, onUpdateShellSettings, onResetShellSettings } = useWorkspaceManager();
-  const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>(DEFAULT_VOICE_OPTIONS);
-  const [voiceOptionsError, setVoiceOptionsError] = useState<string | null>(null);
-  const [voicePreviewStatus, setVoicePreviewStatus] = useState<'idle' | 'loading' | 'playing'>('idle');
-  const [voicePreviewError, setVoicePreviewError] = useState<string | null>(null);
-  const previewAudioRef = useRef<HTMLAudioElement | null>(null);
-  const previewAudioUrlRef = useRef<string | null>(null);
-  const previewRequestIdRef = useRef(0);
-
-  useEffect(() => {
-    let cancelled = false;
-
-    void fetch('/v1/voices')
-      .then(async response => {
-        if (!response.ok) {
-          throw new Error(`Failed to load voices (${response.status}).`);
-        }
-
-        const data = await response.json() as {
-          voices?: Array<{ id: string; label?: string; previewText?: string }>;
-        };
-
-        if (cancelled) return;
-
-        const nextOptions = [
-          ...DEFAULT_VOICE_OPTIONS,
-          ...(data.voices ?? []).map(voice => ({
-            label: voice.label ?? voice.id,
-            value: voice.id,
-            previewText: voice.previewText,
-          })),
-        ];
-
-        setVoiceOptions(nextOptions);
-        setVoiceOptionsError(null);
-      })
-      .catch(error => {
-        if (cancelled) return;
-        setVoiceOptions(DEFAULT_VOICE_OPTIONS);
-        setVoiceOptionsError(error instanceof Error ? error.message : 'Failed to load voices.');
-      });
-
-    return () => {
-      cancelled = true;
-    };
-  }, []);
-
-  const releaseVoicePreview = useCallback((resetState = true) => {
-    previewRequestIdRef.current += 1;
-
-    const audio = previewAudioRef.current;
-    if (audio) {
-      audio.onended = null;
-      audio.onerror = null;
-      audio.pause();
-      previewAudioRef.current = null;
-    }
-
-    const objectUrl = previewAudioUrlRef.current;
-    if (objectUrl) {
-      URL.revokeObjectURL(objectUrl);
-      previewAudioUrlRef.current = null;
-    }
-
-    if (resetState) {
-      setVoicePreviewStatus('idle');
-    }
-  }, []);
-
-  useEffect(() => () => {
-    releaseVoicePreview(false);
-  }, [releaseVoicePreview]);
-
   const voiceSettings = shellSettings.voice ?? DEFAULT_SHELL_SETTINGS.voice;
-  const selectedVoiceId = voiceSettings.replyVoice;
-  const selectedVoice = voiceOptions.find(option => option.value === selectedVoiceId)
-    ?? voiceOptions[0]
-    ?? DEFAULT_VOICE_OPTIONS[0];
-  const selectedVoicePreviewText = selectedVoice?.previewText?.trim() || DEFAULT_VOICE_OPTIONS[0].previewText;
-
-  const handlePreviewVoice = useCallback(async () => {
-    if (voicePreviewStatus !== 'idle') {
-      releaseVoicePreview();
-      return;
-    }
-
-    const requestId = previewRequestIdRef.current + 1;
-    previewRequestIdRef.current = requestId;
-    setVoicePreviewStatus('loading');
-    setVoicePreviewError(null);
-
-    try {
-      const response = await fetch('/v1/audio/speech', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          text: selectedVoicePreviewText,
-          voice: selectedVoiceId || undefined,
-          rate: voiceSettings.replyRate,
-          format: pickReplyPreviewFormat(),
-          metadata: {
-            surface: 'hudson-settings',
-            source: 'voice-preview',
-          },
-        }),
-      });
-
-      const payload = await response.json() as {
-        error?: string;
-        mimeType?: string;
-        audioBase64?: string;
-        audio?: { base64?: string; mimeType?: string };
-      };
-
-      if (!response.ok) {
-        throw new Error(payload.error || `Voice preview failed (${response.status}).`);
-      }
-
-      const audioBase64 = payload.audio?.base64 ?? payload.audioBase64;
-      const mimeType = payload.audio?.mimeType ?? payload.mimeType ?? 'audio/wav';
-
-      if (!audioBase64) {
-        throw new Error('Voice preview returned no audio.');
-      }
-
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      releaseVoicePreview(false);
-
-      const binary = Uint8Array.from(atob(audioBase64), char => char.charCodeAt(0));
-      const blob = new Blob([binary], { type: mimeType });
-      const objectUrl = URL.createObjectURL(blob);
-      const audio = new Audio(objectUrl);
-
-      previewAudioRef.current = audio;
-      previewAudioUrlRef.current = objectUrl;
-
-      audio.onended = () => {
-        if (previewAudioRef.current === audio) {
-          previewAudioRef.current = null;
-        }
-        if (previewAudioUrlRef.current === objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-          previewAudioUrlRef.current = null;
-        }
-        setVoicePreviewStatus('idle');
-      };
-
-      audio.onerror = () => {
-        if (previewAudioRef.current === audio) {
-          previewAudioRef.current = null;
-        }
-        if (previewAudioUrlRef.current === objectUrl) {
-          URL.revokeObjectURL(objectUrl);
-          previewAudioUrlRef.current = null;
-        }
-        setVoicePreviewStatus('idle');
-        setVoicePreviewError('Voice preview could not be played in this browser.');
-      };
-
-      await audio.play();
-
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-
-      setVoicePreviewStatus('playing');
-    } catch (error) {
-      if (previewRequestIdRef.current !== requestId) {
-        return;
-      }
-      releaseVoicePreview();
-      setVoicePreviewError(error instanceof Error ? error.message : 'Voice preview failed.');
-    }
-  }, [
-    releaseVoicePreview,
-    selectedVoiceId,
-    selectedVoicePreviewText,
-    voicePreviewStatus,
-    voiceSettings.replyRate,
-  ]);
 
   return (
     <div className="flex-1 overflow-y-auto frame-scrollbar">
@@ -760,97 +556,10 @@ function SettingsTab() {
         <SettingsToggle label="Transition Sounds" checked={shellSettings.uiTransitionSounds} onChange={v => onUpdateShellSettings({ uiTransitionSounds: v })} />
       </SettingsSection>
       <SettingsSection label="Voice">
-        <SettingsToggle
-          label="Auto-send Transcript"
-          checked={voiceSettings.autoSend}
-          onChange={v => onUpdateShellSettings({
-            voice: {
-              ...voiceSettings,
-              autoSend: v,
-            },
-          })}
+        <HudsonVoiceSettingsEditor
+          voiceSettings={voiceSettings}
+          onChange={next => onUpdateShellSettings({ voice: next })}
         />
-        <SettingsToggle
-          label="Speak Assistant Replies"
-          checked={voiceSettings.speakReplies}
-          onChange={v => onUpdateShellSettings({
-            voice: {
-              ...voiceSettings,
-              speakReplies: v,
-            },
-          })}
-        />
-        <SettingsSelect
-          label="Reply Voice"
-          value={voiceSettings.replyVoice}
-          options={voiceOptions}
-          onChange={v => onUpdateShellSettings({
-            voice: {
-              ...voiceSettings,
-              replyVoice: v,
-            },
-          })}
-        />
-        <div className="ml-[156px] space-y-2">
-          <div className="flex items-center gap-2">
-            <ServiceActionButton
-              label={voicePreviewStatus === 'playing' ? 'Stop Preview' : 'Preview Voice'}
-              variant="secondary"
-              loading={voicePreviewStatus === 'loading'}
-              onClick={() => {
-                void handlePreviewVoice();
-              }}
-            />
-            <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
-              {selectedVoicePreviewText}
-            </div>
-          </div>
-          {voicePreviewError && (
-            <div className="text-[10px] font-mono text-red-400/80">
-              {voicePreviewError}
-            </div>
-          )}
-        </div>
-        <SettingsSegment
-          label="Reply Readout"
-          value={voiceSettings.spokenReplyStyle}
-          options={[
-            { value: 'brief', label: 'Brief' },
-            { value: 'full', label: 'Full' },
-          ]}
-          onChange={v => onUpdateShellSettings({
-            voice: {
-              ...voiceSettings,
-              spokenReplyStyle: v as 'brief' | 'full',
-            },
-          })}
-        />
-        <SettingsSlider
-          label="Reply Speed"
-          value={voiceSettings.replyRate}
-          min={0.7}
-          max={1.3}
-          step={0.05}
-          format={v => `${v.toFixed(2)}x`}
-          onChange={v => onUpdateShellSettings({
-            voice: {
-              ...voiceSettings,
-              replyRate: v,
-            },
-          })}
-        />
-        <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
-          Voice capture uses the Vox companion on <span className="text-neutral-300">127.0.0.1:43115</span>.
-          Spoken replies use Hudson&apos;s local ORA-style endpoint on <span className="text-neutral-300">/v1/audio/speech</span>,
-          and the voice picker is populated from <span className="text-neutral-300">/v1/voices</span>.
-          If Vox rejects transcription, allowlist Hudson&apos;s origin in Vox settings.
-          End users still need the Vox macOS companion installed.
-        </div>
-        {voiceOptionsError && (
-          <div className="text-[10px] font-mono text-amber-400/80">
-            Reply voices are unavailable right now: {voiceOptionsError}
-          </div>
-        )}
       </SettingsSection>
       <SettingsSection label="Shortcuts">
         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[11px] font-mono">
@@ -879,6 +588,16 @@ function SettingsTab() {
           <RotateCcw size={10} /> Reset All Settings
         </button>
       </div>
+    </div>
+  );
+}
+
+function EnvironmentTab() {
+  return (
+    <div className="flex-1 overflow-y-auto frame-scrollbar">
+      <SettingsSection label="Local Environment">
+        <HudsonEnvironmentEditor />
+      </SettingsSection>
     </div>
   );
 }
@@ -1020,55 +739,47 @@ function AppContent({ appId }: { appId: string }) {
 // ---------------------------------------------------------------------------
 // WorkspaceManagerPanel — unified settings + workspace editor
 // ---------------------------------------------------------------------------
-export function WorkspaceManagerPanel({
-  isOpen,
+function WorkspaceManagerPanelBody({
   onClose,
-  defaultTab = 'overview',
+  defaultTab,
 }: {
-  isOpen: boolean;
   onClose: () => void;
-  defaultTab?: EditorTab;
+  defaultTab: EditorTab;
 }) {
   const { workspace, activatedAppIds, disabledAppIds, focusedAppId, serviceRegistry } = useWorkspaceManager();
   const [tab, setTab] = useState<EditorTab>(defaultTab);
-  const [selectedAppId, setSelectedAppId] = useState<string | null>(null);
-
-  // Sync tab when defaultTab changes (e.g. Cmd+, vs Cmd+Shift+,)
-  useEffect(() => {
-    if (isOpen) setTab(defaultTab);
-  }, [isOpen, defaultTab]);
-
-  // Auto-select focused app when opening apps tab
-  useEffect(() => {
-    if (isOpen && workspace.apps.length > 0) {
-      const target = workspace.apps.find(c => c.app.id === focusedAppId)
-        ? focusedAppId
-        : workspace.apps[0].app.id;
-      setSelectedAppId(target);
-    }
-  }, [isOpen, workspace.apps, focusedAppId]);
+  const [selectedAppId, setSelectedAppId] = useState<string | null>(() => {
+    if (workspace.apps.length === 0) return null;
+    return workspace.apps.find(c => c.app.id === focusedAppId)
+      ? focusedAppId
+      : workspace.apps[0].app.id;
+  });
+  const preferredAppId = workspace.apps.find(c => c.app.id === focusedAppId)
+    ? focusedAppId
+    : workspace.apps[0]?.app.id ?? null;
+  const activeSelectedAppId = workspace.apps.some(c => c.app.id === selectedAppId)
+    ? selectedAppId
+    : preferredAppId;
 
   // Escape to close
   useEffect(() => {
-    if (!isOpen) return;
     const handler = (e: KeyboardEvent) => {
       if (e.key === 'Escape') { e.preventDefault(); onClose(); }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [isOpen, onClose]);
+  }, [onClose]);
 
   const switchToApp = useCallback((appId: string) => {
     setTab('apps');
     setSelectedAppId(appId);
   }, []);
 
-  if (!isOpen) return null;
-
   const tabConfig = [
     { id: 'overview' as const, label: 'Workspace', icon: LayoutGrid },
     { id: 'apps' as const, label: 'Apps', icon: AppWindow },
     { id: 'settings' as const, label: 'Settings', icon: Sliders },
+    { id: 'environment' as const, label: 'Environment', icon: SettingsIcon },
   ];
 
   return (
@@ -1111,6 +822,8 @@ export function WorkspaceManagerPanel({
         <div className="flex flex-1 overflow-hidden min-h-0">
           {tab === 'overview' ? (
             <OverviewTab onSwitchToApp={switchToApp} />
+          ) : tab === 'environment' ? (
+            <EnvironmentTab />
           ) : tab === 'settings' ? (
             <SettingsTab />
           ) : (
@@ -1120,7 +833,7 @@ export function WorkspaceManagerPanel({
                 <div className="py-2">
                   {workspace.apps.map(config => {
                     const { app } = config;
-                    const isActive = selectedAppId === app.id;
+                    const isActive = activeSelectedAppId === app.id;
                     const isDisabled = disabledAppIds.has(app.id);
                     const isLoaded = activatedAppIds.has(app.id);
                     const deps = app.services ?? [];
@@ -1159,8 +872,8 @@ export function WorkspaceManagerPanel({
               </div>
 
               {/* Right content */}
-              {selectedAppId ? (
-                <AppContent appId={selectedAppId} />
+              {activeSelectedAppId ? (
+                <AppContent appId={activeSelectedAppId} />
               ) : (
                 <div className="flex-1 flex items-center justify-center text-[11px] font-mono text-neutral-600">
                   Select an app from the sidebar
@@ -1174,9 +887,17 @@ export function WorkspaceManagerPanel({
         <div className="px-5 py-2.5 bg-neutral-800/90 backdrop-blur-sm border-t border-neutral-700 flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-neutral-400">{tab === 'settings' ? 'Settings' : tab === 'apps' ? 'Apps' : 'Workspace'}</span>
+              <span className="text-[11px] font-mono text-neutral-400">
+                {tab === 'settings'
+                  ? 'Settings'
+                  : tab === 'environment'
+                    ? 'Environment'
+                    : tab === 'apps'
+                      ? 'Apps'
+                      : 'Workspace'}
+              </span>
               <div className="px-1.5 py-0.5 rounded bg-neutral-700 border border-neutral-700 text-[10px] text-neutral-300 font-mono">
-                {tab === 'settings' ? '\u2318,' : '\u2318\u21e7,'}
+                {tab === 'settings' ? '\u2318,' : tab === 'environment' ? '.env' : '\u2318\u21e7,'}
               </div>
             </div>
           </div>
@@ -1187,4 +908,17 @@ export function WorkspaceManagerPanel({
       </div>
     </div>
   );
+}
+
+export function WorkspaceManagerPanel({
+  isOpen,
+  onClose,
+  defaultTab = 'overview',
+}: {
+  isOpen: boolean;
+  onClose: () => void;
+  defaultTab?: EditorTab;
+}) {
+  if (!isOpen) return null;
+  return <WorkspaceManagerPanelBody key={defaultTab} onClose={onClose} defaultTab={defaultTab} />;
 }

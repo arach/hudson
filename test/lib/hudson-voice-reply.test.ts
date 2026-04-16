@@ -1,8 +1,27 @@
 import { describe, expect, it } from 'vitest';
 import {
+  applyHudsonVoiceBehaviorPreset,
   createHudsonSpokenReply,
+  getHudsonVoiceBehaviorPreset,
   getHudsonMessageDisplayText,
 } from '@/app/shell/voiceReply';
+import type { VoiceSettings } from '@/app/apps/hudson-docs/types';
+
+function makeVoiceSettings(overrides: Partial<VoiceSettings> = {}): VoiceSettings {
+  return {
+    autoSend: true,
+    speakReplies: true,
+    replyProvider: 'system',
+    replyModel: 'system',
+    replyVoice: '',
+    replyRate: 1,
+    spokenReplyStyle: 'adaptive',
+    spokenReplyLongResponse: 'invite',
+    spokenReplyCodeResponse: 'summary',
+    spokenReplyMaxChars: 720,
+    ...overrides,
+  };
+}
 
 describe('Hudson voice reply helpers', () => {
   it('extracts assistant display text and strips think blocks', () => {
@@ -28,7 +47,7 @@ That will make Hudson speak back after voice turns. You can still read the full 
 `, 'brief');
 
     expect(spoken).toBe(
-      'Plan Open the settings panel. Pick the voice you want.',
+      'Plan Open the settings panel. Pick the voice you want. Turn on reply speech.',
     );
   });
 
@@ -50,6 +69,53 @@ That will make Hudson speak back after voice turns. You can still read the full 
     );
 
     expect(spoken.endsWith('.')).toBe(true);
-    expect(spoken.length).toBeLessThanOrEqual(221);
+    expect(spoken.length).toBeLessThanOrEqual(321);
+  });
+
+  it('turns long replies into an intro plus invitation when configured', () => {
+    const spoken = createHudsonSpokenReply(
+      'Hudson finished the workspace audit and found a few follow-up items. The shell settings are available. The voice configuration is valid. The environment has provider credentials. The next step is to review the command surface and decide which actions should stay manual.',
+      makeVoiceSettings({
+        spokenReplyStyle: 'adaptive',
+        spokenReplyLongResponse: 'invite',
+        spokenReplyMaxChars: 90,
+      }),
+    );
+
+    expect(spoken).toContain('The full details are in the written reply.');
+    expect(spoken).toContain('We can talk through any part you want.');
+  });
+
+  it('summarizes code-heavy replies instead of reading code verbatim by default', () => {
+    const spoken = createHudsonSpokenReply(`
+I updated the formatter so long replies can become invitations instead of verbatim speech.
+
+\`\`\`ts
+export function createHudsonSpokenReply(text: string) {
+  return buildSpokenReply(text, policy);
+}
+\`\`\`
+
+The written reply includes the exact code. I can walk through the implementation if you want.
+`, makeVoiceSettings({
+      spokenReplyCodeResponse: 'summary',
+    }));
+
+    expect(spoken).toContain('I also included code in the written reply.');
+    expect(spoken).toContain('I can walk through the implementation if you want.');
+    expect(spoken).not.toContain('export function createHudsonSpokenReply');
+  });
+
+  it('detects the balanced preset from the default voice settings', () => {
+    expect(getHudsonVoiceBehaviorPreset(makeVoiceSettings())).toBe('balanced');
+  });
+
+  it('applies the concise preset as a coherent reply behavior bundle', () => {
+    const next = applyHudsonVoiceBehaviorPreset(makeVoiceSettings(), 'concise');
+
+    expect(next.spokenReplyStyle).toBe('brief');
+    expect(next.spokenReplyLongResponse).toBe('invite');
+    expect(next.spokenReplyCodeResponse).toBe('mention');
+    expect(next.spokenReplyMaxChars).toBe(360);
   });
 });

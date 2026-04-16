@@ -10,6 +10,21 @@ export const shellIntents: AppIntent[] = [
     shortcut: 'Cmd+,',
   },
   {
+    commandId: 'shell:environment',
+    title: 'Open Environment',
+    description: 'Open Hudson’s environment panel to manage local .env.local variables.',
+    category: 'settings',
+    keywords: ['environment', 'env', '.env', '.env.local', 'variables', 'secrets'],
+  },
+  {
+    commandId: 'shell:workspace-editor',
+    title: 'Open Workspace Editor',
+    description: 'Open the workspace editor to manage apps, services, and layout.',
+    category: 'workspace',
+    keywords: ['workspace editor', 'manage apps', 'workspace manager', 'services', 'layout'],
+    shortcut: 'Cmd+Shift+,',
+  },
+  {
     commandId: 'shell:toggle-left',
     title: 'Toggle Left Panel',
     description: 'Show or hide the left sidebar navigation panel.',
@@ -69,6 +84,13 @@ export const shellIntents: AppIntent[] = [
     description: 'Reset all app windows to their default size and position.',
     category: 'workspace',
     keywords: ['reset windows', 'restore layout', 'default layout', 'reset positions'],
+  },
+  {
+    commandId: 'shell:auto-layout',
+    title: 'Auto Layout Windows',
+    description: 'Arrange all visible windows into a clean grid layout and fit them into view.',
+    category: 'workspace',
+    keywords: ['auto layout', 'tile windows', 'arrange windows', 'grid layout', 'fit all'],
   },
   {
     commandId: 'shell:toggle-mute',

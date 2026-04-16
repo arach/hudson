@@ -1,7 +1,7 @@
 'use client';
 
 import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from '@hudson/sdk';
-import { Camera, Loader2 } from 'lucide-react';
+import { AlertTriangle, Camera, Loader2 } from 'lucide-react';
 import type { AIAttachment } from '@hudson/sdk';
 import { useLogo, defaults } from './LogoProvider';
 import { isBuiltinVariant } from './types';
@@ -9,6 +9,7 @@ import type { LogoTemplate, TemplateParam } from './types';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { buildSystemPrompt, buildClaudeMd } from './prompts';
 import type { ModelTier } from './prompts';
+import { useServiceRegistryContext } from '../../services/ServiceRegistryContext';
 
 // ---------------------------------------------------------------------------
 // Server-side compile helper
@@ -52,6 +53,9 @@ export function LogoTerminal() {
   const relayAgent = (appSettings.agent as 'claude' | 'pi') || 'pi';
   const relayProvider = String(appSettings.provider || 'minimax');
   const relayModel = String(appSettings.model || 'MiniMax-M2.7');
+  const serviceRegistry = useServiceRegistryContext();
+  const relayRecord = serviceRegistry.records.relay;
+  const relayServiceDown = relayRecord != null && relayRecord.status !== 'running';
 
   const [mode, setMode] = useState<TerminalMode>('relay');
 
@@ -320,6 +324,31 @@ export function LogoTerminal() {
           </>
         )}
       </div>
+      {mode === 'relay' && relayServiceDown && (
+        <div className="shrink-0 flex items-center gap-2.5 px-3 py-2 border-b border-neutral-700/50 bg-neutral-900/80 text-[11px]">
+          <AlertTriangle size={12} className="text-amber-400/80 shrink-0" />
+          <div className="flex-1 min-w-0">
+            <span className="text-neutral-200">Logo terminal is offline.</span>{' '}
+            <span className="text-neutral-500">
+              Hudson Relay powers terminal sessions here; logo editing still works without it.
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={() => { void handleStartRelay(); }}
+            className="text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          >
+            Start Relay
+          </button>
+          <button
+            type="button"
+            onClick={openSettings}
+            className="text-[10px] px-2.5 py-1 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+          >
+            Services
+          </button>
+        </div>
+      )}
       {/* Content */}
       <div className="flex-1 min-h-0">
         {mode === 'relay' ? (

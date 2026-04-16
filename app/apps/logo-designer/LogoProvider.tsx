@@ -2,12 +2,13 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from '@hudson/sdk';
 import type { AppSettingsValues } from '@hudson/sdk';
-import type { LogoTemplate, ColorSet, WordmarkConfig } from './types';
+import type { LogoTemplate, ColorSet, WordmarkConfig, LightingConfig } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';
 import { useLogoAI } from './useLogoAI';
+import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
 
-export type { ColorSet, WordmarkConfig };
+export type { ColorSet, WordmarkConfig, LightingConfig };
 
 export interface LogoParams {
   variant: string;
@@ -25,6 +26,9 @@ export interface LogoParams {
   // Light mode
   lightEnabled: boolean;
   lightColors: ColorSet;
+  // Lighting
+  lightingEnabled: boolean;
+  lighting: LightingConfig;
   // Wordmark
   wordmark: WordmarkConfig;
 }
@@ -35,6 +39,16 @@ export const defaultLightColors: ColorSet = {
   dimPaneColor: 'rgba(0,0,0,0.18)',
   channelColor: 'rgba(16,185,129,0.20)',
   strokeColor: 'rgba(0,0,0,0.12)',
+};
+
+export const defaultLighting: LightingConfig = {
+  azimuth: 225,
+  elevation: 45,
+  intensity: 0.75,
+  specular: 0.35,
+  specularExp: 20,
+  surfaceScale: 4,
+  ambient: 0.55,
 };
 
 export const defaultWordmark: WordmarkConfig = {
@@ -66,11 +80,14 @@ export const defaults: LogoParams = {
   padding: 72,
   lightEnabled: false,
   lightColors: defaultLightColors,
+  lightingEnabled: false,
+  lighting: defaultLighting,
   wordmark: defaultWordmark,
 };
 
-// Poll interval for syncing templates from the server (only when tab visible)
-const TEMPLATE_POLL_MS = 30_000;
+// File-watch SSE is the primary transport; these timers only run if the stream drops.
+const TEMPLATE_FOCUSED_FALLBACK_POLL_MS = 120_000;
+const TEMPLATE_VISIBLE_FALLBACK_POLL_MS = 300_000;
 
 interface LogoState {
   params: LogoParams;
@@ -294,15 +311,27 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
   },
 ];
 
-export function LogoProvider({ children }: { children: ReactNode }) {
+export function LogoProvider({
+  children,
+  disabled = false,
+  visible = true,
+  focused = false,
+}: {
+  children: ReactNode;
+  disabled?: boolean;
+  visible?: boolean;
+  focused?: boolean;
+}) {
   const [appSettings] = useAppSettings('logo-designer', logoSettings);
   const { apiBaseUrl } = usePlatform();
+  const templateStreamEndpoint = `${apiBaseUrl}/api/logo/template/stream`;
   // Merge persisted params with defaults so new fields are backfilled
   const [rawParams, setParams] = usePersistentState<LogoParams>('logo.params', defaults);
   const params = useMemo<LogoParams>(() => ({
     ...defaults,
     ...rawParams,
     lightColors: { ...defaults.lightColors, ...rawParams.lightColors },
+    lighting: { ...defaults.lighting, ...rawParams.lighting },
     wordmark: { ...defaults.wordmark, ...rawParams.wordmark },
   }), [rawParams]);
   const [backgroundSvg, setBackgroundSvg] = usePersistentState<string | null>('logo.backgroundSvg', null);
@@ -331,14 +360,14 @@ export function LogoProvider({ children }: { children: ReactNode }) {
   }), [params]);
 
   // Per-template tool config (light mode, wordmark) — saved/restored on variant switch
-  interface TemplateToolConfig { lightEnabled: boolean; lightColors: ColorSet; wordmark: WordmarkConfig }
+  interface TemplateToolConfig { lightEnabled: boolean; lightColors: ColorSet; lightingEnabled: boolean; lighting: LightingConfig; wordmark: WordmarkConfig }
   const templateToolsRef = useRef<Record<string, TemplateToolConfig>>({});
 
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
   const [customParamValues, setCustomParamValues] = usePersistentState<Record<string, Record<string, number | string | Record<string, unknown>[]>>>('logo.customParamValues', {});
 
-  // Poll the template API for changes (picks up relay-created templates)
+  // Reconcile template files created outside the UI (relay/terminal edits).
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
   const lastFetchRef = useRef('');
   const activeRef = useRef(true);
@@ -376,16 +405,23 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     } catch (err) {
       console.warn('[logo] Template fetch failed:', err);
     }
-  }, [templateEndpoint]);
+  }, [templateEndpoint, setCustomParamValues]);
 
   useEffect(() => {
-    activeRef.current = true;
-    refreshTemplates();
-    const id = setInterval(refreshTemplates, TEMPLATE_POLL_MS);
-    const onVis = () => { if (document.visibilityState === 'visible') refreshTemplates(); };
-    document.addEventListener('visibilitychange', onVis);
-    return () => { activeRef.current = false; clearInterval(id); document.removeEventListener('visibilitychange', onVis); };
-  }, [refreshTemplates]);
+    activeRef.current = !disabled && visible;
+    return () => {
+      activeRef.current = false;
+    };
+  }, [disabled, visible]);
+
+  useEventSourceInvalidation({
+    url: templateStreamEndpoint,
+    enabled: !disabled && visible,
+    onInvalidate: refreshTemplates,
+    fallbackIntervalMs: focused
+      ? TEMPLATE_FOCUSED_FALLBACK_POLL_MS
+      : TEMPLATE_VISIBLE_FALLBACK_POLL_MS,
+  });
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));
@@ -397,6 +433,8 @@ export function LogoProvider({ children }: { children: ReactNode }) {
       templateToolsRef.current[prev.variant] = {
         lightEnabled: prev.lightEnabled,
         lightColors: prev.lightColors,
+        lightingEnabled: prev.lightingEnabled,
+        lighting: prev.lighting,
         wordmark: prev.wordmark,
       };
       return prev;
@@ -420,6 +458,8 @@ export function LogoProvider({ children }: { children: ReactNode }) {
     const toolConfig = savedTools ?? {
       lightEnabled: false,
       lightColors: defaultLightColors,
+      lightingEnabled: false,
+      lighting: defaultLighting,
       wordmark: defaultWordmark,
     };
 
@@ -434,6 +474,8 @@ export function LogoProvider({ children }: { children: ReactNode }) {
         variant: v,
         lightEnabled: toolConfig.lightEnabled,
         lightColors: presetLightColors ?? toolConfig.lightColors,
+        lightingEnabled: toolConfig.lightingEnabled,
+        lighting: toolConfig.lighting,
         wordmark: toolConfig.wordmark,
       }));
     } else {
@@ -442,6 +484,8 @@ export function LogoProvider({ children }: { children: ReactNode }) {
         variant: v,
         lightEnabled: toolConfig.lightEnabled,
         lightColors: toolConfig.lightColors,
+        lightingEnabled: toolConfig.lightingEnabled,
+        lighting: toolConfig.lighting,
         wordmark: toolConfig.wordmark,
       }));
     }

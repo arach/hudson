@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { LogoTemplate } from './types';
+import type { LogoTemplate, LightingConfig } from './types';
 import type { LogoParams } from './LogoProvider';
 
 // ---------------------------------------------------------------------------
@@ -191,11 +191,62 @@ export function useTemplateRender(
 }
 
 // ---------------------------------------------------------------------------
+// Lighting filter — logo-wide directional light via SVG filter primitives
+// ---------------------------------------------------------------------------
+
+function buildLightingFilter(l: LightingConfig): string {
+  // Use luminance as height map: bright areas = raised, dark = recessed
+  // Then apply diffuse + specular lighting from a distant light source.
+  //
+  // Composition: finalColor = original * (diffuse * strength + ambient) + specular
+  //
+  // feComposite arithmetic: result = k1*in1*in2 + k2*in1 + k3*in2 + k4
+  const blur = Math.max(1, l.surfaceScale * 0.6);
+  const k1 = l.intensity;  // how much diffuse modulates the original
+  const k2 = l.ambient;    // how much original passes through unlit
+
+  return [
+    `<defs>`,
+    `<filter id="__lighting" x="-5%" y="-5%" width="110%" height="110%" color-interpolation-filters="sRGB">`,
+    // Step 1: height map from luminance
+    `<feColorMatrix in="SourceGraphic" type="luminanceToAlpha" result="luma"/>`,
+    `<feGaussianBlur in="luma" stdDeviation="${blur}" result="heightMap"/>`,
+    // Step 2: diffuse lighting (soft, lambertian)
+    `<feDiffuseLighting in="heightMap" surfaceScale="${l.surfaceScale}" diffuseConstant="1" lighting-color="white" result="diffuse">`,
+    `<feDistantLight azimuth="${l.azimuth}" elevation="${l.elevation}"/>`,
+    `</feDiffuseLighting>`,
+    // Step 3: multiply diffuse with original  →  original * (diffuse * k1 + ambient)
+    `<feComposite in="SourceGraphic" in2="diffuse" operator="arithmetic" k1="${k1}" k2="${k2}" k3="0" k4="0" result="lit"/>`,
+    // Step 4: specular highlights (glossy/metallic)
+    ...(l.specular > 0 ? [
+      `<feSpecularLighting in="heightMap" surfaceScale="${l.surfaceScale}" specularConstant="${l.specular}" specularExponent="${l.specularExp}" lighting-color="white" result="spec">`,
+      `<feDistantLight azimuth="${l.azimuth}" elevation="${l.elevation}"/>`,
+      `</feSpecularLighting>`,
+      // Clip specular to source alpha
+      `<feComposite in="spec" in2="SourceAlpha" operator="in" result="specMasked"/>`,
+      // Add specular on top: lit + specMasked
+      `<feComposite in="lit" in2="specMasked" operator="arithmetic" k1="0" k2="1" k3="1" k4="0"/>`,
+    ] : [
+      // No specular — just output lit
+      `<feComposite in="lit" in2="lit" operator="arithmetic" k1="0" k2="1" k3="0" k4="0"/>`,
+    ]),
+    `</filter>`,
+    `</defs>`,
+  ].join('');
+}
+
+// ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
 
 export function TemplateSvg({ template, params, customParamValues, backgroundSvg, size }: Props) {
   const { svg } = useTemplateRender(template, params, customParamValues, backgroundSvg);
+
+  const finalSvg = useMemo(() => {
+    if (!params.lightingEnabled) return svg;
+    const filterDef = buildLightingFilter(params.lighting);
+    return `${filterDef}<g filter="url(#__lighting)">${svg}</g>`;
+  }, [svg, params.lightingEnabled, params.lighting]);
 
   return (
     <svg
@@ -203,7 +254,7 @@ export function TemplateSvg({ template, params, customParamValues, backgroundSvg
       viewBox={`0 0 ${VB} ${VB}`}
       width={size}
       height={size}
-      dangerouslySetInnerHTML={{ __html: svg }}
+      dangerouslySetInnerHTML={{ __html: finalSvg }}
     />
   );
 }

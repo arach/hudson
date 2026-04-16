@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback, useState } from 'react';
-import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send } from 'lucide-react';
+import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
 import type { WordmarkConfig } from './types';
@@ -309,6 +309,19 @@ export function LogoContent() {
           >
             {params.lightEnabled ? <Sun size={11} /> : <Moon size={11} />}
             Light
+          </button>
+
+          <div className="w-px h-4 bg-white/10" />
+
+          <button
+            onClick={() => setParam('lightingEnabled', !params.lightingEnabled)}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
+              params.lightingEnabled ? 'bg-amber-500/15 text-amber-400' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'
+            }`}
+            title={params.lightingEnabled ? 'Disable lighting' : 'Enable lighting'}
+          >
+            <Lightbulb size={11} />
+            Lighting
           </button>
 
           <div className="w-px h-4 bg-white/10" />

@@ -30,9 +30,14 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   voice: {
     autoSend: true,
     speakReplies: false,
+    replyProvider: 'system',
+    replyModel: 'system',
     replyVoice: '',
     replyRate: 1,
-    spokenReplyStyle: 'brief',
+    spokenReplyStyle: 'adaptive',
+    spokenReplyLongResponse: 'invite',
+    spokenReplyCodeResponse: 'summary',
+    spokenReplyMaxChars: 720,
   },
 };
 

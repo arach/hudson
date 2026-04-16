@@ -68,7 +68,8 @@ export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
                   : 'bg-neutral-800/50 text-neutral-200 border border-neutral-700/50'
               }`}
             >
-              {msg.parts.map((part, i) => {
+              {(msg.parts ?? []).map((part, i) => {
+                if (!part) return null;
                 if (part.type === 'text') {
                   return <span key={i}>{part.text}</span>;
                 }

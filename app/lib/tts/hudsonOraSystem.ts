@@ -9,6 +9,8 @@ import {
   parseHudsonSayVoices,
   rateToHudsonSayWordsPerMinute,
   toHudsonOraVoice,
+  type HudsonOraModelOption,
+  type HudsonOraProviderOption,
   type HudsonOraWorkerHealth,
   type HudsonOraWorkerSynthesisRequest,
   type HudsonOraWorkerSynthesisResponse,
@@ -16,6 +18,27 @@ import {
 } from './ora-compat';
 
 let voiceCache: HudsonOraVoice[] | null = null;
+const SYSTEM_MODEL_OPTIONS: HudsonOraModelOption[] = [
+  {
+    id: 'system',
+    label: 'macOS System',
+    provider: 'system',
+    description: 'Local Apple voices via the macOS speech synthesizer.',
+  },
+];
+
+const SYSTEM_PROVIDER_OPTIONS: HudsonOraProviderOption[] = [
+  {
+    id: 'system',
+    label: 'macOS System',
+    available: true,
+    defaultModel: 'system',
+    models: SYSTEM_MODEL_OPTIONS,
+    supportsVoiceSelection: true,
+    supportsRate: true,
+    supportsInstructions: false,
+  },
+];
 
 function resolveHudsonOraTranscodeTarget(format: HudsonOraWorkerSynthesisRequest['format']) {
   switch (format) {
@@ -98,10 +121,14 @@ export async function getHudsonOraSystemHealth(): Promise<HudsonOraWorkerHealth>
   return {
     ok: true,
     provider: 'system',
+    providers: SYSTEM_PROVIDER_OPTIONS,
+    defaultProvider: 'system',
+    models: SYSTEM_MODEL_OPTIONS,
     voices: await listHudsonOraSystemVoices(),
     capabilities: {
       streaming: false,
       boundaries: false,
+      providerSwitching: false,
     },
   };
 }
@@ -111,6 +138,7 @@ export async function synthesizeHudsonOraSystemSpeech(
 ): Promise<HudsonOraWorkerSynthesisResponse> {
   const requestId = randomUUID();
   const voice = await resolveHudsonOraSystemVoice(request.voice);
+  const model = request.model ?? 'system';
   const tempDir = await mkdtemp(join(tmpdir(), 'hudson-ora-'));
   const filePath = join(tempDir, `${requestId}.aiff`);
   const requestedFormat = request.format ?? request.plan?.format;
@@ -154,6 +182,8 @@ export async function synthesizeHudsonOraSystemSpeech(
     return buildHudsonOraSynthesisResponse({
       request,
       requestId,
+      provider: 'system',
+      model,
       voice,
       audioData,
       durationMs,

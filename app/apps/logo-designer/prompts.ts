@@ -98,7 +98,7 @@ You design at the level of Pentagram, Wolff Olins, and Collins. Every decision i
 function workingDir(homeFolder: string): string {
   return `# Working Directory
 \`${homeFolder}\`
-- \`.data/logo-templates/*.js\` — **template files live here** (the app polls this directory). Always save templates to this path.
+- \`.data/logo-templates/*.js\` — **template files live here**. The app refreshes them when it regains focus and during background reconciliation, so always save templates to this path.
 - Workspace root — exports, experiments, SVG files, and notes. Files here do NOT appear in the app.
 - \`CLAUDE.md\` — workspace context (auto-generated)
 
@@ -364,7 +364,7 @@ export function buildClaudeMd(ctx: PromptContext): string {
 
   return `# Hudson Logo Designer Workspace
 
-Templates in \`.data/logo-templates/\` render live in the app (~30s poll).
+Templates in \`.data/logo-templates/\` render live in the app when the window regains focus, with a slow background sync while the app is open.
 
 ## Quick Reference
 - Canvas: 512×512 SVG

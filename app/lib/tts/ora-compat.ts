@@ -1,6 +1,7 @@
 import { createHash } from 'node:crypto';
 
 export type HudsonOraAudioFormat = 'mp3' | 'wav' | 'aac' | 'opus' | 'aiff';
+export type HudsonOraProvider = 'system' | 'openai' | 'elevenlabs' | 'groq';
 
 export type HudsonOraMetadataValue = string | number | boolean | null;
 
@@ -34,10 +35,29 @@ export type HudsonOraWorkerAudioAsset = {
   mimeType?: string;
 };
 
+export type HudsonOraModelOption = {
+  id: string;
+  label: string;
+  provider: HudsonOraProvider;
+  description?: string;
+};
+
+export type HudsonOraProviderOption = {
+  id: HudsonOraProvider;
+  label: string;
+  available: boolean;
+  reason?: string;
+  defaultModel: string;
+  models: HudsonOraModelOption[];
+  supportsVoiceSelection: boolean;
+  supportsRate: boolean;
+  supportsInstructions: boolean;
+};
+
 export type HudsonOraVoice = {
   id: string;
   label: string;
-  provider: 'system';
+  provider: HudsonOraProvider;
   locale?: string;
   previewText?: string;
   metadata?: HudsonOraMetadataMap;
@@ -45,17 +65,23 @@ export type HudsonOraVoice = {
 
 export type HudsonOraWorkerHealth = {
   ok: boolean;
-  provider: 'system';
+  provider: HudsonOraProvider;
+  providers: HudsonOraProviderOption[];
+  defaultProvider: HudsonOraProvider;
+  models: HudsonOraModelOption[];
   voices: HudsonOraVoice[];
   capabilities: {
     streaming: boolean;
     boundaries: boolean;
+    providerSwitching: boolean;
   };
   error?: string;
 };
 
 export type HudsonOraWorkerSynthesisRequest = {
   text: string;
+  provider?: HudsonOraProvider;
+  model?: string;
   voice?: string;
   rate?: number;
   instructions?: string;
@@ -68,6 +94,8 @@ export type HudsonOraWorkerSynthesisRequest = {
 export type HudsonOraWorkerSynthesisResponse = {
   requestId: string;
   cacheKey: string;
+  provider: HudsonOraProvider;
+  model: string;
   voice: string;
   rate: number;
   format: HudsonOraAudioFormat;
@@ -105,6 +133,8 @@ export function resolveHudsonOraMimeType(format: HudsonOraAudioFormat): string {
 export function createHudsonOraCacheKey(request: HudsonOraWorkerSynthesisRequest): string {
   return createHash('sha256')
     .update(JSON.stringify({
+      provider: request.provider ?? 'system',
+      model: request.model ?? 'default',
       text: request.text,
       voice: request.voice ?? 'default',
       rate: request.rate ?? 1,
@@ -168,6 +198,8 @@ export function rateToHudsonSayWordsPerMinute(rate?: number): number | null {
 export function buildHudsonOraSynthesisResponse(args: {
   request: HudsonOraWorkerSynthesisRequest;
   requestId: string;
+  provider: HudsonOraProvider;
+  model: string;
   voice: string;
   audioData: Uint8Array;
   durationMs: number;
@@ -182,6 +214,8 @@ export function buildHudsonOraSynthesisResponse(args: {
   return {
     requestId: args.requestId,
     cacheKey: createHudsonOraCacheKey(args.request),
+    provider: args.provider,
+    model: args.model,
     voice: args.voice,
     rate: args.request.rate ?? 1,
     format,

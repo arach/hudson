@@ -11,6 +11,9 @@ import {
   type ReactNode,
 } from 'react';
 import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from '@hudson/sdk';
+import { useEventSourceInvalidation } from '../hooks/useEventSourceInvalidation';
+
+const PIPE_FALLBACK_POLL_MS = 300_000;
 
 // ---------------------------------------------------------------------------
 // Port catalog entry (for terminal / UI)
@@ -148,16 +151,11 @@ export function DataBusProvider({
     } catch { /* silent */ }
   }, []);
 
-  useEffect(() => {
-    fetchPipes();
-    let id: ReturnType<typeof setInterval>;
-    const start = () => { id = setInterval(fetchPipes, 30_000); };
-    const stop = () => clearInterval(id);
-    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchPipes(); start(); } };
-    start();
-    document.addEventListener('visibilitychange', onVis);
-    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, [fetchPipes]);
+  useEventSourceInvalidation({
+    url: '/api/pipes/stream',
+    onInvalidate: fetchPipes,
+    fallbackIntervalMs: PIPE_FALLBACK_POLL_MS,
+  });
 
   // --- Push execution with logging ---
   const pushDirect = useCallback((srcAppId: string, srcPortId: string, sinkAppId: string, sinkPortId: string, pipeName?: string): boolean => {
@@ -215,10 +213,11 @@ export function DataBusProvider({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'update-pushed', pipe: { id: pipeId } }),
         });
+        await fetchPipes();
       } catch { /* non-critical */ }
     }
     return ok;
-  }, [pipes, pushDirect]);
+  }, [pipes, pushDirect, fetchPipes]);
 
   // --- CRUD ---
   const createPipe = useCallback(async (partial: Omit<PipeDefinition, 'id' | 'createdAt' | 'lastPushedAt'>): Promise<PipeDefinition | null> => {

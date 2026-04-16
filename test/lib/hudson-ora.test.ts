@@ -43,18 +43,24 @@ describe('Hudson ORA compatibility helpers', () => {
 
   it('creates stable cache keys for equivalent synthesis requests', () => {
     const base = createHudsonOraCacheKey({
+      provider: 'system',
+      model: 'system',
       text: 'Hello Hudson',
       voice: 'Samantha',
       rate: 1,
       format: 'aiff',
     });
     const same = createHudsonOraCacheKey({
+      provider: 'system',
+      model: 'system',
       text: 'Hello Hudson',
       voice: 'Samantha',
       rate: 1,
       format: 'aiff',
     });
     const different = createHudsonOraCacheKey({
+      provider: 'openai',
+      model: 'gpt-4o-mini-tts',
       text: 'Hello Hudson',
       voice: 'Agnes',
       rate: 1,
@@ -69,11 +75,15 @@ describe('Hudson ORA compatibility helpers', () => {
     const response = buildHudsonOraSynthesisResponse({
       request: {
         text: 'Hello from Hudson',
+        provider: 'system',
+        model: 'system',
         voice: 'Samantha',
         rate: 1.1,
         format: 'wav',
       },
       requestId: 'req_123',
+      provider: 'system',
+      model: 'system',
       voice: 'Samantha',
       audioData: new Uint8Array([1, 2, 3]),
       durationMs: 240,
@@ -88,10 +98,14 @@ describe('Hudson ORA compatibility helpers', () => {
       requestId: 'req_123',
       cacheKey: createHudsonOraCacheKey({
         text: 'Hello from Hudson',
+        provider: 'system',
+        model: 'system',
         voice: 'Samantha',
         rate: 1.1,
         format: 'wav',
       }),
+      provider: 'system',
+      model: 'system',
       voice: 'Samantha',
       rate: 1.1,
       format: 'aiff',

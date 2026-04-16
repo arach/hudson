@@ -108,7 +108,13 @@ function cloneSvgAtSize(sourceRef: React.RefObject<HTMLDivElement | null>, size:
   const clone = svg.cloneNode(true) as SVGSVGElement;
   clone.setAttribute('width', String(size));
   clone.setAttribute('height', String(size));
-  return new XMLSerializer().serializeToString(clone);
+  // Ensure xmlns is present (XMLSerializer sometimes omits it on inner SVGs)
+  if (!clone.getAttribute('xmlns')) {
+    clone.setAttribute('xmlns', 'http://www.w3.org/2000/svg');
+  }
+  const markup = new XMLSerializer().serializeToString(clone);
+  // Strip any default namespace prefix that XMLSerializer may inject (ns0:, etc.)
+  return markup.replace(/<(\/?)ns\d+:/g, '<$1').replace(/\s+xmlns:ns\d+="[^"]*"/g, '');
 }
 
 function svgToPngBlob(svgMarkup: string, size: number): Promise<Blob> {
@@ -144,8 +150,11 @@ function downloadBlob(blob: Blob, filename: string) {
   a.download = filename;
   document.body.appendChild(a);
   a.click();
-  document.body.removeChild(a);
-  URL.revokeObjectURL(url);
+  // Delay cleanup — revoking immediately races the browser's download initiation
+  setTimeout(() => {
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  }, 200);
 }
 
 // ---------------------------------------------------------------------------
@@ -340,6 +349,39 @@ export function LogoInspector() {
             onChange={(key, value) => setCustomParam(activeTemplate!.id, key, value as number | string | Record<string, unknown>[])}
             defaultExpanded={true}
           />
+        </ParamSection>
+      )}
+
+      {/* ── Tool config: Lighting ── */}
+      {params.lightingEnabled && (
+        <ParamSection label="Lighting" defaultExpanded={true}>
+          <ParamSlider label="Direction" value={params.lighting.azimuth}
+            min={0} max={360} step={5}
+            format={v => `${v}°`}
+            onChange={v => setParam('lighting', { ...params.lighting, azimuth: v })} />
+          <ParamSlider label="Elevation" value={params.lighting.elevation}
+            min={10} max={90} step={1}
+            format={v => `${v}°`}
+            onChange={v => setParam('lighting', { ...params.lighting, elevation: v })} />
+          <ParamSlider label="Intensity" value={params.lighting.intensity}
+            min={0} max={2} step={0.05}
+            format={v => v.toFixed(2)}
+            onChange={v => setParam('lighting', { ...params.lighting, intensity: v })} />
+          <ParamSlider label="Ambient" value={params.lighting.ambient}
+            min={0.1} max={1} step={0.05}
+            format={v => v.toFixed(2)}
+            onChange={v => setParam('lighting', { ...params.lighting, ambient: v })} />
+          <ParamSlider label="Specular" value={params.lighting.specular}
+            min={0} max={1} step={0.05}
+            format={v => v.toFixed(2)}
+            onChange={v => setParam('lighting', { ...params.lighting, specular: v })} />
+          <ParamSlider label="Sharpness" value={params.lighting.specularExp}
+            min={4} max={128} step={2}
+            onChange={v => setParam('lighting', { ...params.lighting, specularExp: v })} />
+          <ParamSlider label="Depth" value={params.lighting.surfaceScale}
+            min={1} max={15} step={0.5}
+            format={v => v.toFixed(1)}
+            onChange={v => setParam('lighting', { ...params.lighting, surfaceScale: v })} />
         </ParamSection>
       )}
 

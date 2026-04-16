@@ -3,10 +3,12 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { useHudsonAI, usePersistentState } from '@hudson/sdk';
+import { useHudsonAI, usePersistentState, useDebouncedPersistentState } from '@hudson/sdk';
+import type { UIMessage } from 'ai';
 import type { HudsonWorkspace } from '@hudson/sdk';
 import { createVoxdClient, VoxDError } from '@voxd/client';
 import type { VoiceSettings } from '../apps/hudson-docs/types';
+import type { HudsonAIToolContext, HudsonAIWorkspaceCatalogEntry } from './HudsonAIRuntimeContext';
 import {
   DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
   DEFAULT_HUDSON_AI_DEV_MODEL_PRESET_ID,
@@ -44,10 +46,24 @@ const DEFAULT_VOICE_MIME_TYPE = 'audio/ogg;codecs=opus';
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
   speakReplies: false,
+  replyProvider: 'system',
+  replyModel: 'system',
   replyVoice: '',
   replyRate: 1,
-  spokenReplyStyle: 'brief',
+  spokenReplyStyle: 'adaptive',
+  spokenReplyLongResponse: 'invite',
+  spokenReplyCodeResponse: 'summary',
+  spokenReplyMaxChars: 720,
 };
+const WORKSPACE_AI_CHAT_ID = 'hudson-workspace-ai';
+const WORKSPACE_AI_MESSAGES_STORAGE_KEY = 'hudson.workspace-ai.chat.messages';
+const WORKSPACE_AI_SESSION_STORAGE_KEY = 'hudson.workspace-ai.chat.session-id';
+
+export interface WorkspaceAIComposerRequest {
+  id: number;
+  text: string;
+  submit?: boolean;
+}
 
 interface WorkspaceAIProps {
   workspace: HudsonWorkspace;
@@ -55,6 +71,11 @@ interface WorkspaceAIProps {
   onToolCall: (name: string, args: Record<string, unknown>) => void | Promise<void>;
   voiceSettings: VoiceSettings;
   voiceTriggerNonce: number;
+  toolContext?: HudsonAIToolContext | Record<string, unknown>;
+  provider?: string;
+  model?: string;
+  composerRequest?: WorkspaceAIComposerRequest | null;
+  onComposerRequestConsumed?: (requestId: number) => void;
 }
 
 // ---------------------------------------------------------------------------
@@ -234,8 +255,14 @@ export function WorkspaceAI({
   onToolCall,
   voiceSettings,
   voiceTriggerNonce,
+  toolContext,
+  provider,
+  model,
+  composerRequest,
+  onComposerRequestConsumed,
 }: WorkspaceAIProps) {
   const isDevModelPickerVisible = process.env.NODE_ENV === 'development';
+  const canUseDevModelPicker = isDevModelPickerVisible && !provider && !model;
   const resolvedVoiceSettings = voiceSettings ?? DEFAULT_VOICE_SETTINGS;
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
@@ -245,9 +272,19 @@ export function WorkspaceAI({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = useState<Array<{ dataUrl: string; prompt: string }>>([]);
+  const [scopeWorkspaceId, setScopeWorkspaceId] = useState(workspace.id);
   const [devModelPresetId, setDevModelPresetId] = usePersistentState(
     'hudson.workspace-ai.dev-model-preset',
     DEFAULT_HUDSON_AI_DEV_MODEL_PRESET_ID,
+  );
+  const [persistedMessages, setPersistedMessages] = useDebouncedPersistentState<UIMessage[]>(
+    WORKSPACE_AI_MESSAGES_STORAGE_KEY,
+    [],
+    160,
+  );
+  const [persistedSessionId, setPersistedSessionId] = usePersistentState(
+    WORKSPACE_AI_SESSION_STORAGE_KEY,
+    '',
   );
 
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -259,12 +296,14 @@ export function WorkspaceAI({
   const speechAudioUrlRef = useRef<string | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const lastVoiceTriggerRef = useRef(voiceTriggerNonce);
+  const lastComposerRequestRef = useRef<number | null>(null);
   const attachmentsRef = useRef<FileAttachment[]>(attachments);
   const inputValueRef = useRef(input);
   const voiceSettingsRef = useRef(resolvedVoiceSettings);
   const voiceDraftPendingRef = useRef(false);
   const replySpeechPendingRef = useRef(false);
   const speechRequestIdRef = useRef(0);
+  const pendingWorkspaceLoadIdRef = useRef<string | null>(null);
   const { pipes, getPortCatalog } = useDataBus();
 
   attachmentsRef.current = attachments;
@@ -273,7 +312,7 @@ export function WorkspaceAI({
 
   const voxClient = useMemo(() => createVoxdClient(), []);
 
-  const context = useMemo(() => ({
+  const baseContext = useMemo(() => ({
     apps: workspace.apps.map(c => ({
       id: c.app.id,
       name: c.app.name,
@@ -286,13 +325,111 @@ export function WorkspaceAI({
     })),
     portCatalog: getPortCatalog(),
   }), [workspace, pipes, getPortCatalog]);
+  const context = useMemo(
+    () => ({ ...baseContext, ...(toolContext ?? {}) }),
+    [baseContext, toolContext],
+  );
+  const workspaceCatalog = useMemo<HudsonAIWorkspaceCatalogEntry[]>(() => {
+    const catalog = (toolContext as HudsonAIToolContext | undefined)?.workspaces;
+    if (catalog && catalog.length > 0) return catalog;
+    return [{
+      id: workspace.id,
+      name: workspace.name,
+      description: workspace.description,
+      mode: workspace.mode,
+      current: true,
+      defaultFocusedAppId: workspace.defaultFocusedAppId,
+      apps: workspace.apps.map(({ app, canvasMode }) => ({
+        id: app.id,
+        name: app.name,
+        description: app.description,
+        mode: app.mode,
+        canvasMode: canvasMode ?? 'native',
+        services: app.services ?? [],
+      })),
+    }];
+  }, [toolContext, workspace]);
+  const scopedWorkspace = useMemo(
+    () => workspaceCatalog.find(candidate => candidate.id === scopeWorkspaceId)
+      ?? workspaceCatalog.find(candidate => candidate.current)
+      ?? workspaceCatalog[0]
+      ?? null,
+    [scopeWorkspaceId, workspaceCatalog],
+  );
+  const isLiveScope = (scopedWorkspace?.id ?? workspace.id) === workspace.id;
+  const scopedContext = useMemo(() => {
+    if (!scopedWorkspace || isLiveScope) {
+      return {
+        ...context,
+        scope: {
+          workspaceId: workspace.id,
+          workspaceName: workspace.name,
+          mode: 'live',
+          activeWorkspaceId: workspace.id,
+          activeWorkspaceName: workspace.name,
+          note: 'Hudson AI is operating on the active workspace with live app commands and settings.',
+        },
+      };
+    }
+
+    const globalCommands = Array.isArray((context as { commands?: HudsonAIToolContext['commands'] }).commands)
+      ? ((context as { commands?: HudsonAIToolContext['commands'] }).commands ?? []).filter(command => command.scope !== 'app')
+      : [];
+
+    return {
+      ...context,
+      workspace: {
+        id: scopedWorkspace.id,
+        name: scopedWorkspace.name,
+        description: scopedWorkspace.description,
+        mode: scopedWorkspace.mode,
+        focusedAppId: scopedWorkspace.defaultFocusedAppId ?? '',
+        visibleAppIds: [],
+        disabledAppIds: [],
+        availableWorkspaces: workspaceCatalog.map(candidate => ({
+          id: candidate.id,
+          name: candidate.name,
+          current: candidate.id === scopedWorkspace.id,
+        })),
+      },
+      apps: scopedWorkspace.apps.map(app => ({
+        id: app.id,
+        name: app.name,
+        description: app.description,
+        mode: app.mode,
+        canvasMode: app.canvasMode,
+        visible: false,
+        disabled: false,
+        focused: app.id === scopedWorkspace.defaultFocusedAppId,
+        tools: [],
+        status: null,
+        activeToolHint: null,
+        services: app.services,
+      })),
+      commands: globalCommands,
+      intents: [],
+      appSettings: [],
+      pipes: [],
+      portCatalog: [],
+      scope: {
+        workspaceId: scopedWorkspace.id,
+        workspaceName: scopedWorkspace.name,
+        mode: 'peek',
+        activeWorkspaceId: workspace.id,
+        activeWorkspaceName: workspace.name,
+        note: 'Peek mode shows the workspace definition and shell-global tools. App commands, pipes, and app settings are only live in the active workspace.',
+      },
+    };
+  }, [context, isLiveScope, scopedWorkspace, workspace.id, workspace.name, workspaceCatalog]);
   const devModelPreset = useMemo(
     () =>
       HUDSON_AI_DEV_MODEL_PRESETS.find(preset => preset.value === devModelPresetId)
       ?? DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
     [devModelPresetId],
   );
-  const activeModelPreset = isDevModelPickerVisible ? devModelPreset : DEFAULT_HUDSON_AI_DEV_MODEL_PRESET;
+  const activeModelPreset = canUseDevModelPicker ? devModelPreset : DEFAULT_HUDSON_AI_DEV_MODEL_PRESET;
+  const activeProvider = provider ?? activeModelPreset.provider;
+  const activeModel = model ?? activeModelPreset.model;
 
   useEffect(() => {
     if (devModelPreset.value !== devModelPresetId) {
@@ -300,16 +437,53 @@ export function WorkspaceAI({
     }
   }, [devModelPreset.value, devModelPresetId, setDevModelPresetId]);
 
+  useEffect(() => {
+    if (workspaceCatalog.some(candidate => candidate.id === scopeWorkspaceId)) return;
+    setScopeWorkspaceId(workspace.id);
+  }, [scopeWorkspaceId, setScopeWorkspaceId, workspace.id, workspaceCatalog]);
+
   const chat = useHudsonAI({
     toolset: 'workspace',
-    context,
-    provider: activeModelPreset.provider,
-    model: activeModelPreset.model,
+    chatId: WORKSPACE_AI_CHAT_ID,
+    initialMessages: persistedMessages,
+    context: scopedContext,
+    provider: activeProvider,
+    model: activeModel,
+    sessionId: persistedSessionId || undefined,
+    onSessionIdChange: setPersistedSessionId,
     onToolCall: async (name, args) => {
+      if (name === 'change_workspace_scope') {
+        const targetWorkspaceId = typeof args.workspaceId === 'string' ? args.workspaceId : workspace.id;
+        if (workspaceCatalog.some(candidate => candidate.id === targetWorkspaceId)) {
+          setScopeWorkspaceId(targetWorkspaceId);
+        }
+        return;
+      }
+      if (name === 'load_workspace') {
+        const targetWorkspaceId = typeof args.workspaceId === 'string' ? args.workspaceId : '';
+        if (targetWorkspaceId && workspaceCatalog.some(candidate => candidate.id === targetWorkspaceId)) {
+          pendingWorkspaceLoadIdRef.current = targetWorkspaceId;
+          setScopeWorkspaceId(targetWorkspaceId);
+        }
+        return;
+      }
       console.log('[WorkspaceAI] tool call:', name, args);
       await onToolCall(name, args);
     },
     onFinish: async ({ message, isAbort, isDisconnect, isError }) => {
+      const nextMessages = message.role === 'assistant'
+        ? [...(chatMessagesRef.current.filter(entry => entry.id !== message.id)), message]
+        : chatMessagesRef.current;
+      chatMessagesRef.current = nextMessages;
+      setPersistedMessages(nextMessages);
+
+      const pendingWorkspaceLoadId = pendingWorkspaceLoadIdRef.current;
+      pendingWorkspaceLoadIdRef.current = null;
+      if (!isAbort && !isDisconnect && !isError && pendingWorkspaceLoadId && pendingWorkspaceLoadId !== workspace.id) {
+        await onToolCall('load_workspace', { workspaceId: pendingWorkspaceLoadId });
+        return;
+      }
+
       const shouldSpeak = replySpeechPendingRef.current;
       replySpeechPendingRef.current = false;
 
@@ -320,7 +494,7 @@ export function WorkspaceAI({
       const displayText = getHudsonMessageDisplayText(message);
       const spokenText = createHudsonSpokenReply(
         displayText,
-        voiceSettingsRef.current.spokenReplyStyle,
+        voiceSettingsRef.current,
       );
 
       if (!spokenText) return;
@@ -336,6 +510,8 @@ export function WorkspaceAI({
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             text: spokenText,
+            provider: voiceSettingsRef.current.replyProvider,
+            model: voiceSettingsRef.current.replyModel,
             voice: voiceSettingsRef.current.replyVoice || undefined,
             rate: voiceSettingsRef.current.replyRate,
             format: pickReplySpeechFormat(),
@@ -424,8 +600,10 @@ export function WorkspaceAI({
 
   const chatStatusRef = useRef(chat.status);
   const sendMessageRef = useRef(chat.sendMessage);
+  const chatMessagesRef = useRef(chat.messages ?? []);
   chatStatusRef.current = chat.status;
   sendMessageRef.current = chat.sendMessage;
+  chatMessagesRef.current = chat.messages ?? [];
 
   const stopReplyAudio = useCallback(() => {
     speechRequestIdRef.current += 1;
@@ -543,6 +721,35 @@ export function WorkspaceAI({
       setVoiceStatus(current => (current === 'ready' ? 'idle' : current));
     }
   }, [input, submitPrompt]);
+
+  useEffect(() => {
+    if (!composerRequest || composerRequest.id === lastComposerRequestRef.current) return;
+    lastComposerRequestRef.current = composerRequest.id;
+
+    const nextText = composerRequest.text.trim();
+    if (!nextText) {
+      onComposerRequestConsumed?.(composerRequest.id);
+      return;
+    }
+
+    stopReplyAudio();
+    setVoiceError(null);
+    setLastTranscript(null);
+    voiceDraftPendingRef.current = false;
+
+    const sent = composerRequest.submit
+      ? submitPrompt(nextText, { source: 'text' })
+      : false;
+
+    if (!sent) {
+      setInput(nextText);
+      requestAnimationFrame(() => inputRef.current?.focus());
+    } else {
+      setVoiceStatus(current => (current === 'ready' ? 'idle' : current));
+    }
+
+    onComposerRequestConsumed?.(composerRequest.id);
+  }, [composerRequest, onComposerRequestConsumed, stopReplyAudio, submitPrompt]);
 
   // ── Voice capture ───────────────────────────────────────────────────
   const finalizeVoiceCapture = useCallback(async (chunks: Blob[], mimeType: string) => {
@@ -733,7 +940,11 @@ export function WorkspaceAI({
   }, []);
 
   // Auto-scroll on new messages or generated images
-  const messages = chat.messages ?? [];
+  const messages = chat.messages;
+  useEffect(() => {
+    setPersistedMessages(messages);
+  }, [messages, setPersistedMessages]);
+
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
@@ -772,6 +983,7 @@ export function WorkspaceAI({
   const showLaunchVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
   const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin');
   const isChatBusy = chat.status === 'submitted' || chat.status === 'streaming';
+  const scopeLabel = scopedWorkspace?.name ?? workspace.name;
 
   return (
     <div
@@ -793,7 +1005,45 @@ export function WorkspaceAI({
           </span>
         )}
         <div className="ml-auto flex items-center gap-2">
-          {isDevModelPickerVisible && (
+          {workspaceCatalog.length > 1 && (
+            <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-white/25">
+                scope
+              </span>
+              <select
+                aria-label="Hudson AI workspace scope"
+                value={scopedWorkspace?.id ?? workspace.id}
+                disabled={isChatBusy}
+                onChange={event => setScopeWorkspaceId(event.target.value)}
+                className="max-w-[180px] bg-transparent text-[10px] font-mono text-white/55 outline-none disabled:cursor-not-allowed disabled:text-white/25"
+                title={scopeLabel}
+              >
+                {workspaceCatalog.map(candidate => (
+                  <option key={candidate.id} value={candidate.id} className="bg-neutral-950 text-white">
+                    {candidate.name}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <span className={`rounded-full border px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider ${
+            isLiveScope
+              ? 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300'
+              : 'border-amber-500/20 bg-amber-500/10 text-amber-300'
+          }`}>
+            {isLiveScope ? 'live' : 'peek'}
+          </span>
+          {!isLiveScope && scopedWorkspace && (
+            <button
+              type="button"
+              onClick={() => void onToolCall('load_workspace', { workspaceId: scopedWorkspace.id })}
+              disabled={isChatBusy}
+              className="rounded border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300 transition-colors hover:border-cyan-400/30 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-white/20"
+            >
+              load
+            </button>
+          )}
+          {canUseDevModelPicker && (
             <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
               <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-white/25">
                 dev
@@ -814,7 +1064,15 @@ export function WorkspaceAI({
               </select>
             </label>
           )}
-          <span className="text-[9px] font-mono text-white/20">workspace</span>
+          <span className="max-w-[90px] truncate text-[9px] font-mono uppercase text-white/25" title={activeProvider}>
+            {activeProvider}
+          </span>
+          <span className="max-w-[160px] truncate text-[9px] font-mono text-white/15" title={activeModel}>
+            {activeModel}
+          </span>
+          <span className="max-w-[120px] truncate text-[9px] font-mono text-white/20" title={scopeLabel}>
+            {scopeLabel}
+          </span>
         </div>
       </div>
 
@@ -869,7 +1127,7 @@ export function WorkspaceAI({
       <div ref={scrollRef} className="flex-1 overflow-y-auto frame-scrollbar px-3 py-2 space-y-3">
         {messages.length === 0 && (
           <div className="text-[11px] text-white/15 text-center mt-8">
-            Ask me anything about the workspace — I can adjust params, push pipes, create templates, and more.
+            Ask me anything about the workspace. I can act live in the current workspace, peek into another workspace, or load that workspace when you want to switch over.
           </div>
         )}
 

@@ -25,6 +25,7 @@ import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipatio
 // --- Core apps (always loaded) ------------------------------------------------
 
 import { hudsonDocsApp } from './hudson-docs';
+import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
 import { logoDesignerApp } from './logo-designer';
 import { shaperApp } from './shaper';
@@ -42,6 +43,7 @@ import { notepadApp } from './notepad';
 function getAppById(id: string): HudsonApp | null {
   const table: Record<string, HudsonApp> = {
     'hudson-docs': hudsonDocsApp,
+    'hudson-ai': hudsonAIApp,
     'intent-explorer': intentExplorerApp,
     'logo-designer': logoDesignerApp,
     'shaper': shaperApp,
@@ -117,53 +119,22 @@ function getCoreApps(): WorkspaceAppConfig[] {
     {
       app: hudsonDocsApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: -450, y: -300, w: 900, h: 650 },
+      defaultWindowBounds: { x: -520, y: -280, w: 900, h: 650 },
     },
     {
-      app: intentExplorerApp,
+      app: hudsonAIApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 200, y: -200, w: 680, h: 500 },
-    },
-    {
-      app: logoDesignerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 100, y: -200, w: 900, h: 700 },
-    },
-    {
-      app: shaperApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -400, y: -300, w: 800, h: 600 },
-    },
-    {
-      app: traceViewerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -500, y: -100, w: 900, h: 650 },
-    },
-    // Terminal is in the bottom console panel, not a windowed app
-    {
-      app: openscoutApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 50, y: 0, w: 720, h: 500 },
-    },
-    {
-      app: assetsApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -200, y: -100, w: 500, h: 500 },
+      defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
     },
     {
       app: apiInspectorApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: -350, y: -250, w: 800, h: 600 },
+      defaultWindowBounds: { x: -420, y: 420, w: 760, h: 560 },
     },
     {
       app: jsonExplorerApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 100, y: -100, w: 650, h: 500 },
-    },
-    {
-      app: notepadApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 200, y: 50, w: 600, h: 500 },
+      defaultWindowBounds: { x: 420, y: 380, w: 620, h: 500 },
     },
   ];
 }
@@ -174,15 +145,15 @@ import { localApps, localWorkspaces } from '../local/apps.local';
 
 // --- Exports ------------------------------------------------------------------
 
-/** The main Hudson OS workspace — core apps + any locally registered apps. */
+/** The main Hudson OS workspace — intentionally minimal for demos and daily use. */
 export function getHudsonOSWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
     name: 'Hudson OS',
-    description: 'Multi-app canvas workspace',
+    description: 'Clean docs, AI, and API workspace',
     mode: 'canvas',
-    apps: [...getCoreApps(), ...localApps],
-    defaultFocusedAppId: 'shaper',
+    apps: getCoreApps(),
+    defaultFocusedAppId: 'hudson-docs',
   };
 }
 

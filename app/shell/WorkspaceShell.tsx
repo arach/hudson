@@ -27,7 +27,7 @@ import {
   captureWorkspace,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -40,7 +40,9 @@ import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 import { HudsonTerminal } from './HudsonTerminal';
-import { WorkspaceAI } from './WorkspaceAI';
+import { WorkspaceAI, type WorkspaceAIComposerRequest } from './WorkspaceAI';
+import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
+import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
 import { PortActivityLog } from './PortActivityLog';
@@ -48,8 +50,12 @@ import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
 import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-manager';
+import type { EditorTab } from './workspace-manager';
 import type { ServiceStatus } from '@hudson/sdk';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
+import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
+import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
+import { hudsonAISettings } from '../apps/hudson-ai/settings';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -87,6 +93,32 @@ const TILE = {
   gap: 40,
 } as const;
 
+function getPendingTerminalAppIdKey(workspaceId: string): string {
+  return `hudson.ws.${workspaceId}.terminal.pending-active`;
+}
+
+function consumePendingTerminalAppId(workspaceId: string): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const key = getPendingTerminalAppIdKey(workspaceId);
+    const value = window.localStorage.getItem(key);
+    if (value) {
+      window.localStorage.removeItem(key);
+    }
+    return value;
+  } catch {
+    return null;
+  }
+}
+
+function primeHudsonAIWorkspaceHandoff(workspaceId: string, terminalAppId: string) {
+  if (typeof window === 'undefined') return;
+  try {
+    window.localStorage.setItem(`hudson.ws.${workspaceId}.terminal`, JSON.stringify(true));
+    window.localStorage.setItem(getPendingTerminalAppIdKey(workspaceId), terminalAppId);
+  } catch {}
+}
+
 // ---------------------------------------------------------------------------
 // Service status indicator (rendered in StatusBar right slot)
 // ---------------------------------------------------------------------------
@@ -113,6 +145,163 @@ function ServiceStatusIndicator({ registry, onOpenSettings }: {
       </span>
     </button>
   );
+}
+
+function getWorkspaceServiceStatus(
+  workspace: HudsonWorkspace,
+  registry: ReturnType<typeof useServiceRegistry>,
+): { label: string; color: StatusColor } {
+  const requiredServiceIds = new Set(
+    workspace.apps.flatMap(config =>
+      (config.app.services ?? [])
+        .filter(dep => !dep.optional)
+        .map(dep => dep.serviceId),
+    ),
+  );
+
+  if (requiredServiceIds.size === 0) {
+    return { label: 'READY', color: 'emerald' };
+  }
+
+  const hasError = [...requiredServiceIds].some(id => registry.records[id]?.status === 'error');
+  const allRunning = [...requiredServiceIds].every(id => registry.records[id]?.status === 'running');
+
+  if (hasError) return { label: 'ERROR', color: 'red' };
+  if (allRunning) return { label: 'NOMINAL', color: 'emerald' };
+  return { label: 'DEGRADED', color: 'amber' };
+}
+
+type AppSettingFieldLike = AppSettingsEntry['config']['sections'][number]['fields'][number];
+type WorkspaceToolScalar = string | number | boolean;
+
+function coerceBooleanToolValue(value: unknown): boolean | null {
+  if (typeof value === 'boolean') return value;
+  if (typeof value === 'number') return value !== 0;
+  if (typeof value !== 'string') return null;
+
+  const normalized = value.trim().toLowerCase();
+  if (['true', '1', 'yes', 'on', 'enabled'].includes(normalized)) return true;
+  if (['false', '0', 'no', 'off', 'disabled'].includes(normalized)) return false;
+  return null;
+}
+
+function coerceNumberToolValue(value: unknown): number | null {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  if (typeof value !== 'string') return null;
+
+  const parsed = Number(value.trim());
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function clampToolNumber(field: AppSettingFieldLike, value: number): number {
+  let next = value;
+  if (typeof field.min === 'number') next = Math.max(field.min, next);
+  if (typeof field.max === 'number') next = Math.min(field.max, next);
+  return next;
+}
+
+function coerceAppSettingToolValue(
+  field: AppSettingFieldLike,
+  value: unknown,
+): WorkspaceToolScalar | null {
+  switch (field.type) {
+    case 'toggle':
+      return coerceBooleanToolValue(value);
+    case 'number':
+    case 'slider': {
+      const parsed = coerceNumberToolValue(value);
+      return parsed === null ? null : clampToolNumber(field, parsed);
+    }
+    case 'segment':
+    case 'select': {
+      const normalized = typeof value === 'string' ? value.trim() : String(value);
+      const match = field.options?.find(option =>
+        option.value === normalized || option.label.toLowerCase() === normalized.toLowerCase(),
+      );
+      return match?.value ?? null;
+    }
+    case 'text':
+      if (typeof value === 'string') return value;
+      if (typeof value === 'number' || typeof value === 'boolean') return String(value);
+      return null;
+    default:
+      return null;
+  }
+}
+
+function buildShellSettingsPatch(
+  key: string,
+  value: unknown,
+  current: HudsonSettings,
+): Partial<HudsonSettings> | null {
+  switch (key) {
+    case 'glowIntensity':
+    case 'gridOpacity':
+    case 'zoomSensitivity': {
+      const parsed = coerceNumberToolValue(value);
+      return parsed === null ? null : { [key]: parsed } as Partial<HudsonSettings>;
+    }
+    case 'connectorStyle':
+      return value === 'dashed' || value === 'solid' || value === 'dotted'
+        ? { connectorStyle: value }
+        : null;
+    case 'masterMute':
+    case 'uiClickSounds':
+    case 'uiTransitionSounds': {
+      const parsed = coerceBooleanToolValue(value);
+      return parsed === null ? null : { [key]: parsed } as Partial<HudsonSettings>;
+    }
+    case 'aiMode':
+      return value === 'cli' || value === 'api' ? { aiMode: value } : null;
+    case 'font.fontSize': {
+      const parsed = coerceNumberToolValue(value);
+      return parsed === null ? null : { font: { ...current.font, fontSize: parsed } };
+    }
+    case 'font.fontFamily':
+      return typeof value === 'string' ? { font: { ...current.font, fontFamily: value } } : null;
+    case 'voice.autoSend':
+    case 'voice.speakReplies': {
+      const parsed = coerceBooleanToolValue(value);
+      return parsed === null
+        ? null
+        : {
+          voice: {
+            ...current.voice,
+            [key === 'voice.autoSend' ? 'autoSend' : 'speakReplies']: parsed,
+          },
+        };
+    }
+    case 'voice.replyProvider':
+      return value === 'system' || value === 'openai' || value === 'elevenlabs' || value === 'groq'
+        ? { voice: { ...current.voice, replyProvider: value } }
+        : null;
+    case 'voice.replyModel':
+      return typeof value === 'string' ? { voice: { ...current.voice, replyModel: value } } : null;
+    case 'voice.replyVoice':
+      return typeof value === 'string' ? { voice: { ...current.voice, replyVoice: value } } : null;
+    case 'voice.replyRate': {
+      const parsed = coerceNumberToolValue(value);
+      return parsed === null ? null : { voice: { ...current.voice, replyRate: parsed } };
+    }
+    case 'voice.spokenReplyStyle':
+      return value === 'brief' || value === 'full' || value === 'adaptive'
+        ? { voice: { ...current.voice, spokenReplyStyle: value } }
+        : null;
+    case 'voice.spokenReplyLongResponse':
+      return value === 'summary' || value === 'invite' || value === 'verbatim'
+        ? { voice: { ...current.voice, spokenReplyLongResponse: value } }
+        : null;
+    case 'voice.spokenReplyCodeResponse':
+      return value === 'summary' || value === 'mention' || value === 'read'
+        ? { voice: { ...current.voice, spokenReplyCodeResponse: value } }
+        : null;
+    case 'voice.spokenReplyMaxChars': {
+      const parsed = coerceNumberToolValue(value);
+      return parsed === null ? null : { voice: { ...current.voice, spokenReplyMaxChars: parsed } };
+    }
+    default:
+      return null;
+  }
 }
 
 // ---------------------------------------------------------------------------
@@ -281,7 +470,11 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
   }
 
   // DataBusProvider wraps above all app Providers so port hooks can register
-  tree = <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>;
+  tree = (
+    <ActiveWorkspaceProvider workspaceId={workspace.id}>
+      <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+    </ActiveWorkspaceProvider>
+  );
 
   return (
     <>
@@ -349,6 +542,21 @@ function useAppSettingsBridge(config: WorkspaceAppConfig): AppSettingsEntry | nu
   return { appId: app.id, appName: app.name, config: app.settings, values, onUpdate: update };
 }
 
+function useHudsonAISettingsBridge(
+  config: WorkspaceAppConfig | null,
+  workspaceId: string,
+): AppSettingsEntry | null {
+  const scoped = useHudsonAISettings(workspaceId, hudsonAISettings);
+  if (!config) return null;
+  return {
+    appId: config.app.id,
+    appName: config.app.name,
+    config: hudsonAISettings,
+    values: scoped.resolvedSettings,
+    onUpdate: scoped.updateWorkspaceOverride,
+  };
+}
+
 // ---------------------------------------------------------------------------
 // WorkspaceInner — renders inside all Providers, can call all app hooks
 // ---------------------------------------------------------------------------
@@ -397,9 +605,21 @@ function WorkspaceInner({
   fullWorkspace.apps.forEach(config => usePortBridge(config));
 
   // --- App-level settings (called unconditionally for each app) ---
+  const hudsonAIConfig = fullWorkspace.apps.find(config => config.app.id === 'hudson-ai') ?? null;
+  const hudsonAISettingsEntry = useHudsonAISettingsBridge(hudsonAIConfig, activeWorkspaceId);
   // eslint-disable-next-line react-hooks/rules-of-hooks
-  const appSettings = fullWorkspace.apps.map(config => useAppSettingsBridge(config))
+  const genericAppSettings = fullWorkspace.apps
+    .filter(config => config.app.id !== 'hudson-ai')
+    .map(config => useAppSettingsBridge(config))
     .filter((e): e is AppSettingsEntry => e !== null);
+  const genericAppSettingsMap = new Map(genericAppSettings.map(entry => [entry.appId, entry]));
+  const appSettings = fullWorkspace.apps.flatMap(config => {
+    if (config.app.id === 'hudson-ai') {
+      return hudsonAISettingsEntry ? [hudsonAISettingsEntry] : [];
+    }
+    const entry = genericAppSettingsMap.get(config.app.id);
+    return entry ? [entry] : [];
+  });
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
@@ -742,7 +962,7 @@ function WorkspaceInner({
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
-  const [workspaceEditorTab, setWorkspaceEditorTab] = useState<'overview' | 'apps' | 'settings'>('overview');
+  const [workspaceEditorTab, setWorkspaceEditorTab] = useState<EditorTab>('overview');
   const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
   const [fsLeftOpen, setFsLeftOpen] = useState(true);
   const [fsRightOpen, setFsRightOpen] = useState(true);
@@ -804,9 +1024,12 @@ function WorkspaceInner({
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
   // Default to the focused app's terminal if it has one
   const focusedHasTerminal = appsWithTerminal.some(c => c.app.id === focusedAppId);
-  const [activeTerminalAppId, setActiveTerminalAppId] = useState(
-    focusedHasTerminal ? focusedAppId : HUDSON_AI_ID,
-  );
+  const [activeTerminalAppId, setActiveTerminalAppId] = useState(() => {
+    const pendingTerminalAppId = consumePendingTerminalAppId(workspace.id);
+    if (pendingTerminalAppId) return pendingTerminalAppId;
+    return focusedHasTerminal ? focusedAppId : HUDSON_AI_ID;
+  });
+  const [hudsonAIComposerRequest, setHudsonAIComposerRequest] = useState<WorkspaceAIComposerRequest | null>(null);
   const [voiceTriggerNonce, setVoiceTriggerNonce] = useState(0);
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? null;
@@ -1008,7 +1231,7 @@ function WorkspaceInner({
   }, []);
 
   // --- Open settings helper (now opens workspace editor on settings tab) ---
-  const openSettings = useCallback((tab: 'overview' | 'apps' | 'settings' = 'settings') => {
+  const openSettings = useCallback((tab: EditorTab = 'settings') => {
     setWorkspaceEditorTab(tab);
     setShowWorkspaceManager(true);
   }, []);
@@ -1028,6 +1251,12 @@ function WorkspaceInner({
         shortcut: 'Cmd+,',
         icon: <Settings size={14} />,
         action: () => openSettings('settings'),
+      },
+      {
+        id: 'shell:environment',
+        label: 'Environment',
+        icon: <Settings size={14} />,
+        action: () => openSettings('environment'),
       },
       {
         id: 'shell:workspace-editor',
@@ -1251,7 +1480,7 @@ function WorkspaceInner({
     {
       id: 'canvas:toggle-minimap',
       label: minimapCollapsed ? 'Show Minimap' : 'Hide Minimap',
-      icon: <Map size={12} />,
+      icon: <MapIcon size={12} />,
       action: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
     },
   ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed, spawnTerminal]);
@@ -1398,10 +1627,322 @@ function WorkspaceInner({
     ? <focusedApp.rightPanel.headerActions />
     : undefined;
 
+  const { pushPipe, createPipe, deletePipe, getPortCatalog, pipes } = useDataBus();
+  const workspaceAIToolContext = useMemo(() => {
+    const hookByAppId = new Map(allAppHooksRaw.map(hook => [hook.appId, hook]));
+    const visibleAppIds = [...activatedAppIds];
+    const disabledIds = [...disabledAppIds];
+    const liveCommands = [
+      ...shellCommands.map(command => ({
+        id: command.id,
+        label: command.label,
+        shortcut: command.shortcut,
+        scope: 'shell' as const,
+        description: catalog.index[command.id]?.intent.description,
+      })),
+      ...serviceCommands.map(command => ({
+        id: command.id,
+        label: command.label,
+        shortcut: command.shortcut,
+        scope: 'service' as const,
+        description: catalog.index[command.id]?.intent.description,
+      })),
+      ...allAppHooks.flatMap(hook =>
+        hook.commands.map(command => ({
+          id: command.id,
+          label: command.label,
+          shortcut: command.shortcut,
+          scope: 'app' as const,
+          appId: hook.appId,
+          appName: hook.appName,
+          description: catalog.index[command.id]?.intent.description,
+        })),
+      ),
+    ];
+
+    return {
+      workspace: {
+        id: fullWorkspace.id,
+        name: fullWorkspace.name,
+        description: fullWorkspace.description,
+        mode: fullWorkspace.mode,
+        focusedAppId,
+        visibleAppIds,
+        disabledAppIds: disabledIds,
+        availableWorkspaces: workspaces.map(candidate => ({
+          id: candidate.id,
+          name: candidate.name,
+          current: candidate.id === activeWorkspaceId,
+        })),
+      },
+      workspaces: workspaces.map(candidate => ({
+        id: candidate.id,
+        name: candidate.name,
+        description: candidate.description,
+        mode: candidate.mode,
+        current: candidate.id === activeWorkspaceId,
+        defaultFocusedAppId: candidate.defaultFocusedAppId,
+        apps: candidate.apps.map(({ app, canvasMode }) => ({
+          id: app.id,
+          name: app.name,
+          description: app.description,
+          mode: app.mode,
+          canvasMode: canvasMode ?? 'native',
+          services: app.services ?? [],
+        })),
+      })),
+      apps: fullWorkspace.apps.map(config => {
+        const { app } = config;
+        const hook = hookByAppId.get(app.id);
+        return {
+          id: app.id,
+          name: app.name,
+          description: app.description,
+          mode: app.mode,
+          canvasMode: config.canvasMode ?? 'native',
+          visible: activatedAppIds.has(app.id),
+          disabled: disabledAppIds.has(app.id),
+          focused: focusedAppId === app.id,
+          ports: app.ports,
+          tools: app.tools?.map(tool => ({ id: tool.id, name: tool.name })) ?? [],
+          status: hook?.status ?? null,
+          activeToolHint: hook?.activeToolHint ?? null,
+          services: app.services ?? [],
+        };
+      }),
+      commands: liveCommands,
+      intents: [
+        ...catalog.shell.map(intent => ({
+          appId: 'shell',
+          appName: 'Shell',
+          commandId: intent.commandId,
+          title: intent.title,
+          description: intent.description,
+          category: intent.category,
+          keywords: intent.keywords,
+          shortcut: intent.shortcut,
+          dangerous: intent.dangerous,
+          paramsCount: intent.params?.length ?? 0,
+        })),
+        ...catalog.apps.flatMap(app =>
+          app.intents.map(intent => ({
+            appId: app.appId,
+            appName: app.appName,
+            commandId: intent.commandId,
+            title: intent.title,
+            description: intent.description,
+            category: intent.category,
+            keywords: intent.keywords,
+            shortcut: intent.shortcut,
+            dangerous: intent.dangerous,
+            paramsCount: intent.params?.length ?? 0,
+          })),
+        ),
+      ],
+      appSettings: appSettings.map(entry => ({
+        appId: entry.appId,
+        appName: entry.appName,
+        sections: entry.config.sections.map(section => ({
+          label: section.label,
+          fields: section.fields.map(field => ({
+            key: field.key,
+            label: field.label,
+            type: field.type,
+            default: field.default,
+            min: field.min,
+            max: field.max,
+            step: field.step,
+            options: field.options,
+            current: entry.values[field.key],
+          })),
+        })),
+      })),
+      shellSettings,
+      services: serviceRegistry.catalog.map(service => ({
+        id: service.id,
+        name: service.name,
+        description: service.description,
+        version: service.version,
+        status: serviceRegistry.records[service.id]?.status ?? 'unknown',
+        error: serviceRegistry.records[service.id]?.error,
+      })),
+      pipes: pipes.filter(pipe => pipe.source?.appId).map(pipe => ({
+        id: pipe.id,
+        name: pipe.name,
+        enabled: pipe.enabled,
+        source: pipe.source,
+        sink: pipe.sink,
+        lastPushedAt: pipe.lastPushedAt,
+      })),
+      portCatalog: getPortCatalog(),
+      environment: {
+        manageable: true,
+        path: '.env.local',
+      },
+    } as HudsonAIToolContext;
+  }, [
+    activeWorkspaceId,
+    activatedAppIds,
+    allAppHooks,
+    allAppHooksRaw,
+    appSettings,
+    catalog.apps,
+    catalog.index,
+    catalog.shell,
+    disabledAppIds,
+    focusedAppId,
+    fullWorkspace,
+    getPortCatalog,
+    pipes,
+    serviceCommands,
+    serviceRegistry.catalog,
+    serviceRegistry.records,
+    shellCommands,
+    shellSettings,
+    workspaces,
+  ]);
+  const hudsonAISettings = appSettings.find(entry => entry.appId === 'hudson-ai')?.values;
+  const hudsonAIProvider = typeof hudsonAISettings?.provider === 'string'
+    ? hudsonAISettings.provider
+    : undefined;
+  const hudsonAIModel = typeof hudsonAISettings?.model === 'string'
+    ? hudsonAISettings.model
+    : undefined;
+  const queueHudsonAIPrompt = useCallback((text: string, options?: { submit?: boolean }) => {
+    const trimmed = text.trim();
+    if (!trimmed) return;
+    setActiveTerminalAppId(HUDSON_AI_ID);
+    setShowTerminal(true);
+    setHudsonAIComposerRequest({
+      id: Date.now() + Math.floor(Math.random() * 1000),
+      text: trimmed,
+      submit: Boolean(options?.submit),
+    });
+  }, [setShowTerminal]);
+
   // --- Workspace AI tool call handler ---
-  const { pushPipe, pushDirect, pipes } = useDataBus();
   const handleWorkspaceToolCall = useCallback(async (name: string, args: Record<string, unknown>) => {
     switch (name) {
+      case 'run_command': {
+        const commandId = args.commandId as string;
+        const command = allCommands.find(entry => entry.id === commandId);
+        if (command) {
+          command.action();
+        } else {
+          console.warn('[WorkspaceAI] unknown command:', commandId);
+        }
+        break;
+      }
+      case 'set_app_setting': {
+        const appId = args.appId as string;
+        const key = args.key as string;
+        const entry = appSettings.find(setting => setting.appId === appId);
+        const field = entry?.config.sections.flatMap(section => section.fields).find(candidate => candidate.key === key);
+        if (!entry || !field) {
+          console.warn('[WorkspaceAI] unknown app setting:', appId, key);
+          break;
+        }
+        const coerced = coerceAppSettingToolValue(field, args.value);
+        if (coerced === null) {
+          console.warn('[WorkspaceAI] invalid app setting value:', appId, key, args.value);
+          break;
+        }
+        entry.onUpdate({ [key]: coerced });
+        break;
+      }
+      case 'set_shell_setting': {
+        const key = args.key as string;
+        const patch = buildShellSettingsPatch(key, args.value, shellSettings);
+        if (!patch) {
+          console.warn('[WorkspaceAI] unsupported shell setting:', key, args.value);
+          break;
+        }
+        updateShellSettings(patch);
+        break;
+      }
+      case 'set_app_state': {
+        const appId = args.appId as string;
+        if (!appId) break;
+
+        const visible = typeof args.visible === 'boolean' ? args.visible : undefined;
+        const disabled = typeof args.disabled === 'boolean' ? args.disabled : undefined;
+        const focused = typeof args.focused === 'boolean' ? args.focused : undefined;
+
+        if (disabled !== undefined && disabled !== disabledAppIds.has(appId)) {
+          handleToggleAppDisabled(appId);
+        }
+
+        if (visible !== undefined && visible !== activatedAppIds.has(appId)) {
+          if (visible) {
+            handleActivateApp(appId);
+          } else {
+            handleToggleAppVisibility(appId);
+          }
+        }
+
+        if (focused) {
+          handleActivateApp(appId);
+        }
+        break;
+      }
+      case 'service_action': {
+        const serviceId = args.serviceId as string;
+        const action = args.action as 'check' | 'install' | 'start' | 'stop';
+        if (!serviceId) break;
+        await serviceRegistry.executeAction(serviceId, action, 'agent');
+        break;
+      }
+      case 'load_workspace': {
+        const workspaceId = args.workspaceId as string;
+        if (!workspaceId) break;
+        const targetWorkspace = workspaces.find(candidate => candidate.id === workspaceId);
+        if (!targetWorkspace) {
+          console.warn('[WorkspaceAI] unknown workspace:', workspaceId);
+          break;
+        }
+        if (workspaceId !== activeWorkspaceId) {
+          primeHudsonAIWorkspaceHandoff(workspaceId, HUDSON_AI_ID);
+          onSwitchWorkspace(workspaceId);
+        }
+        break;
+      }
+      case 'set_environment_variable': {
+        const key = args.key as string;
+        const value = args.value as string;
+        if (!key) break;
+        try {
+          const response = await fetch('/api/settings/environment', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key, value: value ?? '' }),
+          });
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            throw new Error(data?.error || `Failed to save ${key}.`);
+          }
+        } catch (error) {
+          console.error('[WorkspaceAI] environment set error:', error);
+        }
+        break;
+      }
+      case 'delete_environment_variable': {
+        const key = args.key as string;
+        if (!key) break;
+        try {
+          const response = await fetch('/api/settings/environment', {
+            method: 'DELETE',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ key }),
+          });
+          if (!response.ok) {
+            const data = await response.json().catch(() => null);
+            throw new Error(data?.error || `Failed to delete ${key}.`);
+          }
+        } catch (error) {
+          console.error('[WorkspaceAI] environment delete error:', error);
+        }
+        break;
+      }
       case 'push_pipe': {
         const pipeName = args.pipeName as string;
         const pipe = pipes.find(p => p.name === pipeName);
@@ -1430,19 +1971,33 @@ function WorkspaceInner({
         break;
       case 'create_pipe': {
         try {
-          await fetch('/api/pipes', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              pipe: {
-                name: args.name,
-                source: { appId: args.sourceAppId, portId: args.sourcePortId },
-                sink: { appId: args.sinkAppId, portId: args.sinkPortId },
-                enabled: true,
-              },
-            }),
+          await createPipe({
+            name: args.name as string,
+            source: {
+              appId: args.sourceAppId as string,
+              portId: args.sourcePortId as string,
+            },
+            sink: {
+              appId: args.sinkAppId as string,
+              portId: args.sinkPortId as string,
+            },
+            enabled: true,
           });
         } catch (e) { console.error('[WorkspaceAI] create pipe error:', e); }
+        break;
+      }
+      case 'delete_pipe': {
+        const pipeName = args.pipeName as string;
+        const pipe = pipes.find(entry => entry.name === pipeName);
+        if (!pipe) {
+          console.warn('[WorkspaceAI] unknown pipe:', pipeName);
+          break;
+        }
+        try {
+          await deletePipe(pipe.id);
+        } catch (error) {
+          console.error('[WorkspaceAI] delete pipe error:', error);
+        }
         break;
       }
       case 'generate_image': {
@@ -1471,7 +2026,25 @@ function WorkspaceInner({
         break;
       }
     }
-  }, [pushPipe, pipes]);
+  }, [
+    activatedAppIds,
+    allCommands,
+    appSettings,
+    createPipe,
+    deletePipe,
+    disabledAppIds,
+    handleActivateApp,
+    handleToggleAppDisabled,
+    handleToggleAppVisibility,
+    activeWorkspaceId,
+    onSwitchWorkspace,
+    pipes,
+    pushPipe,
+    serviceRegistry,
+    setFocusedAppId,
+    updateShellSettings,
+    workspaces,
+  ]);
 
   // --- Terminal screenshot button ---
   const [termSnapping, setTermSnapping] = useState(false);
@@ -1521,6 +2094,13 @@ function WorkspaceInner({
       onToolCall={handleWorkspaceToolCall}
       voiceSettings={shellSettings.voice}
       voiceTriggerNonce={voiceTriggerNonce}
+      toolContext={workspaceAIToolContext}
+      provider={hudsonAIProvider}
+      model={hudsonAIModel}
+      composerRequest={hudsonAIComposerRequest}
+      onComposerRequestConsumed={requestId => {
+        setHudsonAIComposerRequest(current => current?.id === requestId ? null : current);
+      }}
     />
   );
 
@@ -1707,8 +2287,26 @@ function WorkspaceInner({
   const fullscreenConfig = fullscreenAppId
     ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
     : null;
+  const hudsonAIRuntime = useMemo(() => ({
+    workspace,
+    onToolCall: handleWorkspaceToolCall,
+    voiceSettings: shellSettings.voice,
+    voiceTriggerNonce,
+    toolContext: workspaceAIToolContext,
+    queueConsolePrompt: queueHudsonAIPrompt,
+    openWorkspaceSettings: openSettings,
+  }), [
+    handleWorkspaceToolCall,
+    openSettings,
+    queueHudsonAIPrompt,
+    shellSettings.voice,
+    voiceTriggerNonce,
+    workspace,
+    workspaceAIToolContext,
+  ]);
 
   return (
+    <HudsonAIRuntimeProvider value={hudsonAIRuntime}>
     <ServiceRegistryProvider value={serviceRegistry}>
     <WorkspaceManagerProvider value={wmData}>
     <ShellLayoutProvider value={shellLayout}>
@@ -1784,7 +2382,7 @@ function WorkspaceInner({
             )}
 
             {/* Main content */}
-            <div className="flex-1 overflow-hidden relative min-w-0">
+            <div className="flex-1 min-h-0 overflow-hidden relative min-w-0">
               <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
                 <fullscreenConfig.app.slots.Content />
               </AppSlotErrorBoundary>
@@ -1811,15 +2409,7 @@ function WorkspaceInner({
 
           {/* Status bar */}
           <StatusBar
-            status={(() => {
-              const { catalog, records } = serviceRegistry;
-              const hasError = catalog.some(s => records[s.id]?.status === 'error');
-              const allRunning = catalog.length > 0 && catalog.every(s => records[s.id]?.status === 'running');
-              if (hasError) return { label: 'ERROR', color: 'red' as const };
-              if (allRunning) return { label: 'NOMINAL', color: 'emerald' as const };
-              if (catalog.length === 0) return { label: 'READY', color: 'emerald' as const };
-              return { label: 'DEGRADED', color: 'amber' as const };
-            })()}
+            status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
             onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
             isTerminalOpen={showTerminal}
             left={
@@ -1975,15 +2565,7 @@ function WorkspaceInner({
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
               <StatusBar
-                status={(() => {
-                  const { catalog, records } = serviceRegistry;
-                  const hasError = catalog.some(s => records[s.id]?.status === 'error');
-                  const allRunning = catalog.length > 0 && catalog.every(s => records[s.id]?.status === 'running');
-                  if (hasError) return { label: 'ERROR', color: 'red' as const };
-                  if (allRunning) return { label: 'NOMINAL', color: 'emerald' as const };
-                  if (catalog.length === 0) return { label: 'READY', color: 'emerald' as const };
-                  return { label: 'DEGRADED', color: 'amber' as const };
-                })()}
+                status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
                 viewport={{
                   pan: panOffset,
                   zoom: scale,
@@ -2051,13 +2633,6 @@ function WorkspaceInner({
               </TerminalDrawer>
             </div>
 
-            {/* Workspace Editor (unified settings + workspace manager) */}
-            <WorkspaceManagerPanel
-              isOpen={showWorkspaceManager}
-              onClose={() => setShowWorkspaceManager(false)}
-              defaultTab={workspaceEditorTab}
-            />
-
             {/* Command palette */}
             <CommandPalette
               isOpen={showCommandPalette}
@@ -2090,9 +2665,15 @@ function WorkspaceInner({
         {worldContent}
       </Frame>
       )}
+      <WorkspaceManagerPanel
+        isOpen={showWorkspaceManager}
+        onClose={() => setShowWorkspaceManager(false)}
+        defaultTab={workspaceEditorTab}
+      />
     </ShellLayoutProvider>
     </WorkspaceManagerProvider>
     </ServiceRegistryProvider>
+    </HudsonAIRuntimeProvider>
   );
 }
 

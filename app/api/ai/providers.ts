@@ -29,6 +29,7 @@ interface CredentialStore {
   anthropic?: string;
   openai?: string;
   groq?: string;
+  elevenlabs?: string;
   xai?: string;
   github?: string;
   google?: string;
@@ -45,6 +46,7 @@ export function loadCredentials(): CredentialStore {
   if (process.env.ANTHROPIC_API_KEY) creds.anthropic = process.env.ANTHROPIC_API_KEY;
   if (process.env.OPENAI_API_KEY) creds.openai = process.env.OPENAI_API_KEY;
   if (process.env.GROQ_API_KEY) creds.groq = process.env.GROQ_API_KEY;
+  if (process.env.ELEVENLABS_API_KEY) creds.elevenlabs = process.env.ELEVENLABS_API_KEY;
   if (process.env.XAI_API_KEY) creds.xai = process.env.XAI_API_KEY;
   if (process.env.GITHUB_TOKEN) creds.github = process.env.GITHUB_TOKEN;
   if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) creds.google = process.env.GOOGLE_GENERATIVE_AI_API_KEY;

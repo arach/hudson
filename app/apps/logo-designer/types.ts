@@ -32,6 +32,26 @@ export interface ColorSet {
 }
 
 // ---------------------------------------------------------------------------
+// Lighting configuration — logo-wide directional light effect
+// ---------------------------------------------------------------------------
+export interface LightingConfig {
+  /** Light direction in degrees (0=right, 90=top, 180=left, 270=bottom) */
+  azimuth: number;
+  /** Light height above surface in degrees (10=dramatic, 90=flat overhead) */
+  elevation: number;
+  /** Diffuse light strength (0=none, 2=strong) */
+  intensity: number;
+  /** Specular highlight strength (0=matte, 1=glossy) */
+  specular: number;
+  /** Specular sharpness — higher = tighter, more metallic (4=soft, 128=sharp) */
+  specularExp: number;
+  /** Perceived depth/height of shapes for the bump map */
+  surfaceScale: number;
+  /** Base illumination level that prevents shadows from going fully dark */
+  ambient: number;
+}
+
+// ---------------------------------------------------------------------------
 // Wordmark configuration
 // ---------------------------------------------------------------------------
 export interface WordmarkConfig {

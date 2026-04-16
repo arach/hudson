@@ -25,6 +25,9 @@ export interface AgentDocEntry {
 }
 
 export type AIMode = 'cli' | 'api';
+export type SpokenReplyStyle = 'brief' | 'full' | 'adaptive';
+export type SpokenReplyLongResponse = 'summary' | 'invite' | 'verbatim';
+export type SpokenReplyCodeResponse = 'summary' | 'mention' | 'read';
 
 export interface FontSettings {
   fontSize: number;
@@ -34,9 +37,14 @@ export interface FontSettings {
 export interface VoiceSettings {
   autoSend: boolean;
   speakReplies: boolean;
+  replyProvider: 'system' | 'openai' | 'elevenlabs' | 'groq';
+  replyModel: string;
   replyVoice: string;
   replyRate: number;
-  spokenReplyStyle: 'brief' | 'full';
+  spokenReplyStyle: SpokenReplyStyle;
+  spokenReplyLongResponse: SpokenReplyLongResponse;
+  spokenReplyCodeResponse: SpokenReplyCodeResponse;
+  spokenReplyMaxChars: number;
 }
 
 export interface HudsonSettings {
