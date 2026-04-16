@@ -3,11 +3,17 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { useHudsonAI } from '@hudson/sdk';
+import { useHudsonAI, usePersistentState } from '@hudson/sdk';
 import type { HudsonWorkspace } from '@hudson/sdk';
 import { createVoxdClient, VoxDError } from '@voxd/client';
 import type { VoiceSettings } from '../apps/hudson-docs/types';
+import {
+  DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
+  DEFAULT_HUDSON_AI_DEV_MODEL_PRESET_ID,
+  HUDSON_AI_DEV_MODEL_PRESETS,
+} from '../lib/ai-models';
 import { useDataBus } from './DataBusContext';
+import { createHudsonSpokenReply, getHudsonMessageDisplayText } from './voiceReply';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -23,10 +29,25 @@ interface FileAttachment {
   previewUrl: string;
 }
 
-type VoiceStatus = 'idle' | 'recording' | 'transcribing' | 'ready' | 'unavailable' | 'error';
+type VoiceStatus =
+  | 'idle'
+  | 'recording'
+  | 'transcribing'
+  | 'ready'
+  | 'synthesizing'
+  | 'speaking'
+  | 'unavailable'
+  | 'error';
 
 const VOX_INSTALL_URL = 'https://github.com/arach/vox/releases/latest/download/Vox.dmg';
 const DEFAULT_VOICE_MIME_TYPE = 'audio/ogg;codecs=opus';
+const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
+  autoSend: true,
+  speakReplies: false,
+  replyVoice: '',
+  replyRate: 1,
+  spokenReplyStyle: 'brief',
+};
 
 interface WorkspaceAIProps {
   workspace: HudsonWorkspace;
@@ -78,6 +99,12 @@ function resolveRecordedMimeType(chunks: Blob[], mimeType: string): string {
   if (mimeType) return mimeType;
   const typedChunk = chunks.find(chunk => chunk.type);
   return typedChunk?.type || DEFAULT_VOICE_MIME_TYPE;
+}
+
+function pickReplySpeechFormat(): 'aac' | 'wav' {
+  if (typeof document === 'undefined') return 'wav';
+  const audio = document.createElement('audio');
+  return audio.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'aac' : 'wav';
 }
 
 function normalizeVoiceError(error: unknown): { status: 'unavailable' | 'error'; message: string } {
@@ -137,6 +164,16 @@ function getVoiceBadge(status: VoiceStatus): { label: string; className: string 
       return {
         label: 'draft ready',
         className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+      };
+    case 'synthesizing':
+      return {
+        label: 'voicing',
+        className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+      };
+    case 'speaking':
+      return {
+        label: 'speaking',
+        className: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300',
       };
     case 'unavailable':
       return {
@@ -198,7 +235,8 @@ export function WorkspaceAI({
   voiceSettings,
   voiceTriggerNonce,
 }: WorkspaceAIProps) {
-  const resolvedVoiceSettings = voiceSettings ?? { autoSend: true };
+  const isDevModelPickerVisible = process.env.NODE_ENV === 'development';
+  const resolvedVoiceSettings = voiceSettings ?? DEFAULT_VOICE_SETTINGS;
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
@@ -207,17 +245,26 @@ export function WorkspaceAI({
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = useState<Array<{ dataUrl: string; prompt: string }>>([]);
+  const [devModelPresetId, setDevModelPresetId] = usePersistentState(
+    'hudson.workspace-ai.dev-model-preset',
+    DEFAULT_HUDSON_AI_DEV_MODEL_PRESET_ID,
+  );
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
+  const speechAudioRef = useRef<HTMLAudioElement | null>(null);
+  const speechAudioUrlRef = useRef<string | null>(null);
   const chunksRef = useRef<Blob[]>([]);
   const lastVoiceTriggerRef = useRef(voiceTriggerNonce);
   const attachmentsRef = useRef<FileAttachment[]>(attachments);
   const inputValueRef = useRef(input);
   const voiceSettingsRef = useRef(resolvedVoiceSettings);
+  const voiceDraftPendingRef = useRef(false);
+  const replySpeechPendingRef = useRef(false);
+  const speechRequestIdRef = useRef(0);
   const { pipes, getPortCatalog } = useDataBus();
 
   attachmentsRef.current = attachments;
@@ -239,15 +286,139 @@ export function WorkspaceAI({
     })),
     portCatalog: getPortCatalog(),
   }), [workspace, pipes, getPortCatalog]);
+  const devModelPreset = useMemo(
+    () =>
+      HUDSON_AI_DEV_MODEL_PRESETS.find(preset => preset.value === devModelPresetId)
+      ?? DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
+    [devModelPresetId],
+  );
+  const activeModelPreset = isDevModelPickerVisible ? devModelPreset : DEFAULT_HUDSON_AI_DEV_MODEL_PRESET;
+
+  useEffect(() => {
+    if (devModelPreset.value !== devModelPresetId) {
+      setDevModelPresetId(devModelPreset.value);
+    }
+  }, [devModelPreset.value, devModelPresetId, setDevModelPresetId]);
 
   const chat = useHudsonAI({
     toolset: 'workspace',
     context,
-    provider: 'copilot',
-    model: 'gemini-3-flash-preview',
+    provider: activeModelPreset.provider,
+    model: activeModelPreset.model,
     onToolCall: async (name, args) => {
       console.log('[WorkspaceAI] tool call:', name, args);
       await onToolCall(name, args);
+    },
+    onFinish: async ({ message, isAbort, isDisconnect, isError }) => {
+      const shouldSpeak = replySpeechPendingRef.current;
+      replySpeechPendingRef.current = false;
+
+      if (!shouldSpeak || isAbort || isDisconnect || isError || message.role !== 'assistant') {
+        return;
+      }
+
+      const displayText = getHudsonMessageDisplayText(message);
+      const spokenText = createHudsonSpokenReply(
+        displayText,
+        voiceSettingsRef.current.spokenReplyStyle,
+      );
+
+      if (!spokenText) return;
+
+      const requestId = speechRequestIdRef.current + 1;
+      speechRequestIdRef.current = requestId;
+      setVoiceStatus('synthesizing');
+      setVoiceError(null);
+
+      try {
+        const response = await fetch('/v1/audio/speech', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            text: spokenText,
+            voice: voiceSettingsRef.current.replyVoice || undefined,
+            rate: voiceSettingsRef.current.replyRate,
+            format: pickReplySpeechFormat(),
+            metadata: {
+              surface: 'hudson-ai',
+              workspaceId: workspace.id,
+              source: 'assistant-reply',
+            },
+          }),
+        });
+
+        const payload = await response.json() as {
+          error?: string;
+          mimeType?: string;
+          audioBase64?: string;
+          audio?: { base64?: string; mimeType?: string };
+        };
+
+        if (!response.ok) {
+          throw new Error(payload.error || `Speech synthesis failed (${response.status}).`);
+        }
+
+        const audioBase64 = payload.audio?.base64 ?? payload.audioBase64;
+        const mimeType = payload.audio?.mimeType ?? payload.mimeType ?? 'audio/wav';
+
+        if (!audioBase64) {
+          throw new Error('Speech synthesis returned no audio.');
+        }
+
+        if (speechRequestIdRef.current !== requestId) {
+          return;
+        }
+
+        if (speechAudioRef.current) {
+          speechAudioRef.current.pause();
+          speechAudioRef.current = null;
+        }
+        if (speechAudioUrlRef.current) {
+          URL.revokeObjectURL(speechAudioUrlRef.current);
+          speechAudioUrlRef.current = null;
+        }
+
+        const binary = Uint8Array.from(atob(audioBase64), char => char.charCodeAt(0));
+        const blob = new Blob([binary], { type: mimeType });
+        const objectUrl = URL.createObjectURL(blob);
+        const audio = new Audio(objectUrl);
+
+        speechAudioRef.current = audio;
+        speechAudioUrlRef.current = objectUrl;
+        setVoiceStatus('speaking');
+
+        audio.onended = () => {
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          if (speechAudioUrlRef.current === objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            speechAudioUrlRef.current = null;
+          }
+          setVoiceStatus(current => (current === 'speaking' ? 'idle' : current));
+        };
+
+        audio.onerror = () => {
+          if (speechAudioRef.current === audio) {
+            speechAudioRef.current = null;
+          }
+          if (speechAudioUrlRef.current === objectUrl) {
+            URL.revokeObjectURL(objectUrl);
+            speechAudioUrlRef.current = null;
+          }
+          setVoiceStatus('error');
+          setVoiceError('Reply audio could not be played in this browser.');
+        };
+
+        await audio.play();
+      } catch (error) {
+        if (speechRequestIdRef.current !== requestId) {
+          return;
+        }
+        stopReplyAudio();
+        setVoiceStatus('error');
+        setVoiceError(error instanceof Error ? error.message : 'Reply speech failed.');
+      }
     },
   });
 
@@ -255,6 +426,23 @@ export function WorkspaceAI({
   const sendMessageRef = useRef(chat.sendMessage);
   chatStatusRef.current = chat.status;
   sendMessageRef.current = chat.sendMessage;
+
+  const stopReplyAudio = useCallback(() => {
+    speechRequestIdRef.current += 1;
+
+    const audio = speechAudioRef.current;
+    if (audio) {
+      audio.onended = null;
+      audio.onerror = null;
+      audio.pause();
+      speechAudioRef.current = null;
+    }
+
+    if (speechAudioUrlRef.current) {
+      URL.revokeObjectURL(speechAudioUrlRef.current);
+      speechAudioUrlRef.current = null;
+    }
+  }, []);
 
   const clearAttachments = useCallback(() => {
     attachmentsRef.current = [];
@@ -312,7 +500,10 @@ export function WorkspaceAI({
   }, []);
 
   // ── Submit with attachments ─────────────────────────────────────────
-  const submitPrompt = useCallback((promptText: string) => {
+  const submitPrompt = useCallback((
+    promptText: string,
+    options?: { source?: 'text' | 'voice' },
+  ) => {
     const currentAttachments = attachmentsRef.current;
     const trimmed = promptText.trim();
     const hasFiles = currentAttachments.length > 0;
@@ -320,6 +511,8 @@ export function WorkspaceAI({
     if ((!trimmed && !hasFiles) || chatStatusRef.current === 'streaming') {
       return false;
     }
+
+    stopReplyAudio();
 
     const files = currentAttachments.map(attachment => ({
       type: 'file' as const,
@@ -333,14 +526,18 @@ export function WorkspaceAI({
         ? { text: trimmed || 'What do you see?', files }
         : { text: trimmed },
     );
+    replySpeechPendingRef.current = options?.source === 'voice' && voiceSettingsRef.current.speakReplies;
+    voiceDraftPendingRef.current = false;
     setInput('');
     clearAttachments();
     return true;
-  }, [clearAttachments]);
+  }, [clearAttachments, stopReplyAudio]);
 
   const handleSubmit = useCallback((e: React.FormEvent) => {
     e.preventDefault();
-    const sent = submitPrompt(input);
+    const sent = submitPrompt(input, {
+      source: voiceDraftPendingRef.current ? 'voice' : 'text',
+    });
     if (sent) {
       setLastTranscript(null);
       setVoiceStatus(current => (current === 'ready' ? 'idle' : current));
@@ -381,9 +578,10 @@ export function WorkspaceAI({
 
       const mergedPrompt = [inputValueRef.current.trim(), transcript].filter(Boolean).join(' ');
       setLastTranscript(transcript);
+      voiceDraftPendingRef.current = true;
 
       const autoSent = voiceSettingsRef.current.autoSend && chatStatusRef.current !== 'streaming'
-        ? submitPrompt(mergedPrompt)
+        ? submitPrompt(mergedPrompt, { source: 'voice' })
         : false;
 
       if (!autoSent) {
@@ -413,6 +611,9 @@ export function WorkspaceAI({
 
     setVoiceError(null);
     setLastTranscript(null);
+    voiceDraftPendingRef.current = false;
+    replySpeechPendingRef.current = false;
+    stopReplyAudio();
 
     try {
       const available = await voxClient.probe();
@@ -460,7 +661,7 @@ export function WorkspaceAI({
       setVoiceStatus(normalized.status);
       setVoiceError(normalized.message);
     }
-  }, [finalizeVoiceCapture, voiceStatus, voxClient]);
+  }, [finalizeVoiceCapture, stopReplyAudio, voiceStatus, voxClient]);
 
   const stopVoiceCapture = useCallback(() => {
     const recorder = recorderRef.current;
@@ -555,7 +756,8 @@ export function WorkspaceAI({
       }
     }
     stopStreamTracks(streamRef.current);
-  }, []);
+    stopReplyAudio();
+  }, [stopReplyAudio]);
 
   // Start capture when the shell triggers voice mode.
   useEffect(() => {
@@ -569,6 +771,7 @@ export function WorkspaceAI({
   const showInstallVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
   const showLaunchVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
   const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin');
+  const isChatBusy = chat.status === 'submitted' || chat.status === 'streaming';
 
   return (
     <div
@@ -589,7 +792,30 @@ export function WorkspaceAI({
             {voiceBadge.label}
           </span>
         )}
-        <span className="text-[9px] font-mono text-white/20 ml-auto">workspace</span>
+        <div className="ml-auto flex items-center gap-2">
+          {isDevModelPickerVisible && (
+            <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-white/25">
+                dev
+              </span>
+              <select
+                aria-label="Hudson AI model preset"
+                value={devModelPreset.value}
+                disabled={isChatBusy}
+                onChange={event => setDevModelPresetId(event.target.value)}
+                className="max-w-[190px] bg-transparent text-[10px] font-mono text-white/55 outline-none disabled:cursor-not-allowed disabled:text-white/25"
+                title={`${devModelPreset.provider}/${devModelPreset.model}`}
+              >
+                {HUDSON_AI_DEV_MODEL_PRESETS.map(preset => (
+                  <option key={preset.value} value={preset.value} className="bg-neutral-950 text-white">
+                    {preset.label}
+                  </option>
+                ))}
+              </select>
+            </label>
+          )}
+          <span className="text-[9px] font-mono text-white/20">workspace</span>
+        </div>
       </div>
 
       {voiceError && (
@@ -649,10 +875,8 @@ export function WorkspaceAI({
 
         {messages.map((msg, i) => {
           const isUser = msg.role === 'user';
-          const textParts = (msg.parts ?? []).filter((p: Record<string, unknown>) => p.type === 'text');
           const fileParts = (msg.parts ?? []).filter((p: Record<string, unknown>) => p.type === 'file');
-          const text = textParts.map((p: Record<string, unknown>) => String(p.text ?? '')).join('');
-          const display = text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+          const display = getHudsonMessageDisplayText(msg);
 
           if (!display && fileParts.length === 0) return null;
 

@@ -12,7 +12,13 @@ export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   uiTransitionSounds: true,
   aiMode: 'cli',
   font: { fontSize: 13, fontFamily: 'system-ui' },
-  voice: { autoSend: true },
+  voice: {
+    autoSend: true,
+    speakReplies: false,
+    replyVoice: '',
+    replyRate: 1,
+    spokenReplyStyle: 'brief',
+  },
 };
 
 export function normalizeHudsonSettings(

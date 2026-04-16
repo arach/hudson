@@ -27,7 +27,13 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   uiTransitionSounds: true,
   aiMode: 'cli',
   font: { fontSize: 13, fontFamily: 'system-ui' },
-  voice: { autoSend: true },
+  voice: {
+    autoSend: true,
+    speakReplies: false,
+    replyVoice: '',
+    replyRate: 1,
+    spokenReplyStyle: 'brief',
+  },
 };
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [

@@ -4,6 +4,8 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
+import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
+import type { MutableRefObject } from 'react';
 
 type AIMode = 'cli' | 'api';
 
@@ -29,13 +31,71 @@ export interface UseHudsonAIOptions {
   provider?: string;
   /** Model ID override (e.g. 'MiniMax-M2.7', 'claude-sonnet-4-20250514') */
   model?: string;
+  /** Called when the assistant response finishes streaming. */
+  onFinish?: ChatOnFinishCallback<UIMessage>;
+  /** Called when the chat stream errors. */
+  onError?: ChatOnErrorCallback;
 }
 
 export type HudsonAIChat = ReturnType<typeof useHudsonAI>;
 
-export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, provider, model }: UseHudsonAIOptions) {
+function buildHudsonAIRequestBody(args: {
+  activeAttachmentsRef: MutableRefObject<Set<string>>;
+  attachmentsRef: MutableRefObject<AIAttachment[] | undefined>;
+  contextRef: MutableRefObject<Record<string, unknown> | undefined>;
+  toolsetRef: MutableRefObject<string>;
+  modeRef: MutableRefObject<AIMode>;
+  sessionIdRef: MutableRefObject<string>;
+  providerRef: MutableRefObject<string | undefined>;
+  modelRef: MutableRefObject<string | undefined>;
+}) {
+  const resolved: Record<string, unknown> = {};
+
+  for (const att of args.attachmentsRef.current ?? []) {
+    if (args.activeAttachmentsRef.current.has(att.label)) {
+      const value = att.content();
+      if (value !== null) resolved[att.label.toLowerCase()] = value;
+    }
+  }
+
+  return {
+    toolset: args.toolsetRef.current,
+    context: { ...args.contextRef.current, ...resolved },
+    mode: args.modeRef.current,
+    sessionId: args.sessionIdRef.current,
+    provider: args.providerRef.current,
+    model: args.modelRef.current,
+  };
+}
+
+function invokeHudsonAIFinish(
+  ref: MutableRefObject<ChatOnFinishCallback<UIMessage> | undefined>,
+  event: Parameters<ChatOnFinishCallback<UIMessage>>[0],
+) {
+  ref.current?.(event);
+}
+
+function invokeHudsonAIError(
+  ref: MutableRefObject<ChatOnErrorCallback | undefined>,
+  error: Parameters<ChatOnErrorCallback>[0],
+) {
+  ref.current?.(error);
+}
+
+export function useHudsonAI({
+  toolset,
+  context,
+  onToolCall,
+  mode,
+  attachments,
+  provider,
+  model,
+  onFinish,
+  onError,
+}: UseHudsonAIOptions) {
   const onToolCallRef = useRef(onToolCall);
-  onToolCallRef.current = onToolCall;
+  const onFinishRef = useRef(onFinish);
+  const onErrorRef = useRef(onError);
 
   // CLI session ID — one per chat lifetime, regenerated on clear
   const sessionIdRef = useRef(crypto.randomUUID());
@@ -55,48 +115,80 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
   // Read platform-level AI mode preference; per-call `mode` overrides it
   const [settings] = usePersistentState<{ aiMode?: AIMode }>('hudson.settings', {});
   const resolvedMode = mode ?? settings.aiMode ?? 'api';
-
-  // Refs for values that change frequently but should NOT cause transport recreation.
-  // The body function reads from refs at send time — always fresh, no re-init.
   const activeAttachmentsRef = useRef(activeAttachments);
-  activeAttachmentsRef.current = activeAttachments;
   const attachmentsRef = useRef(attachments);
-  attachmentsRef.current = attachments;
   const contextRef = useRef(context);
-  contextRef.current = context;
+  const toolsetRef = useRef(toolset);
+  const modeRef = useRef(resolvedMode);
   const providerRef = useRef(provider);
-  providerRef.current = provider;
   const modelRef = useRef(model);
-  modelRef.current = model;
 
+  useEffect(() => {
+    onToolCallRef.current = onToolCall;
+  }, [onToolCall]);
+
+  useEffect(() => {
+    onFinishRef.current = onFinish;
+  }, [onFinish]);
+
+  useEffect(() => {
+    onErrorRef.current = onError;
+  }, [onError]);
+
+  useEffect(() => {
+    activeAttachmentsRef.current = activeAttachments;
+  }, [activeAttachments]);
+
+  useEffect(() => {
+    attachmentsRef.current = attachments;
+  }, [attachments]);
+
+  useEffect(() => {
+    contextRef.current = context;
+  }, [context]);
+
+  useEffect(() => {
+    toolsetRef.current = toolset;
+  }, [toolset]);
+
+  useEffect(() => {
+    modeRef.current = resolvedMode;
+  }, [resolvedMode]);
+
+  useEffect(() => {
+    providerRef.current = provider;
+  }, [provider]);
+
+  useEffect(() => {
+    modelRef.current = model;
+  }, [model]);
+
+  // The chat transport must stay stable for the chat lifetime.
+  // It reads fresh request data from refs at send time instead of being recreated.
+  /* eslint-disable react-hooks/refs */
   const transport = useMemo(
     () => new DefaultChatTransport({
       api: '/api/ai/chat',
-      body: () => {
-        // Resolve active attachments at send time
-        const resolved: Record<string, unknown> = {};
-        for (const att of attachmentsRef.current ?? []) {
-          if (activeAttachmentsRef.current.has(att.label)) {
-            const value = att.content();
-            if (value !== null) resolved[att.label.toLowerCase()] = value;
-          }
-        }
-        return {
-          toolset,
-          context: { ...contextRef.current, ...resolved },
-          mode: resolvedMode,
-          sessionId: sessionIdRef.current,
-          provider: providerRef.current,
-          model: modelRef.current,
-        };
-      },
+      body: () => buildHudsonAIRequestBody({
+        activeAttachmentsRef,
+        attachmentsRef,
+        contextRef,
+        toolsetRef,
+        modeRef,
+        sessionIdRef,
+        providerRef,
+        modelRef,
+      }),
     }),
-    // Only recreate transport when toolset or mode changes — NOT on context/provider/model
-    // Those are read from refs at send time.
-    [toolset, resolvedMode],
+    [],
   );
+  /* eslint-enable react-hooks/refs */
 
-  const chat = useChat({ transport });
+  const chat = useChat({
+    transport,
+    onFinish: event => invokeHudsonAIFinish(onFinishRef, event),
+    onError: error => invokeHudsonAIError(onErrorRef, error),
+  });
 
   const clearChat = useCallback(() => {
     sessionIdRef.current = crypto.randomUUID();
@@ -121,10 +213,7 @@ export function useHudsonAI({ toolset, context, onToolCall, mode, attachments, p
           if (!processedRef.current.has(key)) {
             processedRef.current.add(key);
             const name = getToolName(part);
-            onToolCallRef.current(
-              name,
-              (part.input ?? {}) as Record<string, unknown>,
-            );
+            onToolCallRef.current?.(name, (part.input ?? {}) as Record<string, unknown>);
           }
         }
       }

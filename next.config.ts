@@ -48,7 +48,7 @@ if (!existsSync(localWorkspacesFile)) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@hudson/sdk"],
+  transpilePackages: ["@hudson/sdk", "@voxd/client"],
   serverExternalPackages: ["esbuild"],
   turbopack: {
     root: join(__dirname, ".."),

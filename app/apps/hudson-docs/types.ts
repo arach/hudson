@@ -33,6 +33,10 @@ export interface FontSettings {
 
 export interface VoiceSettings {
   autoSend: boolean;
+  speakReplies: boolean;
+  replyVoice: string;
+  replyRate: number;
+  spokenReplyStyle: 'brief' | 'full';
 }
 
 export interface HudsonSettings {
