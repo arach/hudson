@@ -1,10 +1,12 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera } from 'lucide-react';
+import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useHudsonAI } from '@hudson/sdk';
 import type { HudsonWorkspace } from '@hudson/sdk';
+import { createVoxdClient, VoxDError } from '@voxd/client';
+import type { VoiceSettings } from '../apps/hudson-docs/types';
 import { useDataBus } from './DataBusContext';
 
 // ---------------------------------------------------------------------------
@@ -21,10 +23,17 @@ interface FileAttachment {
   previewUrl: string;
 }
 
+type VoiceStatus = 'idle' | 'recording' | 'transcribing' | 'ready' | 'unavailable' | 'error';
+
+const VOX_INSTALL_URL = 'https://github.com/arach/vox/releases/latest/download/Vox.dmg';
+const DEFAULT_VOICE_MIME_TYPE = 'audio/ogg;codecs=opus';
+
 interface WorkspaceAIProps {
   workspace: HudsonWorkspace;
   /** Callback to execute tool calls against app state */
   onToolCall: (name: string, args: Record<string, unknown>) => void | Promise<void>;
+  voiceSettings: VoiceSettings;
+  voiceTriggerNonce: number;
 }
 
 // ---------------------------------------------------------------------------
@@ -44,6 +53,106 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
+function pickRecorderMimeType(): string | undefined {
+  if (typeof MediaRecorder === 'undefined') return undefined;
+  const candidates = [
+    'audio/ogg;codecs=opus',
+    'audio/mp4;codecs=mp4a.40.2',
+    'audio/mp4',
+    'audio/webm;codecs=opus',
+  ];
+  return candidates.find(type => MediaRecorder.isTypeSupported(type));
+}
+
+function stopStreamTracks(stream: MediaStream | null) {
+  stream?.getTracks().forEach(track => track.stop());
+}
+
+function inferVoiceFormat(mimeType: string): 'wav' | 'aac' | 'opus' {
+  if (mimeType.includes('wav')) return 'wav';
+  if (mimeType.includes('aac') || mimeType.includes('mp4')) return 'aac';
+  return 'opus';
+}
+
+function resolveRecordedMimeType(chunks: Blob[], mimeType: string): string {
+  if (mimeType) return mimeType;
+  const typedChunk = chunks.find(chunk => chunk.type);
+  return typedChunk?.type || DEFAULT_VOICE_MIME_TYPE;
+}
+
+function normalizeVoiceError(error: unknown): { status: 'unavailable' | 'error'; message: string } {
+  const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+
+  if (error instanceof VoxDError) {
+    if (error.code === 'network_error') {
+      return {
+        status: 'unavailable',
+        message: 'Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.',
+      };
+    }
+    if (error.code === 'http_error') {
+      if (error.message.includes('Origin not allowed') || error.message.includes('403')) {
+        return {
+          status: 'error',
+          message: `Vox rejected Hudson's request. Allowlist ${origin} in Vox settings and try again.`,
+        };
+      }
+      return {
+        status: 'error',
+        message: 'Vox returned an error while transcribing. Check Vox and try again.',
+      };
+    }
+    return { status: 'error', message: error.message };
+  }
+
+  if (error instanceof DOMException) {
+    if (error.name === 'NotAllowedError') {
+      return { status: 'error', message: 'Microphone access was denied.' };
+    }
+    if (error.name === 'NotFoundError') {
+      return { status: 'error', message: 'No microphone is available.' };
+    }
+  }
+
+  if (error instanceof Error) {
+    return { status: 'error', message: error.message };
+  }
+
+  return { status: 'error', message: 'Voice capture failed.' };
+}
+
+function getVoiceBadge(status: VoiceStatus): { label: string; className: string } | null {
+  switch (status) {
+    case 'recording':
+      return {
+        label: 'listening',
+        className: 'border-red-500/20 bg-red-500/10 text-red-300',
+      };
+    case 'transcribing':
+      return {
+        label: 'transcribing',
+        className: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
+      };
+    case 'ready':
+      return {
+        label: 'draft ready',
+        className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300',
+      };
+    case 'unavailable':
+      return {
+        label: 'voice offline',
+        className: 'border-amber-500/20 bg-amber-500/10 text-amber-300',
+      };
+    case 'error':
+      return {
+        label: 'voice error',
+        className: 'border-red-500/20 bg-red-500/10 text-red-300',
+      };
+    default:
+      return null;
+  }
+}
+
 /** Capture the visible workspace as a blob + data URL via html2canvas. */
 async function captureWorkspace(): Promise<{ blobUrl: string; dataUrl: string } | null> {
   try {
@@ -55,7 +164,7 @@ async function captureWorkspace(): Promise<{ blobUrl: string; dataUrl: string } 
 
     const canvas = await (html2canvas as (el: HTMLElement, opts: Record<string, unknown>) => Promise<HTMLCanvasElement>)(target, {
       backgroundColor: '#0a0a0a',
-      scale: 0.5,               // half-res to keep the file manageable
+      scale: 0.5,
       useCORS: true,
       logging: false,
       allowTaint: true,
@@ -64,7 +173,10 @@ async function captureWorkspace(): Promise<{ blobUrl: string; dataUrl: string } 
     });
 
     const blob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.85));
-    if (!blob || blob.size < 200) { console.warn('[WorkspaceAI] capture produced empty blob'); return null; }
+    if (!blob || blob.size < 200) {
+      console.warn('[WorkspaceAI] capture produced empty blob');
+      return null;
+    }
 
     const blobUrl = URL.createObjectURL(blob);
     const dataUrl = canvas.toDataURL('image/jpeg', 0.85);
@@ -80,15 +192,39 @@ async function captureWorkspace(): Promise<{ blobUrl: string; dataUrl: string } 
 // Component
 // ---------------------------------------------------------------------------
 
-export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
+export function WorkspaceAI({
+  workspace,
+  onToolCall,
+  voiceSettings,
+  voiceTriggerNonce,
+}: WorkspaceAIProps) {
+  const resolvedVoiceSettings = voiceSettings ?? { autoSend: true };
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
   const [dragOver, setDragOver] = useState(false);
   const [snapping, setSnapping] = useState(false);
+  const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>('idle');
+  const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [lastTranscript, setLastTranscript] = useState<string | null>(null);
+  const [generatedImages, setGeneratedImages] = useState<Array<{ dataUrl: string; prompt: string }>>([]);
+
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const recorderRef = useRef<MediaRecorder | null>(null);
+  const streamRef = useRef<MediaStream | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
+  const lastVoiceTriggerRef = useRef(voiceTriggerNonce);
+  const attachmentsRef = useRef<FileAttachment[]>(attachments);
+  const inputValueRef = useRef(input);
+  const voiceSettingsRef = useRef(resolvedVoiceSettings);
   const { pipes, getPortCatalog } = useDataBus();
+
+  attachmentsRef.current = attachments;
+  inputValueRef.current = input;
+  voiceSettingsRef.current = resolvedVoiceSettings;
+
+  const voxClient = useMemo(() => createVoxdClient(), []);
 
   const context = useMemo(() => ({
     apps: workspace.apps.map(c => ({
@@ -114,6 +250,23 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
       await onToolCall(name, args);
     },
   });
+
+  const chatStatusRef = useRef(chat.status);
+  const sendMessageRef = useRef(chat.sendMessage);
+  chatStatusRef.current = chat.status;
+  sendMessageRef.current = chat.sendMessage;
+
+  const clearAttachments = useCallback(() => {
+    attachmentsRef.current = [];
+    setAttachments(prev => {
+      for (const attachment of prev) {
+        if (attachment.previewUrl.startsWith('blob:')) {
+          URL.revokeObjectURL(attachment.previewUrl);
+        }
+      }
+      return [];
+    });
+  }, []);
 
   // ── Add attachment from file ────────────────────────────────────────
   const addFile = useCallback(async (file: File) => {
@@ -159,27 +312,174 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
   }, []);
 
   // ── Submit with attachments ─────────────────────────────────────────
-  const handleSubmit = useCallback((e: React.FormEvent) => {
-    e.preventDefault();
-    const hasText = input.trim().length > 0;
-    const hasFiles = attachments.length > 0;
-    if ((!hasText && !hasFiles) || chat.status === 'streaming') return;
+  const submitPrompt = useCallback((promptText: string) => {
+    const currentAttachments = attachmentsRef.current;
+    const trimmed = promptText.trim();
+    const hasFiles = currentAttachments.length > 0;
 
-    const files = attachments.map(a => ({
+    if ((!trimmed && !hasFiles) || chatStatusRef.current === 'streaming') {
+      return false;
+    }
+
+    const files = currentAttachments.map(attachment => ({
       type: 'file' as const,
-      mediaType: a.mediaType,
-      url: a.dataUrl,
-      filename: a.name,
+      mediaType: attachment.mediaType,
+      url: attachment.dataUrl,
+      filename: attachment.name,
     }));
 
-    chat.sendMessage(
+    sendMessageRef.current(
       files.length > 0
-        ? { text: input.trim() || 'What do you see?', files }
-        : { text: input.trim() },
+        ? { text: trimmed || 'What do you see?', files }
+        : { text: trimmed },
     );
     setInput('');
-    setAttachments([]);
-  }, [input, attachments, chat]);
+    clearAttachments();
+    return true;
+  }, [clearAttachments]);
+
+  const handleSubmit = useCallback((e: React.FormEvent) => {
+    e.preventDefault();
+    const sent = submitPrompt(input);
+    if (sent) {
+      setLastTranscript(null);
+      setVoiceStatus(current => (current === 'ready' ? 'idle' : current));
+    }
+  }, [input, submitPrompt]);
+
+  // ── Voice capture ───────────────────────────────────────────────────
+  const finalizeVoiceCapture = useCallback(async (chunks: Blob[], mimeType: string) => {
+    stopStreamTracks(streamRef.current);
+    streamRef.current = null;
+    recorderRef.current = null;
+
+    if (chunks.length === 0) {
+      setVoiceStatus('error');
+      setVoiceError('No audio was captured.');
+      return;
+    }
+
+    setVoiceStatus('transcribing');
+    setVoiceError(null);
+
+    try {
+      const recordedMimeType = resolveRecordedMimeType(chunks, mimeType);
+      const result = await voxClient.transcribe({
+        audio: new Blob(chunks, { type: recordedMimeType }),
+        format: inferVoiceFormat(recordedMimeType),
+        language: 'en',
+        metadata: {
+          surface: 'hudson-ai',
+          workspaceId: workspace.id,
+        },
+      });
+
+      const transcript = result.text.trim();
+      if (!transcript) {
+        throw new Error('Vox returned an empty transcript.');
+      }
+
+      const mergedPrompt = [inputValueRef.current.trim(), transcript].filter(Boolean).join(' ');
+      setLastTranscript(transcript);
+
+      const autoSent = voiceSettingsRef.current.autoSend && chatStatusRef.current !== 'streaming'
+        ? submitPrompt(mergedPrompt)
+        : false;
+
+      if (!autoSent) {
+        setInput(mergedPrompt);
+        requestAnimationFrame(() => inputRef.current?.focus());
+        setVoiceStatus('ready');
+        return;
+      }
+
+      setLastTranscript(null);
+      setVoiceStatus('idle');
+    } catch (error) {
+      const normalized = normalizeVoiceError(error);
+      setVoiceStatus(normalized.status);
+      setVoiceError(normalized.message);
+    }
+  }, [submitPrompt, voxClient, workspace.id]);
+
+  const startVoiceCapture = useCallback(async () => {
+    if (voiceStatus === 'recording' || voiceStatus === 'transcribing') return;
+
+    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
+      setVoiceStatus('error');
+      setVoiceError('This browser cannot capture microphone audio.');
+      return;
+    }
+
+    setVoiceError(null);
+    setLastTranscript(null);
+
+    try {
+      const available = await voxClient.probe();
+      if (!available) {
+        setVoiceStatus('unavailable');
+        setVoiceError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
+        return;
+      }
+
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mimeType = pickRecorderMimeType();
+      const recorder = mimeType
+        ? new MediaRecorder(stream, { mimeType })
+        : new MediaRecorder(stream);
+
+      chunksRef.current = [];
+      streamRef.current = stream;
+      recorderRef.current = recorder;
+
+      recorder.ondataavailable = event => {
+        if (event.data.size > 0) {
+          chunksRef.current.push(event.data);
+        }
+      };
+
+      recorder.onerror = () => {
+        stopStreamTracks(streamRef.current);
+        streamRef.current = null;
+        recorderRef.current = null;
+        chunksRef.current = [];
+        setVoiceStatus('error');
+        setVoiceError('Voice capture failed while recording.');
+      };
+
+      recorder.onstop = () => {
+        const recordedChunks = [...chunksRef.current];
+        chunksRef.current = [];
+        void finalizeVoiceCapture(recordedChunks, resolveRecordedMimeType(recordedChunks, recorder.mimeType || mimeType || ''));
+      };
+
+      recorder.start();
+      setVoiceStatus('recording');
+    } catch (error) {
+      const normalized = normalizeVoiceError(error);
+      setVoiceStatus(normalized.status);
+      setVoiceError(normalized.message);
+    }
+  }, [finalizeVoiceCapture, voiceStatus, voxClient]);
+
+  const stopVoiceCapture = useCallback(() => {
+    const recorder = recorderRef.current;
+    if (!recorder || recorder.state !== 'recording') return;
+    setVoiceStatus('transcribing');
+    recorder.stop();
+  }, []);
+
+  const handleLaunchVox = useCallback(() => {
+    voxClient.launch();
+  }, [voxClient]);
+
+  const handleInstallVox = useCallback(() => {
+    window.open(VOX_INSTALL_URL, '_blank', 'noopener,noreferrer');
+  }, []);
+
+  const handleOpenVoxSettings = useCallback(() => {
+    voxClient.openSettings();
+  }, [voxClient]);
 
   // ── Drag & drop ─────────────────────────────────────────────────────
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -199,7 +499,9 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
     e.stopPropagation();
     setDragOver(false);
     const files = Array.from(e.dataTransfer.files).filter(f => f.type.startsWith('image/'));
-    for (const file of files) await addFile(file);
+    for (const file of files) {
+      await addFile(file);
+    }
   }, [addFile]);
 
   // ── Paste ───────────────────────────────────────────────────────────
@@ -209,14 +511,15 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
       if (item.type.startsWith('image/')) {
         e.preventDefault();
         const file = item.getAsFile();
-        if (file) await addFile(file);
+        if (file) {
+          await addFile(file);
+        }
         return;
       }
     }
   }, [addFile]);
 
   // Generated images (from tool calls)
-  const [generatedImages, setGeneratedImages] = useState<Array<{ dataUrl: string; prompt: string }>>([]);
   useEffect(() => {
     const handler = (e: Event) => {
       const detail = (e as CustomEvent).detail;
@@ -236,7 +539,36 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
   }, [messages.length, generatedImages.length]);
 
   // Focus input on mount
-  useEffect(() => { inputRef.current?.focus(); }, []);
+  useEffect(() => {
+    inputRef.current?.focus();
+  }, []);
+
+  // Clean up any live recorder state if the component unmounts.
+  useEffect(() => () => {
+    const recorder = recorderRef.current;
+    if (recorder) {
+      recorder.ondataavailable = null;
+      recorder.onerror = null;
+      recorder.onstop = null;
+      if (recorder.state !== 'inactive') {
+        recorder.stop();
+      }
+    }
+    stopStreamTracks(streamRef.current);
+  }, []);
+
+  // Start capture when the shell triggers voice mode.
+  useEffect(() => {
+    if (voiceTriggerNonce === lastVoiceTriggerRef.current) return;
+    lastVoiceTriggerRef.current = voiceTriggerNonce;
+    void startVoiceCapture();
+  }, [startVoiceCapture, voiceTriggerNonce]);
+
+  const voiceBadge = getVoiceBadge(voiceStatus);
+  const voiceErrorText = voiceError?.toLowerCase() ?? '';
+  const showInstallVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
+  const showLaunchVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
+  const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin');
 
   return (
     <div
@@ -252,8 +584,60 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
         {(chat.status === 'submitted' || chat.status === 'streaming') && (
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
         )}
+        {voiceBadge && (
+          <span className={`ml-2 rounded-full border px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider ${voiceBadge.className}`}>
+            {voiceBadge.label}
+          </span>
+        )}
         <span className="text-[9px] font-mono text-white/20 ml-auto">workspace</span>
       </div>
+
+      {voiceError && (
+        <div className={`px-3 py-2 border-b ${voiceStatus === 'unavailable' ? 'border-amber-500/10 bg-amber-500/5' : 'border-red-500/10 bg-red-500/5'}`}>
+          <div className="flex items-start gap-2">
+            <Mic size={12} className={voiceStatus === 'unavailable' ? 'text-amber-400 mt-0.5' : 'text-red-400 mt-0.5'} />
+            <div className="flex-1 min-w-0">
+              <div className={`text-[10px] font-mono uppercase tracking-wider ${voiceStatus === 'unavailable' ? 'text-amber-300/80' : 'text-red-300/80'}`}>
+                {voiceStatus === 'unavailable' ? 'Voice unavailable' : 'Voice error'}
+              </div>
+              <div className="text-[11px] leading-relaxed text-white/60">
+                {voiceError}
+              </div>
+            </div>
+            {(showInstallVox || showLaunchVox || showOpenVoxSettings) && (
+              <div className="flex items-center gap-2 shrink-0">
+                {showInstallVox && (
+                  <button
+                    type="button"
+                    onClick={handleInstallVox}
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                  >
+                    Install Vox
+                  </button>
+                )}
+                {showLaunchVox && (
+                  <button
+                    type="button"
+                    onClick={handleLaunchVox}
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                  >
+                    Launch Vox
+                  </button>
+                )}
+                {showOpenVoxSettings && (
+                  <button
+                    type="button"
+                    onClick={handleOpenVoxSettings}
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                  >
+                    Settings
+                  </button>
+                )}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
 
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto frame-scrollbar px-3 py-2 space-y-3">
@@ -279,15 +663,14 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
                   ? 'bg-cyan-500/10 text-white/70 border border-cyan-500/15'
                   : 'bg-white/[0.03] text-white/60 border border-white/[0.05]'
               }`}>
-                {/* Attached images */}
                 {fileParts.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
-                    {fileParts.map((p: Record<string, unknown>, j: number) => (
+                    {fileParts.map((part: Record<string, unknown>, j: number) => (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img
                         key={j}
-                        src={p.url as string}
-                        alt={(p.filename as string) ?? 'attachment'}
+                        src={part.url as string}
+                        alt={(part.filename as string) ?? 'attachment'}
                         className="max-w-[120px] max-h-[80px] rounded border border-white/[0.08] object-contain"
                       />
                     ))}
@@ -302,17 +685,16 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
           );
         })}
 
-        {/* Generated images from tool calls */}
-        {generatedImages.map((gi, idx) => (
+        {generatedImages.map((image, idx) => (
           <div key={`gen-${idx}`} className="flex justify-start">
             <div className="max-w-[85%] rounded-lg px-3 py-2 bg-white/[0.03] border border-white/[0.05]">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={gi.dataUrl}
-                alt={gi.prompt}
+                src={image.dataUrl}
+                alt={image.prompt}
                 className="max-w-full rounded border border-white/[0.08]"
               />
-              <div className="text-[9px] text-white/20 mt-1.5 truncate font-mono">{gi.prompt}</div>
+              <div className="text-[9px] text-white/20 mt-1.5 truncate font-mono">{image.prompt}</div>
             </div>
           </div>
         ))}
@@ -341,22 +723,23 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
       {/* Attachment preview strip */}
       {attachments.length > 0 && (
         <div className="px-3 py-2 border-t border-white/[0.04] flex items-center gap-2 overflow-x-auto">
-          {attachments.map(a => (
-            <div key={a.id} className="relative group shrink-0">
+          {attachments.map(attachment => (
+            <div key={attachment.id} className="relative group shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
-                src={a.previewUrl}
-                alt={a.name}
+                src={attachment.previewUrl}
+                alt={attachment.name}
                 className="h-12 rounded border border-white/[0.08] object-contain"
               />
               <button
-                onClick={() => removeAttachment(a.id)}
+                type="button"
+                onClick={() => removeAttachment(attachment.id)}
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
                 <X size={8} className="text-white/60" />
               </button>
               <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[7px] text-white/40 px-1 truncate rounded-b">
-                {a.name}
+                {attachment.name}
               </div>
             </div>
           ))}
@@ -366,7 +749,6 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
       {/* Input */}
       <form onSubmit={handleSubmit} className="px-3 py-2 border-t border-white/[0.06]">
         <div className="flex gap-2 items-center">
-          {/* Snapshot button */}
           <button
             type="button"
             onClick={handleSnapshot}
@@ -376,7 +758,6 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
           >
             {snapping ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
           </button>
-          {/* File picker */}
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
@@ -384,6 +765,29 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
             title="Attach image"
           >
             <ImageIcon size={14} />
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              if (voiceStatus === 'recording') {
+                stopVoiceCapture();
+              } else {
+                void startVoiceCapture();
+              }
+            }}
+            disabled={voiceStatus === 'transcribing'}
+            className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
+              voiceStatus === 'recording'
+                ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
+                : 'text-white/20 hover:text-cyan-400/60 hover:bg-white/[0.04]'
+            }`}
+            title={voiceStatus === 'recording' ? 'Stop recording' : 'Record voice prompt'}
+          >
+            {voiceStatus === 'transcribing'
+              ? <Loader2 size={14} className="animate-spin" />
+              : voiceStatus === 'recording'
+                ? <Square size={12} />
+                : <Mic size={14} />}
           </button>
           <input
             ref={fileInputRef}
@@ -393,7 +797,9 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
             className="hidden"
             onChange={async e => {
               const files = Array.from(e.target.files ?? []);
-              for (const f of files) await addFile(f);
+              for (const file of files) {
+                await addFile(file);
+              }
               e.target.value = '';
             }}
           />
@@ -421,6 +827,11 @@ export function WorkspaceAI({ workspace, onToolCall }: WorkspaceAIProps) {
             {chat.status === 'streaming' ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
           </button>
         </div>
+        {voiceStatus === 'ready' && lastTranscript && !resolvedVoiceSettings.autoSend && (
+          <div className="mt-2 text-[10px] font-mono text-cyan-300/60">
+            Voice draft ready. Press Enter to send or keep editing. Last transcript: {lastTranscript}
+          </div>
+        )}
       </form>
 
       {/* Drop overlay */}

@@ -556,6 +556,19 @@ function SettingsTab() {
         <SettingsToggle label="Click Sounds" checked={shellSettings.uiClickSounds} onChange={v => onUpdateShellSettings({ uiClickSounds: v })} />
         <SettingsToggle label="Transition Sounds" checked={shellSettings.uiTransitionSounds} onChange={v => onUpdateShellSettings({ uiTransitionSounds: v })} />
       </SettingsSection>
+      <SettingsSection label="Voice">
+        <SettingsToggle
+          label="Auto-send Transcript"
+          checked={shellSettings.voice?.autoSend ?? true}
+          onChange={v => onUpdateShellSettings({ voice: { ...(shellSettings.voice ?? { autoSend: true }), autoSend: v } })}
+        />
+        <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
+          Voice capture uses the Vox companion on <span className="text-neutral-300">127.0.0.1:43115</span>.
+          If Vox rejects transcription, allowlist Hudson&apos;s origin in Vox settings.
+          Web apps should install <span className="text-neutral-300">npm install @voxd/client</span>.
+          End users still need the Vox macOS companion installed.
+        </div>
+      </SettingsSection>
       <SettingsSection label="Shortcuts">
         <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[11px] font-mono">
           {[

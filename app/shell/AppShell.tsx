@@ -28,21 +28,7 @@ import { SettingsPanel } from '../apps/hudson-docs/components';
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
-
-// ---------------------------------------------------------------------------
-// Default settings
-// ---------------------------------------------------------------------------
-const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
-  glowIntensity: 30,
-  gridOpacity: 60,
-  connectorStyle: 'dashed',
-  zoomSensitivity: 1.0,
-  masterMute: false,
-  uiClickSounds: true,
-  uiTransitionSounds: true,
-  aiMode: 'cli',
-  font: { fontSize: 13, fontFamily: 'system-ui' },
-};
+import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 
 // ---------------------------------------------------------------------------
 // AppShell — outer wrapper that creates Provider, then delegates to Inner
@@ -108,13 +94,21 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   const [showGuides, setShowGuides] = useState(false);
 
   // Settings (shared with docs app via same localStorage key)
-  const [shellSettings, setShellSettings] = usePersistentState<HudsonSettings>('hudson.settings', DEFAULT_SHELL_SETTINGS);
+  const [storedShellSettings, setShellSettings] = usePersistentState<HudsonSettings>('hudson.settings', DEFAULT_SHELL_SETTINGS);
+  const shellSettings = useMemo(() => normalizeHudsonSettings(storedShellSettings), [storedShellSettings]);
   const muted = shellSettings.masterMute;
+
+  useEffect(() => {
+    const normalized = normalizeHudsonSettings(storedShellSettings);
+    if (JSON.stringify(normalized) !== JSON.stringify(storedShellSettings)) {
+      setShellSettings(normalized);
+    }
+  }, [storedShellSettings, setShellSettings]);
 
   useEffect(() => { setSoundMuted(shellSettings.masterMute); }, [shellSettings.masterMute]);
 
   const updateShellSettings = useCallback((patch: Partial<HudsonSettings>) => {
-    setShellSettings(prev => ({ ...prev, ...patch }));
+    setShellSettings(prev => mergeHudsonSettings(prev, patch));
   }, [setShellSettings]);
 
   const resetShellSettings = useCallback(() => {

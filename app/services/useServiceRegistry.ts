@@ -69,25 +69,45 @@ export function useServiceRegistry() {
     [setHistory],
   );
 
+  const fetchServiceStatuses = useCallback(async () => {
+    const res = await fetch(`${serviceApiUrl}/api/services`, {
+      signal: AbortSignal.timeout(3_000),
+    });
+    if (!res.ok) {
+      throw new Error(`Service status request failed (${res.status})`);
+    }
+    return res.json() as Promise<Array<{ id: string; status: ServiceStatus }>>;
+  }, [serviceApiUrl]);
+
   const checkHealth = useCallback(
     async (serviceId: string) => {
       const svc = SERVICE_CATALOG.find((s) => s.id === serviceId);
       if (!svc?.check.healthUrl) return;
 
       try {
-        const res = await fetch(svc.check.healthUrl, { signal: AbortSignal.timeout(2000) });
-        const status: ServiceStatus = res.ok ? 'running' : 'not_installed';
+        const statuses = await fetchServiceStatuses();
+        const status = statuses.find((entry) => entry.id === serviceId)?.status ?? 'unknown';
         updateRecord(serviceId, { status });
       } catch {
-        updateRecord(serviceId, { status: 'not_installed' });
+        updateRecord(serviceId, { status: 'error', error: 'Failed to refresh service status.' });
       }
     },
-    [updateRecord],
+    [fetchServiceStatuses, updateRecord],
   );
 
   const checkAll = useCallback(async () => {
-    await Promise.all(SERVICE_CATALOG.map((svc) => checkHealth(svc.id)));
-  }, [checkHealth]);
+    try {
+      const statuses = await fetchServiceStatuses();
+      for (const svc of SERVICE_CATALOG) {
+        const status = statuses.find((entry) => entry.id === svc.id)?.status ?? 'unknown';
+        updateRecord(svc.id, { status });
+      }
+    } catch {
+      for (const svc of SERVICE_CATALOG) {
+        updateRecord(svc.id, { status: 'error', error: 'Failed to refresh service status.' });
+      }
+    }
+  }, [fetchServiceStatuses, updateRecord]);
 
   const executeAction = useCallback(
     async (
@@ -197,13 +217,8 @@ export function useServiceRegistry() {
         if (!svc) continue;
 
         // Check health first
-        let alive = false;
-        if (svc.check.healthUrl) {
-          try {
-            const res = await fetch(svc.check.healthUrl, { signal: AbortSignal.timeout(2000) });
-            alive = res.ok;
-          } catch { /* not running */ }
-        }
+        const statuses = await fetchServiceStatuses().catch(() => []);
+        const alive = statuses.find((entry) => entry.id === sid)?.status === 'running';
 
         if (!alive) {
           console.log(`[services] Auto-starting ${sid}`);
@@ -215,7 +230,7 @@ export function useServiceRegistry() {
 
     return () => clearTimeout(timer);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [autoStartIds]);
+  }, [autoStartIds, executeAction, fetchServiceStatuses]);
 
   // Stop auto-started services on page unload (app quit)
   useEffect(() => {

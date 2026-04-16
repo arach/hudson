@@ -87,9 +87,12 @@ export interface HudsonApp {
   rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
 
   /** Wraps all slots — owns app state via React context.
-   *  `disabled` is true when the app is disabled in the workspace —
-   *  Providers should skip expensive work (polling, subscriptions) when disabled. */
-  Provider: React.FC<{ children: ReactNode; disabled?: boolean }>;
+   *  `disabled` is true when the app is disabled in the workspace.
+   *  `visible` is true when the app is currently shown in the workspace.
+   *  `focused` is true when the app is the active target for shell interactions.
+   *  Providers should pause expensive work when disabled or hidden, and reserve
+   *  any high-frequency polling/subscriptions for focused states only. */
+  Provider: React.FC<{ children: ReactNode; disabled?: boolean; visible?: boolean; focused?: boolean }>;
 
   /** Interactive tool panels for the right sidebar accordion */
   tools?: AppTool[];

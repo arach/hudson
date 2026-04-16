@@ -34,6 +34,13 @@ export const shellIntents: AppIntent[] = [
     shortcut: 'Ctrl+`',
   },
   {
+    commandId: 'shell:start-voice',
+    title: 'Start Voice Prompt',
+    description: 'Open Hudson AI and start recording a voice prompt with Vox.',
+    category: 'tool',
+    keywords: ['voice', 'microphone', 'dictation', 'speech', 'record', 'vox'],
+  },
+  {
     commandId: 'shell:toggle-guides',
     title: 'Toggle Crosshair Guides',
     description: 'Show or hide crosshair alignment guides on the canvas.',

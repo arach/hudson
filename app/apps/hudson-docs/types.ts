@@ -31,6 +31,10 @@ export interface FontSettings {
   fontFamily: string;
 }
 
+export interface VoiceSettings {
+  autoSend: boolean;
+}
+
 export interface HudsonSettings {
   glowIntensity: number;
   gridOpacity: number;
@@ -41,4 +45,5 @@ export interface HudsonSettings {
   uiTransitionSounds: boolean;
   aiMode: AIMode;
   font: FontSettings;
+  voice: VoiceSettings;
 }

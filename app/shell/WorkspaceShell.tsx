@@ -27,7 +27,7 @@ import {
   captureWorkspace,
 } from '@hudson/sdk';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -49,6 +49,7 @@ import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
 import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-manager';
 import type { ServiceStatus } from '@hudson/sdk';
+import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -85,18 +86,6 @@ const TILE = {
   multiH: 600,
   gap: 40,
 } as const;
-
-const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
-  glowIntensity: 30,
-  gridOpacity: 60,
-  connectorStyle: 'dashed',
-  zoomSensitivity: 1.0,
-  masterMute: false,
-  uiClickSounds: true,
-  uiTransitionSounds: true,
-  aiMode: 'cli',
-  font: { fontSize: 13, fontFamily: 'system-ui' },
-};
 
 // ---------------------------------------------------------------------------
 // Service status indicator (rendered in StatusBar right slot)
@@ -144,6 +133,15 @@ interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
   bootMode?: 'full' | 'condensed' | 'none';
+}
+
+interface ProviderRuntimeState {
+  visibleAppIds: string[];
+  focusedAppId: string;
+}
+
+function sameAppIdList(a: string[], b: string[]) {
+  return a.length === b.length && a.every((id, idx) => id === b[idx]);
 }
 
 export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'none' }: WorkspaceShellProps) {
@@ -200,6 +198,41 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
   }, [disabledAppIdsArr, workspace.id]);
 
   const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
+  const initialShowLauncher = bootMode !== 'none' && !hasSession;
+  const defaultProviderVisibleAppIds = useMemo(
+    () => initialShowLauncher ? [] : workspace.apps
+      .filter(config => !disabledAppIds.has(config.app.id))
+      .map(config => config.app.id),
+    [workspace, disabledAppIds, initialShowLauncher],
+  );
+  const defaultProviderFocusedAppId = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
+  const [providerRuntime, setProviderRuntime] = useState<ProviderRuntimeState>({
+    visibleAppIds: defaultProviderVisibleAppIds,
+    focusedAppId: defaultProviderFocusedAppId,
+  });
+
+  useEffect(() => {
+    setProviderRuntime({
+      visibleAppIds: defaultProviderVisibleAppIds,
+      focusedAppId: defaultProviderFocusedAppId,
+    });
+  }, [defaultProviderFocusedAppId, defaultProviderVisibleAppIds, workspace.id]);
+
+  const handleProviderRuntimeChange = useCallback((next: ProviderRuntimeState) => {
+    setProviderRuntime(prev => {
+      if (
+        prev.focusedAppId === next.focusedAppId &&
+        sameAppIdList(prev.visibleAppIds, next.visibleAppIds)
+      ) {
+        return prev;
+      }
+      return next;
+    });
+  }, []);
+  const providerVisibleAppIds = useMemo(
+    () => new Set(providerRuntime.visibleAppIds.filter(id => !disabledAppIds.has(id))),
+    [providerRuntime.visibleAppIds, disabledAppIds],
+  );
 
   // Filter workspace to only enabled apps for Provider nesting + rendering
   const enabledWorkspace = useMemo(() => ({
@@ -228,13 +261,23 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
       onSwitchWorkspace={handleSwitchWorkspace}
       bootPhase={bootPhase}
       bootMode={bootMode}
-      initialShowLauncher={bootMode !== 'none' && !hasSession}
+      initialShowLauncher={initialShowLauncher}
+      onProviderRuntimeChange={handleProviderRuntimeChange}
     />
   );
 
   for (let i = workspace.apps.length - 1; i >= 0; i--) {
     const { app } = workspace.apps[i];
-    tree = <app.Provider disabled={disabledAppIds.has(app.id)}>{tree}</app.Provider>;
+    const isDisabled = disabledAppIds.has(app.id);
+    tree = (
+      <app.Provider
+        disabled={isDisabled}
+        visible={!isDisabled && providerVisibleAppIds.has(app.id)}
+        focused={providerRuntime.focusedAppId === app.id}
+      >
+        {tree}
+      </app.Provider>
+    );
   }
 
   // DataBusProvider wraps above all app Providers so port hooks can register
@@ -320,6 +363,7 @@ function WorkspaceInner({
   bootPhase,
   bootMode,
   initialShowLauncher,
+  onProviderRuntimeChange,
 }: {
   workspace: HudsonWorkspace;
   /** Full workspace including disabled apps (for workspace editor) */
@@ -332,6 +376,7 @@ function WorkspaceInner({
   bootPhase: BootPhase;
   bootMode: 'full' | 'condensed' | 'none';
   initialShowLauncher: boolean;
+  onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
 }) {
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
@@ -502,6 +547,13 @@ function WorkspaceInner({
     },
     [setActivatedAppIdsArr, allAppIds],
   );
+
+  useEffect(() => {
+    onProviderRuntimeChange({
+      visibleAppIds: [...activatedAppIds].filter(id => !disabledAppIds.has(id)),
+      focusedAppId,
+    });
+  }, [activatedAppIds, disabledAppIds, focusedAppId, onProviderRuntimeChange]);
 
   // --- App launcher state ---
   const [showLauncher, setShowLauncher] = useState(initialShowLauncher);
@@ -755,6 +807,7 @@ function WorkspaceInner({
   const [activeTerminalAppId, setActiveTerminalAppId] = useState(
     focusedHasTerminal ? focusedAppId : HUDSON_AI_ID,
   );
+  const [voiceTriggerNonce, setVoiceTriggerNonce] = useState(0);
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? null;
 
@@ -777,12 +830,23 @@ function WorkspaceInner({
   }, [appsWithTerminal, activatedAppIds]);
 
   // --- Settings ---
-  const [shellSettings, setShellSettings] = usePersistentState<HudsonSettings>(
+  const [storedShellSettings, setShellSettings] = usePersistentState<HudsonSettings>(
     'hudson.settings',
     DEFAULT_SHELL_SETTINGS,
   );
+  const shellSettings = useMemo(
+    () => normalizeHudsonSettings(storedShellSettings),
+    [storedShellSettings],
+  );
   const muted = shellSettings.masterMute;
   const gridOpacity = phaseAtLeast(bootPhase, 'chrome-in') ? (shellSettings.gridOpacity ?? 60) / 100 : 0;
+
+  useEffect(() => {
+    const normalized = normalizeHudsonSettings(storedShellSettings);
+    if (JSON.stringify(normalized) !== JSON.stringify(storedShellSettings)) {
+      setShellSettings(normalized);
+    }
+  }, [storedShellSettings, setShellSettings]);
 
   useEffect(() => {
     setSoundMuted(shellSettings.masterMute);
@@ -797,7 +861,7 @@ function WorkspaceInner({
 
   const updateShellSettings = useCallback(
     (patch: Partial<HudsonSettings>) => {
-      setShellSettings(prev => ({ ...prev, ...patch }));
+      setShellSettings(prev => mergeHudsonSettings(prev, patch));
     },
     [setShellSettings],
   );
@@ -817,6 +881,13 @@ function WorkspaceInner({
     },
     [shellSettings.masterMute, shellSettings.uiClickSounds, shellSettings.uiTransitionSounds],
   );
+
+  const startVoicePrompt = useCallback(() => {
+    setShowTerminal(true);
+    setActiveTerminalAppId(HUDSON_AI_ID);
+    setVoiceTriggerNonce(n => n + 1);
+    playSound('pop');
+  }, [playSound]);
 
   // --- Pan/zoom ---
   const handlePan = useCallback((delta: { x: number; y: number }) => {
@@ -997,6 +1068,12 @@ function WorkspaceInner({
         action: () => { setShowTerminal(t => !t); playSound('slideIn'); },
       },
       {
+        id: 'shell:start-voice',
+        label: 'Start Voice Prompt',
+        icon: <Mic size={14} />,
+        action: startVoicePrompt,
+      },
+      {
         id: 'shell:toggle-guides',
         label: showGuides ? 'Hide Crosshair Guides' : 'Show Crosshair Guides',
         shortcut: 'Cmd+\\',
@@ -1062,6 +1139,7 @@ function WorkspaceInner({
       setShowTerminal,
       openSettings,
       openWorkspaceManager,
+      startVoicePrompt,
     ],
   );
 
@@ -1437,7 +1515,14 @@ function WorkspaceInner({
 
   // --- Terminal content ---
   const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
-  const workspaceAINode = <WorkspaceAI workspace={workspace} onToolCall={handleWorkspaceToolCall} />;
+  const workspaceAINode = (
+    <WorkspaceAI
+      workspace={workspace}
+      onToolCall={handleWorkspaceToolCall}
+      voiceSettings={shellSettings.voice}
+      voiceTriggerNonce={voiceTriggerNonce}
+    />
+  );
 
   const terminalContent = (() => {
     // No app terminals — show AI + Terminal tabs
@@ -1742,6 +1827,15 @@ function WorkspaceInner({
                 <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
                 <div className="h-3 w-px bg-neutral-700" />
                 <button
+                  onClick={startVoicePrompt}
+                  className="flex items-center gap-1.5 text-neutral-400 hover:text-cyan-300 transition-colors"
+                  title="Start Voice Prompt"
+                >
+                  <Mic size={10} />
+                  <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
+                </button>
+                <div className="h-3 w-px bg-neutral-700" />
+                <button
                   onClick={() => openSettings()}
                   className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
                   title="Settings (⌘,)"
@@ -1898,14 +1992,23 @@ function WorkspaceInner({
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
                 left={
-                  <div className="flex items-center gap-4">
-                    <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                    <div className="h-3 w-px bg-neutral-700" />
-                    <button
-                      onClick={() => openSettings()}
-                      className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
-                      title="Settings (⌘,)"
-                    >
+                <div className="flex items-center gap-4">
+                  <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
+                  <div className="h-3 w-px bg-neutral-700" />
+                  <button
+                    onClick={startVoicePrompt}
+                    className="flex items-center gap-1.5 text-neutral-400 hover:text-cyan-300 transition-colors"
+                    title="Start Voice Prompt"
+                  >
+                    <Mic size={10} />
+                    <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
+                  </button>
+                  <div className="h-3 w-px bg-neutral-700" />
+                  <button
+                    onClick={() => openSettings()}
+                    className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                    title="Settings (⌘,)"
+                  >
                       <Settings size={10} />
                       <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
                     </button>

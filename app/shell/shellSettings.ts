@@ -1,0 +1,47 @@
+'use client';
+
+import type { HudsonSettings } from '../apps/hudson-docs/types';
+
+export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
+  glowIntensity: 30,
+  gridOpacity: 60,
+  connectorStyle: 'dashed',
+  zoomSensitivity: 1.0,
+  masterMute: false,
+  uiClickSounds: true,
+  uiTransitionSounds: true,
+  aiMode: 'cli',
+  font: { fontSize: 13, fontFamily: 'system-ui' },
+  voice: { autoSend: true },
+};
+
+export function normalizeHudsonSettings(
+  settings: Partial<HudsonSettings> | null | undefined,
+): HudsonSettings {
+  return {
+    ...DEFAULT_SHELL_SETTINGS,
+    ...settings,
+    font: {
+      ...DEFAULT_SHELL_SETTINGS.font,
+      ...(settings?.font ?? {}),
+    },
+    voice: {
+      ...DEFAULT_SHELL_SETTINGS.voice,
+      ...(settings?.voice ?? {}),
+    },
+  };
+}
+
+export function mergeHudsonSettings(
+  settings: Partial<HudsonSettings> | null | undefined,
+  patch: Partial<HudsonSettings>,
+): HudsonSettings {
+  const current = normalizeHudsonSettings(settings);
+
+  return normalizeHudsonSettings({
+    ...current,
+    ...patch,
+    font: patch.font ? { ...current.font, ...patch.font } : current.font,
+    voice: patch.voice ? { ...current.voice, ...patch.voice } : current.voice,
+  });
+}
