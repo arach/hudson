@@ -1,3 +1,5 @@
+'use client';
+
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
 
 function readStorage<T>(key: string): T | undefined {

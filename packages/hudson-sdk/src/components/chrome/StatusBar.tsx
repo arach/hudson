@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useState, useEffect } from 'react';
 import { Clock, Map, Maximize2 } from 'lucide-react';
 import { PANEL_STYLES } from '../../lib/theme';

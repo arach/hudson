@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useRef } from 'react';
 import { Play, Pause, SkipBack } from 'lucide-react';
 

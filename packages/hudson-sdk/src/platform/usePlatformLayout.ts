@@ -1,3 +1,5 @@
+'use client';
+
 import { useMemo } from 'react';
 import { usePlatform } from './PlatformContext';
 import { SHELL_THEME } from '../lib/theme';

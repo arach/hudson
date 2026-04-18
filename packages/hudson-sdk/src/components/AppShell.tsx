@@ -15,25 +15,26 @@ import type { CommandOption } from './overlays/CommandPalette';
 import { ChevronDown, ChevronRight } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
-// SoloShell — renders a single HudsonApp with full shell chrome.
-// A simplified AppShell without multi-app workspace features.
+// AppShell — the default Hudson shell: renders a single HudsonApp with full
+// chrome (nav bar, side panels, status bar, command palette, terminal drawer).
+// Use WorkspaceShell instead when you need multi-app canvas mode.
 // ---------------------------------------------------------------------------
-interface SoloShellProps {
+interface AppShellProps {
   app: HudsonApp;
 }
 
-export function SoloShell({ app }: SoloShellProps) {
+export function AppShell({ app }: AppShellProps) {
   return (
     <app.Provider>
-      <SoloShellInner app={app} />
+      <AppShellInner app={app} />
     </app.Provider>
   );
 }
 
 // ---------------------------------------------------------------------------
-// SoloShellInner — rendered inside Provider so app hooks can be called
+// AppShellInner — rendered inside Provider so app hooks can be called
 // ---------------------------------------------------------------------------
-function SoloShellInner({ app }: { app: HudsonApp }) {
+function AppShellInner({ app }: { app: HudsonApp }) {
   // Platform layout
   const { navTotalHeight } = usePlatformLayout();
 
@@ -47,10 +48,10 @@ function SoloShellInner({ app }: { app: HudsonApp }) {
   const activeToolHint = app.hooks.useActiveToolHint?.() ?? null;
 
   // Panel state
-  const [leftCollapsed, setLeftCollapsed] = usePersistentState(`solo.${app.id}.left`, false);
-  const [rightCollapsed, setRightCollapsed] = usePersistentState(`solo.${app.id}.right`, false);
-  const [leftWidth, setLeftWidth] = usePersistentState(`solo.${app.id}.leftW`, 260);
-  const [rightWidth, setRightWidth] = usePersistentState(`solo.${app.id}.rightW`, 280);
+  const [leftCollapsed, setLeftCollapsed] = usePersistentState(`appshell.${app.id}.left`, false);
+  const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
+  const [leftWidth, setLeftWidth] = usePersistentState(`appshell.${app.id}.leftW`, 260);
+  const [rightWidth, setRightWidth] = usePersistentState(`appshell.${app.id}.rightW`, 280);
 
   // Canvas pan/zoom state
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -67,7 +68,7 @@ function SoloShellInner({ app }: { app: HudsonApp }) {
   // Terminal
   const [showTerminal, setShowTerminal] = useState(false);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [terminalHeight, setTerminalHeight] = usePersistentState(`solo.${app.id}.termH`, 320);
+  const [terminalHeight, setTerminalHeight] = usePersistentState(`appshell.${app.id}.termH`, 320);
 
   // Command palette
   const [showCommandPalette, setShowCommandPalette] = useState(false);

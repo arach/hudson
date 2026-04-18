@@ -1,3 +1,5 @@
+'use client';
+
 import React, { useCallback, useRef } from 'react';
 import { X, Maximize2, Minimize2, Terminal, Camera, Loader2 } from 'lucide-react';
 import { SHELL_THEME } from '../../lib/theme';

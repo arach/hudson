@@ -1,3 +1,5 @@
+'use client';
+
 import { useCallback, useMemo } from 'react';
 import { usePersistentState } from './usePersistentState';
 import type { AppSettingsConfig } from '../types/app';

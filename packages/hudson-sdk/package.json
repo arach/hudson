@@ -7,11 +7,24 @@
   "exports": {
     ".": "./src/index.ts",
     "./shell": "./src/shell.ts",
+    "./app-shell": "./src/app-shell.ts",
+    "./chrome": "./src/chrome.ts",
+    "./overlays": "./src/overlays.ts",
+    "./context-menu": "./src/context-menu.ts",
+    "./canvas": "./src/canvas.ts",
+    "./windows": "./src/windows.ts",
+    "./theme": "./src/theme.ts",
     "./controls": "./src/controls.ts",
-    "./styles": "./src/styles/frame.css"
+    "./styles": "./dist/styles.css"
+  },
+  "scripts": {
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "lucide-react": "^0.564.0 || ^0.574.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/cli": "^4"
   }
 }
