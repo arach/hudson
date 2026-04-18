@@ -1,7 +1,57 @@
 @import "tailwindcss";
 @source "../**/*.{ts,tsx}";
 
-/* Dark themed scrollbars for frame panels */
+/* ─────────────────────────────────────────────────────────────────────────
+   Hudson semantic tokens
+   ─────────────────────────────────────────────────────────────────────────
+   Published as CSS custom properties so apps can read them with var(--hud-*)
+   or re-point their own theme aliases at them. Shell chrome keeps its dark
+   Tailwind utilities hard-coded; these tokens are for *app content*.
+
+   Defaults below are the dark baseline (matches Hudson's chrome aesthetic,
+   so Premotion-style apps inherit with no overrides). Apps like Scout that
+   want a light content area set overrides on their Provider's root element.
+   ───────────────────────────────────────────────────────────────────────── */
+:root {
+  /* Surfaces */
+  --hud-bg: rgb(10 10 10);
+  --hud-surface: rgb(23 23 23);
+
+  /* Text */
+  --hud-ink: rgb(229 229 229);
+  --hud-muted: rgb(163 163 163);
+  --hud-dim: rgb(115 115 115);
+
+  /* Structure */
+  --hud-border: rgb(64 64 64 / 0.5);
+  --hud-radius: 8px;
+  --hud-shadow-soft: rgb(0 0 0 / 0.40);
+
+  /* Accent */
+  --hud-accent: rgb(16 185 129);          /* emerald-500 */
+  --hud-accent-soft: rgb(16 185 129 / 0.08);
+
+  /* Status */
+  --hud-status-ok: rgb(34 197 94);        /* emerald-600 */
+  --hud-status-warn: rgb(245 158 11);     /* amber-500 */
+  --hud-status-error: rgb(220 38 38);     /* red-600 */
+  --hud-status-info: rgb(59 130 246);     /* blue-500 */
+
+  /* Typography */
+  --hud-font-sans: "Inter", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+  --hud-font-mono: "JetBrains Mono", ui-monospace, Menlo, Monaco, "SF Mono", monospace;
+  --hud-font-serif: "Spectral", Georgia, serif;
+
+  /* Text sizes — the 10/11/12/13px ladder used across Hudson chrome */
+  --hud-text-xxs: 10px;
+  --hud-text-xs: 11px;
+  --hud-text-sm: 12px;
+  --hud-text-base: 13px;
+}
+
+/* ─────────────────────────────────────────────────────────────────────────
+   Dark-themed scrollbars for frame panels
+   ───────────────────────────────────────────────────────────────────────── */
 .frame-scrollbar::-webkit-scrollbar {
   width: 4px;
 }

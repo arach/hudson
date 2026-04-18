@@ -51,6 +51,41 @@ export const SHELL_THEME = {
   },
 } as const;
 
+// ─────────────────────────────────────────────────────────────────────────
+// Semantic tokens
+// ─────────────────────────────────────────────────────────────────────────
+// These are CSS custom properties that apps can read via var(--hud-*) or
+// override on a Provider wrapper to theme their content area. The chrome
+// itself keeps its dark Tailwind utilities (see SHELL_THEME.tokens above);
+// these tokens are the knobs for *app content*.
+//
+// Defaults are emitted at :root by the SDK's compiled styles bundle
+// (packages/hudson-sdk/src/styles/bundle.css → dist/styles.css). Apps
+// override by setting the vars on a wrapping element, e.g.:
+//
+//   <div style={{
+//     '--hud-bg': '#F9F9F8',
+//     '--hud-ink': '#1C1C1A',
+//     '--hud-accent': '#0066FF',
+//   } as React.CSSProperties}>
+//     {children}
+//   </div>
+//
+// The full dark-baseline values live in bundle.css. The object below is
+// exported for TypeScript consumers that want type-safe token keys.
+export const SEMANTIC_TOKENS = {
+  surface: ['--hud-bg', '--hud-surface'],
+  text: ['--hud-ink', '--hud-muted', '--hud-dim'],
+  structure: ['--hud-border', '--hud-radius', '--hud-shadow-soft'],
+  accent: ['--hud-accent', '--hud-accent-soft'],
+  status: ['--hud-status-ok', '--hud-status-warn', '--hud-status-error', '--hud-status-info'],
+  typography: ['--hud-font-sans', '--hud-font-mono', '--hud-font-serif'],
+  textSize: ['--hud-text-xxs', '--hud-text-xs', '--hud-text-sm', '--hud-text-base'],
+} as const;
+
+export type HudSemanticToken =
+  (typeof SEMANTIC_TOKENS)[keyof typeof SEMANTIC_TOKENS][number];
+
 // Backward-compat re-exports (deprecated)
 /** @deprecated Use SHELL_THEME.tokens */
 export const CHROME = SHELL_THEME.tokens;
