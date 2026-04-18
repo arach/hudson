@@ -1,36 +1,63 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Hudson
 
-## Getting Started
+![Hudson workspace with Shaper, Logo Designer, and Notepad apps sharing chrome](./docs/images/hudson-hero.png)
 
-First, run the development server:
+An opinionated app shell for browser-based multi-app workspaces. Chrome once, apps plug in.
 
-```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+## What this is
+
+Hudson is a **shell**, not a framework. It owns the workspace chrome — nav bar, side panels, command palette, terminal, status bar, canvas pan/zoom — and hosts **apps** that plug in via a small `HudsonApp` interface: a Provider for state, slot components for the shell to render, and hooks the shell reads for labels, search, status.
+
+Two modes:
+
+- **`AppShell`** — the default. One app, full chrome. Best for single-purpose products.
+- **`WorkspaceShell`** — multi-app canvas. Apps float as windows on a shared dotted-grid workspace. The screenshot above: Shaper (vector editing), Logo Designer, and Notepad all sharing one set of chrome.
+
+## Why
+
+I build a lot of small apps. Each one was ~70% chrome: sidebar, settings, command palette, status bar, keyboard shortcuts, persistent-state plumbing, AI panel. Hudson is that chrome extracted as a primitive, so every new project starts from *build the interesting part* instead of *build yet another sidebar*.
+
+## Case study: Premotion
+
+[![Premotion catalog studio](./docs/images/premotion-case-study.png)](./docs/case-study-premotion.md)
+
+**[Full write-up →](./docs/case-study-premotion.md)**
+
+A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project, imports `@hudson/sdk/app-shell`, fills in a single `HudsonApp` with Provider + slots, ships. Left panel + search + status bar + inspector + URL-driven filter state all came from the shell — the only real work was the catalog logic itself.
+
+The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
+
+## Orientation
+
+```
+app/                     # The Hudson workspace itself (Next.js 16)
+packages/hudson-sdk/     # Shell + primitives (workspace-internal package)
+native/                  # Desktop shell experiments
+docs/                    # Architecture, case study, builder notes
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Dev:
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+```bash
+bun install
+bun dev           # Hudson workspace on :3500
+```
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## State
 
-## Learn More
+Hudson is **built in the open** — the code is legible, the commits are explicit, the docs are honest — but it is **not packaged for external consumption yet**. The SDK is `private: true` and lives in this monorepo. Pulling it into another app today *is* possible (Premotion does it) but requires manual wiring, and several gaps are documented in the case study.
 
-To learn more about Next.js, take a look at the following resources:
+If you're looking at this to understand *how I think about building apps*, start with the [overview](./docs/overview.md) and the [case study](./docs/case-study-premotion.md).
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+## Stack
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+React 19 · Next.js 16 · Tailwind v4 · bun · TypeScript
 
-## Deploy on Vercel
+## Docs
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- [Overview](./docs/overview.md) — what Hudson is, the mental model
+- [Architecture](./docs/architecture.md) — how the shell is structured
+- [Case study: Premotion](./docs/case-study-premotion.md) — the real consumption story
+- [Building apps](./docs/building-apps.md) — the `HudsonApp` contract in detail
+- [Perf patterns](./docs/perf-drag-resize-patterns.md) — drag/resize/pan tricks worth reusing
+- [For agents](./docs/agent/overview.agent.md) — LLM-oriented reference

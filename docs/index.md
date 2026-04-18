@@ -1,34 +1,24 @@
-# Hudson Documentation
+# Hudson docs
 
-## Getting Started
+> Personal notes on how the shell is built, what it does, and how I use it across projects. Not product documentation — read it as a sketchbook.
 
-- [Overview](overview.md) -- What Hudson is and how it works
-- [Quickstart](quickstart.md) -- Get up and running in 5 minutes
-- [Architecture](architecture.md) -- Platform internals and design decisions
+## Start here
 
-## Building
+- **[Overview](./overview.md)** — what Hudson is, the two shell modes, the `HudsonApp` contract
+- **[Case study: Premotion](./case-study-premotion.md)** — a real catalog studio built on Hudson + the friction points that surfaced during build
 
-- [Building Apps](building-apps.md) -- Provider + Slots + Hooks pattern
-- [API Reference](api.md) -- Internal platform API
-- [Scaffolding](scaffolding.md) -- Project scaffolding and templates
-- [Skills](skill.md) -- Skill system for AI agents
+## Build on it
 
-## NPM Packages
+- **[Building apps](./building-apps.md)** — the contract with walkthrough
+- **[API reference](./api.md)** — every `@hudson/sdk` export, organized by subpath
+- **[Systems](./systems.md)** — Intents (LLM/voice), Services (process deps), Ports (inter-app piping)
 
-### @hudsonos/sdk
+## How it's made
 
-- [Getting Started](npm/sdk/getting-started.md) -- Installation and first app
-- [Building Apps](npm/sdk/building-apps.md) -- Deep dive into app architecture
-- [API Reference](npm/sdk/api-reference.md) -- Types, hooks, and function reference
-- [Systems](npm/sdk/systems.md) -- Intents, services, and inter-app data piping
-- [Utilities](npm/sdk/utilities.md) -- Platform adapters, design tokens, and UI sounds
+- **[Architecture](./architecture.md)** — monorepo layout, data flow, key decisions
+- **[Perf patterns](./perf-drag-resize-patterns.md)** — drag/resize/pan techniques used inside the shell
+- **[CLI: terminal relay](./cli/relay.md)** — WebSocket-based terminal relay protocol
 
-### @hudsonos/hx
+## For agents / LLMs
 
-- [Guide](npm/hx/hx.md) -- Daemon lifecycle, service registration, proxy, API reference
-
-## CLI Tools
-
-- [Overview](cli/index.md) -- How the CLI tools fit together
-- [create-hudson-app](cli/create-hudson-app.md) -- Scaffold a new Hudson app
-- [hudson-relay](cli/relay.md) -- WebSocket PTY relay for embedded terminals
+- **[Agent overview](./agent/overview.agent.md)** — terse, accurate reference for agents working in the Hudson codebase

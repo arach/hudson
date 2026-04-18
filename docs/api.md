@@ -1,353 +1,139 @@
----
-title: API Reference
-description: Complete API reference for the @hudson/sdk package
-order: 5
----
-
 # API Reference
 
-Everything exported from the `@hudson/sdk` package.
+Every `@hudson/sdk` export, organized by subpath. Types are authoritative in [`packages/hudson-sdk/src/types/`](../packages/hudson-sdk/src/types/); this doc is a map, not the source of truth.
 
-```tsx
-import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
-```
+## Subpath exports
+
+| Subpath                           | Purpose                                                              |
+|-----------------------------------|----------------------------------------------------------------------|
+| `@hudson/sdk`                     | Types, hooks, platform adapter, AI component, utilities (main entry) |
+| `@hudson/sdk/app-shell`           | `AppShell` — single-app default shell                                |
+| `@hudson/sdk/shell`               | `WorkspaceShell` + all chrome/overlays/canvas/windows (back-compat barrel) |
+| `@hudson/sdk/chrome`              | Chrome primitives: `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline` |
+| `@hudson/sdk/overlays`            | `CommandPalette`, `TerminalDrawer` (no `ContextMenu`)                |
+| `@hudson/sdk/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui-components/react`) |
+| `@hudson/sdk/canvas`              | `Canvas` (pan/zoom world)                                            |
+| `@hudson/sdk/windows`             | `AppWindow` (draggable/resizable window frame)                       |
+| `@hudson/sdk/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
+| `@hudson/sdk/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
+| `@hudson/sdk/controls`            | `ParamPanel` and related control primitives                          |
 
 ## Types
 
-### HudsonApp
+Importable from `@hudson/sdk`:
 
-The core interface every app must implement. See [Building Apps](./building-apps.md) for full details.
+| Type                              | Source                                    |
+|-----------------------------------|-------------------------------------------|
+| `HudsonApp`                       | `types/app.ts` — the app contract         |
+| `AppTool`                         | Tool panel entry for Inspector accordion  |
+| `AppManifest`                     | Serializable app capability snapshot      |
+| `AppSettingsConfig`, `AppSettingField`, `AppSettingsSection` | Settings UI schema |
+| `SearchConfig`                    | Nav bar search wiring                     |
+| `StatusColor`                     | `'emerald' \| 'amber' \| 'red' \| 'neutral'` |
+| `HudsonWorkspace`, `WorkspaceAppConfig`, `CanvasParticipation` | `types/workspace.ts` |
+| `AppIntent`, `IntentCategory`, `IntentParameter`, `CatalogAppEntry`, `IntentCatalog` | `types/intent.ts` |
+| `ServiceDefinition`, `ServiceDependency`, `ServiceRecord`, `ServiceAction`, `ServiceStatus` | `types/service.ts` |
+| `AppOutput`, `AppInput`, `AppPorts`, `PipeDefinition` | `types/port.ts`                   |
+| `CommandOption`, `ContextMenuEntry`, `ContextMenuAction`, `ContextMenuSeparator`, `ContextMenuGroup` | `components/overlays` |
 
-```typescript
-import type { HudsonApp } from '@hudson/sdk';
-```
+## Hooks (from `@hudson/sdk`)
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | `string` | Yes | Unique identifier |
-| `name` | `string` | Yes | Display name |
-| `description` | `string` | No | Short description |
-| `mode` | `'canvas' \| 'panel'` | Yes | Default frame mode |
-| `leftPanel` | `{ title, icon?, headerActions? }` | No | Left panel config |
-| `rightPanel` | `{ title, icon? }` | No | Right panel config |
-| `Provider` | `React.FC<{ children }>` | Yes | State owner |
-| `slots` | `{ Content, LeftPanel?, RightPanel?, LeftFooter?, Terminal? }` | Yes | UI slots |
-| `intents` | `AppIntent[]` | No | Intent declarations |
-| `hooks` | `{ useCommands, useStatus, ... }` | Yes | Shell bridge hooks |
+| Hook                                              | Purpose                                        |
+|---------------------------------------------------|------------------------------------------------|
+| `usePersistentState<T>(key, initial)`             | localStorage-backed state, SSR-safe, cross-tab |
+| `useDebouncedPersistentState<T>(key, initial, ms)` | Like above, with write debounce               |
+| `useSaveIndicator()`                              | Status indicator for save operations           |
+| `useAppSettings<T>(appId)`                        | Read/write current app's settings              |
+| `useHudsonAI(options)`                            | Chat transport for the workspace AI panel      |
+| `useTerminalRelay(options)`                       | WebSocket bridge to the terminal relay server  |
 
-### HudsonWorkspace
+Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonAIOptions`, `AIAttachment`, `TerminalRelayHandle`, `UseTerminalRelayOptions`, `RelayStatus`.
 
-Defines a collection of apps in a shared shell.
+## Components
 
-```typescript
-import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
-```
+### From `@hudson/sdk`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `id` | `string` | Yes | Unique workspace ID |
-| `name` | `string` | Yes | Display name |
-| `description` | `string` | No | Workspace description |
-| `mode` | `'canvas' \| 'panel'` | Yes | Global frame mode |
-| `apps` | `WorkspaceAppConfig[]` | Yes | App configurations |
-| `defaultFocusedAppId` | `string` | No | Initially focused app |
+- `AI` — chat panel component, paired with `useHudsonAI`
+- `TerminalRelay`, `captureWorkspace` — terminal relay component + screenshot helper
+- `ZoomControls` — reusable widget (also re-exported from `/chrome`)
 
-**WorkspaceAppConfig:**
+### From `@hudson/sdk/app-shell`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `app` | `HudsonApp` | Yes | The app instance |
-| `canvasMode` | `'native' \| 'windowed'` | No | Canvas participation (default: `'native'`) |
-| `defaultWindowBounds` | `{ x, y, w, h }` | No | Initial window position/size |
+- `AppShell` — single-app full-chrome shell. Props: `{ app: HudsonApp }`.
 
-### AppIntent
+### From `@hudson/sdk/shell` (back-compat barrel)
 
-Structured metadata for LLM/voice/search integration.
+All of: `WorkspaceShell`, `AppShell`, `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline`, `Canvas`, `AppWindow`, `TerminalDrawer`, `CommandPalette`, `HudsonContextMenu`, design tokens.
 
-```typescript
-import type { AppIntent, IntentCategory, IntentParameter } from '@hudson/sdk';
-```
+### From `@hudson/sdk/context-menu`
 
-| Field | Type | Required | Description |
-|-------|------|----------|-------------|
-| `commandId` | `string` | Yes | Must match a CommandOption.id |
-| `title` | `string` | Yes | Human-readable title |
-| `description` | `string` | Yes | Natural-language description |
-| `category` | `IntentCategory` | Yes | One of: tool, edit, file, view, navigation, toggle, workspace, settings |
-| `keywords` | `string[]` | Yes | Synonyms for matching |
-| `params` | `IntentParameter[]` | No | Typed parameters |
-| `shortcut` | `string` | No | Keyboard shortcut |
-| `dangerous` | `boolean` | No | Requires confirmation |
+- `HudsonContextMenu` — right-click menu component. Pulls `motion/react` + `@base-ui-components/react`.
 
-### StatusColor
+## Platform adapter (from `@hudson/sdk`)
 
-```typescript
-type StatusColor = 'emerald' | 'amber' | 'red' | 'neutral';
-```
+- `WEB_ADAPTER` — default web platform adapter
+- `PlatformProvider` — wraps a subtree with a specific adapter
+- `usePlatform()`, `usePlatformLayout()` — consumer hooks
+- Types: `PlatformAdapter`, `PlatformLayout`
 
-### SearchConfig
+## Utilities (from `@hudson/sdk`)
 
-```typescript
-interface SearchConfig {
-  value: string;
-  onChange: (value: string) => void;
-  placeholder?: string;
-}
-```
+- `sounds` — Web Audio event sounds: `blipUp`, `blipDown`, `click`, `whoosh`, `thock`, `pop`, `confirm`, `error`, `chime`, `tick`, `slideIn`, `slideOut`, `boot`, `ping`, `type`
+- `logEvent`, `FRAME_LOG_EVENT` — instrumented event bus
+- `FrameLogEntry` type
+- `worldToScreen`, `screenToWorld` — canvas coordinate math
+- `deriveManifest(app)` — build an `AppManifest` from a `HudsonApp`
 
-### CommandOption
+## The `HudsonApp` interface at a glance
 
-```typescript
-interface CommandOption {
+```ts
+interface HudsonApp {
+  // Identity
   id: string;
-  label: string;
-  action: () => void;
-  shortcut?: string;
-  icon?: ReactNode;
-  section?: string;
+  name: string;
+  description?: string;
+  mode: 'canvas' | 'panel';
+
+  // Panel config
+  leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
+  rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
+
+  // State owner
+  Provider: React.FC<{ children: ReactNode; disabled?: boolean }>;
+
+  // Right sidebar tool accordion
+  tools?: AppTool[];
+
+  // Slots
+  slots: {
+    Content: React.FC;
+    LeftPanel?: React.FC;
+    RightPanel?: React.FC;              // @deprecated — use Inspector
+    Inspector?: React.FC;
+    LeftFooter?: React.FC;
+    Terminal?: React.FC;
+  };
+
+  // Shell bridge
+  hooks: {
+    useCommands: () => CommandOption[];
+    useStatus: () => { label: string; color: StatusColor };
+    useSearch?: () => SearchConfig;
+    useNavCenter?: () => ReactNode | null;
+    useNavActions?: () => ReactNode | null;
+    useLayoutMode?: () => 'canvas' | 'panel';
+    useActiveToolHint?: () => string | null;
+    usePortOutput?: () => (portId: string) => unknown | null;
+    usePortInput?: () => (portId: string, data: unknown) => void;
+  };
+
+  // Optional integrations
+  intents?: AppIntent[];
+  manifest?: AppManifest;
+  settings?: AppSettingsConfig;
+  ports?: AppPorts;
+  services?: ServiceDependency[];
 }
 ```
 
-## Chrome Components
-
-### Frame
-
-Root container. Manages viewport/world transforms and renders HUD elements.
-
-```tsx
-<Frame
-  panOffset={{ x: 0, y: 0 }}
-  scale={1}
-  onPan={(offset) => void}
-  onZoom={(scale) => void}
-  hud={<>{/* NavigationBar, SidePanel, etc. */}</>}
->
-  {/* Content in world/viewport space */}
-</Frame>
-```
-
-### NavigationBar
-
-Top bar with title, optional search, and action slots.
-
-```tsx
-<NavigationBar
-  title="APP NAME"
-  subtitle="context"
-  search={{ value, onChange, placeholder }}
-  center={<>{/* Center content */}</>}
-  actions={<>{/* Right-aligned actions */}</>}
-/>
-```
-
-### SidePanel
-
-Collapsible left or right panel with resize handle.
-
-```tsx
-<SidePanel
-  side="left"
-  title="Project"
-  icon={<Layers size={12} />}
-  headerActions={<HeaderActions />}
-  footer={<FooterContent />}
-  collapsed={false}
-  onToggle={() => void}
-  width={280}
-  onResize={(w) => void}
->
-  {/* Panel content */}
-</SidePanel>
-```
-
-### StatusBar
-
-Bottom bar showing app status.
-
-```tsx
-<StatusBar label="READY" color="emerald" />
-```
-
-### CommandDock
-
-Floating command button (bottom center). Opens the command palette on click.
-
-```tsx
-<CommandDock onClick={() => void} />
-```
-
-### ZoomControls
-
-Zoom in/out/reset buttons for canvas mode.
-
-```tsx
-<ZoomControls
-  scale={1}
-  onZoomIn={() => void}
-  onZoomOut={() => void}
-  onReset={() => void}
-/>
-```
-
-### Minimap
-
-Canvas minimap showing window positions and viewport indicator.
-
-```tsx
-<Minimap
-  windowBoundsMap={boundsMap}
-  panOffset={pan}
-  scale={zoom}
-  viewportSize={{ w, h }}
-  onPanTo={(offset) => void}
-/>
-```
-
-## Canvas
-
-### Canvas
-
-Pan/zoom input layer. Handles scroll-to-zoom, space+drag-to-pan, and gesture events.
-
-```tsx
-<Canvas
-  panOffset={pan}
-  scale={zoom}
-  onPan={setPan}
-  onZoom={setZoom}
-/>
-```
-
-## Windows
-
-### AppWindow
-
-Draggable, resizable window with title bar chrome. Used for `windowed` canvas participation.
-
-```tsx
-<AppWindow
-  title="My App"
-  bounds={{ x: 0, y: 0, w: 600, h: 400 }}
-  onBoundsChange={(bounds) => void}
-  onReportBounds={(bounds) => void}
-  maximized={false}
-  onMaximizedChange={(v) => void}
-  panOffset={pan}
-  scale={zoom}
->
-  {/* Window content */}
-</AppWindow>
-```
-
-Features:
-- Drag via title bar (Option+drag anywhere)
-- 8-edge resize handles
-- Maximize/restore toggle
-- Context menu (Bring to Center, Maximize, Reset Window)
-- Bounds persisted to localStorage
-
-## Overlays
-
-### CommandPalette
-
-Searchable command menu triggered by Cmd+K.
-
-```tsx
-<CommandPalette
-  open={true}
-  onClose={() => void}
-  commands={commandOptions}
-/>
-```
-
-### TerminalDrawer
-
-Bottom slide-out panel, toggled via Cmd+`.
-
-```tsx
-<TerminalDrawer open={true} onClose={() => void}>
-  {/* Terminal content */}
-</TerminalDrawer>
-```
-
-### HudsonContextMenu
-
-Right-click context menu (powered by @base-ui/react + motion).
-
-```tsx
-<HudsonContextMenu entries={[
-  { type: 'action', label: 'Copy', action: () => void, shortcut: 'Cmd+C' },
-  { type: 'separator' },
-  { type: 'action', label: 'Delete', action: () => void, destructive: true },
-]}>
-  {/* Trigger element */}
-</HudsonContextMenu>
-```
-
-## Hooks
-
-### usePersistentState
-
-localStorage-backed state hook. Works like `useState` but persists across reloads.
-
-```tsx
-import { usePersistentState } from '@hudson/sdk';
-
-const [value, setValue] = usePersistentState('storage-key', defaultValue);
-```
-
-## Utilities
-
-### sounds
-
-Web Audio synthesizer for UI feedback.
-
-```tsx
-import { sounds } from '@hudson/sdk';
-
-sounds.blipUp();     // Positive feedback / success
-sounds.click();      // Button press
-sounds.whoosh();     // Transition / navigation
-sounds.thock();      // Heavy press / confirm
-```
-
-### logger
-
-Event bus for Frame activity logging.
-
-```tsx
-import { logEvent, FRAME_LOG_EVENT } from '@hudson/sdk';
-
-logEvent({ type: 'app:action', detail: 'something happened' });
-
-// Listen for events
-window.addEventListener(FRAME_LOG_EVENT, (e) => {
-  console.log(e.detail);
-});
-```
-
-### viewport
-
-Coordinate conversion between world and screen space.
-
-```tsx
-import { worldToScreen, screenToWorld } from '@hudson/sdk';
-
-const screenPos = worldToScreen(worldPos, panOffset, scale);
-const worldPos = screenToWorld(screenPos, panOffset, scale);
-```
-
-### chrome
-
-Design tokens and styling constants.
-
-```tsx
-import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from '@hudson/sdk';
-
-// CHROME — computed styles (borders, backgrounds, shadows)
-// CHROME_BASE — raw color values
-// PANEL_STYLES — panel-specific styling
-// EDGE_EFFECTS — edge glow/shadow effects
-// Z_LAYERS — z-index layer map
-// LAYOUT — spacing and sizing constants
-```
+See [Building apps](./building-apps.md) for a walkthrough.

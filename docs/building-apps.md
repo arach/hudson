@@ -1,503 +1,292 @@
----
-title: Building Apps
-description: Complete guide to building apps for the Hudson platform
-order: 4
----
-
 # Building Apps
 
-This guide covers everything you need to build a Hudson app — from the interface contract to workspace registration.
+A Hudson app is a plain TypeScript object satisfying the `HudsonApp` interface. The shell reads the object and renders chrome around it. This guide covers the whole contract with concrete examples.
 
-## The HudsonApp Interface
+For a real-world app built against this contract, see [Case study: Premotion](./case-study-premotion.md).
 
-Every app implements the `HudsonApp` interface exported from `@hudson/sdk`:
+## The interface
 
-```typescript
+```ts
 import type { HudsonApp } from '@hudson/sdk';
 ```
 
-### Full Interface
+### Required
 
-```typescript
+```ts
 interface HudsonApp {
-  // Identity
-  id: string;                    // Unique ID (key + localStorage namespace)
-  name: string;                  // Display name in app switcher
-  description?: string;          // Tooltip / palette description
-  mode: 'canvas' | 'panel';     // Default frame mode
+  id: string;                       // unique identifier + localStorage namespace
+  name: string;                     // display name (app switcher, window title)
+  mode: 'canvas' | 'panel';         // default frame mode
 
-  // Panel configuration (optional)
+  Provider: React.FC<{ children: ReactNode; disabled?: boolean }>;
+
+  slots: {
+    Content: React.FC;              // main area — the only required slot
+    // (all others optional)
+  };
+
+  hooks: {
+    useCommands: () => CommandOption[];                      // Cmd+K palette
+    useStatus: () => { label: string; color: StatusColor };  // status bar indicator
+    // (all others optional)
+  };
+}
+```
+
+### Optional panel configuration
+
+```ts
+{
+  description?: string;                       // tooltip / palette description
   leftPanel?: {
     title: string;
     icon?: ReactNode;
-    headerActions?: React.FC;    // Rendered in left panel header
+    headerActions?: React.FC;                 // rendered in the panel header
   };
-  rightPanel?: {               // @deprecated — use Inspector + tools instead
-    title: string;
-    icon?: ReactNode;
-  };
-
-  // State owner
-  Provider: React.FC<{ children: ReactNode }>;
-
-  // UI slots rendered by the shell
-  slots: {
-    Content: React.FC;           // Main content area (required)
-    LeftPanel?: React.FC;        // Left sidebar content
-    RightPanel?: React.FC;       // @deprecated — use Inspector + tools instead
-    LeftFooter?: React.FC;       // Footer of left panel
-    Terminal?: React.FC;         // Terminal drawer content
-  };
-
-  // Intent declarations (optional)
-  intents?: AppIntent[];
-
-  // Hooks called inside Provider scope
-  hooks: {
-    useCommands: () => CommandOption[];              // Required
-    useStatus: () => { label: string; color: StatusColor };  // Required
-    useSearch?: () => SearchConfig;
-    useNavCenter?: () => ReactNode | null;
-    useNavActions?: () => ReactNode | null;
-    useLayoutMode?: () => 'canvas' | 'panel';
-  };
+  rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
 }
 ```
 
-### Required vs Optional
+### Optional slots
 
-| Field | Required | Purpose |
-|-------|----------|---------|
-| `id`, `name`, `mode` | Yes | Identity and default layout |
-| `Provider` | Yes | Wraps all slots, owns state |
-| `slots.Content` | Yes | Main UI |
-| `hooks.useCommands` | Yes | Commands for palette (can return `[]`) |
-| `hooks.useStatus` | Yes | Status bar label and color |
-| `leftPanel` | No | Sidebar navigation config — provides icon and title for the app's section in the left sidebar. All apps appear in the sidebar regardless, but `leftPanel` customizes how the entry looks |
-| `rightPanel` (deprecated) | No | Right panel header config — deprecated, use `Inspector` + `tools` instead |
-| `slots.LeftPanel`, `RightPanel` (deprecated), `LeftFooter`, `Terminal` | No | Additional UI slots. `LeftPanel` renders expandable content under the app's sidebar entry. `RightPanel` is deprecated — use `Inspector` + `tools` instead |
-| `hooks.useSearch`, `useNavCenter`, `useNavActions`, `useLayoutMode` | No | Nav bar integration |
-| `intents` | No | LLM/voice/search declarations |
-
-## Architecture Pattern
-
-Hudson uses a **Provider + Slots + Hooks** architecture:
-
-```
-WorkspaceShell
-  └── App.Provider            ← Your context wraps everything
-        ├── slots.Content     ← Rendered in main area
-        ├── slots.LeftPanel   ← Rendered in left SidePanel
-        ├── slots.RightPanel  ← (deprecated) Rendered in right SidePanel — use Inspector + tools
-        ├── slots.Terminal    ← Rendered in TerminalDrawer
-        └── hooks.*           ← Called via Bridge component inside Provider
-```
-
-The shell nests Providers recursively for all apps in the workspace:
-
-```typescript
-// Inside WorkspaceShell
-let tree = <WorkspaceInner />;
-for (const { app } of workspace.apps.reverse()) {
-  tree = <app.Provider>{tree}</app.Provider>;
+```ts
+slots: {
+  Content: React.FC;              // required
+  LeftPanel?: React.FC;           // fills the left side panel
+  Inspector?: React.FC;           // fills the right side panel (preferred over RightPanel)
+  RightPanel?: React.FC;          // @deprecated — use Inspector + tools
+  LeftFooter?: React.FC;          // sits above the Cmd+K dock
+  Terminal?: React.FC;            // custom terminal drawer content
 }
 ```
 
-This means every app's hooks and slots have access to every app's context. However, apps should only access their own context — cross-app communication goes through the shell.
+### Optional hooks
 
-## Provider Pattern
+```ts
+hooks: {
+  useCommands: () => CommandOption[];
+  useStatus: () => { label: string; color: StatusColor };
 
-The Provider owns all app state via React context:
+  useSearch?: () => SearchConfig;              // nav bar search
+  useNavCenter?: () => ReactNode | null;       // breadcrumb / context label
+  useNavActions?: () => ReactNode | null;      // nav bar right-side actions
+  useLayoutMode?: () => 'canvas' | 'panel';    // override mode at runtime
+  useActiveToolHint?: () => string | null;     // highlights a tool in Inspector
+
+  usePortOutput?: () => (portId: string) => unknown | null;
+  usePortInput?: () => (portId: string, data: unknown) => void;
+}
+```
+
+### Optional advanced fields
+
+```ts
+{
+  tools?: AppTool[];                // tool panels in the right sidebar accordion
+  intents?: AppIntent[];            // static declarations for LLM/voice/search
+  manifest?: AppManifest;           // serializable capability snapshot
+  settings?: AppSettingsConfig;     // app-level settings UI (rendered by shell)
+  ports?: AppPorts;                 // input/output ports for inter-app data piping
+  services?: ServiceDependency[];   // external process deps (via the hx registry)
+}
+```
+
+See [Systems](./systems.md) for intents, ports, and services.
+
+## Directory layout
+
+A typical app lives under `app/apps/<app-name>/`:
+
+```
+app/apps/my-app/
+  index.ts                 # HudsonApp export
+  MyAppProvider.tsx        # React context + state
+  MyAppContent.tsx         # Content slot
+  MyAppLeftPanel.tsx       # (optional) LeftPanel slot
+  MyAppInspector.tsx       # (optional) Inspector slot
+  hooks.ts                 # useCommands, useStatus, etc.
+  intents.ts               # (optional) static intent declarations
+  ports.ts                 # (optional) port hooks
+```
+
+## Walkthrough: a counter app
+
+### 1. Provider
+
+Owns state and exposes it via context:
 
 ```tsx
+// MyAppProvider.tsx
 'use client';
 
-import { createContext, useContext, useState, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, type ReactNode } from 'react';
+import { usePersistentState } from '@hudson/sdk';
 
-interface GlyphEditorState {
-  // View state
-  view: 'overview' | 'editor';
-  setView: (v: 'overview' | 'editor') => void;
-
-  // Data state
-  selectedGlyphId: string | null;
-  selectGlyph: (id: string) => void;
-
-  // Tool state
-  activeTool: 'select' | 'pen' | 'eraser';
-  setTool: (t: 'select' | 'pen' | 'eraser') => void;
+interface CounterValue {
+  count: number;
+  increment: () => void;
+  reset: () => void;
 }
 
-const Ctx = createContext<GlyphEditorState | null>(null);
+const CounterContext = createContext<CounterValue | null>(null);
 
-export function useGlyphEditor() {
-  const ctx = useContext(Ctx);
-  if (!ctx) throw new Error('useGlyphEditor must be inside GlyphEditorProvider');
+export function useCounter() {
+  const ctx = useContext(CounterContext);
+  if (!ctx) throw new Error('useCounter must be inside CounterProvider');
   return ctx;
 }
 
-export function GlyphEditorProvider({ children }: { children: ReactNode }) {
-  const [view, setView] = useState<'overview' | 'editor'>('overview');
-  const [selectedGlyphId, setSelectedGlyphId] = useState<string | null>(null);
-  const [activeTool, setTool] = useState<'select' | 'pen' | 'eraser'>('select');
-
-  const selectGlyph = useCallback((id: string) => {
-    setSelectedGlyphId(id);
-    setView('editor');
-  }, []);
-
-  return (
-    <Ctx.Provider value={{ view, setView, selectedGlyphId, selectGlyph, activeTool, setTool }}>
-      {children}
-    </Ctx.Provider>
-  );
+export function CounterProvider({ children }: { children: ReactNode }) {
+  const [count, setCount] = usePersistentState('counter.count', 0);
+  const value: CounterValue = {
+    count,
+    increment: () => setCount(c => c + 1),
+    reset: () => setCount(0),
+  };
+  return <CounterContext.Provider value={value}>{children}</CounterContext.Provider>;
 }
 ```
 
-## Sidebar Navigation
+`usePersistentState` is SSR-safe and cross-tab-synced — use it for anything you want to survive a refresh.
 
-Every app in a workspace automatically appears in the left sidebar navigation. The sidebar section shows the app name with expand/collapse, visibility toggle, and service health dots.
-
-To customize the sidebar entry, configure `leftPanel`:
-
-```typescript
-leftPanel: {
-  title: 'Project',                        // Section label
-  icon: createElement(Layers, { size: 12 }), // Icon next to the name
-  headerActions: MyHeaderActions,           // Action buttons in the header
-},
-```
-
-If your app provides a `slots.LeftPanel` component, its content renders inside the expandable section. Apps without a `LeftPanel` slot still appear in the sidebar — they just show as a collapsible header with no expandable content.
-
-If `leftPanel` is not configured, the sidebar falls back to using the `rightPanel` icon (if available). The app name is always shown regardless.
-
-## Slot Components
-
-Slots are plain React components that use your app's context:
-
-### Content (required)
-
-The main content area. In canvas mode, this renders in world space. In panel mode, it fills the viewport between the panels.
+### 2. Content slot
 
 ```tsx
+// MyAppContent.tsx
 'use client';
+import { useCounter } from './MyAppProvider';
 
-import { useGlyphEditor } from './GlyphEditorProvider';
-import { GlyphOverview } from './components/GlyphOverview';
-import { GlyphCanvas } from './components/GlyphCanvas';
-
-export function GlyphEditorContent() {
-  const { view } = useGlyphEditor();
-  return view === 'overview' ? <GlyphOverview /> : <GlyphCanvas />;
-}
-```
-
-### LeftPanel
-
-Rendered inside the left SidePanel. Good for navigation, project trees, tool palettes.
-
-```tsx
-'use client';
-
-import { useGlyphEditor } from './GlyphEditorProvider';
-
-export function GlyphEditorLeftPanel() {
-  const { selectGlyph } = useGlyphEditor();
+export function MyAppContent() {
+  const { count, increment } = useCounter();
   return (
-    <div className="p-2 space-y-1">
-      {glyphs.map(g => (
-        <button key={g.id} onClick={() => selectGlyph(g.id)}
-          className="w-full text-left px-2 py-1 rounded hover:bg-white/5">
-          {g.name}
-        </button>
-      ))}
+    <div className="flex flex-col items-center justify-center h-full gap-4">
+      <div className="text-[72px] font-mono tabular-nums text-white/80">{count}</div>
+      <button
+        onClick={increment}
+        className="px-4 py-2 rounded-sm bg-cyan-500/10 border border-cyan-400/20 text-cyan-300 hover:bg-cyan-500/20"
+      >
+        Increment
+      </button>
     </div>
   );
 }
 ```
 
-### RightPanel (deprecated)
+### 3. Hooks
 
-> **Deprecated.** `RightPanel` is deprecated. Use `Inspector` combined with `tools` instead. The `Inspector` slot provides a structured way to display properties and metadata, while `tools` allows apps to register tool panels that appear in the right sidebar. See the Shaper app's `ShaperInspector.tsx` and `tools/` directory for a reference implementation.
-
-Previously used for inspector, properties, and metadata. Rendered inside the right SidePanel.
-
-### LeftFooter
-
-Rendered at the bottom of the left panel. Shaper uses this for a minimap preview.
-
-### Terminal
-
-Rendered inside the TerminalDrawer (toggled via Cmd+`). Good for logs, REPL, debug output.
-
-## Hooks
-
-Hooks bridge your app state into the shell chrome. They are called inside your Provider's scope.
-
-### useCommands (required)
-
-Return an array of `CommandOption` objects. These appear in the command palette (Cmd+K).
-
-```tsx
+```ts
+// hooks.ts
+'use client';
 import { useMemo } from 'react';
-import type { CommandOption } from '@hudson/sdk';
-import { useGlyphEditor } from './GlyphEditorProvider';
+import type { CommandOption, StatusColor } from '@hudson/sdk';
+import { useCounter } from './MyAppProvider';
 
-export function useGlyphCommands(): CommandOption[] {
-  const { setView, setTool, view } = useGlyphEditor();
-
+export function useCounterCommands(): CommandOption[] {
+  const { increment, reset } = useCounter();
   return useMemo(() => [
-    {
-      id: 'glyph:overview',
-      label: 'Show Glyph Overview',
-      action: () => setView('overview'),
-      shortcut: 'Cmd+1',
-    },
-    {
-      id: 'glyph:editor',
-      label: 'Open Glyph Editor',
-      action: () => setView('editor'),
-      shortcut: 'Cmd+2',
-    },
-    {
-      id: 'glyph:pen-tool',
-      label: 'Pen Tool',
-      action: () => setTool('pen'),
-      shortcut: 'P',
-    },
-  ], [setView, setTool, view]);
+    { id: 'counter:increment', label: 'Increment', action: increment, shortcut: 'Cmd+I' },
+    { id: 'counter:reset', label: 'Reset', action: reset },
+  ], [increment, reset]);
+}
+
+export function useCounterStatus(): { label: string; color: StatusColor } {
+  const { count } = useCounter();
+  return { label: `count: ${count}`, color: count > 0 ? 'emerald' : 'neutral' };
 }
 ```
 
-### useStatus (required)
+### 4. Compose the `HudsonApp`
 
-Return a label and color for the status bar.
+```ts
+// index.ts
+import { createElement } from 'react';
+import { Hash } from 'lucide-react';
+import type { HudsonApp } from '@hudson/sdk';
+import { CounterProvider } from './MyAppProvider';
+import { MyAppContent } from './MyAppContent';
+import { useCounterCommands, useCounterStatus } from './hooks';
 
-```tsx
-export function useGlyphStatus() {
-  const { view, activeTool } = useGlyphEditor();
-  if (view === 'editor') return { label: activeTool.toUpperCase(), color: 'emerald' as const };
-  return { label: 'OVERVIEW', color: 'neutral' as const };
-}
-```
-
-Valid colors: `'emerald'`, `'amber'`, `'red'`, `'neutral'`.
-
-### useSearch (optional)
-
-Provides a search bar in the navigation bar.
-
-```tsx
-export function useGlyphSearch() {
-  const [query, setQuery] = useState('');
-  return { value: query, onChange: setQuery, placeholder: 'Search glyphs...' };
-}
-```
-
-### useNavCenter (optional)
-
-Returns content rendered in the center of the navigation bar (between left/right actions).
-
-### useNavActions (optional)
-
-Returns content rendered on the right side of the navigation bar. Good for action buttons.
-
-### useLayoutMode (optional)
-
-Overrides the workspace-level mode for this app. Useful when an app needs canvas mode even in a panel workspace, or vice versa.
-
-```tsx
-export function useGlyphLayoutMode(): 'canvas' | 'panel' {
-  const { view } = useGlyphEditor();
-  return view === 'editor' ? 'canvas' : 'panel';
-}
-```
-
-## Intents
-
-Intents declare structured metadata about your commands for LLM/voice/search integration.
-
-```typescript
-import type { AppIntent } from '@hudson/sdk';
-
-export const glyphIntents: AppIntent[] = [
-  {
-    commandId: 'glyph:pen-tool',        // Must match a CommandOption.id
-    title: 'Switch to Pen Tool',
-    description: 'Activate the pen tool for drawing bezier paths',
-    category: 'tool',
-    keywords: ['pen', 'draw', 'bezier', 'path', 'curve'],
-    shortcut: 'P',
+export const counterApp: HudsonApp = {
+  id: 'counter',
+  name: 'Counter',
+  description: 'A minimal example app',
+  mode: 'panel',
+  leftPanel: { title: 'Counter', icon: createElement(Hash, { size: 12 }) },
+  Provider: CounterProvider,
+  slots: { Content: MyAppContent },
+  hooks: {
+    useCommands: useCounterCommands,
+    useStatus: useCounterStatus,
   },
-  {
-    commandId: 'glyph:export',
-    title: 'Export Glyph',
-    description: 'Export the current glyph as SVG',
-    category: 'file',
-    keywords: ['export', 'save', 'svg', 'download'],
-    dangerous: true,  // Requires confirmation
-    params: [
-      { name: 'format', description: 'Export format', type: 'string', enum: ['svg', 'png'], default: 'svg' },
-    ],
-  },
+};
+```
+
+## Registering the app
+
+### Inside Hudson (default workspace)
+
+Add to `app/apps/registry.ts`:
+
+```ts
+import { counterApp } from './counter';
+
+export const coreApps = [
+  // ...existing apps,
+  counterApp,
 ];
 ```
 
-### Intent Categories
+Apps in `coreApps` appear in the default workspace automatically.
 
-| Category | Use Case |
-|----------|----------|
-| `tool` | Tool switching (pen, select, eraser) |
-| `edit` | Data mutations (delete, duplicate, transform) |
-| `file` | I/O operations (save, export, import) |
-| `view` | View changes (zoom, pan, fit) |
-| `navigation` | Navigation (go to glyph, switch view) |
-| `toggle` | Boolean toggles (grid, snap, rulers) |
-| `workspace` | Workspace-level actions |
-| `settings` | Preference changes |
+### Inside Hudson (dev-local only)
 
-### Execution Bridge
+For apps you don't want to commit, add to `app/local/apps.local.ts` (gitignored; auto-created by `next.config.ts`):
 
-The shell automatically bridges intents to commands. When an intent is executed (via LLM, voice, or the Intent Explorer), the shell looks up the matching `commandId` in your `useCommands()` output and calls its `action()`.
+```ts
+import type { WorkspaceAppConfig } from '@hudson/sdk';
+import { counterApp } from '../apps/counter';
 
-## Workspace Registration
-
-### Add to an existing workspace
-
-```typescript
-// app/workspaces/hudsonOS.ts
-import { glyphEditorApp } from '../apps/glyph-editor';
-
-export const hudsonOSWorkspace: HudsonWorkspace = {
-  id: 'hudson-os',
-  name: 'Hudson OS',
-  mode: 'canvas',
-  apps: [
-    // ... existing apps
-    {
-      app: glyphEditorApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -300, y: -200, w: 700, h: 500 },
-    },
-  ],
-};
+export const localApps: WorkspaceAppConfig[] = [
+  { app: counterApp, participation: 'windowed' },
+];
+export const localWorkspaces: HudsonWorkspace[] = [];
 ```
 
-### Create a standalone workspace
+### Outside Hudson (consumer app via `AppShell`)
 
-```typescript
-// app/workspaces/glyphDev.ts
-import type { HudsonWorkspace } from '@hudson/sdk';
-import { glyphEditorApp } from '../apps/glyph-editor';
+A fresh Next.js 16 + React 19 + Tailwind v4 app can consume the SDK and render a single app:
 
-export const glyphDevWorkspace: HudsonWorkspace = {
-  id: 'glyph-dev',
-  name: 'Glyph Editor',
-  description: 'Standalone glyph editing workspace',
-  mode: 'panel',
-  apps: [{ app: glyphEditorApp }],
-};
-```
-
-### Register the workspace
-
-```typescript
+```tsx
 // app/page.tsx
-import { glyphDevWorkspace } from './workspaces/glyphDev';
+'use client';
+import { AppShell } from '@hudson/sdk/app-shell';
+import { counterApp } from '@/counter';
 
 export default function Page() {
-  return (
-    <WorkspaceShell
-      workspaces={[hudsonOSWorkspace, shaperDevWorkspace, glyphDevWorkspace]}
-      defaultWorkspaceId="hudson-os"
-      bootMode="condensed"
-    />
-  );
+  return <AppShell app={counterApp} />;
 }
 ```
 
-## Canvas vs Panel Mode
-
-### Canvas mode (`mode: 'canvas'`)
-
-- Content renders in world space (infinite pan/zoom)
-- Mouse wheel zooms, space+drag pans
-- Option+drag on windows to move them
-- Window bounds persisted to localStorage
-- Best for: editors, spatial tools, graph UIs
-
-### Panel mode (`mode: 'panel'`)
-
-- Content renders in viewport space (static, scrollable)
-- No pan/zoom controls
-- Full-width layout between side panels
-- Best for: dashboards, admin interfaces, documentation
-
-Apps can dynamically switch modes using `useLayoutMode()`.
-
-## Persistent State
-
-Use `usePersistentState` from @hudson/sdk for state that survives page reloads:
-
-```tsx
-import { usePersistentState } from '@hudson/sdk';
-
-function MyComponent() {
-  const [gridVisible, setGridVisible] = usePersistentState('my-app.grid', true);
-  // Backed by localStorage with key 'my-app.grid'
-}
+```css
+/* app/globals.css */
+@import "tailwindcss";
+@import "@hudson/sdk/styles";
 ```
 
-## Sounds
+The SDK is workspace-internal today, so current consumers install it via a manual symlink and a `turbopack.root` lift. See the [Premotion case study](./case-study-premotion.md) for the full real setup + known gaps.
 
-Hudson includes a Web Audio synthesizer for UI feedback:
+## Rules of thumb
 
-```tsx
-import { sounds } from '@hudson/sdk';
+- **Always `'use client'`** on every file that imports from `@hudson/sdk` or uses hooks — the SDK components are client-side only, and the RSC boundary must be explicit.
+- **Provider goes first.** Slots and hooks read state from the Provider's context. The shell wraps everything in the Provider once; you never wrap it manually.
+- **`usePersistentState` over raw `useState`** for anything you want surviving a refresh (note selection, filter state, panel sizes, etc.).
+- **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works. See Premotion's `catalog/Provider.tsx`.
+- **Keep hooks cheap.** The shell calls them on every render. Memoize command arrays, avoid building large objects on the fly.
+- **`useMemo` the context value.** Without it, every Provider render creates a new value reference and downstream consumers re-render for nothing.
 
-// Available sounds
-sounds.blipUp();    // Positive feedback
-sounds.click();     // Button press
-sounds.whoosh();    // Transitions
-sounds.thock();     // Heavy press
-```
+## Further reading
 
-## File Structure Convention
-
-```
-app/apps/my-app/
-  index.ts                 # App definition (exports HudsonApp)
-  MyAppProvider.tsx         # Context provider
-  hooks.ts                 # Hook implementations
-  intents.ts               # Intent declarations
-  MyAppContent.tsx          # Content slot
-  MyAppLeftPanel.tsx        # Left panel slot
-  MyAppRightPanel.tsx       # Right panel slot (deprecated — use Inspector + tools)
-  MyAppInspector.tsx        # Inspector slot (replaces RightPanel)
-  tools/                    # Tool panel implementations
-  MyAppTerminal.tsx         # Terminal slot
-  components/               # App-specific components
-    ComponentA.tsx
-    ComponentB.tsx
-```
-
-## Reference Implementation
-
-The **Shaper** app (`app/apps/shaper/`) is the most complete reference:
-
-- Full Provider with complex state (tools, shapes, layers, selections)
-- All 5 slot components implemented
-- 6 hooks bridging state to shell chrome
-- 25+ intents for LLM integration
-- Dynamic frame mode switching (panel default, canvas when editing)
-- Header actions in the left panel
-
-The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if you want a minimal starting point.
-
-## Further Reading
-
-- [Overview](./overview.md) — Architecture and key concepts
-- [Quickstart](./quickstart.md) — Get running and create a minimal app
-- [Scaffolding](./scaffolding.md) — Generate apps with `create-hudson-app`
-- [API Reference](./api.md) — Complete reference for all @hudson/sdk exports
+- [Systems](./systems.md) — Intents, Services, Ports
+- [Perf patterns](./perf-drag-resize-patterns.md) — drag/resize/pan optimizations used by the shell
+- [API reference](./api.md) — every `@hudson/sdk` export with a short description
+- [Case study: Premotion](./case-study-premotion.md) — a complete real app

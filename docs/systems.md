@@ -1,9 +1,7 @@
 ---
 title: Systems
 description: Intents, services, and inter-app data piping
-section: npm
-subsection: "@hudsonos/sdk"
-order: 4
+order: 6
 ---
 
 # Systems
@@ -39,7 +37,7 @@ Calls action() -> switchTool('pen')
 Add an `intents` array to your `HudsonApp` definition:
 
 ```tsx
-import type { HudsonApp, AppIntent } from '@hudsonos/sdk';
+import type { HudsonApp, AppIntent } from '@hudson/sdk';
 
 const myIntents: AppIntent[] = [
   {
@@ -226,7 +224,7 @@ interface CatalogAppEntry {
 The Shaper reference app declares intents across multiple categories:
 
 ```tsx
-import type { AppIntent } from '@hudsonos/sdk';
+import type { AppIntent } from '@hudson/sdk';
 
 export const shaperIntents: AppIntent[] = [
   // Tools
@@ -349,7 +347,7 @@ interface ServiceDefinition {
 #### Example
 
 ```ts
-import type { ServiceDefinition } from '@hudsonos/sdk';
+import type { ServiceDefinition } from '@hudson/sdk';
 
 const terminalRelay: ServiceDefinition = {
   id: 'terminal-relay',
@@ -396,7 +394,7 @@ interface ServiceDependency {
 #### Declaring Dependencies
 
 ```tsx
-import type { HudsonApp } from '@hudsonos/sdk';
+import type { HudsonApp } from '@hudson/sdk';
 
 const myApp: HudsonApp = {
   id: 'my-app',
@@ -540,7 +538,7 @@ App A (source)          Pipe             App B (sink)
 Declare ports statically on your `HudsonApp` definition:
 
 ```tsx
-import type { HudsonApp } from '@hudsonos/sdk';
+import type { HudsonApp } from '@hudson/sdk';
 
 const shaperApp: HudsonApp = {
   id: 'shaper',

@@ -1,129 +1,137 @@
----
-title: Overview
-description: Introduction to Hudson — a multi-app canvas workspace platform for React
-order: 1
----
-
 # Overview
 
-Hudson is a **multi-app canvas workspace platform** built with React 19, Next.js 16, and Tailwind CSS v4. It provides a shared shell where multiple applications coexist — each rendering in draggable, resizable windows on an infinite pan/zoom canvas, or in a static panel layout.
+Hudson is a **shell** for building app-like interfaces in the browser. It owns the workspace chrome — nav bar, side panels, command palette, terminal, status bar, canvas pan/zoom — and hosts apps that plug in via a small interface.
 
-Think of it as a desktop environment in the browser: apps register themselves, the shell provides chrome (navigation bar, side panels, command palette, status bar), and each app just focuses on its own UI and state.
+Think of it as a desktop environment in a tab: each "app" is a self-contained React feature with its own state and UI, but they all share the same chrome, keyboard shortcuts, search, AI, and persistent-state plumbing.
 
-## Minimal Example
+## Two shell modes
 
-A Hudson app is a plain object satisfying the `HudsonApp` interface:
+Hudson ships two top-level components. Pick based on whether your product has one purpose or many tools.
+
+### `AppShell` — the default
+
+One `HudsonApp`, full chrome. Best for single-purpose products where the whole surface is about one thing: a catalog browser, a settings dashboard, a reader, a logo designer.
 
 ```tsx
-import type { HudsonApp } from '@hudson/sdk';
+import { AppShell } from '@hudson/sdk/app-shell';
+import { catalogApp } from './catalog';
 
-export const counterApp: HudsonApp = {
-  id: 'counter',
-  name: 'Counter',
-  mode: 'panel',
-  Provider: ({ children }) => <CounterCtx.Provider value={state}>{children}</CounterCtx.Provider>,
-  slots: { Content: () => <div>{count}</div> },
-  hooks: {
-    useCommands: () => [{ id: 'counter:reset', label: 'Reset', action: () => setCount(0) }],
-    useStatus: () => ({ label: 'OK', color: 'emerald' }),
-  },
-};
+<AppShell app={catalogApp} />
 ```
 
-Register it in a workspace and it immediately gets panels, command palette, status bar, and canvas windowing — all for free. See the [Quickstart](./quickstart.md) for a complete walkthrough.
+The shell reads the app's hooks for labels, search, status, and commands; renders the app's Provider once around everything; mounts the app's slot components into the chrome's regions (LeftPanel, Content, Inspector, Terminal).
 
-## Architecture
+### `WorkspaceShell` — multi-app canvas
 
-Hudson has three layers:
+Many `HudsonApp`s sharing a dotted-grid workspace, with windows that float, resize, and minimize. Best for tool-kit surfaces — Hudson itself uses this for its default OS workspace (Shaper + Logo Designer + Notepad + more).
 
-### 1. Frame UI (`packages/@hudson/sdk`)
+```tsx
+import { WorkspaceShell } from '@hudson/sdk/shell';
 
-The component library and type system. Provides:
+<WorkspaceShell workspaces={[hudsonOSWorkspace]} defaultWorkspaceId="hudsonOS" />
+```
 
-- **Chrome components** — Frame, NavigationBar, SidePanel, StatusBar, CommandDock, ZoomControls
-- **Canvas system** — Pan/zoom engine with space-bar gestures
-- **Window system** — AppWindow with dragging, resizing, maximize/restore
-- **Overlays** — CommandPalette (Cmd+K), TerminalDrawer, HudsonContextMenu
-- **Type contracts** — `HudsonApp`, `HudsonWorkspace`, `AppIntent`
-- **Utilities** — Web Audio sounds, persistent state, viewport math
+Each workspace declares which apps it hosts and how they participate (windowed, native, maximized, etc.).
 
-### 2. Shell (`app/shell/`)
+## The `HudsonApp` contract
 
-The runtime orchestrator. `WorkspaceShell` is the main entry point that:
+Every app — whether it runs in AppShell or as a window in WorkspaceShell — satisfies the same interface:
 
-- Nests all app Providers recursively
-- Calls each app's hooks inside the correct context scope
-- Renders app slots into shell chrome (panels, content area, terminal)
-- Manages workspace switching, boot animations, and canvas state
-- Provides the command palette, merging commands from all active apps
+```ts
+interface HudsonApp {
+  id: string;
+  name: string;
+  mode: 'canvas' | 'panel';
 
-### 3. Apps (`app/apps/`)
+  Provider: React.FC<{ children: ReactNode }>;  // state lives here
 
-Self-contained applications that implement the `HudsonApp` interface. Each app provides:
+  slots: {
+    Content: React.FC;       // main area — required
+    LeftPanel?: React.FC;    // optional — fills the left side panel
+    Inspector?: React.FC;    // optional — fills the right side panel
+    Terminal?: React.FC;     // optional — custom terminal drawer content
+    LeftFooter?: React.FC;   // optional — sits above the command palette trigger
+  };
 
-- A **Provider** (React context) that owns all app state
-- **Slot components** (Content, LeftPanel, RightPanel, Terminal) rendered by the shell
-- **Hooks** that bridge app state into shell chrome (commands, status, search, nav)
-- Optional **intents** for LLM/voice/search indexing
+  hooks: {
+    useCommands: () => CommandOption[];                      // feeds Cmd+K palette
+    useStatus: () => { label: string; color: StatusColor };  // status bar indicator
+    useSearch?: () => SearchConfig;                          // nav bar search input
+    useNavCenter?: () => ReactNode | null;                   // breadcrumb / context
+    useNavActions?: () => ReactNode | null;                  // nav right-side actions
+    useLayoutMode?: () => 'canvas' | 'panel';                // runtime mode override
+    useActiveToolHint?: () => string | null;                 // highlights a tool in Inspector
+  };
+  // + optional: tools, intents, ports, services, settings, manifest
+}
+```
 
-## Key Concepts
+It's a mechanism, not a framework. The shell doesn't dictate how state works, doesn't wrap your components, and doesn't enforce a routing model. It reads what you expose and renders chrome around it.
 
-### Workspaces
+## The pattern: Provider + Slots + Hooks
 
-A workspace is a collection of apps that coexist in a shared shell. Each workspace defines:
+Every Hudson app follows the same shape:
 
-- A **mode** (`canvas` or `panel`) — the global layout strategy
-- A list of **apps** with canvas participation settings
-- A **default focused app**
+- **Provider** owns state (usually via React Context + a custom hook like `useCatalog()`). Slot components and hooks call that hook to read state.
+- **Slots** are React components the shell renders inside its chrome. They read state via the Provider's hook.
+- **Hooks** are called *inside the Provider's scope* by the shell via an internal Bridge component. They read state and return shell-readable values (commands, status, search config, nav content).
 
-Hudson supports multiple workspaces. Users switch between them at runtime.
+The Provider wraps everything; slots and hooks read from it. This matches how React context works naturally — nothing clever.
 
-### Frame Modes
+## Frame modes
 
-Apps can render in two modes:
+Each app declares a `mode`, and the workspace's active layout drives Frame behavior:
 
-| Mode | Behavior | Use Case |
-|------|----------|----------|
-| `canvas` | Infinite pan/zoom world space | Editors, graph UIs, spatial tools |
-| `panel` | Static scrollable viewport | Dashboards, admin interfaces, docs |
+| Mode     | Behavior                                  | Use case                                  |
+|----------|-------------------------------------------|-------------------------------------------|
+| `canvas` | Infinite pan/zoom world space             | Editors, graph UIs, spatial tools         |
+| `panel`  | Static scrollable viewport, absolute inset | Dashboards, catalogs, readers, admin UIs  |
 
-Individual apps can override the workspace-level mode via the `useLayoutMode` hook.
+Apps can override at runtime via `useLayoutMode`.
 
-### Canvas Participation
+## Canvas participation (WorkspaceShell only)
 
 In canvas-mode workspaces, each app chooses how it appears:
 
-| Participation | Behavior | Example |
-|---------------|----------|---------|
-| `native` | Renders directly on canvas, no window frame | Hudson Docs |
-| `windowed` | Renders inside AppWindow with title bar, dragging, resizing | Shaper, Intent Explorer |
+| Participation | Behavior                                             | Example            |
+|---------------|------------------------------------------------------|--------------------|
+| `native`      | Renders directly on canvas, no window frame          | Hudson Docs        |
+| `windowed`    | Renders inside `AppWindow` with title bar, drag, resize | Shaper, Notepad |
 
-### Intent System
+## What the shell gives you
 
-Hudson includes an intent catalog for LLM/voice integration. Apps declare intents — structured metadata about their commands — which are indexed into a searchable catalog. An execution bridge maps intent `commandId` values to live command actions.
+- Navigation bar with title, search input, breadcrumb slot, action slot
+- Left + right side panels with resize handles, collapse toggles, persistent widths
+- Command palette (`Cmd+K`) populated from `useCommands`
+- Terminal drawer (`Ctrl+` `` ` ``)
+- Status bar with live indicator, console toggle, clock, (canvas) pan/zoom display
+- Keyboard shortcuts (`Cmd+[`, `Cmd+]` for panel toggles)
+- Persistent UI state via `usePersistentState` (localStorage-backed)
+- Dark aesthetic — monospace metadata, cyan accents, emerald/amber/red status colors, tabular numerics
 
-## Current Apps
+## Current apps in this repo
 
-| App | Description | Mode |
-|-----|-------------|------|
-| **Shaper** | Bezier curve editor for vector shapes | Panel (overrides to canvas) |
-| **Hudson Docs** | Documentation browser | Canvas native |
-| **Intent Explorer** | Browsable intent catalog inspector | Canvas windowed |
+Workspace apps (rendered by Hudson's `WorkspaceShell` at `/app`):
 
-## Next Steps
+| App             | Purpose                                    |
+|-----------------|--------------------------------------------|
+| Shaper          | Bezier curve editor for vector shapes      |
+| Logo Designer   | Icon composer with templates               |
+| Hudson Docs     | Documentation browser                      |
+| Intent Explorer | Browsable intent catalog inspector         |
+| Trace Viewer    | Frame-log / instrumentation viewer         |
+| Openscout       | Open-source project scout                  |
+| Notepad         | Markdown scratchpad                        |
+| JSON Explorer   | Interactive JSON inspector                 |
+| API Inspector   | HTTP request/response debugger             |
+| Assets          | Asset browser                              |
 
-- [Quickstart](./quickstart.md) — Get Hudson running locally and create your first app
-- [Building Apps](./building-apps.md) — Full integration guide (Provider, slots, hooks, intents, workspaces)
-- [API Reference](./api.md) — Complete reference for @hudson/sdk exports
+The live app list lives in [`app/apps/registry.ts`](../app/apps/registry.ts).
 
-## Tech Stack
+## Next steps
 
-| Layer | Technology |
-|-------|-----------|
-| Framework | Next.js 16 (App Router) |
-| UI | React 19 |
-| Styling | Tailwind CSS v4 |
-| Icons | lucide-react |
-| Fonts | SF Rounded (UI), JetBrains Mono (monospace) |
-| Package manager | bun |
-| Dev server | Port 3500 |
+- **[Building apps](./building-apps.md)** — the full contract, with examples
+- **[Architecture](./architecture.md)** — how the shell is structured
+- **[Systems](./systems.md)** — Intents (LLM/voice discovery), Services (process deps), Ports (inter-app piping)
+- **[Case study: Premotion](./case-study-premotion.md)** — a real app built on Hudson
+- **[Perf patterns](./perf-drag-resize-patterns.md)** — drag/resize/pan tricks used by the shell
