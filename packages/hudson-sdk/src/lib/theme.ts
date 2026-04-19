@@ -79,8 +79,37 @@ export const SEMANTIC_TOKENS = {
   structure: ['--hud-border', '--hud-radius', '--hud-shadow-soft'],
   accent: ['--hud-accent', '--hud-accent-soft'],
   status: ['--hud-status-ok', '--hud-status-warn', '--hud-status-error', '--hud-status-info'],
-  typography: ['--hud-font-sans', '--hud-font-mono', '--hud-font-serif'],
-  textSize: ['--hud-text-xxs', '--hud-text-xs', '--hud-text-sm', '--hud-text-base'],
+  fontFamily: ['--hud-font-sans', '--hud-font-mono', '--hud-font-serif'],
+  textSize: [
+    '--hud-text-xxs',
+    '--hud-text-xs',
+    '--hud-text-sm',
+    '--hud-text-base',
+    '--hud-text-md',
+    '--hud-text-lg',
+    '--hud-text-xl',
+    '--hud-text-2xl',
+    '--hud-text-3xl',
+  ],
+  leading: [
+    '--hud-leading-tight',
+    '--hud-leading-snug',
+    '--hud-leading-normal',
+    '--hud-leading-relaxed',
+  ],
+  tracking: [
+    '--hud-tracking-tight',
+    '--hud-tracking-normal',
+    '--hud-tracking-wide',
+    '--hud-tracking-wider',
+    '--hud-tracking-widest',
+  ],
+  weight: [
+    '--hud-weight-normal',
+    '--hud-weight-medium',
+    '--hud-weight-semibold',
+    '--hud-weight-bold',
+  ],
 } as const;
 
 export type HudSemanticToken =
