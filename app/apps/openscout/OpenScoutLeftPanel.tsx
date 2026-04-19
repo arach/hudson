@@ -2,23 +2,10 @@
 
 import { useOpenScout, type AgentInfo } from './OpenScoutProvider';
 import { Circle } from 'lucide-react';
-
-function isOnline(ts: number): boolean {
-  if (!ts) return false;
-  return Math.floor(Date.now() / 1000) - ts < 300;
-}
-
-function formatLastSeen(ts: number): string {
-  if (!ts) return 'never';
-  const diff = Math.floor(Date.now() / 1000) - ts;
-  if (diff < 60) return 'just now';
-  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
-  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
-  return `${Math.floor(diff / 86400)}d ago`;
-}
+import { formatOpenScoutRelativeTime, isOpenScoutAgentOnline } from './utils';
 
 function AgentRow({ agent, selected, onSelect }: { agent: AgentInfo; selected: boolean; onSelect: () => void }) {
-  const online = isOnline(agent.lastSeen);
+  const online = isOpenScoutAgentOnline(agent.lastSeen);
 
   return (
     <button
@@ -39,22 +26,64 @@ function AgentRow({ agent, selected, onSelect }: { agent: AgentInfo; selected: b
         <div className={`text-[12px] font-medium truncate ${online ? 'text-white/80' : 'text-white/35'}`}>
           {agent.name}
         </div>
+        <div className="text-[10px] text-white/20 truncate">
+          {agent.project}
+        </div>
         <div className="flex items-center gap-1.5 text-[10px] text-white/25">
           <span>{agent.messageCount} msgs</span>
           <span>·</span>
-          <span>{formatLastSeen(agent.lastSeen)}</span>
+          <span>{formatOpenScoutRelativeTime(agent.lastSeen)}</span>
         </div>
       </div>
     </button>
   );
 }
 
+function SectionLabel({ label, count }: { label: string; count: number }) {
+  return (
+    <div className="px-2.5 pt-2 pb-1 text-[9px] font-mono uppercase tracking-[0.18em] text-white/18">
+      {label}
+      <span className="ml-2 text-white/10">{count}</span>
+    </div>
+  );
+}
+
 export function OpenScoutLeftPanel() {
-  const { agents, loading, selectedAgent, setSelectedAgent } = useOpenScout();
+  const {
+    agents,
+    filteredAgents,
+    loading,
+    selectedAgent,
+    setSelectedAgent,
+    onlineCount,
+    channel,
+    searchQuery,
+  } = useOpenScout();
+  const onlineAgents = filteredAgents.filter(agent => isOpenScoutAgentOnline(agent.lastSeen));
+  const offlineAgents = filteredAgents.filter(agent => !isOpenScoutAgentOnline(agent.lastSeen));
 
   return (
     <div className="p-1.5 space-y-0.5 overflow-y-auto h-full">
-      {agents.map((agent) => (
+      <button
+        type="button"
+        onClick={() => setSelectedAgent(null)}
+        className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
+          selectedAgent === null
+            ? 'border-cyan-500/20 bg-cyan-500/10'
+            : 'border-transparent hover:bg-white/[0.04]'
+        }`}
+      >
+        <div className="flex items-center justify-between gap-2">
+          <span className="text-[12px] font-medium text-white/75">All Activity</span>
+          <span className="text-[10px] font-mono text-white/25">{channel.length}</span>
+        </div>
+        <div className="text-[10px] text-white/20">
+          {onlineCount}/{agents.length} live agents
+        </div>
+      </button>
+
+      {onlineAgents.length > 0 && <SectionLabel label="Online" count={onlineAgents.length} />}
+      {onlineAgents.map(agent => (
         <AgentRow
           key={agent.name}
           agent={agent}
@@ -62,8 +91,24 @@ export function OpenScoutLeftPanel() {
           onSelect={() => setSelectedAgent(selectedAgent === agent.name ? null : agent.name)}
         />
       ))}
+
+      {offlineAgents.length > 0 && <SectionLabel label="Offline" count={offlineAgents.length} />}
+      {offlineAgents.map(agent => (
+        <AgentRow
+          key={agent.name}
+          agent={agent}
+          selected={selectedAgent === agent.name}
+          onSelect={() => setSelectedAgent(selectedAgent === agent.name ? null : agent.name)}
+        />
+      ))}
+
       {!loading && agents.length === 0 && (
         <div className="px-3 py-6 text-[11px] text-white/25 text-center">No agents found</div>
+      )}
+      {!loading && agents.length > 0 && filteredAgents.length === 0 && (
+        <div className="px-3 py-6 text-[11px] text-white/25 text-center">
+          No Scout agents match “{searchQuery}”.
+        </div>
       )}
     </div>
   );

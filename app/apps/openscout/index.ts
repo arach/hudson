@@ -6,11 +6,13 @@ import { OpenScoutContent } from './OpenScoutContent';
 import { OpenScoutLeftPanel } from './OpenScoutLeftPanel';
 import { OpenScoutInspector } from './OpenScoutInspector';
 import { OpenScoutLeftHeaderActions } from './OpenScoutHeaderActions';
+import { useOpenScoutCommands, useOpenScoutSearch, useOpenScoutStatus } from './hooks';
+import { useOpenScoutPortOutput } from './ports';
 
 export const openscoutApp: HudsonApp = {
   id: 'openscout',
   name: 'OpenScout',
-  description: 'Agent relay monitor',
+  description: 'Scout operator console for agents, traffic, and relay activity',
   mode: 'panel',
 
   Provider: OpenScoutProvider,
@@ -26,6 +28,15 @@ export const openscoutApp: HudsonApp = {
     icon: createElement(SlidersHorizontal, { size: 12 }),
   },
 
+  ports: {
+    outputs: [
+      { id: 'agents', name: 'Agents', dataType: 'json', description: 'Visible Scout agent records' },
+      { id: 'channel', name: 'Channel Feed', dataType: 'json', description: 'Currently scoped relay entries' },
+      { id: 'selected-agent', name: 'Selected Agent', dataType: 'json', description: 'The currently selected Scout agent record' },
+      { id: 'scope', name: 'Scope', dataType: 'json', description: 'Current OpenScout scope, search, and filter state' },
+    ],
+  },
+
   slots: {
     Content: OpenScoutContent,
     LeftPanel: OpenScoutLeftPanel,
@@ -33,7 +44,10 @@ export const openscoutApp: HudsonApp = {
   },
 
   hooks: {
-    useCommands: () => [],
-    useStatus: () => ({ label: 'Relay', color: 'neutral' }),
+    useCommands: useOpenScoutCommands,
+    useStatus: useOpenScoutStatus,
+    useSearch: useOpenScoutSearch,
+    usePortOutput: useOpenScoutPortOutput,
+    useLayoutMode: () => 'panel' as const,
   },
 };

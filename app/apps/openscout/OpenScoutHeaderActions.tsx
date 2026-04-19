@@ -3,19 +3,13 @@
 import { useOpenScout } from './OpenScoutProvider';
 import { RefreshCw } from 'lucide-react';
 
-function isOnline(ts: number): boolean {
-  if (!ts) return false;
-  return Math.floor(Date.now() / 1000) - ts < 300;
-}
-
 export function OpenScoutLeftHeaderActions() {
-  const { agents, loading, refresh } = useOpenScout();
-  const onlineCount = agents.filter(a => isOnline(a.lastSeen)).length;
+  const { agents, onlineCount, loading, refresh } = useOpenScout();
 
   return (
     <div className="flex items-center gap-1.5">
-      <span className="text-[9px] px-1.5 py-0.5 rounded bg-white/[0.06] text-white/30 font-mono">
-        {onlineCount}
+      <span className="rounded bg-white/[0.06] px-1.5 py-0.5 text-[9px] font-mono text-white/30">
+        {onlineCount}/{agents.length}
       </span>
       <button
         onClick={refresh}

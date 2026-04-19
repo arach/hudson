@@ -139,6 +139,36 @@ function getCoreApps(): WorkspaceAppConfig[] {
   ];
 }
 
+function getScoutOpsApps(): WorkspaceAppConfig[] {
+  return [
+    {
+      app: openscoutApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -760, y: -260, w: 1040, h: 760 },
+    },
+    {
+      app: hudsonAIApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 380, y: -260, w: 720, h: 560 },
+    },
+    {
+      app: traceViewerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -760, y: 560, w: 520, h: 360 },
+    },
+    {
+      app: apiInspectorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -180, y: 420, w: 720, h: 460 },
+    },
+    {
+      app: jsonExplorerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 600, y: 360, w: 560, h: 440 },
+    },
+  ];
+}
+
 // --- Local apps (developer-specific, gitignored) ------------------------------
 
 import { localApps, localWorkspaces } from '../local/apps.local';
@@ -154,6 +184,18 @@ export function getHudsonOSWorkspace(): HudsonWorkspace {
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
+  };
+}
+
+/** Scout Ops — Hudson workspace centered on the OpenScout operator surface. */
+export function getScoutOpsWorkspace(): HudsonWorkspace {
+  return {
+    id: 'scout-ops',
+    name: 'Scout Ops',
+    description: 'OpenScout-driven workspace for agent traffic, AI assistance, and debugging',
+    mode: 'canvas',
+    apps: getScoutOpsApps(),
+    defaultFocusedAppId: 'openscout',
   };
 }
 
@@ -178,7 +220,7 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
 
 /** All workspaces available to WorkspaceShell — hudsonOS + JSON-defined + local code workspaces. */
 export function getAllWorkspaces(): HudsonWorkspace[] {
-  return [getHudsonOSWorkspace(), ...loadWorkspacesFromJson(), ...localWorkspaces];
+  return [getHudsonOSWorkspace(), getScoutOpsWorkspace(), ...loadWorkspacesFromJson(), ...localWorkspaces];
 }
 
 let _all: HudsonWorkspace[] | undefined;

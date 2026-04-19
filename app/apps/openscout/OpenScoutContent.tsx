@@ -3,38 +3,15 @@
 import { useMemo, useRef, useEffect } from 'react';
 import { Volume2, MessageCircle, Radio, Zap } from 'lucide-react';
 import { useOpenScout, type ChannelEntry } from './OpenScoutProvider';
+import { type OpenScoutActivityFilter, parseOpenScoutMessage } from './utils';
 
-// ---------------------------------------------------------------------------
-// Message parsing — extract tags, mentions, and body from relay messages
-// ---------------------------------------------------------------------------
-
-interface ParsedMessage {
-  tags: { type: string; id?: string }[];    // [ask:id], [speak], [reply:id]
-  mentions: string[];                        // @operator, @hudson
-  body: string;                              // Clean message text
-  isSystem: boolean;
-}
-
-function parseMessage(entry: ChannelEntry): ParsedMessage {
-  const isSystem = entry.type === 'SYS';
-  let raw = entry.message;
-
-  // Extract [tag:id] or [tag] brackets
-  const tags: ParsedMessage['tags'] = [];
-  raw = raw.replace(/\[(\w+)(?::([^\]]+))?\]\s*/g, (_, type, id) => {
-    tags.push({ type, id });
-    return '';
-  });
-
-  // Extract @mentions
-  const mentions: string[] = [];
-  raw = raw.replace(/@([\w.-]+)/g, (_, name) => {
-    mentions.push(name);
-    return `@${name}`; // keep in body for display
-  });
-
-  return { tags, mentions, body: raw.trim(), isSystem };
-}
+const FILTER_OPTIONS: Array<{ id: OpenScoutActivityFilter; label: string }> = [
+  { id: 'all', label: 'All' },
+  { id: 'ask', label: 'Asks' },
+  { id: 'reply', label: 'Replies' },
+  { id: 'speak', label: 'Voice' },
+  { id: 'system', label: 'System' },
+];
 
 // ---------------------------------------------------------------------------
 // Tag badge component
@@ -93,7 +70,7 @@ const AGENT_COLORS: Record<string, string> = {
 };
 
 function MessageRow({ entry }: { entry: ChannelEntry }) {
-  const parsed = useMemo(() => parseMessage(entry), [entry]);
+  const parsed = useMemo(() => parseOpenScoutMessage(entry), [entry]);
 
   if (parsed.isSystem) {
     return (
@@ -137,20 +114,68 @@ function MessageRow({ entry }: { entry: ChannelEntry }) {
   );
 }
 
+function SummaryPill({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2.5 py-1">
+      <span className="text-[8px] font-mono uppercase tracking-[0.18em] text-white/20">{label}</span>
+      <span className="ml-2 text-[10px] font-mono text-white/55">{value}</span>
+    </div>
+  );
+}
+
+function FilterChip({
+  label,
+  count,
+  active,
+  onClick,
+}: {
+  label: string;
+  count: number;
+  active: boolean;
+  onClick: () => void;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={`rounded-full border px-2.5 py-1 text-[10px] font-mono transition-colors ${
+        active
+          ? 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300'
+          : 'border-white/[0.06] bg-white/[0.03] text-white/35 hover:text-white/55'
+      }`}
+    >
+      <span>{label}</span>
+      <span className="ml-1.5 text-[9px] text-white/25">{count}</span>
+    </button>
+  );
+}
+
+function formatRefreshTime(timestamp: number | null): string {
+  if (!timestamp) return 'not synced';
+  return new Date(timestamp).toLocaleTimeString([], {
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 // ---------------------------------------------------------------------------
 // Channel content
 // ---------------------------------------------------------------------------
 
 export function OpenScoutContent() {
-  const { channel, selectedAgent, error } = useOpenScout();
+  const {
+    agents,
+    filteredChannel,
+    selectedAgent,
+    error,
+    activityFilter,
+    setActivityFilter,
+    activityCounts,
+    onlineCount,
+    searchQuery,
+    lastUpdatedAt,
+  } = useOpenScout();
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  const filteredChannel = useMemo(() =>
-    selectedAgent
-      ? channel.filter(e => e.agent === selectedAgent)
-      : channel,
-    [channel, selectedAgent],
-  );
 
   // Auto-scroll to bottom on new messages
   useEffect(() => {
@@ -167,11 +192,38 @@ export function OpenScoutContent() {
       )}
 
       {/* Header */}
-      <div className="px-4 py-2 border-b border-white/[0.04]">
-        <span className="text-[9px] font-mono uppercase tracking-widest text-white/20">
-          {selectedAgent ? `${selectedAgent}` : 'Channel'}
-        </span>
-        <span className="text-[9px] text-white/10 ml-2">{filteredChannel.length} messages</span>
+      <div className="px-4 py-3 border-b border-white/[0.04] space-y-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <SummaryPill label="scope" value={selectedAgent ?? 'mesh'} />
+          <SummaryPill label="agents" value={`${onlineCount}/${agents.length} live`} />
+          <SummaryPill label="messages" value={`${filteredChannel.length} shown`} />
+          <SummaryPill label="synced" value={formatRefreshTime(lastUpdatedAt)} />
+        </div>
+        <div className="flex flex-wrap items-center gap-1.5">
+          {FILTER_OPTIONS.map(option => (
+            <FilterChip
+              key={option.id}
+              label={option.label}
+              count={activityCounts[option.id]}
+              active={activityFilter === option.id}
+              onClick={() => setActivityFilter(option.id)}
+            />
+          ))}
+        </div>
+        {(selectedAgent || searchQuery) && (
+          <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/25">
+            {selectedAgent && (
+              <span className="rounded-full border border-cyan-500/15 bg-cyan-500/10 px-2 py-1 text-cyan-300/80">
+                agent {selectedAgent}
+              </span>
+            )}
+            {searchQuery && (
+              <span className="rounded-full border border-white/[0.06] bg-white/[0.03] px-2 py-1 text-white/45">
+                search {searchQuery}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       {/* Messages */}
@@ -180,7 +232,9 @@ export function OpenScoutContent() {
           <MessageRow key={`${entry.timestamp}-${i}`} entry={entry} />
         ))}
         {filteredChannel.length === 0 && (
-          <div className="text-[11px] text-white/15 mt-8 text-center">No messages</div>
+          <div className="text-[11px] text-white/15 mt-8 text-center">
+            No messages match the current Scout scope.
+          </div>
         )}
       </div>
     </div>

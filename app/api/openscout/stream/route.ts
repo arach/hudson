@@ -6,16 +6,20 @@ import { createFsWatchEventStream } from '../../../lib/server/createFsWatchEvent
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
+const CONTROL_PLANE_DIR = join(homedir(), '.openscout', 'control-plane');
 const RELAY_DIR = join(homedir(), '.openscout', 'relay');
 
 async function ensureDir() {
-  await mkdir(RELAY_DIR, { recursive: true });
+  await Promise.all([
+    mkdir(CONTROL_PLANE_DIR, { recursive: true }),
+    mkdir(RELAY_DIR, { recursive: true }),
+  ]);
 }
 
 export async function GET(request: Request) {
   return createFsWatchEventStream({
     request,
-    watchPaths: [RELAY_DIR],
+    watchPaths: [CONTROL_PLANE_DIR, RELAY_DIR],
     ensure: ensureDir,
   });
 }
