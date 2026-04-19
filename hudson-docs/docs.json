@@ -23,8 +23,7 @@
         { "id": "npm/sdk/building-apps", "title": "Building Apps", "subsection": "@hudsonos/sdk" },
         { "id": "npm/sdk/api-reference", "title": "API Reference", "subsection": "@hudsonos/sdk" },
         { "id": "npm/sdk/systems", "title": "Systems", "subsection": "@hudsonos/sdk" },
-        { "id": "npm/sdk/utilities", "title": "Utilities", "subsection": "@hudsonos/sdk" },
-        { "id": "npm/hx/hx", "title": "Guide", "subsection": "@hudsonos/hx" }
+        { "id": "npm/sdk/utilities", "title": "Utilities", "subsection": "@hudsonos/sdk" }
       ]
     },
     {

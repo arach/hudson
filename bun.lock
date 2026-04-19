@@ -119,13 +119,6 @@
         "react": "^19.0.0",
       },
     },
-    "packages/hx": {
-      "name": "@hudsonos/hx",
-      "version": "0.1.0",
-      "bin": {
-        "hx": "./dist/index.js",
-      },
-    },
   },
   "packages": {
     "@acemir/cssom": ["@acemir/cssom@0.9.31", "", {}, "sha512-ZnR3GSaH+/vJ0YlHau21FjfLYjMpYVIzTD8M8vIEQvIGxeOXyXdzCI140rrCY862p/C/BbzWsjc1dgnM9mkoTA=="],
@@ -309,8 +302,6 @@
     "@hudson/relay": ["@hudson/relay@workspace:packages/hudson-relay"],
 
     "@hudson/sdk": ["@hudson/sdk@workspace:packages/hudson-sdk"],
-
-    "@hudsonos/hx": ["@hudsonos/hx@workspace:packages/hx"],
 
     "@humanfs/core": ["@humanfs/core@0.19.1", "", {}, "sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA=="],
 

@@ -23,10 +23,6 @@
 - [Systems](npm/sdk/systems.md) -- Intents, services, and inter-app data piping
 - [Utilities](npm/sdk/utilities.md) -- Platform adapters, design tokens, and UI sounds
 
-### @hudsonos/hx
-
-- [Guide](npm/hx/hx.md) -- Daemon lifecycle, service registration, proxy, API reference
-
 ## CLI Tools
 
 - [Overview](cli/index.md) -- How the CLI tools fit together
