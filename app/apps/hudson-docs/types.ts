@@ -24,27 +24,23 @@ export interface AgentDocEntry {
   position: { x: number; y: number };
 }
 
+import type { VoiceSettings as SdkVoiceSettings } from '@hudson/sdk';
+
 export type AIMode = 'cli' | 'api';
-export type SpokenReplyStyle = 'brief' | 'full' | 'adaptive';
-export type SpokenReplyLongResponse = 'summary' | 'invite' | 'verbatim';
-export type SpokenReplyCodeResponse = 'summary' | 'mention' | 'read';
+
+// Voice types live in @hudson/sdk so the SDK Assistant + app consumers share
+// a single source of truth. Re-exported here for backwards compat with the
+// many existing imports in app/shell.
+export type {
+  SpokenReplyStyle,
+  SpokenReplyLongResponse,
+  SpokenReplyCodeResponse,
+  VoiceSettings,
+} from '@hudson/sdk';
 
 export interface FontSettings {
   fontSize: number;
   fontFamily: string;
-}
-
-export interface VoiceSettings {
-  autoSend: boolean;
-  speakReplies: boolean;
-  replyProvider: 'system' | 'openai' | 'elevenlabs' | 'groq';
-  replyModel: string;
-  replyVoice: string;
-  replyRate: number;
-  spokenReplyStyle: SpokenReplyStyle;
-  spokenReplyLongResponse: SpokenReplyLongResponse;
-  spokenReplyCodeResponse: SpokenReplyCodeResponse;
-  spokenReplyMaxChars: number;
 }
 
 export interface HudsonSettings {
@@ -57,5 +53,5 @@ export interface HudsonSettings {
   uiTransitionSounds: boolean;
   aiMode: AIMode;
   font: FontSettings;
-  voice: VoiceSettings;
+  voice: SdkVoiceSettings;
 }
