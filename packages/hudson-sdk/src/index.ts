@@ -15,11 +15,14 @@ export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';
 export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/useHudsonAI';
+export { useAssistant } from './hooks/useAssistant';
+export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
 
 // AI
 export { AI } from './components/AI';
+export { Assistant } from './components/Assistant';
 export { TerminalRelay, captureWorkspace } from './components/TerminalRelay';
 
 // Utilities

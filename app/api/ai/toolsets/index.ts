@@ -1,6 +1,7 @@
 import { z } from 'zod';
 import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
+import { intentsToolset } from './intents';
 
 export interface ToolsetDefinition {
   /** Static app-level system prompt — capabilities, personality, constraints. */
@@ -14,6 +15,7 @@ export interface ToolsetDefinition {
 const registry: Record<string, ToolsetDefinition> = {
   logo: logoToolset,
   workspace: workspaceToolset,
+  intents: intentsToolset,
 };
 
 /**

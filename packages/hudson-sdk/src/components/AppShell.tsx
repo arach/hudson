@@ -8,11 +8,12 @@ import StatusBar from './chrome/StatusBar';
 import CommandDock from './chrome/CommandDock';
 import CommandPalette from './overlays/CommandPalette';
 import TerminalDrawer from './overlays/TerminalDrawer';
+import { Assistant } from './Assistant';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { HudsonApp } from '../types/app';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight } from 'lucide-react';
+import { ChevronDown, ChevronRight, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // AppShell — the default Hudson shell: renders a single HudsonApp with full
@@ -21,12 +22,14 @@ import { ChevronDown, ChevronRight } from 'lucide-react';
 // ---------------------------------------------------------------------------
 interface AppShellProps {
   app: HudsonApp;
+  /** Disable the built-in Assistant tab in the bottom drawer. Defaults to true (Assistant on). */
+  assistant?: boolean;
 }
 
-export function AppShell({ app }: AppShellProps) {
+export function AppShell({ app, assistant = true }: AppShellProps) {
   return (
     <app.Provider>
-      <AppShellInner app={app} />
+      <AppShellInner app={app} assistantEnabled={assistant} />
     </app.Provider>
   );
 }
@@ -34,7 +37,7 @@ export function AppShell({ app }: AppShellProps) {
 // ---------------------------------------------------------------------------
 // AppShellInner — rendered inside Provider so app hooks can be called
 // ---------------------------------------------------------------------------
-function AppShellInner({ app }: { app: HudsonApp }) {
+function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEnabled: boolean }) {
   // Platform layout
   const { navTotalHeight } = usePlatformLayout();
 
@@ -69,6 +72,22 @@ function AppShellInner({ app }: { app: HudsonApp }) {
   const [showTerminal, setShowTerminal] = useState(false);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState(`appshell.${app.id}.termH`, 320);
+
+  // Drawer tabs — Terminal slot (if app provides one) and Assistant (if enabled)
+  const hasTerminalSlot = !!app.slots.Terminal;
+  const drawerTabs = useMemo<DrawerTab[]>(() => {
+    const tabs: DrawerTab[] = [];
+    if (hasTerminalSlot) tabs.push('terminal');
+    if (assistantEnabled) tabs.push('assistant');
+    return tabs;
+  }, [hasTerminalSlot, assistantEnabled]);
+  const defaultTab: DrawerTab = drawerTabs[0] ?? 'terminal';
+  const [activeTab, setActiveTab] = usePersistentState<DrawerTab>(
+    `appshell.${app.id}.drawerTab`,
+    defaultTab,
+  );
+  // Guard against stored value referencing a tab that's no longer available
+  const resolvedTab: DrawerTab = drawerTabs.includes(activeTab) ? activeTab : defaultTab;
 
   // Command palette
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -106,11 +125,25 @@ function AppShellInner({ app }: { app: HudsonApp }) {
   }, [leftWidth, rightWidth, setLeftWidth, setRightWidth]);
 
   // Shell commands
-  const shellCommands: CommandOption[] = useMemo(() => [
-    { id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: () => setLeftCollapsed(c => !c) },
-    { id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) },
-    { id: 'shell:toggle-terminal', label: 'Toggle Terminal', shortcut: 'Ctrl+`', action: () => setShowTerminal(t => !t) },
-  ], [setLeftCollapsed, setRightCollapsed]);
+  const shellCommands: CommandOption[] = useMemo(() => {
+    const cmds: CommandOption[] = [
+      { id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: () => setLeftCollapsed(c => !c) },
+      { id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) },
+      { id: 'shell:toggle-terminal', label: 'Toggle Terminal', shortcut: 'Ctrl+`', action: () => setShowTerminal(t => !t) },
+    ];
+    if (assistantEnabled) {
+      cmds.push({
+        id: 'shell:toggle-assistant',
+        label: 'Toggle Assistant',
+        shortcut: 'Cmd+J',
+        action: () => {
+          setActiveTab('assistant');
+          setShowTerminal(t => !t || activeTab !== 'assistant');
+        },
+      });
+    }
+    return cmds;
+  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, activeTab, setActiveTab]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -136,10 +169,15 @@ function AppShellInner({ app }: { app: HudsonApp }) {
         e.preventDefault();
         setShowTerminal(t => !t);
       }
+      if (assistantEnabled && (e.metaKey || e.ctrlKey) && e.key === 'j') {
+        e.preventDefault();
+        setActiveTab('assistant');
+        setShowTerminal(t => !(t && resolvedTab === 'assistant'));
+      }
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setLeftCollapsed, setRightCollapsed]);
+  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab]);
 
   // Right panel content: Inspector + tools accordion
   const InspectorSlot = app.slots.Inspector;
@@ -268,13 +306,25 @@ function AppShellInner({ app }: { app: HudsonApp }) {
               isMaximized={isTerminalMaximized}
               height={terminalHeight}
               onHeightChange={setTerminalHeight}
+              title={
+                <DrawerTabs
+                  tabs={drawerTabs}
+                  active={resolvedTab}
+                  onSelect={setActiveTab}
+                />
+              }
             >
-              {app.slots.Terminal ? (
-                <app.slots.Terminal />
-              ) : (
-                <div className="p-4 font-mono text-[12px] text-neutral-400">
-                  No terminal content
-                </div>
+              {resolvedTab === 'terminal' && (
+                app.slots.Terminal ? (
+                  <app.slots.Terminal />
+                ) : (
+                  <div className="p-4 font-mono text-[12px] text-neutral-400">
+                    No terminal content
+                  </div>
+                )
+              )}
+              {resolvedTab === 'assistant' && (
+                <Assistant app={app} commands={appCommands} />
               )}
             </TerminalDrawer>
           </div>
@@ -292,5 +342,47 @@ function AppShellInner({ app }: { app: HudsonApp }) {
         <app.slots.Content />
       </div>
     </Frame>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Drawer tabs — Terminal slot vs Assistant
+// ---------------------------------------------------------------------------
+type DrawerTab = 'terminal' | 'assistant';
+
+function DrawerTabs({
+  tabs,
+  active,
+  onSelect,
+}: {
+  tabs: DrawerTab[];
+  active: DrawerTab;
+  onSelect: (tab: DrawerTab) => void;
+}) {
+  if (tabs.length === 0) return null;
+  return (
+    <div className="flex items-center gap-0.5">
+      {tabs.map(tab => {
+        const isActive = tab === active;
+        const Icon = tab === 'terminal' ? TerminalIcon : Sparkles;
+        const label = tab === 'terminal' ? 'TERMINAL' : 'ASSISTANT';
+        const accent = tab === 'terminal' ? 'text-emerald-400' : 'text-cyan-400';
+        return (
+          <button
+            key={tab}
+            type="button"
+            onClick={() => onSelect(tab)}
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold tracking-widest font-mono transition-colors ${
+              isActive
+                ? `${accent} bg-white/[0.04]`
+                : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+          >
+            <Icon size={13} />
+            <span>{label}</span>
+          </button>
+        );
+      })}
+    </div>
   );
 }
