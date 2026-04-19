@@ -1,13 +1,17 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
-import { Sparkles } from 'lucide-react';
+import { useMemo, useCallback, useState } from 'react';
+import { Sparkles, Mic, Square, Volume2, VolumeX, Loader2 } from 'lucide-react';
 import { AI } from './AI';
 import { TerminalRelay } from './TerminalRelay';
 import { useTerminalRelay } from '../hooks/useTerminalRelay';
 import { useAssistant } from '../hooks/useAssistant';
+import { useVoiceInput } from '../hooks/useVoiceInput';
+import { useVoiceOutput } from '../hooks/useVoiceOutput';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { usePlatform } from '../platform/PlatformContext';
+import { createHudsonSpokenReply, getHudsonMessageDisplayText } from '../lib/voiceReply';
+import { DEFAULT_VOICE_SETTINGS, type VoiceSettings } from '../types/voice';
 import type { HudsonApp } from '../types/app';
 import type { CommandOption } from './overlays/CommandPalette';
 
@@ -40,6 +44,11 @@ interface AssistantProps {
   onOpenSettings?: () => void;
   /** Called when the disconnected state's "Start Service" button is clicked — should boot the relay service. */
   onStartService?: () => Promise<boolean>;
+
+  /** Voice configuration overrides — provider/model/voice/style. The speaker on/off is user-toggled in the header. */
+  voice?: Partial<VoiceSettings>;
+  /** Disable the voice (mic + speaker) controls entirely. Defaults to true (voice on). */
+  voiceEnabled?: boolean;
 }
 
 export function Assistant({
@@ -56,8 +65,19 @@ export function Assistant({
   workspaceFiles,
   onOpenSettings,
   onStartService,
+  voice,
+  voiceEnabled = true,
 }: AssistantProps) {
   const [mode, setMode] = usePersistentState<AssistantMode>(`assistant.${app.id}.mode`, 'relay');
+  const [chatInput, setChatInput] = useState('');
+  const voiceSettings: VoiceSettings = useMemo(
+    () => ({ ...DEFAULT_VOICE_SETTINGS, ...voice }),
+    [voice],
+  );
+  const [speakerOn, setSpeakerOn] = usePersistentState<boolean>(
+    `assistant.${app.id}.voice.speakReplies`,
+    voiceSettings.speakReplies,
+  );
   const { serviceApiUrl } = usePlatform();
 
   // ---- Relay engine ----------------------------------------------------------
@@ -103,13 +123,69 @@ export function Assistant({
     return items;
   }, [relayUrl, agent, cwd, model]);
 
+  // ---- Voice -----------------------------------------------------------------
+  // Output: TTS playback. Triggered from chat onFinish when the speaker is on.
+  const voiceOutput = useVoiceOutput();
+
+  // Track which user-message-source triggered the most recent assistant turn so
+  // we can speak only when the user submitted via voice (or when the speaker
+  // toggle is on for everything).
+  const [lastTurnSource, setLastTurnSource] = useState<'text' | 'voice'>('text');
+
   // ---- Chat engine -----------------------------------------------------------
   // The hook is always called (rules of hooks); the underlying chat is only
   // exercised when the user is on the chat tab.
-  const chat = useAssistant({ app, commands, state, provider, model });
+  const chat = useAssistant({
+    app,
+    commands,
+    state,
+    provider,
+    model,
+    onFinish: ({ message, isAbort, isDisconnect, isError }) => {
+      if (!voiceEnabled || !speakerOn) return;
+      if (isAbort || isDisconnect || isError) return;
+      if (message.role !== 'assistant') return;
+      // Speak when the speaker is on globally; the lastTurnSource is reset after.
+      const display = getHudsonMessageDisplayText(message);
+      const spoken = createHudsonSpokenReply(display, voiceSettings);
+      if (!spoken) return;
+      void voiceOutput.speak(spoken, {
+        provider: voiceSettings.replyProvider,
+        model: voiceSettings.replyModel,
+        voice: voiceSettings.replyVoice || undefined,
+        rate: voiceSettings.replyRate,
+        metadata: { surface: 'hudson-assistant', appId: app.id, source: lastTurnSource },
+      });
+    },
+  });
+
+  // Input: STT via Vox companion. When transcript arrives, either fill the
+  // input or auto-submit (per voiceSettings.autoSend).
+  const voiceInput = useVoiceInput({
+    surface: 'hudson-assistant',
+    metadata: { appId: app.id },
+    onTranscript: transcript => {
+      const merged = [chatInput.trim(), transcript].filter(Boolean).join(' ');
+      if (voiceSettings.autoSend && chat.status !== 'streaming' && chat.status !== 'submitted') {
+        setChatInput('');
+        setLastTurnSource('voice');
+        chat.sendMessage({ text: merged });
+      } else {
+        setChatInput(merged);
+      }
+    },
+  });
+
+  const onMicClick = useCallback(() => {
+    if (voiceInput.status === 'recording') voiceInput.stop();
+    else void voiceInput.start();
+  }, [voiceInput]);
 
   // ---- Render ---------------------------------------------------------------
   const intentCount = app.intents?.length ?? 0;
+  const showVoice = voiceEnabled;
+  const micBusy = voiceInput.status === 'transcribing';
+  const micRecording = voiceInput.status === 'recording';
 
   return (
     <div className="flex flex-col h-full">
@@ -123,6 +199,29 @@ export function Assistant({
           · {app.name}
         </span>
         <div className="flex-1" />
+
+        {/* Speaker toggle (chat-mode only) */}
+        {showVoice && mode === 'chat' && (
+          <button
+            type="button"
+            onClick={() => {
+              if (speakerOn) voiceOutput.stop();
+              setSpeakerOn(!speakerOn);
+            }}
+            className={`p-1 rounded transition-colors ${
+              speakerOn
+                ? 'text-cyan-300 hover:text-cyan-200'
+                : 'text-neutral-500 hover:text-neutral-300'
+            }`}
+            title={speakerOn ? 'Speaker on (click to mute)' : 'Speaker off (click to enable)'}
+          >
+            {voiceOutput.isPlaying
+              ? <Loader2 size={12} className="animate-spin" />
+              : speakerOn
+                ? <Volume2 size={12} />
+                : <VolumeX size={12} />}
+          </button>
+        )}
 
         {/* Mode toggle */}
         <div className="flex items-center gap-1 rounded-full border border-neutral-700 p-0.5">
@@ -180,6 +279,38 @@ export function Assistant({
             placeholder={intentCount === 0
               ? `Ask about ${app.name} — no intents declared, conversation only.`
               : `Ask ${app.name} to do something… (${intentCount} intent${intentCount === 1 ? '' : 's'})`}
+            inputValue={chatInput}
+            onInputChange={value => {
+              // Reset turn-source when the user types — voice-source flag should
+              // only stick when the message actually came from a transcript.
+              if (lastTurnSource === 'voice' && value.length === 0) setLastTurnSource('text');
+              setChatInput(value);
+            }}
+            inputExtras={showVoice && voiceInput.isSupported ? (
+              <button
+                type="button"
+                onClick={onMicClick}
+                disabled={micBusy}
+                className={`p-1 rounded transition-colors disabled:opacity-30 ${
+                  micRecording
+                    ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
+                    : 'text-neutral-500 hover:text-cyan-400'
+                }`}
+                title={micRecording ? 'Stop recording' : 'Record voice prompt'}
+              >
+                {micBusy
+                  ? <Loader2 size={12} className="animate-spin" />
+                  : micRecording
+                    ? <Square size={11} />
+                    : <Mic size={12} />}
+              </button>
+            ) : undefined}
+            inputStatus={showVoice ? <VoiceStatusBadge
+              inputStatus={voiceInput.status}
+              inputError={voiceInput.error}
+              outputStatus={voiceOutput.status}
+              outputError={voiceOutput.error}
+            /> : undefined}
           />
         )}
       </div>
@@ -190,6 +321,51 @@ export function Assistant({
 // ---------------------------------------------------------------------------
 // Internal pieces
 // ---------------------------------------------------------------------------
+
+function VoiceStatusBadge({
+  inputStatus,
+  inputError,
+  outputStatus,
+  outputError,
+}: {
+  inputStatus: import('../types/voice').VoiceStatus;
+  inputError: string | null;
+  outputStatus: import('../types/voice').VoiceStatus;
+  outputError: string | null;
+}) {
+  const badge = pickBadge(inputStatus) ?? pickBadge(outputStatus);
+  const message = inputError ?? outputError;
+
+  if (!badge && !message) return null;
+
+  return (
+    <div className="flex items-center gap-2">
+      {badge && (
+        <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono ${badge.className}`}>
+          {badge.label}
+        </span>
+      )}
+      {message && (
+        <span className="text-[10px] text-neutral-500 truncate flex-1" title={message}>
+          {message}
+        </span>
+      )}
+    </div>
+  );
+}
+
+function pickBadge(status: import('../types/voice').VoiceStatus) {
+  switch (status) {
+    case 'recording': return { label: 'listening', className: 'border-red-500/20 bg-red-500/10 text-red-300' };
+    case 'transcribing': return { label: 'transcribing', className: 'border-amber-500/20 bg-amber-500/10 text-amber-300' };
+    case 'ready': return { label: 'draft ready', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300' };
+    case 'synthesizing': return { label: 'voicing', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300' };
+    case 'speaking': return { label: 'speaking', className: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' };
+    case 'unavailable': return { label: 'voice offline', className: 'border-amber-500/20 bg-amber-500/10 text-amber-300' };
+    case 'error': return { label: 'voice error', className: 'border-red-500/20 bg-red-500/10 text-red-300' };
+    default: return null;
+  }
+}
 
 function ModeButton({
   active,

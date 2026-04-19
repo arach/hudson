@@ -17,6 +17,30 @@ export { useHudsonAI } from './hooks/useHudsonAI';
 export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/useHudsonAI';
 export { useAssistant } from './hooks/useAssistant';
 export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
+export { useVoiceInput } from './hooks/useVoiceInput';
+export type { UseVoiceInputOptions, UseVoiceInputResult } from './hooks/useVoiceInput';
+export { useVoiceOutput } from './hooks/useVoiceOutput';
+export type { UseVoiceOutputResult, SpeakOptions } from './hooks/useVoiceOutput';
+
+// Voice types + reply shaping
+export type {
+  VoiceSettings,
+  VoiceStatus,
+  VoiceProvider,
+  SpokenReplyStyle,
+  SpokenReplyLongResponse,
+  SpokenReplyCodeResponse,
+} from './types/voice';
+export { DEFAULT_VOICE_SETTINGS } from './types/voice';
+export {
+  createHudsonSpokenReply,
+  getHudsonMessageDisplayText,
+  getHudsonVoiceBehaviorPreset,
+  getHudsonVoiceBehaviorPresetLabel,
+  getHudsonSpokenReplyStyleLabel,
+  applyHudsonVoiceBehaviorPreset,
+} from './lib/voiceReply';
+export type { HudsonSpokenReplyStyle, HudsonVoiceBehaviorPreset } from './lib/voiceReply';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
 

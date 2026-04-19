@@ -1,6 +1,7 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
+import type { ChatOnFinishCallback, UIMessage } from 'ai';
 import { useHudsonAI, type HudsonAIChat } from './useHudsonAI';
 import type { HudsonApp } from '../types/app';
 import type { CommandOption } from '../components/overlays/CommandPalette';
@@ -21,6 +22,8 @@ export interface UseAssistantOptions {
   provider?: string;
   /** Model override (e.g. 'claude-sonnet-4-20250514'). */
   model?: string;
+  /** Called when an assistant turn finishes — pass through for things like reply TTS. */
+  onFinish?: ChatOnFinishCallback<UIMessage>;
 }
 
 export type AssistantChat = HudsonAIChat;
@@ -31,6 +34,7 @@ export function useAssistant({
   state,
   provider,
   model,
+  onFinish,
 }: UseAssistantOptions): AssistantChat {
   const intents = useMemo(() => {
     return (app.intents ?? []).map(i => ({
@@ -73,6 +77,7 @@ export function useAssistant({
     context,
     provider,
     model,
+    onFinish,
     onToolCall: (name, args) => {
       if (name !== 'dispatch') return;
       const commandId = (args as { commandId?: string }).commandId;

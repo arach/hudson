@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
 import { Square, Trash2, AlertCircle, Paperclip } from 'lucide-react';
 import { isToolUIPart, getToolName } from 'ai';
 import type { HudsonAIChat } from '../hooks/useHudsonAI';
@@ -8,14 +8,34 @@ import type { HudsonAIChat } from '../hooks/useHudsonAI';
 interface AIProps {
   chat: HudsonAIChat;
   placeholder?: string;
+  /** Extra controls rendered inside the input bar, left of the text input (e.g. mic button). */
+  inputExtras?: ReactNode;
+  /** Optional badge/status pill rendered above the input bar (e.g. "transcribing"). */
+  inputStatus?: ReactNode;
+  /** External input value override — pairs with onInputChange to let the host control the field (e.g. inject voice transcripts). */
+  inputValue?: string;
+  onInputChange?: (value: string) => void;
 }
 
-export function AI({ chat, placeholder = 'Ask AI...' }: AIProps) {
+export function AI({
+  chat,
+  placeholder = 'Ask AI...',
+  inputExtras,
+  inputStatus,
+  inputValue,
+  onInputChange,
+}: AIProps) {
   const {
     messages, sendMessage, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
   } = chat;
-  const [input, setInput] = useState('');
+  const [internalInput, setInternalInput] = useState('');
+  const isControlled = inputValue !== undefined;
+  const input = isControlled ? inputValue : internalInput;
+  const setInput = (value: string) => {
+    if (isControlled) onInputChange?.(value);
+    else setInternalInput(value);
+  };
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const isStreaming = status === 'streaming' || status === 'submitted';
