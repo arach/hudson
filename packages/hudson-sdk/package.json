@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "HUD-style chrome components for canvas and panel-based applications",
+  "license": "SEE LICENSE IN LICENSE.md",
   "main": "./src/index.ts",
   "exports": {
     ".": "./src/index.ts",

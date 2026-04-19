@@ -3,6 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "description": "Scaffold a new Hudson app",
+  "license": "SEE LICENSE IN ../../LICENSE.md",
   "type": "module",
   "bin": {
     "create-hudson-app": "./src/index.ts"

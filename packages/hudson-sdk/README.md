@@ -124,4 +124,10 @@ function AdminApp() {
 
 ## License
 
-Private workspace package - not published to npm.
+Licensed under the [Functional Source License, Version 1.1, MIT Future License](./LICENSE.md) (FSL-1.1-MIT).
+
+You may use, modify, and redistribute this software for any purpose other than a Competing Use — broadly, offering a commercial product or service that substitutes for or replicates this SDK's functionality. Internal use, non-commercial research, and building applications on top of Hudson are explicitly permitted.
+
+On the second anniversary of each release, that release automatically converts to the MIT License.
+
+Copyright 2026 Arach Tchoupani.
