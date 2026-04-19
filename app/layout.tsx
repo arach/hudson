@@ -1,21 +1,19 @@
 import type { Metadata } from "next";
-import localFont from "next/font/local";
-import { Geist_Mono } from "next/font/google";
+import { Geist_Mono, Jura } from "next/font/google";
 import Script from "next/script";
 import "./globals.css";
-
-const astroMono = localFont({
-  src: [
-    { path: "../public/fonts/AstroMono-Regular.ttf", weight: "400", style: "normal" },
-    { path: "../public/fonts/AstroMono-Bold.ttf", weight: "700", style: "normal" },
-  ],
-  variable: "--font-astro-mono",
-  display: "swap",
-});
 
 const geistMono = Geist_Mono({
   variable: "--font-geist-mono",
   subsets: ["latin"],
+});
+
+// Brand typeface for wordmark + display headings.
+// Jura is the chosen brand font; IBM Plex Mono is a strong fallback candidate.
+const jura = Jura({
+  variable: "--font-jura",
+  subsets: ["latin"],
+  display: "swap",
 });
 
 export const metadata: Metadata = {
@@ -44,7 +42,10 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html
+      lang="en"
+      className={`${geistMono.variable} ${jura.variable}`}
+    >
       <head>
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GSHDZPFRZG"
@@ -57,7 +58,7 @@ export default function RootLayout({
             gtag('config', 'G-GSHDZPFRZG');`}
         </Script>
       </head>
-      <body className={`${astroMono.variable} ${geistMono.variable} antialiased`}>
+      <body className="antialiased">
         {children}
       </body>
     </html>
