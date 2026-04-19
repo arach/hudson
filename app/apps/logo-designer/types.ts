@@ -71,7 +71,7 @@ export interface WordmarkConfig {
 /** Popular Google Fonts + local fonts for the picker */
 export const GOOGLE_FONTS = [
   // Local fonts (already loaded)
-  'Inter', 'AstroMono', 'Geist Mono', 'JetBrains Mono', 'Noto Serif Display',
+  'Inter', 'Geist Mono', 'JetBrains Mono', 'Noto Serif Display',
   // Premium sans-serif
   'DM Sans', 'Plus Jakarta Sans', 'Space Grotesk', 'Outfit', 'Sora',
   'Figtree', 'Urbanist', 'Manrope', 'Work Sans', 'General Sans',
@@ -94,7 +94,7 @@ export const GOOGLE_FONTS = [
 ] as const;
 
 /** Local fonts that don't need Google Fonts loading */
-const LOCAL_FONTS = new Set(['Inter', 'AstroMono', 'Geist Mono', 'JetBrains Mono', 'Noto Serif Display']);
+const LOCAL_FONTS = new Set(['Inter', 'Geist Mono', 'JetBrains Mono', 'Noto Serif Display']);
 
 /** Load a Google Font via CSS link injection */
 export function loadGoogleFont(family: string) {
@@ -110,7 +110,6 @@ export function loadGoogleFont(family: string) {
 
 export const FONT_FAMILY_MAP: Record<string, string> = {
   'Inter': 'Inter, system-ui, sans-serif',
-  'AstroMono': 'AstroMono, monospace',
   'Geist Mono': 'Geist Mono, monospace',
   'JetBrains Mono': 'JetBrains Mono, monospace',
   'Noto Serif Display': 'Noto Serif Display, Georgia, serif',

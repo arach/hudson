@@ -121,7 +121,7 @@ Set \`lightEnabled: true\` via set_param to enable a light variant. Then use set
 ## Wordmark
 Set \`wordmark\` via set_param with an object: \`{ text, fontFamily, fontWeight, fontSize, letterSpacing, color, lightColor, layout, gap }\`.
 - \`layout\`: "icon-only" (default), "horizontal", or "stacked"
-- Available fonts: Inter, AstroMono, Geist Mono, JetBrains Mono, Noto Serif Display
+- Available fonts: Inter, Geist Mono, JetBrains Mono, Noto Serif Display
 - \`fontSize\`: ratio relative to icon height (0.40 = 40%)
 - \`color\` / \`lightColor\`: text color for dark / light mode
 

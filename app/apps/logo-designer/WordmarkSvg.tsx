@@ -53,7 +53,7 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
 
   if (wm.layout === 'horizontal') {
     // Generous text width estimate — accounts for letter-spacing and wide characters
-    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.65 : 0.58;
+    const charWidth = wm.fontFamily.includes('Mono') ? 0.65 : 0.58;
     const spacingExtra = wm.text.length * textFontSize * wm.letterSpacing;
     const textWidth = Math.max(wm.text.length * textFontSize * charWidth + spacingExtra + textFontSize * 0.5, VB * 0.5);
     const totalW = VB + wm.gap + textWidth;
@@ -100,7 +100,7 @@ export function WordmarkSvg({ params, size, mode = 'dark' }: WordmarkSvgProps) {
   if (wm.layout === 'stacked') {
     const textHeight = textFontSize * 1.2;
     const totalH = VB + wm.gap + textHeight;
-    const charWidth = wm.fontFamily.includes('Mono') || wm.fontFamily === 'AstroMono' ? 0.65 : 0.58;
+    const charWidth = wm.fontFamily.includes('Mono') ? 0.65 : 0.58;
     const spacingExtra = wm.text.length * textFontSize * wm.letterSpacing;
     const textWidth = wm.text.length * textFontSize * charWidth + spacingExtra + textFontSize * 0.5;
     const totalW = Math.max(VB, textWidth + 40);

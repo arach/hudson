@@ -311,7 +311,7 @@ function paramReference(): string {
 
 **Light mode:** When \`lightEnabled\` is true, the app renders both dark and light variants side-by-side. The light variant swaps the 4 color fields from \`lightColors\` into the template. Templates are unaware of modes — they just see different colors in \`p\`.
 
-**Wordmark:** Set \`wordmark.layout\` to \`"horizontal"\` or \`"stacked"\` and \`wordmark.text\` to a brand name. Available fonts: Inter, AstroMono, Geist Mono, JetBrains Mono, Noto Serif Display.`;
+**Wordmark:** Set \`wordmark.layout\` to \`"horizontal"\` or \`"stacked"\` and \`wordmark.text\` to a brand name. Available fonts: Inter, Geist Mono, JetBrains Mono, Noto Serif Display.`;
 }
 
 // ---------------------------------------------------------------------------
