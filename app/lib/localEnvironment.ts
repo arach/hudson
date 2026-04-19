@@ -53,7 +53,12 @@ export function maskHudsonEnvValue(value: string): string {
 }
 
 export function parseHudsonEnvFile(text: string): Record<string, string> {
-  return parseEnv(text);
+  const parsed = parseEnv(text);
+  const result: Record<string, string> = {};
+  for (const [k, v] of Object.entries(parsed)) {
+    if (typeof v === 'string') result[k] = v;
+  }
+  return result;
 }
 
 export function serializeHudsonEnvValue(value: string): string {
