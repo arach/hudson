@@ -38,6 +38,20 @@ export interface AppSettingsConfig {
 export type StatusColor = 'emerald' | 'amber' | 'red' | 'neutral';
 
 // ---------------------------------------------------------------------------
+// TakeoverState — return type of useTakeover hook
+// ---------------------------------------------------------------------------
+export interface TakeoverState {
+  /** Whether the Takeover slot should be rendered full-viewport above chrome. */
+  active: boolean;
+  /** When true, the shell renders a close affordance and handles Escape. */
+  dismissible: boolean;
+  /** Called by the shell's close affordance / Escape when dismissible.
+   *  The app decides what "dismiss" means — typically flipping its own state
+   *  so the next render returns active: false. */
+  onDismiss?: () => void;
+}
+
+// ---------------------------------------------------------------------------
 // AppTool — a tool that appears in the right sidebar's accordion
 // ---------------------------------------------------------------------------
 export interface AppTool {
@@ -106,6 +120,11 @@ export interface HudsonApp {
     Inspector?: React.FC;
     LeftFooter?: React.FC;
     Terminal?: React.FC;
+    /** Full-viewport component rendered above the shell when useTakeover
+     *  returns active. When present, the rest of the shell is marked
+     *  `inert` + `aria-hidden`. Used for first-run setup, onboarding, or any
+     *  flow that must block app interaction until completed or dismissed. */
+    Takeover?: React.FC;
   };
 
   /** Static intent declarations for LLM/voice/search indexing */
@@ -136,5 +155,10 @@ export interface HudsonApp {
     usePortOutput?: () => (portId: string) => unknown | null;
     /** Returns a setter: (portId, data) => void */
     usePortInput?: () => (portId: string, data: unknown) => void;
+    /** Controls the Takeover slot. Return null or active:false to pass through
+     *  to the normal shell; return active:true to mount the Takeover slot
+     *  above chrome. AppShell is stateless about dismissal — the hook's own
+     *  state is what persists or clears the takeover. */
+    useTakeover?: () => TakeoverState | null;
   };
 }

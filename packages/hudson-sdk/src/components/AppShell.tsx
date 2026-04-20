@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useCallback, useEffect, useMemo } from 'react';
+import React, { useState, useCallback, useEffect, useMemo, useRef } from 'react';
 import Frame from './chrome/Frame';
 import NavigationBar from './chrome/NavigationBar';
 import SidePanel from './chrome/SidePanel';
@@ -49,6 +49,11 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   const appNavActions = app.hooks.useNavActions?.() ?? null;
   const layoutMode = app.hooks.useLayoutMode?.() ?? app.mode;
   const activeToolHint = app.hooks.useActiveToolHint?.() ?? null;
+  const takeover = app.hooks.useTakeover?.() ?? null;
+  const takeoverActive = takeover?.active === true;
+  const takeoverDismissible = takeoverActive && takeover?.dismissible === true;
+  const takeoverOnDismiss = takeover?.onDismiss;
+  const TakeoverSlot = app.slots.Takeover;
 
   // Panel state
   const [leftCollapsed, setLeftCollapsed] = usePersistentState(`appshell.${app.id}.left`, false);
@@ -150,9 +155,11 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     ...shellCommands,
   ], [appCommands, shellCommands]);
 
-  // Keyboard shortcuts
+  // Keyboard shortcuts — suppressed while a takeover is active so the
+  // blocking flow isn't bypassed by chrome shortcuts (cmd+k, terminal, etc.)
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (takeoverActive) return;
       if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setShowCommandPalette(true);
@@ -177,7 +184,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab]);
+  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab, takeoverActive]);
 
   // Right panel content: Inspector + tools accordion
   const InspectorSlot = app.slots.Inspector;
@@ -225,6 +232,43 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     </>
   );
 
+  // Takeover refs + effects — background goes `inert` while active so focus
+  // and pointer events can't reach chrome. Initial focus is moved into the
+  // overlay; Escape dismisses when dismissible. Focus stays trapped naturally
+  // because everything outside is inert.
+  const backgroundRef = useRef<HTMLDivElement>(null);
+  const takeoverRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const el = backgroundRef.current;
+    if (!el) return;
+    if (takeoverActive) {
+      el.setAttribute('inert', '');
+    } else {
+      el.removeAttribute('inert');
+    }
+  }, [takeoverActive]);
+
+  useEffect(() => {
+    if (!takeoverActive) return;
+    const el = takeoverRef.current;
+    if (el) {
+      const firstFocusable = el.querySelector<HTMLElement>(
+        'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])',
+      );
+      (firstFocusable ?? el).focus();
+    }
+    if (!takeoverDismissible) return;
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') {
+        e.preventDefault();
+        takeoverOnDismiss?.();
+      }
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [takeoverActive, takeoverDismissible, takeoverOnDismiss]);
+
   // Content insets — offset content area so it doesn't render behind fixed chrome
   const contentStyle: React.CSSProperties = layoutMode === 'panel' ? {
     position: 'absolute',
@@ -237,6 +281,8 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   } : {};
 
   return (
+    <>
+    <div ref={backgroundRef} aria-hidden={takeoverActive ? true : undefined} style={{ display: 'contents' }}>
     <Frame
       mode={layoutMode}
       panOffset={panOffset}
@@ -342,6 +388,19 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
         <app.slots.Content />
       </div>
     </Frame>
+    </div>
+    {takeoverActive && TakeoverSlot ? (
+      <div
+        ref={takeoverRef}
+        tabIndex={-1}
+        role="dialog"
+        aria-modal="true"
+        style={{ position: 'fixed', inset: 0, zIndex: 80, outline: 'none' }}
+      >
+        <TakeoverSlot />
+      </div>
+    ) : null}
+    </>
   );
 }
 
