@@ -29,4 +29,6 @@ export interface HudsonWorkspace {
   apps: WorkspaceAppConfig[];
   /** Which app receives focus by default */
   defaultFocusedAppId?: string;
+  /** Initial canvas zoom when the workspace first boots. Defaults to 1 (100%). */
+  defaultScale?: number;
 }

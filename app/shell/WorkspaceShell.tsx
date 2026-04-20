@@ -957,7 +957,7 @@ function WorkspaceInner({
   const [rightWidth, setRightWidth] = usePersistentState('hudson.rightW', DEFAULTS.rightWidth);
 
   const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS);
-  const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, DEFAULTS.zoom, PERSIST_DEBOUNCE_MS);
+  const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS);
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);

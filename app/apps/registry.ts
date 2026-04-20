@@ -184,6 +184,7 @@ export function getHudsonOSWorkspace(): HudsonWorkspace {
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
+    defaultScale: 0.5,
   };
 }
 
@@ -196,6 +197,7 @@ export function getScoutOpsWorkspace(): HudsonWorkspace {
     mode: 'canvas',
     apps: getScoutOpsApps(),
     defaultFocusedAppId: 'openscout',
+    defaultScale: 0.2,
   };
 }
 
