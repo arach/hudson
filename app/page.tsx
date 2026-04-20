@@ -11,10 +11,12 @@ import {
   Terminal,
 } from 'lucide-react';
 import { InterestForm } from './_components/InterestForm';
+import { GlyphWavesBackground } from './_components/GlyphWavesBackground';
 
 export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--foreground)]">
+      <GlyphWavesBackground />
       <BackgroundGrid />
       <Nav />
       <Hero />
