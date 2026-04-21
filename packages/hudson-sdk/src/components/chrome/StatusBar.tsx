@@ -28,10 +28,10 @@ interface StatusBarProps {
 }
 
 const STATUS_COLORS = {
-  emerald: { dot: 'bg-emerald-500', ping: 'bg-emerald-400', text: 'text-emerald-500' },
-  amber: { dot: 'bg-amber-500', ping: 'bg-amber-400', text: 'text-amber-500' },
-  red: { dot: 'bg-red-500', ping: 'bg-red-400', text: 'text-red-500' },
-  neutral: { dot: 'bg-neutral-500', ping: 'bg-neutral-400', text: 'text-neutral-400' },
+  emerald: { dot: 'bg-success', ping: 'bg-success', text: 'text-success' },
+  amber: { dot: 'bg-warning', ping: 'bg-warning', text: 'text-warning' },
+  red: { dot: 'bg-destructive', ping: 'bg-destructive', text: 'text-destructive' },
+  neutral: { dot: 'bg-muted-foreground', ping: 'bg-muted-foreground', text: 'text-muted-foreground' },
 };
 
 const StatusBar: React.FC<StatusBarProps> = ({
@@ -69,7 +69,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[12px] text-neutral-200 pointer-events-auto`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[12px] text-foreground pointer-events-auto`}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
       <div className="flex items-center gap-4">
@@ -78,14 +78,14 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <>
             <button
               onClick={onExpandMinimap}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-white/5 border border-neutral-800 hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 border border-border/70 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
               title="Expand minimap"
             >
               <Map size={10} />
               <span className="text-[11px] font-bold">MAP</span>
               <Maximize2 size={8} className="opacity-60" />
             </button>
-            <div className="h-3 w-px bg-neutral-700" />
+            <div className="h-3 w-px bg-border" />
           </>
         )}
 
@@ -100,7 +100,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         {left && (
           <>
-            <div className="h-3 w-px bg-neutral-700" />
+            <div className="h-3 w-px bg-border" />
             {left}
           </>
         )}
@@ -111,26 +111,26 @@ const StatusBar: React.FC<StatusBarProps> = ({
         <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
           <button
             onClick={handleCopyViewport}
-            className="flex items-center gap-3 hover:text-neutral-200 transition-colors cursor-pointer"
+            className="flex items-center gap-3 hover:text-foreground transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
             title="Copy viewport data"
           >
             <div className="flex items-center gap-1">
-              <span className="text-neutral-400">PAN:</span>
-              <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
+              <span className="text-muted-foreground">PAN:</span>
+              <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {viewport.pan.x.toFixed(0)},{viewport.pan.y.toFixed(0)}
               </span>
             </div>
-            <div className="h-3 w-px bg-neutral-700" />
+            <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
-              <span className="text-neutral-400">SIZE:</span>
-              <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
+              <span className="text-muted-foreground">SIZE:</span>
+              <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {viewport.canvasSize?.w ?? 1024}x{viewport.canvasSize?.h ?? 1024}
               </span>
             </div>
-            <div className="h-3 w-px bg-neutral-700" />
+            <div className="h-3 w-px bg-border" />
             <div className="flex items-center gap-1">
-              <span className="text-neutral-400">ZOOM:</span>
-              <span className={`tabular-nums ${vpCopied ? 'text-emerald-500' : ''}`}>
+              <span className="text-muted-foreground">ZOOM:</span>
+              <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {(viewport.zoom * 100).toFixed(0)}%
               </span>
             </div>
@@ -142,28 +142,28 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <div className="flex items-center gap-4">
         {right}
 
-        {right && <div className="h-3 w-px bg-neutral-700" />}
+        {right && <div className="h-3 w-px bg-border" />}
 
         {onToggleTerminal && (
           <>
             <button
               onClick={onToggleTerminal}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all ${
+              className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
                 isTerminalOpen
-                  ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30'
-                  : 'text-neutral-400 hover:text-neutral-100 hover:bg-white/5 border border-transparent'
+                  ? 'bg-accent/10 text-accent border border-accent/30'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-transparent'
               }`}
               title="Toggle Terminal (Ctrl+`)"
             >
               <span className="text-[12px]">{'>'}_</span>
               <span className="uppercase text-[11px] font-semibold tracking-wider">Console</span>
             </button>
-            <div className="h-3 w-px bg-neutral-700" />
+            <div className="h-3 w-px bg-border" />
           </>
         )}
 
-        <div className="flex items-center gap-1.5 text-neutral-200 min-w-[60px] justify-end">
-          <Clock size={11} className="text-neutral-400" />
+        <div className="flex items-center gap-1.5 text-foreground min-w-[60px] justify-end">
+          <Clock size={11} className="text-muted-foreground" />
           <span>{mounted ? time.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '--:--'}</span>
         </div>
       </div>

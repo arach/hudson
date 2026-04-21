@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Geist_Mono, Jura } from "next/font/google";
+import { HudsonThemeScript, ThemeProvider } from "@hudson/sdk";
 import Script from "next/script";
 import "./globals.css";
 
@@ -44,9 +45,13 @@ export default function RootLayout({
   return (
     <html
       lang="en"
+      suppressHydrationWarning
       className={`${geistMono.variable} ${jura.variable}`}
+      data-hudson-template="hudson"
+      data-hudson-theme="dark"
     >
       <head>
+        <HudsonThemeScript storageKey="hudson.settings" />
         <Script
           src="https://www.googletagmanager.com/gtag/js?id=G-GSHDZPFRZG"
           strategy="afterInteractive"
@@ -59,7 +64,9 @@ export default function RootLayout({
         </Script>
       </head>
       <body className="antialiased">
-        {children}
+        <ThemeProvider storageKey="hudson.settings">
+          {children}
+        </ThemeProvider>
       </body>
     </html>
   );

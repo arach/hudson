@@ -12,12 +12,14 @@ import {
 } from 'lucide-react';
 import { InterestForm } from './_components/InterestForm';
 import { GlyphWavesBackground } from './_components/GlyphWavesBackground';
+import { ThemePreviewControls } from './_components/ThemePreviewControls';
 
 export default function Home() {
   return (
-    <main className="relative min-h-screen overflow-x-hidden bg-[var(--background)] text-[var(--foreground)]">
+    <main className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <GlyphWavesBackground />
       <BackgroundGrid />
+      <ThemePreviewControls />
       <Nav />
       <Hero />
       <LivePreview />
@@ -36,28 +38,31 @@ export default function Home() {
 
 function Nav() {
   return (
-    <header className="relative z-10 flex items-center justify-between px-6 md:px-10 h-14 border-b border-white/5">
-      <Link href="/" className="flex items-center gap-2">
-        <HudsonMark className="w-5 h-5 text-cyan-400" />
+    <header className="relative z-10 flex items-center justify-between px-6 md:px-10 h-14 border-b border-border/50 backdrop-blur-sm bg-background/60">
+      <Link
+        href="/"
+        className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+      >
+        <HudsonMark className="w-5 h-5 text-cyan-500" />
         <span className="font-brand text-[15px] tracking-wider">HUDSON</span>
       </Link>
       <nav className="flex items-center gap-1 text-[13px]">
         <Link
           href="/docs"
-          className="px-3 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/5 transition"
+          className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Docs
         </Link>
         <a
           href="https://github.com/arach/hudson"
-          className="px-3 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           <Github className="w-3.5 h-3.5" />
           GitHub
         </a>
         <Link
           href="/app"
-          className="ml-2 px-3 py-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition flex items-center gap-1.5"
+          className="ml-2 px-3 py-1.5 rounded-md border border-cyan-500/40 bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 hover:border-cyan-500/60 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
           Open Workspace
           <ArrowRight className="w-3.5 h-3.5" />
@@ -75,7 +80,7 @@ function Hero() {
   return (
     <section className="relative px-6 md:px-10 pt-20 pb-14 md:pt-28 md:pb-20">
       <div className="max-w-5xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.02] text-[11px] tracking-wider uppercase text-white/50 mb-6">
+        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted/20 text-[11px] tracking-wider uppercase text-muted-foreground/80 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
           v0.1 — Source-available under FSL-1.1-MIT
         </div>
@@ -84,9 +89,9 @@ function Hero() {
           <br />
           canvas-friendly,
           <br />
-          <span className="text-cyan-300">AI-powered web apps.</span>
+          <span className="text-cyan-500">AI-powered web apps.</span>
         </h1>
-        <p className="mt-8 max-w-2xl text-base md:text-lg text-white/60 leading-relaxed">
+        <p className="mt-8 max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed">
           Hudson is a shell and primitives library for composing canvas
           workspaces and single-app dashboards. Provider + Slots + Hooks —
           apps own state, the shell renders chrome.
@@ -94,18 +99,18 @@ function Hero() {
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link
             href="/app"
-            className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-cyan-400/40 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/60 transition"
+            className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-cyan-500/50 bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 hover:border-cyan-500/70 transition font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Open the Workspace
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             href="/docs"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-white/10 bg-white/[0.02] hover:bg-white/5 hover:border-white/20 transition text-white/80"
+            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-border transition text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
             Read the Docs
           </Link>
-          <code className="ml-2 px-3 py-2 rounded-md border border-white/5 bg-white/[0.02] font-mono text-[13px] text-white/60">
+          <code className="ml-2 px-3 py-2 rounded-md border border-border/50 bg-muted/20 font-mono text-[13px] text-muted-foreground">
             bun add @hudsonos/sdk
           </code>
         </div>
@@ -124,16 +129,16 @@ function LivePreview() {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               Live / Interactive
             </div>
-            <h2 className="mt-1 text-xl md:text-2xl font-medium text-white/90">
+            <h2 className="mt-1 text-xl md:text-2xl font-medium text-foreground/90">
               The workspace, running inline
             </h2>
           </div>
           <Link
             href="/app"
-            className="hidden md:inline-flex items-center gap-1.5 text-[12px] text-white/60 hover:text-white transition"
+            className="hidden md:inline-flex items-center gap-1.5 text-[12px] text-muted-foreground hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             Open fullscreen
@@ -149,14 +154,14 @@ function LivePreview() {
           />
         </HudFrame>
 
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-white/40">
+        <div className="mt-3 flex items-center gap-4 text-[11px] text-muted-foreground/80">
           <div className="flex items-center gap-1.5">
             <MousePointer2 className="w-3 h-3" />
             Click to interact
           </div>
-          <div className="hidden md:block">•</div>
+          <div className="hidden md:block">·</div>
           <div>Space + drag to pan</div>
-          <div className="hidden md:block">•</div>
+          <div className="hidden md:block">·</div>
           <div>Scroll to zoom</div>
         </div>
       </div>
@@ -170,7 +175,7 @@ function LivePreview() {
 
 function Features() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-5xl mx-auto">
         <div className="grid md:grid-cols-2 gap-10 md:gap-16">
           <FeatureColumn
@@ -239,20 +244,20 @@ function FeatureColumn({
       <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
         {eyebrow}
       </div>
-      <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90 mb-8">
+      <h3 className="mt-1 text-2xl md:text-3xl font-medium text-foreground/90 mb-8">
         {title}
       </h3>
       <ul className="space-y-6">
         {items.map((it, i) => (
           <li key={i} className="flex gap-4">
-            <div className="flex-shrink-0 w-9 h-9 rounded-md border border-cyan-400/20 bg-cyan-400/5 flex items-center justify-center">
-              <it.icon className="w-4 h-4 text-cyan-300" />
+            <div className="flex-shrink-0 w-9 h-9 rounded-md border border-cyan-500/30 bg-cyan-500/10 flex items-center justify-center">
+              <it.icon className="w-4 h-4 text-cyan-600" />
             </div>
             <div>
-              <div className="text-[14px] font-medium text-white/90">
+              <div className="text-[14px] font-medium text-foreground/90">
                 {it.title}
               </div>
-              <p className="mt-1 text-[13px] text-white/55 leading-relaxed">
+              <p className="mt-1 text-[13px] text-muted-foreground leading-relaxed">
                 {it.body}
               </p>
             </div>
@@ -269,29 +274,37 @@ function FeatureColumn({
 
 function CodeSnippet() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-5xl mx-auto">
         <div className="grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
           <div className="lg:col-span-2">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               One interface, everything wired
             </div>
-            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90">
+            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-foreground/90">
               Define a{' '}
-              <code className="font-mono text-cyan-300">HudsonApp</code>, get
-              the rest.
+              <code className="font-mono text-cyan-500">HudsonApp</code>
+              , get the rest.
             </h3>
-            <p className="mt-4 text-[14px] text-white/55 leading-relaxed">
+            <p className="mt-4 text-[14px] text-muted-foreground leading-relaxed">
               A single object plugs your component into the workspace — menu,
               intents, settings, AI capabilities. No shell code to write.
             </p>
           </div>
           <div className="lg:col-span-3">
-            <HudFrame compact>
-              <pre className="font-mono text-[12.5px] leading-[1.7] overflow-x-auto px-6 py-5 bg-[#06080a]">
+            <div className="relative rounded-xl border border-slate-900/10 dark:border-border overflow-hidden bg-[#06080a] shadow-[0_24px_60px_-24px_rgba(8,15,30,0.25)] dark:shadow-[0_20px_60px_-20px_rgba(34,211,238,0.15)]">
+              <div className="flex items-center gap-1.5 px-4 py-2.5 border-b border-white/5 bg-white/[0.02]">
+                <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                <span className="w-2.5 h-2.5 rounded-full bg-white/10" />
+                <span className="ml-3 font-mono text-[10.5px] tracking-wider uppercase text-white/30">
+                  notepad.app.ts
+                </span>
+              </div>
+              <pre className="font-mono text-[12.5px] leading-[1.7] overflow-x-auto px-6 py-5">
                 <Code />
               </pre>
-            </HudFrame>
+            </div>
           </div>
         </div>
       </div>
@@ -332,12 +345,12 @@ function Code() {
 
 function Shells() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-5xl mx-auto">
-        <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70 text-center">
+        <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500 text-center">
           Two shells, same primitives
         </div>
-        <h3 className="mt-1 text-center text-2xl md:text-3xl font-medium text-white/90 mb-12">
+        <h3 className="mt-1 text-center text-2xl md:text-3xl font-medium text-foreground/90 mb-12">
           Pick the chrome that fits.
         </h3>
         <div className="grid md:grid-cols-2 gap-5">
@@ -372,23 +385,39 @@ function ShellCard({
 }) {
   const ring =
     accent === 'cyan'
-      ? 'border-cyan-400/20 hover:border-cyan-400/40'
-      : 'border-emerald-400/20 hover:border-emerald-400/40';
-  const text = accent === 'cyan' ? 'text-cyan-300' : 'text-emerald-300';
+      ? 'border-cyan-500/40 hover:border-cyan-500/70'
+      : 'border-emerald-500/40 hover:border-emerald-500/70';
+  const text =
+    accent === 'cyan' ? 'text-cyan-600 dark:text-cyan-400' : 'text-emerald-600 dark:text-emerald-400';
+  const dot = accent === 'cyan' ? 'bg-cyan-500' : 'bg-emerald-500';
+  const glow =
+    accent === 'cyan'
+      ? 'bg-cyan-500/[0.06]'
+      : 'bg-emerald-500/[0.06]';
   return (
     <div
-      className={`relative rounded-lg border ${ring} bg-white/[0.02] p-6 transition`}
+      className={`group relative rounded-lg border ${ring} bg-card p-6 transition overflow-hidden shadow-sm hover:shadow-md dark:shadow-none`}
     >
-      <div className="flex items-baseline justify-between">
-        <div className={`font-brand text-lg ${text}`}>{name}</div>
-        <div className="text-[11px] uppercase tracking-wider text-white/40">
-          {accent === 'cyan' ? 'Multi-app' : 'Single app'}
+      <div
+        className={`pointer-events-none absolute inset-x-0 -top-16 h-32 ${glow} blur-2xl opacity-0 group-hover:opacity-100 transition-opacity`}
+      />
+      <div className="relative">
+        <div className="flex items-baseline justify-between">
+          <div className="flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full ${dot}`} />
+            <div className={`font-brand text-lg ${text}`}>{name}</div>
+          </div>
+          <div className="text-[11px] uppercase tracking-wider text-muted-foreground/80">
+            {accent === 'cyan' ? 'Multi-app' : 'Single app'}
+          </div>
         </div>
+        <div className="mt-3 text-[15px] font-medium text-foreground/90">
+          {tagline}
+        </div>
+        <p className="mt-3 text-[13px] text-muted-foreground leading-relaxed">
+          {body}
+        </p>
       </div>
-      <div className="mt-2 text-[15px] font-medium text-white/85">
-        {tagline}
-      </div>
-      <p className="mt-3 text-[13px] text-white/55 leading-relaxed">{body}</p>
     </div>
   );
 }
@@ -399,17 +428,17 @@ function ShellCard({
 
 function Interest() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-2xl mx-auto">
         <HudFrame>
           <div className="px-6 md:px-10 py-10">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               Interested?
             </div>
-            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90">
+            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-foreground/90">
               Hudson is shipping in the open.
             </h3>
-            <p className="mt-3 text-[14px] text-white/55 leading-relaxed">
+            <p className="mt-3 text-[14px] text-muted-foreground leading-relaxed">
               If you&apos;re thinking about building on Hudson — or just want
               to follow along as the SDK, workspace, and primitives come
               together — drop your email. We&apos;ll reach out when something
@@ -431,31 +460,37 @@ function Interest() {
 
 function Footer() {
   return (
-    <footer className="relative border-t border-white/5 px-6 md:px-10 py-10">
+    <footer className="relative border-t border-border/50 px-6 md:px-10 py-10">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-2">
-          <HudsonMark className="w-4 h-4 text-white/40" />
-          <span className="font-brand text-[13px] tracking-wider text-white/50">
+          <HudsonMark className="w-4 h-4 text-muted-foreground/80" />
+          <span className="font-brand text-[13px] tracking-wider text-muted-foreground">
             HUDSON
           </span>
-          <span className="ml-2 text-[12px] text-white/30">
+          <span className="ml-2 text-[12px] text-muted-foreground/60">
             © 2026 Arach Tchoupani
           </span>
         </div>
-        <div className="flex items-center gap-5 text-[12px] text-white/40">
-          <Link href="/docs" className="hover:text-white/80 transition">
+        <div className="flex items-center gap-5 text-[12px] text-muted-foreground/80">
+          <Link
+            href="/docs"
+            className="hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
             Docs
           </Link>
-          <Link href="/app" className="hover:text-white/80 transition">
+          <Link
+            href="/app"
+            className="hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
+          >
             Workspace
           </Link>
           <a
             href="https://github.com/arach/hudson"
-            className="hover:text-white/80 transition"
+            className="hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           >
             GitHub
           </a>
-          <span className="text-white/30">FSL-1.1-MIT</span>
+          <span className="text-muted-foreground/60">FSL-1.1-MIT</span>
         </div>
       </div>
     </footer>
@@ -475,10 +510,10 @@ function HudFrame({
 }) {
   return (
     <div
-      className={`relative rounded-xl border border-white/10 bg-white/[0.015] ${
+      className={`relative rounded-xl border border-border bg-card/80 dark:bg-card/50 ${
         compact
           ? ''
-          : 'shadow-[0_20px_60px_-20px_rgba(34,211,238,0.15)]'
+          : 'shadow-[0_24px_70px_-28px_rgba(15,23,42,0.15)] dark:shadow-[0_24px_70px_-28px_rgba(34,211,238,0.18)]'
       } overflow-hidden`}
     >
       <Corners />
@@ -488,7 +523,8 @@ function HudFrame({
 }
 
 function Corners() {
-  const base = 'absolute w-3 h-3 border-cyan-400/40 pointer-events-none';
+  const base =
+    'absolute w-3 h-3 border-cyan-600/40 dark:border-cyan-500/50 pointer-events-none';
   return (
     <>
       <span className={`${base} top-1 left-1 border-t border-l`} />
@@ -503,10 +539,10 @@ function BackgroundGrid() {
   return (
     <>
       <div
-        className="fixed inset-0 pointer-events-none opacity-[0.025]"
+        className="fixed inset-0 pointer-events-none text-foreground opacity-[0.04] dark:opacity-[0.05]"
         style={{
           backgroundImage:
-            'linear-gradient(to right, rgba(255,255,255,0.6) 1px, transparent 1px), linear-gradient(to bottom, rgba(255,255,255,0.6) 1px, transparent 1px)',
+            'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
           backgroundSize: '64px 64px',
           maskImage:
             'radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%)',
@@ -515,10 +551,10 @@ function BackgroundGrid() {
         }}
       />
       <div
-        className="fixed -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none rounded-full opacity-[0.12]"
+        className="fixed -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none rounded-full opacity-[0.18] dark:opacity-[0.25]"
         style={{
           background:
-            'radial-gradient(ellipse at center, rgba(34,211,238,0.5), transparent 60%)',
+            'radial-gradient(ellipse at center, rgba(34,211,238,0.4), transparent 60%)',
           filter: 'blur(80px)',
         }}
       />

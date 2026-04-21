@@ -25,8 +25,8 @@ export function DocsContent() {
         const isHubSelected = selectedCard === 'hub';
         const g = settings.glowIntensity / 100;
         const hubShadow = isHubSelected
-          ? `0 0 40px rgba(16,185,129,${(0.3*g).toFixed(3)}), 0 0 80px rgba(16,185,129,${(0.15*g).toFixed(3)}), inset 0 1px 0 rgba(16,185,129,${(0.2*g).toFixed(3)})`
-          : '0 0 40px rgba(0,0,0,0.6)';
+          ? `0 0 40px color-mix(in srgb, oklch(var(--accent)) ${(0.3 * g * 100).toFixed(1)}%, transparent), 0 0 80px color-mix(in srgb, oklch(var(--accent)) ${(0.15 * g * 100).toFixed(1)}%, transparent), inset 0 1px 0 color-mix(in srgb, oklch(var(--accent)) ${(0.2 * g * 100).toFixed(1)}%, transparent)`
+          : '0 24px 60px color-mix(in srgb, oklch(var(--foreground)) 14%, transparent)';
         return (
           <div
             className="absolute pointer-events-none"
@@ -40,12 +40,12 @@ export function DocsContent() {
               onMouseDown={(e) => handleSheetDragStart('hub', e)}
               onClick={() => { if (!isDraggingRef.current) setSelectedCard('hub'); }}
               style={{ boxShadow: hubShadow }}
-              className={`w-[480px] p-6 border rounded-lg bg-neutral-800/40 backdrop-blur-sm pointer-events-auto cursor-grab active:cursor-grabbing transition-all ${
-                isHubSelected ? 'border-emerald-500/80' : 'border-neutral-700/50 hover:border-neutral-600/80'
+              className={`w-[480px] p-6 border rounded-lg bg-card/78 backdrop-blur-sm pointer-events-auto cursor-grab active:cursor-grabbing transition-all ${
+                isHubSelected ? 'border-emerald-500/80' : 'border-border/70 hover:border-border'
               }`}
             >
-              <h1 className="text-xl font-bold text-white mb-1 font-mono tracking-wider">HUDSON</h1>
-              <p className="text-neutral-300 text-[11px] font-mono mb-5">
+              <h1 className="text-xl font-bold text-foreground mb-1 font-mono tracking-wider">HUDSON</h1>
+              <p className="text-muted-foreground text-[11px] font-mono mb-5">
                 Reference cards for the Hudson component library. Click to open.
               </p>
               <div className="grid grid-cols-2 gap-2 text-[11px] font-mono">
@@ -59,23 +59,23 @@ export function DocsContent() {
                       className={`p-2.5 rounded border text-left transition-all cursor-pointer pointer-events-auto ${
                         isOpen
                           ? 'border-emerald-500/50 bg-emerald-500/5'
-                          : 'border-neutral-700/50 bg-neutral-900/40 hover:border-neutral-700 hover:bg-black/50'
+                          : 'border-border/60 bg-background/55 hover:border-border hover:bg-accent/8'
                       }`}
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <Icon size={10} className={isOpen ? 'text-emerald-400' : 'text-neutral-400'} />
+                        <Icon size={10} className={isOpen ? 'text-emerald-400' : 'text-muted-foreground'} />
                         <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-emerald-400' : 'text-emerald-400/70'}`}>{c.label}</span>
                       </div>
-                      <div className="text-neutral-400 text-[9px] font-mono leading-tight mb-0.5">{c.ns}</div>
-                      <div className="text-neutral-300 text-[10px] leading-tight">{c.desc}</div>
+                      <div className="text-muted-foreground text-[9px] font-mono leading-tight mb-0.5">{c.ns}</div>
+                      <div className="text-foreground/76 text-[10px] leading-tight">{c.desc}</div>
                     </button>
                   );
                 })}
               </div>
 
               {/* Guides section */}
-              <div className="mt-5 pt-4 border-t border-neutral-700/30">
-                <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Guides</div>
+              <div className="mt-5 pt-4 border-t border-border/60">
+                <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Guides</div>
                 <div className="space-y-1.5">
                   {AGENT_DOCS.map(doc => {
                     const sheetId = `agent:${doc.slug}`;
@@ -87,13 +87,13 @@ export function DocsContent() {
                         className={`w-full p-2 rounded border text-left transition-all cursor-pointer pointer-events-auto flex items-center gap-2 ${
                           isOpen
                             ? 'border-emerald-500/50 bg-emerald-500/5'
-                            : 'border-neutral-700/50 bg-neutral-900/40 hover:border-neutral-700 hover:bg-black/50'
+                            : 'border-border/60 bg-background/55 hover:border-border hover:bg-accent/8'
                         }`}
                       >
-                        <Bot size={10} className={isOpen ? 'text-emerald-400' : 'text-neutral-400'} />
+                        <Bot size={10} className={isOpen ? 'text-emerald-400' : 'text-muted-foreground'} />
                         <div className="min-w-0">
                           <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-emerald-400' : 'text-emerald-400/70'}`}>{doc.title}</span>
-                          <div className="text-neutral-300 text-[10px] leading-tight">{doc.description}</div>
+                          <div className="text-foreground/76 text-[10px] leading-tight">{doc.description}</div>
                         </div>
                       </button>
                     );
@@ -217,8 +217,8 @@ function ConnectorLines() {
         }
 
         const isSelected = selectedCard === id;
-        const lineColor = isSelected ? 'rgba(16,185,129,0.3)' : 'rgba(16,185,129,0.08)';
-        const dotColor = isSelected ? 'rgba(16,185,129,0.5)' : 'rgba(16,185,129,0.2)';
+        const lineColor = isSelected ? 'oklch(var(--accent) / 0.34)' : 'oklch(var(--accent) / 0.16)';
+        const dotColor = isSelected ? 'oklch(var(--accent) / 0.5)' : 'oklch(var(--accent) / 0.24)';
         const dash = { dashed: '4 4', solid: undefined, dotted: '2 2' }[settings.connectorStyle];
         return (
           <g key={id}>
@@ -229,8 +229,8 @@ function ConnectorLines() {
               strokeWidth={isSelected ? 1.5 : 1}
               strokeDasharray={dash}
             />
-            <circle cx={hubAnchor.x} cy={hubAnchor.y} r={3} fill="black" stroke={dotColor} strokeWidth={1.5} />
-            <circle cx={sheetAnchor.x} cy={sheetAnchor.y} r={3} fill="black" stroke={dotColor} strokeWidth={1.5} />
+            <circle cx={hubAnchor.x} cy={hubAnchor.y} r={3} fill="oklch(var(--background))" stroke={dotColor} strokeWidth={1.5} />
+            <circle cx={sheetAnchor.x} cy={sheetAnchor.y} r={3} fill="oklch(var(--background))" stroke={dotColor} strokeWidth={1.5} />
           </g>
         );
       })}

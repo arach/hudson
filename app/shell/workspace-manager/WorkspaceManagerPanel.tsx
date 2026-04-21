@@ -61,7 +61,7 @@ function AppSettingsInline({ entry }: { entry: AppSettingsEntry }) {
     <div className="space-y-5">
       {entry.config.sections.map(section => (
         <div key={section.label}>
-          <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest mb-2.5">{section.label}</div>
+          <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mb-2.5">{section.label}</div>
           <div className="space-y-3">
             {section.fields.map(field => {
               const value = entry.values[field.key] ?? field.default;
@@ -108,19 +108,19 @@ function ServiceCard({ serviceId }: { serviceId: string }) {
   }, [executeAction, serviceId]);
 
   return (
-    <div className="rounded-lg border border-neutral-700/60 bg-neutral-900/40 overflow-hidden min-w-0">
+    <div className="rounded-lg border border-border/70 bg-card/72 overflow-hidden min-w-0">
       <div className="flex items-center gap-2.5 px-3 py-2.5 min-w-0">
         <div className={`w-2 h-2 rounded-full flex-shrink-0 ${SVC_STATUS_COLORS[status]}`} />
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2">
-            <span className="text-[12px] font-mono font-medium text-neutral-200">{svc?.name ?? serviceId}</span>
-            {svc?.version && <span className="text-[10px] font-mono text-neutral-500">v{svc.version}</span>}
+            <span className="text-[12px] font-mono font-medium text-foreground/84">{svc?.name ?? serviceId}</span>
+            {svc?.version && <span className="text-[10px] font-mono text-muted-foreground">v{svc.version}</span>}
           </div>
-          {svc?.description && <div className="text-[10px] font-mono text-neutral-500 truncate">{svc.description}</div>}
+          {svc?.description && <div className="text-[10px] font-mono text-muted-foreground truncate">{svc.description}</div>}
         </div>
-        <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider flex-shrink-0">{SVC_STATUS_LABELS[status]}</span>
+        <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider flex-shrink-0">{SVC_STATUS_LABELS[status]}</span>
       </div>
-      <div className="border-t border-neutral-700/40 px-3 py-2.5 space-y-2.5">
+      <div className="border-t border-border/60 px-3 py-2.5 space-y-2.5">
         <div className="flex gap-2 flex-wrap">
           {status !== 'running' && <ServiceActionButton label="Start" loading={loadingAction === 'start'} onClick={() => handleAction('start')} />}
           {status === 'running' && <ServiceActionButton label="Stop" variant="danger" loading={loadingAction === 'stop'} onClick={() => handleAction('stop')} />}
@@ -128,30 +128,30 @@ function ServiceCard({ serviceId }: { serviceId: string }) {
           {(status === 'not_installed' || status === 'unknown') && <ServiceActionButton label="Install" variant="secondary" loading={loadingAction === 'install'} onClick={() => handleAction('install')} />}
         </div>
         <div className="flex items-center justify-between">
-          <span className="text-[10px] font-mono text-neutral-500">Auto-start</span>
+          <span className="text-[10px] font-mono text-muted-foreground">Auto-start</span>
           <button
             onClick={() => toggleAutoStart(serviceId)}
-            className={`w-7 h-4 rounded-full relative transition-colors ${isAutoStart ? 'bg-emerald-600' : 'bg-neutral-700'}`}
+            className={`w-7 h-4 rounded-full relative transition-colors ${isAutoStart ? 'bg-emerald-600' : 'bg-muted'}`}
           >
-            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-white shadow transition-transform ${isAutoStart ? 'left-[13px]' : 'left-0.5'}`} />
+            <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${isAutoStart ? 'left-[13px]' : 'left-0.5'}`} />
           </button>
         </div>
         <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono">
-          {record?.pid && <><span className="text-neutral-500">PID</span><span className="text-neutral-300">{record.pid}</span></>}
-          {svc?.check.port && <><span className="text-neutral-500">Port</span><span className="text-neutral-300">{svc.check.port}</span></>}
-          {record?.lastChecked && <><span className="text-neutral-500">Checked</span><span className="text-neutral-300">{new Date(record.lastChecked).toLocaleTimeString()}</span></>}
+          {record?.pid && <><span className="text-muted-foreground">PID</span><span className="text-foreground/78">{record.pid}</span></>}
+          {svc?.check.port && <><span className="text-muted-foreground">Port</span><span className="text-foreground/78">{svc.check.port}</span></>}
+          {record?.lastChecked && <><span className="text-muted-foreground">Checked</span><span className="text-foreground/78">{new Date(record.lastChecked).toLocaleTimeString()}</span></>}
         </div>
         {record?.error && <div className="text-[10px] font-mono text-red-400 bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5 break-words">{record.error}</div>}
         {svcHistory.length > 0 && (
           <div>
-            <div className="text-[9px] font-mono text-neutral-500 uppercase tracking-widest mb-1">Recent</div>
+            <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mb-1">Recent</div>
             <div className="space-y-0.5">
               {svcHistory.map(h => (
                 <div key={h.id} className="flex items-center gap-2 text-[10px] font-mono py-0.5">
                   <span className={`w-1 h-1 rounded-full flex-shrink-0 ${h.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
-                  <span className="text-neutral-400">{h.action}</span>
-                  {h.durationMs > 0 && <span className="text-neutral-600">{h.durationMs}ms</span>}
-                  <span className="text-neutral-600 ml-auto flex-shrink-0">{new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
+                  <span className="text-foreground/70">{h.action}</span>
+                  {h.durationMs > 0 && <span className="text-muted-foreground">{h.durationMs}ms</span>}
+                  <span className="text-muted-foreground ml-auto flex-shrink-0">{new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
                 </div>
               ))}
             </div>
@@ -201,16 +201,16 @@ function LayoutMinimap({
   }, [rects]);
 
   return (
-    <div className="rounded-lg border border-neutral-700/60 bg-neutral-950/60 overflow-hidden">
+    <div className="rounded-lg border border-border/70 bg-card/72 overflow-hidden">
       <svg viewBox={`${viewport.minX} ${viewport.minY} ${viewport.width} ${viewport.height}`} className="w-full" style={{ height: 260 }}>
         <defs>
           <pattern id="wm-grid" width="100" height="100" patternUnits="userSpaceOnUse">
-            <circle cx="50" cy="50" r="1" fill="rgba(255,255,255,0.04)" />
+            <circle cx="50" cy="50" r="1" fill="oklch(var(--foreground) / 0.08)" />
           </pattern>
         </defs>
         <rect x={viewport.minX} y={viewport.minY} width={viewport.width} height={viewport.height} fill="url(#wm-grid)" />
-        <line x1="-20" y1="0" x2="20" y2="0" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
-        <line x1="0" y1="-20" x2="0" y2="20" stroke="rgba(255,255,255,0.08)" strokeWidth="1" />
+        <line x1="-20" y1="0" x2="20" y2="0" stroke="oklch(var(--foreground) / 0.12)" strokeWidth="1" />
+        <line x1="0" y1="-20" x2="0" y2="20" stroke="oklch(var(--foreground) / 0.12)" strokeWidth="1" />
 
         {rects.map(r => {
           const isFocused = r.id === focusedAppId;
@@ -222,7 +222,7 @@ function LayoutMinimap({
               <rect x={r.bounds.x} y={r.bounds.y} width={r.bounds.w} height={24} rx={6} fill={r.color.fill + '20'} />
               <rect x={r.bounds.x} y={r.bounds.y + 18} width={r.bounds.w} height={6} fill={r.color.fill + '20'} />
               <text x={r.bounds.x + 10} y={r.bounds.y + 16} fill={r.color.fill} fontSize={11} fontFamily="monospace" fontWeight={600}>{r.name}</text>
-              <text x={r.bounds.x + r.bounds.w - 8} y={r.bounds.y + r.bounds.h - 8} fill="rgba(255,255,255,0.2)" fontSize={9} fontFamily="monospace" textAnchor="end">{r.bounds.w}x{r.bounds.h}</text>
+              <text x={r.bounds.x + r.bounds.w - 8} y={r.bounds.y + r.bounds.h - 8} fill="oklch(var(--foreground) / 0.28)" fontSize={9} fontFamily="monospace" textAnchor="end">{r.bounds.w}x{r.bounds.h}</text>
             </g>
           );
         })}
@@ -342,24 +342,24 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
         {/* Workspace header */}
         <div className="flex items-start justify-between">
           <div>
-            <div className="text-[18px] font-mono font-bold text-white tracking-wide">{workspace.name}</div>
-            {workspace.description && <div className="text-[11px] font-mono text-neutral-400 mt-1">{workspace.description}</div>}
+            <div className="text-[18px] font-mono font-bold text-foreground tracking-wide">{workspace.name}</div>
+            {workspace.description && <div className="text-[11px] font-mono text-muted-foreground mt-1">{workspace.description}</div>}
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5">
                 <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
-                <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">{workspace.mode} mode</span>
+                <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{workspace.mode} mode</span>
               </div>
-              <span className="text-[10px] font-mono text-neutral-600">
+              <span className="text-[10px] font-mono text-muted-foreground">
                 {enabledApps.length} enabled &middot; {visibleCount} visible
                 {disabledApps.length > 0 && <> &middot; {disabledApps.length} disabled</>}
               </span>
             </div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={onFitAll} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-[10px] font-mono text-neutral-300 hover:text-white hover:border-neutral-600 transition-colors" title="Fit all windows into view">
+            <button onClick={onFitAll} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-card border border-border text-[10px] font-mono text-foreground/76 hover:text-foreground hover:border-border/80 transition-colors" title="Fit all windows into view">
               <Maximize2 size={10} /> Fit All
             </button>
-            <button onClick={onResetLayout} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-neutral-800 border border-neutral-700 text-[10px] font-mono text-neutral-300 hover:text-white hover:border-neutral-600 transition-colors" title="Reset all window positions">
+            <button onClick={onResetLayout} className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md bg-card border border-border text-[10px] font-mono text-foreground/76 hover:text-foreground hover:border-border/80 transition-colors" title="Reset all window positions">
               <RotateCcw size={10} /> Reset Layout
             </button>
           </div>
@@ -367,13 +367,13 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
 
         {/* Visual layout minimap */}
         <div>
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Canvas Layout</div>
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Canvas Layout</div>
           <LayoutMinimap hoveredAppId={hoveredAppId} onHoverApp={setHoveredAppId} onSelectApp={onSwitchToApp} />
         </div>
 
         {/* Enabled apps (drag-sortable) */}
         <div>
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Applications</div>
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Applications</div>
           <div className="space-y-1">
             {enabledApps.map(config => {
               const { app } = config;
@@ -396,13 +396,13 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                 >
                   <div
                     className={`flex items-center gap-2.5 px-3 py-2.5 rounded-lg border transition-colors group ${
-                      isHovered ? 'bg-white/[0.04] border-neutral-600' : 'bg-neutral-900/40 border-neutral-800/60'
+                      isHovered ? 'bg-accent/8 border-border' : 'bg-card/72 border-border/60'
                     }`}
                     onMouseEnter={() => setHoveredAppId(app.id)}
                     onMouseLeave={() => setHoveredAppId(null)}
                   >
                     {/* Drag handle */}
-                    <div className="text-neutral-600 hover:text-neutral-400 cursor-grab active:cursor-grabbing flex-shrink-0">
+                    <div className="text-muted-foreground hover:text-foreground/80 cursor-grab active:cursor-grabbing flex-shrink-0">
                       <GripVertical size={12} />
                     </div>
 
@@ -412,28 +412,28 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     {/* App info */}
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
-                        <span className="text-[12px] font-mono font-medium text-neutral-200">{app.name}</span>
+                        <span className="text-[12px] font-mono font-medium text-foreground/84">{app.name}</span>
                         {isFocused && <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-wider">Focused</span>}
                       </div>
-                      {app.description && <div className="text-[10px] font-mono text-neutral-500 truncate">{app.description}</div>}
+                      {app.description && <div className="text-[10px] font-mono text-muted-foreground truncate">{app.description}</div>}
                     </div>
 
                     {/* Bounds */}
                     {bounds && config.canvasMode === 'windowed' && (
-                      <div className="text-[9px] font-mono text-neutral-600 flex-shrink-0 tabular-nums hidden group-hover:block">
+                      <div className="text-[9px] font-mono text-muted-foreground flex-shrink-0 tabular-nums hidden group-hover:block">
                         {bounds.w}x{bounds.h}
                       </div>
                     )}
 
                     {/* Focus */}
-                    <button onClick={() => onFocusApp(app.id)} className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-600 hover:text-cyan-400 flex-shrink-0 opacity-0 group-hover:opacity-100" title="Focus">
+                    <button onClick={() => onFocusApp(app.id)} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-cyan-400 flex-shrink-0 opacity-0 group-hover:opacity-100" title="Focus">
                       <Crosshair size={12} />
                     </button>
 
                     {/* Visibility toggle */}
                     <button
                       onClick={() => onToggleAppVisibility(app.id)}
-                      className={`p-1 hover:bg-white/10 rounded transition-colors flex-shrink-0 ${isVisible ? 'text-neutral-400 hover:text-white' : 'text-neutral-600 hover:text-neutral-400'}`}
+                      className={`p-1 hover:bg-accent/10 rounded transition-colors flex-shrink-0 ${isVisible ? 'text-foreground/72 hover:text-foreground' : 'text-muted-foreground hover:text-foreground/80'}`}
                       title={isVisible ? 'Hide' : 'Show'}
                     >
                       {isVisible ? <Eye size={12} /> : <EyeOff size={12} />}
@@ -442,14 +442,14 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     {/* Disable */}
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
-                      className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-600 hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100"
+                      className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100"
                       title="Disable app"
                     >
                       <Power size={12} />
                     </button>
 
                     {/* Settings */}
-                    <button onClick={() => onSwitchToApp(app.id)} className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-600 hover:text-white flex-shrink-0 opacity-0 group-hover:opacity-100" title="Settings">
+                    <button onClick={() => onSwitchToApp(app.id)} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground flex-shrink-0 opacity-0 group-hover:opacity-100" title="Settings">
                       <SettingsIcon size={12} />
                     </button>
                   </div>
@@ -462,15 +462,15 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
         {/* Disabled apps */}
         {disabledApps.length > 0 && (
           <div>
-            <div className="text-[10px] font-mono text-neutral-500 tracking-widest uppercase mb-2">Disabled</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Disabled</div>
             <div className="space-y-1">
               {disabledApps.map((config) => {
                 const { app } = config;
                 return (
-                  <div key={app.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-neutral-800/40 bg-neutral-900/20 opacity-50 hover:opacity-80 transition-opacity">
-                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-neutral-700" />
+                  <div key={app.id} className="flex items-center gap-3 px-3 py-2 rounded-lg border border-border/50 bg-card/60 opacity-50 hover:opacity-80 transition-opacity">
+                    <div className="w-2.5 h-2.5 rounded-full flex-shrink-0 bg-muted" />
                     <div className="flex-1 min-w-0">
-                      <span className="text-[12px] font-mono text-neutral-400">{app.name}</span>
+                      <span className="text-[12px] font-mono text-muted-foreground">{app.name}</span>
                     </div>
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
@@ -487,13 +487,13 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
 
         {/* Session */}
         <div>
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Session</div>
-          <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/40 p-3">
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Session</div>
+          <div className="rounded-lg border border-border/60 bg-card/72 p-3">
             <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[10px] font-mono">
-              <span className="text-neutral-500">Workspace ID</span>
-              <span className="text-neutral-300 font-medium">{workspace.id}</span>
-              <span className="text-neutral-500">Key prefix</span>
-              <span className="text-neutral-400">hudson.ws.{workspace.id}.*</span>
+              <span className="text-muted-foreground">Workspace ID</span>
+              <span className="text-foreground/78 font-medium">{workspace.id}</span>
+              <span className="text-muted-foreground">Key prefix</span>
+              <span className="text-foreground/70">hudson.ws.{workspace.id}.*</span>
             </div>
             <div className="mt-3">
               <button
@@ -526,6 +526,25 @@ function SettingsTab() {
   return (
     <div className="flex-1 overflow-y-auto frame-scrollbar">
       <SettingsSection label="Appearance">
+        <SettingsSegment
+          label="Theme"
+          value={shellSettings.theme}
+          options={[
+            { value: 'system', label: 'System' },
+            { value: 'light', label: 'Light' },
+            { value: 'dark', label: 'Dark' },
+          ]}
+          onChange={v => onUpdateShellSettings({ theme: v })}
+        />
+        <SettingsSegment
+          label="Template"
+          value={shellSettings.template}
+          options={[
+            { value: 'hudson', label: 'Hudson' },
+            { value: 'editorial', label: 'Editorial' },
+          ]}
+          onChange={v => onUpdateShellSettings({ template: v })}
+        />
         <SettingsSlider label="Glow Intensity" value={shellSettings.glowIntensity} min={0} max={100} step={1} format={v => `${v}%`} onChange={v => onUpdateShellSettings({ glowIntensity: v })} />
         <SettingsSlider label="Grid Opacity" value={shellSettings.gridOpacity ?? 60} min={0} max={100} step={5} format={v => `${v}%`} onChange={v => onUpdateShellSettings({ gridOpacity: v })} />
         <SettingsSegment
@@ -538,6 +557,9 @@ function SettingsTab() {
           ]}
           onChange={v => onUpdateShellSettings({ connectorStyle: v })}
         />
+        <div className="rounded border border-border/60 bg-secondary/70 px-3 py-2 text-[10px] font-mono text-muted-foreground">
+          Theme controls the light/dark/system mode for the workspace. Template swaps the visual token set.
+        </div>
       </SettingsSection>
       <SettingsSection label="Typography">
         <FontSettingsCard
@@ -568,23 +590,23 @@ function SettingsTab() {
             ['Cmd + Scroll', 'Zoom in / out'],
             ['Cmd + 0', 'Reset view'],
             ['Cmd + K', 'Command palette'],
-            ['Cmd + ,', 'Settings'],
-            ['Cmd + Shift + ,', 'Workspace Editor'],
+            ['Settings button', 'Open workspace settings'],
+            ['Command Palette', 'Search settings + template commands'],
             ['Cmd + [', 'Toggle left panel'],
             ['Cmd + ]', 'Toggle right panel'],
             ['Cmd + \\', 'Toggle crosshair guides'],
             ['Ctrl + `', 'Toggle terminal'],
             ['Cmd + M', 'Toggle mute'],
           ].map(([key, desc]) => (
-            <div key={key} className="contents">
-              <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
-              <div className="text-neutral-300">{desc}</div>
+              <div key={key} className="contents">
+                <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
+              <div className="text-foreground/76">{desc}</div>
             </div>
           ))}
         </div>
       </SettingsSection>
       <div className="px-6 py-4">
-        <button onClick={onResetShellSettings} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-neutral-300 hover:text-white border border-neutral-700 hover:border-neutral-600 transition-colors">
+        <button onClick={onResetShellSettings} className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-foreground/76 hover:text-foreground border border-border hover:border-border/80 transition-colors">
           <RotateCcw size={10} /> Reset All Settings
         </button>
       </div>
@@ -623,38 +645,38 @@ function AppContent({ appId }: { appId: string }) {
   return (
     <div className="flex-1 flex flex-col overflow-hidden min-w-0">
       {/* App header */}
-      <div className="flex items-center gap-3 px-5 py-4 border-b border-neutral-700/40 shrink-0">
+      <div className="flex items-center gap-3 px-5 py-4 border-b border-border/60 shrink-0">
         <div className="flex-1 min-w-0">
-          <div className="text-[14px] font-mono font-bold text-white tracking-wider">{app.name}</div>
-          {app.description && <div className="text-[11px] font-mono text-neutral-400 mt-0.5">{app.description}</div>}
+          <div className="text-[14px] font-mono font-bold text-foreground tracking-wider">{app.name}</div>
+          {app.description && <div className="text-[11px] font-mono text-muted-foreground mt-0.5">{app.description}</div>}
         </div>
         <div className="flex items-center gap-3 shrink-0">
           {/* Disable/Enable */}
           <div className="flex items-center gap-2">
-            <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">
+            <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
               {isDisabled ? 'Disabled' : 'Enabled'}
             </span>
             <button
               onClick={() => onToggleAppDisabled(appId)}
-              className={`w-9 h-5 rounded-full relative transition-colors ${!isDisabled ? 'bg-emerald-600' : 'bg-neutral-700'}`}
+              className={`w-9 h-5 rounded-full relative transition-colors ${!isDisabled ? 'bg-emerald-600' : 'bg-muted'}`}
               title={isDisabled ? 'Enable app' : 'Disable app'}
             >
-              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${!isDisabled ? 'left-[18px]' : 'left-0.5'}`} />
+              <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${!isDisabled ? 'left-[18px]' : 'left-0.5'}`} />
             </button>
           </div>
 
           {/* Visibility (only for enabled apps) */}
           {!isDisabled && (
-            <div className="flex items-center gap-2 border-l border-neutral-700/50 pl-3">
-              <span className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider">
+            <div className="flex items-center gap-2 border-l border-border/60 pl-3">
+              <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">
                 {isLoaded ? 'Visible' : 'Hidden'}
               </span>
               <button
                 onClick={() => onToggleAppVisibility(appId)}
-                className={`w-9 h-5 rounded-full relative transition-colors ${isLoaded ? 'bg-cyan-600' : 'bg-neutral-700'}`}
+                className={`w-9 h-5 rounded-full relative transition-colors ${isLoaded ? 'bg-cyan-600' : 'bg-muted'}`}
                 title={isLoaded ? 'Hide from canvas' : 'Show on canvas'}
               >
-                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${isLoaded ? 'left-[18px]' : 'left-0.5'}`} />
+                <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${isLoaded ? 'left-[18px]' : 'left-0.5'}`} />
               </button>
             </div>
           )}
@@ -664,9 +686,9 @@ function AppContent({ appId }: { appId: string }) {
       {isDisabled ? (
         <div className="flex-1 flex items-center justify-center">
           <div className="text-center">
-            <Power size={24} className="text-neutral-600 mx-auto mb-3" />
-            <div className="text-[12px] font-mono text-neutral-500">This app is disabled</div>
-            <div className="text-[10px] font-mono text-neutral-600 mt-1">Enable it to load its Provider and render on the canvas</div>
+            <Power size={24} className="text-muted-foreground mx-auto mb-3" />
+            <div className="text-[12px] font-mono text-muted-foreground">This app is disabled</div>
+            <div className="text-[10px] font-mono text-muted-foreground mt-1">Enable it to load its Provider and render on the canvas</div>
             <button
               onClick={() => onToggleAppDisabled(appId)}
               className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/60 transition-colors mx-auto"
@@ -681,12 +703,12 @@ function AppContent({ appId }: { appId: string }) {
             {/* Window bounds */}
             {config.canvasMode === 'windowed' && bounds && (
               <div>
-                <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2.5">Window Position</div>
+                <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2.5">Window Position</div>
                 <div className="grid grid-cols-4 gap-2">
                   {(['x', 'y', 'w', 'h'] as const).map(key => (
-                    <div key={key} className="rounded-md border border-neutral-800 bg-neutral-900/60 px-2.5 py-2">
-                      <div className="text-[9px] font-mono text-neutral-500 uppercase mb-1">{key === 'w' ? 'Width' : key === 'h' ? 'Height' : key.toUpperCase()}</div>
-                      <div className="text-[13px] font-mono text-neutral-200 tabular-nums">{bounds[key]}px</div>
+                    <div key={key} className="rounded-md border border-border/60 bg-card/72 px-2.5 py-2">
+                      <div className="text-[9px] font-mono text-muted-foreground uppercase mb-1">{key === 'w' ? 'Width' : key === 'h' ? 'Height' : key.toUpperCase()}</div>
+                      <div className="text-[13px] font-mono text-foreground/84 tabular-nums">{bounds[key]}px</div>
                     </div>
                   ))}
                 </div>
@@ -695,19 +717,19 @@ function AppContent({ appId }: { appId: string }) {
 
             {/* App metadata */}
             <div>
-              <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2.5">Details</div>
+              <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2.5">Details</div>
               <div className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[10px] font-mono">
-                <span className="text-neutral-500">ID</span><span className="text-neutral-300">{app.id}</span>
-                <span className="text-neutral-500">Mode</span><span className="text-neutral-300">{app.mode}</span>
-                <span className="text-neutral-500">Canvas</span><span className="text-neutral-300">{config.canvasMode ?? 'native'}</span>
+                <span className="text-muted-foreground">ID</span><span className="text-foreground/76">{app.id}</span>
+                <span className="text-muted-foreground">Mode</span><span className="text-foreground/76">{app.mode}</span>
+                <span className="text-muted-foreground">Canvas</span><span className="text-foreground/76">{config.canvasMode ?? 'native'}</span>
                 {app.ports?.outputs && app.ports.outputs.length > 0 && (
-                  <><span className="text-neutral-500">Outputs</span><span className="text-neutral-300">{app.ports.outputs.map(o => o.name).join(', ')}</span></>
+                  <><span className="text-muted-foreground">Outputs</span><span className="text-foreground/76">{app.ports.outputs.map(o => o.name).join(', ')}</span></>
                 )}
                 {app.ports?.inputs && app.ports.inputs.length > 0 && (
-                  <><span className="text-neutral-500">Inputs</span><span className="text-neutral-300">{app.ports.inputs.map(o => o.name).join(', ')}</span></>
+                  <><span className="text-muted-foreground">Inputs</span><span className="text-foreground/76">{app.ports.inputs.map(o => o.name).join(', ')}</span></>
                 )}
                 {app.intents && app.intents.length > 0 && (
-                  <><span className="text-neutral-500">Intents</span><span className="text-neutral-300">{app.intents.length} registered</span></>
+                  <><span className="text-muted-foreground">Intents</span><span className="text-foreground/76">{app.intents.length} registered</span></>
                 )}
               </div>
             </div>
@@ -717,13 +739,13 @@ function AppContent({ appId }: { appId: string }) {
               <div className={`grid gap-5 ${hasSettings && hasServices ? 'grid-cols-[1fr_1fr]' : 'grid-cols-1'}`}>
                 {hasSettings && entry && (
                   <div className="min-w-0">
-                    <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-3">Settings</div>
+                    <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">Settings</div>
                     <AppSettingsInline entry={entry} />
                   </div>
                 )}
                 {hasServices && (
                   <div className="min-w-0">
-                    <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-3">Services</div>
+                    <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-3">Services</div>
                     <div className="space-y-2">{deps.map(dep => <ServiceCard key={dep.serviceId} serviceId={dep.serviceId} />)}</div>
                   </div>
                 )}
@@ -785,16 +807,16 @@ function WorkspaceManagerPanelBody({
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] bg-black/60 backdrop-blur-[2px] pointer-events-auto" onClick={onClose}>
       <div
-        className="w-[1020px] max-w-[94vw] bg-[#161616] border border-neutral-700 shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+        className="w-[1020px] max-w-[94vw] bg-card border border-border shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
         style={{ maxHeight: '88vh' }}
         onClick={e => e.stopPropagation()}
       >
         {/* Header with tabs */}
-        <div className="flex items-center justify-between px-5 py-3 border-b border-neutral-700 shrink-0">
+        <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
               <SettingsIcon size={14} className="text-emerald-400" />
-              <span className="text-[13px] font-mono font-bold text-white tracking-wider">HUDSON</span>
+              <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">HUDSON</span>
             </div>
             <div className="flex items-center gap-1 ml-2">
               {tabConfig.map(t => (
@@ -803,8 +825,8 @@ function WorkspaceManagerPanelBody({
                   onClick={() => setTab(t.id)}
                   className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-[11px] font-mono font-medium transition-colors ${
                     tab === t.id
-                      ? 'bg-white/[0.08] text-white'
-                      : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.03]'
+                      ? 'bg-accent/10 text-foreground'
+                      : 'text-muted-foreground hover:text-foreground hover:bg-accent/8'
                   }`}
                 >
                   <t.icon size={11} />
@@ -813,7 +835,7 @@ function WorkspaceManagerPanelBody({
               ))}
             </div>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white">
+          <button onClick={onClose} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground">
             <X size={14} />
           </button>
         </div>
@@ -829,7 +851,7 @@ function WorkspaceManagerPanelBody({
           ) : (
             <>
               {/* Left rail */}
-              <div className="w-[140px] shrink-0 border-r border-neutral-700/50 overflow-y-auto frame-scrollbar bg-neutral-900/30">
+              <div className="w-[140px] shrink-0 border-r border-border/60 overflow-y-auto frame-scrollbar bg-card/72">
                 <div className="py-2">
                   {workspace.apps.map(config => {
                     const { app } = config;
@@ -848,15 +870,15 @@ function WorkspaceManagerPanelBody({
                         key={app.id}
                         onClick={() => setSelectedAppId(app.id)}
                         className={`w-full text-left px-3 py-2.5 transition-colors relative ${
-                          isActive ? 'bg-white/[0.04]' : 'hover:bg-white/[0.02]'
+                          isActive ? 'bg-accent/8' : 'hover:bg-accent/6'
                         } ${isDisabled ? 'opacity-30' : !isLoaded ? 'opacity-50' : ''}`}
                       >
                         {isActive && <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-emerald-500 rounded-r" />}
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[11px] font-mono font-medium truncate ${isActive ? 'text-emerald-400' : 'text-neutral-300'}`}>
+                          <span className={`text-[11px] font-mono font-medium truncate ${isActive ? 'text-emerald-400' : 'text-foreground/76'}`}>
                             {app.name}
                           </span>
-                          {isDisabled && <Power size={9} className="text-neutral-600 flex-shrink-0" />}
+                          {isDisabled && <Power size={9} className="text-muted-foreground flex-shrink-0" />}
                           {depStatuses.length > 0 && (
                             <div className="flex items-center gap-0.5 shrink-0">
                               {depStatuses.map(d => (
@@ -875,7 +897,7 @@ function WorkspaceManagerPanelBody({
               {activeSelectedAppId ? (
                 <AppContent appId={activeSelectedAppId} />
               ) : (
-                <div className="flex-1 flex items-center justify-center text-[11px] font-mono text-neutral-600">
+                <div className="flex-1 flex items-center justify-center text-[11px] font-mono text-muted-foreground">
                   Select an app from the sidebar
                 </div>
               )}
@@ -884,10 +906,10 @@ function WorkspaceManagerPanelBody({
         </div>
 
         {/* Footer */}
-        <div className="px-5 py-2.5 bg-neutral-800/90 backdrop-blur-sm border-t border-neutral-700 flex justify-between items-center shrink-0">
+        <div className="px-5 py-2.5 bg-card/95 backdrop-blur-sm border-t border-border flex justify-between items-center shrink-0">
           <div className="flex items-center gap-3">
             <div className="flex items-center gap-2">
-              <span className="text-[11px] font-mono text-neutral-400">
+              <span className="text-[11px] font-mono text-muted-foreground">
                 {tab === 'settings'
                   ? 'Settings'
                   : tab === 'environment'
@@ -896,12 +918,14 @@ function WorkspaceManagerPanelBody({
                       ? 'Apps'
                       : 'Workspace'}
               </span>
-              <div className="px-1.5 py-0.5 rounded bg-neutral-700 border border-neutral-700 text-[10px] text-neutral-300 font-mono">
-                {tab === 'settings' ? '\u2318,' : tab === 'environment' ? '.env' : '\u2318\u21e7,'}
-              </div>
+              {tab !== 'settings' && (
+                <div className="px-1.5 py-0.5 rounded bg-secondary border border-border text-[10px] text-foreground/76 font-mono">
+                  {tab === 'environment' ? '.env' : '\u2318\u21e7,'}
+                </div>
+              )}
             </div>
           </div>
-          <div className="text-[10px] font-mono text-neutral-500">
+          <div className="text-[10px] font-mono text-muted-foreground">
             {workspace.apps.length - disabledAppIds.size} of {workspace.apps.length} apps enabled
           </div>
         </div>

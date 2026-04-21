@@ -11,11 +11,11 @@ const CommandDock: React.FC<CommandDockProps> = ({
   onOpenCommandPalette, extraControls
 }) => {
   return (
-    <div className="select-none font-mono text-[12px] border-t border-neutral-700/50">
+    <div className="select-none font-mono text-[12px] border-t border-border/60">
       <div className="px-3 py-2 flex items-center justify-between">
         <button
           onClick={onOpenCommandPalette}
-          className="flex items-center gap-1.5 text-neutral-400 hover:text-white transition-colors"
+          className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
         >
           <Search size={10} />
           <span className="tracking-widest font-bold uppercase">Command Palette</span>
@@ -23,7 +23,7 @@ const CommandDock: React.FC<CommandDockProps> = ({
 
         <div className="flex items-center gap-2">
           {extraControls}
-          <kbd className="text-[11px] text-neutral-400 font-mono">⌘K</kbd>
+          <kbd className="text-[11px] text-muted-foreground font-mono">⌘K</kbd>
         </div>
       </div>
     </div>

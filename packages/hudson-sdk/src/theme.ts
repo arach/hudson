@@ -1,4 +1,4 @@
-// Narrow subpath — design tokens only (no React components).
+// Narrow subpath — Hudson theme tokens plus runtime theming helpers.
 export {
   SHELL_THEME,
   CHROME,
@@ -8,3 +8,6 @@ export {
   Z_LAYERS,
   LAYOUT,
 } from './lib/theme';
+export { ThemeProvider, useTheme, useOptionalTheme } from './theme/ThemeProvider';
+export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme/ThemeProvider';
+export { HudsonThemeScript } from './theme/HudsonThemeScript';

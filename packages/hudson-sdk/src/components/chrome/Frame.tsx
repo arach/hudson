@@ -205,7 +205,7 @@ const Frame: React.FC<FrameProps> = ({
 
   if (mode === 'panel') {
     return (
-      <div ref={frameRef} className="fixed inset-0 bg-black text-neutral-200 overflow-hidden font-sans select-none z-0">
+      <div ref={frameRef} className="fixed inset-0 bg-background text-foreground overflow-hidden font-sans select-none z-0">
         <div className="absolute inset-0 z-10 overflow-auto frame-scrollbar">
           {children}
         </div>
@@ -217,7 +217,7 @@ const Frame: React.FC<FrameProps> = ({
   }
 
   return (
-    <div ref={frameRef} className="fixed inset-0 bg-black text-neutral-200 overflow-hidden font-sans select-none z-0">
+    <div ref={frameRef} className="fixed inset-0 bg-background text-foreground overflow-hidden font-sans select-none z-0">
       {/* Layer 0: Canvas (pan/zoom background) */}
       <HudsonContextMenu items={canvasContextMenuItems ?? []}>
         <Canvas

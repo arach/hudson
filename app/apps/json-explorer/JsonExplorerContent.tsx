@@ -68,7 +68,7 @@ function TreeNode({
     <div>
       <div
         className={`flex items-center gap-1.5 py-0.5 px-2 cursor-pointer transition-colors group ${
-          isSelected ? 'bg-cyan-500/10' : 'hover:bg-white/[0.02]'
+          isSelected ? 'bg-cyan-500/10' : 'hover:bg-accent/8'
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => {
@@ -80,8 +80,8 @@ function TreeNode({
         <span className="w-3 shrink-0">
           {isExpandable && (
             isExpanded
-              ? <ChevronDown size={10} className="text-white/20" />
-              : <ChevronRight size={10} className="text-white/20" />
+              ? <ChevronDown size={10} className="text-muted-foreground/70" />
+              : <ChevronRight size={10} className="text-muted-foreground/70" />
           )}
         </span>
 
@@ -90,13 +90,13 @@ function TreeNode({
 
         {/* Key name */}
         <span className={`text-[12px] font-mono shrink-0 ${
-          filter && matchesFilter ? 'text-cyan-300/90 font-bold' : 'text-white/60'
+          filter && matchesFilter ? 'text-cyan-300/90 font-bold' : 'text-foreground/76'
         }`}>
           {keyName}
         </span>
 
         {/* Separator */}
-        {!isExpandable && <span className="text-white/15 text-[11px]">:</span>}
+        {!isExpandable && <span className="text-muted-foreground/60 text-[11px]">:</span>}
 
         {/* Value preview */}
         {!isExpandable && (
@@ -120,7 +120,7 @@ function TreeNode({
               typeof value === 'string' ? value : JSON.stringify(value, null, 2)
             );
           }}
-          className="ml-auto opacity-0 group-hover:opacity-100 text-white/10 hover:text-white/30 transition-all"
+          className="ml-auto opacity-0 group-hover:opacity-100 text-muted-foreground/40 hover:text-foreground/74 transition-all"
         >
           <Clipboard size={10} />
         </button>
@@ -179,7 +179,7 @@ export function JsonExplorerContent() {
     return (
       <div className="flex flex-col h-full">
         <div className="flex-1 flex flex-col items-center justify-center gap-4 px-8">
-          <div className="text-white/10 text-[13px] mb-2">Paste or load JSON to explore</div>
+          <div className="text-muted-foreground/70 text-[13px] mb-2">Paste or load JSON to explore</div>
           <div className="flex gap-2">
             <button
               onClick={handlePaste}
@@ -187,7 +187,7 @@ export function JsonExplorerContent() {
             >
               <Clipboard size={13} /> Paste from clipboard
             </button>
-            <label className="px-4 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-white/40 text-[12px] font-medium hover:bg-white/[0.06] transition-colors flex items-center gap-2 cursor-pointer">
+            <label className="px-4 py-2 rounded-lg bg-card/88 border border-border/70 text-muted-foreground text-[12px] font-medium hover:bg-accent/8 transition-colors flex items-center gap-2 cursor-pointer">
               <Upload size={13} /> Load file
               <input type="file" accept=".json,.jsonl" onChange={handleFileUpload} className="hidden" />
             </label>
@@ -196,7 +196,7 @@ export function JsonExplorerContent() {
             <textarea
               ref={textareaRef}
               placeholder='{"paste": "json here"}'
-              className="w-full h-[140px] px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[12px] text-white/60 font-mono outline-none focus:border-cyan-500/30 transition-colors resize-none"
+              className="w-full h-[140px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/76 font-mono outline-none focus:border-cyan-500/30 transition-colors resize-none"
               spellCheck={false}
               onKeyDown={e => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -207,7 +207,7 @@ export function JsonExplorerContent() {
               }}
             />
             <div className="flex justify-between mt-2">
-              <span className="text-[10px] text-white/15">Cmd+Enter to load</span>
+              <span className="text-[10px] text-muted-foreground/60">Cmd+Enter to load</span>
               <button
                 onClick={() => {
                   const val = textareaRef.current?.value ?? '';
@@ -227,31 +227,31 @@ export function JsonExplorerContent() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Toolbar */}
-      <div className="px-4 py-2 border-b border-white/[0.06] flex items-center gap-2">
+      <div className="px-4 py-2 border-b border-border/70 flex items-center gap-2">
         <div className="flex-1 relative">
-          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-white/15" />
+          <Search size={12} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
           <input
             value={filter}
             onChange={e => setFilter(e.target.value)}
             placeholder="Filter keys..."
-            className="w-full pl-8 pr-3 py-1.5 rounded bg-white/[0.03] border border-white/[0.06] text-[12px] text-white/70 font-mono outline-none focus:border-cyan-500/30 transition-colors"
+            className="w-full pl-8 pr-3 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-500/30 transition-colors"
           />
         </div>
-        <button onClick={expandAll} className="p-1.5 rounded hover:bg-white/[0.04] text-white/20 hover:text-white/40 transition-colors" title="Expand all">
+        <button onClick={expandAll} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-foreground/80 transition-colors" title="Expand all">
           <ChevronsUpDown size={13} />
         </button>
-        <button onClick={collapseAll} className="p-1.5 rounded hover:bg-white/[0.04] text-white/20 hover:text-white/40 transition-colors" title="Collapse all">
+        <button onClick={collapseAll} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-foreground/80 transition-colors" title="Collapse all">
           <ChevronsDownUp size={13} />
         </button>
-        <button onClick={clear} className="p-1.5 rounded hover:bg-white/[0.04] text-white/20 hover:text-red-400/40 transition-colors" title="Clear">
+        <button onClick={clear} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-red-400/70 transition-colors" title="Clear">
           <X size={13} />
         </button>
       </div>
 
       {/* Stats bar */}
-      <div className="px-4 py-1.5 border-b border-white/[0.04] flex items-center gap-3 text-[10px] font-mono text-white/20">
+      <div className="px-4 py-1.5 border-b border-border/50 flex items-center gap-3 text-[10px] font-mono text-muted-foreground">
         <span>{nodeCount} nodes</span>
-        <span className="text-white/8">|</span>
+        <span className="text-muted-foreground/60">|</span>
         <span>depth {depth}</span>
       </div>
 

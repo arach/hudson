@@ -21,6 +21,8 @@ export { useVoiceInput } from './hooks/useVoiceInput';
 export type { UseVoiceInputOptions, UseVoiceInputResult } from './hooks/useVoiceInput';
 export { useVoiceOutput } from './hooks/useVoiceOutput';
 export type { UseVoiceOutputResult, SpeakOptions } from './hooks/useVoiceOutput';
+export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
+export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
 
 // Voice types + reply shaping
 export type {

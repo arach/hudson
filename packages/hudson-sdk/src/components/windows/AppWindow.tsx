@@ -262,14 +262,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
       <div
         className={`w-full h-full flex flex-col rounded-lg overflow-hidden border transition-shadow duration-200 ${
           isFocused
-            ? 'border-emerald-500/40 shadow-[0_0_40px_rgba(16,185,129,0.15)]'
-            : 'border-neutral-700/60 shadow-[0_0_30px_rgba(0,0,0,0.6)]'
+            ? 'border-accent/45 shadow-[0_24px_70px_color-mix(in_srgb,oklch(var(--accent))_18%,transparent)]'
+            : 'border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.22)]'
         }`}
-        style={{ background: 'rgba(10, 10, 10, 0.95)', backdropFilter: 'blur(20px)' }}
+        style={{ background: 'color-mix(in srgb, oklch(var(--card)) 92%, transparent)', backdropFilter: 'blur(20px)' }}
       >
         {/* Title bar */}
         <div
-          className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50 cursor-grab active:cursor-grabbing select-none"
+          className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-border/70 bg-gradient-to-r from-background/70 via-card/95 to-background/70 cursor-grab active:cursor-grabbing select-none"
           onMouseDown={handleDragStart}
         >
           {/* Left controls: expand */}
@@ -277,7 +277,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
             <button
               onMouseDown={(e) => e.stopPropagation()}
               onClick={handleToggleMaximize}
-              className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
+              className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
               title={isMaximized ? 'Restore' : 'Expand'}
             >
               {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
@@ -286,14 +286,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
               <button
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={onMinimize}
-                className="p-1 rounded hover:bg-white/10 text-neutral-400 hover:text-neutral-200 transition-colors"
+                className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
                 title="Minimize"
               >
                 <Minus size={11} />
               </button>
             )}
           </div>
-          <span className="flex-1 text-[12px] font-mono tracking-wider text-neutral-200 truncate text-center">
+          <span className="flex-1 text-[12px] font-mono tracking-wider text-foreground truncate text-center">
             {title}
           </span>
           {titleCenter && (
@@ -307,7 +307,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
               <button
                 onMouseDown={(e) => e.stopPropagation()}
                 onClick={onClose}
-                className="p-1 rounded hover:bg-red-500/20 text-neutral-400 hover:text-red-400 transition-colors"
+                className="p-1 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
                 title="Close"
               >
                 <X size={11} />
@@ -317,7 +317,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative bg-card/78">
           {children}
         </div>
       </div>

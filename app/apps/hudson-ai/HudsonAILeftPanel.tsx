@@ -9,7 +9,7 @@ import { AI_MODEL_OPTIONS, AI_PROVIDER_OPTIONS } from '../../lib/ai-models';
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-white/30">
+    <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
       {children}
     </div>
   );
@@ -18,8 +18,8 @@ function SectionTitle({ children }: { children: ReactNode }) {
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="text-[10px] font-mono text-white/25">{label}</span>
-      <span className="text-[11px] text-right text-white/65">{value}</span>
+      <span className="text-[10px] font-mono text-muted-foreground">{label}</span>
+      <span className="text-[11px] text-right text-foreground/72">{value}</span>
     </div>
   );
 }
@@ -49,23 +49,23 @@ export function HudsonAILeftPanel() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto frame-scrollbar p-3 space-y-4">
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 space-y-3">
+      <div className="rounded-xl border border-border/70 bg-card/72 p-3 space-y-3">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
             <Sparkles size={14} />
           </div>
           <div className="min-w-0">
-            <div className="text-[12px] font-medium text-white/80">Hudson AI</div>
-            <div className="truncate text-[10px] font-mono text-white/30">
+            <div className="text-[12px] font-medium text-foreground/86">Hudson AI</div>
+            <div className="truncate text-[10px] font-mono text-muted-foreground">
               {resolvedProviderLabel} / {resolvedModelLabel}
             </div>
           </div>
         </div>
       </div>
 
-      <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-3 space-y-3">
+      <div className="rounded-xl border border-border/70 bg-card/72 p-3 space-y-3">
         <SectionTitle>Runtime</SectionTitle>
-        <div className="divide-y divide-white/[0.05]">
+        <div className="divide-y divide-border/60">
           <DetailRow label="AI Provider" value={resolvedProviderLabel} />
           <DetailRow label="AI Model" value={resolvedModelLabel} />
           <DetailRow label="Config Source" value={settingsSource} />
@@ -75,7 +75,7 @@ export function HudsonAILeftPanel() {
             value={getHudsonVoiceBehaviorPresetLabel(behaviorPreset)}
           />
         </div>
-        <div className="rounded-lg border border-white/[0.06] bg-black/20 px-2.5 py-2 text-[10px] leading-relaxed text-white/35">
+        <div className="rounded-lg border border-border/60 bg-background/52 px-2.5 py-2 text-[10px] leading-relaxed text-foreground/62">
           Hudson AI uses a Hudson-wide default and can override it per workspace. Voice workflow stays global to Hudson.
         </div>
       </div>

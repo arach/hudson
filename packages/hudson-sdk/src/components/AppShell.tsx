@@ -14,6 +14,13 @@ import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { HudsonApp } from '../types/app';
 import type { CommandOption } from './overlays/CommandPalette';
 import { ChevronDown, ChevronRight, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import {
+  HudsonThemeScript,
+  ThemeProvider,
+  type HudsonTemplate,
+  type HudsonTheme,
+  useOptionalTheme,
+} from '../theme';
 
 // ---------------------------------------------------------------------------
 // AppShell — the default Hudson shell: renders a single HudsonApp with full
@@ -24,13 +31,46 @@ interface AppShellProps {
   app: HudsonApp;
   /** Disable the built-in Assistant tab in the bottom drawer. Defaults to true (Assistant on). */
   assistant?: boolean;
+  /** Default theme; user can still switch at runtime. Defaults to 'system'. */
+  defaultTheme?: HudsonTheme;
+  /** Default template. Defaults to 'hudson'. */
+  defaultTemplate?: HudsonTemplate;
+  /** When false, AppShell assumes a parent ThemeProvider already exists. */
+  managedTheme?: boolean;
 }
 
-export function AppShell({ app, assistant = true }: AppShellProps) {
-  return (
+export function AppShell({
+  app,
+  assistant = true,
+  defaultTheme = 'system',
+  defaultTemplate = 'hudson',
+  managedTheme = true,
+}: AppShellProps) {
+  const theme = useOptionalTheme();
+
+  const content = (
     <app.Provider>
       <AppShellInner app={app} assistantEnabled={assistant} />
     </app.Provider>
+  );
+
+  if (!managedTheme || theme) {
+    return content;
+  }
+
+  return (
+    <>
+      <HudsonThemeScript
+        defaultTheme={defaultTheme}
+        defaultTemplate={defaultTemplate}
+      />
+      <ThemeProvider
+        defaultTheme={defaultTheme}
+        defaultTemplate={defaultTemplate}
+      >
+        {content}
+      </ThemeProvider>
+    </>
   );
 }
 
@@ -38,6 +78,7 @@ export function AppShell({ app, assistant = true }: AppShellProps) {
 // AppShellInner — rendered inside Provider so app hooks can be called
 // ---------------------------------------------------------------------------
 function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEnabled: boolean }) {
+  const theme = useOptionalTheme();
   // Platform layout
   const { navTotalHeight } = usePlatformLayout();
 
@@ -147,8 +188,17 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
         },
       });
     }
+    if (theme) {
+      cmds.push(
+        { id: 'shell:theme:light', label: 'Theme: Light', action: () => theme.setTheme('light') },
+        { id: 'shell:theme:dark', label: 'Theme: Dark', action: () => theme.setTheme('dark') },
+        { id: 'shell:theme:system', label: 'Theme: System', action: () => theme.setTheme('system') },
+        { id: 'shell:template:hudson', label: 'Template: Hudson', action: () => theme.setTemplate('hudson') },
+        { id: 'shell:template:editorial', label: 'Template: Editorial', action: () => theme.setTemplate('editorial') },
+      );
+    }
     return cmds;
-  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, activeTab, setActiveTab]);
+  }, [activeTab, assistantEnabled, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -196,19 +246,19 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
       {InspectorSlot && <InspectorSlot />}
       {!InspectorSlot && RightPanelSlot && <RightPanelSlot />}
       {hasTools && (
-        <div className="border-t border-neutral-700/50">
+        <div className="border-t border-border/60">
           {app.tools!.map(tool => {
             const isOpen = openTools.has(tool.id);
             return (
               <div key={tool.id}>
                 <button
                   onClick={() => toggleTool(tool.id)}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-[11px] font-mono tracking-wider uppercase transition-colors hover:bg-white/5 ${
-                    activeToolHint === tool.id ? 'text-emerald-400' : 'text-neutral-300'
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-[11px] font-mono tracking-wider uppercase transition-colors hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none ${
+                    activeToolHint === tool.id ? 'text-accent' : 'text-foreground'
                   }`}
                 >
                   {isOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                  <span className="text-neutral-400">{tool.icon}</span>
+                  <span className="text-muted-foreground">{tool.icon}</span>
                   <span className="font-bold">{tool.name}</span>
                 </button>
                 {isOpen && (
@@ -280,7 +330,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     transition: 'left 200ms ease, right 200ms ease',
   } : {};
 
-  return (
+  const shell = (
     <>
     <div ref={backgroundRef} aria-hidden={takeoverActive ? true : undefined} style={{ display: 'contents' }}>
     <Frame
@@ -364,7 +414,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
                 app.slots.Terminal ? (
                   <app.slots.Terminal />
                 ) : (
-                  <div className="p-4 font-mono text-[12px] text-neutral-400">
+                  <div className="p-4 font-mono text-[12px] text-muted-foreground">
                     No terminal content
                   </div>
                 )
@@ -402,6 +452,19 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     ) : null}
     </>
   );
+
+  if (!theme) {
+    return shell;
+  }
+
+  return (
+    <div
+      data-hudson-theme={theme.resolvedTheme}
+      data-hudson-template={theme.template}
+    >
+      {shell}
+    </div>
+  );
 }
 
 // ---------------------------------------------------------------------------
@@ -425,16 +488,16 @@ function DrawerTabs({
         const isActive = tab === active;
         const Icon = tab === 'terminal' ? TerminalIcon : Sparkles;
         const label = tab === 'terminal' ? 'TERMINAL' : 'ASSISTANT';
-        const accent = tab === 'terminal' ? 'text-emerald-400' : 'text-cyan-400';
+        const activeClasses = tab === 'terminal' ? 'text-accent bg-accent/10' : 'text-info bg-info/10';
         return (
           <button
             key={tab}
             type="button"
             onClick={() => onSelect(tab)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold tracking-widest font-mono transition-colors ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold tracking-widest font-mono transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
               isActive
-                ? `${accent} bg-white/[0.04]`
-                : 'text-neutral-500 hover:text-neutral-300'
+                ? activeClasses
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
             }`}
           >
             <Icon size={13} />

@@ -153,6 +153,9 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
   const clampedScale = Math.max(0.4, Math.min(2, scale));
   const majorGridSize = 100 * clampedScale;
   const minorGridSize = 20 * clampedScale;
+  const minorGridColor = 'var(--hud-canvas-dot-minor)';
+  const majorGridColor = 'var(--hud-canvas-dot-major)';
+  const guideColor = 'color-mix(in srgb, oklch(var(--accent)) 18%, transparent)';
   // World origin screen position: vpCenter + pan * scale
   const bgPosX = (vpSize.w / 2 + panOffset.x * scale) % majorGridSize;
   const bgPosY = (vpSize.h / 2 + panOffset.y * scale) % majorGridSize;
@@ -160,18 +163,18 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
   return (
     <div
       ref={containerRef}
-      className={`absolute inset-0 z-0 overflow-hidden bg-black ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
+      className={`absolute inset-0 z-0 overflow-hidden bg-background ${isPanning ? 'cursor-grabbing' : 'cursor-grab'}`}
       onMouseDown={handleMouseDown}
       onClick={handleClick}
     >
       <div className="absolute pointer-events-none"
-        style={{ inset: '-100px', opacity: 0.5 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #444 1px, transparent 1px)`, backgroundSize: `${minorGridSize}px ${minorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
+        style={{ inset: '-100px', opacity: 0.8 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, ${minorGridColor} 1px, transparent 1px)`, backgroundSize: `${minorGridSize}px ${minorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       <div className="absolute pointer-events-none"
-        style={{ inset: '-100px', opacity: 0.25 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #555 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
+        style={{ inset: '-100px', opacity: 0.45 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, ${majorGridColor} 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       {guidesVisible && (
         <>
-          <div ref={guideVRef} className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: 0 }} />
-          <div ref={guideHRef} className="absolute left-0 right-0 h-px pointer-events-none bg-emerald-500/10" style={{ top: 0 }} />
+          <div ref={guideVRef} className="absolute top-0 bottom-0 w-px pointer-events-none" style={{ left: 0, backgroundColor: guideColor }} />
+          <div ref={guideHRef} className="absolute left-0 right-0 h-px pointer-events-none" style={{ top: 0, backgroundColor: guideColor }} />
         </>
       )}
     </div>

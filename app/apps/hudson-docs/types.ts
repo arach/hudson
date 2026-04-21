@@ -24,7 +24,11 @@ export interface AgentDocEntry {
   position: { x: number; y: number };
 }
 
-import type { VoiceSettings as SdkVoiceSettings } from '@hudson/sdk';
+import type {
+  HudsonTemplate,
+  HudsonTheme,
+  VoiceSettings as SdkVoiceSettings,
+} from '@hudson/sdk';
 
 export type AIMode = 'cli' | 'api';
 
@@ -44,6 +48,8 @@ export interface FontSettings {
 }
 
 export interface HudsonSettings {
+  theme: HudsonTheme;
+  template: HudsonTemplate;
   glowIntensity: number;
   gridOpacity: number;
   connectorStyle: 'dashed' | 'solid' | 'dotted';

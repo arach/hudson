@@ -1,0 +1,195 @@
+[data-hudson-template="hudson"] {
+  --hud-bg: oklch(var(--background));
+  --hud-surface: oklch(var(--card));
+  --hud-ink: oklch(var(--foreground));
+  --hud-muted: oklch(var(--muted-foreground));
+  --hud-dim: oklch(var(--muted-foreground) / 0.78);
+  --hud-border: oklch(var(--border) / 0.82);
+  --hud-radius: var(--radius);
+  --hud-shadow-soft: oklch(var(--foreground) / 0.14);
+  --hud-accent: oklch(var(--accent));
+  --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-status-ok: oklch(var(--success));
+  --hud-status-warn: oklch(var(--warning));
+  --hud-status-error: oklch(var(--destructive));
+  --hud-status-info: oklch(var(--info));
+}
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Theme-aware chrome shadows & effects
+   ───────────────────────────────────────────────────────────────────────────
+   Chrome panels used dark-tuned hard-coded shadows (rgba(0,0,0,0.8) rim glow,
+   white inset highlights) that paint as heavy black halos on light surfaces.
+   These tokens let a single class in SHELL_THEME.tokens.shadow render
+   differently per theme. */
+[data-hudson-template="hudson"][data-hudson-theme="dark"] {
+  /* Deep rim glow + subtle white inset top-line — the original chrome look */
+  --hud-shadow-panel: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --hud-shadow-bar: 0 -5px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --hud-shadow-nav: 0 4px 30px rgba(0, 0, 0, 0.5);
+  --hud-shadow-minimap: 0 0 20px rgba(0, 0, 0, 0.7);
+  --hud-edge-fade-dark: rgba(0, 0, 0, 0.2);
+  --hud-edge-fade-bottom: rgba(0, 0, 0, 0.3);
+  /* Canvas dot grid — minor dots (20px spacing) + major dots (100px spacing).
+     White at low alpha is barely visible on the near-black canvas. */
+  --hud-canvas-dot-minor: rgba(255, 255, 255, 0.06);
+  --hud-canvas-dot-major: rgba(255, 255, 255, 0.10);
+}
+
+[data-hudson-template="hudson"][data-hudson-theme="light"] {
+  /* Paper-on-canvas elevation — short, low-opacity drop; no white inset */
+  --hud-shadow-panel: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px -12px rgba(17, 24, 39, 0.10);
+  --hud-shadow-bar: 0 -1px 2px rgba(17, 24, 39, 0.04), 0 -8px 24px -16px rgba(17, 24, 39, 0.08);
+  --hud-shadow-nav: 0 1px 2px rgba(17, 24, 39, 0.04), 0 6px 16px -12px rgba(17, 24, 39, 0.08);
+  --hud-shadow-minimap: 0 1px 2px rgba(17, 24, 39, 0.04), 0 6px 16px -8px rgba(17, 24, 39, 0.08);
+  --hud-edge-fade-dark: rgba(17, 24, 39, 0.04);
+  --hud-edge-fade-bottom: rgba(17, 24, 39, 0.06);
+  /* Canvas dot grid — cool slate against the warm off-white canvas. The
+     warm/cool opposition keeps dots legible without reading as muddy. */
+  --hud-canvas-dot-minor: rgba(17, 24, 39, 0.08);
+  --hud-canvas-dot-major: rgba(17, 24, 39, 0.14);
+}
+
+[data-hudson-template="hudson"][data-hudson-theme="dark"] {
+  color-scheme: dark;
+  --background: 0.145 0 0;
+  --foreground: 0.95 0 0;
+  --card: 0.18 0 0;
+  --card-foreground: 0.95 0 0;
+  --popover: 0.16 0 0;
+  --popover-foreground: 0.95 0 0;
+  --primary: 0.75 0.17 162;
+  --primary-foreground: 0.145 0 0;
+  --secondary: 0.24 0 0;
+  --secondary-foreground: 0.95 0 0;
+  --muted: 0.22 0 0;
+  --muted-foreground: 0.64 0 0;
+  --accent: 0.72 0.18 162;
+  --accent-foreground: 0.145 0 0;
+  --destructive: 0.62 0.24 25;
+  --destructive-foreground: 0.98 0 0;
+  --warning: 0.8 0.17 75;
+  --success: 0.7 0.17 145;
+  --info: 0.62 0.2 250;
+  --border: 0.28 0 0;
+  --input: 0.28 0 0;
+  --ring: 0.72 0.18 162;
+  --radius: 8px;
+}
+
+[data-hudson-template="hudson"][data-hudson-theme="light"] {
+  color-scheme: light;
+  /* Canvas — warm off-white (Rhino-paper / Linear-light territory). A touch
+     of warmth (hue 85) + a hair of chroma (0.01) gives the plane character
+     that pure-cool near-whites lack. */
+  --background: 0.975 0.008 90;
+  /* Body text — cool ink. The warm/cool opposition is what makes the page
+     feel composed instead of washed. */
+  --foreground: 0.21 0.02 260;
+  /* Paper — pure white stays as the sharp lifted surface on top of the
+     warm canvas. The tonal delta is now ~2.5 L points + a chroma jump,
+     which reads clearly as "lifted paper". */
+  --card: 1 0 0;
+  --card-foreground: 0.19 0.02 260;
+  --popover: 1 0 0;
+  --popover-foreground: 0.19 0.02 260;
+  /* Primary = decisive near-black (shadcn). Accent = punchier emerald —
+     raise chroma from 0.16 → 0.19 so the brand actually registers in light
+     mode instead of reading as dusty teal. */
+  --primary: 0.22 0.02 260;
+  --primary-foreground: 0.99 0.003 90;
+  /* Sidebars / tinted surface — now meaningfully different from card. Was
+     0.955 cool, now 0.945 warm with a hint of chroma so panel chrome reads
+     as a distinct band, not "slightly off-white card". */
+  --secondary: 0.945 0.012 85;
+  --secondary-foreground: 0.23 0.02 260;
+  --muted: 0.945 0.012 85;
+  --muted-foreground: 0.5 0.02 260;
+  /* Accent — emerald, pushed. 0.19 chroma is roughly emerald-500 saturation
+     range, properly readable on white and punchy on tinted surfaces. */
+  --accent: 0.58 0.19 162;
+  --accent-foreground: 0.99 0 0;
+  /* Destructive — slightly muted so status-bar pills aren't screamingly loud. */
+  --destructive: 0.56 0.19 25;
+  --destructive-foreground: 0.99 0 0;
+  --warning: 0.72 0.16 75;
+  --success: 0.6 0.17 150;
+  --info: 0.55 0.19 250;
+  /* Borders — warm hairlines that sit beneath surface tonality. */
+  --border: 0.92 0.014 80;
+  --input: 0.9 0.014 80;
+  --ring: 0.58 0.19 162;
+  --radius: 8px;
+}
+
+[data-hudson-template="editorial"] {
+  --hud-bg: oklch(var(--background));
+  --hud-surface: oklch(var(--card));
+  --hud-ink: oklch(var(--foreground));
+  --hud-muted: oklch(var(--muted-foreground));
+  --hud-dim: oklch(var(--muted-foreground) / 0.78);
+  --hud-border: oklch(var(--border) / 0.82);
+  --hud-radius: var(--radius);
+  --hud-shadow-soft: oklch(var(--foreground) / 0.14);
+  --hud-accent: oklch(var(--accent));
+  --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-status-ok: oklch(var(--success));
+  --hud-status-warn: oklch(var(--warning));
+  --hud-status-error: oklch(var(--destructive));
+  --hud-status-info: oklch(var(--info));
+  --hud-font-serif: "Source Serif 4", Georgia, serif;
+}
+
+[data-hudson-template="editorial"][data-hudson-theme="light"] {
+  color-scheme: light;
+  --background: 0.98 0.01 80;
+  --foreground: 0.2 0.02 60;
+  --card: 1 0 0;
+  --card-foreground: 0.2 0.02 60;
+  --popover: 1 0 0;
+  --popover-foreground: 0.2 0.02 60;
+  --primary: 0.3 0.05 60;
+  --primary-foreground: 0.98 0.01 80;
+  --secondary: 0.94 0.02 80;
+  --secondary-foreground: 0.2 0.02 60;
+  --muted: 0.93 0.015 80;
+  --muted-foreground: 0.48 0.03 60;
+  --accent: 0.6 0.18 40;
+  --accent-foreground: 0.99 0 0;
+  --destructive: 0.55 0.22 25;
+  --destructive-foreground: 0.99 0 0;
+  --warning: 0.72 0.16 75;
+  --success: 0.52 0.14 145;
+  --info: 0.5 0.15 250;
+  --border: 0.88 0.015 80;
+  --input: 0.88 0.015 80;
+  --ring: 0.6 0.18 40;
+  --radius: 4px;
+}
+
+[data-hudson-template="editorial"][data-hudson-theme="dark"] {
+  color-scheme: dark;
+  --background: 0.21 0.015 60;
+  --foreground: 0.92 0.01 85;
+  --card: 0.245 0.016 60;
+  --card-foreground: 0.92 0.01 85;
+  --popover: 0.235 0.014 60;
+  --popover-foreground: 0.92 0.01 85;
+  --primary: 0.7 0.05 70;
+  --primary-foreground: 0.2 0.015 60;
+  --secondary: 0.29 0.015 65;
+  --secondary-foreground: 0.9 0.01 85;
+  --muted: 0.275 0.014 65;
+  --muted-foreground: 0.71 0.012 75;
+  --accent: 0.69 0.16 40;
+  --accent-foreground: 0.18 0.01 60;
+  --destructive: 0.67 0.2 28;
+  --destructive-foreground: 0.98 0 0;
+  --warning: 0.8 0.15 75;
+  --success: 0.67 0.13 145;
+  --info: 0.68 0.12 250;
+  --border: 0.34 0.015 65;
+  --input: 0.34 0.015 65;
+  --ring: 0.69 0.16 40;
+  --radius: 4px;
+}

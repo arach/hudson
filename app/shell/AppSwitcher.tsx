@@ -26,28 +26,28 @@ export function AppSwitcher({ apps, activeId, onSwitch }: AppSwitcherProps) {
 
   // Single app — just show the label, no dropdown
   if (apps.length <= 1) {
-    return <span className="text-[11px] font-mono text-neutral-300">v0.1.0</span>;
+    return <span className="text-[11px] font-mono text-foreground/80">v0.1.0</span>;
   }
 
   return (
     <div ref={ref} className="relative">
       <button
         onClick={() => setOpen(o => !o)}
-        className="flex items-center gap-1 text-[11px] font-mono text-neutral-300 hover:text-white transition-colors"
+        className="flex items-center gap-1 text-[11px] font-mono text-foreground/80 hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
       >
         {active?.name ?? activeId}
         <ChevronDown size={10} />
       </button>
       {open && (
-        <div className="absolute top-full left-0 mt-1 w-48 bg-neutral-900 border border-neutral-700 rounded-lg shadow-xl overflow-hidden z-[200]">
+        <div className="absolute top-full left-0 mt-1 w-48 bg-popover border border-border rounded-lg shadow-xl overflow-hidden z-[200]">
           {apps.map(app => (
             <button
               key={app.id}
               onClick={() => { onSwitch(app.id); setOpen(false); }}
-              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-mono transition-colors ${
+              className={`w-full flex items-center gap-2 px-3 py-2 text-left text-[11px] font-mono transition-colors focus-visible:bg-muted focus-visible:ring-1 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none ${
                 app.id === activeId
-                  ? 'bg-emerald-500/10 text-emerald-400'
-                  : 'text-neutral-300 hover:bg-white/5 hover:text-white'
+                  ? 'bg-accent/10 text-accent'
+                  : 'text-foreground/80 hover:bg-muted hover:text-foreground'
               }`}
             >
               <span className="flex-1">{app.name}</span>

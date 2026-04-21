@@ -67,7 +67,7 @@ function ResizeHandle({ onMouseDown }: { onMouseDown: (e: React.MouseEvent) => v
       onMouseDown={onMouseDown}
       className="absolute bottom-0 right-0 w-3 h-3 cursor-nwse-resize pointer-events-auto z-10 group"
     >
-      <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-0.5 right-0.5 text-neutral-600 group-hover:text-neutral-400 transition-colors">
+      <svg width="10" height="10" viewBox="0 0 10 10" className="absolute bottom-0.5 right-0.5 text-muted-foreground/60 group-hover:text-foreground/70 transition-colors">
         <path d="M9 1L1 9M9 5L5 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" />
       </svg>
     </div>
@@ -93,25 +93,25 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
     <div
       onClick={onSelect}
       onMouseDown={onDragStart}
-      style={{ boxShadow: isSelected ? selectedShadow : '0 0 40px rgba(0,0,0,0.6)', width: size.w, height: size.h }}
-      className={`relative border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
+      style={{ boxShadow: isSelected ? selectedShadow : '0 24px 60px color-mix(in srgb, oklch(var(--foreground)) 14%, transparent)', width: size.w, height: size.h }}
+      className={`relative border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
         isSelected
           ? 'border-emerald-500/80'
-          : 'border-neutral-700/60 hover:border-neutral-600/80'
+          : 'border-border/70 hover:border-border'
       }`}
     >
       {/* Header */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700/50 shrink-0">
+      <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 shrink-0 bg-card/92">
         <div className="flex items-center gap-2">
           <Icon size={14} className="text-emerald-400" />
           <div>
-            <span className="text-[13px] font-mono font-bold text-white tracking-wider">{entry.label}</span>
-            <div className="text-[10px] font-mono text-neutral-400">{entry.ns}</div>
+            <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">{entry.label}</span>
+            <div className="text-[10px] font-mono text-muted-foreground">{entry.ns}</div>
           </div>
         </div>
         <button
           onClick={onClose}
-          className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white pointer-events-auto"
+          className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground pointer-events-auto"
         >
           <X size={12} />
         </button>
@@ -120,39 +120,39 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
       {/* Scrollable body */}
       <div className="flex-1 overflow-y-auto frame-scrollbar">
         {/* Overview */}
-        <div className="px-4 py-3 border-b border-neutral-700/30">
-          <div className="text-[11px] font-mono text-neutral-200 leading-relaxed">{entry.overview}</div>
+        <div className="px-4 py-3 border-b border-border/60">
+          <div className="text-[11px] font-mono text-foreground/82 leading-relaxed">{entry.overview}</div>
         </div>
 
         {/* Props table */}
-        <div className="px-4 py-3 border-b border-neutral-700/30">
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Props</div>
+        <div className="px-4 py-3 border-b border-border/60">
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Props</div>
           <div className="space-y-2">
             {entry.props.map(p => (
               <div key={p.name}>
                 <div className="flex items-baseline gap-2">
                   <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
-                  <span className="text-[10px] font-mono text-neutral-400">{p.type}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                 </div>
-                <div className="text-[10px] font-mono text-neutral-300 mt-0.5">{p.desc}</div>
+                <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
               </div>
             ))}
           </div>
         </div>
 
         {/* Usage */}
-        <div className="px-4 py-3 border-b border-neutral-700/30">
-          <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Usage</div>
-          <pre className="text-[10px] font-mono text-neutral-200 bg-neutral-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre">{entry.usage}</pre>
+        <div className="px-4 py-3 border-b border-border/60">
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Usage</div>
+          <pre className="text-[10px] font-mono text-foreground/82 bg-secondary/90 rounded px-3 py-2 overflow-x-auto whitespace-pre">{entry.usage}</pre>
         </div>
 
         {/* Notes */}
         {entry.notes && entry.notes.length > 0 && (
           <div className="px-4 py-3">
-            <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Notes</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Notes</div>
             <ul className="space-y-1">
               {entry.notes.map((n, i) => (
-                <li key={i} className="text-[10px] font-mono text-neutral-300 flex items-start gap-1.5">
+                <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
                   <span className="text-emerald-500/60 mt-px">-</span>
                   <span>{n}</span>
                 </li>
@@ -208,18 +208,18 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
     <div
       onClick={onSelect}
       onMouseDown={onDragStart}
-      style={{ boxShadow: isSelected ? selectedShadow : '0 0 40px rgba(0,0,0,0.6)', width: size.w, height: size.h }}
-      className={`relative border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
+      style={{ boxShadow: isSelected ? selectedShadow : '0 24px 60px color-mix(in srgb, oklch(var(--foreground)) 14%, transparent)', width: size.w, height: size.h }}
+      className={`relative border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
         isSelected
           ? 'border-emerald-500/80'
-          : 'border-neutral-700/60 hover:border-neutral-600/80'
+          : 'border-border/70 hover:border-border'
       }`}
     >
       {/* Title bar */}
-      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-neutral-700/50 shrink-0 bg-neutral-800/90">
+      <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/70 shrink-0 bg-card/92">
         <div className="flex items-center gap-1.5 min-w-0">
           <Bot size={9} className="text-emerald-400/50 shrink-0" />
-          <span className="text-[8px] font-mono text-neutral-500 tracking-widest uppercase truncate">{entry?.title ?? slug}</span>
+          <span className="text-[8px] font-mono text-muted-foreground tracking-widest uppercase truncate">{entry?.title ?? slug}</span>
         </div>
         <div className="flex items-center gap-0 shrink-0">
           <a
@@ -228,7 +228,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
             rel="noopener noreferrer"
             onClick={(e) => e.stopPropagation()}
             onMouseDown={(e) => e.stopPropagation()}
-            className="p-0.5 rounded transition-colors text-neutral-600 hover:bg-white/10 hover:text-neutral-300 pointer-events-auto"
+            className="p-0.5 rounded transition-colors text-muted-foreground/70 hover:bg-accent/10 hover:text-foreground/80 pointer-events-auto"
             title="Open docs site"
           >
             <ExternalLink size={9} />
@@ -236,7 +236,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
           <button
             onClick={(e) => { e.stopPropagation(); handleCopy(); }}
             className={`p-0.5 rounded transition-colors ${
-              copied ? 'text-emerald-400' : 'text-neutral-600 hover:bg-white/10 hover:text-neutral-300'
+              copied ? 'text-emerald-400' : 'text-muted-foreground/70 hover:bg-accent/10 hover:text-foreground/80'
             } pointer-events-auto`}
             title={copied ? 'Copied!' : 'Copy raw markdown'}
           >
@@ -244,7 +244,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
           </button>
           <button
             onClick={(e) => { e.stopPropagation(); onClose(); }}
-            className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-600 hover:text-neutral-300 pointer-events-auto"
+            className="p-0.5 hover:bg-accent/10 rounded transition-colors text-muted-foreground/70 hover:text-foreground/80 pointer-events-auto"
             title="Close"
           >
             <X size={9} />
@@ -253,17 +253,16 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
       </div>
 
       {/* Metadata preamble — warm tint to distinguish from content */}
-      <div className="px-2.5 py-1.5 border-b border-amber-900/20 shrink-0 bg-amber-950/20 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-px text-[8px] font-mono">
-        <span className="text-amber-600/70">title</span>
-        <span className="text-amber-200/70 truncate">{entry?.title ?? slug}</span>
-        <span className="text-amber-600/70">desc</span>
-        <span className="text-amber-200/70 truncate">{entry?.description ?? ''}</span>
-        <span className="text-amber-600/70">source</span>
-        <span className="text-amber-200/50 truncate">{entry?.file ?? slug}</span>
+      <div className="px-2.5 py-1.5 border-b border-border/60 shrink-0 bg-secondary/70 grid grid-cols-[auto_1fr] gap-x-2.5 gap-y-px text-[8px] font-mono">
+        <span className="text-muted-foreground">title</span>
+        <span className="text-foreground/78 truncate">{entry?.title ?? slug}</span>
+        <span className="text-muted-foreground">desc</span>
+        <span className="text-foreground/78 truncate">{entry?.description ?? ''}</span>
+        <span className="text-muted-foreground">source</span>
+        <span className="text-foreground/62 truncate">{entry?.file ?? slug}</span>
       </div>
 
-      {/* Content — dark inset surface, sans-serif, scaled down for sheet context */}
-      <div className="flex-1 overflow-y-auto frame-scrollbar bg-black/40 px-3 py-2 [&>div>*:first-child]:!mt-0
+      <div className="flex-1 overflow-y-auto frame-scrollbar bg-background/55 px-3 py-2 [&>div>*:first-child]:!mt-0
         [&_.docs-prose]:!text-[10px] [&_.docs-prose]:!leading-[1.5]
         [&_.docs-prose_h2]:!text-[11px] [&_.docs-prose_h2]:!mt-3 [&_.docs-prose_h2]:!mb-1.5 [&_.docs-prose_h2]:!pb-1 [&_.docs-prose_h2]:!font-semibold
         [&_.docs-prose_h3]:!text-[10px] [&_.docs-prose_h3]:!mt-2.5 [&_.docs-prose_h3]:!mb-1 [&_.docs-prose_h3]:!font-semibold
@@ -280,7 +279,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
       ">
         {loading ? (
           <div className="flex items-center justify-center py-8">
-            <div className="flex items-center gap-2 text-neutral-500 font-mono text-[9px]">
+            <div className="flex items-center gap-2 text-muted-foreground font-mono text-[9px]">
               <div className="w-2.5 h-2.5 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
               Loading...
             </div>
@@ -291,7 +290,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
             dangerouslySetInnerHTML={{ __html: html.replace(/^\s*<h1[^>]*>[\s\S]*?<\/h1>\s*/, '') }}
           />
         ) : (
-          <div className="text-neutral-600 font-mono text-[9px] text-center py-8">Document not found.</div>
+          <div className="text-muted-foreground font-mono text-[9px] text-center py-8">Document not found.</div>
         )}
       </div>
 
@@ -310,7 +309,7 @@ export function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange:
     { value: 'tiles', label: 'Tiles', icon: LayoutGrid },
   ];
   return (
-    <div className="flex bg-neutral-800/80 rounded border border-neutral-700 overflow-hidden">
+    <div className="flex bg-card/82 rounded border border-border overflow-hidden shadow-[0_12px_30px_rgba(0,0,0,0.12)]">
       {modes.map((m, i) => {
         const MIcon = m.icon;
         const active = value === m.value;
@@ -321,8 +320,8 @@ export function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange:
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono transition-colors ${
               active
                 ? 'bg-emerald-600/20 text-emerald-400'
-                : 'text-neutral-300 hover:text-neutral-200 hover:bg-white/5'
-            } ${i > 0 ? 'border-l border-neutral-700' : ''}`}
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/8'
+            } ${i > 0 ? 'border-l border-border' : ''}`}
           >
             <MIcon size={12} />
             {m.label}
@@ -353,7 +352,7 @@ export function ListView({ components, searchValue, selectedId, onSelect }: {
     <div className="pt-16 pb-16 px-4">
       <div className="max-w-3xl mx-auto space-y-1">
         {filtered.length === 0 && (
-          <div className="text-center text-neutral-400 text-[12px] font-mono py-12">No components match &quot;{searchValue}&quot;</div>
+          <div className="text-center text-muted-foreground text-[12px] font-mono py-12">No components match &quot;{searchValue}&quot;</div>
         )}
         {filtered.map(c => {
           const Icon = c.icon;
@@ -365,53 +364,53 @@ export function ListView({ components, searchValue, selectedId, onSelect }: {
               onClick={() => onSelect(c.id)}
               className={`border rounded-lg transition-all cursor-pointer ${
                 isSelected
-                  ? 'border-emerald-500/60 bg-neutral-800/80 backdrop-blur-md ring-1 ring-emerald-500/20'
-                  : isExpanded ? 'border-emerald-500/30 bg-neutral-800/80 backdrop-blur-md' : 'border-neutral-700/40 bg-neutral-800/50 hover:border-neutral-700/60 hover:bg-neutral-800/60'
+                  ? 'border-emerald-500/60 bg-card/88 backdrop-blur-md ring-1 ring-emerald-500/20'
+                  : isExpanded ? 'border-emerald-500/30 bg-card/84 backdrop-blur-md' : 'border-border/60 bg-card/68 hover:border-border hover:bg-card/84'
               }`}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onSelect(c.id); setExpandedId(isExpanded ? null : c.id); }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
               >
-                <Icon size={14} className={isSelected || isExpanded ? 'text-emerald-400' : 'text-neutral-400'} />
+                <Icon size={14} className={isSelected || isExpanded ? 'text-emerald-400' : 'text-muted-foreground'} />
                 <div className="flex-1 min-w-0">
                   <div>
-                    <span className={`text-[13px] font-mono font-bold tracking-wider ${isSelected || isExpanded ? 'text-emerald-400' : 'text-white'}`}>{c.label}</span>
-                    <span className="text-[11px] font-mono text-neutral-300 ml-3">{c.desc}</span>
+                    <span className={`text-[13px] font-mono font-bold tracking-wider ${isSelected || isExpanded ? 'text-emerald-400' : 'text-foreground'}`}>{c.label}</span>
+                    <span className="text-[11px] font-mono text-foreground/70 ml-3">{c.desc}</span>
                   </div>
-                  <div className="text-[10px] font-mono text-neutral-400">{c.ns}</div>
+                  <div className="text-[10px] font-mono text-muted-foreground">{c.ns}</div>
                 </div>
-                {isExpanded ? <ChevronDown size={14} className="text-neutral-400" /> : <ChevronRight size={14} className="text-neutral-400" />}
+                {isExpanded ? <ChevronDown size={14} className="text-muted-foreground" /> : <ChevronRight size={14} className="text-muted-foreground" />}
               </button>
               {isExpanded && (
-                <div className="px-4 pb-4 space-y-3 border-t border-neutral-700/30">
+                <div className="px-4 pb-4 space-y-3 border-t border-border/60">
                   <div className="pt-3">
-                    <div className="text-[11px] font-mono text-neutral-200 leading-relaxed">{c.overview}</div>
+                    <div className="text-[11px] font-mono text-foreground/82 leading-relaxed">{c.overview}</div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Props</div>
+                    <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Props</div>
                     <div className="space-y-2">
                       {c.props.map(p => (
                         <div key={p.name}>
                           <div className="flex items-baseline gap-2">
                             <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
-                            <span className="text-[10px] font-mono text-neutral-400">{p.type}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                           </div>
-                          <div className="text-[10px] font-mono text-neutral-300 mt-0.5">{p.desc}</div>
+                          <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
                         </div>
                       ))}
                     </div>
                   </div>
                   <div>
-                    <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Usage</div>
-                    <pre className="text-[10px] font-mono text-neutral-200 bg-neutral-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre">{c.usage}</pre>
+                    <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Usage</div>
+                    <pre className="text-[10px] font-mono text-foreground/82 bg-secondary/90 rounded px-3 py-2 overflow-x-auto whitespace-pre">{c.usage}</pre>
                   </div>
                   {c.notes && c.notes.length > 0 && (
                     <div>
-                      <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Notes</div>
+                      <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Notes</div>
                       <ul className="space-y-1">
                         {c.notes.map((n, i) => (
-                          <li key={i} className="text-[10px] font-mono text-neutral-300 flex items-start gap-1.5">
+                          <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
                             <span className="text-emerald-500/60 mt-px">-</span>
                             <span>{n}</span>
                           </li>
@@ -450,9 +449,9 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
     return (
       <div className="pt-16 pb-16 px-6 flex items-center justify-center min-h-[60vh]">
         <div className="text-center space-y-2">
-          <LayoutGrid size={24} className="text-neutral-500 mx-auto" />
-          <div className="text-[12px] font-mono text-neutral-400">No components tiled</div>
-          <div className="text-[11px] font-mono text-neutral-400">Open components from the left panel to tile them here</div>
+          <LayoutGrid size={24} className="text-muted-foreground mx-auto" />
+          <div className="text-[12px] font-mono text-muted-foreground">No components tiled</div>
+          <div className="text-[11px] font-mono text-muted-foreground">Open components from the left panel to tile them here</div>
         </div>
       </div>
     );
@@ -472,55 +471,55 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
               key={c.id}
               onClick={() => onSelect(c.id)}
               style={{ boxShadow: tileShadow }}
-              className={`border rounded-lg bg-neutral-800/80 backdrop-blur-md overflow-hidden flex flex-col cursor-pointer transition-all ${
+              className={`border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col cursor-pointer transition-all ${
                 isSelected
                   ? 'border-emerald-500/80 ring-1 ring-emerald-500/20'
-                  : 'border-emerald-500/30'
+                  : 'border-border/70'
               }`}
             >
-              <div className="flex items-center justify-between px-4 py-3 border-b border-neutral-700/50 shrink-0">
+              <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 shrink-0">
                 <div className="flex items-center gap-2">
                   <Icon size={14} className="text-emerald-400" />
                   <div>
-                    <span className="text-[13px] font-mono font-bold text-white tracking-wider">{c.label}</span>
-                    <div className="text-[10px] font-mono text-neutral-400">{c.ns}</div>
+                    <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">{c.label}</span>
+                    <div className="text-[10px] font-mono text-muted-foreground">{c.ns}</div>
                   </div>
                 </div>
                 <button
                   onClick={(e) => { e.stopPropagation(); onClose(c.id); }}
-                  className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
+                  className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground"
                 >
                   <X size={12} />
                 </button>
               </div>
               <div className="overflow-y-auto frame-scrollbar flex-1">
-                <div className="px-4 py-3 border-b border-neutral-700/30">
-                  <div className="text-[11px] font-mono text-neutral-200 leading-relaxed">{c.overview}</div>
+                <div className="px-4 py-3 border-b border-border/60">
+                  <div className="text-[11px] font-mono text-foreground/82 leading-relaxed">{c.overview}</div>
                 </div>
-                <div className="px-4 py-3 border-b border-neutral-700/30">
-                  <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Props</div>
+                <div className="px-4 py-3 border-b border-border/60">
+                  <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Props</div>
                   <div className="space-y-2">
                     {c.props.map(p => (
                       <div key={p.name}>
                         <div className="flex items-baseline gap-2">
                           <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
-                          <span className="text-[10px] font-mono text-neutral-400">{p.type}</span>
+                          <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                         </div>
-                        <div className="text-[10px] font-mono text-neutral-300 mt-0.5">{p.desc}</div>
+                        <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
                       </div>
                     ))}
                   </div>
                 </div>
-                <div className="px-4 py-3 border-b border-neutral-700/30">
-                  <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Usage</div>
-                  <pre className="text-[10px] font-mono text-neutral-200 bg-neutral-900/60 rounded px-3 py-2 overflow-x-auto whitespace-pre">{c.usage}</pre>
+                <div className="px-4 py-3 border-b border-border/60">
+                  <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Usage</div>
+                  <pre className="text-[10px] font-mono text-foreground/82 bg-secondary/90 rounded px-3 py-2 overflow-x-auto whitespace-pre">{c.usage}</pre>
                 </div>
                 {c.notes && c.notes.length > 0 && (
                   <div className="px-4 py-3">
-                    <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-2">Notes</div>
+                    <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Notes</div>
                     <ul className="space-y-1">
                       {c.notes.map((n, i) => (
-                        <li key={i} className="text-[10px] font-mono text-neutral-300 flex items-start gap-1.5">
+                        <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
                           <span className="text-emerald-500/60 mt-px">-</span>
                           <span>{n}</span>
                         </li>
@@ -542,8 +541,8 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
 // ---------------------------------------------------------------------------
 export function SettingsSection({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="px-6 py-4 border-b border-neutral-700/50">
-      <div className="text-[10px] font-mono text-neutral-300 tracking-widest uppercase mb-4">{label}</div>
+    <div className="px-6 py-4 border-b border-border/70">
+      <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-4">{label}</div>
       <div className="space-y-4">{children}</div>
     </div>
   );
@@ -560,7 +559,7 @@ export function SettingsSlider({ label, value, min, max, step, format, onChange 
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
+      <div className="text-[12px] font-mono text-foreground/84 w-[140px] shrink-0">{label}</div>
       <input
         type="range"
         min={min}
@@ -568,12 +567,12 @@ export function SettingsSlider({ label, value, min, max, step, format, onChange 
         step={step}
         value={value}
         onChange={e => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1 appearance-none bg-neutral-700 rounded-full cursor-pointer accent-emerald-500
+        className="flex-1 h-1 appearance-none bg-muted rounded-full cursor-pointer accent-emerald-500
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
           [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
           [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(16,185,129,0.4)]"
       />
-      <div className="text-[11px] font-mono text-neutral-200 w-[48px] text-right tabular-nums">{format(value)}</div>
+      <div className="text-[11px] font-mono text-foreground/84 w-[48px] text-right tabular-nums">{format(value)}</div>
     </div>
   );
 }
@@ -585,12 +584,12 @@ export function SettingsToggle({ label, checked, onChange }: {
 }) {
   return (
     <div className="flex items-center justify-between">
-      <div className="text-[12px] font-mono text-neutral-200">{label}</div>
+      <div className="text-[12px] font-mono text-foreground/84">{label}</div>
       <button
         onClick={() => onChange(!checked)}
-        className={`w-9 h-5 rounded-full relative transition-colors ${checked ? 'bg-emerald-600' : 'bg-neutral-700'}`}
+        className={`w-9 h-5 rounded-full relative transition-colors ${checked ? 'bg-emerald-600' : 'bg-muted'}`}
       >
-        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-white shadow transition-transform ${checked ? 'left-[18px]' : 'left-0.5'}`} />
+        <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${checked ? 'left-[18px]' : 'left-0.5'}`} />
       </button>
     </div>
   );
@@ -604,8 +603,8 @@ export function SettingsSegment<T extends string>({ label, value, options, onCha
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
-      <div className="flex bg-neutral-800 rounded border border-neutral-700 overflow-hidden">
+      <div className="text-[12px] font-mono text-foreground/84 w-[140px] shrink-0">{label}</div>
+      <div className="flex bg-card rounded border border-border overflow-hidden">
         {options.map(opt => (
           <button
             key={opt.value}
@@ -613,8 +612,8 @@ export function SettingsSegment<T extends string>({ label, value, options, onCha
             className={`px-3 py-1.5 text-[11px] font-mono transition-colors ${
               value === opt.value
                 ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/5'
-            } ${opt.value !== options[0].value ? 'border-l border-neutral-700' : ''}`}
+                : 'text-muted-foreground hover:text-foreground hover:bg-accent/8'
+            } ${opt.value !== options[0].value ? 'border-l border-border' : ''}`}
           >
             {opt.label}
           </button>
@@ -642,12 +641,12 @@ export function SettingsText({ label, value, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
+      <div className="text-[12px] font-mono text-foreground/84 w-[140px] shrink-0">{label}</div>
       <input
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1 text-[11px] font-mono text-neutral-200 focus:border-emerald-500/50 focus:outline-none transition-colors"
+        className="flex-1 bg-card border border-border rounded px-2 py-1 text-[11px] font-mono text-foreground/84 focus:border-emerald-500/50 focus:outline-none transition-colors"
       />
     </div>
   );
@@ -661,11 +660,11 @@ export function SettingsSelect({ label, value, options, onChange }: {
 }) {
   return (
     <div className="flex items-center gap-4">
-      <div className="text-[12px] font-mono text-neutral-200 w-[140px] shrink-0">{label}</div>
+      <div className="text-[12px] font-mono text-foreground/84 w-[140px] shrink-0">{label}</div>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-[11px] font-mono text-neutral-200 focus:border-emerald-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+        className="flex-1 bg-card border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground/84 focus:border-emerald-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
       >
         {options.map(opt => (
@@ -716,15 +715,15 @@ export function FontSettingsCard({ fontSize, fontFamily, onChangeFontSize, onCha
         onChange={onChangeFontFamily}
       />
       {/* Live preview */}
-      <div className="mt-1 px-3 py-2 rounded bg-neutral-800/50 border border-neutral-700/30">
+      <div className="mt-1 px-3 py-2 rounded bg-card/70 border border-border/60">
         <div
-          className="text-neutral-300 leading-relaxed"
+          className="text-foreground/78 leading-relaxed"
           style={{ fontSize: `${fontSize}px`, fontFamily }}
         >
           The quick brown fox jumps over the lazy dog
         </div>
         <div
-          className="text-neutral-500 mt-1"
+          className="text-muted-foreground mt-1"
           style={{ fontSize: `${Math.max(fontSize - 2, 9)}px`, fontFamily }}
         >
           0123456789 — ABCDEF abcdef
@@ -758,21 +757,40 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
       onClick={onClose}
     >
       <div
-        className="w-[480px] max-w-[90vw] bg-[#161616] border border-neutral-700 shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
+        className="w-[480px] max-w-[90vw] bg-card border border-border shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
         onClick={e => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-6 py-4 border-b border-neutral-700">
+        <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2">
             <Settings size={14} className="text-emerald-400" />
-            <span className="text-[13px] font-mono font-bold text-white tracking-wider">SETTINGS</span>
+            <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">SETTINGS</span>
           </div>
-          <button onClick={onClose} className="p-1 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white">
+          <button onClick={onClose} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground">
             <X size={14} />
           </button>
         </div>
 
         <div className="overflow-y-auto max-h-[60vh] frame-scrollbar">
           <SettingsSection label="Appearance">
+            <SettingsSegment
+              label="Theme"
+              value={settings.theme}
+              options={[
+                { value: 'system', label: 'System' },
+                { value: 'light', label: 'Light' },
+                { value: 'dark', label: 'Dark' },
+              ]}
+              onChange={v => onUpdate({ theme: v })}
+            />
+            <SettingsSegment
+              label="Template"
+              value={settings.template}
+              options={[
+                { value: 'hudson', label: 'Hudson' },
+                { value: 'editorial', label: 'Editorial' },
+              ]}
+              onChange={v => onUpdate({ template: v })}
+            />
             <SettingsSlider
               label="Glow Intensity"
               value={settings.glowIntensity}
@@ -790,6 +808,10 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
               ]}
               onChange={v => onUpdate({ connectorStyle: v })}
             />
+            <div className="rounded border border-border/60 bg-secondary/70 px-3 py-2 text-[10px] font-mono text-muted-foreground">
+              Theme updates the workspace chrome immediately. Template swaps the token bundle that
+              drives shell surfaces, accents, and radius.
+            </div>
           </SettingsSection>
           <SettingsSection label="Navigation">
             <SettingsSlider
@@ -821,22 +843,22 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
                 ['Ctrl + `', 'Toggle terminal'],
                 ['Cmd + M', 'Toggle mute'],
               ].map(([key, desc]) => (
-                <div key={key} className="contents">
-                  <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
-                  <div className="text-neutral-300">{desc}</div>
+                  <div key={key} className="contents">
+                    <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
+                  <div className="text-foreground/76">{desc}</div>
                 </div>
               ))}
             </div>
           </SettingsSection>
         </div>
-        <div className="px-6 py-3 bg-neutral-800/90 backdrop-blur-sm border-t border-neutral-700 flex justify-between items-center">
+        <div className="px-6 py-3 bg-card/95 backdrop-blur-sm border-t border-border flex justify-between items-center">
           <div className="flex items-center gap-2">
-            <span className="text-[11px] font-mono text-neutral-300">Settings</span>
-            <div className="px-1.5 py-0.5 rounded bg-neutral-700 border border-neutral-700 text-[11px] text-neutral-200 font-mono">&#8984;,</div>
+            <span className="text-[11px] font-mono text-foreground/76">Settings</span>
+            <div className="px-1.5 py-0.5 rounded bg-secondary border border-border text-[11px] text-foreground/82 font-mono">&#8984;,</div>
           </div>
           <button
             onClick={onReset}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-neutral-200 hover:text-white hover:bg-white/10 transition-colors"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-foreground/82 hover:text-foreground hover:bg-accent/10 transition-colors"
           >
             <RotateCcw size={10} />
             Reset All
@@ -855,7 +877,7 @@ export function ServiceActionButton({ label, variant = 'primary', onClick, loadi
 }) {
   const colors = {
     primary: 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border-emerald-500/20',
-    secondary: 'bg-neutral-800 text-neutral-400 hover:bg-neutral-700 border-neutral-700',
+    secondary: 'bg-card text-muted-foreground hover:bg-accent/10 border-border',
     danger: 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border-red-500/20',
   };
   return (

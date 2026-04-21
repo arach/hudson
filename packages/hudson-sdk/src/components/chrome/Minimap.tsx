@@ -57,22 +57,22 @@ const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={containerRef}
       data-frame-panel="minimap"
-      className="select-none font-mono text-[12px] flex flex-col border-t border-neutral-700/50"
+      className="select-none font-mono text-[12px] flex flex-col border-t border-border/60"
     >
       {/* Header (always visible) */}
       <div
-        className={`shrink-0 flex items-center justify-between px-3 py-1.5 ${isCollapsed ? 'cursor-pointer hover:bg-white/5 transition-colors' : ''}`}
+        className={`shrink-0 flex items-center justify-between px-3 py-1.5 ${isCollapsed ? 'cursor-pointer hover:bg-accent/10 transition-colors' : ''}`}
         onClick={isCollapsed ? onToggleCollapse : undefined}
       >
-        <div className="flex items-center gap-1.5 text-neutral-300">
-          <Map size={12} className="text-neutral-400" />
+        <div className="flex items-center gap-1.5 text-foreground">
+          <Map size={12} className="text-muted-foreground" />
           <span className="tracking-widest font-bold uppercase text-[12px]">Map</span>
         </div>
         <div className="flex items-center gap-1">
           {!isCollapsed && onAutoLayout && (
             <button
               onClick={onAutoLayout}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
+              className="p-0.5 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground"
               title="Auto-layout windows"
             >
               <LayoutGrid size={10} />
@@ -81,7 +81,7 @@ const Minimap: React.FC<MinimapProps> = ({
           {!isCollapsed && onFitAll && (
             <button
               onClick={onFitAll}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
+              className="p-0.5 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground"
               title="Fit all in view"
             >
               <Maximize size={10} />
@@ -90,7 +90,7 @@ const Minimap: React.FC<MinimapProps> = ({
           {onToggleCollapse && (
             <button
               onClick={isCollapsed ? undefined : onToggleCollapse}
-              className="p-0.5 hover:bg-white/10 rounded transition-colors text-neutral-400 hover:text-white"
+              className="p-0.5 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground"
               title={isCollapsed ? 'Expand minimap' : 'Collapse minimap'}
             >
               {isCollapsed ? <ChevronUp size={10} /> : <ChevronDown size={10} />}
@@ -114,7 +114,7 @@ const Minimap: React.FC<MinimapProps> = ({
           </MinimapCanvas>
 
           {footer && (
-            <div className="shrink-0 border-t border-neutral-700/50">
+            <div className="shrink-0 border-t border-border/60">
               {footer}
             </div>
           )}
@@ -173,18 +173,18 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
         <div
           className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: 'radial-gradient(circle, #555 0.5px, transparent 0.5px)',
+            backgroundImage: 'radial-gradient(circle, var(--hud-canvas-dot-major) 0.5px, transparent 0.5px)',
             backgroundSize: '14px 14px',
           }}
         />
 
         {/* Center crosshair */}
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-neutral-600/40" />
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-neutral-600/40" />
+        <div className="absolute top-1/2 left-0 right-0 h-px bg-border/60" />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60" />
 
         {/* Viewport rectangle */}
         <div
-          className="absolute border border-emerald-500/50 bg-emerald-500/5 rounded-[1px] transition-all duration-75 ease-out"
+          className="absolute border border-accent/50 bg-accent/10 rounded-[1px] transition-all duration-75 ease-out"
           style={{
             left: `${vpX}px`,
             top: `${vpY}px`,
@@ -192,10 +192,10 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
             height: `${Math.max(vpHeight, 4)}px`,
           }}
         >
-          <div className="absolute -top-[1px] -left-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
-          <div className="absolute -top-[1px] -right-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
-          <div className="absolute -bottom-[1px] -left-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
-          <div className="absolute -bottom-[1px] -right-[1px] w-[3px] h-[3px] bg-emerald-400 rounded-full" />
+          <div className="absolute -top-[1px] -left-[1px] w-[3px] h-[3px] bg-accent rounded-full" />
+          <div className="absolute -top-[1px] -right-[1px] w-[3px] h-[3px] bg-accent rounded-full" />
+          <div className="absolute -bottom-[1px] -left-[1px] w-[3px] h-[3px] bg-accent rounded-full" />
+          <div className="absolute -bottom-[1px] -right-[1px] w-[3px] h-[3px] bg-accent rounded-full" />
         </div>
 
         {children}

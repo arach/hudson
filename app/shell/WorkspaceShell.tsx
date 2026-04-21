@@ -130,8 +130,8 @@ function ServiceStatusIndicator({ registry, onOpenSettings }: {
   const total = catalog.length;
   const running = catalog.filter(s => records[s.id]?.status === 'running').length;
   const hasError = catalog.some(s => records[s.id]?.status === 'error');
-  const color = hasError ? 'text-red-500' : running === total ? 'text-emerald-500' : 'text-neutral-400';
-  const dotColor = hasError ? 'bg-red-500' : running === total ? 'bg-emerald-500' : 'bg-neutral-500';
+  const color = hasError ? 'text-destructive' : running === total ? 'text-success' : 'text-muted-foreground';
+  const dotColor = hasError ? 'bg-destructive' : running === total ? 'bg-success' : 'bg-muted-foreground';
 
   return (
     <button
@@ -244,6 +244,14 @@ function buildShellSettingsPatch(
     case 'connectorStyle':
       return value === 'dashed' || value === 'solid' || value === 'dotted'
         ? { connectorStyle: value }
+        : null;
+    case 'theme':
+      return value === 'light' || value === 'dark' || value === 'system'
+        ? { theme: value }
+        : null;
+    case 'template':
+      return value === 'hudson' || value === 'editorial'
+        ? { template: value }
         : null;
     case 'masterMute':
     case 'uiClickSounds':
@@ -1338,6 +1346,31 @@ function WorkspaceInner({
         action: handleToggleMute,
       },
       {
+        id: 'shell:theme:system',
+        label: 'Theme: System',
+        action: () => updateShellSettings({ theme: 'system' }),
+      },
+      {
+        id: 'shell:theme:light',
+        label: 'Theme: Light',
+        action: () => updateShellSettings({ theme: 'light' }),
+      },
+      {
+        id: 'shell:theme:dark',
+        label: 'Theme: Dark',
+        action: () => updateShellSettings({ theme: 'dark' }),
+      },
+      {
+        id: 'shell:template:hudson',
+        label: 'Template: Hudson',
+        action: () => updateShellSettings({ template: 'hudson' }),
+      },
+      {
+        id: 'shell:template:editorial',
+        label: 'Template: Editorial',
+        action: () => updateShellSettings({ template: 'editorial' }),
+      },
+      {
         id: 'shell:docs',
         label: 'Open Documentation',
         icon: <BookOpen size={14} />,
@@ -1366,6 +1399,7 @@ function WorkspaceInner({
       setRightCollapsed,
       setMinimapCollapsed,
       setShowTerminal,
+      updateShellSettings,
       openSettings,
       openWorkspaceManager,
       startVoicePrompt,
@@ -1524,8 +1558,8 @@ function WorkspaceInner({
               key={appId}
               className={`absolute rounded-[0.5px] pointer-events-none ${
                 appId === focusedAppId
-                  ? 'border border-emerald-400/60 bg-emerald-400/10'
-                  : 'border border-neutral-400/40 bg-neutral-400/10'
+                  ? 'border border-accent/60 bg-accent/10'
+                  : 'border border-muted-foreground/40 bg-muted-foreground/10'
               }`}
               style={{
                 left: `${((b.x + 2000) / 4000) * 100}%`,
@@ -2079,7 +2113,7 @@ function WorkspaceInner({
       type="button"
       onClick={handleTermScreenshot}
       disabled={termSnapping}
-      className="p-1 rounded text-neutral-500 hover:text-cyan-400 disabled:opacity-30 transition-colors"
+      className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
       title="Capture screenshot — copies file path to clipboard"
     >
       {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -2109,13 +2143,13 @@ function WorkspaceInner({
     if (appsWithTerminal.length === 0) {
       return (
         <div className="flex flex-col h-full overflow-hidden">
-          <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
+          <div className="shrink-0 flex items-center border-b border-border min-w-0">
             <button
               onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
               className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
                 activeTerminalAppId === HUDSON_AI_ID
-                  ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+                  ? 'text-info border-b border-info bg-info/5'
+                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
               }`}
             >
               <Sparkles size={10} />
@@ -2125,8 +2159,8 @@ function WorkspaceInner({
               onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
               className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
                 activeTerminalAppId === HUDSON_TERMINAL_ID
-                  ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+                  ? 'text-info border-b border-info bg-info/5'
+                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
               }`}
             >
               Terminal
@@ -2145,14 +2179,14 @@ function WorkspaceInner({
 
     return (
       <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 flex items-center border-b border-neutral-700/50 min-w-0">
+        <div className="shrink-0 flex items-center border-b border-border min-w-0">
           {/* AI tab — primary */}
           <button
             onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
             className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
               activeTerminalAppId === HUDSON_AI_ID
-                ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+                ? 'text-info border-b border-info bg-info/5'
+                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
             }`}
           >
             <Sparkles size={10} />
@@ -2163,14 +2197,14 @@ function WorkspaceInner({
             onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
             className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
               activeTerminalAppId === HUDSON_TERMINAL_ID
-                ? 'text-cyan-400 border-b border-cyan-400 bg-cyan-500/5'
-                : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+                ? 'text-info border-b border-info bg-info/5'
+                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
             }`}
           >
             Terminal
           </button>
           {/* Separator between system and app tabs */}
-          <div className="h-3 w-px bg-neutral-700/50 mx-1" />
+          <div className="h-3 w-px bg-border mx-1" />
           {/* Active app tabs */}
           {activeApps.map(config => (
             <button
@@ -2178,8 +2212,8 @@ function WorkspaceInner({
               onClick={() => setActiveTerminalAppId(config.app.id)}
               className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
                 config.app.id === activeTerminalAppId
-                  ? 'text-emerald-400 border-b border-emerald-400 bg-emerald-500/5'
-                  : 'text-neutral-400 hover:text-neutral-200 hover:bg-white/[0.02]'
+                  ? 'text-accent border-b border-accent bg-accent/5'
+                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
               }`}
             >
               {config.app.name}
@@ -2187,7 +2221,7 @@ function WorkspaceInner({
           ))}
           {/* Inactive app tabs */}
           {inactiveApps.length > 0 && activeApps.length > 0 && (
-            <div className="h-3 w-px bg-neutral-700/50 mx-1" />
+            <div className="h-3 w-px bg-border mx-1" />
           )}
           {inactiveApps.map(config => (
             <button
@@ -2195,8 +2229,8 @@ function WorkspaceInner({
               onClick={() => setActiveTerminalAppId(config.app.id)}
               className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors opacity-30 ${
                 config.app.id === activeTerminalAppId
-                  ? 'text-emerald-400 border-b border-emerald-400 bg-emerald-500/5 opacity-100'
-                  : 'text-neutral-500 hover:text-neutral-400 hover:opacity-60'
+                  ? 'text-accent border-b border-accent bg-accent/5 opacity-100'
+                  : 'text-muted-foreground hover:text-foreground/80 hover:opacity-60'
               }`}
             >
               {config.app.name}
@@ -2314,12 +2348,12 @@ function WorkspaceInner({
       {fullscreenConfig ? (
         <div className="h-screen flex flex-col" style={{ background: 'rgb(10, 10, 10)' }}>
           {/* Header bar */}
-          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50"
+          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-border"
             style={{ background: 'rgba(14, 14, 14, 0.97)', backdropFilter: 'blur(20px)' }}>
             {/* Left: back button + panel toggle */}
             <button
               onClick={exitFullscreen}
-              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono text-neutral-400 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="flex items-center gap-1.5 px-2 py-1 rounded-md text-[11px] font-mono text-foreground/80 hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
               title="Back to canvas (Esc)"
             >
               <Minimize2 size={11} />
@@ -2328,18 +2362,18 @@ function WorkspaceInner({
             {fullscreenConfig.app.slots.LeftPanel && (
               <button
                 onClick={() => setFsLeftOpen(v => !v)}
-                className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
                 title={fsLeftOpen ? 'Hide left panel' : 'Show left panel'}
               >
                 {fsLeftOpen ? <PanelLeftClose size={13} /> : <PanelLeftOpen size={13} />}
               </button>
             )}
-            <div className="h-4 w-px bg-neutral-700/40" />
+            <div className="h-4 w-px bg-border" />
 
             {/* Center: app name + template */}
             <div className="flex-1 flex items-center justify-center gap-2 min-w-0 overflow-hidden">
-              {fullscreenConfig.app.leftPanel?.icon && <span className="text-neutral-500 shrink-0">{fullscreenConfig.app.leftPanel.icon}</span>}
-              <span className="text-[12px] font-mono font-bold text-white tracking-wider shrink-0">{fullscreenConfig.app.name}</span>
+              {fullscreenConfig.app.leftPanel?.icon && <span className="text-muted-foreground shrink-0">{fullscreenConfig.app.leftPanel.icon}</span>}
+              <span className="text-[12px] font-mono font-bold text-foreground tracking-wider shrink-0">{fullscreenConfig.app.name}</span>
               {(() => {
                 const h = allAppHooksRaw.find(h => h.appId === fullscreenAppId);
                 return h ? (
@@ -2350,11 +2384,11 @@ function WorkspaceInner({
               })()}
             </div>
 
-            <div className="h-4 w-px bg-neutral-700/40" />
+            <div className="h-4 w-px bg-border" />
             {/* Right: panel toggle + settings */}
             <button
               onClick={() => openSettings()}
-              className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+              className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
               title="Settings (⌘,)"
             >
               <Settings size={12} />
@@ -2362,7 +2396,7 @@ function WorkspaceInner({
             {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && (
               <button
                 onClick={() => setFsRightOpen(v => !v)}
-                className="p-1 rounded text-neutral-500 hover:text-white hover:bg-white/[0.06] transition-colors"
+                className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
                 title={fsRightOpen ? 'Hide inspector' : 'Show inspector'}
               >
                 {fsRightOpen ? <PanelRightClose size={13} /> : <PanelRightOpen size={13} />}
@@ -2374,7 +2408,7 @@ function WorkspaceInner({
           <div className="flex-1 flex overflow-hidden min-h-0">
             {/* Left panel */}
             {fullscreenConfig.app.slots.LeftPanel && fsLeftOpen && (
-              <div className="w-[240px] shrink-0 border-r border-neutral-700/40 overflow-y-auto frame-scrollbar bg-neutral-950/80">
+              <div className="w-[240px] shrink-0 border-r border-border overflow-y-auto frame-scrollbar bg-card/80">
                 <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="LeftPanel">
                   <fullscreenConfig.app.slots.LeftPanel />
                 </AppSlotErrorBoundary>
@@ -2390,7 +2424,7 @@ function WorkspaceInner({
 
             {/* Right panel: Inspector + tools */}
             {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && fsRightOpen && (
-              <div className="w-[260px] shrink-0 border-l border-neutral-700/40 overflow-y-auto frame-scrollbar bg-neutral-950/80">
+              <div className="w-[260px] shrink-0 border-l border-border overflow-y-auto frame-scrollbar bg-card/80">
                 {fullscreenConfig.app.slots.Inspector && (
                   <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Inspector">
                     <fullscreenConfig.app.slots.Inspector />
@@ -2415,19 +2449,19 @@ function WorkspaceInner({
             left={
               <div className="flex items-center gap-4">
                 <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                <div className="h-3 w-px bg-neutral-700" />
+                <div className="h-3 w-px bg-border" />
                 <button
                   onClick={startVoicePrompt}
-                  className="flex items-center gap-1.5 text-neutral-400 hover:text-cyan-300 transition-colors"
+                  className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
                   title="Start Voice Prompt"
                 >
                   <Mic size={10} />
                   <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
                 </button>
-                <div className="h-3 w-px bg-neutral-700" />
+                <div className="h-3 w-px bg-border" />
                 <button
                   onClick={() => openSettings()}
-                  className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                  className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground transition-colors"
                   title="Settings (⌘,)"
                 >
                   <Settings size={10} />
@@ -2502,15 +2536,17 @@ function WorkspaceInner({
                     <a
                       href="/docs"
                       target="_blank"
-                      className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+                      className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
                       title="Documentation"
+                      aria-label="Documentation"
                     >
                       <BookOpen size={14} />
                     </a>
                     <button
                       onClick={handleToggleMute}
-                      className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+                      className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
                       title={muted ? 'Unmute' : 'Mute'}
+                      aria-label={muted ? 'Unmute' : 'Mute'}
                     >
                       {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
                     </button>
@@ -2576,19 +2612,19 @@ function WorkspaceInner({
                 left={
                 <div className="flex items-center gap-4">
                   <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                  <div className="h-3 w-px bg-neutral-700" />
+                  <div className="h-3 w-px bg-border" />
                   <button
                     onClick={startVoicePrompt}
-                    className="flex items-center gap-1.5 text-neutral-400 hover:text-cyan-300 transition-colors"
+                    className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
                     title="Start Voice Prompt"
                   >
                     <Mic size={10} />
                     <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
                   </button>
-                  <div className="h-3 w-px bg-neutral-700" />
+                  <div className="h-3 w-px bg-border" />
                   <button
                     onClick={() => openSettings()}
-                    className="flex items-center gap-1.5 text-neutral-400 hover:text-neutral-200 transition-colors"
+                    className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground transition-colors"
                     title="Settings (⌘,)"
                   >
                       <Settings size={10} />
@@ -2596,8 +2632,8 @@ function WorkspaceInner({
                     </button>
                     {showSaved && (
                       <>
-                        <div className="h-3 w-px bg-neutral-700" />
-                        <span className="text-[10px] font-semibold tracking-wider uppercase text-emerald-500 animate-pulse">
+                        <div className="h-3 w-px bg-border" />
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-success animate-pulse">
                           Saved
                         </span>
                       </>
@@ -2874,17 +2910,17 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="rounded-lg border border-neutral-700/60 shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        className="rounded-lg border border-border shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
         style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit}>
           <div className="px-4 pt-4 pb-2">
             <div className="flex items-center gap-2 mb-3">
-              <TerminalSquare size={14} className="text-neutral-400" />
-              <span className="text-[12px] font-mono text-neutral-200 tracking-wider">New Terminal</span>
+              <TerminalSquare size={14} className="text-foreground/80" />
+              <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
             </div>
-            <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1.5 block">
+            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1.5 block">
               Working Directory
             </label>
             <input
@@ -2893,22 +2929,22 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
               value={cwd}
               onChange={(e) => setCwd(e.target.value)}
               placeholder="~/dev/my-project"
-              className="w-full bg-neutral-800/80 border border-neutral-700/50 rounded px-3 py-2 text-[12px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-emerald-500/40 transition-colors"
+              className="w-full bg-muted/80 border border-border rounded px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40 transition-colors"
               spellCheck={false}
               autoComplete="off"
             />
           </div>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-neutral-700/30">
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
             <button
               type="button"
               onClick={onClose}
-              className="text-[11px] px-3 py-1.5 rounded border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors font-mono"
+              className="text-[11px] px-3 py-1.5 rounded border border-border text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors font-mono"
             >
               Cancel
             </button>
             <button
               type="submit"
-              className="text-[11px] px-4 py-1.5 rounded border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors font-mono"
+              className="text-[11px] px-4 py-1.5 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-mono"
             >
               Create
             </button>
@@ -3099,7 +3135,7 @@ function WindowedApp({
       {/* Port activity — slides down below the window, positioned absolutely */}
       {hasPorts && (
         <div
-          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-white/[0.06] bg-neutral-950/90 backdrop-blur-xl overflow-hidden"
+          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-border bg-card/90 backdrop-blur-xl overflow-hidden"
           style={{
             left: bounds.x,
             top: bounds.y + bounds.h,

@@ -274,8 +274,9 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
                 {appNavActions}
                 <button
                   onClick={handleToggleMute}
-                  className="p-1.5 rounded hover:bg-white/10 transition-colors text-neutral-400 hover:text-white"
+                  className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
                   title={muted ? 'Unmute' : 'Mute'}
+                  aria-label={muted ? 'Unmute' : 'Mute'}
                 >
                   {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
                 </button>

@@ -3,6 +3,8 @@
 import type { HudsonSettings } from '../apps/hudson-docs/types';
 
 export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
+  theme: 'system',
+  template: 'hudson',
   glowIntensity: 30,
   gridOpacity: 60,
   connectorStyle: 'dashed',

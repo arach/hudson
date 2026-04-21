@@ -13,23 +13,23 @@ function AgentRow({ agent, selected, onSelect }: { agent: AgentInfo; selected: b
       className={`
         w-full flex items-center gap-2.5 px-2.5 py-2 text-left transition-colors rounded-lg
         ${selected
-          ? 'bg-cyan-500/10 border border-cyan-500/20'
-          : 'hover:bg-white/[0.04] border border-transparent'
+          ? 'bg-accent/10 border border-accent/25'
+          : 'hover:bg-muted/60 border border-transparent'
         }
       `}
     >
       <Circle
         size={7}
-        className={online ? 'text-emerald-400 fill-emerald-400' : 'text-neutral-600 fill-neutral-600'}
+        className={online ? 'text-success fill-[oklch(var(--success))]' : 'text-muted-foreground/50 fill-[oklch(var(--muted-foreground)/0.5)]'}
       />
       <div className="flex-1 min-w-0">
-        <div className={`text-[12px] font-medium truncate ${online ? 'text-white/80' : 'text-white/35'}`}>
+        <div className={`text-[12px] font-medium truncate ${online ? 'text-foreground/85' : 'text-muted-foreground/70'}`}>
           {agent.name}
         </div>
-        <div className="text-[10px] text-white/20 truncate">
+        <div className="text-[10px] text-muted-foreground/70 truncate">
           {agent.project}
         </div>
-        <div className="flex items-center gap-1.5 text-[10px] text-white/25">
+        <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground/60">
           <span>{agent.messageCount} msgs</span>
           <span>·</span>
           <span>{formatOpenScoutRelativeTime(agent.lastSeen)}</span>
@@ -41,9 +41,9 @@ function AgentRow({ agent, selected, onSelect }: { agent: AgentInfo; selected: b
 
 function SectionLabel({ label, count }: { label: string; count: number }) {
   return (
-    <div className="px-2.5 pt-2 pb-1 text-[9px] font-mono uppercase tracking-[0.18em] text-white/18">
+    <div className="px-2.5 pt-2 pb-1 text-[9px] font-mono uppercase tracking-[0.18em] text-muted-foreground/80">
       {label}
-      <span className="ml-2 text-white/10">{count}</span>
+      <span className="ml-2 text-muted-foreground/50">{count}</span>
     </div>
   );
 }
@@ -69,15 +69,15 @@ export function OpenScoutLeftPanel() {
         onClick={() => setSelectedAgent(null)}
         className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
           selectedAgent === null
-            ? 'border-cyan-500/20 bg-cyan-500/10'
-            : 'border-transparent hover:bg-white/[0.04]'
+            ? 'border-accent/25 bg-accent/10'
+            : 'border-transparent hover:bg-muted/60'
         }`}
       >
         <div className="flex items-center justify-between gap-2">
-          <span className="text-[12px] font-medium text-white/75">All Activity</span>
-          <span className="text-[10px] font-mono text-white/25">{channel.length}</span>
+          <span className={`text-[12px] font-medium ${selectedAgent === null ? 'text-accent' : 'text-foreground/80'}`}>All Activity</span>
+          <span className="text-[10px] font-mono text-muted-foreground/70">{channel.length}</span>
         </div>
-        <div className="text-[10px] text-white/20">
+        <div className="text-[10px] text-muted-foreground/70">
           {onlineCount}/{agents.length} live agents
         </div>
       </button>
@@ -103,10 +103,10 @@ export function OpenScoutLeftPanel() {
       ))}
 
       {!loading && agents.length === 0 && (
-        <div className="px-3 py-6 text-[11px] text-white/25 text-center">No agents found</div>
+        <div className="px-3 py-6 text-[11px] text-muted-foreground/70 text-center">No agents found</div>
       )}
       {!loading && agents.length > 0 && filteredAgents.length === 0 && (
-        <div className="px-3 py-6 text-[11px] text-white/25 text-center">
+        <div className="px-3 py-6 text-[11px] text-muted-foreground/70 text-center">
           No Scout agents match “{searchQuery}”.
         </div>
       )}
