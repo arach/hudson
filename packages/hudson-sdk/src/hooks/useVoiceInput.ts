@@ -123,7 +123,7 @@ interface ClientHandle {
   transcribe: TranscribeFn;
   /** Detailed availability probe. Only present for the default @voxd/client-backed
    *  client; when a caller injects their own transcribe() we fall back to a
-   *  binary probe. */
+   *  binary probe and cannot distinguish warming / blocked-origin. */
   probeAvailability?: () => Promise<VoxAvailability>;
 }
 
@@ -230,6 +230,12 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       const availability: VoxAvailability = client.probeAvailability
         ? await client.probeAvailability()
         : ((await client.probe()) ? 'connected' : 'unreachable');
+      if (availability === 'blocked-origin') {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+        setStatus('error');
+        setError(`Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`);
+        return;
+      }
       if (availability === 'warming') {
         setStatus('unavailable');
         setError('Vox is starting up — try again in a moment.');

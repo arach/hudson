@@ -824,6 +824,12 @@ export function WorkspaceAI({
 
     try {
       const availability = await probeVoxAvailability(voxClient);
+      if (availability === 'blocked-origin') {
+        const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+        setVoiceStatus('error');
+        setVoiceError(`Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`);
+        return;
+      }
       if (availability === 'warming') {
         setVoiceStatus('unavailable');
         setVoiceError('Vox is starting up — try again in a moment.');

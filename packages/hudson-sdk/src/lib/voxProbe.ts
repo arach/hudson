@@ -1,34 +1,47 @@
 // ---------------------------------------------------------------------------
 // Vox availability probe
 //
-// @voxd/client's `probe()` collapses two distinct failure modes into `false`:
-// (a) the companion HTTP bridge is unreachable (daemon not running, wrong
-// port, firewall); and (b) the bridge answered but `/health` reported
-// `{ ok: false }` — typically during a cold-start window before the daemon
-// finishes warming up.
+// @voxd/client's `probe()` hits `/health`, which is permissive (no origin
+// allowlist) — so it succeeds even for origins that Vox refuses to
+// transcribe for. That means Hudson would happily record audio, upload to
+// `/transcribe`, and only *then* discover the request was blocked — at
+// which point the browser has already converted the 403-without-CORS
+// response into an opaque network error, which `@voxd/client` tags as
+// `network_error`, which Hudson then surfaces as "Vox not reachable"
+// with a useless "Install / Launch" CTA (Vox is already running; the
+// real fix is allowlisting the origin).
 //
-// Treating (b) as "not reachable" misleads users into reinstalling or
-// relaunching Vox when it is in fact already running. This helper calls
-// `capabilities()` as a tiebreaker when `probe()` returns false and the
-// daemon reports itself as running, surface `warming` instead of
-// `unreachable`.
+// `/capabilities` is behind the same allowlist as `/transcribe`, so we
+// probe through it instead. Four outcomes:
+//
+//   connected      — capabilities returned, daemon.running = true
+//   warming        — capabilities returned a non-403 error or !running
+//   blocked-origin — capabilities returned 403 / "Origin not allowed"
+//   unreachable    — capabilities threw a network error
 // ---------------------------------------------------------------------------
 
-export type VoxAvailability = 'connected' | 'warming' | 'unreachable';
+export type VoxAvailability = 'connected' | 'warming' | 'blocked-origin' | 'unreachable';
 
 interface ProbeableClient {
-  probe(): Promise<boolean>;
   capabilities(): Promise<unknown>;
 }
 
 export async function probeVoxAvailability(client: ProbeableClient): Promise<VoxAvailability> {
-  const alive = await client.probe().catch(() => false);
-  if (alive) return 'connected';
-
   try {
     const caps = (await client.capabilities()) as { daemon?: { running?: boolean } } | null | undefined;
-    return caps?.daemon?.running ? 'warming' : 'unreachable';
-  } catch {
+    return caps?.daemon?.running ? 'connected' : 'warming';
+  } catch (err) {
+    if (err && typeof err === 'object' && 'code' in err) {
+      const code = (err as { code?: unknown }).code;
+      const message = String((err as { message?: unknown }).message ?? '');
+      if (code === 'http_error') {
+        if (message.includes('403') || message.toLowerCase().includes('origin not allowed')) {
+          return 'blocked-origin';
+        }
+        // Some other HTTP error — bridge responded, daemon just isn't ready.
+        return 'warming';
+      }
+    }
     return 'unreachable';
   }
 }
