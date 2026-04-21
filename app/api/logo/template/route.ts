@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile, writeFile, readdir, unlink, mkdir, stat, copyFile } from 'fs/promises';
 import { existsSync } from 'fs';
 import { join } from 'path';
+import { builtinRenderBodies } from '../../../apps/logo-designer/builtinRenderBodies';
 
 const BUILTIN_IDS = new Set([
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
@@ -90,13 +91,25 @@ function parseTemplate(id: string, source: string, mtime: number): ParsedTemplat
   };
 }
 
+function builtInAsFile(id: string, def: typeof builtinRenderBodies[string]): string {
+  const meta: Record<string, unknown> = {
+    name: def.name,
+    description: def.description,
+    builtin: true,
+  };
+  if (def.params) meta.params = def.params;
+  return `const meta = ${JSON.stringify(meta, null, 2)};\n\n${def.renderBody}\n`;
+}
+
 let seeded = false;
 async function ensureDir() {
   await mkdir(TEMPLATES_DIR, { recursive: true });
 
-  // Copy any bundled templates that are missing from the user's dir
   if (!seeded) {
     seeded = true;
+
+    // Primary path: copy any bundled templates that are missing from the user's dir.
+    // Installer-flow friendly — lets ops teams ship pre-baked overrides via SEED_DIR.
     if (existsSync(SEED_DIR)) {
       const existing = new Set((await readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.js')));
       const seeds = (await readdir(SEED_DIR)).filter(f => f.endsWith('.js'));
@@ -104,6 +117,19 @@ async function ensureDir() {
       if (missing.length > 0) {
         await Promise.all(missing.map(f => copyFile(join(SEED_DIR, f), join(TEMPLATES_DIR, f))));
       }
+    }
+
+    // Fallback: user dir is still empty because neither SEED_DIR nor previous runs
+    // left anything behind. Synthesize the built-ins from `builtinRenderBodies.ts`
+    // (which ships with the repo). Self-healing — works on a fresh clone with no
+    // setup step, and keeps the filesystem as the single source of truth thereafter.
+    const existing = (await readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.js'));
+    if (existing.length === 0) {
+      await Promise.all(
+        Object.entries(builtinRenderBodies).map(([id, def]) =>
+          writeFile(join(TEMPLATES_DIR, `${id}.js`), builtInAsFile(id, def), 'utf-8'),
+        ),
+      );
     }
   }
 }

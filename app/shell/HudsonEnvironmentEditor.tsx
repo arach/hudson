@@ -145,18 +145,18 @@ export function HudsonEnvironmentEditor({
   return (
     <div className="space-y-4">
       {intro && (
-        <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
+        <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
           {intro}
         </div>
       )}
-      <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
-        Hudson manages local project variables in <span className="text-neutral-300">{environmentStore?.path ?? '.env.local'}</span>.
-        Saving here updates Hudson&apos;s live server environment immediately for code paths that read <span className="text-neutral-300">process.env</span>.
+      <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
+        Hudson manages local project variables in <span className="text-foreground/80">{environmentStore?.path ?? '.env.local'}</span>.
+        Saving here updates Hudson&apos;s live server environment immediately for code paths that read <span className="text-foreground/80">process.env</span>.
         Tools that only read environment on boot may still need a refresh or restart.
       </div>
 
-      <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/30 px-3 py-3 space-y-3">
-        <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-neutral-400">
+      <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 space-y-3">
+        <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
           Add Variable
         </div>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
@@ -165,7 +165,7 @@ export function HudsonEnvironmentEditor({
             value={newKey}
             onChange={event => setNewKey(event.target.value)}
             placeholder="VARIABLE_NAME"
-            className="w-full bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-500 focus:border-emerald-500/50 focus:outline-none transition-colors xl:w-[240px]"
+            className="w-full bg-background border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/70 focus:border-accent/50 focus:outline-none transition-colors xl:w-[240px]"
             spellCheck={false}
             autoComplete="off"
           />
@@ -174,7 +174,7 @@ export function HudsonEnvironmentEditor({
             value={newValue}
             onChange={event => setNewValue(event.target.value)}
             placeholder="value"
-            className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-500 focus:border-emerald-500/50 focus:outline-none transition-colors"
+            className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/70 focus:border-accent/50 focus:outline-none transition-colors"
             spellCheck={false}
             autoComplete="off"
           />
@@ -193,7 +193,7 @@ export function HudsonEnvironmentEditor({
                 key={key}
                 type="button"
                 onClick={() => setNewKey(key)}
-                className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2.5 py-1 text-[10px] font-mono text-cyan-300 hover:border-cyan-500/40 hover:bg-cyan-500/15 transition-colors"
+                className="rounded-full border border-info/20 bg-info/10 px-2.5 py-1 text-[10px] font-mono text-info hover:border-info/40 hover:bg-info/15 transition-colors"
               >
                 {key}
               </button>
@@ -202,9 +202,9 @@ export function HudsonEnvironmentEditor({
         )}
       </div>
 
-      <div className="rounded-lg border border-neutral-800/60 bg-neutral-900/30 px-3 py-3 space-y-3">
+      <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 space-y-3">
         <div className="flex items-center justify-between gap-3">
-          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-neutral-400">
+          <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
             Variables
           </div>
           <ServiceActionButton
@@ -217,7 +217,7 @@ export function HudsonEnvironmentEditor({
           />
         </div>
         {entries.length === 0 && (
-          <div className="rounded-lg border border-neutral-700/60 bg-neutral-950/40 px-3 py-3 text-[10px] font-mono text-neutral-500">
+          <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-3 text-[10px] font-mono text-muted-foreground">
             {environmentStatus === 'loading'
               ? 'Loading local environment...'
               : 'No local environment variables are stored in Hudson yet.'}
@@ -230,12 +230,12 @@ export function HudsonEnvironmentEditor({
           return (
             <div
               key={entry.key}
-              className="rounded-lg border border-neutral-700/60 bg-neutral-950/40 px-3 py-3"
+              className="rounded-lg border border-border/60 bg-background/60 px-3 py-3"
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
                 <div className="xl:w-[220px] xl:shrink-0">
-                  <div className="text-[12px] font-mono text-neutral-200">{entry.key}</div>
-                  <div className="mt-1 text-[10px] font-mono text-neutral-500">
+                  <div className="text-[12px] font-mono text-foreground">{entry.key}</div>
+                  <div className="mt-1 text-[10px] font-mono text-muted-foreground">
                     {entry.maskedValue || '(empty value)'}
                   </div>
                 </div>
@@ -248,7 +248,7 @@ export function HudsonEnvironmentEditor({
                         ...current,
                         [entry.key]: event.target.value,
                       }))}
-                      className="flex-1 bg-neutral-800 border border-neutral-700 rounded px-2 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-500 focus:border-emerald-500/50 focus:outline-none transition-colors"
+                      className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/70 focus:border-accent/50 focus:outline-none transition-colors"
                       spellCheck={false}
                       autoComplete="off"
                     />
@@ -259,7 +259,7 @@ export function HudsonEnvironmentEditor({
                           ...current,
                           [entry.key]: !isVisible,
                         }))}
-                        className="p-2 rounded border border-neutral-700 bg-neutral-800 text-neutral-400 hover:text-neutral-200 hover:border-neutral-600 transition-colors"
+                        className="p-2 rounded border border-border bg-background text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
                         title={isVisible ? 'Hide value' : 'Reveal value'}
                       >
                         {isVisible ? <EyeOff size={12} /> : <Eye size={12} />}
@@ -287,12 +287,12 @@ export function HudsonEnvironmentEditor({
           );
         })}
         {environmentError && (
-          <div className="text-[10px] font-mono text-amber-400/80">
+          <div className="text-[10px] font-mono text-warning">
             {environmentError}
           </div>
         )}
-        <div className="text-[10px] font-mono text-neutral-500">
-          This editor manages <span className="text-neutral-300">.env.local</span> for the current Hudson repo.
+        <div className="text-[10px] font-mono text-muted-foreground">
+          This editor manages <span className="text-foreground/80">.env.local</span> for the current Hudson repo.
         </div>
       </div>
     </div>

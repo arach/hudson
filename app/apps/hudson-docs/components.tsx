@@ -319,7 +319,7 @@ export function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange:
             onClick={() => onChange(m.value)}
             className={`flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono transition-colors ${
               active
-                ? 'bg-emerald-600/20 text-emerald-400'
+                ? 'bg-accent/20 text-accent'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/8'
             } ${i > 0 ? 'border-l border-border' : ''}`}
           >
@@ -567,10 +567,10 @@ export function SettingsSlider({ label, value, min, max, step, format, onChange 
         step={step}
         value={value}
         onChange={e => onChange(parseFloat(e.target.value))}
-        className="flex-1 h-1 appearance-none bg-muted rounded-full cursor-pointer accent-emerald-500
+        className="flex-1 h-1 appearance-none bg-muted rounded-full cursor-pointer accent-accent
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
-          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-emerald-500
-          [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(16,185,129,0.4)]"
+          [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
+          [&::-webkit-slider-thumb]:shadow-[0_0_6px_oklch(var(--accent)/0.4)]"
       />
       <div className="text-[11px] font-mono text-foreground/84 w-[48px] text-right tabular-nums">{format(value)}</div>
     </div>
@@ -587,7 +587,7 @@ export function SettingsToggle({ label, checked, onChange }: {
       <div className="text-[12px] font-mono text-foreground/84">{label}</div>
       <button
         onClick={() => onChange(!checked)}
-        className={`w-9 h-5 rounded-full relative transition-colors ${checked ? 'bg-emerald-600' : 'bg-muted'}`}
+        className={`w-9 h-5 rounded-full relative transition-colors ${checked ? 'bg-accent' : 'bg-muted'}`}
       >
         <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${checked ? 'left-[18px]' : 'left-0.5'}`} />
       </button>
@@ -611,7 +611,7 @@ export function SettingsSegment<T extends string>({ label, value, options, onCha
             onClick={() => onChange(opt.value)}
             className={`px-3 py-1.5 text-[11px] font-mono transition-colors ${
               value === opt.value
-                ? 'bg-emerald-600/20 text-emerald-400 border-emerald-500/30'
+                ? 'bg-accent/20 text-accent border-accent/30'
                 : 'text-muted-foreground hover:text-foreground hover:bg-accent/8'
             } ${opt.value !== options[0].value ? 'border-l border-border' : ''}`}
           >
@@ -876,9 +876,9 @@ export function ServiceActionButton({ label, variant = 'primary', onClick, loadi
   loading?: boolean;
 }) {
   const colors = {
-    primary: 'bg-emerald-600/20 text-emerald-400 hover:bg-emerald-600/30 border-emerald-500/20',
+    primary: 'bg-accent/20 text-accent hover:bg-accent/30 border-accent/20',
     secondary: 'bg-card text-muted-foreground hover:bg-accent/10 border-border',
-    danger: 'bg-red-600/20 text-red-400 hover:bg-red-600/30 border-red-500/20',
+    danger: 'bg-destructive/20 text-destructive hover:bg-destructive/30 border-destructive/20',
   };
   return (
     <button

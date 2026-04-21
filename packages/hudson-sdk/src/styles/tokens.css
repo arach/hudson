@@ -160,7 +160,10 @@
   --destructive-foreground: 0.99 0 0;
   --warning: 0.72 0.16 75;
   --success: 0.52 0.14 145;
-  --info: 0.5 0.15 250;
+  /* Info in editorial = quiet slate-blue. Chroma dropped from 0.15 → 0.05 and
+     hue shifted 250 → 225 so the "info" tone reads as a considered cool
+     counterpoint to the warm palette instead of a stray saturated blue. */
+  --info: 0.52 0.05 225;
   --border: 0.88 0.015 80;
   --input: 0.88 0.015 80;
   --ring: 0.6 0.18 40;
@@ -187,7 +190,8 @@
   --destructive-foreground: 0.98 0 0;
   --warning: 0.8 0.15 75;
   --success: 0.67 0.13 145;
-  --info: 0.68 0.12 250;
+  /* Editorial dark info — same palette logic as light. Lower chroma, warmer hue. */
+  --info: 0.7 0.04 225;
   --border: 0.34 0.015 65;
   --input: 0.34 0.015 65;
   --ring: 0.69 0.16 40;

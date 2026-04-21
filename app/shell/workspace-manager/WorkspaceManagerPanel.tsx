@@ -26,12 +26,14 @@ import { HudsonEnvironmentEditor } from '../HudsonEnvironmentEditor';
 // ---------------------------------------------------------------------------
 // Status color/label maps
 // ---------------------------------------------------------------------------
+// Status colors are real runtime signals (service running / errored) and must
+// stay in the success / destructive / warning family regardless of template.
 const SVC_STATUS_COLORS: Record<ServiceStatus, string> = {
-  unknown: 'bg-neutral-500',
-  not_installed: 'bg-neutral-500',
-  installed: 'bg-amber-500',
-  running: 'bg-emerald-500',
-  error: 'bg-red-500',
+  unknown: 'bg-muted-foreground',
+  not_installed: 'bg-muted-foreground',
+  installed: 'bg-warning',
+  running: 'bg-success',
+  error: 'bg-destructive',
 };
 
 const SVC_STATUS_LABELS: Record<ServiceStatus, string> = {
@@ -131,7 +133,7 @@ function ServiceCard({ serviceId }: { serviceId: string }) {
           <span className="text-[10px] font-mono text-muted-foreground">Auto-start</span>
           <button
             onClick={() => toggleAutoStart(serviceId)}
-            className={`w-7 h-4 rounded-full relative transition-colors ${isAutoStart ? 'bg-emerald-600' : 'bg-muted'}`}
+            className={`w-7 h-4 rounded-full relative transition-colors ${isAutoStart ? 'bg-accent' : 'bg-muted'}`}
           >
             <div className={`absolute top-0.5 w-3 h-3 rounded-full bg-card shadow transition-transform ${isAutoStart ? 'left-[13px]' : 'left-0.5'}`} />
           </button>
@@ -141,14 +143,14 @@ function ServiceCard({ serviceId }: { serviceId: string }) {
           {svc?.check.port && <><span className="text-muted-foreground">Port</span><span className="text-foreground/78">{svc.check.port}</span></>}
           {record?.lastChecked && <><span className="text-muted-foreground">Checked</span><span className="text-foreground/78">{new Date(record.lastChecked).toLocaleTimeString()}</span></>}
         </div>
-        {record?.error && <div className="text-[10px] font-mono text-red-400 bg-red-500/5 border border-red-500/20 rounded px-2 py-1.5 break-words">{record.error}</div>}
+        {record?.error && <div className="text-[10px] font-mono text-destructive bg-destructive/5 border border-destructive/20 rounded px-2 py-1.5 break-words">{record.error}</div>}
         {svcHistory.length > 0 && (
           <div>
             <div className="text-[9px] font-mono text-muted-foreground uppercase tracking-widest mb-1">Recent</div>
             <div className="space-y-0.5">
               {svcHistory.map(h => (
                 <div key={h.id} className="flex items-center gap-2 text-[10px] font-mono py-0.5">
-                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${h.success ? 'bg-emerald-500' : 'bg-red-500'}`} />
+                  <span className={`w-1 h-1 rounded-full flex-shrink-0 ${h.success ? 'bg-success' : 'bg-destructive'}`} />
                   <span className="text-foreground/70">{h.action}</span>
                   {h.durationMs > 0 && <span className="text-muted-foreground">{h.durationMs}ms</span>}
                   <span className="text-muted-foreground ml-auto flex-shrink-0">{new Date(h.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })}</span>
@@ -274,7 +276,7 @@ function DraggableAppRow({
         onDrop();
       }}
       className={`transition-all duration-150 ${isDragging ? 'opacity-30 scale-[0.98]' : ''} ${isOver ? 'translate-y-[-2px]' : ''}`}
-      style={isOver ? { borderTop: '2px solid #06b6d4' } : undefined}
+      style={isOver ? { borderTop: '2px solid oklch(var(--accent))' } : undefined}
     >
       {children}
     </div>
@@ -346,7 +348,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
             {workspace.description && <div className="text-[11px] font-mono text-muted-foreground mt-1">{workspace.description}</div>}
             <div className="flex items-center gap-4 mt-2">
               <div className="flex items-center gap-1.5">
-                <div className="w-1.5 h-1.5 rounded-full bg-cyan-500" />
+                <div className="w-1.5 h-1.5 rounded-full bg-info" />
                 <span className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider">{workspace.mode} mode</span>
               </div>
               <span className="text-[10px] font-mono text-muted-foreground">
@@ -413,7 +415,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2">
                         <span className="text-[12px] font-mono font-medium text-foreground/84">{app.name}</span>
-                        {isFocused && <span className="text-[9px] font-mono text-emerald-500 uppercase tracking-wider">Focused</span>}
+                        {isFocused && <span className="text-[9px] font-mono text-accent uppercase tracking-wider">Focused</span>}
                       </div>
                       {app.description && <div className="text-[10px] font-mono text-muted-foreground truncate">{app.description}</div>}
                     </div>
@@ -426,7 +428,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     )}
 
                     {/* Focus */}
-                    <button onClick={() => onFocusApp(app.id)} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-cyan-400 flex-shrink-0 opacity-0 group-hover:opacity-100" title="Focus">
+                    <button onClick={() => onFocusApp(app.id)} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-accent flex-shrink-0 opacity-0 group-hover:opacity-100" title="Focus">
                       <Crosshair size={12} />
                     </button>
 
@@ -442,7 +444,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     {/* Disable */}
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
-                      className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-red-400 flex-shrink-0 opacity-0 group-hover:opacity-100"
+                      className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
                       title="Disable app"
                     >
                       <Power size={12} />
@@ -474,7 +476,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     </div>
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
-                      className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono text-emerald-500 hover:text-emerald-400 border border-emerald-500/20 hover:border-emerald-500/40 transition-colors"
+                      className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono text-accent hover:text-accent border border-accent/20 hover:border-accent/40 transition-colors"
                     >
                       <Power size={10} /> Enable
                     </button>
@@ -504,7 +506,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     window.location.reload();
                   }
                 }}
-                className="text-[10px] font-mono text-red-400 hover:text-red-300 border border-red-500/20 hover:border-red-500/40 rounded px-2.5 py-1 transition-colors"
+                className="text-[10px] font-mono text-destructive hover:text-destructive/80 border border-destructive/20 hover:border-destructive/40 rounded px-2.5 py-1 transition-colors"
               >
                 Clear workspace state
               </button>
@@ -599,7 +601,7 @@ function SettingsTab() {
             ['Cmd + M', 'Toggle mute'],
           ].map(([key, desc]) => (
               <div key={key} className="contents">
-                <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
+                <div className="text-accent/80 whitespace-nowrap">{key}</div>
               <div className="text-foreground/76">{desc}</div>
             </div>
           ))}
@@ -658,7 +660,7 @@ function AppContent({ appId }: { appId: string }) {
             </span>
             <button
               onClick={() => onToggleAppDisabled(appId)}
-              className={`w-9 h-5 rounded-full relative transition-colors ${!isDisabled ? 'bg-emerald-600' : 'bg-muted'}`}
+              className={`w-9 h-5 rounded-full relative transition-colors ${!isDisabled ? 'bg-accent' : 'bg-muted'}`}
               title={isDisabled ? 'Enable app' : 'Disable app'}
             >
               <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${!isDisabled ? 'left-[18px]' : 'left-0.5'}`} />
@@ -673,7 +675,7 @@ function AppContent({ appId }: { appId: string }) {
               </span>
               <button
                 onClick={() => onToggleAppVisibility(appId)}
-                className={`w-9 h-5 rounded-full relative transition-colors ${isLoaded ? 'bg-cyan-600' : 'bg-muted'}`}
+                className={`w-9 h-5 rounded-full relative transition-colors ${isLoaded ? 'bg-info' : 'bg-muted'}`}
                 title={isLoaded ? 'Hide from canvas' : 'Show on canvas'}
               >
                 <div className={`absolute top-0.5 w-4 h-4 rounded-full bg-card shadow transition-transform ${isLoaded ? 'left-[18px]' : 'left-0.5'}`} />
@@ -691,7 +693,7 @@ function AppContent({ appId }: { appId: string }) {
             <div className="text-[10px] font-mono text-muted-foreground mt-1">Enable it to load its Provider and render on the canvas</div>
             <button
               onClick={() => onToggleAppDisabled(appId)}
-              className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-emerald-400 border border-emerald-500/30 hover:border-emerald-500/60 transition-colors mx-auto"
+              className="mt-4 flex items-center gap-1.5 px-3 py-1.5 rounded text-[11px] font-mono text-accent border border-accent/30 hover:border-accent/60 transition-colors mx-auto"
             >
               <Power size={11} /> Enable App
             </button>
@@ -805,7 +807,7 @@ function WorkspaceManagerPanelBody({
   ];
 
   return (
-    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] bg-black/60 backdrop-blur-[2px] pointer-events-auto" onClick={onClose}>
+    <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh] bg-foreground/60 backdrop-blur-[2px] pointer-events-auto" onClick={onClose}>
       <div
         className="w-[1020px] max-w-[94vw] bg-card border border-border shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
         style={{ maxHeight: '88vh' }}
@@ -815,7 +817,7 @@ function WorkspaceManagerPanelBody({
         <div className="flex items-center justify-between px-5 py-3 border-b border-border shrink-0">
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2">
-              <SettingsIcon size={14} className="text-emerald-400" />
+              <SettingsIcon size={14} className="text-accent" />
               <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">HUDSON</span>
             </div>
             <div className="flex items-center gap-1 ml-2">
@@ -873,9 +875,9 @@ function WorkspaceManagerPanelBody({
                           isActive ? 'bg-accent/8' : 'hover:bg-accent/6'
                         } ${isDisabled ? 'opacity-30' : !isLoaded ? 'opacity-50' : ''}`}
                       >
-                        {isActive && <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-emerald-500 rounded-r" />}
+                        {isActive && <div className="absolute left-0 top-1.5 bottom-1.5 w-[2px] bg-accent rounded-r" />}
                         <div className="flex items-center gap-1.5">
-                          <span className={`text-[11px] font-mono font-medium truncate ${isActive ? 'text-emerald-400' : 'text-foreground/76'}`}>
+                          <span className={`text-[11px] font-mono font-medium truncate ${isActive ? 'text-accent' : 'text-foreground/76'}`}>
                             {app.name}
                           </span>
                           {isDisabled && <Power size={9} className="text-muted-foreground flex-shrink-0" />}

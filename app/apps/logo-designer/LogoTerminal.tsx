@@ -269,14 +269,14 @@ export function LogoTerminal() {
   return (
     <div className="flex flex-col h-full">
       {/* Header — right-aligned controls */}
-      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-neutral-700/50 bg-neutral-900/50">
+      <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/60 bg-muted/40">
         {/* Screenshot — left side of bar */}
         {mode === 'relay' && relay.status === 'connected' && (
           <button
             type="button"
             onClick={handleScreenshot}
             disabled={snapping}
-            className="p-1 rounded text-white/25 hover:text-cyan-400/70 disabled:opacity-30 transition-colors"
+            className="p-1 rounded text-muted-foreground/80 hover:text-info/80 disabled:opacity-30 transition-colors"
             title="Capture workspace screenshot and send to agent"
           >
             {snapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
@@ -289,8 +289,8 @@ export function LogoTerminal() {
           onClick={() => setMode(m => m === 'chat' ? 'relay' : 'chat')}
           className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
             mode === 'chat'
-              ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-              : 'text-neutral-500 border-neutral-700 hover:text-neutral-300 hover:border-neutral-600'
+              ? 'bg-info/15 text-info border-info/40'
+              : 'text-muted-foreground border-border hover:text-foreground/80 hover:border-border'
           }`}
         >
           Chat
@@ -299,7 +299,7 @@ export function LogoTerminal() {
           <button
             type="button"
             onClick={() => relay.connect()}
-            className="text-[10px] px-2 py-0.5 rounded-full border text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 transition-colors"
+            className="text-[10px] px-2 py-0.5 rounded-full border text-accent border-accent/30 hover:bg-accent/10 transition-colors"
           >
             Connect
           </button>
@@ -309,7 +309,7 @@ export function LogoTerminal() {
             <button
               type="button"
               onClick={() => relay.restart()}
-              className="text-[10px] px-2 py-0.5 rounded-full border text-cyan-400 border-cyan-500/30 hover:bg-cyan-500/10 transition-colors"
+              className="text-[10px] px-2 py-0.5 rounded-full border text-info border-info/30 hover:bg-info/10 transition-colors"
               title="Kill session and start fresh (picks up new agent/model settings)"
             >
               Restart
@@ -317,7 +317,7 @@ export function LogoTerminal() {
             <button
               type="button"
               onClick={() => relay.disconnect()}
-              className="text-[10px] px-2 py-0.5 rounded-full border text-red-400 border-red-500/30 hover:bg-red-500/10 transition-colors"
+              className="text-[10px] px-2 py-0.5 rounded-full border text-destructive border-destructive/30 hover:bg-destructive/10 transition-colors"
             >
               Disconnect
             </button>
@@ -325,25 +325,25 @@ export function LogoTerminal() {
         )}
       </div>
       {mode === 'relay' && relayServiceDown && (
-        <div className="shrink-0 flex items-center gap-2.5 px-3 py-2 border-b border-neutral-700/50 bg-neutral-900/80 text-[11px]">
-          <AlertTriangle size={12} className="text-amber-400/80 shrink-0" />
+        <div className="shrink-0 flex items-center gap-2.5 px-3 py-2 border-b border-border/60 bg-muted/60 text-[11px]">
+          <AlertTriangle size={12} className="text-warning/80 shrink-0" />
           <div className="flex-1 min-w-0">
-            <span className="text-neutral-200">Logo terminal is offline.</span>{' '}
-            <span className="text-neutral-500">
+            <span className="text-foreground/90">Logo terminal is offline.</span>{' '}
+            <span className="text-muted-foreground">
               Hudson Relay powers terminal sessions here; logo editing still works without it.
             </span>
           </div>
           <button
             type="button"
             onClick={() => { void handleStartRelay(); }}
-            className="text-[10px] px-2.5 py-1 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+            className="text-[10px] px-2.5 py-1 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors"
           >
             Start Relay
           </button>
           <button
             type="button"
             onClick={openSettings}
-            className="text-[10px] px-2.5 py-1 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            className="text-[10px] px-2.5 py-1 rounded-full border border-border text-muted-foreground hover:text-foreground/80 hover:bg-muted/40 transition-colors"
           >
             Services
           </button>
