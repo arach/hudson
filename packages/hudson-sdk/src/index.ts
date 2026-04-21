@@ -2,8 +2,8 @@
 // Shell internals are in '@hudson/sdk/shell'.
 
 // Types
-export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState } from './types/app';
-export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from './types/workspace';
+export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode } from './types/app';
+export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, AppInstance } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
@@ -11,6 +11,8 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
+export { InstanceProvider, useInstance, useOptionalInstance } from './context/InstanceContext';
+export type { InstanceContextValue } from './context/InstanceContext';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';

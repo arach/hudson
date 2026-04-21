@@ -10,6 +10,7 @@ import CommandPalette from './overlays/CommandPalette';
 import TerminalDrawer from './overlays/TerminalDrawer';
 import { Assistant } from './Assistant';
 import { usePersistentState } from '../hooks/usePersistentState';
+import { InstanceProvider } from '../context/InstanceContext';
 import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { HudsonApp } from '../types/app';
 import type { CommandOption } from './overlays/CommandPalette';
@@ -49,9 +50,11 @@ export function AppShell({
   const theme = useOptionalTheme();
 
   const content = (
-    <app.Provider>
-      <AppShellInner app={app} assistantEnabled={assistant} />
-    </app.Provider>
+    <InstanceProvider instanceId={app.id} appId={app.id}>
+      <app.Provider>
+        <AppShellInner app={app} assistantEnabled={assistant} />
+      </app.Provider>
+    </InstanceProvider>
   );
 
   if (!managedTheme || theme) {

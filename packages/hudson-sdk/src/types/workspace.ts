@@ -6,7 +6,7 @@ import type { HudsonApp } from './app';
 export type CanvasParticipation = 'native' | 'windowed';
 
 // ---------------------------------------------------------------------------
-// WorkspaceAppConfig — one app's configuration within a workspace
+// WorkspaceAppConfig — one app's configuration within a workspace (authoring seed)
 // ---------------------------------------------------------------------------
 export interface WorkspaceAppConfig {
   app: HudsonApp;
@@ -14,6 +14,24 @@ export interface WorkspaceAppConfig {
   canvasMode?: CanvasParticipation;
   /** Default window bounds for 'windowed' apps */
   defaultWindowBounds?: { x: number; y: number; w: number; h: number };
+}
+
+// ---------------------------------------------------------------------------
+// AppInstance — one live window at runtime.
+// A workspace's `apps: WorkspaceAppConfig[]` is the authoring seed; once the
+// shell is running, a separate `instances: AppInstance[]` list is authoritative
+// and can grow (via spawn/duplicate) or shrink (via close).
+// ---------------------------------------------------------------------------
+export interface AppInstance {
+  /** Unique across a workspace. Doubles as the localStorage scope key. */
+  instanceId: string;
+  /** References the HudsonApp this is an instance of. */
+  appId: string;
+  /** Optional user-overridable title; when omitted the shell derives one. */
+  title?: string;
+  /** Persisted window bounds snapshot (authoring seed copies this from
+   *  defaultWindowBounds; runtime spawns derive from the canvas centre). */
+  bounds?: { x: number; y: number; w: number; h: number };
 }
 
 // ---------------------------------------------------------------------------

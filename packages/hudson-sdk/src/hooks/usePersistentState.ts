@@ -1,6 +1,18 @@
 'use client';
 
 import { useState, useEffect, useRef, useCallback, useSyncExternalStore } from 'react';
+import { useOptionalInstance } from '../context/InstanceContext';
+
+/** Prefixes a storage key with the current instance scope when available.
+ *  Keys that are already instance-scoped (start with `inst:`) or workspace-wide
+ *  (start with `hudson.ws.`) are left alone so shell-owned state doesn't get
+ *  accidentally double-scoped when a hook is called from inside an app. */
+function useScopedKey(key: string): string {
+  const instance = useOptionalInstance();
+  if (!instance) return key;
+  if (key.startsWith('inst:') || key.startsWith('hudson.ws.')) return key;
+  return `inst:${instance.instanceId}:${key}`;
+}
 
 function readStorage<T>(key: string): T | undefined {
   try {
@@ -30,6 +42,7 @@ function useHydrated(): boolean {
 
 export function usePersistentState<T>(key: string, initialValue: T): [T, React.Dispatch<React.SetStateAction<T>>] {
   const hydrated = useHydrated();
+  const scopedKey = useScopedKey(key);
 
   const [state, setState] = useState<T>(initialValue);
 
@@ -37,7 +50,7 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, React.D
   const didRestore = useRef(false);
   if (hydrated && !didRestore.current) {
     didRestore.current = true;
-    const saved = readStorage<T>(key);
+    const saved = readStorage<T>(scopedKey);
     if (saved !== undefined) {
       // Direct state mutation before render — React 19 allows this in render phase
       // via the "if state changed during render, re-render with new state" path
@@ -48,8 +61,8 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, React.D
   // Persist changes to localStorage
   useEffect(() => {
     if (!hydrated) return;
-    writeStorage(key, state);
-  }, [key, state, hydrated]);
+    writeStorage(scopedKey, state);
+  }, [scopedKey, state, hydrated]);
 
   return [state, setState];
 }
@@ -64,13 +77,14 @@ export function useDebouncedPersistentState<T>(
   delayMs = 300,
 ): [T, React.Dispatch<React.SetStateAction<T>>] {
   const hydrated = useHydrated();
+  const scopedKey = useScopedKey(key);
 
   const [state, setState] = useState<T>(initialValue);
 
   const didRestore = useRef(false);
   if (hydrated && !didRestore.current) {
     didRestore.current = true;
-    const saved = readStorage<T>(key);
+    const saved = readStorage<T>(scopedKey);
     if (saved !== undefined) {
       setState(saved);
     }
@@ -82,20 +96,20 @@ export function useDebouncedPersistentState<T>(
     if (!hydrated) return;
     if (timerRef.current) clearTimeout(timerRef.current);
     timerRef.current = setTimeout(() => {
-      writeStorage(key, state);
+      writeStorage(scopedKey, state);
     }, delayMs);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [key, state, delayMs, hydrated]);
+  }, [scopedKey, state, delayMs, hydrated]);
 
   // Also flush on unmount (page navigation, workspace switch)
   const stateRef = useRef(state);
   stateRef.current = state;
   useEffect(() => {
     return () => {
-      writeStorage(key, stateRef.current);
+      writeStorage(scopedKey, stateRef.current);
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [key]);
+  }, [scopedKey]);
 
   return [state, setState];
 }
