@@ -43,6 +43,31 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
+// URL query params (?theme=...&template=...) are a per-request override used
+// by embedded iframes (e.g. /preview on the landing page) that need a
+// predictable paint regardless of the visitor's stored or system preference.
+// Writes are skipped when an override is active so the main site's theme
+// state isn't clobbered by an iframe load.
+function readUrlOverride(): StoredThemeState {
+  if (typeof window === 'undefined') return {};
+  try {
+    const q = new URLSearchParams(window.location.search);
+    const t = q.get('theme');
+    const p = q.get('template');
+    return {
+      theme: t === 'light' || t === 'dark' || t === 'system' ? t : undefined,
+      template: p === 'hudson' || p === 'editorial' ? p : undefined,
+    };
+  } catch {
+    return {};
+  }
+}
+
+function hasUrlOverride(): boolean {
+  const o = readUrlOverride();
+  return Boolean(o.theme || o.template);
+}
+
 function readStoredThemeState(
   storageKey: string,
   defaultTheme: HudsonTheme,
@@ -52,14 +77,19 @@ function readStoredThemeState(
     return { theme: defaultTheme, template: defaultTemplate };
   }
 
+  const override = readUrlOverride();
+
   try {
     const parsed = JSON.parse(window.localStorage.getItem(storageKey) || '{}') as StoredThemeState;
     return {
-      theme: parsed.theme ?? defaultTheme,
-      template: parsed.template ?? defaultTemplate,
+      theme: override.theme ?? parsed.theme ?? defaultTheme,
+      template: override.template ?? parsed.template ?? defaultTemplate,
     };
   } catch {
-    return { theme: defaultTheme, template: defaultTemplate };
+    return {
+      theme: override.theme ?? defaultTheme,
+      template: override.template ?? defaultTemplate,
+    };
   }
 }
 
@@ -85,6 +115,10 @@ function writeThemeAttributes(
 }
 
 function writeStoredThemeState(storageKey: string, theme: HudsonTheme, template: HudsonTemplate) {
+  // Skip persistence when a URL override is driving the theme — e.g. the
+  // landing page's preview iframe loads /preview?theme=dark, and we don't
+  // want that to clobber the visitor's real preference.
+  if (hasUrlOverride()) return;
   try {
     const existing = JSON.parse(window.localStorage.getItem(storageKey) || '{}') as unknown;
     const next = isPlainObject(existing)

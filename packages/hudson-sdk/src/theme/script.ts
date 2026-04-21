@@ -19,5 +19,10 @@ export function getHudsonThemeScript({
   const theme = escapeValue(defaultTheme);
   const template = escapeValue(defaultTemplate);
 
-  return `!function(k,t,p){try{var d=document.documentElement,s=JSON.parse(localStorage.getItem(k)||'{}'),x=s.theme||t,y=s.template||p,m='system'===x&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'system'===x?'light':x;d.dataset.hudsonTheme=m,d.dataset.hudsonTemplate=y}catch(e){var d=document.documentElement,m='system'===t&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'system'===t?'light':t;d.dataset.hudsonTheme=m,d.dataset.hudsonTemplate=p}}('${key}','${theme}','${template}');`;
+  // URL query params (?theme=dark&template=hudson) override localStorage.
+  // Used by embedded iframes (e.g. the landing-page preview) that need a
+  // predictable paint regardless of visitor preference. When the override
+  // is present, ThemeProvider skips persisting state so the visitor's
+  // real preference on the main site stays untouched.
+  return `!function(k,t,p){try{var d=document.documentElement,q=new URLSearchParams(location.search),s=JSON.parse(localStorage.getItem(k)||'{}'),x=q.get('theme')||s.theme||t,y=q.get('template')||s.template||p,m='system'===x&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'system'===x?'light':x;d.dataset.hudsonTheme=m,d.dataset.hudsonTemplate=y}catch(e){var d=document.documentElement,m='system'===t&&window.matchMedia('(prefers-color-scheme: dark)').matches?'dark':'system'===t?'light':t;d.dataset.hudsonTheme=m,d.dataset.hudsonTemplate=p}}('${key}','${theme}','${template}');`;
 }

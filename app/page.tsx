@@ -147,7 +147,12 @@ function LivePreview() {
 
         <HudFrame>
           <iframe
-            src="/preview"
+            // theme + template pinned via query param so the preview paints
+            // predictably regardless of the visitor's stored preference or
+            // OS preference — HudsonThemeScript + ThemeProvider both honour
+            // these params and skip writing to localStorage, so the iframe
+            // never clobbers the main site's theme state.
+            src="/preview?theme=dark&template=hudson"
             title="Hudson workspace preview"
             className="block w-full h-[560px] md:h-[640px] border-0"
             loading="lazy"
