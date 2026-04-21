@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
+import { probeVoxAvailability, type VoxAvailability } from '../lib/voxProbe';
 
 // ---------------------------------------------------------------------------
 // useVoiceInput — Vox-backed STT.
@@ -117,13 +118,23 @@ function normalizeVoiceError(error: unknown): NormalizedError {
   return { status: 'error', message: 'Voice capture failed.' };
 }
 
-async function loadDefaultVoxClient(): Promise<{ probe: ProbeFn; transcribe: TranscribeFn }> {
+interface ClientHandle {
+  probe: ProbeFn;
+  transcribe: TranscribeFn;
+  /** Detailed availability probe. Only present for the default @voxd/client-backed
+   *  client; when a caller injects their own transcribe() we fall back to a
+   *  binary probe. */
+  probeAvailability?: () => Promise<VoxAvailability>;
+}
+
+async function loadDefaultVoxClient(): Promise<ClientHandle> {
   const mod = await import('@voxd/client');
   const client = mod.createVoxdClient();
   return {
     probe: () => client.probe(),
     transcribe: ({ audio, format, language, metadata }) =>
       client.transcribe({ audio, format, language, metadata }),
+    probeAvailability: () => probeVoxAvailability(client),
   };
 }
 
@@ -149,7 +160,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const metadataRef = useRef(metadata);
   metadataRef.current = metadata;
 
-  const clientRef = useRef<{ probe: ProbeFn; transcribe: TranscribeFn } | null>(null);
+  const clientRef = useRef<ClientHandle | null>(null);
   const isSupported = useMemo(
     () => typeof MediaRecorder !== 'undefined'
       && typeof navigator !== 'undefined'
@@ -216,8 +227,15 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
 
     try {
       const client = await getClient();
-      const available = await client.probe();
-      if (!available) {
+      const availability: VoxAvailability = client.probeAvailability
+        ? await client.probeAvailability()
+        : ((await client.probe()) ? 'connected' : 'unreachable');
+      if (availability === 'warming') {
+        setStatus('unavailable');
+        setError('Vox is starting up — try again in a moment.');
+        return;
+      }
+      if (availability === 'unreachable') {
         setStatus('unavailable');
         setError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
         return;

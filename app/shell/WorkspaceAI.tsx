@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { useHudsonAI, usePersistentState, useDebouncedPersistentState } from '@hudson/sdk';
+import { useHudsonAI, usePersistentState, useDebouncedPersistentState, probeVoxAvailability } from '@hudson/sdk';
 import type { UIMessage } from 'ai';
 import type { HudsonWorkspace } from '@hudson/sdk';
 import { createVoxdClient, VoxDError } from '@voxd/client';
@@ -823,8 +823,13 @@ export function WorkspaceAI({
     stopReplyAudio();
 
     try {
-      const available = await voxClient.probe();
-      if (!available) {
+      const availability = await probeVoxAvailability(voxClient);
+      if (availability === 'warming') {
+        setVoiceStatus('unavailable');
+        setVoiceError('Vox is starting up — try again in a moment.');
+        return;
+      }
+      if (availability === 'unreachable') {
         setVoiceStatus('unavailable');
         setVoiceError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
         return;
@@ -979,8 +984,9 @@ export function WorkspaceAI({
 
   const voiceBadge = getVoiceBadge(voiceStatus);
   const voiceErrorText = voiceError?.toLowerCase() ?? '';
-  const showInstallVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
-  const showLaunchVox = voiceStatus === 'unavailable' || voiceErrorText.includes('not reachable');
+  const showRetryVox = voiceErrorText.includes('starting up');
+  const showInstallVox = voiceErrorText.includes('not reachable');
+  const showLaunchVox = voiceErrorText.includes('not reachable');
   const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin');
   const isChatBusy = chat.status === 'submitted' || chat.status === 'streaming';
   const scopeLabel = scopedWorkspace?.name ?? workspace.name;
@@ -1088,8 +1094,17 @@ export function WorkspaceAI({
                 {voiceError}
               </div>
             </div>
-            {(showInstallVox || showLaunchVox || showOpenVoxSettings) && (
+            {(showRetryVox || showInstallVox || showLaunchVox || showOpenVoxSettings) && (
               <div className="flex items-center gap-2 shrink-0">
+                {showRetryVox && (
+                  <button
+                    type="button"
+                    onClick={() => void startVoiceCapture()}
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                  >
+                    Retry
+                  </button>
+                )}
                 {showInstallVox && (
                   <button
                     type="button"

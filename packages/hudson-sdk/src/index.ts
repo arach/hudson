@@ -58,6 +58,8 @@ export * from './lib/sounds';
 export { logEvent, FRAME_LOG_EVENT } from './lib/logger';
 export type { FrameLogEntry } from './lib/logger';
 export { worldToScreen, screenToWorld } from './lib/viewport';
+export { probeVoxAvailability } from './lib/voxProbe';
+export type { VoxAvailability } from './lib/voxProbe';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
