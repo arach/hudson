@@ -3037,9 +3037,17 @@ function WindowedApp({
     setPreMaxBounds(null);
   }, [defaults, setBounds]);
 
-  // Port activity slide-down (auto-available for apps with ports)
+  // Port activity slide-down.
+  // Renders only when there's an active pipe involving this app — declared-but-
+  // unused ports add visual cruft. Context menu force-shows the bar so users
+  // can create connections from a hidden state.
+  const { pipes: allPipes } = useDataBus();
   const hasPorts = !!(config.app.ports?.outputs?.length || config.app.ports?.inputs?.length);
+  const hasActiveConnection = allPipes.some(
+    p => p.source.appId === config.app.id || p.sink.appId === config.app.id,
+  );
   const [showPortLog, setShowPortLog] = useState(false);
+  const portLogVisible = hasPorts && (hasActiveConnection || showPortLog);
 
   const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
@@ -3096,8 +3104,12 @@ function WindowedApp({
     },
     ...(hasPorts ? [{
       id: `${config.app.id}:port-activity`,
-      label: showPortLog ? 'Hide Port Activity' : 'Show Port Activity',
+      label: portLogVisible ? 'Hide Port Activity' : 'Show Port Activity',
       icon: <Activity size={12} />,
+      // When an active connection is keeping the bar visible, "hide" just
+      // cancels the force-show override — the bar stays until the connection
+      // is disconnected. That's intentional: you shouldn't be able to hide a
+      // live connection indicator by accident.
       action: () => setShowPortLog(v => !v),
     }] : []),
     { type: 'separator' },
@@ -3108,7 +3120,7 @@ function WindowedApp({
       icon: <X size={12} />,
       action: onClose,
     },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen]);
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen, hasPorts, portLogVisible]);
 
   return (
     <>
@@ -3132,8 +3144,11 @@ function WindowedApp({
         </ServiceBanner>
       </AppWindow>
 
-      {/* Port activity — slides down below the window, positioned absolutely */}
-      {hasPorts && (
+      {/* Port activity — slides down below the window, positioned absolutely.
+          Only rendered when there's a live connection OR the user force-shows
+          it via the context menu. Keeps the canvas clean for declared-but-
+          unused ports. */}
+      {portLogVisible && (
         <div
           className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-border bg-card/90 backdrop-blur-xl overflow-hidden"
           style={{
