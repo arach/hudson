@@ -94,6 +94,8 @@ export interface HudsonApp {
   description?: string;
   /** Frame mode: 'canvas' enables pan/zoom, 'panel' renders scrollable content */
   mode: 'canvas' | 'panel';
+  /** Icon shown next to the app name in the navigation bar */
+  icon?: ReactNode;
 
   /** Left panel header config */
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };

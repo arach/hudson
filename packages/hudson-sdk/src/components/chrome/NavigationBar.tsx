@@ -42,15 +42,15 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
         {/* Left: Branding */}
         <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
+          {subtitle && (
+            <span className="text-neutral-400 flex items-center">{subtitle}</span>
+          )}
           <button
             onClick={onTitleClick}
             className="text-[22px] font-bold text-white tracking-[0.25em] font-mono leading-none bg-transparent border-none cursor-pointer"
           >
             {title}
           </button>
-          {subtitle && (
-            <span className="text-xs font-mono text-neutral-400">{subtitle}</span>
-          )}
         </div>
 
         {/* Center */}

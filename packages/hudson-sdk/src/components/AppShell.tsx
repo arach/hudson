@@ -293,6 +293,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
         <>
           <NavigationBar
             title={app.name.toUpperCase()}
+            subtitle={app.icon}
             search={appSearch ?? undefined}
             center={appNavCenter}
             actions={appNavActions}
@@ -384,7 +385,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
         </>
       }
     >
-      <div style={contentStyle} className="frame-scrollbar">
+      <div style={contentStyle} className="frame-scrollbar select-text">
         <app.slots.Content />
       </div>
     </Frame>
