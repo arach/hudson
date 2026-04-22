@@ -149,7 +149,14 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
     {
       app: assetsApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 580, y: -260, w: 540, h: 620 },
+      defaultWindowBounds: { x: 580, y: -260, w: 540, h: 360 },
+    },
+    // Shaper bridges raster Assets → vector Logo by tracing/bezier-editing the silhouette.
+    // Pipeline: assets.image → shaper.image, then shaper.svg → logo-designer.background-svg
+    {
+      app: shaperApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 580, y: 140, w: 540, h: 420 },
     },
   ];
 }

@@ -119,6 +119,133 @@ const NUMERIC_KEYS = new Set([
 ]);
 
 // ---------------------------------------------------------------------------
+// Shape intake layer — standard API every template can use
+//
+// After rasterization, any template receives these helpers on `p`:
+//   p.hasShape               — bool: is a mask present?
+//   p.inShape(xN, yN)        — 0|1 at normalized canvas coord
+//   p.shapeEdge(xN, yN, r)   — bool: within r mask cells of silhouette edge
+//   p.shapeSDF(xN, yN)       — signed distance (normalized units, <0 inside)
+// ---------------------------------------------------------------------------
+
+/** Exact-ish Euclidean signed distance transform via two-pass Chamfer 3-4. */
+function computeSignedDistanceField(mask: Uint8Array, size: number): Float32Array {
+  const INF = 1e9;
+  const distTo = (target: 0 | 1): Float32Array => {
+    const d = new Float32Array(size * size);
+    for (let i = 0; i < size * size; i++) d[i] = mask[i] === target ? 0 : INF;
+    const DIAG = Math.SQRT2;
+    // Forward pass (top-left to bottom-right)
+    for (let y = 0; y < size; y++) {
+      for (let x = 0; x < size; x++) {
+        const i = y * size + x;
+        if (d[i] === 0) continue;
+        if (x > 0) d[i] = Math.min(d[i], d[i - 1] + 1);
+        if (y > 0) d[i] = Math.min(d[i], d[i - size] + 1);
+        if (x > 0 && y > 0) d[i] = Math.min(d[i], d[i - size - 1] + DIAG);
+        if (x < size - 1 && y > 0) d[i] = Math.min(d[i], d[i - size + 1] + DIAG);
+      }
+    }
+    // Backward pass (bottom-right to top-left)
+    for (let y = size - 1; y >= 0; y--) {
+      for (let x = size - 1; x >= 0; x--) {
+        const i = y * size + x;
+        if (d[i] === 0) continue;
+        if (x < size - 1) d[i] = Math.min(d[i], d[i + 1] + 1);
+        if (y < size - 1) d[i] = Math.min(d[i], d[i + size] + 1);
+        if (x < size - 1 && y < size - 1) d[i] = Math.min(d[i], d[i + size + 1] + DIAG);
+        if (x > 0 && y < size - 1) d[i] = Math.min(d[i], d[i + size - 1] + DIAG);
+      }
+    }
+    return d;
+  };
+  const outside = distTo(1); // for off-pixels: distance to nearest on-pixel
+  const inside  = distTo(0); // for on-pixels:  distance to nearest off-pixel
+  const out = new Float32Array(size * size);
+  const scale = 1 / size; // normalize so 1.0 == canvas width
+  for (let i = 0; i < size * size; i++) {
+    out[i] = (mask[i] ? -inside[i] : outside[i]) * scale;
+  }
+  return out;
+}
+
+/** Build a clipPath `d` attribute from a bitmap mask using row RLE. */
+function buildMaskClipPathD(mask: Uint8Array, size: number, vb: number): string {
+  const cell = vb / size;
+  let d = '';
+  for (let y = 0; y < size; y++) {
+    let x = 0;
+    while (x < size) {
+      if (mask[y * size + x]) {
+        const x0 = x;
+        while (x < size && mask[y * size + x]) x++;
+        const px = (x0 * cell).toFixed(1);
+        const py = (y * cell).toFixed(1);
+        const pw = ((x - x0) * cell).toFixed(2);
+        const ch = cell.toFixed(2);
+        d += `M${px} ${py}h${pw}v${ch}h-${pw}z`;
+      } else {
+        x++;
+      }
+    }
+  }
+  return d;
+}
+
+/** Attach standard shape helpers to `p`. Safe to call whether or not a mask is present. */
+function attachShapeHelpers(p: Record<string, unknown>) {
+  const mask = p.__shapeMask as Uint8Array | undefined;
+  const size = (p.__shapeMaskSize as number | undefined) ?? MASK_SIZE;
+  const hasShape = !!mask;
+
+  p.hasShape = hasShape;
+
+  const sample = (xN: number, yN: number): 0 | 1 => {
+    if (!mask) return 0;
+    const ix = Math.max(0, Math.min(size - 1, Math.floor(xN * size)));
+    const iy = Math.max(0, Math.min(size - 1, Math.floor(yN * size)));
+    return mask[iy * size + ix] > 0 ? 1 : 0;
+  };
+
+  p.inShape = sample;
+
+  p.shapeEdge = (xN: number, yN: number, radius = 1): boolean => {
+    if (!mask) return false;
+    const step = 1 / size;
+    const center = sample(xN, yN);
+    const r = Math.max(1, radius | 0);
+    for (let dy = -r; dy <= r; dy++) {
+      for (let dx = -r; dx <= r; dx++) {
+        if (dx === 0 && dy === 0) continue;
+        if (sample(xN + dx * step, yN + dy * step) !== center) return true;
+      }
+    }
+    return false;
+  };
+
+  // Lazy SDF — computed on first call, reused thereafter on this `p`.
+  let sdf: Float32Array | null = null;
+  p.shapeSDF = (xN: number, yN: number): number => {
+    if (!mask) return 1;
+    if (!sdf) sdf = computeSignedDistanceField(mask, size);
+    const ix = Math.max(0, Math.min(size - 1, Math.floor(xN * size)));
+    const iy = Math.max(0, Math.min(size - 1, Math.floor(yN * size)));
+    return sdf[iy * size + ix];
+  };
+}
+
+let __clipIdCounter = 0;
+function wrapWithShapeClip(svg: string, p: Record<string, unknown>): string {
+  if (!p.clipToShape) return svg;
+  const mask = p.__shapeMask as Uint8Array | undefined;
+  const size = (p.__shapeMaskSize as number | undefined) ?? MASK_SIZE;
+  if (!mask) return svg;
+  const id = `__shapeClip_${++__clipIdCounter}`;
+  const d = buildMaskClipPathD(mask, size, VB);
+  return `<defs><clipPath id="${id}"><path d="${d}"/></clipPath></defs><g clip-path="url(#${id})">${svg}</g>`;
+}
+
+// ---------------------------------------------------------------------------
 // Render hook
 // ---------------------------------------------------------------------------
 
@@ -173,6 +300,11 @@ export function useTemplateRender(
       }
     }
 
+    // Attach standard shape intake helpers — hasShape, inShape, shapeEdge, shapeSDF.
+    // These are safe to call whether or not a mask is present, so templates can
+    // write `if (p.hasShape) …` without any guards around the helpers themselves.
+    attachShapeHelpers(p);
+
     return p;
   }, [params, template.params, customParamValues, backgroundSvg]);
 
@@ -182,7 +314,9 @@ export function useTemplateRender(
       const fn = new Function('p', 'vb', template.renderBody);
       const result = fn(merged, VB);
       if (typeof result !== 'string') return { svg: errorSvg('renderBody must return a string'), error: 'renderBody must return a string' };
-      return { svg: result, error: null };
+      // Universal post-process: clip output to the piped silhouette if the param is on.
+      // Zero-code path for templates that haven't (yet) adopted the shape helpers.
+      return { svg: wrapWithShapeClip(result, merged), error: null };
     } catch (err) {
       const message = err instanceof Error ? err.message : String(err);
       return { svg: errorSvg(message), error: message };

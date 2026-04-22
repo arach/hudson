@@ -11,7 +11,7 @@ export async function POST(req: NextRequest) {
 
     if (bezier) {
       await writeFile(
-        join(publicDir, 'talkie-bezier.json'),
+        join(publicDir, 'session-bezier.json'),
         JSON.stringify(bezier, null, 2),
         'utf-8'
       );
@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
 
     if (smooth) {
       await writeFile(
-        join(publicDir, 'talkie-smooth.json'),
+        join(publicDir, 'session-smooth.json'),
         JSON.stringify(smooth, null, 2),
         'utf-8'
       );

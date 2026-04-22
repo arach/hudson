@@ -455,6 +455,15 @@ export function LogoInspector() {
           onChange={v => setParam('paneRadius', v)} />
       </ParamSection>
 
+      {/* ── Generic: Shape intake ── */}
+      <ParamSection label="Shape" defaultExpanded={false}>
+        <ParamToggle
+          label="Clip to piped shape"
+          value={params.clipToShape}
+          onChange={v => setParam('clipToShape', v)}
+        />
+      </ParamSection>
+
       {/* ── Generic: Colors (dark mode) ── */}
       <ParamSection label="Colors" defaultExpanded={false}>
         <ParamColor label="Background" value={params.bgColor} onChange={v => setParam('bgColor', v)} />

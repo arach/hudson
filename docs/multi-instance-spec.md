@@ -1,237 +1,516 @@
-# Multi-instance apps — design spec
+# Multi-instance apps — first-principles design
 
-> **Status:** Draft, pre-implementation. Phase 1 (SDK plumbing) has landed in
-> `4ab4064`; this document defines Phase 2 (shell rekey) and Phase 3
-> (spawn/duplicate gestures).
+> **Status:** Draft, pre-implementation.
+> This replaces the previous framing with a simpler rule:
+> **Hudson is multi-app, and every live app is an instance.**
 
-## Why
+## Goal
 
-Today `app.id` does double duty in Hudson: it's both the *kind* of app
-(`"logo-designer"`, `"terminal"`) and the *live window's identity*. That
-means a workspace can hold exactly one window per app — two Logo Designers
-can't sit side-by-side with different logos, and a terminal app can't spawn
-a second shell session.
+Hudson should make "open another one" trivial.
 
-Terminal is the canonical motivating case: every operator expects to open
-multiple terminals with different working directories. Logo Designer is
-another — comparing two design directions on the same canvas is natural
-when the app supports it.
+Terminal is only the clearest motivating example: one terminal per project,
+task, or shell session. But the model is intentionally generic and should work
+for any app that benefits from side-by-side state: logo designer, notepad, API
+inspector, JSON explorer, and so on.
 
-## Conceptual model
+The clean fix is not to teach `app.id` to mean two things.
+The clean fix is to make **instance** the runtime unit everywhere in the shell.
 
-We separate two concerns that `app.id` currently conflates:
+## Design principles
 
-- **App kind** — the static definition (`HudsonApp`). Identified by `app.id`.
-  Declares slots, Provider, hooks, intents, settings.
-- **App instance** — one live window at runtime. Identified by `instanceId`.
-  Owns bounds, focus, z-order, persisted state under `inst:<instanceId>:*`.
+1. **Instance-first runtime**
+   The shell should think in live instances, not app kinds. Focus, z-order, fullscreen, bounds, close, duplicate, and terminal tabs all belong to instances.
 
-A workspace authoring config (`WorkspaceAppConfig[]`) seeds a runtime instance
-list (`AppInstance[]`). After first mount, the instance list is authoritative
-and can grow (spawn/duplicate) or shrink (close).
+2. **Kind-first catalog**
+   `HudsonApp` remains the static definition: name, slots, intents, settings, services, spawn policy.
 
-Each app declares how many instances it supports via `multiInstance`:
+3. **Providers mount once per instance**
+   A live instance gets exactly one Provider tree. The shell must never read an app's hooks by "reaching through" some shared nested provider stack.
 
-| Mode | UX | Example |
+4. **No hidden magic in persistence**
+   Storage scope must be explicit. Shell-global, workspace, kind, and instance state should never be inferred implicitly from where a hook happens to run.
+
+5. **One spawning system**
+   Hudson should not have special-case dynamic windows for terminal or any other app. Spawning is generic instance creation.
+
+6. **Singleton is just a policy**
+   A singleton app still uses the same runtime model. It simply refuses to create a second live instance.
+
+## Mental model
+
+- **App kind**
+  Static `HudsonApp`, identified by `app.id`.
+  Defines slots, Provider, hooks, intents, settings, services, icons, and spawn policy.
+
+- **App instance**
+  One live execution of an app inside a workspace.
+  Identified by `instanceId`.
+  Owns its own Provider state, bounds, focus, z position, and instance-scoped persistence.
+
+- **Workspace runtime**
+  The live list of instances plus shell state that refers to them.
+  Once created, this runtime state is authoritative; the authoring workspace config is only the seed.
+
+## Spawn policy
+
+Keep the shipped `HudsonApp.multiInstance` field. It is the right surface; the shell just needs to treat it as a spawn policy rather than a rendering hint.
+
+| `multiInstance` | Meaning | UX |
 | --- | --- | --- |
-| `singleton` (default) | No Duplicate, no New | hudson-docs, intent-explorer |
-| `spawnable` | "New <Name>" command, no Duplicate | terminal, notepad |
-| `duplicable` | "Duplicate" + "New <Name>" | logo-designer |
+| `singleton` (default) | At most one live instance in a workspace | Open / Focus |
+| `spawnable` | Many live instances allowed | Open / New |
+| `duplicable` | Many live instances allowed, and one instance can clone another | Open / New / Duplicate |
 
-Singleton is the default so every existing app keeps working unchanged.
+Semantically, `duplicable` includes spawn.
 
-## What Phase 1 already landed
+## Core runtime types
 
-- `HudsonApp.multiInstance` (optional)
-- `AppInstance` type
-- `<InstanceProvider>`, `useInstance`, `useOptionalInstance`
-- `usePersistentState` auto-scopes keys to `inst:<instanceId>:*` when an
-  InstanceProvider is present
-- `AppShell` wraps its single app in InstanceProvider with `instanceId = app.id`
+```ts
+interface AppInstance {
+  instanceId: string;
+  appId: string;
 
-Zero runtime change today — nothing mounts more than one Provider per kind
-yet. Phase 2 is what flips the world.
+  // Optional user-facing label override.
+  // When omitted, the shell derives one ("Terminal 2", "Logo 1", etc.).
+  title?: string;
 
-## Phase 2 — shell rekey
+  // Small spawn payload for first boot only.
+  // Example: { cwd: "/Users/art/dev/hudson" } for terminal.
+  launch?: Record<string, unknown>;
 
-### Runtime state: what becomes instance-keyed, what stays kind-keyed
+  // Persisted shell-owned chrome for this instance.
+  bounds?: { x: number; y: number; w: number; h: number };
 
-**Becomes instance-keyed** (one entry per live window):
-- `focusedInstanceId` (replaces `focusedAppId`)
-- `windowBounds` map + the persisted `hudson.ws.<ws>.win.<instanceId>` keys
-- `zOrderMap`
-- `fullscreenInstanceId`
-- Minimap indicators
-- Window header / close / focus events
+  createdAt: number;
+  lastFocusedAt: number;
+}
 
-**Stays kind-keyed** (one entry per app kind, regardless of instance count):
-- `disabledAppIds` — disabling "Logo Designer" disables all its instances
-- `activatedAppIds` (shown-in-launcher set) — whether the kind is present
-- Service dependencies, command palette grouping, settings, intent catalog
-- App switcher / launcher entries
+interface WorkspaceRuntimeState {
+  instances: AppInstance[];
+  focusedInstanceId: string | null;
+  fullscreenInstanceId: string | null;
 
-**Needs both**:
-- Sidebar sections: one per *kind*, but focus state needs to know which
-  instance is active
-- URL hash: switches from `#focus=logo-designer` → `#focus=<instanceId>`
-  (acceptable break per "no migration" rule)
+  // Back -> front ordering for windowed instances.
+  zOrder: string[];
+}
+```
 
-### Instance ID strategy
+### Important simplification
 
-- Instance IDs are workspace-local and opaque.
-- Seeded workspace apps default to `instanceId === app.id` (keeps the
-  singleton case clean and readable in devtools).
-- Spawn/duplicate mint `<appId>-<short-nanoid>` (e.g. `terminal-k7q2`).
-- Persisted at `hudson.ws.<ws>.instances` as an `AppInstance[]`, survives
-  reload.
+The shell should drop `activatedAppIds` as a separate concept.
 
-### Provider nesting
+Presence is derived from the instance list:
 
-The shell currently nests each `app.Provider` once, top-down. For multi-
-instance, it nests once **per instance**, each wrapped in `InstanceProvider`:
+- `0` instances of a kind = the app is not open in this workspace
+- `1+` instances of a kind = the app is open
+
+That removes an entire parallel state machine.
+
+`disabledAppIds` can remain kind-keyed.
+
+## Workspace seeding
+
+`workspace.apps` stays authoring-time config only.
+
+On first load for a workspace:
+
+1. Build an initial `instances[]` list from `workspace.apps`
+2. Use `instanceId === app.id` for the seeded singleton-shaped case
+3. Persist `WorkspaceRuntimeState`
+
+After that, the runtime state is authoritative.
+
+This means:
+
+- Switching workspaces restores the last live instances for that workspace
+- Closing an app really removes its instance
+- Reopening is done by spawning a new instance, not by toggling visibility back on
+
+## Shell architecture
+
+This is the central change.
+
+### Current problem
+
+Today the shell nests every app Provider around the whole workspace and then calls app hooks from the shell tree.
+That works only because there is exactly one Provider per kind.
+
+As soon as two providers of the same kind exist, the shell cannot safely ask "what is Logo Designer's status/search/commands?" because there is no single ambient Logo context anymore.
+
+### New rule
+
+The shell never calls app hooks directly.
+
+Instead, every live instance mounts through an **AppInstanceHost**.
+That host is the only place where the app Provider, hooks, and slots are touched.
+
+### AppInstanceHost
 
 ```tsx
-{instances.map(inst => {
-  const app = getAppByKind(inst.appId);
+function AppInstanceHost({ instance }: { instance: AppInstance }) {
+  const app = getApp(instance.appId);
+  const runtime = useInstanceRuntime(instance.instanceId);
+
   return (
-    <InstanceProvider key={inst.instanceId} instanceId={inst.instanceId} appId={inst.appId}>
+    <InstanceProvider
+      instanceId={instance.instanceId}
+      appId={instance.appId}
+      launch={instance.launch}
+    >
       <app.Provider
-        disabled={disabledAppIds.has(inst.appId)}
-        visible={visibleInstanceIds.has(inst.instanceId)}
-        focused={focusedInstanceId === inst.instanceId}
+        disabled={runtime.disabled}
+        visible={runtime.visible}
+        focused={runtime.focused}
       >
-        {/* ... next instance ... */}
+        <InstanceBridge instance={instance} app={app} />
       </app.Provider>
     </InstanceProvider>
   );
-})}
+}
 ```
 
-This is the single load-bearing change. Every other rekey flows from here.
+### InstanceBridge
 
-### Files in scope for Phase 2
+`InstanceBridge` does two jobs:
 
-| File | What changes |
-| --- | --- |
-| `app/shell/WorkspaceShell.tsx` | ~65 appId touchpoints rekeyed; introduce `instances` state |
-| `app/shell/MultiAppCanvas.tsx` | Receives `focusedInstanceId`, `instances[]`, `zOrderMap` by instanceId |
-| `app/shell/SidebarSection.tsx` | Focus target becomes instanceId; kind → instances[] subtree |
-| `app/shell/workspace-manager/*` | "N instances" UI; per-instance close affordance |
-| `app/shell/HudsonTerminal.tsx` / terminal drawer | See Open Questions |
-| `app/shell/WorkspaceAI.tsx` + tool-context builders | See Open Questions |
+1. Calls the app hooks inside the correct Provider scope and publishes a snapshot to a shell registry
+2. Renders the app's slots into shell surfaces via portals so every surface shares the same Provider state
 
-Estimated diff size: 600–900 LOC across ~6 files.
+That gives us one Provider tree per instance, no duplicated state, and no provider-order tricks.
 
-## Phase 3 — spawn + duplicate
+## Shell registry
+
+The shell should maintain a live registry of instance snapshots published by hosts.
 
 ```ts
-spawnInstance(appId: string): AppInstance        // fresh state, offset bounds
-duplicateInstance(instanceId: string): AppInstance // clones bounds + persisted state
+interface InstanceSnapshot {
+  instanceId: string;
+  appId: string;
+  appName: string;
+
+  commands: CommandOption[];
+  status: { label: string; color: StatusColor } | null;
+  search: SearchConfig | null;
+  navCenter: ReactNode | null;
+  navActions: ReactNode | null;
+  layoutMode: 'canvas' | 'panel';
+  activeToolHint: string | null;
+
+  hasLeftPanel: boolean;
+  hasInspector: boolean;
+  hasTerminal: boolean;
+}
 ```
 
-- **Spawn** offsets bounds from canvas centre with a 24-px cascade.
-- **Duplicate** deep-copies every `inst:<old>:*` localStorage key to
-  `inst:<new>:*` synchronously before mounting the new Provider, so the
-  copied window hydrates with identical state.
+The shell then renders UI from snapshots plus instance runtime state.
 
-UI surfaces:
-- Window header context menu: "Duplicate" (if kind is `duplicable`),
-  "Close" (existing). Menu hidden entirely for singleton kinds — no change.
-- Command palette: `New <Name>` entry for every kind where
-  `multiInstance !== 'singleton'`.
-- Disambiguation: when >1 instance of a kind exists, window header shows
-  `"<App Name> <n>"` where `<n>` is the 1-based index within that kind.
+This is the key simplification:
 
-## Open design questions (for review)
+- the shell reasons about instances
+- the app owns its own state
+- the bridge is the seam between them
 
-These are the calls I'd like a second opinion on before we implement.
+## Persistence model
 
-### 1. AI tool surface: kind or instance?
+This should be explicit, not automatic.
 
-Today `workspaceAIToolContext` exposes `set_app_state({ appId, visible,
-focused })`. With multiple instances, "focus the Logo Designer" is ambiguous.
+### Recommended API
 
-**Options:**
-- (a) Tools keep speaking in appId; "focus" picks the most-recently-focused
-  instance of that kind, "set visibility" fans out to all instances.
-- (b) Tools get both: `appId` (legacy) for kind-level ops, new `instanceId`
-  for instance-specific ops. The AI chooses.
-- (c) Rewrite tools entirely in instance terms; migrate the AI prompt.
+```ts
+usePersistentState(key, initial)            // literal key, no implicit scoping
+useWorkspacePersistentState(key, initial)   // hudson.ws.<workspaceId>:<key>
+useInstancePersistentState(key, initial)    // inst:<instanceId>:<key>
+```
 
-Proposal: **(a)** for Phase 2/3 — least disruption. Revisit when the AI
-actually needs to address specific instances.
+If Hudson keeps the current auto-scoping behavior, the shell will constantly be at risk of accidentally persisting global state under an instance namespace.
+That is too magical for a system with nested providers.
 
-### 2. Terminal tab bar
+### What belongs where
 
-`activeTerminalAppId` today names a kind. If terminal becomes spawnable,
-we have three terminal instances: which tab do we show? Possibilities:
+**Instance-scoped**
+- app document/state
+- window bounds
+- per-instance UI state
+- duplicated app state
 
-- Each terminal instance gets its own tab (matches iTerm).
-- Show only the currently-focused terminal instance; tab label says "Terminal".
-- Drop per-app terminal tabs; consolidate into the spawnable terminal app.
+**Workspace-scoped**
+- `instances[]`
+- `focusedInstanceId`
+- `fullscreenInstanceId`
+- pan / zoom
+- workspace terminal visibility
 
-Proposal: tabs key off `instanceId`, auto-label `"Terminal <n>"`. The
-existing `dynamicWindows` system gets replaced by the generic instance
-model so we don't maintain two spawning codepaths.
+**Kind-scoped or global**
+- app settings
+- service registry
+- intent catalog metadata
+- shell font/theme/audio settings
 
-### 3. Workspace-level vs app-level instance persistence
+### Compatibility
 
-Instances live in `hudson.ws.<ws>.instances`. When you switch workspaces,
-you get a different instance list. Logical and matches the existing
-workspace boundary. Open question: should switching workspaces preserve
-a kind's window layout from last time, or reset?
+If we want to preserve existing singleton app state without a bulk migration:
 
-Proposal: persist, match current behaviour for singletons.
+- seeded instances should use `instanceId === app.id`
+- `useInstancePersistentState` can optionally fall back to the legacy unscoped key on first read when `instanceId === appId`
 
-### 4. "Disable app kind" UX with live instances
+That preserves the common singleton case while still moving the model forward.
 
-If the user disables `logo-designer` while two instances are open:
-- Both instances unmount immediately (follows existing "disabled removes
-  from Provider tree" semantics).
-- Instance list purges entries matching the disabled kind.
-- Re-enabling re-seeds one fresh instance (not the old two).
+## What is keyed by instance vs kind
 
-Proposal: above. Alternative is to keep the instances around dormant, but
-that breaks the existing "disabled is really off" contract.
+### Instance-keyed
 
-### 5. No-migration cost
+- focus
+- z-order
+- fullscreen
+- bounds
+- close / duplicate / spawn
+- minimap rectangles
+- terminal tabs for app terminals
+- live command closures
+- live pipe endpoints
 
-We explicitly chose to not migrate existing localStorage. On first load
-after Phase 2 ships:
-- Existing window bounds lose their persisted position → windows appear at
-  default bounds until dragged.
-- Per-app settings under `hudson.app.<appId>.settings` keep working (those
-  keys don't go through InstanceContext scoping since they're called
-  with a literal app.id argument, not from inside a Provider… actually,
-  **verify this** — `useAppSettings` calls `usePersistentState` from inside
-  the Provider tree, so the key *does* get prefixed. If so, existing
-  settings get reset on upgrade. Acceptable per "one-time it" call,
-  but worth knowing.
+### Kind-keyed
 
-Proposal: confirm in implementation; if settings reset is undesirable,
-make `useAppSettings` opt out of instance scoping via a literal-key escape
-hatch.
+- launcher entries
+- disabled state
+- settings
+- services
+- intent metadata
+- app icon / name / description
+- spawn policy
 
-## Non-goals for Phase 2/3
+### Derived from both
 
-- User-editable instance titles (auto-numbered for now)
-- Drag-to-tear-off instances between workspaces
-- Persisted last-focused-per-kind memory
-- Intent catalog addressing specific instances
-- Cross-instance communication / pipes between two Logo Designers
+- sidebar sections
+- AI summaries
+- window titles
+- command palette grouping
 
-These can follow if demanded; none block the core feature.
+## UI behavior
+
+### Launcher / app switcher
+
+The launcher should be kind-oriented, not instance-oriented.
+
+Each app kind shows:
+
+- app name and icon
+- open instance count
+- primary action:
+  - if instances exist: focus most recent instance
+  - if none exist: open
+- secondary action for spawnable kinds: new instance
+
+### Window titles
+
+The shell derives titles.
+
+- one instance: `Terminal`
+- multiple instances: `Terminal 1`, `Terminal 2`, `Terminal 3`
+- optional future enhancement: user-editable titles
+
+### Sidebar
+
+Sidebar sections should remain kind-keyed so the rail does not explode when a kind has many instances.
+
+For a kind with multiple live instances:
+
+- the section header shows an instance count
+- the body renders the most-recently-focused instance of that kind
+- the header can expose a lightweight instance switcher if needed
+
+### Inspector
+
+The right inspector is always instance-oriented:
+
+- it renders the currently focused instance
+
+That matches how users already think about the inspector surface.
+
+### Close behavior
+
+Closing an instance removes it from `instances[]`.
+
+There is no separate hidden-but-open state in the core model.
+
+That keeps the runtime honest:
+
+- open means present
+- closed means gone
+
+## Example: Terminal, but generic by design
+
+Terminal is just an example of the runtime model, not a special case.
+Any app kind can participate the same way if its `multiInstance` policy allows
+it.
+
+Terminal should become a normal spawnable app.
+
+```ts
+spawnInstance('terminal', { launch: { cwd: '/Users/art/dev/hudson' } })
+```
+
+That replaces the current special-case `dynamicWindows` path entirely.
+
+### Why this is better
+
+- one spawn path for every app
+- one window model
+- one focus model
+- one duplication model
+- no special terminal-only runtime
+
+### Terminal drawer
+
+Keep the shell-owned tabs for:
+
+- `AI`
+- `Hudson` (system terminal / shell utilities)
+
+For app terminals, tabs should be keyed by `instanceId`, not `appId`.
+
+Example:
+
+- `AI`
+- `Hudson`
+- `Terminal 1`
+- `Terminal 2`
+- `Logo 1`
+
+If an app exposes a `Terminal` slot, each live instance gets its own tab.
+
+## Commands, intents, and AI
+
+### Live commands
+
+App authors should keep stable command IDs like `logo:export` or `terminal:clear`.
+They should not have to mint per-instance command IDs.
+
+The shell should wrap them as live instance commands:
+
+```ts
+interface LiveCommand {
+  instanceId: string;
+  appId: string;
+  commandId: string;
+  label: string;
+  action: () => void;
+}
+```
+
+Internally, the shell can key these as `${instanceId}:${commandId}`.
+
+### Intent catalog
+
+Intent metadata stays kind-level.
+
+It answers:
+
+- what commands does this app support?
+- what do those commands mean?
+
+It does not need to become instance-addressable.
+
+### Execution rule
+
+When the shell executes an app intent or AI tool call:
+
+- if `instanceId` is provided, target that exact instance
+- otherwise, use the most-recently-focused live instance of `appId`
+- if none exists:
+  - for `singleton` / `spawnable` / `duplicable`, the shell may spawn one when the requested action implies opening a new instance
+  - otherwise, ask for clarification
+
+### AI tool surface
+
+Expose both kinds and instances.
+
+That gives us a simple rule:
+
+- `appId` means "kind-level default target"
+- `instanceId` means "this exact live thing"
+
+This is cleaner than forcing AI into only kind terms or only instance terms.
+
+## Ports and pipes
+
+Live pipe endpoints must move from `appId` to `instanceId`.
+
+That means:
+
+```ts
+source: { instanceId: string; appId: string; portId: string }
+sink:   { instanceId: string; appId: string; portId: string }
+```
+
+Why:
+
+- two Logo instances can both expose `params`
+- the shell must know which one is the source
+
+The port catalog can still be grouped by kind for presentation, but runtime routing has to be instance-based.
+
+## Disable semantics
+
+Disabling a kind should do exactly two things:
+
+1. close all live instances of that kind
+2. prevent new instances from being spawned until re-enabled
+
+Re-enabling should not silently recreate old instances.
+The launcher becomes available again, and the user can open a fresh instance if they want.
+
+That is simpler than trying to preserve a dormant hidden set.
+
+## Non-goals
+
+- user-editable instance titles
+- dragging instances between workspaces
+- cross-workspace instance persistence
+- pipes that deliberately address "all instances of a kind"
+- implicit hidden instances
 
 ## Rollout
 
-Single PR, ordered commits:
+The clean rollout is:
 
-1. ✅ Phase 1 — SDK plumbing (`4ab4064`)
-2. WorkspaceShell rekey (Phase 2) — Provider loop, bounds, focus, z-order,
-   URL hash. No new verbs yet. Behaviourally identical for singletons.
-3. Spawn/duplicate actions + UI gestures (Phase 3). Window header menu,
-   command palette entries, instance numbering in titles.
-4. Apply `multiInstance` to `terminal` and `logo-designer`. Retire
-   `dynamicWindows`. Smoke test.
+1. **Introduce explicit persistence scopes**
+   Add `useInstancePersistentState` and stop relying on implicit auto-scoping for shell-owned state.
 
-Each step leaves main in a shippable state.
+2. **Add WorkspaceRuntimeState**
+   Persist `instances[]`, `focusedInstanceId`, `fullscreenInstanceId`, and `zOrder`.
+
+3. **Introduce AppInstanceHost + registry**
+   One Provider tree per live instance.
+   Bridge hooks and slots into the shell via registry + portals.
+
+4. **Rekey shell surfaces to instance**
+   Canvas, minimap, workspace manager, URL hash, fullscreen, focus, terminal tabs, and command dispatch.
+
+5. **Move ports/pipes to instance endpoints**
+   Prevent collisions for duplicable apps.
+
+6. **Retire `dynamicWindows`**
+   Replace it with `spawnInstance('terminal', { launch: { cwd } })`.
+
+7. **Enable real spawn policies**
+   Mark app kinds individually based on product need:
+   `terminal` as `spawnable`, `logo-designer` as `duplicable`, and so on.
+
+## Why this version is simpler
+
+Because it removes the three main sources of complexity:
+
+1. no `app.id` identity overload
+2. no special terminal spawning path
+3. no shell logic that depends on ambient provider ordering
+
+The resulting rule set is small:
+
+- app kinds are static
+- instances are live
+- the shell manages instances
+- each instance owns one Provider tree
+- persistence scope is explicit
+
+Everything else follows from that.

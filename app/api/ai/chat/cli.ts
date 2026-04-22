@@ -176,6 +176,7 @@ export function streamFromCLI(
   const args = [
     '-p',
     '--output-format', 'stream-json',
+    '--verbose', // required by Claude Code when combining -p + stream-json
     '--include-partial-messages',
     // Disable CLI built-in tools (Read, Bash, etc.) — our custom tools
     // are embedded in the system prompt using <tool> tags instead.
@@ -275,21 +276,30 @@ export function streamFromCLI(
 
         let buffer = '';
         // With --include-partial-messages, each assistant event contains the
-        // FULL cumulative text (not a delta). Track how much we've seen so
-        // we only feed new characters into the parser.
-        let emittedTextLen = 0;
+        // FULL cumulative text for each content block (not a delta). We track
+        // per-block-index — a shared counter breaks when the model emits
+        // multiple blocks (e.g. [text, tool_use, text]) because block 2's
+        // shorter cumulative length would look "already emitted" relative to
+        // block 0's length, and we'd skip its contents entirely.
+        const emittedTextLenByIndex = new Map<number, number>();
+        // Capture stderr so CLI failures aren't opaque ("exited with code 1").
+        let stderrBuf = '';
 
         const processLine = async (line: string) => {
           if (!line.trim()) return;
           try {
             const evt = JSON.parse(line);
             if (evt.type === 'assistant' && evt.message?.content) {
-              for (const block of evt.message.content) {
+              const blocks = evt.message.content as Array<{ type: string; text?: string }>;
+              for (let i = 0; i < blocks.length; i++) {
+                const block = blocks[i];
                 if (block.type === 'text' && typeof block.text === 'string') {
-                  // Only feed the delta (new chars since last event)
-                  if (block.text.length > emittedTextLen) {
-                    const delta = block.text.slice(emittedTextLen);
-                    emittedTextLen = block.text.length;
+                  // Only feed the delta (new chars since last event) — tracked
+                  // per block index so multi-block responses work correctly.
+                  const prev = emittedTextLenByIndex.get(i) ?? 0;
+                  if (block.text.length > prev) {
+                    const delta = block.text.slice(prev);
+                    emittedTextLenByIndex.set(i, block.text.length);
                     const events = parser.feed(delta);
                     await processEvents(events);
                   }
@@ -311,8 +321,8 @@ export function streamFromCLI(
           }
         });
 
-        proc.stderr.on('data', () => {
-          // Ignore stderr
+        proc.stderr.on('data', (chunk: Buffer) => {
+          stderrBuf += chunk.toString();
         });
 
         proc.on('close', async (code) => {
@@ -328,7 +338,10 @@ export function streamFromCLI(
           endText();
 
           if (code && code !== 0) {
-            reject(new Error(`CLI exited with code ${code}`));
+            const stderr = stderrBuf.trim();
+            const tail = stderr ? stderr.slice(-800) : '(no stderr)';
+            console.error(`[ai/chat:cli] ${cli} exited ${code}. stderr tail:\n${tail}`);
+            reject(new Error(`CLI exited with code ${code}: ${tail || '(no stderr)'}`));
           } else {
             resolve();
           }

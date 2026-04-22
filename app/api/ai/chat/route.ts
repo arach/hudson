@@ -43,7 +43,11 @@ export async function POST(req: Request) {
       stream: result.toUIMessageStream(),
     });
   } catch (err) {
-    log(`ERROR: ${err instanceof Error ? err.message : String(err)}`);
-    throw err;
+    const message = err instanceof Error ? err.message : String(err);
+    log(`ERROR: ${message}`);
+    return new Response(message || 'Unknown error in /api/ai/chat', {
+      status: 500,
+      headers: { 'Content-Type': 'text/plain' },
+    });
   }
 }

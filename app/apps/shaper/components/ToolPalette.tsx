@@ -2,12 +2,17 @@
 
 import { useShaper } from '../ShaperProvider';
 import { sounds } from '@hudson/sdk';
+import { useShellLayout } from '../../../shell/ShellLayoutContext';
 import { MousePointer2, Pen, Hand, Undo2, Redo2, Square, Play } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Tool } from '../types';
+import { AIMenu } from './AIMenu';
 
 export function ToolPalette() {
   const { tool, switchTool, undo, redo, animationModeEnabled, setAnimationModeEnabled } = useShaper();
+  // The shaper canvas fills the viewport in WorkspaceShell; the inspector panel overlays
+  // on top at right:0. Shift ourselves left by panel width so we stay clear of it.
+  const { rightWidth } = useShellLayout();
 
   const tools: { id: Tool; icon: ReactNode; label: string }[] = [
     { id: 'select', icon: <MousePointer2 size={14} />, label: 'Select (V)' },
@@ -17,7 +22,8 @@ export function ToolPalette() {
 
   return (
     <div
-      className="absolute top-3 right-3 z-[45] flex items-center gap-1 rounded-lg border border-neutral-800 bg-black/90 p-1 backdrop-blur-xl shadow-lg pointer-events-auto"
+      className="absolute top-3 z-[45] flex items-center gap-1 rounded-lg border border-neutral-800 bg-black/90 p-1 backdrop-blur-xl shadow-lg pointer-events-auto"
+      style={{ right: rightWidth + 12, transition: 'right 200ms ease' }}
     >
       {tools.map((t) => (
         <button
@@ -34,6 +40,8 @@ export function ToolPalette() {
       <div className="w-px h-5 bg-neutral-700 mx-0.5" />
       <button onClick={undo} title="Undo (Cmd+Z)" className="flex h-7 w-7 items-center justify-center rounded text-sm text-neutral-400 hover:bg-white/10 hover:text-white transition-colors"><Undo2 size={14} /></button>
       <button onClick={redo} title="Redo (Cmd+Shift+Z)" className="flex h-7 w-7 items-center justify-center rounded text-sm text-neutral-400 hover:bg-white/10 hover:text-white transition-colors"><Redo2 size={14} /></button>
+      <div className="w-px h-5 bg-neutral-700 mx-0.5" />
+      <AIMenu />
       <div className="w-px h-5 bg-neutral-700 mx-0.5" />
       <button
         onClick={() => { setAnimationModeEnabled(!animationModeEnabled); sounds.click(); }}

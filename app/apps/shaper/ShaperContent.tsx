@@ -1,7 +1,9 @@
 'use client';
 
+import { useEffect } from 'react';
 import { useShaper } from './ShaperProvider';
 import { ZoomControls } from '@hudson/sdk';
+import { useShellLayout } from '../../shell/ShellLayoutContext';
 import { CanvasRenderer } from './components/CanvasRenderer';
 import { ToolPalette } from './components/ToolPalette';
 import { DropZone } from './components/DropZone';
@@ -9,13 +11,25 @@ import { AnimationTimeline } from './components/AnimationTimeline';
 
 export function ShaperContent() {
   const ctx = useShaper();
+  const { rightWidth } = useShellLayout();
+
+  // Attach the wheel listener natively (non-passive) so handleWheel can
+  // preventDefault. React's synthetic onWheel is passive and emits a console
+  // warning on every call.
+  useEffect(() => {
+    const el = ctx.containerRef.current;
+    if (!el) return;
+    const handler = ctx.handleWheel;
+    el.addEventListener('wheel', handler, { passive: false });
+    return () => el.removeEventListener('wheel', handler);
+  }, [ctx.containerRef, ctx.handleWheel, ctx.showEditor]);
 
   const {
     showEditor, showDropScreen,
     tool, isPanning, zoom, pan, showGrid, showGuides,
     containerRef, canvasRef, fileInputRef,
-    showOriginal, showSilhouette, displayImageSrc, projectImage,
-    handleWheel, handlePointMouseDown, handleCanvasMouseMove, handleCanvasMouseUp,
+    showOriginal, showSilhouette, displayImageSrc, traceImageSrc,
+    handlePointMouseDown, handleCanvasMouseMove, handleCanvasMouseUp,
     clearMousePos, handleGlobalDragOver, handleGlobalDrop, handleFileSelect,
     zoomIn, zoomOut, resetZoom,
     animationModeEnabled, isAnimating, animationProgress, animationSpeed,
@@ -50,7 +64,6 @@ export function ShaperContent() {
             backgroundImage: showGrid ? 'radial-gradient(circle, #333 1px, transparent 1px)' : 'none',
             backgroundSize: '20px 20px',
           }}
-          onWheel={handleWheel}
           onMouseDown={handlePointMouseDown}
           onMouseMove={handleCanvasMouseMove}
           onMouseUp={handleCanvasMouseUp}
@@ -61,7 +74,7 @@ export function ShaperContent() {
             className="absolute"
             style={{
               transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
-              transformOrigin: '0 0',
+              transformOrigin: 'center center',
               left: '50%',
               top: '50%',
               marginLeft: '-512px',
@@ -72,10 +85,10 @@ export function ShaperContent() {
             }}
           >
             {showOriginal && (
-              <img src={displayImageSrc} alt="Original" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
+              <img src={displayImageSrc} alt="Input image" className="absolute inset-0 w-full h-full object-contain pointer-events-none" />
             )}
             {showSilhouette && (
-              <img src={projectImage ? displayImageSrc : '/shaper/talkie-silhouette.png'} alt="Silhouette" className="absolute inset-0 w-full h-full object-contain opacity-50 pointer-events-none" />
+              <img src={traceImageSrc} alt="Silhouette" className="absolute inset-0 w-full h-full object-contain opacity-50 pointer-events-none" />
             )}
             <CanvasRenderer />
           </div>
@@ -97,11 +110,15 @@ export function ShaperContent() {
       {/* Drop zone */}
       {showDropScreen && <DropZone />}
 
-      {/* Zoom controls */}
+      {/* Zoom controls — right offset accounts for the inspector panel width */}
       {showEditor && (
         <div
-          className="absolute right-3 z-30 transition-all duration-200"
-          style={{ bottom: `${12 + (animationModeEnabled ? 64 : 0)}px` }}
+          className="absolute z-30 transition-all duration-200"
+          style={{
+            right: rightWidth + 12,
+            bottom: `${12 + (animationModeEnabled ? 64 : 0)}px`,
+            transition: 'right 200ms ease, bottom 200ms ease',
+          }}
         >
           <ZoomControls
             scale={zoom}
