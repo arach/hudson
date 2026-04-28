@@ -317,7 +317,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
         </div>
 
         {/* Content area */}
-        <div className="flex-1 overflow-hidden relative">
+        <div className="flex-1 overflow-hidden relative select-text">
           {children}
         </div>
       </div>
