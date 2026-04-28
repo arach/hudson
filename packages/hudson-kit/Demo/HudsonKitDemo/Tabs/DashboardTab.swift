@@ -100,7 +100,7 @@ struct DashboardTab: View {
                 HudsonBadge(String(targets.count), tint: HudsonPalette.muted)
             }
             LazyVGrid(
-                columns: Array(repeating: GridItem(.flexible(), spacing: HudsonSpacing.xl), count: 3),
+                columns: [GridItem(.adaptive(minimum: 280), spacing: HudsonSpacing.xl)],
                 spacing: HudsonSpacing.xl
             ) {
                 ForEach(targets) { TargetCard(target: $0) }
@@ -120,10 +120,14 @@ struct DashboardTab: View {
                     .tracking(0.8)
                     .foregroundStyle(HudsonPalette.dim)
             }
-            HStack(alignment: .top, spacing: HudsonSpacing.xl) {
-                AgentPanel().frame(maxWidth: .infinity)
-                TerminalPanel().frame(maxWidth: .infinity)
-                CalendarPanel().frame(maxWidth: .infinity)
+            LazyVGrid(
+                columns: [GridItem(.adaptive(minimum: 240), spacing: HudsonSpacing.xl)],
+                alignment: .leading,
+                spacing: HudsonSpacing.xl
+            ) {
+                AgentPanel()
+                TerminalPanel()
+                CalendarPanel()
             }
         }
     }
