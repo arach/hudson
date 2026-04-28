@@ -11,7 +11,10 @@ import {
   attachSession,
   detachSession,
   destroy,
+  resizeSession,
   send,
+  sessionOwnsSocket,
+  writeSession,
 } from './relay/session';
 import type { ClientMessage, RelaySocket } from './relay/types';
 import { handleCompile } from './routes/compile';
@@ -92,7 +95,7 @@ export function startServer(port: number) {
           // Detach from any previous session on this socket
           if (sessionId) {
             const prev = sessions.get(sessionId);
-            if (prev) detachSession(prev);
+            if (prev && sessionOwnsSocket(prev, ws)) detachSession(prev);
           }
           const session = createSession(ws, msg);
           if (!session) break; // Pre-flight failed — error already sent to client
@@ -107,7 +110,7 @@ export function startServer(port: number) {
             // Detach from any previous session on this socket
             if (sessionId && sessionId !== msg.sessionId) {
               const prev = sessions.get(sessionId);
-              if (prev) detachSession(prev);
+              if (prev && sessionOwnsSocket(prev, ws)) detachSession(prev);
             }
             // Detach the session from any other socket
             if (existing.ws && existing.ws !== ws) {
@@ -126,8 +129,8 @@ export function startServer(port: number) {
         case 'terminal:input': {
           if (!sessionId) return;
           const session = sessions.get(sessionId);
-          if (session && !session.exited) {
-            session.pty.write(msg.data);
+          if (session && sessionOwnsSocket(session, ws)) {
+            writeSession(session, msg.data);
           }
           break;
         }
@@ -135,12 +138,10 @@ export function startServer(port: number) {
         case 'terminal:resize': {
           if (!sessionId) return;
           const session = sessions.get(sessionId);
-          if (session && !session.exited) {
+          if (session && sessionOwnsSocket(session, ws)) {
             const cols = Math.max(msg.cols || 80, 20);
             const rows = Math.max(msg.rows || 24, 4);
-            session.pty.resize(cols, rows);
-            session.cols = cols;
-            session.rows = rows;
+            resizeSession(session, cols, rows);
           }
           break;
         }
@@ -150,7 +151,7 @@ export function startServer(port: number) {
     ws.on('close', () => {
       if (sessionId) {
         const session = sessions.get(sessionId);
-        if (session) detachSession(session);
+        if (session && sessionOwnsSocket(session, ws)) detachSession(session);
         sessionId = null;
       }
     });
@@ -159,7 +160,7 @@ export function startServer(port: number) {
       console.error('[relay] WebSocket error:', err.message);
       if (sessionId) {
         const session = sessions.get(sessionId);
-        if (session) detachSession(session);
+        if (session && sessionOwnsSocket(session, ws)) detachSession(session);
         sessionId = null;
       }
     });
