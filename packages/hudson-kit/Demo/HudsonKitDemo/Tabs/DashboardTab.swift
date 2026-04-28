@@ -71,6 +71,7 @@ struct TargetMock: Identifiable {
 struct DashboardTab: View {
     @Environment(\.hudsonAppManifest) private var manifest
     private let targets = TargetMock.fleet
+    var onSelectTarget: ((TargetMock) -> Void)? = nil
 
     var body: some View {
         VStack(spacing: 0) {
@@ -103,7 +104,12 @@ struct DashboardTab: View {
                 columns: [GridItem(.adaptive(minimum: 280), spacing: HudsonSpacing.xl)],
                 spacing: HudsonSpacing.xl
             ) {
-                ForEach(targets) { TargetCard(target: $0) }
+                ForEach(targets) { target in
+                    TargetCard(
+                        target: target,
+                        onTap: onSelectTarget.map { handler in { handler(target) } }
+                    )
+                }
             }
         }
     }

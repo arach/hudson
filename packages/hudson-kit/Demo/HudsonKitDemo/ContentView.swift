@@ -45,6 +45,13 @@ struct ContentView: View {
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
     @State private var inspectorCollapsed: Bool = false
+    @State private var terminalOpen: Bool = false
+    @State private var selectedTargetId: String? = nil
+
+    private var selectedTarget: TargetMock? {
+        guard let id = selectedTargetId else { return nil }
+        return TargetMock.fleet.first(where: { $0.id == id })
+    }
 
     var body: some View {
         HudsonAppShell {
@@ -68,6 +75,17 @@ struct ContentView: View {
             } content: {
                 inspectorContent
             }
+        } topDrawer: {
+            EmptyView()
+        } bottomDrawer: {
+            HudsonTerminalDrawer(
+                isOpen: $terminalOpen,
+                title: "Terminal",
+                subtitle: "arach-laptop · ~/dev/lattices",
+                statusColor: variant.manifest.accent
+            ) {
+                DrawerTerminal(host: "arach-laptop.local")
+            }
         } content: {
             tabContent
         } statusBar: {
@@ -82,7 +100,15 @@ struct ContentView: View {
     private var tabContent: some View {
         switch tab {
         case .dashboard:
-            DashboardTab()
+            if let target = selectedTarget {
+                TargetCanvas(target: target) {
+                    selectedTargetId = nil
+                }
+            } else {
+                DashboardTab(onSelectTarget: { target in
+                    selectedTargetId = target.id
+                })
+            }
         case .tokens, .primitives, .manifest:
             ScrollView {
                 Group {

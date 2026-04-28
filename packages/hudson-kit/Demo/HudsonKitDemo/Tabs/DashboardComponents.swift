@@ -63,17 +63,28 @@ private struct FleetPill: View {
 
 struct TargetCard: View {
     let target: TargetMock
+    var onTap: (() -> Void)?
+
+    @State private var isHovering = false
 
     var body: some View {
-        HudsonCard {
-            VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                header
-                if let scene = target.scene { sceneRow(scene) }
-                if target.focusApp != nil || target.lastAction != nil { focusBlock }
-                HudsonDivider()
-                agentRow
+        Button(action: { onTap?() }) {
+            HudsonCard(stroke: isHovering ? target.iconTint.color.opacity(0.45) : HudsonHairline.standard) {
+                VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+                    header
+                    if let scene = target.scene { sceneRow(scene) }
+                    if target.focusApp != nil || target.lastAction != nil { focusBlock }
+                    HudsonDivider()
+                    agentRow
+                }
             }
+            .contentShape(Rectangle())
         }
+        .buttonStyle(.plain)
+        .disabled(onTap == nil)
+        #if os(macOS)
+        .onHover { isHovering = $0 }
+        #endif
     }
 
     private var header: some View {
