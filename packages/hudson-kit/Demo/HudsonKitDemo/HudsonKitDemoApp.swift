@@ -9,8 +9,6 @@ import AppKit
 struct HudsonKitDemoApp: App {
     init() {
         #if canImport(AppKit)
-        // SPM-built binaries run as `.accessory` by default — no Dock icon, no
-        // window focus. Promote to a regular UI app so the demo window appears.
         NSApplication.shared.setActivationPolicy(.regular)
         NSApplication.shared.activate(ignoringOtherApps: true)
         #endif
@@ -19,7 +17,9 @@ struct HudsonKitDemoApp: App {
     var body: some Scene {
         WindowGroup("hudson-kit Demo") {
             ContentView()
+                #if os(macOS)
                 .frame(minWidth: 720, minHeight: 540)
+                #endif
         }
     }
 }

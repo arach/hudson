@@ -2,7 +2,7 @@ import SwiftUI
 import HudsonUI
 
 enum DemoTab: String, CaseIterable, Identifiable {
-    case tokens, primitives, manifest
+    case dashboard, tokens, primitives, manifest
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 }
@@ -20,43 +20,55 @@ enum DemoVariant: String, CaseIterable, Identifiable {
 
     var label: String {
         switch self {
-        case .scout:    return "Scout · cyan"
-        case .lattices: return "Lattices · emerald"
+        case .scout:    return "Scout"
+        case .lattices: return "Lattices"
         }
     }
 }
 
 struct ContentView: View {
-    @State private var tab: DemoTab = .primitives
-    @State private var variant: DemoVariant = .scout
+    @State private var tab: DemoTab = .dashboard
+    @State private var variant: DemoVariant = .lattices
 
     var body: some View {
         ZStack {
             HudsonPalette.bg.ignoresSafeArea()
 
             VStack(spacing: 0) {
-                TopBar(tab: $tab, variant: $variant)
+                DemoTopBar(tab: $tab, variant: $variant)
                 HudsonDivider(color: HudsonHairline.standard)
 
-                ScrollView {
-                    Group {
-                        switch tab {
-                        case .tokens:     TokensTab()
-                        case .primitives: PrimitivesTab()
-                        case .manifest:   ManifestTab()
-                        }
-                    }
-                    .padding(HudsonSpacing.xxl)
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+                content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
         .hudsonAppManifest(variant.manifest)
         .preferredColorScheme(.dark)
     }
+
+    @ViewBuilder
+    private var content: some View {
+        switch tab {
+        case .dashboard:
+            DashboardTab()
+        case .tokens, .primitives, .manifest:
+            ScrollView {
+                Group {
+                    switch tab {
+                    case .tokens:     TokensTab()
+                    case .primitives: PrimitivesTab()
+                    case .manifest:   ManifestTab()
+                    case .dashboard:  EmptyView()
+                    }
+                }
+                .padding(HudsonSpacing.xxl)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            }
+        }
+    }
 }
 
-private struct TopBar: View {
+private struct DemoTopBar: View {
     @Binding var tab: DemoTab
     @Binding var variant: DemoVariant
     @Environment(\.hudsonAppManifest) private var manifest
@@ -69,11 +81,6 @@ private struct TopBar: View {
                     .font(HudsonFont.mono(11, weight: .bold))
                     .tracking(1.5)
                     .foregroundStyle(HudsonPalette.ink)
-                Text("·").foregroundStyle(HudsonPalette.dim)
-                Text(manifest.name)
-                    .font(HudsonFont.mono(11))
-                    .tracking(1)
-                    .foregroundStyle(HudsonPalette.muted)
             }
 
             Spacer()
@@ -82,13 +89,13 @@ private struct TopBar: View {
                 ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
-            .frame(width: 280)
+            .fixedSize()
 
             Picker("Tab", selection: $tab) {
                 ForEach(DemoTab.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
-            .frame(width: 260)
+            .fixedSize()
         }
         .padding(.horizontal, HudsonSpacing.xxl)
         .frame(height: 44)
