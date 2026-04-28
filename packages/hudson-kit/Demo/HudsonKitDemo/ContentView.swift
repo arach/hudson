@@ -3,13 +3,14 @@ import HudsonUI
 import HudsonShell
 
 enum DemoTab: String, CaseIterable, Identifiable {
-    case dashboard, tokens, primitives, manifest
+    case dashboard, shell, tokens, primitives, manifest
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
     var icon: String {
         switch self {
         case .dashboard:  return "rectangle.grid.2x2"
+        case .shell:      return "rectangle.split.3x1"
         case .tokens:     return "circle.hexagongrid"
         case .primitives: return "square.stack.3d.up"
         case .manifest:   return "doc.text"
@@ -224,10 +225,23 @@ struct ContentView: View {
                     selectedTargetId = target.id
                 })
             }
-        case .tokens, .primitives, .manifest:
+        case .shell, .tokens, .primitives, .manifest:
             ScrollView {
                 Group {
                     switch tab {
+                    case .shell:
+                        ShellTab(
+                            onOpenPalette:    { paletteOpen = true },
+                            onOpenTakeover: {
+                                if selectedTargetId == nil {
+                                    selectedTargetId = TargetMock.fleet.first?.id
+                                }
+                                takeoverOpen = true
+                            },
+                            onToggleDrawer:   { terminalOpen.toggle() },
+                            onToggleRail:     { navExpanded.toggle() },
+                            onToggleInspector: { inspectorCollapsed.toggle() }
+                        )
                     case .tokens:     TokensTab()
                     case .primitives: PrimitivesTab()
                     case .manifest:   ManifestTab()
