@@ -1,31 +1,102 @@
 {
-  "name": "@hudson/sdk",
-  "version": "0.1.0",
-  "private": true,
-  "description": "HUD-style chrome components for canvas and panel-based applications",
-  "license": "SEE LICENSE IN LICENSE.md",
-  "main": "./src/index.ts",
+  "name": "@hudsonos/sdk",
+  "version": "0.2.0",
+  "description": "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
-    ".": "./src/index.ts",
-    "./shell": "./src/shell.ts",
-    "./app-shell": "./src/app-shell.ts",
-    "./chrome": "./src/chrome.ts",
-    "./overlays": "./src/overlays.ts",
-    "./context-menu": "./src/context-menu.ts",
-    "./canvas": "./src/canvas.ts",
-    "./windows": "./src/windows.ts",
-    "./theme": "./src/theme.ts",
-    "./controls": "./src/controls.ts",
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./shell": {
+      "types": "./dist/shell.d.ts",
+      "import": "./dist/shell.js",
+      "default": "./dist/shell.js"
+    },
+    "./app-shell": {
+      "types": "./dist/app-shell.d.ts",
+      "import": "./dist/app-shell.js",
+      "default": "./dist/app-shell.js"
+    },
+    "./chrome": {
+      "types": "./dist/chrome.d.ts",
+      "import": "./dist/chrome.js",
+      "default": "./dist/chrome.js"
+    },
+    "./overlays": {
+      "types": "./dist/overlays.d.ts",
+      "import": "./dist/overlays.js",
+      "default": "./dist/overlays.js"
+    },
+    "./context-menu": {
+      "types": "./dist/context-menu.d.ts",
+      "import": "./dist/context-menu.js",
+      "default": "./dist/context-menu.js"
+    },
+    "./canvas": {
+      "types": "./dist/canvas.d.ts",
+      "import": "./dist/canvas.js",
+      "default": "./dist/canvas.js"
+    },
+    "./windows": {
+      "types": "./dist/windows.d.ts",
+      "import": "./dist/windows.js",
+      "default": "./dist/windows.js"
+    },
+    "./theme": {
+      "types": "./dist/theme.d.ts",
+      "import": "./dist/theme.js",
+      "default": "./dist/theme.js"
+    },
+    "./controls": {
+      "types": "./dist/controls.d.ts",
+      "import": "./dist/controls.js",
+      "default": "./dist/controls.js"
+    },
+    "./voice": {
+      "types": "./dist/voice.d.ts",
+      "import": "./dist/voice.js",
+      "default": "./dist/voice.js"
+    },
     "./styles": "./dist/styles.css"
   },
+  "files": [
+    "dist",
+    "src"
+  ],
   "scripts": {
+    "build": "tsup && bun run build:css",
+    "build:js": "tsup",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify"
+  },
+  "dependencies": {
+    "ai": "^6.0.0",
+    "@ai-sdk/react": "^3.0.0",
+    "@base-ui-components/react": "^1.0.0-rc.0",
+    "motion": "^12.0.0"
   },
   "peerDependencies": {
     "react": "^19.0.0",
-    "lucide-react": "^0.564.0 || ^0.574.0"
+    "lucide-react": "^0.564.0 || ^0.574.0",
+    "@xterm/xterm": "^6.0.0",
+    "@xterm/addon-fit": "^0.11.0",
+    "@xterm/addon-webgl": "^0.19.0",
+    "@voxd/client": "^0.2.0",
+    "html2canvas-pro": "^2.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@xterm/xterm": { "optional": true },
+    "@xterm/addon-fit": { "optional": true },
+    "@xterm/addon-webgl": { "optional": true },
+    "@voxd/client": { "optional": true },
+    "html2canvas-pro": { "optional": true }
   },
   "devDependencies": {
-    "@tailwindcss/cli": "^4"
+    "@tailwindcss/cli": "^4",
+    "tsup": "^8.0.0"
   }
 }
