@@ -24,19 +24,19 @@ export interface AgentDocEntry {
   position: { x: number; y: number };
 }
 
-import type { VoiceSettings as SdkVoiceSettings } from '@hudson/sdk';
+import type { VoiceSettings as SdkVoiceSettings } from '@hudson/sdk/voice';
 
 export type AIMode = 'cli' | 'api';
 
-// Voice types live in @hudson/sdk so the SDK Assistant + app consumers share
-// a single source of truth. Re-exported here for backwards compat with the
-// many existing imports in app/shell.
+// Voice types live in @hudson/sdk/voice so the SDK Assistant + app consumers
+// share a single source of truth. Re-exported here for backwards compat with
+// the many existing imports in app/shell.
 export type {
   SpokenReplyStyle,
   SpokenReplyLongResponse,
   SpokenReplyCodeResponse,
   VoiceSettings,
-} from '@hudson/sdk';
+} from '@hudson/sdk/voice';
 
 export interface FontSettings {
   fontSize: number;

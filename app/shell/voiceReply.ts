@@ -1,4 +1,4 @@
-// Re-export voice helpers from @hudson/sdk so existing app imports keep working.
+// Re-export voice helpers from @hudson/sdk/voice so existing app imports keep working.
 // The actual implementation lives in packages/hudson-sdk/src/lib/voiceReply.ts.
 export {
   applyHudsonVoiceBehaviorPreset,
@@ -7,5 +7,5 @@ export {
   getHudsonSpokenReplyStyleLabel,
   getHudsonVoiceBehaviorPreset,
   getHudsonVoiceBehaviorPresetLabel,
-} from '@hudson/sdk';
-export type { HudsonSpokenReplyStyle, HudsonVoiceBehaviorPreset } from '@hudson/sdk';
+} from '@hudson/sdk/voice';
+export type { HudsonSpokenReplyStyle, HudsonVoiceBehaviorPreset } from '@hudson/sdk/voice';
