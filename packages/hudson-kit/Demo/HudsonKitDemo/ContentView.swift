@@ -72,7 +72,11 @@ struct ContentView: View {
                 HStack(spacing: HudsonSpacing.md) {
                     HudsonSectionLabel("Inspector")
                     Spacer()
-                    HudsonBadge(tab.label.uppercased())
+                    if let target = selectedTarget {
+                        HudsonBadge(target.statusLabel, tint: target.statusColor, dot: true)
+                    } else {
+                        HudsonBadge(tab.label.uppercased())
+                    }
                 }
             } content: {
                 inspectorContent
@@ -252,8 +256,16 @@ struct ContentView: View {
 
     @ViewBuilder
     private var inspectorContent: some View {
+        if let target = selectedTarget {
+            targetInspectorContent(target)
+        } else {
+            defaultInspectorContent
+        }
+    }
+
+    private var defaultInspectorContent: some View {
         let manifest = variant.manifest
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
+        return VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
             HudsonCard {
                 VStack(alignment: .leading, spacing: HudsonSpacing.md) {
                     HudsonKVRow("App",     value: manifest.name)
@@ -275,6 +287,67 @@ struct ContentView: View {
         }
     }
 
+    @ViewBuilder
+    private func targetInspectorContent(_ target: TargetMock) -> some View {
+        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
+            HudsonCard {
+                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                    HStack(spacing: HudsonSpacing.lg) {
+                        Image(systemName: target.icon)
+                            .font(.system(size: 14, weight: .medium))
+                            .foregroundStyle(target.iconTint.color)
+                            .frame(width: 32, height: 32)
+                            .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(target.iconTint.color.opacity(0.15)))
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(target.name)
+                                .font(HudsonFont.mono(12, weight: .semibold))
+                                .foregroundStyle(HudsonPalette.ink)
+                            Text(target.host)
+                                .font(HudsonFont.mono(10))
+                                .foregroundStyle(HudsonPalette.muted)
+                        }
+                    }
+                    HudsonDivider()
+                    HudsonKVRow("Status",  value: target.statusLabel.capitalized, valueColor: target.statusColor)
+                    HudsonKVRow("Latency", value: target.latency ?? "—")
+                    if let scene = target.scene {
+                        HudsonKVRow("Scene", value: scene)
+                    }
+                }
+            }
+
+            HudsonCard {
+                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                    HStack {
+                        HudsonSectionLabel("Agent")
+                        Spacer()
+                        HudsonStatusDot(
+                            color: target.agentTint.color,
+                            size: 6,
+                            pulses: target.agentStatus == "running"
+                        )
+                    }
+                    HudsonKVRow("State", value: target.agentStatus)
+                    if let activity = target.agentActivity {
+                        HudsonKVRow("Doing", value: activity)
+                    }
+                }
+            }
+
+            HudsonCard {
+                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                    HudsonSectionLabel("Quick actions", tint: HudsonPalette.muted)
+                    HudsonButton("Open terminal", icon: "terminal", style: .secondary) {
+                        terminalOpen = true
+                    }
+                    HudsonButton("Reconnect", icon: "arrow.clockwise", style: .ghost) {
+                        takeoverOpen = true
+                    }
+                }
+            }
+        }
+    }
+
     // MARK: Status bar
 
     private var statusBar: some View {
@@ -285,7 +358,34 @@ struct ContentView: View {
                 .tracking(1.5)
                 .foregroundStyle(HudsonPalette.muted)
 
+            statusSeparator
+            statusContext
+
             Spacer()
+
+            Button(action: { paletteOpen = true }) {
+                HStack(spacing: HudsonSpacing.xs) {
+                    Image(systemName: "command")
+                        .font(.system(size: 9, weight: .semibold))
+                    Text("K")
+                        .font(HudsonFont.mono(9, weight: .semibold))
+                    Text("palette")
+                        .font(HudsonFont.mono(9))
+                        .tracking(0.6)
+                }
+                .foregroundStyle(HudsonPalette.dim)
+                .padding(.horizontal, HudsonSpacing.md)
+                .padding(.vertical, 2)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HudsonRadius.tight)
+                        .stroke(HudsonHairline.standard, lineWidth: 1)
+                )
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel("Open command palette")
+
+            statusSeparator
 
             Text("v\(variant.manifest.version)")
                 .font(HudsonFont.mono(10))
@@ -294,5 +394,32 @@ struct ContentView: View {
         }
         .padding(.horizontal, HudsonSpacing.xxl)
         .frame(height: HudsonLayout.statusBarHeight)
+    }
+
+    @ViewBuilder
+    private var statusContext: some View {
+        if takeoverOpen, let target = selectedTarget {
+            HudsonStatusDot(color: HudsonPalette.statusOk, size: 5, pulses: true)
+            Text("connected · \(target.name)")
+                .font(HudsonFont.mono(10))
+                .foregroundStyle(HudsonPalette.statusOk)
+        } else if let target = selectedTarget {
+            Image(systemName: target.icon)
+                .font(.system(size: 9))
+                .foregroundStyle(target.iconTint.color)
+            Text("canvas · \(target.name)")
+                .font(HudsonFont.mono(10))
+                .foregroundStyle(HudsonPalette.ink)
+        } else {
+            Text("ready")
+                .font(HudsonFont.mono(10))
+                .foregroundStyle(HudsonPalette.muted)
+        }
+    }
+
+    private var statusSeparator: some View {
+        Text("·")
+            .font(HudsonFont.mono(10))
+            .foregroundStyle(HudsonPalette.dim)
     }
 }
