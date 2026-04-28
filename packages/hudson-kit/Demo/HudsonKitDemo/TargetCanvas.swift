@@ -8,6 +8,7 @@ import HudsonShell
 struct TargetCanvas: View {
     let target: TargetMock
     var onClose: () -> Void
+    var onConnect: () -> Void
 
     @Environment(\.hudsonAppManifest) private var manifest
 
@@ -99,7 +100,7 @@ struct TargetCanvas: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: HudsonSpacing.sm) {
-                HudsonButton("CONNECT", icon: "bolt", style: .primary(target.iconTint)) {}
+                HudsonButton("CONNECT", icon: "bolt", style: .primary(target.iconTint), action: onConnect)
                 HudsonButton("RECONFIGURE", style: .secondary) {}
             }
         }

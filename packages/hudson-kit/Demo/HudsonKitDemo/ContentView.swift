@@ -47,6 +47,7 @@ struct ContentView: View {
     @State private var inspectorCollapsed: Bool = false
     @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
+    @State private var takeoverOpen: Bool = false
 
     private var selectedTarget: TargetMock? {
         guard let id = selectedTargetId else { return nil }
@@ -92,6 +93,29 @@ struct ContentView: View {
             statusBar
         }
         .hudsonAppManifest(variant.manifest)
+        .hudsonTakeover(isPresented: $takeoverOpen) {
+            HudsonTakeover(isPresented: $takeoverOpen) {
+                takeoverHeader
+            } content: {
+                if let target = selectedTarget {
+                    ConnectFlow(target: target)
+                }
+            }
+        }
+    }
+
+    private var takeoverHeader: some View {
+        HStack(spacing: HudsonSpacing.md) {
+            HudsonSectionLabel("Takeover", tint: variant.manifest.accent)
+            if let target = selectedTarget {
+                Text("/")
+                    .font(HudsonFont.mono(10))
+                    .foregroundStyle(HudsonPalette.dim)
+                Text(target.name)
+                    .font(HudsonFont.mono(11, weight: .semibold))
+                    .foregroundStyle(HudsonPalette.ink)
+            }
+        }
     }
 
     // MARK: Tab content
@@ -101,9 +125,11 @@ struct ContentView: View {
         switch tab {
         case .dashboard:
             if let target = selectedTarget {
-                TargetCanvas(target: target) {
-                    selectedTargetId = nil
-                }
+                TargetCanvas(
+                    target: target,
+                    onClose: { selectedTargetId = nil },
+                    onConnect: { takeoverOpen = true }
+                )
             } else {
                 DashboardTab(onSelectTarget: { target in
                     selectedTargetId = target.id
