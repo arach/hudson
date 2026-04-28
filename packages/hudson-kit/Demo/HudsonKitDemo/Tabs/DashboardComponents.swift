@@ -356,7 +356,7 @@ struct DashboardBottomChrome: View {
                 .foregroundStyle(HudsonPalette.muted)
         }
         .padding(.horizontal, HudsonSpacing.xl)
-        .padding(.vertical, HudsonSpacing.md)
+        .frame(height: HudsonLayout.statusBarHeight)
     }
 
     private var statusRow: some View {
