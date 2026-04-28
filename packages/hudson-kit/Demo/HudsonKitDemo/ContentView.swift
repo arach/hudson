@@ -49,6 +49,7 @@ struct ContentView: View {
     @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
     @State private var takeoverOpen: Bool = false
+    @State private var terminalAppOpen: Bool = false
     @State private var paletteOpen: Bool = false
 
     private var selectedTarget: TargetMock? {
@@ -108,6 +109,13 @@ struct ContentView: View {
                 }
             }
         }
+        .hudsonTakeover(isPresented: $terminalAppOpen) {
+            if let target = selectedTarget {
+                TerminalApp(target: target) {
+                    terminalAppOpen = false
+                }
+            }
+        }
         .hudsonCommandPalette(isPresented: $paletteOpen, commands: commands)
         .background(
             Button("Open command palette") { paletteOpen = true }
@@ -162,9 +170,23 @@ struct ContentView: View {
         cmds.append(HudsonCommand(
             id: "drawer.toggle",
             title: terminalOpen ? "Close terminal drawer" : "Open terminal drawer",
-            icon: "terminal",
+            subtitle: "Bottom chrome · attached to host app",
+            icon: "rectangle.bottomthird.inset.filled",
             group: "Surfaces",
             action: { terminalOpen.toggle() }
+        ))
+        cmds.append(HudsonCommand(
+            id: "terminalapp.open",
+            title: "Open terminal app",
+            subtitle: "Floating · own header + status bar",
+            icon: "terminal",
+            group: "Surfaces",
+            action: {
+                if selectedTargetId == nil {
+                    selectedTargetId = TargetMock.fleet.first?.id
+                }
+                terminalAppOpen = true
+            }
         ))
         cmds.append(HudsonCommand(
             id: "rail.toggle",
@@ -351,8 +373,11 @@ struct ContentView: View {
             HudsonCard {
                 VStack(alignment: .leading, spacing: HudsonSpacing.md) {
                     HudsonSectionLabel("Quick actions", tint: HudsonPalette.muted)
-                    HudsonButton("Open terminal", icon: "terminal", style: .secondary) {
-                        terminalOpen = true
+                    HudsonButton("Terminal app", icon: "terminal", style: .secondary) {
+                        terminalAppOpen = true
+                    }
+                    HudsonButton("Toggle drawer", icon: "rectangle.bottomthird.inset.filled", style: .ghost) {
+                        terminalOpen.toggle()
                     }
                     HudsonButton("Reconnect", icon: "arrow.clockwise", style: .ghost) {
                         takeoverOpen = true
