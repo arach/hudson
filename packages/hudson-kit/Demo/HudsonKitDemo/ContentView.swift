@@ -48,6 +48,7 @@ struct ContentView: View {
     @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
     @State private var takeoverOpen: Bool = false
+    @State private var paletteOpen: Bool = false
 
     private var selectedTarget: TargetMock? {
         guard let id = selectedTargetId else { return nil }
@@ -102,6 +103,90 @@ struct ContentView: View {
                 }
             }
         }
+        .hudsonCommandPalette(isPresented: $paletteOpen, commands: commands)
+        .background(
+            Button("Open command palette") { paletteOpen = true }
+                .keyboardShortcut("k", modifiers: .command)
+                .opacity(0)
+                .frame(width: 0, height: 0)
+        )
+    }
+
+    // MARK: Command palette commands
+
+    private var commands: [HudsonCommand] {
+        var cmds: [HudsonCommand] = []
+
+        for candidate in DemoTab.allCases where candidate != tab {
+            cmds.append(HudsonCommand(
+                id: "tab.\(candidate.rawValue)",
+                title: "Go to \(candidate.label)",
+                icon: candidate.icon,
+                group: "Tabs",
+                action: {
+                    tab = candidate
+                    selectedTargetId = nil
+                }
+            ))
+        }
+
+        for target in TargetMock.fleet where selectedTargetId != target.id {
+            cmds.append(HudsonCommand(
+                id: "open.\(target.id)",
+                title: "Open \(target.name)",
+                subtitle: "\(target.host) · \(target.statusLabel)",
+                icon: target.icon,
+                group: "Targets",
+                action: {
+                    tab = .dashboard
+                    selectedTargetId = target.id
+                }
+            ))
+        }
+
+        for candidate in DemoVariant.allCases where candidate != variant {
+            cmds.append(HudsonCommand(
+                id: "variant.\(candidate.rawValue)",
+                title: "Variant: \(candidate.label)",
+                icon: "paintbrush",
+                group: "Theme",
+                action: { variant = candidate }
+            ))
+        }
+
+        cmds.append(HudsonCommand(
+            id: "drawer.toggle",
+            title: terminalOpen ? "Close terminal drawer" : "Open terminal drawer",
+            icon: "terminal",
+            group: "Surfaces",
+            action: { terminalOpen.toggle() }
+        ))
+        cmds.append(HudsonCommand(
+            id: "rail.toggle",
+            title: navExpanded ? "Collapse navigation rail" : "Expand navigation rail",
+            icon: "sidebar.left",
+            group: "Surfaces",
+            action: { navExpanded.toggle() }
+        ))
+        cmds.append(HudsonCommand(
+            id: "inspector.toggle",
+            title: inspectorCollapsed ? "Open inspector" : "Close inspector",
+            icon: "sidebar.right",
+            group: "Surfaces",
+            action: { inspectorCollapsed.toggle() }
+        ))
+
+        if selectedTarget != nil {
+            cmds.append(HudsonCommand(
+                id: "canvas.close",
+                title: "Back to fleet",
+                icon: "chevron.left",
+                group: "Surfaces",
+                action: { selectedTargetId = nil }
+            ))
+        }
+
+        return cmds
     }
 
     private var takeoverHeader: some View {
