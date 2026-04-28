@@ -19,6 +19,8 @@ targets:
     dependencies:
       - package: hudson-kit
         product: HudsonUI
+      - package: hudson-kit
+        product: HudsonShell
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo

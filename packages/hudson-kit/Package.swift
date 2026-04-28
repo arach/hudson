@@ -22,7 +22,7 @@ let package = Package(
         // simulator support comes when an Xcode project is added in M2/M3.
         .executableTarget(
             name: "HudsonKitDemo",
-            dependencies: ["HudsonUI"],
+            dependencies: ["HudsonUI", "HudsonShell"],
             path: "Demo/HudsonKitDemo"
         ),
     ]

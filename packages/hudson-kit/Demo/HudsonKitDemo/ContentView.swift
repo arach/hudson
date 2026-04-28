@@ -1,10 +1,24 @@
 import SwiftUI
 import HudsonUI
+import HudsonShell
 
 enum DemoTab: String, CaseIterable, Identifiable {
     case dashboard, tokens, primitives, manifest
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
+
+    var icon: String {
+        switch self {
+        case .dashboard:  return "rectangle.grid.2x2"
+        case .tokens:     return "circle.hexagongrid"
+        case .primitives: return "square.stack.3d.up"
+        case .manifest:   return "doc.text"
+        }
+    }
+
+    var navItem: HudsonNavRailItem {
+        HudsonNavRailItem(id: rawValue, label: label, icon: icon)
+    }
 }
 
 enum DemoVariant: String, CaseIterable, Identifiable {
@@ -29,25 +43,43 @@ enum DemoVariant: String, CaseIterable, Identifiable {
 struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
+    @State private var navExpanded: Bool = true
+    @State private var inspectorCollapsed: Bool = false
 
     var body: some View {
-        ZStack {
-            HudsonPalette.bg.ignoresSafeArea()
-
-            VStack(spacing: 0) {
-                DemoTopBar(tab: $tab, variant: $variant)
-                HudsonDivider(color: HudsonHairline.standard)
-
-                content
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        HudsonAppShell {
+            HudsonNavigationRail(
+                selection: Binding(
+                    get: { tab.rawValue },
+                    set: { newId in if let next = DemoTab(rawValue: newId) { tab = next } }
+                ),
+                items: DemoTab.allCases.map(\.navItem),
+                isExpanded: $navExpanded
+            ) {
+                variantPicker
             }
+        } trailing: {
+            HudsonInspector(isCollapsed: $inspectorCollapsed) {
+                HStack(spacing: HudsonSpacing.md) {
+                    HudsonSectionLabel("Inspector")
+                    Spacer()
+                    HudsonBadge(tab.label.uppercased())
+                }
+            } content: {
+                inspectorContent
+            }
+        } content: {
+            tabContent
+        } statusBar: {
+            statusBar
         }
         .hudsonAppManifest(variant.manifest)
-        .preferredColorScheme(.dark)
     }
 
+    // MARK: Tab content
+
     @ViewBuilder
-    private var content: some View {
+    private var tabContent: some View {
         switch tab {
         case .dashboard:
             DashboardTab()
@@ -66,39 +98,64 @@ struct ContentView: View {
             }
         }
     }
-}
 
-private struct DemoTopBar: View {
-    @Binding var tab: DemoTab
-    @Binding var variant: DemoVariant
-    @Environment(\.hudsonAppManifest) private var manifest
+    // MARK: Variant picker (rail footer)
 
-    var body: some View {
-        HStack(spacing: HudsonSpacing.xl) {
-            HStack(spacing: HudsonSpacing.lg) {
-                HudsonStatusDot(color: manifest.accent, pulses: true)
-                Text("HUDSON·KIT")
-                    .font(HudsonFont.mono(11, weight: .bold))
-                    .tracking(1.5)
-                    .foregroundStyle(HudsonPalette.ink)
-            }
-
-            Spacer()
-
+    private var variantPicker: some View {
+        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+            HudsonSectionLabel("Variant")
             Picker("Variant", selection: $variant) {
                 ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
             }
             .pickerStyle(.segmented)
-            .fixedSize()
+        }
+    }
 
-            Picker("Tab", selection: $tab) {
-                ForEach(DemoTab.allCases) { Text($0.label).tag($0) }
+    // MARK: Inspector content
+
+    @ViewBuilder
+    private var inspectorContent: some View {
+        let manifest = variant.manifest
+        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
+            HudsonCard {
+                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                    HudsonKVRow("App",     value: manifest.name)
+                    HudsonKVRow("Version", value: manifest.version)
+                    HudsonKVRow("Target",  value: manifest.targetLabel)
+                }
             }
-            .pickerStyle(.segmented)
-            .fixedSize()
+
+            HudsonCard {
+                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                    HStack {
+                        HudsonSectionLabel("Surface", tint: HudsonPalette.muted)
+                        Spacer()
+                    }
+                    HudsonKVRow("Tab",  value: tab.label)
+                    HudsonKVRow("Mode", value: navExpanded ? "Expanded" : "Collapsed")
+                }
+            }
+        }
+    }
+
+    // MARK: Status bar
+
+    private var statusBar: some View {
+        HStack(spacing: HudsonSpacing.xl) {
+            HudsonStatusDot(color: variant.manifest.accent, pulses: true)
+            Text("HUDSON·KIT")
+                .font(HudsonFont.mono(10, weight: .bold))
+                .tracking(1.5)
+                .foregroundStyle(HudsonPalette.muted)
+
+            Spacer()
+
+            Text("v\(variant.manifest.version)")
+                .font(HudsonFont.mono(10))
+                .foregroundStyle(HudsonPalette.dim)
+            HudsonBadge(tab.label.uppercased(), tint: variant.manifest.accent)
         }
         .padding(.horizontal, HudsonSpacing.xxl)
-        .frame(height: 44)
-        .background(Color.black.opacity(0.25))
+        .frame(height: HudsonLayout.statusBarHeight)
     }
 }
