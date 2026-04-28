@@ -2,8 +2,18 @@ import SwiftUI
 import HudsonUI
 import HudsonShell
 
-#if canImport(TermBridgeKit)
-import TermBridgeKit
+#if HUDSON_TERMINAL
+import HudsonTerminal
+
+private typealias DemoTerminalSessionState = HudsonTerminalSessionState
+#else
+private struct DemoTerminalSessionState {
+    var isConnected: Bool
+    var isConnecting: Bool
+    var statusMessage: String
+    var columns: Int?
+    var rows: Int?
+}
 #endif
 
 /// Floating "Terminal app" — a self-contained HudsonAppShell whose content slot
@@ -22,6 +32,7 @@ struct TerminalApp: View {
     @State private var rows: Int = 38
     @State private var cols: Int = 132
     @State private var connected: Bool = true
+    @State private var statusMessage: String = "Ready"
 
     @Environment(\.hudsonAppManifest) private var manifest
 
@@ -35,7 +46,16 @@ struct TerminalApp: View {
         } bottomDrawer: {
             EmptyView()
         } content: {
-            TerminalSurface(host: target.host)
+            TerminalSurface(host: target.host) { state in
+                connected = state.isConnected
+                statusMessage = state.statusMessage
+                if let nextRows = state.rows {
+                    rows = nextRows
+                }
+                if let nextCols = state.columns {
+                    cols = nextCols
+                }
+            }
         } statusBar: {
             terminalStatusBar
         }
@@ -90,7 +110,7 @@ struct TerminalApp: View {
                 .foregroundStyle(connected ? HudsonPalette.statusOk : HudsonPalette.statusError)
 
             sep
-            Text("ssh · ed25519")
+            Text(statusMessage)
                 .font(HudsonFont.mono(10))
                 .foregroundStyle(HudsonPalette.muted)
             sep
@@ -139,13 +159,16 @@ struct TerminalApp: View {
 
 private struct TerminalSurface: View {
     let host: String
+    var onStateChange: (DemoTerminalSessionState) -> Void = { _ in }
 
     var body: some View {
-        #if canImport(TermBridgeKit)
-        // A real GhosttyTerminalView mounts here once the iOS demo's
-        // project.yml pulls TermBridgeKit. The fake content keeps the macOS
-        // demo running without the dep.
-        FakeTerminalSurface(host: host)
+        #if HUDSON_TERMINAL
+        HudsonTerminalSSHSurface(
+            hostLabel: host,
+            showsSystemKeyboard: true,
+            appearance: HudsonTerminalAppearance(fontSize: 12),
+            onStateChange: onStateChange
+        )
         #else
         FakeTerminalSurface(host: host)
         #endif

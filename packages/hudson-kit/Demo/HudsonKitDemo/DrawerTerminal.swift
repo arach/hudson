@@ -1,23 +1,21 @@
 import SwiftUI
 import HudsonUI
 
-#if canImport(TermBridgeKit)
-import TermBridgeKit
+#if HUDSON_TERMINAL
+import HudsonTerminal
 #endif
 
 /// Content the demo mounts inside the `HudsonTerminalDrawer`.
-///
-/// On iOS demos that link `TermBridgeKit`, this would host the real Ghostty
-/// terminal view. Until that's wired into `iOS/project.yml`, both targets fall
-/// through to `FakeTerminalContent`, which renders enough mono prompt history
-/// to demonstrate the drawer behavior without pulling a heavy dependency.
 struct DrawerTerminal: View {
     let host: String
 
     var body: some View {
-        #if canImport(TermBridgeKit)
-        // GhosttyTerminalView from TermBridgeKit goes here once wired.
-        FakeTerminalContent(host: host)
+        #if HUDSON_TERMINAL
+        HudsonTerminalSSHSurface(
+            hostLabel: host,
+            showsSystemKeyboard: true,
+            appearance: HudsonTerminalAppearance(fontSize: 11)
+        )
         #else
         FakeTerminalContent(host: host)
         #endif

@@ -21,6 +21,8 @@ targets:
         product: HudsonUI
       - package: hudson-kit
         product: HudsonShell
+      - package: hudson-kit
+        product: HudsonTerminal
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo
@@ -39,3 +41,4 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
         ENABLE_PREVIEWS: YES
+        OTHER_SWIFT_FLAGS: "$(inherited) -D HUDSON_TERMINAL"
