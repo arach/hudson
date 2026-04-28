@@ -12,7 +12,7 @@ Hudson ships three utility systems: the **Platform Adapter** for abstracting hos
 
 ## Platform Adapter
 
-The platform adapter system abstracts host-specific concerns so the Hudson shell runs identically on web (Next.js) and native hosts (Electrobun, Tauri, Electron). Apps access the adapter through a React context.
+The platform adapter system abstracts host-specific concerns so the Hudson shell runs identically on web (Next.js) and native hosts (Tauri, HudsonKit). Apps access the adapter through a React context.
 
 ### How It Works
 
@@ -21,7 +21,7 @@ The platform adapter system abstracts host-specific concerns so the Hudson shell
 3. If no provider is present, the context falls back to `WEB_ADAPTER`.
 
 ```
-Host (Next.js / Electrobun / Tauri)
+Host (Next.js / Tauri / HudsonKit)
   |
   +-- PlatformProvider adapter={myAdapter}
        |
@@ -156,40 +156,7 @@ panelTopOffset = navTotalHeight
 
 ### Writing a Custom Adapter
 
-To run Hudson inside a native host like Electrobun or Tauri, create a custom adapter.
-
-#### Electrobun Example
-
-```tsx
-import type { PlatformAdapter } from '@hudsonos/sdk';
-
-const ELECTROBUN_ADAPTER: PlatformAdapter = {
-  titleBarInset: 28,
-
-  dragRegionProps: {
-    style: { WebkitAppRegion: 'drag' } as React.CSSProperties,
-  },
-
-  onInteractiveMouseDown: (e: React.MouseEvent) => {
-    // Prevent drag when clicking buttons inside the nav bar
-    (e.currentTarget as HTMLElement).style.setProperty(
-      '-webkit-app-region',
-      'no-drag',
-    );
-    requestAnimationFrame(() => {
-      (e.currentTarget as HTMLElement).style.removeProperty(
-        '-webkit-app-region',
-      );
-    });
-  },
-
-  isSSR: false,
-
-  apiBaseUrl: 'http://localhost:3600',
-
-  serviceApiUrl: 'http://localhost:3601',
-};
-```
+To run Hudson inside a native host like Tauri, create a custom adapter.
 
 #### Tauri Example
 
@@ -214,7 +181,7 @@ import { PlatformProvider } from '@hudsonos/sdk';
 
 function NativeApp() {
   return (
-    <PlatformProvider adapter={ELECTROBUN_ADAPTER}>
+    <PlatformProvider adapter={TAURI_ADAPTER}>
       <WorkspaceShell workspace={myWorkspace} />
     </PlatformProvider>
   );

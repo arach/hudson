@@ -1,6 +1,6 @@
 /**
  * PlatformAdapter — abstracts host-specific concerns so SDK shell chrome
- * runs identically on web (Next.js) and native hosts (Electrobun, Tauri, Electron).
+ * runs identically on web (Next.js) and native hosts (Tauri, HudsonKit).
  */
 export interface PlatformAdapter {
   /** Extra vertical inset above the nav bar for native title bars (0 for web). */

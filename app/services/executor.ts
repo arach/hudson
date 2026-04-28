@@ -34,7 +34,7 @@ export interface ServiceActionResult {
 }
 
 // ---------------------------------------------------------------------------
-// Cross-runtime spawn helpers (Bun.spawn in Electrobun, child_process in Node)
+// Cross-runtime spawn helpers (Bun.spawn when on Bun, child_process on Node)
 // ---------------------------------------------------------------------------
 
 function shellExecSync(command: string, opts: { cwd?: string; timeout?: number }): string {
@@ -124,7 +124,7 @@ export async function executeServiceAction(params: {
   serviceId: string;
   action: 'check' | 'install' | 'start' | 'stop';
   triggeredBy?: 'user' | 'agent' | 'system';
-  /** Override for process.cwd() — needed in Electrobun where cwd is the app bundle. */
+  /** Override for process.cwd() — needed in native hosts where cwd is the app bundle. */
   baseCwd?: string;
 }): Promise<ServiceActionResult> {
   const { serviceId, action, triggeredBy = 'user', baseCwd = process.cwd() } = params;
