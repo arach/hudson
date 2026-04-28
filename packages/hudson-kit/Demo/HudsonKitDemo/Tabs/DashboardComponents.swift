@@ -38,7 +38,7 @@ struct FleetTopBar: View {
                 .foregroundStyle(HudsonPalette.muted)
         }
         .padding(.horizontal, HudsonSpacing.xxl)
-        .frame(height: 44)
+        .frame(height: HudsonLayout.navHeight)
         .background(Color.black.opacity(0.25))
     }
 }
@@ -74,14 +74,17 @@ struct TargetCard: View {
                     header
                     if let scene = target.scene { sceneRow(scene) }
                     if target.focusApp != nil || target.lastAction != nil { focusBlock }
+                    Spacer(minLength: HudsonSpacing.md)
                     HudsonDivider()
                     agentRow
                 }
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .disabled(onTap == nil)
+        .frame(maxHeight: .infinity, alignment: .top)
         #if os(macOS)
         .onHover { isHovering = $0 }
         #endif
@@ -298,16 +301,17 @@ private struct OverflowPanel<Content: View>: View {
                         .foregroundStyle(HudsonPalette.dim)
                 }
                 .padding(.horizontal, HudsonSpacing.xl)
-                .padding(.vertical, HudsonSpacing.md)
+                .frame(height: 32)
                 .background(Color.white.opacity(0.02))
 
                 HudsonDivider()
 
                 content()
                     .padding(HudsonSpacing.xl)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }
 

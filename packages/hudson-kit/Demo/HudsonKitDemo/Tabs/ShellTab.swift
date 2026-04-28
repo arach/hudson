@@ -151,6 +151,9 @@ private struct PrimitiveCard: View {
                     .font(HudsonFont.ui(12))
                     .foregroundStyle(HudsonPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+
+                Spacer(minLength: HudsonSpacing.sm)
 
                 HStack {
                     Spacer()
@@ -161,9 +164,12 @@ private struct PrimitiveCard: View {
                             .font(HudsonFont.mono(9, weight: .semibold))
                             .tracking(1.0)
                             .foregroundStyle(HudsonPalette.dim)
+                            .frame(height: 32)
                     }
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }

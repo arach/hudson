@@ -159,7 +159,9 @@ struct TargetCanvas: View {
                     HudsonKVRow("last", value: "\(action) · \(time)")
                 }
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var agentPanel: some View {
@@ -180,7 +182,9 @@ struct TargetCanvas: View {
                 }
                 HudsonKVRow("tint", value: target.agentTint.rawValue)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 
     private var telemetryPanel: some View {
@@ -192,6 +196,8 @@ struct TargetCanvas: View {
                 HudsonKVRow("uptime",   value: "19w")
                 HudsonKVRow("temp",     value: "45°C", valueColor: HudsonTint.amber.color)
             }
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
+        .frame(maxHeight: .infinity, alignment: .top)
     }
 }
