@@ -26,6 +26,7 @@ public struct HudsonVoicePanel: View {
                 transcriptSurface
                 controls
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
         }
         .onDisappear {
             listenTask?.cancel()
@@ -60,7 +61,8 @@ public struct HudsonVoicePanel: View {
                 Text(displayText)
                     .font(HudsonFont.ui(13))
                     .foregroundStyle(transcript.isEmpty && partial.isEmpty ? HudsonPalette.dim : HudsonPalette.ink)
-                    .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, minHeight: 136, alignment: .topLeading)
 
                 if let errorMessage {
                     HudsonDivider()
@@ -74,34 +76,73 @@ public struct HudsonVoicePanel: View {
     }
 
     private var controls: some View {
+        ViewThatFits(in: .horizontal) {
+            HStack(spacing: HudsonSpacing.md) {
+                primaryControls
+                Spacer(minLength: HudsonSpacing.lg)
+                secondaryControls
+            }
+
+            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                primaryControls
+                secondaryControls
+            }
+        }
+    }
+
+    private var primaryControls: some View {
         HStack(spacing: HudsonSpacing.md) {
-            HudsonButton("Listen", icon: "waveform", style: .primary(.cyan)) {
-                Task { await startListening() }
-            }
-            .disabled(session != nil || health == nil)
+            listenButton
+                .frame(minWidth: 118)
+            stopButton
+                .frame(minWidth: 96)
+            cancelButton
+                .frame(minWidth: 104)
+        }
+    }
 
-            HudsonButton("Stop", icon: "stop.fill", style: .secondary) {
-                Task { await stopListening() }
-            }
-            .disabled(session == nil)
+    private var secondaryControls: some View {
+        HStack(spacing: HudsonSpacing.md) {
+            checkButton
+                .frame(minWidth: 104)
+            clearButton
+                .frame(minWidth: 96)
+        }
+    }
 
-            HudsonButton("Cancel", icon: "xmark", style: .ghost) {
-                Task { await cancelListening() }
-            }
-            .disabled(session == nil)
+    private var listenButton: some View {
+        HudsonButton("Listen", icon: "waveform", style: .primary(.cyan)) {
+            Task { await startListening() }
+        }
+        .disabled(session != nil || health == nil)
+    }
 
-            Spacer()
+    private var stopButton: some View {
+        HudsonButton("Stop", icon: "stop.fill", style: .secondary) {
+            Task { await stopListening() }
+        }
+        .disabled(session == nil)
+    }
 
-            HudsonButton("Check", icon: "stethoscope", style: .ghost) {
-                Task { await refreshHealth() }
-            }
-            .disabled(isCheckingHealth)
+    private var cancelButton: some View {
+        HudsonButton("Cancel", icon: "xmark", style: .ghost) {
+            Task { await cancelListening() }
+        }
+        .disabled(session == nil)
+    }
 
-            HudsonButton("Clear", icon: "trash", style: .ghost) {
-                transcript = ""
-                partial = ""
-                errorMessage = nil
-            }
+    private var checkButton: some View {
+        HudsonButton("Check", icon: "stethoscope", style: .ghost) {
+            Task { await refreshHealth() }
+        }
+        .disabled(isCheckingHealth)
+    }
+
+    private var clearButton: some View {
+        HudsonButton("Clear", icon: "trash", style: .ghost) {
+            transcript = ""
+            partial = ""
+            errorMessage = nil
         }
     }
 

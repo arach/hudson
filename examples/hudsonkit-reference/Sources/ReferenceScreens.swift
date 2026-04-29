@@ -105,8 +105,51 @@ struct VoiceReferenceScreen: View {
                 summary: "Feature modules should mount as ordinary app-owned screens. The host app decides when a provider is enabled and how recovered state is presented."
             )
 
-            HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudsonkit-reference"))
-                .frame(maxWidth: 640)
+            LazyVGrid(
+                columns: [
+                    GridItem(.adaptive(minimum: 360, maximum: 620), spacing: HudsonSpacing.xl)
+                ],
+                alignment: .leading,
+                spacing: HudsonSpacing.xl
+            ) {
+                HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudsonkit-reference"))
+
+                HudsonCard {
+                    VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+                        HudsonSectionLabel("Host responsibilities", tint: HudsonPalette.statusInfo)
+                        Text("A product app owns when voice is available, which provider is enabled, and how stale session recovery appears inside its own settings and runtime screens.")
+                            .font(HudsonFont.ui(12))
+                            .foregroundStyle(HudsonPalette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HudsonInset {
+                            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                                HudsonKVRow("Provider", value: "Vox")
+                                HudsonKVRow("Endpoint", value: "127.0.0.1:42137")
+                                HudsonKVRow("Recovery", value: "App owned", valueColor: HudsonPalette.statusInfo)
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+
+                HudsonCard {
+                    VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+                        HudsonSectionLabel("Provider contract", tint: HudsonPalette.statusInfo)
+                        Text("Use a small adapter around the local companion. Keep the screen ordinary: health check, live session controls, transcript surface, and explicit cleanup actions.")
+                            .font(HudsonFont.ui(12))
+                            .foregroundStyle(HudsonPalette.muted)
+                            .fixedSize(horizontal: false, vertical: true)
+
+                        HStack(spacing: HudsonSpacing.md) {
+                            HudsonBadge("HEALTH", tint: HudsonPalette.statusOk, dot: true)
+                            HudsonBadge("LIVE SESSION", tint: HudsonPalette.statusInfo, dot: true)
+                            HudsonBadge("RECOVERY", tint: HudsonPalette.statusWarn, dot: true)
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
         }
     }
 }
