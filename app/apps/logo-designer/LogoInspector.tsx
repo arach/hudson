@@ -462,6 +462,22 @@ export function LogoInspector() {
           value={params.clipToShape}
           onChange={v => setParam('clipToShape', v)}
         />
+        <ParamToggle
+          label="Fit shape to canvas"
+          value={params.fitShapeToCanvas}
+          onChange={v => setParam('fitShapeToCanvas', v)}
+        />
+        {params.fitShapeToCanvas && (
+          <ParamSlider
+            label="Shape margin"
+            value={params.shapeMargin}
+            min={0}
+            max={0.25}
+            step={0.01}
+            format={v => `${Math.round(v * 100)}%`}
+            onChange={v => setParam('shapeMargin', v)}
+          />
+        )}
       </ParamSection>
 
       {/* ── Generic: Colors (dark mode) ── */}

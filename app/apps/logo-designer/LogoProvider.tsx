@@ -26,6 +26,12 @@ export interface LogoParams {
   // Shape intake — when true, any piped silhouette (or letter shape) clips the final output.
   // Works universally across templates; templates that natively consume p.hasShape can leave this off.
   clipToShape: boolean;
+  // Shape sizing — when true, fit the actual path bounds of an incoming SVG to the mask
+  // (instead of honoring its viewBox verbatim). Lets upstream apps export with arbitrary
+  // padding/aspect while the logo still shows the shape at a consistent size.
+  fitShapeToCanvas: boolean;
+  // Extra padding around the fitted shape, as a fraction of its longest side. 0 = fill mask.
+  shapeMargin: number;
   // Light mode
   lightEnabled: boolean;
   lightColors: ColorSet;
@@ -82,6 +88,8 @@ export const defaults: LogoParams = {
   splitY: 0.60,
   padding: 72,
   clipToShape: false,
+  fitShapeToCanvas: true,
+  shapeMargin: 0,
   lightEnabled: false,
   lightColors: defaultLightColors,
   lightingEnabled: false,
