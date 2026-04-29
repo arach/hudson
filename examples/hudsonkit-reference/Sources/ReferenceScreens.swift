@@ -8,7 +8,7 @@ struct WelcomeReferenceScreen: View {
             ScreenHeader(
                 title: "Welcome",
                 badge: "FIRST RUN",
-                body: "Use this shape for onboarding, account-free setup, permissions, and the first successful connection to local services."
+                summary: "Use this shape for onboarding, account-free setup, permissions, and the first successful connection to local services."
             )
 
             LazyVGrid(
@@ -30,7 +30,7 @@ struct ConfigurationReferenceScreen: View {
             ScreenHeader(
                 title: "Configuration",
                 badge: "SETTINGS",
-                body: "Use dense cards and key-value rows for user-editable service settings, provider choices, and integration allowlists."
+                summary: "Use dense cards and key-value rows for user-editable service settings, provider choices, and integration allowlists."
             )
 
             HudsonCard {
@@ -67,7 +67,7 @@ struct RuntimeReferenceScreen: View {
             ScreenHeader(
                 title: "Runtime",
                 badge: "HEALTH",
-                body: "Expose service state, ports, process IDs, recent events, and recovery controls without burying them in generic settings."
+                summary: "Expose service state, ports, process IDs, recent events, and recovery controls without burying them in generic settings."
             )
 
             LazyVGrid(
@@ -102,7 +102,7 @@ struct VoiceReferenceScreen: View {
             ScreenHeader(
                 title: "Voice",
                 badge: "OPTIONAL MODULE",
-                body: "Feature modules should mount as ordinary app-owned screens. The host app decides when a provider is enabled and how recovered state is presented."
+                summary: "Feature modules should mount as ordinary app-owned screens. The host app decides when a provider is enabled and how recovered state is presented."
             )
 
             HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudsonkit-reference"))
@@ -114,7 +114,7 @@ struct VoiceReferenceScreen: View {
 private struct ScreenHeader: View {
     let title: String
     let badge: String
-    let body: String
+    let summary: String
 
     var body: some View {
         VStack(alignment: .leading, spacing: HudsonSpacing.md) {
@@ -122,7 +122,7 @@ private struct ScreenHeader: View {
                 HudsonSectionLabel(title)
                 HudsonBadge(badge, tint: HudsonPalette.statusInfo)
             }
-            Text(body)
+            Text(summary)
                 .font(HudsonFont.ui(12))
                 .foregroundStyle(HudsonPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)

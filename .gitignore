@@ -123,7 +123,8 @@ public/fonts/
 .resend
 
 # native build artifacts
-/.build/
+.build/
+examples/**/Package.resolved
 native/bunsen/artifacts/
 .openscout/
 # OpenScout local state
