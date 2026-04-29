@@ -1,5 +1,5 @@
 {
-  "name": "@hudsonos/sdk",
+  "name": "@hudson/sdk",
   "version": "0.2.0",
   "description": "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
   "license": "FSL-1.1-MIT",

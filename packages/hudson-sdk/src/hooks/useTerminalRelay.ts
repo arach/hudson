@@ -144,21 +144,25 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     }
   }, []);
 
+  const closeCurrentSocket = useCallback(() => {
+    const ws = wsRef.current;
+    if (ws) {
+      ws.close();
+      wsRef.current = null;
+    }
+  }, []);
+
   const disconnect = useCallback(() => {
     connectAttemptRef.current += 1;
     if (reconnectTimer.current) {
       clearTimeout(reconnectTimer.current);
       reconnectTimer.current = null;
     }
-    const ws = wsRef.current;
-    if (ws) {
-      ws.close();
-      wsRef.current = null;
-    }
+    closeCurrentSocket();
     initSentRef.current = false;
     setStatus('disconnected');
     // Keep sessionId so we can reconnect — don't clear it
-  }, []);
+  }, [closeCurrentSocket]);
 
   const buildInitMessage = useCallback(() => {
     const activeCwd = cwdRef.current;
@@ -199,10 +203,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     const attempt = connectAttemptRef.current + 1;
     connectAttemptRef.current = attempt;
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    closeCurrentSocket();
 
     initSentRef.current = false;
     setStatus('connecting');
@@ -224,10 +225,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       return;
     }
 
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    closeCurrentSocket();
 
     const ws = new WebSocket(url);
     wsRef.current = ws;
@@ -322,7 +320,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       setStatus('error');
       setError('Could not connect to relay');
     };
-  }, [url, healthUrl, sendInitOrReconnect, send, systemPrompt, workspaceFiles]);
+  }, [url, healthUrl, sendInitOrReconnect, closeCurrentSocket, send, systemPrompt, workspaceFiles]);
 
   const sendInput = useCallback((data: string) => {
     send({ type: 'terminal:input', data });
