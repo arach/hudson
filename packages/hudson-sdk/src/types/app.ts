@@ -151,7 +151,7 @@ export interface HudsonApp {
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
-    useLayoutMode?: () => 'canvas' | 'panel';
+    useLayoutMode?: () => 'canvas' | 'panel' | 'focus';
     useActiveToolHint?: () => string | null;
     /** Returns a getter: (portId) => data snapshot or null */
     usePortOutput?: () => (portId: string) => unknown | null;

@@ -224,12 +224,12 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     </>
   );
 
-  // Left panel footer: LeftFooter slot + CommandDock
-  const leftFooter = (
-    <>
-      {app.slots.LeftFooter && <app.slots.LeftFooter />}
-      <CommandDock onOpenCommandPalette={() => setShowCommandPalette(true)} />
-    </>
+  // Left panel footer: LeftFooter slot only
+  const leftFooter = app.slots.LeftFooter ? <app.slots.LeftFooter /> : undefined;
+
+  // Right panel footer: CommandDock
+  const rightFooter = (
+    <CommandDock onOpenCommandPalette={() => setShowCommandPalette(true)} />
   );
 
   // Takeover refs + effects — background goes `inert` while active so focus
@@ -269,13 +269,18 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     return () => window.removeEventListener('keydown', handler);
   }, [takeoverActive, takeoverDismissible, takeoverOnDismiss]);
 
+  // Whether side panels should be visible — canvas/focus modes hide them
+  const showPanels = layoutMode === 'panel';
+  // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
+  const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+
   // Content insets — offset content area so it doesn't render behind fixed chrome
-  const contentStyle: React.CSSProperties = layoutMode === 'panel' ? {
+  const contentStyle: React.CSSProperties = frameMode === 'panel' ? {
     position: 'absolute',
     top: navTotalHeight,
     bottom: 28, // status bar
-    left: leftCollapsed ? 0 : leftWidth,
-    right: rightCollapsed ? 0 : rightWidth,
+    left: showPanels && !leftCollapsed ? leftWidth : 0,
+    right: showPanels && !rightCollapsed ? rightWidth : 0,
     overflow: 'auto',
     transition: 'left 200ms ease, right 200ms ease',
   } : {};
@@ -284,7 +289,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     <>
     <div ref={backgroundRef} aria-hidden={takeoverActive ? true : undefined} style={{ display: 'contents' }}>
     <Frame
-      mode={layoutMode}
+      mode={frameMode}
       panOffset={panOffset}
       scale={scale}
       onPan={handlePan}
@@ -299,32 +304,37 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
             actions={appNavActions}
           />
 
-          <SidePanel
-            side="left"
-            title={app.leftPanel?.title ?? 'Navigation'}
-            icon={app.leftPanel?.icon}
-            isCollapsed={leftCollapsed}
-            onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
-            width={leftWidth}
-            onResizeStart={handleResizeStart('left')}
-            footer={leftFooter}
-            headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
-          >
-            {app.slots.LeftPanel && <app.slots.LeftPanel />}
-          </SidePanel>
+          {showPanels && (
+            <SidePanel
+              side="left"
+              title={app.leftPanel?.title ?? 'Navigation'}
+              icon={app.leftPanel?.icon}
+              isCollapsed={leftCollapsed}
+              onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
+              width={leftWidth}
+              onResizeStart={handleResizeStart('left')}
+              footer={leftFooter}
+              headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
+            >
+              {app.slots.LeftPanel && <app.slots.LeftPanel />}
+            </SidePanel>
+          )}
 
-          <SidePanel
-            side="right"
-            title={app.rightPanel?.title ?? 'Inspector'}
-            icon={app.rightPanel?.icon}
-            isCollapsed={rightCollapsed}
-            onToggleCollapse={() => setRightCollapsed(!rightCollapsed)}
-            width={rightWidth}
-            onResizeStart={handleResizeStart('right')}
-            headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
-          >
-            {rightContent}
-          </SidePanel>
+          {showPanels && (
+            <SidePanel
+              side="right"
+              title={app.rightPanel?.title ?? 'Inspector'}
+              icon={app.rightPanel?.icon}
+              isCollapsed={rightCollapsed}
+              onToggleCollapse={() => setRightCollapsed(!rightCollapsed)}
+              width={rightWidth}
+              onResizeStart={handleResizeStart('right')}
+              footer={rightFooter}
+              headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
+            >
+              {rightContent}
+            </SidePanel>
+          )}
 
           <StatusBar
             status={appStatus}
@@ -337,8 +347,8 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
             className="pointer-events-none"
             style={{
               position: 'fixed',
-              left: leftCollapsed ? 0 : leftWidth,
-              right: rightCollapsed ? 0 : rightWidth,
+              left: showPanels && !leftCollapsed ? leftWidth : 0,
+              right: showPanels && !rightCollapsed ? rightWidth : 0,
               bottom: 0,
               top: 0,
               zIndex: 45,

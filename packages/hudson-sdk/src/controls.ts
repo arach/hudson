@@ -23,3 +23,9 @@ export type {
   ParamDefinition,
   ParamGridProps,
 } from './components/controls/ParamPanel';
+
+export { CodeViewer } from './components/controls/CodeViewer';
+export type { CodeViewerProps, CodeLanguage } from './components/controls/CodeViewer';
+
+export { CodeEditor } from './components/controls/CodeEditor';
+export type { CodeEditorProps } from './components/controls/CodeEditor';

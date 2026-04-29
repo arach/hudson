@@ -508,7 +508,7 @@ interface AppHookData {
   search: SearchConfig | null;
   navCenter: ReactNode | null;
   navActions: ReactNode | null;
-  layoutMode: 'canvas' | 'panel';
+  layoutMode: 'canvas' | 'panel' | 'focus';
   activeToolHint: string | null;
 }
 
@@ -948,7 +948,9 @@ function WorkspaceInner({
 
   // --- Mode resolution ---
   const layoutMode = isSingleApp ? focused.layoutMode : workspace.mode;
-  const isCanvasMode = layoutMode === 'canvas';
+  const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+  const isCanvasMode = frameMode === 'canvas';
+  const showPanels = layoutMode === 'panel';
 
   // --- Shell state (same as AppShell) ---
   const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', DEFAULTS.leftCollapsed);
@@ -2466,7 +2468,7 @@ function WorkspaceInner({
         </div>
       ) : (
       <Frame
-        mode={isCanvasMode ? 'canvas' : 'panel'}
+        mode={frameMode}
         panOffset={panOffset}
         scale={scale}
         onPan={handlePan}
@@ -2524,19 +2526,21 @@ function WorkspaceInner({
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              <SidePanel
-                side="left"
-                title={leftPanelTitle}
-                icon={leftPanelIcon}
-                isCollapsed={leftCollapsed}
-                onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
-                width={leftWidth}
-                onResizeStart={handleResizeStart('left')}
-                footer={leftFooter}
-                headerActions={leftHeaderActions}
-              >
-                {leftPanelContent}
-              </SidePanel>
+              {showPanels && (
+                <SidePanel
+                  side="left"
+                  title={leftPanelTitle}
+                  icon={leftPanelIcon}
+                  isCollapsed={leftCollapsed}
+                  onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
+                  width={leftWidth}
+                  onResizeStart={handleResizeStart('left')}
+                  footer={leftFooter}
+                  headerActions={leftHeaderActions}
+                >
+                  {leftPanelContent}
+                </SidePanel>
+              )}
             </motion.div>
 
             <motion.div
@@ -2544,19 +2548,21 @@ function WorkspaceInner({
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: rightWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              <SidePanel
-                side="right"
-                title={rightPanelTitle}
-                icon={rightPanelIcon}
-                isCollapsed={rightCollapsed}
-                onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
-                width={rightWidth}
-                onResizeStart={handleResizeStart('right')}
-                footer={rightFooter}
-                headerActions={rightHeaderActions}
-              >
-                {rightPanelContent}
-              </SidePanel>
+              {showPanels && (
+                <SidePanel
+                  side="right"
+                  title={rightPanelTitle}
+                  icon={rightPanelIcon}
+                  isCollapsed={rightCollapsed}
+                  onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
+                  width={rightWidth}
+                  onResizeStart={handleResizeStart('right')}
+                  footer={rightFooter}
+                  headerActions={rightHeaderActions}
+                >
+                  {rightPanelContent}
+                </SidePanel>
+              )}
             </motion.div>
 
             <motion.div
@@ -2612,8 +2618,8 @@ function WorkspaceInner({
               className="pointer-events-none"
               style={{
                 position: 'fixed',
-                left: leftCollapsed ? 0 : leftWidth,
-                right: rightCollapsed ? 0 : rightWidth,
+                left: showPanels && !leftCollapsed ? leftWidth : 0,
+                right: showPanels && !rightCollapsed ? rightWidth : 0,
                 bottom: 0,
                 top: 0,
                 zIndex: 45,
