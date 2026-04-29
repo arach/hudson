@@ -1,6 +1,9 @@
 # runtime data
 .data/
 
+# ephemeral coordination briefs (per-feature handoffs, task specs)
+.coordination/
+
 # dependencies
 node_modules/
 /.pnp
