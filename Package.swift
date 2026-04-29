@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "hudson-kit",
+    name: "Hudson",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),
@@ -18,25 +18,32 @@ let package = Package(
         .package(url: "https://github.com/arach/TermBridgeKit.git", exact: "0.1.3"),
     ],
     targets: [
-        .target(name: "HudsonUI"),
-        .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
-        .target(name: "HudsonShell", dependencies: ["HudsonUI"]),
-        .target(name: "HudsonVoice", dependencies: ["HudsonUI"]),
+        .target(
+            name: "HudsonUI",
+            path: "packages/hudson-kit/Sources/HudsonUI"
+        ),
+        .target(
+            name: "HudsonBridge",
+            dependencies: ["HudsonUI"],
+            path: "packages/hudson-kit/Sources/HudsonBridge"
+        ),
+        .target(
+            name: "HudsonShell",
+            dependencies: ["HudsonUI"],
+            path: "packages/hudson-kit/Sources/HudsonShell"
+        ),
+        .target(
+            name: "HudsonVoice",
+            dependencies: ["HudsonUI"],
+            path: "packages/hudson-kit/Sources/HudsonVoice"
+        ),
         .target(
             name: "HudsonTerminal",
             dependencies: [
                 "HudsonUI",
                 .product(name: "TermBridgeKit", package: "TermBridgeKit"),
-            ]
-        ),
-
-        // Demo executable — runs on macOS via `swift run HudsonKitDemo`.
-        // Exercises every HudsonUI primitive in two manifest variants. iOS
-        // simulator support comes when an Xcode project is added in M2/M3.
-        .executableTarget(
-            name: "HudsonKitDemo",
-            dependencies: ["HudsonUI", "HudsonShell", "HudsonVoice"],
-            path: "Demo/HudsonKitDemo"
+            ],
+            path: "packages/hudson-kit/Sources/HudsonTerminal"
         ),
     ]
 )

@@ -1,0 +1,247 @@
+import SwiftUI
+import HudsonUI
+
+public struct HudsonVoicePanel: View {
+    @State private var session: HudsonVoxLiveSession?
+    @State private var listenTask: Task<Void, Never>?
+    @State private var state: HudsonVoiceSessionState = .done
+    @State private var transcript = ""
+    @State private var partial = ""
+    @State private var errorMessage: String?
+    @State private var health: HudsonVoxHealth?
+    @State private var isCheckingHealth = false
+
+    private let endpoint: HudsonVoxEndpoint
+    private let options: HudsonVoxLiveSessionOptions
+
+    public init(endpoint: HudsonVoxEndpoint = HudsonVoxEndpoint(), options: HudsonVoxLiveSessionOptions = HudsonVoxLiveSessionOptions()) {
+        self.endpoint = endpoint
+        self.options = options
+    }
+
+    public var body: some View {
+        HudsonCard {
+            VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
+                header
+                transcriptSurface
+                controls
+            }
+        }
+        .onDisappear {
+            listenTask?.cancel()
+            session?.close()
+        }
+        .task {
+            await refreshHealth()
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: HudsonSpacing.lg) {
+            HudsonStatusDot(color: statusColor, size: 8, pulses: state == .recording)
+
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Vox")
+                    .font(HudsonFont.mono(13, weight: .semibold))
+                    .foregroundStyle(HudsonPalette.ink)
+                Text(endpoint.url.absoluteString)
+                    .font(HudsonFont.mono(10))
+                    .foregroundStyle(HudsonPalette.dim)
+            }
+
+            Spacer()
+            HudsonBadge(statusLabel, tint: statusColor)
+        }
+    }
+
+    private var transcriptSurface: some View {
+        HudsonInset {
+            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+                Text(displayText)
+                    .font(HudsonFont.ui(13))
+                    .foregroundStyle(transcript.isEmpty && partial.isEmpty ? HudsonPalette.dim : HudsonPalette.ink)
+                    .frame(maxWidth: .infinity, minHeight: 96, alignment: .topLeading)
+
+                if let errorMessage {
+                    HudsonDivider()
+                    Text(errorMessage)
+                        .font(HudsonFont.mono(10))
+                        .foregroundStyle(HudsonPalette.statusError)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+            }
+        }
+    }
+
+    private var controls: some View {
+        HStack(spacing: HudsonSpacing.md) {
+            HudsonButton("Listen", icon: "waveform", style: .primary(.cyan)) {
+                Task { await startListening() }
+            }
+            .disabled(session != nil || health == nil)
+
+            HudsonButton("Stop", icon: "stop.fill", style: .secondary) {
+                Task { await stopListening() }
+            }
+            .disabled(session == nil)
+
+            HudsonButton("Cancel", icon: "xmark", style: .ghost) {
+                Task { await cancelListening() }
+            }
+            .disabled(session == nil)
+
+            Spacer()
+
+            HudsonButton("Check", icon: "stethoscope", style: .ghost) {
+                Task { await refreshHealth() }
+            }
+            .disabled(isCheckingHealth)
+
+            HudsonButton("Clear", icon: "trash", style: .ghost) {
+                transcript = ""
+                partial = ""
+                errorMessage = nil
+            }
+        }
+    }
+
+    private var displayText: String {
+        if transcript.isEmpty && partial.isEmpty {
+            if let health {
+                return "\(health.service) \(health.version) is reachable. Start a live session to capture speech from the local companion."
+            }
+            return "Vox is not reachable at \(endpoint.url.absoluteString). Launch Vox and check again."
+        }
+        if partial.isEmpty {
+            return transcript
+        }
+        return [transcript, partial].filter { !$0.isEmpty }.joined(separator: "\n")
+    }
+
+    private var statusColor: Color {
+        if health == nil && state == .done {
+            return HudsonPalette.statusError
+        }
+
+        switch state {
+        case .recording:
+            return HudsonPalette.statusOk
+        case .starting, .processing:
+            return HudsonPalette.statusWarn
+        case .error:
+            return HudsonPalette.statusError
+        case .done, .cancelled:
+            return HudsonPalette.statusInfo
+        }
+    }
+
+    private var statusLabel: String {
+        if isCheckingHealth {
+            return "CHECKING"
+        }
+        if health == nil && state == .done {
+            return "OFFLINE"
+        }
+        return state.rawValue.uppercased()
+    }
+
+    @MainActor
+    private func refreshHealth() async {
+        isCheckingHealth = true
+        defer { isCheckingHealth = false }
+
+        do {
+            health = try await HudsonVoxProbe.health(endpoint: endpoint, clientId: options.clientId)
+            if state == .error {
+                state = .done
+            }
+            errorMessage = nil
+        } catch {
+            health = nil
+            errorMessage = error.localizedDescription
+        }
+    }
+
+    @MainActor
+    private func startListening() async {
+        guard session == nil else { return }
+        if health == nil {
+            await refreshHealth()
+        }
+        guard health != nil else { return }
+
+        errorMessage = nil
+        partial = ""
+        state = .starting
+
+        let nextSession = HudsonVoxLiveSession(endpoint: endpoint, options: options)
+        session = nextSession
+
+        do {
+            let events = try await nextSession.start()
+            listenTask = Task {
+                do {
+                    for try await event in events {
+                        await MainActor.run {
+                            apply(event)
+                        }
+                    }
+                } catch {
+                    await MainActor.run {
+                        errorMessage = error.localizedDescription
+                        state = .error
+                        session = nil
+                    }
+                }
+            }
+        } catch {
+            errorMessage = error.localizedDescription
+            state = .error
+            session = nil
+        }
+    }
+
+    @MainActor
+    private func stopListening() async {
+        do {
+            try await session?.stop()
+        } catch {
+            errorMessage = error.localizedDescription
+            state = .error
+        }
+    }
+
+    @MainActor
+    private func cancelListening() async {
+        do {
+            try await session?.cancel()
+        } catch {
+            errorMessage = error.localizedDescription
+        }
+        listenTask?.cancel()
+        listenTask = nil
+        session = nil
+        state = .cancelled
+        partial = ""
+    }
+
+    @MainActor
+    private func apply(_ event: HudsonVoiceEvent) {
+        switch event {
+        case .state(let payload):
+            state = payload.state
+            if payload.state == .done || payload.state == .cancelled || payload.state == .error {
+                session = nil
+            }
+        case .partial(let payload):
+            partial = payload.text
+        case .final(let payload):
+            partial = ""
+            if !payload.text.isEmpty {
+                transcript = [transcript, payload.text].filter { !$0.isEmpty }.joined(separator: "\n")
+            }
+        case .raw:
+            break
+        }
+    }
+}

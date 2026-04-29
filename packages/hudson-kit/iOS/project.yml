@@ -23,6 +23,8 @@ targets:
         product: HudsonShell
       - package: hudson-kit
         product: HudsonTerminal
+      - package: hudson-kit
+        product: HudsonVoice
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo

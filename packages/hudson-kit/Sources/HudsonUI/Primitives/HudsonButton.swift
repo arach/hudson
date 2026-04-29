@@ -40,6 +40,7 @@ public struct HudsonButton: View {
             .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: 1))
         }
         .buttonStyle(.plain)
+        .accessibilityLabel(title)
     }
 
     private var foreground: Color {
