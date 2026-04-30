@@ -64,7 +64,6 @@
     "packages/hudson-sdk"
   ],
   "devDependencies": {
-    "hudsonkit": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -72,9 +71,11 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
+    "@types/yauzl": "^2.10.3",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "hudsonkit": "workspace:*",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
