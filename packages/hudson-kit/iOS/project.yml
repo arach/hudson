@@ -22,8 +22,6 @@ targets:
       - package: hudson-kit
         product: HudsonShell
       - package: hudson-kit
-        product: HudsonTerminal
-      - package: hudson-kit
         product: HudsonVoice
     settings:
       base:
@@ -43,4 +41,3 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
         ENABLE_PREVIEWS: YES
-        OTHER_SWIFT_FLAGS: "$(inherited) -D HUDSON_TERMINAL"
