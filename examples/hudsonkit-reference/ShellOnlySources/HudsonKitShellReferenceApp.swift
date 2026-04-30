@@ -147,7 +147,7 @@ private struct ShellOnlyRootView: View {
 
     private var statusBar: some View {
         HStack(spacing: HudsonSpacing.xl) {
-            HudsonStatusDot(color: manifest.accent, pulses: true)
+            HudsonStatusDot(color: manifest.accent)
             Text("HUDSONKIT")
                 .font(HudsonFont.mono(10, weight: .bold))
                 .tracking(1.4)

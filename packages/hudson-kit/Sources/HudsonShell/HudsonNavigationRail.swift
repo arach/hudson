@@ -36,6 +36,7 @@ public struct HudsonNavigationRail<Footer: View>: View {
     public let footer: Footer
 
     @Environment(\.hudsonAppManifest) private var manifest
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         selection: Binding<String>,
@@ -61,7 +62,10 @@ public struct HudsonNavigationRail<Footer: View>: View {
                         isSelected: selection == item.id,
                         isExpanded: isExpanded,
                         accent: manifest.accent,
-                        onTap: { selection = item.id }
+                        onTap: {
+                            HudsonInstrumentation.event("NavigationRail.select")
+                            selection = item.id
+                        }
                     )
                 }
             }
@@ -79,13 +83,12 @@ public struct HudsonNavigationRail<Footer: View>: View {
         }
         .frame(width: isExpanded ? 240 : 64)
         .frame(maxHeight: .infinity)
-        .background(Color.black.opacity(0.18))
-        .animation(.spring(response: 0.32, dampingFraction: 0.86), value: isExpanded)
+        .background(HudsonPalette.chrome)
     }
 
     private var header: some View {
         HStack(spacing: HudsonSpacing.lg) {
-            Button(action: { isExpanded.toggle() }) {
+            Button(action: toggleExpanded) {
                 Image(systemName: isExpanded ? "sidebar.left" : "line.3.horizontal")
                     .font(.system(size: 14, weight: .semibold))
                     .foregroundStyle(HudsonPalette.muted)
@@ -96,7 +99,7 @@ public struct HudsonNavigationRail<Footer: View>: View {
             .accessibilityLabel(isExpanded ? "Collapse navigation" : "Expand navigation")
 
             if isExpanded {
-                HudsonStatusDot(color: manifest.accent, pulses: true)
+                HudsonStatusDot(color: manifest.accent)
                 Text(manifest.name.uppercased())
                     .font(HudsonFont.mono(11, weight: .bold))
                     .tracking(1.5)
@@ -110,6 +113,17 @@ public struct HudsonNavigationRail<Footer: View>: View {
         .padding(.horizontal, isExpanded ? HudsonSpacing.lg : 0)
         .frame(height: HudsonLayout.navHeight)
         .frame(maxWidth: .infinity, alignment: isExpanded ? .leading : .center)
+    }
+
+    private func toggleExpanded() {
+        HudsonInstrumentation.event("NavigationRail.toggle")
+        if reduceMotion {
+            isExpanded.toggle()
+        } else {
+            withAnimation(HudsonMotion.chromeSpring) {
+                isExpanded.toggle()
+            }
+        }
     }
 }
 
@@ -138,6 +152,8 @@ private struct HudsonNavRailRow: View {
     let isExpanded: Bool
     let accent: Color
     let onTap: () -> Void
+    @FocusState private var isFocused: Bool
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: onTap) {
@@ -160,16 +176,43 @@ private struct HudsonNavRailRow: View {
             .frame(height: 40)
             .background(
                 RoundedRectangle(cornerRadius: HudsonRadius.standard)
-                    .fill(isSelected ? accent.opacity(0.10) : Color.clear)
+                    .fill(background)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: HudsonRadius.standard)
-                    .stroke(isSelected ? accent.opacity(0.3) : Color.clear, lineWidth: 1)
+                    .stroke(border, lineWidth: isFocused ? 1.5 : 1)
             )
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .focusable(true)
+        .focused($isFocused)
+        .onHover { isHovering = $0 }
         .accessibilityLabel(item.label)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var background: Color {
+        if isSelected {
+            return accent.opacity(0.10)
+        }
+        if isHovering {
+            return Color.white.opacity(0.045)
+        }
+        return .clear
+    }
+
+    private var border: Color {
+        if isFocused {
+            return HudsonPalette.statusInfo.opacity(0.85)
+        }
+        if isSelected {
+            return accent.opacity(0.3)
+        }
+        if isHovering {
+            return HudsonHairline.subtle
+        }
+        return .clear
     }
 }

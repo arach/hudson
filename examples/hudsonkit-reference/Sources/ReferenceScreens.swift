@@ -204,7 +204,7 @@ private struct RuntimeMetricCard: View {
     var body: some View {
         HudsonCard {
             HStack(spacing: HudsonSpacing.lg) {
-                HudsonStatusDot(color: tint, pulses: true)
+                HudsonStatusDot(color: tint)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label.uppercased())
                         .font(HudsonFont.mono(9, weight: .semibold))

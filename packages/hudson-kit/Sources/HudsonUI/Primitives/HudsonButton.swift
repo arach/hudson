@@ -14,6 +14,9 @@ public struct HudsonButton: View {
     public var icon: String?
     public var style: HudsonButtonStyle
     public var action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+    @FocusState private var isFocused: Bool
+    @State private var isHovering = false
 
     public init(
         _ title: String,
@@ -35,35 +38,43 @@ public struct HudsonButton: View {
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, HudsonSpacing.xxl)
-            .frame(height: 32)
+            .frame(minHeight: 32)
             .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(background))
-            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? 1.5 : 1))
+            .opacity(isEnabled ? 1 : 0.45)
+            .scaleEffect(isHovering && isEnabled ? 1.015 : 1)
         }
         .buttonStyle(.plain)
+        .focusable(isEnabled)
+        .focused($isFocused)
+        .onHover { isHovering = $0 }
         .accessibilityLabel(title)
     }
 
     private var foreground: Color {
         switch style {
-        case .primary(let tint): return tint.color
-        case .secondary:         return HudsonPalette.ink
-        case .ghost:             return HudsonPalette.muted
+        case .primary(let tint): return isEnabled ? tint.color : HudsonPalette.dim
+        case .secondary:         return isEnabled ? HudsonPalette.ink : HudsonPalette.dim
+        case .ghost:             return isEnabled ? HudsonPalette.muted : HudsonPalette.dim
         }
     }
 
     private var background: Color {
         switch style {
-        case .primary(let tint): return tint.color.opacity(0.18)
-        case .secondary:         return Color.white.opacity(0.05)
-        case .ghost:             return .clear
+        case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.26 : 0.18)
+        case .secondary:         return Color.white.opacity(isHovering && isEnabled ? 0.08 : 0.05)
+        case .ghost:             return isHovering && isEnabled ? Color.white.opacity(0.04) : .clear
         }
     }
 
     private var border: Color {
+        if isFocused {
+            return HudsonPalette.statusInfo.opacity(0.85)
+        }
         switch style {
-        case .primary(let tint): return tint.color.opacity(0.5)
-        case .secondary:         return HudsonHairline.standard
-        case .ghost:             return HudsonHairline.subtle
+        case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.72 : 0.5)
+        case .secondary:         return isHovering && isEnabled ? HudsonPalette.statusInfo.opacity(0.45) : HudsonHairline.standard
+        case .ghost:             return isHovering && isEnabled ? HudsonHairline.standard : HudsonHairline.subtle
         }
     }
 }

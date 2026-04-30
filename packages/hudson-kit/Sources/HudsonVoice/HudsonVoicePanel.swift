@@ -51,6 +51,8 @@ public struct HudsonVoicePanel: View {
             Spacer()
             HudsonBadge(statusLabel, tint: statusColor)
         }
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel("Vox \(statusLabel)")
     }
 
     private var transcriptSurface: some View {
@@ -71,6 +73,7 @@ public struct HudsonVoicePanel: View {
                 }
             }
         }
+        .accessibilityLabel(displayText)
     }
 
     private var controls: some View {
@@ -195,6 +198,7 @@ public struct HudsonVoicePanel: View {
 
     @MainActor
     private func refreshHealth() async {
+        HudsonInstrumentation.event("Voice.check")
         isCheckingHealth = true
         defer {
             hasCheckedHealth = true
@@ -216,6 +220,7 @@ public struct HudsonVoicePanel: View {
     @MainActor
     private func startListening() async {
         guard session == nil else { return }
+        HudsonInstrumentation.event("Voice.listen")
         if health == nil {
             await refreshHealth()
         }
@@ -254,6 +259,7 @@ public struct HudsonVoicePanel: View {
 
     @MainActor
     private func stopListening() async {
+        HudsonInstrumentation.event("Voice.stop")
         do {
             try await session?.stop()
         } catch {
@@ -264,6 +270,7 @@ public struct HudsonVoicePanel: View {
 
     @MainActor
     private func cancelListening() async {
+        HudsonInstrumentation.event("Voice.cancel")
         do {
             try await session?.cancel()
         } catch {

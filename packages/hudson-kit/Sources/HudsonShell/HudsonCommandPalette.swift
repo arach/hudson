@@ -45,6 +45,7 @@ public struct HudsonCommandPalette: View {
     @State private var query: String = ""
     @State private var selectedIndex: Int = 0
     @FocusState private var fieldFocused: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(isPresented: Binding<Bool>, commands: [HudsonCommand]) {
         self._isPresented = isPresented
@@ -62,6 +63,7 @@ public struct HudsonCommandPalette: View {
             query = ""
             selectedIndex = 0
             fieldFocused = true
+            HudsonInstrumentation.event("CommandPalette.open")
         }
     }
 
@@ -70,17 +72,11 @@ public struct HudsonCommandPalette: View {
     /// routes the shortcut while the palette is presented.
     private var keyboardLayer: some View {
         ZStack {
-            Button("Dismiss") { isPresented = false }
+            Button("Dismiss") { dismiss() }
                 .keyboardShortcut(.escape, modifiers: [])
-            Button("Move up") {
-                guard !filtered.isEmpty else { return }
-                selectedIndex = max(0, selectedIndex - 1)
-            }
+            Button("Move up") { moveSelection(-1) }
             .keyboardShortcut(.upArrow, modifiers: [])
-            Button("Move down") {
-                guard !filtered.isEmpty else { return }
-                selectedIndex = min(filtered.count - 1, selectedIndex + 1)
-            }
+            Button("Move down") { moveSelection(1) }
             .keyboardShortcut(.downArrow, modifiers: [])
         }
         .opacity(0)
@@ -91,7 +87,7 @@ public struct HudsonCommandPalette: View {
     private var scrim: some View {
         Color.black.opacity(0.55)
             .ignoresSafeArea()
-            .onTapGesture { isPresented = false }
+            .onTapGesture { dismiss() }
     }
 
     private var paletteCard: some View {
@@ -144,27 +140,34 @@ public struct HudsonCommandPalette: View {
                 .buttonStyle(.plain)
             }
 
-            HudsonBadge("ESC")
-                .opacity(0.6)
+            HudsonBadge("ESC", tint: HudsonPalette.dim)
         }
         .padding(.horizontal, HudsonSpacing.xl)
         .frame(height: 48)
     }
 
     private var commandList: some View {
-        ScrollViewReader { proxy in
+        let commands = filtered
+        let sections = grouped(from: commands)
+
+        return ScrollViewReader { proxy in
             ScrollView {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: [.sectionHeaders]) {
-                    ForEach(grouped, id: \.group) { section in
+                    ForEach(sections, id: \.group) { section in
                         Section {
                             ForEach(section.items) { command in
                                 CommandRow(
                                     command: command,
-                                    isSelected: filtered[safe: selectedIndex]?.id == command.id,
+                                    isSelected: commands[safe: selectedIndex]?.id == command.id,
                                     onTap: {
-                                        if let idx = filtered.firstIndex(where: { $0.id == command.id }) {
+                                        if let idx = commands.firstIndex(where: { $0.id == command.id }) {
                                             selectedIndex = idx
                                             runSelection()
+                                        }
+                                    },
+                                    onHover: {
+                                        if let idx = commands.firstIndex(where: { $0.id == command.id }) {
+                                            selectedIndex = idx
                                         }
                                     }
                                 )
@@ -188,9 +191,13 @@ public struct HudsonCommandPalette: View {
             }
             .frame(maxHeight: 380)
             .onChange(of: selectedIndex) { _, newIndex in
-                if let id = filtered[safe: newIndex]?.id {
-                    withAnimation(.easeOut(duration: 0.15)) {
+                if let id = commands[safe: newIndex]?.id {
+                    if reduceMotion {
                         proxy.scrollTo(id, anchor: .center)
+                    } else {
+                        withAnimation(HudsonMotion.quickScroll) {
+                            proxy.scrollTo(id, anchor: .center)
+                        }
                     }
                 }
             }
@@ -226,10 +233,10 @@ public struct HudsonCommandPalette: View {
         let items: [HudsonCommand]
     }
 
-    private var grouped: [GroupedSection] {
+    private func grouped(from commands: [HudsonCommand]) -> [GroupedSection] {
         var seen: [String?] = []
         var sections: [String?: [HudsonCommand]] = [:]
-        for cmd in filtered {
+        for cmd in commands {
             if !seen.contains(where: { $0 == cmd.group }) {
                 seen.append(cmd.group)
             }
@@ -242,10 +249,22 @@ public struct HudsonCommandPalette: View {
 
     private func runSelection() {
         guard let cmd = filtered[safe: selectedIndex] else { return }
-        isPresented = false
+        dismiss()
+        HudsonInstrumentation.event("CommandPalette.run")
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
             cmd.action()
         }
+    }
+
+    private func dismiss() {
+        HudsonInstrumentation.event("CommandPalette.dismiss")
+        isPresented = false
+    }
+
+    private func moveSelection(_ delta: Int) {
+        let commands = filtered
+        guard !commands.isEmpty else { return }
+        selectedIndex = (selectedIndex + delta + commands.count) % commands.count
     }
 }
 
@@ -255,6 +274,8 @@ private struct CommandRow: View {
     let command: HudsonCommand
     let isSelected: Bool
     let onTap: () -> Void
+    let onHover: () -> Void
+    @State private var isHovering = false
 
     var body: some View {
         Button(action: onTap) {
@@ -284,10 +305,36 @@ private struct CommandRow: View {
             }
             .padding(.horizontal, HudsonSpacing.xl)
             .padding(.vertical, HudsonSpacing.md)
-            .background(isSelected ? Color.white.opacity(0.05) : Color.clear)
+            .background(background)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .onHover { hovering in
+            isHovering = hovering
+            if hovering {
+                onHover()
+            }
+        }
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var background: Color {
+        if isSelected {
+            return Color.white.opacity(0.06)
+        }
+        if isHovering {
+            return Color.white.opacity(0.035)
+        }
+        return .clear
+    }
+
+    private var accessibilityLabel: String {
+        if let subtitle = command.subtitle {
+            return "\(command.title), \(subtitle)"
+        }
+        return command.title
     }
 }
 
@@ -300,15 +347,25 @@ extension View {
         isPresented: Binding<Bool>,
         commands: [HudsonCommand]
     ) -> some View {
+        modifier(HudsonCommandPalettePresenter(isPresented: isPresented, commands: commands))
+    }
+}
+
+private struct HudsonCommandPalettePresenter: ViewModifier {
+    @Binding var isPresented: Bool
+    let commands: [HudsonCommand]
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    func body(content: Content) -> some View {
         ZStack {
-            self
-            if isPresented.wrappedValue {
-                HudsonCommandPalette(isPresented: isPresented, commands: commands)
+            content
+            if isPresented {
+                HudsonCommandPalette(isPresented: $isPresented, commands: commands)
                     .transition(.opacity)
                     .zIndex(2)
             }
         }
-        .animation(.easeInOut(duration: 0.18), value: isPresented.wrappedValue)
+        .animation(HudsonMotion.ifAllowed(HudsonMotion.quickFade, reduceMotion: reduceMotion), value: isPresented)
     }
 }
 

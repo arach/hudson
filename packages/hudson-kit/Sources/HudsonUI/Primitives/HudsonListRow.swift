@@ -11,6 +11,8 @@ public struct HudsonListRow<Trailing: View>: View {
     public var isSelected: Bool
     public var onTap: (() -> Void)?
     @ViewBuilder public var trailing: () -> Trailing
+    @FocusState private var isFocused: Bool
+    @State private var isHovering = false
 
     public init(
         title: String,
@@ -56,11 +58,48 @@ public struct HudsonListRow<Trailing: View>: View {
             }
             .padding(.horizontal, HudsonSpacing.xl)
             .padding(.vertical, HudsonSpacing.lg)
-            .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(isSelected ? iconTint.color.opacity(0.10) : Color.white.opacity(0.025)))
-            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(isSelected ? iconTint.color.opacity(0.45) : HudsonHairline.subtle, lineWidth: 1))
+            .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(background))
+            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? 1.5 : 1))
+            .opacity(onTap == nil ? 0.5 : 1)
         }
         .buttonStyle(.plain)
+        .focusable(onTap != nil)
+        .focused($isFocused)
+        .onHover { isHovering = $0 }
         .disabled(onTap == nil)
+        .accessibilityLabel(accessibilityLabel)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var background: Color {
+        if isSelected {
+            return iconTint.color.opacity(0.10)
+        }
+        if isHovering && onTap != nil {
+            return Color.white.opacity(0.045)
+        }
+        return Color.white.opacity(0.025)
+    }
+
+    private var border: Color {
+        if isFocused {
+            return HudsonPalette.statusInfo.opacity(0.85)
+        }
+        if isSelected {
+            return iconTint.color.opacity(0.45)
+        }
+        if isHovering && onTap != nil {
+            return HudsonHairline.standard
+        }
+        return HudsonHairline.subtle
+    }
+
+    private var accessibilityLabel: String {
+        if let subtitle {
+            return "\(title), \(subtitle)"
+        }
+        return title
     }
 }
 

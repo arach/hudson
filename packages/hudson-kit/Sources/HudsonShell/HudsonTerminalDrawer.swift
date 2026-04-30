@@ -17,7 +17,8 @@ public struct HudsonTerminalDrawer<Content: View>: View {
     public let subtitle: String?
     public let statusColor: Color
     public let expandedHeight: CGFloat
-    public let content: Content
+    public let content: () -> Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         isOpen: Binding<Bool>,
@@ -25,14 +26,14 @@ public struct HudsonTerminalDrawer<Content: View>: View {
         subtitle: String? = nil,
         statusColor: Color = HudsonPalette.statusOk,
         expandedHeight: CGFloat = 280,
-        @ViewBuilder content: () -> Content
+        @ViewBuilder content: @escaping () -> Content
     ) {
         self._isOpen = isOpen
         self.title = title
         self.subtitle = subtitle
         self.statusColor = statusColor
         self.expandedHeight = expandedHeight
-        self.content = content()
+        self.content = content
     }
 
     public var body: some View {
@@ -42,18 +43,17 @@ public struct HudsonTerminalDrawer<Content: View>: View {
 
             if isOpen {
                 HudsonDivider(color: HudsonHairline.subtle)
-                content
+                content()
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                     .frame(height: expandedHeight)
                     .clipped()
             }
         }
-        .background(Color.black.opacity(0.30))
-        .animation(.spring(response: 0.34, dampingFraction: 0.86), value: isOpen)
+        .background(HudsonPalette.chrome)
     }
 
     private var header: some View {
-        Button(action: { isOpen.toggle() }) {
+        Button(action: toggleOpen) {
             HStack(spacing: HudsonSpacing.lg) {
                 HudsonStatusDot(color: statusColor, size: 6, pulses: isOpen)
                 Text(title.uppercased())
@@ -83,5 +83,16 @@ public struct HudsonTerminalDrawer<Content: View>: View {
         }
         .buttonStyle(.plain)
         .accessibilityLabel(isOpen ? "Collapse \(title)" : "Expand \(title)")
+    }
+
+    private func toggleOpen() {
+        HudsonInstrumentation.event("TerminalDrawer.toggle")
+        if reduceMotion {
+            isOpen.toggle()
+        } else {
+            withAnimation(HudsonMotion.drawerSpring) {
+                isOpen.toggle()
+            }
+        }
     }
 }

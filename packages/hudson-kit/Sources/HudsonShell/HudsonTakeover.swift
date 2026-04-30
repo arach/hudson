@@ -24,6 +24,7 @@ public struct HudsonTakeover<Header: View, Content: View>: View {
     @Binding public var isPresented: Bool
     public let header: Header
     public let content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         isPresented: Binding<Bool>,
@@ -53,7 +54,7 @@ public struct HudsonTakeover<Header: View, Content: View>: View {
             header
                 .frame(maxWidth: .infinity, alignment: .leading)
 
-            Button(action: { isPresented = false }) {
+            Button(action: close) {
                 Image(systemName: "xmark")
                     .font(.system(size: 13, weight: .semibold))
                     .foregroundStyle(HudsonPalette.muted)
@@ -65,7 +66,18 @@ public struct HudsonTakeover<Header: View, Content: View>: View {
         }
         .padding(.horizontal, HudsonSpacing.xxl)
         .frame(height: HudsonLayout.navHeight)
-        .background(Color.black.opacity(0.30))
+        .background(HudsonPalette.chrome)
+    }
+
+    private func close() {
+        HudsonInstrumentation.event("Takeover.close")
+        if reduceMotion {
+            isPresented = false
+        } else {
+            withAnimation(HudsonMotion.overlaySpring) {
+                isPresented = false
+            }
+        }
     }
 }
 
@@ -79,17 +91,39 @@ extension View {
         isPresented: Binding<Bool>,
         @ViewBuilder content: @escaping () -> Takeover
     ) -> some View {
+        modifier(HudsonTakeoverPresenter(isPresented: isPresented, takeover: content))
+    }
+}
+
+private struct HudsonTakeoverPresenter<Takeover: View>: ViewModifier {
+    @Binding var isPresented: Bool
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @ViewBuilder let takeover: () -> Takeover
+
+    func body(content: Content) -> some View {
         ZStack {
-            self
-            if isPresented.wrappedValue {
-                content()
-                    .transition(.asymmetric(
-                        insertion: .opacity.combined(with: .move(edge: .bottom)),
-                        removal: .opacity
-                    ))
+            content
+            if isPresented {
+                takeover()
+                    .transition(transition)
                     .zIndex(1)
             }
         }
-        .animation(.spring(response: 0.36, dampingFraction: 0.88), value: isPresented.wrappedValue)
+        .animation(HudsonMotion.ifAllowed(HudsonMotion.overlaySpring, reduceMotion: reduceMotion), value: isPresented)
+        .onChange(of: isPresented) { _, presented in
+            if presented {
+                HudsonInstrumentation.event("Takeover.open")
+            }
+        }
+    }
+
+    private var transition: AnyTransition {
+        if reduceMotion {
+            return .opacity
+        }
+        return .asymmetric(
+            insertion: .opacity.combined(with: .move(edge: .bottom)),
+            removal: .opacity
+        )
     }
 }

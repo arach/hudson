@@ -13,6 +13,7 @@ public struct HudsonInspector<Header: View, Content: View>: View {
     @Binding public var isCollapsed: Bool
     public let header: Header
     public let content: Content
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
         isCollapsed: Binding<Bool>,
@@ -43,8 +44,7 @@ public struct HudsonInspector<Header: View, Content: View>: View {
         }
         .frame(width: isCollapsed ? 48 : HudsonLayout.panelWidth)
         .frame(maxHeight: .infinity)
-        .background(Color.black.opacity(0.18))
-        .animation(.spring(response: 0.32, dampingFraction: 0.86), value: isCollapsed)
+        .background(HudsonPalette.chrome)
     }
 
     private var headerBar: some View {
@@ -54,7 +54,7 @@ public struct HudsonInspector<Header: View, Content: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            Button(action: { isCollapsed.toggle() }) {
+            Button(action: toggleCollapsed) {
                 Image(systemName: isCollapsed ? "sidebar.right" : "chevron.right")
                     .font(.system(size: 12, weight: .semibold))
                     .foregroundStyle(HudsonPalette.muted)
@@ -67,6 +67,17 @@ public struct HudsonInspector<Header: View, Content: View>: View {
         .padding(.horizontal, isCollapsed ? 0 : HudsonSpacing.lg)
         .frame(height: HudsonLayout.navHeight)
         .frame(maxWidth: .infinity, alignment: isCollapsed ? .center : .leading)
+    }
+
+    private func toggleCollapsed() {
+        HudsonInstrumentation.event("Inspector.toggle")
+        if reduceMotion {
+            isCollapsed.toggle()
+        } else {
+            withAnimation(HudsonMotion.chromeSpring) {
+                isCollapsed.toggle()
+            }
+        }
     }
 }
 
