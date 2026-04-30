@@ -19,6 +19,7 @@ public struct HudsonEmptyState: View {
             Image(systemName: icon)
                 .font(.system(size: 22, weight: .light))
                 .foregroundStyle(HudsonPalette.dim)
+                .accessibilityHidden(true)
             Text(title)
                 .font(HudsonFont.mono(11, weight: .semibold))
                 .tracking(0.5)
@@ -33,7 +34,8 @@ public struct HudsonEmptyState: View {
         }
         .padding(HudsonSpacing.huge)
         .frame(maxWidth: .infinity)
-        .background(RoundedRectangle(cornerRadius: HudsonRadius.card).fill(Color.white.opacity(0.02)))
+        .background(RoundedRectangle(cornerRadius: HudsonRadius.card).fill(HSurface.inset))
         .overlay(RoundedRectangle(cornerRadius: HudsonRadius.card).stroke(HudsonHairline.subtle, lineWidth: 1))
+        .accessibilityElement(children: .combine)
     }
 }

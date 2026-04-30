@@ -11,6 +11,7 @@ public struct HudsonListRow<Trailing: View>: View {
     public var isSelected: Bool
     public var onTap: (() -> Void)?
     @ViewBuilder public var trailing: () -> Trailing
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isFocused: Bool
     @State private var isHovering = false
 
@@ -59,7 +60,8 @@ public struct HudsonListRow<Trailing: View>: View {
             .padding(.horizontal, HudsonSpacing.xl)
             .padding(.vertical, HudsonSpacing.lg)
             .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(background))
-            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? 1.5 : 1))
+            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? HFocus.ringWidth : 1))
+            .contentShape(RoundedRectangle(cornerRadius: HudsonRadius.standard))
             .opacity(onTap == nil ? 0.5 : 1)
         }
         .buttonStyle(.plain)
@@ -67,6 +69,9 @@ public struct HudsonListRow<Trailing: View>: View {
         .focused($isFocused)
         .onHover { isHovering = $0 }
         .disabled(onTap == nil)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isHovering)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isSelected)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isFocused)
         .accessibilityLabel(accessibilityLabel)
         .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
@@ -74,17 +79,17 @@ public struct HudsonListRow<Trailing: View>: View {
 
     private var background: Color {
         if isSelected {
-            return iconTint.color.opacity(0.10)
+            return HSurface.selected(iconTint.color)
         }
         if isHovering && onTap != nil {
-            return Color.white.opacity(0.045)
+            return HSurface.hover
         }
-        return Color.white.opacity(0.025)
+        return HSurface.inset
     }
 
     private var border: Color {
         if isFocused {
-            return HudsonPalette.statusInfo.opacity(0.85)
+            return HFocus.ring
         }
         if isSelected {
             return iconTint.color.opacity(0.45)

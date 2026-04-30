@@ -3,13 +3,21 @@ import SwiftUI
 /// 1pt hairline divider for stacked content.
 public struct HudsonDivider: View {
     public var color: Color
+    public var axis: Axis
 
-    public init(color: Color = HudsonHairline.subtle) {
+    public init(color: Color = HudsonHairline.subtle, axis: Axis = .horizontal) {
         self.color = color
+        self.axis = axis
     }
 
     public var body: some View {
-        Rectangle().fill(color).frame(height: 1)
+        Rectangle()
+            .fill(color)
+            .frame(
+                width: axis == .vertical ? 1 : nil,
+                height: axis == .horizontal ? 1 : nil
+            )
+            .accessibilityHidden(true)
     }
 }
 

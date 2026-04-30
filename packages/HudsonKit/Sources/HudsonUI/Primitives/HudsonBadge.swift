@@ -15,7 +15,12 @@ public struct HudsonBadge: View {
 
     public var body: some View {
         HStack(spacing: HudsonSpacing.xs) {
-            if dot { Circle().fill(tint).frame(width: 5, height: 5) }
+            if dot {
+                Circle()
+                    .fill(tint)
+                    .frame(width: 5, height: 5)
+                    .accessibilityHidden(true)
+            }
             Text(text)
                 .font(HudsonFont.mono(9, weight: .semibold))
                 .tracking(0.8)
@@ -26,5 +31,7 @@ public struct HudsonBadge: View {
         .padding(.vertical, 3)
         .background(RoundedRectangle(cornerRadius: HudsonRadius.tight).fill(tint.opacity(0.16)))
         .overlay(RoundedRectangle(cornerRadius: HudsonRadius.tight).stroke(tint.opacity(0.4), lineWidth: 1))
+        .accessibilityElement(children: .combine)
+        .accessibilityLabel(text)
     }
 }

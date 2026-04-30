@@ -71,3 +71,11 @@ public enum HudsonWeight {
     public static let semibold: Font.Weight = .semibold
     public static let bold:     Font.Weight = .bold
 }
+
+// MARK: - H-prefixed aliases
+
+public typealias HFont = HudsonFont
+public typealias HTextSize = HudsonTextSize
+public typealias HLeading = HudsonLeading
+public typealias HTracking = HudsonTracking
+public typealias HWeight = HudsonWeight

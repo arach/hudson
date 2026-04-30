@@ -24,8 +24,8 @@ var targets: [Target] = [
     .target(name: "HudsonObservability"),
     .target(name: "HudsonUI", dependencies: ["HudsonObservability"]),
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
-    .target(name: "HudsonShell", dependencies: ["HudsonUI"]),
-    .target(name: "HudsonVoice", dependencies: ["HudsonUI"]),
+    .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
+    .target(name: "HudsonVoice", dependencies: ["HudsonUI", "HudsonObservability"]),
 ]
 
 if terminalEnabled {

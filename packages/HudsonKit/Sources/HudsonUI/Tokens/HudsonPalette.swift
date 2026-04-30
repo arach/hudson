@@ -74,3 +74,43 @@ public enum HudsonHairline {
     public static let subtle   = Color(red: 24.0/255, green: 24.0/255, blue: 24.0/255)
     public static let standard = Color(red: 38.0/255, green: 38.0/255, blue: 38.0/255)
 }
+
+// MARK: - Interaction surfaces
+
+/// H-prefixed surface helpers for reusable native controls. These centralize
+/// translucent interaction fills so primitives share the same hover, press, and
+/// selection vocabulary instead of scattering raw `Color.white.opacity(...)`.
+public enum HSurface {
+    public static let base    = HudsonPalette.bg
+    public static let raised  = HudsonPalette.surface
+    public static let chrome  = HudsonPalette.chrome
+    public static let inset   = Color.white.opacity(0.025)
+    public static let hover   = Color.white.opacity(0.045)
+    public static let press   = Color.white.opacity(0.065)
+    public static let control = Color.white.opacity(0.05)
+
+    public static func controlHover(isHovering: Bool) -> Color {
+        isHovering ? Color.white.opacity(0.08) : control
+    }
+
+    public static func tint(_ color: Color, opacity: Double = 0.14) -> Color {
+        color.opacity(opacity)
+    }
+
+    public static func selected(_ color: Color) -> Color {
+        color.opacity(0.10)
+    }
+}
+
+/// Shared focus-ring values. Keep focus visibly blue/cyan and consistent across
+/// buttons, rows, and fields without introducing platform-specific styles.
+public enum HFocus {
+    public static let ring = HudsonPalette.statusInfo.opacity(0.85)
+    public static let ringWidth: CGFloat = 1.5
+}
+
+// MARK: - H-prefixed aliases
+
+public typealias HPalette = HudsonPalette
+public typealias HTint = HudsonTint
+public typealias HHairline = HudsonHairline

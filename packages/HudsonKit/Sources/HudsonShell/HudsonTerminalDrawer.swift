@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 /// Bottom-attached drawer with a slide-up content area.
 ///
@@ -86,13 +87,25 @@ public struct HudsonTerminalDrawer<Content: View>: View {
     }
 
     private func toggleOpen() {
-        HudsonInstrumentation.event("TerminalDrawer.toggle")
-        if reduceMotion {
-            isOpen.toggle()
-        } else {
-            withAnimation(HudsonMotion.drawerSpring) {
+        let metadata = [
+            "expandedHeight": "\(Int(expandedHeight.rounded()))",
+            "fromOpen": hudsonBool(isOpen),
+            "toOpen": hudsonBool(!isOpen),
+        ]
+
+        HInstrumentation.ui.event("TerminalDrawer.toggle", metadata: metadata)
+        HInstrumentation.ui.span("TerminalDrawer.toggle.apply", metadata: metadata) {
+            if reduceMotion {
                 isOpen.toggle()
+            } else {
+                withAnimation(HudsonMotion.drawerSpring) {
+                    isOpen.toggle()
+                }
             }
         }
     }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }

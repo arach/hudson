@@ -34,12 +34,12 @@ var targets: [Target] = [
     ),
     .target(
         name: "HudsonShell",
-        dependencies: ["HudsonUI"],
+        dependencies: ["HudsonUI", "HudsonObservability"],
         path: "packages/HudsonKit/Sources/HudsonShell"
     ),
     .target(
         name: "HudsonVoice",
-        dependencies: ["HudsonUI"],
+        dependencies: ["HudsonUI", "HudsonObservability"],
         path: "packages/HudsonKit/Sources/HudsonVoice"
     ),
 ]
