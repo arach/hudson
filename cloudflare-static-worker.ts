@@ -43,10 +43,6 @@ type UIMessageChunk =
   | { type: 'finish'; finishReason?: 'stop' | 'length' | 'content-filter' | 'tool-calls' | 'error' | 'other' }
   | { type: 'error'; errorText: string };
 
-type ToolExecutable = {
-  execute?: (input: Record<string, unknown>) => unknown | Promise<unknown>;
-};
-
 function createId(prefix: string) {
   return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
 }
@@ -151,73 +147,25 @@ function createUIStreamResponse(
   });
 }
 
-async function executeTool(
-  tools: Record<string, ToolExecutable>,
-  toolName: string,
-  input: Record<string, unknown>,
-) {
-  const tool = tools[toolName];
-  if (!tool?.execute) return { error: `Unknown tool: ${toolName}` };
-  try {
-    return await tool.execute(input);
-  } catch (error) {
-    return { error: error instanceof Error ? error.message : String(error) };
-  }
+function removeToolMarkup(text: string) {
+  return text
+    .replace(/<tool\s+name="[^"]+">[\s\S]*?(?:<\/tool>|<tool>)/g, '')
+    .replace(/<\/?tool[^>]*>/g, '')
+    .trim();
 }
 
-async function writeAssistantResponse(
+function writeAssistantResponse(
   write: (chunk: UIMessageChunk) => void,
   text: string,
-  tools: Record<string, ToolExecutable>,
 ) {
   write({ type: 'start', messageId: createId('msg') });
   write({ type: 'start-step' });
 
-  const toolTag = /<tool\s+name="([^"]+)">([\s\S]*?)<\/tool>/g;
-  let cursor = 0;
-  let match: RegExpExecArray | null;
-
-  const writeText = (value: string) => {
-    if (!value) return;
-    const id = createId('text');
-    write({ type: 'text-start', id });
-    write({ type: 'text-delta', id, delta: value });
-    write({ type: 'text-end', id });
-  };
-
-  while ((match = toolTag.exec(text)) !== null) {
-    writeText(text.slice(cursor, match.index));
-
-    const toolName = match[1];
-    const inputText = match[2].trim();
-    let input: Record<string, unknown>;
-    try {
-      input = JSON.parse(inputText) as Record<string, unknown>;
-    } catch {
-      writeText(match[0]);
-      cursor = match.index + match[0].length;
-      continue;
-    }
-
-    const toolCallId = createId('tool');
-    write({
-      type: 'tool-input-available',
-      toolCallId,
-      toolName,
-      input,
-      dynamic: true,
-    });
-    write({
-      type: 'tool-output-available',
-      toolCallId,
-      output: await executeTool(tools, toolName, input),
-      dynamic: true,
-    });
-
-    cursor = match.index + match[0].length;
-  }
-
-  writeText(text.slice(cursor));
+  const cleanText = removeToolMarkup(text) || 'The hosted demo can answer questions here, but terminal and live local actions stay in the local/native HudsonKit build.';
+  const id = createId('text');
+  write({ type: 'text-start', id });
+  write({ type: 'text-delta', id, delta: cleanText });
+  write({ type: 'text-end', id });
   write({ type: 'finish-step' });
   write({ type: 'finish', finishReason: 'stop' });
 }
@@ -235,22 +183,24 @@ async function handleAIChat(request: Request, env: Env) {
   const toolset = body.toolset ?? 'workspace';
   const context = body.context ?? {};
   const workersModel = pickWorkersAIModel(body.model);
-  const { system, toolPrompt, tools } = loadToolset(toolset, context);
+  const { system } = loadToolset(toolset, context);
   const deploymentNote = [
     `This HudsonKit demo is deployed on Cloudflare and answers through Workers AI model ${workersModel}.`,
+    'This is managed chat only. Do not emit tool tags. Do not claim to run terminal commands, edit local files, start local services, or mutate the live workspace.',
+    'If the user asks for terminal or local-service behavior, explain that terminal remains local/native-only and that hosted execution would require a sandbox backend.',
     body.mode === 'cli'
-      ? 'The local CLI/PTTY relay is not available in this hosted demo; use tool calls to act through the Hudson shell instead.'
+      ? 'The local CLI/PTY relay is not available in this hosted demo.'
       : '',
     body.provider && body.provider !== 'workers-ai'
       ? `The browser requested provider "${body.provider}", but this deployment is pinned to Workers AI.`
       : '',
   ].filter(Boolean).join(' ');
-  const systemPrompt = [system, toolPrompt, deploymentNote].filter(Boolean).join('\n\n---\n\n');
+  const systemPrompt = [system, deploymentNote].filter(Boolean).join('\n\n---\n\n');
   const messages = toWorkerMessages(body.messages, systemPrompt);
 
   if (messages.length === 0) {
     return createUIStreamResponse(async write => {
-      await writeAssistantResponse(write, 'Send a prompt and I can help with the HudsonKit workspace.', {});
+      writeAssistantResponse(write, 'Send a prompt and I can help with the HudsonKit workspace.');
     });
   }
 
@@ -261,10 +211,9 @@ async function handleAIChat(request: Request, env: Env) {
       temperature: 0.35,
     });
     const text = extractWorkersAIText(result);
-    await writeAssistantResponse(
+    writeAssistantResponse(
       write,
       text || 'Workers AI returned an empty response.',
-      tools as Record<string, ToolExecutable>,
     );
   });
 }
