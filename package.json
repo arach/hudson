@@ -5,6 +5,9 @@
   "scripts": {
     "dev": "next dev --port 3500",
     "build": "bun run --filter hudsonkit build && next build",
+    "build:site": "bun run build && bun site/export-pages.mjs",
+    "deploy:hudsonkit": "bun run build:site && bunx wrangler deploy",
+    "upload:hudsonkit": "bun run build:site && bunx wrangler versions upload",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
