@@ -7,14 +7,21 @@ public struct HudsonStatusDot: View {
     public var color: Color
     public var size: CGFloat
     public var pulses: Bool
+    public var label: String?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var animating = false
 
-    public init(color: Color = HudsonPalette.statusOk, size: CGFloat = 8, pulses: Bool = false) {
+    public init(
+        color: Color = HudsonPalette.statusOk,
+        size: CGFloat = 8,
+        pulses: Bool = false,
+        label: String? = nil
+    ) {
         self.color = color
         self.size = size
         self.pulses = pulses
+        self.label = label
     }
 
     public var body: some View {
@@ -29,6 +36,11 @@ public struct HudsonStatusDot: View {
             }
             Circle().fill(color).frame(width: size, height: size)
         }
-        .onAppear { animating = true }
+        .onAppear {
+            guard pulses && !reduceMotion else { return }
+            animating = true
+        }
+        .accessibilityLabel(label ?? "")
+        .accessibilityHidden(label == nil)
     }
 }

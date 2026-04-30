@@ -44,6 +44,7 @@ private struct ShellOnlyRootView: View {
     @State private var section: ShellOnlySection = .welcome
     @State private var railExpanded = true
     @State private var inspectorCollapsed = false
+    @State private var selectedBaseline = "shell"
 
     private let manifest = HudsonAppManifest(
         name: "Shell Reference",
@@ -109,6 +110,46 @@ private struct ShellOnlyRootView: View {
                     .foregroundStyle(HudsonPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 760, alignment: .leading)
+            }
+
+            ShellBaselineHeroCard()
+
+            HudsonCard(padding: HudsonSpacing.md) {
+                VStack(spacing: HudsonSpacing.md) {
+                    HudsonListRow(
+                        title: "Shell",
+                        subtitle: "HudsonAppShell with rail, inspector, content, and status slots",
+                        icon: "macwindow",
+                        iconTint: .cyan,
+                        isSelected: selectedBaseline == "shell"
+                    ) {
+                        selectedBaseline = "shell"
+                    } trailing: {
+                        HudsonBadge("CORE", tint: HudsonPalette.statusInfo)
+                    }
+                    HudsonListRow(
+                        title: "Surface primitives",
+                        subtitle: "Cards, fields, badges, rows, dividers, and empty states",
+                        icon: "square.stack.3d.up",
+                        iconTint: .blue,
+                        isSelected: selectedBaseline == "primitives"
+                    ) {
+                        selectedBaseline = "primitives"
+                    } trailing: {
+                        HudsonBadge("UI", tint: HudsonPalette.muted)
+                    }
+                    HudsonListRow(
+                        title: "Measurement",
+                        subtitle: "Compare shell-only and optional module targets",
+                        icon: "gauge.with.dots.needle.67percent",
+                        iconTint: .green,
+                        isSelected: selectedBaseline == "measure"
+                    ) {
+                        selectedBaseline = "measure"
+                    } trailing: {
+                        HudsonBadge("BASELINE", tint: HudsonPalette.statusOk)
+                    }
+                }
             }
 
             LazyVGrid(
@@ -181,6 +222,37 @@ private struct BaselineCard: View {
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+}
+
+private struct ShellBaselineHeroCard: View {
+    var body: some View {
+        HudsonCard(padding: 0) {
+            ZStack(alignment: .topLeading) {
+                HudsonGridBackground(step: 24)
+                    .opacity(0.75)
+
+                VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
+                    HStack(spacing: HudsonSpacing.md) {
+                        HudsonBadge("SHELL", tint: HudsonPalette.statusInfo, dot: true)
+                        HudsonBadge("NO MODULES", tint: HudsonPalette.muted)
+                    }
+
+                    Text("Clean shell baseline")
+                        .font(HudsonFont.ui(24, weight: .semibold))
+                        .foregroundStyle(HudsonPalette.ink)
+
+                    Text("A lightweight target for measuring HudsonUI and HudsonShell before optional feature modules are linked.")
+                        .font(HudsonFont.ui(13))
+                        .foregroundStyle(HudsonPalette.muted)
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: 560, alignment: .leading)
+                }
+                .padding(HudsonSpacing.huge)
+            }
+            .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
+            .clipShape(RoundedRectangle(cornerRadius: HudsonRadius.card))
         }
     }
 }

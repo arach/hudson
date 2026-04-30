@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 public struct HudsonVoicePanel: View {
     @State private var session: HudsonVoxLiveSession?
@@ -198,7 +199,7 @@ public struct HudsonVoicePanel: View {
 
     @MainActor
     private func refreshHealth() async {
-        HudsonInstrumentation.event("Voice.check")
+        HInstrumentation.ui.event("Voice.check", metadata: voiceMetadata(status: "start"))
         isCheckingHealth = true
         defer {
             hasCheckedHealth = true
@@ -206,25 +207,35 @@ public struct HudsonVoicePanel: View {
         }
 
         do {
-            health = try await HudsonVoxProbe.health(endpoint: endpoint, clientId: options.clientId)
+            health = try await HInstrumentation.ui.span("Voice.check.health", metadata: voiceMetadata(status: "pending")) {
+                try await HudsonVoxProbe.health(endpoint: endpoint, clientId: options.clientId)
+            }
             if state == .error {
                 state = .done
             }
             errorMessage = nil
+            HInstrumentation.ui.event("Voice.check.result", metadata: voiceMetadata(status: "ok"))
         } catch {
             health = nil
             errorMessage = error.localizedDescription
+            HInstrumentation.ui.event("Voice.check.result", metadata: voiceMetadata(status: "error"))
         }
     }
 
     @MainActor
     private func startListening() async {
-        guard session == nil else { return }
-        HudsonInstrumentation.event("Voice.listen")
+        guard session == nil else {
+            HInstrumentation.ui.event("Voice.listen", metadata: voiceMetadata(status: "ignored"))
+            return
+        }
+        HInstrumentation.ui.event("Voice.listen", metadata: voiceMetadata(status: "start"))
         if health == nil {
             await refreshHealth()
         }
-        guard health != nil else { return }
+        guard health != nil else {
+            HInstrumentation.ui.event("Voice.listen.result", metadata: voiceMetadata(status: "offline"))
+            return
+        }
 
         errorMessage = nil
         partial = ""
@@ -234,7 +245,10 @@ public struct HudsonVoicePanel: View {
         session = nextSession
 
         do {
-            let events = try await nextSession.start()
+            let events = try await HInstrumentation.ui.span("Voice.listen.start", metadata: voiceMetadata(status: "pending")) {
+                try await nextSession.start()
+            }
+            HInstrumentation.ui.event("Voice.listen.result", metadata: voiceMetadata(status: "ok"))
             listenTask = Task {
                 do {
                     for try await event in events {
@@ -242,11 +256,15 @@ public struct HudsonVoicePanel: View {
                             apply(event)
                         }
                     }
+                    await MainActor.run {
+                        HInstrumentation.ui.event("Voice.listen.stream", metadata: voiceMetadata(status: "finished"))
+                    }
                 } catch {
                     await MainActor.run {
                         errorMessage = error.localizedDescription
                         state = .error
                         session = nil
+                        HInstrumentation.ui.event("Voice.listen.stream", metadata: voiceMetadata(status: "error"))
                     }
                 }
             }
@@ -254,33 +272,45 @@ public struct HudsonVoicePanel: View {
             errorMessage = error.localizedDescription
             state = .error
             session = nil
+            HInstrumentation.ui.event("Voice.listen.result", metadata: voiceMetadata(status: "error"))
         }
     }
 
     @MainActor
     private func stopListening() async {
-        HudsonInstrumentation.event("Voice.stop")
+        HInstrumentation.ui.event("Voice.stop", metadata: voiceMetadata(status: "start"))
+        let currentSession = session
         do {
-            try await session?.stop()
+            try await HInstrumentation.ui.span("Voice.stop.request", metadata: voiceMetadata(status: "pending")) {
+                try await currentSession?.stop()
+            }
+            HInstrumentation.ui.event("Voice.stop.result", metadata: voiceMetadata(status: "ok"))
         } catch {
             errorMessage = error.localizedDescription
             state = .error
+            HInstrumentation.ui.event("Voice.stop.result", metadata: voiceMetadata(status: "error"))
         }
     }
 
     @MainActor
     private func cancelListening() async {
-        HudsonInstrumentation.event("Voice.cancel")
+        HInstrumentation.ui.event("Voice.cancel", metadata: voiceMetadata(status: "start"))
+        let currentSession = session
+        var status = "ok"
         do {
-            try await session?.cancel()
+            try await HInstrumentation.ui.span("Voice.cancel.request", metadata: voiceMetadata(status: "pending")) {
+                try await currentSession?.cancel()
+            }
         } catch {
             errorMessage = error.localizedDescription
+            status = "error"
         }
         listenTask?.cancel()
         listenTask = nil
         session = nil
         state = .cancelled
         partial = ""
+        HInstrumentation.ui.event("Voice.cancel.result", metadata: voiceMetadata(status: status))
     }
 
     @MainActor
@@ -302,4 +332,19 @@ public struct HudsonVoicePanel: View {
             break
         }
     }
+
+    private func voiceMetadata(status: String) -> [String: String] {
+        [
+            "hasCheckedHealth": hudsonBool(hasCheckedHealth),
+            "hasHealth": hudsonBool(health != nil),
+            "hasSession": hudsonBool(session != nil),
+            "isCheckingHealth": hudsonBool(isCheckingHealth),
+            "state": state.rawValue,
+            "status": status,
+        ]
+    }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }

@@ -17,6 +17,7 @@ public struct HudsonButton: View {
     public var instrumentationID: String?
     public var action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @FocusState private var isFocused: Bool
     @State private var isHovering = false
 
@@ -37,14 +38,20 @@ public struct HudsonButton: View {
     public var body: some View {
         Button(action: instrumentedAction) {
             HStack(spacing: HudsonSpacing.md) {
-                if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
-                Text(title).font(HudsonFont.mono(12, weight: .semibold)).tracking(0.5)
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Text(title)
+                    .font(HudsonFont.mono(12, weight: .semibold))
+                    .tracking(0.5)
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, HudsonSpacing.xxl)
             .frame(minHeight: 32)
             .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(background))
-            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? 1.5 : 1))
+            .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(border, lineWidth: isFocused ? HFocus.ringWidth : 1))
+            .contentShape(RoundedRectangle(cornerRadius: HudsonRadius.standard))
             .opacity(isEnabled ? 1 : 0.45)
             .scaleEffect(isHovering && isEnabled ? 1.015 : 1)
         }
@@ -52,6 +59,8 @@ public struct HudsonButton: View {
         .focusable(isEnabled)
         .focused($isFocused)
         .onHover { isHovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isHovering)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isFocused)
         .accessibilityLabel(title)
     }
 
@@ -76,15 +85,15 @@ public struct HudsonButton: View {
 
     private var background: Color {
         switch style {
-        case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.26 : 0.18)
-        case .secondary:         return Color.white.opacity(isHovering && isEnabled ? 0.08 : 0.05)
-        case .ghost:             return isHovering && isEnabled ? Color.white.opacity(0.04) : .clear
+        case .primary(let tint): return HSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.26 : 0.18)
+        case .secondary:         return HSurface.controlHover(isHovering: isHovering && isEnabled)
+        case .ghost:             return isHovering && isEnabled ? HSurface.hover : .clear
         }
     }
 
     private var border: Color {
         if isFocused {
-            return HudsonPalette.statusInfo.opacity(0.85)
+            return HFocus.ring
         }
         switch style {
         case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.72 : 0.5)

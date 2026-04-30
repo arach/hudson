@@ -7,7 +7,7 @@ public struct HudsonGridBackground: View {
     public var step: CGFloat
     public var lineColor: Color
 
-    public init(step: CGFloat = 20, lineColor: Color = Color.white.opacity(0.025)) {
+    public init(step: CGFloat = 20, lineColor: Color = HSurface.inset) {
         self.step = step
         self.lineColor = lineColor
     }

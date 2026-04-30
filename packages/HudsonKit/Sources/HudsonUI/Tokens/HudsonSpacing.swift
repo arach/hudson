@@ -40,3 +40,9 @@ public enum HudsonLayout {
     public static let statusBarHeight:  CGFloat = 28
     public static let panelBottomOffset: CGFloat = 28
 }
+
+// MARK: - H-prefixed aliases
+
+public typealias HSpacing = HudsonSpacing
+public typealias HRadius = HudsonRadius
+public typealias HLayout = HudsonLayout

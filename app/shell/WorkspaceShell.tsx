@@ -45,7 +45,7 @@ import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
 import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
-import { PortActivityLog } from './PortActivityLog';
+import { PortInspector } from './PortInspector';
 import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
@@ -122,14 +122,17 @@ function primeHudsonAIWorkspaceHandoff(workspaceId: string, terminalAppId: strin
 // ---------------------------------------------------------------------------
 // Service status indicator (rendered in StatusBar right slot)
 // ---------------------------------------------------------------------------
-function ServiceStatusIndicator({ registry, onOpenSettings }: {
+function ServiceStatusIndicator({ registry, onOpenSettings, serviceIds }: {
   registry: ReturnType<typeof useServiceRegistry>;
   onOpenSettings: () => void;
+  serviceIds: string[];
 }) {
-  const { catalog, records } = registry;
-  const total = catalog.length;
-  const running = catalog.filter(s => records[s.id]?.status === 'running').length;
-  const hasError = catalog.some(s => records[s.id]?.status === 'error');
+  const { records } = registry;
+  const total = serviceIds.length;
+  if (total === 0) return null;
+
+  const running = serviceIds.filter(id => records[id]?.status === 'running').length;
+  const hasError = serviceIds.some(id => records[id]?.status === 'error');
   const color = hasError ? 'text-destructive' : running === total ? 'text-success' : 'text-muted-foreground';
 
   return (
@@ -167,6 +170,20 @@ function getWorkspaceServiceStatus(
   if (hasError) return { label: 'ERROR', color: 'red' };
   if (allRunning) return { label: 'NOMINAL', color: 'emerald' };
   return { label: 'DEGRADED', color: 'amber' };
+}
+
+function getWorkspaceServiceIds(workspace: HudsonWorkspace): string[] {
+  return [
+    ...new Set(
+      workspace.apps.flatMap(config =>
+        (config.app.services ?? []).map(dep => dep.serviceId),
+      ),
+    ),
+  ];
+}
+
+function appHasPorts(app: WorkspaceAppConfig['app'] | null | undefined): boolean {
+  return !!(app?.ports?.outputs?.length || app?.ports?.inputs?.length);
 }
 
 type AppSettingFieldLike = AppSettingsEntry['config']['sections'][number]['fields'][number];
@@ -629,6 +646,7 @@ function WorkspaceInner({
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
+  const workspaceServiceIds = useMemo(() => getWorkspaceServiceIds(workspace), [workspace]);
   const showSaved = useSaveIndicator();
 
   // --- Auto-start required services for workspace apps ---
@@ -1002,6 +1020,15 @@ function WorkspaceInner({
 
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed);
   const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides);
+
+  const singleApp = isSingleApp ? workspace.apps[0].app : null;
+  const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const focusedHasPorts = appHasPorts(focusedApp);
+  const hasInspectorOrTools = !!(focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length));
+  const hasRightPanelSlot = !!focusedApp?.slots.RightPanel;
+  const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts);
+  const showRightRail = showPanels || (isCanvasMode && hasRightRailContent);
+  const effectiveRightWidth = showRightRail && !rightCollapsed ? rightWidth : 0;
 
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
@@ -1523,18 +1550,17 @@ function WorkspaceInner({
   const shellLayout = useMemo(
     () => ({
       leftWidth: leftCollapsed ? 0 : leftWidth,
-      rightWidth: rightCollapsed ? 0 : rightWidth,
+      rightWidth: effectiveRightWidth,
       leftCollapsed,
-      rightCollapsed,
+      rightCollapsed: !showRightRail || rightCollapsed,
       isTerminalOpen: showTerminal,
       terminalHeight,
       isTerminalMaximized,
     }),
-    [leftWidth, rightWidth, leftCollapsed, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
+    [leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
   );
 
   // --- Left panel footer ---
-  const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const leftFooter = (
     <>
       {isSingleApp && singleApp?.slots.LeftFooter && (
@@ -1617,12 +1643,12 @@ function WorkspaceInner({
     })
   );
 
-  // --- Right panel content: Inspector + Tools split ---
-  const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
-  const hasInspectorOrTools = focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length);
-
-  const rightPanelContent = hasInspectorOrTools ? (
+  // --- Right panel content: app inspector, tools, and ports ---
+  const rightPanelContent = focusedApp ? (
     <>
+      {focusedHasPorts && (
+        <PortInspector appId={focusedApp.id} />
+      )}
       {focusedApp.slots.Inspector && (
         <AppSlotErrorBoundary appName={focusedApp.name} slotName="Inspector">
           <focusedApp.slots.Inspector />
@@ -1635,15 +1661,13 @@ function WorkspaceInner({
           onToggle={handleToggleTool}
         />
       )}
+      {!hasInspectorOrTools && focusedApp.slots.RightPanel && (
+        <AppSlotErrorBoundary appName={focusedApp.name} slotName="RightPanel">
+          <focusedApp.slots.RightPanel />
+        </AppSlotErrorBoundary>
+      )}
     </>
-  ) : (
-    // Backward compat: fall back to RightPanel slot
-    focusedApp?.slots.RightPanel ? (
-      <AppSlotErrorBoundary appName={focusedApp.name} slotName="RightPanel">
-        <focusedApp.slots.RightPanel />
-      </AppSlotErrorBoundary>
-    ) : null
-  );
+  ) : null;
 
   // --- Panel titles ---
   const leftPanelTitle = isSingleApp
@@ -1653,7 +1677,7 @@ function WorkspaceInner({
     ? (singleApp?.rightPanel?.title ?? 'Inspector')
     : 'Inspector';
   const leftPanelIcon = isSingleApp ? singleApp?.leftPanel?.icon : undefined;
-  const rightPanelIcon = isSingleApp ? singleApp?.rightPanel?.icon : undefined;
+  const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedHasPorts ? <Activity size={12} /> : undefined);
   const leftHeaderActions = isSingleApp && singleApp?.leftPanel?.headerActions
     ? <singleApp.leftPanel.headerActions />
     : undefined;
@@ -2276,6 +2300,7 @@ function WorkspaceInner({
           activatedAppIds={activatedAppIds}
           showLauncher={showLauncher}
           onOpenServices={openWorkspaceManager}
+          onOpenInspector={() => setRightCollapsed(false)}
           dynamicWindows={dynamicWindows}
           onCloseDynamicWindow={closeDynamicWindow}
           zOrderMap={zOrderMap}
@@ -2321,6 +2346,13 @@ function WorkspaceInner({
   const fullscreenConfig = fullscreenAppId
     ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
     : null;
+  const fullscreenHasPorts = appHasPorts(fullscreenConfig?.app);
+  const fullscreenHasInspectorSurface = !!(
+    fullscreenConfig?.app.slots.Inspector ||
+    fullscreenConfig?.app.slots.RightPanel ||
+    fullscreenConfig?.app.tools?.length ||
+    fullscreenHasPorts
+  );
   const hudsonAIRuntime = useMemo(() => ({
     workspace,
     onToolCall: handleWorkspaceToolCall,
@@ -2393,7 +2425,7 @@ function WorkspaceInner({
             >
               <Settings size={12} />
             </button>
-            {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && (
+            {fullscreenHasInspectorSurface && (
               <button
                 onClick={() => setFsRightOpen(v => !v)}
                 className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
@@ -2422,12 +2454,20 @@ function WorkspaceInner({
               </AppSlotErrorBoundary>
             </div>
 
-            {/* Right panel: Inspector + tools */}
-            {(fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) && fsRightOpen && (
+            {/* Right panel: Inspector, tools, and ports */}
+            {fullscreenHasInspectorSurface && fsRightOpen && (
               <div className="w-[260px] shrink-0 border-l border-border overflow-y-auto frame-scrollbar bg-card/80">
+                {fullscreenHasPorts && (
+                  <PortInspector appId={fullscreenConfig.app.id} />
+                )}
                 {fullscreenConfig.app.slots.Inspector && (
                   <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Inspector">
                     <fullscreenConfig.app.slots.Inspector />
+                  </AppSlotErrorBoundary>
+                )}
+                {!fullscreenConfig.app.slots.Inspector && fullscreenConfig.app.slots.RightPanel && (
+                  <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="RightPanel">
+                    <fullscreenConfig.app.slots.RightPanel />
                   </AppSlotErrorBoundary>
                 )}
                 {fullscreenConfig.app.tools && fullscreenConfig.app.tools.length > 0 && (
@@ -2448,8 +2488,16 @@ function WorkspaceInner({
             isTerminalOpen={showTerminal}
             left={
               <div className="flex items-center gap-4">
-                <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                <div className="h-3 w-px bg-border" />
+                {workspaceServiceIds.length > 0 && (
+                  <>
+                    <ServiceStatusIndicator
+                      registry={serviceRegistry}
+                      onOpenSettings={openWorkspaceManager}
+                      serviceIds={workspaceServiceIds}
+                    />
+                    <div className="h-3 w-px bg-border" />
+                  </>
+                )}
                 <button
                   onClick={startVoicePrompt}
                   className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
@@ -2477,7 +2525,7 @@ function WorkspaceInner({
             style={{
               position: 'fixed',
               left: fsLeftOpen && fullscreenConfig.app.slots.LeftPanel ? 240 : 0,
-              right: fsRightOpen && (fullscreenConfig.app.slots.Inspector || fullscreenConfig.app.tools?.length) ? 260 : 0,
+              right: fsRightOpen && fullscreenHasInspectorSurface ? 260 : 0,
               bottom: 0,
               top: 0,
               zIndex: 45,
@@ -2507,7 +2555,7 @@ function WorkspaceInner({
         onZoom={handleZoom}
         onViewportChange={setViewport}
         zoomSensitivity={shellSettings.zoomSensitivity}
-        zoomControlsRightOffset={rightCollapsed ? 0 : rightWidth}
+        zoomControlsRightOffset={effectiveRightWidth}
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
@@ -2582,7 +2630,7 @@ function WorkspaceInner({
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: rightWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              {showPanels && (
+              {showRightRail && (
                 <SidePanel
                   side="right"
                   title={rightPanelTitle}
@@ -2615,8 +2663,16 @@ function WorkspaceInner({
                 isTerminalOpen={showTerminal}
                 left={
                 <div className="flex items-center gap-4">
-                  <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                  <div className="h-3 w-px bg-border" />
+                  {workspaceServiceIds.length > 0 && (
+                    <>
+                      <ServiceStatusIndicator
+                        registry={serviceRegistry}
+                        onOpenSettings={openWorkspaceManager}
+                        serviceIds={workspaceServiceIds}
+                      />
+                      <div className="h-3 w-px bg-border" />
+                    </>
+                  )}
                   <button
                     onClick={startVoicePrompt}
                     className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
@@ -2653,7 +2709,7 @@ function WorkspaceInner({
               style={{
                 position: 'fixed',
                 left: showPanels && !leftCollapsed ? leftWidth : 0,
-                right: showPanels && !rightCollapsed ? rightWidth : 0,
+                right: effectiveRightWidth,
                 bottom: 0,
                 top: 0,
                 zIndex: 45,
@@ -2739,6 +2795,7 @@ function MultiAppCanvas({
   activatedAppIds,
   showLauncher,
   onOpenServices,
+  onOpenInspector,
   dynamicWindows,
   onCloseDynamicWindow,
   zOrderMap,
@@ -2757,6 +2814,7 @@ function MultiAppCanvas({
   activatedAppIds: Set<string>;
   showLauncher: boolean;
   onOpenServices: () => void;
+  onOpenInspector: () => void;
   dynamicWindows: DynamicWindowEntry[];
   onCloseDynamicWindow: (id: string) => void;
   zOrderMap: Record<string, number>;
@@ -2821,6 +2879,7 @@ function MultiAppCanvas({
               onResetView={onResetView}
               onReportBounds={onReportBounds}
               onOpenServices={onOpenServices}
+              onOpenInspector={onOpenInspector}
               navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
               onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
             />
@@ -2972,6 +3031,7 @@ function WindowedApp({
   onResetView,
   onReportBounds,
   onOpenServices,
+  onOpenInspector,
   navCenter,
   onEnterFullscreen,
 }: {
@@ -2984,6 +3044,7 @@ function WindowedApp({
   onResetView: () => void;
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   onOpenServices: () => void;
+  onOpenInspector: () => void;
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
@@ -3041,17 +3102,8 @@ function WindowedApp({
     setPreMaxBounds(null);
   }, [defaults, setBounds]);
 
-  // Port activity slide-down.
-  // Renders only when there's an active pipe involving this app — declared-but-
-  // unused ports add visual cruft. Context menu force-shows the bar so users
-  // can create connections from a hidden state.
-  const { pipes: allPipes } = useDataBus();
   const hasPorts = !!(config.app.ports?.outputs?.length || config.app.ports?.inputs?.length);
-  const hasActiveConnection = allPipes.some(
-    p => p.source.appId === config.app.id || p.sink.appId === config.app.id,
-  );
-  const [showPortLog, setShowPortLog] = useState(false);
-  const portLogVisible = hasPorts && (hasActiveConnection || showPortLog);
+  const hasInspectorSurface = !!(config.app.slots.Inspector || config.app.slots.RightPanel || config.app.tools?.length || hasPorts);
 
   const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
     {
@@ -3103,19 +3155,12 @@ function WindowedApp({
       id: `${config.app.id}:inspect`,
       label: 'Inspect',
       icon: <ScanSearch size={12} />,
-      disabled: true,
-      action: () => {},
+      disabled: !hasInspectorSurface,
+      action: () => {
+        onFocus();
+        onOpenInspector();
+      },
     },
-    ...(hasPorts ? [{
-      id: `${config.app.id}:port-activity`,
-      label: portLogVisible ? 'Hide Port Activity' : 'Show Port Activity',
-      icon: <Activity size={12} />,
-      // When an active connection is keeping the bar visible, "hide" just
-      // cancels the force-show override — the bar stays until the connection
-      // is disconnected. That's intentional: you shouldn't be able to hide a
-      // live connection indicator by accident.
-      action: () => setShowPortLog(v => !v),
-    }] : []),
     { type: 'separator' },
     {
       id: `${config.app.id}:close`,
@@ -3124,7 +3169,7 @@ function WindowedApp({
       icon: <X size={12} />,
       action: onClose,
     },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen, hasPorts, portLogVisible]);
+  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen, hasInspectorSurface, onOpenInspector]);
 
   return (
     <>
@@ -3147,23 +3192,6 @@ function WindowedApp({
           </AppSlotErrorBoundary>
         </ServiceBanner>
       </AppWindow>
-
-      {/* Port activity — slides down below the window, positioned absolutely.
-          Only rendered when there's a live connection OR the user force-shows
-          it via the context menu. Keeps the canvas clean for declared-but-
-          unused ports. */}
-      {portLogVisible && (
-        <div
-          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-border bg-card/90 backdrop-blur-xl overflow-hidden"
-          style={{
-            left: bounds.x,
-            top: bounds.y + bounds.h,
-            width: bounds.w,
-          }}
-        >
-          <PortActivityLog appId={config.app.id} />
-        </div>
-      )}
     </>
   );
 }

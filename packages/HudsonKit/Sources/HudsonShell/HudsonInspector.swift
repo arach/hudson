@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 /// Trailing-side inspector panel for `HudsonAppShell`.
 ///
@@ -70,12 +71,19 @@ public struct HudsonInspector<Header: View, Content: View>: View {
     }
 
     private func toggleCollapsed() {
-        HudsonInstrumentation.event("Inspector.toggle")
-        if reduceMotion {
-            isCollapsed.toggle()
-        } else {
-            withAnimation(HudsonMotion.chromeSpring) {
+        let metadata = [
+            "fromCollapsed": hudsonBool(isCollapsed),
+            "toCollapsed": hudsonBool(!isCollapsed),
+        ]
+
+        HInstrumentation.ui.event("Inspector.toggle", metadata: metadata)
+        HInstrumentation.ui.span("Inspector.toggle.apply", metadata: metadata) {
+            if reduceMotion {
                 isCollapsed.toggle()
+            } else {
+                withAnimation(HudsonMotion.chromeSpring) {
+                    isCollapsed.toggle()
+                }
             }
         }
     }
@@ -94,4 +102,8 @@ extension HudsonInspector where Header == EmptyView {
             content: content
         )
     }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }

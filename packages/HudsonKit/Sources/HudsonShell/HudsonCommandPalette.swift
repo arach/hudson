@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 // MARK: - Command
 
@@ -63,7 +64,7 @@ public struct HudsonCommandPalette: View {
             query = ""
             selectedIndex = 0
             fieldFocused = true
-            HudsonInstrumentation.event("CommandPalette.open")
+            HInstrumentation.ui.event("CommandPalette.open", metadata: paletteMetadata)
         }
     }
 
@@ -248,16 +249,22 @@ public struct HudsonCommandPalette: View {
     // MARK: Actions
 
     private func runSelection() {
-        guard let cmd = filtered[safe: selectedIndex] else { return }
-        dismiss()
-        HudsonInstrumentation.event("CommandPalette.run")
+        let visibleCommands = filtered
+        guard let cmd = visibleCommands[safe: selectedIndex] else { return }
+        let metadata = commandMetadata(command: cmd, filteredCount: visibleCommands.count)
+
+        HInstrumentation.ui.event("CommandPalette.run", metadata: metadata)
+        dismiss(reason: "run")
+
         DispatchQueue.main.asyncAfter(deadline: .now() + 0.05) {
-            cmd.action()
+            HInstrumentation.ui.span("CommandPalette.run.action", metadata: metadata) {
+                cmd.action()
+            }
         }
     }
 
-    private func dismiss() {
-        HudsonInstrumentation.event("CommandPalette.dismiss")
+    private func dismiss(reason: String = "user") {
+        HInstrumentation.ui.event("CommandPalette.dismiss", metadata: dismissMetadata(reason: reason))
         isPresented = false
     }
 
@@ -266,6 +273,34 @@ public struct HudsonCommandPalette: View {
         guard !commands.isEmpty else { return }
         selectedIndex = (selectedIndex + delta + commands.count) % commands.count
     }
+
+    private var paletteMetadata: [String: String] {
+        [
+            "commandCount": "\(commands.count)",
+            "hasCommands": hudsonBool(!commands.isEmpty),
+        ]
+    }
+
+    private func commandMetadata(command: HudsonCommand, filteredCount: Int) -> [String: String] {
+        [
+            "commandCount": "\(commands.count)",
+            "commandId": command.id,
+            "filteredCount": "\(filteredCount)",
+            "queryActive": hudsonBool(!query.isEmpty),
+        ]
+    }
+
+    private func dismissMetadata(reason: String) -> [String: String] {
+        [
+            "filteredCount": "\(filtered.count)",
+            "queryActive": hudsonBool(!query.isEmpty),
+            "reason": reason,
+        ]
+    }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }
 
 // MARK: - Command row

@@ -51,11 +51,15 @@ public struct HLogger: Sendable {
         line: UInt = #line
     ) {
         let renderedMessage = message()
-        let metadataText = Self.render(metadata())
-        if metadataText.isEmpty {
+        let renderedMetadata = Self.render(metadata())
+        if renderedMetadata.isEmpty {
             logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public)")
+        } else if renderedMetadata.privateText.isEmpty {
+            logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public) \(renderedMetadata.publicText, privacy: .public)")
+        } else if renderedMetadata.publicText.isEmpty {
+            logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public) \(renderedMetadata.privateText, privacy: .private)")
         } else {
-            logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public) \(metadataText, privacy: .public)")
+            logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public) \(renderedMetadata.publicText, privacy: .public) \(renderedMetadata.privateText, privacy: .private)")
         }
     }
 
@@ -83,11 +87,56 @@ public struct HLogger: Sendable {
         log(.fault, message(), metadata: metadata(), file: file, line: line)
     }
 
-    private static func render(_ metadata: [String: String]) -> String {
-        guard !metadata.isEmpty else { return "" }
-        return metadata
-            .sorted { $0.key < $1.key }
+    private static func render(_ metadata: [String: String]) -> RenderedMetadata {
+        let sortedMetadata = metadata.sorted { $0.key < $1.key }
+        let publicText = sortedMetadata
+            .filter { publicMetadataKeys.contains($0.key) }
             .map { "\($0.key)=\($0.value)" }
             .joined(separator: " ")
+        let privateText = sortedMetadata
+            .filter { !publicMetadataKeys.contains($0.key) }
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: " ")
+        return RenderedMetadata(publicText: publicText, privateText: privateText)
+    }
+
+    private static let publicMetadataKeys: Set<String> = [
+        "changed",
+        "commandCount",
+        "expanded",
+        "expandedHeight",
+        "filteredCount",
+        "fromCollapsed",
+        "fromExpanded",
+        "fromOpen",
+        "fromPresented",
+        "hasCheckedHealth",
+        "hasCommands",
+        "hasHealth",
+        "hasSession",
+        "isCheckingHealth",
+        "itemCount",
+        "name",
+        "outcome",
+        "presented",
+        "queryActive",
+        "reason",
+        "state",
+        "status",
+        "toCollapsed",
+        "toExpanded",
+        "toOpen",
+        "toPresented",
+        "unit",
+        "value",
+    ]
+}
+
+private struct RenderedMetadata {
+    let publicText: String
+    let privateText: String
+
+    var isEmpty: Bool {
+        publicText.isEmpty && privateText.isEmpty
     }
 }
