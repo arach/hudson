@@ -1,11 +1,12 @@
 'use client';
 
-import { useMemo, useCallback } from 'react';
+import { useMemo, useCallback, useEffect, useState } from 'react';
 import { useTerminalRelay, TerminalRelay, usePlatform } from 'hudsonkit';
 import type { HudsonWorkspace, IntentCatalog } from 'hudsonkit';
 import { useDataBus } from './DataBusContext';
 import type { PortCatalogEntry } from './DataBusContext';
 import type { PipeDefinition } from 'hudsonkit';
+import { Cloud, TerminalSquare } from 'lucide-react';
 
 // ---------------------------------------------------------------------------
 // System prompt — workspace-aware HudsonKit assistant
@@ -80,6 +81,32 @@ This is the HudsonKit workspace directory. You are the system-level assistant he
 - Navigate between apps using intents and commands
 `;
 
+function isHostedBrowserDemo() {
+  if (typeof window === 'undefined') return false;
+  return !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+}
+
+function HostedTerminalNotice() {
+  return (
+    <div className="flex h-full items-center justify-center bg-neutral-950 px-6">
+      <div className="max-w-md rounded-lg border border-white/[0.08] bg-white/[0.03] p-5 shadow-2xl">
+        <div className="mb-3 flex items-center gap-2 text-cyan-300">
+          <Cloud size={14} />
+          <span className="font-mono text-[11px] uppercase tracking-[0.2em]">Hosted Console</span>
+        </div>
+        <div className="text-sm font-medium text-neutral-100">AI console is live on Workers AI.</div>
+        <p className="mt-2 text-[12px] leading-relaxed text-neutral-400">
+          Interactive terminal sessions need a sandboxed PTY backend. The local Hudson Relay is available in local and native builds; the hosted demo keeps this tab read-only until a Cloudflare sandbox backend is attached.
+        </p>
+        <div className="mt-4 flex items-center gap-2 rounded border border-white/[0.06] bg-black/20 px-3 py-2 font-mono text-[11px] text-neutral-500">
+          <TerminalSquare size={12} />
+          <span>terminal backend: local relay or hosted sandbox</span>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ---------------------------------------------------------------------------
 // Component
 // ---------------------------------------------------------------------------
@@ -92,6 +119,11 @@ export interface HudsonTerminalProps {
 export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
   const { serviceApiUrl } = usePlatform();
   const { getPortCatalog, pipes } = useDataBus();
+  const [hostedDemo, setHostedDemo] = useState(false);
+
+  useEffect(() => {
+    setHostedDemo(isHostedBrowserDemo());
+  }, []);
 
   const portCatalog = useMemo(() => getPortCatalog(), [getPortCatalog]);
 
@@ -139,6 +171,10 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
       bubbles: true,
     }));
   }, []);
+
+  if (hostedDemo) {
+    return <HostedTerminalNotice />;
+  }
 
   return (
     <TerminalRelay

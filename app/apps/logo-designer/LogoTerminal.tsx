@@ -36,6 +36,11 @@ async function compileTemplate(source: string, endpoint: string): Promise<{ js: 
 // ---------------------------------------------------------------------------
 type TerminalMode = 'chat' | 'relay';
 
+function isHostedBrowserDemo() {
+  if (typeof window === 'undefined') return false;
+  return !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
+}
+
 export function LogoTerminal() {
   const {
     params, setParam, setVariant, resetDefaults, presets,
@@ -55,9 +60,20 @@ export function LogoTerminal() {
   const relayModel = String(appSettings.model || 'MiniMax-M2.7');
   const serviceRegistry = useServiceRegistryContext();
   const relayRecord = serviceRegistry.records.relay;
-  const relayServiceDown = relayRecord != null && relayRecord.status !== 'running';
+  const [hostedDemo, setHostedDemo] = useState(false);
+  const relayServiceDown = !hostedDemo && relayRecord != null && relayRecord.status !== 'running';
 
   const [mode, setMode] = useState<TerminalMode>('relay');
+
+  useEffect(() => {
+    setHostedDemo(isHostedBrowserDemo());
+  }, []);
+
+  useEffect(() => {
+    if (hostedDemo && mode === 'relay') {
+      setMode('chat');
+    }
+  }, [hostedDemo, mode]);
 
   // ---- Relay mode ----
   // Build a rich system prompt with full dynamic context
@@ -216,6 +232,7 @@ export function LogoTerminal() {
   // Start relay service via the service API
   const { serviceApiUrl } = usePlatform();
   const handleStartRelay = useCallback(async (): Promise<boolean> => {
+    if (hostedDemo) return false;
     try {
       const res = await fetch(`${serviceApiUrl}/api/services/execute`, {
         method: 'POST',
@@ -227,7 +244,7 @@ export function LogoTerminal() {
     } catch {
       return false;
     }
-  }, [serviceApiUrl]);
+  }, [hostedDemo, serviceApiUrl]);
 
   // Open workspace manager via keyboard shortcut dispatch
   const openSettings = useCallback(() => {
@@ -283,18 +300,23 @@ export function LogoTerminal() {
           </button>
         )}
         <div className="flex-1" />
-        {/* Chat toggle */}
-        <button
-          type="button"
-          onClick={() => setMode(m => m === 'chat' ? 'relay' : 'chat')}
-          className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-            mode === 'chat'
-              ? 'bg-info/15 text-info border-info/40'
-              : 'text-muted-foreground border-border hover:text-foreground/80 hover:border-border'
-          }`}
-        >
-          Chat
-        </button>
+        {hostedDemo ? (
+          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-info/15 text-info border-info/40">
+            Workers AI
+          </span>
+        ) : (
+          <button
+            type="button"
+            onClick={() => setMode(m => m === 'chat' ? 'relay' : 'chat')}
+            className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
+              mode === 'chat'
+                ? 'bg-info/15 text-info border-info/40'
+                : 'text-muted-foreground border-border hover:text-foreground/80 hover:border-border'
+            }`}
+          >
+            Chat
+          </button>
+        )}
         {mode === 'relay' && relay.status !== 'connected' && (
           <button
             type="button"

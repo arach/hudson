@@ -8,6 +8,9 @@
     "directory": "site/out",
     "binding": "ASSETS"
   },
+  "ai": {
+    "binding": "AI"
+  },
   "observability": {
     "enabled": true
   },

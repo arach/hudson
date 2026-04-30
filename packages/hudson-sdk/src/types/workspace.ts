@@ -5,6 +5,8 @@ import type { HudsonApp } from './app';
 // ---------------------------------------------------------------------------
 export type CanvasParticipation = 'native' | 'windowed';
 
+export type WorkspaceLeftNavigation = 'on' | 'minimized' | 'hidden';
+
 // ---------------------------------------------------------------------------
 // WorkspaceAppConfig — one app's configuration within a workspace (authoring seed)
 // ---------------------------------------------------------------------------
@@ -49,6 +51,11 @@ export interface HudsonWorkspace {
   defaultFocusedAppId?: string;
   /** Initial canvas zoom when the workspace first boots. Defaults to 1 (100%). */
   defaultScale?: number;
-  /** Render the left app navigation panel while the workspace is in canvas mode. */
-  showLeftNavigation?: boolean;
+  /**
+   * Optional structural left navigation for canvas workspaces.
+   * - 'on': render expanded
+   * - 'minimized': render the collapsed panel affordance
+   * - 'hidden': do not render the left navigation surface
+   */
+  leftNavigation?: WorkspaceLeftNavigation;
 }

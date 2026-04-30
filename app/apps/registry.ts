@@ -255,7 +255,7 @@ export function getHudsonKitWorkspace(): HudsonWorkspace {
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
     defaultScale: 0.5,
-    showLeftNavigation: true,
+    leftNavigation: 'on',
   };
 }
 
@@ -269,6 +269,7 @@ export function getScoutOpsWorkspace(): HudsonWorkspace {
     apps: getScoutOpsApps(),
     defaultFocusedAppId: 'openscout',
     defaultScale: 0.2,
+    leftNavigation: 'minimized',
   };
 }
 
@@ -282,6 +283,7 @@ export function getDeveloperModeWorkspace(): HudsonWorkspace {
     apps: getDeveloperModeApps(),
     defaultFocusedAppId: 'api-inspector',
     defaultScale: 0.2,
+    leftNavigation: 'hidden',
   };
 }
 
@@ -295,6 +297,7 @@ export function getLogoStudioWorkspace(): HudsonWorkspace {
     apps: getLogoStudioApps(),
     defaultFocusedAppId: 'logo-designer',
     defaultScale: 0.5,
+    leftNavigation: 'on',
   };
 }
 

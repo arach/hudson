@@ -176,7 +176,9 @@ function getWorkspaceServiceIds(workspace: HudsonWorkspace): string[] {
   return [
     ...new Set(
       workspace.apps.flatMap(config =>
-        (config.app.services ?? []).map(dep => dep.serviceId),
+        (config.app.services ?? [])
+          .filter(dep => !dep.optional)
+          .map(dep => dep.serviceId),
       ),
     ),
   ];
@@ -989,13 +991,17 @@ function WorkspaceInner({
   const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
   const isCanvasMode = frameMode === 'canvas';
   const showPanels = layoutMode === 'panel';
-  const showLeftNavigation = showPanels || (isCanvasMode && workspace.showLeftNavigation === true);
+  const leftNavigationMode = workspace.leftNavigation ?? 'hidden';
+  const showLeftNavigation = showPanels || (isCanvasMode && leftNavigationMode !== 'hidden');
 
   // --- Shell state (same as AppShell) ---
-  const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', DEFAULTS.leftCollapsed);
-  const [rightCollapsed, setRightCollapsed] = usePersistentState('hudson.right', DEFAULTS.rightCollapsed);
-  const [leftWidth, setLeftWidth] = usePersistentState('hudson.leftW', DEFAULTS.leftWidth);
-  const [rightWidth, setRightWidth] = usePersistentState('hudson.rightW', DEFAULTS.rightWidth);
+  const [leftCollapsed, setLeftCollapsed] = usePersistentState(
+    `hudson.ws.${workspace.id}.leftCollapsed`,
+    leftNavigationMode === 'minimized',
+  );
+  const [rightCollapsed, setRightCollapsed] = usePersistentState(`hudson.ws.${workspace.id}.rightCollapsed`, DEFAULTS.rightCollapsed);
+  const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth);
+  const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth);
 
   const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS);
   const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS);
