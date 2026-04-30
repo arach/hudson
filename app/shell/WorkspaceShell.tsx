@@ -122,14 +122,17 @@ function primeHudsonAIWorkspaceHandoff(workspaceId: string, terminalAppId: strin
 // ---------------------------------------------------------------------------
 // Service status indicator (rendered in StatusBar right slot)
 // ---------------------------------------------------------------------------
-function ServiceStatusIndicator({ registry, onOpenSettings }: {
+function ServiceStatusIndicator({ registry, onOpenSettings, serviceIds }: {
   registry: ReturnType<typeof useServiceRegistry>;
   onOpenSettings: () => void;
+  serviceIds: string[];
 }) {
-  const { catalog, records } = registry;
-  const total = catalog.length;
-  const running = catalog.filter(s => records[s.id]?.status === 'running').length;
-  const hasError = catalog.some(s => records[s.id]?.status === 'error');
+  const { records } = registry;
+  const total = serviceIds.length;
+  if (total === 0) return null;
+
+  const running = serviceIds.filter(id => records[id]?.status === 'running').length;
+  const hasError = serviceIds.some(id => records[id]?.status === 'error');
   const color = hasError ? 'text-destructive' : running === total ? 'text-success' : 'text-muted-foreground';
 
   return (
@@ -167,6 +170,16 @@ function getWorkspaceServiceStatus(
   if (hasError) return { label: 'ERROR', color: 'red' };
   if (allRunning) return { label: 'NOMINAL', color: 'emerald' };
   return { label: 'DEGRADED', color: 'amber' };
+}
+
+function getWorkspaceServiceIds(workspace: HudsonWorkspace): string[] {
+  return [
+    ...new Set(
+      workspace.apps.flatMap(config =>
+        (config.app.services ?? []).map(dep => dep.serviceId),
+      ),
+    ),
+  ];
 }
 
 function appHasPorts(app: WorkspaceAppConfig['app'] | null | undefined): boolean {
@@ -633,6 +646,7 @@ function WorkspaceInner({
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
+  const workspaceServiceIds = useMemo(() => getWorkspaceServiceIds(workspace), [workspace]);
   const showSaved = useSaveIndicator();
 
   // --- Auto-start required services for workspace apps ---
@@ -2474,8 +2488,16 @@ function WorkspaceInner({
             isTerminalOpen={showTerminal}
             left={
               <div className="flex items-center gap-4">
-                <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                <div className="h-3 w-px bg-border" />
+                {workspaceServiceIds.length > 0 && (
+                  <>
+                    <ServiceStatusIndicator
+                      registry={serviceRegistry}
+                      onOpenSettings={openWorkspaceManager}
+                      serviceIds={workspaceServiceIds}
+                    />
+                    <div className="h-3 w-px bg-border" />
+                  </>
+                )}
                 <button
                   onClick={startVoicePrompt}
                   className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
@@ -2641,8 +2663,16 @@ function WorkspaceInner({
                 isTerminalOpen={showTerminal}
                 left={
                 <div className="flex items-center gap-4">
-                  <ServiceStatusIndicator registry={serviceRegistry} onOpenSettings={openWorkspaceManager} />
-                  <div className="h-3 w-px bg-border" />
+                  {workspaceServiceIds.length > 0 && (
+                    <>
+                      <ServiceStatusIndicator
+                        registry={serviceRegistry}
+                        onOpenSettings={openWorkspaceManager}
+                        serviceIds={workspaceServiceIds}
+                      />
+                      <div className="h-3 w-px bg-border" />
+                    </>
+                  )}
                   <button
                     onClick={startVoicePrompt}
                     className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
