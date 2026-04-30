@@ -47,7 +47,10 @@ if (!existsSync(localWorkspacesFile)) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+const isStaticExport = process.env.HUDSONKIT_STATIC_EXPORT === "1";
+
 const nextConfig: NextConfig = {
+  ...(isStaticExport ? { output: "export" as const } : {}),
   transpilePackages: ["@hudson/sdk", "@voxd/client"],
   serverExternalPackages: ["esbuild"],
   images: {
@@ -59,12 +62,16 @@ const nextConfig: NextConfig = {
       tailwindcss: join(__dirname, "node_modules", "tailwindcss"),
     },
   },
-  async rewrites() {
-    return [
-      { source: "/llms.txt", destination: "/api/llms-txt" },
-      { source: "/llms-full.txt", destination: "/api/llms-full-txt" },
-    ];
-  },
+  ...(isStaticExport
+    ? {}
+    : {
+        async rewrites() {
+          return [
+            { source: "/llms.txt", destination: "/api/llms-txt" },
+            { source: "/llms-full.txt", destination: "/api/llms-full-txt" },
+          ];
+        },
+      }),
 };
 
 export default nextConfig;

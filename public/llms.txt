@@ -1,0 +1,19 @@
+# HudsonKit
+
+> Shell and app primitives for building polished Hudson apps.
+
+## Documentation
+
+- Overview: https://hudsonkit.com/docs/overview
+- Building Apps: https://hudsonkit.com/docs/building-apps
+- API Reference: https://hudsonkit.com/docs/api
+- Architecture: https://hudsonkit.com/docs/architecture
+- Theming: https://hudsonkit.com/docs/theming
+
+## Package
+
+https://www.npmjs.com/package/hudsonkit
+
+## Full Documentation
+
+https://hudsonkit.com/llms-full.txt

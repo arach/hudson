@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ArrowRight, Check, Loader2 } from 'lucide-react';
+import { ArrowRight, Check } from 'lucide-react';
 
 type Status = 'idle' | 'loading' | 'success' | 'error';
 
@@ -15,30 +15,17 @@ export function InterestForm() {
     e.preventDefault();
     if (status === 'loading') return;
 
-    setStatus('loading');
     setError(null);
 
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email,
-          honeypot,
-          context: 'landing-page',
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) {
-        setStatus('error');
-        setError(data.error ?? 'Something went wrong. Please try again.');
-        return;
-      }
+    if (honeypot) {
       setStatus('success');
-    } catch {
-      setStatus('error');
-      setError('Network error. Please try again.');
+      return;
     }
+
+    const subject = encodeURIComponent('HudsonKit updates');
+    const body = encodeURIComponent(`Please keep me posted about HudsonKit.\n\nEmail: ${email}`);
+    window.location.href = `mailto:hello@hudsonkit.com?subject=${subject}&body=${body}`;
+    setStatus('success');
   };
 
   if (status === 'success') {
@@ -83,17 +70,8 @@ export function InterestForm() {
           disabled={status === 'loading' || !email}
           className="group inline-flex items-center justify-center gap-2 px-5 py-3 rounded-md border border-cyan-500/50 bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-500/20 hover:border-cyan-500/70 transition disabled:opacity-40 disabled:hover:bg-cyan-500/10 disabled:hover:border-cyan-500/50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          {status === 'loading' ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              Sending
-            </>
-          ) : (
-            <>
-              Keep me posted
-              <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
-            </>
-          )}
+          Keep me posted
+          <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
         </button>
       </div>
       {error && (

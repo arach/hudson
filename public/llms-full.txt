@@ -1,0 +1,17 @@
+# HudsonKit
+
+HudsonKit is a shell and primitives library for composing canvas workspaces and single-app dashboards. Apps implement a HudsonApp object, own their own state through a Provider, expose UI through slots, and bridge into shell chrome through hooks.
+
+## Core Pattern
+
+- Provider: the app owns state in React context.
+- Slots: the app provides Content, panels, footers, terminal surfaces, or other UI regions.
+- Hooks: the app exposes commands, status, search, nav content, and layout mode to the shell.
+
+## Key Links
+
+- Overview: https://hudsonkit.com/docs/overview
+- Building Apps: https://hudsonkit.com/docs/building-apps
+- API Reference: https://hudsonkit.com/docs/api
+- Architecture: https://hudsonkit.com/docs/architecture
+- npm package: https://www.npmjs.com/package/hudsonkit
