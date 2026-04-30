@@ -44,7 +44,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
         <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
           <button
             onClick={onTitleClick}
-            className="text-[22px] font-bold text-foreground tracking-[0.25em] font-mono leading-none bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
+            className="text-[18px] sm:text-[22px] font-bold text-foreground tracking-[0.16em] sm:tracking-[0.25em] font-mono leading-none bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
           >
             {title}
           </button>
@@ -66,7 +66,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
           {/* Search / Scope filter */}
           {search && (
-            <div className="relative w-[220px] bg-card border border-input rounded px-2.5 shadow-[inset_0_1px_0_oklch(var(--foreground)/0.02)] hover:border-ring/60 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/30 focus-within:bg-card transition-all duration-200">
+            <div className="hidden sm:block relative w-[220px] max-w-[34vw] bg-card border border-input rounded px-2.5 shadow-[inset_0_1px_0_oklch(var(--foreground)/0.02)] hover:border-ring/60 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/30 focus-within:bg-card transition-all duration-200">
               <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"

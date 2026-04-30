@@ -69,10 +69,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between px-3 select-none font-mono text-[12px] text-foreground pointer-events-auto`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[11px] md:text-[12px] text-foreground pointer-events-auto overflow-hidden`}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
-      <div className="flex items-center gap-4">
+      <div className="min-w-0 flex items-center gap-3 md:gap-4 overflow-hidden">
         {/* Collapsed minimap toggle */}
         {isMinimapCollapsed && onExpandMinimap && (
           <>
@@ -90,7 +90,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
         )}
 
         {/* System status indicator */}
-        <div className={`flex items-center gap-2 ${colors.text}`}>
+        <div className={`shrink-0 flex items-center gap-2 ${colors.text}`}>
           <div className="relative flex h-2 w-2">
             <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colors.ping} opacity-75`} />
             <span className={`relative inline-flex rounded-full h-2 w-2 ${colors.dot}`} />
@@ -108,7 +108,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
       {/* CENTER: Viewport data (clickable to copy) */}
       {viewport && (
-        <div className="absolute left-1/2 -translate-x-1/2 flex items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
+        <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
           <button
             onClick={handleCopyViewport}
             className="flex items-center gap-3 hover:text-foreground transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
@@ -139,7 +139,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
       )}
 
       {/* RIGHT: Console toggle + Clock */}
-      <div className="flex items-center gap-4">
+      <div className="shrink-0 flex items-center gap-3 md:gap-4">
         {right}
 
         {right && <div className="h-3 w-px bg-border" />}
