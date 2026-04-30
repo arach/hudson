@@ -81,10 +81,6 @@ function Hero() {
   return (
     <section className="relative px-6 md:px-10 pt-20 pb-14 md:pt-28 md:pb-20">
       <div className="max-w-5xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted/20 text-[11px] tracking-wider uppercase text-muted-foreground/80 mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          v0.2 — Available as hudsonkit on npm
-        </div>
         <h1 className="font-brand text-4xl md:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
           Build rich, composable,
           <br />
