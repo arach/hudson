@@ -22,7 +22,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const doc = getDocBySlug(fullSlug);
   if (!doc) return {};
   return {
-    title: `${doc.title} — Hudson Docs`,
+    title: `${doc.title} — HudsonKit Docs`,
     description: doc.description,
   };
 }
@@ -54,8 +54,8 @@ export default async function DocPage({ params }: Props) {
           <DocPagination docs={docs} currentSlug={fullSlug} />
 
           {/* AI agent links */}
-          <div className="mt-10 pt-6 border-t border-neutral-800/50 flex items-center justify-between">
-            <span className="text-[11px] font-mono tracking-wide text-neutral-600 uppercase">
+          <div className="mt-10 flex items-center justify-between border-t border-border/60 pt-6">
+            <span className="font-mono text-[11px] uppercase tracking-wide text-muted-foreground">
               For AI agents
             </span>
             <div className="flex items-center gap-4">
@@ -63,16 +63,16 @@ export default async function DocPage({ params }: Props) {
                 href="/llms.txt"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] font-mono text-neutral-600 hover:text-emerald-400 transition-colors"
+                className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-cyan-400"
               >
                 llms.txt
               </a>
-              <span className="text-neutral-800">|</span>
+              <span className="text-border">|</span>
               <a
                 href="/llms-full.txt"
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-[11px] font-mono text-neutral-600 hover:text-emerald-400 transition-colors"
+                className="font-mono text-[11px] text-muted-foreground transition-colors hover:text-cyan-400"
               >
                 llms-full.txt
               </a>

@@ -21,7 +21,7 @@ function CopyButton({ label, getText }: { label: string; getText: () => string }
   return (
     <button
       onClick={handleCopy}
-      className="flex items-center gap-1.5 px-3 py-1.5 text-[11px] font-mono text-neutral-500 border border-neutral-800 rounded-md hover:text-neutral-200 hover:border-neutral-600 transition-colors cursor-pointer"
+      className="flex cursor-pointer items-center gap-1.5 rounded-md border border-border px-3 py-1.5 font-mono text-[11px] text-muted-foreground transition-colors hover:border-cyan-500/40 hover:text-foreground"
     >
       <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
         <rect x="9" y="9" width="13" height="13" rx="2" ry="2" />

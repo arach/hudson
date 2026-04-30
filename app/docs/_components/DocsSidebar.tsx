@@ -51,16 +51,16 @@ export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
   const sections = buildSections(docs);
 
   return (
-    <nav className="w-[260px] shrink-0 border-r border-neutral-800 overflow-y-auto py-4 px-3 hidden md:block sticky top-12 h-[calc(100vh-48px)] self-start">
+    <nav className="hidden h-[calc(100vh-56px)] w-[260px] shrink-0 self-start overflow-y-auto border-r border-border bg-background/75 px-3 py-4 backdrop-blur-sm md:sticky md:top-14 md:block">
       {sections.map((section, i) => (
-        <div key={section.label ?? "root"} className={i > 0 ? "mt-5 pt-4 border-t border-neutral-800" : ""}>
-          <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-3 mb-2">
+        <div key={section.label ?? "root"} className={i > 0 ? "mt-5 border-t border-border pt-4" : ""}>
+          <div className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
             {SECTION_LABELS[section.label ?? ""] ?? "Documentation"}
           </div>
           {section.groups.map((group) => (
             <div key={group.subsection ?? "default"}>
               {group.subsection && (
-                <div className="text-[11px] font-mono font-medium text-neutral-400 px-3 mt-3 mb-1.5">
+                <div className="mb-1.5 mt-3 px-3 font-mono text-[11px] font-medium text-muted-foreground">
                   {group.subsection}
                 </div>
               )}
@@ -76,8 +76,8 @@ export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
                           group.subsection ? "px-5" : "px-3"
                         } ${
                           active
-                            ? "bg-emerald-500/10 text-emerald-400"
-                            : "text-neutral-400 hover:text-neutral-200 hover:bg-neutral-800/50"
+                            ? "bg-cyan-500/10 text-cyan-400"
+                            : "text-muted-foreground hover:bg-muted/40 hover:text-foreground"
                         }`}
                       >
                         {doc.title}
@@ -90,8 +90,8 @@ export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
           ))}
         </div>
       ))}
-      <div className="mt-5 pt-4 border-t border-neutral-800">
-        <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-3 mb-2">
+      <div className="mt-5 border-t border-border pt-4">
+        <div className="mb-2 px-3 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
           For AI Agents
         </div>
         <ul className="space-y-0.5">
@@ -99,7 +99,7 @@ export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
             <a
               href="/llms.txt"
               target="_blank"
-              className="block px-3 py-1.5 rounded-md text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50 transition-colors font-mono"
+              className="block rounded-md px-3 py-1.5 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
             >
               llms.txt
             </a>
@@ -108,7 +108,7 @@ export function DocsSidebar({ docs }: { docs: DocMeta[] }) {
             <a
               href="/llms-full.txt"
               target="_blank"
-              className="block px-3 py-1.5 rounded-md text-sm text-neutral-500 hover:text-neutral-300 hover:bg-neutral-800/50 transition-colors font-mono"
+              className="block rounded-md px-3 py-1.5 font-mono text-sm text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground"
             >
               llms-full.txt
             </a>

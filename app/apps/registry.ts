@@ -218,6 +218,31 @@ function getScoutOpsApps(): WorkspaceAppConfig[] {
   ];
 }
 
+function getDeveloperModeApps(): WorkspaceAppConfig[] {
+  return [
+    {
+      app: traceViewerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -960, y: -260, w: 660, h: 540 },
+    },
+    {
+      app: openscoutApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -200, y: -260, w: 660, h: 540 },
+    },
+    {
+      app: apiInspectorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 560, y: -260, w: 760, h: 560 },
+    },
+    {
+      app: jsonExplorerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 560, y: 360, w: 620, h: 460 },
+    },
+  ];
+}
+
 // --- Exports ------------------------------------------------------------------
 
 /** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
@@ -246,14 +271,20 @@ export function getScoutOpsWorkspace(): HudsonWorkspace {
   };
 }
 
-/**
- * Logo Studio — local authoring workspace for Hudson brand work.
- *
- * Exposed only in development builds (see IS_DEV_ENV gate in getAllWorkspaces).
- * The logo-designer app relies on AI tooling + filesystem-backed templates that
- * aren't set up on the deployed /app preview; demoing it there would surface
- * quirks that distract from the core workspace story.
- */
+/** Developer Mode — operational tools for traces, relay traffic, APIs, and JSON. */
+export function getDeveloperModeWorkspace(): HudsonWorkspace {
+  return {
+    id: 'developer-mode',
+    name: 'Developer Mode',
+    description: 'Trace, relay, API, JSON, and architecture tools',
+    mode: 'canvas',
+    apps: getDeveloperModeApps(),
+    defaultFocusedAppId: 'api-inspector',
+    defaultScale: 0.2,
+  };
+}
+
+/** Logo Studio — authoring workspace for HudsonKit brand and shape work. */
 export function getLogoStudioWorkspace(): HudsonWorkspace {
   return {
     id: 'logo-studio',
@@ -291,7 +322,8 @@ export function getAllWorkspaces(): HudsonWorkspace[] {
   const entries: WorkspaceRegistryEntry[] = [
     { workspace: getHudsonKitWorkspace(), source: 'core:hudsonkit' },
     { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
-    ...(IS_DEV_ENV ? [{ workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' }] : []),
+    { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
+    { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
     ...(IS_DEV_ENV
       ? [
           ...loadWorkspacesFromJson().map(workspace => ({

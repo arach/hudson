@@ -7,13 +7,13 @@ import {
   LayoutGrid,
   Maximize2,
   MousePointer2,
-  Package,
   PanelsTopLeft,
   Terminal,
 } from 'lucide-react';
 import { InterestForm } from './_components/InterestForm';
 import { GlyphWavesBackground } from './_components/GlyphWavesBackground';
 import { ThemePreviewControls } from './_components/ThemePreviewControls';
+import { HudsonMark, SiteHeader } from './_components/SiteHeader';
 
 export default function Home() {
   return (
@@ -21,7 +21,7 @@ export default function Home() {
       <GlyphWavesBackground />
       <BackgroundGrid />
       <ThemePreviewControls />
-      <Nav />
+      <SiteHeader />
       <Hero />
       <LivePreview />
       <Features />
@@ -30,46 +30,6 @@ export default function Home() {
       <Interest />
       <Footer />
     </main>
-  );
-}
-
-// ─────────────────────────────────────────────────────────────────────────────
-// Chrome
-// ─────────────────────────────────────────────────────────────────────────────
-
-function Nav() {
-  return (
-    <header className="relative z-10 flex items-center justify-between px-6 md:px-10 h-14 border-b border-border/50 backdrop-blur-sm bg-background/60">
-      <Link
-        href="/"
-        className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
-      >
-        <HudsonMark className="w-5 h-5 text-cyan-500" />
-        <span className="font-brand text-[15px] tracking-wider">HUDSONKIT</span>
-      </Link>
-      <nav className="flex items-center gap-1 text-[13px]">
-        <Link
-          href="/docs"
-          className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Docs
-        </Link>
-        <a
-          href="https://www.npmjs.com/package/hudsonkit"
-          className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          <Package className="w-3.5 h-3.5" />
-          npm
-        </a>
-        <Link
-          href="/app"
-          className="ml-2 px-3 py-1.5 rounded-md border border-cyan-500/40 bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 hover:border-cyan-500/60 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-        >
-          Open Preview
-          <ArrowRight className="w-3.5 h-3.5" />
-        </Link>
-      </nav>
-    </header>
   );
 }
 
@@ -565,20 +525,5 @@ function BackgroundGrid() {
         }}
       />
     </>
-  );
-}
-
-function HudsonMark({ className }: { className?: string }) {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.5"
-      className={className}
-    >
-      <rect x="3" y="3" width="18" height="18" rx="2" />
-      <path d="M3 9h18M3 15h18M9 3v18M15 3v18" />
-    </svg>
   );
 }

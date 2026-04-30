@@ -34,8 +34,8 @@ export function TableOfContents({ entries }: { entries: TocEntry[] }) {
   if (entries.length === 0) return null;
 
   return (
-    <nav className="w-[220px] shrink-0 hidden xl:block overflow-y-auto py-4 px-3 sticky top-12 h-[calc(100vh-48px)] self-start">
-      <div className="text-[10px] font-mono font-bold tracking-widest text-neutral-500 uppercase px-2 mb-2">
+    <nav className="hidden h-[calc(100vh-56px)] w-[220px] shrink-0 self-start overflow-y-auto px-3 py-4 xl:sticky xl:top-14 xl:block">
+      <div className="mb-2 px-2 font-mono text-[10px] font-bold uppercase tracking-widest text-muted-foreground">
         On This Page
       </div>
       <ul className="space-y-0.5">
@@ -49,8 +49,8 @@ export function TableOfContents({ entries }: { entries: TocEntry[] }) {
                   entry.level === 3 ? "pl-5" : "pl-2"
                 } ${
                   active
-                    ? "text-emerald-400"
-                    : "text-neutral-500 hover:text-neutral-300"
+                    ? "text-cyan-400"
+                    : "text-muted-foreground hover:text-foreground"
                 }`}
               >
                 {entry.text}
