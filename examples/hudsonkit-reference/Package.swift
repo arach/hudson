@@ -21,6 +21,14 @@ let package = Package(
                 .product(name: "HudsonVoice", package: "hudson"),
             ],
             path: "Sources"
+        ),
+        .executableTarget(
+            name: "HudsonKitShellReference",
+            dependencies: [
+                .product(name: "HudsonUI", package: "hudson"),
+                .product(name: "HudsonShell", package: "hudson"),
+            ],
+            path: "ShellOnlySources"
         )
     ]
 )

@@ -9,6 +9,7 @@ public struct HudsonVoicePanel: View {
     @State private var partial = ""
     @State private var errorMessage: String?
     @State private var health: HudsonVoxHealth?
+    @State private var hasCheckedHealth = false
     @State private var isCheckingHealth = false
 
     private let endpoint: HudsonVoxEndpoint
@@ -31,9 +32,6 @@ public struct HudsonVoicePanel: View {
         .onDisappear {
             listenTask?.cancel()
             session?.close()
-        }
-        .task {
-            await refreshHealth()
         }
     }
 
@@ -114,7 +112,7 @@ public struct HudsonVoicePanel: View {
         HudsonButton("Listen", icon: "waveform", style: .primary(.cyan)) {
             Task { await startListening() }
         }
-        .disabled(session != nil || health == nil)
+        .disabled(session != nil || isCheckingHealth)
     }
 
     private var stopButton: some View {
@@ -148,6 +146,9 @@ public struct HudsonVoicePanel: View {
 
     private var displayText: String {
         if transcript.isEmpty && partial.isEmpty {
+            if !hasCheckedHealth {
+                return "Vox has not been checked yet. Use Check to verify the local companion, or Listen to check and start a live session."
+            }
             if let health {
                 return "\(health.service) \(health.version) is reachable. Start a live session to capture speech from the local companion."
             }
@@ -160,6 +161,9 @@ public struct HudsonVoicePanel: View {
     }
 
     private var statusColor: Color {
+        if !hasCheckedHealth && state == .done {
+            return HudsonPalette.statusInfo
+        }
         if health == nil && state == .done {
             return HudsonPalette.statusError
         }
@@ -180,6 +184,9 @@ public struct HudsonVoicePanel: View {
         if isCheckingHealth {
             return "CHECKING"
         }
+        if !hasCheckedHealth && state == .done {
+            return "UNCHECKED"
+        }
         if health == nil && state == .done {
             return "OFFLINE"
         }
@@ -189,7 +196,10 @@ public struct HudsonVoicePanel: View {
     @MainActor
     private func refreshHealth() async {
         isCheckingHealth = true
-        defer { isCheckingHealth = false }
+        defer {
+            hasCheckedHealth = true
+            isCheckingHealth = false
+        }
 
         do {
             health = try await HudsonVoxProbe.health(endpoint: endpoint, clientId: options.clientId)
