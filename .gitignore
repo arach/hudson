@@ -16,6 +16,7 @@ node_modules/
 
 # next.js
 .next/
+.open-next/
 /out/
 
 # production
@@ -84,6 +85,7 @@ next-env.d.ts
 
 # vercel
 .vercel
+.wrangler/
 
 # misc build artifacts
 .cache/

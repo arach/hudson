@@ -5,6 +5,11 @@
   "scripts": {
     "dev": "next dev --port 3500",
     "build": "next build",
+    "build:worker": "opennextjs-cloudflare build",
+    "preview:worker": "opennextjs-cloudflare build && opennextjs-cloudflare preview",
+    "deploy:worker": "opennextjs-cloudflare build && opennextjs-cloudflare deploy",
+    "upload:worker": "opennextjs-cloudflare build && opennextjs-cloudflare upload",
+    "cf-typegen": "wrangler types --env-interface CloudflareEnv cloudflare-env.d.ts",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -48,7 +53,6 @@
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
     "resend": "^6.9.2",
-    "sharp": "^0.34.5",
     "shiki": "^3.22.0",
     "unified": "^11.0.5",
     "unist-util-visit": "^5.1.0",
@@ -60,6 +64,7 @@
     "native/*"
   ],
   "devDependencies": {
+    "@opennextjs/cloudflare": "^1.19.4",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -67,12 +72,14 @@
     "@types/react": "^19",
     "@types/react-dom": "^19",
     "@types/ws": "^8.18.1",
+    "@types/yauzl": "^2.10.3",
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",
     "typescript": "5.9.3",
-    "vitest": "^4.0.18"
+    "vitest": "^4.0.18",
+    "wrangler": "^4.86.0"
   }
 }

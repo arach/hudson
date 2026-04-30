@@ -50,8 +50,11 @@ if (!existsSync(localWorkspacesFile)) {
 const nextConfig: NextConfig = {
   transpilePackages: ["@hudson/sdk", "@voxd/client"],
   serverExternalPackages: ["esbuild"],
+  images: {
+    unoptimized: true,
+  },
   turbopack: {
-    root: join(__dirname, ".."),
+    root: __dirname,
     resolveAlias: {
       tailwindcss: join(__dirname, "node_modules", "tailwindcss"),
     },

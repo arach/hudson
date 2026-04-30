@@ -18,11 +18,11 @@ const jura = Jura({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://app.hudsonos.com"),
-  title: "Hudson",
-  description: "HUD-style chrome components for canvas and panel-based applications",
+  metadataBase: new URL("https://hudsonkit.com"),
+  title: "HudsonKit",
+  description: "Shell and app primitives for building polished Hudson apps.",
   openGraph: {
-    title: "Hudson — Multi-app canvas workspace for React",
+    title: "HudsonKit — Multi-app canvas workspaces for React",
     description:
       "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
@@ -30,7 +30,7 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "Hudson — Multi-app canvas workspace for React",
+    title: "HudsonKit — Multi-app canvas workspaces for React",
     description:
       "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
     images: ["/og.png"],
