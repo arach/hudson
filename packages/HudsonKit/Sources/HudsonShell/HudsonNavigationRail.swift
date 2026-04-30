@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 // MARK: - Item
 
@@ -63,8 +64,11 @@ public struct HudsonNavigationRail<Footer: View>: View {
                         isExpanded: isExpanded,
                         accent: manifest.accent,
                         onTap: {
-                            HudsonInstrumentation.event("NavigationRail.select")
-                            selection = item.id
+                            let metadata = selectionMetadata(for: item)
+                            HInstrumentation.ui.event("NavigationRail.select", metadata: metadata)
+                            HInstrumentation.ui.span("NavigationRail.select.apply", metadata: metadata) {
+                                selection = item.id
+                            }
                         }
                     )
                 }
@@ -116,15 +120,36 @@ public struct HudsonNavigationRail<Footer: View>: View {
     }
 
     private func toggleExpanded() {
-        HudsonInstrumentation.event("NavigationRail.toggle")
-        if reduceMotion {
-            isExpanded.toggle()
-        } else {
-            withAnimation(HudsonMotion.chromeSpring) {
+        let metadata = [
+            "fromExpanded": hudsonBool(isExpanded),
+            "itemCount": "\(items.count)",
+            "toExpanded": hudsonBool(!isExpanded),
+        ]
+
+        HInstrumentation.ui.event("NavigationRail.toggle", metadata: metadata)
+        HInstrumentation.ui.span("NavigationRail.toggle.apply", metadata: metadata) {
+            if reduceMotion {
                 isExpanded.toggle()
+            } else {
+                withAnimation(HudsonMotion.chromeSpring) {
+                    isExpanded.toggle()
+                }
             }
         }
     }
+
+    private func selectionMetadata(for item: HudsonNavRailItem) -> [String: String] {
+        [
+            "changed": hudsonBool(selection != item.id),
+            "expanded": hudsonBool(isExpanded),
+            "itemCount": "\(items.count)",
+            "itemId": item.id,
+        ]
+    }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }
 
 // MARK: - Convenience init (no footer)

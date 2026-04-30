@@ -21,6 +21,7 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'hudsonkit';
+import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils';
 
 // --- Core apps (always loaded) ------------------------------------------------
 
@@ -272,13 +273,21 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
 
 /** All workspaces available to WorkspaceShell — HudsonKit + Scout Ops + (dev-only) Logo Studio + JSON-defined + local code workspaces. */
 export function getAllWorkspaces(): HudsonWorkspace[] {
-  return [
-    getHudsonKitWorkspace(),
-    getScoutOpsWorkspace(),
-    ...(IS_DEV_ENV ? [getLogoStudioWorkspace()] : []),
-    ...loadWorkspacesFromJson(),
-    ...localWorkspaces,
+  const entries: WorkspaceRegistryEntry[] = [
+    { workspace: getHudsonKitWorkspace(), source: 'core:hudsonkit' },
+    { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
+    ...(IS_DEV_ENV ? [{ workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' }] : []),
+    ...loadWorkspacesFromJson().map(workspace => ({ workspace, source: 'app/local/workspaces.json' })),
+    ...localWorkspaces.map(workspace => ({ workspace, source: 'app/local/apps.local.ts' })),
   ];
+
+  return uniqueWorkspaces(entries, duplicate => {
+    if (IS_DEV_ENV) {
+      console.warn(
+        `[registry] duplicate workspace "${duplicate.id}" from ${duplicate.skippedSource}; keeping ${duplicate.keptSource}`,
+      );
+    }
+  });
 }
 
 let _all: HudsonWorkspace[] | undefined;

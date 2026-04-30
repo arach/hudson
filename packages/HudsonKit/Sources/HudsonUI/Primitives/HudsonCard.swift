@@ -51,7 +51,7 @@ public struct HudsonInset<Content: View>: View {
     public var body: some View {
         content()
             .padding(padding)
-            .background(RoundedRectangle(cornerRadius: radius).fill(Color.white.opacity(0.025)))
+            .background(RoundedRectangle(cornerRadius: radius).fill(HSurface.inset))
             .overlay(RoundedRectangle(cornerRadius: radius).stroke(HudsonHairline.subtle, lineWidth: 1))
     }
 }

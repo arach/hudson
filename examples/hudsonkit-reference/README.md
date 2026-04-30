@@ -25,3 +25,25 @@ Use this app as the starting point for product apps such as Vox:
 
 The reference app is intentionally not Vox. It demonstrates the scaffold Vox
 can replicate for welcome, configuration, runtime health, and diagnostics.
+
+## Targets
+
+- `HudsonKitReference`: full SwiftUI reference with `HudsonUI`, `HudsonShell`,
+  and `HudsonVoice`.
+- `HudsonKitShellReference`: shell-only SwiftUI baseline for measuring the
+  chassis before optional modules are linked.
+- `HudsonKitAppKitReference`: macOS-only AppKit baseline with no SwiftUI or
+  HudsonKit imports.
+
+## Verify
+
+```bash
+swift build --package-path examples/hudsonkit-reference
+swift run --package-path examples/hudsonkit-reference HudsonKitShellReference
+```
+
+For memory comparisons, run the script from this directory:
+
+```bash
+./scripts/measure-memory.sh
+```

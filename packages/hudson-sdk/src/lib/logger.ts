@@ -1,6 +1,9 @@
+import { HObservabilityDefault } from '../observability';
+
 /**
  * Event-based logging bus.
  * Components emit via logEvent(), any component can listen via CustomEvent on window.
+ * New code should prefer HObservability/HLogger from `hudsonkit/observability`.
  */
 
 type LogPayload = Record<string, unknown>;
@@ -23,6 +26,11 @@ const readDebugFlag = (key: string) => {
 };
 
 export const logEvent = (label: string, payload: LogPayload, tag = 'LOG') => {
+  HObservabilityDefault.logger.debug(label, {
+    category: tag.toLowerCase(),
+    data: payload,
+  });
+
   if (!readDebugFlag('FRAME_DEBUG')) return;
   const timestamp = new Date().toISOString();
   if (typeof window !== 'undefined') {

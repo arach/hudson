@@ -16,5 +16,6 @@ public struct HudsonSectionLabel: View {
             .font(HudsonFont.mono(9, weight: .bold))
             .tracking(2.0)
             .foregroundStyle(tint)
+            .accessibilityLabel(text)
     }
 }

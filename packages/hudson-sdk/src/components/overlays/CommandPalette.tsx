@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, CornerDownLeft } from 'lucide-react';
+import { HObservabilityDefault } from '../../observability';
 
 export interface CommandOption {
   id: string;
@@ -29,17 +30,42 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
 
   useEffect(() => {
     if (isOpen) {
+      HObservabilityDefault.logger.info('hudson.command_palette.open', {
+        category: 'command',
+        data: { commandCount: commands.length },
+      });
       setTimeout(() => inputRef.current?.focus(), 10);
       setQuery('');
       setSelectedIndex(0);
     }
-  }, [isOpen]);
+  }, [commands.length, isOpen]);
 
   useEffect(() => { setSelectedIndex(0); }, [query]);
 
   useEffect(() => {
     selectedRef.current?.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
   }, [selectedIndex]);
+
+  const executeCommand = (cmd: CommandOption, source: 'keyboard' | 'pointer') => {
+    const span = HObservabilityDefault.trace.start('hudson.command.execute', {
+      category: 'command',
+      data: {
+        commandId: cmd.id,
+        surface: 'command_palette',
+        source,
+        queryLength: query.length,
+        resultCount: filteredCommands.length,
+      },
+    });
+    try {
+      cmd.action();
+      span.end();
+      onClose();
+    } catch (error) {
+      span.error(error);
+      throw error;
+    }
+  };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
     if ((e.key === 'ArrowDown' || e.key === 'ArrowUp') && filteredCommands.length === 0) {
@@ -48,7 +74,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
     }
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIndex(prev => (prev + 1) % filteredCommands.length); }
     else if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIndex(prev => (prev - 1 + filteredCommands.length) % filteredCommands.length); }
-    else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[selectedIndex]) { filteredCommands[selectedIndex].action(); onClose(); } }
+    else if (e.key === 'Enter') { e.preventDefault(); if (filteredCommands[selectedIndex]) { executeCommand(filteredCommands[selectedIndex], 'keyboard'); } }
     else if (e.key === 'Escape') { onClose(); }
   };
 
@@ -86,7 +112,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
                 className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:bg-muted ${
                   idx === selectedIndex ? 'bg-accent/10 border-l-2 border-accent' : 'border-l-2 border-transparent hover:bg-muted/70'
                 }`}
-                onClick={() => { cmd.action(); onClose(); }}
+                onClick={() => executeCommand(cmd, 'pointer')}
                 onMouseEnter={() => setSelectedIndex(idx)}
               >
                 {cmd.icon && <div className={`${idx === selectedIndex ? 'text-accent' : 'text-muted-foreground'}`}>{cmd.icon}</div>}

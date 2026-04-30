@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonObservability
 
 /// Full-viewport blocking surface that overlays the entire shell.
 ///
@@ -70,12 +71,18 @@ public struct HudsonTakeover<Header: View, Content: View>: View {
     }
 
     private func close() {
-        HudsonInstrumentation.event("Takeover.close")
-        if reduceMotion {
-            isPresented = false
-        } else {
-            withAnimation(HudsonMotion.overlaySpring) {
+        let metadata = [
+            "fromPresented": hudsonBool(isPresented),
+            "toPresented": "false",
+        ]
+
+        HInstrumentation.ui.span("Takeover.close.apply", metadata: metadata) {
+            if reduceMotion {
                 isPresented = false
+            } else {
+                withAnimation(HudsonMotion.overlaySpring) {
+                    isPresented = false
+                }
             }
         }
     }
@@ -112,7 +119,9 @@ private struct HudsonTakeoverPresenter<Takeover: View>: ViewModifier {
         .animation(HudsonMotion.ifAllowed(HudsonMotion.overlaySpring, reduceMotion: reduceMotion), value: isPresented)
         .onChange(of: isPresented) { _, presented in
             if presented {
-                HudsonInstrumentation.event("Takeover.open")
+                HInstrumentation.ui.event("Takeover.open", metadata: ["presented": "true"])
+            } else {
+                HInstrumentation.ui.event("Takeover.close", metadata: ["presented": "false"])
             }
         }
     }
@@ -126,4 +135,8 @@ private struct HudsonTakeoverPresenter<Takeover: View>: ViewModifier {
             removal: .opacity
         )
     }
+}
+
+private func hudsonBool(_ value: Bool) -> String {
+    value ? "true" : "false"
 }
