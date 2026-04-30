@@ -7,17 +7,21 @@ import SwiftUI
 /// `bg`/`surface` for surfaces, `ink`/`muted`/`dim` for text, `border` for
 /// hairlines, `accent` for the app's primary tint, `status*` for state colors.
 public enum HudsonPalette {
-    // Surfaces — `--hud-bg`, `--hud-surface`
+    // Surfaces — `--hud-bg`, `--hud-surface`, `--hud-chrome`
     public static let bg      = Color(red: 10.0/255,  green: 10.0/255,  blue: 10.0/255)
     public static let surface = Color(red: 23.0/255,  green: 23.0/255,  blue: 23.0/255)
+    // Chrome — solid pane background (nav rail, inspector, drawers, takeover header).
+    // Slightly darker than bg so panes recede behind canvas content. Solid (no opacity)
+    // to preserve subpixel text rendering on macOS.
+    public static let chrome  = Color(red: 6.0/255,   green: 6.0/255,   blue: 6.0/255)
 
     // Text — `--hud-ink`, `--hud-muted`, `--hud-dim`
     public static let ink   = Color(red: 229.0/255, green: 229.0/255, blue: 229.0/255)
     public static let muted = Color(red: 163.0/255, green: 163.0/255, blue: 163.0/255)
     public static let dim   = Color(red: 115.0/255, green: 115.0/255, blue: 115.0/255)
 
-    // Structure — `--hud-border`
-    public static let border = Color(red: 64.0/255, green: 64.0/255, blue: 64.0/255).opacity(0.5)
+    // Structure — `--hud-border`. Solid so 1pt strokes render crisply.
+    public static let border = Color(red: 39.0/255, green: 39.0/255, blue: 39.0/255)
 
     // Accent — `--hud-accent` defaults to emerald-500; consumers override via HudsonAppManifest.
     public static let accent     = Color(red: 16.0/255,  green: 185.0/255, blue: 129.0/255)
@@ -63,9 +67,10 @@ public enum HudsonTint: String, CaseIterable, Sendable {
 // MARK: - Hairlines
 
 /// Thin overlay strokes used for cards, insets, dividers. Two-tier scale —
-/// `hairline` is barely-there structure, `hairline2` is for slightly more
-/// emphasis (selected rows, top-bar bottom border).
+/// `subtle` is barely-there structure, `standard` is for slightly more
+/// emphasis (selected rows, top-bar bottom border). Solid colors so 1pt
+/// rules stay crisp under subpixel rendering.
 public enum HudsonHairline {
-    public static let subtle   = Color.white.opacity(0.06)
-    public static let standard = Color.white.opacity(0.10)
+    public static let subtle   = Color(red: 24.0/255, green: 24.0/255, blue: 24.0/255)
+    public static let standard = Color(red: 38.0/255, green: 38.0/255, blue: 38.0/255)
 }
