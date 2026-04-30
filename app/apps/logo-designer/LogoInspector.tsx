@@ -24,8 +24,8 @@ export function LogoInspectorHeaderActions() {
       onClick={toggleInspectMode}
       className={`p-1 rounded transition-colors ${
         inspectMode
-          ? 'text-cyan-400 bg-cyan-500/15'
-          : 'text-white/25 hover:text-white/50 hover:bg-white/5'
+          ? 'text-info bg-info/15'
+          : 'text-muted-foreground/80 hover:text-foreground/80 hover:bg-muted/40'
       }`}
       title={inspectMode ? 'Exit inspect mode' : 'Inspect element parameters'}
     >
@@ -50,23 +50,23 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
 
   return (
     <div className="flex flex-col gap-1">
-      <span className="text-[11px] text-white/50">Font</span>
+      <span className="text-[11px] text-muted-foreground">Font</span>
       <button
         onClick={() => setOpen(o => !o)}
-        className="w-full flex items-center justify-between px-2 py-1 rounded bg-white/5 border border-white/10 text-[11px] text-white/70 hover:border-emerald-500/40 transition-colors"
+        className="w-full flex items-center justify-between px-2 py-1 rounded bg-muted/40 border border-border text-[11px] text-foreground/80 hover:border-accent/40 transition-colors"
       >
         <span style={{ fontFamily: value }}>{value}</span>
-        <Search size={10} className="text-white/30" />
+        <Search size={10} className="text-muted-foreground" />
       </button>
       {open && (
-        <div className="flex flex-col border border-white/10 rounded bg-neutral-900/95 backdrop-blur-xl overflow-hidden">
+        <div className="flex flex-col border border-border rounded bg-popover/95 backdrop-blur-xl overflow-hidden">
           <input
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
             placeholder="Search fonts..."
             autoFocus
-            className="px-2 py-1.5 text-[11px] bg-transparent border-b border-white/10 text-white/80 placeholder:text-white/20 outline-none"
+            className="px-2 py-1.5 text-[11px] bg-transparent border-b border-border text-foreground/90 placeholder:text-muted-foreground/80 outline-none"
           />
           <div className="max-h-[200px] overflow-y-auto frame-scrollbar">
             {filtered.map(font => (
@@ -80,8 +80,8 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
                 }}
                 className={`w-full text-left px-2 py-1.5 text-[11px] transition-colors ${
                   font === value
-                    ? 'bg-emerald-500/15 text-emerald-400'
-                    : 'text-white/60 hover:bg-white/5 hover:text-white/80'
+                    ? 'bg-accent/15 text-accent'
+                    : 'text-foreground/70 hover:bg-muted/40 hover:text-foreground/90'
                 }`}
                 style={{ fontFamily: font }}
               >
@@ -89,7 +89,7 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
               </button>
             ))}
             {filtered.length === 0 && (
-              <div className="px-2 py-3 text-[10px] text-white/20 text-center">No fonts match</div>
+              <div className="px-2 py-3 text-[10px] text-muted-foreground/80 text-center">No fonts match</div>
             )}
           </div>
         </div>
@@ -185,9 +185,9 @@ function ExportButton({
   return (
     <button
       onClick={handle}
-      className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] active:bg-white/[0.14] transition-colors text-[11px] font-mono text-neutral-300"
+      className="flex items-center gap-2 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 active:bg-muted transition-colors text-[11px] font-mono text-foreground/80"
     >
-      {done ? <Check size={12} className="text-emerald-400" /> : icon}
+      {done ? <Check size={12} className="text-accent" /> : icon}
       {done ? 'Done' : label}
     </button>
   );
@@ -335,8 +335,8 @@ export function LogoInspector() {
       {/* ── Active template name ── */}
       {activeTemplate && (
         <div className="flex items-center gap-2 px-1 pb-2">
-          <span className="text-[12px] font-medium text-white/70 truncate">{activeTemplate.name}</span>
-          <span className="text-[9px] text-white/20 font-mono shrink-0">{activeTemplate.id}</span>
+          <span className="text-[12px] font-medium text-foreground/80 truncate">{activeTemplate.name}</span>
+          <span className="text-[9px] text-muted-foreground/80 font-mono shrink-0">{activeTemplate.id}</span>
         </div>
       )}
 
@@ -455,6 +455,15 @@ export function LogoInspector() {
           onChange={v => setParam('paneRadius', v)} />
       </ParamSection>
 
+      {/* ── Generic: Shape intake ── */}
+      <ParamSection label="Shape" defaultExpanded={false}>
+        <ParamToggle
+          label="Clip to piped shape"
+          value={params.clipToShape}
+          onChange={v => setParam('clipToShape', v)}
+        />
+      </ParamSection>
+
       {/* ── Generic: Colors (dark mode) ── */}
       <ParamSection label="Colors" defaultExpanded={false}>
         <ParamColor label="Background" value={params.bgColor} onChange={v => setParam('bgColor', v)} />
@@ -468,7 +477,7 @@ export function LogoInspector() {
       <ParamSection label="Preview" defaultExpanded={true}>
         <div
           ref={previewRef}
-          className="flex items-center justify-center rounded-lg bg-neutral-900/60 p-4"
+          className="flex items-center justify-center rounded-lg bg-muted/40 p-4"
         >
           <LogoSvg params={params} size={160} />
         </div>
@@ -489,7 +498,7 @@ export function LogoInspector() {
             <button
               key={size}
               onClick={() => handleDownloadPng(size)}
-              className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-white/[0.04] hover:bg-white/[0.08] active:bg-white/[0.12] transition-colors text-[10px] font-mono text-white/40 hover:text-white/60"
+              className="flex items-center justify-center gap-1 px-2 py-1 rounded bg-muted/20 hover:bg-muted/40 active:bg-muted/60 transition-colors text-[10px] font-mono text-muted-foreground hover:text-foreground/80"
             >
               {size}
             </button>
@@ -498,7 +507,7 @@ export function LogoInspector() {
 
         {/* Platform exports */}
         <div className="space-y-1">
-          <div className="text-[9px] font-mono uppercase tracking-widest text-white/20 mb-1.5">Platforms</div>
+          <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground/80 mb-1.5">Platforms</div>
           {([
             { id: 'macos' as ExportPlatform, icon: Apple, label: 'macOS', desc: '.icns + iconset bundle' },
             { id: 'ios' as ExportPlatform, icon: Smartphone, label: 'iOS', desc: '.appiconset for Xcode' },
@@ -510,20 +519,20 @@ export function LogoInspector() {
               key={id}
               onClick={() => handlePlatformExport(id)}
               disabled={platformExporting !== null}
-              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] active:bg-white/[0.09] disabled:opacity-30 disabled:pointer-events-none transition-colors text-left"
+              className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-muted/20 hover:bg-muted/40 active:bg-muted/60 disabled:opacity-30 disabled:pointer-events-none transition-colors text-left"
             >
-              <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
+              <div className="w-7 h-7 rounded-md bg-muted/40 flex items-center justify-center shrink-0">
                 {platformExporting === id ? (
-                  <Loader2 size={13} className="animate-spin text-white/40" />
+                  <Loader2 size={13} className="animate-spin text-muted-foreground" />
                 ) : (
-                  <Icon size={13} className="text-white/40" />
+                  <Icon size={13} className="text-muted-foreground" />
                 )}
               </div>
               <div className="min-w-0">
-                <div className="text-[11px] text-white/70 font-medium">{label}</div>
-                <div className="text-[9px] text-white/25 truncate">{desc}</div>
+                <div className="text-[11px] text-foreground/80 font-medium">{label}</div>
+                <div className="text-[9px] text-muted-foreground truncate">{desc}</div>
               </div>
-              <Download size={11} className="ml-auto text-white/15 shrink-0" />
+              <Download size={11} className="ml-auto text-muted-foreground/60 shrink-0" />
             </button>
           ))}
 
@@ -531,25 +540,25 @@ export function LogoInspector() {
           <button
             onClick={() => handlePlatformExport('icon-composer')}
             disabled={platformExporting !== null || !iconComposerAvailable}
-            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-white/[0.03] hover:bg-white/[0.06] active:bg-white/[0.09] disabled:opacity-30 disabled:pointer-events-none transition-colors text-left mt-2 border-t border-white/[0.04] pt-3"
+            className="w-full flex items-center gap-2.5 px-2.5 py-2 rounded-lg bg-muted/20 hover:bg-muted/40 active:bg-muted/60 disabled:opacity-30 disabled:pointer-events-none transition-colors text-left mt-2 border-t border-border/60 pt-3"
           >
-            <div className="w-7 h-7 rounded-md bg-white/[0.04] flex items-center justify-center shrink-0">
+            <div className="w-7 h-7 rounded-md bg-muted/40 flex items-center justify-center shrink-0">
               {platformExporting === 'icon-composer' ? (
-                <Loader2 size={13} className="animate-spin text-white/40" />
+                <Loader2 size={13} className="animate-spin text-muted-foreground" />
               ) : (
-                <Apple size={13} className="text-white/40" />
+                <Apple size={13} className="text-muted-foreground" />
               )}
             </div>
             <div className="min-w-0">
-              <div className="text-[11px] text-white/70 font-medium">Icon Composer</div>
-              <div className="text-[9px] text-white/25 truncate">
+              <div className="text-[11px] text-foreground/80 font-medium">Icon Composer</div>
+              <div className="text-[9px] text-muted-foreground truncate">
                 {iconComposerAvailable ? 'Open 1024px in Icon Composer' : 'Not installed'}
               </div>
             </div>
-            <ExternalLink size={11} className="ml-auto text-white/15 shrink-0" />
+            <ExternalLink size={11} className="ml-auto text-muted-foreground/60 shrink-0" />
           </button>
           {iconComposerPath && (
-            <div className="text-[9px] font-mono text-white/20 px-2 mt-1 truncate">{iconComposerPath}</div>
+            <div className="text-[9px] font-mono text-muted-foreground/80 px-2 mt-1 truncate">{iconComposerPath}</div>
           )}
         </div>
       </ParamSection>

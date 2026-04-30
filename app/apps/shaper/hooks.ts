@@ -37,7 +37,7 @@ export function useShaperCommands(): CommandOption[] {
     { id: 'shaper:toggle-anchors', label: `${showAnchors ? 'Hide' : 'Show'} Anchors`, action: () => setShowAnchors(v => !v) },
     { id: 'shaper:toggle-handles', label: `${showHandles ? 'Hide' : 'Show'} Handles`, action: () => setShowHandles(v => !v) },
     { id: 'shaper:toggle-labels', label: `${showLabels ? 'Hide' : 'Show'} Labels`, action: () => setShowLabels(v => !v) },
-    { id: 'shaper:toggle-original', label: `${showOriginal ? 'Hide' : 'Show'} Original Image`, action: () => setShowOriginal(v => !v) },
+    { id: 'shaper:toggle-original', label: `${showOriginal ? 'Hide' : 'Show'} Input Image`, action: () => setShowOriginal(v => !v) },
     { id: 'shaper:toggle-silhouette', label: `${showSilhouette ? 'Hide' : 'Show'} Silhouette`, action: () => setShowSilhouette(v => !v) },
     { id: 'shaper:toggle-grid', label: `${showGrid ? 'Hide' : 'Show'} Grid`, action: () => setShowGrid(v => !v) },
     { id: 'shaper:toggle-guides', label: `${showGuides ? 'Hide' : 'Show'} Crosshair Guides`, action: () => setShowGuides(v => !v) },
@@ -94,7 +94,7 @@ export function useShaperNavCenter() {
 // ---------------------------------------------------------------------------
 export function useShaperNavActions() {
   const { saveStatus, projectImage, projectMeta } = useShaper();
-  const displayName = projectMeta?.name ?? (projectImage ? projectImage.name : 'talkie-bezier.json');
+  const displayName = projectMeta?.name ?? (projectImage ? projectImage.name : 'Untitled');
   return createElement('span', { className: 'flex items-center gap-2' },
     createElement('span', { className: 'text-[11px] font-mono text-neutral-400' }, displayName),
     createElement('span', {

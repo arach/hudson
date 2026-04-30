@@ -139,6 +139,28 @@ function getCoreApps(): WorkspaceAppConfig[] {
   ];
 }
 
+function getLogoStudioApps(): WorkspaceAppConfig[] {
+  return [
+    {
+      app: logoDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -540, y: -300, w: 1080, h: 720 },
+    },
+    {
+      app: assetsApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 580, y: -260, w: 540, h: 360 },
+    },
+    // Shaper bridges raster Assets → vector Logo by tracing/bezier-editing the silhouette.
+    // Pipeline: assets.image → shaper.image, then shaper.svg → logo-designer.background-svg
+    {
+      app: shaperApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 580, y: 140, w: 540, h: 420 },
+    },
+  ];
+}
+
 function getScoutOpsApps(): WorkspaceAppConfig[] {
   return [
     {
@@ -173,6 +195,14 @@ function getScoutOpsApps(): WorkspaceAppConfig[] {
 
 import { localApps, localWorkspaces } from '../local/apps.local';
 
+// --- Environment gates --------------------------------------------------------
+// process.env.NODE_ENV is statically replaced by Next.js at build time. It is
+// 'development' only during `bun dev`; every Vercel preview/production build
+// (and `bun run build`) sets it to 'production'. Use this to gate in-progress
+// workspaces + apps that should stay off the public /app route but always be
+// visible to any developer running locally.
+const IS_DEV_ENV = process.env.NODE_ENV === 'development';
+
 // --- Exports ------------------------------------------------------------------
 
 /** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
@@ -201,6 +231,26 @@ export function getScoutOpsWorkspace(): HudsonWorkspace {
   };
 }
 
+/**
+ * Logo Studio — local authoring workspace for Hudson brand work.
+ *
+ * Exposed only in development builds (see IS_DEV_ENV gate in getAllWorkspaces).
+ * The logo-designer app relies on AI tooling + filesystem-backed templates that
+ * aren't set up on the deployed /app preview; demoing it there would surface
+ * quirks that distract from the core workspace story.
+ */
+export function getLogoStudioWorkspace(): HudsonWorkspace {
+  return {
+    id: 'logo-studio',
+    name: 'Logo Studio',
+    description: 'Logo design + asset export workflow',
+    mode: 'canvas',
+    apps: getLogoStudioApps(),
+    defaultFocusedAppId: 'logo-designer',
+    defaultScale: 0.5,
+  };
+}
+
 
 // Backwards-compat: callers that import `hudsonOSWorkspace` as a const get
 // a cached snapshot created on first access.
@@ -220,9 +270,15 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
   },
 });
 
-/** All workspaces available to WorkspaceShell — HudsonKit + JSON-defined + local code workspaces. */
+/** All workspaces available to WorkspaceShell — HudsonKit + Scout Ops + (dev-only) Logo Studio + JSON-defined + local code workspaces. */
 export function getAllWorkspaces(): HudsonWorkspace[] {
-  return [getHudsonKitWorkspace(), getScoutOpsWorkspace(), ...loadWorkspacesFromJson(), ...localWorkspaces];
+  return [
+    getHudsonKitWorkspace(),
+    getScoutOpsWorkspace(),
+    ...(IS_DEV_ENV ? [getLogoStudioWorkspace()] : []),
+    ...loadWorkspacesFromJson(),
+    ...localWorkspaces,
+  ];
 }
 
 let _all: HudsonWorkspace[] | undefined;

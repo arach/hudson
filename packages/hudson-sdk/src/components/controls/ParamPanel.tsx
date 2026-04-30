@@ -21,7 +21,7 @@ export function ParamSection({ label, defaultExpanded = true, children }: ParamS
       <button
         type="button"
         onClick={() => setExpanded(e => !e)}
-        className="flex items-center gap-1.5 py-1.5 text-[10px] uppercase tracking-widest text-white/30 hover:text-white/50 transition-colors"
+        className="flex items-center gap-1.5 py-1.5 text-[10px] uppercase tracking-widest text-muted-foreground hover:text-foreground transition-colors"
       >
         <ChevronRight
           size={10}
@@ -57,13 +57,13 @@ export function ParamSlider({ label, value, min, max, step, onChange, format }: 
   return (
     <label className="flex flex-col gap-1">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-white/50">{label}</span>
-        <span className="text-[11px] font-mono text-white/30">{display}</span>
+        <span className="text-[11px] text-foreground/80">{label}</span>
+        <span className="text-[11px] font-mono text-muted-foreground">{display}</span>
       </div>
       <input
         type="range" min={min} max={max} step={step} value={value}
         onChange={e => onChange(Number(e.target.value))}
-        className="w-full accent-emerald-500 h-1"
+        className="w-full accent-accent h-1"
       />
     </label>
   );
@@ -89,9 +89,9 @@ export function ParamToggle({ label, value, onChange }: ParamToggleProps) {
       onKeyDown={e => { if (e.key === ' ' || e.key === 'Enter') { e.preventDefault(); onChange(!value); } }}
       className="flex items-center justify-between cursor-pointer group"
     >
-      <span className="text-[11px] text-white/50 group-hover:text-white/70 transition-colors">{label}</span>
+      <span className="text-[11px] text-foreground/80 group-hover:text-foreground transition-colors">{label}</span>
       <div className={`relative w-8 h-[18px] rounded-full transition-colors shrink-0 ${
-        value ? 'bg-emerald-500/60' : 'bg-white/10'
+        value ? 'bg-accent' : 'bg-muted'
       }`}>
         <span className={`absolute top-[2px] w-[14px] h-[14px] rounded-full bg-white transition-transform ${
           value ? 'translate-x-[16px]' : 'translate-x-[2px]'
@@ -115,14 +115,14 @@ export function ParamColor({ label, value, onChange }: ParamColorProps) {
   const isRgba = typeof value === 'string' && value.startsWith('rgba');
   return (
     <label className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[11px] text-foreground/80">{label}</span>
       {isRgba ? (
-        <span className="text-[10px] font-mono text-white/25 truncate max-w-[120px]">{value}</span>
+        <span className="text-[10px] font-mono text-muted-foreground/80 truncate max-w-[120px]">{value}</span>
       ) : (
         <div className="flex items-center gap-1.5">
           <input type="color" value={value} onChange={e => onChange(e.target.value)}
-            className="w-5 h-5 rounded border border-white/10 cursor-pointer bg-transparent" />
-          <span className="text-[10px] font-mono text-white/30">{value}</span>
+            className="w-5 h-5 rounded border border-border cursor-pointer bg-transparent" />
+          <span className="text-[10px] font-mono text-muted-foreground">{value}</span>
         </div>
       )}
     </label>
@@ -143,11 +143,11 @@ export interface ParamEnumProps {
 export function ParamEnum({ label, value, options, onChange }: ParamEnumProps) {
   return (
     <label className="flex items-center justify-between gap-2">
-      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[11px] text-foreground/80">{label}</span>
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="text-[11px] bg-white/5 border border-white/10 rounded px-1.5 py-0.5 text-white/70 outline-none"
+        className="text-[11px] bg-muted/40 border border-border rounded px-1.5 py-0.5 text-foreground/80 outline-none focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/30"
       >
         {options.map((opt, i) => {
           const val = typeof opt === 'object' ? JSON.stringify(opt) : String(opt);
@@ -172,13 +172,13 @@ export interface ParamTextProps {
 export function ParamText({ label, value, placeholder, onChange }: ParamTextProps) {
   return (
     <label className="flex flex-col gap-1">
-      <span className="text-[11px] text-white/50">{label}</span>
+      <span className="text-[11px] text-foreground/80">{label}</span>
       <input
         type="text"
         value={value}
         placeholder={placeholder}
         onChange={e => onChange(e.target.value)}
-        className="w-full bg-white/5 border border-white/10 rounded px-2 py-1 text-[11px] font-mono text-white/70 placeholder:text-white/20 outline-none focus:border-emerald-500/40 transition-colors"
+        className="w-full bg-muted/40 border border-border rounded px-2 py-1 text-[11px] font-mono text-foreground/80 placeholder:text-muted-foreground/60 outline-none focus:border-accent/60 focus:ring-1 focus:ring-accent/20 transition-colors"
       />
     </label>
   );
@@ -216,26 +216,26 @@ export function ParamRepeatable({ label, value, itemFields, itemTemplate, onChan
   return (
     <div className="flex flex-col gap-1.5">
       <div className="flex items-center justify-between">
-        <span className="text-[11px] text-white/50">{label}</span>
+        <span className="text-[11px] text-foreground/80">{label}</span>
         <button
           onClick={() => onChange([...items, { ...template }])}
-          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-emerald-400/70 hover:text-emerald-400 hover:bg-emerald-500/10 transition-colors"
+          className="flex items-center gap-1 px-1.5 py-0.5 rounded text-[10px] text-accent/70 hover:text-accent hover:bg-accent/10 transition-colors"
         >
           + Add
         </button>
       </div>
       {items.length === 0 && (
-        <div className="text-[10px] text-white/20 text-center py-2 border border-dashed border-white/8 rounded">
+        <div className="text-[10px] text-muted-foreground/60 text-center py-2 border border-dashed border-border/60 rounded">
           No items
         </div>
       )}
       {items.map((item, index) => (
-        <div key={index} className="rounded border border-white/8 bg-white/[0.02] p-2 space-y-1.5">
+        <div key={index} className="rounded border border-border/60 bg-muted/20 p-2 space-y-1.5">
           <div className="flex items-center justify-between">
-            <span className="text-[9px] font-mono text-white/25 uppercase">#{index + 1}</span>
+            <span className="text-[9px] font-mono text-muted-foreground/80 uppercase">#{index + 1}</span>
             <button
               onClick={() => onChange(items.filter((_, i) => i !== index))}
-              className="px-1 py-0.5 rounded text-[9px] text-white/20 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+              className="px-1 py-0.5 rounded text-[9px] text-muted-foreground/60 hover:text-destructive hover:bg-destructive/10 transition-colors"
             >
               ✕
             </button>

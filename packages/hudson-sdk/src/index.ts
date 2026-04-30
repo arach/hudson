@@ -2,8 +2,8 @@
 // Shell internals are in 'hudsonkit/shell'.
 
 // Types
-export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState } from './types/app';
-export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from './types/workspace';
+export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode } from './types/app';
+export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, AppInstance } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
@@ -11,6 +11,8 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
+export { InstanceProvider, useInstance, useOptionalInstance } from './context/InstanceContext';
+export type { InstanceContextValue } from './context/InstanceContext';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';
@@ -20,6 +22,8 @@ export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 // Voice kit interface (types only — no runtime voice code).
 // For actual voice functionality, import from 'hudsonkit/voice'.
 export type { AssistantVoiceKit, VoiceKitInput, VoiceKitOutput, VoiceKitSettings } from './types/voice-kit';
+export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
+export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
 
@@ -33,6 +37,8 @@ export * from './lib/sounds';
 export { logEvent, FRAME_LOG_EVENT } from './lib/logger';
 export type { FrameLogEntry } from './lib/logger';
 export { worldToScreen, screenToWorld } from './lib/viewport';
+export { probeVoxAvailability } from './lib/voxProbe';
+export type { VoxAvailability } from './lib/voxProbe';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';

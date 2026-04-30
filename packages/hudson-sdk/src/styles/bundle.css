@@ -1,5 +1,36 @@
 @import "tailwindcss";
+@import "./tokens.css";
 @source "../**/*.{ts,tsx}";
+
+@theme inline {
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  --color-popover: oklch(var(--popover));
+  --color-popover-foreground: oklch(var(--popover-foreground));
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  --color-secondary: oklch(var(--secondary));
+  --color-secondary-foreground: oklch(var(--secondary-foreground));
+  --color-muted: oklch(var(--muted));
+  --color-muted-foreground: oklch(var(--muted-foreground));
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  --color-destructive: oklch(var(--destructive));
+  --color-destructive-foreground: oklch(var(--destructive-foreground));
+  --color-warning: oklch(var(--warning));
+  --color-success: oklch(var(--success));
+  --color-info: oklch(var(--info));
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
+  --font-sans: var(--hud-font-sans);
+  --font-mono: var(--hud-font-mono);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
 
 /* ─────────────────────────────────────────────────────────────────────────
    Hudson semantic tokens
@@ -13,6 +44,30 @@
    want a light content area set overrides on their Provider's root element.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
+  --background: 0.145 0 0;
+  --foreground: 0.95 0 0;
+  --card: 0.18 0 0;
+  --card-foreground: 0.95 0 0;
+  --popover: 0.16 0 0;
+  --popover-foreground: 0.95 0 0;
+  --primary: 0.75 0.17 162;
+  --primary-foreground: 0.145 0 0;
+  --secondary: 0.24 0 0;
+  --secondary-foreground: 0.95 0 0;
+  --muted: 0.22 0 0;
+  --muted-foreground: 0.64 0 0;
+  --accent: 0.72 0.18 162;
+  --accent-foreground: 0.145 0 0;
+  --destructive: 0.62 0.24 25;
+  --destructive-foreground: 0.98 0 0;
+  --warning: 0.8 0.17 75;
+  --success: 0.7 0.17 145;
+  --info: 0.62 0.2 250;
+  --border: 0.28 0 0;
+  --input: 0.28 0 0;
+  --ring: 0.72 0.18 162;
+  --radius: 8px;
+
   /* Surfaces */
   --hud-bg: rgb(10 10 10);
   --hud-surface: rgb(23 23 23);

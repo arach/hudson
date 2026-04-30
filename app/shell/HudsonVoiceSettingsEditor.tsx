@@ -300,7 +300,7 @@ export function HudsonVoiceSettingsEditor({
   return (
     <div className="space-y-4">
       {intro && (
-        <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
+        <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
           {intro}
         </div>
       )}
@@ -367,7 +367,7 @@ export function HudsonVoiceSettingsEditor({
           onChange(applyHudsonVoiceBehaviorPreset(voiceSettings, value));
         }}
       />
-      <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
+      <div className="text-[10px] font-mono text-muted-foreground leading-relaxed">
         Concise keeps spoken replies tight. Balanced gives a fuller spoken summary. Detailed reads more before falling back to summary rules. Use Custom only when you want to override the preset below.
       </div>
       <SettingsSelect
@@ -389,23 +389,23 @@ export function HudsonVoiceSettingsEditor({
               void handlePreviewVoice();
             }}
           />
-          <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
+          <div className="text-[10px] font-mono text-muted-foreground leading-relaxed">
             {selectedVoicePreviewText}
           </div>
         </div>
         {voicePreviewError && (
-          <div className="text-[10px] font-mono text-red-400/80">
+          <div className="text-[10px] font-mono text-destructive/80">
             {voicePreviewError}
           </div>
         )}
       </div>
-      <details className="rounded-lg border border-neutral-800/60 bg-neutral-900/30">
-        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-neutral-400">
+      <details className="rounded-lg border border-border/60 bg-muted/40">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
           Advanced Reply Behavior
         </summary>
-        <div className="space-y-4 border-t border-neutral-800/60 px-3 py-3">
-          <div className="text-[10px] font-mono text-neutral-500 leading-relaxed">
-            Current profile: <span className="text-neutral-300">{getHudsonVoiceBehaviorPresetLabel(voiceBehaviorPreset)}</span>. Spoken detail is <span className="text-neutral-300">{getHudsonSpokenReplyStyleLabel(voiceSettings.spokenReplyStyle)}</span>.
+        <div className="space-y-4 border-t border-border/60 px-3 py-3">
+          <div className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+            Current profile: <span className="text-foreground/80">{getHudsonVoiceBehaviorPresetLabel(voiceBehaviorPreset)}</span>. Spoken detail is <span className="text-foreground/80">{getHudsonSpokenReplyStyleLabel(voiceSettings.spokenReplyStyle)}</span>.
           </div>
           <SettingsSegment
             label="Reply Readout"
@@ -460,11 +460,11 @@ export function HudsonVoiceSettingsEditor({
           />
         </div>
       </details>
-      <details className="rounded-lg border border-neutral-800/60 bg-neutral-900/30">
-        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-neutral-400">
+      <details className="rounded-lg border border-border/60 bg-muted/40">
+        <summary className="cursor-pointer list-none px-3 py-2 text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
           Speech Engine
         </summary>
-        <div className="space-y-4 border-t border-neutral-800/60 px-3 py-3">
+        <div className="space-y-4 border-t border-border/60 px-3 py-3">
           <SettingsSlider
             label="Reply Speed"
             value={voiceSettings.replyRate}
@@ -478,31 +478,31 @@ export function HudsonVoiceSettingsEditor({
             })}
           />
           {!selectedProvider?.supportsRate && (
-            <div className="text-[10px] font-mono text-neutral-500">
+            <div className="text-[10px] font-mono text-muted-foreground">
               {selectedProvider?.label} currently ignores Hudson&apos;s reply speed control.
             </div>
           )}
           {selectedProvider?.models.find(model => model.id === selectedModelValue)?.description && (
-            <div className="text-[10px] font-mono text-neutral-500">
+            <div className="text-[10px] font-mono text-muted-foreground">
               {selectedProvider.models.find(model => model.id === selectedModelValue)?.description}
             </div>
           )}
         </div>
       </details>
-      <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
-        Voice capture uses the Vox companion on <span className="text-neutral-300">127.0.0.1:43115</span>.
-        Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-neutral-300">/v1/audio/speech</span>,
-        with voices and models populated from <span className="text-neutral-300">/v1/voices</span>.
+      <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
+        Voice capture uses the Vox companion on <span className="text-foreground/80">127.0.0.1:43115</span>.
+        Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-foreground/80">/v1/audio/speech</span>,
+        with voices and models populated from <span className="text-foreground/80">/v1/voices</span>.
         If Vox rejects transcription, allowlist Hudson&apos;s origin in Vox settings.
         End users still need the Vox macOS companion installed.
       </div>
       {!selectedProvider?.available && selectedProvider?.reason && (
-        <div className="text-[10px] font-mono text-amber-400/80">
+        <div className="text-[10px] font-mono text-warning/80">
           {selectedProvider.reason}
         </div>
       )}
       {voiceOptionsError && (
-        <div className="text-[10px] font-mono text-amber-400/80">
+        <div className="text-[10px] font-mono text-warning/80">
           Reply voices are unavailable right now: {voiceOptionsError}
         </div>
       )}

@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Terminal, Camera, Loader2 } from 'lucide-react';
+import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
 import { SHELL_THEME } from '../../lib/theme';
 
 const { statusBarHeight } = SHELL_THEME.layout;
@@ -77,8 +77,8 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
     <div
       ref={drawerRef}
       className={`
-        fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t border-neutral-700
-        bg-neutral-950/95 backdrop-blur-xl
+        fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t border-border
+        bg-card/95 backdrop-blur-xl
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
         transition-all duration-300 ease-in-out
       `}
@@ -89,10 +89,10 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
       }}
     >
       {/* Header */}
-      <div className="h-9 bg-neutral-900/70 border-b border-neutral-700 flex items-center justify-between px-3 shrink-0 select-none backdrop-blur-sm">
+      <div className="h-9 bg-card/80 border-b border-border flex items-center justify-between px-3 shrink-0 select-none backdrop-blur-sm">
         <div className="flex items-center gap-3">
           {title || (
-            <div className="flex items-center gap-2 text-emerald-400">
+            <div className="flex items-center gap-2 text-accent">
               <Terminal size={14} />
               <span className="text-xs font-bold tracking-widest font-mono">TERMINAL</span>
             </div>
@@ -102,19 +102,19 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
 
         {/* Center grip — drag to resize */}
         <div
-          className="flex-1 flex items-center justify-center h-full cursor-ns-resize text-neutral-500 hover:text-neutral-300 transition-colors group"
+          className="flex-1 flex items-center justify-center h-full cursor-ns-resize text-muted-foreground hover:text-foreground transition-colors group"
           title="Drag to Resize"
           onMouseDown={handleGripMouseDown}
         >
-          <div className="w-16 h-1 rounded-full bg-neutral-700 group-hover:bg-neutral-500 transition-colors" />
+          <div className="w-16 h-1 rounded-full bg-border group-hover:bg-muted-foreground transition-colors" />
         </div>
 
         {/* Controls */}
         <div className="flex items-center gap-2">
-          <button onClick={onToggleMaximize} className="p-1.5 rounded hover:bg-neutral-700 text-neutral-400 hover:text-white transition-colors" title={isMaximized ? "Restore" : "Maximize"}>
+          <button onClick={onToggleMaximize} className="p-1.5 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors" title={isMaximized ? "Restore" : "Maximize"}>
             {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
-          <button onClick={onClose} className="p-1.5 rounded hover:bg-red-900/20 text-neutral-400 hover:text-red-400 transition-colors" title="Close">
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Close">
             <X size={14} />
           </button>
         </div>

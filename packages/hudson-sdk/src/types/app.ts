@@ -85,6 +85,15 @@ export interface AppManifest {
 // ---------------------------------------------------------------------------
 // HudsonApp — the contract every app must satisfy to plug into the shell.
 // ---------------------------------------------------------------------------
+/** How many live instances of this app a workspace can hold.
+ *  - 'singleton' (default) — exactly one window per workspace
+ *  - 'spawnable'  — shell can mint fresh instances on demand (e.g. terminal)
+ *  - 'duplicable' — shell can clone an existing instance's state (e.g. logo designer)
+ *  Both 'spawnable' and 'duplicable' may be combined behaviourally — an app that
+ *  declares 'duplicable' also supports fresh spawn; a 'spawnable' app does not
+ *  advertise a Duplicate gesture. */
+export type MultiInstanceMode = 'singleton' | 'spawnable' | 'duplicable';
+
 export interface HudsonApp {
   /** Unique identifier (used as key + localStorage namespace) */
   id: string;
@@ -96,6 +105,9 @@ export interface HudsonApp {
   mode: 'canvas' | 'panel';
   /** Icon shown next to the app name in the navigation bar */
   icon?: ReactNode;
+  /** Whether the shell is allowed to mount more than one live instance of this
+   *  app inside a single workspace. Defaults to 'singleton'. */
+  multiInstance?: MultiInstanceMode;
 
   /** Left panel header config */
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };

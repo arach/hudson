@@ -18,22 +18,22 @@ export function LogoSvg({ params, size }: Props) {
     return (
       <div className="relative" style={{ width: size, height: size }}>
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size}>
-          <rect width="512" height="512" rx="40" fill="#1a1a1a" />
+          <rect width="512" height="512" rx="40" fill="oklch(var(--muted))" />
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
-          <AlertTriangle size={24} className="text-amber-400/60" />
-          <span className="text-[13px] text-white/50 font-mono">Template not found</span>
+          <AlertTriangle size={24} className="text-warning/80" />
+          <span className="text-[13px] text-foreground/60 font-mono">Template not found</span>
           <div className="flex gap-2 mt-1">
             <button
               onClick={() => refreshTemplates()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] text-[11px] font-mono text-white/50 hover:text-white/70 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 text-[11px] font-mono text-foreground/70 hover:text-foreground/90 transition-colors"
             >
               <RefreshCw size={10} /> Reload
             </button>
             {fallback && (
               <button
                 onClick={() => setVariant(fallback.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] text-[11px] font-mono text-white/50 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 text-[11px] font-mono text-foreground/70 hover:text-foreground/90 transition-colors"
               >
                 {fallback.name} <ChevronRight size={10} />
               </button>
@@ -95,23 +95,23 @@ function LogoSvgInner({
         size={size}
       />
       {error && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/40 backdrop-blur-sm rounded-[inherit]">
-          <AlertTriangle size={20} className="text-red-400/70" />
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm rounded-[inherit]">
+          <AlertTriangle size={20} className="text-destructive/80" />
           <div className="text-center px-8 max-w-[80%]">
-            <div className="text-[13px] text-red-400/80 font-mono mb-1">Render Error</div>
-            <div className="text-[11px] text-white/40 font-mono break-all leading-relaxed">{error}</div>
+            <div className="text-[13px] text-destructive/90 font-mono mb-1">Render Error</div>
+            <div className="text-[11px] text-muted-foreground font-mono break-all leading-relaxed">{error}</div>
           </div>
           <div className="flex gap-2 mt-1 flex-wrap justify-center">
             <button
               onClick={() => refreshTemplates()}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] text-[11px] font-mono text-white/50 hover:text-white/70 transition-colors"
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 text-[11px] font-mono text-foreground/70 hover:text-foreground/90 transition-colors"
             >
               <RefreshCw size={10} /> Reload
             </button>
             {prevTemplate && (
               <button
                 onClick={() => setVariant(prevTemplate.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] text-[11px] font-mono text-white/50 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 text-[11px] font-mono text-foreground/70 hover:text-foreground/90 transition-colors"
               >
                 <ChevronRight size={10} className="rotate-180" /> {prevTemplate.name}
               </button>
@@ -119,7 +119,7 @@ function LogoSvgInner({
             {nextTemplate && (
               <button
                 onClick={() => setVariant(nextTemplate.id)}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-white/[0.06] hover:bg-white/[0.10] text-[11px] font-mono text-white/50 hover:text-white/70 transition-colors"
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 text-[11px] font-mono text-foreground/70 hover:text-foreground/90 transition-colors"
               >
                 {nextTemplate.name} <ChevronRight size={10} />
               </button>

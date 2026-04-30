@@ -1,20 +1,89 @@
 @import "tailwindcss";
+@import "../packages/hudson-sdk/src/styles/tokens.css";
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: 0.145 0 0;
+  --foreground: 0.95 0 0;
+  --card: 0.18 0 0;
+  --card-foreground: 0.95 0 0;
+  --popover: 0.16 0 0;
+  --popover-foreground: 0.95 0 0;
+  --primary: 0.75 0.17 162;
+  --primary-foreground: 0.145 0 0;
+  --secondary: 0.24 0 0;
+  --secondary-foreground: 0.95 0 0;
+  --muted: 0.22 0 0;
+  --muted-foreground: 0.64 0 0;
+  --accent: 0.72 0.18 162;
+  --accent-foreground: 0.145 0 0;
+  --destructive: 0.62 0.24 25;
+  --destructive-foreground: 0.98 0 0;
+  --warning: 0.8 0.17 75;
+  --success: 0.7 0.17 145;
+  --info: 0.62 0.2 250;
+  --border: 0.28 0 0;
+  --input: 0.28 0 0;
+  --ring: 0.72 0.18 162;
+  --radius: 8px;
   --hudson-font-size: 13px;
   --hudson-font-family: system-ui;
+  --hud-font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --hud-font-mono: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+  --hud-font-serif: Georgia, "Times New Roman", serif;
+  --hud-text-xxs: 10px;
+  --hud-text-xs: 11px;
+  --hud-text-sm: 12px;
+  --hud-text-base: 13px;
+  --hud-text-md: 14px;
+  --hud-text-lg: 16px;
+  --hud-text-xl: 18px;
+  --hud-text-2xl: 22px;
+  --hud-text-3xl: 28px;
+  --hud-leading-tight: 1.2;
+  --hud-leading-snug: 1.35;
+  --hud-leading-normal: 1.5;
+  --hud-leading-relaxed: 1.6;
+  --hud-tracking-tight: -0.02em;
+  --hud-tracking-normal: 0;
+  --hud-tracking-wide: 0.05em;
+  --hud-tracking-wider: 0.1em;
+  --hud-tracking-widest: 0.15em;
+  --hud-weight-normal: 400;
+  --hud-weight-medium: 500;
+  --hud-weight-semibold: 600;
+  --hud-weight-bold: 700;
   /* Brand typeface — Jura. IBM Plex Mono is the documented fallback candidate. */
   --font-brand: var(--font-jura), ui-monospace, monospace;
 }
 
 @theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
-    "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  --color-popover: oklch(var(--popover));
+  --color-popover-foreground: oklch(var(--popover-foreground));
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  --color-secondary: oklch(var(--secondary));
+  --color-secondary-foreground: oklch(var(--secondary-foreground));
+  --color-muted: oklch(var(--muted));
+  --color-muted-foreground: oklch(var(--muted-foreground));
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  --color-destructive: oklch(var(--destructive));
+  --color-destructive-foreground: oklch(var(--destructive-foreground));
+  --color-warning: oklch(var(--warning));
+  --color-success: oklch(var(--success));
+  --color-info: oklch(var(--info));
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
+  --font-sans: var(--hud-font-sans);
+  --font-mono: var(--font-jetbrains-mono), var(--hud-font-mono);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
 }
 
 .font-brand {
@@ -22,8 +91,8 @@
 }
 
 body {
-  background: var(--background);
-  color: var(--foreground);
+  background: oklch(var(--background));
+  color: oklch(var(--foreground));
   font-family: var(--hudson-font-family), var(--font-sans);
   font-size: var(--hudson-font-size);
   margin: 0;
@@ -41,35 +110,39 @@ body {
   background: transparent;
 }
 .frame-scrollbar::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.12);
+  background: color-mix(in srgb, oklch(var(--foreground)) 14%, transparent);
   border-radius: 2px;
 }
 .frame-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: rgba(255, 255, 255, 0.22);
+  background: color-mix(in srgb, oklch(var(--foreground)) 24%, transparent);
 }
 .frame-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
+  scrollbar-color: color-mix(in srgb, oklch(var(--foreground)) 14%, transparent) transparent;
 }
 
-/* Hudson AI markdown — compact, dark-themed. Text uses solid colors so subpixel rendering stays crisp. */
-.hudson-ai-md { line-height: 1.55; }
+/* Hudson AI markdown — compact, token-driven */
+.hudson-ai-md {
+  line-height: 1.55;
+  color: oklch(var(--foreground) / 0.76);
+}
 .hudson-ai-md p { margin: 0.3em 0; }
 .hudson-ai-md p:first-child { margin-top: 0; }
 .hudson-ai-md p:last-child { margin-bottom: 0; }
-.hudson-ai-md strong { color: #d4d4d8; font-weight: 600; }
-.hudson-ai-md em { color: #a1a1aa; font-style: italic; }
+.hudson-ai-md strong { color: oklch(var(--foreground) / 0.92); font-weight: 600; }
+.hudson-ai-md em { color: oklch(var(--muted-foreground)); font-style: italic; }
 .hudson-ai-md code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: #18181b;
-  border: 1px solid #27272a;
+  background: oklch(var(--secondary) / 0.95);
+  border: 1px solid oklch(var(--border));
   border-radius: 4px;
   padding: 0.1em 0.35em;
+  color: oklch(var(--foreground) / 0.82);
 }
 .hudson-ai-md pre {
-  background: #131316;
-  border: 1px solid #27272a;
+  background: oklch(var(--secondary) / 0.82);
+  border: 1px solid oklch(var(--border));
   border-radius: 6px;
   padding: 0.6em 0.8em;
   margin: 0.5em 0;
@@ -87,28 +160,28 @@ body {
   padding-left: 1.4em;
 }
 .hudson-ai-md li { margin: 0.15em 0; }
-.hudson-ai-md li::marker { color: #3f3f46; }
+.hudson-ai-md li::marker { color: oklch(var(--muted-foreground) / 0.45); }
 .hudson-ai-md h1, .hudson-ai-md h2, .hudson-ai-md h3 {
-  color: #d4d4d8;
+  color: oklch(var(--foreground) / 0.9);
   font-weight: 600;
   margin: 0.5em 0 0.25em;
   font-size: 1em;
 }
 .hudson-ai-md a {
-  color: #67c2cf;
+  color: oklch(var(--accent));
   text-decoration: none;
 }
 .hudson-ai-md a:hover { text-decoration: underline; }
 .hudson-ai-md hr {
   border: none;
-  border-top: 1px solid #27272a;
+  border-top: 1px solid oklch(var(--border));
   margin: 0.5em 0;
 }
 .hudson-ai-md blockquote {
-  border-left: 2px solid #3f3f46;
+  border-left: 2px solid oklch(var(--border));
   padding-left: 0.8em;
   margin: 0.3em 0;
-  color: #71717a;
+  color: oklch(var(--muted-foreground));
 }
 
 /* Breathing bar — GPU-composited scale + opacity */

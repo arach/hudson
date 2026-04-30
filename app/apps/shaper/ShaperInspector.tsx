@@ -2,6 +2,7 @@
 
 import { RefreshCw } from 'lucide-react';
 import { useShaper } from './ShaperProvider';
+import { ExportSection } from './components/ExportSection';
 
 export function ShaperInspector() {
   const ctx = useShaper();
@@ -167,6 +168,9 @@ export function ShaperInspector() {
           )}
         </div>
       )}
+
+      {/* Export — always last */}
+      <ExportSection />
     </>
   );
 }

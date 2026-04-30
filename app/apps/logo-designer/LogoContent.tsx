@@ -95,7 +95,7 @@ function DraggableWordmark({ params, size, mode, zoom, onOffsetChange }: {
       onMouseLeave={onMouseUp}
     >
       <WordmarkSvg params={params} size={size} mode={mode} />
-      {/* Drag hint */}
+      {/* Drag hint — preview stage is always dark per template bg, so this text needs to read on dark */}
       <div className="absolute -top-5 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity text-[9px] font-mono text-white/30 whitespace-nowrap pointer-events-none">
         drag to reposition text
       </div>

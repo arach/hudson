@@ -37,7 +37,7 @@ type InspectorView = 'overview' | 'settings' | 'construction' | 'prompts';
 
 function SectionTitle({ children }: { children: ReactNode }) {
   return (
-    <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-white/30">
+    <div className="text-[10px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
       {children}
     </div>
   );
@@ -53,9 +53,9 @@ function ScopeBadge({ label }: { label: string }) {
 
 function StatCard({ label, value }: { label: string; value: string | number }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-black/20 px-3 py-3">
-      <div className="text-[10px] font-mono text-white/25">{label}</div>
-      <div className="mt-1 text-[16px] text-white/80">{value}</div>
+    <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
+      <div className="text-[10px] font-mono text-muted-foreground">{label}</div>
+      <div className="mt-1 text-[16px] text-foreground/84">{value}</div>
     </div>
   );
 }
@@ -63,8 +63,8 @@ function StatCard({ label, value }: { label: string; value: string | number }) {
 function DetailRow({ label, value }: { label: string; value: ReactNode }) {
   return (
     <div className="flex items-start justify-between gap-3 py-1.5">
-      <span className="text-[10px] font-mono text-white/25">{label}</span>
-      <span className="text-[11px] text-right text-white/65">{value}</span>
+      <span className="text-[10px] font-mono text-muted-foreground">{label}</span>
+      <span className="text-[11px] text-right text-foreground/72">{value}</span>
     </div>
   );
 }
@@ -85,7 +85,7 @@ function SurfaceTabButton({
       className={`rounded-full border px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.12em] transition-colors ${
         active
           ? 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300'
-          : 'border-white/[0.08] text-white/40 hover:border-cyan-500/20 hover:text-cyan-300'
+          : 'border-border/70 text-muted-foreground hover:border-cyan-500/20 hover:text-cyan-300'
       }`}
     >
       {label}
@@ -111,7 +111,7 @@ function ActionButton({
       className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-mono transition-colors ${
         variant === 'primary'
           ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/15'
-          : 'border-white/[0.08] text-white/55 hover:border-cyan-500/20 hover:text-cyan-300'
+          : 'border-border/70 text-muted-foreground hover:border-cyan-500/20 hover:text-cyan-300'
       }`}
     >
       {icon}
@@ -130,12 +130,12 @@ function CapabilityRow({
   description: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3">
-      <div className="flex items-center gap-2 text-[11px] font-medium text-white/75">
+    <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
+      <div className="flex items-center gap-2 text-[11px] font-medium text-foreground/78">
         <span className="text-cyan-300/75">{icon}</span>
         {label}
       </div>
-      <div className="mt-1 text-[10px] leading-relaxed text-white/35">{description}</div>
+      <div className="mt-1 text-[10px] leading-relaxed text-foreground/62">{description}</div>
     </div>
   );
 }
@@ -150,12 +150,12 @@ function ConstructionNode({
   meta: string;
 }) {
   return (
-    <div className="rounded-xl border border-white/[0.08] bg-black/20 px-3 py-3">
+    <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
       <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-cyan-300/70">
         {label}
       </div>
-      <div className="mt-2 text-[11px] leading-relaxed text-white/70">{description}</div>
-      <div className="mt-2 text-[10px] font-mono text-white/30">{meta}</div>
+      <div className="mt-2 text-[11px] leading-relaxed text-foreground/74">{description}</div>
+      <div className="mt-2 text-[10px] font-mono text-muted-foreground">{meta}</div>
     </div>
   );
 }
@@ -173,13 +173,13 @@ function SettingSelect({
 }) {
   return (
     <label className="block space-y-1.5">
-      <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-white/28">
+      <div className="text-[10px] font-mono uppercase tracking-[0.12em] text-muted-foreground">
         {label}
       </div>
       <select
         value={value}
         onChange={event => onChange(event.target.value)}
-        className="w-full rounded-lg border border-white/[0.08] bg-black/30 px-3 py-2 text-[11px] text-white/75 focus:border-cyan-500/25 focus:outline-none"
+        className="w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-[11px] text-foreground/78 focus:border-cyan-500/25 focus:outline-none"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>
@@ -359,21 +359,21 @@ export function HudsonAIContent() {
             <Sparkles size={18} />
           </div>
           <div className="min-w-0 space-y-2">
-            <div className="text-[13px] font-medium text-white/85">Hudson AI Control Surface</div>
-            <div className="text-[11px] leading-relaxed text-white/45">
+            <div className="text-[13px] font-medium text-foreground/88">Hudson AI Control Surface</div>
+            <div className="text-[11px] leading-relaxed text-foreground/64">
               Use Console AI to act. Use this app to inspect what Hudson AI can see, manage Hudson defaults, and override them for the current workspace when needed.
             </div>
-            <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-white/35">
-              <span className="rounded-full border border-white/[0.08] px-2 py-1">
+            <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-foreground/62">
+              <span className="rounded-full border border-border/70 px-2 py-1">
                 AI provider: {resolvedProviderLabel}
               </span>
-              <span className="rounded-full border border-white/[0.08] px-2 py-1">
+              <span className="rounded-full border border-border/70 px-2 py-1">
                 AI model: {resolvedModelLabel}
               </span>
-              <span className="rounded-full border border-white/[0.08] px-2 py-1">
+              <span className="rounded-full border border-border/70 px-2 py-1">
                 voice provider: {voiceProviderLabel}
               </span>
-              <span className="rounded-full border border-white/[0.08] px-2 py-1">
+              <span className="rounded-full border border-border/70 px-2 py-1">
                 config source: {settingsSource}
               </span>
             </div>
@@ -407,7 +407,7 @@ export function HudsonAIContent() {
       {activeView === 'overview' && (
         <div className="grid gap-4 xl:grid-cols-[1.2fr_0.9fr]">
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Runtime Configuration</SectionTitle>
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 <StatCard label="AI Provider" value={resolvedProviderLabel} />
@@ -427,18 +427,18 @@ export function HudsonAIContent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Settings Scope</SectionTitle>
               <div className="grid gap-3 lg:grid-cols-2">
-                <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3 space-y-3">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-[12px] font-medium text-white/78">Hudson Preferences</div>
+                    <div className="text-[12px] font-medium text-foreground/80">Hudson Preferences</div>
                     <ScopeBadge label="Global Shell" />
                   </div>
-                  <div className="text-[10px] leading-relaxed text-white/35">
+                  <div className="text-[10px] leading-relaxed text-foreground/62">
                     Voice capture, speak-back, reply behavior, and environment credentials live at the shell level. They affect Hudson globally, not only the Hudson AI app.
                   </div>
-                  <div className="space-y-1 text-[10px] leading-relaxed text-white/45">
+                  <div className="space-y-1 text-[10px] leading-relaxed text-foreground/64">
                     <div>Voice provider: {voiceProviderLabel}</div>
                     <div>Voice model: {voiceSettings.replyModel || 'Default'}</div>
                     <div>Reply behavior: {getHudsonVoiceBehaviorPresetLabel(behaviorPreset)}</div>
@@ -450,15 +450,15 @@ export function HudsonAIContent() {
                     variant="primary"
                   />
                 </div>
-                <div className="rounded-xl border border-white/[0.06] bg-black/20 p-3 space-y-3">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-3">
                   <div className="flex items-center justify-between gap-3">
-                    <div className="text-[12px] font-medium text-white/78">Hudson AI Resolution</div>
+                    <div className="text-[12px] font-medium text-foreground/80">Hudson AI Resolution</div>
                     <ScopeBadge label={hasWorkspaceOverride ? 'Workspace Override' : 'Hudson Default'} />
                   </div>
-                  <div className="text-[10px] leading-relaxed text-white/35">
+                  <div className="text-[10px] leading-relaxed text-foreground/62">
                     Hudson sets the default AI provider and model once. The current workspace can override that runtime when it needs a different pair.
                   </div>
-                  <div className="space-y-1 text-[10px] leading-relaxed text-white/45">
+                  <div className="space-y-1 text-[10px] leading-relaxed text-foreground/64">
                     <div>Hudson default: {globalProviderLabel} / {globalModelLabel}</div>
                     <div>Current workspace: {workspaceProviderLabel} / {workspaceModelLabel}</div>
                     <div>Source: {settingsSource}</div>
@@ -473,7 +473,7 @@ export function HudsonAIContent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Runtime Snapshot</SectionTitle>
               <div className="space-y-2">
                 <CapabilityRow
@@ -503,10 +503,10 @@ export function HudsonAIContent() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Voice Workflow</SectionTitle>
               <div className="flex items-center justify-between gap-3">
-                <div className="text-[11px] leading-relaxed text-white/42">
+                <div className="text-[11px] leading-relaxed text-foreground/62">
                   These are global Hudson preferences. They shape the voice loop for Hudson overall, not only this app.
                 </div>
                 <ScopeBadge label="Global Shell" />
@@ -568,13 +568,13 @@ export function HudsonAIContent() {
                   <Volume2 size={11} />
                   Next Turn
                 </div>
-                <div className="mt-2 text-[11px] leading-relaxed text-white/65">
+                <div className="mt-2 text-[11px] leading-relaxed text-foreground/72">
                   {describeNextTurnBehavior(voiceSettings)}
                 </div>
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Voice Loop Notes</SectionTitle>
               <div className="space-y-2">
                 <CapabilityRow
@@ -596,12 +596,12 @@ export function HudsonAIContent() {
       {activeView === 'settings' && (
         <div className="grid gap-4 xl:grid-cols-[1.1fr_0.9fr]">
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Voice Workflow</SectionTitle>
                 <ScopeBadge label="Global Shell" />
               </div>
-              <div className="text-[11px] leading-relaxed text-white/45">
+              <div className="text-[11px] leading-relaxed text-foreground/64">
                 These settings belong to Hudson globally. Voice capture, speak-back, and reply behavior are shared shell preferences, and changes here apply immediately.
               </div>
               <HudsonVoiceSettingsEditor
@@ -611,12 +611,12 @@ export function HudsonAIContent() {
               />
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Environment Credentials</SectionTitle>
                 <ScopeBadge label="Global Shell" />
               </div>
-              <div className="text-[11px] leading-relaxed text-white/45">
+              <div className="text-[11px] leading-relaxed text-foreground/64">
                 Provider credentials also live at the Hudson level. Edit them here when you want this workspace to access OpenAI, ElevenLabs, Groq, or other local integrations.
               </div>
               <HudsonEnvironmentEditor
@@ -638,12 +638,12 @@ export function HudsonAIContent() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Hudson Default</SectionTitle>
                 <ScopeBadge label="Global Hudson" />
               </div>
-              <div className="text-[11px] leading-relaxed text-white/45">
+              <div className="text-[11px] leading-relaxed text-foreground/64">
                 This is the default Hudson AI runtime for every workspace. If a workspace does nothing, it inherits this definition.
               </div>
               <div className="grid gap-3">
@@ -660,11 +660,11 @@ export function HudsonAIContent() {
                   onChange={value => updateGlobalSettings({ model: value })}
                 />
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3">
-                <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/28">
+              <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
+                <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                   Default Runtime
                 </div>
-                <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-white/60">
+                <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-foreground/72">
                   <div>AI Provider: {globalProviderLabel}</div>
                   <div>AI Model: {globalModelLabel}</div>
                 </div>
@@ -678,12 +678,12 @@ export function HudsonAIContent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Workspace Override</SectionTitle>
                 <ScopeBadge label={hasWorkspaceOverride ? 'Current Workspace' : 'Inheriting Hudson'} />
               </div>
-              <div className="text-[11px] leading-relaxed text-white/45">
+              <div className="text-[11px] leading-relaxed text-foreground/64">
                 Override Hudson AI only for this workspace when you need a different provider or model here than everywhere else.
               </div>
               {hasWorkspaceOverride ? (
@@ -702,11 +702,11 @@ export function HudsonAIContent() {
                       onChange={value => updateWorkspaceOverride({ model: value })}
                     />
                   </div>
-                  <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3">
-                    <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/28">
+                  <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
+                    <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                       Workspace Runtime
                     </div>
-                    <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-white/60">
+                    <div className="mt-2 space-y-1 text-[11px] leading-relaxed text-foreground/72">
                       <div>AI Provider: {workspaceProviderLabel}</div>
                       <div>AI Model: {workspaceModelLabel}</div>
                     </div>
@@ -721,7 +721,7 @@ export function HudsonAIContent() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.07] px-3 py-3 text-[11px] leading-relaxed text-white/65">
+                  <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.07] px-3 py-3 text-[11px] leading-relaxed text-foreground/72">
                     This workspace currently inherits the Hudson default: {globalProviderLabel} / {globalModelLabel}.
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -736,16 +736,16 @@ export function HudsonAIContent() {
               )}
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <div className="flex items-center justify-between gap-3">
                 <SectionTitle>Resolved Runtime</SectionTitle>
                 <ScopeBadge label={settingsSource} />
               </div>
-              <div className="text-[11px] leading-relaxed text-white/45">
+              <div className="text-[11px] leading-relaxed text-foreground/64">
                 This is what Hudson AI is actually using right now after applying the Hudson default and any workspace override.
               </div>
-              <div className="rounded-xl border border-white/[0.06] bg-black/20 px-3 py-3">
-                <div className="mt-0 space-y-1 text-[11px] leading-relaxed text-white/60">
+              <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
+                <div className="mt-0 space-y-1 text-[11px] leading-relaxed text-foreground/72">
                   <div>AI Provider: {resolvedProviderLabel}</div>
                   <div>AI Model: {resolvedModelLabel}</div>
                   <div>Voice Mode: {voiceMode}</div>
@@ -759,7 +759,7 @@ export function HudsonAIContent() {
       {activeView === 'construction' && selectedApp && (
         <div className="grid gap-4 xl:grid-cols-[280px_1fr]">
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Workspace Apps</SectionTitle>
               <div className="space-y-2">
                 {toolContext.apps.map(app => {
@@ -772,16 +772,16 @@ export function HudsonAIContent() {
                       className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                         isSelected
                           ? 'border-cyan-500/25 bg-cyan-500/10'
-                          : 'border-white/[0.06] bg-black/20 hover:border-cyan-500/20'
+                          : 'border-border/60 bg-background/52 hover:border-cyan-500/20'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
-                        <span className="text-[11px] font-medium text-white/80">{app.name}</span>
-                        <span className="text-[9px] font-mono text-white/35">
+                        <span className="text-[11px] font-medium text-foreground/84">{app.name}</span>
+                        <span className="text-[9px] font-mono text-foreground/62">
                           {app.tools.length} tools
                         </span>
                       </div>
-                      <div className="mt-1 text-[10px] leading-relaxed text-white/35">
+                      <div className="mt-1 text-[10px] leading-relaxed text-foreground/62">
                         {app.visible ? 'Visible' : 'Hidden'} • {app.mode} • {(app.ports?.inputs?.length ?? 0)} in / {(app.ports?.outputs?.length ?? 0)} out
                       </div>
                     </button>
@@ -790,10 +790,10 @@ export function HudsonAIContent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Selected App</SectionTitle>
-              <div className="text-[13px] font-medium text-white/82">{selectedApp.name}</div>
-              <div className="text-[11px] leading-relaxed text-white/42">
+              <div className="text-[13px] font-medium text-foreground/86">{selectedApp.name}</div>
+              <div className="text-[11px] leading-relaxed text-foreground/62">
                 {selectedApp.description || 'No description registered for this app.'}
               </div>
               <div className="grid grid-cols-2 gap-3">
@@ -806,7 +806,7 @@ export function HudsonAIContent() {
           </div>
 
           <div className="space-y-4">
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-3">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-3">
               <SectionTitle>Construction Graph</SectionTitle>
               <div className="grid gap-3 lg:grid-cols-[1fr_auto_1fr_auto_1fr_auto_1fr]">
                 <ConstructionNode
@@ -814,7 +814,7 @@ export function HudsonAIContent() {
                   description={selectedApp.name}
                   meta={`${selectedApp.mode} mode`}
                 />
-                <div className="hidden items-center justify-center text-white/20 lg:flex">
+                <div className="hidden items-center justify-center text-muted-foreground/60 lg:flex">
                   <ArrowRight size={14} />
                 </div>
                 <ConstructionNode
@@ -822,7 +822,7 @@ export function HudsonAIContent() {
                   description={selectedIntent?.title || 'No selected intent'}
                   meta={selectedIntent ? `${selectedIntent.category} • ${selectedIntent.commandId}` : 'No intent metadata'}
                 />
-                <div className="hidden items-center justify-center text-white/20 lg:flex">
+                <div className="hidden items-center justify-center text-muted-foreground/60 lg:flex">
                   <ArrowRight size={14} />
                 </div>
                 <ConstructionNode
@@ -830,7 +830,7 @@ export function HudsonAIContent() {
                   description={selectedCommand?.label || 'No linked command'}
                   meta={selectedCommand ? `${selectedCommand.scope} scope` : 'No live command bridge'}
                 />
-                <div className="hidden items-center justify-center text-white/20 lg:flex">
+                <div className="hidden items-center justify-center text-muted-foreground/60 lg:flex">
                   <ArrowRight size={14} />
                 </div>
                 <ConstructionNode
@@ -841,31 +841,31 @@ export function HudsonAIContent() {
               </div>
             </div>
 
-            <div className="rounded-xl border border-white/[0.08] bg-white/[0.03] p-4 space-y-4">
+            <div className="rounded-xl border border-border/70 bg-card/72 p-4 space-y-4">
               <SectionTitle>Drilldown</SectionTitle>
               <div className="grid gap-3 xl:grid-cols-4">
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3 space-y-2">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/25">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-2">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                     App
                   </div>
-                  <div className="text-[12px] font-medium text-white/80">{selectedApp.name}</div>
-                  <div className="text-[10px] leading-relaxed text-white/35">
+                  <div className="text-[12px] font-medium text-foreground/84">{selectedApp.name}</div>
+                  <div className="text-[10px] leading-relaxed text-foreground/62">
                     {selectedApp.description || 'No description registered.'}
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Mode</div>
-                      <div className="mt-1 text-white/75">{selectedApp.mode}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Mode</div>
+                      <div className="mt-1 text-foreground/78">{selectedApp.mode}</div>
                     </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Tools</div>
-                      <div className="mt-1 text-white/75">{selectedApp.tools.length}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Tools</div>
+                      <div className="mt-1 text-foreground/78">{selectedApp.tools.length}</div>
                     </div>
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3 space-y-2">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/25">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-2">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                     Intent
                   </div>
                   {selectedAppIntents.length > 0 ? (
@@ -880,14 +880,14 @@ export function HudsonAIContent() {
                             className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
                               isSelected
                                 ? 'border-cyan-500/25 bg-cyan-500/10'
-                                : 'border-white/[0.06] bg-white/[0.02] hover:border-cyan-500/20'
+                                : 'border-border/60 bg-card/80 hover:border-cyan-500/20'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
-                              <span className="text-[11px] text-white/75">{intent.title}</span>
+                              <span className="text-[11px] text-foreground/78">{intent.title}</span>
                               <span className="text-[9px] font-mono text-cyan-300/70">{intent.category}</span>
                             </div>
-                            <div className="mt-1 text-[10px] leading-relaxed text-white/30">
+                            <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                               {intent.description}
                             </div>
                           </button>
@@ -895,34 +895,34 @@ export function HudsonAIContent() {
                       })}
                     </div>
                   ) : (
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 text-[10px] leading-relaxed text-white/30">
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground">
                       This app has no registered intents yet.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3 space-y-2">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/25">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-2">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                     Command
                   </div>
                   {selectedCommand ? (
                     <>
-                      <div className="text-[12px] font-medium text-white/80">{selectedCommand.label}</div>
-                      <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono text-white/35">
-                        <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5">
+                      <div className="text-[12px] font-medium text-foreground/84">{selectedCommand.label}</div>
+                      <div className="flex flex-wrap items-center gap-2 text-[9px] font-mono text-foreground/62">
+                        <span className="rounded-full border border-border/70 px-1.5 py-0.5">
                           {selectedCommand.scope}
                         </span>
                         {selectedCommand.shortcut && (
-                          <span className="rounded-full border border-white/[0.08] px-1.5 py-0.5">
+                          <span className="rounded-full border border-border/70 px-1.5 py-0.5">
                             {selectedCommand.shortcut}
                           </span>
                         )}
                       </div>
-                      <div className="text-[10px] leading-relaxed text-white/30">
+                      <div className="text-[10px] leading-relaxed text-muted-foreground">
                         {selectedCommand.description || 'No command description registered.'}
                       </div>
                       {selectedIntent && (
-                        <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 text-[10px] leading-relaxed text-white/35">
+                        <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-[10px] leading-relaxed text-foreground/62">
                           {selectedIntent.paramsCount > 0
                             ? `This intent expects ${selectedIntent.paramsCount} parameter${selectedIntent.paramsCount === 1 ? '' : 's'}.`
                             : 'This intent does not declare parameters.'}
@@ -931,35 +931,35 @@ export function HudsonAIContent() {
                       )}
                     </>
                   ) : (
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2.5 py-2 text-[10px] leading-relaxed text-white/30">
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2.5 py-2 text-[10px] leading-relaxed text-muted-foreground">
                       No live command is currently linked for this selection.
                     </div>
                   )}
                 </div>
 
-                <div className="rounded-xl border border-white/[0.08] bg-black/20 p-3 space-y-3">
-                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-white/25">
+                <div className="rounded-xl border border-border/60 bg-background/52 p-3 space-y-3">
+                  <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
                     Dependency
                   </div>
                   <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Settings</div>
-                      <div className="mt-1 text-white/75">{settingsFieldCount}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Settings</div>
+                      <div className="mt-1 text-foreground/78">{settingsFieldCount}</div>
                     </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Services</div>
-                      <div className="mt-1 text-white/75">{selectedAppServices.length}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Services</div>
+                      <div className="mt-1 text-foreground/78">{selectedAppServices.length}</div>
                     </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Pipes</div>
-                      <div className="mt-1 text-white/75">{selectedAppPipes.length}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Pipes</div>
+                      <div className="mt-1 text-foreground/78">{selectedAppPipes.length}</div>
                     </div>
-                    <div className="rounded-lg border border-white/[0.06] bg-white/[0.02] px-2 py-2">
-                      <div className="text-white/25">Ports</div>
-                      <div className="mt-1 text-white/75">{inputCount + outputCount}</div>
+                    <div className="rounded-lg border border-border/60 bg-card/80 px-2 py-2">
+                      <div className="text-muted-foreground">Ports</div>
+                      <div className="mt-1 text-foreground/78">{inputCount + outputCount}</div>
                     </div>
                   </div>
-                  <div className="space-y-1 text-[10px] leading-relaxed text-white/35">
+                  <div className="space-y-1 text-[10px] leading-relaxed text-foreground/62">
                     <div>
                       Settings: {selectedAppSettings?.sections.map(section => section.label).join(', ') || 'None'}
                     </div>
@@ -981,24 +981,24 @@ export function HudsonAIContent() {
       )}
 
       {activeView === 'prompts' && (
-        <div className="rounded-xl border border-white/[0.05] bg-black/10 p-4 space-y-3">
+        <div className="rounded-xl border border-border/60 bg-card/72 p-4 space-y-3">
           <SectionTitle>Prompt Reference</SectionTitle>
-          <div className="text-[10px] leading-relaxed text-white/30">
+          <div className="text-[10px] leading-relaxed text-muted-foreground">
             These are starting points for the Console AI path. They stay secondary on purpose, because the primary job of this app is to expose structure and configuration rather than act as another chat surface.
           </div>
           <div className="space-y-2">
             {promptPresets.map(preset => (
               <div
                 key={preset.id}
-                className="rounded-xl border border-white/[0.05] bg-black/20 px-3 py-3"
+                className="rounded-xl border border-border/60 bg-background/52 px-3 py-3"
               >
                 <div className="flex items-start justify-between gap-3">
                   <div className="min-w-0">
-                    <div className="flex items-center gap-2 text-[11px] font-medium text-white/70">
-                      <Bot size={12} className="text-white/35" />
+                    <div className="flex items-center gap-2 text-[11px] font-medium text-foreground/76">
+                      <Bot size={12} className="text-foreground/62" />
                       {preset.title}
                     </div>
-                    <div className="mt-1 text-[10px] leading-relaxed text-white/30">
+                    <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                       {preset.description}
                     </div>
                   </div>
@@ -1017,10 +1017,10 @@ export function HudsonAIContent() {
                   </div>
                 </div>
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[10px] font-mono text-white/28 hover:text-cyan-300 transition-colors">
+                  <summary className="cursor-pointer text-[10px] font-mono text-muted-foreground hover:text-cyan-300 transition-colors">
                     Show prompt text
                   </summary>
-                  <div className="mt-2 rounded-lg border border-white/[0.04] bg-black/25 px-3 py-2 text-[10px] font-mono leading-relaxed text-white/38">
+                  <div className="mt-2 rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-[10px] font-mono leading-relaxed text-foreground/64">
                     {preset.text}
                   </div>
                 </details>

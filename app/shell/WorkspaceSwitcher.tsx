@@ -11,28 +11,32 @@ interface WorkspaceSwitcherProps {
 export function WorkspaceSwitcher({ workspaces, activeId, onSwitch }: WorkspaceSwitcherProps) {
   if (workspaces.length <= 1) {
     return (
-      <span className="text-[11px] font-mono text-neutral-300">
+      <span className="text-[11px] font-mono text-muted-foreground">
         {workspaces[0]?.name ?? 'Workspace'}
       </span>
     );
   }
 
   return (
-    <div className="flex items-center gap-0.5">
-      {workspaces.map(ws => (
-        <button
-          key={ws.id}
-          onClick={() => onSwitch(ws.id)}
-          className={`px-2.5 py-1 rounded-md text-[10px] font-mono transition-colors ${
-            ws.id === activeId
-              ? 'bg-white/10 text-white'
-              : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.04]'
-          }`}
-          title={ws.description}
-        >
-          {ws.name}
-        </button>
-      ))}
+    <div className="flex items-center gap-1">
+      {workspaces.map(ws => {
+        const isActive = ws.id === activeId;
+        return (
+          <button
+            key={ws.id}
+            onClick={() => onSwitch(ws.id)}
+            className={`px-2.5 py-1 rounded-md border text-[10px] font-mono transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:outline-none ${
+              isActive
+                ? 'bg-accent/10 text-accent border-accent/30'
+                : 'border-border bg-card/40 text-foreground/80 hover:bg-muted hover:text-foreground hover:border-border'
+            }`}
+            title={ws.description}
+            aria-pressed={isActive}
+          >
+            {ws.name}
+          </button>
+        );
+      })}
     </div>
   );
 }

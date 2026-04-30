@@ -148,10 +148,10 @@ export const shaperIntents: AppIntent[] = [
   },
   {
     commandId: 'shaper:toggle-original',
-    title: 'Toggle Original Image',
-    description: 'Show or hide the original reference image behind the bezier path.',
+    title: 'Toggle Input Image',
+    description: 'Show or hide the input reference image behind the bezier path.',
     category: 'view',
-    keywords: ['original', 'reference', 'background image', 'source image', 'show original'],
+    keywords: ['input image', 'original', 'reference', 'background image', 'source image'],
   },
   {
     commandId: 'shaper:toggle-silhouette',

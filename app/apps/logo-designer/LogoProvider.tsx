@@ -23,6 +23,9 @@ export interface LogoParams {
   splitX: number; // 0-1, where the vertical L arm sits
   splitY: number; // 0-1, where the horizontal L arm sits
   padding: number;
+  // Shape intake — when true, any piped silhouette (or letter shape) clips the final output.
+  // Works universally across templates; templates that natively consume p.hasShape can leave this off.
+  clipToShape: boolean;
   // Light mode
   lightEnabled: boolean;
   lightColors: ColorSet;
@@ -78,6 +81,7 @@ export const defaults: LogoParams = {
   splitX: 0.37,
   splitY: 0.60,
   padding: 72,
+  clipToShape: false,
   lightEnabled: false,
   lightColors: defaultLightColors,
   lightingEnabled: false,

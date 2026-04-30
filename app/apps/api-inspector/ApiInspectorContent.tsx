@@ -30,7 +30,7 @@ function KvRow({
     <div className="flex items-center gap-1.5 group">
       <button
         onClick={() => onToggle(kv.id)}
-        className="shrink-0 text-white/20 hover:text-white/50 transition-colors"
+        className="shrink-0 text-muted-foreground/70 hover:text-foreground/80 transition-colors"
       >
         {kv.enabled
           ? <ToggleRight size={14} className="text-cyan-400/60" />
@@ -41,17 +41,17 @@ function KvRow({
         value={kv.key}
         onChange={e => onUpdate(kv.id, 'key', e.target.value)}
         placeholder="Key"
-        className={`flex-1 px-2 py-1.5 rounded bg-white/[0.03] border border-white/[0.06] text-[12px] font-mono outline-none focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-white/70' : 'text-white/25'}`}
+        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
       />
       <input
         value={kv.value}
         onChange={e => onUpdate(kv.id, 'value', e.target.value)}
         placeholder="Value"
-        className={`flex-1 px-2 py-1.5 rounded bg-white/[0.03] border border-white/[0.06] text-[12px] font-mono outline-none focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-white/70' : 'text-white/25'}`}
+        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
       />
       <button
         onClick={() => onRemove(kv.id)}
-        className="shrink-0 text-white/10 hover:text-red-400/60 opacity-0 group-hover:opacity-100 transition-all"
+        className="shrink-0 text-muted-foreground/40 hover:text-red-400/70 opacity-0 group-hover:opacity-100 transition-all"
       >
         <X size={12} />
       </button>
@@ -71,8 +71,8 @@ function TabBtn({ active, label, count, onClick }: {
       onClick={onClick}
       className={`px-3 py-1.5 text-[11px] font-medium transition-colors relative ${
         active
-          ? 'text-white/80'
-          : 'text-white/30 hover:text-white/50'
+          ? 'text-foreground/84'
+          : 'text-muted-foreground hover:text-foreground/78'
       }`}
     >
       {label}
@@ -108,7 +108,7 @@ function JsonBody({ body }: { body: string }) {
 
   return (
     <pre
-      className="text-[12px] font-mono text-white/60 leading-relaxed whitespace-pre-wrap break-all"
+      className="text-[12px] font-mono text-foreground/74 leading-relaxed whitespace-pre-wrap break-all"
       dangerouslySetInnerHTML={{ __html: highlightJson(formatted) }}
     />
   );
@@ -169,7 +169,7 @@ export function ApiInspectorContent() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* ---- URL Bar ---- */}
-      <form onSubmit={handleSubmit} className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
+      <form onSubmit={handleSubmit} className="px-4 pt-4 pb-3 border-b border-border/70">
         <div className="flex gap-2 items-stretch">
           {/* Method selector */}
           <div ref={methodRef} className="relative">
@@ -179,19 +179,19 @@ export function ApiInspectorContent() {
               className={`h-full px-3 rounded-lg border text-[12px] font-mono font-bold flex items-center gap-1.5 transition-colors ${METHOD_BG_COLORS[request.method]} ${METHOD_COLORS[request.method]}`}
             >
               {request.method}
-              <ChevronDown size={11} className="text-white/20" />
+              <ChevronDown size={11} className="text-muted-foreground/70" />
             </button>
             {methodOpen && (
-              <div className="absolute top-full left-0 mt-1 z-50 bg-neutral-900 border border-white/[0.08] rounded-lg shadow-xl overflow-hidden min-w-[120px]">
+              <div className="absolute top-full left-0 mt-1 z-50 bg-card border border-border/70 rounded-lg shadow-xl overflow-hidden min-w-[120px]">
                 {METHODS.map(m => (
                   <button
                     key={m}
                     type="button"
                     onClick={() => { setMethod(m); setMethodOpen(false); }}
-                    className={`w-full px-3 py-2 text-left text-[12px] font-mono font-bold hover:bg-white/[0.04] transition-colors flex items-center justify-between ${METHOD_COLORS[m]}`}
+                    className={`w-full px-3 py-2 text-left text-[12px] font-mono font-bold hover:bg-accent/8 transition-colors flex items-center justify-between ${METHOD_COLORS[m]}`}
                   >
                     {m}
-                    {m === request.method && <Check size={11} className="text-white/30" />}
+                    {m === request.method && <Check size={11} className="text-muted-foreground" />}
                   </button>
                 ))}
               </div>
@@ -205,7 +205,7 @@ export function ApiInspectorContent() {
             value={request.url}
             onChange={e => setUrl(e.target.value)}
             placeholder="https://api.example.com/v1/resource"
-            className="flex-1 px-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[13px] text-white/80 placeholder:text-white/15 outline-none focus:border-cyan-500/30 transition-colors font-mono"
+            className="flex-1 px-3 py-2.5 rounded-lg bg-card/88 border border-border/70 text-[13px] text-foreground/84 placeholder:text-muted-foreground/60 outline-none focus:border-cyan-500/30 transition-colors font-mono"
           />
 
           {/* Send button */}
@@ -221,20 +221,20 @@ export function ApiInspectorContent() {
       </form>
 
       {/* ---- Request Config Tabs ---- */}
-      <div className="border-b border-white/[0.06] flex items-center px-2">
+      <div className="border-b border-border/70 flex items-center px-2">
         <TabBtn active={requestTab === 'params'} label="Params" count={activeParamCount} onClick={() => setRequestTab('params')} />
         <TabBtn active={requestTab === 'headers'} label="Headers" count={activeHeaderCount} onClick={() => setRequestTab('headers')} />
         <TabBtn active={requestTab === 'body'} label="Body" onClick={() => setRequestTab('body')} />
       </div>
 
       {/* ---- Request Config Panel ---- */}
-      <div className="px-4 py-3 border-b border-white/[0.06] max-h-[200px] overflow-y-auto">
+      <div className="px-4 py-3 border-b border-border/70 max-h-[200px] overflow-y-auto">
         {requestTab === 'params' && (
           <div className="flex flex-col gap-1.5">
             {request.params.map(kv => (
               <KvRow key={kv.id} kv={kv} onUpdate={updateParam} onToggle={toggleParam} onRemove={removeParam} />
             ))}
-            <button onClick={addParam} className="flex items-center gap-1.5 text-[11px] text-white/20 hover:text-white/40 transition-colors mt-1">
+            <button onClick={addParam} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground/74 transition-colors mt-1">
               <Plus size={11} /> Add parameter
             </button>
           </div>
@@ -245,7 +245,7 @@ export function ApiInspectorContent() {
             {request.headers.map(kv => (
               <KvRow key={kv.id} kv={kv} onUpdate={updateHeader} onToggle={toggleHeader} onRemove={removeHeader} />
             ))}
-            <button onClick={addHeader} className="flex items-center gap-1.5 text-[11px] text-white/20 hover:text-white/40 transition-colors mt-1">
+            <button onClick={addHeader} className="flex items-center gap-1.5 text-[11px] text-muted-foreground hover:text-foreground/74 transition-colors mt-1">
               <Plus size={11} /> Add header
             </button>
           </div>
@@ -261,7 +261,7 @@ export function ApiInspectorContent() {
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
                     request.bodyType === t
                       ? 'bg-cyan-500/15 text-cyan-400 border border-cyan-500/20'
-                      : 'text-white/30 hover:text-white/50 border border-transparent'
+                      : 'text-muted-foreground hover:text-foreground/78 border border-transparent'
                   }`}
                 >
                   {t === 'none' ? 'None' : t.toUpperCase()}
@@ -273,7 +273,7 @@ export function ApiInspectorContent() {
                 value={request.body}
                 onChange={e => setBody(e.target.value)}
                 placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
-                className="w-full h-[120px] px-3 py-2 rounded-lg bg-white/[0.03] border border-white/[0.06] text-[12px] text-white/70 font-mono outline-none focus:border-cyan-500/30 transition-colors resize-none"
+                className="w-full h-[120px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-500/30 transition-colors resize-none"
                 spellCheck={false}
               />
             )}
@@ -285,7 +285,7 @@ export function ApiInspectorContent() {
       <div className="flex-1 flex flex-col min-h-0">
         {/* Response header */}
         {(response || responseError) && (
-          <div className="border-b border-white/[0.06] flex items-center justify-between px-4">
+          <div className="border-b border-border/70 flex items-center justify-between px-4">
             <div className="flex items-center">
               <TabBtn active={responseTab === 'body'} label="Response" onClick={() => setResponseTab('body')} />
               <TabBtn active={responseTab === 'headers'} label="Headers" count={response ? Object.keys(response.headers).length : undefined} onClick={() => setResponseTab('headers')} />
@@ -295,10 +295,10 @@ export function ApiInspectorContent() {
                 <span className={`font-bold ${getStatusColor(response.status)}`}>
                   {response.status} {response.statusText}
                 </span>
-                <span className="text-white/20">|</span>
-                <span className="text-white/30">{formatMs(response.timing.durationMs)}</span>
-                <span className="text-white/20">|</span>
-                <span className="text-white/30">{formatBytes(response.size)}</span>
+                <span className="text-muted-foreground/60">|</span>
+                <span className="text-muted-foreground">{formatMs(response.timing.durationMs)}</span>
+                <span className="text-muted-foreground/60">|</span>
+                <span className="text-muted-foreground">{formatBytes(response.size)}</span>
               </div>
             )}
           </div>
@@ -308,7 +308,7 @@ export function ApiInspectorContent() {
         <div className="flex-1 overflow-auto px-4 py-3">
           {loading && (
             <div className="flex items-center justify-center h-full">
-              <div className="flex items-center gap-3 text-white/20">
+              <div className="flex items-center gap-3 text-muted-foreground">
                 <Loader2 size={18} className="animate-spin" />
                 <span className="text-[13px]">Sending request...</span>
               </div>
@@ -326,7 +326,7 @@ export function ApiInspectorContent() {
             response.bodyType === 'json'
               ? <JsonBody body={response.body} />
               : (
-                <pre className="text-[12px] font-mono text-white/60 leading-relaxed whitespace-pre-wrap break-all">
+                <pre className="text-[12px] font-mono text-foreground/74 leading-relaxed whitespace-pre-wrap break-all">
                   {response.body}
                 </pre>
               )
@@ -335,16 +335,16 @@ export function ApiInspectorContent() {
           {response && !loading && responseTab === 'headers' && (
             <div className="flex flex-col gap-1">
               {Object.entries(response.headers).map(([key, value]) => (
-                <div key={key} className="flex gap-3 py-1 border-b border-white/[0.03] last:border-0">
+                <div key={key} className="flex gap-3 py-1 border-b border-border/50 last:border-0">
                   <span className="text-[12px] font-mono text-cyan-300/60 shrink-0 min-w-[180px]">{key}</span>
-                  <span className="text-[12px] font-mono text-white/50 break-all">{value}</span>
+                  <span className="text-[12px] font-mono text-foreground/72 break-all">{value}</span>
                 </div>
               ))}
             </div>
           )}
 
           {!response && !responseError && !loading && (
-            <div className="flex items-center justify-center h-full text-white/10 text-[13px]">
+            <div className="flex items-center justify-center h-full text-muted-foreground/70 text-[13px]">
               Enter a URL and click Send to make a request
             </div>
           )}

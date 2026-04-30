@@ -13,6 +13,7 @@ import {
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
 import { sounds } from 'hudsonkit';
+import { useShaperAI, type AiActivityEntry } from './useShaperAI';
 import type {
   BezierData,
   BezierSegment,
@@ -164,6 +165,25 @@ export interface ShaperContextValue {
   anchorLabels: ReactElement[];
   staticAngleLabels: ReactElement[];
   strokeGroups: [string, NamedAnchor[]][];
+  strokeSummaries: Array<{
+    index: number;
+    segments: number;
+    name: string | null;
+    bbox: { x: number; y: number; width: number; height: number };
+    hidden: boolean;
+  }>;
+  hiddenStrokes: Set<number>;
+  toggleStrokeVisibility: (index: number) => void;
+  deleteStroke: (index: number) => void;
+  focusOnStroke: (index: number) => void;
+
+  // AI
+  sendAiMessage: (text: string, label?: string) => void;
+  aiStatus: string;
+  aiActivity: AiActivityEntry[];
+  aiError: string | null;
+  clearAiActivity: () => void;
+  stopAi: (() => void) | undefined;
   filteredAnchors: NamedAnchor[];
   selectedPointData: { x: number; y: number; strokeIndex: number; segmentIndex: number; pointType: string } | null;
   showEditor: boolean;
@@ -180,7 +200,7 @@ export interface ShaperContextValue {
   resetZoom: () => void;
   zoomIn: () => void;
   zoomOut: () => void;
-  handleWheel: (e: React.WheelEvent) => void;
+  handleWheel: (e: WheelEvent) => void;
   handleMouseDown: (e: React.MouseEvent) => void;
   handleMouseMove: (e: React.MouseEvent) => void;
   handleMouseUp: () => void;
@@ -267,6 +287,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const [bezierData, setBezierData] = useState<BezierData | null>(null);
   const [anchorsData, setAnchorsData] = useState<AnchorsData | null>(null);
   const [smoothStates, setSmoothStates] = useState<Record<string, boolean>>({});
+  const [hiddenStrokes, setHiddenStrokes] = useState<Set<number>>(() => new Set());
   const [fillEnabled, setFillEnabled] = useState(false);
   const [fillPattern, setFillPattern] = useState<'solid' | 'dither' | 'halftone' | 'noise'>('solid');
   const [fillWeights, setFillWeights] = useState<Record<string, number>>({});
@@ -286,6 +307,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const [openSections, setOpenSections] = useState<Record<string, boolean>>({
     visibility: true, strokes: true, minimap: true,
     selected: true, anchors: true, fill: true, animation: true, appearance: true, trace: true, info: true,
+    export: true,
   });
   const [showActionsMenu, setShowActionsMenu] = useState(false);
 
@@ -372,10 +394,14 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     setProjectImage({ url: recent.blobUrl, name: recent.name, width: recent.width, height: recent.height });
   }, []);
 
-  // Persist active project session to localStorage
+  // Persist active project session to localStorage.
+  // Stroke data + visibility are updated separately (see autosave effect below).
   const persistSession = useCallback((image: ProjectImage, dataUrl: string) => {
     try {
+      const existing = localStorage.getItem('shaper-session');
+      const prior = existing ? JSON.parse(existing) : {};
       localStorage.setItem('shaper-session', JSON.stringify({
+        ...prior,
         image: { name: image.name, width: image.width, height: image.height },
         dataUrl,
       }));
@@ -397,6 +423,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         setBezierData({ strokes: result.strokes });
         setTraceInfo(result.info);
         setSmoothStates({});
+        setHiddenStrokes(new Set());
         setAnchorsData({ anchors: [] });
         historyRef.current = [JSON.stringify({ strokes: result.strokes })];
         historyIndexRef.current = 0;
@@ -437,6 +464,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     setBezierData(null);
     setAnchorsData(null);
     setSmoothStates({});
+    setHiddenStrokes(new Set());
     setSelectedPoint(null);
     setImageWarnings([]);
     setTraceInfo(null);
@@ -504,22 +532,30 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         const session = JSON.parse(raw);
         if (session.dataUrl && session.image) {
           setProjectImage({ url: session.dataUrl, ...session.image });
-          fetch('/shaper/talkie-bezier.json').then((r) => r.json()).then((bezier) => {
-            setBezierData(bezier);
-            historyRef.current = [JSON.stringify(bezier)];
+          // Restore the user's own bezier data; fall back to starter strokes only if
+          // the session pre-dates stroke persistence.
+          if (session.bezier && Array.isArray(session.bezier.strokes)) {
+            setBezierData(session.bezier);
+            if (Array.isArray(session.hiddenStrokes)) {
+              setHiddenStrokes(new Set(session.hiddenStrokes));
+            }
+            historyRef.current = [JSON.stringify(session.bezier)];
             historyIndexRef.current = 0;
-          }).catch(() => {
+            setIsInitialLoad(false);
+          } else {
+            // Legacy session: prompt to retrace via the drop zone.
             setShowDropZone(true);
-          }).finally(() => setIsInitialLoad(false));
+            setIsInitialLoad(false);
+          }
           return;
         }
       }
     } catch { /* corrupted — fall through */ }
 
-    // Default: load talkie demo
+    // Default: load the starter demo
     Promise.all([
-      fetch('/shaper/talkie-bezier.json').then((r) => r.json()),
-      fetch('/shaper/talkie-anchors.json').then((r) => r.json()),
+      fetch('/shaper/starter-bezier.json').then((r) => r.json()),
+      fetch('/shaper/starter-anchors.json').then((r) => r.json()),
     ]).then(([bezier, anchors]) => {
       setBezierData(bezier);
       setAnchorsData(anchors);
@@ -569,7 +605,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const saveToDisk = useCallback(async (data: BezierData, smooth: Record<string, boolean>) => {
     setSaveStatus('saving');
     try {
-      const res = await fetch('/api/save', {
+      const res = await fetch('/api/shaper/save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bezier: data, smooth, projectId }),
@@ -598,6 +634,20 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     autoSaveRef.current = setTimeout(() => { saveToDisk(bezierData, smoothStates); }, 2000);
     return () => { if (autoSaveRef.current) clearTimeout(autoSaveRef.current); };
   }, [bezierData, smoothStates, saveToDisk]);
+
+  // Persist stroke edits into the session so reload restores user work instead of the starter.
+  // Only active when the user has their own project loaded.
+  useEffect(() => {
+    if (!projectImage || !bezierData) return;
+    try {
+      const raw = localStorage.getItem('shaper-session');
+      if (!raw) return;
+      const session = JSON.parse(raw);
+      session.bezier = bezierData;
+      session.hiddenStrokes = Array.from(hiddenStrokes);
+      localStorage.setItem('shaper-session', JSON.stringify(session));
+    } catch { /* quota or parse error — ignore */ }
+  }, [projectImage, bezierData, hiddenStrokes]);
 
   const downloadJson = useCallback(() => {
     if (!bezierData) return;
@@ -680,7 +730,10 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const resetZoom = useCallback(() => { setZoom(DEFAULT_ZOOM); setPan({ x: 0, y: 0 }); }, []);
   const zoomIn = useCallback(() => { setZoom((z) => Math.min(MAX_ZOOM, z * 1.2)); }, []);
   const zoomOut = useCallback(() => { setZoom((z) => Math.max(MIN_ZOOM, z / 1.2)); }, []);
-  const handleWheel = useCallback((e: React.WheelEvent) => {
+  // Called from a native wheel listener attached with { passive: false }
+  // (see ShaperContent) — React's synthetic onWheel is passive and can't
+  // preventDefault on scroll without a console warning on every event.
+  const handleWheel = useCallback((e: WheelEvent) => {
     // Cmd/Ctrl+scroll is handled by Frame for workspace-level zoom — don't double-zoom
     if (e.ctrlKey || e.metaKey) return;
     e.preventDefault();
@@ -923,8 +976,8 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   }, [isAnimating, animationSpeed]);
 
   // ── Trace ──
-  const traceImageSrc = projectImage?.url || '/shaper/talkie-silhouette.png';
-  const displayImageSrc = projectImage?.url || '/shaper/talkie-original.png';
+  const traceImageSrc = projectImage?.url || '/shaper/starter-silhouette.png';
+  const displayImageSrc = projectImage?.url || '/shaper/starter-original.png';
 
   const handleRetrace = useCallback(async () => {
     setIsTracing(true);
@@ -934,6 +987,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
         setBezierData({ strokes: result.strokes });
         setTraceInfo(result.info);
         setSmoothStates({});
+        setHiddenStrokes(new Set());
       }
     } catch (err) {
       console.error('Re-trace error:', err);
@@ -1161,10 +1215,11 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
 
   const focusOnPoint = useCallback((x: number, y: number) => {
     if (!containerRef.current) return;
-    const rect = containerRef.current.getBoundingClientRect();
     const targetZoom = Math.max(0.8, zoom);
     setZoom(targetZoom);
-    setPan({ x: rect.width / 2 - x * targetZoom, y: rect.height / 2 - y * targetZoom });
+    // Canvas is anchored at container center with transform-origin: center.
+    // Pan offsets the canvas-space point (x, y) from its natural position at (512, 512).
+    setPan({ x: (512 - x) * targetZoom, y: (512 - y) * targetZoom });
   }, [zoom]);
 
   const selectAndFocusAnchor = useCallback((anchor: NamedAnchor) => {
@@ -1199,15 +1254,15 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   // ── Computed values ──
   const strokesPath = useMemo(() => {
     if (!bezierData) return '';
-    return bezierData.strokes.map((stroke) => {
-      if (stroke.length === 0) return '';
+    return bezierData.strokes.map((stroke, i) => {
+      if (stroke.length === 0 || hiddenStrokes.has(i)) return '';
       let d = `M ${stroke[0].p0[0]} ${stroke[0].p0[1]}`;
       for (const seg of stroke) {
         d += ` C ${seg.c1[0]} ${seg.c1[1]}, ${seg.c2[0]} ${seg.c2[1]}, ${seg.p3[0]} ${seg.p3[1]}`;
       }
       return d;
     }).join(' ');
-  }, [bezierData]);
+  }, [bezierData, hiddenStrokes]);
 
   const pathLengthEstimate = useMemo(() => {
     if (!bezierData) return 0;
@@ -1287,6 +1342,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     if (!bezierData || !showHandles) return [];
     const lines: ReactElement[] = [];
     bezierData.strokes.forEach((stroke, si) => {
+      if (hiddenStrokes.has(si)) return;
       stroke.forEach((seg, ei) => {
         const isC1Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'c1';
         const isC2Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'c2';
@@ -1297,12 +1353,13 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       });
     });
     return lines;
-  }, [bezierData, showHandles, selectedPoint]);
+  }, [bezierData, showHandles, selectedPoint, hiddenStrokes]);
 
   const controlPoints = useMemo(() => {
     if (!bezierData || !showHandles) return [];
     const points: ReactElement[] = [];
     bezierData.strokes.forEach((stroke, si) => {
+      if (hiddenStrokes.has(si)) return;
       stroke.forEach((seg, ei) => {
         const isC1Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'c1';
         const isC2Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'c2';
@@ -1313,12 +1370,13 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       });
     });
     return points;
-  }, [bezierData, showHandles, selectedPoint]);
+  }, [bezierData, showHandles, selectedPoint, hiddenStrokes]);
 
   const anchorPoints = useMemo(() => {
     if (!bezierData || !showAnchors) return [];
     const points: ReactElement[] = [];
     bezierData.strokes.forEach((stroke, si) => {
+      if (hiddenStrokes.has(si)) return;
       stroke.forEach((seg, ei) => {
         const isP0Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'p0';
         const isP3Sel = selectedPoint?.strokeIndex === si && selectedPoint?.segmentIndex === ei && selectedPoint?.pointType === 'p3';
@@ -1333,7 +1391,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       });
     });
     return points;
-  }, [bezierData, showAnchors, selectedPoint, smoothStates]);
+  }, [bezierData, showAnchors, selectedPoint, smoothStates, hiddenStrokes]);
 
   const anchorLabels = useMemo(() => {
     if (!anchorsData || !showLabels) return [];
@@ -1399,6 +1457,100 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     });
     return Object.entries(groups);
   }, [anchorsData]);
+
+  // Per-stroke summaries: always populated from bezierData, independent of anchorsData.
+  // Used by the left panel's Strokes section — anchorsData is empty for traced images.
+  const strokeSummaries = useMemo(() => {
+    if (!bezierData) return [];
+    // If a stroke has named anchors, surface the most common one as its label.
+    const nameByStrokeIndex = new Map<number, string>();
+    if (anchorsData) {
+      const counts = new Map<number, Map<string, number>>();
+      for (const a of anchorsData.anchors) {
+        if (!counts.has(a.index)) counts.set(a.index, new Map());
+        const m = counts.get(a.index)!;
+        m.set(a.stroke, (m.get(a.stroke) ?? 0) + 1);
+      }
+      for (const [idx, m] of counts) {
+        let best = ''; let bestN = 0;
+        for (const [name, n] of m) if (n > bestN) { best = name; bestN = n; }
+        if (best) nameByStrokeIndex.set(idx, best);
+      }
+    }
+    return bezierData.strokes.map((stroke, index) => {
+      let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+      for (const seg of stroke) {
+        for (const pt of [seg.p0, seg.p3] as const) {
+          if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0];
+          if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1];
+        }
+      }
+      const bbox = stroke.length === 0
+        ? { x: 0, y: 0, width: 0, height: 0 }
+        : { x: minX, y: minY, width: maxX - minX, height: maxY - minY };
+      return {
+        index,
+        segments: stroke.length,
+        name: nameByStrokeIndex.get(index) ?? null,
+        bbox,
+        hidden: hiddenStrokes.has(index),
+      };
+    });
+  }, [bezierData, anchorsData, hiddenStrokes]);
+
+  const toggleStrokeVisibility = useCallback((index: number) => {
+    setHiddenStrokes((prev) => {
+      const next = new Set(prev);
+      if (next.has(index)) next.delete(index); else next.add(index);
+      return next;
+    });
+  }, []);
+
+  const deleteStroke = useCallback((index: number) => {
+    setBezierData((prev) => {
+      if (!prev) return prev;
+      const strokes = prev.strokes.filter((_, i) => i !== index);
+      return { strokes };
+    });
+    // Re-index hiddenStrokes so the set stays consistent after removal.
+    setHiddenStrokes((prev) => {
+      const next = new Set<number>();
+      for (const i of prev) {
+        if (i < index) next.add(i);
+        else if (i > index) next.add(i - 1);
+      }
+      return next;
+    });
+    setSelectedPoint((sp) => (sp && sp.strokeIndex === index ? null : sp));
+  }, []);
+
+  const focusOnStroke = useCallback((index: number) => {
+    if (!bezierData || !containerRef.current) return;
+    const stroke = bezierData.strokes[index];
+    if (!stroke || stroke.length === 0) return;
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    for (const seg of stroke) {
+      for (const pt of [seg.p0, seg.p3] as const) {
+        if (pt[0] < minX) minX = pt[0]; if (pt[0] > maxX) maxX = pt[0];
+        if (pt[1] < minY) minY = pt[1]; if (pt[1] > maxY) maxY = pt[1];
+      }
+    }
+    const cx = (minX + maxX) / 2;
+    const cy = (minY + maxY) / 2;
+    focusOnPoint(cx, cy);
+  }, [bezierData, focusOnPoint]);
+
+  // ── AI (tool-using agent over the trace pipeline + stroke list) ──
+  const { sendAiMessage, aiStatus, aiActivity, aiError, clearAiActivity, stopAi } = useShaperAI({
+    projectImage,
+    traceOptions,
+    traceInfo,
+    setTraceOptions,
+    handleRetrace,
+    toggleStrokeVisibility,
+    deleteStroke,
+    strokeSummaries,
+  });
 
   const filteredAnchors = useMemo(() => {
     if (!anchorsData) return [];
@@ -1473,7 +1625,9 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     connectionMap, strokesPath, pathLengthEstimate,
     revealedHandles, revealedAnchors,
     handleLines, controlPoints, anchorPoints, anchorLabels, staticAngleLabels,
-    strokeGroups, filteredAnchors, selectedPointData, showEditor, showDropScreen,
+    strokeGroups, strokeSummaries, hiddenStrokes, toggleStrokeVisibility, deleteStroke, focusOnStroke,
+    sendAiMessage, aiStatus, aiActivity, aiError, clearAiActivity, stopAi,
+    filteredAnchors, selectedPointData, showEditor, showDropScreen,
     traceImageSrc, displayImageSrc,
     undo, redo, quickSave, downloadJson, deleteSelectedPoint,
     resetZoom, zoomIn, zoomOut, handleWheel, handleMouseDown, handleMouseMove, handleMouseUp,
@@ -1498,7 +1652,9 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
     isTracing, projectId, projectMeta, devTab, devLogs,
     connectionMap, strokesPath, pathLengthEstimate, revealedHandles, revealedAnchors,
     handleLines, controlPoints, anchorPoints, anchorLabels, staticAngleLabels,
-    strokeGroups, filteredAnchors, selectedPointData, showEditor, showDropScreen,
+    strokeGroups, strokeSummaries, hiddenStrokes, toggleStrokeVisibility, deleteStroke, focusOnStroke,
+    sendAiMessage, aiStatus, aiActivity, aiError, clearAiActivity, stopAi,
+    filteredAnchors, selectedPointData, showEditor, showDropScreen,
     traceImageSrc, displayImageSrc,
     undo, redo, quickSave, downloadJson, deleteSelectedPoint,
     resetZoom, zoomIn, zoomOut, handleWheel, handleMouseDown, handleMouseMove, handleMouseUp,
