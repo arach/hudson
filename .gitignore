@@ -49,6 +49,7 @@ appsettings.local.*
 
 # local agent state files
 .lattices.json
+.claude/
 
 # local app directory (developer-specific, auto-created on first run)
 app/local/
