@@ -39,6 +39,29 @@ import { apiInspectorApp } from './api-inspector';
 import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
 
+// --- Environment gates --------------------------------------------------------
+// process.env.NODE_ENV is statically replaced by Next.js at build time. It is
+// 'development' only during `bun dev`; every preview/production build (and
+// `bun run build`) sets it to 'production'. Keep gitignored local workspaces out
+// of production bundles even when they exist on the deploying machine.
+const IS_DEV_ENV = process.env.NODE_ENV === 'development';
+
+function getLocalRegistry(): {
+  localApps: WorkspaceAppConfig[];
+  localWorkspaces: HudsonWorkspace[];
+} {
+  if (!IS_DEV_ENV) {
+    return { localApps: [], localWorkspaces: [] };
+  }
+
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    return require('../local/apps.local');
+  } catch {
+    return { localApps: [], localWorkspaces: [] };
+  }
+}
+
 // --- App lookup table (id → app) for data-driven workspace resolution --------
 
 function getAppById(id: string): HudsonApp | null {
@@ -57,6 +80,7 @@ function getAppById(id: string): HudsonApp | null {
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
+  const { localApps } = getLocalRegistry();
   const local = localApps.find(c => c.app.id === id);
   return local?.app ?? null;
 }
@@ -77,6 +101,8 @@ interface WorkspaceJson {
 }
 
 function loadWorkspacesFromJson(): HudsonWorkspace[] {
+  if (!IS_DEV_ENV) return [];
+
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
     const data: WorkspaceJson[] = require('../local/workspaces.json');
@@ -192,18 +218,6 @@ function getScoutOpsApps(): WorkspaceAppConfig[] {
   ];
 }
 
-// --- Local apps (developer-specific, gitignored) ------------------------------
-
-import { localApps, localWorkspaces } from '../local/apps.local';
-
-// --- Environment gates --------------------------------------------------------
-// process.env.NODE_ENV is statically replaced by Next.js at build time. It is
-// 'development' only during `bun dev`; every Vercel preview/production build
-// (and `bun run build`) sets it to 'production'. Use this to gate in-progress
-// workspaces + apps that should stay off the public /app route but always be
-// visible to any developer running locally.
-const IS_DEV_ENV = process.env.NODE_ENV === 'development';
-
 // --- Exports ------------------------------------------------------------------
 
 /** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
@@ -271,14 +285,25 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
   },
 });
 
-/** All workspaces available to WorkspaceShell — HudsonKit + Scout Ops + (dev-only) Logo Studio + JSON-defined + local code workspaces. */
+/** All workspaces available to WorkspaceShell — production core + dev-only local workspace sources. */
 export function getAllWorkspaces(): HudsonWorkspace[] {
+  const { localWorkspaces } = getLocalRegistry();
   const entries: WorkspaceRegistryEntry[] = [
     { workspace: getHudsonKitWorkspace(), source: 'core:hudsonkit' },
     { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
     ...(IS_DEV_ENV ? [{ workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' }] : []),
-    ...loadWorkspacesFromJson().map(workspace => ({ workspace, source: 'app/local/workspaces.json' })),
-    ...localWorkspaces.map(workspace => ({ workspace, source: 'app/local/apps.local.ts' })),
+    ...(IS_DEV_ENV
+      ? [
+          ...loadWorkspacesFromJson().map(workspace => ({
+            workspace,
+            source: 'app/local/workspaces.json',
+          })),
+          ...localWorkspaces.map(workspace => ({
+            workspace,
+            source: 'app/local/apps.local.ts',
+          })),
+        ]
+      : []),
   ];
 
   return uniqueWorkspaces(entries, duplicate => {

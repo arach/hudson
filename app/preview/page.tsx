@@ -1,16 +1,19 @@
 'use client';
 
 import { WorkspaceShell } from '../shell/WorkspaceShell';
-import { allWorkspaces } from '../workspaces';
+import { getHudsonKitWorkspace } from '../apps/registry';
+
+const previewWorkspaces = [getHudsonKitWorkspace()];
 
 // Lightweight version of /demo, used by the landing page iframe.
-// Skips the boot animation so visitors see the workspace immediately.
+// Skips boot animation and session restore so the public iframe is stable.
 export default function PreviewPage() {
   return (
     <WorkspaceShell
-      workspaces={allWorkspaces}
+      workspaces={previewWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="none"
+      persistSession={false}
     />
   );
 }

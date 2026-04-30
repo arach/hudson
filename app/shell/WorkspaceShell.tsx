@@ -345,6 +345,7 @@ interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
   bootMode?: 'full' | 'condensed' | 'none';
+  persistSession?: boolean;
 }
 
 interface ProviderRuntimeState {
@@ -356,7 +357,12 @@ function sameAppIdList(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, idx) => id === b[idx]);
 }
 
-export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'none' }: WorkspaceShellProps) {
+export function WorkspaceShell({
+  workspaces,
+  defaultWorkspaceId,
+  bootMode = 'none',
+  persistSession = true,
+}: WorkspaceShellProps) {
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(defaultWorkspaceId);
   const [hasSession, setHasSession] = useState(false);
@@ -365,12 +371,13 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
 
   // Read session from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
+    if (!persistSession) return;
     const session = loadSession();
     if (session && workspaces.some(w => w.id === session.activeWorkspaceId)) {
       setActiveWorkspaceId(session.activeWorkspaceId);
       setHasSession(true);
     }
-  }, [workspaces]);
+  }, [persistSession, workspaces]);
 
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
 
@@ -455,8 +462,10 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
   // Save session on workspace switch
   const handleSwitchWorkspace = useCallback((id: string) => {
     setActiveWorkspaceId(id);
-    saveSession(id);
-  }, []);
+    if (persistSession) {
+      saveSession(id);
+    }
+  }, [persistSession]);
 
   // Nest ALL app Providers (including disabled) to keep the tree stable.
   // Removing a Provider from the nesting chain causes React to remount
@@ -475,6 +484,7 @@ export function WorkspaceShell({ workspaces, defaultWorkspaceId, bootMode = 'non
       bootMode={bootMode}
       initialShowLauncher={initialShowLauncher}
       onProviderRuntimeChange={handleProviderRuntimeChange}
+      persistSession={persistSession}
     />
   );
 
@@ -595,6 +605,7 @@ function WorkspaceInner({
   bootMode,
   initialShowLauncher,
   onProviderRuntimeChange,
+  persistSession,
 }: {
   workspace: HudsonWorkspace;
   /** Full workspace including disabled apps (for workspace editor) */
@@ -608,6 +619,7 @@ function WorkspaceInner({
   bootMode: 'full' | 'condensed' | 'none';
   initialShowLauncher: boolean;
   onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
+  persistSession: boolean;
 }) {
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
@@ -956,8 +968,10 @@ function WorkspaceInner({
     setWindowResetKey(k => k + 1);
 
     setShowLauncher(false);
-    saveSession(activeWorkspaceId);
-  }, [workspace.apps, activeWorkspaceId, activatedAppIds, tileWindowBounds]);
+    if (persistSession) {
+      saveSession(activeWorkspaceId);
+    }
+  }, [workspace.apps, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
