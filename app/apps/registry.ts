@@ -255,6 +255,7 @@ export function getHudsonKitWorkspace(): HudsonWorkspace {
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
     defaultScale: 0.5,
+    showLeftNavigation: true,
   };
 }
 

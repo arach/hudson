@@ -49,4 +49,6 @@ export interface HudsonWorkspace {
   defaultFocusedAppId?: string;
   /** Initial canvas zoom when the workspace first boots. Defaults to 1 (100%). */
   defaultScale?: number;
+  /** Render the left app navigation panel while the workspace is in canvas mode. */
+  showLeftNavigation?: boolean;
 }

@@ -29,7 +29,7 @@ import {
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
-import { WorkspaceRail, WorkspaceSwitcher } from './WorkspaceSwitcher';
+import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
 import { ShellLayoutProvider, useShellLayout } from './ShellLayoutContext';
@@ -346,7 +346,6 @@ interface WorkspaceShellProps {
   defaultWorkspaceId: string;
   bootMode?: 'full' | 'condensed' | 'none';
   persistSession?: boolean;
-  workspaceNavigation?: 'tabs' | 'rail';
 }
 
 interface ProviderRuntimeState {
@@ -363,7 +362,6 @@ export function WorkspaceShell({
   defaultWorkspaceId,
   bootMode = 'none',
   persistSession = true,
-  workspaceNavigation = 'tabs',
 }: WorkspaceShellProps) {
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const [activeWorkspaceId, setActiveWorkspaceId] = useState(defaultWorkspaceId);
@@ -487,7 +485,6 @@ export function WorkspaceShell({
       initialShowLauncher={initialShowLauncher}
       onProviderRuntimeChange={handleProviderRuntimeChange}
       persistSession={persistSession}
-      workspaceNavigation={workspaceNavigation}
     />
   );
 
@@ -609,7 +606,6 @@ function WorkspaceInner({
   initialShowLauncher,
   onProviderRuntimeChange,
   persistSession,
-  workspaceNavigation,
 }: {
   workspace: HudsonWorkspace;
   /** Full workspace including disabled apps (for workspace editor) */
@@ -624,7 +620,6 @@ function WorkspaceInner({
   initialShowLauncher: boolean;
   onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
   persistSession: boolean;
-  workspaceNavigation: 'tabs' | 'rail';
 }) {
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
@@ -994,6 +989,7 @@ function WorkspaceInner({
   const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
   const isCanvasMode = frameMode === 'canvas';
   const showPanels = layoutMode === 'panel';
+  const showLeftNavigation = showPanels || (isCanvasMode && workspace.showLeftNavigation === true);
 
   // --- Shell state (same as AppShell) ---
   const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', DEFAULTS.leftCollapsed);
@@ -1568,15 +1564,15 @@ function WorkspaceInner({
   // --- Shell layout context ---
   const shellLayout = useMemo(
     () => ({
-      leftWidth: leftCollapsed ? 0 : leftWidth,
+      leftWidth: showLeftNavigation && !leftCollapsed ? leftWidth : 0,
       rightWidth: effectiveRightWidth,
-      leftCollapsed,
+      leftCollapsed: !showLeftNavigation || leftCollapsed,
       rightCollapsed: !showRightRail || rightCollapsed,
       isTerminalOpen: showTerminal,
       terminalHeight,
       isTerminalMaximized,
     }),
-    [leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
+    [showLeftNavigation, leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
   );
 
   // --- Left panel footer ---
@@ -2589,15 +2585,11 @@ function WorkspaceInner({
               <NavigationBar
                 title="HUDSONKIT"
                 subtitle={
-                  workspaceNavigation === 'tabs' ? (
-                    <WorkspaceSwitcher
-                      workspaces={workspaces}
-                      activeId={activeWorkspaceId}
-                      onSwitch={onSwitchWorkspace}
-                    />
-                  ) : (
-                    <span>{workspace.name}</span>
-                  )
+                  <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    activeId={activeWorkspaceId}
+                    onSwitch={onSwitchWorkspace}
+                  />
                 }
                 search={focused.search ?? undefined}
                 center={isSingleApp ? focused.navCenter : undefined}
@@ -2626,26 +2618,12 @@ function WorkspaceInner({
               />
             </motion.div>
 
-            {workspaceNavigation === 'rail' && (
-              <motion.div
-                initial={bootMode === 'none' ? false : { x: -16, opacity: 0 }}
-                animate={chromeVisible ? { x: 0, opacity: 1 } : { x: -16, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-              >
-                <WorkspaceRail
-                  workspaces={workspaces}
-                  activeId={activeWorkspaceId}
-                  onSwitch={onSwitchWorkspace}
-                />
-              </motion.div>
-            )}
-
             <motion.div
               initial={bootMode === 'none' ? false : { x: -leftWidth, opacity: 0 }}
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              {showPanels && (
+              {showLeftNavigation && (
                 <SidePanel
                   side="left"
                   title={leftPanelTitle}
@@ -2745,7 +2723,7 @@ function WorkspaceInner({
               className="pointer-events-none"
               style={{
                 position: 'fixed',
-                left: showPanels && !leftCollapsed ? leftWidth : 0,
+                left: showLeftNavigation && !leftCollapsed ? leftWidth : 0,
                 right: effectiveRightWidth,
                 bottom: 0,
                 top: 0,

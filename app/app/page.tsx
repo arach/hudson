@@ -9,7 +9,6 @@ export default function AppPage() {
       workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="none"
-      workspaceNavigation="rail"
     />
   );
 }
