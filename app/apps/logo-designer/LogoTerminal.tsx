@@ -1,8 +1,8 @@
 'use client';
 
-import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from '@hudson/sdk';
+import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from 'hudsonkit';
 import { AlertTriangle, Camera, Loader2 } from 'lucide-react';
-import type { AIAttachment } from '@hudson/sdk';
+import type { AIAttachment } from 'hudsonkit';
 import { useLogo, defaults } from './LogoProvider';
 import { isBuiltinVariant } from './types';
 import type { LogoTemplate, TemplateParam } from './types';

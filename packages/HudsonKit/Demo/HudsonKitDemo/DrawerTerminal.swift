@@ -1,0 +1,80 @@
+import SwiftUI
+import HudsonUI
+
+#if HUDSON_TERMINAL
+import HudsonTerminal
+#endif
+
+/// Content the demo mounts inside the `HudsonTerminalDrawer`.
+struct DrawerTerminal: View {
+    let host: String
+
+    var body: some View {
+        #if HUDSON_TERMINAL
+        HudsonTerminalSSHSurface(
+            hostLabel: host,
+            showsSystemKeyboard: true,
+            appearance: HudsonTerminalAppearance(fontSize: 11)
+        )
+        #else
+        FakeTerminalContent(host: host)
+        #endif
+    }
+}
+
+private struct FakeTerminalContent: View {
+    let host: String
+
+    var body: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 2) {
+                line(prompt: "~", text: "~/dev/lattices", color: HudsonPalette.muted)
+                line(prompt: "$", text: "swift build -c release", color: HudsonPalette.ink)
+                Text("Compiling DeckKit…")
+                    .font(HudsonFont.mono(11))
+                    .foregroundStyle(HudsonPalette.muted)
+                Text("Compiling Sources…")
+                    .font(HudsonFont.mono(11))
+                    .foregroundStyle(HudsonPalette.muted)
+                Text("Build complete! (3.42s)")
+                    .font(HudsonFont.mono(11))
+                    .foregroundStyle(HudsonPalette.statusOk)
+                line(prompt: "$", text: "scout send '@hkbridge ack — looks great'", color: HudsonPalette.ink)
+                Text("Routed to: hkbridge.m2-bridge.mini")
+                    .font(HudsonFont.mono(11))
+                    .foregroundStyle(HudsonPalette.muted)
+
+                HStack(spacing: HudsonSpacing.xs) {
+                    Text("$")
+                        .font(HudsonFont.mono(11, weight: .semibold))
+                        .foregroundStyle(HudsonPalette.statusOk)
+                    Rectangle()
+                        .fill(HudsonPalette.statusOk)
+                        .frame(width: 7, height: 13)
+                }
+                .padding(.top, 2)
+            }
+            .padding(HudsonSpacing.xl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .background(HudsonPalette.chrome)
+        .overlay(alignment: .topTrailing) {
+            Text(host)
+                .font(HudsonFont.mono(9))
+                .tracking(0.8)
+                .foregroundStyle(HudsonPalette.dim)
+                .padding(HudsonSpacing.md)
+        }
+    }
+
+    private func line(prompt: String, text: String, color: Color) -> some View {
+        HStack(spacing: HudsonSpacing.xs) {
+            Text(prompt)
+                .font(HudsonFont.mono(11))
+                .foregroundStyle(HudsonPalette.muted)
+            Text(text)
+                .font(HudsonFont.mono(11))
+                .foregroundStyle(color)
+        }
+    }
+}

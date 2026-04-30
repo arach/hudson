@@ -2,8 +2,8 @@
 
 import { useMemo, type ReactNode, createElement } from 'react';
 import { Move, LayoutList, LayoutGrid } from 'lucide-react';
-import type { CommandOption } from '@hudson/sdk';
-import type { StatusColor, SearchConfig } from '@hudson/sdk';
+import type { CommandOption } from 'hudsonkit';
+import type { StatusColor, SearchConfig } from 'hudsonkit';
 import { useDocs } from './DocsProvider';
 import { ViewModeToggle } from './components';
 

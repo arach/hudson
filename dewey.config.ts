@@ -12,7 +12,7 @@ export default {
       'Hudson uses bun as its package manager — never use npm or pnpm',
       'All UI components are custom-built — do not replace with library components',
       'Use @base-ui/react for context menu only, motion sparingly',
-      'Every app must implement the HudsonApp interface from @hudson/sdk',
+      'Every app must implement the HudsonApp interface from hudsonkit',
       'Apps do not manage shell chrome — the shell reads from app hooks and renders slots',
       'State is owned by each app Provider via React context',
       'NEVER use purple in designs — prefer cyan/blue/teal/emerald color ranges',

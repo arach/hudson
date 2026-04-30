@@ -103,6 +103,8 @@ export interface HudsonApp {
   description?: string;
   /** Frame mode: 'canvas' enables pan/zoom, 'panel' renders scrollable content */
   mode: 'canvas' | 'panel';
+  /** Icon shown next to the app name in the navigation bar */
+  icon?: ReactNode;
   /** Whether the shell is allowed to mount more than one live instance of this
    *  app inside a single workspace. Defaults to 'singleton'. */
   multiInstance?: MultiInstanceMode;
@@ -161,7 +163,7 @@ export interface HudsonApp {
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
-    useLayoutMode?: () => 'canvas' | 'panel';
+    useLayoutMode?: () => 'canvas' | 'panel' | 'focus';
     useActiveToolHint?: () => string | null;
     /** Returns a getter: (portId) => data snapshot or null */
     usePortOutput?: () => (portId: string) => unknown | null;

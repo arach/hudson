@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useRef, useMemo, type ReactNode } from 'react';
-import { usePlatform } from '@hudson/sdk';
+import { usePlatform } from 'hudsonkit';
 import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
 import {
   type OpenScoutActivityFilter,

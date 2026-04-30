@@ -4,8 +4,15 @@ import { db } from '@/lib/db';
 import { signups } from '@/lib/db/schema';
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-const NOTIFY_TO = process.env.NOTIFY_EMAIL || 'arach@hudsonos.com';
-const ALLOWED_ORIGINS = ['https://hudsonos.com', 'https://www.hudsonos.com'];
+const NOTIFY_TO = process.env.NOTIFY_EMAIL || 'arach@hudsonkit.com';
+const ALLOWED_ORIGINS = [
+  'https://hudsonkit.com',
+  'https://www.hudsonkit.com',
+  'https://app.hudsonkit.com',
+  'https://hudsonos.com',
+  'https://www.hudsonos.com',
+  'https://app.hudsonos.com',
+];
 
 function corsHeaders(origin: string | null) {
   const headers: Record<string, string> = {};
@@ -84,7 +91,7 @@ export async function POST(request: NextRequest) {
 
     if (process.env.RESEND_API_KEY) {
       await getResend().emails.send({
-        from: 'Hudson <hello@hudsonos.com>',
+        from: 'Hudson <hello@hudsonkit.com>',
         to: NOTIFY_TO,
         subject: `Hudson interest from ${cleanEmail}`,
         html: `
@@ -94,7 +101,7 @@ export async function POST(request: NextRequest) {
   ${useCase ? `<p><strong>Use case:</strong> ${useCase}</p>` : ''}
   ${context ? `<p><strong>Context:</strong> ${context}</p>` : ''}
   ${message ? `<p><strong>Message:</strong> ${message}</p>` : ''}
-  <p style="color: #666; font-size: 12px;">Sent from hudsonos.com</p>
+  <p style="color: #666; font-size: 12px;">Sent from hudsonkit.com</p>
 </div>`.trim(),
       });
     }

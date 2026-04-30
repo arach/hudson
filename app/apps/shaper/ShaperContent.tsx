@@ -2,7 +2,7 @@
 
 import { useEffect } from 'react';
 import { useShaper } from './ShaperProvider';
-import { ZoomControls } from '@hudson/sdk';
+import { ZoomControls } from 'hudsonkit';
 import { useShellLayout } from '../../shell/ShellLayoutContext';
 import { CanvasRenderer } from './components/CanvasRenderer';
 import { ToolPalette } from './components/ToolPalette';

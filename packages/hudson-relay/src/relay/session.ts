@@ -58,6 +58,52 @@ export function send(ws: RelaySocket, data: Record<string, unknown>) {
   }
 }
 
+function ptyFdClosed(err: unknown): boolean {
+  const message = err instanceof Error ? err.message : String(err);
+  return message.includes('EBADF') || message.toLowerCase().includes('bad file descriptor');
+}
+
+function markSessionPtyClosed(session: Session, err: unknown, op: 'write' | 'resize') {
+  if (session.exited) return;
+  session.exited = true;
+  console.warn(`[relay] Session ${session.id}: PTY ${op} failed after fd closed (${err instanceof Error ? err.message : String(err)})`);
+  scheduleReap(session, 10_000);
+}
+
+export function sessionOwnsSocket(session: Session, ws: RelaySocket): boolean {
+  return session.ws === ws;
+}
+
+export function writeSession(session: Session, data: string): boolean {
+  if (session.exited) return false;
+  try {
+    session.pty.write(data);
+    return true;
+  } catch (err) {
+    if (ptyFdClosed(err)) {
+      markSessionPtyClosed(session, err, 'write');
+      return false;
+    }
+    throw err;
+  }
+}
+
+export function resizeSession(session: Session, cols: number, rows: number): boolean {
+  if (session.exited) return false;
+  try {
+    session.pty.resize(cols, rows);
+    session.cols = cols;
+    session.rows = rows;
+    return true;
+  } catch (err) {
+    if (ptyFdClosed(err)) {
+      markSessionPtyClosed(session, err, 'resize');
+      return false;
+    }
+    throw err;
+  }
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -334,9 +380,7 @@ export function attachSession(session: Session, ws: RelaySocket, cols?: number, 
     const c = Math.max(cols, 20);
     const r = Math.max(rows, 4);
     if (c !== session.cols || r !== session.rows) {
-      session.pty.resize(c, r);
-      session.cols = c;
-      session.rows = r;
+      resizeSession(session, c, r);
     }
   }
 

@@ -1,0 +1,43 @@
+name: HudsonKitiOSDemo
+options:
+  bundleIdPrefix: dev.hudson.kit
+  deploymentTarget:
+    iOS: "17.0"
+  generateEmptyDirectories: false
+  createIntermediateGroups: true
+
+packages:
+  HudsonKit:
+    path: ..
+
+targets:
+  HudsonKitiOSDemo:
+    type: application
+    platform: iOS
+    sources:
+      - path: ../Demo/HudsonKitDemo
+    dependencies:
+      - package: HudsonKit
+        product: HudsonUI
+      - package: HudsonKit
+        product: HudsonShell
+      - package: HudsonKit
+        product: HudsonVoice
+    settings:
+      base:
+        PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo
+        MARKETING_VERSION: "0.1.0"
+        CURRENT_PROJECT_VERSION: "1"
+        GENERATE_INFOPLIST_FILE: YES
+        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
+        INFOPLIST_KEY_UILaunchScreen_Generation: YES
+        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
+        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
+        INFOPLIST_KEY_UISupportedInterfaceOrientations~ipad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"
+        IPHONEOS_DEPLOYMENT_TARGET: "17.0"
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO
+        ENABLE_PREVIEWS: YES

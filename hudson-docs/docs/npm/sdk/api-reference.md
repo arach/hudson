@@ -1,14 +1,14 @@
 ---
 title: API Reference
-description: Complete reference for every type, hook, utility, and component in @hudsonos/sdk.
+description: Complete reference for every type, hook, utility, and component in hudsonkit.
 section: npm
-subsection: "@hudsonos/sdk"
+subsection: "hudsonkit"
 order: 3
 ---
 
 # API Reference
 
-Complete reference for every type, hook, utility, and component exported by `@hudsonos/sdk`.
+Complete reference for every type, hook, utility, and component exported by `hudsonkit`.
 
 ## Types
 
@@ -409,7 +409,7 @@ interface ContextMenuGroup {
 
 ### AI Types
 
-These types are exported for typing app hooks. The runtime ships separately as `@hudsonos/ai`.
+These types are exported for typing app hooks. The runtime ships separately as `@hudsonkit/ai`.
 
 ### HudsonAIChat
 
@@ -488,7 +488,7 @@ A tuple identical to `useState`: the current value and a setter function. The se
 #### Example
 
 ```tsx
-import { usePersistentState } from '@hudsonos/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 function ProjectSettings() {
   const [gridSize, setGridSize] = usePersistentState('editor.gridSize', 20);
@@ -567,7 +567,7 @@ A three-element tuple:
 The settings schema uses `AppSettingsConfig`, which contains sections of typed fields:
 
 ```tsx
-import type { AppSettingsConfig } from '@hudsonos/sdk';
+import type { AppSettingsConfig } from 'hudsonkit';
 
 const settingsConfig: AppSettingsConfig = {
   sections: [
@@ -625,7 +625,7 @@ const settingsConfig: AppSettingsConfig = {
 #### Example
 
 ```tsx
-import { useAppSettings } from '@hudsonos/sdk';
+import { useAppSettings } from 'hudsonkit';
 
 function MyAppProvider({ children }: { children: React.ReactNode }) {
   const [settings, updateSettings, resetSettings] = useAppSettings(
@@ -743,7 +743,7 @@ type RelayStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 #### Example
 
 ```tsx
-import { useTerminalRelay } from '@hudsonos/sdk';
+import { useTerminalRelay } from 'hudsonkit';
 import { useEffect, useRef } from 'react';
 
 function AppTerminal() {
@@ -806,7 +806,7 @@ function AppTerminal() {
 Tactile UI sounds generated with the Web Audio API. No audio files required.
 
 ```ts
-import { sounds, click, thock, blipUp, blipDown, pop, confirm, error, whoosh, chime, tick, slideIn, slideOut, boot, ping, type } from '@hudsonos/sdk';
+import { sounds, click, thock, blipUp, blipDown, pop, confirm, error, whoosh, chime, tick, slideIn, slideOut, boot, ping, type } from 'hudsonkit';
 ```
 
 See [Utilities](./utilities.md#sounds) for the full catalog.
@@ -983,7 +983,7 @@ function usePlatformLayout(): PlatformLayout
 A canvas zoom widget with plus/minus buttons and an editable percentage display.
 
 ```tsx
-import { ZoomControls } from '@hudsonos/sdk';
+import { ZoomControls } from 'hudsonkit';
 
 <ZoomControls
   scale={zoom}

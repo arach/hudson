@@ -23,6 +23,8 @@ interface TerminalRelayProps {
   onOpenSettings?: () => void;
   /** Called when the relay service is not running and the user clicks "Start Service". If provided, shows the button. */
   onStartService?: () => Promise<boolean>;
+  /** Suppress disconnected/connecting overlays — just show the terminal canvas immediately. Error overlays are still shown. */
+  quiet?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -169,6 +171,7 @@ export function TerminalRelay({
   configItems,
   onOpenSettings,
   onStartService,
+  quiet = false,
 }: TerminalRelayProps) {
   const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect, disconnect } = relay;
   const [starting, setStarting] = useState(false);
@@ -370,7 +373,7 @@ export function TerminalRelay({
     });
 
     return () => {
-      onData(() => {});
+      onData(null);
     };
   }, [ready, onData]);
 
@@ -492,7 +495,7 @@ export function TerminalRelay({
         </button>
       </div>
     );
-  } else if (status === 'disconnected') {
+  } else if (status === 'disconnected' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-4 max-w-xs text-center px-4">
         <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
@@ -547,7 +550,7 @@ export function TerminalRelay({
         </div>
       </div>
     );
-  } else if (status === 'connecting') {
+  } else if (status === 'connecting' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-6 h-6 border-2 border-neutral-600 border-t-cyan-400 rounded-full animate-spin" />

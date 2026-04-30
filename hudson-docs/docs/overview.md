@@ -15,7 +15,7 @@ Think of it as a desktop environment in the browser: apps register themselves, t
 A Hudson app is a plain object satisfying the `HudsonApp` interface:
 
 ```tsx
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 
 export const counterApp: HudsonApp = {
   id: 'counter',
@@ -36,7 +36,7 @@ Register it in a workspace and it immediately gets panels, command palette, stat
 
 Hudson has three layers:
 
-### 1. Frame UI (`packages/@hudson/sdk`)
+### 1. Frame UI (`packages/hudsonkit`)
 
 The component library and type system. Provides:
 
@@ -114,7 +114,7 @@ Hudson includes an intent catalog for LLM/voice integration. Apps declare intent
 
 - [Quickstart](./quickstart.md) — Get Hudson running locally and create your first app
 - [Building Apps](./building-apps.md) — Full integration guide (Provider, slots, hooks, intents, workspaces)
-- [API Reference](./api.md) — Complete reference for @hudson/sdk exports
+- [API Reference](./api.md) — Complete reference for hudsonkit exports
 
 ## Tech Stack
 

@@ -8,9 +8,9 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import { AppShell } from '@hudson/sdk/app-shell';
-import type { CommandOption, HudsonApp } from '@hudson/sdk';
-import { useTheme } from '@hudson/sdk';
+import { AppShell } from 'hudsonkit/app-shell';
+import type { CommandOption, HudsonApp } from 'hudsonkit';
+import { useTheme } from 'hudsonkit';
 import {
   ArrowRight,
   BookOpenText,

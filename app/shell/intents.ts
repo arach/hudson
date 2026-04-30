@@ -1,4 +1,4 @@
-import type { AppIntent } from '@hudson/sdk';
+import type { AppIntent } from 'hudsonkit';
 
 export const shellIntents: AppIntent[] = [
   {

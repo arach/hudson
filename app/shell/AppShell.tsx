@@ -10,13 +10,13 @@ import {
   CommandPalette,
   CommandDock,
   TerminalDrawer,
-} from '@hudson/sdk/shell';
+} from 'hudsonkit/shell';
 import {
   usePersistentState,
   sounds,
   setMuted as setSoundMuted,
-} from '@hudson/sdk';
-import type { HudsonApp, CommandOption } from '@hudson/sdk';
+} from 'hudsonkit';
+import type { HudsonApp, CommandOption } from 'hudsonkit';
 import {
   Volume2,
   VolumeX,
@@ -265,7 +265,7 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
       hud={
         <>
           <NavigationBar
-            title="HUDSON"
+            title="HUDSONKIT"
             subtitle={<AppSwitcher apps={apps} activeId={activeAppId} onSwitch={onSwitchApp} />}
             search={appSearch ?? undefined}
             center={appNavCenter}

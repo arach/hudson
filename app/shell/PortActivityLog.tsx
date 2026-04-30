@@ -3,7 +3,7 @@
 import { useState, useCallback, useRef } from 'react';
 import { ArrowRight, ArrowLeft, Check, X, Activity, GripHorizontal, Link, Unlink, Play } from 'lucide-react';
 import { usePortActivity, useDataBus, type PortActivityEntry } from './DataBusContext';
-import type { PipeDefinition } from '@hudson/sdk';
+import type { PipeDefinition } from 'hudsonkit';
 
 function formatTime(ts: number): string {
   return new Date(ts).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -26,7 +26,7 @@ function EntryRow({ entry }: { entry: PortActivityEntry }) {
         className="w-full flex items-center gap-2 px-2.5 py-1.5 text-left hover:bg-white/[0.02] transition-colors"
       >
         {isPush ? (
-          <ArrowRight size={10} className="text-cyan-400/60 shrink-0" />
+          <ArrowRight size={10} className="text-cyan-500 shrink-0" />
         ) : (
           <ArrowLeft size={10} className="text-emerald-400/60 shrink-0" />
         )}
@@ -35,22 +35,22 @@ function EntryRow({ entry }: { entry: PortActivityEntry }) {
         ) : (
           <X size={9} className="text-red-400/50 shrink-0" />
         )}
-        <span className="text-[10px] font-mono text-white/40 truncate flex-1">
-          <span className="text-white/25">{entry.portId}</span>
-          <span className="text-white/15 mx-1">{isPush ? '→' : '←'}</span>
-          <span className="text-white/25">{entry.peerAppId}</span>
+        <span className="text-[10px] font-mono text-zinc-500 truncate flex-1">
+          <span className="text-zinc-700">{entry.portId}</span>
+          <span className="text-zinc-800 mx-1">{isPush ? '→' : '←'}</span>
+          <span className="text-zinc-700">{entry.peerAppId}</span>
         </span>
-        <span className="text-[9px] font-mono text-white/15 shrink-0">{entry.dataType}</span>
-        <span className="text-[9px] font-mono text-white/10 shrink-0">{formatSize(entry.dataSize)}</span>
-        <span className="text-[9px] font-mono text-white/10 shrink-0">{formatTime(entry.timestamp)}</span>
+        <span className="text-[9px] font-mono text-zinc-800 shrink-0">{entry.dataType}</span>
+        <span className="text-[9px] font-mono text-zinc-800 shrink-0">{formatSize(entry.dataSize)}</span>
+        <span className="text-[9px] font-mono text-zinc-800 shrink-0">{formatTime(entry.timestamp)}</span>
       </button>
       {expanded && (
         <div className="px-2.5 pb-2">
-          <pre className="text-[9px] font-mono text-white/25 bg-white/[0.02] rounded px-2 py-1.5 overflow-x-auto max-h-[120px] overflow-y-auto whitespace-pre-wrap break-all">
+          <pre className="text-[9px] font-mono text-zinc-700 bg-white/[0.02] rounded px-2 py-1.5 overflow-x-auto max-h-[120px] overflow-y-auto whitespace-pre-wrap break-all">
             {entry.dataPreview}
           </pre>
           {entry.pipeName && (
-            <div className="text-[8px] font-mono text-white/10 mt-1">pipe: {entry.pipeName}</div>
+            <div className="text-[8px] font-mono text-zinc-800 mt-1">pipe: {entry.pipeName}</div>
           )}
         </div>
       )}
@@ -143,13 +143,13 @@ function PortConnections({ appId }: { appId: string }) {
       {/* Outputs → available targets */}
       {outputTargets.length > 0 && (
         <div>
-          <div className="text-[8px] font-mono uppercase tracking-wider text-white/15 mb-1">Send to</div>
+          <div className="text-[8px] font-mono uppercase tracking-wider text-zinc-800 mb-1">Send to</div>
           {outputTargets.map((t, i) => (
             <div key={i} className="flex items-center gap-1.5 py-0.5">
-              <span className="text-[9px] font-mono text-cyan-400/50 truncate">{t.output.name}</span>
-              <ArrowRight size={8} className="text-white/15 shrink-0" />
-              <span className="text-[9px] font-mono text-white/30 truncate">{t.targetAppName}</span>
-              <span className="text-[8px] font-mono text-white/15">({t.input.name})</span>
+              <span className="text-[9px] font-mono text-cyan-600 truncate">{t.output.name}</span>
+              <ArrowRight size={8} className="text-zinc-800 shrink-0" />
+              <span className="text-[9px] font-mono text-zinc-600 truncate">{t.targetAppName}</span>
+              <span className="text-[8px] font-mono text-zinc-800">({t.input.name})</span>
               <span className="ml-auto shrink-0 flex gap-0.5">
                 {t.existingPipe ? (
                   <>
@@ -171,7 +171,7 @@ function PortConnections({ appId }: { appId: string }) {
                 ) : (
                   <button
                     onClick={() => handleConnect(appId, t.output.id, t.targetAppId, t.input.id)}
-                    className="p-0.5 rounded hover:bg-cyan-500/15 text-white/20 hover:text-cyan-400 transition-colors"
+                    className="p-0.5 rounded hover:bg-cyan-500/15 text-zinc-700 hover:text-cyan-400 transition-colors"
                     title="Connect"
                   >
                     <Link size={8} />
@@ -186,12 +186,12 @@ function PortConnections({ appId }: { appId: string }) {
       {/* Available sources → Inputs */}
       {inputSources.length > 0 && (
         <div>
-          <div className="text-[8px] font-mono uppercase tracking-wider text-white/15 mb-1">Receive from</div>
+          <div className="text-[8px] font-mono uppercase tracking-wider text-zinc-800 mb-1">Receive from</div>
           {inputSources.map((s, i) => (
             <div key={i} className="flex items-center gap-1.5 py-0.5">
-              <span className="text-[9px] font-mono text-white/30 truncate">{s.sourceAppName}</span>
-              <span className="text-[8px] font-mono text-white/15">({s.output.name})</span>
-              <ArrowRight size={8} className="text-white/15 shrink-0" />
+              <span className="text-[9px] font-mono text-zinc-600 truncate">{s.sourceAppName}</span>
+              <span className="text-[8px] font-mono text-zinc-800">({s.output.name})</span>
+              <ArrowRight size={8} className="text-zinc-800 shrink-0" />
               <span className="text-[9px] font-mono text-emerald-400/50 truncate">{s.input.name}</span>
               <span className="ml-auto shrink-0 flex gap-0.5">
                 {s.existingPipe ? (
@@ -214,7 +214,7 @@ function PortConnections({ appId }: { appId: string }) {
                 ) : (
                   <button
                     onClick={() => handleConnect(s.sourceAppId, s.output.id, appId, s.input.id)}
-                    className="p-0.5 rounded hover:bg-cyan-500/15 text-white/20 hover:text-cyan-400 transition-colors"
+                    className="p-0.5 rounded hover:bg-cyan-500/15 text-zinc-700 hover:text-cyan-400 transition-colors"
                     title="Connect"
                   >
                     <Link size={8} />
@@ -268,21 +268,21 @@ export function PortActivityLog({ appId }: PortActivityLogProps) {
         onMouseDown={handleDragStart}
         onDoubleClick={toggleOpen}
       >
-        <GripHorizontal size={10} className="text-white/10 group-hover:text-white/25 transition-colors" />
+        <GripHorizontal size={10} className="text-zinc-800 group-hover:text-zinc-700 transition-colors" />
         <button
           onClick={(e) => { e.stopPropagation(); toggleOpen(); }}
           onMouseDown={e => e.stopPropagation()}
-          className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors"
+          className="flex items-center gap-1.5 text-[9px] font-mono uppercase tracking-widest text-zinc-700 hover:text-zinc-500 transition-colors"
         >
           <Activity size={9} />
           Ports
         </button>
         {recentCount > 0 && (
-          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-400/60">
+          <span className="text-[9px] font-mono px-1 py-0.5 rounded bg-cyan-500/10 text-cyan-500">
             {recentCount}
           </span>
         )}
-        <span className="text-[9px] font-mono text-white/10 ml-auto">
+        <span className="text-[9px] font-mono text-zinc-800 ml-auto">
           {activity.length > 0 ? `${activity.length}` : ''}
         </span>
       </div>

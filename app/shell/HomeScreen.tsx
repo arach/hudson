@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { X, Info } from 'lucide-react';
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
 // Session helpers
@@ -95,7 +95,7 @@ const APP_INFO: Record<string, AppInfo> = {
       'Visual task queue — see scheduled jobs, heartbeats, and background work at a glance',
       'Structured input forms for skills and commands instead of free-text prompts',
       'Memory inspector to review and edit what your claw remembers',
-      'Socket-level communication via Tailscale and the Hudson OS CLI',
+      'Socket-level communication via Tailscale and the HudsonKit CLI',
     ],
     link: { label: 'openclaw.ai', url: 'https://openclaw.ai' },
   },
@@ -290,9 +290,7 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
     <motion.div
       className="fixed inset-0 flex items-center justify-center"
       style={{
-        background: 'rgba(0,0,0,0.30)',
-        backdropFilter: 'blur(16px)',
-        WebkitBackdropFilter: 'blur(16px)',
+        background: 'rgba(8,8,10,0.92)',
       }}
       initial={{ opacity: 0 }}
       animate={{ opacity: exiting ? 0 : 1 }}
@@ -306,22 +304,16 @@ export function AppLauncher({ workspace, activatedAppIds, onActivateApp, onDismi
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 0.4, ease: [0.25, 1, 0.5, 1] }}
         >
-          <h1 className="text-[32px] font-brand font-bold tracking-[0.3em] text-white/90">
+          <h1 className="text-[32px] font-brand font-bold tracking-[0.3em] text-zinc-100">
             HUDSON
           </h1>
           {/* Breathing bar — pure CSS, GPU-composited via transform */}
           <div
-            className="h-px w-9 relative"
+            className="h-px w-9 bg-emerald-400"
             style={{ animation: 'breathe 3s ease-in-out infinite', willChange: 'transform, opacity' }}
-          >
-            <div className="absolute inset-0 bg-emerald-400/50" />
-            <div
-              className="absolute inset-0"
-              style={{ background: 'rgba(16,185,129,0.4)', filter: 'blur(4px)' }}
-            />
-          </div>
+          />
           <span className="text-[12px] font-mono tracking-[0.2em] text-neutral-500">
-            hudsonos.com
+            hudsonkit.com
           </span>
         </motion.div>
 

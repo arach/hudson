@@ -31,7 +31,7 @@ if (!existsSync(localAppsFile)) {
       "// For a full working example, see: app/catalog/apps.local.example.ts",
       "// ─────────────────────────────────────────────────────────────────────────",
       "",
-      "import type { WorkspaceAppConfig, HudsonWorkspace } from '@hudson/sdk';",
+      "import type { WorkspaceAppConfig, HudsonWorkspace } from 'hudsonkit';",
       "",
       "export const localApps: WorkspaceAppConfig[] = [];",
       "export const localWorkspaces: HudsonWorkspace[] = [];",
@@ -48,7 +48,7 @@ if (!existsSync(localWorkspacesFile)) {
 // ─────────────────────────────────────────────────────────────────────────────
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["@hudson/sdk", "@voxd/client"],
+  transpilePackages: ["hudsonkit", "@voxd/client"],
   serverExternalPackages: ["esbuild"],
   turbopack: {
     root: join(__dirname, ".."),

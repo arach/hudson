@@ -1,4 +1,4 @@
-import type { HudsonWorkspace, IntentCatalog, AppIntent } from '@hudson/sdk';
+import type { HudsonWorkspace, IntentCatalog, AppIntent } from 'hudsonkit';
 import { shellIntents } from '../shell/intents';
 
 /**

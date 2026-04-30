@@ -15,7 +15,7 @@ import {
   CommandDock,
   TerminalDrawer,
   AppWindow,
-} from '@hudson/sdk/shell';
+} from 'hudsonkit/shell';
 import {
   usePersistentState,
   useDebouncedPersistentState,
@@ -25,8 +25,8 @@ import {
   setMuted as setSoundMuted,
   useAppSettings,
   captureWorkspace,
-} from '@hudson/sdk';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
+} from 'hudsonkit';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -51,7 +51,7 @@ import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
 import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-manager';
 import type { EditorTab } from './workspace-manager';
-import type { ServiceStatus } from '@hudson/sdk';
+import type { ServiceStatus } from 'hudsonkit';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
@@ -75,8 +75,8 @@ const DEFAULTS = {
   leftWidth: 260,
   rightWidth: 280,
   terminalHeight: 480,
-  leftCollapsed: true,
-  rightCollapsed: true,
+  leftCollapsed: false,
+  rightCollapsed: false,
   minimapCollapsed: false,
   showTerminal: false,
   showGuides: false,
@@ -131,15 +131,13 @@ function ServiceStatusIndicator({ registry, onOpenSettings }: {
   const running = catalog.filter(s => records[s.id]?.status === 'running').length;
   const hasError = catalog.some(s => records[s.id]?.status === 'error');
   const color = hasError ? 'text-destructive' : running === total ? 'text-success' : 'text-muted-foreground';
-  const dotColor = hasError ? 'bg-destructive' : running === total ? 'bg-success' : 'bg-muted-foreground';
 
   return (
     <button
       onClick={onOpenSettings}
-      className={`flex items-center gap-1.5 ${color} hover:opacity-80 transition-opacity`}
+      className={`flex items-center ${color} hover:opacity-80 transition-opacity`}
       title="Open Services settings"
     >
-      <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
       <span className="uppercase text-[10px] font-semibold tracking-wider">
         Services {running}/{total}
       </span>
@@ -280,7 +278,7 @@ function buildShellSettingsPatch(
         };
     }
     case 'voice.replyProvider':
-      return value === 'system' || value === 'openai' || value === 'elevenlabs' || value === 'groq'
+      return value === 'vox'
         ? { voice: { ...current.voice, replyProvider: value } }
         : null;
     case 'voice.replyModel':
@@ -516,7 +514,7 @@ interface AppHookData {
   search: SearchConfig | null;
   navCenter: ReactNode | null;
   navActions: ReactNode | null;
-  layoutMode: 'canvas' | 'panel';
+  layoutMode: 'canvas' | 'panel' | 'focus';
   activeToolHint: string | null;
 }
 
@@ -956,7 +954,9 @@ function WorkspaceInner({
 
   // --- Mode resolution ---
   const layoutMode = isSingleApp ? focused.layoutMode : workspace.mode;
-  const isCanvasMode = layoutMode === 'canvas';
+  const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+  const isCanvasMode = frameMode === 'canvas';
+  const showPanels = layoutMode === 'panel';
 
   // --- Shell state (same as AppShell) ---
   const [leftCollapsed, setLeftCollapsed] = usePersistentState('hudson.left', DEFAULTS.leftCollapsed);
@@ -1556,7 +1556,7 @@ function WorkspaceInner({
           {Object.entries(windowBoundsMap).map(([appId, b]) => (
             <div
               key={appId}
-              className={`absolute rounded-[0.5px] pointer-events-none ${
+              className={`absolute pointer-events-none ${
                 appId === focusedAppId
                   ? 'border border-accent/60 bg-accent/10'
                   : 'border border-muted-foreground/40 bg-muted-foreground/10'
@@ -2500,7 +2500,7 @@ function WorkspaceInner({
         </div>
       ) : (
       <Frame
-        mode={isCanvasMode ? 'canvas' : 'panel'}
+        mode={frameMode}
         panOffset={panOffset}
         scale={scale}
         onPan={handlePan}
@@ -2520,7 +2520,7 @@ function WorkspaceInner({
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
               <NavigationBar
-                title="HUDSON"
+                title="HUDSONKIT"
                 subtitle={
                   <WorkspaceSwitcher
                     workspaces={workspaces}
@@ -2560,19 +2560,21 @@ function WorkspaceInner({
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              <SidePanel
-                side="left"
-                title={leftPanelTitle}
-                icon={leftPanelIcon}
-                isCollapsed={leftCollapsed}
-                onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
-                width={leftWidth}
-                onResizeStart={handleResizeStart('left')}
-                footer={leftFooter}
-                headerActions={leftHeaderActions}
-              >
-                {leftPanelContent}
-              </SidePanel>
+              {showPanels && (
+                <SidePanel
+                  side="left"
+                  title={leftPanelTitle}
+                  icon={leftPanelIcon}
+                  isCollapsed={leftCollapsed}
+                  onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
+                  width={leftWidth}
+                  onResizeStart={handleResizeStart('left')}
+                  footer={leftFooter}
+                  headerActions={leftHeaderActions}
+                >
+                  {leftPanelContent}
+                </SidePanel>
+              )}
             </motion.div>
 
             <motion.div
@@ -2580,19 +2582,21 @@ function WorkspaceInner({
               animate={panelsVisible ? { x: 0, opacity: 1 } : { x: rightWidth, opacity: 0 }}
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
-              <SidePanel
-                side="right"
-                title={rightPanelTitle}
-                icon={rightPanelIcon}
-                isCollapsed={rightCollapsed}
-                onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
-                width={rightWidth}
-                onResizeStart={handleResizeStart('right')}
-                footer={rightFooter}
-                headerActions={rightHeaderActions}
-              >
-                {rightPanelContent}
-              </SidePanel>
+              {showPanels && (
+                <SidePanel
+                  side="right"
+                  title={rightPanelTitle}
+                  icon={rightPanelIcon}
+                  isCollapsed={rightCollapsed}
+                  onToggleCollapse={() => { setRightCollapsed(!rightCollapsed); playSound('thock'); }}
+                  width={rightWidth}
+                  onResizeStart={handleResizeStart('right')}
+                  footer={rightFooter}
+                  headerActions={rightHeaderActions}
+                >
+                  {rightPanelContent}
+                </SidePanel>
+              )}
             </motion.div>
 
             <motion.div
@@ -2648,8 +2652,8 @@ function WorkspaceInner({
               className="pointer-events-none"
               style={{
                 position: 'fixed',
-                left: leftCollapsed ? 0 : leftWidth,
-                right: rightCollapsed ? 0 : rightWidth,
+                left: showPanels && !leftCollapsed ? leftWidth : 0,
+                right: showPanels && !rightCollapsed ? rightWidth : 0,
                 bottom: 0,
                 top: 0,
                 zIndex: 45,

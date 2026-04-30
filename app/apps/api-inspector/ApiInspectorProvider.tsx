@@ -9,7 +9,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 import type {
   HttpMethod,
   ApiRequest,

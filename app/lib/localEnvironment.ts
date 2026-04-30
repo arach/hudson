@@ -3,7 +3,7 @@ import { readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { parseEnv } from 'node:util';
 import { clearCredentialCache } from '@/app/api/ai/providers';
-import { clearHudsonOraRegistryCache } from '@/app/lib/tts/hudsonOraRegistry';
+import { clearHudsonVoxVoiceCache } from '@/app/lib/tts/voxBridge';
 
 export interface HudsonLocalEnvironmentEntry {
   key: string;
@@ -144,7 +144,7 @@ function applyHudsonLocalEnvironment(envLocal: Record<string, string>) {
 
 function refreshHudsonEnvironmentCaches() {
   clearCredentialCache();
-  clearHudsonOraRegistryCache();
+  clearHudsonVoxVoiceCache();
 }
 
 function toHudsonLocalEnvironmentStore(envLocal: Record<string, string>): HudsonLocalEnvironmentStore {

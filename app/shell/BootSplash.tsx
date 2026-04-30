@@ -3,7 +3,7 @@
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Image from 'next/image';
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -121,11 +121,9 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 animate={{ opacity: 1 }}
                 transition={{ duration: 0.4, ease: 'easeOut' }}
                 style={{
-                  background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
-                  backdropFilter: 'blur(24px) saturate(1.4)',
-                  WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-                  border: '1px solid rgba(255,255,255,0.08)',
-                  boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)',
+                  background: 'linear-gradient(170deg, #131316 0%, #0f1614 40%, #0d0d10 100%)',
+                  border: '1px solid #27272a',
+                  boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.2)',
                 }}
               >
                 {/* Metallic sheen highlight */}
@@ -140,17 +138,8 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   HUDSON
                 </h1>
 
-                {/* Accent line with glow */}
-                <div className="relative">
-                  <div className="w-10 h-px bg-emerald-400/70" />
-                  <div
-                    className="absolute inset-0 w-10 h-px"
-                    style={{
-                      background: 'rgba(16,185,129,0.5)',
-                      filter: 'blur(4px)',
-                    }}
-                  />
-                </div>
+                {/* Accent line */}
+                <div className="w-10 h-px bg-emerald-400" />
 
                 <span className="text-[11px] font-brand tracking-[0.5em] text-neutral-500 uppercase">
                   OS
@@ -162,7 +151,7 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 {/* Domain + credit */}
                 <div className="flex flex-col items-center gap-1.5">
                   <span className="text-[10px] font-mono tracking-[0.2em] text-neutral-600">
-                    hudsonos.com
+                    hudsonkit.com
                   </span>
                   <span className="text-[9px] font-mono tracking-[0.15em] text-neutral-700">
                     by @arach
@@ -245,11 +234,9 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                   transition={{ duration: 0.8, ease: [0.25, 1, 0.5, 1] }}
                   style={{
                     marginTop: '-8vh',
-                    background: 'linear-gradient(170deg, rgba(255,255,255,0.05) 0%, rgba(16,185,129,0.04) 40%, rgba(255,255,255,0.02) 100%)',
-                    backdropFilter: 'blur(24px) saturate(1.4)',
-                    WebkitBackdropFilter: 'blur(24px) saturate(1.4)',
-                    border: '1px solid rgba(255,255,255,0.08)',
-                    boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.1), inset 0 -1px 0 rgba(0,0,0,0.2)',
+                    background: 'linear-gradient(170deg, #131316 0%, #0f1614 40%, #0d0d10 100%)',
+                    border: '1px solid #27272a',
+                    boxShadow: '0 0 40px rgba(0,0,0,0.5), inset 0 1px 0 rgba(255,255,255,0.06), inset 0 -1px 0 rgba(0,0,0,0.2)',
                   }}
                 >
                   {/* Metallic sheen highlight */}
@@ -264,17 +251,8 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                     HUDSON
                   </h1>
 
-                  {/* Accent line with glow */}
-                  <div className="relative">
-                    <div className="w-10 h-px bg-emerald-400/70" />
-                    <div
-                      className="absolute inset-0 w-10 h-px"
-                      style={{
-                        background: 'rgba(16,185,129,0.5)',
-                        filter: 'blur(4px)',
-                      }}
-                    />
-                  </div>
+                  {/* Accent line */}
+                  <div className="w-10 h-px bg-emerald-400" />
                 </motion.div>
               )}
             </AnimatePresence>

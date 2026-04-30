@@ -11,6 +11,8 @@ export type RelayStatus = 'disconnected' | 'connecting' | 'connected' | 'error';
 export interface UseTerminalRelayOptions {
   /** WebSocket URL. Defaults to ws://localhost:3600 */
   url?: string;
+  /** Optional HTTP health URL used for the pre-flight relay probe. Defaults to `${url}/health` over http(s). */
+  healthUrl?: string;
   /** System prompt to pass to the Claude CLI session */
   systemPrompt?: string;
   /** Working directory for the PTY session. Defaults to $HOME on the server. */
@@ -50,7 +52,7 @@ export interface TerminalRelayHandle {
   /** Update the CWD — only takes effect on next connect/session:init */
   setCwd: (cwd: string) => void;
   /** Register a callback for incoming terminal data */
-  onData: (cb: (data: string) => void) => void;
+  onData: (cb: ((data: string) => void) | null) => void;
   /** Send raw keystrokes (for keyboard events) */
   sendInput: (data: string) => void;
   /** Send a line of text (appends \r) */
@@ -72,6 +74,7 @@ export interface TerminalRelayHandle {
 export function useTerminalRelay(options: UseTerminalRelayOptions = {}): TerminalRelayHandle {
   const {
     url = 'ws://localhost:3600',
+    healthUrl,
     systemPrompt,
     cwd: initialCwd,
     workspaceFiles,
@@ -110,12 +113,29 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const reconnectTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const dimsRef = useRef({ cols: 80, rows: 24 });
   const initSentRef = useRef(false);
+  const pendingOutputRef = useRef('');
+  // Guard async connect races so stale StrictMode/dev remount attempts
+  // cannot steal wsRef or leave a later socket uninitialized.
+  const connectAttemptRef = useRef(0);
   const cwdRef = useRef(cwd);
   cwdRef.current = cwd;
   // Persist sessionId across reconnects so we can resume
   const sessionIdRef = useRef<string | null>(readPersistedSession());
   // Data callback registered by the TerminalRelay component
   const dataCallbackRef = useRef<((data: string) => void) | null>(null);
+  const MAX_PENDING_OUTPUT = 512 * 1024;
+
+  const pushOutput = useCallback((data: string) => {
+    if (!data) return;
+    if (dataCallbackRef.current) {
+      dataCallbackRef.current(data);
+      return;
+    }
+    pendingOutputRef.current += data;
+    if (pendingOutputRef.current.length > MAX_PENDING_OUTPUT) {
+      pendingOutputRef.current = pendingOutputRef.current.slice(-MAX_PENDING_OUTPUT);
+    }
+  }, []);
 
   const send = useCallback((data: Record<string, unknown>) => {
     const ws = wsRef.current;
@@ -124,20 +144,25 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     }
   }, []);
 
-  const disconnect = useCallback(() => {
-    if (reconnectTimer.current) {
-      clearTimeout(reconnectTimer.current);
-      reconnectTimer.current = null;
-    }
+  const closeCurrentSocket = useCallback(() => {
     const ws = wsRef.current;
     if (ws) {
       ws.close();
       wsRef.current = null;
     }
+  }, []);
+
+  const disconnect = useCallback(() => {
+    connectAttemptRef.current += 1;
+    if (reconnectTimer.current) {
+      clearTimeout(reconnectTimer.current);
+      reconnectTimer.current = null;
+    }
+    closeCurrentSocket();
     initSentRef.current = false;
     setStatus('disconnected');
     // Keep sessionId so we can reconnect — don't clear it
-  }, []);
+  }, [closeCurrentSocket]);
 
   const buildInitMessage = useCallback(() => {
     const activeCwd = cwdRef.current;
@@ -175,10 +200,10 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   }, [send, buildInitMessage]);
 
   const connect = useCallback(async () => {
-    if (wsRef.current) {
-      wsRef.current.close();
-      wsRef.current = null;
-    }
+    const attempt = connectAttemptRef.current + 1;
+    connectAttemptRef.current = attempt;
+
+    closeCurrentSocket();
 
     initSentRef.current = false;
     setStatus('connecting');
@@ -186,25 +211,40 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     setExitCode(null);
 
     // Pre-flight: check if the relay server is reachable before opening WebSocket
-    const httpUrl = url.replace(/^ws(s?):\/\//, 'http$1://');
+    const resolvedHealthUrl = healthUrl || `${url.replace(/^ws(s?):\/\//, 'http$1://')}/health`;
     try {
-      await fetch(`${httpUrl}/health`, { signal: AbortSignal.timeout(2000) });
+      await fetch(resolvedHealthUrl, { signal: AbortSignal.timeout(2000) });
     } catch {
+      if (connectAttemptRef.current !== attempt) return;
       setStatus('error');
       setError('Relay service is not running');
       return;
     }
 
+    if (connectAttemptRef.current !== attempt) {
+      return;
+    }
+
+    closeCurrentSocket();
+
     const ws = new WebSocket(url);
     wsRef.current = ws;
+    const isCurrentAttempt = () => connectAttemptRef.current === attempt && wsRef.current === ws;
 
     ws.onopen = () => {
+      if (!isCurrentAttempt()) {
+        ws.close();
+        return;
+      }
       // Don't set 'connected' yet — wait for session:ready.
       // This prevents showing an empty terminal while session is being created.
       sendInitOrReconnect();
     };
 
     ws.onmessage = (event) => {
+      if (!isCurrentAttempt()) {
+        return;
+      }
       try {
         const msg = JSON.parse(event.data as string);
         switch (msg.type) {
@@ -223,9 +263,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
             persistSession(null);
             initSentRef.current = false;
             // Clear the terminal so stale content doesn't show
-            if (dataCallbackRef.current) {
-              dataCallbackRef.current('\x1b[2J\x1b[H'); // clear screen + cursor home
-            }
+            pushOutput('\x1b[2J\x1b[H'); // clear screen + cursor home
             send(buildInitMessage());
             initSentRef.current = true;
             break;
@@ -239,9 +277,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
 
           case 'terminal:data':
             // Forward raw terminal data to the registered callback
-            if (dataCallbackRef.current && msg.data) {
-              dataCallbackRef.current(msg.data);
-            }
+            if (msg.data) pushOutput(msg.data);
             break;
 
           case 'session:exit':
@@ -268,6 +304,9 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     };
 
     ws.onclose = () => {
+      if (!isCurrentAttempt()) {
+        return;
+      }
       wsRef.current = null;
       initSentRef.current = false;
       // Don't overwrite an error status on close
@@ -275,10 +314,13 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     };
 
     ws.onerror = () => {
+      if (!isCurrentAttempt()) {
+        return;
+      }
       setStatus('error');
       setError('Could not connect to relay');
     };
-  }, [url, sendInitOrReconnect, send, systemPrompt, workspaceFiles]);
+  }, [url, healthUrl, sendInitOrReconnect, closeCurrentSocket, send, systemPrompt, workspaceFiles]);
 
   const sendInput = useCallback((data: string) => {
     send({ type: 'terminal:input', data });
@@ -295,8 +337,11 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     }
   }, [send]);
 
-  const onData = useCallback((cb: (data: string) => void) => {
+  const onData = useCallback((cb: ((data: string) => void) | null) => {
     dataCallbackRef.current = cb;
+    if (!cb || pendingOutputRef.current.length === 0) return;
+    cb(pendingOutputRef.current);
+    pendingOutputRef.current = '';
   }, []);
 
   useEffect(() => {
@@ -316,14 +361,12 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     disconnect();
     sessionIdRef.current = null;
     setSessionId(null);
-    if (sessionKey) {
-      try { sessionStorage.removeItem(`hudson.relay.${sessionKey}`); } catch {}
-    }
+    persistSession(null);
     setError(null);
     setExitCode(null);
     // Small delay to let the WebSocket close before reconnecting
     setTimeout(() => connect(), 200);
-  }, [disconnect, connect, sessionKey]);
+  }, [disconnect, connect]);
 
   return {
     status,

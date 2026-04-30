@@ -1,6 +1,9 @@
 # runtime data
 .data/
 
+# ephemeral coordination briefs (per-feature handoffs, task specs)
+.coordination/
+
 # dependencies
 node_modules/
 /.pnp
@@ -17,6 +20,8 @@ node_modules/
 # next.js
 .next/
 /out/
+site/out/
+site/site/out/
 
 # production
 /build
@@ -46,6 +51,7 @@ appsettings.local.*
 
 # local agent state files
 .lattices.json
+.claude/
 
 # local app directory (developer-specific, auto-created on first run)
 app/local/
@@ -120,6 +126,8 @@ public/fonts/
 .resend
 
 # native build artifacts
+.build/
+examples/**/Package.resolved
 native/bunsen/artifacts/
 .openscout/
 # OpenScout local state

@@ -80,7 +80,7 @@
   --color-input: oklch(var(--input));
   --color-ring: oklch(var(--ring));
   --font-sans: var(--hud-font-sans);
-  --font-mono: var(--font-geist-mono), var(--hud-font-mono);
+  --font-mono: var(--font-jetbrains-mono), var(--hud-font-mono);
   --radius-lg: var(--radius);
   --radius-md: calc(var(--radius) - 2px);
   --radius-sm: calc(var(--radius) - 4px);
@@ -97,6 +97,9 @@ body {
   font-size: var(--hudson-font-size);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: subpixel-antialiased;
+  text-rendering: geometricPrecision;
+  font-synthesis: none;
 }
 
 /* Dark themed scrollbars for frame panels */

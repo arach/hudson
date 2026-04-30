@@ -6,7 +6,7 @@ import { WEB_ADAPTER } from './defaults';
 
 const PlatformContext = createContext<PlatformAdapter>(WEB_ADAPTER);
 
-/** Wrap your app root to override platform defaults (e.g. Electrobun adapter). */
+/** Wrap your app root to override platform defaults (e.g. Tauri adapter). */
 export function PlatformProvider({
   adapter,
   children,

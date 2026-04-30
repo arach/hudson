@@ -1,6 +1,6 @@
 import { Radio, SlidersHorizontal } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { OpenScoutProvider } from './OpenScoutProvider';
 import { OpenScoutContent } from './OpenScoutContent';
 import { OpenScoutLeftPanel } from './OpenScoutLeftPanel';

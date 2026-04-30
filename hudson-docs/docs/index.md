@@ -15,7 +15,7 @@
 
 ## NPM Packages
 
-### @hudsonos/sdk
+### hudsonkit
 
 - [Getting Started](npm/sdk/getting-started.md) -- Installation and first app
 - [Building Apps](npm/sdk/building-apps.md) -- Deep dive into app architecture

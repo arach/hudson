@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises';
 import { join } from 'path';
-import type { PipeDefinition } from '@hudson/sdk';
+import type { PipeDefinition } from 'hudsonkit';
 
 const PIPES_DIR = join(process.cwd(), '.data', 'pipes');
 

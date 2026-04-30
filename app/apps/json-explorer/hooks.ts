@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, createElement } from 'react';
-import type { CommandOption, StatusColor } from '@hudson/sdk';
+import type { CommandOption, StatusColor } from 'hudsonkit';
 import { useJsonExplorer } from './JsonExplorerProvider';
 
 // ---------------------------------------------------------------------------

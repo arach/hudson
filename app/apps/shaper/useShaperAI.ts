@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useHudsonAI } from '@hudson/sdk';
+import { useHudsonAI } from 'hudsonkit';
 import type { TraceOptions, ProjectImage, TraceInfo } from './types';
 
 // ---------------------------------------------------------------------------

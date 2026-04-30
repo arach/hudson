@@ -1,0 +1,7 @@
+{
+  "name": "hudsonkit-cloudflare-pages",
+  "private": true,
+  "scripts": {
+    "build": "cd .. && bun install --frozen-lockfile && bun run build && bun site/export-pages.mjs"
+  }
+}

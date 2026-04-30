@@ -1,6 +1,6 @@
-# Hudson SDK
+# HudsonKit
 
-HUD-style chrome components for canvas and panel-based applications.
+SDK and chrome primitives for canvas and panel-based Hudson applications.
 
 ## Installation
 
@@ -9,7 +9,7 @@ This is a workspace package. Add to your app's `package.json`:
 ```json
 {
   "dependencies": {
-    "@hudson/sdk": "workspace:*"
+    "hudsonkit": "workspace:*"
   }
 }
 ```
@@ -19,8 +19,8 @@ This is a workspace package. Add to your app's `package.json`:
 ### Import Components
 
 ```tsx
-import { Frame, NavigationBar, SidePanel, StatusBar } from '@hudson/sdk';
-import '@hudson/sdk/styles';
+import { Frame, NavigationBar, SidePanel, StatusBar } from 'hudsonkit';
+import 'hudsonkit/styles';
 ```
 
 ### Canvas Mode (Pan/Zoom)
@@ -28,7 +28,7 @@ import '@hudson/sdk/styles';
 For canvas-based applications like Shaper:
 
 ```tsx
-import { Frame, Canvas, NavigationBar, SidePanel } from '@hudson/sdk';
+import { Frame, Canvas, NavigationBar, SidePanel } from 'hudsonkit';
 
 function CanvasApp() {
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -59,7 +59,7 @@ function CanvasApp() {
 For admin interfaces and dashboards:
 
 ```tsx
-import { Frame, NavigationBar, SidePanel } from '@hudson/sdk';
+import { Frame, NavigationBar, SidePanel } from 'hudsonkit';
 
 function AdminApp() {
   return (

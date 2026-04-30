@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { HudsonWorkspace, IntentCatalog } from '@hudson/sdk';
+import type { HudsonWorkspace, IntentCatalog } from 'hudsonkit';
 import { buildIntentCatalog } from '../lib/intent-catalog';
 
 /**

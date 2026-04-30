@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { TerminalSquare } from 'lucide-react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { TerminalProvider } from './TerminalProvider';
 import { TerminalContent } from './TerminalContent';
 

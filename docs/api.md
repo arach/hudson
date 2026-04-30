@@ -1,26 +1,26 @@
 # API Reference
 
-Every `@hudson/sdk` export, organized by subpath. Types are authoritative in [`packages/hudson-sdk/src/types/`](../packages/hudson-sdk/src/types/); this doc is a map, not the source of truth.
+Every `hudsonkit` export, organized by subpath. Types are authoritative in [`packages/hudson-sdk/src/types/`](../packages/hudson-sdk/src/types/); this doc is a map, not the source of truth.
 
 ## Subpath exports
 
 | Subpath                           | Purpose                                                              |
 |-----------------------------------|----------------------------------------------------------------------|
-| `@hudson/sdk`                     | Types, hooks, platform adapter, AI component, utilities (main entry) |
-| `@hudson/sdk/app-shell`           | `AppShell` — single-app default shell                                |
-| `@hudson/sdk/shell`               | `WorkspaceShell` + all chrome/overlays/canvas/windows (back-compat barrel) |
-| `@hudson/sdk/chrome`              | Chrome primitives: `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline` |
-| `@hudson/sdk/overlays`            | `CommandPalette`, `TerminalDrawer` (no `ContextMenu`)                |
-| `@hudson/sdk/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui-components/react`) |
-| `@hudson/sdk/canvas`              | `Canvas` (pan/zoom world)                                            |
-| `@hudson/sdk/windows`             | `AppWindow` (draggable/resizable window frame)                       |
-| `@hudson/sdk/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
-| `@hudson/sdk/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
-| `@hudson/sdk/controls`            | `ParamPanel` and related control primitives                          |
+| `hudsonkit`                     | Types, hooks, platform adapter, AI component, utilities (main entry) |
+| `hudsonkit/app-shell`           | `AppShell` — single-app default shell                                |
+| `hudsonkit/shell`               | `WorkspaceShell` + all chrome/overlays/canvas/windows (back-compat barrel) |
+| `hudsonkit/chrome`              | Chrome primitives: `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline` |
+| `hudsonkit/overlays`            | `CommandPalette`, `TerminalDrawer` (no `ContextMenu`)                |
+| `hudsonkit/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui-components/react`) |
+| `hudsonkit/canvas`              | `Canvas` (pan/zoom world)                                            |
+| `hudsonkit/windows`             | `AppWindow` (draggable/resizable window frame)                       |
+| `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
+| `hudsonkit/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
+| `hudsonkit/controls`            | `ParamPanel` and related control primitives                          |
 
 ## Types
 
-Importable from `@hudson/sdk`:
+Importable from `hudsonkit`:
 
 | Type                              | Source                                    |
 |-----------------------------------|-------------------------------------------|
@@ -36,7 +36,7 @@ Importable from `@hudson/sdk`:
 | `AppOutput`, `AppInput`, `AppPorts`, `PipeDefinition` | `types/port.ts`                   |
 | `CommandOption`, `ContextMenuEntry`, `ContextMenuAction`, `ContextMenuSeparator`, `ContextMenuGroup` | `components/overlays` |
 
-## Hooks (from `@hudson/sdk`)
+## Hooks (from `hudsonkit`)
 
 | Hook                                              | Purpose                                        |
 |---------------------------------------------------|------------------------------------------------|
@@ -51,32 +51,32 @@ Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonA
 
 ## Components
 
-### From `@hudson/sdk`
+### From `hudsonkit`
 
 - `AI` — chat panel component, paired with `useHudsonAI`
 - `TerminalRelay`, `captureWorkspace` — terminal relay component + screenshot helper
 - `ZoomControls` — reusable widget (also re-exported from `/chrome`)
 
-### From `@hudson/sdk/app-shell`
+### From `hudsonkit/app-shell`
 
 - `AppShell` — single-app full-chrome shell. Props: `{ app: HudsonApp }`.
 
-### From `@hudson/sdk/shell` (back-compat barrel)
+### From `hudsonkit/shell` (back-compat barrel)
 
 All of: `WorkspaceShell`, `AppShell`, `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline`, `Canvas`, `AppWindow`, `TerminalDrawer`, `CommandPalette`, `HudsonContextMenu`, design tokens.
 
-### From `@hudson/sdk/context-menu`
+### From `hudsonkit/context-menu`
 
 - `HudsonContextMenu` — right-click menu component. Pulls `motion/react` + `@base-ui-components/react`.
 
-## Platform adapter (from `@hudson/sdk`)
+## Platform adapter (from `hudsonkit`)
 
 - `WEB_ADAPTER` — default web platform adapter
 - `PlatformProvider` — wraps a subtree with a specific adapter
 - `usePlatform()`, `usePlatformLayout()` — consumer hooks
 - Types: `PlatformAdapter`, `PlatformLayout`
 
-## Utilities (from `@hudson/sdk`)
+## Utilities (from `hudsonkit`)
 
 - `sounds` — Web Audio event sounds: `blipUp`, `blipDown`, `click`, `whoosh`, `thock`, `pop`, `confirm`, `error`, `chime`, `tick`, `slideIn`, `slideOut`, `boot`, `ping`, `type`
 - `logEvent`, `FRAME_LOG_EVENT` — instrumented event bus

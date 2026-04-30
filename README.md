@@ -23,7 +23,7 @@ I build a lot of small apps. Each one was ~70% chrome: sidebar, settings, comman
 
 **[Full write-up →](./docs/case-study-premotion.md)**
 
-A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project, imports `@hudson/sdk/app-shell`, fills in a single `HudsonApp` with Provider + slots, ships. Left panel + search + status bar + inspector + URL-driven filter state all came from the shell — the only real work was the catalog logic itself.
+A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project, imports `hudsonkit/app-shell`, fills in a single `HudsonApp` with Provider + slots, ships. Left panel + search + status bar + inspector + URL-driven filter state all came from the shell — the only real work was the catalog logic itself.
 
 The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
 

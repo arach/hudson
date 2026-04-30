@@ -48,7 +48,7 @@ hudson/
     lib/                      # Shared utilities (intent catalog, etc.)
     hooks/                    # Shared hooks (intent executor, etc.)
   packages/
-    @hudson/sdk/                 # Component library + types
+    hudsonkit/                 # Component library + types
       src/
         components/           # Chrome, Canvas, Windows, Overlays
         types/                # HudsonApp, HudsonWorkspace, AppIntent
@@ -108,6 +108,6 @@ The scaffolded app renders a centered placeholder. Start editing:
 2. **`MyAppContent.tsx`** — Build your UI using that state
 3. **`hooks.ts`** — Wire commands for the palette, update the status label
 
-The `HudsonApp` interface in `@hudson/sdk` enforces the contract — TypeScript will tell you if you're missing a required slot or hook.
+The `HudsonApp` interface in `hudsonkit` enforces the contract — TypeScript will tell you if you're missing a required slot or hook.
 
 Save, run `bun dev`, and your app appears in the workspace switcher. See [Building Apps](./building-apps.md) for the full guide.

@@ -1,6 +1,6 @@
 import { Gem, SlidersHorizontal } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { LogoProvider } from './LogoProvider';
 import { LogoContent } from './LogoContent';
 import { LogoLeftPanel } from './LogoLeftPanel';

@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import { usePersistentState, usePlatform } from '@hudson/sdk';
-import type { ServiceRecord, ServiceAction, ServiceStatus } from '@hudson/sdk';
+import { usePersistentState, usePlatform } from 'hudsonkit';
+import type { ServiceRecord, ServiceAction, ServiceStatus } from 'hudsonkit';
 import { SERVICE_CATALOG } from './catalog';
 
 const POLL_INTERVAL = 30_000;

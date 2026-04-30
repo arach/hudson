@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useRef } from 'react';
-import type { CommandOption, IntentCatalog } from '@hudson/sdk';
+import type { CommandOption, IntentCatalog } from 'hudsonkit';
 
 /**
  * Bridges static intents to live command closures.

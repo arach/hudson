@@ -1,12 +1,13 @@
 import Link from 'next/link';
 import {
   ArrowRight,
+  BookOpen,
   Code2,
-  Github,
   Layers,
   LayoutGrid,
   Maximize2,
   MousePointer2,
+  Package,
   PanelsTopLeft,
   Terminal,
 } from 'lucide-react';
@@ -44,7 +45,7 @@ function Nav() {
         className="flex items-center gap-2 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
       >
         <HudsonMark className="w-5 h-5 text-cyan-500" />
-        <span className="font-brand text-[15px] tracking-wider">HUDSON</span>
+        <span className="font-brand text-[15px] tracking-wider">HUDSONKIT</span>
       </Link>
       <nav className="flex items-center gap-1 text-[13px]">
         <Link
@@ -54,17 +55,17 @@ function Nav() {
           Docs
         </Link>
         <a
-          href="https://github.com/arach/hudson"
+          href="https://www.npmjs.com/package/hudsonkit"
           className="px-3 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/40 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          <Github className="w-3.5 h-3.5" />
-          GitHub
+          <Package className="w-3.5 h-3.5" />
+          npm
         </a>
         <Link
           href="/app"
           className="ml-2 px-3 py-1.5 rounded-md border border-cyan-500/40 bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 hover:border-cyan-500/60 transition flex items-center gap-1.5 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
         >
-          Open Workspace
+          Open Preview
           <ArrowRight className="w-3.5 h-3.5" />
         </Link>
       </nav>
@@ -82,7 +83,7 @@ function Hero() {
       <div className="max-w-5xl mx-auto">
         <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-border bg-muted/20 text-[11px] tracking-wider uppercase text-muted-foreground/80 mb-6">
           <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          v0.1 — Source-available under FSL-1.1-MIT
+          v0.2 — Available as hudsonkit on npm
         </div>
         <h1 className="font-brand text-4xl md:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
           Build rich, composable,
@@ -92,7 +93,7 @@ function Hero() {
           <span className="text-cyan-500">AI-powered web apps.</span>
         </h1>
         <p className="mt-8 max-w-2xl text-base md:text-lg text-muted-foreground leading-relaxed">
-          Hudson is a shell and primitives library for composing canvas
+          HudsonKit is a shell and primitives library for composing canvas
           workspaces and single-app dashboards. Provider + Slots + Hooks —
           apps own state, the shell renders chrome.
         </p>
@@ -101,17 +102,18 @@ function Hero() {
             href="/app"
             className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-cyan-500/50 bg-cyan-500/10 text-cyan-600 hover:bg-cyan-500/20 hover:border-cyan-500/70 transition font-medium focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
-            Open the Workspace
+            Open the Preview
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             href="/docs"
             className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-border bg-muted/20 hover:bg-muted/40 hover:border-border transition text-foreground/85 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
           >
+            <BookOpen className="w-4 h-4" />
             Read the Docs
           </Link>
           <code className="ml-2 px-3 py-2 rounded-md border border-border/50 bg-muted/20 font-mono text-[13px] text-muted-foreground">
-            bun add @hudsonos/sdk
+            bun add hudsonkit
           </code>
         </div>
       </div>
@@ -279,7 +281,7 @@ function FeatureColumn({
 
 function CodeSnippet() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
+    <section id="code" className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-5xl mx-auto">
         <div className="grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
           <div className="lg:col-span-2">
@@ -321,25 +323,28 @@ function Code() {
   return (
     <code className="text-white/80">
       <span className="text-rose-300">import</span>{' '}
-      <span className="text-white/60">{'{ defineApp }'}</span>{' '}
+      <span className="text-rose-300">type</span>{' '}
+      <span className="text-white/60">{'{ HudsonApp }'}</span>{' '}
       <span className="text-rose-300">from</span>{' '}
-      <span className="text-emerald-300">&apos;@hudsonos/sdk&apos;</span>;{'\n\n'}
+      <span className="text-emerald-300">&apos;hudsonkit&apos;</span>;{'\n\n'}
       <span className="text-rose-300">export const</span>{' '}
-      <span className="text-cyan-300">notepadApp</span> ={' '}
-      <span className="text-white/70">defineApp</span>({'{\n'}
+      <span className="text-cyan-300">notepadApp</span>:{' '}
+      <span className="text-cyan-300">HudsonApp</span> = {'{\n'}
       {'  '}id: <span className="text-emerald-300">&apos;notepad&apos;</span>,
       {'\n'}
       {'  '}name: <span className="text-emerald-300">&apos;Notepad&apos;</span>,
       {'\n'}
-      {'  '}icon: <span className="text-cyan-300">NotepadIcon</span>,{'\n'}
+      {'  '}mode: <span className="text-emerald-300">&apos;panel&apos;</span>,{'\n'}
       {'  '}Provider: <span className="text-cyan-300">NotepadProvider</span>,
       {'\n'}
-      {'  '}useContent:{' '}
-      <span className="text-cyan-300">useNotepadContent</span>,{'\n'}
-      {'  '}useNav: <span className="text-cyan-300">useNotepadNav</span>,{'\n'}
+      {'  '}slots: {'{'} Content: <span className="text-cyan-300">NotepadContent</span> {'}'},{'\n'}
+      {'  '}hooks: {'{'}{'\n'}
+      {'    '}useCommands: <span className="text-cyan-300">useNotepadCommands</span>,{'\n'}
+      {'    '}useStatus: <span className="text-cyan-300">useNotepadStatus</span>,{'\n'}
+      {'  '}{'}'},{'\n'}
       {'  '}intents: <span className="text-cyan-300">notepadIntents</span>,
       {'\n'}
-      {'}});'}
+      {'};'}
     </code>
   );
 }
@@ -350,7 +355,7 @@ function Code() {
 
 function Shells() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
+    <section id="shells" className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-5xl mx-auto">
         <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500 text-center">
           Two shells, same primitives
@@ -368,7 +373,7 @@ function Shells() {
           <ShellCard
             name="WorkspaceShell"
             tagline="Multi-app canvas."
-            body="Infinite pan/zoom plane with windowed apps. Used by Hudson's own /app route. Use when the interface is the environment."
+            body="Infinite pan/zoom plane with windowed apps. Use when the interface is the environment."
             accent="cyan"
           />
         </div>
@@ -441,10 +446,10 @@ function Interest() {
               Interested?
             </div>
             <h3 className="mt-1 text-2xl md:text-3xl font-medium text-foreground/90">
-              Hudson is shipping in the open.
+              HudsonKit is shipping in the open.
             </h3>
             <p className="mt-3 text-[14px] text-muted-foreground leading-relaxed">
-              If you&apos;re thinking about building on Hudson — or just want
+              If you&apos;re thinking about building on HudsonKit — or just want
               to follow along as the SDK, workspace, and primitives come
               together — drop your email. We&apos;ll reach out when something
               worth your attention ships.
@@ -470,7 +475,7 @@ function Footer() {
         <div className="flex items-center gap-2">
           <HudsonMark className="w-4 h-4 text-muted-foreground/80" />
           <span className="font-brand text-[13px] tracking-wider text-muted-foreground">
-            HUDSON
+            HUDSONKIT
           </span>
           <span className="ml-2 text-[12px] text-muted-foreground/60">
             © 2026 Arach Tchoupani
@@ -490,10 +495,10 @@ function Footer() {
             Workspace
           </Link>
           <a
-            href="https://github.com/arach/hudson"
+            href="https://www.npmjs.com/package/hudsonkit"
             className="hover:text-foreground transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring rounded-sm"
           >
-            GitHub
+            npm
           </a>
           <span className="text-muted-foreground/60">FSL-1.1-MIT</span>
         </div>

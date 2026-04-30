@@ -10,7 +10,7 @@
 ## Build on it
 
 - **[Building apps](./building-apps.md)** — the contract with walkthrough
-- **[API reference](./api.md)** — every `@hudson/sdk` export, organized by subpath
+- **[API reference](./api.md)** — every `hudsonkit` export, organized by subpath
 - **[Systems](./systems.md)** — Intents (LLM/voice), Services (process deps), Ports (inter-app piping)
 
 ## How it's made

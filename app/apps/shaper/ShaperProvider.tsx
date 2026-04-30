@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 import { useShaperAI, type AiActivityEntry } from './useShaperAI';
 import type {
   BezierData,

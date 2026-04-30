@@ -9,7 +9,7 @@
 - Hudson uses bun as its package manager — never use npm or pnpm
 - All UI components are custom-built — do not replace with library components
 - Use @base-ui/react for context menu only, motion sparingly
-- Every app must implement the HudsonApp interface from @hudson/sdk
+- Every app must implement the HudsonApp interface from hudsonkit
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 - State is owned by each app Provider via React context
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald color ranges
@@ -47,7 +47,7 @@ Think of it as a desktop environment in the browser: apps register themselves, t
 A Hudson app is a plain object satisfying the `HudsonApp` interface:
 
 ```tsx
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 
 export const counterApp: HudsonApp = {
   id: 'counter',
@@ -146,7 +146,7 @@ Hudson includes an intent catalog for LLM/voice integration. Apps declare intent
 
 - [Quickstart](./quickstart.md) — Get Hudson running locally and create your first app
 - [Building Apps](./building-apps.md) — Full integration guide (Provider, slots, hooks, intents, workspaces)
-- [API Reference](./api.md) — Complete reference for @hudson/sdk exports
+- [API Reference](./api.md) — Complete reference for hudsonkit exports
 
 ## Tech Stack
 
@@ -281,7 +281,7 @@ export function MyAppContent() {
 
 ```tsx
 // app/apps/my-app/index.ts
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { MyAppProvider } from './MyAppProvider';
 import { MyAppContent } from './MyAppContent';
 
@@ -327,10 +327,10 @@ This guide covers everything you need to build a Hudson app — from the interfa
 
 ## The HudsonApp Interface
 
-Every app implements the `HudsonApp` interface exported from `@hudson/sdk`:
+Every app implements the `HudsonApp` interface exported from `hudsonkit`:
 
 ```typescript
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 ```
 
 ### Full Interface
@@ -537,7 +537,7 @@ Return an array of `CommandOption` objects. These appear in the command palette 
 
 ```tsx
 import { useMemo } from 'react';
-import type { CommandOption } from '@hudson/sdk';
+import type { CommandOption } from 'hudsonkit';
 import { useGlyphEditor } from './GlyphEditorProvider';
 
 export function useGlyphCommands(): CommandOption[] {
@@ -615,7 +615,7 @@ export function useGlyphLayoutMode(): 'canvas' | 'panel' {
 Intents declare structured metadata about your commands for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent } from '@hudson/sdk';
+import type { AppIntent } from 'hudsonkit';
 
 export const glyphIntents: AppIntent[] = [
   {
@@ -667,7 +667,7 @@ import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const hudsonOSWorkspace: HudsonWorkspace = {
   id: 'hudson-os',
-  name: 'Hudson OS',
+  name: 'HudsonKit',
   mode: 'canvas',
   apps: [
     // ... existing apps
@@ -684,7 +684,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
 
 ```typescript
 // app/workspaces/glyphDev.ts
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const glyphDevWorkspace: HudsonWorkspace = {
@@ -734,10 +734,10 @@ Apps can dynamically switch modes using `useLayoutMode()`.
 
 ## Persistent State
 
-Use `usePersistentState` from @hudson/sdk for state that survives page reloads:
+Use `usePersistentState` from hudsonkit for state that survives page reloads:
 
 ```tsx
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 function MyComponent() {
   const [gridVisible, setGridVisible] = usePersistentState('my-app.grid', true);
@@ -750,7 +750,7 @@ function MyComponent() {
 Hudson includes a Web Audio synthesizer for UI feedback:
 
 ```tsx
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 // Available sounds
 sounds.blipUp();    // Positive feedback
@@ -793,18 +793,18 @@ The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if yo
 
 - [Overview](./overview.md) — Architecture and key concepts
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
-- [API Reference](./api.md) — Complete reference for all @hudson/sdk exports
+- [API Reference](./api.md) — Complete reference for all hudsonkit exports
 
 ## API Reference
 
-> Complete API reference for the @hudson/sdk package
+> Complete API reference for the hudsonkit package
 
 # API Reference
 
-Everything exported from the `@hudson/sdk` package.
+Everything exported from the `hudsonkit` package.
 
 ```tsx
-import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
+import { Frame, NavigationBar, SidePanel, ... } from 'hudsonkit';
 ```
 
 ## Types
@@ -814,7 +814,7 @@ import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
 The core interface every app must implement. See [Building Apps](./building-apps.md) for full details.
 
 ```typescript
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -835,7 +835,7 @@ import type { HudsonApp } from '@hudson/sdk';
 Defines a collection of apps in a shared shell.
 
 ```typescript
-import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
+import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -860,7 +860,7 @@ import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@
 Structured metadata for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent, IntentCategory, IntentParameter } from '@hudson/sdk';
+import type { AppIntent, IntentCategory, IntentParameter } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -1086,7 +1086,7 @@ Right-click context menu (powered by @base-ui/react + motion).
 localStorage-backed state hook. Works like `useState` but persists across reloads.
 
 ```tsx
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 const [value, setValue] = usePersistentState('storage-key', defaultValue);
 ```
@@ -1098,7 +1098,7 @@ const [value, setValue] = usePersistentState('storage-key', defaultValue);
 Web Audio synthesizer for UI feedback.
 
 ```tsx
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 sounds.blipUp();     // Positive feedback / success
 sounds.click();      // Button press
@@ -1111,7 +1111,7 @@ sounds.thock();      // Heavy press / confirm
 Event bus for Frame activity logging.
 
 ```tsx
-import { logEvent, FRAME_LOG_EVENT } from '@hudson/sdk';
+import { logEvent, FRAME_LOG_EVENT } from 'hudsonkit';
 
 logEvent({ type: 'app:action', detail: 'something happened' });
 
@@ -1126,7 +1126,7 @@ window.addEventListener(FRAME_LOG_EVENT, (e) => {
 Coordinate conversion between world and screen space.
 
 ```tsx
-import { worldToScreen, screenToWorld } from '@hudson/sdk';
+import { worldToScreen, screenToWorld } from 'hudsonkit';
 
 const screenPos = worldToScreen(worldPos, panOffset, scale);
 const worldPos = screenToWorld(screenPos, panOffset, scale);
@@ -1137,7 +1137,7 @@ const worldPos = screenToWorld(screenPos, panOffset, scale);
 Design tokens and styling constants.
 
 ```tsx
-import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from '@hudson/sdk';
+import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from 'hudsonkit';
 
 // CHROME — computed styles (borders, backgrounds, shadows)
 // CHROME_BASE — raw color values

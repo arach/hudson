@@ -20,7 +20,7 @@
 // IntentProvider → registry → intent-explorer forms a cycle.
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
+import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'hudsonkit';
 
 // --- Core apps (always loaded) ------------------------------------------------
 
@@ -205,11 +205,11 @@ const IS_DEV_ENV = process.env.NODE_ENV === 'development';
 
 // --- Exports ------------------------------------------------------------------
 
-/** The main Hudson OS workspace — intentionally minimal for demos and daily use. */
-export function getHudsonOSWorkspace(): HudsonWorkspace {
+/** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
+export function getHudsonKitWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
-    name: 'Hudson OS',
+    name: 'HudsonKit',
     description: 'Clean docs, AI, and API workspace',
     mode: 'canvas',
     apps: getCoreApps(),
@@ -257,23 +257,23 @@ export function getLogoStudioWorkspace(): HudsonWorkspace {
 let _ws: HudsonWorkspace | undefined;
 export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
   get(_, prop, receiver) {
-    _ws ??= getHudsonOSWorkspace();
+    _ws ??= getHudsonKitWorkspace();
     return Reflect.get(_ws, prop, receiver);
   },
   ownKeys() {
-    _ws ??= getHudsonOSWorkspace();
+    _ws ??= getHudsonKitWorkspace();
     return Reflect.ownKeys(_ws);
   },
   getOwnPropertyDescriptor(_, prop) {
-    _ws ??= getHudsonOSWorkspace();
+    _ws ??= getHudsonKitWorkspace();
     return Object.getOwnPropertyDescriptor(_ws, prop);
   },
 });
 
-/** All workspaces available to WorkspaceShell — hudsonOS + Scout Ops + (dev-only) Logo Studio + JSON-defined + local code workspaces. */
+/** All workspaces available to WorkspaceShell — HudsonKit + Scout Ops + (dev-only) Logo Studio + JSON-defined + local code workspaces. */
 export function getAllWorkspaces(): HudsonWorkspace[] {
   return [
-    getHudsonOSWorkspace(),
+    getHudsonKitWorkspace(),
     getScoutOpsWorkspace(),
     ...(IS_DEV_ENV ? [getLogoStudioWorkspace()] : []),
     ...loadWorkspacesFromJson(),

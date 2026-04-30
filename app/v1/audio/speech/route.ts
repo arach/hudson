@@ -1,16 +1,15 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { synthesizeHudsonOraSpeech } from '@/app/lib/tts/hudsonOraRegistry';
+import { synthesizeHudsonVoxSpeech } from '@/app/lib/tts/voxBridge';
 
 export const runtime = 'nodejs';
 
 const metadataValueSchema = z.union([z.string(), z.number(), z.boolean(), z.null()]);
 const formatSchema = z.enum(['mp3', 'wav', 'aac', 'opus', 'aiff']);
-const providerSchema = z.enum(['system', 'openai', 'elevenlabs', 'groq']);
 
 const speechRequestSchema = z.object({
   text: z.string().trim().min(1),
-  provider: providerSchema.optional(),
+  provider: z.string().optional(),
   model: z.string().trim().min(1).optional(),
   voice: z.string().min(1).optional(),
   rate: z.number().positive().optional(),
@@ -45,7 +44,7 @@ export async function POST(request: Request) {
       );
     }
 
-    const response = await synthesizeHudsonOraSpeech(parsed.data);
+    const response = await synthesizeHudsonVoxSpeech(parsed.data);
     return NextResponse.json(response);
   } catch (error) {
     return NextResponse.json(

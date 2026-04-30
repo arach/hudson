@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CommandOption, SearchConfig, StatusColor } from '@hudson/sdk';
+import type { CommandOption, SearchConfig, StatusColor } from 'hudsonkit';
 import { useOpenScout } from './OpenScoutProvider';
 
 export function useOpenScoutCommands(): CommandOption[] {

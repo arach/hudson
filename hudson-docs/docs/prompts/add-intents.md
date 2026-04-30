@@ -20,7 +20,7 @@ Intents declare structured metadata about app commands for LLM/voice/search inte
 
 2. **Create intents file** (`app/apps/{app}/intents.ts`):
    ```typescript
-   import type { AppIntent } from '@hudson/sdk';
+   import type { AppIntent } from 'hudsonkit';
 
    export const {app}Intents: AppIntent[] = [
      {

@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useMemo } from 'react';
-import { useAppSettings, usePersistentState } from '@hudson/sdk';
-import type { AppSettingsConfig, AppSettingsValues } from '@hudson/sdk';
+import { useAppSettings, usePersistentState } from 'hudsonkit';
+import type { AppSettingsConfig, AppSettingsValues } from 'hudsonkit';
 
 interface HudsonAISettingsScope {
   resolvedSettings: AppSettingsValues;

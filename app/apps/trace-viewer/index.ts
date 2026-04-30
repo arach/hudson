@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { List, ScanSearch, Terminal } from 'lucide-react';
-import type { HudsonApp, AppManifest } from '@hudson/sdk';
+import type { HudsonApp, AppManifest } from 'hudsonkit';
 import { TraceProvider } from './TraceProvider';
 import { TraceContent } from './TraceContent';
 import { TraceLeftPanel } from './TraceLeftPanel';

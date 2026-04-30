@@ -142,4 +142,4 @@ Templates are plain `.tsx.tmpl` / `.ts.tmpl` files with global string replacemen
 
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
 - [Building Apps](./building-apps.md) — Full guide to the Provider + Slots + Hooks architecture
-- [API Reference](./api.md) — Complete reference for `@hudson/sdk`
+- [API Reference](./api.md) — Complete reference for `hudsonkit`

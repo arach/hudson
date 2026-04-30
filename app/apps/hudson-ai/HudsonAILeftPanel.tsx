@@ -32,10 +32,7 @@ function getOptionLabel(
 }
 
 function formatVoiceProvider(provider: string) {
-  if (provider === 'system') return 'System';
-  if (provider === 'openai') return 'OpenAI';
-  if (provider === 'elevenlabs') return 'ElevenLabs';
-  if (provider === 'groq') return 'Groq';
+  if (provider === 'vox') return 'Vox';
   return provider;
 }
 

@@ -2,7 +2,7 @@
 title: Building Apps
 description: Learn the Provider + Slots + Hooks architecture for Hudson apps.
 section: npm
-subsection: "@hudsonos/sdk"
+subsection: "hudsonkit"
 order: 2
 ---
 
@@ -36,7 +36,7 @@ The Provider is a standard React context provider. It wraps all slots and hooks,
 
 ```tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { usePersistentState } from '@hudsonos/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 export interface EditorState {
   tool: 'select' | 'draw' | 'eraser';
@@ -194,7 +194,7 @@ Hooks are functions called inside the Provider scope via a Bridge component that
 Returns an array of `CommandOption` objects. These appear in the command palette (Cmd+K) and drive keyboard shortcuts.
 
 ```tsx
-import type { CommandOption } from '@hudsonos/sdk';
+import type { CommandOption } from 'hudsonkit';
 
 function useEditorCommands(): CommandOption[] {
   const { setTool, undo, redo, save } = useEditor();
@@ -277,7 +277,7 @@ Enable inter-app data piping. See [Systems](./systems.md#ports) for details.
 Tools are interactive panels that appear in the right sidebar as an accordion. Each tool has an ID, name, icon, and a React component.
 
 ```tsx
-import type { AppTool } from '@hudsonos/sdk';
+import type { AppTool } from 'hudsonkit';
 import { Anchor, Paintbrush, Play } from 'lucide-react';
 
 const editorTools: AppTool[] = [
@@ -332,8 +332,8 @@ The `headerActions` field accepts a React component that renders action buttons 
 The manifest is a serializable snapshot of your app's capabilities. It is used by external tooling and LLM integrations. You can provide it statically or let the SDK derive it automatically.
 
 ```tsx
-import { deriveManifest } from '@hudsonos/sdk';
-import type { AppManifest } from '@hudsonos/sdk';
+import { deriveManifest } from 'hudsonkit';
+import type { AppManifest } from 'hudsonkit';
 
 // Option 1: Static manifest
 const manifest: AppManifest = {
@@ -359,7 +359,7 @@ Here is the full structure of a Hudson app, modeled after the Shaper reference:
 
 ```tsx
 // index.ts
-import type { HudsonApp } from '@hudsonos/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { EditorProvider } from './EditorProvider';
 import { EditorContent } from './EditorContent';
 import { EditorLeftPanel } from './EditorLeftPanel';

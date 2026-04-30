@@ -1,6 +1,6 @@
 'use client';
 
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 
 interface WorkspaceSwitcherProps {
   workspaces: HudsonWorkspace[];

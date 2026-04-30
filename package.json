@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --port 3500",
-    "build": "next build",
+    "build": "bun run --filter hudsonkit build && next build",
     "start": "next start",
     "lint": "eslint",
     "test": "vitest run",
@@ -56,10 +56,12 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "packages/*",
-    "native/*"
+    "packages/create-hudson-app",
+    "packages/hudson-relay",
+    "packages/hudson-sdk"
   ],
   "devDependencies": {
+    "hudsonkit": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
@@ -72,6 +74,7 @@
     "eslint-config-next": "16.1.6",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",
+    "tsup": "^8.5.1",
     "typescript": "5.9.3",
     "vitest": "^4.0.18"
   }

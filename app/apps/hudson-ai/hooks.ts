@@ -1,6 +1,6 @@
 'use client';
 
-import type { CommandOption } from '@hudson/sdk';
+import type { CommandOption } from 'hudsonkit';
 import { useHudsonAIApp } from './HudsonAIProvider';
 
 export function useHudsonAICommands(): CommandOption[] {
