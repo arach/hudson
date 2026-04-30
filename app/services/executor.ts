@@ -5,7 +5,24 @@ import { join } from 'path';
 // In-memory PID tracking (survives within a single process lifecycle)
 const pidMap = new Map<string, number>();
 
-const isBun = typeof Bun !== 'undefined';
+type BunRuntime = {
+  spawnSync: (
+    command: string[],
+    opts: { cwd?: string; stdout: 'pipe'; stderr: 'pipe' },
+  ) => { exitCode: number; stdout: Uint8Array; stderr: Uint8Array };
+  spawn: (
+    command: string[],
+    opts: {
+      cwd?: string;
+      env?: Record<string, string>;
+      stdin: 'ignore';
+      stdout: number | 'ignore';
+      stderr: number | 'ignore';
+    },
+  ) => { pid: number; unref: () => void };
+};
+
+const bunRuntime = (globalThis as typeof globalThis & { Bun?: BunRuntime }).Bun;
 
 // Logs directory: ~/hudson/logs/
 const LOGS_DIR = join(process.env.HOME || '/tmp', 'hudson', 'logs');
@@ -38,8 +55,8 @@ export interface ServiceActionResult {
 // ---------------------------------------------------------------------------
 
 function shellExecSync(command: string, opts: { cwd?: string; timeout?: number }): string {
-  if (isBun) {
-    const result = Bun.spawnSync(command.split(' '), {
+  if (bunRuntime) {
+    const result = bunRuntime.spawnSync(command.split(' '), {
       cwd: opts.cwd,
       stdout: 'pipe',
       stderr: 'pipe',
@@ -60,9 +77,9 @@ function spawnDetached(
   args: string[],
   opts: { cwd?: string; env?: Record<string, string | undefined>; logFd?: number },
 ): { pid: number } {
-  if (isBun) {
+  if (bunRuntime) {
     const stdioTarget = opts.logFd != null ? opts.logFd : 'ignore';
-    const proc = Bun.spawn([cmd, ...args], {
+    const proc = bunRuntime.spawn([cmd, ...args], {
       cwd: opts.cwd,
       env: opts.env as Record<string, string>,
       stdin: 'ignore',
