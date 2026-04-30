@@ -56,8 +56,9 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "packages/*",
-    "native/*"
+    "packages/create-hudson-app",
+    "packages/hudson-relay",
+    "packages/hudson-sdk"
   ],
   "devDependencies": {
     "hudsonkit": "workspace:*",
