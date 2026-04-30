@@ -57,6 +57,11 @@
       "import": "./dist/controls.js",
       "default": "./dist/controls.js"
     },
+    "./observability": {
+      "types": "./dist/observability.d.ts",
+      "import": "./dist/observability.js",
+      "default": "./dist/observability.js"
+    },
     "./voice": {
       "types": "./dist/voice.d.ts",
       "import": "./dist/voice.js",

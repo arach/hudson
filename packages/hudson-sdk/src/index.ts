@@ -26,6 +26,27 @@ export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
 export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
+export { HLogger, HMetrics, HObservability, HObservabilityDefault, HSpan, HTrace } from './observability';
+export type {
+  HLogEvent,
+  HLogInput,
+  HLogLevel,
+  HMetricEvent,
+  HMetricInput,
+  HMetricType,
+  HObservabilityOptions,
+  HObservation,
+  HObservationBase,
+  HObservationData,
+  HObservationKind,
+  HObservationSink,
+  HObservationTags,
+  HSubscribeOptions,
+  HTraceInput,
+  HTraceSpan,
+  HTraceStatus,
+  HUnsubscribe,
+} from './observability';
 
 // AI
 export { AI } from './components/AI';

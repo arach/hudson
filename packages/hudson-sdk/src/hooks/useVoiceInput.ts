@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
 import { probeVoxAvailability, type VoxAvailability } from '../lib/voxProbe';
+import { HObservabilityDefault } from '../observability';
 
 // ---------------------------------------------------------------------------
 // useVoiceInput — Vox-backed STT.
@@ -78,6 +79,10 @@ function resolveRecordedMimeType(chunks: Blob[], mimeType: string): string {
   if (mimeType) return mimeType;
   const typedChunk = chunks.find(chunk => chunk.type);
   return typedChunk?.type || DEFAULT_VOICE_MIME_TYPE;
+}
+
+function sumChunkBytes(chunks: Blob[]) {
+  return chunks.reduce((total, chunk) => total + chunk.size, 0);
 }
 
 interface NormalizedError {
@@ -184,6 +189,10 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
     recorderRef.current = null;
 
     if (chunks.length === 0) {
+      HObservabilityDefault.logger.warn('hudson.voice.capture.empty', {
+        category: 'voice',
+        data: { surface },
+      });
       setStatus('error');
       setError('No audio was captured.');
       return;
@@ -192,9 +201,20 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
     setStatus('transcribing');
     setError(null);
 
+    const recordedMimeType = resolveRecordedMimeType(chunks, mimeType);
+    const span = HObservabilityDefault.trace.start('hudson.voice.transcribe', {
+      category: 'voice',
+      data: {
+        surface,
+        format: inferVoiceFormat(recordedMimeType),
+        mimeType: recordedMimeType,
+        chunkCount: chunks.length,
+        audioBytes: sumChunkBytes(chunks),
+      },
+    });
+
     try {
       const client = await getClient();
-      const recordedMimeType = resolveRecordedMimeType(chunks, mimeType);
       const result = await client.transcribe({
         audio: new Blob(chunks, { type: recordedMimeType }),
         format: inferVoiceFormat(recordedMimeType),
@@ -204,10 +224,12 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       const transcript = result.text.trim();
       if (!transcript) throw new Error('Transcription returned empty text.');
 
+      span.end({ transcriptLength: transcript.length });
       setLastTranscript(transcript);
       setStatus('ready');
       onTranscriptRef.current(transcript);
     } catch (err) {
+      span.error(err);
       const normalized = normalizeVoiceError(err);
       setStatus(normalized.status);
       setError(normalized.message);
@@ -231,17 +253,29 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         ? await client.probeAvailability()
         : ((await client.probe()) ? 'connected' : 'unreachable');
       if (availability === 'blocked-origin') {
+        HObservabilityDefault.logger.warn('hudson.voice.capture.blocked_origin', {
+          category: 'voice',
+          data: { surface },
+        });
         const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
         setStatus('error');
         setError(`Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`);
         return;
       }
       if (availability === 'warming') {
+        HObservabilityDefault.logger.info('hudson.voice.capture.warming', {
+          category: 'voice',
+          data: { surface },
+        });
         setStatus('unavailable');
         setError('Vox is starting up — try again in a moment.');
         return;
       }
       if (availability === 'unreachable') {
+        HObservabilityDefault.logger.warn('hudson.voice.capture.unreachable', {
+          category: 'voice',
+          data: { surface },
+        });
         setStatus('unavailable');
         setError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
         return;
@@ -275,8 +309,16 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       };
 
       recorder.start();
+      HObservabilityDefault.logger.info('hudson.voice.capture.start', {
+        category: 'voice',
+        data: { surface, mimeType: recorder.mimeType || mimeType || null },
+      });
       setStatus('recording');
     } catch (err) {
+      HObservabilityDefault.logger.error('hudson.voice.capture.error', {
+        category: 'voice',
+        data: { surface, error: err instanceof Error ? err.message : String(err) },
+      });
       const normalized = normalizeVoiceError(err);
       setStatus(normalized.status);
       setError(normalized.message);
@@ -286,9 +328,13 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const stop = useCallback(() => {
     const recorder = recorderRef.current;
     if (!recorder || recorder.state !== 'recording') return;
+    HObservabilityDefault.logger.info('hudson.voice.capture.stop', {
+      category: 'voice',
+      data: { surface, chunkCount: chunksRef.current.length },
+    });
     setStatus('transcribing');
     recorder.stop();
-  }, []);
+  }, [surface]);
 
   // Cleanup on unmount: kill any live stream / recorder
   useEffect(() => {

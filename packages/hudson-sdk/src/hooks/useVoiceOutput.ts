@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { usePlatform } from '../platform/PlatformContext';
 import type { VoiceProvider, VoiceStatus } from '../types/voice';
+import { HObservabilityDefault } from '../observability';
 
 // ---------------------------------------------------------------------------
 // useVoiceOutput — TTS playback via the host app's /v1/audio/speech route.
@@ -77,6 +78,18 @@ export function useVoiceOutput(): UseVoiceOutputResult {
     setStatus('synthesizing');
     setError(null);
 
+    const format = pickReplySpeechFormat();
+    const span = HObservabilityDefault.trace.start('hudson.voice.reply.speak', {
+      category: 'voice',
+      data: {
+        provider: opts.provider,
+        model: opts.model,
+        voice: opts.voice,
+        format,
+        textLength: text.trim().length,
+      },
+    });
+
     try {
       const response = await fetch(`${apiBaseUrl}/v1/audio/speech`, {
         method: 'POST',
@@ -87,7 +100,7 @@ export function useVoiceOutput(): UseVoiceOutputResult {
           model: opts.model,
           voice: opts.voice || undefined,
           rate: opts.rate,
-          format: pickReplySpeechFormat(),
+          format,
           metadata: opts.metadata,
         }),
       });
@@ -104,7 +117,10 @@ export function useVoiceOutput(): UseVoiceOutputResult {
       if (!audioBase64) throw new Error('Speech synthesis returned no audio.');
 
       // If a newer request superseded this one, drop the result silently.
-      if (requestIdRef.current !== requestId) return;
+      if (requestIdRef.current !== requestId) {
+        span.end({ superseded: true });
+        return;
+      }
 
       // Tear down any prior playback before starting this one.
       if (audioRef.current) {
@@ -145,8 +161,13 @@ export function useVoiceOutput(): UseVoiceOutputResult {
       };
 
       await audio.play();
+      span.end({ mimeType, audioBytesApprox: Math.round(audioBase64.length * 0.75) });
     } catch (err) {
-      if (requestIdRef.current !== requestId) return;
+      if (requestIdRef.current !== requestId) {
+        span.end({ superseded: true });
+        return;
+      }
+      span.error(err);
       stop();
       setStatus('error');
       setError(err instanceof Error ? err.message : 'Reply speech failed.');

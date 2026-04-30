@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonObservability
 
 public enum HudsonButtonStyle {
     case primary(HudsonTint)
@@ -13,6 +14,7 @@ public struct HudsonButton: View {
     public let title: String
     public var icon: String?
     public var style: HudsonButtonStyle
+    public var instrumentationID: String?
     public var action: () -> Void
     @Environment(\.isEnabled) private var isEnabled
     @FocusState private var isFocused: Bool
@@ -22,16 +24,18 @@ public struct HudsonButton: View {
         _ title: String,
         icon: String? = nil,
         style: HudsonButtonStyle = .secondary,
+        instrumentationID: String? = nil,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.icon = icon
         self.style = style
+        self.instrumentationID = instrumentationID
         self.action = action
     }
 
     public var body: some View {
-        Button(action: action) {
+        Button(action: instrumentedAction) {
             HStack(spacing: HudsonSpacing.md) {
                 if let icon { Image(systemName: icon).font(.system(size: 12, weight: .semibold)) }
                 Text(title).font(HudsonFont.mono(12, weight: .semibold)).tracking(0.5)
@@ -49,6 +53,17 @@ public struct HudsonButton: View {
         .focused($isFocused)
         .onHover { isHovering = $0 }
         .accessibilityLabel(title)
+    }
+
+    private func instrumentedAction() {
+        guard let instrumentationID else {
+            action()
+            return
+        }
+        HTrace.ui.span("hudson.button.action", metadata: ["id": instrumentationID, "title": title]) {
+            HLogger.ui.info("button.action", metadata: ["id": instrumentationID, "title": title])
+            action()
+        }
     }
 
     private var foreground: Color {

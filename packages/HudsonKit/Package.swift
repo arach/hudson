@@ -8,6 +8,7 @@ let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMIN
 // terminal backend out of default HudsonKit consumers, and opt into it only for
 // hosts that explicitly build with HUDSONKIT_WITH_TERMINAL=1.
 var products: [Product] = [
+    .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -20,7 +21,8 @@ var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonV
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
-    .target(name: "HudsonUI"),
+    .target(name: "HudsonObservability"),
+    .target(name: "HudsonUI", dependencies: ["HudsonObservability"]),
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
     .target(name: "HudsonShell", dependencies: ["HudsonUI"]),
     .target(name: "HudsonVoice", dependencies: ["HudsonUI"]),

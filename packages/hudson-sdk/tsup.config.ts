@@ -12,6 +12,7 @@ export default defineConfig({
     windows: 'src/windows.ts',
     theme: 'src/theme.ts',
     controls: 'src/controls.ts',
+    observability: 'src/observability.ts',
     voice: 'src/voice.ts',
   },
   format: ['esm'],
