@@ -4,7 +4,7 @@ import { use } from 'react';
 import Link from 'next/link';
 import { WorkspaceShell } from '../../shell/WorkspaceShell';
 import { getAllWorkspaces } from '../../apps/registry';
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 
 export default function SingleAppPage({
   params,
@@ -29,7 +29,7 @@ export default function SingleAppPage({
       <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', height: '100vh', gap: 16, color: '#999', fontFamily: 'system-ui, sans-serif' }}>
         <p style={{ fontSize: 18 }}>App &ldquo;{appId}&rdquo; not found</p>
         <Link href="/app" style={{ color: '#38bdf8', textDecoration: 'underline' }}>
-          Back to Hudson OS
+          Back to HudsonKit
         </Link>
       </div>
     );

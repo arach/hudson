@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CommandOption, StatusColor } from '@hudson/sdk';
+import type { CommandOption, StatusColor } from 'hudsonkit';
 import { useTrace } from './TraceProvider';
 
 // ---------------------------------------------------------------------------

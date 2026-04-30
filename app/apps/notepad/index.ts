@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { FileText, Plus } from 'lucide-react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { NotepadProvider, useNotepad } from './NotepadProvider';
 import { NotepadContent } from './NotepadContent';
 import { NotepadLeftPanel } from './NotepadLeftPanel';

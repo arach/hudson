@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { CommandOption, StatusColor, SearchConfig } from '@hudson/sdk';
+import type { CommandOption, StatusColor, SearchConfig } from 'hudsonkit';
 import { useExplorer } from './IntentProvider';
 
 export function useExplorerCommands(): CommandOption[] {

@@ -2,7 +2,7 @@
 title: Utilities
 description: Platform adapters, design tokens, and UI sounds
 section: npm
-subsection: "@hudsonos/sdk"
+subsection: "hudsonkit"
 order: 5
 ---
 
@@ -71,7 +71,7 @@ interface PlatformAdapter {
 The default adapter for browser-based deployments. Zero configuration needed.
 
 ```ts
-import { WEB_ADAPTER } from '@hudsonos/sdk';
+import { WEB_ADAPTER } from 'hudsonkit';
 
 const WEB_ADAPTER: PlatformAdapter = {
   titleBarInset: 0,
@@ -90,7 +90,7 @@ You do not need to use `PlatformProvider` if running on the web with default set
 Wrap your app root to override platform defaults.
 
 ```tsx
-import { PlatformProvider } from '@hudsonos/sdk';
+import { PlatformProvider } from 'hudsonkit';
 
 function App() {
   return (
@@ -106,7 +106,7 @@ function App() {
 Read the active platform adapter from any component.
 
 ```tsx
-import { usePlatform } from '@hudsonos/sdk';
+import { usePlatform } from 'hudsonkit';
 
 function MyComponent() {
   const { isSSR, apiBaseUrl } = usePlatform();
@@ -134,7 +134,7 @@ interface PlatformLayout {
 ```
 
 ```tsx
-import { usePlatformLayout } from '@hudsonos/sdk';
+import { usePlatformLayout } from 'hudsonkit';
 
 function SidePanel() {
   const { panelTopOffset } = usePlatformLayout();
@@ -161,7 +161,7 @@ To run Hudson inside a native host like Tauri, create a custom adapter.
 #### Tauri Example
 
 ```tsx
-import type { PlatformAdapter } from '@hudsonos/sdk';
+import type { PlatformAdapter } from 'hudsonkit';
 
 const TAURI_ADAPTER: PlatformAdapter = {
   titleBarInset: 32,
@@ -177,7 +177,7 @@ const TAURI_ADAPTER: PlatformAdapter = {
 #### Using the Adapter
 
 ```tsx
-import { PlatformProvider } from '@hudsonos/sdk';
+import { PlatformProvider } from 'hudsonkit';
 
 function NativeApp() {
   return (
@@ -203,7 +203,7 @@ Hudson uses a consolidated design token system called `SHELL_THEME` for all shel
 Import the theme tokens:
 
 ```tsx
-import { SHELL_THEME } from '@hudsonos/sdk';
+import { SHELL_THEME } from 'hudsonkit';
 ```
 
 #### Structure
@@ -319,7 +319,7 @@ Hudson uses Tailwind CSS v4. To ensure Tailwind scans the SDK's classes, add a `
 
 ```css
 @import "tailwindcss";
-@source "../node_modules/@hudsonos/sdk/dist/**/*.js";
+@source "../node_modules/hudsonkit/dist/**/*.js";
 ```
 
 This tells Tailwind to scan the SDK's compiled output for class names.
@@ -329,7 +329,7 @@ This tells Tailwind to scan the SDK's compiled output for class names.
 The SDK ships a CSS file with dark-themed scrollbar styles for panels. Import it in your app:
 
 ```css
-@import "@hudsonos/sdk/styles.css";
+@import "hudsonkit/styles";
 ```
 
 This provides the `.frame-scrollbar` class:
@@ -376,7 +376,7 @@ The shell uses these semantic colors for status indicators:
 Build a panel that matches the shell aesthetic:
 
 ```tsx
-import { SHELL_THEME } from '@hudsonos/sdk';
+import { SHELL_THEME } from 'hudsonkit';
 
 function CustomOverlay() {
   return (
@@ -404,7 +404,7 @@ The SDK includes a tactile UI sound library generated entirely with the Web Audi
 ### Import
 
 ```tsx
-import { sounds, click, thock, confirm, isMuted, setMuted, preview } from '@hudsonos/sdk';
+import { sounds, click, thock, confirm, isMuted, setMuted, preview } from 'hudsonkit';
 ```
 
 All sound functions and controls are named exports from the SDK barrel.
@@ -434,7 +434,7 @@ All sound functions and controls are named exports from the SDK barrel.
 Call any sound function directly. Sounds are fire-and-forget with no return value.
 
 ```tsx
-import { sounds, confirm, click } from '@hudsonos/sdk';
+import { sounds, confirm, click } from 'hudsonkit';
 
 function SaveButton() {
   const handleSave = () => {
@@ -455,7 +455,7 @@ function SaveButton() {
 All sounds are also available as a named object for dynamic access:
 
 ```tsx
-import { sounds } from '@hudsonos/sdk';
+import { sounds } from 'hudsonkit';
 
 // Call by name
 sounds.click();
@@ -504,7 +504,7 @@ function toggleMute(): boolean;
 #### Mute Toggle Button Example
 
 ```tsx
-import { isMuted, toggleMute } from '@hudsonos/sdk';
+import { isMuted, toggleMute } from 'hudsonkit';
 import { useState } from 'react';
 
 function SoundToggle() {
@@ -532,8 +532,8 @@ function preview(name: SoundName): void;
 ```
 
 ```tsx
-import { preview } from '@hudsonos/sdk';
-import type { SoundName } from '@hudsonos/sdk';
+import { preview } from 'hudsonkit';
+import type { SoundName } from 'hudsonkit';
 
 function SoundPreviewer() {
   const soundNames: SoundName[] = [

@@ -1,6 +1,6 @@
 import { FileText, Compass, ScanSearch } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { DocsProvider } from './DocsProvider';
 import { DocsContent } from './DocsContent';
 import { DocsLeftPanel } from './DocsLeftPanel';

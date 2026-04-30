@@ -167,7 +167,7 @@ const Canvas: React.FC<CanvasProps> = ({ panOffset, scale, onPan, onPanStart, on
       <div className="absolute pointer-events-none"
         style={{ inset: '-100px', opacity: 0.5 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #444 1px, transparent 1px)`, backgroundSize: `${minorGridSize}px ${minorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       <div className="absolute pointer-events-none"
-        style={{ inset: '-100px', opacity: 0.25 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #555 1.5px, transparent 1.5px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
+        style={{ inset: '-100px', opacity: 0.25 * gridOpacity, transition: 'opacity 1s ease', backgroundImage: `radial-gradient(circle, #555 1px, transparent 1px)`, backgroundSize: `${majorGridSize}px ${majorGridSize}px`, backgroundPosition: `${bgPosX + 100}px ${bgPosY + 100}px` }} />
       {guidesVisible && (
         <>
           <div ref={guideVRef} className="absolute top-0 bottom-0 w-px pointer-events-none bg-emerald-500/10" style={{ left: 0 }} />

@@ -1,5 +1,5 @@
-// @hudson/sdk — public API for app developers.
-// Shell internals are in '@hudson/sdk/shell'.
+// hudsonkit — public API for app developers.
+// Shell internals are in 'hudsonkit/shell'.
 
 // Types
 export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState } from './types/app';
@@ -18,7 +18,7 @@ export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/use
 export { useAssistant } from './hooks/useAssistant';
 export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 // Voice kit interface (types only — no runtime voice code).
-// For actual voice functionality, import from '@hudsonos/sdk/voice'.
+// For actual voice functionality, import from 'hudsonkit/voice'.
 export type { AssistantVoiceKit, VoiceKitInput, VoiceKitOutput, VoiceKitSettings } from './types/voice-kit';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';

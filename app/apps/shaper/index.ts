@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { PenTool, Layers, ScanSearch, Anchor, Paintbrush, Play, Palette } from 'lucide-react';
-import type { HudsonApp, AppTool, AppManifest } from '@hudson/sdk';
+import type { HudsonApp, AppTool, AppManifest } from 'hudsonkit';
 import { ShaperProvider } from './ShaperProvider';
 import { ShaperContent } from './ShaperContent';
 import { ShaperLeftPanel } from './ShaperLeftPanel';

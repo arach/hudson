@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { ChevronDown, ChevronRight, Eye, EyeOff, Settings as GearIcon } from 'lucide-react';
-import type { ServiceStatus } from '@hudson/sdk';
+import type { ServiceStatus } from 'hudsonkit';
 
 const SVC_DOT_COLORS: Record<ServiceStatus, string> = {
   unknown: 'bg-neutral-500',

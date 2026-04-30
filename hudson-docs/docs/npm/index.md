@@ -2,12 +2,12 @@
 
 Published packages for building and managing Hudson apps.
 
-## @hudsonos/sdk
+## hudsonkit
 
 The core SDK for building Hudson apps -- types, hooks, utilities, and components.
 
 ```bash
-bun add @hudsonos/sdk
+bun add hudsonkit
 ```
 
 - [Getting Started](sdk/getting-started.md) -- Installation and first app

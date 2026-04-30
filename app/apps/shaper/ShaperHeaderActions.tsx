@@ -1,7 +1,7 @@
 'use client';
 
 import { useShaper } from './ShaperProvider';
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 export function ShaperHeaderActions() {
   const { showActionsMenu, setShowActionsMenu, newProject, quickSave, handleRetrace, isTracing } = useShaper();

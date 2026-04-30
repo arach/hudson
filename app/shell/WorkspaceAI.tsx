@@ -3,9 +3,9 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { useHudsonAI, usePersistentState, useDebouncedPersistentState } from '@hudson/sdk';
+import { useHudsonAI, usePersistentState, useDebouncedPersistentState } from 'hudsonkit';
 import type { UIMessage } from 'ai';
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import { createVoxdClient, VoxDError } from '@voxd/client';
 import type { VoiceSettings } from '../apps/hudson-docs/types';
 import type { HudsonAIToolContext, HudsonAIWorkspaceCatalogEntry } from './HudsonAIRuntimeContext';
@@ -994,8 +994,8 @@ export function WorkspaceAI({
     >
       {/* Header */}
       <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
-        <Bot size={13} className={chat.status === 'submitted' || chat.status === 'streaming' ? 'text-cyan-400 animate-pulse' : 'text-cyan-400/50'} />
-        <span className="text-[11px] font-mono text-white/50">Hudson AI</span>
+        <Bot size={13} className={chat.status === 'submitted' || chat.status === 'streaming' ? 'text-cyan-400 animate-pulse' : 'text-cyan-600'} />
+        <span className="text-[11px] font-mono text-zinc-500">Hudson AI</span>
         {(chat.status === 'submitted' || chat.status === 'streaming') && (
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
         )}
@@ -1007,7 +1007,7 @@ export function WorkspaceAI({
         <div className="ml-auto flex items-center gap-2">
           {workspaceCatalog.length > 1 && (
             <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
-              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-white/25">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-zinc-700">
                 scope
               </span>
               <select
@@ -1015,7 +1015,7 @@ export function WorkspaceAI({
                 value={scopedWorkspace?.id ?? workspace.id}
                 disabled={isChatBusy}
                 onChange={event => setScopeWorkspaceId(event.target.value)}
-                className="max-w-[180px] bg-transparent text-[10px] font-mono text-white/55 outline-none disabled:cursor-not-allowed disabled:text-white/25"
+                className="max-w-[180px] bg-transparent text-[10px] font-mono text-zinc-500 outline-none disabled:cursor-not-allowed disabled:text-zinc-700"
                 title={scopeLabel}
               >
                 {workspaceCatalog.map(candidate => (
@@ -1038,14 +1038,14 @@ export function WorkspaceAI({
               type="button"
               onClick={() => void onToolCall('load_workspace', { workspaceId: scopedWorkspace.id })}
               disabled={isChatBusy}
-              className="rounded border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300 transition-colors hover:border-cyan-400/30 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-white/20"
+              className="rounded border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300 transition-colors hover:border-cyan-400/30 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-zinc-700"
             >
               load
             </button>
           )}
           {canUseDevModelPicker && (
             <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
-              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-white/25">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-zinc-700">
                 dev
               </span>
               <select
@@ -1053,7 +1053,7 @@ export function WorkspaceAI({
                 value={devModelPreset.value}
                 disabled={isChatBusy}
                 onChange={event => setDevModelPresetId(event.target.value)}
-                className="max-w-[190px] bg-transparent text-[10px] font-mono text-white/55 outline-none disabled:cursor-not-allowed disabled:text-white/25"
+                className="max-w-[190px] bg-transparent text-[10px] font-mono text-zinc-500 outline-none disabled:cursor-not-allowed disabled:text-zinc-700"
                 title={`${devModelPreset.provider}/${devModelPreset.model}`}
               >
                 {HUDSON_AI_DEV_MODEL_PRESETS.map(preset => (
@@ -1064,13 +1064,13 @@ export function WorkspaceAI({
               </select>
             </label>
           )}
-          <span className="max-w-[90px] truncate text-[9px] font-mono uppercase text-white/25" title={activeProvider}>
+          <span className="max-w-[90px] truncate text-[9px] font-mono uppercase text-zinc-700" title={activeProvider}>
             {activeProvider}
           </span>
-          <span className="max-w-[160px] truncate text-[9px] font-mono text-white/15" title={activeModel}>
+          <span className="max-w-[160px] truncate text-[9px] font-mono text-zinc-800" title={activeModel}>
             {activeModel}
           </span>
-          <span className="max-w-[120px] truncate text-[9px] font-mono text-white/20" title={scopeLabel}>
+          <span className="max-w-[120px] truncate text-[9px] font-mono text-zinc-700" title={scopeLabel}>
             {scopeLabel}
           </span>
         </div>
@@ -1084,7 +1084,7 @@ export function WorkspaceAI({
               <div className={`text-[10px] font-mono uppercase tracking-wider ${voiceStatus === 'unavailable' ? 'text-amber-300/80' : 'text-red-300/80'}`}>
                 {voiceStatus === 'unavailable' ? 'Voice unavailable' : 'Voice error'}
               </div>
-              <div className="text-[11px] leading-relaxed text-white/60">
+              <div className="text-[11px] leading-relaxed text-zinc-400">
                 {voiceError}
               </div>
             </div>
@@ -1094,7 +1094,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleInstallVox}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
                   >
                     Install Vox
                   </button>
@@ -1103,7 +1103,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleLaunchVox}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
                   >
                     Launch Vox
                   </button>
@@ -1112,7 +1112,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleOpenVoxSettings}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
                   >
                     Settings
                   </button>
@@ -1126,7 +1126,7 @@ export function WorkspaceAI({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto frame-scrollbar px-3 py-2 space-y-3">
         {messages.length === 0 && (
-          <div className="text-[11px] text-white/15 text-center mt-8">
+          <div className="text-[11px] text-zinc-800 text-center mt-8">
             Ask me anything about the workspace. I can act live in the current workspace, peek into another workspace, or load that workspace when you want to switch over.
           </div>
         )}
@@ -1142,8 +1142,8 @@ export function WorkspaceAI({
             <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] rounded-lg px-3 py-2 text-[12px] leading-relaxed ${
                 isUser
-                  ? 'bg-cyan-500/10 text-white/70 border border-cyan-500/15'
-                  : 'bg-white/[0.03] text-white/60 border border-white/[0.05]'
+                  ? 'bg-cyan-500/10 text-zinc-300 border border-cyan-500/15'
+                  : 'bg-white/[0.03] text-zinc-400 border border-white/[0.05]'
               }`}>
                 {fileParts.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -1176,7 +1176,7 @@ export function WorkspaceAI({
                 alt={image.prompt}
                 className="max-w-full rounded border border-white/[0.08]"
               />
-              <div className="text-[9px] text-white/20 mt-1.5 truncate font-mono">{image.prompt}</div>
+              <div className="text-[9px] text-zinc-700 mt-1.5 truncate font-mono">{image.prompt}</div>
             </div>
           </div>
         ))}
@@ -1193,7 +1193,7 @@ export function WorkspaceAI({
                   <span className="w-1 h-1 rounded-full bg-cyan-400/40 animate-[bounce_1.4s_ease-in-out_0.2s_infinite]" />
                   <span className="w-1 h-1 rounded-full bg-cyan-400/20 animate-[bounce_1.4s_ease-in-out_0.4s_infinite]" />
                 </div>
-                <span className="text-[10px] text-cyan-400/40 font-mono">
+                <span className="text-[10px] text-cyan-700 font-mono">
                   {chat.status === 'submitted' ? 'Thinking' : 'Writing'}
                 </span>
               </div>
@@ -1218,9 +1218,9 @@ export function WorkspaceAI({
                 onClick={() => removeAttachment(attachment.id)}
                 className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <X size={8} className="text-white/60" />
+                <X size={8} className="text-zinc-400" />
               </button>
-              <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[7px] text-white/40 px-1 truncate rounded-b">
+              <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[7px] text-zinc-600 px-1 truncate rounded-b">
                 {attachment.name}
               </div>
             </div>
@@ -1235,7 +1235,7 @@ export function WorkspaceAI({
             type="button"
             onClick={handleSnapshot}
             disabled={snapping}
-            className="p-2 rounded-lg text-white/20 hover:text-cyan-400/60 hover:bg-white/[0.04] disabled:opacity-30 transition-colors"
+            className="p-2 rounded-lg text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04] disabled:opacity-30 transition-colors"
             title="Capture workspace screenshot"
           >
             {snapping ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
@@ -1243,7 +1243,7 @@ export function WorkspaceAI({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-lg text-white/20 hover:text-cyan-400/60 hover:bg-white/[0.04] transition-colors"
+            className="p-2 rounded-lg text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04] transition-colors"
             title="Attach image"
           >
             <ImageIcon size={14} />
@@ -1261,7 +1261,7 @@ export function WorkspaceAI({
             className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
               voiceStatus === 'recording'
                 ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
-                : 'text-white/20 hover:text-cyan-400/60 hover:bg-white/[0.04]'
+                : 'text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04]'
             }`}
             title={voiceStatus === 'recording' ? 'Stop recording' : 'Record voice prompt'}
           >
@@ -1299,7 +1299,7 @@ export function WorkspaceAI({
             }}
             onPaste={handlePaste}
             placeholder="Ask Hudson anything..."
-            className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-white/80 placeholder:text-white/20 outline-none focus:border-cyan-500/30 transition-colors"
+            className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/30 transition-colors"
           />
           <button
             type="submit"
@@ -1310,7 +1310,7 @@ export function WorkspaceAI({
           </button>
         </div>
         {voiceStatus === 'ready' && lastTranscript && !resolvedVoiceSettings.autoSend && (
-          <div className="mt-2 text-[10px] font-mono text-cyan-300/60">
+          <div className="mt-2 text-[10px] font-mono text-cyan-500">
             Voice draft ready. Press Enter to send or keep editing. Last transcript: {lastTranscript}
           </div>
         )}
@@ -1318,8 +1318,8 @@ export function WorkspaceAI({
 
       {/* Drop overlay */}
       {dragOver && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-cyan-500/5 border-2 border-dashed border-cyan-500/30 rounded-lg backdrop-blur-sm pointer-events-none">
-          <div className="text-[13px] text-cyan-400/60 font-medium flex items-center gap-2">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-cyan-950/40 border-2 border-dashed border-cyan-500/30 rounded-lg pointer-events-none">
+          <div className="text-[13px] text-cyan-500 font-medium flex items-center gap-2">
             <ImageIcon size={16} />
             Drop to attach
           </div>

@@ -2,7 +2,7 @@
 
 import { useMemo, useState, useCallback } from 'react';
 import { useDataBus } from './DataBusContext';
-import type { PipeDefinition } from '@hudson/sdk';
+import type { PipeDefinition } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
 // Types

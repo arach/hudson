@@ -13,7 +13,7 @@ Hudson ships two top-level components. Pick based on whether your product has on
 One `HudsonApp`, full chrome. Best for single-purpose products where the whole surface is about one thing: a catalog browser, a settings dashboard, a reader, a logo designer.
 
 ```tsx
-import { AppShell } from '@hudson/sdk/app-shell';
+import { AppShell } from 'hudsonkit/app-shell';
 import { catalogApp } from './catalog';
 
 <AppShell app={catalogApp} />
@@ -26,7 +26,7 @@ The shell reads the app's hooks for labels, search, status, and commands; render
 Many `HudsonApp`s sharing a dotted-grid workspace, with windows that float, resize, and minimize. Best for tool-kit surfaces — Hudson itself uses this for its default OS workspace (Shaper + Logo Designer + Notepad + more).
 
 ```tsx
-import { WorkspaceShell } from '@hudson/sdk/shell';
+import { WorkspaceShell } from 'hudsonkit/shell';
 
 <WorkspaceShell workspaces={[hudsonOSWorkspace]} defaultWorkspaceId="hudsonOS" />
 ```

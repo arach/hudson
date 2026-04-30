@@ -10,7 +10,7 @@ import {
   useRef,
   type ReactNode,
 } from 'react';
-import { usePlatform, usePersistentState } from '@hudson/sdk';
+import { usePlatform, usePersistentState } from 'hudsonkit';
 import type { Asset, AssetEntry, DiscoveredImage } from './types';
 
 // ── Context shape ─────────────────────────────────────────────────────────

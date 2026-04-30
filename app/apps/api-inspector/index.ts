@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { Radar, History } from 'lucide-react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { ApiInspectorProvider } from './ApiInspectorProvider';
 import { ApiInspectorContent } from './ApiInspectorContent';
 import { ApiInspectorInspector } from './ApiInspectorInspector';

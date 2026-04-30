@@ -15,7 +15,7 @@ import {
   CommandDock,
   TerminalDrawer,
   AppWindow,
-} from '@hudson/sdk/shell';
+} from 'hudsonkit/shell';
 import {
   usePersistentState,
   useDebouncedPersistentState,
@@ -25,8 +25,8 @@ import {
   setMuted as setSoundMuted,
   useAppSettings,
   captureWorkspace,
-} from '@hudson/sdk';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from '@hudson/sdk';
+} from 'hudsonkit';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -51,7 +51,7 @@ import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
 import { WorkspaceManagerProvider, WorkspaceManagerPanel } from './workspace-manager';
 import type { EditorTab } from './workspace-manager';
-import type { ServiceStatus } from '@hudson/sdk';
+import type { ServiceStatus } from 'hudsonkit';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
@@ -75,8 +75,8 @@ const DEFAULTS = {
   leftWidth: 260,
   rightWidth: 280,
   terminalHeight: 480,
-  leftCollapsed: true,
-  rightCollapsed: true,
+  leftCollapsed: false,
+  rightCollapsed: false,
   minimapCollapsed: false,
   showTerminal: false,
   showGuides: false,
@@ -131,15 +131,13 @@ function ServiceStatusIndicator({ registry, onOpenSettings }: {
   const running = catalog.filter(s => records[s.id]?.status === 'running').length;
   const hasError = catalog.some(s => records[s.id]?.status === 'error');
   const color = hasError ? 'text-red-500' : running === total ? 'text-emerald-500' : 'text-neutral-400';
-  const dotColor = hasError ? 'bg-red-500' : running === total ? 'bg-emerald-500' : 'bg-neutral-500';
 
   return (
     <button
       onClick={onOpenSettings}
-      className={`flex items-center gap-1.5 ${color} hover:opacity-80 transition-opacity`}
+      className={`flex items-center ${color} hover:opacity-80 transition-opacity`}
       title="Open Services settings"
     >
-      <div className={`w-1.5 h-1.5 rounded-full ${dotColor}`} />
       <span className="uppercase text-[10px] font-semibold tracking-wider">
         Services {running}/{total}
       </span>
@@ -1524,10 +1522,10 @@ function WorkspaceInner({
           {Object.entries(windowBoundsMap).map(([appId, b]) => (
             <div
               key={appId}
-              className={`absolute rounded-[0.5px] pointer-events-none ${
+              className={`absolute pointer-events-none ${
                 appId === focusedAppId
-                  ? 'border border-emerald-400/60 bg-emerald-400/10'
-                  : 'border border-neutral-400/40 bg-neutral-400/10'
+                  ? 'border border-emerald-400 bg-emerald-400/10'
+                  : 'border border-neutral-500 bg-neutral-400/10'
               }`}
               style={{
                 left: `${((b.x + 2000) / 4000) * 100}%`,
@@ -2316,8 +2314,8 @@ function WorkspaceInner({
       {fullscreenConfig ? (
         <div className="h-screen flex flex-col" style={{ background: 'rgb(10, 10, 10)' }}>
           {/* Header bar */}
-          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-700/50"
-            style={{ background: 'rgba(14, 14, 14, 0.97)', backdropFilter: 'blur(20px)' }}>
+          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-neutral-800"
+            style={{ background: '#0e0e0e' }}>
             {/* Left: back button + panel toggle */}
             <button
               onClick={exitFullscreen}
@@ -2488,7 +2486,7 @@ function WorkspaceInner({
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
               <NavigationBar
-                title="HUDSON"
+                title="HUDSONKIT"
                 subtitle={
                   <WorkspaceSwitcher
                     workspaces={workspaces}
@@ -2880,8 +2878,8 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="rounded-lg border border-neutral-700/60 shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
-        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
+        className="rounded-lg border border-neutral-800 shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        style={{ background: '#121212' }}
         onClick={(e) => e.stopPropagation()}
       >
         <form onSubmit={handleSubmit}>
@@ -3105,7 +3103,7 @@ function WindowedApp({
       {/* Port activity — slides down below the window, positioned absolutely */}
       {hasPorts && (
         <div
-          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-white/[0.06] bg-neutral-950/90 backdrop-blur-xl overflow-hidden"
+          className="absolute pointer-events-auto rounded-b-lg border border-t-0 border-neutral-800 bg-neutral-950 overflow-hidden"
           style={{
             left: bounds.x,
             top: bounds.y + bounds.h,

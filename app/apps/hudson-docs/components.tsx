@@ -630,9 +630,9 @@ export function SettingsSegment<T extends string>({ label, value, options, onCha
 export interface AppSettingsEntry {
   appId: string;
   appName: string;
-  config: import('@hudson/sdk').AppSettingsConfig;
-  values: import('@hudson/sdk').AppSettingsValues;
-  onUpdate: (patch: Partial<import('@hudson/sdk').AppSettingsValues>) => void;
+  config: import('hudsonkit').AppSettingsConfig;
+  values: import('hudsonkit').AppSettingsValues;
+  onUpdate: (patch: Partial<import('hudsonkit').AppSettingsValues>) => void;
 }
 
 export function SettingsText({ label, value, onChange }: {

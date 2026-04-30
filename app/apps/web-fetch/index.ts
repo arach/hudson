@@ -1,6 +1,6 @@
 import { Globe } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { WebFetchProvider } from './WebFetchProvider';
 import { WebFetchContent } from './WebFetchContent';
 import { useWebFetchPortOutput } from './ports';

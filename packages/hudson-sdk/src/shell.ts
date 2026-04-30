@@ -1,5 +1,5 @@
 // Shell-internal entry point — components and tokens used only by the shell layer.
-// App code should import from '@hudson/sdk' instead.
+// App code should import from 'hudsonkit' instead.
 
 // Chrome components
 export { Frame, Minimap, NavigationBar, SidePanel, StatusBar, CommandDock } from './components/chrome';

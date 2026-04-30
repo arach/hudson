@@ -12,7 +12,7 @@ import type { UIMessage } from 'ai';
 // useAssistantVoice — returns an AssistantVoiceKit for the <Assistant> component.
 //
 // Usage:
-//   import { useAssistantVoice } from '@hudsonos/sdk/voice';
+//   import { useAssistantVoice } from 'hudsonkit/voice';
 //   const voiceKit = useAssistantVoice({ appId: 'my-app' });
 //   <Assistant app={app} commands={commands} voiceKit={voiceKit} />
 // ---------------------------------------------------------------------------

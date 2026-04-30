@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, type RenderOptions } from '@testing-library/react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 
 /**
  * Render a component inside an app's Provider.

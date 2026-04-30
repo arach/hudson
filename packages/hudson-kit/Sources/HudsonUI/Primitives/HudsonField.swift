@@ -20,7 +20,7 @@ public struct HudsonField: View {
             .tint(HudsonPalette.accent)
             .padding(.horizontal, HudsonSpacing.xl)
             .frame(height: 36)
-            .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(Color.black.opacity(0.25)))
+            .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(HudsonPalette.chrome))
             .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(HudsonHairline.standard, lineWidth: 1))
     }
 }

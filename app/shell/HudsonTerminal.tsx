@@ -1,14 +1,14 @@
 'use client';
 
 import { useMemo, useCallback } from 'react';
-import { useTerminalRelay, TerminalRelay, usePlatform } from '@hudson/sdk';
-import type { HudsonWorkspace, IntentCatalog } from '@hudson/sdk';
+import { useTerminalRelay, TerminalRelay, usePlatform } from 'hudsonkit';
+import type { HudsonWorkspace, IntentCatalog } from 'hudsonkit';
 import { useDataBus } from './DataBusContext';
 import type { PortCatalogEntry } from './DataBusContext';
-import type { PipeDefinition } from '@hudson/sdk';
+import type { PipeDefinition } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
-// System prompt — workspace-aware Hudson OS assistant
+// System prompt — workspace-aware HudsonKit assistant
 // ---------------------------------------------------------------------------
 
 function buildSystemPrompt(
@@ -25,7 +25,7 @@ function buildSystemPrompt(
     return `### ${app.appName}\n${app.appDescription}\n${intentLines.join('\n')}`;
   });
 
-  return `You are the Hudson OS terminal — the system-level assistant for this workspace.
+  return `You are the HudsonKit terminal — the system-level assistant for this workspace.
 You can help with any loaded app or general workspace tasks.
 
 ## Workspace: ${workspace.name}
@@ -70,9 +70,9 @@ ${pipes.length === 0 ? 'No pipes configured.' : pipes.map(p =>
 // CLAUDE.md for the workspace directory
 // ---------------------------------------------------------------------------
 
-const WORKSPACE_CLAUDE = `# Hudson OS Workspace
+const WORKSPACE_CLAUDE = `# HudsonKit Workspace
 
-This is the Hudson OS workspace directory. You are the system-level assistant helping the user work across all loaded apps and general workspace tasks.
+This is the HudsonKit workspace directory. You are the system-level assistant helping the user work across all loaded apps and general workspace tasks.
 
 ## What You Can Do
 - Help with any loaded app (see your system prompt for the full list)

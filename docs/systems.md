@@ -37,7 +37,7 @@ Calls action() -> switchTool('pen')
 Add an `intents` array to your `HudsonApp` definition:
 
 ```tsx
-import type { HudsonApp, AppIntent } from '@hudson/sdk';
+import type { HudsonApp, AppIntent } from 'hudsonkit';
 
 const myIntents: AppIntent[] = [
   {
@@ -224,7 +224,7 @@ interface CatalogAppEntry {
 The Shaper reference app declares intents across multiple categories:
 
 ```tsx
-import type { AppIntent } from '@hudson/sdk';
+import type { AppIntent } from 'hudsonkit';
 
 export const shaperIntents: AppIntent[] = [
   // Tools
@@ -347,7 +347,7 @@ interface ServiceDefinition {
 #### Example
 
 ```ts
-import type { ServiceDefinition } from '@hudson/sdk';
+import type { ServiceDefinition } from 'hudsonkit';
 
 const terminalRelay: ServiceDefinition = {
   id: 'terminal-relay',
@@ -394,7 +394,7 @@ interface ServiceDependency {
 #### Declaring Dependencies
 
 ```tsx
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 
 const myApp: HudsonApp = {
   id: 'my-app',
@@ -538,7 +538,7 @@ App A (source)          Pipe             App B (sink)
 Declare ports statically on your `HudsonApp` definition:
 
 ```tsx
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 
 const shaperApp: HudsonApp = {
   id: 'shaper',

@@ -81,7 +81,7 @@ pattern. Then implement.
 - Use `HudsonAppManifest` fields where present; add new fields if needed
   (e.g., `serviceType`, `keychainService`, `transportStrategy` if you go
   that route) and document at the top of `HudsonAppManifest.swift`.
-- Vocabulary should align with the web SDK (`@hudsonos/sdk`); a quick
+- Vocabulary should align with the web SDK (`hudsonkit`); a quick
   scan of `packages/hudson-sdk/src/` will surface the relevant terms
   (`BridgeClient`, `Identity`, etc.).
 - This is a worktree: `.git` is a file, not a directory — don't trip on

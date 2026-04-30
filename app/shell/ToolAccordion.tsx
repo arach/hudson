@@ -1,7 +1,7 @@
 'use client';
 
 import { ChevronRight } from 'lucide-react';
-import type { AppTool } from '@hudson/sdk';
+import type { AppTool } from 'hudsonkit';
 
 interface ToolAccordionProps {
   tools: AppTool[];

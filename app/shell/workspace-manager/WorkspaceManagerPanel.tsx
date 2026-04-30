@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 import { useWorkspaceManager } from './WorkspaceManagerContext';
 import type { WindowBounds } from './WorkspaceManagerContext';
-import type { ServiceStatus } from '@hudson/sdk';
+import type { ServiceStatus } from 'hudsonkit';
 import type { AppSettingsEntry } from '../../apps/hudson-docs/components';
 import {
   SettingsSlider,

@@ -1,7 +1,7 @@
 'use client';
 
 import { useServices } from './ServicesProvider';
-import type { ServiceStatus } from '@hudson/sdk';
+import type { ServiceStatus } from 'hudsonkit';
 
 const STATUS_LABELS: Record<ServiceStatus, string> = {
   unknown: 'Unknown',

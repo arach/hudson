@@ -14,7 +14,7 @@
   --color-foreground: var(--foreground);
   --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto,
     "Helvetica Neue", Arial, sans-serif;
-  --font-mono: var(--font-geist-mono), ui-monospace, "SF Mono", monospace;
+  --font-mono: var(--font-jetbrains-mono), ui-monospace, "SF Mono", monospace;
 }
 
 .font-brand {
@@ -28,6 +28,9 @@ body {
   font-size: var(--hudson-font-size);
   margin: 0;
   padding: 0;
+  -webkit-font-smoothing: subpixel-antialiased;
+  text-rendering: geometricPrecision;
+  font-synthesis: none;
 }
 
 /* Dark themed scrollbars for frame panels */
@@ -49,24 +52,24 @@ body {
   scrollbar-color: rgba(255, 255, 255, 0.12) transparent;
 }
 
-/* Hudson AI markdown — compact, dark-themed */
+/* Hudson AI markdown — compact, dark-themed. Text uses solid colors so subpixel rendering stays crisp. */
 .hudson-ai-md { line-height: 1.55; }
 .hudson-ai-md p { margin: 0.3em 0; }
 .hudson-ai-md p:first-child { margin-top: 0; }
 .hudson-ai-md p:last-child { margin-bottom: 0; }
-.hudson-ai-md strong { color: rgba(255,255,255,0.8); font-weight: 600; }
-.hudson-ai-md em { color: rgba(255,255,255,0.6); font-style: italic; }
+.hudson-ai-md strong { color: #d4d4d8; font-weight: 600; }
+.hudson-ai-md em { color: #a1a1aa; font-style: italic; }
 .hudson-ai-md code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: rgba(255,255,255,0.06);
-  border: 1px solid rgba(255,255,255,0.08);
+  background: #18181b;
+  border: 1px solid #27272a;
   border-radius: 4px;
   padding: 0.1em 0.35em;
 }
 .hudson-ai-md pre {
-  background: rgba(255,255,255,0.04);
-  border: 1px solid rgba(255,255,255,0.06);
+  background: #131316;
+  border: 1px solid #27272a;
   border-radius: 6px;
   padding: 0.6em 0.8em;
   margin: 0.5em 0;
@@ -84,28 +87,28 @@ body {
   padding-left: 1.4em;
 }
 .hudson-ai-md li { margin: 0.15em 0; }
-.hudson-ai-md li::marker { color: rgba(255,255,255,0.2); }
+.hudson-ai-md li::marker { color: #3f3f46; }
 .hudson-ai-md h1, .hudson-ai-md h2, .hudson-ai-md h3 {
-  color: rgba(255,255,255,0.8);
+  color: #d4d4d8;
   font-weight: 600;
   margin: 0.5em 0 0.25em;
   font-size: 1em;
 }
 .hudson-ai-md a {
-  color: rgb(103,194,207);
+  color: #67c2cf;
   text-decoration: none;
 }
 .hudson-ai-md a:hover { text-decoration: underline; }
 .hudson-ai-md hr {
   border: none;
-  border-top: 1px solid rgba(255,255,255,0.06);
+  border-top: 1px solid #27272a;
   margin: 0.5em 0;
 }
 .hudson-ai-md blockquote {
-  border-left: 2px solid rgba(255,255,255,0.1);
+  border-left: 2px solid #3f3f46;
   padding-left: 0.8em;
   margin: 0.3em 0;
-  color: rgba(255,255,255,0.4);
+  color: #71717a;
 }
 
 /* Breathing bar — GPU-composited scale + opacity */

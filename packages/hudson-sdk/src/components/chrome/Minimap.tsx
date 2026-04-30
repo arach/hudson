@@ -173,7 +173,7 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
         <div
           className="absolute inset-0 opacity-30"
           style={{
-            backgroundImage: 'radial-gradient(circle, #555 0.5px, transparent 0.5px)',
+            backgroundImage: 'radial-gradient(circle, #555 1px, transparent 1px)',
             backgroundSize: '14px 14px',
           }}
         />
@@ -184,7 +184,7 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
 
         {/* Viewport rectangle */}
         <div
-          className="absolute border border-emerald-500/50 bg-emerald-500/5 rounded-[1px] transition-all duration-75 ease-out"
+          className="absolute border border-emerald-500/50 bg-emerald-500/5 transition-all duration-75 ease-out"
           style={{
             left: `${vpX}px`,
             top: `${vpY}px`,

@@ -57,7 +57,7 @@ private struct FakeTerminalContent: View {
             .padding(HudsonSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.black.opacity(0.45))
+        .background(HudsonPalette.chrome)
         .overlay(alignment: .topTrailing) {
             Text(host)
                 .font(HudsonFont.mono(9))

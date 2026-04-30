@@ -1,8 +1,8 @@
 'use client';
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useHudsonAI, usePlatform } from '@hudson/sdk';
-import type { AppSettingsValues } from '@hudson/sdk';
+import { useHudsonAI, usePlatform } from 'hudsonkit';
+import type { AppSettingsValues } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
 import { isBuiltinVariant } from './types';

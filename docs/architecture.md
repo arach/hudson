@@ -1,6 +1,6 @@
 # Architecture
 
-Hudson is a monorepo with two main packages: the **Hudson workspace** (the Next.js app that actually runs — `app/`) and **`@hudson/sdk`** (the shell + primitives library — `packages/hudson-sdk/`).
+Hudson is a monorepo with two main packages: the **Hudson workspace** (the Next.js app that actually runs — `app/`) and **`hudsonkit`** (the shell + primitives library — `packages/hudson-sdk/`).
 
 ## Monorepo layout
 
@@ -42,14 +42,14 @@ hudson/
     hudson-sdk/                     # The SDK (workspace-internal for now)
       src/
         index.ts                    # Public main entry — types, hooks, AI, platform
-        app-shell.ts                # `@hudson/sdk/app-shell` subpath
-        chrome.ts                   # `@hudson/sdk/chrome`
-        overlays.ts                 # `@hudson/sdk/overlays`
-        context-menu.ts             # `@hudson/sdk/context-menu`
-        canvas.ts                   # `@hudson/sdk/canvas`
-        windows.ts                  # `@hudson/sdk/windows`
-        theme.ts                    # `@hudson/sdk/theme`
-        shell.ts                    # `@hudson/sdk/shell` (back-compat barrel)
+        app-shell.ts                # `hudsonkit/app-shell` subpath
+        chrome.ts                   # `hudsonkit/chrome`
+        overlays.ts                 # `hudsonkit/overlays`
+        context-menu.ts             # `hudsonkit/context-menu`
+        canvas.ts                   # `hudsonkit/canvas`
+        windows.ts                  # `hudsonkit/windows`
+        theme.ts                    # `hudsonkit/theme`
+        shell.ts                    # `hudsonkit/shell` (back-compat barrel)
         styles/bundle.css           # Source for the compiled CSS bundle
         dist/styles.css             # Compiled via `bun run build:css`
         components/

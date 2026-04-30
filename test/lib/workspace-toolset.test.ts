@@ -26,13 +26,13 @@ describe('workspace toolset', () => {
     const { system } = loadToolset('workspace', {
       workspace: {
         id: 'hudson-os',
-        name: 'Hudson OS',
+        name: 'HudsonKit',
         mode: 'canvas',
         focusedAppId: 'logo-designer',
         visibleAppIds: ['logo-designer'],
         disabledAppIds: ['intent-explorer'],
         availableWorkspaces: [
-          { id: 'hudson-os', name: 'Hudson OS', current: true },
+          { id: 'hudson-os', name: 'HudsonKit', current: true },
           { id: 'docs', name: 'Docs' },
         ],
       },

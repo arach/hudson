@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, type ReactNode } from 'react';
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import type { VoiceSettings, HudsonSettings } from '../apps/hudson-docs/types';
 
 export interface HudsonAIWorkspaceSummary {

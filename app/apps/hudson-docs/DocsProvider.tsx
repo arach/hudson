@@ -1,8 +1,8 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useMemo, useRef, type ReactNode } from 'react';
-import { usePersistentState, sounds } from '@hudson/sdk';
-import { setMuted as setSoundMuted } from '@hudson/sdk';
+import { usePersistentState, sounds } from 'hudsonkit';
+import { setMuted as setSoundMuted } from 'hudsonkit';
 import { useEffect } from 'react';
 import type { ComponentEntry, ViewMode, HudsonSettings } from './types';
 import { COMPONENTS, AGENT_DOCS, DEFAULT_SETTINGS } from './data';

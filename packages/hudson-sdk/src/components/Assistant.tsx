@@ -42,7 +42,7 @@ interface AssistantProps {
   /** Called when the disconnected state's "Start Service" button is clicked — should boot the relay service. */
   onStartService?: () => Promise<boolean>;
 
-  /** Voice kit from @hudsonos/sdk/voice — if omitted, voice controls are hidden and no voice deps are loaded. */
+  /** Voice kit from hudsonkit/voice — if omitted, voice controls are hidden and no voice deps are loaded. */
   voiceKit?: AssistantVoiceKit;
 }
 

@@ -1,6 +1,6 @@
 import { Server, List } from 'lucide-react';
 import { createElement } from 'react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { ServicesProvider } from './ServicesProvider';
 import { ServicesContent } from './ServicesContent';
 import { ServicesLeftPanel } from './ServicesLeftPanel';

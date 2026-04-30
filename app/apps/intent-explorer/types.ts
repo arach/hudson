@@ -1,4 +1,4 @@
-import type { IntentCategory } from '@hudson/sdk';
+import type { IntentCategory } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
 // Category badge colors (shared across components)

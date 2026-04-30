@@ -1,4 +1,4 @@
-import type { ServiceDefinition } from '@hudson/sdk';
+import type { ServiceDefinition } from 'hudsonkit';
 
 export const SERVICE_CATALOG: ServiceDefinition[] = [
   {

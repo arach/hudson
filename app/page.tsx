@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { InterestForm } from './_components/InterestForm';
 import { GlyphWavesBackground } from './_components/GlyphWavesBackground';
+import { CopyButton } from './_components/CopyButton';
 
 export default function Home() {
   return (
@@ -36,28 +37,28 @@ export default function Home() {
 
 function Nav() {
   return (
-    <header className="relative z-10 flex items-center justify-between px-6 md:px-10 h-14 border-b border-white/5">
+    <header className="relative z-10 flex items-center justify-between px-6 md:px-10 h-14 border-b border-zinc-900">
       <Link href="/" className="flex items-center gap-2">
         <HudsonMark className="w-5 h-5 text-cyan-400" />
-        <span className="font-brand text-[15px] tracking-wider">HUDSON</span>
+        <span className="font-mono text-[13px] font-medium tracking-[0.22em]">HUDSONKIT</span>
       </Link>
       <nav className="flex items-center gap-1 text-[13px]">
         <Link
           href="/docs"
-          className="px-3 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/5 transition"
+          className="px-3 py-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-900 transition"
         >
           Docs
         </Link>
         <a
           href="https://github.com/arach/hudson"
-          className="px-3 py-1.5 rounded-md text-white/60 hover:text-white hover:bg-white/5 transition flex items-center gap-1.5"
+          className="px-3 py-1.5 rounded-md text-zinc-400 hover:text-white hover:bg-zinc-900 transition flex items-center gap-1.5"
         >
           <Github className="w-3.5 h-3.5" />
           GitHub
         </a>
         <Link
           href="/app"
-          className="ml-2 px-3 py-1.5 rounded-md border border-cyan-400/30 bg-cyan-400/10 text-cyan-300 hover:bg-cyan-400/20 hover:border-cyan-400/50 transition flex items-center gap-1.5"
+          className="ml-2 px-3 py-1.5 rounded-md border border-cyan-700 bg-cyan-950 text-cyan-300 hover:bg-cyan-900 hover:border-cyan-600 transition flex items-center gap-1.5"
         >
           Open Workspace
           <ArrowRight className="w-3.5 h-3.5" />
@@ -75,39 +76,38 @@ function Hero() {
   return (
     <section className="relative px-6 md:px-10 pt-20 pb-14 md:pt-28 md:pb-20">
       <div className="max-w-5xl mx-auto">
-        <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full border border-white/10 bg-white/[0.02] text-[11px] tracking-wider uppercase text-white/50 mb-6">
-          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
-          v0.1 — Source-available under FSL-1.1-MIT
-        </div>
-        <h1 className="font-brand text-4xl md:text-5xl lg:text-6xl leading-[1.05] tracking-tight">
+        <h1 className="text-4xl md:text-5xl lg:text-6xl font-light leading-[1.0] tracking-[-0.025em] text-zinc-200">
           Build rich, composable,
           <br />
           canvas-friendly,
           <br />
-          <span className="text-cyan-300">AI-powered web apps.</span>
+          <span className="text-cyan-400 font-normal">AI-powered web apps.</span>
         </h1>
-        <p className="mt-8 max-w-2xl text-base md:text-lg text-white/60 leading-relaxed">
-          Hudson is a shell and primitives library for composing canvas
+        <p className="mt-8 max-w-2xl text-base md:text-lg text-zinc-300 leading-relaxed">
+          HudsonKit is a shell and primitives library for composing canvas
           workspaces and single-app dashboards. Provider + Slots + Hooks —
           apps own state, the shell renders chrome.
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link
             href="/app"
-            className="group inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-cyan-400/40 bg-cyan-400/10 text-cyan-200 hover:bg-cyan-400/20 hover:border-cyan-400/60 transition"
+            className="group inline-flex items-center gap-2 h-10 px-5 rounded-md border border-cyan-700 bg-cyan-950 text-cyan-200 hover:bg-cyan-900 hover:border-cyan-600 transition"
           >
             Open the Workspace
             <ArrowRight className="w-4 h-4 transition-transform group-hover:translate-x-0.5" />
           </Link>
           <Link
             href="/docs"
-            className="inline-flex items-center gap-2 px-5 py-2.5 rounded-md border border-white/10 bg-white/[0.02] hover:bg-white/5 hover:border-white/20 transition text-white/80"
+            className="inline-flex items-center h-10 px-5 rounded-md border border-zinc-800 bg-zinc-950 hover:bg-zinc-900 hover:border-zinc-700 transition text-zinc-300"
           >
             Read the Docs
           </Link>
-          <code className="ml-2 px-3 py-2 rounded-md border border-white/5 bg-white/[0.02] font-mono text-[13px] text-white/60">
-            bun add @hudsonos/sdk
-          </code>
+          <div className="inline-flex items-center h-10 pl-3 pr-1.5 rounded-md border border-zinc-800 bg-zinc-950">
+            <span className="font-mono font-light text-[13px] text-zinc-600 mr-2 select-none">$</span>
+            <code className="font-mono font-light text-[13px] text-zinc-200">bun add hudsonkit</code>
+            <span className="mx-2 h-5 w-px bg-zinc-800" aria-hidden />
+            <CopyButton value="bun add hudsonkit" />
+          </div>
         </div>
       </div>
     </section>
@@ -124,16 +124,16 @@ function LivePreview() {
       <div className="max-w-6xl mx-auto">
         <div className="flex items-end justify-between mb-4">
           <div>
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               Live / Interactive
             </div>
-            <h2 className="mt-1 text-xl md:text-2xl font-medium text-white/90">
+            <h2 className="mt-1 text-xl md:text-2xl font-light tracking-[-0.015em] text-zinc-100">
               The workspace, running inline
             </h2>
           </div>
           <Link
             href="/app"
-            className="hidden md:inline-flex items-center gap-1.5 text-[12px] text-white/60 hover:text-white transition"
+            className="hidden md:inline-flex items-center gap-1.5 text-[12px] text-zinc-400 hover:text-white transition"
           >
             <Maximize2 className="w-3.5 h-3.5" />
             Open fullscreen
@@ -149,7 +149,7 @@ function LivePreview() {
           />
         </HudFrame>
 
-        <div className="mt-3 flex items-center gap-4 text-[11px] text-white/40">
+        <div className="mt-3 flex items-center gap-4 text-[11px] text-zinc-600">
           <div className="flex items-center gap-1.5">
             <MousePointer2 className="w-3 h-3" />
             Click to interact
@@ -170,7 +170,7 @@ function LivePreview() {
 
 function Features() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-zinc-900">
       <div className="max-w-5xl mx-auto">
         <div className="grid md:grid-cols-2 gap-10 md:gap-16">
           <FeatureColumn
@@ -236,23 +236,23 @@ function FeatureColumn({
 }) {
   return (
     <div>
-      <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+      <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
         {eyebrow}
       </div>
-      <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90 mb-8">
+      <h3 className="mt-1 text-2xl md:text-3xl font-light tracking-[-0.015em] text-zinc-100 mb-8">
         {title}
       </h3>
       <ul className="space-y-6">
         {items.map((it, i) => (
           <li key={i} className="flex gap-4">
-            <div className="flex-shrink-0 w-9 h-9 rounded-md border border-cyan-400/20 bg-cyan-400/5 flex items-center justify-center">
+            <div className="flex-shrink-0 w-9 h-9 rounded-md border border-cyan-800 bg-cyan-950 flex items-center justify-center">
               <it.icon className="w-4 h-4 text-cyan-300" />
             </div>
             <div>
-              <div className="text-[14px] font-medium text-white/90">
+              <div className="text-[14px] font-medium text-zinc-100">
                 {it.title}
               </div>
-              <p className="mt-1 text-[13px] text-white/55 leading-relaxed">
+              <p className="mt-1 text-[13px] text-zinc-400 leading-relaxed">
                 {it.body}
               </p>
             </div>
@@ -269,28 +269,33 @@ function FeatureColumn({
 
 function CodeSnippet() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-zinc-900">
       <div className="max-w-5xl mx-auto">
         <div className="grid lg:grid-cols-5 gap-10 lg:gap-14 items-center">
           <div className="lg:col-span-2">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               One interface, everything wired
             </div>
-            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90">
+            <h3 className="mt-1 text-2xl md:text-3xl font-light tracking-[-0.015em] text-zinc-100">
               Define a{' '}
               <code className="font-mono text-cyan-300">HudsonApp</code>, get
               the rest.
             </h3>
-            <p className="mt-4 text-[14px] text-white/55 leading-relaxed">
+            <p className="mt-4 text-[14px] text-zinc-400 leading-relaxed">
               A single object plugs your component into the workspace — menu,
               intents, settings, AI capabilities. No shell code to write.
             </p>
           </div>
           <div className="lg:col-span-3">
             <HudFrame compact>
-              <pre className="font-mono text-[12.5px] leading-[1.7] overflow-x-auto px-6 py-5 bg-[#06080a]">
-                <Code />
-              </pre>
+              <div className="relative">
+                <pre className="font-mono font-light text-[12.5px] leading-[1.7] overflow-x-auto px-6 py-5 bg-[#06080a]">
+                  <Code />
+                </pre>
+                <div className="absolute top-2 right-2">
+                  <CopyButton value={CODE_SNIPPET} />
+                </div>
+              </div>
             </HudFrame>
           </div>
         </div>
@@ -299,27 +304,39 @@ function CodeSnippet() {
   );
 }
 
+const CODE_SNIPPET = `import { defineApp } from 'hudsonkit';
+
+export const notepadApp = defineApp({
+  id: 'notepad',
+  name: 'Notepad',
+  icon: NotepadIcon,
+  Provider: NotepadProvider,
+  useContent: useNotepadContent,
+  useNav: useNotepadNav,
+  intents: notepadIntents,
+});`;
+
 function Code() {
   return (
-    <code className="text-white/80">
-      <span className="text-rose-300">import</span>{' '}
-      <span className="text-white/60">{'{ defineApp }'}</span>{' '}
-      <span className="text-rose-300">from</span>{' '}
-      <span className="text-emerald-300">&apos;@hudsonos/sdk&apos;</span>;{'\n\n'}
-      <span className="text-rose-300">export const</span>{' '}
-      <span className="text-cyan-300">notepadApp</span> ={' '}
-      <span className="text-white/70">defineApp</span>({'{\n'}
-      {'  '}id: <span className="text-emerald-300">&apos;notepad&apos;</span>,
+    <code className="text-zinc-100">
+      <span className="text-cyan-400">import</span>{' '}
+      <span className="text-zinc-200">{'{ defineApp }'}</span>{' '}
+      <span className="text-cyan-400">from</span>{' '}
+      <span className="text-zinc-300">&apos;hudsonkit&apos;</span>;{'\n\n'}
+      <span className="text-cyan-400">export const</span>{' '}
+      <span className="text-cyan-200">notepadApp</span> ={' '}
+      <span className="text-zinc-200">defineApp</span>({'{\n'}
+      {'  '}id: <span className="text-zinc-300">&apos;notepad&apos;</span>,
       {'\n'}
-      {'  '}name: <span className="text-emerald-300">&apos;Notepad&apos;</span>,
+      {'  '}name: <span className="text-zinc-300">&apos;Notepad&apos;</span>,
       {'\n'}
-      {'  '}icon: <span className="text-cyan-300">NotepadIcon</span>,{'\n'}
-      {'  '}Provider: <span className="text-cyan-300">NotepadProvider</span>,
+      {'  '}icon: <span className="text-cyan-200">NotepadIcon</span>,{'\n'}
+      {'  '}Provider: <span className="text-cyan-200">NotepadProvider</span>,
       {'\n'}
       {'  '}useContent:{' '}
-      <span className="text-cyan-300">useNotepadContent</span>,{'\n'}
-      {'  '}useNav: <span className="text-cyan-300">useNotepadNav</span>,{'\n'}
-      {'  '}intents: <span className="text-cyan-300">notepadIntents</span>,
+      <span className="text-cyan-200">useNotepadContent</span>,{'\n'}
+      {'  '}useNav: <span className="text-cyan-200">useNotepadNav</span>,{'\n'}
+      {'  '}intents: <span className="text-cyan-200">notepadIntents</span>,
       {'\n'}
       {'}});'}
     </code>
@@ -332,12 +349,12 @@ function Code() {
 
 function Shells() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-zinc-900">
       <div className="max-w-5xl mx-auto">
-        <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70 text-center">
+        <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500 text-center">
           Two shells, same primitives
         </div>
-        <h3 className="mt-1 text-center text-2xl md:text-3xl font-medium text-white/90 mb-12">
+        <h3 className="mt-1 text-center text-2xl md:text-3xl font-light tracking-[-0.015em] text-zinc-100 mb-12">
           Pick the chrome that fits.
         </h3>
         <div className="grid md:grid-cols-2 gap-5">
@@ -374,21 +391,21 @@ function ShellCard({
     accent === 'cyan'
       ? 'border-cyan-400/20 hover:border-cyan-400/40'
       : 'border-emerald-400/20 hover:border-emerald-400/40';
-  const text = accent === 'cyan' ? 'text-cyan-300' : 'text-emerald-300';
+  const text = accent === 'cyan' ? 'text-cyan-300' : 'text-zinc-400';
   return (
     <div
-      className={`relative rounded-lg border ${ring} bg-white/[0.02] p-6 transition`}
+      className={`relative rounded-lg border ${ring} bg-zinc-950 p-6 transition`}
     >
       <div className="flex items-baseline justify-between">
-        <div className={`font-brand text-lg ${text}`}>{name}</div>
-        <div className="text-[11px] uppercase tracking-wider text-white/40">
+        <div className={`font-mono text-[15px] font-medium ${text}`}>{name}</div>
+        <div className="text-[11px] uppercase tracking-wider text-zinc-600">
           {accent === 'cyan' ? 'Multi-app' : 'Single app'}
         </div>
       </div>
-      <div className="mt-2 text-[15px] font-medium text-white/85">
+      <div className="mt-2 text-[15px] font-medium text-zinc-200">
         {tagline}
       </div>
-      <p className="mt-3 text-[13px] text-white/55 leading-relaxed">{body}</p>
+      <p className="mt-3 text-[13px] text-zinc-400 leading-relaxed">{body}</p>
     </div>
   );
 }
@@ -399,18 +416,18 @@ function ShellCard({
 
 function Interest() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-white/5">
+    <section className="relative px-6 md:px-10 py-20 border-t border-zinc-900">
       <div className="max-w-2xl mx-auto">
         <HudFrame>
           <div className="px-6 md:px-10 py-10">
-            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-400/70">
+            <div className="text-[11px] uppercase tracking-[0.2em] text-cyan-500">
               Interested?
             </div>
-            <h3 className="mt-1 text-2xl md:text-3xl font-medium text-white/90">
-              Hudson is shipping in the open.
+            <h3 className="mt-1 text-2xl md:text-3xl font-light tracking-[-0.015em] text-zinc-100">
+              HudsonKit is shipping in the open.
             </h3>
-            <p className="mt-3 text-[14px] text-white/55 leading-relaxed">
-              If you&apos;re thinking about building on Hudson — or just want
+            <p className="mt-3 text-[14px] text-zinc-400 leading-relaxed">
+              If you&apos;re thinking about building on HudsonKit — or just want
               to follow along as the SDK, workspace, and primitives come
               together — drop your email. We&apos;ll reach out when something
               worth your attention ships.
@@ -431,31 +448,31 @@ function Interest() {
 
 function Footer() {
   return (
-    <footer className="relative border-t border-white/5 px-6 md:px-10 py-10">
+    <footer className="relative border-t border-zinc-900 px-6 md:px-10 py-10">
       <div className="max-w-5xl mx-auto flex flex-col md:flex-row items-start md:items-center justify-between gap-6">
         <div className="flex items-center gap-2">
-          <HudsonMark className="w-4 h-4 text-white/40" />
-          <span className="font-brand text-[13px] tracking-wider text-white/50">
-            HUDSON
+          <HudsonMark className="w-4 h-4 text-zinc-600" />
+          <span className="font-mono text-[12px] font-medium tracking-[0.22em] text-zinc-500">
+            HUDSONKIT
           </span>
-          <span className="ml-2 text-[12px] text-white/30">
+          <span className="ml-2 text-[12px] text-zinc-700">
             © 2026 Arach Tchoupani
           </span>
         </div>
-        <div className="flex items-center gap-5 text-[12px] text-white/40">
-          <Link href="/docs" className="hover:text-white/80 transition">
+        <div className="flex items-center gap-5 text-[12px] text-zinc-600">
+          <Link href="/docs" className="hover:text-zinc-300 transition">
             Docs
           </Link>
-          <Link href="/app" className="hover:text-white/80 transition">
+          <Link href="/app" className="hover:text-zinc-300 transition">
             Workspace
           </Link>
           <a
             href="https://github.com/arach/hudson"
-            className="hover:text-white/80 transition"
+            className="hover:text-zinc-300 transition"
           >
             GitHub
           </a>
-          <span className="text-white/30">FSL-1.1-MIT</span>
+          <span className="text-zinc-700">FSL-1.1-MIT</span>
         </div>
       </div>
     </footer>
@@ -475,7 +492,7 @@ function HudFrame({
 }) {
   return (
     <div
-      className={`relative rounded-xl border border-white/10 bg-white/[0.015] ${
+      className={`relative rounded-xl border border-zinc-800 bg-zinc-950 ${
         compact
           ? ''
           : 'shadow-[0_20px_60px_-20px_rgba(34,211,238,0.15)]'
@@ -488,13 +505,13 @@ function HudFrame({
 }
 
 function Corners() {
-  const base = 'absolute w-3 h-3 border-cyan-400/40 pointer-events-none';
+  const base = 'absolute w-2.5 h-2.5 border-cyan-700 pointer-events-none';
   return (
     <>
-      <span className={`${base} top-1 left-1 border-t border-l`} />
-      <span className={`${base} top-1 right-1 border-t border-r`} />
-      <span className={`${base} bottom-1 left-1 border-b border-l`} />
-      <span className={`${base} bottom-1 right-1 border-b border-r`} />
+      <span className={`${base} top-3 left-3 border-t border-l`} />
+      <span className={`${base} top-3 right-3 border-t border-r`} />
+      <span className={`${base} bottom-3 left-3 border-b border-l`} />
+      <span className={`${base} bottom-3 right-3 border-b border-r`} />
     </>
   );
 }

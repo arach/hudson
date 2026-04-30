@@ -10,7 +10,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from '@hudson/sdk';
+import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from 'hudsonkit';
 import { useEventSourceInvalidation } from '../hooks/useEventSourceInvalidation';
 
 const PIPE_FALLBACK_POLL_MS = 300_000;

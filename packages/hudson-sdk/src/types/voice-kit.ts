@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // AssistantVoiceKit — the interface between Assistant and voice functionality.
 // This is a types-only file with no runtime voice imports.
-// The implementation lives in @hudsonos/sdk/voice (useAssistantVoice hook).
+// The implementation lives in hudsonkit/voice (useAssistantVoice hook).
 // ---------------------------------------------------------------------------
 
 import type { UIMessage } from 'ai';

@@ -7,7 +7,7 @@ For a real-world app built against this contract, see [Case study: Premotion](./
 ## The interface
 
 ```ts
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 ```
 
 ### Required
@@ -120,7 +120,7 @@ Owns state and exposes it via context:
 'use client';
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 interface CounterValue {
   count: number;
@@ -178,7 +178,7 @@ export function MyAppContent() {
 // hooks.ts
 'use client';
 import { useMemo } from 'react';
-import type { CommandOption, StatusColor } from '@hudson/sdk';
+import type { CommandOption, StatusColor } from 'hudsonkit';
 import { useCounter } from './MyAppProvider';
 
 export function useCounterCommands(): CommandOption[] {
@@ -201,7 +201,7 @@ export function useCounterStatus(): { label: string; color: StatusColor } {
 // index.ts
 import { createElement } from 'react';
 import { Hash } from 'lucide-react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { CounterProvider } from './MyAppProvider';
 import { MyAppContent } from './MyAppContent';
 import { useCounterCommands, useCounterStatus } from './hooks';
@@ -243,7 +243,7 @@ Apps in `coreApps` appear in the default workspace automatically.
 For apps you don't want to commit, add to `app/local/apps.local.ts` (gitignored; auto-created by `next.config.ts`):
 
 ```ts
-import type { WorkspaceAppConfig } from '@hudson/sdk';
+import type { WorkspaceAppConfig } from 'hudsonkit';
 import { counterApp } from '../apps/counter';
 
 export const localApps: WorkspaceAppConfig[] = [
@@ -259,7 +259,7 @@ A fresh Next.js 16 + React 19 + Tailwind v4 app can consume the SDK and render a
 ```tsx
 // app/page.tsx
 'use client';
-import { AppShell } from '@hudson/sdk/app-shell';
+import { AppShell } from 'hudsonkit/app-shell';
 import { counterApp } from '@/counter';
 
 export default function Page() {
@@ -270,14 +270,14 @@ export default function Page() {
 ```css
 /* app/globals.css */
 @import "tailwindcss";
-@import "@hudson/sdk/styles";
+@import "hudsonkit/styles";
 ```
 
 The SDK is workspace-internal today, so current consumers install it via a manual symlink and a `turbopack.root` lift. See the [Premotion case study](./case-study-premotion.md) for the full real setup + known gaps.
 
 ## Rules of thumb
 
-- **Always `'use client'`** on every file that imports from `@hudson/sdk` or uses hooks — the SDK components are client-side only, and the RSC boundary must be explicit.
+- **Always `'use client'`** on every file that imports from `hudsonkit` or uses hooks — the SDK components are client-side only, and the RSC boundary must be explicit.
 - **Provider goes first.** Slots and hooks read state from the Provider's context. The shell wraps everything in the Provider once; you never wrap it manually.
 - **`usePersistentState` over raw `useState`** for anything you want surviving a refresh (note selection, filter state, panel sizes, etc.).
 - **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works. See Premotion's `catalog/Provider.tsx`.
@@ -288,5 +288,5 @@ The SDK is workspace-internal today, so current consumers install it via a manua
 
 - [Systems](./systems.md) — Intents, Services, Ports
 - [Perf patterns](./perf-drag-resize-patterns.md) — drag/resize/pan optimizations used by the shell
-- [API reference](./api.md) — every `@hudson/sdk` export with a short description
+- [API reference](./api.md) — every `hudsonkit` export with a short description
 - [Case study: Premotion](./case-study-premotion.md) — a complete real app

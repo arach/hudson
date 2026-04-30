@@ -2,18 +2,18 @@
 title: Getting Started
 description: Install the SDK, create a minimal app, and register it in a workspace.
 section: npm
-subsection: "@hudsonos/sdk"
+subsection: "hudsonkit"
 order: 1
 ---
 
 # Getting Started
 
-Build apps for the Hudson workspace platform using `@hudsonos/sdk`. This guide walks you through installation, creating a minimal app, and registering it in a workspace.
+Build apps for the Hudson workspace platform using `hudsonkit`. This guide walks you through installation, creating a minimal app, and registering it in a workspace.
 
 ## Installation
 
 ```bash
-bun add @hudsonos/sdk
+bun add hudsonkit
 ```
 
 ### Peer Dependencies
@@ -31,7 +31,7 @@ Your project should also use Tailwind CSS v4. See [Utilities](./utilities.md#tai
 Every Hudson app implements the `HudsonApp` interface. At minimum, you need an `id`, `name`, `mode`, a `Provider`, `slots.Content`, and two hooks.
 
 ```tsx
-import type { HudsonApp, CommandOption, StatusColor } from '@hudsonos/sdk';
+import type { HudsonApp, CommandOption, StatusColor } from 'hudsonkit';
 
 const counterApp: HudsonApp = {
   id: 'counter',
@@ -82,7 +82,7 @@ Real apps need state. The standard pattern wraps state in a React context and ex
 
 ```tsx
 import { createContext, useContext, useState, type ReactNode } from 'react';
-import { usePersistentState } from '@hudsonos/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 interface CounterState {
   count: number;
@@ -115,8 +115,8 @@ function CounterProvider({ children }: { children: ReactNode }) {
 Then wire the Provider and hooks into the app definition:
 
 ```tsx
-import type { HudsonApp, CommandOption } from '@hudsonos/sdk';
-import { sounds } from '@hudsonos/sdk';
+import type { HudsonApp, CommandOption } from 'hudsonkit';
+import { sounds } from 'hudsonkit';
 
 const counterApp: HudsonApp = {
   id: 'counter',
@@ -163,7 +163,7 @@ const counterApp: HudsonApp = {
 A workspace groups one or more apps into a shared shell. Create a workspace definition and include your app:
 
 ```tsx
-import type { HudsonWorkspace } from '@hudsonos/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import counterApp from './apps/counter';
 
 export const myWorkspace: HudsonWorkspace = {

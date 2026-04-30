@@ -39,7 +39,7 @@ struct FleetTopBar: View {
         }
         .padding(.horizontal, HudsonSpacing.xxl)
         .frame(height: HudsonLayout.navHeight)
-        .background(Color.black.opacity(0.25))
+        .background(HudsonPalette.chrome)
     }
 }
 
@@ -327,7 +327,7 @@ struct DashboardBottomChrome: View {
             HudsonDivider(color: HudsonHairline.standard)
             statusRow
         }
-        .background(Color.black.opacity(0.35))
+        .background(HudsonPalette.chrome)
     }
 
     private var cloudRow: some View {

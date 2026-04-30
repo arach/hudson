@@ -1,6 +1,6 @@
 import { createElement } from 'react';
 import { Braces, ScanSearch } from 'lucide-react';
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { JsonExplorerProvider } from './JsonExplorerProvider';
 import { JsonExplorerContent } from './JsonExplorerContent';
 import { JsonExplorerInspector } from './JsonExplorerInspector';

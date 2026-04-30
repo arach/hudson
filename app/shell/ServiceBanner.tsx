@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { AlertTriangle, X } from 'lucide-react';
 import { useServiceRegistryContext } from '../services/ServiceRegistryContext';
-import type { WorkspaceAppConfig } from '@hudson/sdk';
+import type { WorkspaceAppConfig } from 'hudsonkit';
 
 export function ServiceBanner({
   appConfig,

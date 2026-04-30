@@ -13,14 +13,14 @@
 //   1. Clone hero and shaper repos alongside hudson:
 //        ~/dev/hero/
 //        ~/dev/shaper/
-//   2. In each repo, fix bun's @hudson/sdk symlink for Turbopack:
-//        cd ~/dev/hero/web && rm -rf node_modules/@hudson/sdk && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/@hudson/sdk
-//        cd ~/dev/shaper   && rm -rf node_modules/@hudson/sdk && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/@hudson/sdk
+//   2. In each repo, fix bun's hudsonkit symlink for Turbopack:
+//        cd ~/dev/hero/web && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/hudsonkit
+//        cd ~/dev/shaper   && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/hudsonkit
 //   3. Install hero's unique deps in hudson: bun add fonteditor-core opentype.js @google/genai
 //
 // ─────────────────────────────────────────────────────────────────────────────
 
-import type { WorkspaceAppConfig, HudsonWorkspace } from '@hudson/sdk';
+import type { WorkspaceAppConfig, HudsonWorkspace } from 'hudsonkit';
 
 // ─── Shaper ─────────────────────────────────────────────────────────────────
 // Relative path to sibling repo (turbopack root is ~/dev/)
@@ -48,7 +48,7 @@ export const localApps: WorkspaceAppConfig[] = [
 ];
 
 // ─── Standalone Workspaces ───────────────────────────────────────────────────
-// These appear as separate entries in the workspace switcher alongside Hudson OS.
+// These appear as separate entries in the workspace switcher alongside HudsonKit.
 
 export const localWorkspaces: HudsonWorkspace[] = [
   // Shaper in its own full-screen workspace

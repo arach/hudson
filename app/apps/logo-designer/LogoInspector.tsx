@@ -7,8 +7,8 @@ import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
 import {
   ParamSection, ParamSlider, ParamToggle, ParamColor, ParamEnum, ParamText, ParamGrid,
-} from '@hudson/sdk/controls';
-import type { ParamDefinition } from '@hudson/sdk/controls';
+} from 'hudsonkit/controls';
+import type { ParamDefinition } from 'hudsonkit/controls';
 import { GOOGLE_FONTS, loadGoogleFont } from './types';
 import type { WordmarkConfig } from './types';
 

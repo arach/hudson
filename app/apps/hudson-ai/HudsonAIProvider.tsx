@@ -6,7 +6,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import type { AppSettingsValues } from '@hudson/sdk';
+import type { AppSettingsValues } from 'hudsonkit';
 import { HUDSON_AI_PROMPT_PRESETS, type HudsonAIPromptPreset } from './catalog';
 import { hudsonAISettings } from './settings';
 import { useActiveWorkspace } from '../../shell/ActiveWorkspaceContext';

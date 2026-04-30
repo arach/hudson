@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, type ReactNode } from 'react';
-import { usePlatform, usePersistentState } from '@hudson/sdk';
+import { usePlatform, usePersistentState } from 'hudsonkit';
 
 export interface FetchResult {
   dataUrl: string;

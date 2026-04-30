@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo, createElement } from 'react';
-import type { CommandOption, SearchConfig, StatusColor } from '@hudson/sdk';
-import { sounds } from '@hudson/sdk';
+import type { CommandOption, SearchConfig, StatusColor } from 'hudsonkit';
+import { sounds } from 'hudsonkit';
 import { useShaper } from './ShaperProvider';
 
 // ---------------------------------------------------------------------------

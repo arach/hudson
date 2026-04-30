@@ -10,10 +10,10 @@ This guide covers everything you need to build a Hudson app — from the interfa
 
 ## The HudsonApp Interface
 
-Every app implements the `HudsonApp` interface exported from `@hudson/sdk`:
+Every app implements the `HudsonApp` interface exported from `hudsonkit`:
 
 ```typescript
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 ```
 
 ### Full Interface
@@ -222,7 +222,7 @@ Return an array of `CommandOption` objects. These appear in the command palette 
 
 ```tsx
 import { useMemo } from 'react';
-import type { CommandOption } from '@hudson/sdk';
+import type { CommandOption } from 'hudsonkit';
 import { useGlyphEditor } from './GlyphEditorProvider';
 
 export function useGlyphCommands(): CommandOption[] {
@@ -300,7 +300,7 @@ export function useGlyphLayoutMode(): 'canvas' | 'panel' {
 Intents declare structured metadata about your commands for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent } from '@hudson/sdk';
+import type { AppIntent } from 'hudsonkit';
 
 export const glyphIntents: AppIntent[] = [
   {
@@ -352,7 +352,7 @@ import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const hudsonOSWorkspace: HudsonWorkspace = {
   id: 'hudson-os',
-  name: 'Hudson OS',
+  name: 'HudsonKit',
   mode: 'canvas',
   apps: [
     // ... existing apps
@@ -369,7 +369,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
 
 ```typescript
 // app/workspaces/glyphDev.ts
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const glyphDevWorkspace: HudsonWorkspace = {
@@ -419,10 +419,10 @@ Apps can dynamically switch modes using `useLayoutMode()`.
 
 ## Persistent State
 
-Use `usePersistentState` from @hudson/sdk for state that survives page reloads:
+Use `usePersistentState` from hudsonkit for state that survives page reloads:
 
 ```tsx
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 function MyComponent() {
   const [gridVisible, setGridVisible] = usePersistentState('my-app.grid', true);
@@ -435,7 +435,7 @@ function MyComponent() {
 Hudson includes a Web Audio synthesizer for UI feedback:
 
 ```tsx
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 // Available sounds
 sounds.blipUp();    // Positive feedback
@@ -481,4 +481,4 @@ The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if yo
 - [Overview](./overview.md) — Architecture and key concepts
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
 - [Scaffolding](./scaffolding.md) — Generate apps with `create-hudson-app`
-- [API Reference](./api.md) — Complete reference for all @hudson/sdk exports
+- [API Reference](./api.md) — Complete reference for all hudsonkit exports

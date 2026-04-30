@@ -1,15 +1,15 @@
 ---
 title: API Reference
-description: Complete API reference for the @hudson/sdk package
+description: Complete API reference for the hudsonkit package
 order: 5
 ---
 
 # API Reference
 
-Everything exported from the `@hudson/sdk` package.
+Everything exported from the `hudsonkit` package.
 
 ```tsx
-import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
+import { Frame, NavigationBar, SidePanel, ... } from 'hudsonkit';
 ```
 
 ## Types
@@ -19,7 +19,7 @@ import { Frame, NavigationBar, SidePanel, ... } from '@hudson/sdk';
 The core interface every app must implement. See [Building Apps](./building-apps.md) for full details.
 
 ```typescript
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -40,7 +40,7 @@ import type { HudsonApp } from '@hudson/sdk';
 Defines a collection of apps in a shared shell.
 
 ```typescript
-import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@hudson/sdk';
+import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -65,7 +65,7 @@ import type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from '@
 Structured metadata for LLM/voice/search integration.
 
 ```typescript
-import type { AppIntent, IntentCategory, IntentParameter } from '@hudson/sdk';
+import type { AppIntent, IntentCategory, IntentParameter } from 'hudsonkit';
 ```
 
 | Field | Type | Required | Description |
@@ -291,7 +291,7 @@ Right-click context menu (powered by @base-ui/react + motion).
 localStorage-backed state hook. Works like `useState` but persists across reloads.
 
 ```tsx
-import { usePersistentState } from '@hudson/sdk';
+import { usePersistentState } from 'hudsonkit';
 
 const [value, setValue] = usePersistentState('storage-key', defaultValue);
 ```
@@ -303,7 +303,7 @@ const [value, setValue] = usePersistentState('storage-key', defaultValue);
 Web Audio synthesizer for UI feedback.
 
 ```tsx
-import { sounds } from '@hudson/sdk';
+import { sounds } from 'hudsonkit';
 
 sounds.blipUp();     // Positive feedback / success
 sounds.click();      // Button press
@@ -316,7 +316,7 @@ sounds.thock();      // Heavy press / confirm
 Event bus for Frame activity logging.
 
 ```tsx
-import { logEvent, FRAME_LOG_EVENT } from '@hudson/sdk';
+import { logEvent, FRAME_LOG_EVENT } from 'hudsonkit';
 
 logEvent({ type: 'app:action', detail: 'something happened' });
 
@@ -331,7 +331,7 @@ window.addEventListener(FRAME_LOG_EVENT, (e) => {
 Coordinate conversion between world and screen space.
 
 ```tsx
-import { worldToScreen, screenToWorld } from '@hudson/sdk';
+import { worldToScreen, screenToWorld } from 'hudsonkit';
 
 const screenPos = worldToScreen(worldPos, panOffset, scale);
 const worldPos = screenToWorld(screenPos, panOffset, scale);
@@ -342,7 +342,7 @@ const worldPos = screenToWorld(screenPos, panOffset, scale);
 Design tokens and styling constants.
 
 ```tsx
-import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from '@hudson/sdk';
+import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } from 'hudsonkit';
 
 // CHROME — computed styles (borders, backgrounds, shadows)
 // CHROME_BASE — raw color values

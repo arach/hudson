@@ -6,7 +6,7 @@
 
 ## The question
 
-If Hudson is going to be *my standard app shell across projects*, a fresh React app I don't already control needs to be able to consume `@hudson/sdk` and get a useful shell with a reasonable amount of setup. That's the question Premotion is testing.
+If Hudson is going to be *my standard app shell across projects*, a fresh React app I don't already control needs to be able to consume `hudsonkit` and get a useful shell with a reasonable amount of setup. That's the question Premotion is testing.
 
 ## What got built
 
@@ -56,7 +56,7 @@ And it mounts in `app/page.tsx` like this:
 ```tsx
 'use client';
 import { Suspense } from 'react';
-import { AppShell } from '@hudson/sdk/app-shell';
+import { AppShell } from 'hudsonkit/app-shell';
 import { catalogApp } from '@/catalog';
 
 export default function Page() {
@@ -82,20 +82,20 @@ Consuming Hudson SDK from a fresh Next.js app today is possible but **not seamle
 
 ### 1. Package-manager symlink shape
 
-`bun add file:../hudson/packages/hudson-sdk` creates per-file symlinks in `node_modules/@hudson/sdk/` (package.json is a symlink, src/index.ts is a symlink, etc.). Turbopack's module resolver choked on this — it sees the symlinks' absolute targets as "invalid redirects" when parsing the `exports` field.
+`bun add file:../hudson/packages/hudson-sdk` creates per-file symlinks in `node_modules/hudsonkit/` (package.json is a symlink, src/index.ts is a symlink, etc.). Turbopack's module resolver choked on this — it sees the symlinks' absolute targets as "invalid redirects" when parsing the `exports` field.
 
 **Workaround:** Skip bun's `file:` install. Manually create a single relative directory symlink:
 
 ```bash
 mkdir -p node_modules/@hudson
-ln -s ../../../hudson/packages/hudson-sdk node_modules/@hudson/sdk
+ln -s ../../../hudson/packages/hudson-sdk node_modules/hudsonkit
 ```
 
 **Real fix (pending):** publish the SDK, or build a proper tarball that consumers install.
 
 ### 2. Turbopack root must lift to the common ancestor
 
-`@hudson/sdk`'s source lives at `../hudson/packages/hudson-sdk/src` — above the consumer project's root. Turbopack needs `root` set to a common ancestor to traverse up:
+`hudsonkit`'s source lives at `../hudson/packages/hudson-sdk/src` — above the consumer project's root. Turbopack needs `root` set to a common ancestor to traverse up:
 
 ```ts
 // next.config.ts
@@ -138,21 +138,21 @@ Premotion first rendered with half-broken styling: nav bar cramped, terminal dra
 **After (SDK fix, `4d39aed`):** The SDK now ships a pre-compiled `dist/styles.css` bundle. Consumers just:
 
 ```css
-@import "@hudson/sdk/styles";
+@import "hudsonkit/styles";
 ```
 
 And every utility class used by shell chrome is there. 57KB minified, zero config.
 
 ### 6. Barrel-export bloat
 
-`import { AppShell } from '@hudson/sdk/shell'` dragged in the whole barrel: `HudsonContextMenu` (→ `motion/react` + `@base-ui-components/react`), `AI` (→ `ai` + `@ai-sdk/react`), etc. Consumers who just want the default shell shouldn't need to install any of that.
+`import { AppShell } from 'hudsonkit/shell'` dragged in the whole barrel: `HudsonContextMenu` (→ `motion/react` + `@base-ui-components/react`), `AI` (→ `ai` + `@ai-sdk/react`), etc. Consumers who just want the default shell shouldn't need to install any of that.
 
 **Partial fix (`4d39aed`):** Narrower subpath exports added:
 
 ```ts
-import { AppShell } from '@hudson/sdk/app-shell';     // minimum chrome
-import { Canvas } from '@hudson/sdk/canvas';          // opt-in
-import { HudsonContextMenu } from '@hudson/sdk/context-menu';  // opt-in, brings motion + base-ui
+import { AppShell } from 'hudsonkit/app-shell';     // minimum chrome
+import { Canvas } from 'hudsonkit/canvas';          // opt-in
+import { HudsonContextMenu } from 'hudsonkit/context-menu';  // opt-in, brings motion + base-ui
 ```
 
 Old `./shell` barrel kept for back-compat.
@@ -177,9 +177,9 @@ The exercise was the point. Every friction point on the list above is an SDK iss
 ## Still open
 
 - **Decouple `Frame` from `HudsonContextMenu`** so `AppShell` doesn't transitively require `motion` + `@base-ui-components/react`
-- **Publish `@hudson/sdk`** (private npm scope or tarball) to eliminate symlink workarounds entirely
+- **Publish `hudsonkit`** (private npm scope or tarball) to eliminate symlink workarounds entirely
 - **Move transitive deps** (`ai`, `@ai-sdk/react`, etc.) into the SDK's own `package.json` rather than relying on Hudson's root hoist
-- **Document** the setup that *remains* necessary for external consumers after the above (probably just `@import "@hudson/sdk/styles"` and nothing else)
+- **Document** the setup that *remains* necessary for external consumers after the above (probably just `@import "hudsonkit/styles"` and nothing else)
 
 ## Files worth reading
 

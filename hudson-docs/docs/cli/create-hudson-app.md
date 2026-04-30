@@ -133,7 +133,7 @@ app/workspaces/myToolDev.ts
 ```
 
 ```typescript
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import { myToolApp } from '../apps/my-tool';
 
 export const myToolDevWorkspace: HudsonWorkspace = {

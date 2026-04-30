@@ -34,7 +34,7 @@ public struct HudsonCanvas<Header: View, Content: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, HudsonSpacing.xxl)
                     .frame(height: HudsonLayout.navHeight)
-                    .background(Color.black.opacity(0.20))
+                    .background(HudsonPalette.chrome)
                 HudsonDivider(color: HudsonHairline.standard)
             }
 

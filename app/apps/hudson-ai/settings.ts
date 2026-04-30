@@ -1,4 +1,4 @@
-import type { AppSettingsConfig } from '@hudson/sdk';
+import type { AppSettingsConfig } from 'hudsonkit';
 import { AI_MODEL_OPTIONS, AI_PROVIDER_OPTIONS } from '../../lib/ai-models';
 
 export const hudsonAISettings: AppSettingsConfig = {

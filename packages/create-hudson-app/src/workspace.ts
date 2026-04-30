@@ -23,7 +23,7 @@ export async function generateWorkspace(
   const relPath = `app/workspaces/${fileName}`;
   const destPath = resolve(projectRoot, relPath);
 
-  const content = `import type { HudsonWorkspace } from '@hudson/sdk';
+  const content = `import type { HudsonWorkspace } from 'hudsonkit';
 import { ${appVar}App } from '../apps/${appId}';
 
 export const ${workspaceVar}: HudsonWorkspace = {

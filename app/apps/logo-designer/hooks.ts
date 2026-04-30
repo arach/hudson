@@ -1,6 +1,6 @@
 'use client';
 import { useMemo } from 'react';
-import type { CommandOption } from '@hudson/sdk';
+import type { CommandOption } from 'hudsonkit';
 import { useLogo } from './LogoProvider';
 
 export function useLogoCommands(): CommandOption[] {

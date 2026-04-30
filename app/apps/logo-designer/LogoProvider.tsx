@@ -1,7 +1,7 @@
 'use client';
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
-import { usePersistentState, useAppSettings, usePlatform } from '@hudson/sdk';
-import type { AppSettingsValues } from '@hudson/sdk';
+import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
+import type { AppSettingsValues } from 'hudsonkit';
 import type { LogoTemplate, ColorSet, WordmarkConfig, LightingConfig } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';

@@ -1,7 +1,7 @@
 {
-  "name": "@hudson/sdk",
+  "name": "hudsonkit",
   "version": "0.2.0",
-  "description": "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
+  "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",
   "main": "./dist/index.js",
@@ -68,6 +68,12 @@
     "dist",
     "src"
   ],
+  "homepage": "https://hudsonkit.com",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arach/hudson.git",
+    "directory": "packages/hudson-sdk"
+  },
   "scripts": {
     "build": "tsup && bun run build:css",
     "build:js": "tsup",

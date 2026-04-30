@@ -1,4 +1,4 @@
-import type { HudsonApp } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
 import { AssetsProvider } from './AssetsProvider';
 import { AssetsContent } from './AssetsContent';
 import { useAssetsPortOutput } from './ports';

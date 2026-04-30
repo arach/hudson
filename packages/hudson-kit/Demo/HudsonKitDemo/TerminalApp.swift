@@ -92,7 +92,7 @@ struct TerminalApp: View {
         }
         .padding(.horizontal, HudsonSpacing.xxl)
         .frame(height: HudsonLayout.navHeight)
-        .background(Color.black.opacity(0.30))
+        .background(HudsonPalette.chrome)
     }
 
     // MARK: Status bar
@@ -232,7 +232,7 @@ private struct FakeTerminalSurface: View {
             .padding(.vertical, HudsonSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(Color.black.opacity(0.55))
+        .background(HudsonPalette.chrome)
         .onAppear { blink = true }
     }
 

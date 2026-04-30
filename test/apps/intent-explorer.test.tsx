@@ -1,7 +1,7 @@
 import { describe, it, expect } from 'vitest';
 import { intentExplorerApp } from '@/app/apps/intent-explorer';
-import type { HudsonApp } from '@hudson/sdk';
-import { deriveManifest } from '@hudson/sdk';
+import type { HudsonApp } from 'hudsonkit';
+import { deriveManifest } from 'hudsonkit';
 
 describe('Intent Explorer app', () => {
   it('conforms to HudsonApp interface', () => {

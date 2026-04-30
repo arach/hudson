@@ -1,7 +1,7 @@
 'use client';
 
 import { createContext, useContext } from 'react';
-import type { HudsonWorkspace } from '@hudson/sdk';
+import type { HudsonWorkspace } from 'hudsonkit';
 import type { ServiceRegistryValue } from '../../services/ServiceRegistryContext';
 import type { AppSettingsEntry } from '../../apps/hudson-docs/components';
 import type { HudsonSettings } from '../../apps/hudson-docs/types';

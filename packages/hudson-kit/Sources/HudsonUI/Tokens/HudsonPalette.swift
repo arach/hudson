@@ -1,7 +1,7 @@
 import SwiftUI
 
 /// Hudson palette — native counterpart to the `--hud-*` semantic tokens defined
-/// in `@hudsonos/sdk/theme` (`packages/hudson-sdk/src/styles/bundle.css`).
+/// in `hudsonkit/theme` (`packages/hudson-sdk/src/styles/bundle.css`).
 ///
 /// Names mirror the web tokens so the same vocabulary works across web and native:
 /// `bg`/`surface` for surfaces, `ink`/`muted`/`dim` for text, `border` for

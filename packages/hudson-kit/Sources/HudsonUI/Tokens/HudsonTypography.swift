@@ -2,7 +2,7 @@ import SwiftUI
 
 /// Hudson typography — native counterpart to the `--hud-text-*`, `--hud-leading-*`,
 /// `--hud-tracking-*`, `--hud-weight-*`, and `--hud-font-*` tokens defined in
-/// `@hudsonos/sdk/theme`.
+/// `hudsonkit/theme`.
 ///
 /// `HudsonFont.mono(_:weight:)` and `HudsonFont.ui(_:weight:)` are the primary
 /// helpers — they pick up the system mono/sans designs to stay consistent with

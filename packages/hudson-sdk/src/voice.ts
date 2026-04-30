@@ -1,7 +1,7 @@
-// @hudson/sdk/voice — opt-in voice plugin.
-// Import from '@hudsonos/sdk/voice' only if you want voice functionality.
+// hudsonkit/voice — opt-in voice plugin.
+// Import from 'hudsonkit/voice' only if you want voice functionality.
 // This entry point pulls in @voxd/client (dynamically), useVoiceInput, useVoiceOutput,
-// and voice reply shaping. The main '@hudsonos/sdk' has zero voice dependencies.
+// and voice reply shaping. The main 'hudsonkit' has zero voice dependencies.
 
 // Hooks
 export { useVoiceInput } from './hooks/useVoiceInput';

@@ -60,10 +60,10 @@ The server listens on a single port for both HTTP and WebSocket traffic.
 
 ## Connecting from an App
 
-Use the `useTerminalRelay` hook from `@hudsonos/sdk` to connect to the relay from a React component. The hook manages the WebSocket lifecycle, session init, reconnection, and data streaming.
+Use the `useTerminalRelay` hook from `hudsonkit` to connect to the relay from a React component. The hook manages the WebSocket lifecycle, session init, reconnection, and data streaming.
 
 ```tsx
-import { useTerminalRelay } from '@hudsonos/sdk';
+import { useTerminalRelay } from 'hudsonkit';
 
 function MyTerminal() {
   const relay = useTerminalRelay({

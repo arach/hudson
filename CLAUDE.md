@@ -26,7 +26,7 @@ bun run lint   # ESLint
 - All UI components are custom-built — do not replace with library components
 - Use `@base-ui/react` for context menu only, `motion` sparingly
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald
-- Every app must implement the `HudsonApp` interface from `@hudson/sdk`
+- Every app must implement the `HudsonApp` interface from `hudsonkit`
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 
 ## Key Paths
