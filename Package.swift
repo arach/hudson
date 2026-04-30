@@ -19,22 +19,22 @@ var dependencies: [Package.Dependency] = []
 var targets: [Target] = [
     .target(
         name: "HudsonUI",
-        path: "packages/hudson-kit/Sources/HudsonUI"
+        path: "packages/HudsonKit/Sources/HudsonUI"
     ),
     .target(
         name: "HudsonBridge",
         dependencies: ["HudsonUI"],
-        path: "packages/hudson-kit/Sources/HudsonBridge"
+        path: "packages/HudsonKit/Sources/HudsonBridge"
     ),
     .target(
         name: "HudsonShell",
         dependencies: ["HudsonUI"],
-        path: "packages/hudson-kit/Sources/HudsonShell"
+        path: "packages/HudsonKit/Sources/HudsonShell"
     ),
     .target(
         name: "HudsonVoice",
         dependencies: ["HudsonUI"],
-        path: "packages/hudson-kit/Sources/HudsonVoice"
+        path: "packages/HudsonKit/Sources/HudsonVoice"
     ),
 ]
 
@@ -48,7 +48,7 @@ if terminalEnabled {
                 "HudsonUI",
                 .product(name: "TermBridgeKit", package: "TermBridgeKit"),
             ],
-            path: "packages/hudson-kit/Sources/HudsonTerminal"
+            path: "packages/HudsonKit/Sources/HudsonTerminal"
         )
     )
 }

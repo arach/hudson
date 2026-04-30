@@ -120,7 +120,7 @@ public struct HudsonVoxLiveSessionOptions: Equatable, Sendable {
     public var metadata: [String: String]
 
     public init(
-        clientId: String = "hudson-kit",
+        clientId: String = "HudsonKit",
         modelId: String = "parakeet:v3",
         language: String? = nil,
         mode: HudsonVoiceMode = .pushToTalk,

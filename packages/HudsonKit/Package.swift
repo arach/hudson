@@ -52,7 +52,7 @@ targets.append(
 )
 
 let package = Package(
-    name: "hudson-kit",
+    name: "HudsonKit",
     platforms: [
         .iOS(.v17),
         .macOS(.v14),

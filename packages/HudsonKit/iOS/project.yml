@@ -7,7 +7,7 @@ options:
   createIntermediateGroups: true
 
 packages:
-  hudson-kit:
+  HudsonKit:
     path: ..
 
 targets:
@@ -17,11 +17,11 @@ targets:
     sources:
       - path: ../Demo/HudsonKitDemo
     dependencies:
-      - package: hudson-kit
+      - package: HudsonKit
         product: HudsonUI
-      - package: hudson-kit
+      - package: HudsonKit
         product: HudsonShell
-      - package: hudson-kit
+      - package: HudsonKit
         product: HudsonVoice
     settings:
       base:

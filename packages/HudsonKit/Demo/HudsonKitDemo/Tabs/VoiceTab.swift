@@ -14,7 +14,7 @@ struct VoiceTab: View {
                 alignment: .leading,
                 spacing: HudsonSpacing.xl
             ) {
-                HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudson-kit-demo"))
+                HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudsonkit-demo"))
                     .frame(maxWidth: 560)
 
                 contractCard

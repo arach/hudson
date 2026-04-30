@@ -57,14 +57,14 @@ Mode #3 specifically is interesting — when a user has Tailscale on, they
 may not want to advertise on local DNS for security reasons.
 
 **Deliverable before code:** a short design note (1–3 paragraphs) at
-`packages/hudson-kit/Sources/HudsonBridge/DESIGN.md` recommending one
+`packages/HudsonKit/Sources/HudsonBridge/DESIGN.md` recommending one
 approach and explaining why. Lean on your judgment + Scout's existing
 pattern. Then implement.
 
 ## Exit gate
 
 - HudsonBridge target compiles standalone (`swift build` in
-  `packages/hudson-kit/`).
+  `packages/HudsonKit/`).
 - A small demo wiring (could be a new test target or an addition to
   `Demo/HudsonKitDemo/`) connects to a mock WebSocket relay on
   `ws://localhost:3600` and completes the Noise handshake.

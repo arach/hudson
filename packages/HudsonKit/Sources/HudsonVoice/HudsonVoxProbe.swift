@@ -15,7 +15,7 @@ private struct HudsonVoxProbeResponse: Decodable {
 public enum HudsonVoxProbe {
     public static func health(
         endpoint: HudsonVoxEndpoint = HudsonVoxEndpoint(),
-        clientId: String = "hudson-kit"
+        clientId: String = "HudsonKit"
     ) async throws -> HudsonVoxHealth {
         let response = try await call(
             endpoint: endpoint,

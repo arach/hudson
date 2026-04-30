@@ -209,11 +209,11 @@ private struct FakeTerminalSurface: View {
                 prompt
                 lineMono("git log --oneline -5")
 
-                output("8a82fc4 💄 hudson-kit demo — DashboardBottomChrome cloudRow on 28pt grid")
-                output("ec97e8c 💄 hudson-kit demo — alignment pass: equal-height cards")
-                output("cc648e9 ✨ hudson-kit demo — Shell tab documenting M3 chrome primitives")
-                output("5adc33e 💄 hudson-kit demo — status-bar context + inspector reflects selection")
-                output("09c3dd8 ✨ hudson-kit M3d — HudsonCommandPalette overlay surface")
+                output("8a82fc4 💄 HudsonKit demo — DashboardBottomChrome cloudRow on 28pt grid")
+                output("ec97e8c 💄 HudsonKit demo — alignment pass: equal-height cards")
+                output("cc648e9 ✨ HudsonKit demo — Shell tab documenting M3 chrome primitives")
+                output("5adc33e 💄 HudsonKit demo — status-bar context + inspector reflects selection")
+                output("09c3dd8 ✨ HudsonKit M3d — HudsonCommandPalette overlay surface")
 
                 Spacer().frame(height: 4)
 

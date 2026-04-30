@@ -15,7 +15,7 @@ struct HudsonKitDemoApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("hudson-kit Demo") {
+        WindowGroup("HudsonKit Demo") {
             ContentView()
                 #if os(macOS)
                 .frame(minWidth: 720, minHeight: 540)
