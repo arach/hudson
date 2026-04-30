@@ -15,8 +15,8 @@ export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   voice: {
     autoSend: true,
     speakReplies: false,
-    replyProvider: 'system',
-    replyModel: 'system',
+    replyProvider: 'vox',
+    replyModel: 'avspeech:system',
     replyVoice: '',
     replyRate: 1,
     spokenReplyStyle: 'adaptive',
@@ -39,6 +39,10 @@ export function normalizeHudsonSettings(
     voice: {
       ...DEFAULT_SHELL_SETTINGS.voice,
       ...(settings?.voice ?? {}),
+      replyProvider: 'vox',
+      replyModel: !settings?.voice?.replyModel || settings.voice.replyModel === 'system'
+        ? 'avspeech:system'
+        : settings.voice.replyModel,
     },
   };
 }

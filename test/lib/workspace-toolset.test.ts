@@ -51,7 +51,7 @@ describe('workspace toolset', () => {
           },
           tools: [{ id: 'grid', name: 'Grid' }],
           status: { label: 'READY', color: 'emerald' },
-          services: [{ serviceId: 'ora' }],
+          services: [{ serviceId: 'vox' }],
         },
       ],
       commands: [
@@ -102,8 +102,8 @@ describe('workspace toolset', () => {
       },
       services: [
         {
-          id: 'ora',
-          name: 'ORA',
+          id: 'vox',
+          name: 'Vox',
           description: 'Speech service',
           status: 'running',
         },

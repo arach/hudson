@@ -270,7 +270,7 @@ function buildShellSettingsPatch(
         };
     }
     case 'voice.replyProvider':
-      return value === 'system' || value === 'openai' || value === 'elevenlabs' || value === 'groq'
+      return value === 'vox'
         ? { voice: { ...current.voice, replyProvider: value } }
         : null;
     case 'voice.replyModel':

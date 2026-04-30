@@ -43,15 +43,15 @@ type VoiceProviderOption = {
 const DEFAULT_VOICE_PREVIEW_TEXT = 'Hello from Hudson. This is the current reply voice.';
 const DEFAULT_VOICE_PROVIDER_OPTIONS: VoiceProviderOption[] = [
   {
-    id: 'system',
-    label: 'macOS System',
+    id: 'vox',
+    label: 'Vox',
     available: true,
-    defaultModel: 'system',
+    defaultModel: 'avspeech:system',
     models: [
       {
-        id: 'system',
-        label: 'macOS System',
-        description: 'Local Apple voices via the macOS speech synthesizer.',
+        id: 'avspeech:system',
+        label: 'Vox System',
+        description: 'Local synthesis through Vox and the macOS speech backend.',
       },
     ],
     supportsVoiceSelection: true,
@@ -62,7 +62,7 @@ const DEFAULT_VOICE_PROVIDER_OPTIONS: VoiceProviderOption[] = [
 
 function createDefaultVoiceOption(providerLabel: string): VoiceOption {
   return {
-    label: providerLabel === 'macOS System' ? 'System Default' : `${providerLabel} Default`,
+    label: `${providerLabel} Default`,
     value: '',
     previewText: DEFAULT_VOICE_PREVIEW_TEXT,
   };
@@ -88,7 +88,7 @@ export function HudsonVoiceSettingsEditor({
     DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.models ?? [],
   );
   const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>([
-    createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'macOS System'),
+    createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Vox'),
   ]);
   const [voiceOptionsError, setVoiceOptionsError] = useState<string | null>(null);
   const [voicePreviewStatus, setVoicePreviewStatus] = useState<'idle' | 'loading' | 'playing'>('idle');
@@ -131,7 +131,7 @@ export function HudsonVoiceSettingsEditor({
           ? data.models
           : selectedProvider?.models ?? [];
         const nextOptions = [
-          createDefaultVoiceOption(selectedProvider?.label ?? 'macOS System'),
+          createDefaultVoiceOption(selectedProvider?.label ?? 'Vox'),
           ...(data.voices ?? []).map(voice => ({
             label: voice.label ?? voice.id,
             value: voice.id,
@@ -149,7 +149,7 @@ export function HudsonVoiceSettingsEditor({
         const fallbackProvider = DEFAULT_VOICE_PROVIDER_OPTIONS[0];
         setVoiceProviders(DEFAULT_VOICE_PROVIDER_OPTIONS);
         setVoiceModels(fallbackProvider?.models ?? []);
-        setVoiceOptions([createDefaultVoiceOption(fallbackProvider?.label ?? 'macOS System')]);
+        setVoiceOptions([createDefaultVoiceOption(fallbackProvider?.label ?? 'Vox')]);
         setVoiceOptionsError(error instanceof Error ? error.message : 'Failed to load voices.');
       });
 
@@ -189,11 +189,11 @@ export function HudsonVoiceSettingsEditor({
     ?? DEFAULT_VOICE_PROVIDER_OPTIONS[0];
   const selectedModelValue = selectedProvider?.models.some(model => model.id === voiceSettings.replyModel)
     ? voiceSettings.replyModel
-    : selectedProvider?.defaultModel ?? 'system';
+    : selectedProvider?.defaultModel ?? 'avspeech:system';
   const selectedVoiceId = voiceSettings.replyVoice;
   const selectedVoice = voiceOptions.find(option => option.value === selectedVoiceId)
     ?? voiceOptions[0]
-    ?? createDefaultVoiceOption(selectedProvider?.label ?? 'macOS System');
+    ?? createDefaultVoiceOption(selectedProvider?.label ?? 'Vox');
   const selectedVoicePreviewText = selectedVoice?.previewText?.trim() || DEFAULT_VOICE_PREVIEW_TEXT;
   const voiceBehaviorPreset = getHudsonVoiceBehaviorPreset(voiceSettings);
 
@@ -327,7 +327,7 @@ export function HudsonVoiceSettingsEditor({
           onChange({
             ...voiceSettings,
             replyProvider: value as VoiceProviderOption['id'],
-            replyModel: nextProvider?.defaultModel ?? 'system',
+            replyModel: nextProvider?.defaultModel ?? 'avspeech:system',
             replyVoice: '',
           });
         }}
@@ -491,9 +491,8 @@ export function HudsonVoiceSettingsEditor({
       </details>
       <div className="text-[11px] font-mono text-neutral-500 leading-relaxed">
         Voice capture uses the Vox companion on <span className="text-neutral-300">127.0.0.1:43115</span>.
-        Spoken replies use Hudson&apos;s local ORA-style endpoint on <span className="text-neutral-300">/v1/audio/speech</span>,
-        with provider-specific voices and models populated from <span className="text-neutral-300">/v1/voices</span>.
-        Provider credentials live in Hudson&apos;s <span className="text-neutral-300">Environment</span> tab and are written to <span className="text-neutral-300">.env.local</span>.
+        Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-neutral-300">/v1/audio/speech</span>,
+        with voices and models populated from <span className="text-neutral-300">/v1/voices</span>.
         If Vox rejects transcription, allowlist Hudson&apos;s origin in Vox settings.
         End users still need the Vox macOS companion installed.
       </div>

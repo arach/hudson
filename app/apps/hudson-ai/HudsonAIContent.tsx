@@ -192,10 +192,7 @@ function SettingSelect({
 }
 
 function formatProviderLabel(provider: VoiceSettings['replyProvider']) {
-  if (provider === 'system') return 'System';
-  if (provider === 'openai') return 'OpenAI';
-  if (provider === 'elevenlabs') return 'ElevenLabs';
-  if (provider === 'groq') return 'Groq';
+  if (provider === 'vox') return 'Vox';
   return provider;
 }
 
@@ -588,7 +585,7 @@ export function HudsonAIContent() {
                 <CapabilityRow
                   icon={<AudioLines size={12} />}
                   label="Spoken Replies"
-                  description="Reply audio runs through Hudson’s local ORA-style speech endpoint, with provider-specific voices and models populated from the voice registry."
+                  description="Reply audio runs through Hudson’s local Vox-backed speech endpoint, with voices and models populated from Vox."
                 />
               </div>
             </div>

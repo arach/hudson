@@ -16,7 +16,7 @@ export type SpokenReplyStyle = 'brief' | 'full' | 'adaptive';
 export type SpokenReplyLongResponse = 'summary' | 'invite' | 'verbatim';
 export type SpokenReplyCodeResponse = 'summary' | 'mention' | 'read';
 
-export type VoiceProvider = 'system' | 'openai' | 'elevenlabs' | 'groq';
+export type VoiceProvider = 'vox';
 
 export interface VoiceSettings {
   /** When a transcript is captured, auto-submit it instead of just filling the input. */
@@ -38,8 +38,8 @@ export interface VoiceSettings {
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
   speakReplies: false,
-  replyProvider: 'system',
-  replyModel: 'system',
+  replyProvider: 'vox',
+  replyModel: 'avspeech:system',
   replyVoice: '',
   replyRate: 1,
   spokenReplyStyle: 'adaptive',

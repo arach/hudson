@@ -46,8 +46,8 @@ const DEFAULT_VOICE_MIME_TYPE = 'audio/ogg;codecs=opus';
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
   speakReplies: false,
-  replyProvider: 'system',
-  replyModel: 'system',
+  replyProvider: 'vox',
+  replyModel: 'avspeech:system',
   replyVoice: '',
   replyRate: 1,
   spokenReplyStyle: 'adaptive',

@@ -11,8 +11,8 @@ function makeVoiceSettings(overrides: Partial<VoiceSettings> = {}): VoiceSetting
   return {
     autoSend: true,
     speakReplies: true,
-    replyProvider: 'system',
-    replyModel: 'system',
+    replyProvider: 'vox',
+    replyModel: 'avspeech:system',
     replyVoice: '',
     replyRate: 1,
     spokenReplyStyle: 'adaptive',
@@ -53,12 +53,12 @@ That will make Hudson speak back after voice turns. You can still read the full 
 
   it('keeps more content in full spoken mode', () => {
     const spoken = createHudsonSpokenReply(
-      'Hudson can speak replies after voice turns. It uses the local ORA-compatible endpoint for synthesis. You can choose a specific voice in settings. The written reply still stays in the transcript.',
+      'Hudson can speak replies after voice turns. It uses the local Vox-backed endpoint for synthesis. You can choose a specific voice in settings. The written reply still stays in the transcript.',
       'full',
     );
 
     expect(spoken).toBe(
-      'Hudson can speak replies after voice turns. It uses the local ORA-compatible endpoint for synthesis. You can choose a specific voice in settings. The written reply still stays in the transcript.',
+      'Hudson can speak replies after voice turns. It uses the local Vox-backed endpoint for synthesis. You can choose a specific voice in settings. The written reply still stays in the transcript.',
     );
   });
 
