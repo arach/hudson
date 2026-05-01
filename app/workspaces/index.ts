@@ -1,1 +1,1 @@
-export { hudsonOSWorkspace, allWorkspaces } from '../apps/registry';
+export { hudsonOSWorkspace, allWorkspaces, coreWorkspaces } from '../apps/registry';

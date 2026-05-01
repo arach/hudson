@@ -320,14 +320,41 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
   },
 });
 
-/** All workspaces available to WorkspaceShell — production core + dev-only local workspace sources. */
-export function getAllWorkspaces(): HudsonWorkspace[] {
-  const { localWorkspaces } = getLocalRegistry();
-  const entries: WorkspaceRegistryEntry[] = [
+/** Core public workspaces used by the hosted demo and production app. */
+export function getCoreWorkspaces(): HudsonWorkspace[] {
+  return uniqueWorkspaces([
     { workspace: getHudsonKitWorkspace(), source: 'core:hudsonkit' },
     { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
     { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
+  ]);
+}
+
+let _core: HudsonWorkspace[] | undefined;
+export const coreWorkspaces = new Proxy([] as HudsonWorkspace[], {
+  get(_, prop, receiver) {
+    _core ??= getCoreWorkspaces();
+    const val = Reflect.get(_core, prop, receiver);
+    return typeof val === 'function' ? val.bind(_core) : val;
+  },
+  ownKeys() {
+    _core ??= getCoreWorkspaces();
+    return Reflect.ownKeys(_core);
+  },
+  getOwnPropertyDescriptor(_, prop) {
+    _core ??= getCoreWorkspaces();
+    return Object.getOwnPropertyDescriptor(_core, prop);
+  },
+});
+
+/** All workspaces available to WorkspaceShell — production core + dev-only local workspace sources. */
+export function getAllWorkspaces(): HudsonWorkspace[] {
+  const { localWorkspaces } = getLocalRegistry();
+  const entries: WorkspaceRegistryEntry[] = [
+    ...getCoreWorkspaces().map(workspace => ({
+      workspace,
+      source: `core:${workspace.id}`,
+    })),
     ...(IS_DEV_ENV
       ? [
           ...loadWorkspacesFromJson().map(workspace => ({
