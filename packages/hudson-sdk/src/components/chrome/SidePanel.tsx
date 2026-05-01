@@ -33,7 +33,8 @@ const SidePanel: React.FC<SidePanelProps> = ({
         onClick={onToggleCollapse}
         className={`fixed top-1/2 -translate-y-1/2 z-40 ${
           side === 'left' ? 'left-3' : 'right-3'
-        } p-2.5 rounded bg-card/95 border border-border/80 hover:border-accent/60 backdrop-blur-xl shadow-[0_0_20px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.08)] hover:shadow-[0_0_30px_rgba(16,185,129,0.2),inset_0_1px_0_rgba(255,255,255,0.1)] transition-all duration-200 group pointer-events-auto focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:outline-none`}
+        } p-2.5 rounded bg-card/95 border hover:border-accent/60 backdrop-blur-xl shadow-[var(--hud-shadow-panel)] hover:shadow-[var(--hud-shadow-panel-hover,var(--hud-shadow-panel))] transition-all duration-200 group pointer-events-auto focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:outline-none`}
+        style={{ borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
         title={`Expand ${title || 'panel'}`}
       >
         <ExpandIcon size={14} className="text-muted-foreground group-hover:text-accent transition-colors" strokeWidth={1.5} />
@@ -46,7 +47,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
-  const baseClasses = 'bg-card/95 backdrop-blur-xl border border-border/80 shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-card/95 backdrop-blur-xl border border-border/80 shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 

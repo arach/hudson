@@ -35,8 +35,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
       {...dragRegionProps}
     >
       <div
-        className="bg-background/95 backdrop-blur-xl border-b border-border/80 shadow-[var(--hud-shadow-nav)] flex items-end px-4"
-        style={{ height: navTotalHeight }}
+        className="bg-background/95 backdrop-blur-xl border-b shadow-[var(--hud-shadow-nav)] flex items-end px-4"
+        style={{ height: navTotalHeight, borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
       >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/8 to-transparent" />
 
