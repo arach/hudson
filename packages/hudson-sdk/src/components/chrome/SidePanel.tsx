@@ -25,6 +25,8 @@ interface SidePanelProps {
 const SidePanel: React.FC<SidePanelProps> = ({
   side, title, icon, isCollapsed = false, onToggleCollapse, headerActions, footer, style, width, onResizeStart, children
 }) => {
+  const chromeBorder = 'var(--hud-chrome-border, oklch(var(--border) / 0.8))';
+
   // Show expand button when collapsed
   if (isCollapsed) {
     const ExpandIcon = side === 'left' ? PanelLeftOpen : PanelRightOpen;
@@ -47,7 +49,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
-  const baseClasses = 'bg-card/95 backdrop-blur-xl border border-border/80 shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-card/95 backdrop-blur-xl border shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
@@ -58,7 +60,8 @@ const SidePanel: React.FC<SidePanelProps> = ({
     top: panelTopOffset,
     left: side === 'left' ? 0 : undefined,
     right: side === 'right' ? 0 : undefined,
-    width: `${width || 280}px`
+    width: `${width || 280}px`,
+    borderColor: chromeBorder,
   };
 
   return (
@@ -74,7 +77,10 @@ const SidePanel: React.FC<SidePanelProps> = ({
           onMouseDown={onResizeStart}
         >
           {/* Border line flush at panel edge */}
-          <div className={`absolute top-0 bottom-0 ${side === 'left' ? 'right-0' : 'left-0'} w-px bg-border/80 group-hover:bg-accent/50 transition-colors`} />
+          <div
+            className={`absolute top-0 bottom-0 ${side === 'left' ? 'right-0' : 'left-0'} w-px transition-colors group-hover:bg-accent/30`}
+            style={{ backgroundColor: chromeBorder }}
+          />
           {/* Grip dots */}
           <div className="flex flex-col gap-[3px] opacity-0 group-hover:opacity-100 transition-opacity">
             <div className="w-[3px] h-[3px] rounded-full bg-muted-foreground/70 group-hover:bg-accent/70" />
@@ -85,15 +91,18 @@ const SidePanel: React.FC<SidePanelProps> = ({
       )}
       {/* Static border line when no resize handle */}
       {!onResizeStart && (
-        <div className={`absolute top-0 ${side === 'left' ? 'right-0' : 'left-0'} bottom-0 w-px bg-border/80`} />
+        <div
+          className={`absolute top-0 ${side === 'left' ? 'right-0' : 'left-0'} bottom-0 w-px`}
+          style={{ backgroundColor: chromeBorder }}
+        />
       )}
       {/* Top highlight */}
-      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/12 to-transparent z-10" />
+      <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/4 to-transparent z-10" />
 
       <div className="pointer-events-auto flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         {title && (
-          <div className="shrink-0 p-4 border-b border-border/60">
+          <div className="shrink-0 p-4 border-b" style={{ borderColor: chromeBorder }}>
             <div className="flex items-center justify-between text-foreground text-[12px]">
               <div className="flex items-center gap-1.5">
                 {icon && <span className="text-muted-foreground">{icon}</span>}

@@ -11,7 +11,10 @@ const CommandDock: React.FC<CommandDockProps> = ({
   onOpenCommandPalette, extraControls
 }) => {
   return (
-    <div className="select-none font-mono text-[12px] border-t border-border/60">
+    <div
+      className="select-none font-mono text-[12px] border-t"
+      style={{ borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.6))' }}
+    >
       <div className="px-3 py-2 flex items-center justify-between">
         <button
           onClick={onOpenCommandPalette}

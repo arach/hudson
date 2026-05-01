@@ -21,6 +21,12 @@ interface MinimapProps {
 
 const MINIMAP_HEIGHT = 160;
 const WORLD_SIZE = 4000;
+const chromeBorderStyle = {
+  borderColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+const chromeDividerStyle = {
+  backgroundColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
 
 const Minimap: React.FC<MinimapProps> = ({
   pan,
@@ -57,7 +63,8 @@ const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={containerRef}
       data-frame-panel="minimap"
-      className="select-none font-mono text-[12px] flex flex-col border-t border-border/60"
+      className="select-none font-mono text-[12px] flex flex-col border-t"
+      style={chromeBorderStyle}
     >
       {/* Header (always visible) */}
       <div
@@ -114,7 +121,7 @@ const Minimap: React.FC<MinimapProps> = ({
           </MinimapCanvas>
 
           {footer && (
-            <div className="shrink-0 border-t border-border/60">
+            <div className="shrink-0 border-t" style={chromeBorderStyle}>
               {footer}
             </div>
           )}
@@ -179,8 +186,8 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
         />
 
         {/* Center crosshair */}
-        <div className="absolute top-1/2 left-0 right-0 h-px bg-border/60" />
-        <div className="absolute left-1/2 top-0 bottom-0 w-px bg-border/60" />
+        <div className="absolute top-1/2 left-0 right-0 h-px" style={chromeDividerStyle} />
+        <div className="absolute left-1/2 top-0 bottom-0 w-px" style={chromeDividerStyle} />
 
         {/* Viewport rectangle */}
         <div

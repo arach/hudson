@@ -11,6 +11,10 @@ interface ZoomControlsProps {
   step?: number;
 }
 
+const chromeBorderStyle = {
+  borderColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
 const ZoomControls: React.FC<ZoomControlsProps> = ({
   scale,
   onZoom,
@@ -59,7 +63,8 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
 
   return (
     <div
-      className="pointer-events-auto flex flex-col items-center bg-card/95 backdrop-blur-xl border border-border/80 rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden"
+      className="pointer-events-auto flex flex-col items-center bg-card/95 backdrop-blur-xl border rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden"
+      style={chromeBorderStyle}
     >
       <button
         onClick={handleZoomIn}
@@ -69,7 +74,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
         <Plus size={14} />
       </button>
 
-      <div className="w-full border-t border-b border-border/60">
+      <div className="w-full border-t border-b" style={chromeBorderStyle}>
         {isEditing ? (
           <input
             ref={inputRef}

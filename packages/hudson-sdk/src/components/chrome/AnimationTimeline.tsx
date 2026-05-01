@@ -14,6 +14,10 @@ interface AnimationTimelineProps {
   style?: React.CSSProperties;
 }
 
+const chromeBorderStyle = {
+  borderColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
 const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   isPlaying,
   progress,
@@ -83,7 +87,10 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
 
   return (
     <div className="fixed z-40 pointer-events-auto" style={style}>
-      <div className="h-16 bg-card/95 backdrop-blur-xl border-t border-l border-r border-border/80 shadow-[0_-4px_30px_rgba(0,0,0,0.5)] flex items-center px-4 gap-4">
+      <div
+        className="h-16 bg-card/95 backdrop-blur-xl border-t border-l border-r shadow-[0_-4px_30px_rgba(0,0,0,0.5)] flex items-center px-4 gap-4"
+        style={chromeBorderStyle}
+      >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/5 to-transparent" />
 
         {/* Playback controls */}
@@ -150,8 +157,9 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
               className={`px-2 py-1 rounded text-[11px] font-mono transition-all ${
                 speed === s
                   ? 'bg-info/20 text-info border border-info/40'
-                  : 'bg-muted/50 text-muted-foreground border border-border/60 hover:bg-muted hover:text-foreground'
+                  : 'bg-muted/50 text-muted-foreground border hover:bg-muted hover:text-foreground'
               }`}
+              style={speed === s ? undefined : chromeBorderStyle}
             >
               {s}x
             </button>

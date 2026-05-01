@@ -34,6 +34,14 @@ const STATUS_COLORS = {
   neutral: { dot: 'bg-muted-foreground', ping: 'bg-muted-foreground', text: 'text-muted-foreground' },
 };
 
+const chromeBorderStyle = {
+  borderColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
+const chromeDividerStyle = {
+  backgroundColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
 const StatusBar: React.FC<StatusBarProps> = ({
   left,
   viewport,
@@ -70,6 +78,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
     <div
       data-frame-panel="status-bar"
       className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[11px] md:text-[12px] text-foreground pointer-events-auto overflow-hidden`}
+      style={chromeBorderStyle}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
       <div className="min-w-0 flex items-center gap-3 md:gap-4 overflow-hidden">
@@ -78,14 +87,15 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <>
             <button
               onClick={onExpandMinimap}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 border border-border/70 hover:bg-muted transition-colors text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+              style={chromeBorderStyle}
               title="Expand minimap"
             >
               <Map size={10} />
               <span className="text-[11px] font-bold">MAP</span>
               <Maximize2 size={8} className="opacity-60" />
             </button>
-            <div className="h-3 w-px bg-border" />
+            <div className="h-3 w-px" style={chromeDividerStyle} />
           </>
         )}
 
@@ -100,7 +110,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
         {left && (
           <>
-            <div className="h-3 w-px bg-border" />
+            <div className="h-3 w-px" style={chromeDividerStyle} />
             {left}
           </>
         )}
@@ -120,14 +130,14 @@ const StatusBar: React.FC<StatusBarProps> = ({
                 {viewport.pan.x.toFixed(0)},{viewport.pan.y.toFixed(0)}
               </span>
             </div>
-            <div className="h-3 w-px bg-border" />
+            <div className="h-3 w-px" style={chromeDividerStyle} />
             <div className="flex items-center gap-1">
               <span className="text-muted-foreground">SIZE:</span>
               <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {viewport.canvasSize?.w ?? 1024}x{viewport.canvasSize?.h ?? 1024}
               </span>
             </div>
-            <div className="h-3 w-px bg-border" />
+            <div className="h-3 w-px" style={chromeDividerStyle} />
             <div className="flex items-center gap-1">
               <span className="text-muted-foreground">ZOOM:</span>
               <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
@@ -142,7 +152,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <div className="shrink-0 flex items-center gap-3 md:gap-4">
         {right}
 
-        {right && <div className="h-3 w-px bg-border" />}
+        {right && <div className="h-3 w-px" style={chromeDividerStyle} />}
 
         {onToggleTerminal && (
           <>
@@ -158,7 +168,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
               <span className="text-[12px]">{'>'}_</span>
               <span className="uppercase text-[11px] font-semibold tracking-wider">Console</span>
             </button>
-            <div className="h-3 w-px bg-border" />
+            <div className="h-3 w-px" style={chromeDividerStyle} />
           </>
         )}
 

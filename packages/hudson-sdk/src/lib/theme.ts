@@ -9,7 +9,7 @@
 const tokens = {
   blur: 'backdrop-blur-xl',
   bg: 'bg-background/95',
-  border: 'border border-border/80',
+  border: 'border border-[var(--hud-chrome-border)]',
   shadow: 'shadow-[var(--hud-shadow-panel)]',
   topHighlight: 'before:absolute before:top-0 before:left-0 before:right-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-foreground/10 before:to-transparent',
 } as const;
@@ -24,9 +24,9 @@ export const SHELL_THEME = {
     navigationStack: `fixed top-0 left-0 right-0 z-50`,
     manifest: `${base} fixed top-[48px] left-0 bottom-[28px] w-[280px] z-40 rounded-none border-l-0 border-t-0 overflow-hidden`,
     inspector: `${base} fixed top-[48px] right-0 bottom-[28px] w-[280px] z-40 rounded-none border-r-0 border-t-0 overflow-hidden`,
-    minimap: `bg-card/95 backdrop-blur-xl border border-border/80 shadow-[var(--hud-shadow-minimap)] fixed left-0 bottom-[28px] z-[45] rounded-none border-l-0 border-b-0 overflow-hidden`,
-    statusBar: `bg-card/95 backdrop-blur-xl border-t border-border shadow-[var(--hud-shadow-bar)] fixed bottom-0 left-0 right-0 z-[60]`,
-    commandDock: `bg-card/95 backdrop-blur-xl border-t border-l border-border/80 fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
+    minimap: `bg-card/95 backdrop-blur-xl border border-[var(--hud-chrome-border)] shadow-[var(--hud-shadow-minimap)] fixed left-0 bottom-[28px] z-[45] rounded-none border-l-0 border-b-0 overflow-hidden`,
+    statusBar: `bg-card/95 backdrop-blur-xl border-t border-[var(--hud-chrome-border)] shadow-[var(--hud-shadow-bar)] fixed bottom-0 left-0 right-0 z-[60]`,
+    commandDock: `bg-card/95 backdrop-blur-xl border-t border-l border-[var(--hud-chrome-border)] fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
   },
 
   effects: {
