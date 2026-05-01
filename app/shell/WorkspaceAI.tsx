@@ -16,6 +16,11 @@ import {
 } from '../lib/ai-models';
 import { useDataBus } from './DataBusContext';
 import { createHudsonSpokenReply, getHudsonMessageDisplayText } from './voiceReply';
+import {
+  HUDSON_VOX_CLIENT_ID,
+  HUDSON_VOX_INTEGRATION_API_PATH,
+  createHudsonVoxLaunchUrl,
+} from '../lib/voxIntegration';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -211,6 +216,18 @@ function getVoiceBadge(status: VoiceStatus): { label: string; className: string 
   }
 }
 
+async function registerHudsonVoxIntegration() {
+  if (typeof window === 'undefined') return false;
+
+  const response = await fetch(HUDSON_VOX_INTEGRATION_API_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ origin: window.location.origin }),
+  });
+
+  return response.ok;
+}
+
 /** Capture the visible workspace as a blob + data URL via html2canvas. */
 async function captureWorkspace(): Promise<{ blobUrl: string; dataUrl: string } | null> {
   try {
@@ -310,7 +327,13 @@ export function WorkspaceAI({
   inputValueRef.current = input;
   voiceSettingsRef.current = resolvedVoiceSettings;
 
-  const voxClient = useMemo(() => createVoxdClient(), []);
+  const voxClient = useMemo(() => createVoxdClient({ clientId: HUDSON_VOX_CLIENT_ID }), []);
+
+  useEffect(() => {
+    void registerHudsonVoxIntegration().catch(error => {
+      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
+    });
+  }, []);
 
   const baseContext = useMemo(() => ({
     apps: workspace.apps.map(c => ({
@@ -773,6 +796,7 @@ export function WorkspaceAI({
         format: inferVoiceFormat(recordedMimeType),
         language: 'en',
         metadata: {
+          clientId: HUDSON_VOX_CLIENT_ID,
           surface: 'hudson-ai',
           workspaceId: workspace.id,
         },
@@ -823,11 +847,12 @@ export function WorkspaceAI({
     stopReplyAudio();
 
     try {
+      await registerHudsonVoxIntegration();
       const availability = await probeVoxAvailability(voxClient);
       if (availability === 'blocked-origin') {
         const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
         setVoiceStatus('error');
-        setVoiceError(`Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`);
+        setVoiceError(`Vox rejected this origin. HudsonKit registered ${origin}; open Vox settings if the bridge has not refreshed yet.`);
         return;
       }
       if (availability === 'warming') {
@@ -889,14 +914,20 @@ export function WorkspaceAI({
   }, []);
 
   const handleLaunchVox = useCallback(() => {
-    voxClient.launch();
-  }, [voxClient]);
+    void registerHudsonVoxIntegration().catch(error => {
+      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
+    });
+    window.location.href = createHudsonVoxLaunchUrl(window.location.origin);
+  }, []);
 
   const handleInstallVox = useCallback(() => {
     window.open(VOX_INSTALL_URL, '_blank', 'noopener,noreferrer');
   }, []);
 
   const handleOpenVoxSettings = useCallback(() => {
+    void registerHudsonVoxIntegration().catch(error => {
+      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
+    });
     voxClient.openSettings();
   }, [voxClient]);
 
@@ -993,7 +1024,7 @@ export function WorkspaceAI({
   const showRetryVox = voiceErrorText.includes('starting up');
   const showInstallVox = voiceErrorText.includes('not reachable');
   const showLaunchVox = voiceErrorText.includes('not reachable');
-  const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin');
+  const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin') || voiceErrorText.includes('registered');
   const isChatBusy = chat.status === 'submitted' || chat.status === 'streaming';
   const scopeLabel = scopedWorkspace?.name ?? workspace.name;
 

@@ -385,7 +385,7 @@ export async function getHudsonVoxHealth(): Promise<HudsonVoxHealth> {
       boundaries: false,
       providerSwitching: false,
       localTts: features?.local_tts === true,
-      localAsr: features?.live_asr === true || features?.batch_asr === true,
+      localAsr: features?.local_asr === true || features?.live_asr === true || features?.batch_asr === true,
     },
     bridge,
   };

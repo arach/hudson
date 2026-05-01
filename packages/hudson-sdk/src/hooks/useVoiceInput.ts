@@ -5,6 +5,8 @@ import type { VoiceStatus } from '../types/voice';
 import { probeVoxAvailability, type VoxAvailability } from '../lib/voxProbe';
 import { HObservabilityDefault } from '../observability';
 
+const HUDSONKIT_VOX_CLIENT_ID = 'hudsonkit';
+
 // ---------------------------------------------------------------------------
 // useVoiceInput — Vox-backed STT.
 // Handles mic capture via MediaRecorder, ships audio to the local Vox companion
@@ -134,7 +136,7 @@ interface ClientHandle {
 
 async function loadDefaultVoxClient(): Promise<ClientHandle> {
   const mod = await import('@voxd/client');
-  const client = mod.createVoxdClient();
+  const client = mod.createVoxdClient({ clientId: HUDSONKIT_VOX_CLIENT_ID });
   return {
     probe: () => client.probe(),
     transcribe: ({ audio, format, language, metadata }) =>
@@ -219,7 +221,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         audio: new Blob(chunks, { type: recordedMimeType }),
         format: inferVoiceFormat(recordedMimeType),
         language,
-        metadata: { surface, ...metadataRef.current },
+        metadata: { clientId: HUDSONKIT_VOX_CLIENT_ID, surface, ...metadataRef.current },
       });
       const transcript = result.text.trim();
       if (!transcript) throw new Error('Transcription returned empty text.');
@@ -323,7 +325,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       setStatus(normalized.status);
       setError(normalized.message);
     }
-  }, [finalize, getClient, isSupported, status]);
+  }, [finalize, getClient, isSupported, status, surface]);
 
   const stop = useCallback(() => {
     const recorder = recorderRef.current;

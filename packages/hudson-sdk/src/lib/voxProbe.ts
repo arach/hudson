@@ -14,7 +14,7 @@
 // `/capabilities` is behind the same allowlist as `/transcribe`, so we
 // probe through it instead. Four outcomes:
 //
-//   connected      — capabilities returned, daemon.running = true
+//   connected      — capabilities returned and running is not false
 //   warming        — capabilities returned a non-403 error or !running
 //   blocked-origin — capabilities returned 403 / "Origin not allowed"
 //   unreachable    — capabilities threw a network error
@@ -28,8 +28,16 @@ interface ProbeableClient {
 
 export async function probeVoxAvailability(client: ProbeableClient): Promise<VoxAvailability> {
   try {
-    const caps = (await client.capabilities()) as { daemon?: { running?: boolean } } | null | undefined;
-    return caps?.daemon?.running ? 'connected' : 'warming';
+    const caps = (await client.capabilities()) as {
+      running?: boolean;
+      daemon?: { running?: boolean } | Record<string, unknown>;
+    } | null | undefined;
+    const running = caps?.running ?? (
+      caps?.daemon && typeof caps.daemon === 'object' && 'running' in caps.daemon
+        ? Boolean((caps.daemon as { running?: unknown }).running)
+        : undefined
+    );
+    return running === false ? 'warming' : 'connected';
   } catch (err) {
     if (err && typeof err === 'object' && 'code' in err) {
       const code = (err as { code?: unknown }).code;
