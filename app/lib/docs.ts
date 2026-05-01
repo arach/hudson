@@ -26,8 +26,8 @@ function walkDir(dir: string, prefix = ""): string[] {
     if (entry.name.startsWith("_") || entry.name.startsWith(".")) continue;
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) {
-      // Skip agent/ and prompts/ — those are internal
-      if (entry.name === "agent" || entry.name === "prompts") continue;
+      // Skip agent/, prompts/, coordination/ — those are internal
+      if (entry.name === "agent" || entry.name === "prompts" || entry.name === "coordination") continue;
       results.push(...walkDir(path.join(dir, entry.name), rel));
     } else if (entry.name.endsWith(".md") && entry.name !== "index.md") {
       results.push(rel);

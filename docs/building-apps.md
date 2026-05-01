@@ -273,7 +273,7 @@ export default function Page() {
 @import "hudsonkit/styles";
 ```
 
-The SDK is workspace-internal today, so current consumers install it via a manual symlink and a `turbopack.root` lift. See the [Premotion case study](./case-study-premotion.md) for the full real setup + known gaps.
+See the [Premotion case study](./case-study-premotion.md) for an end-to-end consumer setup.
 
 ## Rules of thumb
 

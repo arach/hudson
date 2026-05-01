@@ -126,7 +126,7 @@ Workspace apps (rendered by Hudson's `WorkspaceShell` at `/app`):
 | API Inspector   | HTTP request/response debugger             |
 | Assets          | Asset browser                              |
 
-The live app list lives in [`app/apps/registry.ts`](../app/apps/registry.ts).
+This is the demo workspace shipped with Hudson — your own apps will live in your own registry.
 
 ## Next steps
 

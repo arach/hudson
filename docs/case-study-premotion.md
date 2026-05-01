@@ -1,6 +1,8 @@
 # Case Study: Premotion
 
-> A Remotion-based video project needed a web UI for browsing its catalog — videos, frames, curated snippets, transcripts. Instead of writing another sidebar/search/status bar from scratch, I built it as a single Hudson app and let the shell do the work. This is what happened.
+> A Remotion-based video project needed a web UI for browsing its catalog — videos, frames, curated snippets, transcripts. Instead of writing another sidebar/search/status bar from scratch, the project was built as a single Hudson app and the shell did the work. This is what happened.
+>
+> **Snapshot note:** this case study was written when `hudsonkit` was still workspace-internal. The package is now published on npm, so the symlink workarounds in section 1 and the "publish hudsonkit" item under "Still open" are resolved.
 
 ![Premotion catalog studio, rendered through Hudson's AppShell](./images/premotion-case-study.png)
 
@@ -170,9 +172,9 @@ Naming is positioning. The old name framed single-app as the weird exception and
 - The shell composition pattern (Provider + slots + hooks) works cleanly for a real, non-trivial app
 - A `HudsonApp` for a video catalog with filters / search / detail / frame viewer + URL-driven state is ~1.2k LOC of app logic
 - Shell chrome, keyboard shortcuts, command palette, persistent panel widths, status bar — all came essentially free
-- Hudson SDK is **not yet a publishable npm package**, but the gaps are concrete and tractable: shipping a real CSS bundle, splitting the barrel, decoupling Frame from ContextMenu, publishing the package
+- The remaining SDK gaps are concrete and tractable: shipping a real CSS bundle, splitting the barrel, decoupling Frame from ContextMenu, publishing the package
 
-The exercise was the point. Every friction point on the list above is an SDK issue I now know about — and several are already fixed.
+The exercise was the point. Every friction point on the list above became a tracked SDK issue, and most are now fixed.
 
 ## Still open
 

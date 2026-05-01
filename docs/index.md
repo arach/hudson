@@ -1,6 +1,6 @@
 # Hudson docs
 
-> Personal notes on how the shell is built, what it does, and how I use it across projects. Not product documentation — read it as a sketchbook.
+Hudson is a shell + primitives library for building app-like interfaces in the browser. These docs cover the architecture, the `HudsonApp` contract, and the SDK surface.
 
 ## Start here
 

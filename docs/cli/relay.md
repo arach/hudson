@@ -7,7 +7,7 @@ order: 3
 
 # Relay -- Terminal Server
 
-`@hudson/relay` is a standalone server that bridges WebSocket connections from the browser to PTY sessions on the host machine. It powers the embedded terminal experience in Hudson apps via the `useTerminalRelay` hook (see [API Reference](../npm/sdk/api-reference.md#useterminalrelay)).
+`@hudson/relay` is a standalone server that bridges WebSocket connections from the browser to PTY sessions on the host machine. It powers the embedded terminal experience in Hudson apps via the `useTerminalRelay` hook (see [API Reference](../api.md)).
 
 ## What It Does
 
@@ -77,7 +77,7 @@ function MyTerminal() {
 }
 ```
 
-See [API Reference -- useTerminalRelay](../npm/sdk/api-reference.md#useterminalrelay) for the full API.
+See [API Reference -- useTerminalRelay](../api.md) for the full API.
 
 ## WebSocket Protocol
 

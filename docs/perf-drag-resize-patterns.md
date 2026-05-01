@@ -251,21 +251,6 @@ Ask yourself these questions when implementing any continuous interaction:
 4. **Am I using useEffect to manage drag listeners?** Switch to closure-based handlers (Pattern 2) for simpler, faster code.
 5. **Does my parent re-render children during drag?** The parent's setState re-renders everything below it — push the DOM manipulation as close to the leaf element as possible.
 
-## Existing Good Patterns in Hudson
+## Where to find these patterns in the SDK
 
-These were already well-optimized before this pass:
-
-- **TerminalDrawer** — direct DOM height during drag, state on mouseup
-- **Frame space-pan** — ref-based callback, no state in hot path
-- **Canvas.tsx pan tracking** — uses `lastPanRef`, `isPanningRef` for pan delta accumulation
-
-## Files Changed
-
-| File | What Changed |
-|------|-------------|
-| `app/shell/WorkspaceShell.tsx` | Sidebar resize: DOM during drag, state on mouseup |
-| `packages/hudson-sdk/.../AppWindow.tsx` | Window drag + resize: DOM during drag, state on mouseup |
-| `app/apps/shaper/ShaperProvider.tsx` | Pan: ref + DOM transform; Point drag: targeted clone + ref dragStart; Anchor resize: closure + DOM |
-| `app/apps/shaper/tools/AnchorsTool.tsx` | Added `data-anchor-list` attribute for DOM targeting |
-| `packages/hudson-sdk/.../Canvas.tsx` | Guide lines: direct DOM via refs instead of state |
-| `packages/hudson-sdk/.../AnimationTimeline.tsx` | Scrubber: rAF batching + DOM for playhead/progress |
+The Canvas, AppWindow, and AnimationTimeline components in `hudsonkit` use the same techniques internally — refs and direct DOM during drag/resize, state only on commit. Reading their source is the fastest way to see the patterns applied end-to-end.

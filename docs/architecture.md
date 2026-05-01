@@ -132,7 +132,7 @@ All app Providers wrap the entire workspace content. This enables cross-app cont
 
 ### Registry-driven app loading
 
-Built-in apps are enumerated in [`app/apps/registry.ts`](../app/apps/registry.ts). Developer-local apps are loaded from gitignored `app/local/apps.local.ts` (auto-created as an empty stub by `next.config.ts` on first run). This lets the main repo ship a stable default workspace while individual devs add private apps without touching shared files.
+Hudson's own demo registers its built-in apps in `app/apps/registry.ts` and merges in optional developer-local apps from a gitignored `app/local/apps.local.ts` (auto-created as an empty stub on first run). The same split — committed shared registry + gitignored local override — works for any consumer that wants a stable default workspace alongside per-developer private apps.
 
 ## State persistence
 

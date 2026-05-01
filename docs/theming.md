@@ -5,9 +5,9 @@ Hudson ships with runtime-switchable themes and curated templates for any app th
 ## Quick Start
 
 ```tsx
-import '@hudson/sdk/styles';
-import { HudsonThemeScript, ThemeProvider } from '@hudson/sdk';
-import { AppShell } from '@hudson/sdk/app-shell';
+import 'hudsonkit/styles';
+import { HudsonThemeScript, ThemeProvider } from 'hudsonkit';
+import { AppShell } from 'hudsonkit/app-shell';
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
@@ -34,7 +34,7 @@ export function MyPage() {
 ## Runtime API
 
 ```tsx
-import { useTheme } from '@hudson/sdk';
+import { useTheme } from 'hudsonkit';
 
 function ThemeSwitcher() {
   const { theme, resolvedTheme, template, setTheme, setTemplate } = useTheme();
@@ -105,10 +105,10 @@ export function NotesContent() {
 
 ## Adding a New Template
 
-1. Add a new `[data-hudson-template="your-template"]` block in [packages/hudson-sdk/src/styles/tokens.css](/Users/art/dev/hudson/packages/hudson-sdk/src/styles/tokens.css).
+1. Add a new `[data-hudson-template="your-template"]` block in `packages/hudson-sdk/src/styles/tokens.css`.
 2. Define light and dark token values for the semantic surface.
 3. Re-point the `--hud-*` aliases in the template scope if your app content relies on them.
-4. Extend the `HudsonTemplate` union in [packages/hudson-sdk/src/theme/ThemeProvider.tsx](/Users/art/dev/hudson/packages/hudson-sdk/src/theme/ThemeProvider.tsx).
+4. Extend the `HudsonTemplate` union in `packages/hudson-sdk/src/theme/ThemeProvider.tsx`.
 5. Add any switcher UI or command-palette entries that should expose the new template.
 
 ## Notes
