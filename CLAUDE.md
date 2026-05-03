@@ -40,12 +40,12 @@ bun run lint   # ESLint
 | `app/apps/` | App implementations |
 | `app/local/apps.local.ts` | Gitignored; developer-local app/workspace registrations |
 | `app/workspaces/` | Workspace definitions |
-| `packages/hudson-sdk/src/components/AppShell.tsx` | Default single-app shell |
-| `packages/hudson-sdk/src/types/app.ts` | `HudsonApp` interface |
-| `packages/hudson-sdk/src/types/workspace.ts` | `HudsonWorkspace` interface |
-| `packages/hudson-sdk/src/types/intent.ts` | `AppIntent` interface |
-| `packages/hudson-sdk/src/` | Component library source |
-| `packages/hudson-sdk/src/styles/bundle.css` | Source for the precompiled CSS bundle |
+| `packages/web/hudsonkit/src/components/AppShell.tsx` | Default single-app shell |
+| `packages/web/hudsonkit/src/types/app.ts` | `HudsonApp` interface |
+| `packages/web/hudsonkit/src/types/workspace.ts` | `HudsonWorkspace` interface |
+| `packages/web/hudsonkit/src/types/intent.ts` | `AppIntent` interface |
+| `packages/web/hudsonkit/src/` | Component library source |
+| `packages/web/hudsonkit/src/styles/bundle.css` | Source for the precompiled CSS bundle |
 
 ## Adding a New App
 
@@ -64,4 +64,4 @@ See `app/apps/shaper/` as the reference implementation.
 - Hooks are called inside Provider scope via an internal Bridge component
 - Window bounds, pan/zoom offsets tracked in refs (not state) during drag; flushed via `BOUNDS_FLUSH_MS = 500` debounce (see `WorkspaceShell.tsx`)
 - All persistent state uses `usePersistentState()` backed by localStorage
-- SDK's precompiled CSS bundle is built via `cd packages/hudson-sdk && bun run build:css`; output lands at `packages/hudson-sdk/dist/styles.css` (gitignored)
+- SDK's precompiled CSS bundle is built via `cd packages/web/hudsonkit && bun run build:css`; output lands at `packages/web/hudsonkit/dist/styles.css` (gitignored)

@@ -84,20 +84,20 @@ Consuming Hudson SDK from a fresh Next.js app today is possible but **not seamle
 
 ### 1. Package-manager symlink shape
 
-`bun add file:../hudson/packages/hudson-sdk` creates per-file symlinks in `node_modules/hudsonkit/` (package.json is a symlink, src/index.ts is a symlink, etc.). Turbopack's module resolver choked on this — it sees the symlinks' absolute targets as "invalid redirects" when parsing the `exports` field.
+`bun add file:../hudson/packages/web/hudsonkit` creates per-file symlinks in `node_modules/hudsonkit/` (package.json is a symlink, src/index.ts is a symlink, etc.). Turbopack's module resolver choked on this — it sees the symlinks' absolute targets as "invalid redirects" when parsing the `exports` field.
 
 **Workaround:** Skip bun's `file:` install. Manually create a single relative directory symlink:
 
 ```bash
 mkdir -p node_modules/@hudson
-ln -s ../../../hudson/packages/hudson-sdk node_modules/hudsonkit
+ln -s ../../../hudson/packages/web/hudsonkit node_modules/hudsonkit
 ```
 
 **Real fix (pending):** publish the SDK, or build a proper tarball that consumers install.
 
 ### 2. Turbopack root must lift to the common ancestor
 
-`hudsonkit`'s source lives at `../hudson/packages/hudson-sdk/src` — above the consumer project's root. Turbopack needs `root` set to a common ancestor to traverse up:
+`hudsonkit`'s source lives at `../hudson/packages/web/hudsonkit/src` — above the consumer project's root. Turbopack needs `root` set to a common ancestor to traverse up:
 
 ```ts
 // next.config.ts
@@ -134,7 +134,7 @@ Premotion first rendered with half-broken styling: nav bar cramped, terminal dra
 **Before (per-consumer workaround):**
 
 ```css
-@source "../../hudson/packages/hudson-sdk/src/**/*.{ts,tsx}";
+@source "../../hudson/packages/web/hudsonkit/src/**/*.{ts,tsx}";
 ```
 
 **After (SDK fix, `4d39aed`):** The SDK now ships a pre-compiled `dist/styles.css` bundle. Consumers just:

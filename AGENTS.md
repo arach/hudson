@@ -21,16 +21,16 @@
 | Shell | `app/shell/` | |
 | Apps | `app/apps/` | |
 | Workspaces | `app/workspaces/` | |
-| Hudson SDK | `packages/hudson-sdk/src/` | |
-| Types | `packages/hudson-sdk/src/types/` | |
+| Hudson SDK | `packages/web/hudsonkit/src/` | |
+| Types | `packages/web/hudsonkit/src/types/` | |
 
 ## Quick Navigation
 
 - Working with **new app**? → See docs/building-apps.md and app/apps/shaper/ as reference
 - Working with **workspace**? → Check app/workspaces/ for workspace definitions
-- Working with **intent**? → See packages/hudson-sdk/src/types/intent.ts and app/lib/intent-catalog.ts
-- Working with **component**? → Check packages/hudson-sdk/src/components/ for chrome, canvas, windows, and overlays
-- Working with **styling**? → Uses Tailwind v4, design tokens in packages/hudson-sdk/src/lib/theme.ts
+- Working with **intent**? → See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts
+- Working with **component**? → Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays
+- Working with **styling**? → Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts
 
 ## Overview
 
@@ -68,7 +68,7 @@ Register it in a workspace and it immediately gets panels, command palette, stat
 
 Hudson has three layers:
 
-### 1. Hudson SDK (`packages/hudson-sdk`)
+### 1. Hudson web SDK (`packages/web/hudsonkit`)
 
 The component library and type system. Provides:
 
@@ -208,7 +208,7 @@ hudson/
     lib/                      # Shared utilities (intent catalog, etc.)
     hooks/                    # Shared hooks (intent executor, etc.)
   packages/
-    hudson-sdk/                  # Component library + types
+    web/hudsonkit/                  # Component library + types
       src/
         components/           # Chrome, Canvas, Windows, Overlays
         types/                # HudsonApp, HudsonWorkspace, AppIntent
@@ -1153,7 +1153,7 @@ import { CHROME, CHROME_BASE, PANEL_STYLES, EDGE_EFFECTS, Z_LAYERS, LAYOUT } fro
 
 # Architecture
 
-Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **hudson-sdk component library**.
+Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **hudsonkit web library**.
 
 ## Monorepo Structure
 
@@ -1194,7 +1194,7 @@ hudson/
     api/                        # API routes
       shaper/save/route.ts      # Shaper save endpoint
   packages/
-    hudson-sdk/                    # Component library
+    web/hudsonkit/                    # Component library
       src/
         index.ts                # Public exports
         components/
@@ -1294,7 +1294,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 **When to use:** When asked to create a new app for the Hudson platform.
 
 **Steps:**
-1. Read `packages/hudson-sdk/src/types/app.ts` to understand the HudsonApp interface
+1. Read `packages/web/hudsonkit/src/types/app.ts` to understand the HudsonApp interface
 2. Read `app/apps/shaper/index.ts` as the reference implementation
 3. Follow the task template in `docs/prompts/create-app.md`
 4. Create all required files (Provider, Content, hooks, index.ts)
@@ -1326,7 +1326,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 **When to use:** When asked to create or modify a workspace.
 
 **Steps:**
-1. Read `packages/hudson-sdk/src/types/workspace.ts` for the HudsonWorkspace interface
+1. Read `packages/web/hudsonkit/src/types/workspace.ts` for the HudsonWorkspace interface
 2. Read `app/workspaces/hudsonOS.ts` as reference
 3. Create workspace file in `app/workspaces/`
 4. Register in `app/page.tsx` workspaces array
@@ -1336,15 +1336,15 @@ Pre-built skill definitions that agents can use when working with Hudson.
 - Apps specify canvasMode: 'native' or 'windowed'
 - Windowed apps need defaultWindowBounds: { x, y, w, h }
 
-## hudson-sdk-contributor
+## hudsonkit-contributor
 
-**When to use:** When asked to add or modify hudson-sdk components.
+**When to use:** When asked to add or modify hudsonkit components.
 
 **Steps:**
-1. Read `packages/hudson-sdk/src/index.ts` for current exports
-2. Check `packages/hudson-sdk/src/lib/theme.ts` for design tokens
+1. Read `packages/web/hudsonkit/src/index.ts` for current exports
+2. Check `packages/web/hudsonkit/src/lib/theme.ts` for design tokens
 3. Follow existing component patterns (stateless, callback-based)
-4. Export from `packages/hudson-sdk/src/index.ts`
+4. Export from `packages/web/hudsonkit/src/index.ts`
 
 **Key rules:**
 - Components are stateless — apps manage all state

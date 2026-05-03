@@ -24,7 +24,7 @@ The relay server:
 The relay is a private package within the Hudson monorepo. It requires native dependencies (`node-pty`, `ws`).
 
 ```bash
-cd packages/hudson-relay
+cd packages/services/hudson-relay
 bun install
 ```
 
@@ -46,7 +46,7 @@ bun run relay
 bun run relay -- --port 4000
 
 # Via node directly
-node --no-warnings --import tsx packages/hudson-relay/src/index.ts --port 3600
+node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts --port 3600
 ```
 
 The server listens on a single port for both HTTP and WebSocket traffic.

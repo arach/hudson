@@ -4,7 +4,7 @@ import {
   type HMetricEvent,
   type HObservation,
   type HTraceSpan,
-} from '../../packages/hudson-sdk/src/observability';
+} from '../../packages/web/hudsonkit/src/observability';
 
 const createTestObservability = () => {
   let tick = 100;

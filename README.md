@@ -31,8 +31,9 @@ The case study walks through the build *and* the real friction points we hit con
 
 ```
 app/                     # The Hudson workspace itself (Next.js 16)
-packages/hudson-sdk/     # Shell + primitives (workspace-internal package)
-native/                  # Desktop shell experiments
+packages/web/hudsonkit/     # Shell + primitives (workspace-internal package)
+packages/native/apple/HudsonKit/ # Apple-native Swift package
+packages/services/hudson-relay/  # Terminal relay service
 docs/                    # Architecture, case study, builder notes
 ```
 

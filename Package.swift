@@ -20,27 +20,27 @@ var dependencies: [Package.Dependency] = []
 var targets: [Target] = [
     .target(
         name: "HudsonObservability",
-        path: "packages/HudsonKit/Sources/HudsonObservability"
+        path: "packages/native/apple/HudsonKit/Sources/HudsonObservability"
     ),
     .target(
         name: "HudsonUI",
         dependencies: ["HudsonObservability"],
-        path: "packages/HudsonKit/Sources/HudsonUI"
+        path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
     ),
     .target(
         name: "HudsonBridge",
         dependencies: ["HudsonUI"],
-        path: "packages/HudsonKit/Sources/HudsonBridge"
+        path: "packages/native/apple/HudsonKit/Sources/HudsonBridge"
     ),
     .target(
         name: "HudsonShell",
         dependencies: ["HudsonUI", "HudsonObservability"],
-        path: "packages/HudsonKit/Sources/HudsonShell"
+        path: "packages/native/apple/HudsonKit/Sources/HudsonShell"
     ),
     .target(
         name: "HudsonVoice",
         dependencies: ["HudsonUI", "HudsonObservability"],
-        path: "packages/HudsonKit/Sources/HudsonVoice"
+        path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
     ),
 ]
 
@@ -54,7 +54,7 @@ if terminalEnabled {
                 "HudsonUI",
                 .product(name: "TermBridgeKit", package: "TermBridgeKit"),
             ],
-            path: "packages/HudsonKit/Sources/HudsonTerminal"
+            path: "packages/native/apple/HudsonKit/Sources/HudsonTerminal"
         )
     )
 }

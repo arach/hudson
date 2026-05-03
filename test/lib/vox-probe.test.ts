@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { probeVoxAvailability } from '@/packages/hudson-sdk/src/lib/voxProbe';
+import { probeVoxAvailability } from '@/packages/web/hudsonkit/src/lib/voxProbe';
 
 describe('Vox availability probe', () => {
   it('treats current Vox capabilities with top-level running=true as connected', async () => {

@@ -12,7 +12,7 @@
     "lint": "eslint",
     "test": "vitest run",
     "test:watch": "vitest",
-    "relay": "node --no-warnings --import tsx packages/hudson-relay/src/index.ts",
+    "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "relay:legacy": "node --no-warnings scripts/ai-relay.ts"
   },
   "dependencies": {
@@ -59,9 +59,9 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "packages/create-hudson-app",
-    "packages/hudson-relay",
-    "packages/hudson-sdk"
+    "packages/tools/create-hudson-app",
+    "packages/services/hudson-relay",
+    "packages/web/hudsonkit"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

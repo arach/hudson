@@ -67,12 +67,7 @@
         "vitest": "^4.0.18",
       },
     },
-    "packages/create-hudson-app": {
-      "name": "create-hudson-app",
-      "version": "0.1.0",
-      "bin": "src/index.ts",
-    },
-    "packages/hudson-relay": {
+    "packages/services/hudson-relay": {
       "name": "@hudson/relay",
       "version": "0.1.0",
       "bin": {
@@ -88,7 +83,14 @@
         "tsx": "^4.19.0",
       },
     },
-    "packages/hudson-sdk": {
+    "packages/tools/create-hudson-app": {
+      "name": "create-hudson-app",
+      "version": "0.1.0",
+      "bin": {
+        "create-hudson-app": "./src/index.ts",
+      },
+    },
+    "packages/web/hudsonkit": {
       "name": "hudsonkit",
       "version": "0.2.0",
       "dependencies": {
@@ -292,7 +294,7 @@
 
     "@google/genai": ["@google/genai@1.42.0", "", { "dependencies": { "google-auth-library": "^10.3.0", "p-retry": "^4.6.2", "protobufjs": "^7.5.4", "ws": "^8.18.0" }, "peerDependencies": { "@modelcontextprotocol/sdk": "^1.25.2" }, "optionalPeers": ["@modelcontextprotocol/sdk"] }, "sha512-+3nlMTcrQufbQ8IumGkOphxD5Pd5kKyJOzLcnY0/1IuE8upJk5aLmoexZ2BJhBp1zAjRJMEB4a2CJwKI9e2EYw=="],
 
-    "@hudson/relay": ["@hudson/relay@workspace:packages/hudson-relay"],
+    "@hudson/relay": ["@hudson/relay@workspace:packages/services/hudson-relay"],
 
     "@humanfs/core": ["@humanfs/core@0.19.1", "", {}, "sha512-5DyQ4+1JEUzejeK1JGICcideyfUbGixgS9jNgex5nqkW+cY7WZhxBigmieN5Qnw9ZosSNVC9KQKyb+GUaGyKUA=="],
 
@@ -866,7 +868,7 @@
 
     "crc32-stream": ["crc32-stream@6.0.0", "", { "dependencies": { "crc-32": "^1.2.0", "readable-stream": "^4.0.0" } }, "sha512-piICUB6ei4IlTv1+653yq5+KoqfBYmj9bw6LqXoOneTMDXk5nM1qt12mFW1caG3LlJXEKW1Bp0WggEmIfQB34g=="],
 
-    "create-hudson-app": ["create-hudson-app@workspace:packages/create-hudson-app"],
+    "create-hudson-app": ["create-hudson-app@workspace:packages/tools/create-hudson-app"],
 
     "cross-fetch": ["cross-fetch@4.1.0", "", { "dependencies": { "node-fetch": "^2.7.0" } }, "sha512-uKm5PU+MHTootlWEY+mZ4vvXoCn4fLQxT9dSc1sXVMSFkINTJVN8cAQROpwcKm8bJ/c7rgZVIBWzH5T78sNZZw=="],
 
@@ -1146,7 +1148,7 @@
 
     "https-proxy-agent": ["https-proxy-agent@7.0.6", "", { "dependencies": { "agent-base": "^7.1.2", "debug": "4" } }, "sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw=="],
 
-    "hudsonkit": ["hudsonkit@workspace:packages/hudson-sdk"],
+    "hudsonkit": ["hudsonkit@workspace:packages/web/hudsonkit"],
 
     "ieee754": ["ieee754@1.2.1", "", {}, "sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA=="],
 

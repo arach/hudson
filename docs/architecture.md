@@ -1,6 +1,6 @@
 # Architecture
 
-Hudson is a monorepo with two main packages: the **Hudson workspace** (the Next.js app that actually runs — `app/`) and **`hudsonkit`** (the shell + primitives library — `packages/hudson-sdk/`).
+Hudson is a monorepo with a web workspace, a web SDK, Apple-native Swift packages, and small runtime services.
 
 ## Monorepo layout
 
@@ -39,35 +39,40 @@ hudson/
     api/                            # Next.js API routes (AI, saves, etc.)
 
   packages/
-    hudson-sdk/                     # The SDK (workspace-internal for now)
-      src/
-        index.ts                    # Public main entry — types, hooks, AI, platform
-        app-shell.ts                # `hudsonkit/app-shell` subpath
-        chrome.ts                   # `hudsonkit/chrome`
-        overlays.ts                 # `hudsonkit/overlays`
-        context-menu.ts             # `hudsonkit/context-menu`
-        canvas.ts                   # `hudsonkit/canvas`
-        windows.ts                  # `hudsonkit/windows`
-        theme.ts                    # `hudsonkit/theme`
-        shell.ts                    # `hudsonkit/shell` (back-compat barrel)
-        styles/bundle.css           # Source for the compiled CSS bundle
-        dist/styles.css             # Compiled via `bun run build:css`
-        components/
-          AppShell.tsx              # Single-app shell (default)
-          chrome/                   # Frame, NavigationBar, SidePanel, StatusBar, CommandDock, Minimap, ZoomControls, AnimationTimeline
-          canvas/Canvas.tsx
-          windows/AppWindow.tsx
-          overlays/                 # CommandPalette, TerminalDrawer, HudsonContextMenu
-          AI.tsx, TerminalRelay.tsx
-        types/
-          app.ts                    # HudsonApp interface
-          workspace.ts              # HudsonWorkspace interface
-          intent.ts, port.ts, service.ts
-        hooks/                      # usePersistentState, useAppSettings, useHudsonAI, useTerminalRelay
-        platform/                   # Platform adapter (web, desktop)
-        lib/                        # theme, sounds, logger, viewport, manifest
-
-  native/                           # Desktop shell experiments
+    web/
+      hudsonkit/                    # Web SDK (workspace-internal for now)
+        src/
+          index.ts                  # Public main entry — types, hooks, AI, platform
+          app-shell.ts              # `hudsonkit/app-shell` subpath
+          chrome.ts                 # `hudsonkit/chrome`
+          overlays.ts               # `hudsonkit/overlays`
+          context-menu.ts           # `hudsonkit/context-menu`
+          canvas.ts                 # `hudsonkit/canvas`
+          windows.ts                # `hudsonkit/windows`
+          theme.ts                  # `hudsonkit/theme`
+          shell.ts                  # `hudsonkit/shell` (back-compat barrel)
+          styles/bundle.css         # Source for the compiled CSS bundle
+          dist/styles.css           # Compiled via `bun run build:css`
+          components/
+            AppShell.tsx            # Single-app shell (default)
+            chrome/                 # Frame, NavigationBar, SidePanel, StatusBar, CommandDock, Minimap, ZoomControls, AnimationTimeline
+            canvas/Canvas.tsx
+            windows/AppWindow.tsx
+            overlays/               # CommandPalette, TerminalDrawer, HudsonContextMenu
+            AI.tsx, TerminalRelay.tsx
+          types/
+            app.ts                  # HudsonApp interface
+            workspace.ts            # HudsonWorkspace interface
+            intent.ts, port.ts, service.ts
+          hooks/                    # usePersistentState, useAppSettings, useHudsonAI, useTerminalRelay
+          platform/                 # Platform adapter (web, desktop)
+          lib/                      # theme, sounds, logger, viewport, manifest
+      create-hudson-app/            # App scaffold CLI
+    native/
+      apple/
+        HudsonKit/                  # Swift package for iOS/macOS shells
+    services/
+      hudson-relay/                 # WebSocket PTY relay service
   docs/                             # Architecture, case study, builder notes
 ```
 
@@ -158,4 +163,4 @@ App code should prefer the `{appId}.{key}` namespace and use `usePersistentState
 | `bun run build`                             | Production build                          |
 | `bun run lint`                              | ESLint                                    |
 | `bun run relay`                             | Start the terminal relay WS server        |
-| `cd packages/hudson-sdk && bun run build:css` | Rebuild the SDK's compiled CSS bundle   |
+| `cd packages/web/hudsonkit && bun run build:css` | Rebuild the SDK's compiled CSS bundle   |

@@ -105,10 +105,10 @@ export function NotesContent() {
 
 ## Adding a New Template
 
-1. Add a new `[data-hudson-template="your-template"]` block in `packages/hudson-sdk/src/styles/tokens.css`.
+1. Add a new `[data-hudson-template="your-template"]` block in `packages/web/hudsonkit/src/styles/tokens.css`.
 2. Define light and dark token values for the semantic surface.
 3. Re-point the `--hud-*` aliases in the template scope if your app content relies on them.
-4. Extend the `HudsonTemplate` union in `packages/hudson-sdk/src/theme/ThemeProvider.tsx`.
+4. Extend the `HudsonTemplate` union in `packages/web/hudsonkit/src/theme/ThemeProvider.tsx`.
 5. Add any switcher UI or command-palette entries that should expose the new template.
 
 ## Notes

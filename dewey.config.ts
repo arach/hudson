@@ -22,16 +22,16 @@ export default {
       'shell': 'app/shell/',
       'apps': 'app/apps/',
       'workspaces': 'app/workspaces/',
-      'sdk': 'packages/hudson-sdk/src/',
-      'types': 'packages/hudson-sdk/src/types/',
+      'sdk': 'packages/web/hudsonkit/src/',
+      'types': 'packages/web/hudsonkit/src/types/',
     },
 
     rules: [
       { pattern: 'new app', instruction: 'See docs/building-apps.md and app/apps/shaper/ as reference' },
       { pattern: 'workspace', instruction: 'Check app/workspaces/ for workspace definitions' },
-      { pattern: 'intent', instruction: 'See packages/hudson-sdk/src/types/intent.ts and app/lib/intent-catalog.ts' },
-      { pattern: 'component', instruction: 'Check packages/hudson-sdk/src/components/ for chrome, canvas, windows, and overlays' },
-      { pattern: 'styling', instruction: 'Uses Tailwind v4, design tokens in packages/hudson-sdk/src/lib/theme.ts' },
+      { pattern: 'intent', instruction: 'See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts' },
+      { pattern: 'component', instruction: 'Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays' },
+      { pattern: 'styling', instruction: 'Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts' },
     ],
 
     sections: ['overview', 'quickstart', 'building-apps', 'api', 'architecture', 'skill'],
