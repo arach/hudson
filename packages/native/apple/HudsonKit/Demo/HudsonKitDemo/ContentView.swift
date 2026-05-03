@@ -61,19 +61,55 @@ struct ContentView: View {
         return TargetMock.fleet.first(where: { $0.id == id })
     }
 
+    private var navProgress: Double { navExpanded ? 0.0 : 1.0 }
+
+    private var sidebarEntries: [HSidebarEntry<DemoTab>] {
+        let workbench: [DemoTab] = [.dashboard, .voice, .shell, .sidebar]
+        let reference: [DemoTab] = [.tokens, .primitives, .manifest]
+        var entries: [HSidebarEntry<DemoTab>] = []
+        entries.append(contentsOf: workbench.map {
+            .item(HSidebarItem(id: $0, title: $0.label, icon: $0.icon))
+        })
+        entries.append(.section(id: "reference", title: "Reference"))
+        entries.append(contentsOf: reference.map {
+            .item(HSidebarItem(id: $0, title: $0.label, icon: $0.icon))
+        })
+        return entries
+    }
+
     var body: some View {
         HAppShell {
-            HNavigationRail(
+            HNavigationSidebar(
                 selection: Binding(
-                    get: { tab.rawValue },
-                    set: { newId in if let next = DemoTab(rawValue: newId) { tab = next } }
+                    get: { tab as DemoTab? },
+                    set: { if let next = $0 { tab = next } }
                 ),
-                items: DemoTab.allCases.map(\.navItem),
-                isExpanded: $navExpanded,
-                showHeaderToggle: false
-            ) {
-                variantPicker
-            }
+                entries: sidebarEntries,
+                progress: navProgress,
+                railHeader: {
+                    Button(action: toggleNav) {
+                        HStatusDot(color: variant.manifest.accent)
+                            .frame(width: 18, height: 18)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Toggle navigation")
+                },
+                labelHeader: {
+                    Button(action: toggleNav) {
+                        Text(variant.manifest.name)
+                            .font(HFont.ui(13, weight: .semibold))
+                            .foregroundStyle(HPalette.ink)
+                            .lineLimit(1)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Toggle navigation")
+                },
+                footer: {
+                    variantPicker
+                }
+            )
         } trailing: {
             HInspector(isCollapsed: $inspectorCollapsed) {
                 HStack(spacing: HSpacing.md) {
