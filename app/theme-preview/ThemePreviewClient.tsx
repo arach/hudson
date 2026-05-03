@@ -268,6 +268,7 @@ function ThemePreviewLeftFooter() {
 function ThemePreviewContent() {
   const { template, resolvedTheme } = useTheme();
   const { section, query, density, selectedCardId, setSelectedCardId } = useThemePreview();
+  const resolvedThemeLabel = resolvedTheme ?? 'system';
   const gapClass = density === 'compact' ? 'gap-3' : 'gap-5';
   const filteredCards = PREVIEW_CARDS.filter((card) => {
     if (!query) return true;
@@ -294,7 +295,7 @@ function ThemePreviewContent() {
               </p>
             </div>
             <div className="grid min-w-[220px] gap-3 md:grid-cols-1">
-              <MetricCard label="Theme" value={resolvedTheme} tone="info" />
+              <MetricCard label="Theme" value={resolvedThemeLabel} tone="info" />
               <MetricCard label="Template" value={template} tone="accent" />
               <MetricCard label="Radius" value={template === 'editorial' ? '4px' : '8px'} tone="warning" />
             </div>
@@ -380,12 +381,13 @@ function ThemePreviewContent() {
 function ThemePreviewInspector() {
   const { theme, resolvedTheme, template } = useTheme();
   const { section, density, query, selectedCardId } = useThemePreview();
+  const resolvedThemeLabel = resolvedTheme ?? 'system';
 
   return (
     <div className="space-y-4 p-4">
       <InspectorBlock title="Runtime State">
         <InspectorRow label="Theme" value={theme} />
-        <InspectorRow label="Resolved" value={resolvedTheme} />
+        <InspectorRow label="Resolved" value={resolvedThemeLabel} />
         <InspectorRow label="Template" value={template} />
         <InspectorRow label="Section" value={section} />
         <InspectorRow label="Density" value={density} />
