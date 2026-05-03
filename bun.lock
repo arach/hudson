@@ -67,11 +67,6 @@
         "vitest": "^4.0.18",
       },
     },
-    "packages/web/create-hudson-app": {
-      "name": "create-hudson-app",
-      "version": "0.1.0",
-      "bin": "src/index.ts",
-    },
     "packages/services/hudson-relay": {
       "name": "@hudson/relay",
       "version": "0.1.0",
@@ -86,6 +81,13 @@
       "devDependencies": {
         "@types/ws": "^8.5.14",
         "tsx": "^4.19.0",
+      },
+    },
+    "packages/tools/create-hudson-app": {
+      "name": "create-hudson-app",
+      "version": "0.1.0",
+      "bin": {
+        "create-hudson-app": "./src/index.ts",
       },
     },
     "packages/web/hudsonkit": {
@@ -866,7 +868,7 @@
 
     "crc32-stream": ["crc32-stream@6.0.0", "", { "dependencies": { "crc-32": "^1.2.0", "readable-stream": "^4.0.0" } }, "sha512-piICUB6ei4IlTv1+653yq5+KoqfBYmj9bw6LqXoOneTMDXk5nM1qt12mFW1caG3LlJXEKW1Bp0WggEmIfQB34g=="],
 
-    "create-hudson-app": ["create-hudson-app@workspace:packages/web/create-hudson-app"],
+    "create-hudson-app": ["create-hudson-app@workspace:packages/tools/create-hudson-app"],
 
     "cross-fetch": ["cross-fetch@4.1.0", "", { "dependencies": { "node-fetch": "^2.7.0" } }, "sha512-uKm5PU+MHTootlWEY+mZ4vvXoCn4fLQxT9dSc1sXVMSFkINTJVN8cAQROpwcKm8bJ/c7rgZVIBWzH5T78sNZZw=="],
 
