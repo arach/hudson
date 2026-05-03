@@ -12,10 +12,13 @@ Hudson is a shell + primitives library for building app-like interfaces in the b
 
 - **[Building apps](./building-apps.md)** — the contract with walkthrough
 - **[API reference](./api.md)** — every `hudsonkit` export, organized by subpath
+- **[Settings](./settings.md)** — declarative app-level settings schema with persisted values
+- **[Multi-instance](./multi-instance.md)** — per-instance state scoping, opting in to multiple
 - **[Systems](./systems.md)** — Intents (LLM/voice), Services (process deps), Ports (inter-app piping)
 - **[Theming](./theming.md)** — runtime theme/template switching, token surface
 - **[Voice](./voice.md)** — voice input, output, and assistant voice integration
 - **[Controls](./controls.md)** — parameter controls and code components for inspectors
+- **[Observability](./observability.md)** — logs, metrics, and traces via `hudsonkit/observability`
 
 ## How it's made
 
