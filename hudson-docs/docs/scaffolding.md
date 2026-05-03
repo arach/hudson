@@ -12,10 +12,10 @@ order: 6
 
 ```bash
 # Interactive — prompts for description, tier, mode
-bun run packages/create-hudson-app/src/index.ts my-browser
+bun run packages/tools/create-hudson-app/src/index.ts my-browser
 
 # Non-interactive
-bun run packages/create-hudson-app/src/index.ts my-browser \
+bun run packages/tools/create-hudson-app/src/index.ts my-browser \
   --tier standard --mode panel --description "A web browser"
 ```
 
@@ -38,7 +38,7 @@ Pick based on how many shell integration points your app needs. You can always p
 Provider, Content slot, and 2 required hooks. Use this for simple single-pane apps.
 
 ```bash
-bun run packages/create-hudson-app/src/index.ts my-app --tier minimal
+bun run packages/tools/create-hudson-app/src/index.ts my-app --tier minimal
 ```
 
 | File | Purpose |
@@ -54,7 +54,7 @@ bun run packages/create-hudson-app/src/index.ts my-app --tier minimal
 Adds sidebar, inspector, search, and intents. Use this for apps that need navigation and inspection.
 
 ```bash
-bun run packages/create-hudson-app/src/index.ts my-app --tier standard
+bun run packages/tools/create-hudson-app/src/index.ts my-app --tier standard
 ```
 
 Adds to minimal:
@@ -72,7 +72,7 @@ Also upgrades `index.ts` (adds panel config, `useSearch`/`useLayoutMode` hooks) 
 Everything — terminal drawer, footer, header actions, tools accordion, manifest. Use this for complex editor-style apps.
 
 ```bash
-bun run packages/create-hudson-app/src/index.ts my-app --tier full
+bun run packages/tools/create-hudson-app/src/index.ts my-app --tier full
 ```
 
 Adds to standard:
@@ -124,7 +124,7 @@ Your app never touches shell chrome. The shell reads this declaration and wires 
 
 ## Template variables
 
-For contributors modifying templates in `packages/create-hudson-app/templates/`:
+For contributors modifying templates in `packages/tools/create-hudson-app/templates/`:
 
 | Placeholder | Example (`my-browser`) |
 |---|---|

@@ -20,7 +20,7 @@ description: Dense, structured overview of Hudson for AI agent consumption
 
 | Layer | Location | Role |
 |-------|----------|------|
-| hudsonkit | `packages/hudson-sdk/src/` | Component library + type contracts |
+| hudsonkit | `packages/web/hudsonkit/src/` | Component library + type contracts |
 | Shell | `app/shell/` | Runtime orchestrator (WorkspaceShell) |
 | Apps | `app/apps/` | Self-contained apps implementing HudsonApp |
 

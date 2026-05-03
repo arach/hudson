@@ -1,0 +1,29 @@
+{
+  "name": "@hudson/relay",
+  "version": "0.1.0",
+  "private": true,
+  "license": "SEE LICENSE IN ../../../LICENSE.md",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts",
+    "./session": "./src/relay/session.ts",
+    "./types": "./src/relay/types.ts",
+    "./routes/compile": "./src/routes/compile.ts",
+    "./routes/upload": "./src/routes/upload.ts"
+  },
+  "bin": {
+    "hudson-relay": "./src/index.ts"
+  },
+  "scripts": {
+    "start": "node --no-warnings --import tsx src/index.ts"
+  },
+  "dependencies": {
+    "esbuild": "^0.25.0",
+    "node-pty": "1.2.0-beta.12",
+    "ws": "^8.18.0"
+  },
+  "devDependencies": {
+    "@types/ws": "^8.5.14",
+    "tsx": "^4.19.0"
+  }
+}

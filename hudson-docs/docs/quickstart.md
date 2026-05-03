@@ -61,7 +61,7 @@ hudson/
 The fastest way to create an app is with the scaffolding CLI:
 
 ```bash
-bun run packages/create-hudson-app/src/index.ts my-app
+bun run packages/tools/create-hudson-app/src/index.ts my-app
 ```
 
 This prompts for a description, tier, and mode, then generates all the files you need. See [Scaffolding](./scaffolding.md) for the full guide.
@@ -69,7 +69,7 @@ This prompts for a description, tier, and mode, then generates all the files you
 For this quickstart, we'll use the **minimal** tier:
 
 ```bash
-bun run packages/create-hudson-app/src/index.ts my-app \
+bun run packages/tools/create-hudson-app/src/index.ts my-app \
   --tier minimal --mode panel --description "A counter app"
 ```
 

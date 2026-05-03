@@ -7,7 +7,7 @@ description: Task template for adding intent declarations to an existing app
 
 ## Context
 
-Intents declare structured metadata about app commands for LLM/voice/search integration. Read `packages/hudson-sdk/src/types/intent.ts` for the full type.
+Intents declare structured metadata about app commands for LLM/voice/search integration. Read `packages/web/hudsonkit/src/types/intent.ts` for the full type.
 
 ## Inputs
 

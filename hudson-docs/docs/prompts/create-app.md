@@ -7,7 +7,7 @@ description: Task template for creating a new app in the Hudson platform
 
 ## Context
 
-You are building an app for the Hudson workspace platform. Read `docs/building-apps.md` and `packages/hudson-sdk/src/types/app.ts` before starting.
+You are building an app for the Hudson workspace platform. Read `docs/building-apps.md` and `packages/web/hudsonkit/src/types/app.ts` before starting.
 
 ## Inputs
 

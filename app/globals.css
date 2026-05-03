@@ -1,5 +1,5 @@
 @import "tailwindcss";
-@import "../packages/hudson-sdk/src/styles/tokens.css";
+@import "../packages/web/hudsonkit/src/styles/tokens.css";
 
 :root {
   --background: 0.145 0 0;

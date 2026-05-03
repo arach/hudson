@@ -10,8 +10,8 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': resolve(__dirname, '.'),
-      'hudsonkit/shell': resolve(__dirname, 'packages/hudson-sdk/src/shell.ts'),
-      'hudsonkit': resolve(__dirname, 'packages/hudson-sdk/src/index.ts'),
+      'hudsonkit/shell': resolve(__dirname, 'packages/web/hudsonkit/src/shell.ts'),
+      'hudsonkit': resolve(__dirname, 'packages/web/hudsonkit/src/index.ts'),
     },
   },
 });

@@ -14,8 +14,8 @@
 //        ~/dev/hero/
 //        ~/dev/shaper/
 //   2. In each repo, fix bun's hudsonkit symlink for Turbopack:
-//        cd ~/dev/hero/web && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/hudsonkit
-//        cd ~/dev/shaper   && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/hudson-sdk node_modules/hudsonkit
+//        cd ~/dev/hero/web && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/web/hudsonkit node_modules/hudsonkit
+//        cd ~/dev/shaper   && rm -rf node_modules/hudsonkit && ln -s ~/dev/hudson/packages/web/hudsonkit node_modules/hudsonkit
 //   3. Install hero's unique deps in hudson: bun add fonteditor-core opentype.js @google/genai
 //
 // ─────────────────────────────────────────────────────────────────────────────
