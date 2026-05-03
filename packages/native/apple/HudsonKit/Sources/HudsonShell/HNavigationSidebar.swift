@@ -76,6 +76,7 @@ public struct HNavigationSidebar<
     public let entries: [HSidebarEntry<Selection>]
     public let progress: Double
     public let accent: Color?           // nil = use manifest.accent
+    public let labelWidth: CGFloat      // expanded label-column width; defaults to HSidebarLayout.labelWidth
     public let railHeader: RailHeader
     public let labelHeader: LabelHeader
     public let footer: Footer
@@ -89,6 +90,7 @@ public struct HNavigationSidebar<
         entries: [HSidebarEntry<Selection>],
         progress: Double,
         accent: Color? = nil,
+        labelWidth: CGFloat = HSidebarLayout.labelWidth,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
@@ -97,6 +99,7 @@ public struct HNavigationSidebar<
         self.entries = entries
         self.progress = progress
         self.accent = accent
+        self.labelWidth = labelWidth
         self.railHeader = railHeader()
         self.labelHeader = labelHeader()
         self.footer = footer()
@@ -149,7 +152,7 @@ public struct HNavigationSidebar<
         // The donor relied on a NavigationSplitView column to clip; standalone hosts need
         // the sidebar to own its width. Hosts that want different sizing can wrap in their
         // own `.frame(width:)`.
-        .frame(width: HSidebarLayout.intrinsicWidth(progress: progress), alignment: .leading)
+        .frame(width: HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth), alignment: .leading)
         .frame(maxHeight: .infinity)
         .background(SidebarSurface(style: style.surface))
         .overlay(alignment: .trailing) {
@@ -251,7 +254,7 @@ public struct HNavigationSidebar<
         }
         // Width animates from labelWidth → 0. Text inside is fixed-size and
         // clipped from the right — labels never reflow, icons never move.
-        .frame(width: max(0, HSidebarLayout.labelWidth * (1 - progress)), alignment: .leading)
+        .frame(width: max(0, labelWidth * (1 - progress)), alignment: .leading)
         .clipped()
         .opacity(labelOpacity)
         .animation(nil, value: labelsSettled)
@@ -372,6 +375,7 @@ extension HNavigationSidebar where Footer == EmptyView {
         entries: [HSidebarEntry<Selection>],
         progress: Double,
         accent: Color? = nil,
+        labelWidth: CGFloat = HSidebarLayout.labelWidth,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader
     ) {
@@ -380,6 +384,64 @@ extension HNavigationSidebar where Footer == EmptyView {
             entries: entries,
             progress: progress,
             accent: accent,
+            labelWidth: labelWidth,
+            railHeader: railHeader,
+            labelHeader: labelHeader,
+            footer: { EmptyView() }
+        )
+    }
+}
+
+// MARK: - Convenience init (isCompact: Bool — friendlier for the common case)
+//
+// `progress: Double` is the advanced contract for design-tool scrubbing and
+// continuous animation control. Most consumers want a simple boolean and let
+// the caller wrap the toggle in `withAnimation(...)`.
+
+extension HNavigationSidebar {
+    /// Convenience init taking `isCompact: Bool`. `false` = expanded (progress 0),
+    /// `true` = compact (progress 1). Wrap the toggle in
+    /// `withAnimation(HMotion.chromeSpring)` at the call site to animate.
+    public init(
+        selection: Binding<Selection?>,
+        entries: [HSidebarEntry<Selection>],
+        isCompact: Bool,
+        accent: Color? = nil,
+        labelWidth: CGFloat = HSidebarLayout.labelWidth,
+        @ViewBuilder railHeader: () -> RailHeader,
+        @ViewBuilder labelHeader: () -> LabelHeader,
+        @ViewBuilder footer: () -> Footer
+    ) {
+        self.init(
+            selection: selection,
+            entries: entries,
+            progress: isCompact ? 1.0 : 0.0,
+            accent: accent,
+            labelWidth: labelWidth,
+            railHeader: railHeader,
+            labelHeader: labelHeader,
+            footer: footer
+        )
+    }
+}
+
+extension HNavigationSidebar where Footer == EmptyView {
+    /// `isCompact: Bool` convenience init with no footer slot.
+    public init(
+        selection: Binding<Selection?>,
+        entries: [HSidebarEntry<Selection>],
+        isCompact: Bool,
+        accent: Color? = nil,
+        labelWidth: CGFloat = HSidebarLayout.labelWidth,
+        @ViewBuilder railHeader: () -> RailHeader,
+        @ViewBuilder labelHeader: () -> LabelHeader
+    ) {
+        self.init(
+            selection: selection,
+            entries: entries,
+            progress: isCompact ? 1.0 : 0.0,
+            accent: accent,
+            labelWidth: labelWidth,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: { EmptyView() }
