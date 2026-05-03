@@ -1,6 +1,6 @@
 # API Reference
 
-Every `hudsonkit` export, organized by subpath. Types are authoritative in [`packages/hudson-sdk/src/types/`](../packages/hudson-sdk/src/types/); this doc is a map, not the source of truth.
+Every `hudsonkit` export, organized by subpath. Types are authoritative in [`packages/web/hudsonkit/src/types/`](../packages/web/hudsonkit/src/types/); this doc is a map, not the source of truth.
 
 ## Subpath exports
 
@@ -16,7 +16,9 @@ Every `hudsonkit` export, organized by subpath. Types are authoritative in [`pac
 | `hudsonkit/windows`             | `AppWindow` (draggable/resizable window frame)                       |
 | `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
 | `hudsonkit/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
-| `hudsonkit/controls`            | `ParamPanel` and related control primitives                          |
+| `hudsonkit/controls`            | `ParamSection`, `ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`, `CodeViewer`, `CodeEditor` — see controls.md |
+| `hudsonkit/voice`               | Opt-in voice plugin — see voice.md                                   |
+| `hudsonkit/observability`       | `HLogger`, `HMetrics`, `HObservability`, `HSpan`, `HTrace` — see observability.md |
 
 ## Types
 
@@ -30,11 +32,15 @@ Importable from `hudsonkit`:
 | `AppSettingsConfig`, `AppSettingField`, `AppSettingsSection` | Settings UI schema |
 | `SearchConfig`                    | Nav bar search wiring                     |
 | `StatusColor`                     | `'emerald' \| 'amber' \| 'red' \| 'neutral'` |
+| `TakeoverState`                   | Return type of `useTakeover` hook — `{ active, dismissible, onDismiss? }` |
+| `MultiInstanceMode`               | `'singleton' \| 'spawnable' \| 'duplicable'` |
 | `HudsonWorkspace`, `WorkspaceAppConfig`, `CanvasParticipation` | `types/workspace.ts` |
 | `AppIntent`, `IntentCategory`, `IntentParameter`, `CatalogAppEntry`, `IntentCatalog` | `types/intent.ts` |
 | `ServiceDefinition`, `ServiceDependency`, `ServiceRecord`, `ServiceAction`, `ServiceStatus` | `types/service.ts` |
 | `AppOutput`, `AppInput`, `AppPorts`, `PipeDefinition` | `types/port.ts`                   |
 | `CommandOption`, `ContextMenuEntry`, `ContextMenuAction`, `ContextMenuSeparator`, `ContextMenuGroup` | `components/overlays` |
+| `HudsonTheme`                     | `'light' \| 'dark' \| 'system'`           |
+| `HudsonTemplate`                  | `'hudson' \| 'editorial'`                 |
 
 ## Hooks (from `hudsonkit`)
 
@@ -45,21 +51,35 @@ Importable from `hudsonkit`:
 | `useSaveIndicator()`                              | Status indicator for save operations           |
 | `useAppSettings<T>(appId)`                        | Read/write current app's settings              |
 | `useHudsonAI(options)`                            | Chat transport for the workspace AI panel      |
+| `useAssistant(options)`                           | Wires app intents + commands to an AI chat; see Assistant section below |
 | `useTerminalRelay(options)`                       | WebSocket bridge to the terminal relay server  |
+| `useTheme()`                                      | Read/set current theme and template; throws outside `ThemeProvider` |
+| `useOptionalTheme()`                              | Like `useTheme()` but returns `null` outside provider |
+| `useInstance()`                                   | Returns `{ instanceId, appId }`; throws outside `InstanceProvider` |
+| `useOptionalInstance()`                           | Like `useInstance()` but returns `null` outside provider |
 
-Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonAIOptions`, `AIAttachment`, `TerminalRelayHandle`, `UseTerminalRelayOptions`, `RelayStatus`.
+Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonAIOptions`, `AIAttachment`, `AssistantChat`, `UseAssistantOptions`, `TerminalRelayHandle`, `UseTerminalRelayOptions`, `RelayStatus`.
 
 ## Components
 
 ### From `hudsonkit`
 
 - `AI` — chat panel component, paired with `useHudsonAI`
+- `Assistant` — assistant panel component, paired with `useAssistant`
 - `TerminalRelay`, `captureWorkspace` — terminal relay component + screenshot helper
 - `ZoomControls` — reusable widget (also re-exported from `/chrome`)
 
 ### From `hudsonkit/app-shell`
 
-- `AppShell` — single-app full-chrome shell. Props: `{ app: HudsonApp }`.
+#### `AppShell` props
+
+| Prop              | Type               | Default      | Description                                                               |
+|-------------------|--------------------|--------------|---------------------------------------------------------------------------|
+| `app`             | `HudsonApp`        | —            | Required. The app to render.                                              |
+| `assistant`       | `boolean`          | `true`       | Enable the built-in Assistant tab in the bottom drawer.                   |
+| `defaultTheme`    | `HudsonTheme`      | `'system'`   | Initial theme; user can switch at runtime.                                |
+| `defaultTemplate` | `HudsonTemplate`   | `'hudson'`   | Initial template.                                                         |
+| `managedTheme`    | `boolean`          | `true`       | When `false`, assumes a parent `ThemeProvider` already exists.            |
 
 ### From `hudsonkit/shell` (back-compat barrel)
 
@@ -68,6 +88,64 @@ All of: `WorkspaceShell`, `AppShell`, `Frame`, `NavigationBar`, `SidePanel`, `St
 ### From `hudsonkit/context-menu`
 
 - `HudsonContextMenu` — right-click menu component. Pulls `motion/react` + `@base-ui-components/react`.
+
+## Theme (from `hudsonkit`)
+
+| Export               | Kind      | Description                                                       |
+|----------------------|-----------|-------------------------------------------------------------------|
+| `ThemeProvider`      | Component | Wraps a subtree; manages `data-hudson-theme` / `data-hudson-template` on root. |
+| `HudsonThemeScript`  | Component | Inline script for SSR flash-free theme init. Render before `<body>`. |
+| `useTheme`           | Hook      | Returns `{ theme, resolvedTheme, template, setTheme, setTemplate }`. Throws outside provider. |
+| `useOptionalTheme`   | Hook      | Same return shape, or `null` outside provider.                    |
+
+Types: `HudsonTheme`, `HudsonTemplate`, `ThemeProviderProps`.
+
+`ThemeProviderProps`: `{ children, defaultTheme?, defaultTemplate?, storageKey?, rootElement? }`.
+
+See [Theming](./theming.md) for usage.
+
+## Instance context (from `hudsonkit`)
+
+| Export                | Kind      | Description                                                    |
+|-----------------------|-----------|----------------------------------------------------------------|
+| `InstanceProvider`    | Component | `{ instanceId, appId, children }` — scopes per-instance state. |
+| `useInstance`         | Hook      | Returns `InstanceContextValue`; throws outside provider.       |
+| `useOptionalInstance` | Hook      | Returns `InstanceContextValue \| null`.                        |
+
+Types: `InstanceContextValue` — `{ instanceId: string; appId: string }`.
+
+## Assistant (from `hudsonkit`)
+
+- `Assistant` — panel component. Props: `{ app: HudsonApp; commands: CommandOption[] }`. Renders a chat UI wired to the app's declared intents.
+- `useAssistant(options)` — lower-level hook. Builds context from `app.intents`, wires a `dispatch` tool call to the live `commands` array, delegates to `useHudsonAI` internally.
+
+| `UseAssistantOptions` field | Type                           | Description                                        |
+|-----------------------------|--------------------------------|----------------------------------------------------|
+| `app`                       | `HudsonApp`                    | Required.                                          |
+| `commands`                  | `CommandOption[]`              | Live commands from `app.hooks.useCommands()`.      |
+| `state`                     | `Record<string, unknown>`      | Optional snapshot included in model context.       |
+| `provider`                  | `string`                       | Provider override (e.g. `'anthropic'`).            |
+| `model`                     | `string`                       | Model override.                                    |
+| `onFinish`                  | `ChatOnFinishCallback`         | Called when an assistant turn finishes.            |
+
+`AssistantChat` is an alias for `HudsonAIChat`.
+
+Note: `useAssistant` is app-intent aware; `useHudsonAI` is the lower-level workspace AI panel transport.
+
+## Observability (from `hudsonkit`)
+
+| Export                  | Kind     | Description                                              |
+|-------------------------|----------|----------------------------------------------------------|
+| `HLogger`               | Class    | Structured log emitter.                                  |
+| `HMetrics`              | Class    | Metric counter/gauge/histogram emitter.                  |
+| `HObservability`        | Class    | Core bus; call `HObservability.global()` for the default instance. |
+| `HObservabilityDefault` | Instance | Pre-built `HObservability.global()` singleton.           |
+| `HSpan`                 | Class    | Active trace span handle.                                |
+| `HTrace`                | Class    | Trace builder.                                           |
+
+Exported types: `HLogEvent`, `HLogInput`, `HLogLevel`, `HMetricEvent`, `HMetricInput`, `HMetricType`, `HObservabilityOptions`, `HObservation`, `HObservationBase`, `HObservationData`, `HObservationKind`, `HObservationSink`, `HObservationTags`, `HSubscribeOptions`, `HTraceInput`, `HTraceSpan`, `HTraceStatus`, `HUnsubscribe`.
+
+These are advanced — refer to `src/observability.ts` and `hudsonkit/observability` for the full surface.
 
 ## Platform adapter (from `hudsonkit`)
 
@@ -83,6 +161,7 @@ All of: `WorkspaceShell`, `AppShell`, `Frame`, `NavigationBar`, `SidePanel`, `St
 - `FrameLogEntry` type
 - `worldToScreen`, `screenToWorld` — canvas coordinate math
 - `deriveManifest(app)` — build an `AppManifest` from a `HudsonApp`
+- `probeVoxAvailability()` — check voice availability; returns `VoxAvailability`
 
 ## The `HudsonApp` interface at a glance
 
@@ -93,13 +172,17 @@ interface HudsonApp {
   name: string;
   description?: string;
   mode: 'canvas' | 'panel';
+  icon?: ReactNode;
+
+  // Multi-instance behaviour (default: 'singleton')
+  multiInstance?: MultiInstanceMode; // 'singleton' | 'spawnable' | 'duplicable'
 
   // Panel config
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
   rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
 
-  // State owner
-  Provider: React.FC<{ children: ReactNode; disabled?: boolean }>;
+  // State owner — disabled/visible/focused reflect workspace mount state
+  Provider: React.FC<{ children: ReactNode; disabled?: boolean; visible?: boolean; focused?: boolean }>;
 
   // Right sidebar tool accordion
   tools?: AppTool[];
@@ -112,6 +195,9 @@ interface HudsonApp {
     Inspector?: React.FC;
     LeftFooter?: React.FC;
     Terminal?: React.FC;
+    /** Full-viewport overlay rendered above shell chrome. Shell marks
+     *  background `inert` + `aria-hidden` while active. */
+    Takeover?: React.FC;
   };
 
   // Shell bridge
@@ -121,10 +207,13 @@ interface HudsonApp {
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
-    useLayoutMode?: () => 'canvas' | 'panel';
+    useLayoutMode?: () => 'canvas' | 'panel' | 'focus';
     useActiveToolHint?: () => string | null;
     usePortOutput?: () => (portId: string) => unknown | null;
     usePortInput?: () => (portId: string, data: unknown) => void;
+    /** Return active:true to mount Takeover above chrome. Shell is
+     *  stateless about dismissal — the hook's own state drives it. */
+    useTakeover?: () => TakeoverState | null;
   };
 
   // Optional integrations
