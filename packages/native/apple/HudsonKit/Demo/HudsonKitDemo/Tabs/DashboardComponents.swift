@@ -8,38 +8,38 @@ struct FleetTopBar: View {
     let targets: [TargetMock]
 
     var body: some View {
-        HStack(spacing: HudsonSpacing.xl) {
-            HStack(spacing: HudsonSpacing.lg) {
+        HStack(spacing: HSpacing.xl) {
+            HStack(spacing: HSpacing.lg) {
                 Text(manifest.name.uppercased())
-                    .font(HudsonFont.mono(11, weight: .bold))
+                    .font(HFont.mono(11, weight: .bold))
                     .tracking(1.5)
-                    .foregroundStyle(HudsonPalette.ink)
-                Text("·").foregroundStyle(HudsonPalette.dim)
+                    .foregroundStyle(HPalette.ink)
+                Text("·").foregroundStyle(HPalette.dim)
                 Text("home")
-                    .font(HudsonFont.mono(11))
+                    .font(HFont.mono(11))
                     .tracking(1)
-                    .foregroundStyle(HudsonPalette.muted)
+                    .foregroundStyle(HPalette.muted)
             }
 
             ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: HudsonSpacing.md) {
+                HStack(spacing: HSpacing.md) {
                     ForEach(targets) { FleetPill(target: $0) }
                 }
             }
 
-            Spacer(minLength: HudsonSpacing.md)
+            Spacer(minLength: HSpacing.md)
 
-            HudsonBadge("2 \(manifest.targetLabel.uppercased())S", tint: manifest.accent, dot: true)
+            HBadge("2 \(manifest.targetLabel.uppercased())S", tint: manifest.accent, dot: true)
             Image(systemName: "chevron.down")
                 .font(.system(size: 11, weight: .semibold))
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
             Image(systemName: "gearshape")
                 .font(.system(size: 14))
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
         }
-        .padding(.horizontal, HudsonSpacing.xxl)
-        .frame(height: HudsonLayout.navHeight)
-        .background(HudsonPalette.chrome)
+        .padding(.horizontal, HSpacing.xxl)
+        .frame(height: HLayout.navHeight)
+        .background(HPalette.chrome)
     }
 }
 
@@ -49,13 +49,13 @@ private struct FleetPill: View {
         HStack(spacing: 5) {
             Circle().fill(target.statusColor).frame(width: 5, height: 5)
             Text(target.name)
-                .font(HudsonFont.mono(10, weight: .semibold))
-                .foregroundStyle(target.statusLabel == "OFFLINE" ? HudsonPalette.dim : HudsonPalette.ink)
+                .font(HFont.mono(10, weight: .semibold))
+                .foregroundStyle(target.statusLabel == "OFFLINE" ? HPalette.dim : HPalette.ink)
         }
-        .padding(.horizontal, HudsonSpacing.md)
+        .padding(.horizontal, HSpacing.md)
         .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: HudsonRadius.tight).fill(target.statusColor.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: HudsonRadius.tight).stroke(target.statusColor.opacity(0.35), lineWidth: 1))
+        .background(RoundedRectangle(cornerRadius: HRadius.tight).fill(target.statusColor.opacity(0.12)))
+        .overlay(RoundedRectangle(cornerRadius: HRadius.tight).stroke(target.statusColor.opacity(0.35), lineWidth: 1))
     }
 }
 
@@ -69,13 +69,13 @@ struct TargetCard: View {
 
     var body: some View {
         Button(action: { onTap?() }) {
-            HudsonCard(stroke: isHovering ? target.iconTint.color.opacity(0.45) : HudsonHairline.standard) {
-                VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+            HCard(stroke: isHovering ? target.iconTint.color.opacity(0.45) : HHairline.standard) {
+                VStack(alignment: .leading, spacing: HSpacing.lg) {
                     header
                     if let scene = target.scene { sceneRow(scene) }
                     if target.focusApp != nil || target.lastAction != nil { focusBlock }
-                    Spacer(minLength: HudsonSpacing.md)
-                    HudsonDivider()
+                    Spacer(minLength: HSpacing.md)
+                    HDivider()
                     agentRow
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -91,51 +91,51 @@ struct TargetCard: View {
     }
 
     private var header: some View {
-        HStack(spacing: HudsonSpacing.lg) {
+        HStack(spacing: HSpacing.lg) {
             Image(systemName: target.icon)
                 .font(.system(size: 16, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
                 .frame(width: 40, height: 32)
-                .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(target.iconTint.color.opacity(0.15)))
-                .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(target.iconTint.color.opacity(0.28), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: HRadius.standard).fill(target.iconTint.color.opacity(0.15)))
+                .overlay(RoundedRectangle(cornerRadius: HRadius.standard).stroke(target.iconTint.color.opacity(0.28), lineWidth: 1))
             VStack(alignment: .leading, spacing: 2) {
                 Text(target.name)
-                    .font(HudsonFont.mono(13, weight: .semibold))
-                    .foregroundStyle(HudsonPalette.ink)
+                    .font(HFont.mono(13, weight: .semibold))
+                    .foregroundStyle(HPalette.ink)
                 Text(target.host)
-                    .font(HudsonFont.mono(10))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(10))
+                    .foregroundStyle(HPalette.muted)
             }
             Spacer(minLength: 0)
-            VStack(alignment: .trailing, spacing: HudsonSpacing.xs) {
-                HStack(spacing: HudsonSpacing.xs) {
+            VStack(alignment: .trailing, spacing: HSpacing.xs) {
+                HStack(spacing: HSpacing.xs) {
                     if let count = target.badgeCount {
-                        HudsonBadge(String(count), tint: HudsonPalette.muted)
+                        HBadge(String(count), tint: HPalette.muted)
                     }
-                    HudsonBadge(target.statusLabel, tint: target.statusColor, dot: true)
+                    HBadge(target.statusLabel, tint: target.statusColor, dot: true)
                 }
                 if let latency = target.latency {
                     Text(latency)
-                        .font(HudsonFont.mono(9))
-                        .foregroundStyle(HudsonPalette.dim)
+                        .font(HFont.mono(9))
+                        .foregroundStyle(HPalette.dim)
                 }
             }
         }
     }
 
     private func sceneRow(_ scene: String) -> some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Image(systemName: "rectangle.grid.2x2")
                 .font(.system(size: 10))
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
             Text(scene)
-                .font(HudsonFont.ui(12))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.ui(12))
+                .foregroundStyle(HPalette.ink)
         }
     }
 
     private var focusBlock: some View {
-        VStack(spacing: HudsonSpacing.sm) {
+        VStack(spacing: HSpacing.sm) {
             if let app = target.focusApp, let file = target.focusFile {
                 kvRow("focus", primary: app, secondary: file)
             }
@@ -148,46 +148,46 @@ struct TargetCard: View {
     }
 
     private func kvRow(_ key: String, primary: String, secondary: String?) -> some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Text(key.uppercased())
-                .font(HudsonFont.mono(9))
+                .font(HFont.mono(9))
                 .tracking(0.8)
-                .foregroundStyle(HudsonPalette.dim)
+                .foregroundStyle(HPalette.dim)
                 .frame(width: 36, alignment: .leading)
             Text(primary)
-                .font(HudsonFont.mono(11, weight: .semibold))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(11, weight: .semibold))
+                .foregroundStyle(HPalette.ink)
             if let secondary {
-                Text("·").foregroundStyle(HudsonPalette.dim)
+                Text("·").foregroundStyle(HPalette.dim)
                 Text(secondary)
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.muted)
             }
             Spacer(minLength: 0)
         }
     }
 
     private var agentRow: some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Text("AGENT")
-                .font(HudsonFont.mono(9))
+                .font(HFont.mono(9))
                 .tracking(0.8)
-                .foregroundStyle(HudsonPalette.dim)
+                .foregroundStyle(HPalette.dim)
                 .frame(width: 36, alignment: .leading)
-            HudsonStatusDot(color: target.agentTint.color, size: 6, pulses: target.agentStatus == "running")
+            HStatusDot(color: target.agentTint.color, size: 6, pulses: target.agentStatus == "running")
             Text(target.agentStatus)
-                .font(HudsonFont.mono(11, weight: .semibold))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(11, weight: .semibold))
+                .foregroundStyle(HPalette.ink)
             if let activity = target.agentActivity {
-                Text("·").foregroundStyle(HudsonPalette.dim)
+                Text("·").foregroundStyle(HPalette.dim)
                 Text(activity)
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.muted)
             }
             Spacer(minLength: 0)
             Image(systemName: "arrow.up.right")
                 .font(.system(size: 10, weight: .semibold))
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
         }
     }
 }
@@ -197,23 +197,23 @@ struct TargetCard: View {
 struct AgentPanel: View {
     var body: some View {
         OverflowPanel(label: "Agent · Claude", trailing: "3 evt") {
-            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                row(icon: "checkmark", tint: HudsonPalette.statusOk, text: "designed home arch")
-                row(icon: "square.and.pencil", tint: HudsonTint.amber.color, text: "writing tile spec")
-                row(icon: "circle.fill", tint: HudsonTint.violet.color, text: "12 tools used · 4m")
+            VStack(alignment: .leading, spacing: HSpacing.md) {
+                row(icon: "checkmark", tint: HPalette.statusOk, text: "designed home arch")
+                row(icon: "square.and.pencil", tint: HTint.amber.color, text: "writing tile spec")
+                row(icon: "circle.fill", tint: HTint.violet.color, text: "12 tools used · 4m")
             }
         }
     }
 
     private func row(icon: String, tint: Color, text: String) -> some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Image(systemName: icon)
                 .font(.system(size: 9, weight: .semibold))
                 .foregroundStyle(tint)
                 .frame(width: 14)
             Text(text)
-                .font(HudsonFont.mono(11))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(11))
+                .foregroundStyle(HPalette.ink)
         }
     }
 }
@@ -225,17 +225,17 @@ struct TerminalPanel: View {
                 line("~", "~/dev/lattices", primaryDim: false)
                 line("$", "swift build -c release", primaryDim: false)
                 Text("Compiling DeckKit…")
-                    .font(HudsonFont.mono(10))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(10))
+                    .foregroundStyle(HPalette.muted)
                 Text("Compiling Sources…")
-                    .font(HudsonFont.mono(10))
-                    .foregroundStyle(HudsonPalette.muted)
-                HStack(spacing: HudsonSpacing.xs) {
+                    .font(HFont.mono(10))
+                    .foregroundStyle(HPalette.muted)
+                HStack(spacing: HSpacing.xs) {
                     Text("$")
-                        .font(HudsonFont.mono(11, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.statusOk)
+                        .font(HFont.mono(11, weight: .semibold))
+                        .foregroundStyle(HPalette.statusOk)
                     Rectangle()
-                        .fill(HudsonPalette.statusOk)
+                        .fill(HPalette.statusOk)
                         .frame(width: 7, height: 13)
                 }
             }
@@ -243,13 +243,13 @@ struct TerminalPanel: View {
     }
 
     private func line(_ glyph: String, _ text: String, primaryDim: Bool) -> some View {
-        HStack(spacing: HudsonSpacing.xs) {
+        HStack(spacing: HSpacing.xs) {
             Text(glyph)
-                .font(HudsonFont.mono(11))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(11))
+                .foregroundStyle(HPalette.muted)
             Text(text)
-                .font(HudsonFont.mono(11))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(11))
+                .foregroundStyle(HPalette.ink)
         }
     }
 }
@@ -257,7 +257,7 @@ struct TerminalPanel: View {
 struct CalendarPanel: View {
     var body: some View {
         OverflowPanel(label: "Calendar", trailing: "today") {
-            VStack(alignment: .leading, spacing: HudsonSpacing.sm) {
+            VStack(alignment: .leading, spacing: HSpacing.sm) {
                 event(time: "3:00pm", title: "standup",      dot: true)
                 event(time: "4:30pm", title: "design review", dot: false)
                 event(time: "6:00pm", title: "gym",            dot: false)
@@ -266,18 +266,18 @@ struct CalendarPanel: View {
     }
 
     private func event(time: String, title: String, dot: Bool) -> some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Text(time)
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.dim)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.dim)
                 .frame(width: 56, alignment: .leading)
             Text(title)
-                .font(HudsonFont.mono(11))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(11))
+                .foregroundStyle(HPalette.ink)
             Spacer(minLength: 0)
             if dot {
                 Circle()
-                    .fill(HudsonPalette.statusInfo)
+                    .fill(HPalette.statusInfo)
                     .frame(width: 5, height: 5)
             }
         }
@@ -290,24 +290,24 @@ private struct OverflowPanel<Content: View>: View {
     @ViewBuilder let content: () -> Content
 
     var body: some View {
-        HudsonCard(padding: 0) {
+        HCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    HudsonSectionLabel(label, tint: HudsonTint.amber.color)
+                    HSectionLabel(label, tint: HTint.amber.color)
                     Spacer()
                     Text(trailing)
-                        .font(HudsonFont.mono(9))
+                        .font(HFont.mono(9))
                         .tracking(0.8)
-                        .foregroundStyle(HudsonPalette.dim)
+                        .foregroundStyle(HPalette.dim)
                 }
-                .padding(.horizontal, HudsonSpacing.xl)
+                .padding(.horizontal, HSpacing.xl)
                 .frame(height: 32)
                 .background(Color.white.opacity(0.02))
 
-                HudsonDivider()
+                HDivider()
 
                 content()
-                    .padding(HudsonSpacing.xl)
+                    .padding(HSpacing.xl)
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
             }
         }
@@ -322,79 +322,79 @@ struct DashboardBottomChrome: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            HudsonDivider(color: HudsonHairline.standard)
+            HDivider(color: HHairline.standard)
             cloudRow
-            HudsonDivider(color: HudsonHairline.standard)
+            HDivider(color: HHairline.standard)
             statusRow
         }
-        .background(HudsonPalette.chrome)
+        .background(HPalette.chrome)
     }
 
     private var cloudRow: some View {
-        HStack(spacing: HudsonSpacing.md) {
+        HStack(spacing: HSpacing.md) {
             Image(systemName: "cloud")
                 .font(.system(size: 11))
-                .foregroundStyle(HudsonPalette.muted)
-            Text("CLOUD").font(HudsonFont.mono(9, weight: .semibold)).tracking(0.8).foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
+            Text("CLOUD").font(HFont.mono(9, weight: .semibold)).tracking(0.8).foregroundStyle(HPalette.muted)
             sep
-            HudsonStatusDot(color: HudsonPalette.statusOk, size: 5)
+            HStatusDot(color: HPalette.statusOk, size: 5)
             Text("2 \(manifest.targetLabel.lowercased())s")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.ink)
             sep
-            HudsonStatusDot(color: HudsonTint.amber.color, size: 5)
+            HStatusDot(color: HTint.amber.color, size: 5)
             Text("1 builds queued")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.ink)
             sep
             Text("deploy 4m ago")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
             Spacer()
             Image(systemName: "chevron.up")
                 .font(.system(size: 10))
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
         }
-        .padding(.horizontal, HudsonSpacing.xl)
-        .frame(height: HudsonLayout.statusBarHeight)
+        .padding(.horizontal, HSpacing.xl)
+        .frame(height: HLayout.statusBarHeight)
     }
 
     private var statusRow: some View {
-        HStack(spacing: HudsonSpacing.md) {
-            HudsonStatusDot(color: HudsonPalette.statusOk, size: 6, pulses: true)
+        HStack(spacing: HSpacing.md) {
+            HStatusDot(color: HPalette.statusOk, size: 6, pulses: true)
             Text("READY")
-                .font(HudsonFont.mono(9, weight: .bold))
+                .font(HFont.mono(9, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(HudsonPalette.statusOk)
+                .foregroundStyle(HPalette.statusOk)
             sep
             Text("hold-space")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
             sep
             Text("air ← home")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.ink)
             sep
             Text("19w · 1/7 · cpu 51% · mem 98% · 45°")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
             Spacer()
-            HudsonStatusDot(color: HudsonPalette.statusOk, size: 5)
+            HStatusDot(color: HPalette.statusOk, size: 5)
             Text("agent ready")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.ink)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.ink)
             sep
             Text("claude · \(manifest.name) · v\(manifest.version)")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
         }
-        .padding(.horizontal, HudsonSpacing.xl)
+        .padding(.horizontal, HSpacing.xl)
         .frame(height: 28)
     }
 
     private var sep: some View {
         Text("·")
-            .font(HudsonFont.mono(10))
-            .foregroundStyle(HudsonPalette.dim)
+            .font(HFont.mono(10))
+            .foregroundStyle(HPalette.dim)
     }
 }

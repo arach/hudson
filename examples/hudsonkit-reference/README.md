@@ -17,10 +17,10 @@ After HudsonKit is tagged, app packages should switch to a versioned dependency:
 
 Use this app as the starting point for product apps such as Vox:
 
-- `HudsonAppShell` owns the application frame.
-- `HudsonNavigationRail` defines major app sections.
-- `HudsonInspector` shows contextual details.
-- `HudsonAppManifest` carries app identity and tint.
+- `HAppShell` owns the application frame.
+- `HNavigationRail` defines major app sections.
+- `HInspector` shows contextual details.
+- `HAppManifest` carries app identity and tint.
 - Feature modules like `HudsonVoice` mount as normal app-owned screens.
 
 The reference app is intentionally not Vox. It demonstrates the scaffold Vox

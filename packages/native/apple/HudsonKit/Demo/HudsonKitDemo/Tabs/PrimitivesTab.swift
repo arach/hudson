@@ -6,7 +6,7 @@ struct PrimitivesTab: View {
     @State private var selectedRow: String? = "alpha"
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xxxl) {
+        VStack(alignment: .leading, spacing: HSpacing.xxxl) {
             buttons
             fieldsAndBadges
             listRows
@@ -17,30 +17,30 @@ struct PrimitivesTab: View {
     }
 
     private var buttons: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("Buttons")
-            HudsonCard {
-                HStack(spacing: HudsonSpacing.xl) {
-                    HudsonButton("Primary",   icon: "play.fill", style: .primary(.green)) {}
-                    HudsonButton("Secondary", icon: "gear",      style: .secondary)       {}
-                    HudsonButton("Ghost",                          style: .ghost)          {}
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("Buttons")
+            HCard {
+                HStack(spacing: HSpacing.xl) {
+                    HButton("Primary",   icon: "play.fill", style: .primary(.green)) {}
+                    HButton("Secondary", icon: "gear",      style: .secondary)       {}
+                    HButton("Ghost",                          style: .ghost)          {}
                 }
             }
         }
     }
 
     private var fieldsAndBadges: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("Field & badges")
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-                    HudsonField("Search agents…", text: $fieldText)
-                    HStack(spacing: HudsonSpacing.md) {
-                        HudsonBadge("ONLINE",  tint: HudsonPalette.statusOk,    dot: true)
-                        HudsonBadge("WARN",    tint: HudsonPalette.statusWarn,  dot: true)
-                        HudsonBadge("ERROR",   tint: HudsonPalette.statusError, dot: true)
-                        HudsonBadge("BETA",    tint: HudsonTint.violet.color)
-                        HudsonBadge("12 RUNS", tint: HudsonPalette.muted)
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("Field & badges")
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.xl) {
+                    HField("Search agents…", text: $fieldText)
+                    HStack(spacing: HSpacing.md) {
+                        HBadge("ONLINE",  tint: HPalette.statusOk,    dot: true)
+                        HBadge("WARN",    tint: HPalette.statusWarn,  dot: true)
+                        HBadge("ERROR",   tint: HPalette.statusError, dot: true)
+                        HBadge("BETA",    tint: HTint.violet.color)
+                        HBadge("12 RUNS", tint: HPalette.muted)
                     }
                 }
             }
@@ -48,29 +48,29 @@ struct PrimitivesTab: View {
     }
 
     private var listRows: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("List rows")
-            HudsonCard(padding: HudsonSpacing.md) {
-                VStack(spacing: HudsonSpacing.md) {
-                    HudsonListRow(
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("List rows")
+            HCard(padding: HSpacing.md) {
+                VStack(spacing: HSpacing.md) {
+                    HListRow(
                         title: "alpha.main.mini",
                         subtitle: "agent · idle · 3 flights",
                         icon: "circle.grid.2x2.fill",
                         iconTint: .green,
                         isSelected: selectedRow == "alpha"
                     ) { selectedRow = "alpha" } trailing: {
-                        HudsonBadge("3", tint: HudsonPalette.muted)
+                        HBadge("3", tint: HPalette.muted)
                     }
-                    HudsonListRow(
+                    HListRow(
                         title: "beta.main.mini",
                         subtitle: "agent · running",
                         icon: "waveform.circle.fill",
                         iconTint: .cyan,
                         isSelected: selectedRow == "beta"
                     ) { selectedRow = "beta" } trailing: {
-                        HudsonStatusDot(color: HudsonPalette.statusOk, pulses: true)
+                        HStatusDot(color: HPalette.statusOk, pulses: true)
                     }
-                    HudsonListRow(
+                    HListRow(
                         title: "gamma.main.mini",
                         subtitle: "agent · offline",
                         icon: "exclamationmark.triangle.fill",
@@ -83,23 +83,23 @@ struct PrimitivesTab: View {
     }
 
     private var kvRows: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("KV rows · telemetry")
-            HudsonCard {
-                VStack(spacing: HudsonSpacing.lg) {
-                    HudsonKVRow("cpu",    value: "32%")
-                    HudsonKVRow("mem",    value: "68%")
-                    HudsonKVRow("flights", value: "12")
-                    HudsonKVRow("uptime", value: "4h 22m", valueColor: HudsonPalette.statusOk)
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("KV rows · telemetry")
+            HCard {
+                VStack(spacing: HSpacing.lg) {
+                    HKVRow("cpu",    value: "32%")
+                    HKVRow("mem",    value: "68%")
+                    HKVRow("flights", value: "12")
+                    HKVRow("uptime", value: "4h 22m", valueColor: HPalette.statusOk)
                 }
             }
         }
     }
 
     private var emptyState: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("Empty state")
-            HudsonEmptyState(
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("Empty state")
+            HEmptyState(
                 title: "No agents online",
                 subtitle: "Pair your first device to start a session.",
                 icon: "antenna.radiowaves.left.and.right"
@@ -108,27 +108,27 @@ struct PrimitivesTab: View {
     }
 
     private var cardsSection: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonSectionLabel("Cards & insets")
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HSectionLabel("Cards & insets")
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.lg) {
                     Text("alpha.main.mini")
-                        .font(HudsonFont.mono(13, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.ink)
-                    HudsonInset {
-                        VStack(spacing: HudsonSpacing.md) {
-                            HudsonKVRow("status", value: "online", valueColor: HudsonPalette.statusOk)
-                            HudsonKVRow("agent",  value: "claude")
-                            HudsonKVRow("branch", value: "main")
+                        .font(HFont.mono(13, weight: .semibold))
+                        .foregroundStyle(HPalette.ink)
+                    HInset {
+                        VStack(spacing: HSpacing.md) {
+                            HKVRow("status", value: "online", valueColor: HPalette.statusOk)
+                            HKVRow("agent",  value: "claude")
+                            HKVRow("branch", value: "main")
                         }
                     }
-                    HudsonDivider()
+                    HDivider()
                     HStack {
                         Text("Last activity 22:14")
-                            .font(HudsonFont.mono(10))
-                            .foregroundStyle(HudsonPalette.dim)
+                            .font(HFont.mono(10))
+                            .foregroundStyle(HPalette.dim)
                         Spacer()
-                        HudsonBadge("LIVE", tint: HudsonPalette.statusOk, dot: true)
+                        HBadge("LIVE", tint: HPalette.statusOk, dot: true)
                     }
                 }
             }

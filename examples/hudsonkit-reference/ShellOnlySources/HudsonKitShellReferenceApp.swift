@@ -35,8 +35,8 @@ private enum ShellOnlySection: String, CaseIterable, Identifiable {
         }
     }
 
-    var navItem: HudsonNavRailItem {
-        HudsonNavRailItem(id: rawValue, label: title, icon: icon)
+    var navItem: HRailItem {
+        HRailItem(id: rawValue, label: title, icon: icon)
     }
 }
 
@@ -46,7 +46,7 @@ private struct ShellOnlyRootView: View {
     @State private var inspectorCollapsed = false
     @State private var selectedBaseline = "shell"
 
-    private let manifest = HudsonAppManifest(
+    private let manifest = HAppManifest(
         name: "Shell Reference",
         version: "0.1.0",
         tint: .cyan,
@@ -54,8 +54,8 @@ private struct ShellOnlyRootView: View {
     )
 
     var body: some View {
-        HudsonAppShell {
-            HudsonNavigationRail(
+        HAppShell {
+            HNavigationRail(
                 selection: Binding(
                     get: { section.rawValue },
                     set: { next in
@@ -70,11 +70,11 @@ private struct ShellOnlyRootView: View {
                 railFooter
             }
         } trailing: {
-            HudsonInspector(isCollapsed: $inspectorCollapsed) {
+            HInspector(isCollapsed: $inspectorCollapsed) {
                 HStack {
-                    HudsonSectionLabel("Inspector")
+                    HSectionLabel("Inspector")
                     Spacer()
-                    HudsonBadge(section.title.uppercased(), tint: manifest.accent)
+                    HBadge(section.title.uppercased(), tint: manifest.accent)
                 }
             } content: {
                 inspectorContent
@@ -82,7 +82,7 @@ private struct ShellOnlyRootView: View {
         } content: {
             ScrollView {
                 shellContent
-                    .padding(HudsonSpacing.xxl)
+                    .padding(HSpacing.xxl)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         } statusBar: {
@@ -92,42 +92,42 @@ private struct ShellOnlyRootView: View {
     }
 
     private var railFooter: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-            HudsonSectionLabel("Baseline")
-            HudsonBadge("SHELL ONLY", tint: HudsonPalette.statusInfo, dot: true)
+        VStack(alignment: .leading, spacing: HSpacing.md) {
+            HSectionLabel("Baseline")
+            HBadge("SHELL ONLY", tint: HPalette.statusInfo, dot: true)
         }
     }
 
     private var shellContent: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
-            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                HStack(spacing: HudsonSpacing.md) {
-                    HudsonSectionLabel(section.title)
-                    HudsonBadge("NO VOICE", tint: HudsonPalette.statusInfo)
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
+            VStack(alignment: .leading, spacing: HSpacing.md) {
+                HStack(spacing: HSpacing.md) {
+                    HSectionLabel(section.title)
+                    HBadge("NO VOICE", tint: HPalette.statusInfo)
                 }
                 Text("This target links HudsonUI and HudsonShell only. It is used as a clean memory baseline for the reference scaffold.")
-                    .font(HudsonFont.ui(12))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.ui(12))
+                    .foregroundStyle(HPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: 760, alignment: .leading)
             }
 
             ShellBaselineHeroCard()
 
-            HudsonCard(padding: HudsonSpacing.md) {
-                VStack(spacing: HudsonSpacing.md) {
-                    HudsonListRow(
+            HCard(padding: HSpacing.md) {
+                VStack(spacing: HSpacing.md) {
+                    HListRow(
                         title: "Shell",
-                        subtitle: "HudsonAppShell with rail, inspector, content, and status slots",
+                        subtitle: "HAppShell with rail, inspector, content, and status slots",
                         icon: "macwindow",
                         iconTint: .cyan,
                         isSelected: selectedBaseline == "shell"
                     ) {
                         selectedBaseline = "shell"
                     } trailing: {
-                        HudsonBadge("CORE", tint: HudsonPalette.statusInfo)
+                        HBadge("CORE", tint: HPalette.statusInfo)
                     }
-                    HudsonListRow(
+                    HListRow(
                         title: "Surface primitives",
                         subtitle: "Cards, fields, badges, rows, dividers, and empty states",
                         icon: "square.stack.3d.up",
@@ -136,9 +136,9 @@ private struct ShellOnlyRootView: View {
                     ) {
                         selectedBaseline = "primitives"
                     } trailing: {
-                        HudsonBadge("UI", tint: HudsonPalette.muted)
+                        HBadge("UI", tint: HPalette.muted)
                     }
-                    HudsonListRow(
+                    HListRow(
                         title: "Measurement",
                         subtitle: "Compare shell-only and optional module targets",
                         icon: "gauge.with.dots.needle.67percent",
@@ -147,39 +147,39 @@ private struct ShellOnlyRootView: View {
                     ) {
                         selectedBaseline = "measure"
                     } trailing: {
-                        HudsonBadge("BASELINE", tint: HudsonPalette.statusOk)
+                        HBadge("BASELINE", tint: HPalette.statusOk)
                     }
                 }
             }
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 260), spacing: HudsonSpacing.xl)],
+                columns: [GridItem(.adaptive(minimum: 260), spacing: HSpacing.xl)],
                 alignment: .leading,
-                spacing: HudsonSpacing.xl
+                spacing: HSpacing.xl
             ) {
-                BaselineCard(title: "Shell", value: "HudsonAppShell", detail: "Chrome, status bar, inspector, and content slots.")
-                BaselineCard(title: "Navigation", value: "HudsonNavigationRail", detail: "Reference app scaffold without feature modules.")
-                BaselineCard(title: "Surfaces", value: "HudsonCard", detail: "Primitive UI surfaces and typography tokens.")
+                BaselineCard(title: "Shell", value: "HAppShell", detail: "Chrome, status bar, inspector, and content slots.")
+                BaselineCard(title: "Navigation", value: "HNavigationRail", detail: "Reference app scaffold without feature modules.")
+                BaselineCard(title: "Surfaces", value: "HCard", detail: "Primitive UI surfaces and typography tokens.")
             }
         }
     }
 
     private var inspectorContent: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonKVRow("Section", value: section.title)
-                    HudsonKVRow("Shell", value: railExpanded ? "Expanded" : "Compact")
-                    HudsonKVRow("Modules", value: "None", valueColor: HudsonPalette.statusInfo)
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HKVRow("Section", value: section.title)
+                    HKVRow("Shell", value: railExpanded ? "Expanded" : "Compact")
+                    HKVRow("Modules", value: "None", valueColor: HPalette.statusInfo)
                 }
             }
 
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonSectionLabel("Measure", tint: HudsonPalette.muted)
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HSectionLabel("Measure", tint: HPalette.muted)
                     Text("Compare this target against HudsonKitReference to isolate the cost of optional feature modules.")
-                        .font(HudsonFont.ui(12))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.ui(12))
+                        .foregroundStyle(HPalette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -187,20 +187,20 @@ private struct ShellOnlyRootView: View {
     }
 
     private var statusBar: some View {
-        HStack(spacing: HudsonSpacing.xl) {
-            HudsonStatusDot(color: manifest.accent)
+        HStack(spacing: HSpacing.xl) {
+            HStatusDot(color: manifest.accent)
             Text("HUDSONKIT")
-                .font(HudsonFont.mono(10, weight: .bold))
+                .font(HFont.mono(10, weight: .bold))
                 .tracking(1.4)
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
             Text("shell-only reference")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
             Spacer()
-            HudsonBadge(section.title.uppercased(), tint: manifest.accent)
+            HBadge(section.title.uppercased(), tint: manifest.accent)
         }
-        .padding(.horizontal, HudsonSpacing.xxl)
-        .frame(height: HudsonLayout.statusBarHeight)
+        .padding(.horizontal, HSpacing.xxl)
+        .frame(height: HLayout.statusBarHeight)
     }
 }
 
@@ -210,15 +210,15 @@ private struct BaselineCard: View {
     let detail: String
 
     var body: some View {
-        HudsonCard {
-            VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                HudsonSectionLabel(title, tint: HudsonPalette.statusInfo)
+        HCard {
+            VStack(alignment: .leading, spacing: HSpacing.lg) {
+                HSectionLabel(title, tint: HPalette.statusInfo)
                 Text(value)
-                    .font(HudsonFont.mono(13, weight: .semibold))
-                    .foregroundStyle(HudsonPalette.ink)
+                    .font(HFont.mono(13, weight: .semibold))
+                    .foregroundStyle(HPalette.ink)
                 Text(detail)
-                    .font(HudsonFont.ui(12))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.ui(12))
+                    .foregroundStyle(HPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -228,31 +228,31 @@ private struct BaselineCard: View {
 
 private struct ShellBaselineHeroCard: View {
     var body: some View {
-        HudsonCard(padding: 0) {
+        HCard(padding: 0) {
             ZStack(alignment: .topLeading) {
-                HudsonGridBackground(step: 24)
+                HGridBackground(step: 24)
                     .opacity(0.75)
 
-                VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-                    HStack(spacing: HudsonSpacing.md) {
-                        HudsonBadge("SHELL", tint: HudsonPalette.statusInfo, dot: true)
-                        HudsonBadge("NO MODULES", tint: HudsonPalette.muted)
+                VStack(alignment: .leading, spacing: HSpacing.xl) {
+                    HStack(spacing: HSpacing.md) {
+                        HBadge("SHELL", tint: HPalette.statusInfo, dot: true)
+                        HBadge("NO MODULES", tint: HPalette.muted)
                     }
 
                     Text("Clean shell baseline")
-                        .font(HudsonFont.ui(24, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.ink)
+                        .font(HFont.ui(24, weight: .semibold))
+                        .foregroundStyle(HPalette.ink)
 
                     Text("A lightweight target for measuring HudsonUI and HudsonShell before optional feature modules are linked.")
-                        .font(HudsonFont.ui(13))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.ui(13))
+                        .foregroundStyle(HPalette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 560, alignment: .leading)
                 }
-                .padding(HudsonSpacing.huge)
+                .padding(HSpacing.huge)
             }
             .frame(maxWidth: .infinity, minHeight: 180, alignment: .topLeading)
-            .clipShape(RoundedRectangle(cornerRadius: HudsonRadius.card))
+            .clipShape(RoundedRectangle(cornerRadius: HRadius.card))
         }
     }
 }

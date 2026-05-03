@@ -1,17 +1,43 @@
 import SwiftUI
 
-// H-prefixed aliases for callers that prefer compact names while the existing
-// Hudson-prefixed API remains source-compatible.
-public typealias HBadge = HudsonBadge
-public typealias HButton = HudsonButton
-public typealias HButtonStyle = HudsonButtonStyle
-public typealias HCard<Content: View> = HudsonCard<Content>
-public typealias HDivider = HudsonDivider
-public typealias HEmptyState = HudsonEmptyState
-public typealias HField = HudsonField
-public typealias HGridBackground = HudsonGridBackground
-public typealias HInset<Content: View> = HudsonInset<Content>
-public typealias HKeyValueRow = HudsonKVRow
-public typealias HListRow<Trailing: View> = HudsonListRow<Trailing>
-public typealias HSectionLabel = HudsonSectionLabel
-public typealias HStatusDot = HudsonStatusDot
+// Deprecated `Hudson*` aliases retained for source compatibility. New code
+// should use the `H*` canonical names directly.
+
+@available(*, deprecated, renamed: "HBadge")
+public typealias HudsonBadge = HBadge
+
+@available(*, deprecated, renamed: "HButton")
+public typealias HudsonButton = HButton
+
+@available(*, deprecated, renamed: "HButtonStyle")
+public typealias HudsonButtonStyle = HButtonStyle
+
+@available(*, deprecated, renamed: "HCard")
+public typealias HudsonCard<Content: View> = HCard<Content>
+
+@available(*, deprecated, renamed: "HDivider")
+public typealias HudsonDivider = HDivider
+
+@available(*, deprecated, renamed: "HEmptyState")
+public typealias HudsonEmptyState = HEmptyState
+
+@available(*, deprecated, renamed: "HField")
+public typealias HudsonField = HField
+
+@available(*, deprecated, renamed: "HGridBackground")
+public typealias HudsonGridBackground = HGridBackground
+
+@available(*, deprecated, renamed: "HInset")
+public typealias HudsonInset<Content: View> = HInset<Content>
+
+@available(*, deprecated, renamed: "HKVRow")
+public typealias HudsonKVRow = HKVRow
+
+@available(*, deprecated, renamed: "HListRow")
+public typealias HudsonListRow<Trailing: View> = HListRow<Trailing>
+
+@available(*, deprecated, renamed: "HSectionLabel")
+public typealias HudsonSectionLabel = HSectionLabel
+
+@available(*, deprecated, renamed: "HStatusDot")
+public typealias HudsonStatusDot = HStatusDot

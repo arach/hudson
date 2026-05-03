@@ -5,16 +5,16 @@ import HudsonUI
 import HudsonTerminal
 #endif
 
-/// Content the demo mounts inside the `HudsonTerminalDrawer`.
+/// Content the demo mounts inside the `HTerminalDrawer`.
 struct DrawerTerminal: View {
     let host: String
 
     var body: some View {
         #if HUDSON_TERMINAL
-        HudsonTerminalSSHSurface(
+        HTerminalSSHSurface(
             hostLabel: host,
             showsSystemKeyboard: true,
-            appearance: HudsonTerminalAppearance(fontSize: 11)
+            appearance: HTerminalAppearance(fontSize: 11)
         )
         #else
         FakeTerminalContent(host: host)
@@ -28,52 +28,52 @@ private struct FakeTerminalContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 2) {
-                line(prompt: "~", text: "~/dev/lattices", color: HudsonPalette.muted)
-                line(prompt: "$", text: "swift build -c release", color: HudsonPalette.ink)
+                line(prompt: "~", text: "~/dev/lattices", color: HPalette.muted)
+                line(prompt: "$", text: "swift build -c release", color: HPalette.ink)
                 Text("Compiling DeckKit…")
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.muted)
                 Text("Compiling Sources…")
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.muted)
                 Text("Build complete! (3.42s)")
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.statusOk)
-                line(prompt: "$", text: "scout send '@hkbridge ack — looks great'", color: HudsonPalette.ink)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.statusOk)
+                line(prompt: "$", text: "scout send '@hkbridge ack — looks great'", color: HPalette.ink)
                 Text("Routed to: hkbridge.m2-bridge.mini")
-                    .font(HudsonFont.mono(11))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.mono(11))
+                    .foregroundStyle(HPalette.muted)
 
-                HStack(spacing: HudsonSpacing.xs) {
+                HStack(spacing: HSpacing.xs) {
                     Text("$")
-                        .font(HudsonFont.mono(11, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.statusOk)
+                        .font(HFont.mono(11, weight: .semibold))
+                        .foregroundStyle(HPalette.statusOk)
                     Rectangle()
-                        .fill(HudsonPalette.statusOk)
+                        .fill(HPalette.statusOk)
                         .frame(width: 7, height: 13)
                 }
                 .padding(.top, 2)
             }
-            .padding(HudsonSpacing.xl)
+            .padding(HSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(HudsonPalette.chrome)
+        .background(HPalette.chrome)
         .overlay(alignment: .topTrailing) {
             Text(host)
-                .font(HudsonFont.mono(9))
+                .font(HFont.mono(9))
                 .tracking(0.8)
-                .foregroundStyle(HudsonPalette.dim)
-                .padding(HudsonSpacing.md)
+                .foregroundStyle(HPalette.dim)
+                .padding(HSpacing.md)
         }
     }
 
     private func line(prompt: String, text: String, color: Color) -> some View {
-        HStack(spacing: HudsonSpacing.xs) {
+        HStack(spacing: HSpacing.xs) {
             Text(prompt)
-                .font(HudsonFont.mono(11))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(11))
+                .foregroundStyle(HPalette.muted)
             Text(text)
-                .font(HudsonFont.mono(11))
+                .font(HFont.mono(11))
                 .foregroundStyle(color)
         }
     }
