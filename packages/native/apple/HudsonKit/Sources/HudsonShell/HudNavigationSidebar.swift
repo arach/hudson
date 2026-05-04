@@ -167,6 +167,7 @@ public struct HudNavigationSidebar<
         .padding(inset)
         .background {
             if isLiquid {
+                #if os(macOS)
                 HudVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
                     .opacity(glass.translucency)
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -176,6 +177,17 @@ public struct HudNavigationSidebar<
                     )
                     .padding(inset)
                     .allowsHitTesting(false)
+                #else
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(.regularMaterial)
+                    .opacity(glass.translucency)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(strokeColor.opacity(strokeOpacity), lineWidth: 0.5)
+                    )
+                    .padding(inset)
+                    .allowsHitTesting(false)
+                #endif
             } else {
                 SidebarSurface(style: style.surface)
             }
