@@ -142,7 +142,12 @@ public struct HNavigationSidebar<
     // MARK: Body
 
     public var body: some View {
-        VStack(spacing: 0) {
+        let isLiquid = (style.surface == .liquidGlass)
+        let inset: CGFloat = isLiquid ? HSidebarLayout.liquidGlassInset : 0
+        let radius: CGFloat = isLiquid ? HSidebarLayout.liquidGlassCornerRadius : 0
+        let intrinsic = HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth)
+
+        return VStack(spacing: 0) {
             sidebarBody
             Spacer(minLength: 0)
             footerBlock
@@ -151,11 +156,30 @@ public struct HNavigationSidebar<
         // The donor relied on a NavigationSplitView column to clip; standalone hosts need
         // the sidebar to own its width. Hosts that want different sizing can wrap in their
         // own `.frame(width:)`.
-        .frame(width: HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth), alignment: .leading)
+        .frame(width: intrinsic, alignment: .leading)
         .frame(maxHeight: .infinity)
-        .background(SidebarSurface(style: style.surface))
+        // In .liquidGlass mode, push the surface in by `inset` so its rounded edge floats
+        // against the window background. .padding lives OUTSIDE .frame so the inner
+        // content keeps its rail/label geometry; only the outer (host-facing) bounds grow.
+        .padding(inset)
+        .background {
+            if isLiquid {
+                HVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .padding(inset)
+                    .allowsHitTesting(false)
+            } else {
+                SidebarSurface(style: style.surface)
+            }
+        }
         .overlay(alignment: .trailing) {
-            SidebarTrailingRule(style: style.surface)
+            if !isLiquid {
+                SidebarTrailingRule(style: style.surface)
+            }
         }
     }
 
@@ -174,20 +198,19 @@ public struct HNavigationSidebar<
 
     // MARK: Footer
 
+    /// Footer slot. Spans the sidebar's full intrinsic width so consumers can
+    /// fit picker controls, account chips, etc. when expanded — and naturally
+    /// clips to rail width when compact (the parent's outer frame does the clip).
+    /// Consumers wanting a rail-only icon can constrain themselves with
+    /// `.frame(width: HSidebarLayout.railWidth, alignment: .leading)`.
     @ViewBuilder
     private var footerBlock: some View {
         if Footer.self != EmptyView.self {
             VStack(spacing: 0) {
-                // Subtle separator — uses HHairline rather than a hardcoded literal.
                 HDivider(color: HHairline.subtle)
-
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(spacing: 0) { footer }
-                        .frame(width: HSidebarLayout.railWidth)
-                    Spacer(minLength: 0)
-                }
-                .frame(height: HSidebarLayout.rowHeight)
-                .padding(.vertical, HSpacing.xs)
+                footer
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, HSpacing.xs)
             }
         }
     }
@@ -492,6 +515,11 @@ private struct SidebarSurface: View {
             HPalette.surface
                 .opacity(0.6)
                 .allowsHitTesting(false)
+
+        case .liquidGlass:
+            // Rendered directly in HNavigationSidebar.body so the inset/round
+            // floating treatment can size against the outer bounds.
+            EmptyView()
         }
     }
 }
@@ -520,6 +548,10 @@ private struct SidebarTrailingRule: View {
             Rectangle()
                 .fill(HHairline.standard)
                 .frame(width: 0.5)
+
+        case .liquidGlass:
+            // No trailing rule — the rounded floating surface defines its own edge.
+            EmptyView()
         }
     }
 }
