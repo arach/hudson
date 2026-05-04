@@ -5,7 +5,7 @@ import HudsonShell
 #if HUDSON_TERMINAL
 import HudsonTerminal
 
-private typealias DemoTerminalSessionState = HTerminalSessionState
+private typealias DemoTerminalSessionState = HudTerminalSessionState
 #else
 private struct DemoTerminalSessionState {
     var isConnected: Bool
@@ -16,13 +16,13 @@ private struct DemoTerminalSessionState {
 }
 #endif
 
-/// Floating "Terminal app" — a self-contained HAppShell whose content slot
+/// Floating "Terminal app" — a self-contained HudAppShell whose content slot
 /// is a terminal surface. Distinct from the chrome-level
-/// `HTerminalDrawer` (which attaches to the bottom of any host app):
+/// `HudTerminalDrawer` (which attaches to the bottom of any host app):
 /// this one *is* the app. It carries its own header (path / target), its own
 /// status bar (rows×cols, connection state), and no rail/inspector chrome.
 ///
-/// Mounted inside `HTakeover` from the demo so it floats above the
+/// Mounted inside `HudTakeover` from the demo so it floats above the
 /// LATTICES app shell, but the structure is identical to a top-level app and
 /// can be hosted in a window, a workspace, or a dedicated route.
 struct TerminalApp: View {
@@ -37,7 +37,7 @@ struct TerminalApp: View {
     @Environment(\.hudsonAppManifest) private var manifest
 
     var body: some View {
-        HAppShell {
+        HudAppShell {
             EmptyView()
         } trailing: {
             EmptyView()
@@ -65,93 +65,93 @@ struct TerminalApp: View {
     // takeover's own header)
 
     private var terminalHeader: some View {
-        HStack(spacing: HSpacing.lg) {
+        HStack(spacing: HudSpacing.lg) {
             Image(systemName: "terminal")
                 .font(.system(size: 13, weight: .medium))
                 .foregroundStyle(manifest.accent)
                 .frame(width: 28, height: 28)
-                .background(RoundedRectangle(cornerRadius: HRadius.standard).fill(manifest.accent.opacity(0.14)))
+                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(manifest.accent.opacity(0.14)))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("zsh · \(target.name)")
-                    .font(HFont.mono(12, weight: .semibold))
-                    .foregroundStyle(HPalette.ink)
+                    .font(HudFont.mono(12, weight: .semibold))
+                    .foregroundStyle(HudPalette.ink)
                 Text("~/dev/lattices · \(target.host)")
-                    .font(HFont.mono(10))
-                    .foregroundStyle(HPalette.muted)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(HudPalette.muted)
             }
 
             Spacer()
 
-            HBadge("\(rows)×\(cols)", tint: HPalette.muted)
-            HBadge(
+            HudBadge("\(rows)×\(cols)", tint: HudPalette.muted)
+            HudBadge(
                 connected ? "LIVE" : "DEAD",
-                tint: connected ? HPalette.statusOk : HPalette.statusError,
+                tint: connected ? HudPalette.statusOk : HudPalette.statusError,
                 dot: true
             )
         }
-        .padding(.horizontal, HSpacing.xxl)
-        .frame(height: HLayout.navHeight)
-        .background(HPalette.chrome)
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.navHeight)
+        .background(HudPalette.chrome)
     }
 
     // MARK: Status bar
 
     private var terminalStatusBar: some View {
-        HStack(spacing: HSpacing.xl) {
-            HStatusDot(
-                color: connected ? HPalette.statusOk : HPalette.statusError,
+        HStack(spacing: HudSpacing.xl) {
+            HudStatusDot(
+                color: connected ? HudPalette.statusOk : HudPalette.statusError,
                 size: 6,
                 pulses: connected
             )
             Text(connected ? "READY" : "DISCONNECTED")
-                .font(HFont.mono(9, weight: .bold))
+                .font(HudFont.mono(9, weight: .bold))
                 .tracking(1.0)
-                .foregroundStyle(connected ? HPalette.statusOk : HPalette.statusError)
+                .foregroundStyle(connected ? HudPalette.statusOk : HudPalette.statusError)
 
             sep
             Text(statusMessage)
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.muted)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.muted)
             sep
             Text("\(rows)×\(cols)")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.ink)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.ink)
             sep
             Text("zsh 5.9")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.muted)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.muted)
 
             Spacer()
 
             Button(action: onClose) {
-                HStack(spacing: HSpacing.xs) {
+                HStack(spacing: HudSpacing.xs) {
                     Image(systemName: "xmark")
                         .font(.system(size: 9, weight: .semibold))
                     Text("close")
-                        .font(HFont.mono(9))
+                        .font(HudFont.mono(9))
                         .tracking(0.6)
                 }
-                .foregroundStyle(HPalette.dim)
-                .padding(.horizontal, HSpacing.md)
+                .foregroundStyle(HudPalette.dim)
+                .padding(.horizontal, HudSpacing.md)
                 .padding(.vertical, 2)
                 .overlay(
-                    RoundedRectangle(cornerRadius: HRadius.tight)
-                        .stroke(HHairline.standard, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: HudRadius.tight)
+                        .stroke(HudHairline.standard, lineWidth: 1)
                 )
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Close terminal")
         }
-        .padding(.horizontal, HSpacing.xxl)
-        .frame(height: HLayout.statusBarHeight)
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.statusBarHeight)
     }
 
     private var sep: some View {
         Text("·")
-            .font(HFont.mono(10))
-            .foregroundStyle(HPalette.dim)
+            .font(HudFont.mono(10))
+            .foregroundStyle(HudPalette.dim)
     }
 }
 
@@ -163,10 +163,10 @@ private struct TerminalSurface: View {
 
     var body: some View {
         #if HUDSON_TERMINAL
-        HTerminalSSHSurface(
+        HudTerminalSSHSurface(
             hostLabel: host,
             showsSystemKeyboard: true,
-            appearance: HTerminalAppearance(fontSize: 12),
+            appearance: HudTerminalAppearance(fontSize: 12),
             onStateChange: onStateChange
         )
         #else
@@ -182,8 +182,8 @@ private struct FakeTerminalSurface: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 4) {
-                line("Last login: Tue Apr 28 09:14:22 on ttys001", color: HPalette.dim)
-                line("\(host)", color: HPalette.muted)
+                line("Last login: Tue Apr 28 09:14:22 on ttys001", color: HudPalette.dim)
+                line("\(host)", color: HudPalette.muted)
                 Spacer().frame(height: 8)
 
                 prompt
@@ -192,7 +192,7 @@ private struct FakeTerminalSurface: View {
                 output("Compiling DeckKit (4 sources)")
                 output("Compiling LatticesUI (12 sources)")
                 output("Compiling Sources (3 sources)")
-                output("Build complete! (3.42s)", color: HPalette.statusOk)
+                output("Build complete! (3.42s)", color: HudPalette.statusOk)
 
                 Spacer().frame(height: 4)
 
@@ -213,58 +213,58 @@ private struct FakeTerminalSurface: View {
                 output("ec97e8c 💄 HudsonKit demo — alignment pass: equal-height cards")
                 output("cc648e9 ✨ HudsonKit demo — Shell tab documenting M3 chrome primitives")
                 output("5adc33e 💄 HudsonKit demo — status-bar context + inspector reflects selection")
-                output("09c3dd8 ✨ HudsonKit M3d — HCommandPalette overlay surface")
+                output("09c3dd8 ✨ HudsonKit M3d — HudCommandPalette overlay surface")
 
                 Spacer().frame(height: 4)
 
-                HStack(spacing: HSpacing.xs) {
+                HStack(spacing: HudSpacing.xs) {
                     Text("$")
-                        .font(HFont.mono(11, weight: .semibold))
-                        .foregroundStyle(HPalette.statusOk)
+                        .font(HudFont.mono(11, weight: .semibold))
+                        .foregroundStyle(HudPalette.statusOk)
                     Rectangle()
-                        .fill(HPalette.statusOk)
+                        .fill(HudPalette.statusOk)
                         .frame(width: 7, height: 14)
                         .opacity(blink ? 0 : 1)
                         .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: blink)
                 }
             }
-            .padding(.horizontal, HSpacing.xxl)
-            .padding(.vertical, HSpacing.xl)
+            .padding(.horizontal, HudSpacing.xxl)
+            .padding(.vertical, HudSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
-        .background(HPalette.chrome)
+        .background(HudPalette.chrome)
         .onAppear { blink = true }
     }
 
     private var prompt: some View {
-        HStack(spacing: HSpacing.xs) {
+        HStack(spacing: HudSpacing.xs) {
             Text("➜")
-                .font(HFont.mono(11, weight: .semibold))
-                .foregroundStyle(HPalette.statusOk)
+                .font(HudFont.mono(11, weight: .semibold))
+                .foregroundStyle(HudPalette.statusOk)
             Text("lattices")
-                .font(HFont.mono(11, weight: .semibold))
-                .foregroundStyle(HTint.cyan.color)
+                .font(HudFont.mono(11, weight: .semibold))
+                .foregroundStyle(HudTint.cyan.color)
             Text("git:(\u{e0a0}m3-shell)")
-                .font(HFont.mono(11))
-                .foregroundStyle(HTint.amber.color)
+                .font(HudFont.mono(11))
+                .foregroundStyle(HudTint.amber.color)
         }
     }
 
     private func lineMono(_ text: String) -> some View {
         Text(text)
-            .font(HFont.mono(11))
-            .foregroundStyle(HPalette.ink)
+            .font(HudFont.mono(11))
+            .foregroundStyle(HudPalette.ink)
     }
 
-    private func line(_ text: String, color: Color = HPalette.ink) -> some View {
+    private func line(_ text: String, color: Color = HudPalette.ink) -> some View {
         Text(text)
-            .font(HFont.mono(11))
+            .font(HudFont.mono(11))
             .foregroundStyle(color)
     }
 
-    private func output(_ text: String, color: Color = HPalette.muted) -> some View {
+    private func output(_ text: String, color: Color = HudPalette.muted) -> some View {
         Text(text)
-            .font(HFont.mono(11))
+            .font(HudFont.mono(11))
             .foregroundStyle(color)
     }
 }

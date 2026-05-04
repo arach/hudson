@@ -2,7 +2,7 @@ import SwiftUI
 import HudsonUI
 import HudsonShell
 
-/// Detail surface mounted in `HCanvas` when a target is selected from the
+/// Detail surface mounted in `HudCanvas` when a target is selected from the
 /// dashboard. Shows a hero target identity, telemetry strip, and a few panels
 /// (focus, agent timeline, telemetry KVs) on the canvas grid.
 struct TargetCanvas: View {
@@ -13,17 +13,17 @@ struct TargetCanvas: View {
     @Environment(\.hudsonAppManifest) private var manifest
 
     var body: some View {
-        HCanvas {
+        HudCanvas {
             canvasHeader
         } content: {
-            VStack(alignment: .leading, spacing: HSpacing.huge) {
+            VStack(alignment: .leading, spacing: HudSpacing.huge) {
                 hero
                 telemetryStrip
 
                 LazyVGrid(
-                    columns: [GridItem(.adaptive(minimum: 280), spacing: HSpacing.xl)],
+                    columns: [GridItem(.adaptive(minimum: 280), spacing: HudSpacing.xl)],
                     alignment: .leading,
-                    spacing: HSpacing.xl
+                    spacing: HudSpacing.xl
                 ) {
                     focusPanel
                     agentPanel
@@ -36,32 +36,32 @@ struct TargetCanvas: View {
     // MARK: Header
 
     private var canvasHeader: some View {
-        HStack(spacing: HSpacing.lg) {
+        HStack(spacing: HudSpacing.lg) {
             Button(action: onClose) {
                 Image(systemName: "chevron.left")
                     .font(.system(size: 13, weight: .semibold))
-                    .foregroundStyle(HPalette.muted)
+                    .foregroundStyle(HudPalette.muted)
                     .frame(width: 28, height: 28)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .accessibilityLabel("Back to fleet")
 
-            HSectionLabel("Fleet", tint: HPalette.muted)
+            HudSectionLabel("Fleet", tint: HudPalette.muted)
             Text("/")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.dim)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.dim)
             Text(target.name)
-                .font(HFont.mono(11, weight: .semibold))
-                .foregroundStyle(HPalette.ink)
+                .font(HudFont.mono(11, weight: .semibold))
+                .foregroundStyle(HudPalette.ink)
 
             Spacer()
 
-            HBadge(target.statusLabel, tint: target.statusColor, dot: true)
+            HudBadge(target.statusLabel, tint: target.statusColor, dot: true)
             if let latency = target.latency {
                 Text(latency)
-                    .font(HFont.mono(10))
-                    .foregroundStyle(HPalette.dim)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(HudPalette.dim)
             }
         }
     }
@@ -69,39 +69,39 @@ struct TargetCanvas: View {
     // MARK: Hero
 
     private var hero: some View {
-        HStack(alignment: .top, spacing: HSpacing.xxl) {
+        HStack(alignment: .top, spacing: HudSpacing.xxl) {
             Image(systemName: target.icon)
                 .font(.system(size: 32, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
                 .frame(width: 72, height: 72)
-                .background(RoundedRectangle(cornerRadius: HRadius.card).fill(target.iconTint.color.opacity(0.14)))
-                .overlay(RoundedRectangle(cornerRadius: HRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(target.iconTint.color.opacity(0.14)))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: HSpacing.sm) {
+            VStack(alignment: .leading, spacing: HudSpacing.sm) {
                 Text(target.name)
-                    .font(HFont.mono(22, weight: .bold))
-                    .foregroundStyle(HPalette.ink)
+                    .font(HudFont.mono(22, weight: .bold))
+                    .foregroundStyle(HudPalette.ink)
                 Text(target.host)
-                    .font(HFont.mono(12))
-                    .foregroundStyle(HPalette.muted)
+                    .font(HudFont.mono(12))
+                    .foregroundStyle(HudPalette.muted)
                 if let scene = target.scene {
-                    HStack(spacing: HSpacing.md) {
+                    HStack(spacing: HudSpacing.md) {
                         Image(systemName: "rectangle.grid.2x2")
                             .font(.system(size: 10))
                             .foregroundStyle(manifest.accent)
                         Text(scene)
-                            .font(HFont.ui(13, weight: .medium))
-                            .foregroundStyle(HPalette.ink)
+                            .font(HudFont.ui(13, weight: .medium))
+                            .foregroundStyle(HudPalette.ink)
                     }
-                    .padding(.top, HSpacing.xs)
+                    .padding(.top, HudSpacing.xs)
                 }
             }
 
             Spacer()
 
-            VStack(alignment: .trailing, spacing: HSpacing.sm) {
-                HButton("CONNECT", icon: "bolt", style: .primary(target.iconTint), action: onConnect)
-                HButton("RECONFIGURE", style: .secondary) {}
+            VStack(alignment: .trailing, spacing: HudSpacing.sm) {
+                HudButton("CONNECT", icon: "bolt", style: .primary(target.iconTint), action: onConnect)
+                HudButton("RECONFIGURE", style: .secondary) {}
             }
         }
     }
@@ -109,36 +109,36 @@ struct TargetCanvas: View {
     // MARK: Telemetry strip
 
     private var telemetryStrip: some View {
-        HCard(padding: 0) {
+        HudCard(padding: 0) {
             HStack(spacing: 0) {
                 telemetryCell(label: "Status",  value: target.statusLabel.capitalized, valueTint: target.statusColor)
                 divider
-                telemetryCell(label: "Latency", value: target.latency ?? "—",          valueTint: HPalette.ink)
+                telemetryCell(label: "Latency", value: target.latency ?? "—",          valueTint: HudPalette.ink)
                 divider
                 telemetryCell(label: "Agent",   value: target.agentStatus,             valueTint: target.agentTint.color)
                 divider
-                telemetryCell(label: "Last",    value: target.lastTime ?? "—",         valueTint: HPalette.muted)
+                telemetryCell(label: "Last",    value: target.lastTime ?? "—",         valueTint: HudPalette.muted)
             }
         }
     }
 
     private func telemetryCell(label: String, value: String, valueTint: Color) -> some View {
-        VStack(alignment: .leading, spacing: HSpacing.xs) {
+        VStack(alignment: .leading, spacing: HudSpacing.xs) {
             Text(label.uppercased())
-                .font(HFont.mono(9))
+                .font(HudFont.mono(9))
                 .tracking(1.0)
-                .foregroundStyle(HPalette.dim)
+                .foregroundStyle(HudPalette.dim)
             Text(value)
-                .font(HFont.mono(14, weight: .semibold))
+                .font(HudFont.mono(14, weight: .semibold))
                 .foregroundStyle(valueTint)
         }
-        .padding(HSpacing.xl)
+        .padding(HudSpacing.xl)
         .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private var divider: some View {
         Rectangle()
-            .fill(HHairline.standard)
+            .fill(HudHairline.standard)
             .frame(width: 1)
             .frame(maxHeight: .infinity)
     }
@@ -146,17 +146,17 @@ struct TargetCanvas: View {
     // MARK: Panels
 
     private var focusPanel: some View {
-        HCard {
-            VStack(alignment: .leading, spacing: HSpacing.md) {
-                HSectionLabel("Focus")
+        HudCard {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                HudSectionLabel("Focus")
                 if let app = target.focusApp {
-                    HKVRow("app", value: app)
+                    HudKVRow("app", value: app)
                 }
                 if let file = target.focusFile {
-                    HKVRow("file", value: file)
+                    HudKVRow("file", value: file)
                 }
                 if let action = target.lastAction, let time = target.lastTime {
-                    HKVRow("last", value: "\(action) · \(time)")
+                    HudKVRow("last", value: "\(action) · \(time)")
                 }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -165,22 +165,22 @@ struct TargetCanvas: View {
     }
 
     private var agentPanel: some View {
-        HCard {
-            VStack(alignment: .leading, spacing: HSpacing.md) {
+        HudCard {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HStack {
-                    HSectionLabel("Agent")
+                    HudSectionLabel("Agent")
                     Spacer()
-                    HStatusDot(
+                    HudStatusDot(
                         color: target.agentTint.color,
                         size: 6,
                         pulses: target.agentStatus == "running"
                     )
                 }
-                HKVRow("status", value: target.agentStatus)
+                HudKVRow("status", value: target.agentStatus)
                 if let activity = target.agentActivity {
-                    HKVRow("activity", value: activity)
+                    HudKVRow("activity", value: activity)
                 }
-                HKVRow("tint", value: target.agentTint.rawValue)
+                HudKVRow("tint", value: target.agentTint.rawValue)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
@@ -188,13 +188,13 @@ struct TargetCanvas: View {
     }
 
     private var telemetryPanel: some View {
-        HCard {
-            VStack(alignment: .leading, spacing: HSpacing.md) {
-                HSectionLabel("Telemetry")
-                HKVRow("cpu",      value: "51%")
-                HKVRow("mem",      value: "98%")
-                HKVRow("uptime",   value: "19w")
-                HKVRow("temp",     value: "45°C", valueColor: HTint.amber.color)
+        HudCard {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                HudSectionLabel("Telemetry")
+                HudKVRow("cpu",      value: "51%")
+                HudKVRow("mem",      value: "98%")
+                HudKVRow("uptime",   value: "19w")
+                HudKVRow("temp",     value: "45°C", valueColor: HudTint.amber.color)
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
