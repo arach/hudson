@@ -47,6 +47,7 @@ struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
+    @State private var sidebarSurface: HSidebarSurfaceStyle = .base
     @State private var inspectorCollapsed: Bool = false
     @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
@@ -141,6 +142,7 @@ struct ContentView: View {
             statusBar
         }
         .hudsonAppManifest(variant.manifest)
+        .environment(\.hudsonSidebarStyle, HSidebarStyle(surface: sidebarSurface))
         .hudsonTakeover(isPresented: $takeoverOpen) {
             HTakeover(isPresented: $takeoverOpen) {
                 takeoverHeader
@@ -170,6 +172,18 @@ struct ContentView: View {
                     Image(systemName: "sidebar.left")
                 }
                 .help(navExpanded ? "Collapse navigation" : "Expand navigation")
+            }
+            ToolbarItem(placement: .primaryAction) {
+                Menu {
+                    Picker("Sidebar surface", selection: $sidebarSurface) {
+                        ForEach(HSidebarSurfaceStyle.allCases) { style in
+                            Text(style.label).tag(style)
+                        }
+                    }
+                } label: {
+                    Image(systemName: "rectangle.lefthalf.inset.filled")
+                }
+                .help("Sidebar surface style")
             }
         }
     }
@@ -337,16 +351,39 @@ struct ContentView: View {
         }
     }
 
-    // MARK: Variant picker (rail footer)
+    // MARK: Variant picker (sidebar footer)
 
+    @ViewBuilder
     private var variantPicker: some View {
-        VStack(alignment: .leading, spacing: HSpacing.md) {
-            HSectionLabel("Variant")
-            Picker("Variant", selection: $variant) {
-                ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
+        if navExpanded {
+            VStack(alignment: .leading, spacing: HSpacing.xs) {
+                HSectionLabel("Variant")
+                Picker("Variant", selection: $variant) {
+                    ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
+                }
+                .pickerStyle(.segmented)
+                .controlSize(.small)
             }
-            .pickerStyle(.segmented)
+            .padding(.horizontal, HSpacing.md)
+            .padding(.vertical, HSpacing.xs)
+        } else {
+            // Rail-only: a single icon button that cycles through variants.
+            Button(action: cycleVariant) {
+                Image(systemName: "paintpalette")
+                    .font(.system(size: 13, weight: .medium))
+                    .foregroundStyle(variant.manifest.accent)
+                    .frame(width: HSidebarLayout.railWidth, height: HSidebarLayout.rowHeight)
+                    .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .help("Cycle variant")
         }
+    }
+
+    private func cycleVariant() {
+        let all = DemoVariant.allCases
+        guard let i = all.firstIndex(of: variant) else { return }
+        variant = all[(i + 1) % all.count]
     }
 
     // MARK: Inspector content

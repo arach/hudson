@@ -83,6 +83,7 @@ public struct HNavigationSidebar<
 
     @Environment(\.hudsonAppManifest) private var manifest
     @Environment(\.hudsonSidebarStyle) private var style
+    @Environment(\.hudsonSidebarMotionMode) private var motionMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
@@ -116,7 +117,7 @@ public struct HNavigationSidebar<
 
     /// Opacity for label-column content.
     private var labelOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return 1 - progress
         case .quietTransition, .snapEverything:  return labelsSettled ? 1 : 0
         }
@@ -124,17 +125,15 @@ public struct HNavigationSidebar<
 
     /// Opacity for the expanded-mode selection underlay.
     private var underlayOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return max(0, 1 - progress * 2)
         case .quietTransition, .snapEverything:  return labelsSettled ? 1 : 0
         }
     }
 
     /// Opacity for the compact-mode bottom accent bar.
-    /// Defined here (not on a generic struct) because Swift forbids stored statics
-    /// on generic types.
     private var compactBarOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return progress
         case .quietTransition, .snapEverything:  return compactSettled ? 1 : 0
         }
@@ -143,7 +142,12 @@ public struct HNavigationSidebar<
     // MARK: Body
 
     public var body: some View {
-        VStack(spacing: 0) {
+        let isLiquid = (style.surface == .liquidGlass)
+        let inset: CGFloat = isLiquid ? HSidebarLayout.liquidGlassInset : 0
+        let radius: CGFloat = isLiquid ? HSidebarLayout.liquidGlassCornerRadius : 0
+        let intrinsic = HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth)
+
+        return VStack(spacing: 0) {
             sidebarBody
             Spacer(minLength: 0)
             footerBlock
@@ -152,11 +156,30 @@ public struct HNavigationSidebar<
         // The donor relied on a NavigationSplitView column to clip; standalone hosts need
         // the sidebar to own its width. Hosts that want different sizing can wrap in their
         // own `.frame(width:)`.
-        .frame(width: HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth), alignment: .leading)
+        .frame(width: intrinsic, alignment: .leading)
         .frame(maxHeight: .infinity)
-        .background(SidebarSurface(style: style.surface))
+        // In .liquidGlass mode, push the surface in by `inset` so its rounded edge floats
+        // against the window background. .padding lives OUTSIDE .frame so the inner
+        // content keeps its rail/label geometry; only the outer (host-facing) bounds grow.
+        .padding(inset)
+        .background {
+            if isLiquid {
+                HVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+                    .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                    )
+                    .padding(inset)
+                    .allowsHitTesting(false)
+            } else {
+                SidebarSurface(style: style.surface)
+            }
+        }
         .overlay(alignment: .trailing) {
-            SidebarTrailingRule(style: style.surface)
+            if !isLiquid {
+                SidebarTrailingRule(style: style.surface)
+            }
         }
     }
 
@@ -175,20 +198,19 @@ public struct HNavigationSidebar<
 
     // MARK: Footer
 
+    /// Footer slot. Spans the sidebar's full intrinsic width so consumers can
+    /// fit picker controls, account chips, etc. when expanded — and naturally
+    /// clips to rail width when compact (the parent's outer frame does the clip).
+    /// Consumers wanting a rail-only icon can constrain themselves with
+    /// `.frame(width: HSidebarLayout.railWidth, alignment: .leading)`.
     @ViewBuilder
     private var footerBlock: some View {
         if Footer.self != EmptyView.self {
             VStack(spacing: 0) {
-                // Subtle separator — uses HHairline rather than a hardcoded literal.
                 HDivider(color: HHairline.subtle)
-
-                HStack(alignment: .top, spacing: 0) {
-                    VStack(spacing: 0) { footer }
-                        .frame(width: HSidebarLayout.railWidth)
-                    Spacer(minLength: 0)
-                }
-                .frame(height: HSidebarLayout.rowHeight)
-                .padding(.vertical, HSpacing.xs)
+                footer
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.vertical, HSpacing.xs)
             }
         }
     }
@@ -213,7 +235,7 @@ public struct HNavigationSidebar<
     private func railCell(for entry: HSidebarEntry<Selection>) -> some View {
         switch entry {
         case .item(let item):
-            SidebarRailIcon(
+            HSidebarRailIcon(
                 item: item,
                 isSelected: selection == item.id,
                 accent: resolvedAccent,
@@ -449,177 +471,6 @@ extension HNavigationSidebar where Footer == EmptyView {
     }
 }
 
-// MARK: - Rail icon
-
-/// Icon cell for the fixed rail column. Hover/focus/selection states mirror
-/// `HRailIconButton` in HNavigationRail but adapted for the
-/// sidebar's indicator styles and compact-mode accent bar.
-private struct SidebarRailIcon<Selection: Hashable>: View {
-    let item: HSidebarItem<Selection>
-    let isSelected: Bool
-    let accent: Color
-    let progress: Double
-    let compactBarOpacity: Double
-    let style: HSidebarStyle
-    let reduceMotion: Bool
-    let onTap: () -> Void
-
-    @State private var isHovering = false
-    @State private var isPressing = false
-    @State private var breathPhase: CGFloat = 1.0
-    @FocusState private var isFocused: Bool
-
-    private var glyphName: String {
-        if isSelected, let s = item.selectedIcon { return s }
-        return item.icon
-    }
-
-    private var iconColor: Color {
-        if isSelected  { return accent }
-        if isHovering  { return HPalette.ink }
-        return HPalette.muted
-    }
-
-    private var iconScale: CGFloat {
-        switch style.icon {
-        case .kinetic:
-            let breath = isSelected ? breathPhase : 1.0
-            let lift   = (isHovering && !isSelected) ? 1.08 : 1.0
-            let press  = isPressing ? 0.94 : 1.0
-            return breath * lift * press
-        case .glass:
-            return (isHovering && !isSelected) ? 1.04 : 1.0
-        default:
-            return 1.0
-        }
-    }
-
-    private var hoverAnimation: Animation {
-        switch style.icon {
-        case .kinetic:   return .spring(response: 0.28, dampingFraction: 0.72)
-        case .glass:     return .spring(response: 0.22, dampingFraction: 0.85)
-        case .editorial: return .easeInOut(duration: 0.16)
-        case .base:      return .easeOut(duration: 0.12)
-        }
-    }
-
-    var body: some View {
-        Image(systemName: glyphName)
-            .font(.system(size: HSidebarLayout.iconSize))
-            .foregroundStyle(iconColor)
-            .frame(width: HSidebarLayout.railWidth, height: HSidebarLayout.rowHeight)
-            .background { hoverBackground }
-            .scaleEffect(iconScale)
-            .animation(reduceMotion ? nil : hoverAnimation, value: isHovering)
-            .animation(
-                reduceMotion ? nil : .spring(response: 0.18, dampingFraction: 0.65),
-                value: isPressing
-            )
-            .overlay(alignment: .bottom) {
-                // Compact-mode accent bar — centered in rail, shown at bottom of row.
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(accent)
-                    .frame(
-                        width: HSidebarLayout.compactAccentBarWidth,
-                        height: HSidebarLayout.compactAccentBarHeight
-                    )
-                    .opacity(isSelected ? compactBarOpacity : 0)
-            }
-            .overlay(
-                // Focus ring — uses HFocus tokens for consistency with other Hudson controls.
-                RoundedRectangle(cornerRadius: HRadius.standard)
-                    .stroke(isFocused ? HFocus.ring : Color.clear, lineWidth: HFocus.ringWidth)
-            )
-            .contentShape(Rectangle())
-            .onTapGesture { onTap() }
-            .simultaneousGesture(
-                style.icon == .kinetic
-                    ? DragGesture(minimumDistance: 0)
-                        .onChanged { _ in isPressing = true }
-                        .onEnded   { _ in isPressing = false }
-                    : nil
-            )
-            .focusable(true)
-            .focused($isFocused)
-            .onHover { isHovering = $0 }
-            .onContinuousHover { phase in
-                switch phase {
-                case .active: isHovering = true
-                case .ended:  isHovering = false
-                }
-                // TODO: HSidebarTooltip — compact-mode tooltips land in a follow-up
-            }
-            .onChange(of: isSelected) { _, nowSelected in
-                guard style.icon == .kinetic else { return }
-                if nowSelected {
-                    breathPhase = 1.10
-                    if !reduceMotion {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.55)) {
-                            breathPhase = 1.0
-                        }
-                        startBreathing()
-                    } else {
-                        breathPhase = 1.0
-                    }
-                } else {
-                    breathPhase = 1.0
-                }
-            }
-            .onAppear {
-                if style.icon == .kinetic, isSelected, !reduceMotion { startBreathing() }
-            }
-            .accessibilityLabel(item.tooltipLabel ?? item.title)
-            .accessibilityValue(isSelected ? "Selected" : "Not selected")
-            .accessibilityAddTraits(isSelected ? .isSelected : [])
-    }
-
-    @ViewBuilder
-    private var hoverBackground: some View {
-        if isHovering && !isSelected {
-            switch style.icon {
-            case .editorial:
-                EmptyView()
-            case .glass:
-                ZStack {
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(
-                            RadialGradient(
-                                colors: [Color.white.opacity(0.10), Color.white.opacity(0)],
-                                center: .center, startRadius: 0, endRadius: 18
-                            )
-                        )
-                        .blur(radius: 2)
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
-                }
-                .padding(.horizontal, HSpacing.xs)
-                .padding(.vertical, HSpacing.xxs + 1)
-                .transition(.opacity.combined(with: .scale(scale: 0.94)))
-
-            case .kinetic:
-                RoundedRectangle(cornerRadius: 7)
-                    .fill(HSurface.hover)
-                    .padding(.horizontal, HSpacing.xs)
-                    .padding(.vertical, HSpacing.xxs + 1)
-
-            case .base:
-                RoundedRectangle(cornerRadius: HRadius.standard - 1)
-                    .fill(HSurface.inset)
-                    .padding(.horizontal, HSpacing.xs)
-                    .padding(.vertical, HSpacing.xxs + 1)
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    private func startBreathing() {
-        guard style.icon == .kinetic, isSelected else { return }
-        withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-            breathPhase = 1.04
-        }
-    }
-}
-
 // MARK: - Surface background
 
 /// Background plane for the sidebar. Mirrors the donor's per-style logic
@@ -664,6 +515,11 @@ private struct SidebarSurface: View {
             HPalette.surface
                 .opacity(0.6)
                 .allowsHitTesting(false)
+
+        case .liquidGlass:
+            // Rendered directly in HNavigationSidebar.body so the inset/round
+            // floating treatment can size against the outer bounds.
+            EmptyView()
         }
     }
 }
@@ -692,6 +548,10 @@ private struct SidebarTrailingRule: View {
             Rectangle()
                 .fill(HHairline.standard)
                 .frame(width: 0.5)
+
+        case .liquidGlass:
+            // No trailing rule — the rounded floating surface defines its own edge.
+            EmptyView()
         }
     }
 }
