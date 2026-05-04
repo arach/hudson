@@ -43,11 +43,41 @@ enum DemoVariant: String, CaseIterable, Identifiable {
     }
 }
 
+enum GlassAccentChoice: String, CaseIterable, Identifiable {
+    case none, manifest, cyan, magenta, amber, white
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .none:     return "Neutral"
+        case .manifest: return "App accent"
+        case .cyan:     return "Cyan"
+        case .magenta:  return "Magenta"
+        case .amber:    return "Amber"
+        case .white:    return "White"
+        }
+    }
+
+    func resolve(manifestAccent: Color) -> Color? {
+        switch self {
+        case .none:     return nil
+        case .manifest: return manifestAccent
+        case .cyan:     return .cyan
+        case .magenta:  return Color(red: 1.0, green: 0.4, blue: 0.85)
+        case .amber:    return .orange
+        case .white:    return .white
+        }
+    }
+}
+
 struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
-    @State private var sidebarSurface: HSidebarSurfaceStyle = .base
+    @State private var sidebarSurface: HSidebarSurfaceStyle = .liquidGlass
+    @State private var glassRadius: CGFloat = 10
+    @State private var glassTranslucency: Double = 1.0
+    @State private var glassAccentChoice: GlassAccentChoice = .none
     @State private var inspectorCollapsed: Bool = false
     @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
@@ -142,7 +172,14 @@ struct ContentView: View {
             statusBar
         }
         .hudsonAppManifest(variant.manifest)
-        .environment(\.hudsonSidebarStyle, HSidebarStyle(surface: sidebarSurface))
+        .environment(\.hudsonSidebarStyle, HSidebarStyle(
+            surface: sidebarSurface,
+            liquidGlass: HLiquidGlassConfig(
+                cornerRadius: glassRadius,
+                translucency: glassTranslucency,
+                accent: glassAccentChoice.resolve(manifestAccent: variant.manifest.accent)
+            )
+        ))
         .hudsonTakeover(isPresented: $takeoverOpen) {
             HTakeover(isPresented: $takeoverOpen) {
                 takeoverHeader
@@ -175,9 +212,29 @@ struct ContentView: View {
             }
             ToolbarItem(placement: .primaryAction) {
                 Menu {
-                    Picker("Sidebar surface", selection: $sidebarSurface) {
+                    Picker("Surface", selection: $sidebarSurface) {
                         ForEach(HSidebarSurfaceStyle.allCases) { style in
                             Text(style.label).tag(style)
+                        }
+                    }
+                    if sidebarSurface == .liquidGlass {
+                        Divider()
+                        Picker("Corner radius", selection: $glassRadius) {
+                            Text("Square (0)").tag(CGFloat(0))
+                            Text("Subtle (6)").tag(CGFloat(6))
+                            Text("Standard (10)").tag(CGFloat(10))
+                            Text("Soft (16)").tag(CGFloat(16))
+                            Text("Pill (24)").tag(CGFloat(24))
+                        }
+                        Picker("Translucency", selection: $glassTranslucency) {
+                            Text("Faint (0.4)").tag(0.4)
+                            Text("Light (0.7)").tag(0.7)
+                            Text("Native (1.0)").tag(1.0)
+                        }
+                        Picker("Accent", selection: $glassAccentChoice) {
+                            ForEach(GlassAccentChoice.allCases) { choice in
+                                Text(choice.label).tag(choice)
+                            }
                         }
                     }
                 } label: {

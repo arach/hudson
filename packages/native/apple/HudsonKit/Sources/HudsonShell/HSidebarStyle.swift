@@ -97,6 +97,40 @@ public enum HSidebarMotionStyle: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+// MARK: - HLiquidGlassConfig
+
+/// Tunable knobs for the `.liquidGlass` surface treatment.
+/// Consulted only when `surface == .liquidGlass`; ignored otherwise.
+///
+/// - `cornerRadius`: continuous-corner radius of the floating surface.
+/// - `inset`: margin between the sidebar's outer bounds and the visible glass.
+///   Larger values make the chrome float more obviously off the window edges.
+/// - `translucency`: opacity applied to the visual-effect material itself.
+///   `1.0` (default) keeps the material at its native intensity; lower values
+///   fade the glass toward the underlying window background.
+/// - `accent`: when non-nil, the rounded surface stroke tints toward this color.
+///   `nil` keeps the neutral white hairline (the default native look).
+public struct HLiquidGlassConfig: Equatable, Sendable {
+    public var cornerRadius: CGFloat
+    public var inset: CGFloat
+    public var translucency: Double
+    public var accent: Color?
+
+    public init(
+        cornerRadius: CGFloat = HSidebarLayout.liquidGlassCornerRadius,
+        inset: CGFloat = HSidebarLayout.liquidGlassInset,
+        translucency: Double = 1.0,
+        accent: Color? = nil
+    ) {
+        self.cornerRadius = cornerRadius
+        self.inset = inset
+        self.translucency = translucency
+        self.accent = accent
+    }
+
+    public static let `default` = HLiquidGlassConfig()
+}
+
 // MARK: - HSidebarStyle
 
 /// All four style axes bundled together.
@@ -107,17 +141,20 @@ public struct HSidebarStyle: Equatable, Sendable {
     public var indicator: HSidebarIndicatorStyle
     public var icon: HSidebarIconStyle
     public var motion: HSidebarMotionStyle
+    public var liquidGlass: HLiquidGlassConfig
 
     public init(
         surface: HSidebarSurfaceStyle = .base,
         indicator: HSidebarIndicatorStyle = .base,
         icon: HSidebarIconStyle = .base,
-        motion: HSidebarMotionStyle = .base
+        motion: HSidebarMotionStyle = .base,
+        liquidGlass: HLiquidGlassConfig = .default
     ) {
         self.surface = surface
         self.indicator = indicator
         self.icon = icon
         self.motion = motion
+        self.liquidGlass = liquidGlass
     }
 
     public static let `default` = HSidebarStyle()
