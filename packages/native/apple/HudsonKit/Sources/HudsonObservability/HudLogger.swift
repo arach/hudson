@@ -1,3 +1,4 @@
+import Foundation
 import OSLog
 
 public enum HudLogLevel: String, Sendable {
@@ -51,7 +52,8 @@ public struct HudLogger: Sendable {
         line: UInt = #line
     ) {
         let renderedMessage = message()
-        let renderedMetadata = Self.render(metadata())
+        let resolvedMetadata = metadata()
+        let renderedMetadata = Self.render(resolvedMetadata)
         if renderedMetadata.isEmpty {
             logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public)")
         } else if renderedMetadata.privateText.isEmpty {
@@ -61,6 +63,13 @@ public struct HudLogger: Sendable {
         } else {
             logger.log(level: level.osLogType, "\(renderedMessage, privacy: .public) \(renderedMetadata.publicText, privacy: .public) \(renderedMetadata.privateText, privacy: .private)")
         }
+        HudLoggerSinks.emit(
+            level: level,
+            subsystem: subsystem,
+            category: category,
+            message: renderedMessage,
+            metadata: resolvedMetadata
+        )
     }
 
     public func debug(_ message: @autoclosure () -> String, metadata: @autoclosure () -> [String: String] = [:], file: StaticString = #fileID, line: UInt = #line) {
