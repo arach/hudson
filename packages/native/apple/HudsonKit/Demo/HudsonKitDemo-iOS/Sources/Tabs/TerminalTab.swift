@@ -2,24 +2,70 @@ import SwiftUI
 import HudsonUI
 import Termini
 
-/// Theme Playground — Termini's curated rendering vocabulary as a SwiftUI
-/// preview. The live Ghostty surface on iOS is pending an upstream
-/// libghostty fix (addSublayer selector mismatch); the curation —
-/// themes, swatches, ANSI palette — is the actual product per Termini's
-/// direction, and it stands on its own.
+/// Theme Playground — live Termini Ghostty surface up top, theme picker
+/// and ANSI swatch grid below. Themes swap live and re-render the buffer
+/// using the new palette.
 struct TerminalTab: View {
     @State private var selectedTheme: TerminiTerminalTheme = .midnightBloom
+    @State private var controller = TerminiTerminalController()
+    @State private var demoTick: Int = 0
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HudSpacing.xxl) {
-                terminalPreview
+                ghosttySurface
                 themePicker
                 swatchGrid
                 metaCard
             }
             .padding(HudSpacing.xxl)
         }
+        .onAppear { restartDemo() }
+    }
+
+    private var ghosttySurface: some View {
+        TerminiTerminalView(
+            controller: controller,
+            showsSystemKeyboard: false,
+            appearance: TerminiTerminalAppearance(theme: selectedTheme)
+        )
+        .id(demoTick)
+        .frame(height: 240)
+        .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: HudRadius.card)
+                .stroke(HudHairline.standard, lineWidth: 0.5)
+        )
+    }
+
+    private func restartDemo() {
+        controller = TerminiTerminalController()
+        demoTick += 1
+        Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 200_000_000)
+            controller.processRemoteOutput(Data(demoOutput().utf8))
+        }
+    }
+
+    private func demoOutput() -> String {
+        let esc = "\u{1B}["
+        var s = ""
+        s += "\(esc)1;36mTermini\(esc)0m \(esc)2m· iOS live\(esc)0m\r\n"
+        s += "\(esc)2m─────────────────────────\(esc)0m\r\n"
+        s += "\r\n"
+        s += "\(esc)1mANSI palette\(esc)0m\r\n"
+        for i in 0..<8 { s += "\(esc)4\(i)m   \(esc)0m" }
+        s += "\r\n"
+        for i in 0..<8 { s += "\(esc)10\(i)m   \(esc)0m" }
+        s += "\r\n\r\n"
+        s += "\(esc)32m✓\(esc)0m  \(esc)1mhud\(esc)0m  \(esc)2m· theme synced\(esc)0m\r\n"
+        s += "\(esc)33m●\(esc)0m  \(esc)1mghostty\(esc)0m  \(esc)2m· renderer ready\(esc)0m\r\n"
+        s += "\(esc)36m▸\(esc)0m  \(esc)1mtermini\(esc)0m  \(esc)2m· live surface\(esc)0m\r\n"
+        s += "\r\n"
+        s += "\(esc)2m$\(esc)0m \(esc)36mls\(esc)0m themes/\r\n"
+        s += "  \(esc)34mmidnight-bloom\(esc)0m  \(esc)31member-glow\(esc)0m  \(esc)32mjade-night\(esc)0m\r\n"
+        s += "  \(esc)33mpaper-lantern\(esc)0m  \(esc)35mblueprint\(esc)0m\r\n"
+        return s
     }
 
     private var terminalPreview: some View {
