@@ -9,6 +9,8 @@ options:
 packages:
   HudsonKit:
     path: ../..
+  Termini:
+    path: /Users/arach/dev/Termini
 
 targets:
   HudsonKitDemoIOS:
@@ -23,6 +25,8 @@ targets:
         product: HudsonUI
       - package: HudsonKit
         product: HudsonShell
+      - package: Termini
+        product: Termini
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios

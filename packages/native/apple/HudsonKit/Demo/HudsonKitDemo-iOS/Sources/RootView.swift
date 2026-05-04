@@ -7,6 +7,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
     case complications
     case settings
     case logs
+    case terminal
     case about
 
     var id: String { rawValue }
@@ -17,6 +18,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .complications: return "Complications"
         case .settings:      return "Settings"
         case .logs:          return "Logs"
+        case .terminal:      return "Terminal"
         case .about:         return "About"
         }
     }
@@ -27,15 +29,26 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .complications: return "circle.grid.2x2"
         case .settings:      return "gearshape"
         case .logs:          return "list.bullet.rectangle"
+        case .terminal:      return "terminal"
         case .about:         return "info.circle"
         }
     }
 }
 
 struct RootView: View {
-    @State private var page: DemoPage = .shell
+    @State private var page: DemoPage
     @State private var customComplications: HudPhoneComplications? = nil
     @State private var customStyle: HudPhoneComplicationsStyle = .tray
+
+    init() {
+        let args = ProcessInfo.processInfo.arguments
+        if let idx = args.firstIndex(of: "--page"), idx + 1 < args.count,
+           let page = DemoPage(rawValue: args[idx + 1]) {
+            self._page = State(initialValue: page)
+        } else {
+            self._page = State(initialValue: .shell)
+        }
+    }
 
     var body: some View {
         HudPhoneAppShell(complicationsStyle: customStyle) {
@@ -53,6 +66,7 @@ struct RootView: View {
         case .complications: ComplicationsTab(custom: $customComplications, style: $customStyle)
         case .settings:      SettingsTab()
         case .logs:          LogsTab()
+        case .terminal:      TerminalTab()
         case .about:         AboutTab()
         }
     }
