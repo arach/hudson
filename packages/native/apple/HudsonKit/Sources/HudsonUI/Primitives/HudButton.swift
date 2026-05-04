@@ -1,0 +1,104 @@
+import SwiftUI
+import HudsonObservability
+
+public enum HudButtonStyle {
+    case primary(HudTint)
+    case secondary
+    case ghost
+}
+
+/// Mono-titled button with three variants. `primary(tint)` is the call-to-action
+/// (filled tint background); `secondary` is the default (faint surface, hairline
+/// border); `ghost` is borderless for chrome-internal actions.
+public struct HudButton: View {
+    public let title: String
+    public var icon: String?
+    public var style: HudButtonStyle
+    public var instrumentationID: String?
+    public var action: () -> Void
+    @Environment(\.isEnabled) private var isEnabled
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @FocusState private var isFocused: Bool
+    @State private var isHovering = false
+
+    public init(
+        _ title: String,
+        icon: String? = nil,
+        style: HudButtonStyle = .secondary,
+        instrumentationID: String? = nil,
+        action: @escaping () -> Void
+    ) {
+        self.title = title
+        self.icon = icon
+        self.style = style
+        self.instrumentationID = instrumentationID
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: instrumentedAction) {
+            HStack(spacing: HudSpacing.md) {
+                if let icon {
+                    Image(systemName: icon)
+                        .font(.system(size: 12, weight: .semibold))
+                }
+                Text(title)
+                    .font(HudFont.mono(12, weight: .semibold))
+                    .tracking(0.5)
+            }
+            .foregroundStyle(foreground)
+            .padding(.horizontal, HudSpacing.xxl)
+            .frame(minHeight: 32)
+            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
+            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : 1))
+            .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
+            .opacity(isEnabled ? 1 : 0.45)
+            .scaleEffect(isHovering && isEnabled ? 1.015 : 1)
+        }
+        .buttonStyle(.plain)
+        .focusable(isEnabled)
+        .focused($isFocused)
+        .onHover { isHovering = $0 }
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isHovering)
+        .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isFocused)
+        .accessibilityLabel(title)
+    }
+
+    private func instrumentedAction() {
+        guard let instrumentationID else {
+            action()
+            return
+        }
+        HudTrace.ui.span("hudson.button.action", metadata: ["id": instrumentationID, "title": title]) {
+            HudLogger.ui.info("button.action", metadata: ["id": instrumentationID, "title": title])
+            action()
+        }
+    }
+
+    private var foreground: Color {
+        switch style {
+        case .primary(let tint): return isEnabled ? tint.color : HudPalette.dim
+        case .secondary:         return isEnabled ? HudPalette.ink : HudPalette.dim
+        case .ghost:             return isEnabled ? HudPalette.muted : HudPalette.dim
+        }
+    }
+
+    private var background: Color {
+        switch style {
+        case .primary(let tint): return HudSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.26 : 0.18)
+        case .secondary:         return HudSurface.controlHover(isHovering: isHovering && isEnabled)
+        case .ghost:             return isHovering && isEnabled ? HudSurface.hover : .clear
+        }
+    }
+
+    private var border: Color {
+        if isFocused {
+            return HudFocus.ring
+        }
+        switch style {
+        case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.72 : 0.5)
+        case .secondary:         return isHovering && isEnabled ? HudPalette.statusInfo.opacity(0.45) : HudHairline.standard
+        case .ghost:             return isHovering && isEnabled ? HudHairline.standard : HudHairline.subtle
+        }
+    }
+}

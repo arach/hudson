@@ -1,7 +1,7 @@
 import SwiftUI
 import HudsonUI
 
-/// Content rendered inside the `HTakeover` when the user hits CONNECT on
+/// Content rendered inside the `HudTakeover` when the user hits CONNECT on
 /// a target canvas. Plays a short scripted "connecting → connected" sequence
 /// to demonstrate the takeover surface; in a real app this would mount the
 /// actual terminal session view.
@@ -12,25 +12,25 @@ struct ConnectFlow: View {
     @State private var connected: Bool = false
 
     private let script: [(prompt: String, line: String, color: Color)] = [
-        ("•", "Resolving \(TargetMock.fleet[0].host)…",            HPalette.muted),
-        ("•", "Negotiating ed25519 host key",                       HPalette.muted),
-        ("•", "Authenticated as arach@laptop.local",                HPalette.statusOk),
-        ("•", "Forwarding agent · scout-bridge attached",           HPalette.muted),
-        ("•", "Spawning shell · /bin/zsh",                          HPalette.muted),
+        ("•", "Resolving \(TargetMock.fleet[0].host)…",            HudPalette.muted),
+        ("•", "Negotiating ed25519 host key",                       HudPalette.muted),
+        ("•", "Authenticated as arach@laptop.local",                HudPalette.statusOk),
+        ("•", "Forwarding agent · scout-bridge attached",           HudPalette.muted),
+        ("•", "Spawning shell · /bin/zsh",                          HudPalette.muted),
     ]
 
     var body: some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: HSpacing.huge) {
+            VStack(alignment: .leading, spacing: HudSpacing.huge) {
                 hero
                 logCard
                 if connected { readyCard }
             }
-            .padding(HSpacing.xxl)
+            .padding(HudSpacing.xxl)
             .frame(maxWidth: 720, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
         }
-        .background(HPalette.bg)
+        .background(HudPalette.bg)
         .task { await play() }
     }
 
@@ -45,31 +45,31 @@ struct ConnectFlow: View {
     }
 
     private var hero: some View {
-        HStack(spacing: HSpacing.xxl) {
+        HStack(spacing: HudSpacing.xxl) {
             Image(systemName: target.icon)
                 .font(.system(size: 28, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
                 .frame(width: 64, height: 64)
-                .background(RoundedRectangle(cornerRadius: HRadius.card).fill(target.iconTint.color.opacity(0.15)))
-                .overlay(RoundedRectangle(cornerRadius: HRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(target.iconTint.color.opacity(0.15)))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
 
-            VStack(alignment: .leading, spacing: HSpacing.sm) {
+            VStack(alignment: .leading, spacing: HudSpacing.sm) {
                 Text(connected ? "CONNECTED" : "CONNECTING")
-                    .font(HFont.mono(10, weight: .bold))
+                    .font(HudFont.mono(10, weight: .bold))
                     .tracking(2.0)
-                    .foregroundStyle(connected ? HPalette.statusOk : target.iconTint.color)
+                    .foregroundStyle(connected ? HudPalette.statusOk : target.iconTint.color)
                 Text(target.name)
-                    .font(HFont.mono(22, weight: .bold))
-                    .foregroundStyle(HPalette.ink)
+                    .font(HudFont.mono(22, weight: .bold))
+                    .foregroundStyle(HudPalette.ink)
                 Text(target.host)
-                    .font(HFont.mono(12))
-                    .foregroundStyle(HPalette.muted)
+                    .font(HudFont.mono(12))
+                    .foregroundStyle(HudPalette.muted)
             }
 
             Spacer()
 
-            HStatusDot(
-                color: connected ? HPalette.statusOk : target.iconTint.color,
+            HudStatusDot(
+                color: connected ? HudPalette.statusOk : target.iconTint.color,
                 size: 12,
                 pulses: !connected
             )
@@ -77,63 +77,63 @@ struct ConnectFlow: View {
     }
 
     private var logCard: some View {
-        HCard(padding: 0) {
+        HudCard(padding: 0) {
             VStack(alignment: .leading, spacing: 0) {
                 HStack {
-                    HSectionLabel("Session", tint: HTint.amber.color)
+                    HudSectionLabel("Session", tint: HudTint.amber.color)
                     Spacer()
                     Text("ssh · ed25519")
-                        .font(HFont.mono(9))
+                        .font(HudFont.mono(9))
                         .tracking(0.8)
-                        .foregroundStyle(HPalette.dim)
+                        .foregroundStyle(HudPalette.dim)
                 }
-                .padding(.horizontal, HSpacing.xl)
-                .padding(.vertical, HSpacing.md)
+                .padding(.horizontal, HudSpacing.xl)
+                .padding(.vertical, HudSpacing.md)
                 .background(Color.white.opacity(0.02))
 
-                HDivider()
+                HudDivider()
 
-                VStack(alignment: .leading, spacing: HSpacing.sm) {
+                VStack(alignment: .leading, spacing: HudSpacing.sm) {
                     ForEach(0..<step, id: \.self) { index in
                         let entry = script[index]
-                        HStack(spacing: HSpacing.md) {
+                        HStack(spacing: HudSpacing.md) {
                             Text(entry.prompt)
-                                .font(HFont.mono(11, weight: .semibold))
+                                .font(HudFont.mono(11, weight: .semibold))
                                 .foregroundStyle(entry.color)
                             Text(entry.line)
-                                .font(HFont.mono(11))
-                                .foregroundStyle(HPalette.ink)
+                                .font(HudFont.mono(11))
+                                .foregroundStyle(HudPalette.ink)
                         }
                     }
                     if !connected, step < script.count {
-                        HStack(spacing: HSpacing.md) {
+                        HStack(spacing: HudSpacing.md) {
                             Text("•")
-                                .font(HFont.mono(11, weight: .semibold))
-                                .foregroundStyle(HPalette.muted)
-                            HStatusDot(color: HPalette.muted, size: 6, pulses: true)
+                                .font(HudFont.mono(11, weight: .semibold))
+                                .foregroundStyle(HudPalette.muted)
+                            HudStatusDot(color: HudPalette.muted, size: 6, pulses: true)
                             Text("…")
-                                .font(HFont.mono(11))
-                                .foregroundStyle(HPalette.muted)
+                                .font(HudFont.mono(11))
+                                .foregroundStyle(HudPalette.muted)
                         }
                     }
                 }
-                .padding(HSpacing.xl)
+                .padding(HudSpacing.xl)
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
 
     private var readyCard: some View {
-        HCard {
-            VStack(alignment: .leading, spacing: HSpacing.md) {
+        HudCard {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HStack {
-                    HSectionLabel("Ready", tint: HPalette.statusOk)
+                    HudSectionLabel("Ready", tint: HudPalette.statusOk)
                     Spacer()
-                    HBadge("LIVE", tint: HPalette.statusOk, dot: true)
+                    HudBadge("LIVE", tint: HudPalette.statusOk, dot: true)
                 }
                 Text("Session attached. The terminal would mount here once Termini is wired into the iOS demo target.")
-                    .font(HFont.ui(12))
-                    .foregroundStyle(HPalette.muted)
+                    .font(HudFont.ui(12))
+                    .foregroundStyle(HudPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
         }

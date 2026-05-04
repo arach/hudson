@@ -1,46 +1,46 @@
 import Foundation
 
 // Deprecated `Hudson*` aliases retained for source compatibility. New code
-// should use the `H*` canonical names directly.
+// should use the `Hud*` canonical names directly.
 
-@available(*, deprecated, renamed: "HJSONValue")
-public typealias HudsonJSONValue = HJSONValue
+@available(*, deprecated, renamed: "HudJSONValue")
+public typealias HudsonJSONValue = HudJSONValue
 
-@available(*, deprecated, renamed: "HVoiceEvent")
-public typealias HudsonVoiceEvent = HVoiceEvent
+@available(*, deprecated, renamed: "HudVoiceEvent")
+public typealias HudsonVoiceEvent = HudVoiceEvent
 
-@available(*, deprecated, renamed: "HVoiceFinalEvent")
-public typealias HudsonVoiceFinalEvent = HVoiceFinalEvent
+@available(*, deprecated, renamed: "HudVoiceFinalEvent")
+public typealias HudsonVoiceFinalEvent = HudVoiceFinalEvent
 
-@available(*, deprecated, renamed: "HVoiceMode")
-public typealias HudsonVoiceMode = HVoiceMode
+@available(*, deprecated, renamed: "HudVoiceMode")
+public typealias HudsonVoiceMode = HudVoiceMode
 
-@available(*, deprecated, renamed: "HVoicePartialEvent")
-public typealias HudsonVoicePartialEvent = HVoicePartialEvent
+@available(*, deprecated, renamed: "HudVoicePartialEvent")
+public typealias HudsonVoicePartialEvent = HudVoicePartialEvent
 
-@available(*, deprecated, renamed: "HVoiceSessionState")
-public typealias HudsonVoiceSessionState = HVoiceSessionState
+@available(*, deprecated, renamed: "HudVoiceSessionState")
+public typealias HudsonVoiceSessionState = HudVoiceSessionState
 
-@available(*, deprecated, renamed: "HVoiceSessionStateEvent")
-public typealias HudsonVoiceSessionStateEvent = HVoiceSessionStateEvent
+@available(*, deprecated, renamed: "HudVoiceSessionStateEvent")
+public typealias HudsonVoiceSessionStateEvent = HudVoiceSessionStateEvent
 
-@available(*, deprecated, renamed: "HVoiceWordTiming")
-public typealias HudsonVoiceWordTiming = HVoiceWordTiming
+@available(*, deprecated, renamed: "HudVoiceWordTiming")
+public typealias HudsonVoiceWordTiming = HudVoiceWordTiming
 
-@available(*, deprecated, renamed: "HVoxEndpoint")
-public typealias HudsonVoxEndpoint = HVoxEndpoint
+@available(*, deprecated, renamed: "HudVoxEndpoint")
+public typealias HudsonVoxEndpoint = HudVoxEndpoint
 
-@available(*, deprecated, renamed: "HVoxError")
-public typealias HudsonVoxError = HVoxError
+@available(*, deprecated, renamed: "HudVoxError")
+public typealias HudsonVoxError = HudVoxError
 
-@available(*, deprecated, renamed: "HVoxHealth")
-public typealias HudsonVoxHealth = HVoxHealth
+@available(*, deprecated, renamed: "HudVoxHealth")
+public typealias HudsonVoxHealth = HudVoxHealth
 
-@available(*, deprecated, renamed: "HVoxLiveSession")
-public typealias HudsonVoxLiveSession = HVoxLiveSession
+@available(*, deprecated, renamed: "HudVoxLiveSession")
+public typealias HudsonVoxLiveSession = HudVoxLiveSession
 
-@available(*, deprecated, renamed: "HVoxLiveSessionOptions")
-public typealias HudsonVoxLiveSessionOptions = HVoxLiveSessionOptions
+@available(*, deprecated, renamed: "HudVoxLiveSessionOptions")
+public typealias HudsonVoxLiveSessionOptions = HudVoxLiveSessionOptions
 
-@available(*, deprecated, renamed: "HVoxProbe")
-public typealias HudsonVoxProbe = HVoxProbe
+@available(*, deprecated, renamed: "HudVoxProbe")
+public typealias HudsonVoxProbe = HudVoxProbe

@@ -3,7 +3,7 @@ import HudsonUI
 import HudsonShell
 
 enum DemoTab: String, CaseIterable, Identifiable {
-    case dashboard, voice, shell, sidebar, tokens, primitives, manifest
+    case dashboard, voice, shell, sidebar, tokens, primitives, manifest, about
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
@@ -16,11 +16,12 @@ enum DemoTab: String, CaseIterable, Identifiable {
         case .tokens:     return "circle.hexagongrid"
         case .primitives: return "square.stack.3d.up"
         case .manifest:   return "doc.text"
+        case .about:      return "info.circle"
         }
     }
 
-    var navItem: HRailItem {
-        HRailItem(id: rawValue, label: label, icon: icon)
+    var navItem: HudRailItem {
+        HudRailItem(id: rawValue, label: label, icon: icon)
     }
 }
 
@@ -28,10 +29,10 @@ enum DemoVariant: String, CaseIterable, Identifiable {
     case scout, lattices
     var id: String { rawValue }
 
-    var manifest: HAppManifest {
+    var manifest: HudAppManifest {
         switch self {
-        case .scout:    return HAppManifest(name: "Scout",    tint: .cyan,  targetLabel: "Agent")
-        case .lattices: return HAppManifest(name: "Lattices", tint: .green, targetLabel: "Machine")
+        case .scout:    return HudAppManifest(name: "Scout",    tint: .cyan,  targetLabel: "Agent")
+        case .lattices: return HudAppManifest(name: "Lattices", tint: .green, targetLabel: "Machine")
         }
     }
 
@@ -74,7 +75,7 @@ struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
-    @State private var sidebarSurface: HSidebarSurfaceStyle = .base
+    @State private var sidebarSurface: HudSidebarSurfaceStyle = .base
     @State private var glassRadius: CGFloat = 10
     @State private var glassTranslucency: Double = 1.0
     @State private var glassAccentChoice: GlassAccentChoice = .none
@@ -94,23 +95,23 @@ struct ContentView: View {
 
     private var navProgress: Double { navExpanded ? 0.0 : 1.0 }
 
-    private var sidebarEntries: [HSidebarEntry<DemoTab>] {
+    private var sidebarEntries: [HudSidebarEntry<DemoTab>] {
         let workbench: [DemoTab] = [.dashboard, .voice, .shell, .sidebar]
         let reference: [DemoTab] = [.tokens, .primitives, .manifest]
-        var entries: [HSidebarEntry<DemoTab>] = []
+        var entries: [HudSidebarEntry<DemoTab>] = []
         entries.append(contentsOf: workbench.map {
-            .item(HSidebarItem(id: $0, title: $0.label, icon: $0.icon))
+            .item(HudSidebarItem(id: $0, title: $0.label, icon: $0.icon))
         })
         entries.append(.section(id: "reference", title: "Reference"))
         entries.append(contentsOf: reference.map {
-            .item(HSidebarItem(id: $0, title: $0.label, icon: $0.icon))
+            .item(HudSidebarItem(id: $0, title: $0.label, icon: $0.icon))
         })
         return entries
     }
 
     var body: some View {
-        HAppShell {
-            HNavigationSidebar(
+        HudAppShell {
+            HudNavigationSidebar(
                 selection: Binding(
                     get: { tab as DemoTab? },
                     set: { if let next = $0 { tab = next } }
@@ -119,7 +120,7 @@ struct ContentView: View {
                 progress: navProgress,
                 railHeader: {
                     Button(action: toggleNav) {
-                        HStatusDot(color: variant.manifest.accent)
+                        HudStatusDot(color: variant.manifest.accent)
                             .frame(width: 18, height: 18)
                             .contentShape(Rectangle())
                     }
@@ -129,8 +130,8 @@ struct ContentView: View {
                 labelHeader: {
                     Button(action: toggleNav) {
                         Text(variant.manifest.name)
-                            .font(HFont.ui(13, weight: .semibold))
-                            .foregroundStyle(HPalette.ink)
+                            .font(HudFont.ui(13, weight: .semibold))
+                            .foregroundStyle(HudPalette.ink)
                             .lineLimit(1)
                             .contentShape(Rectangle())
                     }
@@ -142,14 +143,14 @@ struct ContentView: View {
                 }
             )
         } trailing: {
-            HInspector(isCollapsed: $inspectorCollapsed) {
-                HStack(spacing: HSpacing.md) {
-                    HSectionLabel("Inspector")
+            HudInspector(isCollapsed: $inspectorCollapsed) {
+                HStack(spacing: HudSpacing.md) {
+                    HudSectionLabel("Inspector")
                     Spacer()
                     if let target = selectedTarget {
-                        HBadge(target.statusLabel, tint: target.statusColor, dot: true)
+                        HudBadge(target.statusLabel, tint: target.statusColor, dot: true)
                     } else {
-                        HBadge(tab.label.uppercased())
+                        HudBadge(tab.label.uppercased())
                     }
                 }
             } content: {
@@ -158,7 +159,7 @@ struct ContentView: View {
         } topDrawer: {
             EmptyView()
         } bottomDrawer: {
-            HTerminalDrawer(
+            HudTerminalDrawer(
                 isOpen: $terminalOpen,
                 title: "Terminal",
                 subtitle: "arach-laptop · ~/dev/lattices",
@@ -172,16 +173,16 @@ struct ContentView: View {
             statusBar
         }
         .hudsonAppManifest(variant.manifest)
-        .environment(\.hudsonSidebarStyle, HSidebarStyle(
+        .environment(\.hudsonSidebarStyle, HudSidebarStyle(
             surface: sidebarSurface,
-            liquidGlass: HLiquidGlassConfig(
+            liquidGlass: HudLiquidGlassConfig(
                 cornerRadius: glassRadius,
                 translucency: glassTranslucency,
                 accent: glassAccentChoice.resolve(manifestAccent: variant.manifest.accent)
             )
         ))
         .hudsonTakeover(isPresented: $takeoverOpen) {
-            HTakeover(isPresented: $takeoverOpen) {
+            HudTakeover(isPresented: $takeoverOpen) {
                 takeoverHeader
             } content: {
                 if let target = selectedTarget {
@@ -213,7 +214,7 @@ struct ContentView: View {
             ToolbarItem(placement: .primaryAction) {
                 Menu {
                     Picker("Surface", selection: $sidebarSurface) {
-                        ForEach(HSidebarSurfaceStyle.allCases) { style in
+                        ForEach(HudSidebarSurfaceStyle.allCases) { style in
                             Text(style.label).tag(style)
                         }
                     }
@@ -249,7 +250,7 @@ struct ContentView: View {
         if reduceMotion {
             navExpanded.toggle()
         } else {
-            withAnimation(HMotion.chromeResize) {
+            withAnimation(HudMotion.chromeResize) {
                 navExpanded.toggle()
             }
         }
@@ -257,11 +258,11 @@ struct ContentView: View {
 
     // MARK: Command palette commands
 
-    private var commands: [HCommand] {
-        var cmds: [HCommand] = []
+    private var commands: [HudCommand] {
+        var cmds: [HudCommand] = []
 
         for candidate in DemoTab.allCases where candidate != tab {
-            cmds.append(HCommand(
+            cmds.append(HudCommand(
                 id: "tab.\(candidate.rawValue)",
                 title: "Go to \(candidate.label)",
                 icon: candidate.icon,
@@ -274,7 +275,7 @@ struct ContentView: View {
         }
 
         for target in TargetMock.fleet where selectedTargetId != target.id {
-            cmds.append(HCommand(
+            cmds.append(HudCommand(
                 id: "open.\(target.id)",
                 title: "Open \(target.name)",
                 subtitle: "\(target.host) · \(target.statusLabel)",
@@ -288,7 +289,7 @@ struct ContentView: View {
         }
 
         for candidate in DemoVariant.allCases where candidate != variant {
-            cmds.append(HCommand(
+            cmds.append(HudCommand(
                 id: "variant.\(candidate.rawValue)",
                 title: "Variant: \(candidate.label)",
                 icon: "paintbrush",
@@ -297,7 +298,7 @@ struct ContentView: View {
             ))
         }
 
-        cmds.append(HCommand(
+        cmds.append(HudCommand(
             id: "drawer.toggle",
             title: terminalOpen ? "Close terminal drawer" : "Open terminal drawer",
             subtitle: "Bottom chrome · attached to host app",
@@ -305,7 +306,7 @@ struct ContentView: View {
             group: "Surfaces",
             action: { terminalOpen.toggle() }
         ))
-        cmds.append(HCommand(
+        cmds.append(HudCommand(
             id: "terminalapp.open",
             title: "Open terminal app",
             subtitle: "Floating · own header + status bar",
@@ -318,14 +319,14 @@ struct ContentView: View {
                 terminalAppOpen = true
             }
         ))
-        cmds.append(HCommand(
+        cmds.append(HudCommand(
             id: "rail.toggle",
             title: navExpanded ? "Collapse navigation rail" : "Expand navigation rail",
             icon: "sidebar.left",
             group: "Surfaces",
             action: { navExpanded.toggle() }
         ))
-        cmds.append(HCommand(
+        cmds.append(HudCommand(
             id: "inspector.toggle",
             title: inspectorCollapsed ? "Open inspector" : "Close inspector",
             icon: "sidebar.right",
@@ -334,7 +335,7 @@ struct ContentView: View {
         ))
 
         if selectedTarget != nil {
-            cmds.append(HCommand(
+            cmds.append(HudCommand(
                 id: "canvas.close",
                 title: "Back to fleet",
                 icon: "chevron.left",
@@ -347,15 +348,15 @@ struct ContentView: View {
     }
 
     private var takeoverHeader: some View {
-        HStack(spacing: HSpacing.md) {
-            HSectionLabel("Takeover", tint: variant.manifest.accent)
+        HStack(spacing: HudSpacing.md) {
+            HudSectionLabel("Takeover", tint: variant.manifest.accent)
             if let target = selectedTarget {
                 Text("/")
-                    .font(HFont.mono(10))
-                    .foregroundStyle(HPalette.dim)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(HudPalette.dim)
                 Text(target.name)
-                    .font(HFont.mono(11, weight: .semibold))
-                    .foregroundStyle(HPalette.ink)
+                    .font(HudFont.mono(11, weight: .semibold))
+                    .foregroundStyle(HudPalette.ink)
             }
         }
     }
@@ -377,7 +378,7 @@ struct ContentView: View {
                     selectedTargetId = target.id
                 })
             }
-        case .voice, .shell, .sidebar, .tokens, .primitives, .manifest:
+        case .voice, .shell, .sidebar, .tokens, .primitives, .manifest, .about:
             ScrollView {
                 Group {
                     switch tab {
@@ -399,10 +400,11 @@ struct ContentView: View {
                     case .tokens:     TokensTab()
                     case .primitives: PrimitivesTab()
                     case .manifest:   ManifestTab()
+                    case .about:      AboutTab()
                     case .dashboard:  EmptyView()
                     }
                 }
-                .padding(HSpacing.xxl)
+                .padding(HudSpacing.xxl)
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
@@ -413,23 +415,23 @@ struct ContentView: View {
     @ViewBuilder
     private var variantPicker: some View {
         if navExpanded {
-            VStack(alignment: .leading, spacing: HSpacing.xs) {
-                HSectionLabel("Variant")
+            VStack(alignment: .leading, spacing: HudSpacing.xs) {
+                HudSectionLabel("Variant")
                 Picker("Variant", selection: $variant) {
                     ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
                 }
                 .pickerStyle(.segmented)
                 .controlSize(.small)
             }
-            .padding(.horizontal, HSpacing.md)
-            .padding(.vertical, HSpacing.xs)
+            .padding(.horizontal, HudSpacing.md)
+            .padding(.vertical, HudSpacing.xs)
         } else {
             // Rail-only: a single icon button that cycles through variants.
             Button(action: cycleVariant) {
                 Image(systemName: "paintpalette")
                     .font(.system(size: 13, weight: .medium))
                     .foregroundStyle(variant.manifest.accent)
-                    .frame(width: HSidebarLayout.railWidth, height: HSidebarLayout.rowHeight)
+                    .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -456,23 +458,23 @@ struct ContentView: View {
 
     private var defaultInspectorContent: some View {
         let manifest = variant.manifest
-        return VStack(alignment: .leading, spacing: HSpacing.xl) {
-            HCard {
-                VStack(alignment: .leading, spacing: HSpacing.md) {
-                    HKVRow("App",     value: manifest.name)
-                    HKVRow("Version", value: manifest.version)
-                    HKVRow("Target",  value: manifest.targetLabel)
+        return VStack(alignment: .leading, spacing: HudSpacing.xl) {
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    HudKVRow("App",     value: manifest.name)
+                    HudKVRow("Version", value: manifest.version)
+                    HudKVRow("Target",  value: manifest.targetLabel)
                 }
             }
 
-            HCard {
-                VStack(alignment: .leading, spacing: HSpacing.md) {
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
                     HStack {
-                        HSectionLabel("Surface", tint: HPalette.muted)
+                        HudSectionLabel("Surface", tint: HudPalette.muted)
                         Spacer()
                     }
-                    HKVRow("Tab",  value: tab.label)
-                    HKVRow("Mode", value: navExpanded ? "Expanded" : "Collapsed")
+                    HudKVRow("Tab",  value: tab.label)
+                    HudKVRow("Mode", value: navExpanded ? "Expanded" : "Collapsed")
                 }
             }
         }
@@ -480,61 +482,61 @@ struct ContentView: View {
 
     @ViewBuilder
     private func targetInspectorContent(_ target: TargetMock) -> some View {
-        VStack(alignment: .leading, spacing: HSpacing.xl) {
-            HCard {
-                VStack(alignment: .leading, spacing: HSpacing.md) {
-                    HStack(spacing: HSpacing.lg) {
+        VStack(alignment: .leading, spacing: HudSpacing.xl) {
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    HStack(spacing: HudSpacing.lg) {
                         Image(systemName: target.icon)
                             .font(.system(size: 14, weight: .medium))
                             .foregroundStyle(target.iconTint.color)
                             .frame(width: 32, height: 32)
-                            .background(RoundedRectangle(cornerRadius: HRadius.standard).fill(target.iconTint.color.opacity(0.15)))
+                            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(target.iconTint.color.opacity(0.15)))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(target.name)
-                                .font(HFont.mono(12, weight: .semibold))
-                                .foregroundStyle(HPalette.ink)
+                                .font(HudFont.mono(12, weight: .semibold))
+                                .foregroundStyle(HudPalette.ink)
                             Text(target.host)
-                                .font(HFont.mono(10))
-                                .foregroundStyle(HPalette.muted)
+                                .font(HudFont.mono(10))
+                                .foregroundStyle(HudPalette.muted)
                         }
                     }
-                    HDivider()
-                    HKVRow("Status",  value: target.statusLabel.capitalized, valueColor: target.statusColor)
-                    HKVRow("Latency", value: target.latency ?? "—")
+                    HudDivider()
+                    HudKVRow("Status",  value: target.statusLabel.capitalized, valueColor: target.statusColor)
+                    HudKVRow("Latency", value: target.latency ?? "—")
                     if let scene = target.scene {
-                        HKVRow("Scene", value: scene)
+                        HudKVRow("Scene", value: scene)
                     }
                 }
             }
 
-            HCard {
-                VStack(alignment: .leading, spacing: HSpacing.md) {
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
                     HStack {
-                        HSectionLabel("Agent")
+                        HudSectionLabel("Agent")
                         Spacer()
-                        HStatusDot(
+                        HudStatusDot(
                             color: target.agentTint.color,
                             size: 6,
                             pulses: target.agentStatus == "running"
                         )
                     }
-                    HKVRow("State", value: target.agentStatus)
+                    HudKVRow("State", value: target.agentStatus)
                     if let activity = target.agentActivity {
-                        HKVRow("Doing", value: activity)
+                        HudKVRow("Doing", value: activity)
                     }
                 }
             }
 
-            HCard {
-                VStack(alignment: .leading, spacing: HSpacing.md) {
-                    HSectionLabel("Quick actions", tint: HPalette.muted)
-                    HButton("Terminal app", icon: "terminal", style: .secondary) {
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    HudSectionLabel("Quick actions", tint: HudPalette.muted)
+                    HudButton("Terminal app", icon: "terminal", style: .secondary) {
                         terminalAppOpen = true
                     }
-                    HButton("Toggle drawer", icon: "rectangle.bottomthird.inset.filled", style: .ghost) {
+                    HudButton("Toggle drawer", icon: "rectangle.bottomthird.inset.filled", style: .ghost) {
                         terminalOpen.toggle()
                     }
-                    HButton("Reconnect", icon: "arrow.clockwise", style: .ghost) {
+                    HudButton("Reconnect", icon: "arrow.clockwise", style: .ghost) {
                         takeoverOpen = true
                     }
                 }
@@ -545,12 +547,12 @@ struct ContentView: View {
     // MARK: Status bar
 
     private var statusBar: some View {
-        HStack(spacing: HSpacing.xl) {
-            HStatusDot(color: variant.manifest.accent, pulses: true)
+        HStack(spacing: HudSpacing.xl) {
+            HudStatusDot(color: variant.manifest.accent, pulses: true)
             Text("HUDSON·KIT")
-                .font(HFont.mono(10, weight: .bold))
+                .font(HudFont.mono(10, weight: .bold))
                 .tracking(1.5)
-                .foregroundStyle(HPalette.muted)
+                .foregroundStyle(HudPalette.muted)
 
             statusSeparator
             statusContext
@@ -558,21 +560,21 @@ struct ContentView: View {
             Spacer()
 
             Button(action: { paletteOpen = true }) {
-                HStack(spacing: HSpacing.xs) {
+                HStack(spacing: HudSpacing.xs) {
                     Image(systemName: "command")
                         .font(.system(size: 9, weight: .semibold))
                     Text("K")
-                        .font(HFont.mono(9, weight: .semibold))
+                        .font(HudFont.mono(9, weight: .semibold))
                     Text("palette")
-                        .font(HFont.mono(9))
+                        .font(HudFont.mono(9))
                         .tracking(0.6)
                 }
-                .foregroundStyle(HPalette.dim)
-                .padding(.horizontal, HSpacing.md)
+                .foregroundStyle(HudPalette.dim)
+                .padding(.horizontal, HudSpacing.md)
                 .padding(.vertical, 2)
                 .overlay(
-                    RoundedRectangle(cornerRadius: HRadius.tight)
-                        .stroke(HHairline.standard, lineWidth: 1)
+                    RoundedRectangle(cornerRadius: HudRadius.tight)
+                        .stroke(HudHairline.standard, lineWidth: 1)
                 )
                 .contentShape(Rectangle())
             }
@@ -582,38 +584,38 @@ struct ContentView: View {
             statusSeparator
 
             Text("v\(variant.manifest.version)")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.dim)
-            HBadge(tab.label.uppercased(), tint: variant.manifest.accent)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.dim)
+            HudBadge(tab.label.uppercased(), tint: variant.manifest.accent)
         }
-        .padding(.horizontal, HSpacing.xxl)
-        .frame(height: HLayout.statusBarHeight)
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.statusBarHeight)
     }
 
     @ViewBuilder
     private var statusContext: some View {
         if takeoverOpen, let target = selectedTarget {
-            HStatusDot(color: HPalette.statusOk, size: 5, pulses: true)
+            HudStatusDot(color: HudPalette.statusOk, size: 5, pulses: true)
             Text("connected · \(target.name)")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.statusOk)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.statusOk)
         } else if let target = selectedTarget {
             Image(systemName: target.icon)
                 .font(.system(size: 9))
                 .foregroundStyle(target.iconTint.color)
             Text("canvas · \(target.name)")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.ink)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.ink)
         } else {
             Text("ready")
-                .font(HFont.mono(10))
-                .foregroundStyle(HPalette.muted)
+                .font(HudFont.mono(10))
+                .foregroundStyle(HudPalette.muted)
         }
     }
 
     private var statusSeparator: some View {
         Text("·")
-            .font(HFont.mono(10))
-            .foregroundStyle(HPalette.dim)
+            .font(HudFont.mono(10))
+            .foregroundStyle(HudPalette.dim)
     }
 }
