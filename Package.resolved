@@ -77,8 +77,8 @@
       "kind" : "remoteSourceControl",
       "location" : "https://github.com/arach/TermBridgeKit.git",
       "state" : {
-        "revision" : "98c93ffb08694ee9e3842336b75d8e250005810f",
-        "version" : "0.1.3"
+        "revision" : "a0381fcfdc556785b59e54af89e264ace71ff27a",
+        "version" : "0.1.4"
       }
     }
   ],

@@ -46,7 +46,7 @@ var targets: [Target] = [
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    dependencies.append(.package(url: "https://github.com/arach/TermBridgeKit.git", exact: "0.1.3"))
+    dependencies.append(.package(url: "https://github.com/arach/TermBridgeKit.git", exact: "0.1.4"))
     targets.append(
         .target(
             name: "HudsonTerminal",

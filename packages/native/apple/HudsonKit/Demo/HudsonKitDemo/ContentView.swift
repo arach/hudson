@@ -74,7 +74,7 @@ struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
-    @State private var sidebarSurface: HSidebarSurfaceStyle = .liquidGlass
+    @State private var sidebarSurface: HSidebarSurfaceStyle = .base
     @State private var glassRadius: CGFloat = 10
     @State private var glassTranslucency: Double = 1.0
     @State private var glassAccentChoice: GlassAccentChoice = .none
