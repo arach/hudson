@@ -79,7 +79,9 @@ public enum HSidebarLayout {
     /// Intrinsic width at a given progress (0 = expanded, 1 = compact).
     /// The host uses this to size its column slot; only the label column's
     /// width changes — the rail column stays fixed.
-    public static func intrinsicWidth(progress: Double) -> CGFloat {
-        railWidth + labelWidth * CGFloat(1 - progress)
+    /// Pass an explicit `labelWidth` when the sidebar instance overrides the default
+    /// (e.g., user-resizable expanded width persisted via `@AppStorage`).
+    public static func intrinsicWidth(progress: Double, labelWidth: CGFloat = HSidebarLayout.labelWidth) -> CGFloat {
+        railWidth + max(0, labelWidth * CGFloat(1 - progress))
     }
 }

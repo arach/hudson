@@ -90,7 +90,6 @@ public struct HAppShell<
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .preferredColorScheme(.dark)
     }
 
     private var isCompact: Bool {
