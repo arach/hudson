@@ -18,7 +18,9 @@ struct HudsonKitDemoApp: App {
         WindowGroup("HudsonKit Demo") {
             ContentView()
                 #if os(macOS)
-                .frame(minWidth: 720, minHeight: 540)
+                // Window minimums — width is HudLayout.readableWidth; height is window-specific.
+                // hudlint:disable next-line geometry
+                .frame(minWidth: HudLayout.readableWidth, minHeight: 540)
                 #endif
         }
     }

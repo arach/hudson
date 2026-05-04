@@ -15,7 +15,7 @@ struct VoiceTab: View {
                 spacing: HudSpacing.xl
             ) {
                 HudVoicePanel(options: HudVoxLiveSessionOptions(clientId: "hudsonkit-demo"))
-                    .frame(maxWidth: 560)
+                    .frame(maxWidth: HudLayout.dialogWidth)
 
                 contractCard
             }
@@ -31,10 +31,10 @@ struct VoiceTab: View {
             }
 
             Text("HudsonVoice gives native HudsonKit apps the same provider boundary as the web SDK voice entry point: Hudson owns the app integration, Vox owns capture, endpointing, and transcription.")
-                .font(HudFont.ui(12))
+                .font(HudFont.ui(HudTextSize.sm))
                 .foregroundStyle(HudPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 760, alignment: .leading)
+                .frame(maxWidth: HudLayout.cliffWidth, alignment: .leading)
         }
     }
 
@@ -43,14 +43,14 @@ struct VoiceTab: View {
             VStack(alignment: .leading, spacing: HudSpacing.lg) {
                 HStack(spacing: HudSpacing.lg) {
                     Image(systemName: "point.3.connected.trianglepath.dotted")
-                        .font(.system(size: 14, weight: .medium))
+                        .font(HudFont.ui(HudTextSize.md, weight: .medium))
                         .foregroundStyle(manifest.accent)
-                        .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(manifest.accent.opacity(0.12)))
-                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(manifest.accent.opacity(0.28), lineWidth: 1))
+                        .frame(width: HudIconSize.large, height: HudIconSize.large)
+                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(manifest.accent)))
+                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintBorder(manifest.accent), lineWidth: 1))
 
                     Text("Provider contract")
-                        .font(HudFont.mono(13, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.base, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
 
                     Spacer()
@@ -66,7 +66,7 @@ struct VoiceTab: View {
                 HudDivider()
 
                 Text("The Swift package dependency stays optional. HudsonKit speaks the same stable contract as Vox's clients, so the kit does not inherit Vox's current macOS 26 / Swift 6.2 floor.")
-                    .font(HudFont.ui(12))
+                    .font(HudFont.ui(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
@@ -81,11 +81,13 @@ private struct ContractRow: View {
     var body: some View {
         HStack(alignment: .firstTextBaseline, spacing: HudSpacing.lg) {
             Text(label)
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.dim)
+                // Voice control row label gutter — fixed for column alignment.
+                // hudlint:disable next-line geometry
                 .frame(width: 74, alignment: .leading)
             Text(value)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.ink)
                 .fixedSize(horizontal: false, vertical: true)
             Spacer(minLength: 0)

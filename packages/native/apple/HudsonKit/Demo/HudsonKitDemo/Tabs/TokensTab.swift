@@ -37,9 +37,9 @@ struct TokensTab: View {
                         VStack(spacing: HudSpacing.sm) {
                             RoundedRectangle(cornerRadius: HudRadius.standard)
                                 .fill(tint.color)
-                                .frame(height: 32)
+                                .frame(height: HudLayout.buttonHeight)
                             Text(tint.rawValue)
-                                .font(HudFont.mono(10))
+                                .font(HudFont.mono(HudTextSize.xxs))
                                 .foregroundStyle(HudPalette.muted)
                         }
                     }
@@ -85,9 +85,11 @@ struct TokensTab: View {
         HStack(spacing: HudSpacing.xl) {
             RoundedRectangle(cornerRadius: HudRadius.standard)
                 .fill(color)
+                // Token swatch tile — chip aspect tuned for the tokens grid.
+                // hudlint:disable next-line geometry
                 .frame(width: 48, height: 24)
                 .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: 1))
-            Text(name).font(HudFont.mono(11)).foregroundStyle(HudPalette.ink)
+            Text(name).font(HudFont.mono(HudTextSize.xs)).foregroundStyle(HudPalette.ink)
             Spacer()
         }
     }
@@ -96,7 +98,7 @@ struct TokensTab: View {
         HStack(spacing: HudSpacing.md) {
             HudStatusDot(color: color, pulses: pulses)
             Text(name)
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.ink)
         }
     }
@@ -104,8 +106,10 @@ struct TokensTab: View {
     private func sample(_ label: String, _ size: CGFloat) -> some View {
         HStack(alignment: .firstTextBaseline, spacing: HudSpacing.xl) {
             Text(label)
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.dim)
+                // Token name label gutter — fixed width for column alignment.
+                // hudlint:disable next-line geometry
                 .frame(width: 88, alignment: .leading)
             Text("Hudson · the operational dashboard")
                 .font(HudFont.ui(size))

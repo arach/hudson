@@ -41,10 +41,10 @@ struct ShellTab: View {
             }
 
             Text("HudsonShell composes the chassis around a HApp — slots for navigation, inspection, drawers, and overlays. Each card below documents one surface and lets you exercise it live.")
-                .font(HudFont.ui(12))
+                .font(HudFont.ui(HudTextSize.sm))
                 .foregroundStyle(HudPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 720, alignment: .leading)
+                .frame(maxWidth: HudLayout.readableWidth, alignment: .leading)
         }
     }
 
@@ -134,21 +134,21 @@ private struct PrimitiveCard: View {
             VStack(alignment: .leading, spacing: HudSpacing.lg) {
                 HStack(spacing: HudSpacing.lg) {
                     Image(systemName: primitive.icon)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(HudFont.ui(HudTextSize.md, weight: .medium))
                         .foregroundStyle(manifest.accent)
-                        .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(manifest.accent.opacity(0.12)))
-                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(manifest.accent.opacity(0.28), lineWidth: 1))
+                        .frame(width: HudIconSize.large, height: HudIconSize.large)
+                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(manifest.accent)))
+                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintBorder(manifest.accent), lineWidth: 1))
 
                     Text(primitive.name)
-                        .font(HudFont.mono(13, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.base, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
 
                     Spacer()
                 }
 
                 Text(primitive.tagline)
-                    .font(HudFont.ui(12))
+                    .font(HudFont.ui(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -161,10 +161,10 @@ private struct PrimitiveCard: View {
                         HudButton(label, icon: "play.fill", style: .secondary, action: action)
                     } else {
                         Text("ALWAYS-ON")
-                            .font(HudFont.mono(9, weight: .semibold))
+                            .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
                             .tracking(1.0)
                             .foregroundStyle(HudPalette.dim)
-                            .frame(height: 32)
+                            .frame(height: HudLayout.buttonHeight)
                     }
                 }
             }

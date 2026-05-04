@@ -18,6 +18,23 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    preBuildScripts:
+      - name: HudLint (drift guard)
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/hudlint.stamp
+        script: |
+          set -euo pipefail
+          KIT_ROOT="${SRCROOT}/../.."
+          TOOL_DIR="${KIT_ROOT}/Tools/HudLint"
+          BIN="${TOOL_DIR}/.build/release/hudlint"
+          # Build the linter once per machine; cached afterwards.
+          if [ ! -x "${BIN}" ]; then
+            (cd "${TOOL_DIR}" && /usr/bin/env xcrun swift build -c release --product hudlint)
+          fi
+          # Lint kit Sources + this demo's Sources. Xcode-parseable output.
+          "${BIN}" --root "${KIT_ROOT}/Sources" --root "${SRCROOT}/Sources" --format xcode
+          /usr/bin/touch "${DERIVED_FILE_DIR}/hudlint.stamp"
     dependencies:
       - package: HudsonKit
         product: HudsonObservability

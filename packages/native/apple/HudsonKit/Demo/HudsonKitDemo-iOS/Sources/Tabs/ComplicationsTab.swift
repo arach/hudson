@@ -85,6 +85,8 @@ struct ComplicationsTab: View {
             HStack(spacing: HudSpacing.md) {
                 Image(systemName: positionIcon(pos))
                     .foregroundStyle(HudPalette.muted)
+                    // Compact icon column for the complications inspector.
+                    // hudlint:disable next-line geometry
                     .frame(width: 24)
                 Text(positionLabel(pos))
                     .font(HudFont.ui(HudTextSize.base))

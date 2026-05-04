@@ -18,19 +18,19 @@ public struct HudBadge: View {
             if dot {
                 Circle()
                     .fill(tint)
-                    .frame(width: 5, height: 5)
+                    .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
                     .accessibilityHidden(true)
             }
             Text(text)
-                .font(HudFont.mono(9, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
                 .tracking(0.8)
                 .textCase(.uppercase)
         }
         .foregroundStyle(tint)
         .padding(.horizontal, HudSpacing.md)
-        .padding(.vertical, 3)
-        .background(RoundedRectangle(cornerRadius: HudRadius.tight).fill(tint.opacity(0.16)))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.tight).stroke(tint.opacity(0.4), lineWidth: 1))
+        .padding(.vertical, HudSpacing.xxs)
+        .background(RoundedRectangle(cornerRadius: HudRadius.tight).fill(HudSurface.tintFill(tint)))
+        .overlay(RoundedRectangle(cornerRadius: HudRadius.tight).stroke(HudSurface.tintBorder(tint), lineWidth: HudStrokeWidth.standard))
         .accessibilityElement(children: .combine)
         .accessibilityLabel(text)
     }

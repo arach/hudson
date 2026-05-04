@@ -98,7 +98,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             )
             .overlay(alignment: .bottom) {
                 // Compact-mode accent bar — centered in rail, shown at bottom of row.
-                RoundedRectangle(cornerRadius: 1)
+                RoundedRectangle(cornerRadius: HudStrokeWidth.standard)
                     .fill(accent)
                     .frame(
                         width: HudSidebarLayout.compactAccentBarWidth,
@@ -161,23 +161,27 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
                 EmptyView()
             case .glass:
                 ZStack {
-                    RoundedRectangle(cornerRadius: 6)
+                    RoundedRectangle(cornerRadius: HudRadius.standard)
                         .fill(
                             RadialGradient(
+                                // Liquid-glass radial gradient stops, calibrated together.
+                                // hudlint:disable next-line palette,opacity
                                 colors: [Color.white.opacity(0.10), Color.white.opacity(0)],
                                 center: .center, startRadius: 0, endRadius: 18
                             )
                         )
                         .blur(radius: 2)
-                    RoundedRectangle(cornerRadius: 6)
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
+                    RoundedRectangle(cornerRadius: HudRadius.standard)
+                        // Liquid-glass border, calibrated for the radial gradient above.
+                        // hudlint:disable next-line palette,opacity
+                        .strokeBorder(Color.white.opacity(0.06), lineWidth: HudStrokeWidth.thin)
                 }
                 .padding(.horizontal, HudSpacing.xs)
                 .padding(.vertical, HudSpacing.xxs + 1)
                 .transition(.opacity.combined(with: .scale(scale: 0.94)))
 
             case .kinetic:
-                RoundedRectangle(cornerRadius: 7)
+                RoundedRectangle(cornerRadius: HudRadius.standard + 1)
                     .fill(HudSurface.hover)
                     .padding(.horizontal, HudSpacing.xs)
                     .padding(.vertical, HudSpacing.xxs + 1)

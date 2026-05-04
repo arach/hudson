@@ -28,7 +28,7 @@ public struct HudStatusDot: View {
         ZStack {
             if pulses && !reduceMotion {
                 Circle()
-                    .fill(color.opacity(0.35))
+                    .fill(HudSurface.tintBorder(color))
                     .frame(width: size, height: size)
                     .scaleEffect(animating ? 2.0 : 1.0)
                     .opacity(animating ? 0 : 1)

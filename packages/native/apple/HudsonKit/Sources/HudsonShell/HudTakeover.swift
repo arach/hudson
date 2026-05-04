@@ -57,9 +57,9 @@ public struct HudTakeover<Header: View, Content: View>: View {
 
             Button(action: close) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                     .foregroundStyle(HudPalette.muted)
-                    .frame(width: 32, height: 32)
+                    .frame(width: HudIconSize.large, height: HudIconSize.large)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)

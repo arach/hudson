@@ -18,11 +18,11 @@ public struct HudInspectorToggle: View {
     public var body: some View {
         Button(action: toggle) {
             Image(systemName: "sidebar.right")
-                .font(.system(size: 13, weight: .medium))
+                .font(HudFont.ui(HudTextSize.base, weight: .medium))
                 .foregroundStyle(isCollapsed ? HudPalette.dim : HudPalette.muted)
-                .frame(width: 28, height: 28)
+                .frame(width: HudIconSize.medium, height: HudIconSize.medium)
                 .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
-                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : 1))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : HudStrokeWidth.standard))
                 .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
         }
         .buttonStyle(.plain)

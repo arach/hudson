@@ -113,7 +113,7 @@ struct PrimitivesTab: View {
             HudCard {
                 VStack(alignment: .leading, spacing: HudSpacing.lg) {
                     Text("alpha.main.mini")
-                        .font(HudFont.mono(13, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.base, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
                     HudInset {
                         VStack(spacing: HudSpacing.md) {
@@ -125,7 +125,7 @@ struct PrimitivesTab: View {
                     HudDivider()
                     HStack {
                         Text("Last activity 22:14")
-                            .font(HudFont.mono(10))
+                            .font(HudFont.mono(HudTextSize.xxs))
                             .foregroundStyle(HudPalette.dim)
                         Spacer()
                         HudBadge("LIVE", tint: HudPalette.statusOk, dot: true)

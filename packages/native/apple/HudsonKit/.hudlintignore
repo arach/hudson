@@ -1,0 +1,11 @@
+# HudLint allowlist — paths skipped by `hudlint`.
+# Patterns are relative to each `--root` directory passed to the CLI.
+# See packages/native/apple/HudsonKit/Tools/HudLint/README.md for syntax.
+
+# Token definition files DEFINE the design tokens; literals here are intentional.
+# (When invoked with `--root Sources`, paths are relative to Sources/.)
+HudsonUI/Tokens/**
+
+# Build artifacts.
+**/build/**
+**/DerivedData/**

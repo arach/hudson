@@ -94,21 +94,22 @@ public struct HudVoicePanel: View {
 
     private var primaryControls: some View {
         HStack(spacing: HudSpacing.md) {
-            listenButton
-                .frame(minWidth: 118)
-            stopButton
-                .frame(minWidth: 96)
-            cancelButton
-                .frame(minWidth: 104)
+            // Voice control min-widths sized to fit each label without resize jitter.
+            // hudlint:disable next-line geometry
+            listenButton.frame(minWidth: 118)
+            // hudlint:disable next-line geometry
+            stopButton.frame(minWidth: 96)
+            // hudlint:disable next-line geometry
+            cancelButton.frame(minWidth: 104)
         }
     }
 
     private var secondaryControls: some View {
         HStack(spacing: HudSpacing.md) {
-            checkButton
-                .frame(minWidth: 104)
-            clearButton
-                .frame(minWidth: 96)
+            // hudlint:disable next-line geometry
+            checkButton.frame(minWidth: 104)
+            // hudlint:disable next-line geometry
+            clearButton.frame(minWidth: 96)
         }
     }
 
