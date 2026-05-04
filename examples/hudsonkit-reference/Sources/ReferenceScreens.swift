@@ -4,7 +4,7 @@ import HudsonVoice
 
 struct WelcomeReferenceScreen: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
             ScreenHeader(
                 title: "Welcome",
                 badge: "FIRST RUN",
@@ -14,9 +14,9 @@ struct WelcomeReferenceScreen: View {
             ReferenceHeroCard()
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 260), spacing: HudsonSpacing.xl)],
+                columns: [GridItem(.adaptive(minimum: 260), spacing: HSpacing.xl)],
                 alignment: .leading,
-                spacing: HudsonSpacing.xl
+                spacing: HSpacing.xl
             ) {
                 ReferenceStepCard(index: "01", icon: "sparkles", title: "Introduce", detail: "State what the app does and what remains local.")
                 ReferenceStepCard(index: "02", icon: "checklist", title: "Prepare", detail: "Request permissions and verify required services.")
@@ -31,9 +31,9 @@ struct ConfigurationReferenceScreen: View {
     @State private var originFilter = ""
 
     private let origins = [
-        ReferenceOrigin(origin: "http://localhost:*", policy: "User managed", tint: HudsonPalette.statusInfo),
-        ReferenceOrigin(origin: "hudson://bridge", policy: "Trusted", tint: HudsonPalette.statusOk),
-        ReferenceOrigin(origin: "file://exports", policy: "Prompt", tint: HudsonPalette.statusWarn),
+        ReferenceOrigin(origin: "http://localhost:*", policy: "User managed", tint: HPalette.statusInfo),
+        ReferenceOrigin(origin: "hudson://bridge", policy: "Trusted", tint: HPalette.statusOk),
+        ReferenceOrigin(origin: "file://exports", policy: "Prompt", tint: HPalette.statusWarn),
     ]
 
     private var visibleOrigins: [ReferenceOrigin] {
@@ -45,18 +45,18 @@ struct ConfigurationReferenceScreen: View {
     }
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
             ScreenHeader(
                 title: "Configuration",
                 badge: "SETTINGS",
                 summary: "Use dense cards and key-value rows for user-editable service settings, provider choices, and integration allowlists."
             )
 
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                    HudsonSectionLabel("Provider")
-                    VStack(spacing: HudsonSpacing.md) {
-                        HudsonListRow(
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.lg) {
+                    HSectionLabel("Provider")
+                    VStack(spacing: HSpacing.md) {
+                        HListRow(
                             title: "Native",
                             subtitle: "Local runtime and direct shell integration",
                             icon: "cpu",
@@ -65,10 +65,10 @@ struct ConfigurationReferenceScreen: View {
                         ) {
                             selectedProvider = "native"
                         } trailing: {
-                            HudsonBadge("DEFAULT", tint: HudsonPalette.statusInfo)
+                            HBadge("DEFAULT", tint: HPalette.statusInfo)
                         }
 
-                        HudsonListRow(
+                        HListRow(
                             title: "Remote",
                             subtitle: "Reference row for hosted adapters",
                             icon: "network",
@@ -77,34 +77,34 @@ struct ConfigurationReferenceScreen: View {
                         ) {
                             selectedProvider = "remote"
                         } trailing: {
-                            HudsonBadge("OPTIONAL", tint: HudsonPalette.muted)
+                            HBadge("OPTIONAL", tint: HPalette.muted)
                         }
                     }
                 }
             }
 
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                    HudsonSectionLabel("Integration")
-                    HudsonField("Filter origins", text: $originFilter)
-                    HudsonInset {
-                        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.lg) {
+                    HSectionLabel("Integration")
+                    HField("Filter origins", text: $originFilter)
+                    HInset {
+                        VStack(alignment: .leading, spacing: HSpacing.md) {
                             if visibleOrigins.isEmpty {
-                                HudsonEmptyState(title: "No matching origins", subtitle: "Clear the filter to restore the reference policies.", icon: "magnifyingglass")
+                                HEmptyState(title: "No matching origins", subtitle: "Clear the filter to restore the reference policies.", icon: "magnifyingglass")
                             } else {
                                 ForEach(visibleOrigins) { origin in
-                                    HudsonKVRow("Origin", value: origin.origin)
-                                    HudsonKVRow("Policy", value: origin.policy, valueColor: origin.tint)
+                                    HKVRow("Origin", value: origin.origin)
+                                    HKVRow("Policy", value: origin.policy, valueColor: origin.tint)
                                     if origin.id != visibleOrigins.last?.id {
-                                        HudsonDivider()
+                                        HDivider()
                                     }
                                 }
                             }
                         }
                     }
                     HStack {
-                        HudsonButton("Add", icon: "plus", style: .primary(.cyan)) {}
-                        HudsonButton("Refresh", icon: "arrow.clockwise", style: .secondary) {}
+                        HButton("Add", icon: "plus", style: .primary(.cyan)) {}
+                        HButton("Refresh", icon: "arrow.clockwise", style: .secondary) {}
                     }
                 }
             }
@@ -116,13 +116,13 @@ struct RuntimeReferenceScreen: View {
     @State private var selectedEvent = "bridge"
 
     private let events = [
-        ReferenceRuntimeEvent(id: "daemon", title: "Daemon launched", detail: "Process 42037 is accepting requests", icon: "bolt.fill", tint: HudsonPalette.statusOk, time: "now"),
-        ReferenceRuntimeEvent(id: "bridge", title: "Bridge listening", detail: "Loopback endpoint ready on 127.0.0.1", icon: "point.3.connected.trianglepath.dotted", tint: HudsonPalette.statusInfo, time: "14s"),
-        ReferenceRuntimeEvent(id: "warmup", title: "Warmup complete", detail: "First request path is primed", icon: "gauge.with.dots.needle.67percent", tint: HudsonPalette.statusOk, time: "41s"),
+        ReferenceRuntimeEvent(id: "daemon", title: "Daemon launched", detail: "Process 42037 is accepting requests", icon: "bolt.fill", tint: HPalette.statusOk, time: "now"),
+        ReferenceRuntimeEvent(id: "bridge", title: "Bridge listening", detail: "Loopback endpoint ready on 127.0.0.1", icon: "point.3.connected.trianglepath.dotted", tint: HPalette.statusInfo, time: "14s"),
+        ReferenceRuntimeEvent(id: "warmup", title: "Warmup complete", detail: "First request path is primed", icon: "gauge.with.dots.needle.67percent", tint: HPalette.statusOk, time: "41s"),
     ]
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
             ScreenHeader(
                 title: "Runtime",
                 badge: "HEALTH",
@@ -130,21 +130,21 @@ struct RuntimeReferenceScreen: View {
             )
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 240), spacing: HudsonSpacing.xl)],
+                columns: [GridItem(.adaptive(minimum: 240), spacing: HSpacing.xl)],
                 alignment: .leading,
-                spacing: HudsonSpacing.xl
+                spacing: HSpacing.xl
             ) {
-                RuntimeMetricCard(label: "Daemon", value: "Running", detail: "PID 42037", tint: HudsonPalette.statusOk, pulses: true)
-                RuntimeMetricCard(label: "Bridge", value: "Listening", detail: "127.0.0.1", tint: HudsonPalette.statusInfo)
-                RuntimeMetricCard(label: "Warmup", value: "Ready", detail: "41 ms", tint: HudsonPalette.statusOk)
+                RuntimeMetricCard(label: "Daemon", value: "Running", detail: "PID 42037", tint: HPalette.statusOk, pulses: true)
+                RuntimeMetricCard(label: "Bridge", value: "Listening", detail: "127.0.0.1", tint: HPalette.statusInfo)
+                RuntimeMetricCard(label: "Warmup", value: "Ready", detail: "41 ms", tint: HPalette.statusOk)
             }
 
-            HudsonCard(padding: HudsonSpacing.md) {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonSectionLabel("Recent events")
-                        .padding(.horizontal, HudsonSpacing.md)
+            HCard(padding: HSpacing.md) {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HSectionLabel("Recent events")
+                        .padding(.horizontal, HSpacing.md)
                     ForEach(events) { event in
-                        HudsonListRow(
+                        HListRow(
                             title: event.title,
                             subtitle: event.detail,
                             icon: event.icon,
@@ -153,21 +153,21 @@ struct RuntimeReferenceScreen: View {
                         ) {
                             selectedEvent = event.id
                         } trailing: {
-                            HudsonBadge(event.time, tint: event.tint)
+                            HBadge(event.time, tint: event.tint)
                         }
                     }
                 }
             }
 
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonSectionLabel("Recovery")
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HSectionLabel("Recovery")
                     Text("Give users explicit recovery actions for stale sessions, stopped services, and configuration drift.")
-                        .font(HudsonFont.ui(12))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.ui(12))
+                        .foregroundStyle(HPalette.muted)
                     HStack {
-                        HudsonButton("Restart", icon: "arrow.clockwise", style: .secondary) {}
-                        HudsonButton("Run check", icon: "stethoscope", style: .ghost) {}
+                        HButton("Restart", icon: "arrow.clockwise", style: .secondary) {}
+                        HButton("Run check", icon: "stethoscope", style: .ghost) {}
                     }
                 }
             }
@@ -177,40 +177,40 @@ struct RuntimeReferenceScreen: View {
 
 struct VoiceReferenceScreen: View {
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
             ScreenHeader(
                 title: "Voice",
                 badge: "OPTIONAL MODULE",
                 summary: "Feature modules should mount as ordinary app-owned screens. The host app decides when a provider is enabled and how recovered state is presented."
             )
 
-            HudsonCard(padding: HudsonSpacing.md) {
-                VStack(spacing: HudsonSpacing.md) {
-                    HudsonListRow(
+            HCard(padding: HSpacing.md) {
+                VStack(spacing: HSpacing.md) {
+                    HListRow(
                         title: "Health check",
                         subtitle: "Probe before showing live controls",
                         icon: "checkmark.seal",
                         iconTint: .green,
                         trailing: {
-                            HudsonBadge("HOST", tint: HudsonPalette.statusOk)
+                            HBadge("HOST", tint: HPalette.statusOk)
                         }
                     )
-                    HudsonListRow(
+                    HListRow(
                         title: "Live session",
                         subtitle: "Provider UI stays mounted as a normal screen",
                         icon: "waveform",
                         iconTint: .cyan,
                         trailing: {
-                            HudsonBadge("MODULE", tint: HudsonPalette.statusInfo)
+                            HBadge("MODULE", tint: HPalette.statusInfo)
                         }
                     )
-                    HudsonListRow(
+                    HListRow(
                         title: "Recovery",
                         subtitle: "Cleanup belongs in app-owned settings and runtime views",
                         icon: "wrench.and.screwdriver",
                         iconTint: .amber,
                         trailing: {
-                            HudsonBadge("APP", tint: HudsonPalette.statusWarn)
+                            HBadge("APP", tint: HPalette.statusWarn)
                         }
                     )
                 }
@@ -218,44 +218,44 @@ struct VoiceReferenceScreen: View {
 
             LazyVGrid(
                 columns: [
-                    GridItem(.adaptive(minimum: 360, maximum: 620), spacing: HudsonSpacing.xl)
+                    GridItem(.adaptive(minimum: 360, maximum: 620), spacing: HSpacing.xl)
                 ],
                 alignment: .leading,
-                spacing: HudsonSpacing.xl
+                spacing: HSpacing.xl
             ) {
-                HudsonVoicePanel(options: HudsonVoxLiveSessionOptions(clientId: "hudsonkit-reference"))
+                HVoicePanel(options: HVoxLiveSessionOptions(clientId: "hudsonkit-reference"))
 
-                HudsonCard {
-                    VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                        HudsonSectionLabel("Host responsibilities", tint: HudsonPalette.statusInfo)
+                HCard {
+                    VStack(alignment: .leading, spacing: HSpacing.lg) {
+                        HSectionLabel("Host responsibilities", tint: HPalette.statusInfo)
                         Text("A product app owns when voice is available, which provider is enabled, and how stale session recovery appears inside its own settings and runtime screens.")
-                            .font(HudsonFont.ui(12))
-                            .foregroundStyle(HudsonPalette.muted)
+                            .font(HFont.ui(12))
+                            .foregroundStyle(HPalette.muted)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        HudsonInset {
-                            VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                                HudsonKVRow("Provider", value: "Vox")
-                                HudsonKVRow("Endpoint", value: "127.0.0.1:42137")
-                                HudsonKVRow("Recovery", value: "App owned", valueColor: HudsonPalette.statusInfo)
+                        HInset {
+                            VStack(alignment: .leading, spacing: HSpacing.md) {
+                                HKVRow("Provider", value: "Vox")
+                                HKVRow("Endpoint", value: "127.0.0.1:42137")
+                                HKVRow("Recovery", value: "App owned", valueColor: HPalette.statusInfo)
                             }
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 }
 
-                HudsonCard {
-                    VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                        HudsonSectionLabel("Provider contract", tint: HudsonPalette.statusInfo)
+                HCard {
+                    VStack(alignment: .leading, spacing: HSpacing.lg) {
+                        HSectionLabel("Provider contract", tint: HPalette.statusInfo)
                         Text("Use a small adapter around the local companion. Keep the screen ordinary: health check, live session controls, transcript surface, and explicit cleanup actions.")
-                            .font(HudsonFont.ui(12))
-                            .foregroundStyle(HudsonPalette.muted)
+                            .font(HFont.ui(12))
+                            .foregroundStyle(HPalette.muted)
                             .fixedSize(horizontal: false, vertical: true)
 
-                        HStack(spacing: HudsonSpacing.md) {
-                            HudsonBadge("HEALTH", tint: HudsonPalette.statusOk, dot: true)
-                            HudsonBadge("LIVE SESSION", tint: HudsonPalette.statusInfo, dot: true)
-                            HudsonBadge("RECOVERY", tint: HudsonPalette.statusWarn, dot: true)
+                        HStack(spacing: HSpacing.md) {
+                            HBadge("HEALTH", tint: HPalette.statusOk, dot: true)
+                            HBadge("LIVE SESSION", tint: HPalette.statusInfo, dot: true)
+                            HBadge("RECOVERY", tint: HPalette.statusWarn, dot: true)
                         }
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -271,14 +271,14 @@ private struct ScreenHeader: View {
     let summary: String
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-            HStack(spacing: HudsonSpacing.md) {
-                HudsonSectionLabel(title)
-                HudsonBadge(badge, tint: HudsonPalette.statusInfo)
+        VStack(alignment: .leading, spacing: HSpacing.md) {
+            HStack(spacing: HSpacing.md) {
+                HSectionLabel(title)
+                HBadge(badge, tint: HPalette.statusInfo)
             }
             Text(summary)
-                .font(HudsonFont.ui(12))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.ui(12))
+                .foregroundStyle(HPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 760, alignment: .leading)
         }
@@ -287,41 +287,41 @@ private struct ScreenHeader: View {
 
 private struct ReferenceHeroCard: View {
     var body: some View {
-        HudsonCard(padding: 0) {
+        HCard(padding: 0) {
             ZStack(alignment: .topLeading) {
-                HudsonGridBackground(step: 24)
+                HGridBackground(step: 24)
                     .opacity(0.8)
 
-                VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-                    HStack(spacing: HudsonSpacing.md) {
-                        HudsonBadge("NATIVE", tint: HudsonPalette.statusInfo, dot: true)
-                        HudsonBadge("FAST SHELL", tint: HudsonPalette.statusOk, dot: true)
-                        HudsonBadge("BASELINE", tint: HudsonPalette.muted)
+                VStack(alignment: .leading, spacing: HSpacing.xl) {
+                    HStack(spacing: HSpacing.md) {
+                        HBadge("NATIVE", tint: HPalette.statusInfo, dot: true)
+                        HBadge("FAST SHELL", tint: HPalette.statusOk, dot: true)
+                        HBadge("BASELINE", tint: HPalette.muted)
                     }
 
                     Text("HudsonKit reference scaffold")
-                        .font(HudsonFont.ui(24, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.ink)
+                        .font(HFont.ui(24, weight: .semibold))
+                        .foregroundStyle(HPalette.ink)
 
                     Text("A compact app shell with rail navigation, inspector context, status chrome, primitive controls, and optional module mounting.")
-                        .font(HudsonFont.ui(13))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.ui(13))
+                        .foregroundStyle(HPalette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                         .frame(maxWidth: 620, alignment: .leading)
 
-                    HudsonInset {
-                        VStack(spacing: HudsonSpacing.md) {
-                            HudsonKVRow("Target", value: "macOS 14 / iOS 17")
-                            HudsonKVRow("Motion", value: "Short transitions", valueColor: HudsonPalette.statusOk)
-                            HudsonKVRow("Measure", value: "Shell / SwiftUI / Module baselines", valueColor: HudsonPalette.statusInfo)
+                    HInset {
+                        VStack(spacing: HSpacing.md) {
+                            HKVRow("Target", value: "macOS 14 / iOS 17")
+                            HKVRow("Motion", value: "Short transitions", valueColor: HPalette.statusOk)
+                            HKVRow("Measure", value: "Shell / SwiftUI / Module baselines", valueColor: HPalette.statusInfo)
                         }
                     }
                     .frame(maxWidth: 420, alignment: .leading)
                 }
-                .padding(HudsonSpacing.huge)
+                .padding(HSpacing.huge)
             }
             .frame(maxWidth: .infinity, minHeight: 220, alignment: .topLeading)
-            .clipShape(RoundedRectangle(cornerRadius: HudsonRadius.card))
+            .clipShape(RoundedRectangle(cornerRadius: HRadius.card))
         }
     }
 }
@@ -333,24 +333,24 @@ private struct ReferenceStepCard: View {
     let detail: String
 
     var body: some View {
-        HudsonCard {
-            VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
+        HCard {
+            VStack(alignment: .leading, spacing: HSpacing.lg) {
                 HStack {
-                    HudsonBadge(index, tint: HudsonPalette.statusInfo)
+                    HBadge(index, tint: HPalette.statusInfo)
                     Spacer()
                     Image(systemName: icon)
                         .font(.system(size: 15, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.statusInfo)
+                        .foregroundStyle(HPalette.statusInfo)
                         .frame(width: 28, height: 28)
-                        .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(HudsonPalette.statusInfo.opacity(0.12)))
-                        .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(HudsonPalette.statusInfo.opacity(0.28), lineWidth: 1))
+                        .background(RoundedRectangle(cornerRadius: HRadius.standard).fill(HPalette.statusInfo.opacity(0.12)))
+                        .overlay(RoundedRectangle(cornerRadius: HRadius.standard).stroke(HPalette.statusInfo.opacity(0.28), lineWidth: 1))
                 }
                 Text(title)
-                    .font(HudsonFont.mono(13, weight: .semibold))
-                    .foregroundStyle(HudsonPalette.ink)
+                    .font(HFont.mono(13, weight: .semibold))
+                    .foregroundStyle(HPalette.ink)
                 Text(detail)
-                    .font(HudsonFont.ui(12))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.ui(12))
+                    .foregroundStyle(HPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -366,19 +366,19 @@ private struct RuntimeMetricCard: View {
     var pulses = false
 
     var body: some View {
-        HudsonCard {
-            HStack(spacing: HudsonSpacing.lg) {
-                HudsonStatusDot(color: tint, pulses: pulses)
+        HCard {
+            HStack(spacing: HSpacing.lg) {
+                HStatusDot(color: tint, pulses: pulses)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(label.uppercased())
-                        .font(HudsonFont.mono(9, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.dim)
+                        .font(HFont.mono(9, weight: .semibold))
+                        .foregroundStyle(HPalette.dim)
                     Text(value)
-                        .font(HudsonFont.mono(13, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.ink)
+                        .font(HFont.mono(13, weight: .semibold))
+                        .foregroundStyle(HPalette.ink)
                     Text(detail)
-                        .font(HudsonFont.mono(10))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.mono(10))
+                        .foregroundStyle(HPalette.muted)
                 }
                 Spacer()
             }
@@ -402,7 +402,7 @@ private struct ReferenceRuntimeEvent: Identifiable {
     let tint: Color
     let time: String
 
-    var iconTint: HudsonTint {
+    var iconTint: HTint {
         switch id {
         case "daemon": return .green
         case "bridge": return .cyan

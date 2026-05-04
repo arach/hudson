@@ -28,8 +28,8 @@ enum ReferenceSection: String, CaseIterable, Identifiable {
         }
     }
 
-    var navItem: HudsonNavRailItem {
-        HudsonNavRailItem(id: rawValue, label: title, icon: icon)
+    var navItem: HRailItem {
+        HRailItem(id: rawValue, label: title, icon: icon)
     }
 }
 
@@ -38,7 +38,7 @@ struct ReferenceRootView: View {
     @State private var railExpanded = true
     @State private var inspectorCollapsed = false
 
-    private let manifest = HudsonAppManifest(
+    private let manifest = HAppManifest(
         name: "Reference",
         version: "0.1.0",
         tint: .cyan,
@@ -46,8 +46,8 @@ struct ReferenceRootView: View {
     )
 
     var body: some View {
-        HudsonAppShell {
-            HudsonNavigationRail(
+        HAppShell {
+            HNavigationRail(
                 selection: Binding(
                     get: { section.rawValue },
                     set: { next in
@@ -62,11 +62,11 @@ struct ReferenceRootView: View {
                 railFooter
             }
         } trailing: {
-            HudsonInspector(isCollapsed: $inspectorCollapsed) {
+            HInspector(isCollapsed: $inspectorCollapsed) {
                 HStack {
-                    HudsonSectionLabel("Inspector")
+                    HSectionLabel("Inspector")
                     Spacer()
-                    HudsonBadge(section.title.uppercased(), tint: manifest.accent)
+                    HBadge(section.title.uppercased(), tint: manifest.accent)
                 }
             } content: {
                 inspectorContent
@@ -74,7 +74,7 @@ struct ReferenceRootView: View {
         } content: {
             ScrollView {
                 sectionContent
-                    .padding(HudsonSpacing.xxl)
+                    .padding(HSpacing.xxl)
                     .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         } statusBar: {
@@ -84,9 +84,9 @@ struct ReferenceRootView: View {
     }
 
     private var railFooter: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-            HudsonSectionLabel("Scaffold")
-            HudsonBadge("URL PACKAGE", tint: HudsonPalette.statusInfo, dot: true)
+        VStack(alignment: .leading, spacing: HSpacing.md) {
+            HSectionLabel("Scaffold")
+            HBadge("URL PACKAGE", tint: HPalette.statusInfo, dot: true)
         }
     }
 
@@ -105,21 +105,21 @@ struct ReferenceRootView: View {
     }
 
     private var inspectorContent: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.xl) {
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonKVRow("Section", value: section.title)
-                    HudsonKVRow("Shell", value: railExpanded ? "Expanded" : "Compact")
-                    HudsonKVRow("Tint", value: "Cyan", valueColor: manifest.accent)
+        VStack(alignment: .leading, spacing: HSpacing.xl) {
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HKVRow("Section", value: section.title)
+                    HKVRow("Shell", value: railExpanded ? "Expanded" : "Compact")
+                    HKVRow("Tint", value: "Cyan", valueColor: manifest.accent)
                 }
             }
 
-            HudsonCard {
-                VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-                    HudsonSectionLabel("Pattern", tint: HudsonPalette.muted)
+            HCard {
+                VStack(alignment: .leading, spacing: HSpacing.md) {
+                    HSectionLabel("Pattern", tint: HPalette.muted)
                     Text("Product apps own state and content. HudsonKit supplies shell, chrome, surfaces, and primitive controls.")
-                        .font(HudsonFont.ui(12))
-                        .foregroundStyle(HudsonPalette.muted)
+                        .font(HFont.ui(12))
+                        .foregroundStyle(HPalette.muted)
                         .fixedSize(horizontal: false, vertical: true)
                 }
             }
@@ -127,24 +127,24 @@ struct ReferenceRootView: View {
     }
 
     private var statusBar: some View {
-        HStack(spacing: HudsonSpacing.xl) {
-            HudsonStatusDot(color: manifest.accent)
+        HStack(spacing: HSpacing.xl) {
+            HStatusDot(color: manifest.accent)
             Text("HUDSONKIT")
-                .font(HudsonFont.mono(10, weight: .bold))
+                .font(HFont.mono(10, weight: .bold))
                 .tracking(1.4)
-                .foregroundStyle(HudsonPalette.muted)
+                .foregroundStyle(HPalette.muted)
 
             Text("·")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.dim)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.dim)
 
             Text("reference scaffold")
-                .font(HudsonFont.mono(10))
-                .foregroundStyle(HudsonPalette.muted)
+                .font(HFont.mono(10))
+                .foregroundStyle(HPalette.muted)
 
             Spacer()
 
-            HudsonButton(
+            HButton(
                 railExpanded ? "Collapse rail" : "Expand rail",
                 icon: "sidebar.left",
                 style: .ghost
@@ -152,9 +152,9 @@ struct ReferenceRootView: View {
                 railExpanded.toggle()
             }
 
-            HudsonBadge(section.title.uppercased(), tint: manifest.accent)
+            HBadge(section.title.uppercased(), tint: manifest.accent)
         }
-        .padding(.horizontal, HudsonSpacing.xxl)
-        .frame(height: HudsonLayout.statusBarHeight)
+        .padding(.horizontal, HSpacing.xxl)
+        .frame(height: HLayout.statusBarHeight)
     }
 }

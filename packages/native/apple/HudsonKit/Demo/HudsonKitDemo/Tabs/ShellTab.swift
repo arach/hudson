@@ -17,13 +17,13 @@ struct ShellTab: View {
     @Environment(\.hudsonAppManifest) private var manifest
 
     var body: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.huge) {
+        VStack(alignment: .leading, spacing: HSpacing.huge) {
             header
 
             LazyVGrid(
-                columns: [GridItem(.adaptive(minimum: 320), spacing: HudsonSpacing.xl)],
+                columns: [GridItem(.adaptive(minimum: 320), spacing: HSpacing.xl)],
                 alignment: .leading,
-                spacing: HudsonSpacing.xl
+                spacing: HSpacing.xl
             ) {
                 ForEach(primitives) { primitive in
                     PrimitiveCard(primitive: primitive)
@@ -33,16 +33,16 @@ struct ShellTab: View {
     }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: HudsonSpacing.md) {
-            HStack(spacing: HudsonSpacing.md) {
-                HudsonSectionLabel("Shell · M3 chrome", tint: manifest.accent)
+        VStack(alignment: .leading, spacing: HSpacing.md) {
+            HStack(spacing: HSpacing.md) {
+                HSectionLabel("Shell · M3 chrome", tint: manifest.accent)
                 Spacer()
-                HudsonBadge("\(primitives.count) PRIMITIVES", tint: manifest.accent)
+                HBadge("\(primitives.count) PRIMITIVES", tint: manifest.accent)
             }
 
-            Text("HudsonShell composes the chassis around a HudsonApp — slots for navigation, inspection, drawers, and overlays. Each card below documents one surface and lets you exercise it live.")
-                .font(HudsonFont.ui(12))
-                .foregroundStyle(HudsonPalette.muted)
+            Text("HudsonShell composes the chassis around a HApp — slots for navigation, inspection, drawers, and overlays. Each card below documents one surface and lets you exercise it live.")
+                .font(HFont.ui(12))
+                .foregroundStyle(HPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: 720, alignment: .leading)
         }
@@ -54,7 +54,7 @@ struct ShellTab: View {
         [
             Primitive(
                 id: "appshell",
-                name: "HudsonAppShell",
+                name: "HAppShell",
                 icon: "rectangle.split.3x1",
                 tagline: "Chassis with six slots — leading, trailing, topDrawer, bottomDrawer, content, statusBar. The whole thing you're looking at right now.",
                 actionLabel: nil,
@@ -62,7 +62,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "rail",
-                name: "HudsonNavigationRail",
+                name: "HNavigationRail",
                 icon: "sidebar.left",
                 tagline: "Leading rail · 64pt collapsed, 240pt expanded. Brand header reads from manifest. Footer slot hosts the variant picker.",
                 actionLabel: "Toggle expand",
@@ -70,7 +70,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "inspector",
-                name: "HudsonInspector",
+                name: "HInspector",
                 icon: "sidebar.right",
                 tagline: "Trailing 280pt collapsible panel with a header slot and scrolling body. Hidden by the shell on compact width.",
                 actionLabel: "Toggle inspector",
@@ -78,7 +78,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "drawer",
-                name: "HudsonTerminalDrawer",
+                name: "HTerminalDrawer",
                 icon: "terminal",
                 tagline: "Bottom slide-up drawer with isOpen binding. Always shows a 32pt header strip; expands to a configurable height when open.",
                 actionLabel: "Toggle drawer",
@@ -86,7 +86,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "canvas",
-                name: "HudsonCanvas",
+                name: "HCanvas",
                 icon: "rectangle.dashed",
                 tagline: "Content-slot work surface. Optional grid background, pinned header, scrolling body. The arach-laptop detail screen uses this.",
                 actionLabel: nil,
@@ -94,7 +94,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "takeover",
-                name: "HudsonTakeover",
+                name: "HTakeover",
                 icon: "rectangle.fill.on.rectangle.fill",
                 tagline: "Full-viewport blocking flow mounted via .hudsonTakeover. Header slot, content slot, fade + slide-up transition.",
                 actionLabel: "Open takeover",
@@ -102,7 +102,7 @@ struct ShellTab: View {
             ),
             Primitive(
                 id: "palette",
-                name: "HudsonCommandPalette",
+                name: "HCommandPalette",
                 icon: "command",
                 tagline: "Centered ⌘K overlay. Search field, grouped command list, keyboard navigation, scrim backdrop, return to execute, esc to dismiss.",
                 actionLabel: "Open palette",
@@ -130,40 +130,40 @@ private struct PrimitiveCard: View {
     @Environment(\.hudsonAppManifest) private var manifest
 
     var body: some View {
-        HudsonCard {
-            VStack(alignment: .leading, spacing: HudsonSpacing.lg) {
-                HStack(spacing: HudsonSpacing.lg) {
+        HCard {
+            VStack(alignment: .leading, spacing: HSpacing.lg) {
+                HStack(spacing: HSpacing.lg) {
                     Image(systemName: primitive.icon)
                         .font(.system(size: 14, weight: .medium))
                         .foregroundStyle(manifest.accent)
                         .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: HudsonRadius.standard).fill(manifest.accent.opacity(0.12)))
-                        .overlay(RoundedRectangle(cornerRadius: HudsonRadius.standard).stroke(manifest.accent.opacity(0.28), lineWidth: 1))
+                        .background(RoundedRectangle(cornerRadius: HRadius.standard).fill(manifest.accent.opacity(0.12)))
+                        .overlay(RoundedRectangle(cornerRadius: HRadius.standard).stroke(manifest.accent.opacity(0.28), lineWidth: 1))
 
                     Text(primitive.name)
-                        .font(HudsonFont.mono(13, weight: .semibold))
-                        .foregroundStyle(HudsonPalette.ink)
+                        .font(HFont.mono(13, weight: .semibold))
+                        .foregroundStyle(HPalette.ink)
 
                     Spacer()
                 }
 
                 Text(primitive.tagline)
-                    .font(HudsonFont.ui(12))
-                    .foregroundStyle(HudsonPalette.muted)
+                    .font(HFont.ui(12))
+                    .foregroundStyle(HPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                Spacer(minLength: HudsonSpacing.sm)
+                Spacer(minLength: HSpacing.sm)
 
                 HStack {
                     Spacer()
                     if let label = primitive.actionLabel, let action = primitive.action {
-                        HudsonButton(label, icon: "play.fill", style: .secondary, action: action)
+                        HButton(label, icon: "play.fill", style: .secondary, action: action)
                     } else {
                         Text("ALWAYS-ON")
-                            .font(HudsonFont.mono(9, weight: .semibold))
+                            .font(HFont.mono(9, weight: .semibold))
                             .tracking(1.0)
-                            .foregroundStyle(HudsonPalette.dim)
+                            .foregroundStyle(HPalette.dim)
                             .frame(height: 32)
                     }
                 }
