@@ -32,7 +32,7 @@ public struct HudSettingsSection<Content: View>: View {
                 content()
             }
             .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudPalette.surface))
-            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: 0.5))
+            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
         }
         .id(title)
     }
@@ -69,7 +69,7 @@ public struct HudSettingsRow<Badge: View>: View {
         let content = HStack(spacing: HudSpacing.xl) {
             HudSettingsLeadingIcon(systemName: icon, color: iconColor)
 
-            VStack(alignment: .leading, spacing: 2) {
+            VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                 Text(title)
                     .font(HudFont.ui(HudTextSize.md, weight: .regular))
                     .foregroundStyle(HudPalette.ink)
@@ -85,8 +85,8 @@ public struct HudSettingsRow<Badge: View>: View {
 
             if onTap != nil {
                 Image(systemName: "chevron.right")
-                    .font(.system(size: 11, weight: .light))
-                    .foregroundStyle(HudPalette.dim.opacity(0.6))
+                    .font(HudFont.ui(HudTextSize.xs, weight: .light))
+                    .foregroundStyle(HudSurface.tintStrong(HudPalette.dim))
             }
         }
         .padding(.horizontal, HudSpacing.md)
@@ -145,6 +145,6 @@ public struct HudSettingsLeadingIcon: View {
         Image(systemName: systemName)
             .font(.system(size: fontSize, weight: weight))
             .foregroundStyle(color)
-            .frame(width: 28, height: 28)
+            .frame(width: HudIconSize.medium, height: HudIconSize.medium)
     }
 }

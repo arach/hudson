@@ -11,12 +11,12 @@ struct FleetTopBar: View {
         HStack(spacing: HudSpacing.xl) {
             HStack(spacing: HudSpacing.lg) {
                 Text(manifest.name.uppercased())
-                    .font(HudFont.mono(11, weight: .bold))
+                    .font(HudFont.mono(HudTextSize.xs, weight: .bold))
                     .tracking(1.5)
                     .foregroundStyle(HudPalette.ink)
                 Text("·").foregroundStyle(HudPalette.dim)
                 Text("home")
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .tracking(1)
                     .foregroundStyle(HudPalette.muted)
             }
@@ -31,10 +31,10 @@ struct FleetTopBar: View {
 
             HudBadge("2 \(manifest.targetLabel.uppercased())S", tint: manifest.accent, dot: true)
             Image(systemName: "chevron.down")
-                .font(.system(size: 11, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.muted)
             Image(systemName: "gearshape")
-                .font(.system(size: 14))
+                .font(HudFont.ui(HudTextSize.md))
                 .foregroundStyle(HudPalette.muted)
         }
         .padding(.horizontal, HudSpacing.xxl)
@@ -47,15 +47,15 @@ private struct FleetPill: View {
     let target: TargetMock
     var body: some View {
         HStack(spacing: 5) {
-            Circle().fill(target.statusColor).frame(width: 5, height: 5)
+            Circle().fill(target.statusColor).frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
             Text(target.name)
-                .font(HudFont.mono(10, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
                 .foregroundStyle(target.statusLabel == "OFFLINE" ? HudPalette.dim : HudPalette.ink)
         }
         .padding(.horizontal, HudSpacing.md)
-        .padding(.vertical, 4)
-        .background(RoundedRectangle(cornerRadius: HudRadius.tight).fill(target.statusColor.opacity(0.12)))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.tight).stroke(target.statusColor.opacity(0.35), lineWidth: 1))
+        .padding(.vertical, HudSpacing.xs)
+        .background(RoundedRectangle(cornerRadius: HudRadius.tight).fill(HudSurface.tintFill(target.statusColor)))
+        .overlay(RoundedRectangle(cornerRadius: HudRadius.tight).stroke(HudSurface.tintBorder(target.statusColor), lineWidth: HudStrokeWidth.standard))
     }
 }
 
@@ -69,7 +69,7 @@ struct TargetCard: View {
 
     var body: some View {
         Button(action: { onTap?() }) {
-            HudCard(stroke: isHovering ? target.iconTint.color.opacity(0.45) : HudHairline.standard) {
+            HudCard(stroke: isHovering ? HudSurface.tintMuted(target.iconTint.color) : HudHairline.standard) {
                 VStack(alignment: .leading, spacing: HudSpacing.lg) {
                     header
                     if let scene = target.scene { sceneRow(scene) }
@@ -93,17 +93,19 @@ struct TargetCard: View {
     private var header: some View {
         HStack(spacing: HudSpacing.lg) {
             Image(systemName: target.icon)
-                .font(.system(size: 16, weight: .medium))
+                .font(HudFont.ui(HudTextSize.lg, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
+                // Header icon chip — non-square aspect tuned for the target card.
+                // hudlint:disable next-line geometry
                 .frame(width: 40, height: 32)
-                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(target.iconTint.color.opacity(0.15)))
-                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(target.iconTint.color.opacity(0.28), lineWidth: 1))
+                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(target.iconTint.color)))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintBorder(target.iconTint.color), lineWidth: 1))
             VStack(alignment: .leading, spacing: 2) {
                 Text(target.name)
-                    .font(HudFont.mono(13, weight: .semibold))
+                    .font(HudFont.mono(HudTextSize.base, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
                 Text(target.host)
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.muted)
             }
             Spacer(minLength: 0)
@@ -116,7 +118,7 @@ struct TargetCard: View {
                 }
                 if let latency = target.latency {
                     Text(latency)
-                        .font(HudFont.mono(9))
+                        .font(HudFont.mono(HudTextSize.micro))
                         .foregroundStyle(HudPalette.dim)
                 }
             }
@@ -126,10 +128,10 @@ struct TargetCard: View {
     private func sceneRow(_ scene: String) -> some View {
         HStack(spacing: HudSpacing.md) {
             Image(systemName: "rectangle.grid.2x2")
-                .font(.system(size: 10))
+                .font(HudFont.ui(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
             Text(scene)
-                .font(HudFont.ui(12))
+                .font(HudFont.ui(HudTextSize.sm))
                 .foregroundStyle(HudPalette.ink)
         }
     }
@@ -150,17 +152,19 @@ struct TargetCard: View {
     private func kvRow(_ key: String, primary: String, secondary: String?) -> some View {
         HStack(spacing: HudSpacing.md) {
             Text(key.uppercased())
-                .font(HudFont.mono(9))
+                .font(HudFont.mono(HudTextSize.micro))
                 .tracking(0.8)
                 .foregroundStyle(HudPalette.dim)
+                // Key-label gutter — fixed width for column alignment.
+                // hudlint:disable next-line geometry
                 .frame(width: 36, alignment: .leading)
             Text(primary)
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.ink)
             if let secondary {
                 Text("·").foregroundStyle(HudPalette.dim)
                 Text(secondary)
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.muted)
             }
             Spacer(minLength: 0)
@@ -170,23 +174,25 @@ struct TargetCard: View {
     private var agentRow: some View {
         HStack(spacing: HudSpacing.md) {
             Text("AGENT")
-                .font(HudFont.mono(9))
+                .font(HudFont.mono(HudTextSize.micro))
                 .tracking(0.8)
                 .foregroundStyle(HudPalette.dim)
+                // Agent label gutter — fixed width for column alignment.
+                // hudlint:disable next-line geometry
                 .frame(width: 36, alignment: .leading)
             HudStatusDot(color: target.agentTint.color, size: 6, pulses: target.agentStatus == "running")
             Text(target.agentStatus)
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.ink)
             if let activity = target.agentActivity {
                 Text("·").foregroundStyle(HudPalette.dim)
                 Text(activity)
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.muted)
             }
             Spacer(minLength: 0)
             Image(systemName: "arrow.up.right")
-                .font(.system(size: 10, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.xxs, weight: .semibold))
                 .foregroundStyle(HudPalette.muted)
         }
     }
@@ -208,11 +214,13 @@ struct AgentPanel: View {
     private func row(icon: String, tint: Color, text: String) -> some View {
         HStack(spacing: HudSpacing.md) {
             Image(systemName: icon)
-                .font(.system(size: 9, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
                 .foregroundStyle(tint)
+                // Compact glyph column.
+                // hudlint:disable next-line geometry
                 .frame(width: 14)
             Text(text)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.ink)
         }
     }
@@ -225,17 +233,19 @@ struct TerminalPanel: View {
                 line("~", "~/dev/lattices", primaryDim: false)
                 line("$", "swift build -c release", primaryDim: false)
                 Text("Compiling DeckKit…")
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.muted)
                 Text("Compiling Sources…")
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.muted)
                 HStack(spacing: HudSpacing.xs) {
                     Text("$")
-                        .font(HudFont.mono(11, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                         .foregroundStyle(HudPalette.statusOk)
                     Rectangle()
                         .fill(HudPalette.statusOk)
+                        // Mono character cell preview — tied to monospace font metrics.
+                        // hudlint:disable next-line geometry
                         .frame(width: 7, height: 13)
                 }
             }
@@ -245,10 +255,10 @@ struct TerminalPanel: View {
     private func line(_ glyph: String, _ text: String, primaryDim: Bool) -> some View {
         HStack(spacing: HudSpacing.xs) {
             Text(glyph)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.muted)
             Text(text)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.ink)
         }
     }
@@ -268,17 +278,19 @@ struct CalendarPanel: View {
     private func event(time: String, title: String, dot: Bool) -> some View {
         HStack(spacing: HudSpacing.md) {
             Text(time)
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.dim)
+                // Timestamp gutter — fixed width for column alignment.
+                // hudlint:disable next-line geometry
                 .frame(width: 56, alignment: .leading)
             Text(title)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.ink)
             Spacer(minLength: 0)
             if dot {
                 Circle()
                     .fill(HudPalette.statusInfo)
-                    .frame(width: 5, height: 5)
+                    .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
             }
         }
     }
@@ -296,13 +308,13 @@ private struct OverflowPanel<Content: View>: View {
                     HudSectionLabel(label, tint: HudTint.amber.color)
                     Spacer()
                     Text(trailing)
-                        .font(HudFont.mono(9))
+                        .font(HudFont.mono(HudTextSize.micro))
                         .tracking(0.8)
                         .foregroundStyle(HudPalette.dim)
                 }
                 .padding(.horizontal, HudSpacing.xl)
-                .frame(height: 32)
-                .background(Color.white.opacity(0.02))
+                .frame(height: HudLayout.buttonHeight)
+                .background(HudSurface.inset)
 
                 HudDivider()
 
@@ -333,26 +345,26 @@ struct DashboardBottomChrome: View {
     private var cloudRow: some View {
         HStack(spacing: HudSpacing.md) {
             Image(systemName: "cloud")
-                .font(.system(size: 11))
+                .font(HudFont.ui(HudTextSize.xs))
                 .foregroundStyle(HudPalette.muted)
-            Text("CLOUD").font(HudFont.mono(9, weight: .semibold)).tracking(0.8).foregroundStyle(HudPalette.muted)
+            Text("CLOUD").font(HudFont.mono(HudTextSize.micro, weight: .semibold)).tracking(0.8).foregroundStyle(HudPalette.muted)
             sep
             HudStatusDot(color: HudPalette.statusOk, size: 5)
             Text("2 \(manifest.targetLabel.lowercased())s")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
             sep
             HudStatusDot(color: HudTint.amber.color, size: 5)
             Text("1 builds queued")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
             sep
             Text("deploy 4m ago")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
             Spacer()
             Image(systemName: "chevron.up")
-                .font(.system(size: 10))
+                .font(HudFont.ui(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
         }
         .padding(.horizontal, HudSpacing.xl)
@@ -363,38 +375,38 @@ struct DashboardBottomChrome: View {
         HStack(spacing: HudSpacing.md) {
             HudStatusDot(color: HudPalette.statusOk, size: 6, pulses: true)
             Text("READY")
-                .font(HudFont.mono(9, weight: .bold))
+                .font(HudFont.mono(HudTextSize.micro, weight: .bold))
                 .tracking(1.0)
                 .foregroundStyle(HudPalette.statusOk)
             sep
             Text("hold-space")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
             sep
             Text("air ← home")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
             sep
             Text("19w · 1/7 · cpu 51% · mem 98% · 45°")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
             Spacer()
             HudStatusDot(color: HudPalette.statusOk, size: 5)
             Text("agent ready")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
             sep
             Text("claude · \(manifest.name) · v\(manifest.version)")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
         }
         .padding(.horizontal, HudSpacing.xl)
-        .frame(height: 28)
+        .frame(height: HudIconSize.medium)
     }
 
     private var sep: some View {
         Text("·")
-            .font(HudFont.mono(10))
+            .font(HudFont.mono(HudTextSize.xxs))
             .foregroundStyle(HudPalette.dim)
     }
 }

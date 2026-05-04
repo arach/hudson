@@ -30,6 +30,8 @@ struct TerminalTab: View {
             appearance: TerminiTerminalAppearance(theme: selectedTheme)
         )
         .id(demoTick)
+        // Live terminal preview surface height — preview-specific aspect.
+        // hudlint:disable next-line geometry
         .frame(height: 240)
         .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
         .overlay(
@@ -117,7 +119,7 @@ struct TerminalTab: View {
         HStack(spacing: 0) {
             ForEach(Array(segments.enumerated()), id: \.offset) { _, seg in
                 Text(seg.0.isEmpty ? " " : seg.0)
-                    .font(.system(size: 11, weight: weight(for: seg.1), design: .monospaced))
+                    .font(HudFont.mono(HudTextSize.xs, weight: weight(for: seg.1)))
                     .foregroundStyle(toneColor(seg.1))
             }
             Spacer(minLength: 0)
@@ -127,6 +129,8 @@ struct TerminalTab: View {
     private func paletteCell(_ c: TerminiTerminalColor) -> some View {
         Rectangle()
             .fill(color(c))
+            // Mono character cell preview — tied to monospace font metrics.
+            // hudlint:disable next-line geometry
             .frame(width: 14, height: 12)
     }
 
@@ -172,17 +176,19 @@ struct TerminalTab: View {
                 .fill(color(theme.background))
             VStack(spacing: 2) {
                 HStack(spacing: 2) {
-                    Circle().fill(color(theme.ansiPalette[1])).frame(width: 6, height: 6)
-                    Circle().fill(color(theme.ansiPalette[2])).frame(width: 6, height: 6)
-                    Circle().fill(color(theme.ansiPalette[4])).frame(width: 6, height: 6)
+                    Circle().fill(color(theme.ansiPalette[1])).frame(width: HudDotSize.small, height: HudDotSize.small)
+                    Circle().fill(color(theme.ansiPalette[2])).frame(width: HudDotSize.small, height: HudDotSize.small)
+                    Circle().fill(color(theme.ansiPalette[4])).frame(width: HudDotSize.small, height: HudDotSize.small)
                 }
                 HStack(spacing: 2) {
-                    Circle().fill(color(theme.ansiPalette[3])).frame(width: 6, height: 6)
-                    Circle().fill(color(theme.ansiPalette[5])).frame(width: 6, height: 6)
-                    Circle().fill(color(theme.ansiPalette[6])).frame(width: 6, height: 6)
+                    Circle().fill(color(theme.ansiPalette[3])).frame(width: HudDotSize.small, height: HudDotSize.small)
+                    Circle().fill(color(theme.ansiPalette[5])).frame(width: HudDotSize.small, height: HudDotSize.small)
+                    Circle().fill(color(theme.ansiPalette[6])).frame(width: HudDotSize.small, height: HudDotSize.small)
                 }
             }
         }
+        // Theme swatch tile size — preview-specific aspect, not a global token.
+        // hudlint:disable next-line geometry
         .frame(width: 56, height: 40)
         .overlay(
             RoundedRectangle(cornerRadius: HudRadius.standard)
@@ -198,11 +204,11 @@ struct TerminalTab: View {
                 let columns = Array(repeating: GridItem(.flexible(), spacing: HudSpacing.sm), count: 8)
                 LazyVGrid(columns: columns, spacing: HudSpacing.sm) {
                     ForEach(0..<16, id: \.self) { idx in
-                        VStack(spacing: 4) {
-                            RoundedRectangle(cornerRadius: 4)
+                        VStack(spacing: HudSpacing.xs) {
+                            RoundedRectangle(cornerRadius: HudRadius.tight + 1)
                                 .fill(color(selectedTheme.ansiPalette[idx]))
-                                .frame(height: 28)
-                                .overlay(RoundedRectangle(cornerRadius: 4).stroke(HudHairline.subtle, lineWidth: 0.5))
+                                .frame(height: HudIconSize.medium)
+                                .overlay(RoundedRectangle(cornerRadius: HudRadius.tight + 1).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
                             Text("\(idx)")
                                 .font(HudFont.mono(HudTextSize.xxs))
                                 .foregroundStyle(HudPalette.dim)
@@ -236,16 +242,15 @@ struct TerminalTab: View {
         }
     }
 
-    private func color(_ c: TerminiTerminalColor) -> Color {
-        Color(red: Double(c.red) / 255.0,
-              green: Double(c.green) / 255.0,
-              blue: Double(c.blue) / 255.0)
-    }
+    /// Bridges a Termini terminal color (raw RGB bytes) into SwiftUI Color.
+    /// Not a design literal — the values come from theme data.
+    // hudlint:disable next-line palette
+    private func color(_ c: TerminiTerminalColor) -> Color { Color(red: Double(c.red) / 255.0, green: Double(c.green) / 255.0, blue: Double(c.blue) / 255.0) }
 
     private func toneColor(_ tone: Tone) -> Color {
         switch tone {
         case .fg:        return color(selectedTheme.foreground)
-        case .dim:       return color(selectedTheme.foreground).opacity(0.5)
+        case .dim:       return color(selectedTheme.foreground).opacity(HudOpacity.muted)
         case .cursor:    return color(selectedTheme.cursor)
         case .ansi(let i, _): return color(selectedTheme.ansiPalette[i])
         }

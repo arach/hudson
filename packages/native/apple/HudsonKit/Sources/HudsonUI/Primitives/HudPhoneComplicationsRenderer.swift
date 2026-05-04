@@ -56,8 +56,8 @@ private extension HudPhoneComplications.Role {
     var strokeColor: Color {
         switch self {
         case .standard:    return HudHairline.standard
-        case .accent:      return HudPalette.accent.opacity(0.6)
-        case .destructive: return HudPalette.statusError.opacity(0.6)
+        case .accent:      return HudSurface.tintStrong(HudPalette.accent)
+        case .destructive: return HudSurface.tintStrong(HudPalette.statusError)
         }
     }
 }
@@ -65,7 +65,7 @@ private extension HudPhoneComplications.Role {
 private struct HudComplicationSlotButton: View {
     let slot: HudPhoneComplications.Slot
     let size: CGFloat
-    var iconScale: CGFloat = 18
+    var iconScale: CGFloat = HudIconSize.micro
 
     @State private var modePickerVisible = false
 
@@ -80,7 +80,7 @@ private struct HudComplicationSlotButton: View {
             Circle()
                 .fill(slot.role.fillColor)
                 .frame(width: size, height: size)
-                .overlay(Circle().stroke(slot.role.strokeColor, lineWidth: 1))
+                .overlay(Circle().stroke(slot.role.strokeColor, lineWidth: HudStrokeWidth.standard))
 
             Image(systemName: slot.icon)
                 .font(.system(size: iconScale, weight: .medium))
@@ -107,9 +107,9 @@ private struct HudComplicationSlotButton: View {
                         modePickerVisible = false
                     }
                 } label: {
-                    VStack(spacing: 2) {
+                    VStack(spacing: HudSpacing.xxs) {
                         Image(systemName: mode.icon)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(HudFont.ui(HudTextSize.md, weight: .medium))
                         Text(mode.label)
                             .font(HudFont.ui(HudTextSize.xxs, weight: .medium))
                     }
@@ -122,7 +122,7 @@ private struct HudComplicationSlotButton: View {
         }
         .padding(HudSpacing.sm)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: HudRadius.card))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudHairline.standard, lineWidth: 0.5))
+        .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudHairline.standard, lineWidth: HudStrokeWidth.thin))
     }
 }
 
@@ -139,7 +139,7 @@ private struct HudComplicationCornerSlot: View {
             if !isLeft, let secondary = slot.secondary {
                 secondaryButton(secondary)
             }
-            HudComplicationSlotButton(slot: slot, size: primarySize, iconScale: 16)
+            HudComplicationSlotButton(slot: slot, size: primarySize, iconScale: HudTextSize.lg)
             if isLeft, let secondary = slot.secondary {
                 secondaryButton(secondary)
             }
@@ -150,11 +150,11 @@ private struct HudComplicationCornerSlot: View {
     private func secondaryButton(_ secondary: HudPhoneComplications.Secondary) -> some View {
         Button(action: secondary.action) {
             Image(systemName: secondary.icon)
-                .font(.system(size: 11, weight: .medium))
+                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
                 .foregroundStyle(HudPalette.muted)
                 .frame(width: secondarySize, height: secondarySize)
                 .background(Circle().fill(HudPalette.surface))
-                .overlay(Circle().stroke(HudHairline.subtle, lineWidth: 0.5))
+                .overlay(Circle().stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
         }
         .buttonStyle(.plain)
     }
@@ -230,7 +230,7 @@ public struct HudPhoneComplicationsTray: ViewModifier {
             .overlay(
                 Rectangle()
                     .fill(HudHairline.subtle)
-                    .frame(height: 0.5),
+                    .frame(height: HudStrokeWidth.thin),
                 alignment: .top
             )
         }
@@ -239,7 +239,7 @@ public struct HudPhoneComplicationsTray: ViewModifier {
     @ViewBuilder
     private func slotOrSpacer(_ slot: HudPhoneComplications.Slot?, size: CGFloat) -> some View {
         if let slot {
-            HudComplicationSlotButton(slot: slot, size: size, iconScale: 18)
+            HudComplicationSlotButton(slot: slot, size: size, iconScale: HudIconSize.micro)
         } else {
             Color.clear.frame(width: size, height: size)
         }
@@ -282,7 +282,7 @@ public struct HudPhoneComplicationsScattered: ViewModifier {
             HudComplicationSlotButton(
                 slot: slot,
                 size: HudPhoneComplicationsLayout.centerSize,
-                iconScale: 22
+                iconScale: HudTextSize.xxl
             )
             .padding(.bottom, HudPhoneComplicationsLayout.scatteredVerticalInset)
         }

@@ -64,6 +64,8 @@ enum GlassAccentChoice: String, CaseIterable, Identifiable {
         case .none:     return nil
         case .manifest: return manifestAccent
         case .cyan:     return .cyan
+        // Demo-only one-off color used by the accent picker swatch list.
+        // hudlint:disable next-line palette
         case .magenta:  return Color(red: 1.0, green: 0.4, blue: 0.85)
         case .amber:    return .orange
         case .white:    return .white
@@ -121,7 +123,7 @@ struct ContentView: View {
                 railHeader: {
                     Button(action: toggleNav) {
                         HudStatusDot(color: variant.manifest.accent)
-                            .frame(width: 18, height: 18)
+                            .frame(width: HudIconSize.micro, height: HudIconSize.micro)
                             .contentShape(Rectangle())
                     }
                     .buttonStyle(.plain)
@@ -130,7 +132,7 @@ struct ContentView: View {
                 labelHeader: {
                     Button(action: toggleNav) {
                         Text(variant.manifest.name)
-                            .font(HudFont.ui(13, weight: .semibold))
+                            .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                             .foregroundStyle(HudPalette.ink)
                             .lineLimit(1)
                             .contentShape(Rectangle())
@@ -202,6 +204,8 @@ struct ContentView: View {
             Button("Open command palette") { paletteOpen = true }
                 .keyboardShortcut("k", modifiers: .command)
                 .opacity(0)
+                // Invisible keyboard sink — zero-size shape for routing the ⌘K shortcut.
+                // hudlint:disable next-line geometry
                 .frame(width: 0, height: 0)
         )
         .toolbar {
@@ -352,10 +356,10 @@ struct ContentView: View {
             HudSectionLabel("Takeover", tint: variant.manifest.accent)
             if let target = selectedTarget {
                 Text("/")
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.dim)
                 Text(target.name)
-                    .font(HudFont.mono(11, weight: .semibold))
+                    .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
             }
         }
@@ -429,7 +433,7 @@ struct ContentView: View {
             // Rail-only: a single icon button that cycles through variants.
             Button(action: cycleVariant) {
                 Image(systemName: "paintpalette")
-                    .font(.system(size: 13, weight: .medium))
+                    .font(HudFont.ui(HudTextSize.base, weight: .medium))
                     .foregroundStyle(variant.manifest.accent)
                     .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
                     .contentShape(Rectangle())
@@ -487,16 +491,16 @@ struct ContentView: View {
                 VStack(alignment: .leading, spacing: HudSpacing.md) {
                     HStack(spacing: HudSpacing.lg) {
                         Image(systemName: target.icon)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(HudFont.ui(HudTextSize.md, weight: .medium))
                             .foregroundStyle(target.iconTint.color)
-                            .frame(width: 32, height: 32)
-                            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(target.iconTint.color.opacity(0.15)))
+                            .frame(width: HudIconSize.large, height: HudIconSize.large)
+                            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(target.iconTint.color)))
                         VStack(alignment: .leading, spacing: 2) {
                             Text(target.name)
-                                .font(HudFont.mono(12, weight: .semibold))
+                                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
                                 .foregroundStyle(HudPalette.ink)
                             Text(target.host)
-                                .font(HudFont.mono(10))
+                                .font(HudFont.mono(HudTextSize.xxs))
                                 .foregroundStyle(HudPalette.muted)
                         }
                     }
@@ -550,7 +554,7 @@ struct ContentView: View {
         HStack(spacing: HudSpacing.xl) {
             HudStatusDot(color: variant.manifest.accent, pulses: true)
             Text("HUDSON·KIT")
-                .font(HudFont.mono(10, weight: .bold))
+                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
                 .tracking(1.5)
                 .foregroundStyle(HudPalette.muted)
 
@@ -562,16 +566,16 @@ struct ContentView: View {
             Button(action: { paletteOpen = true }) {
                 HStack(spacing: HudSpacing.xs) {
                     Image(systemName: "command")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
                     Text("K")
-                        .font(HudFont.mono(9, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
                     Text("palette")
-                        .font(HudFont.mono(9))
+                        .font(HudFont.mono(HudTextSize.micro))
                         .tracking(0.6)
                 }
                 .foregroundStyle(HudPalette.dim)
                 .padding(.horizontal, HudSpacing.md)
-                .padding(.vertical, 2)
+                .padding(.vertical, HudSpacing.xxs)
                 .overlay(
                     RoundedRectangle(cornerRadius: HudRadius.tight)
                         .stroke(HudHairline.standard, lineWidth: 1)
@@ -584,7 +588,7 @@ struct ContentView: View {
             statusSeparator
 
             Text("v\(variant.manifest.version)")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.dim)
             HudBadge(tab.label.uppercased(), tint: variant.manifest.accent)
         }
@@ -597,25 +601,25 @@ struct ContentView: View {
         if takeoverOpen, let target = selectedTarget {
             HudStatusDot(color: HudPalette.statusOk, size: 5, pulses: true)
             Text("connected · \(target.name)")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.statusOk)
         } else if let target = selectedTarget {
             Image(systemName: target.icon)
-                .font(.system(size: 9))
+                .font(HudFont.ui(HudTextSize.micro))
                 .foregroundStyle(target.iconTint.color)
             Text("canvas · \(target.name)")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
         } else {
             Text("ready")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
         }
     }
 
     private var statusSeparator: some View {
         Text("·")
-            .font(HudFont.mono(10))
+            .font(HudFont.mono(HudTextSize.xxs))
             .foregroundStyle(HudPalette.dim)
     }
 }

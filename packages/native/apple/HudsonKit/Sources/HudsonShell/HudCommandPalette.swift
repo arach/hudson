@@ -81,12 +81,14 @@ public struct HudCommandPalette: View {
             .keyboardShortcut(.downArrow, modifiers: [])
         }
         .opacity(0)
+        // Invisible keyboard sink — zero-size shape that still routes shortcuts.
+        // hudlint:disable next-line geometry
         .frame(width: 0, height: 0)
         .accessibilityHidden(true)
     }
 
     private var scrim: some View {
-        Color.black.opacity(0.55)
+        HudSurface.scrimHeavy
             .ignoresSafeArea()
             .onTapGesture { dismiss() }
     }
@@ -102,23 +104,25 @@ public struct HudCommandPalette: View {
                 commandList
             }
         }
-        .frame(maxWidth: 560)
+        .frame(maxWidth: HudLayout.dialogWidth)
         .background(HudPalette.surface)
         .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
         .overlay(
             RoundedRectangle(cornerRadius: HudRadius.card)
-                .stroke(HudHairline.standard, lineWidth: 1)
+                .stroke(HudHairline.standard, lineWidth: HudStrokeWidth.standard)
         )
-        .shadow(color: Color.black.opacity(0.45), radius: 30, x: 0, y: 12)
+        .shadow(color: HudSurface.scrim, radius: 30, x: 0, y: 12)
         .padding(HudSpacing.xxl)
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .top)
+        // Top inset positions palette ~80pt from screen top — design choice for the overlay.
+        // hudlint:disable next-line spacing
         .padding(.top, 80)
     }
 
     private var searchField: some View {
         HStack(spacing: HudSpacing.lg) {
             Image(systemName: "magnifyingglass")
-                .font(.system(size: 14, weight: .medium))
+                .font(HudFont.ui(HudTextSize.md, weight: .medium))
                 .foregroundStyle(HudPalette.muted)
 
             TextField("", text: $query, prompt:
@@ -126,7 +130,7 @@ public struct HudCommandPalette: View {
                     .foregroundStyle(HudPalette.dim)
             )
             .textFieldStyle(.plain)
-            .font(HudFont.mono(13))
+            .font(HudFont.mono(HudTextSize.base))
             .foregroundStyle(HudPalette.ink)
             .focused($fieldFocused)
             .onSubmit { runSelection() }
@@ -135,7 +139,7 @@ public struct HudCommandPalette: View {
             if !query.isEmpty {
                 Button(action: { query = "" }) {
                     Image(systemName: "xmark.circle.fill")
-                        .font(.system(size: 13))
+                        .font(HudFont.ui(HudTextSize.base))
                         .foregroundStyle(HudPalette.dim)
                 }
                 .buttonStyle(.plain)
@@ -144,7 +148,7 @@ public struct HudCommandPalette: View {
             HudBadge("ESC", tint: HudPalette.dim)
         }
         .padding(.horizontal, HudSpacing.xl)
-        .frame(height: 48)
+        .frame(height: HudLayout.navHeight)
     }
 
     private var commandList: some View {
@@ -190,7 +194,7 @@ public struct HudCommandPalette: View {
                 }
                 .padding(.bottom, HudSpacing.md)
             }
-            .frame(maxHeight: 380)
+            .frame(maxHeight: HudLayout.popoverWidth)
             .onChange(of: selectedIndex) { _, newIndex in
                 if let id = commands[safe: newIndex]?.id {
                     if reduceMotion {
@@ -208,10 +212,10 @@ public struct HudCommandPalette: View {
     private var emptyState: some View {
         VStack(spacing: HudSpacing.md) {
             Image(systemName: "questionmark.circle")
-                .font(.system(size: 22))
+                .font(HudFont.ui(HudTextSize.xxl))
                 .foregroundStyle(HudPalette.dim)
             Text("No commands match \"\(query)\"")
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.muted)
         }
         .padding(HudSpacing.huge)
@@ -317,24 +321,24 @@ private struct CommandRow: View {
             HStack(spacing: HudSpacing.lg) {
                 if let icon = command.icon {
                     Image(systemName: icon)
-                        .font(.system(size: 13, weight: .medium))
+                        .font(HudFont.ui(HudTextSize.base, weight: .medium))
                         .foregroundStyle(isSelected ? HudPalette.ink : HudPalette.muted)
-                        .frame(width: 22)
+                        .frame(width: HudIconSize.small)
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                     Text(command.title)
-                        .font(HudFont.ui(13, weight: isSelected ? .semibold : .regular))
+                        .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .semibold : .regular))
                         .foregroundStyle(isSelected ? HudPalette.ink : HudPalette.muted)
                     if let subtitle = command.subtitle {
                         Text(subtitle)
-                            .font(HudFont.mono(10))
+                            .font(HudFont.mono(HudTextSize.xxs))
                             .foregroundStyle(HudPalette.dim)
                     }
                 }
                 Spacer(minLength: 0)
                 if isSelected {
                     Image(systemName: "return")
-                        .font(.system(size: 11, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                         .foregroundStyle(HudPalette.muted)
                 }
             }
@@ -357,10 +361,10 @@ private struct CommandRow: View {
 
     private var background: Color {
         if isSelected {
-            return Color.white.opacity(0.06)
+            return HudSurface.press
         }
         if isHovering {
-            return Color.white.opacity(0.035)
+            return HudSurface.hover
         }
         return .clear
     }

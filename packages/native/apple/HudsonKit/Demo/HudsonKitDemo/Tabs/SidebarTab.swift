@@ -76,11 +76,11 @@ struct SidebarTab: View {
             HStack(alignment: .top, spacing: HudSpacing.xxl) {
                 // Live preview — the sidebar itself
                 sidebarPreview
-                    .frame(maxHeight: 420)
+                    .frame(maxHeight: HudLayout.popoverWidth + 40)
 
                 // Controls column
                 controlsColumn
-                    .frame(maxWidth: 380, alignment: .topLeading)
+                    .frame(maxWidth: HudLayout.popoverWidth, alignment: .topLeading)
             }
         }
         .environment(
@@ -105,10 +105,10 @@ struct SidebarTab: View {
             }
 
             Text("HudNavigationSidebar uses two parallel columns — a fixed rail and an animated label column — so icons never move during expand/compact transitions. Scrub the slider below to inspect the transition at any point.")
-                .font(HudFont.ui(12))
+                .font(HudFont.ui(HudTextSize.sm))
                 .foregroundStyle(HudPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: 720, alignment: .leading)
+                .frame(maxWidth: HudLayout.readableWidth, alignment: .leading)
         }
     }
 
@@ -123,17 +123,17 @@ struct SidebarTab: View {
                 // Simple logo placeholder: accent dot
                 Circle()
                     .fill(manifest.accent)
-                    .frame(width: 18, height: 18)
+                    .frame(width: HudIconSize.micro, height: HudIconSize.micro)
             },
             labelHeader: {
                 Text(manifest.name)
-                    .font(HudFont.ui(13, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
                     .lineLimit(1)
             },
             footer: {
                 Image(systemName: "person.crop.circle")
-                    .font(.system(size: 15, weight: .regular))
+                    .font(HudFont.ui(HudTextSize.lgm, weight: .regular))
                     .foregroundStyle(HudPalette.muted)
             }
         )
@@ -159,18 +159,18 @@ struct SidebarTab: View {
             VStack(alignment: .leading, spacing: HudSpacing.lg) {
                 HudSectionLabel("Transition scrubber", tint: manifest.accent)
                 Text("Drag to inspect the bounce-free label-column animation at any point. Icons in the rail column never shift x-position regardless of progress.")
-                    .font(HudFont.ui(11))
+                    .font(HudFont.ui(HudTextSize.xs))
                     .foregroundStyle(HudPalette.dim)
                     .fixedSize(horizontal: false, vertical: true)
 
                 HStack(spacing: HudSpacing.lg) {
                     Text("expanded")
-                        .font(HudFont.mono(10))
+                        .font(HudFont.mono(HudTextSize.xxs))
                         .foregroundStyle(HudPalette.dim)
                     Slider(value: $progress, in: 0...1)
                         .tint(manifest.accent)
                     Text("compact")
-                        .font(HudFont.mono(10))
+                        .font(HudFont.mono(HudTextSize.xxs))
                         .foregroundStyle(HudPalette.dim)
                 }
 

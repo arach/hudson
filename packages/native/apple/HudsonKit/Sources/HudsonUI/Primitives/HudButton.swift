@@ -40,19 +40,19 @@ public struct HudButton: View {
             HStack(spacing: HudSpacing.md) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 12, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
                 }
                 Text(title)
-                    .font(HudFont.mono(12, weight: .semibold))
+                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
                     .tracking(0.5)
             }
             .foregroundStyle(foreground)
             .padding(.horizontal, HudSpacing.xxl)
-            .frame(minHeight: 32)
+            .frame(minHeight: HudLayout.buttonHeight)
             .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
             .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : 1))
             .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
-            .opacity(isEnabled ? 1 : 0.45)
+            .opacity(isEnabled ? 1 : HudOpacity.muted)
             .scaleEffect(isHovering && isEnabled ? 1.015 : 1)
         }
         .buttonStyle(.plain)
@@ -85,9 +85,12 @@ public struct HudButton: View {
 
     private var background: Color {
         switch style {
-        case .primary(let tint): return HudSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.26 : 0.18)
-        case .secondary:         return HudSurface.controlHover(isHovering: isHovering && isEnabled)
-        case .ghost:             return isHovering && isEnabled ? HudSurface.hover : .clear
+        case .primary(let tint):
+            // Per-state primary fill; values calibrated below the global token scale.
+            // hudlint:disable next-line opacity
+            return HudSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.26 : 0.18)
+        case .secondary: return HudSurface.controlHover(isHovering: isHovering && isEnabled)
+        case .ghost:     return isHovering && isEnabled ? HudSurface.hover : .clear
         }
     }
 
@@ -96,9 +99,16 @@ public struct HudButton: View {
             return HudFocus.ring
         }
         switch style {
-        case .primary(let tint): return tint.color.opacity(isHovering && isEnabled ? 0.72 : 0.5)
-        case .secondary:         return isHovering && isEnabled ? HudPalette.statusInfo.opacity(0.45) : HudHairline.standard
-        case .ghost:             return isHovering && isEnabled ? HudHairline.standard : HudHairline.subtle
+        case .primary(let tint):
+            return isHovering && isEnabled
+                ? HudSurface.tintFocus(tint.color)
+                : HudSurface.tintStrong(tint.color)
+        case .secondary:
+            return isHovering && isEnabled
+                ? HudSurface.tintMuted(HudPalette.statusInfo)
+                : HudHairline.standard
+        case .ghost:
+            return isHovering && isEnabled ? HudHairline.standard : HudHairline.subtle
         }
     }
 }

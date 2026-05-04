@@ -39,6 +39,19 @@ public enum HudLayout {
     public static let panelTopOffset:   CGFloat = 48
     public static let statusBarHeight:  CGFloat = 28
     public static let panelBottomOffset: CGFloat = 28
+
+    // Control row heights — used by HudField, HudButton, HudSettings rows.
+    public static let buttonHeight:     CGFloat = 32
+    public static let fieldHeight:      CGFloat = 36
+    public static let rowHeightCompact: CGFloat = 28
+    public static let rowHeightRegular: CGFloat = 44
+
+    // Common content widths — page caps for legibility, modal widths.
+    public static let readableWidth:    CGFloat = 720
+    public static let dialogWidth:      CGFloat = 560
+    public static let popoverWidth:     CGFloat = 380
+    public static let popoverWidthCompact: CGFloat = 340
+    public static let cliffWidth:       CGFloat = 760
 }
 
 // MARK: - Deprecated Hudson* aliases

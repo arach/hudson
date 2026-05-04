@@ -125,9 +125,9 @@ public struct HudNavigationRail<Footer: View>: View {
             if showHeaderToggle {
                 Button(action: toggleExpanded) {
                     Image(systemName: isExpanded ? "sidebar.left" : "line.3.horizontal")
-                        .font(.system(size: 14, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.md, weight: .semibold))
                         .foregroundStyle(HudPalette.muted)
-                        .frame(width: 32, height: 32)
+                        .frame(width: HudIconSize.large, height: HudIconSize.large)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -142,7 +142,7 @@ public struct HudNavigationRail<Footer: View>: View {
                     HStack(spacing: HudSpacing.lg) {
                         HudStatusDot(color: manifest.accent)
                         Text(manifest.name)
-                            .font(HudFont.ui(13, weight: .semibold))
+                            .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                             .foregroundStyle(HudPalette.ink)
                             .lineLimit(1)
                     }
@@ -156,7 +156,7 @@ public struct HudNavigationRail<Footer: View>: View {
                 // affordance via a tappable status dot in the header slot.
                 Button(action: toggleExpanded) {
                     HudStatusDot(color: manifest.accent)
-                        .frame(width: 32, height: 32)
+                        .frame(width: HudIconSize.large, height: HudIconSize.large)
                         .contentShape(Rectangle())
                 }
                 .buttonStyle(.plain)
@@ -239,10 +239,10 @@ private struct HudRailIconButton: View {
     var body: some View {
         Button(action: onTap) {
             Image(systemName: item.icon)
-                .font(.system(size: 15, weight: .medium))
+                .font(HudFont.ui(HudTextSize.lgm, weight: .medium))
                 .foregroundStyle(isSelected ? accent : HudPalette.muted)
                 .frame(maxWidth: .infinity, alignment: .center)
-                .frame(height: 40)
+                .frame(height: HudIconSize.xLarge)
             .background(
                 RoundedRectangle(cornerRadius: HudRadius.standard)
                     .fill(background)
@@ -264,20 +264,20 @@ private struct HudRailIconButton: View {
 
     private var background: Color {
         if isSelected {
-            return accent.opacity(0.08)
+            return HudSurface.tintGhost(accent)
         }
         if isHovering {
-            return Color.white.opacity(0.045)
+            return HudSurface.hover
         }
         return .clear
     }
 
     private var border: Color {
         if isFocused {
-            return HudPalette.statusInfo.opacity(0.85)
+            return HudFocus.ring
         }
         if isSelected {
-            return accent.opacity(0.3)
+            return HudSurface.tintBorder(accent)
         }
         if isHovering {
             return HudHairline.subtle

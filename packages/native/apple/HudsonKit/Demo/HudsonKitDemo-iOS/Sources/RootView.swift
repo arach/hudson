@@ -5,6 +5,7 @@ import HudsonShell
 enum DemoPage: String, CaseIterable, Identifiable {
     case shell
     case complications
+    case primitives
     case settings
     case logs
     case terminal
@@ -16,6 +17,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
         switch self {
         case .shell:         return "Shell"
         case .complications: return "Complications"
+        case .primitives:    return "Primitives"
         case .settings:      return "Settings"
         case .logs:          return "Logs"
         case .terminal:      return "Terminal"
@@ -27,6 +29,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
         switch self {
         case .shell:         return "rectangle.3.group"
         case .complications: return "circle.grid.2x2"
+        case .primitives:    return "square.stack.3d.up"
         case .settings:      return "gearshape"
         case .logs:          return "list.bullet.rectangle"
         case .terminal:      return "terminal"
@@ -64,6 +67,7 @@ struct RootView: View {
         switch page {
         case .shell:         ShellTab()
         case .complications: ComplicationsTab(custom: $customComplications, style: $customStyle)
+        case .primitives:    PrimitivesTab()
         case .settings:      SettingsTab()
         case .logs:          LogsTab()
         case .terminal:      TerminalTab()

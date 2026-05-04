@@ -13,7 +13,7 @@ struct LogsTab: View {
             controls
                 .padding(HudSpacing.xl)
                 .background(HudPalette.surface)
-                .overlay(Rectangle().fill(HudHairline.subtle).frame(height: 0.5), alignment: .bottom)
+                .overlay(Rectangle().fill(HudHairline.subtle).frame(height: HudStrokeWidth.thin), alignment: .bottom)
 
             if filteredEntries.isEmpty {
                 HudEmptyState(
@@ -77,9 +77,9 @@ struct LogsTab: View {
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(tint)
                 .padding(.horizontal, HudSpacing.md)
-                .padding(.vertical, 6)
-                .background(Capsule().fill(tint.opacity(0.12)))
-                .overlay(Capsule().stroke(tint.opacity(0.4), lineWidth: 0.5))
+                .padding(.vertical, HudSpacing.sm)
+                .background(Capsule().fill(HudSurface.tintFill(tint)))
+                .overlay(Capsule().stroke(HudSurface.tintBorder(tint), lineWidth: HudStrokeWidth.thin))
         }
         .buttonStyle(.plain)
     }
@@ -89,6 +89,8 @@ struct LogsTab: View {
             Text(entry.level.rawValue.uppercased())
                 .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
                 .foregroundStyle(color(for: entry.level))
+                // Log level label gutter — fixed width to keep messages aligned.
+                // hudlint:disable next-line geometry
                 .frame(width: 56, alignment: .leading)
 
             VStack(alignment: .leading, spacing: 2) {

@@ -67,17 +67,17 @@ struct TerminalApp: View {
     private var terminalHeader: some View {
         HStack(spacing: HudSpacing.lg) {
             Image(systemName: "terminal")
-                .font(.system(size: 13, weight: .medium))
+                .font(HudFont.ui(HudTextSize.base, weight: .medium))
                 .foregroundStyle(manifest.accent)
-                .frame(width: 28, height: 28)
-                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(manifest.accent.opacity(0.14)))
+                .frame(width: HudIconSize.medium, height: HudIconSize.medium)
+                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(manifest.accent)))
 
             VStack(alignment: .leading, spacing: 1) {
                 Text("zsh · \(target.name)")
-                    .font(HudFont.mono(12, weight: .semibold))
+                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
                 Text("~/dev/lattices · \(target.host)")
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.muted)
             }
 
@@ -105,21 +105,21 @@ struct TerminalApp: View {
                 pulses: connected
             )
             Text(connected ? "READY" : "DISCONNECTED")
-                .font(HudFont.mono(9, weight: .bold))
+                .font(HudFont.mono(HudTextSize.micro, weight: .bold))
                 .tracking(1.0)
                 .foregroundStyle(connected ? HudPalette.statusOk : HudPalette.statusError)
 
             sep
             Text(statusMessage)
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
             sep
             Text("\(rows)×\(cols)")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.ink)
             sep
             Text("zsh 5.9")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.muted)
 
             Spacer()
@@ -127,14 +127,14 @@ struct TerminalApp: View {
             Button(action: onClose) {
                 HStack(spacing: HudSpacing.xs) {
                     Image(systemName: "xmark")
-                        .font(.system(size: 9, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
                     Text("close")
-                        .font(HudFont.mono(9))
+                        .font(HudFont.mono(HudTextSize.micro))
                         .tracking(0.6)
                 }
                 .foregroundStyle(HudPalette.dim)
                 .padding(.horizontal, HudSpacing.md)
-                .padding(.vertical, 2)
+                .padding(.vertical, HudSpacing.xxs)
                 .overlay(
                     RoundedRectangle(cornerRadius: HudRadius.tight)
                         .stroke(HudHairline.standard, lineWidth: 1)
@@ -150,7 +150,7 @@ struct TerminalApp: View {
 
     private var sep: some View {
         Text("·")
-            .font(HudFont.mono(10))
+            .font(HudFont.mono(HudTextSize.xxs))
             .foregroundStyle(HudPalette.dim)
     }
 }
@@ -184,7 +184,7 @@ private struct FakeTerminalSurface: View {
             VStack(alignment: .leading, spacing: 4) {
                 line("Last login: Tue Apr 28 09:14:22 on ttys001", color: HudPalette.dim)
                 line("\(host)", color: HudPalette.muted)
-                Spacer().frame(height: 8)
+                Spacer().frame(height: HudSpacing.md)
 
                 prompt
                 lineMono("swift build -c release")
@@ -194,7 +194,7 @@ private struct FakeTerminalSurface: View {
                 output("Compiling Sources (3 sources)")
                 output("Build complete! (3.42s)", color: HudPalette.statusOk)
 
-                Spacer().frame(height: 4)
+                Spacer().frame(height: HudSpacing.xs)
 
                 prompt
                 lineMono("scout send '@hkbridge ack — DESIGN.md looks great'")
@@ -204,7 +204,7 @@ private struct FakeTerminalSurface: View {
                 output("DM: dm.hkbridge.m2-bridge.mini.hudson.main.mini")
                 output("Routed to: hkbridge.m2-bridge.mini")
 
-                Spacer().frame(height: 4)
+                Spacer().frame(height: HudSpacing.xs)
 
                 prompt
                 lineMono("git log --oneline -5")
@@ -215,14 +215,16 @@ private struct FakeTerminalSurface: View {
                 output("5adc33e 💄 HudsonKit demo — status-bar context + inspector reflects selection")
                 output("09c3dd8 ✨ HudsonKit M3d — HudCommandPalette overlay surface")
 
-                Spacer().frame(height: 4)
+                Spacer().frame(height: HudSpacing.xs)
 
                 HStack(spacing: HudSpacing.xs) {
                     Text("$")
-                        .font(HudFont.mono(11, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                         .foregroundStyle(HudPalette.statusOk)
                     Rectangle()
                         .fill(HudPalette.statusOk)
+                        // Mono character cell preview — tied to monospace font metrics.
+                        // hudlint:disable next-line geometry
                         .frame(width: 7, height: 14)
                         .opacity(blink ? 0 : 1)
                         .animation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true), value: blink)
@@ -239,32 +241,32 @@ private struct FakeTerminalSurface: View {
     private var prompt: some View {
         HStack(spacing: HudSpacing.xs) {
             Text("➜")
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.statusOk)
             Text("lattices")
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudTint.cyan.color)
             Text("git:(\u{e0a0}m3-shell)")
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudTint.amber.color)
         }
     }
 
     private func lineMono(_ text: String) -> some View {
         Text(text)
-            .font(HudFont.mono(11))
+            .font(HudFont.mono(HudTextSize.xs))
             .foregroundStyle(HudPalette.ink)
     }
 
     private func line(_ text: String, color: Color = HudPalette.ink) -> some View {
         Text(text)
-            .font(HudFont.mono(11))
+            .font(HudFont.mono(HudTextSize.xs))
             .foregroundStyle(color)
     }
 
     private func output(_ text: String, color: Color = HudPalette.muted) -> some View {
         Text(text)
-            .font(HudFont.mono(11))
+            .font(HudFont.mono(HudTextSize.xs))
             .foregroundStyle(color)
     }
 }

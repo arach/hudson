@@ -17,7 +17,7 @@ public struct HudEmptyState: View {
     public var body: some View {
         VStack(spacing: HudSpacing.lg) {
             Image(systemName: icon)
-                .font(.system(size: 22, weight: .light))
+                .font(HudFont.ui(HudTextSize.xxl, weight: .light))
                 .foregroundStyle(HudPalette.dim)
                 .accessibilityHidden(true)
             Text(title)
@@ -29,7 +29,7 @@ public struct HudEmptyState: View {
                     .font(HudFont.mono(10))
                     .foregroundStyle(HudPalette.dim)
                     .multilineTextAlignment(.center)
-                    .frame(maxWidth: 280)
+                    .frame(maxWidth: HudLayout.panelWidth)
             }
         }
         .padding(HudSpacing.huge)

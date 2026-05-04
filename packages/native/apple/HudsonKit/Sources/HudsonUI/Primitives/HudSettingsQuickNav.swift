@@ -42,15 +42,15 @@ public struct HudSettingsQuickNav: View {
                     } label: {
                         HStack(spacing: HudSpacing.sm) {
                             Image(systemName: item.icon)
-                                .font(.system(size: 11, weight: .medium))
+                                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
                             Text(item.label)
                                 .font(HudFont.ui(HudTextSize.sm, weight: .medium))
                         }
                         .foregroundStyle(HudPalette.muted)
                         .padding(.horizontal, HudSpacing.xl)
-                        .padding(.vertical, 7)
+                        .padding(.vertical, HudSpacing.sm)
                         .background(Capsule().fill(HudPalette.surface))
-                        .overlay(Capsule().stroke(HudHairline.standard, lineWidth: 0.5))
+                        .overlay(Capsule().stroke(HudHairline.standard, lineWidth: HudStrokeWidth.thin))
                     }
                     .buttonStyle(.plain)
                 }

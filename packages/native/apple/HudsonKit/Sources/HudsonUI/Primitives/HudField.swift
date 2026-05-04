@@ -29,24 +29,24 @@ public struct HudField: View {
         HStack(spacing: HudSpacing.md) {
             if let icon {
                 Image(systemName: icon)
-                    .font(.system(size: 12, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
                     .foregroundStyle(isFocused ? HudPalette.statusInfo : HudPalette.dim)
             }
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(HudFont.mono(12))
+                .font(HudFont.mono(HudTextSize.sm))
                 .foregroundStyle(isEnabled ? HudPalette.ink : HudPalette.dim)
                 .tint(HudPalette.accent)
                 .focused($isFocused)
                 .accessibilityLabel(accessibilityLabelText ?? placeholder)
         }
         .padding(.horizontal, HudSpacing.xl)
-        .frame(height: 36)
+        .frame(height: HudLayout.fieldHeight)
         .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : 1))
+        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : HudStrokeWidth.standard))
         .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
-        .opacity(isEnabled ? 1 : 0.45)
+        .opacity(isEnabled ? 1 : HudOpacity.muted)
         .onHover { isHovering = $0 }
         .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isHovering)
         .animation(reduceMotion ? nil : .easeOut(duration: 0.10), value: isFocused)
