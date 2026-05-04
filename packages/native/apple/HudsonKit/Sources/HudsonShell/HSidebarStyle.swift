@@ -3,20 +3,26 @@ import SwiftUI
 // MARK: - HSidebarSurfaceStyle
 
 /// Background treatment for the sidebar surface.
-/// `base` is the default (Hudson chrome + subtle gradient).
-/// `glass` applies translucent material; `editorial` is a flat slightly-lighter fill.
+/// - `base`: Hudson chrome + subtle gradient (the default house style).
+/// - `glass`: SwiftUI `.ultraThinMaterial` approximation.
+/// - `editorial`: flat slightly-lighter fill ("print" surface).
+/// - `liquidGlass`: real macOS `NSVisualEffectView` with `.sidebar` material,
+///   inset from the window edge with continuous-rounded corners — the
+///   floating-chrome look that matches stock macOS Tahoe sidebars.
 public enum HSidebarSurfaceStyle: String, CaseIterable, Identifiable, Sendable {
     case base
     case glass
     case editorial
+    case liquidGlass
 
     public var id: String { rawValue }
 
     public var label: String {
         switch self {
-        case .base:      return "Base"
-        case .glass:     return "Glass"
-        case .editorial: return "Print"
+        case .base:        return "Base"
+        case .glass:       return "Glass"
+        case .editorial:   return "Print"
+        case .liquidGlass: return "Native"
         }
     }
 }

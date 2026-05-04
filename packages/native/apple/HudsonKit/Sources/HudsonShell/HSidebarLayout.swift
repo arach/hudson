@@ -71,6 +71,15 @@ public enum HSidebarLayout {
     public static let compactAccentBarWidth: CGFloat = 16
     public static let compactAccentBarHeight: CGFloat = 2
 
+    // ── Liquid-glass surface ─────────────────────────────────────────────────
+
+    /// Inset applied around the surface when `surface == .liquidGlass`.
+    /// Lets the rounded floating shape read against the window background.
+    public static let liquidGlassInset: CGFloat = 6
+
+    /// Continuous corner radius for the liquid-glass surface.
+    public static let liquidGlassCornerRadius: CGFloat = 10
+
     // ── Convenience ──────────────────────────────────────────────────────────
 
     /// Full expanded width (rail + label columns).
