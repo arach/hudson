@@ -1,16 +1,16 @@
 import SwiftUI
 import HudsonUI
-import TermBridgeKit
+import Termini
 
-/// Hudson-themed wrapper around TermBridgeKit's native terminal renderer.
+/// Hudson-themed wrapper around Termini's native terminal renderer.
 public struct HTerminalSurface: View {
-    private let controller: TermBridgeKitTerminalController?
+    private let controller: TerminiTerminalController?
     private let showsSystemKeyboard: Bool
     private let appearance: HTerminalAppearance
     private let onTap: (() -> Void)?
 
     public init(
-        controller: TermBridgeKitTerminalController? = nil,
+        controller: TerminiTerminalController? = nil,
         showsSystemKeyboard: Bool = true,
         appearance: HTerminalAppearance = .default,
         onTap: (() -> Void)? = nil
@@ -22,7 +22,7 @@ public struct HTerminalSurface: View {
     }
 
     public var body: some View {
-        TermBridgeKitTerminalView(
+        TerminiTerminalView(
             controller: controller,
             showsSystemKeyboard: showsSystemKeyboard,
             appearance: appearance.termBridgeAppearance

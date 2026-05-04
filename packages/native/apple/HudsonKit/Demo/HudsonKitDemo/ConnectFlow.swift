@@ -131,7 +131,7 @@ struct ConnectFlow: View {
                     Spacer()
                     HBadge("LIVE", tint: HPalette.statusOk, dot: true)
                 }
-                Text("Session attached. The terminal would mount here once TermBridgeKit is wired into the iOS demo target.")
+                Text("Session attached. The terminal would mount here once Termini is wired into the iOS demo target.")
                     .font(HFont.ui(12))
                     .foregroundStyle(HPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
