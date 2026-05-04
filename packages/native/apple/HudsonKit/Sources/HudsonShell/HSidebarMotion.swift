@@ -32,10 +32,28 @@ public enum HSidebarMotion {
         case quietTransition
         case snapEverything
     }
+}
 
-    /// Process-wide motion mode. Mutable at runtime so design tools can switch
-    /// without rebuilding. Defined here rather than on the generic
-    /// `HNavigationSidebar` because Swift disallows stored static properties
-    /// on generic types.
-    public static var mode: MotionMode = .quietTransition
+// MARK: - Environment
+
+private struct HSidebarMotionModeKey: EnvironmentKey {
+    static let defaultValue: HSidebarMotion.MotionMode = .quietTransition
+}
+
+extension EnvironmentValues {
+    /// The motion mode applied to descendant `HNavigationSidebar` instances.
+    /// Defaults to `.quietTransition`. Override per-view with
+    /// `.hudsonSidebarMotionMode(_:)` so design tools can switch modes
+    /// without touching process-global state.
+    public var hudsonSidebarMotionMode: HSidebarMotion.MotionMode {
+        get { self[HSidebarMotionModeKey.self] }
+        set { self[HSidebarMotionModeKey.self] = newValue }
+    }
+}
+
+extension View {
+    /// Set the sidebar motion mode for this view's subtree.
+    public func hudsonSidebarMotionMode(_ mode: HSidebarMotion.MotionMode) -> some View {
+        environment(\.hudsonSidebarMotionMode, mode)
+    }
 }

@@ -83,6 +83,7 @@ public struct HNavigationSidebar<
 
     @Environment(\.hudsonAppManifest) private var manifest
     @Environment(\.hudsonSidebarStyle) private var style
+    @Environment(\.hudsonSidebarMotionMode) private var motionMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
@@ -116,7 +117,7 @@ public struct HNavigationSidebar<
 
     /// Opacity for label-column content.
     private var labelOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return 1 - progress
         case .quietTransition, .snapEverything:  return labelsSettled ? 1 : 0
         }
@@ -124,17 +125,15 @@ public struct HNavigationSidebar<
 
     /// Opacity for the expanded-mode selection underlay.
     private var underlayOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return max(0, 1 - progress * 2)
         case .quietTransition, .snapEverything:  return labelsSettled ? 1 : 0
         }
     }
 
     /// Opacity for the compact-mode bottom accent bar.
-    /// Defined here (not on a generic struct) because Swift forbids stored statics
-    /// on generic types.
     private var compactBarOpacity: Double {
-        switch HSidebarMotion.mode {
+        switch motionMode {
         case .smoothFade:                        return progress
         case .quietTransition, .snapEverything:  return compactSettled ? 1 : 0
         }
