@@ -1,18 +1,18 @@
 import SwiftUI
 import HudsonUI
-import TermBridgeKit
+import Termini
 
 /// Hudson-native terminal presentation defaults.
 ///
 /// This keeps terminal styling in Hudson's vocabulary while leaving the
-/// renderer/backend boundary inside TermBridgeKit.
+/// renderer/backend boundary inside Termini.
 public struct HTerminalAppearance: Hashable, Sendable {
-    public var theme: TermBridgeKitTerminalTheme
+    public var theme: TerminiTerminalTheme
     public var fontSize: Double?
     public var fontFamily: String?
 
     public init(
-        theme: TermBridgeKitTerminalTheme = .hudsonGraphite,
+        theme: TerminiTerminalTheme = .hudsonGraphite,
         fontSize: Double? = nil,
         fontFamily: String? = "SF Mono"
     ) {
@@ -23,11 +23,11 @@ public struct HTerminalAppearance: Hashable, Sendable {
 
     public static let `default` = HTerminalAppearance()
 
-    public var termBridgeAppearance: TermBridgeKitTerminalAppearance {
-        TermBridgeKitTerminalAppearance(
+    public var termBridgeAppearance: TerminiTerminalAppearance {
+        TerminiTerminalAppearance(
             theme: theme,
             fontSize: fontSize,
-            fontFamily: fontFamily.map { TermBridgeKitTerminalFontFamily(name: $0) }
+            fontFamily: fontFamily.map { TerminiTerminalFontFamily(name: $0) }
         )
     }
 
@@ -40,10 +40,10 @@ public struct HTerminalAppearance: Hashable, Sendable {
     }
 }
 
-public extension TermBridgeKitTerminalTheme {
+public extension TerminiTerminalTheme {
     /// Dark Hudson terminal theme built from graphite surfaces plus cyan,
     /// teal, blue, and emerald accents.
-    static let hudsonGraphite = TermBridgeKitTerminalTheme(
+    static let hudsonGraphite = TerminiTerminalTheme(
         id: "hudson-graphite",
         name: "Hudson Graphite",
         colorScheme: .dark,

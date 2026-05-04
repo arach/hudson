@@ -3,6 +3,7 @@ import HudsonUI
 
 #if HUDSON_TERMINAL
 import HudsonTerminal
+import Termini
 #endif
 
 /// Content the demo mounts inside the `HTerminalDrawer`.
@@ -11,16 +12,35 @@ struct DrawerTerminal: View {
 
     var body: some View {
         #if HUDSON_TERMINAL
-        HTerminalSSHSurface(
-            hostLabel: host,
-            showsSystemKeyboard: true,
-            appearance: HTerminalAppearance(fontSize: 11)
-        )
+        // A/B: mount Termini directly, no Hudson wrappers, mirroring
+        // the upstream TerminiDemo. If this works the regression is in
+        // HTerminalSurface / HTerminalSSHSurface; if it still crashes the
+        // problem is in the host context (HAppShell / HTerminalDrawer).
+        DirectTermBridgeProbe()
         #else
         FakeTerminalContent(host: host)
         #endif
     }
 }
+
+#if HUDSON_TERMINAL
+private struct DirectTermBridgeProbe: View {
+    @State private var workspace = TerminiLocalPTYWorkspace()
+    @State private var appearance = TerminiTerminalAppearance(
+        theme: .midnightBloom,
+        fontSize: 13
+    )
+
+    var body: some View {
+        TerminiTerminalView(
+            controller: workspace.controller,
+            appearance: appearance
+        )
+        .onAppear { workspace.start() }
+        .onDisappear { workspace.stop() }
+    }
+}
+#endif
 
 private struct FakeTerminalContent: View {
     let host: String

@@ -10,7 +10,7 @@ import HudsonObservability
 /// `expandedHeight` (default 280pt) below the header.
 ///
 /// The content slot is generic — apps decide what lives inside (a real terminal
-/// view via TermBridgeKit, a fake mono shell, an inspector panel, etc.). The
+/// view via Termini, a fake mono shell, an inspector panel, etc.). The
 /// drawer has no opinion on terminal semantics.
 public struct HTerminalDrawer<Content: View>: View {
     @Binding public var isOpen: Bool

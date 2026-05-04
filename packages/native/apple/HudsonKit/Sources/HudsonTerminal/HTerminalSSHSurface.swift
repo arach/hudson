@@ -1,6 +1,7 @@
 import SwiftUI
 import HudsonUI
-import TermBridgeKit
+import Termini
+import TerminiSSH
 
 public struct HTerminalSessionState: Equatable, Sendable {
     public var isConnected: Bool
@@ -30,12 +31,12 @@ public struct HTerminalSessionState: Equatable, Sendable {
 /// and connects automatically when credentials are present. More advanced
 /// Hudson transports should keep using `HTerminalSurface` directly.
 public struct HTerminalSSHSurface: View {
-    public static let defaultConnection = TermBridgeKitConnectionConfig(
+    public static let defaultConnection = TerminiConnectionConfig(
         name: "Hudson Terminal",
         startupCommand: "tmux new -A -s hudson"
     )
 
-    @State private var workspace: TermBridgeKitSSHWorkspace
+    @State private var workspace: TerminiSSHWorkspace
     @State private var didAttemptEnvironmentLoad = false
 
     private let hostLabel: String
@@ -46,13 +47,13 @@ public struct HTerminalSSHSurface: View {
 
     public init(
         hostLabel: String = "SSH host",
-        connection: TermBridgeKitConnectionConfig = Self.defaultConnection,
+        connection: TerminiConnectionConfig = Self.defaultConnection,
         autoConnect: Bool = true,
         showsSystemKeyboard: Bool = true,
         appearance: HTerminalAppearance = .default,
         onStateChange: @escaping (HTerminalSessionState) -> Void = { _ in }
     ) {
-        self._workspace = State(initialValue: TermBridgeKitSSHWorkspace(connection: connection))
+        self._workspace = State(initialValue: TerminiSSHWorkspace(connection: connection))
         self.hostLabel = hostLabel
         self.autoConnect = autoConnect
         self.showsSystemKeyboard = showsSystemKeyboard

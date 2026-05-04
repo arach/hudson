@@ -155,7 +155,7 @@ struct TerminalApp: View {
     }
 }
 
-// MARK: - Terminal surface (placeholder until TermBridgeKit is wired)
+// MARK: - Terminal surface (placeholder until Termini is wired)
 
 private struct TerminalSurface: View {
     let host: String
