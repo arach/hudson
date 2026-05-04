@@ -1,4 +1,4 @@
-name: HudsonKitiOSDemo
+name: HudsonKitDemoIOS
 options:
   bundleIdPrefix: dev.hudson.kit
   deploymentTarget:
@@ -8,24 +8,24 @@ options:
 
 packages:
   HudsonKit:
-    path: ..
+    path: ../..
 
 targets:
-  HudsonKitiOSDemo:
+  HudsonKitDemoIOS:
     type: application
     platform: iOS
     sources:
-      - path: ../Demo/HudsonKitDemo
+      - path: Sources
     dependencies:
+      - package: HudsonKit
+        product: HudsonObservability
       - package: HudsonKit
         product: HudsonUI
       - package: HudsonKit
         product: HudsonShell
-      - package: HudsonKit
-        product: HudsonVoice
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo
+        PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.demo.ios
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES
