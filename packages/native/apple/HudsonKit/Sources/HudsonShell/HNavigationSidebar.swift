@@ -143,8 +143,11 @@ public struct HNavigationSidebar<
 
     public var body: some View {
         let isLiquid = (style.surface == .liquidGlass)
-        let inset: CGFloat = isLiquid ? HSidebarLayout.liquidGlassInset : 0
-        let radius: CGFloat = isLiquid ? HSidebarLayout.liquidGlassCornerRadius : 0
+        let glass = style.liquidGlass
+        let inset: CGFloat = isLiquid ? glass.inset : 0
+        let radius: CGFloat = isLiquid ? glass.cornerRadius : 0
+        let strokeColor: Color = glass.accent ?? Color.white.opacity(0.08)
+        let strokeOpacity: Double = glass.accent == nil ? 1.0 : 0.45
         let intrinsic = HSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth)
 
         return VStack(spacing: 0) {
@@ -165,10 +168,11 @@ public struct HNavigationSidebar<
         .background {
             if isLiquid {
                 HVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
+                    .opacity(glass.translucency)
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
                     .overlay(
                         RoundedRectangle(cornerRadius: radius, style: .continuous)
-                            .strokeBorder(Color.white.opacity(0.08), lineWidth: 0.5)
+                            .strokeBorder(strokeColor.opacity(strokeOpacity), lineWidth: 0.5)
                     )
                     .padding(inset)
                     .allowsHitTesting(false)
