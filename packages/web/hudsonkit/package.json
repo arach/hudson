@@ -77,6 +77,21 @@
       "import": "./dist/vault.js",
       "default": "./dist/vault.js"
     },
+    "./auth": {
+      "types": "./dist/auth.d.ts",
+      "import": "./dist/auth.js",
+      "default": "./dist/auth.js"
+    },
+    "./push": {
+      "types": "./dist/push.d.ts",
+      "import": "./dist/push.js",
+      "default": "./dist/push.js"
+    },
+    "./push/sw": {
+      "types": "./dist/push/sw.d.ts",
+      "import": "./dist/push/sw.js",
+      "default": "./dist/push/sw.js"
+    },
     "./table": {
       "types": "./dist/table.d.ts",
       "import": "./dist/table.js",
