@@ -103,7 +103,7 @@ HudTerminalSurface(controller: controller, appearance: appearance)
 
 ### hudsonGraphite
 
-Default Hudson terminal theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`), emerald cursor (`#6CE5B1`), ANSI palette built from cyan, teal, blue, and emerald — never purple. Defined as a `TerminiTerminalTheme` extension so any Termini surface can adopt it.
+Default theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`), emerald cursor (`#6CE5B1`), ANSI palette of cyan/teal/blue/emerald — never purple. Defined as a `TerminiTerminalTheme` extension so any Termini surface can adopt it.
 
 ## Notes
 

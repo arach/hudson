@@ -36,9 +36,9 @@ print(response.text)
 |------|------|---------|-------------|
 | `provider` | `HudAIProviderAdapter` | `AnthropicHudAIAdapter()` | Vendor adapter. |
 | `model` | `String?` | adapter default | Default model id; per-request overrides. |
-| `vault` / `hudVault` | `HudAICredentialSource` / `HudVault` | — | API key source. Raw keys are never accepted in requests. |
+| `vault` / `hudVault` | `HudAICredentialSource` / `HudVault` | — | Key source. Raw keys are never accepted in requests. |
 | `defaults` | `HudAIDefaults` | — | Temperature, max output tokens, cache policy, timeout. |
-| `routeDefault` | `HudAIRoute` | `.local` | `.local`, `.auto`, or `.paired(deviceId:)`. Paired is reserved and throws. |
+| `routeDefault` | `HudAIRoute` | `.local` | `.local`, `.auto`, or `.paired(...)`. Paired is reserved and throws. |
 | `urlSession` | `URLSession` | `.shared` | Inject for tests or custom transport. |
 
 ## Providers
@@ -53,7 +53,7 @@ HudAIProviders.OpenRouter(appTitle: "MyApp", siteURL: url)  // implemented
 HudAIProviders.Grok()        // stub — throws .unsupportedFeature
 ```
 
-Each adapter declares a `credentialKey` HudAI reads from the vault: `anthropic_key`, `openai_key`, `openrouter_key`, `grok_key`. OpenRouter expects provider-namespaced model ids like `openai/gpt-4o-mini`.
+Each adapter declares a `credentialKey` read from the vault: `anthropic_key`, `openai_key`, `openrouter_key`, `grok_key`. OpenRouter expects namespaced model ids like `openai/gpt-4o-mini`.
 
 ## Requests and messages
 
@@ -92,7 +92,7 @@ Other events: `.started`, `.toolCallStarted`, `.toolCallInputDelta` (partial JSO
 
 ## Tool calls
 
-Tools are declared with a JSON Schema plus a Swift `Decodable` input type. HudAI validates the model's input against the type, so call sites work in typed values, not raw JSON.
+Tools take a JSON Schema plus a Swift `Decodable` input type. HudAI validates the model's input, so call sites work in typed values, not raw JSON.
 
 ```swift
 struct WeatherInput: Decodable { let city: String; let units: String? }
@@ -128,7 +128,7 @@ If a key is missing or empty, requests fail fast with `.credentialsMissing` or `
 
 ## Errors
 
-All adapter failures surface as `HudAIError`. Each case carries the `provider`; rejection and rate-limit cases also include HTTP status and provider request id.
+All failures surface as `HudAIError`. Each case carries the `provider`; rejection and rate-limit cases also include HTTP status and request id.
 
 | Case | When |
 |------|------|

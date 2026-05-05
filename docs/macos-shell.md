@@ -155,7 +155,7 @@ HudTerminalDrawer(
 
 ## HudTakeover
 
-Full-viewport blocking surface for flows that need full attention — connection setup, onboarding, destructive confirmations, terminal sessions launched from a target. Mount with `.hudsonTakeover(isPresented:content:)`; fades + slides up from the bottom (opacity-only under reduce-motion).
+Full-viewport blocking surface for flows that need full attention — connection setup, onboarding, destructive confirms, terminal sessions. Mount with `.hudsonTakeover(isPresented:content:)`; fades + slides up from the bottom (opacity-only under reduce-motion).
 
 ```swift
 HudAppShell { ... }
@@ -170,11 +170,11 @@ HudAppShell { ... }
 
 ## Layout primitives
 
-**`HudVisualEffectView`** bridges `NSVisualEffectView` into SwiftUI on macOS — `.sidebar` material with `.behindWindow` blending matches stock macOS sidebars (Finder, Mail), and `.followsWindowActiveState` dims when the window is inactive. iOS falls back to `.ultraThinMaterial`.
+**`HudVisualEffectView`** bridges `NSVisualEffectView` into SwiftUI on macOS — `.sidebar` + `.behindWindow` matches stock macOS sidebars; iOS falls back to `.ultraThinMaterial`.
 
 ```swift
 HudVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 ```
 
-**`HudSidebarLayout`** is the geometry token enum for the two-column sidebar — `railWidth` (32), `labelWidth` (200), `rowHeight` (30), `headerHeight` (44), and `intrinsicWidth(progress:labelWidth:)` for sizing the column slot. **`HudSidebarStyle`** bundles four style axes (`surface`, `indicator`, `icon`, `motion`) plus a `liquidGlass` config; propagate via `.environment(\.hudsonSidebarStyle, ...)`.
+**`HudSidebarLayout`** holds the geometry tokens — `railWidth` (32), `labelWidth` (200), `rowHeight` (30), `headerHeight` (44), `intrinsicWidth(progress:labelWidth:)`. **`HudSidebarStyle`** bundles four style axes (`surface`, `indicator`, `icon`, `motion`) plus a `liquidGlass` config; propagate via `.environment(\.hudsonSidebarStyle, ...)`.
