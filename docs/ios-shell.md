@@ -107,4 +107,4 @@ content
 // HudPhoneAppShell reads the preference and dispatches to the renderer.
 ```
 
-For the full design rationale on slot variants and the open-slot vs. variant-enum contract, see `HUD-003` in `packages/native/apple/HudsonKit/Docs/`.
+For the full design rationale on slot variants and the open-slot vs. variant-enum contract, see `HUD-002` in `packages/native/apple/HudsonKit/Docs/`.

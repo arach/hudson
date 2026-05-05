@@ -9,7 +9,7 @@ section: "macOS Apps"
 
 ## Overview
 
-HudsonShell is the chassis Hudson apps wear on macOS and iPad regular-width — container, leading nav, trailing inspector, content canvas, drawers, overlays. Apps own state and render into slots; the shell handles dividers, background, and responsive collapse. Counterpart to the web SDK's `<AppShell>`. Compact iPhone uses `HudPhoneAppShell`. See ADR HUD-002 and HUD-003 in `packages/native/apple/HudsonKit/Docs/` for design context.
+HudsonShell is the chassis Hudson apps wear on macOS and iPad regular-width — container, leading nav, trailing inspector, content canvas, drawers, overlays. Apps own state and render into slots; the shell handles dividers, background, and responsive collapse. Counterpart to the web SDK's `<AppShell>`. Compact iPhone uses `HudPhoneAppShell`. See HUD-001 and HUD-002 in `packages/native/apple/HudsonKit/Docs/` for design context.
 
 ## HudAppShell
 
@@ -29,7 +29,7 @@ HudAppShell {
 
 ## HudNavigationSidebar / HudNavigationRail
 
-Two leading-slot implementations, both first-class (ADR HUD-002).
+Two leading-slot implementations, both first-class (HUD-001).
 
 **Use the rail** for a flat list of 3–7 destinations with icons-only-by-default and string selection.
 

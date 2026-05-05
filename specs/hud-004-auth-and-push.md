@@ -1,4 +1,4 @@
-# HUD-005 — HudAuth + HudPush Framework
+# HUD-004 — HudAuth + HudPush Framework
 
 - **Status:** Draft
 - **Pairs:** HudVault (shipped), HudPermissionGate (shipped)
@@ -356,4 +356,4 @@ Adds VAPID key generation and APNs `.p8` upload (the latter unused in v1, scaffo
 
 ## Reply
 
-When the matching implementation lands, reference this spec by `HUD-005` in PR titles and commit messages so the docs cross-link cleanly.
+When the matching implementation lands, reference this spec by `HUD-004` in PR titles and commit messages so the docs cross-link cleanly.
