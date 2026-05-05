@@ -10,6 +10,12 @@ struct PrimitivesTab: View {
     @State private var fieldQuery: String = "alpha"
     @State private var selectedRow: String? = "alpha"
     @State private var qrInputText: String = ""
+    @State private var vaultKey: String = ""
+    @State private var vaultValue: String = ""
+    @State private var vaultMessage: String = ""
+    @State private var vaultKeys: [String] = []
+
+    private let demoVault = HudVault(service: "com.hudsonkit.demoios.vault-demo")
 
     private let scrollAnchors: [HudSettingsQuickNav.Item] = [
         .init(icon: "square",                label: "Buttons",  anchor: "Buttons"),
@@ -18,6 +24,7 @@ struct PrimitivesTab: View {
         .init(icon: "textformat",            label: "Field",    anchor: "Field"),
         .init(icon: "qrcode",                label: "QR",       anchor: "QR code"),
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
+        .init(icon: "key",                   label: "Vault",    anchor: "Vault"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
         .init(icon: "rectangle.stack",       label: "Cards",    anchor: "Cards & insets"),
@@ -36,6 +43,7 @@ struct PrimitivesTab: View {
                     sectionField
                     sectionQRCode
                     sectionPermissions
+                    sectionVault
                     sectionListRows
                     sectionKVRows
                     sectionCards
@@ -191,6 +199,82 @@ struct PrimitivesTab: View {
                     }
                 }
             }
+        }
+    }
+
+    private var sectionVault: some View {
+        gallerySection("Vault", snippet: """
+            let vault = HudVault(service: "com.hudsonkit.demo.api-keys")
+            try vault.setString("openai", value)
+            let key = try vault.getString("openai")
+
+            HudSecretField("API key", text: $apiKey)
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                HudField("Key name (e.g. openai)", text: $vaultKey, icon: "tag")
+                HudSecretField("Secret value", text: $vaultValue)
+                HStack(spacing: HudSpacing.md) {
+                    HudButton("Save", icon: "square.and.arrow.down", style: .primary(.green)) {
+                        runVault {
+                            try demoVault.setString(vaultKey, vaultValue)
+                            vaultMessage = "saved \(vaultKey)"
+                            vaultValue = ""
+                        }
+                    }
+                    HudButton("Load", icon: "arrow.down.doc", style: .secondary) {
+                        runVault {
+                            if let value = try demoVault.getString(vaultKey) {
+                                vaultValue = value
+                                vaultMessage = "loaded \(vaultKey)"
+                            } else {
+                                vaultMessage = "\(vaultKey) is empty"
+                            }
+                        }
+                    }
+                    HudButton("Delete", icon: "trash", style: .ghost) {
+                        runVault {
+                            try demoVault.delete(vaultKey)
+                            vaultMessage = "deleted \(vaultKey)"
+                        }
+                    }
+                }
+                HStack(spacing: HudSpacing.md) {
+                    HudButton("Refresh keys", icon: "arrow.clockwise", style: .ghost) {
+                        runVault {
+                            vaultKeys = try demoVault.list()
+                            vaultMessage = "\(vaultKeys.count) key\(vaultKeys.count == 1 ? "" : "s")"
+                        }
+                    }
+                    HudButton("Clear all", icon: "xmark.circle", style: .ghost) {
+                        runVault {
+                            try demoVault.clear()
+                            vaultKeys = []
+                            vaultMessage = "vault cleared"
+                        }
+                    }
+                }
+                HudInset {
+                    VStack(alignment: .leading, spacing: HudSpacing.sm) {
+                        Text(vaultMessage.isEmpty ? "Save a value, then refresh to see the key listed." : vaultMessage)
+                            .font(HudFont.mono(HudTextSize.xxs))
+                            .foregroundStyle(HudPalette.muted)
+                        if !vaultKeys.isEmpty {
+                            HudDivider()
+                            ForEach(vaultKeys, id: \.self) { k in
+                                HudKVRow(k, value: "stored")
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+
+    private func runVault(_ block: () throws -> Void) {
+        do {
+            try block()
+        } catch {
+            vaultMessage = "error: \(error.localizedDescription)"
         }
     }
 
