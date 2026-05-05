@@ -1,0 +1,16 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "hudson-relay-worker",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-05-05",
+  "vars": {
+    "HUD_PUSH_PUBLIC_KEY": "REPLACE_WITH_WEB_PUSH_PUBLIC_KEY"
+  },
+  "d1_databases": [
+    {
+      "binding": "HUD_DB",
+      "database_name": "hudson-relay-db",
+      "database_id": "REPLACE_WITH_D1_DATABASE_ID"
+    }
+  ]
+}
