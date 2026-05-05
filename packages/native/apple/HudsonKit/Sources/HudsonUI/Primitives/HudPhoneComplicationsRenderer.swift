@@ -70,7 +70,7 @@ private struct HudComplicationSlotButton: View {
     @State private var modePickerVisible = false
 
     var body: some View {
-        ZStack {
+        let core = ZStack {
             if modePickerVisible, let modes = slot.longPressModes {
                 modePicker(modes)
                     .offset(y: -HudPhoneComplicationsLayout.modePickerLift)
@@ -87,13 +87,24 @@ private struct HudComplicationSlotButton: View {
                 .foregroundStyle(slot.role.iconColor)
         }
         .contentShape(Circle())
-        .onTapGesture { slot.action() }
-        .onLongPressGesture(minimumDuration: 0.45) {
-            guard slot.longPressModes != nil else { return }
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.84)) {
-                modePickerVisible.toggle()
-            }
+
+        if slot.longPressModes != nil {
+            // Compose explicitly so the long-press timer can fulfill before the
+            // tap fires. With separate `.onTapGesture` + `.onLongPressGesture`
+            // SwiftUI resolves the tap on touch-up, which steals the gesture on
+            // simulator click-and-hold.
+            core.gesture(
+                LongPressGesture(minimumDuration: 0.45)
+                    .onEnded { _ in
+                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                        withAnimation(.spring(response: 0.24, dampingFraction: 0.84)) {
+                            modePickerVisible.toggle()
+                        }
+                    }
+                    .exclusively(before: TapGesture().onEnded { slot.action() })
+            )
+        } else {
+            core.onTapGesture { slot.action() }
         }
     }
 
