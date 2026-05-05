@@ -17,6 +17,7 @@ struct PrimitivesTab: View {
         .init(icon: "tag",                   label: "Badges",   anchor: "Badges"),
         .init(icon: "textformat",            label: "Field",    anchor: "Field"),
         .init(icon: "qrcode",                label: "QR",       anchor: "QR code"),
+        .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
         .init(icon: "rectangle.stack",       label: "Cards",    anchor: "Cards & insets"),
@@ -34,6 +35,7 @@ struct PrimitivesTab: View {
                     sectionBadges
                     sectionField
                     sectionQRCode
+                    sectionPermissions
                     sectionListRows
                     sectionKVRows
                     sectionCards
@@ -142,6 +144,52 @@ struct PrimitivesTab: View {
                     icon: "qrcode"
                 )
                 HudQRCode(qrInputText.isEmpty ? "https://hudson.dev" : qrInputText)
+            }
+        }
+    }
+
+    private var sectionPermissions: some View {
+        gallerySection("Permissions", snippet: """
+            HudPermissionGate(.microphone, rationale: "Talkie listens to your dictation.") {
+                RecordingView()
+            }
+
+            // imperative
+            let status = await HudPermissions.request(.camera)
+            """) {
+            VStack(spacing: HudSpacing.md) {
+                HudPermissionGate(
+                    .microphone,
+                    rationale: "We listen for the demo only — this just shows the gate states."
+                ) {
+                    HudInset {
+                        HudKVRow("microphone", value: "GRANTED — your content here")
+                    }
+                }
+                HudPermissionGate(
+                    .camera,
+                    rationale: "Used for QR-code pairing and photo capture demos."
+                ) {
+                    HudInset {
+                        HudKVRow("camera", value: "GRANTED")
+                    }
+                }
+                HudPermissionGate(
+                    .photos,
+                    rationale: "Pick screenshots to attach to a memo."
+                ) {
+                    HudInset {
+                        HudKVRow("photos", value: "GRANTED")
+                    }
+                }
+                HudPermissionGate(
+                    .notifications,
+                    rationale: "Surface session reminders and arrival notifications."
+                ) {
+                    HudInset {
+                        HudKVRow("notifications", value: "GRANTED")
+                    }
+                }
             }
         }
     }
