@@ -10,6 +10,7 @@ struct PrimitivesTab: View {
     @State private var fieldQuery: String = "alpha"
     @State private var selectedRow: String? = "alpha"
     @State private var qrInputText: String = ""
+    @State private var lastScannedCode: String = ""
     @State private var vaultKey: String = ""
     @State private var vaultValue: String = ""
     @State private var vaultMessage: String = ""
@@ -23,6 +24,7 @@ struct PrimitivesTab: View {
         .init(icon: "tag",                   label: "Badges",   anchor: "Badges"),
         .init(icon: "textformat",            label: "Field",    anchor: "Field"),
         .init(icon: "qrcode",                label: "QR",       anchor: "QR code"),
+        .init(icon: "qrcode.viewfinder",     label: "Scan",     anchor: "QR scanner"),
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
         .init(icon: "key",                   label: "Vault",    anchor: "Vault"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
@@ -42,6 +44,7 @@ struct PrimitivesTab: View {
                     sectionBadges
                     sectionField
                     sectionQRCode
+                    sectionQRScanner
                     sectionPermissions
                     sectionVault
                     sectionListRows
@@ -152,6 +155,31 @@ struct PrimitivesTab: View {
                     icon: "qrcode"
                 )
                 HudQRCode(qrInputText.isEmpty ? "https://hudson.dev" : qrInputText)
+            }
+        }
+    }
+
+    private var sectionQRScanner: some View {
+        gallerySection("QR scanner", snippet: """
+            HudPermissionGate(.camera, rationale: "Scan a pairing QR.") {
+                HudQRScanner { code in
+                    handle(scannedCode: code)
+                }
+            }
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                HudPermissionGate(
+                    .camera,
+                    rationale: "Demo of HudQRScanner — scan any QR. Simulator shows a black preview; build on a real device for the full experience."
+                ) {
+                    HudQRScanner { code in
+                        lastScannedCode = code
+                    }
+                    .frame(height: HudLayout.dialogWidth)
+                }
+                HudInset {
+                    HudKVRow("last scanned", value: lastScannedCode.isEmpty ? "—" : lastScannedCode)
+                }
             }
         }
     }

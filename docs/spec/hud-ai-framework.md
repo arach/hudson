@@ -65,6 +65,7 @@ Both surfaces expose the same nouns:
 - `HudAIError`
 - `HudAIUsage`
 - `HudAICredentialSource`
+- `HudAIRoute`
 
 ## Public API: TypeScript
 
@@ -81,6 +82,7 @@ Public construction contract:
   - `vault`: HudVault-compatible credential source
   - `defaults`: temperature, max output tokens, prompt cache policy, timeout, retry policy
   - `logger`: optional structured logger
+  - `routeDefault`: optional `HudAIRoute`; default `local` unless a client chooses paired-device routing
 
 Credential source contract:
 
@@ -102,6 +104,7 @@ Canonical request fields:
 - `metadata?: Record<string, string | number | boolean>`
 - `cache?: HudAICachePolicy`
 - `signal?: AbortSignal`
+- `route?: HudAIRoute` where `local` calls the provider from this device, `paired(deviceId)` routes through a paired device, and `auto` chooses a reachable configured-default paired device when available then falls back to `local`
 
 Message fields:
 
@@ -136,9 +139,10 @@ Swift should mirror the TypeScript nouns while feeling native to SwiftUI and str
 
 Public construction contract:
 
-- `HudAIClient(provider:model:vault:defaults:logger:)`
+- `HudAIClient(provider:model:vault:defaults:routeDefault:logger:)`
 - `provider` defaults to Claude/Anthropic adapter
 - `vault` conforms to a small credential protocol backed by HudVault
+- `routeDefault` is an optional `HudAIRoute`, defaulting to `.local` unless the app/client has a paired-device default
 
 Credential source contract:
 
@@ -188,6 +192,24 @@ HudAI stream events should be semantic, stable, and small:
 - `cancelled`: cancellation/interruption acknowledgement
 
 The final `HudAIResponse` contains the assembled assistant content, all tool calls, usage, provider metadata, and finish reason.
+
+## Paired-device routing
+
+HudAI intentionally couples to HudPairing so Hudson apps can run across desktop and mobile without retyping provider keys on every device. Routing is a first-class request concern, not a separate app protocol.
+
+`HudAIRoute` variants:
+
+- `local`: make the provider call from the current device using this device's HudVault.
+- `paired(deviceId)`: send the HudAI request to a specific paired device and stream results back from that device.
+- `auto`: if a paired device is configured as the client default and is reachable, route through that device; otherwise fall back to `local`.
+
+When routed through a paired device, the request flows over HudPairing's signed-RPC channel. The surveyed HudPairing transport is HTTP over LAN/Tailscale with ECDH P-256 session establishment, HKDF-derived shared keys, and per-request HMAC signing (`X-Device-ID`, `X-Timestamp`, `X-Nonce`, `X-Signature`). Hudson should preserve that channel contract while allowing future HudPairing transports such as relay/WebSocket variants.
+
+The paired device runs a HudAI host: it receives the canonical `HudAIRequest`, performs credential lookup against its own HudVault, calls the chosen provider locally, and sends `HudAIStreamEvent` values back over the signed channel. The streaming event taxonomy does not change. Apps consume `started`, `textDelta`, `toolCallReady`, `usage`, `completed`, `failed`, and other events exactly the same way whether the route is local or paired.
+
+Credential semantics are route-dependent. For `local`, credentials come from the local HudVault. For `paired(deviceId)`, credentials come from the paired device's HudVault; the local device does not need provider keys installed. This unlocks the intended affordance: set up model provider keys once on a workstation, then use HudAI seamlessly from a phone or tablet through that workstation. Future implementations should preserve that no-local-secret property.
+
+Route failures normalize to `HudAIError.pairingChannelUnavailable` when the paired device is offline, the signed-RPC channel times out, HMAC/signature validation fails, or the HudAI host is unreachable. In `auto`, this error should only surface after both the paired route and local fallback are unavailable or disallowed by policy.
 
 ## Tool use envelope
 
@@ -252,14 +274,18 @@ Adapter behavior:
 
 ## HudVault integration
 
-HudAI consumes credentials only through HudVault-compatible sources.
+HudAI consumes credentials only through HudVault-compatible sources. Credential lookup happens on the device that actually makes the provider request. For `local`, that is the current device. For `paired(deviceId)`, that is the paired HudAI host device, so the caller can stream AI responses without ever receiving or storing the provider API key locally.
 
 ### Credential keys
 
-Use provider-scoped names:
+Use provider-scoped names, with adapter variants owning their own key names even when they share an OpenAI-compatible wire protocol:
 
 - Claude/Anthropic: `anthropic_key`
 - OpenAI: `openai_key`
+- OpenRouter: `openrouter_key`
+- DeepSeek: `deepseek_key`
+- Fireworks AI: `fireworks_key`
+- Together: `together_key` when scheduled
 
 The brief names `openai_key` as the HudVault example. HudAI should support that key for OpenAI and use `anthropic_key` for Claude unless Hudson standardizes a different provider-key naming convention before implementation.
 
@@ -279,18 +305,29 @@ The brief names `openai_key` as the HudVault example. HudAI should support that 
 
 ## Provider abstraction
 
-Claude/Anthropic is primary in v1. OpenAI should be a mechanical adapter later, not a rewrite.
+Claude/Anthropic is primary in v1. OpenAI support should be introduced as a reusable OpenAI-compatible base transport plus thin provider variants, not as one-off rewrites. Several target providers share the OpenAI wire protocol but differ in base URL, authentication key, model namespace, and feature quirks.
 
 Adapter contract:
 
 - provider id and display name;
 - default model selection;
+- model id namespace rules;
 - supported feature flags: streaming, tools, reasoning, prompt cache, model listing, usage detail;
 - credential key;
+- endpoint/base URL configuration;
 - request translation;
 - stream parsing into HudAI events;
 - response assembly;
 - error normalization.
+
+Provider roster:
+
+- Anthropic / Claude: v1 primary adapter.
+- OpenAI: v2 mechanical adapter built on the OpenAI-compatible base, targeting the Hudson-approved OpenAI endpoint at implementation time.
+- OpenRouter: separate adapter because it is a meta-provider routing to many model families; use namespaced model strings such as `anthropic/claude-3.5-sonnet`.
+- DeepSeek: OpenAI-compatible variant with custom endpoint URL, `deepseek_key`, and provider-specific defaults.
+- Fireworks AI: OpenAI-compatible inference-platform variant with custom endpoint URL, `fireworks_key`, and model namespace handling.
+- Future: Mistral, Cohere, Google Gemini, Groq, Together. Together should likely be another OpenAI-compatible variant; Mistral/Groq may share enough shape to reuse parts; Gemini and Cohere may need dedicated translators.
 
 Claude adapter responsibilities:
 
@@ -301,14 +338,15 @@ Claude adapter responsibilities:
 - handle `tool_use` ids and streamed JSON input;
 - map stop reasons and token usage including cache counters.
 
-OpenAI adapter responsibilities later:
+OpenAI-compatible base responsibilities:
 
-- translate messages/tools to OpenAI Responses API or current Hudson-approved OpenAI endpoint;
+- translate messages/tools to OpenAI Responses API, chat completions, or the current Hudson-approved OpenAI-compatible endpoint shape;
 - map function/tool calls to the same HudAI tool-call envelope;
-- map max token and temperature quirks inside the adapter, as Talkie already does for chat completions;
+- map max token, temperature, stream, and usage quirks inside the base plus variant overrides, as Talkie already does for chat completions;
+- expose variant hooks for base URL, headers, credential key, model namespace validation, unsupported feature flags, and error-code mapping;
 - emit the same stream events.
 
-No app code should switch on provider-specific event names.
+No app code should switch on provider-specific event names or OpenAI-compatible variant ids.
 
 ## Error model
 
@@ -322,6 +360,7 @@ HudAI errors are typed and safe to show in app logs:
 - overloaded
 - timeout
 - cancelled
+- pairingChannelUnavailable
 - toolInputDecodeFailed
 - unsupportedFeature
 - unknownProvider
@@ -366,7 +405,7 @@ Retries:
 
 ## Security and platform boundaries
 
-- Browser clients should not call provider APIs directly with user API keys unless Hudson explicitly accepts that product risk. Preferred web deployment is server/route-handler mediation using HudVault on the server side.
+- Browser clients should not call provider APIs directly with user API keys unless Hudson explicitly accepts that product risk. Preferred web deployment is server/route-handler mediation using HudVault on the server side. Paired-device routing is another approved mediation path when the paired HudAI host owns the credential lookup and provider call.
 - Apple apps may call providers directly using HudVault-held keys when that is the intended app model.
 - HudAI should not write keys to localStorage, UserDefaults, logs, crash reports, or transcripts.
 - Tool input/result validation is part of the public contract because tools can trigger app actions.
@@ -374,6 +413,7 @@ Retries:
 ## Suggested v1 acceptance criteria
 
 - One Claude/Anthropic adapter on web and Swift.
+- `HudAIRoute.local`, `HudAIRoute.paired(deviceId)`, and `HudAIRoute.auto` represented in the public request contract, even if v1 only enables local execution by default.
 - `complete` and `stream` support text-only requests.
 - Typed tool definitions and streamed tool-call readiness.
 - Prompt caching automatic for system prompt/tool definitions.
@@ -385,6 +425,8 @@ Retries:
 
 1. **Credential key names:** confirm whether Claude should use `anthropic_key`, `claude_key`, or another HudVault convention. This spec recommends `anthropic_key`.
 2. **Web credential boundary:** decide whether browser-side direct provider calls are forbidden or merely discouraged. This affects package docs and runtime guards.
-3. **OpenAI endpoint target:** when the OpenAI adapter is scheduled, choose Responses API versus chat completions as the canonical target.
+3. **OpenAI-compatible base target:** when the OpenAI adapter is scheduled, choose Responses API versus chat completions as the canonical target and decide how much of that base is shared by DeepSeek, Fireworks, Together, and OpenRouter.
 4. **Schema source of truth:** decide whether Hudson standardizes on Zod for TypeScript tool schemas or accepts raw JSON Schema plus adapters.
 5. **Reasoning exposure:** decide whether reasoning deltas are exposed to all apps or gated by provider/model capability and app opt-in.
+6. **Paired-route policy:** decide whether apps can require paired routing with no local fallback for sensitive or cost-controlled requests, and how users set the default paired HudAI host per client.
+7. **HudPairing transport readiness:** confirm which HudPairing transports beyond LAN/Tailscale HTTP must exist before paired HudAI routing is considered shippable.
