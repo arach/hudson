@@ -44,6 +44,8 @@ targets:
         product: HudsonShell
       - package: HudsonKit
         product: HudsonAI
+      - package: HudsonKit
+        product: HudsonVoice  # requires HUDSONKIT_WITH_VOICE=1 in build env
       - package: Termini
         product: Termini
     settings:
@@ -67,3 +69,4 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
         ENABLE_PREVIEWS: YES
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) HUDSON_VOICE"

@@ -7,6 +7,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
     case complications
     case primitives
     case hudAI
+    case vox
     case settings
     case logs
     case terminal
@@ -20,6 +21,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .complications: return "Complications"
         case .primitives:    return "Primitives"
         case .hudAI:         return "HudAI"
+        case .vox:           return "Vox"
         case .settings:      return "Settings"
         case .logs:          return "Logs"
         case .terminal:      return "Terminal"
@@ -33,6 +35,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .complications: return "circle.grid.2x2"
         case .primitives:    return "square.stack.3d.up"
         case .hudAI:         return "sparkles"
+        case .vox:           return "waveform"
         case .settings:      return "gearshape"
         case .logs:          return "list.bullet.rectangle"
         case .terminal:      return "terminal"
@@ -72,6 +75,7 @@ struct RootView: View {
         case .complications: ComplicationsTab(custom: $customComplications, style: $customStyle)
         case .primitives:    PrimitivesTab()
         case .hudAI:         HudAITab()
+        case .vox:           VoxTab()
         case .settings:      SettingsTab()
         case .logs:          LogsTab()
         case .terminal:      TerminalTab()

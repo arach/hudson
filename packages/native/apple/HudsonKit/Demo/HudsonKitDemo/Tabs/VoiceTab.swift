@@ -1,3 +1,4 @@
+#if HUDSON_VOICE
 import SwiftUI
 import HudsonUI
 import HudsonVoice
@@ -94,3 +95,28 @@ private struct ContractRow: View {
         }
     }
 }
+#else
+import SwiftUI
+import HudsonUI
+
+/// Stub when HudsonVoice isn't built. Rebuild with HUDSONKIT_WITH_VOICE=1
+/// (set in shell env or via `make voice` from the kit dir) to enable.
+struct VoiceTab: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudSectionLabel("Voice · Vox")
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    Text("HudsonVoice is not built into this binary.")
+                        .font(HudFont.ui(HudTextSize.sm))
+                        .foregroundStyle(HudPalette.muted)
+                    Text("Rebuild with HUDSONKIT_WITH_VOICE=1 swift build (or make voice in packages/native/apple/HudsonKit) to opt in.")
+                        .font(HudFont.mono(HudTextSize.xxs))
+                        .foregroundStyle(HudPalette.dim)
+                }
+            }
+            .frame(maxWidth: HudLayout.dialogWidth)
+        }
+    }
+}
+#endif
