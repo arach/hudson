@@ -16,6 +16,12 @@ public enum HudPhoneComplicationsLayout {
     public static let secondarySize: CGFloat = 22
     public static let secondaryOffset: CGFloat = 4
 
+    /// Smaller variant for top corners hosted as `ToolbarItem`s — the system
+    /// nav bar is 44pt, so the floating-tray sizes (48pt) feel oversized
+    /// inline with the title.
+    public static let toolbarPrimarySize: CGFloat = 32
+    public static let toolbarSecondarySize: CGFloat = 18
+
     public static let cornerInset: CGFloat = HudSpacing.xl
     public static let scatteredVerticalInset: CGFloat = HudSpacing.huge
 
@@ -70,7 +76,7 @@ private struct HudComplicationSlotButton: View {
     @State private var modePickerVisible = false
 
     var body: some View {
-        ZStack {
+        let core = ZStack {
             if modePickerVisible, let modes = slot.longPressModes {
                 modePicker(modes)
                     .offset(y: -HudPhoneComplicationsLayout.modePickerLift)
@@ -87,13 +93,24 @@ private struct HudComplicationSlotButton: View {
                 .foregroundStyle(slot.role.iconColor)
         }
         .contentShape(Circle())
-        .onTapGesture { slot.action() }
-        .onLongPressGesture(minimumDuration: 0.45) {
-            guard slot.longPressModes != nil else { return }
-            UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
-            withAnimation(.spring(response: 0.24, dampingFraction: 0.84)) {
-                modePickerVisible.toggle()
-            }
+
+        if slot.longPressModes != nil {
+            // Compose explicitly so the long-press timer can fulfill before the
+            // tap fires. With separate `.onTapGesture` + `.onLongPressGesture`
+            // SwiftUI resolves the tap on touch-up, which steals the gesture on
+            // simulator click-and-hold.
+            core.gesture(
+                LongPressGesture(minimumDuration: 0.45)
+                    .onEnded { _ in
+                        UIImpactFeedbackGenerator(style: .rigid).impactOccurred()
+                        withAnimation(.spring(response: 0.24, dampingFraction: 0.84)) {
+                            modePickerVisible.toggle()
+                        }
+                    }
+                    .exclusively(before: TapGesture().onEnded { slot.action() })
+            )
+        } else {
+            core.onTapGesture { slot.action() }
         }
     }
 
@@ -164,44 +181,40 @@ private struct HudComplicationCornerSlot: View {
 
 /// Default renderer. Bottom three slots (BL · center · BR) grouped in a
 /// glass-material tray attached via `safeAreaInset(.bottom)`. Top two slots
-/// (TL · TR) attached to the top safe area as discrete affordances.
+/// (TL · TR) hosted as `ToolbarItem`s so they sit inline with the
+/// navigation title — same vertical level, Talkie-style.
 public struct HudPhoneComplicationsTray: ViewModifier {
     let complications: HudPhoneComplications
 
     public func body(content: Content) -> some View {
         content
-            .safeAreaInset(edge: .top, spacing: 0) { topRow }
+            .toolbar { topToolbar }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomTray }
     }
 
-    @ViewBuilder
-    private var topRow: some View {
-        let tl = complications[.topLeft]
-        let tr = complications[.topRight]
-        if tl != nil || tr != nil {
-            HStack(spacing: 0) {
-                if let tl {
-                    HudComplicationCornerSlot(
-                        position: .topLeft,
-                        slot: tl,
-                        primarySize: HudPhoneComplicationsLayout.primarySize,
-                        secondarySize: HudPhoneComplicationsLayout.secondarySize,
-                        secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset
-                    )
-                }
-                Spacer(minLength: 0)
-                if let tr {
-                    HudComplicationCornerSlot(
-                        position: .topRight,
-                        slot: tr,
-                        primarySize: HudPhoneComplicationsLayout.primarySize,
-                        secondarySize: HudPhoneComplicationsLayout.secondarySize,
-                        secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset
-                    )
-                }
+    @ToolbarContentBuilder
+    private var topToolbar: some ToolbarContent {
+        if let tl = complications[.topLeft] {
+            ToolbarItem(placement: .topBarLeading) {
+                HudComplicationCornerSlot(
+                    position: .topLeft,
+                    slot: tl,
+                    primarySize: HudPhoneComplicationsLayout.toolbarPrimarySize,
+                    secondarySize: HudPhoneComplicationsLayout.toolbarSecondarySize,
+                    secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset
+                )
             }
-            .padding(.horizontal, HudPhoneComplicationsLayout.cornerInset)
-            .padding(.top, HudSpacing.sm)
+        }
+        if let tr = complications[.topRight] {
+            ToolbarItem(placement: .topBarTrailing) {
+                HudComplicationCornerSlot(
+                    position: .topRight,
+                    slot: tr,
+                    primarySize: HudPhoneComplicationsLayout.toolbarPrimarySize,
+                    secondarySize: HudPhoneComplicationsLayout.toolbarSecondarySize,
+                    secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset
+                )
+            }
         }
     }
 

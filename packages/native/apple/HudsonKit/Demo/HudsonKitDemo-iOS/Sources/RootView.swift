@@ -48,6 +48,7 @@ struct RootView: View {
     @State private var page: DemoPage
     @State private var customComplications: HudPhoneComplications? = nil
     @State private var customStyle: HudPhoneComplicationsStyle = .tray
+    @State private var showingNavSheet = false
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -66,6 +67,29 @@ struct RootView: View {
                 .navigationBarTitleDisplayMode(.inline)
                 .hudComplications(activeComplications)
         }
+        .sheet(isPresented: $showingNavSheet) { navSheet }
+    }
+
+    private var navSheet: some View {
+        NavigationStack {
+            List(DemoPage.allCases) { p in
+                Button {
+                    page = p
+                    showingNavSheet = false
+                } label: {
+                    Label(p.title, systemImage: p.icon)
+                        .foregroundStyle(.primary)
+                }
+            }
+            .navigationTitle("Pages")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .confirmationAction) {
+                    Button("Done") { showingNavSheet = false }
+                }
+            }
+        }
+        .presentationDetents([.medium, .large])
     }
 
     @ViewBuilder
@@ -93,17 +117,33 @@ struct RootView: View {
     private var defaultNavComplications: HudPhoneComplications {
         .init(
             topLeft: .init(icon: "list.bullet", action: { page = .logs }),
-            topRight: .init(icon: "info.circle", action: { page = .about }),
+            topRight: .init(icon: "ellipsis.circle", action: { showingNavSheet = true }),
             bottomLeft: .init(icon: "gearshape", action: { page = .settings }),
             bottomRight: .init(icon: "rectangle.3.group", action: { page = .shell }),
             center: .init(
                 icon: "circle.grid.2x2",
                 role: .accent,
-                longPressModes: DemoPage.allCases.map { p in
-                    .init(id: p.rawValue, icon: p.icon, label: p.title) { page = p }
-                },
-                action: { page = .shell }
+                longPressModes: rendererStyleModes,
+                action: { page = .complications }
             )
         )
+    }
+
+    /// Long-press modes on the center complication cycle the renderer style —
+    /// a real "alternative action for this slot" semantic, not a navigation
+    /// menu in disguise. Tap → go to the Complications page; long-press →
+    /// pick how the chrome itself renders.
+    private var rendererStyleModes: [HudPhoneComplications.Mode] {
+        [
+            .init(id: "tray", icon: "rectangle.bottomthird.inset.filled", label: "Tray") {
+                customStyle = .tray
+            },
+            .init(id: "scattered", icon: "circle.grid.cross.fill", label: "Scattered") {
+                customStyle = .scattered
+            },
+            .init(id: "minimal", icon: "circle.fill", label: "Minimal") {
+                customStyle = .minimal
+            },
+        ]
     }
 }

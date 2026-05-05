@@ -142,9 +142,35 @@ struct ComplicationsTab: View {
             }
         }()
         let role: HudPhoneComplications.Role = pos == .center ? .accent : .standard
-        return .init(icon: icon, role: role) {
+        let onTap: () -> Void = {
             counters[pos, default: 0] += 1
             lastTapped = "\(positionLabel(pos)) → \(counters[pos] ?? 0)"
         }
+        return .init(
+            icon: icon,
+            role: role,
+            longPressModes: pos == .center ? rendererStyleModes : nil,
+            action: onTap
+        )
+    }
+
+    /// Long-press modes on the center slot mirror the segmented Render Style
+    /// picker — demos that the same alternative-action slot can drive the
+    /// renderer choice from either surface.
+    private var rendererStyleModes: [HudPhoneComplications.Mode] {
+        [
+            .init(id: "tray", icon: "rectangle.bottomthird.inset.filled", label: "Tray") {
+                style = .tray
+                lastTapped = "Center long-press → Tray"
+            },
+            .init(id: "scattered", icon: "circle.grid.cross.fill", label: "Scattered") {
+                style = .scattered
+                lastTapped = "Center long-press → Scattered"
+            },
+            .init(id: "minimal", icon: "circle.fill", label: "Minimal") {
+                style = .minimal
+                lastTapped = "Center long-press → Minimal"
+            },
+        ]
     }
 }
