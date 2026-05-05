@@ -72,6 +72,11 @@
       "import": "./dist/voice.js",
       "default": "./dist/voice.js"
     },
+    "./vault": {
+      "types": "./dist/vault.d.ts",
+      "import": "./dist/vault.js",
+      "default": "./dist/vault.js"
+    },
     "./styles": "./dist/styles.css"
   },
   "files": [
