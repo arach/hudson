@@ -28,6 +28,7 @@ var targets: [Target] = [
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonVoice", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
+    .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
 ]
 
 if terminalEnabled {

@@ -199,8 +199,12 @@ public struct AnthropicHudAIAdapter: HudAIProviderAdapter {
         let requestID = http.value(forHTTPHeaderField: "request-id")
         let message = data.flatMap(providerErrorMessage) ?? HTTPURLResponse.localizedString(forStatusCode: http.statusCode)
         switch http.statusCode {
+        case 401, 403:
+            throw HudAIError.credentialsInvalid(provider: providerID, key: credentialKey)
         case 429:
             throw HudAIError.rateLimited(provider: providerID, status: http.statusCode, requestID: requestID, message: message)
+        case 408:
+            throw HudAIError.timeout(provider: providerID, message: message)
         case 500...599:
             throw HudAIError.overloaded(provider: providerID, status: http.statusCode, requestID: requestID, message: message)
         default:
@@ -253,6 +257,8 @@ public struct AnthropicHudAIAdapter: HudAIProviderAdapter {
         case "end_turn", "stop_sequence": return .stop
         case "max_tokens": return .length
         case "tool_use": return .toolCalls
+        case "pause_turn": return .stop
+        case "refusal": return .error
         case nil: return .unknown
         default: return .unknown
         }
@@ -461,6 +467,8 @@ private final class AnthropicStreamAssembler: @unchecked Sendable {
         case "end_turn", "stop_sequence": return .stop
         case "max_tokens": return .length
         case "tool_use": return .toolCalls
+        case "pause_turn": return .stop
+        case "refusal": return .error
         case nil: return .unknown
         default: return .unknown
         }
@@ -504,13 +512,4 @@ private struct AnthropicSSEDelta: Decodable {
 private struct AnthropicSSEError: Decodable {
     var type: String?
     var message: String?
-}
-
-extension HudAIUsage {
-    enum CodingKeys: String, CodingKey {
-        case inputTokens = "input_tokens"
-        case outputTokens = "output_tokens"
-        case cacheCreationInputTokens = "cache_creation_input_tokens"
-        case cacheReadInputTokens = "cache_read_input_tokens"
-    }
 }

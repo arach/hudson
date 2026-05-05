@@ -42,6 +42,8 @@ targets:
         product: HudsonUI
       - package: HudsonKit
         product: HudsonShell
+      - package: HudsonKit
+        product: HudsonAI
       - package: Termini
         product: Termini
     settings:
