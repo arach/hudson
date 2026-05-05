@@ -23,14 +23,14 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: HudsonKit build
+        run: bun run --cwd packages/web/hudsonkit build:js
+
       - name: Typecheck (root)
         run: bunx tsc --noEmit
 
       - name: HudsonKit tests
         run: bunx vitest run packages/web/hudsonkit/__tests__
-
-      - name: HudsonKit build
-        run: bun run --cwd packages/web/hudsonkit build:js
 
       - name: Worker typecheck
         run: bun run --cwd packages/cloud/hudson-relay-worker typecheck
