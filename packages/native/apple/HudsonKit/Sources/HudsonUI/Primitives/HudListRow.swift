@@ -38,15 +38,15 @@ public struct HudListRow<Trailing: View>: View {
             HStack(spacing: HudSpacing.xl) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(.system(size: 14, weight: .medium))
+                        .font(HudFont.ui(HudTextSize.md, weight: .medium))
                         .foregroundStyle(iconTint.color)
-                        .frame(width: 32, height: 32)
-                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(iconTint.color.opacity(0.15)))
-                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(iconTint.color.opacity(0.28), lineWidth: 1))
+                        .frame(width: HudIconSize.large, height: HudIconSize.large)
+                        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.tintFill(iconTint.color)))
+                        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintBorder(iconTint.color), lineWidth: HudStrokeWidth.standard))
                 }
-                VStack(alignment: .leading, spacing: 2) {
+                VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                     Text(title)
-                        .font(HudFont.ui(13, weight: .medium))
+                        .font(HudFont.ui(HudTextSize.base, weight: .medium))
                         .foregroundStyle(HudPalette.ink)
                     if let subtitle {
                         Text(subtitle)
@@ -62,7 +62,7 @@ public struct HudListRow<Trailing: View>: View {
             .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
             .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : 1))
             .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
-            .opacity(onTap == nil ? 0.5 : 1)
+            .opacity(onTap == nil ? HudOpacity.muted : 1)
         }
         .buttonStyle(.plain)
         .focusable(onTap != nil)
@@ -92,7 +92,7 @@ public struct HudListRow<Trailing: View>: View {
             return HudFocus.ring
         }
         if isSelected {
-            return iconTint.color.opacity(0.45)
+            return HudSurface.tintMuted(iconTint.color)
         }
         if isHovering && onTap != nil {
             return HudHairline.standard

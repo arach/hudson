@@ -145,7 +145,7 @@ private struct HudShellVRule: View {
     var body: some View {
         Rectangle()
             .fill(HudHairline.standard)
-            .frame(width: 1)
+            .frame(width: HudStrokeWidth.standard)
             .frame(maxHeight: .infinity)
     }
 }

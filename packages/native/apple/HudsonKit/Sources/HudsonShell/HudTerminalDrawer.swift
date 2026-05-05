@@ -75,11 +75,11 @@ public struct HudTerminalDrawer<Content: View>: View {
                 Spacer(minLength: HudSpacing.md)
 
                 Image(systemName: isOpen ? "chevron.down" : "chevron.up")
-                    .font(.system(size: 11, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                     .foregroundStyle(HudPalette.muted)
             }
             .padding(.horizontal, HudSpacing.xxl)
-            .frame(height: 32)
+            .frame(height: HudLayout.buttonHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)

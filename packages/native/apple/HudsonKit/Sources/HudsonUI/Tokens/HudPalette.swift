@@ -100,6 +100,21 @@ public enum HudSurface {
     public static func selected(_ color: Color) -> Color {
         color.opacity(0.10)
     }
+
+    // Semantic tint helpers — replace per-call `color.opacity(0.X)` literals
+    // with intent-named functions so primitives stay token-correct.
+    public static func tintGhost(_ color: Color)   -> Color { color.opacity(0.08) }
+    public static func tintFill(_ color: Color)    -> Color { color.opacity(0.14) }
+    public static func tintAccent(_ color: Color)  -> Color { color.opacity(0.20) }
+    public static func tintBorder(_ color: Color)  -> Color { color.opacity(0.32) }
+    public static func tintMuted(_ color: Color)   -> Color { color.opacity(0.45) }
+    public static func tintStrong(_ color: Color)  -> Color { color.opacity(0.60) }
+    public static func tintFocus(_ color: Color)   -> Color { color.opacity(0.85) }
+
+    // Scrim helpers — replace `Color.black.opacity(0.X)` for sheets / overlays.
+    public static let scrim:        Color = Color.black.opacity(0.45)
+    public static let scrimHeavy:   Color = Color.black.opacity(0.55)
+    public static let scrimDeep:    Color = Color.black.opacity(0.65)
 }
 
 /// Shared focus-ring values. Keep focus visibly blue/cyan and consistent across

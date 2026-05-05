@@ -51,28 +51,30 @@ private struct FakeTerminalContent: View {
                 line(prompt: "~", text: "~/dev/lattices", color: HudPalette.muted)
                 line(prompt: "$", text: "swift build -c release", color: HudPalette.ink)
                 Text("Compiling DeckKit…")
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.muted)
                 Text("Compiling Sources…")
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.muted)
                 Text("Build complete! (3.42s)")
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.statusOk)
                 line(prompt: "$", text: "scout send '@hkbridge ack — looks great'", color: HudPalette.ink)
                 Text("Routed to: hkbridge.m2-bridge.mini")
-                    .font(HudFont.mono(11))
+                    .font(HudFont.mono(HudTextSize.xs))
                     .foregroundStyle(HudPalette.muted)
 
                 HStack(spacing: HudSpacing.xs) {
                     Text("$")
-                        .font(HudFont.mono(11, weight: .semibold))
+                        .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                         .foregroundStyle(HudPalette.statusOk)
                     Rectangle()
                         .fill(HudPalette.statusOk)
+                        // Mono character cell preview — tied to monospace font metrics.
+                        // hudlint:disable next-line geometry
                         .frame(width: 7, height: 13)
                 }
-                .padding(.top, 2)
+                .padding(.top, HudSpacing.xxs)
             }
             .padding(HudSpacing.xl)
             .frame(maxWidth: .infinity, alignment: .leading)
@@ -80,7 +82,7 @@ private struct FakeTerminalContent: View {
         .background(HudPalette.chrome)
         .overlay(alignment: .topTrailing) {
             Text(host)
-                .font(HudFont.mono(9))
+                .font(HudFont.mono(HudTextSize.micro))
                 .tracking(0.8)
                 .foregroundStyle(HudPalette.dim)
                 .padding(HudSpacing.md)
@@ -90,10 +92,10 @@ private struct FakeTerminalContent: View {
     private func line(prompt: String, text: String, color: Color) -> some View {
         HStack(spacing: HudSpacing.xs) {
             Text(prompt)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(HudPalette.muted)
             Text(text)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(color)
         }
     }

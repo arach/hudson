@@ -27,7 +27,7 @@ struct ConnectFlow: View {
                 if connected { readyCard }
             }
             .padding(HudSpacing.xxl)
-            .frame(maxWidth: 720, alignment: .leading)
+            .frame(maxWidth: HudLayout.readableWidth, alignment: .leading)
             .frame(maxWidth: .infinity, alignment: .center)
         }
         .background(HudPalette.bg)
@@ -47,22 +47,22 @@ struct ConnectFlow: View {
     private var hero: some View {
         HStack(spacing: HudSpacing.xxl) {
             Image(systemName: target.icon)
-                .font(.system(size: 28, weight: .medium))
+                .font(HudFont.ui(HudTextSize.xxxl, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
-                .frame(width: 64, height: 64)
-                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(target.iconTint.color.opacity(0.15)))
-                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
+                .frame(width: HudIconSize.hero, height: HudIconSize.hero)
+                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(HudSurface.tintFill(target.iconTint.color)))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudSurface.tintBorder(target.iconTint.color), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: HudSpacing.sm) {
                 Text(connected ? "CONNECTED" : "CONNECTING")
-                    .font(HudFont.mono(10, weight: .bold))
+                    .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
                     .tracking(2.0)
                     .foregroundStyle(connected ? HudPalette.statusOk : target.iconTint.color)
                 Text(target.name)
                     .font(HudFont.mono(22, weight: .bold))
                     .foregroundStyle(HudPalette.ink)
                 Text(target.host)
-                    .font(HudFont.mono(12))
+                    .font(HudFont.mono(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
             }
 
@@ -83,13 +83,13 @@ struct ConnectFlow: View {
                     HudSectionLabel("Session", tint: HudTint.amber.color)
                     Spacer()
                     Text("ssh · ed25519")
-                        .font(HudFont.mono(9))
+                        .font(HudFont.mono(HudTextSize.micro))
                         .tracking(0.8)
                         .foregroundStyle(HudPalette.dim)
                 }
                 .padding(.horizontal, HudSpacing.xl)
                 .padding(.vertical, HudSpacing.md)
-                .background(Color.white.opacity(0.02))
+                .background(HudSurface.inset)
 
                 HudDivider()
 
@@ -98,21 +98,21 @@ struct ConnectFlow: View {
                         let entry = script[index]
                         HStack(spacing: HudSpacing.md) {
                             Text(entry.prompt)
-                                .font(HudFont.mono(11, weight: .semibold))
+                                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                                 .foregroundStyle(entry.color)
                             Text(entry.line)
-                                .font(HudFont.mono(11))
+                                .font(HudFont.mono(HudTextSize.xs))
                                 .foregroundStyle(HudPalette.ink)
                         }
                     }
                     if !connected, step < script.count {
                         HStack(spacing: HudSpacing.md) {
                             Text("•")
-                                .font(HudFont.mono(11, weight: .semibold))
+                                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                                 .foregroundStyle(HudPalette.muted)
                             HudStatusDot(color: HudPalette.muted, size: 6, pulses: true)
                             Text("…")
-                                .font(HudFont.mono(11))
+                                .font(HudFont.mono(HudTextSize.xs))
                                 .foregroundStyle(HudPalette.muted)
                         }
                     }
@@ -132,7 +132,7 @@ struct ConnectFlow: View {
                     HudBadge("LIVE", tint: HudPalette.statusOk, dot: true)
                 }
                 Text("Session attached. The terminal would mount here once Termini is wired into the iOS demo target.")
-                    .font(HudFont.ui(12))
+                    .font(HudFont.ui(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
             }

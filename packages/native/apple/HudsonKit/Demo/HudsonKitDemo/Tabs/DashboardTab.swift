@@ -122,7 +122,7 @@ struct DashboardTab: View {
                 HudSectionLabel("Overflow · arach-laptop")
                 Spacer()
                 Text("third monitor · live")
-                    .font(HudFont.mono(9))
+                    .font(HudFont.mono(HudTextSize.micro))
                     .tracking(0.8)
                     .foregroundStyle(HudPalette.dim)
             }
@@ -152,10 +152,10 @@ struct DashboardTab: View {
                     HudStatusDot(color: HudPalette.statusError, pulses: true)
                     VStack(alignment: .leading, spacing: 2) {
                         Text("codex-cluster unreachable")
-                            .font(HudFont.ui(12, weight: .medium))
+                            .font(HudFont.ui(HudTextSize.sm, weight: .medium))
                             .foregroundStyle(HudPalette.ink)
                         Text("last reply 14h ago · check tunnel")
-                            .font(HudFont.mono(10))
+                            .font(HudFont.mono(HudTextSize.xxs))
                             .foregroundStyle(HudPalette.dim)
                     }
                     Spacer()

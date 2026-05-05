@@ -146,7 +146,11 @@ public struct HudNavigationSidebar<
         let glass = style.liquidGlass
         let inset: CGFloat = isLiquid ? glass.inset : 0
         let radius: CGFloat = isLiquid ? glass.cornerRadius : 0
+        // Liquid-glass surround stroke: white-tinted at low alpha when no accent override,
+        // otherwise the supplied accent at a calibrated opacity.
+        // hudlint:disable next-line palette,opacity
         let strokeColor: Color = glass.accent ?? Color.white.opacity(0.08)
+        // hudlint:disable next-line opacity
         let strokeOpacity: Double = glass.accent == nil ? 1.0 : 0.45
         let intrinsic = HudSidebarLayout.intrinsicWidth(progress: progress, labelWidth: labelWidth)
 
@@ -167,6 +171,7 @@ public struct HudNavigationSidebar<
         .padding(inset)
         .background {
             if isLiquid {
+                #if os(macOS)
                 HudVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
                     .opacity(glass.translucency)
                     .clipShape(RoundedRectangle(cornerRadius: radius, style: .continuous))
@@ -176,6 +181,17 @@ public struct HudNavigationSidebar<
                     )
                     .padding(inset)
                     .allowsHitTesting(false)
+                #else
+                RoundedRectangle(cornerRadius: radius, style: .continuous)
+                    .fill(.regularMaterial)
+                    .opacity(glass.translucency)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: radius, style: .continuous)
+                            .strokeBorder(strokeColor.opacity(strokeOpacity), lineWidth: 0.5)
+                    )
+                    .padding(inset)
+                    .allowsHitTesting(false)
+                #endif
             } else {
                 SidebarSurface(style: style.surface)
             }
@@ -487,28 +503,26 @@ private struct SidebarSurface: View {
         switch style {
         case .base:
             // Subtle top-to-bottom gradient over chrome so the sidebar reads
-            // slightly brighter near the window title bar.
+            // slightly brighter near the window title bar. Two calibrated stops.
             ZStack {
                 HudPalette.chrome
                 LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.045),
-                        Color.white.opacity(0.020),
-                    ],
+                    // hudlint:disable next-line palette,opacity
+                    colors: [Color.white.opacity(0.045), Color.white.opacity(0.020)],
                     startPoint: .top, endPoint: .bottom
                 )
             }
             .allowsHitTesting(false)
 
         case .glass:
+            // Liquid-glass surface stack: ultraThinMaterial scrim plus a
+            // three-stop gradient. Stops are calibrated to read as glass at any tint.
             ZStack {
+                // hudlint:disable next-line opacity
                 Rectangle().fill(.ultraThinMaterial).opacity(0.55)
                 LinearGradient(
-                    colors: [
-                        Color.white.opacity(0.040),
-                        Color.white.opacity(0.018),
-                        Color.black.opacity(0.060),
-                    ],
+                    // hudlint:disable next-line palette,opacity
+                    colors: [Color.white.opacity(0.040), Color.white.opacity(0.018), Color.black.opacity(0.060)],
                     startPoint: .top, endPoint: .bottom
                 )
             }
@@ -517,7 +531,7 @@ private struct SidebarSurface: View {
         case .editorial:
             // Flat, slightly lighter than chrome — "print" surface.
             HudPalette.surface
-                .opacity(0.6)
+                .opacity(HudOpacity.strong)
                 .allowsHitTesting(false)
 
         case .liquidGlass:
@@ -538,20 +552,18 @@ private struct SidebarTrailingRule: View {
     var body: some View {
         switch style {
         case .glass:
+            // Vertical hairline rule with mid-bright glass shimmer.
             LinearGradient(
-                colors: [
-                    Color.white.opacity(0.02),
-                    Color.white.opacity(0.10),
-                    Color.white.opacity(0.02),
-                ],
+                // hudlint:disable next-line palette,opacity
+                colors: [Color.white.opacity(0.02), Color.white.opacity(0.10), Color.white.opacity(0.02)],
                 startPoint: .top, endPoint: .bottom
             )
-            .frame(width: 0.5)
+            .frame(width: HudStrokeWidth.thin)
 
         case .base, .editorial:
             Rectangle()
                 .fill(HudHairline.standard)
-                .frame(width: 0.5)
+                .frame(width: HudStrokeWidth.thin)
 
         case .liquidGlass:
             // No trailing rule — the rounded floating surface defines its own edge.
@@ -573,15 +585,17 @@ private struct SidebarSelectionUnderlay: View {
         switch style {
         case .base:
             RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
-                .fill(accent.opacity(0.14))
+                .fill(HudSurface.tintFill(accent))
                 .frame(height: HudSidebarLayout.rowHeight - HudSidebarLayout.selectionVerticalInset * 2)
                 .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
                 .padding(.vertical, HudSidebarLayout.selectionVerticalInset)
 
         case .glass:
+            // Glass selection underlay: a soft blurred halo plus a sharp tinted
+            // gradient with a hairline border. Tints calibrated to the glass surface.
             ZStack {
                 RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius + 2)
-                    .fill(accent.opacity(0.22))
+                    .fill(HudSurface.tintAccent(accent))
                     .blur(radius: 8)
                     .padding(.horizontal, max(0, HudSidebarLayout.selectionHorizontalInset - 2))
                     .padding(.vertical, max(0, HudSidebarLayout.selectionVerticalInset - 1))
@@ -589,13 +603,13 @@ private struct SidebarSelectionUnderlay: View {
                 RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
                     .fill(
                         LinearGradient(
-                            colors: [accent.opacity(0.22), accent.opacity(0.10)],
+                            colors: [HudSurface.tintAccent(accent), HudSurface.tintGhost(accent)],
                             startPoint: .top, endPoint: .bottom
                         )
                     )
                     .overlay(
                         RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
-                            .strokeBorder(accent.opacity(0.35), lineWidth: 0.5)
+                            .strokeBorder(HudSurface.tintBorder(accent), lineWidth: HudStrokeWidth.thin)
                     )
                     .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
                     .padding(.vertical, HudSidebarLayout.selectionVerticalInset)
@@ -608,7 +622,7 @@ private struct SidebarSelectionUnderlay: View {
             HStack(spacing: 0) {
                 Rectangle()
                     .fill(accent)
-                    .frame(width: 2)
+                    .frame(width: HudStrokeWidth.bold)
                     .padding(.vertical, HudSpacing.xs)
                 Spacer(minLength: 0)
             }
@@ -618,7 +632,7 @@ private struct SidebarSelectionUnderlay: View {
             // Slightly more vivid fill; the kinetic feel comes from the spring
             // configured in HudSidebarMotionStyle.kinetic.
             RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
-                .fill(accent.opacity(0.18))
+                .fill(HudSurface.tintAccent(accent))
                 .frame(height: HudSidebarLayout.rowHeight - HudSidebarLayout.selectionVerticalInset * 2)
                 .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
                 .padding(.vertical, HudSidebarLayout.selectionVerticalInset)
@@ -638,7 +652,7 @@ private struct SidebarCompactAccent: View {
         switch style {
         case .base, .kinetic:
             // Centered bottom bar under the icon.
-            RoundedRectangle(cornerRadius: 1)
+            RoundedRectangle(cornerRadius: HudStrokeWidth.standard)
                 .fill(accent)
                 .frame(
                     width: HudSidebarLayout.compactAccentBarWidth,
@@ -648,19 +662,25 @@ private struct SidebarCompactAccent: View {
                 .frame(height: HudSidebarLayout.rowHeight, alignment: .bottom)
 
         case .glass:
-            // Glowing vertical rod at the leading edge — floats in the rail.
+            // Glowing vertical rod at the leading edge — soft halo (blurred capsule)
+            // beneath a crisper inner capsule with a top-to-bottom gradient. Sizes
+            // and opacities calibrated together for the floating glow effect.
             ZStack {
                 Capsule()
+                    // hudlint:disable next-line opacity
                     .fill(accent.opacity(0.55))
+                    // hudlint:disable next-line geometry
                     .frame(width: 6, height: 18)
                     .blur(radius: 4)
                 Capsule()
                     .fill(
                         LinearGradient(
+                            // hudlint:disable next-line opacity
                             colors: [accent.opacity(0.95), accent.opacity(0.65)],
                             startPoint: .top, endPoint: .bottom
                         )
                     )
+                    // hudlint:disable next-line geometry
                     .frame(width: 2, height: 16)
             }
             .frame(width: HudSidebarLayout.railWidth, alignment: .leading)
@@ -673,7 +693,7 @@ private struct SidebarCompactAccent: View {
             HStack(spacing: 0) {
                 Rectangle()
                     .fill(accent)
-                    .frame(width: 2)
+                    .frame(width: HudStrokeWidth.bold)
                     .padding(.vertical, HudSpacing.xs)
                 Spacer(minLength: 0)
             }

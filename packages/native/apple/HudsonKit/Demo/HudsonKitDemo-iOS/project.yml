@@ -1,6 +1,6 @@
-name: HudsonKitiOSDemo
+name: HudsonKitDemoIOS
 options:
-  bundleIdPrefix: dev.hudson.kit
+  bundleIdPrefix: com.hudsonkit
   deploymentTarget:
     iOS: "17.0"
   generateEmptyDirectories: false
@@ -8,24 +8,45 @@ options:
 
 packages:
   HudsonKit:
-    path: ..
+    path: ../..
+  Termini:
+    path: /Users/arach/dev/Termini
 
 targets:
-  HudsonKitiOSDemo:
+  HudsonKitDemoIOS:
     type: application
     platform: iOS
     sources:
-      - path: ../Demo/HudsonKitDemo
+      - path: Sources
+    preBuildScripts:
+      - name: HudLint (drift guard)
+        basedOnDependencyAnalysis: false
+        outputFiles:
+          - $(DERIVED_FILE_DIR)/hudlint.stamp
+        script: |
+          set -euo pipefail
+          KIT_ROOT="${SRCROOT}/../.."
+          TOOL_DIR="${KIT_ROOT}/Tools/HudLint"
+          BIN="${TOOL_DIR}/.build/release/hudlint"
+          # Build the linter once per machine; cached afterwards.
+          if [ ! -x "${BIN}" ]; then
+            (cd "${TOOL_DIR}" && /usr/bin/env xcrun swift build -c release --product hudlint)
+          fi
+          # Lint kit Sources + this demo's Sources. Xcode-parseable output.
+          "${BIN}" --root "${KIT_ROOT}/Sources" --root "${SRCROOT}/Sources" --format xcode
+          /usr/bin/touch "${DERIVED_FILE_DIR}/hudlint.stamp"
     dependencies:
+      - package: HudsonKit
+        product: HudsonObservability
       - package: HudsonKit
         product: HudsonUI
       - package: HudsonKit
         product: HudsonShell
-      - package: HudsonKit
-        product: HudsonVoice
+      - package: Termini
+        product: Termini
     settings:
       base:
-        PRODUCT_BUNDLE_IDENTIFIER: dev.hudson.kit.iosdemo
+        PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
         GENERATE_INFOPLIST_FILE: YES

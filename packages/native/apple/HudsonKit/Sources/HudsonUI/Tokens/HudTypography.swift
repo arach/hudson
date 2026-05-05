@@ -26,15 +26,18 @@ public enum HudFont {
 
 /// Type size scale — `--hud-text-{xxs,xs,sm,base,md,lg,xl,2xl,3xl}`.
 public enum HudTextSize {
+    public static let micro: CGFloat = 9   // micro chevrons, mono single-char glyphs
     public static let xxs:   CGFloat = 10  // kickers, uppercase labels
     public static let xs:    CGFloat = 11  // metadata, timestamps
     public static let sm:    CGFloat = 12  // chrome body
     public static let base:  CGFloat = 13  // app body (default)
     public static let md:    CGFloat = 14  // prominent body
+    public static let lgm:   CGFloat = 15  // hover-emphasis body (between md and lg)
     public static let lg:    CGFloat = 16  // card titles
     public static let xl:    CGFloat = 18  // section titles
     public static let xxl:   CGFloat = 22  // page titles
     public static let xxxl:  CGFloat = 28  // hero numbers / stats
+    public static let hero:  CGFloat = 32  // splash / oversized hero
 }
 
 // MARK: - Leading

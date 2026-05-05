@@ -39,9 +39,9 @@ struct TargetCanvas: View {
         HStack(spacing: HudSpacing.lg) {
             Button(action: onClose) {
                 Image(systemName: "chevron.left")
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                     .foregroundStyle(HudPalette.muted)
-                    .frame(width: 28, height: 28)
+                    .frame(width: HudIconSize.medium, height: HudIconSize.medium)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
@@ -49,10 +49,10 @@ struct TargetCanvas: View {
 
             HudSectionLabel("Fleet", tint: HudPalette.muted)
             Text("/")
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(HudPalette.dim)
             Text(target.name)
-                .font(HudFont.mono(11, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.ink)
 
             Spacer()
@@ -60,7 +60,7 @@ struct TargetCanvas: View {
             HudBadge(target.statusLabel, tint: target.statusColor, dot: true)
             if let latency = target.latency {
                 Text(latency)
-                    .font(HudFont.mono(10))
+                    .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.dim)
             }
         }
@@ -71,26 +71,26 @@ struct TargetCanvas: View {
     private var hero: some View {
         HStack(alignment: .top, spacing: HudSpacing.xxl) {
             Image(systemName: target.icon)
-                .font(.system(size: 32, weight: .medium))
+                .font(HudFont.ui(HudTextSize.hero, weight: .medium))
                 .foregroundStyle(target.iconTint.color)
-                .frame(width: 72, height: 72)
-                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(target.iconTint.color.opacity(0.14)))
-                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(target.iconTint.color.opacity(0.32), lineWidth: 1))
+                .frame(width: HudIconSize.heroXL, height: HudIconSize.heroXL)
+                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(HudSurface.tintFill(target.iconTint.color)))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudSurface.tintBorder(target.iconTint.color), lineWidth: 1))
 
             VStack(alignment: .leading, spacing: HudSpacing.sm) {
                 Text(target.name)
                     .font(HudFont.mono(22, weight: .bold))
                     .foregroundStyle(HudPalette.ink)
                 Text(target.host)
-                    .font(HudFont.mono(12))
+                    .font(HudFont.mono(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
                 if let scene = target.scene {
                     HStack(spacing: HudSpacing.md) {
                         Image(systemName: "rectangle.grid.2x2")
-                            .font(.system(size: 10))
+                            .font(HudFont.ui(HudTextSize.xxs))
                             .foregroundStyle(manifest.accent)
                         Text(scene)
-                            .font(HudFont.ui(13, weight: .medium))
+                            .font(HudFont.ui(HudTextSize.base, weight: .medium))
                             .foregroundStyle(HudPalette.ink)
                     }
                     .padding(.top, HudSpacing.xs)
@@ -125,11 +125,11 @@ struct TargetCanvas: View {
     private func telemetryCell(label: String, value: String, valueTint: Color) -> some View {
         VStack(alignment: .leading, spacing: HudSpacing.xs) {
             Text(label.uppercased())
-                .font(HudFont.mono(9))
+                .font(HudFont.mono(HudTextSize.micro))
                 .tracking(1.0)
                 .foregroundStyle(HudPalette.dim)
             Text(value)
-                .font(HudFont.mono(14, weight: .semibold))
+                .font(HudFont.mono(HudTextSize.md, weight: .semibold))
                 .foregroundStyle(valueTint)
         }
         .padding(HudSpacing.xl)
@@ -139,7 +139,7 @@ struct TargetCanvas: View {
     private var divider: some View {
         Rectangle()
             .fill(HudHairline.standard)
-            .frame(width: 1)
+            .frame(width: HudStrokeWidth.standard)
             .frame(maxHeight: .infinity)
     }
 

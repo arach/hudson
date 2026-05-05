@@ -24,7 +24,7 @@ struct ManifestTab: View {
                 HudCard {
                     VStack(alignment: .leading, spacing: HudSpacing.xl) {
                         Text("This button reads `manifest.accent` from the environment, so it rebrands when the variant changes — same primitive, different identity.")
-                            .font(HudFont.ui(12))
+                            .font(HudFont.ui(HudTextSize.sm))
                             .foregroundStyle(HudPalette.muted)
                             .fixedSize(horizontal: false, vertical: true)
 
@@ -67,14 +67,14 @@ private struct AccentButton: View {
     var body: some View {
         Button {} label: {
             HStack(spacing: HudSpacing.md) {
-                Image(systemName: icon).font(.system(size: 12, weight: .semibold))
-                Text(label).font(HudFont.mono(12, weight: .semibold)).tracking(0.5)
+                Image(systemName: icon).font(HudFont.ui(HudTextSize.sm, weight: .semibold))
+                Text(label).font(HudFont.mono(HudTextSize.sm, weight: .semibold)).tracking(0.5)
             }
             .foregroundStyle(manifest.accent)
             .padding(.horizontal, HudSpacing.xxl)
-            .frame(height: 32)
+            .frame(height: HudLayout.buttonHeight)
             .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(manifest.accentSoft))
-            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(manifest.accent.opacity(0.5), lineWidth: 1))
+            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintMuted(manifest.accent), lineWidth: 1))
         }
         .buttonStyle(.plain)
     }

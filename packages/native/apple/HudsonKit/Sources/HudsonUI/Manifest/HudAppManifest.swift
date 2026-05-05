@@ -43,7 +43,7 @@ public struct HudAppManifest: Sendable {
         self.name = name
         self.version = version
         self.accent = tint.color
-        self.accentSoft = tint.color.opacity(0.10)
+        self.accentSoft = tint.color.opacity(HudOpacity.subtle)
         self.targetLabel = targetLabel
     }
 }

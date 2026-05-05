@@ -88,6 +88,7 @@ public struct HudTerminalSSHSurface: View {
 
     private var statusOverlay: some View {
         ZStack {
+            // hudlint:disable next-line opacity
             appearance.backgroundColor.opacity(0.92)
 
             VStack(spacing: HudSpacing.xl) {
@@ -102,10 +103,10 @@ public struct HudTerminalSSHSurface: View {
                         .font(HudFont.mono(12, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
                     Text(workspace.statusMessage)
-                        .font(HudFont.mono(10))
+                        .font(HudFont.mono(HudTextSize.xxs))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(HudPalette.muted)
-                        .frame(maxWidth: 340)
+                        .frame(maxWidth: HudLayout.popoverWidthCompact)
                 }
 
                 HStack(spacing: HudSpacing.md) {
