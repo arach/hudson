@@ -218,3 +218,78 @@ All types are exported from `hudsonkit/observability`. Full shapes are in `src/t
 | `HTraceSpan` | Emitted observation for a span. Adds `name`, `traceId`, `parentId`, `startTime`, `endTime`, `durationMs`, `status`, `error`. |
 | `HTraceStatus` | `'active' \| 'ok' \| 'error'` |
 | `HUnsubscribe` | `() => void` — return type of `subscribe`. |
+
+## Apple (HudsonObservability)
+
+Hudson's Apple SDK ships `HudsonObservability` as a first-class target in the `HudsonKit` Swift package. It mirrors the web SDK's three-emitter shape (logger / metrics / trace) but is built on Apple-native primitives — `os.Logger` for structured logging and `OSSignposter` for traces — so events show up in Console.app and Instruments without extra wiring.
+
+### HudInstrumentation — the entrypoint
+
+`HudInstrumentation` bundles a `HudLogger` and `HudTrace` together. Two pre-configured instances cover most call sites:
+
+```swift
+import HudsonObservability
+
+HudInstrumentation.ui.event("Voice.listen", metadata: ["status": "start"])
+HudInstrumentation.observability.count("buffer.flush")
+```
+
+Or instantiate your own:
+
+```swift
+let instr = HudInstrumentation(category: "network")
+```
+
+### HudLogger — structured logs
+
+`HudLogger` writes to `os.Logger` with public/private metadata partitioning. Six levels: `debug`, `info`, `notice`, `warning`, `error`, `fault`.
+
+```swift
+import HudsonObservability
+
+let log = HudLogger(category: "lifecycle")
+log.info("app mounted")
+log.warning("rate limit approaching", metadata: ["remaining": "5"])
+log.error("fetch failed", metadata: ["url": "/api/items"])
+```
+
+Metadata keys in the SDK's `publicMetadataKeys` allowlist (e.g. `state`, `status`, `outcome`, `name`, `value`) are emitted with `privacy: .public`; everything else is logged as `.private` so it redacts in shipped builds.
+
+### HudLogStore — in-memory replay
+
+For dev tools and Settings inspectors, install `HudLogStore.shared` (an `ObservableObject` bounded buffer) as a sink at app boot:
+
+```swift
+HudLoggerSinks.install(HudLogStore.shared)
+
+// elsewhere, in SwiftUI:
+@StateObject private var logs = HudLogStore.shared
+```
+
+Production code installs no sinks, so `HudLogger` calls cost only the underlying `os.Logger` write.
+
+### HudMetric — counters, durations, sizes
+
+```swift
+let instr = HudInstrumentation.ui
+instr.count("button.click")
+instr.duration("db.query", milliseconds: 38)
+instr.memory("cache.bytes", bytes: 1_048_576)
+
+// or directly:
+HudMetric("api.request", unit: .count).record(1, metadata: ["route": "/items"])
+```
+
+`HudMetricUnit` covers `.count`, `.milliseconds`, `.bytes`, `.ratio`, and `.custom("...")`. Metrics are written through `HudLogger` as `metric.record` events with `metric`, `unit`, and `value` metadata — pick them up via `HudLoggerSinks` if you want to forward to a metrics backend.
+
+### HudTrace + HudSpan
+
+`HudTrace` wraps `OSSignposter`, so spans appear in Instruments' Points of Interest track.
+
+```swift
+let result = try HudInstrumentation.ui.span("Voice.listen.start", metadata: ["clientId": "my-app"]) {
+    try await session.start()
+}
+```
+
+`span(_:metadata:_:)` has sync and async overloads. On throw, the span ends with `outcome=error` and an `error` log is emitted automatically. For manual control, call `beginSpan` and `span.end()` (or `span.end("error")`) yourself.
