@@ -27,7 +27,8 @@ public enum HudAIRoute: Equatable, Sendable {
 
     var requiresLocalExecution: Bool {
         switch self {
-        case .local, .auto: return true
+        case .local: return true
+        case .auto: return true
         case .paired: return false
         }
     }
@@ -289,11 +290,34 @@ public struct HudAIUsage: Codable, Equatable, Sendable {
     public var cacheCreationInputTokens: Int
     public var cacheReadInputTokens: Int
 
+    enum CodingKeys: String, CodingKey {
+        case inputTokens = "input_tokens"
+        case outputTokens = "output_tokens"
+        case cacheCreationInputTokens = "cache_creation_input_tokens"
+        case cacheReadInputTokens = "cache_read_input_tokens"
+    }
+
     public init(inputTokens: Int = 0, outputTokens: Int = 0, cacheCreationInputTokens: Int = 0, cacheReadInputTokens: Int = 0) {
         self.inputTokens = inputTokens
         self.outputTokens = outputTokens
         self.cacheCreationInputTokens = cacheCreationInputTokens
         self.cacheReadInputTokens = cacheReadInputTokens
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        self.inputTokens = try container.decodeIfPresent(Int.self, forKey: .inputTokens) ?? 0
+        self.outputTokens = try container.decodeIfPresent(Int.self, forKey: .outputTokens) ?? 0
+        self.cacheCreationInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheCreationInputTokens) ?? 0
+        self.cacheReadInputTokens = try container.decodeIfPresent(Int.self, forKey: .cacheReadInputTokens) ?? 0
+    }
+
+    public func encode(to encoder: Encoder) throws {
+        var container = encoder.container(keyedBy: CodingKeys.self)
+        try container.encode(inputTokens, forKey: .inputTokens)
+        try container.encode(outputTokens, forKey: .outputTokens)
+        try container.encode(cacheCreationInputTokens, forKey: .cacheCreationInputTokens)
+        try container.encode(cacheReadInputTokens, forKey: .cacheReadInputTokens)
     }
 
     public mutating func merge(_ other: HudAIUsage) {
