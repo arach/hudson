@@ -73,6 +73,7 @@ async function importPkcs8PrivateKey(pem: string): Promise<CryptoKey> {
 }
 
 function ieeeP1363FromDer(sig: Uint8Array): Uint8Array {
+  if (sig.length === 64) return sig;
   // Workers return DER for ECDSA. Convert two ASN.1 INTEGERs to raw r||s.
   let p = 3;
   let rLen = sig[p++];
