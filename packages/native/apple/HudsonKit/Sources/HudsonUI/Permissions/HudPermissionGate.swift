@@ -127,3 +127,17 @@ public struct HudPermissionGate<Content: View>: View {
         }
     }
 }
+
+public extension View {
+    /// Modifier form of `HudPermissionGate`. Wraps `self` as the gated content
+    /// when permission is granted; the modifier itself renders the request /
+    /// denied / unavailable cards otherwise.
+    ///
+    /// ```swift
+    /// RecordingView()
+    ///     .hudPermissionGate(.microphone, rationale: "Talkie listens to your dictation.")
+    /// ```
+    func hudPermissionGate(_ permission: HudPermission, rationale: String) -> some View {
+        HudPermissionGate(permission, rationale: rationale) { self }
+    }
+}

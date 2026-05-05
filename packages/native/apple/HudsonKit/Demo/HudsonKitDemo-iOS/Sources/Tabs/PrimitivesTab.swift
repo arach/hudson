@@ -206,6 +206,14 @@ struct PrimitivesTab: View {
                     }
                 }
                 HudPermissionGate(
+                    .speech,
+                    rationale: "Speech recognition turns dictation into text on-device."
+                ) {
+                    HudInset {
+                        HudKVRow("speech", value: "GRANTED")
+                    }
+                }
+                HudPermissionGate(
                     .camera,
                     rationale: "Used for QR-code pairing and photo capture demos."
                 ) {
