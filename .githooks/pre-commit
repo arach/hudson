@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# HudLint pre-commit hook. Skips silently when HudsonKit Apple sources aren't touched.
+set -euo pipefail
+
+REPO_ROOT="$(git rev-parse --show-toplevel)"
+KIT_DIR="$REPO_ROOT/packages/native/apple/HudsonKit"
+
+STAGED=$(git diff --cached --name-only --diff-filter=ACMR | grep -E '^packages/native/apple/HudsonKit/(Sources|Demo)/.*\.swift$' || true)
+
+if [ -z "$STAGED" ]; then
+  exit 0
+fi
+
+HUDLINT="$KIT_DIR/Tools/HudLint/.build/release/hudlint"
+if [ ! -x "$HUDLINT" ]; then
+  echo "hudlint binary missing - building..."
+  (cd "$KIT_DIR/Tools/HudLint" && swift build -c release --product hudlint > /dev/null 2>&1)
+fi
+
+"$HUDLINT" \
+  --root "$KIT_DIR/Sources" \
+  --root "$KIT_DIR/Demo/HudsonKitDemo" \
+  --root "$KIT_DIR/Demo/HudsonKitDemo-iOS/Sources" \
+  --format plain
