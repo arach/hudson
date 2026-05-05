@@ -12,7 +12,7 @@ Working through these now in roughly this order:
 4. **#4 `HudVault` (iOS)** — lift Scout's Keychain trio + ship `HudSecretField`
 5. Integration, stacked PRs, gallery demos
 
-**Parallel track — complete, awaiting review**: HudAI framework spec at `docs/spec/hud-ai-framework.md` (390 lines), written by `@codex-hudai` from brief at `docs/spec/hud-ai-framework-brief.md`.
+**Parallel track — complete, awaiting review**: HudAI framework spec at `specs/hud-ai-framework.md` (390 lines), written by `@codex-hudai` from brief at `specs/hud-ai-framework-brief.md`.
 
 ## The list
 

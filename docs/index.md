@@ -52,13 +52,6 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Perf patterns](./perf-drag-resize-patterns.md)** — drag/resize/pan techniques used inside the shell
 - **[CLI: terminal relay](./cli/relay.md)** — WebSocket-based terminal relay protocol
 
-## Engineering decisions (HUD-NNN)
-
-- **[HUD-002](../packages/native/apple/HudsonKit/Docs/HUD-002-sidebar-alongside-rail.md)** — `HudNavigationSidebar` alongside `HudNavigationRail`
-- **[HUD-003](../packages/native/apple/HudsonKit/Docs/HUD-003-shell-slot-variants.md)** — Init-time variants for `HudAppShell` slots
-- **[HUD-004](../packages/native/apple/HudsonKit/Docs/HUD-004-terminal-treatments.md)** — Terminal treatments
-- **[HUD-005](./spec/hud-005-auth-and-push.md)** — `HudAuth` + `HudPush` framework
-
 ## For agents / LLMs
 
 - **[Agent overview](./agent/overview.agent.md)** — terse, accurate reference for agents working in the Hudson codebase

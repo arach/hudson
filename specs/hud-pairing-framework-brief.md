@@ -34,7 +34,7 @@ All shipped — HudPairing builds on these:
 
 ## What ships
 
-A design spec at `docs/spec/hud-pairing-framework.md`. **Not implementation code.**
+A design spec at `specs/hud-pairing-framework.md`. **Not implementation code.**
 
 Cover at minimum:
 
