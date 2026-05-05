@@ -1,4 +1,4 @@
-# HUD-003 — Init-time variants for `HudAppShell` slots
+# HUD-002 — Init-time variants for `HudAppShell` slots
 
 - **Status:** Proposed
 - **Date:** 2026-05-03

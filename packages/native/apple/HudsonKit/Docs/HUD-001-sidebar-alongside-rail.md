@@ -1,4 +1,4 @@
-# HUD-002 — Introduce `HudNavigationSidebar` alongside `HudNavigationRail`
+# HUD-001 — Introduce `HudNavigationSidebar` alongside `HudNavigationRail`
 
 - **Status:** Proposed
 - **Date:** 2026-05-03
