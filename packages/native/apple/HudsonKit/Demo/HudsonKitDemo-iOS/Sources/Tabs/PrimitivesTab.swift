@@ -518,3 +518,46 @@ private struct DemoTableRow: Identifiable {
         .init(id: "delta", name: "delta.main.mini", status: "OFFLINE", statusTint: HudPalette.statusError, updated: "2d ago"),
     ]
 }
+
+private struct ThemePreviewCard: View {
+    let label: String
+    let theme: HudTheme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            Text(label.uppercased())
+                .font(HudFont.mono(HudTextSize.micro, weight: .medium))
+                .foregroundStyle(HudPalette.dim)
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    ThemedKVRow(key: "status",  value: "online")
+                    ThemedKVRow(key: "flights", value: "12")
+                    ThemedKVRow(key: "uptime",  value: "4h 22m")
+                }
+            }
+            .hudTheme(theme)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
+/// Theme-aware row used inside the theme preview cards. Reads palette from
+/// @Environment(\.hudTheme) so the same struct renders correctly under both
+/// .default and .lightDraft.
+private struct ThemedKVRow: View {
+    let key: String
+    let value: String
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack {
+            Text(key)
+                .font(HudFont.mono(HudTextSize.xxs))
+                .foregroundStyle(theme.palette.dim)
+            Spacer()
+            Text(value)
+                .font(HudFont.mono(HudTextSize.sm, weight: .medium))
+                .foregroundStyle(theme.palette.ink)
+        }
+    }
+}
