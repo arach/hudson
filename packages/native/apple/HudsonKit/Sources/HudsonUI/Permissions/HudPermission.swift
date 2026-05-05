@@ -4,6 +4,7 @@ import Foundation
 /// return `.unavailable` until per-platform plumbing lands.
 public enum HudPermission: String, Sendable, CaseIterable, Identifiable {
     case microphone
+    case speech
     case camera
     case photos
     case notifications
@@ -16,6 +17,7 @@ public enum HudPermission: String, Sendable, CaseIterable, Identifiable {
     public var infoPlistKey: String {
         switch self {
         case .microphone:    return "NSMicrophoneUsageDescription"
+        case .speech:        return "NSSpeechRecognitionUsageDescription"
         case .camera:        return "NSCameraUsageDescription"
         case .photos:        return "NSPhotoLibraryUsageDescription"
         case .notifications: return ""  // Notifications don't require an Info.plist string
@@ -26,6 +28,7 @@ public enum HudPermission: String, Sendable, CaseIterable, Identifiable {
     public var symbolName: String {
         switch self {
         case .microphone:    return "mic.fill"
+        case .speech:        return "waveform"
         case .camera:        return "camera.fill"
         case .photos:        return "photo.on.rectangle.angled"
         case .notifications: return "bell.fill"
@@ -36,6 +39,7 @@ public enum HudPermission: String, Sendable, CaseIterable, Identifiable {
     public var displayName: String {
         switch self {
         case .microphone:    return "Microphone"
+        case .speech:        return "Speech Recognition"
         case .camera:        return "Camera"
         case .photos:        return "Photos"
         case .notifications: return "Notifications"

@@ -33,6 +33,7 @@ var targets: [Target] = [
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
+    .testTarget(name: "HudsonUITests", dependencies: ["HudsonUI"]),
 ]
 
 if voiceEnabled {

@@ -3,6 +3,7 @@ import Foundation
 #if os(iOS)
 import AVFoundation
 import Photos
+import Speech
 import UserNotifications
 import UIKit
 #endif
@@ -61,6 +62,8 @@ private extension HudPermissions {
         switch permission {
         case .microphone:
             return mapAVAudio(AVAudioApplication.shared.recordPermission)
+        case .speech:
+            return mapSpeechAuth(SFSpeechRecognizer.authorizationStatus())
         case .camera:
             return mapAVAuth(AVCaptureDevice.authorizationStatus(for: .video))
         case .photos:
@@ -78,6 +81,8 @@ private extension HudPermissions {
         case .microphone:
             let granted = await AVAudioApplication.requestRecordPermission()
             return granted ? .granted : .denied
+        case .speech:
+            return await iOSSpeechRequest()
         case .camera:
             let granted = await AVCaptureDevice.requestAccess(for: .video)
             return granted ? .granted : .denied
@@ -91,6 +96,14 @@ private extension HudPermissions {
                 return granted ? .granted : .denied
             } catch {
                 return .denied
+            }
+        }
+    }
+
+    static func iOSSpeechRequest() async -> HudPermissionStatus {
+        await withCheckedContinuation { continuation in
+            SFSpeechRecognizer.requestAuthorization { status in
+                continuation.resume(returning: mapSpeechAuth(status))
             }
         }
     }
@@ -130,6 +143,16 @@ private extension HudPermissions {
         case .notDetermined: return .notDetermined
         case .authorized:    return .granted
         case .limited:       return .limited
+        case .denied:        return .denied
+        case .restricted:    return .restricted
+        @unknown default:    return .notDetermined
+        }
+    }
+
+    static func mapSpeechAuth(_ status: SFSpeechRecognizerAuthorizationStatus) -> HudPermissionStatus {
+        switch status {
+        case .notDetermined: return .notDetermined
+        case .authorized:    return .granted
         case .denied:        return .denied
         case .restricted:    return .restricted
         @unknown default:    return .notDetermined
