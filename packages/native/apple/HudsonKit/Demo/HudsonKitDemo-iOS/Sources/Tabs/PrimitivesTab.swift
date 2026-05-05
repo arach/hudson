@@ -11,6 +11,7 @@ struct PrimitivesTab: View {
     @State private var selectedRow: String? = "alpha"
     @State private var qrInputText: String = ""
     @State private var lastScannedCode: String = ""
+    @State private var tableSelection: String? = "alpha"
     @State private var vaultKey: String = ""
     @State private var vaultValue: String = ""
     @State private var vaultMessage: String = ""
@@ -28,6 +29,7 @@ struct PrimitivesTab: View {
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
         .init(icon: "key",                   label: "Vault",    anchor: "Vault"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
+        .init(icon: "tablecells.fill",       label: "Table",    anchor: "Table"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
         .init(icon: "rectangle.stack",       label: "Cards",    anchor: "Cards & insets"),
         .init(icon: "tray",                  label: "Empty",    anchor: "Empty state"),
@@ -48,6 +50,7 @@ struct PrimitivesTab: View {
                     sectionPermissions
                     sectionVault
                     sectionListRows
+                    sectionTable
                     sectionKVRows
                     sectionCards
                     sectionEmptyState
@@ -348,6 +351,59 @@ struct PrimitivesTab: View {
         }
     }
 
+    private var sectionTable: some View {
+        gallerySection("Table", snippet: """
+            HudTable(agents, columns: [
+                HudTableColumn("Name") { Text($0.name) },
+                HudTableColumn("Status", alignment: .center) { row in
+                    HudBadge(row.status, tint: row.statusTint, dot: true)
+                },
+                HudTableColumn("Updated", alignment: .trailing) { Text($0.updated) },
+            ], selection: $selection) { agent in
+                navigate(to: agent)
+            }
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                HudTable(
+                    DemoTableRow.samples,
+                    columns: [
+                        HudTableColumn("Name") { row in
+                            Text(row.name)
+                                .font(HudFont.mono(HudTextSize.sm))
+                        },
+                        HudTableColumn("Status", alignment: .center) { row in
+                            HudBadge(row.status, tint: row.statusTint, dot: true)
+                        },
+                        HudTableColumn("Updated", alignment: .trailing) { row in
+                            Text(row.updated)
+                                .foregroundStyle(HudPalette.muted)
+                        },
+                    ],
+                    density: .regular,
+                    selection: $tableSelection
+                ) { row in
+                    tableSelection = row.id
+                }
+                Text("Compact density")
+                    .font(HudFont.ui(HudTextSize.xxs, weight: .medium))
+                    .foregroundStyle(HudPalette.dim)
+                HudTable(
+                    DemoTableRow.samples,
+                    columns: [
+                        HudTableColumn("Name") { row in
+                            Text(row.name)
+                                .font(HudFont.mono(HudTextSize.sm))
+                        },
+                        HudTableColumn("Status", alignment: .center) { row in
+                            HudStatusDot(color: row.statusTint, size: HudDotSize.medium)
+                        },
+                    ],
+                    density: .compact
+                )
+            }
+        }
+    }
+
     private var sectionKVRows: some View {
         gallerySection("KV rows", snippet: """
             HudKVRow("cpu",     value: "32%")
@@ -446,4 +502,19 @@ struct PrimitivesTab: View {
         }
         .id(title)
     }
+}
+
+private struct DemoTableRow: Identifiable {
+    let id: String
+    let name: String
+    let status: String
+    let statusTint: Color
+    let updated: String
+
+    static let samples: [DemoTableRow] = [
+        .init(id: "alpha", name: "alpha.main.mini", status: "ONLINE",  statusTint: HudPalette.statusOk,    updated: "2m ago"),
+        .init(id: "beta",  name: "beta.main.mini",  status: "RUNNING", statusTint: HudPalette.statusInfo,  updated: "12s ago"),
+        .init(id: "gamma", name: "gamma.main.mini", status: "WARN",    statusTint: HudPalette.statusWarn,  updated: "4h ago"),
+        .init(id: "delta", name: "delta.main.mini", status: "OFFLINE", statusTint: HudPalette.statusError, updated: "2d ago"),
+    ]
 }
