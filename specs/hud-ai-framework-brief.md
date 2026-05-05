@@ -22,7 +22,7 @@ Skim both, identify the common patterns, generalize them. The point is to not re
 
 ## What you ship
 
-A design spec at `docs/spec/hud-ai-framework.md`. **Not implementation code.**
+A design spec at `specs/hud-ai-framework.md`. **Not implementation code.**
 
 Cover at minimum:
 - Public API surface for Swift (iOS/macOS) and TypeScript (web).

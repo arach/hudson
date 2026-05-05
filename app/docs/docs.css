@@ -5,6 +5,25 @@
   font-size: 0.9375rem;
 }
 
+/* Page title rendered from frontmatter — sits above the content with the
+   copy buttons below it. The markdown's own first H1 is suppressed below
+   to avoid duplicating it. */
+.docs-page-title {
+  font-family: var(--font-mono), monospace;
+  font-weight: 700;
+  letter-spacing: 0.025em;
+  font-size: 2rem;
+  color: oklch(var(--foreground));
+  margin: 0;
+  line-height: 1.2;
+}
+
+/* Suppress the first H1 inside the article — the page title is already
+   rendered explicitly from frontmatter (see .docs-page-title above). */
+.docs-prose > h1:first-child {
+  display: none;
+}
+
 /* Headings */
 .docs-prose h1 {
   font-family: var(--font-mono), monospace;

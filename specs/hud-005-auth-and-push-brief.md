@@ -18,7 +18,7 @@ Working in production at OpenScout — treat as reference, not greenfield. Notes
 
 ## What you ship
 
-A design spec at `docs/spec/hud-005-auth-and-push.md`. **Not implementation code.** Implementation lands as separate PRs after the spec is reviewed.
+A design spec at `specs/hud-005-auth-and-push.md`. **Not implementation code.** Implementation lands as separate PRs after the spec is reviewed.
 
 Cover at minimum:
 - Public API surface for TypeScript and Swift (HudAuth + HudPush, paired).

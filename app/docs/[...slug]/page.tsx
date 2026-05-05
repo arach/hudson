@@ -43,9 +43,12 @@ export default async function DocPage({ params }: Props) {
     <>
       <main className="flex-1 min-w-0">
         <div className="max-w-3xl mx-auto px-6 py-10">
-          <div className="flex justify-end mb-4">
-            <CopyPageButtons markdown={doc.content} />
-          </div>
+          <header className="mb-6">
+            <h1 className="docs-page-title">{doc.title}</h1>
+            <div className="mt-3 flex justify-end">
+              <CopyPageButtons markdown={doc.content} />
+            </div>
+          </header>
           <article
             className="docs-prose"
             dangerouslySetInnerHTML={{ __html: html }}
