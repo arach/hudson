@@ -77,6 +77,11 @@
       "import": "./dist/vault.js",
       "default": "./dist/vault.js"
     },
+    "./table": {
+      "types": "./dist/table.d.ts",
+      "import": "./dist/table.js",
+      "default": "./dist/table.js"
+    },
     "./styles": "./dist/styles.css"
   },
   "files": [

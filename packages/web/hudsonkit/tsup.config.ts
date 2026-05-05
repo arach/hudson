@@ -28,6 +28,7 @@ export default defineConfig([
       observability: 'src/observability.ts',
       voice: 'src/voice.ts',
       vault: 'src/vault.ts',
+      table: 'src/table.ts',
     },
     format: ['esm'],
     dts: true,
