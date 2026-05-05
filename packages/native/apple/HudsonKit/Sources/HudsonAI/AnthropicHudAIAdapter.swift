@@ -1,5 +1,9 @@
 import Foundation
 
+extension HudAIProviders {
+    public typealias Anthropic = AnthropicHudAIAdapter
+}
+
 public struct AnthropicHudAIAdapter: HudAIProviderAdapter {
     public var providerID: HudAIProviderID { .anthropic }
     public var displayName: String { "Anthropic Claude" }

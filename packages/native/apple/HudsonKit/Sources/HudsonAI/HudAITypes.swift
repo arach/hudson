@@ -11,7 +11,13 @@ public struct HudAIProviderID: RawRepresentable, Codable, Hashable, Sendable, Ex
         self.rawValue = value
     }
 
-    public static let anthropic = HudAIProviderID(rawValue: "anthropic")
+    public static let anthropic  = HudAIProviderID(rawValue: "anthropic")
+    public static let openai     = HudAIProviderID(rawValue: "openai")
+    public static let openrouter = HudAIProviderID(rawValue: "openrouter")
+    public static let grok       = HudAIProviderID(rawValue: "grok")
+    public static let deepseek   = HudAIProviderID(rawValue: "deepseek")
+    public static let fireworks  = HudAIProviderID(rawValue: "fireworks")
+    public static let together   = HudAIProviderID(rawValue: "together")
 }
 
 public enum HudAIRoute: Equatable, Sendable {
