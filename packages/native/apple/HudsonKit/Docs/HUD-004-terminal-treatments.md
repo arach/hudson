@@ -1,4 +1,4 @@
-# ADR-004 — Terminal treatments
+# HUD-004 — Terminal treatments
 
 - **Status:** Proposed
 - **Date:** 2026-05-04

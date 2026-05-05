@@ -236,3 +236,63 @@ const availability = await probeVoxAvailability(voxClient);
 ```
 
 Use this to gate voice UI before the user tries to record — for example, showing a "Install Vox" prompt when the result is `"unreachable"`.
+
+## Apple (HudsonVoice)
+
+Hudson's Apple SDK ships a Swift counterpart to `hudsonkit/voice` as the `HudsonVoice` target inside the `HudsonKit` Swift package. Like the web subpath, it is fully opt-in — voice code never compiles into your binary unless you flip a build flag.
+
+### Build flag opt-in
+
+Voice support follows the same env-gated pattern as `HudsonTerminal`. Pass `HUDSONKIT_WITH_VOICE=1` when resolving / building the package:
+
+```bash
+HUDSONKIT_WITH_VOICE=1 swift build
+# or, alongside the terminal target:
+HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
+```
+
+`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. For Xcode projects, set the env var in the shell before running `xcodegen` (and re-run xcodegen after toggling).
+
+### HudVoicePanel — SwiftUI primitive
+
+`HudVoicePanel` is a drop-in SwiftUI view that renders the full Vox listen / stop / cancel UI in Hudson's design language (HudCard, HudButton, HudBadge, HudStatusDot). It owns its own `HudVoxLiveSession`, transcript buffer, and health probe lifecycle.
+
+```swift
+import SwiftUI
+import HudsonVoice
+
+struct VoxScreen: View {
+    var body: some View {
+        HudVoicePanel(
+            options: HudVoxLiveSessionOptions(clientId: "my-app")
+        )
+    }
+}
+```
+
+Provide a custom endpoint to point at a remote Mac running Vox:
+
+```swift
+HudVoicePanel(
+    endpoint: HudVoxEndpoint(host: "macbook.local", port: 42137),
+    options: HudVoxLiveSessionOptions(clientId: "my-app", language: "en")
+)
+```
+
+### HudVoxLiveSessionOptions
+
+| Name | Type | Default | Description |
+|------|------|---------|-------------|
+| `clientId` | `String` | `"HudsonKit"` | Identifies the calling surface in Vox metadata. |
+| `modelId` | `String` | `"parakeet:v3"` | Transcription model identifier. |
+| `language` | `String?` | `nil` | Spoken language hint. |
+| `mode` | `HudVoiceMode` | `.pushToTalk` | `.pushToTalk` or `.alwaysOn`. |
+| `metadata` | `[String: String]` | `[:]` | Free-form metadata sent with the session. |
+
+### Connection state — iOS pairs with a Mac
+
+Vox is a local daemon that today runs on macOS. On macOS the panel reaches `ws://127.0.0.1:42137`. On iOS there is typically no Vox daemon on-device — the device pairs with a nearby Mac running Vox, and `HudVoxEndpoint` should point at that host.
+
+When Vox is unreachable, `HudVoicePanel` surfaces an `OFFLINE` badge and a message like _"Vox is not reachable at <url>. Launch Vox and check again."_ Tap **Check** to re-probe via `HudVoxProbe.health(...)`. The Listen button auto-runs the probe before connecting and short-circuits to offline if no health is returned.
+
+Cross-device pairing (discovery, trust, transport) will be handled by the forthcoming **HudPairing** primitive — see `docs/next-up.md`. Until then, set the host manually.
