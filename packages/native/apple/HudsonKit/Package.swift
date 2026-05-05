@@ -13,6 +13,7 @@ var products: [Product] = [
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
     .library(name: "HudsonVoice", targets: ["HudsonVoice"]),
+    .library(name: "HudsonAI", targets: ["HudsonAI"]),
 ]
 
 var dependencies: [Package.Dependency] = []
@@ -26,6 +27,7 @@ var targets: [Target] = [
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonVoice", dependencies: ["HudsonUI", "HudsonObservability"]),
+    .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
 ]
 
 if terminalEnabled {
