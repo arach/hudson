@@ -1,9 +1,9 @@
 import SwiftUI
 
 // Deprecated `Hudson*` aliases retained for source compatibility. New code
-// should use the `H*` canonical names directly.
+// should use the `Hud*` canonical names directly.
 
-@available(*, deprecated, renamed: "HAppShell")
+@available(*, deprecated, renamed: "HudAppShell")
 public typealias HudsonAppShell<
     Leading: View,
     Trailing: View,
@@ -11,69 +11,69 @@ public typealias HudsonAppShell<
     BottomDrawer: View,
     Content: View,
     StatusBar: View
-> = HAppShell<Leading, Trailing, TopDrawer, BottomDrawer, Content, StatusBar>
+> = HudAppShell<Leading, Trailing, TopDrawer, BottomDrawer, Content, StatusBar>
 
-@available(*, deprecated, renamed: "HCanvas")
-public typealias HudsonCanvas<Header: View, Content: View> = HCanvas<Header, Content>
+@available(*, deprecated, renamed: "HudCanvas")
+public typealias HudsonCanvas<Header: View, Content: View> = HudCanvas<Header, Content>
 
-@available(*, deprecated, renamed: "HCommand")
-public typealias HudsonCommand = HCommand
+@available(*, deprecated, renamed: "HudCommand")
+public typealias HudsonCommand = HudCommand
 
-@available(*, deprecated, renamed: "HCommandPalette")
-public typealias HudsonCommandPalette = HCommandPalette
+@available(*, deprecated, renamed: "HudCommandPalette")
+public typealias HudsonCommandPalette = HudCommandPalette
 
-@available(*, deprecated, renamed: "HInspector")
-public typealias HudsonInspector<Header: View, Content: View> = HInspector<Header, Content>
+@available(*, deprecated, renamed: "HudInspector")
+public typealias HudsonInspector<Header: View, Content: View> = HudInspector<Header, Content>
 
-@available(*, deprecated, renamed: "HInspectorToggle")
-public typealias HudsonInspectorToggle = HInspectorToggle
+@available(*, deprecated, renamed: "HudInspectorToggle")
+public typealias HudsonInspectorToggle = HudInspectorToggle
 
-@available(*, deprecated, renamed: "HNavigationRail")
-public typealias HudsonNavigationRail<Footer: View> = HNavigationRail<Footer>
+@available(*, deprecated, renamed: "HudNavigationRail")
+public typealias HudsonNavigationRail<Footer: View> = HudNavigationRail<Footer>
 
-@available(*, deprecated, renamed: "HRailItem")
-public typealias HudsonNavRailItem = HRailItem
+@available(*, deprecated, renamed: "HudRailItem")
+public typealias HudsonNavRailItem = HudRailItem
 
-@available(*, deprecated, renamed: "HRailItem")
-public typealias HudsonRailItem = HRailItem
+@available(*, deprecated, renamed: "HudRailItem")
+public typealias HudsonRailItem = HudRailItem
 
-@available(*, deprecated, renamed: "HNavigationSidebar")
+@available(*, deprecated, renamed: "HudNavigationSidebar")
 public typealias HudsonNavigationSidebar<
     Selection: Hashable,
     RailHeader: View,
     LabelHeader: View,
     Footer: View
-> = HNavigationSidebar<Selection, RailHeader, LabelHeader, Footer>
+> = HudNavigationSidebar<Selection, RailHeader, LabelHeader, Footer>
 
-@available(*, deprecated, renamed: "HSidebarEntry")
-public typealias HudsonSidebarEntry<Selection: Hashable> = HSidebarEntry<Selection>
+@available(*, deprecated, renamed: "HudSidebarEntry")
+public typealias HudsonSidebarEntry<Selection: Hashable> = HudSidebarEntry<Selection>
 
-@available(*, deprecated, renamed: "HSidebarIconStyle")
-public typealias HudsonSidebarIconStyle = HSidebarIconStyle
+@available(*, deprecated, renamed: "HudSidebarIconStyle")
+public typealias HudsonSidebarIconStyle = HudSidebarIconStyle
 
-@available(*, deprecated, renamed: "HSidebarIndicatorStyle")
-public typealias HudsonSidebarIndicatorStyle = HSidebarIndicatorStyle
+@available(*, deprecated, renamed: "HudSidebarIndicatorStyle")
+public typealias HudsonSidebarIndicatorStyle = HudSidebarIndicatorStyle
 
-@available(*, deprecated, renamed: "HSidebarItem")
-public typealias HudsonSidebarItem<Selection: Hashable> = HSidebarItem<Selection>
+@available(*, deprecated, renamed: "HudSidebarItem")
+public typealias HudsonSidebarItem<Selection: Hashable> = HudSidebarItem<Selection>
 
-@available(*, deprecated, renamed: "HSidebarLayout")
-public typealias HudsonSidebarLayout = HSidebarLayout
+@available(*, deprecated, renamed: "HudSidebarLayout")
+public typealias HudsonSidebarLayout = HudSidebarLayout
 
-@available(*, deprecated, renamed: "HSidebarMotion")
-public typealias HudsonSidebarMotion = HSidebarMotion
+@available(*, deprecated, renamed: "HudSidebarMotion")
+public typealias HudsonSidebarMotion = HudSidebarMotion
 
-@available(*, deprecated, renamed: "HSidebarMotionStyle")
-public typealias HudsonSidebarMotionStyle = HSidebarMotionStyle
+@available(*, deprecated, renamed: "HudSidebarMotionStyle")
+public typealias HudsonSidebarMotionStyle = HudSidebarMotionStyle
 
-@available(*, deprecated, renamed: "HSidebarStyle")
-public typealias HudsonSidebarStyle = HSidebarStyle
+@available(*, deprecated, renamed: "HudSidebarStyle")
+public typealias HudsonSidebarStyle = HudSidebarStyle
 
-@available(*, deprecated, renamed: "HSidebarSurfaceStyle")
-public typealias HudsonSidebarSurfaceStyle = HSidebarSurfaceStyle
+@available(*, deprecated, renamed: "HudSidebarSurfaceStyle")
+public typealias HudsonSidebarSurfaceStyle = HudSidebarSurfaceStyle
 
-@available(*, deprecated, renamed: "HTakeover")
-public typealias HudsonTakeover<Header: View, Content: View> = HTakeover<Header, Content>
+@available(*, deprecated, renamed: "HudTakeover")
+public typealias HudsonTakeover<Header: View, Content: View> = HudTakeover<Header, Content>
 
-@available(*, deprecated, renamed: "HTerminalDrawer")
-public typealias HudsonTerminalDrawer<Content: View> = HTerminalDrawer<Content>
+@available(*, deprecated, renamed: "HudTerminalDrawer")
+public typealias HudsonTerminalDrawer<Content: View> = HudTerminalDrawer<Content>

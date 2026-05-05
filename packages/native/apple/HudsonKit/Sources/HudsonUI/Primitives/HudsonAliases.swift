@@ -1,43 +1,43 @@
 import SwiftUI
 
 // Deprecated `Hudson*` aliases retained for source compatibility. New code
-// should use the `H*` canonical names directly.
+// should use the `Hud*` canonical names directly.
 
-@available(*, deprecated, renamed: "HBadge")
-public typealias HudsonBadge = HBadge
+@available(*, deprecated, renamed: "HudBadge")
+public typealias HudsonBadge = HudBadge
 
-@available(*, deprecated, renamed: "HButton")
-public typealias HudsonButton = HButton
+@available(*, deprecated, renamed: "HudButton")
+public typealias HudsonButton = HudButton
 
-@available(*, deprecated, renamed: "HButtonStyle")
-public typealias HudsonButtonStyle = HButtonStyle
+@available(*, deprecated, renamed: "HudButtonStyle")
+public typealias HudsonButtonStyle = HudButtonStyle
 
-@available(*, deprecated, renamed: "HCard")
-public typealias HudsonCard<Content: View> = HCard<Content>
+@available(*, deprecated, renamed: "HudCard")
+public typealias HudsonCard<Content: View> = HudCard<Content>
 
-@available(*, deprecated, renamed: "HDivider")
-public typealias HudsonDivider = HDivider
+@available(*, deprecated, renamed: "HudDivider")
+public typealias HudsonDivider = HudDivider
 
-@available(*, deprecated, renamed: "HEmptyState")
-public typealias HudsonEmptyState = HEmptyState
+@available(*, deprecated, renamed: "HudEmptyState")
+public typealias HudsonEmptyState = HudEmptyState
 
-@available(*, deprecated, renamed: "HField")
-public typealias HudsonField = HField
+@available(*, deprecated, renamed: "HudField")
+public typealias HudsonField = HudField
 
-@available(*, deprecated, renamed: "HGridBackground")
-public typealias HudsonGridBackground = HGridBackground
+@available(*, deprecated, renamed: "HudGridBackground")
+public typealias HudsonGridBackground = HudGridBackground
 
-@available(*, deprecated, renamed: "HInset")
-public typealias HudsonInset<Content: View> = HInset<Content>
+@available(*, deprecated, renamed: "HudInset")
+public typealias HudsonInset<Content: View> = HudInset<Content>
 
-@available(*, deprecated, renamed: "HKVRow")
-public typealias HudsonKVRow = HKVRow
+@available(*, deprecated, renamed: "HudKVRow")
+public typealias HudsonKVRow = HudKVRow
 
-@available(*, deprecated, renamed: "HListRow")
-public typealias HudsonListRow<Trailing: View> = HListRow<Trailing>
+@available(*, deprecated, renamed: "HudListRow")
+public typealias HudsonListRow<Trailing: View> = HudListRow<Trailing>
 
-@available(*, deprecated, renamed: "HSectionLabel")
-public typealias HudsonSectionLabel = HSectionLabel
+@available(*, deprecated, renamed: "HudSectionLabel")
+public typealias HudsonSectionLabel = HudSectionLabel
 
-@available(*, deprecated, renamed: "HStatusDot")
-public typealias HudsonStatusDot = HStatusDot
+@available(*, deprecated, renamed: "HudStatusDot")
+public typealias HudsonStatusDot = HudStatusDot
