@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HudsonAI
 
-@Suite("Anthropic HudAI adapter")
+@Suite("Anthropic HudAI adapter", .serialized)
 struct AnthropicHudAIAdapterTests {
     @Test("constructs Anthropic request body with system, tools, usage, and cache envelopes")
     func requestBodyConstruction() async throws {
