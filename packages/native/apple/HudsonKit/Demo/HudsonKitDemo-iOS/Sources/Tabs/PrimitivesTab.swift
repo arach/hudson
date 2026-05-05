@@ -9,12 +9,14 @@ struct PrimitivesTab: View {
     @State private var fieldText: String = ""
     @State private var fieldQuery: String = "alpha"
     @State private var selectedRow: String? = "alpha"
+    @State private var qrInputText: String = ""
 
     private let scrollAnchors: [HudSettingsQuickNav.Item] = [
         .init(icon: "square",                label: "Buttons",  anchor: "Buttons"),
         .init(icon: "circle.fill",           label: "Status",   anchor: "Status"),
         .init(icon: "tag",                   label: "Badges",   anchor: "Badges"),
         .init(icon: "textformat",            label: "Field",    anchor: "Field"),
+        .init(icon: "qrcode",                label: "QR",       anchor: "QR code"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
         .init(icon: "rectangle.stack",       label: "Cards",    anchor: "Cards & insets"),
@@ -31,6 +33,7 @@ struct PrimitivesTab: View {
                     sectionStatusDots
                     sectionBadges
                     sectionField
+                    sectionQRCode
                     sectionListRows
                     sectionKVRows
                     sectionCards
@@ -114,6 +117,31 @@ struct PrimitivesTab: View {
             VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HudField("Search agents…", text: $fieldText, icon: "magnifyingglass")
                 HudField("Plain field",     text: $fieldQuery)
+            }
+        }
+    }
+
+    private var sectionQRCode: some View {
+        gallerySection("QR code", snippet: """
+            HudQRCode("https://hudson.dev/pair?token=...")
+            HudQRCode(text, foreground: HudPalette.accent, background: HudPalette.bg)
+            HudQRCode("important", errorCorrection: .high)
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                HStack(spacing: HudSpacing.xl) {
+                    HudQRCode("https://hudson.dev/pair?token=demo")
+                    HudQRCode(
+                        "https://hudson.dev/pair?token=demo",
+                        foreground: HudPalette.accent,
+                        background: HudPalette.bg
+                    )
+                }
+                HudField(
+                    "Encode anything…",
+                    text: $qrInputText,
+                    icon: "qrcode"
+                )
+                HudQRCode(qrInputText.isEmpty ? "https://hudson.dev" : qrInputText)
             }
         }
     }

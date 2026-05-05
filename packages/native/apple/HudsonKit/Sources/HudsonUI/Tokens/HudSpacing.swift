@@ -52,6 +52,9 @@ public enum HudLayout {
     public static let popoverWidth:     CGFloat = 380
     public static let popoverWidthCompact: CGFloat = 340
     public static let cliffWidth:       CGFloat = 760
+
+    // Primitive defaults — sizes for self-sized primitives (QR codes, avatars, etc).
+    public static let qrCodeDefault:    CGFloat = 200
 }
 
 // MARK: - Deprecated Hudson* aliases
