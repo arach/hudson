@@ -1,29 +1,35 @@
 import Foundation
 import Combine
 
-struct TerminiCanvasControlCommand: Decodable, Sendable {
-    var id: String?
-    var action: String
-    var columns: Int?
-    var rows: Int?
-    var count: Int?
-    var originX: Double?
-    var originY: Double?
-    var width: Double?
-    var height: Double?
-    var gap: Double?
-    var reset: Bool?
-    var allowLarge: Bool?
-    var includeChildren: Bool?
-    var ids: [String]?
-    var sessions: [String]?
-    var targets: [String]?
-    var createIfMissing: Bool?
-    var remoteHost: String?
+public struct HudVantageControlCommand: Decodable, Sendable {
+    public var id: String?
+    public var action: String
+    public var workspaceID: String?
+    public var statePath: String?
+    public var columns: Int?
+    public var rows: Int?
+    public var count: Int?
+    public var originX: Double?
+    public var originY: Double?
+    public var width: Double?
+    public var height: Double?
+    public var gap: Double?
+    public var reset: Bool?
+    public var allowLarge: Bool?
+    public var includeChildren: Bool?
+    public var ids: [String]?
+    public var sessions: [String]?
+    public var targets: [String]?
+    public var createIfMissing: Bool?
+    public var remoteHost: String?
+    public var confirmInstall: Bool?
+    public var installer: String?
 
-    init(
+    public init(
         id: String? = nil,
         action: String,
+        workspaceID: String? = nil,
+        statePath: String? = nil,
         columns: Int? = nil,
         rows: Int? = nil,
         count: Int? = nil,
@@ -39,10 +45,14 @@ struct TerminiCanvasControlCommand: Decodable, Sendable {
         sessions: [String]? = nil,
         targets: [String]? = nil,
         createIfMissing: Bool? = nil,
-        remoteHost: String? = nil
+        remoteHost: String? = nil,
+        confirmInstall: Bool? = nil,
+        installer: String? = nil
     ) {
         self.id = id
         self.action = action
+        self.workspaceID = workspaceID
+        self.statePath = statePath
         self.columns = columns
         self.rows = rows
         self.count = count
@@ -59,55 +69,118 @@ struct TerminiCanvasControlCommand: Decodable, Sendable {
         self.targets = targets
         self.createIfMissing = createIfMissing
         self.remoteHost = remoteHost
+        self.confirmInstall = confirmInstall
+        self.installer = installer
     }
 
-    var normalizedAction: String {
+    public var normalizedAction: String {
         action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
     }
 }
 
-struct TerminiCanvasControlResponse: Encodable, Sendable {
-    var id: String?
-    var action: String
-    var ok: Bool
-    var message: String
-    var nodeCount: Int
-    var appPID: Int32?
-    var childPIDs: [Int32]?
-    var commandPath: String?
-    var responsePath: String?
-    var timestamp: String
+public struct HudVantageControlNode: Encodable, Hashable, Sendable {
+    public var id: UUID
+    public var title: String
+    public var runtimeKind: String
+    public var target: String?
+    public var graphitePath: String?
+    public var remoteHost: String?
+    public var x: Double
+    public var y: Double
+    public var width: Double
+    public var height: Double
+    public var zIndex: Double
 
-    init(
+    public init(
+        id: UUID,
+        title: String,
+        runtimeKind: String,
+        target: String? = nil,
+        graphitePath: String? = nil,
+        remoteHost: String? = nil,
+        x: Double,
+        y: Double,
+        width: Double,
+        height: Double,
+        zIndex: Double
+    ) {
+        self.id = id
+        self.title = title
+        self.runtimeKind = runtimeKind
+        self.target = target
+        self.graphitePath = graphitePath
+        self.remoteHost = remoteHost
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+        self.zIndex = zIndex
+    }
+}
+
+public struct HudVantageControlResponse: Encodable, Sendable {
+    public var id: String?
+    public var action: String
+    public var ok: Bool
+    public var message: String
+    public var workspaceID: String?
+    public var nodeCount: Int
+    public var nodes: [HudVantageControlNode]?
+    public var appPID: Int32?
+    public var childPIDs: [Int32]?
+    public var commandPath: String?
+    public var responsePath: String?
+    public var statePath: String?
+    public var tmuxPath: String?
+    public var tmuxInstallInProgress: Bool?
+    public var requiresPermission: Bool?
+    public var installerCommand: String?
+    public var timestamp: String
+
+    public init(
         id: String?,
         action: String,
         ok: Bool,
         message: String,
+        workspaceID: String? = nil,
         nodeCount: Int,
+        nodes: [HudVantageControlNode]? = nil,
         appPID: Int32? = nil,
         childPIDs: [Int32]? = nil,
         commandPath: String? = nil,
-        responsePath: String? = nil
+        responsePath: String? = nil,
+        statePath: String? = nil,
+        tmuxPath: String? = nil,
+        tmuxInstallInProgress: Bool? = nil,
+        requiresPermission: Bool? = nil,
+        installerCommand: String? = nil
     ) {
         self.id = id
         self.action = action
         self.ok = ok
         self.message = message
+        self.workspaceID = workspaceID
         self.nodeCount = nodeCount
+        self.nodes = nodes
         self.appPID = appPID
         self.childPIDs = childPIDs
         self.commandPath = commandPath
         self.responsePath = responsePath
+        self.statePath = statePath
+        self.tmuxPath = tmuxPath
+        self.tmuxInstallInProgress = tmuxInstallInProgress
+        self.requiresPermission = requiresPermission
+        self.installerCommand = installerCommand
         self.timestamp = ISO8601DateFormatter().string(from: Date())
     }
 }
 
-final class TerminiCanvasControlAPI: ObservableObject {
+final class HudVantageControlAPI: ObservableObject {
     let commandURL: URL
     let responseURL: URL
 
     private enum PollEvent {
-        case command(TerminiCanvasControlCommand)
+        case command(HudVantageControlCommand)
         case decodeFailure(String)
     }
 
@@ -125,15 +198,15 @@ final class TerminiCanvasControlAPI: ObservableObject {
     }
 
     func start(
-        handler: @escaping @MainActor (TerminiCanvasControlCommand) -> TerminiCanvasControlResponse
+        handler: @escaping @MainActor (HudVantageControlCommand) -> HudVantageControlResponse
     ) {
         stop()
         ensureFileExists(at: commandURL)
         ensureFileExists(at: responseURL)
-        readOffset = endOffset(of: commandURL)
+        readOffset = 0
 
         appendResponse(
-            TerminiCanvasControlResponse(
+            HudVantageControlResponse(
                 id: "control-api",
                 action: "ready",
                 ok: true,
@@ -197,7 +270,7 @@ final class TerminiCanvasControlAPI: ObservableObject {
             guard let lineData = String(line).data(using: .utf8) else { return nil }
 
             do {
-                let command = try decoder.decode(TerminiCanvasControlCommand.self, from: lineData)
+                let command = try decoder.decode(HudVantageControlCommand.self, from: lineData)
                 return .command(command)
             } catch {
                 return .decodeFailure(error.localizedDescription)
@@ -207,7 +280,7 @@ final class TerminiCanvasControlAPI: ObservableObject {
 
     private func appendDecodeFailure(_ message: String) {
         appendResponse(
-            TerminiCanvasControlResponse(
+            HudVantageControlResponse(
                 id: nil,
                 action: "decode",
                 ok: false,
@@ -217,7 +290,7 @@ final class TerminiCanvasControlAPI: ObservableObject {
         )
     }
 
-    private func appendResponse(_ response: TerminiCanvasControlResponse) {
+    private func appendResponse(_ response: HudVantageControlResponse) {
         ensureFileExists(at: responseURL)
         let encoder = JSONEncoder()
         encoder.outputFormatting = [.sortedKeys]
@@ -237,13 +310,5 @@ final class TerminiCanvasControlAPI: ObservableObject {
     private func ensureFileExists(at url: URL) {
         guard !FileManager.default.fileExists(atPath: url.path) else { return }
         FileManager.default.createFile(atPath: url.path, contents: nil)
-    }
-
-    private func endOffset(of url: URL) -> UInt64 {
-        guard let file = try? FileHandle(forReadingFrom: url) else { return 0 }
-        defer {
-            try? file.close()
-        }
-        return (try? file.seekToEnd()) ?? 0
     }
 }

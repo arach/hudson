@@ -13,34 +13,46 @@ import Termini
 /// product naming, control-plane paths, and an optional working directory while
 /// Hudson owns the canvas interaction model.
 public struct HudVantageConfiguration: Sendable {
+    public var workspaceID: String
     public var surfaceTitle: String
     public var surfaceSubtitle: String
     public var commandURL: URL
     public var responseURL: URL
+    public var stateURL: URL
     public var workingDirectoryURL: URL?
     public var followsSystemColorScheme: Bool
+    public var restoresStateOnLaunch: Bool
 
     public init(
+        workspaceID: String = "vantage",
         surfaceTitle: String = "Vantage",
         surfaceSubtitle: String = "native Hudson runtime surface",
         commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
         responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl"),
+        stateURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-state.json"),
         workingDirectoryURL: URL? = nil,
-        followsSystemColorScheme: Bool = true
+        followsSystemColorScheme: Bool = true,
+        restoresStateOnLaunch: Bool = false
     ) {
+        self.workspaceID = GraphitePath.slugify(workspaceID, fallback: "vantage")
         self.surfaceTitle = surfaceTitle
         self.surfaceSubtitle = surfaceSubtitle
         self.commandURL = commandURL
         self.responseURL = responseURL
+        self.stateURL = stateURL
         self.workingDirectoryURL = workingDirectoryURL
         self.followsSystemColorScheme = followsSystemColorScheme
+        self.restoresStateOnLaunch = restoresStateOnLaunch
     }
 
     public static let terminiCanvasCaseStudy = HudVantageConfiguration(
+        workspaceID: "termini-canvas",
         surfaceTitle: "Termini Canvas",
         surfaceSubtitle: "native macOS Hudson Vantage case study",
         commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
-        responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl")
+        responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl"),
+        stateURL: URL(fileURLWithPath: "/tmp/termini-canvas-state.json"),
+        restoresStateOnLaunch: true
     )
 }
 
@@ -110,7 +122,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         }
     }
 
-    let id = UUID()
+    let id: UUID
     let workspace: TerminiLocalPTYWorkspace
     let title: String
     let subtitle: String
@@ -122,6 +134,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     @Published var zIndex: Double
 
     init(
+        id: UUID = UUID(),
         index: Int,
         origin: CGPoint,
         size: CGSize,
@@ -130,11 +143,13 @@ private final class TerminalNode: ObservableObject, Identifiable {
         processSpec: TerminiProcessSpec? = nil,
         title: String? = nil,
         subtitle: String? = nil,
-        runtimeIdentity: RuntimeIdentity = .localPTY
+        runtimeIdentity: RuntimeIdentity = .localPTY,
+        workingDirectoryURL: URL? = nil
     ) {
         let controller = TerminiTerminalController()
+        self.id = id
         self.workspace = TerminiLocalPTYWorkspace(
-            processSpec: processSpec ?? Self.localShellSpec(),
+            processSpec: processSpec ?? Self.localShellSpec(workingDirectoryURL: workingDirectoryURL),
             controller: controller
         )
         self.title = title ?? "Termini \(index)"
@@ -166,16 +181,22 @@ private final class TerminalNode: ObservableObject, Identifiable {
     }
 
     private static func localShellSpec() -> TerminiProcessSpec {
+        localShellSpec(workingDirectoryURL: nil)
+    }
+
+    private static func localShellSpec(workingDirectoryURL: URL?) -> TerminiProcessSpec {
         shellSpec(
             executableURL: shellURL,
-            arguments: ["-l"]
+            arguments: ["-l"],
+            workingDirectoryURL: workingDirectoryURL
         )
     }
 
     static func tmuxAttachSpec(
         target: String,
         createIfMissing: Bool,
-        remoteHost: String?
+        remoteHost: String?,
+        workingDirectoryURL: URL?
     ) -> TerminiProcessSpec {
         let canCreate = createIfMissing && Self.isSessionName(target)
         let tmuxArguments = canCreate
@@ -184,30 +205,19 @@ private final class TerminalNode: ObservableObject, Identifiable {
         if let remoteHost {
             return shellSpec(
                 executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-                arguments: ["-tt", remoteHost, "tmux"] + tmuxArguments
+                arguments: ["-tt", remoteHost, "tmux"] + tmuxArguments,
+                workingDirectoryURL: workingDirectoryURL
             )
         }
 
         return shellSpec(
             executableURL: localTmuxURL ?? URL(fileURLWithPath: "/usr/bin/env"),
-            arguments: localTmuxURL == nil ? ["tmux"] + tmuxArguments : tmuxArguments
+            arguments: localTmuxURL == nil ? ["tmux"] + tmuxArguments : tmuxArguments,
+            workingDirectoryURL: workingDirectoryURL
         )
     }
 
-    static var localTmuxURL: URL? {
-        let environment = ProcessInfo.processInfo.environment
-        let pathCandidates = (environment["PATH"] ?? "")
-            .split(separator: ":")
-            .map { URL(fileURLWithPath: String($0)).appendingPathComponent("tmux") }
-        let commonCandidates = [
-            URL(fileURLWithPath: "/opt/homebrew/bin/tmux"),
-            URL(fileURLWithPath: "/usr/local/bin/tmux"),
-            URL(fileURLWithPath: "/usr/bin/tmux"),
-        ]
-
-        return (pathCandidates + commonCandidates)
-            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
-    }
+    static var localTmuxURL: URL? { TmuxToolchain.localTmuxURL }
 
     static func canCreateTmuxTarget(_ target: String, createIfMissing: Bool) -> Bool {
         createIfMissing && isSessionName(target)
@@ -233,7 +243,8 @@ private final class TerminalNode: ObservableObject, Identifiable {
 
     private static func shellSpec(
         executableURL: URL,
-        arguments: [String]
+        arguments: [String],
+        workingDirectoryURL: URL?
     ) -> TerminiProcessSpec {
         TerminiProcessSpec(
             executableURL: executableURL,
@@ -243,7 +254,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
                 "HUDSON_VANTAGE": "1",
                 "HUDSON_TERMINI_CANVAS": "1",
             ],
-            workingDirectoryURL: defaultWorkingDirectoryURL
+            workingDirectoryURL: workingDirectoryURL ?? defaultWorkingDirectoryURL
         )
     }
 
@@ -322,6 +333,26 @@ private struct TmuxReattachSpec {
     var remoteHost: String?
 }
 
+private enum HudVantageStateError: Error, LocalizedError {
+    case stateFileMissing(String)
+    case missingRuntimeTarget(UUID)
+    case missingTmuxTarget(String)
+    case tmuxMissing
+
+    var errorDescription: String? {
+        switch self {
+        case .stateFileMissing(let path):
+            "state file not found: \(path)"
+        case .missingRuntimeTarget(let id):
+            "state node \(id) is missing a tmux target"
+        case .missingTmuxTarget(let target):
+            "tmux target \(target) not found; create it first or restore with createIfMissing"
+        case .tmuxMissing:
+            "tmux executable not found; install tmux locally or restore remote nodes"
+        }
+    }
+}
+
 private func formattedZoom(_ scale: CGFloat) -> String {
     let percent = scale * 100
 
@@ -363,8 +394,11 @@ public struct HudVantageSurface: View {
     @State private var inspectorWidth: CGFloat = 300
     @State private var nextIndex = 3
     @State private var nextZIndex: Double = 3
-    @StateObject private var controlAPI: TerminiCanvasControlAPI
+    @StateObject private var controlAPI: HudVantageControlAPI
     @State private var controlStatus = "API ready"
+    @State private var tmuxInstallInProgress = false
+    @State private var tmuxInstallMessage = ""
+    @State private var tmuxInstallConfirmationPresented = false
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
     @State private var canvasPan: CGSize = .zero
@@ -377,7 +411,7 @@ public struct HudVantageSurface: View {
     public init(configuration: HudVantageConfiguration = .init()) {
         self.configuration = configuration
         _controlAPI = StateObject(
-            wrappedValue: TerminiCanvasControlAPI(
+            wrappedValue: HudVantageControlAPI(
                 commandURL: configuration.commandURL,
                 responseURL: configuration.responseURL
             )
@@ -399,9 +433,21 @@ public struct HudVantageSurface: View {
             startControlAPI()
         }
         .onDisappear {
+            persistStateIfConfigured()
             controlAPI.stop()
             stopAllNodes()
             didBootstrap = false
+        }
+        .confirmationDialog(
+            "Install tmux with Homebrew?",
+            isPresented: $tmuxInstallConfirmationPresented
+        ) {
+            Button("Install tmux") {
+                startTmuxInstall()
+            }
+            Button("Cancel", role: .cancel) {}
+        } message: {
+            Text(tmuxInstallPermissionMessage)
         }
         .hudTheme(activeTheme)
         .environment(\.colorScheme, activeColorScheme)
@@ -480,10 +526,14 @@ public struct HudVantageSurface: View {
                 width: $inspectorWidth,
                 selectedNodes: selectedNodes,
                 totalCount: nodes.count,
+                tmuxAvailable: TerminalNode.localTmuxURL != nil,
+                tmuxInstallInProgress: tmuxInstallInProgress,
+                tmuxInstallMessage: tmuxInstallMessage,
                 onCenterNode: { node in
                     centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
                 },
                 onCloseNode: close,
+                onInstallTmux: { tmuxInstallConfirmationPresented = true },
                 onCollapse: { inspectorCollapsed = true }
             )
         }
@@ -495,6 +545,12 @@ public struct HudVantageSurface: View {
 
     private func showCommandPlaceholder() {
         controlStatus = "Command palette placeholder"
+    }
+
+    private var tmuxInstallPermissionMessage: String {
+        let command = TmuxToolchain.homebrewInstallCommandDescription
+            ?? "Homebrew was not found in PATH or common install locations."
+        return "Vantage will run \(command). This is only needed for local tmux-backed sessions."
     }
 
     private var canvasHeader: some View {
@@ -846,7 +902,8 @@ public struct HudVantageSurface: View {
             origin: CGPoint(x: 130 + offset, y: 120 + offset),
             size: CGSize(width: 500, height: 316),
             tint: tint(for: nextIndex),
-            zIndex: nextZIndex
+            zIndex: nextZIndex,
+            workingDirectoryURL: configuration.workingDirectoryURL
         )
         nodes.append(node)
         selectedIDs = [node.id]
@@ -872,10 +929,17 @@ public struct HudVantageSurface: View {
                 return
             }
         }
+        if let command = bootstrapRestoreCommand() {
+            let response = restoreWorkspaceState(command)
+            controlStatus = response.message
+            if response.ok {
+                return
+            }
+        }
         resetTerminals()
     }
 
-    private func bootstrapReattachCommand() -> TerminiCanvasControlCommand? {
+    private func bootstrapReattachCommand() -> HudVantageControlCommand? {
         let environment = ProcessInfo.processInfo.environment
         let ids = parseEnvironmentList(
             environment["HUDSON_VANTAGE_REATTACH_IDS"]
@@ -896,7 +960,7 @@ public struct HudVantageSurface: View {
             return nil
         }
 
-        return TerminiCanvasControlCommand(
+        return HudVantageControlCommand(
             id: "bootstrap-reattach",
             action: "reattach",
             reset: true,
@@ -909,6 +973,27 @@ public struct HudVantageSurface: View {
         )
     }
 
+    private func bootstrapRestoreCommand() -> HudVantageControlCommand? {
+        let environment = ProcessInfo.processInfo.environment
+        let shouldRestore = configuration.restoresStateOnLaunch
+            || environment["HUDSON_VANTAGE_RESTORE_ON_LAUNCH"] == "1"
+            || environment["TERMINI_CANVAS_RESTORE_ON_LAUNCH"] == "1"
+        guard shouldRestore else { return nil }
+
+        let statePath = environment["HUDSON_VANTAGE_STATE_FILE"]
+            ?? environment["TERMINI_CANVAS_STATE_FILE"]
+
+        return HudVantageControlCommand(
+            id: "bootstrap-restore",
+            action: "restore",
+            workspaceID: configuration.workspaceID,
+            statePath: statePath,
+            reset: true,
+            createIfMissing: (environment["HUDSON_VANTAGE_RESTORE_CREATE"]
+                ?? environment["TERMINI_CANVAS_RESTORE_CREATE"]) == "1"
+        )
+    }
+
     private func parseEnvironmentList(_ value: String?) -> [String] {
         guard let value else { return [] }
         return value
@@ -918,8 +1003,8 @@ public struct HudVantageSurface: View {
     }
 
     private func handleControlCommand(
-        _ command: TerminiCanvasControlCommand
-    ) -> TerminiCanvasControlResponse {
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
         switch command.normalizedAction {
         case "tile", "grid":
             return tileTerminals(command)
@@ -927,6 +1012,12 @@ public struct HudVantageSurface: View {
             return spawnTerminals(command)
         case "reattach", "attach", "tmux":
             return reattachTmuxTargets(command)
+        case "ensure-tmux", "ensuretmux", "tmux-ensure", "install-tmux", "installtmux", "tmux-install":
+            return requestTmuxInstall(command)
+        case "save", "snapshot":
+            return saveWorkspaceState(command)
+        case "restore", "load":
+            return restoreWorkspaceState(command)
         case "clear":
             stopAllNodes()
             return controlResponse(
@@ -957,8 +1048,8 @@ public struct HudVantageSurface: View {
     }
 
     private func tileTerminals(
-        _ command: TerminiCanvasControlCommand
-    ) -> TerminiCanvasControlResponse {
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
         let columns = clamp(command.columns ?? 4, lower: 1, upper: 32)
         let rows = clamp(command.rows ?? 4, lower: 1, upper: 32)
         let total = columns * rows
@@ -1013,7 +1104,8 @@ public struct HudVantageSurface: View {
                         origin: origin,
                         size: size,
                         tint: tint(for: nextIndex),
-                        zIndex: nextZIndex
+                        zIndex: nextZIndex,
+                        workingDirectoryURL: configuration.workingDirectoryURL
                     )
                 }
                 tiledNodes.append(node)
@@ -1039,8 +1131,8 @@ public struct HudVantageSurface: View {
     }
 
     private func spawnTerminals(
-        _ command: TerminiCanvasControlCommand
-    ) -> TerminiCanvasControlResponse {
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
         let count = clamp(command.count ?? 1, lower: 1, upper: 32)
         let size = CGSize(
             width: CGFloat(max(240.0, command.width ?? 500.0)),
@@ -1057,7 +1149,8 @@ public struct HudVantageSurface: View {
                 origin: CGPoint(x: originX + offset, y: originY + offset),
                 size: size,
                 tint: tint(for: nextIndex),
-                zIndex: nextZIndex
+                zIndex: nextZIndex,
+                workingDirectoryURL: configuration.workingDirectoryURL
             )
             nodes.append(node)
             selectedIDs = [node.id]
@@ -1073,8 +1166,8 @@ public struct HudVantageSurface: View {
     }
 
     private func reattachTmuxTargets(
-        _ command: TerminiCanvasControlCommand
-    ) -> TerminiCanvasControlResponse {
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
         let specs: [TmuxReattachSpec]
         do {
             specs = try tmuxReattachSpecs(from: command)
@@ -1159,7 +1252,8 @@ public struct HudVantageSurface: View {
                 processSpec: TerminalNode.tmuxAttachSpec(
                     target: spec.target,
                     createIfMissing: command.createIfMissing == true,
-                    remoteHost: spec.remoteHost
+                    remoteHost: spec.remoteHost,
+                    workingDirectoryURL: configuration.workingDirectoryURL
                 ),
                 title: spec.title,
                 subtitle: spec.remoteHost.map { "ssh · \($0)" } ?? "tmux · \(spec.target)",
@@ -1177,6 +1271,7 @@ public struct HudVantageSurface: View {
         nodes.append(contentsOf: created)
         selectedIDs = Set(created.map(\.id))
         fitCanvasToViewport()
+        persistStateIfConfigured()
 
         return controlResponse(
             command,
@@ -1186,7 +1281,7 @@ public struct HudVantageSurface: View {
     }
 
     private func tmuxReattachSpecs(
-        from command: TerminiCanvasControlCommand
+        from command: HudVantageControlCommand
     ) throws -> [TmuxReattachSpec] {
         var specs: [TmuxReattachSpec] = []
         let remoteHost = try validatedRemoteHost(command.remoteHost)
@@ -1263,6 +1358,355 @@ public struct HudVantageSurface: View {
         return candidate
     }
 
+    private func requestTmuxInstall(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        if let tmuxURL = TerminalNode.localTmuxURL {
+            return controlResponse(
+                command,
+                ok: true,
+                message: "tmux already available at \(tmuxURL.path)"
+            )
+        }
+
+        let installer = command.installer?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+        if let installer, installer != "homebrew" {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "unsupported tmux installer \(installer); use homebrew"
+            )
+        }
+
+        guard command.confirmInstall == true else {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux is missing; installing it requires confirmInstall: true",
+                requiresPermission: true
+            )
+        }
+
+        guard !tmuxInstallInProgress else {
+            return controlResponse(
+                command,
+                ok: true,
+                message: "tmux install already in progress"
+            )
+        }
+
+        guard TmuxToolchain.homebrewURL != nil else {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "Homebrew not found; install Homebrew or tmux manually"
+            )
+        }
+
+        startTmuxInstall()
+
+        return controlResponse(
+            command,
+            ok: true,
+            message: "tmux install started with Homebrew"
+        )
+    }
+
+    private func startTmuxInstall() {
+        if let tmuxURL = TerminalNode.localTmuxURL {
+            tmuxInstallMessage = "tmux already available at \(tmuxURL.path)"
+            controlStatus = tmuxInstallMessage
+            return
+        }
+
+        guard !tmuxInstallInProgress else { return }
+        tmuxInstallInProgress = true
+        tmuxInstallMessage = "Installing tmux with Homebrew..."
+        controlStatus = tmuxInstallMessage
+
+        Task {
+            let result = await TmuxToolchain.installTmuxWithHomebrew()
+            tmuxInstallInProgress = false
+            tmuxInstallMessage = result.message
+            controlStatus = result.message
+        }
+    }
+
+    private func saveWorkspaceState(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let url = stateURL(for: command)
+        do {
+            let snapshot = workspaceSnapshot(workspaceID: command.workspaceID ?? configuration.workspaceID)
+            try writeWorkspaceSnapshot(snapshot, to: url)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "saved \(snapshot.nodes.count) durable node\(snapshot.nodes.count == 1 ? "" : "s")"
+            )
+        } catch {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func restoreWorkspaceState(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let url = stateURL(for: command)
+
+        do {
+            let snapshot = try readWorkspaceSnapshot(from: url)
+            if let requestedWorkspace = command.workspaceID,
+               snapshot.workspaceID != GraphitePath.slugify(requestedWorkspace, fallback: configuration.workspaceID) {
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: "state belongs to workspace \(snapshot.workspaceID)"
+                )
+            }
+
+            guard !snapshot.nodes.isEmpty else {
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: "state has no durable nodes"
+                )
+            }
+
+            let shouldReset = command.reset ?? true
+            if shouldReset {
+                stopAllNodes()
+                nextIndex = 1
+                nextZIndex = 1
+            }
+
+            var restored: [TerminalNode] = []
+            restored.reserveCapacity(snapshot.nodes.count)
+
+            do {
+                for nodeSnapshot in snapshot.nodes {
+                    if let node = try terminalNode(from: nodeSnapshot, createIfMissing: command.createIfMissing == true) {
+                        restored.append(node)
+                        nextIndex += 1
+                    }
+                }
+            } catch {
+                restored.forEach { $0.stop() }
+                throw error
+            }
+
+            guard !restored.isEmpty else {
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: "state had no restorable tmux nodes"
+                )
+            }
+
+            if shouldReset {
+                nodes = restored
+            } else {
+                nodes.append(contentsOf: restored)
+            }
+
+            let restoredIDs = Set(restored.map(\.id))
+            let savedSelection = Set(snapshot.selectedNodeIDs).intersection(restoredIDs)
+            selectedIDs = savedSelection.isEmpty ? restoredIDs : savedSelection
+            canvasPan = CGSize(width: snapshot.viewport.panX, height: snapshot.viewport.panY)
+            canvasScale = clampedScale(CGFloat(snapshot.viewport.scale))
+            zoomStart = canvasScale
+            nextZIndex = (nodes.map(\.zIndex).max() ?? 0) + 1
+
+            return controlResponse(
+                command,
+                ok: true,
+                message: "restored \(restored.count) durable node\(restored.count == 1 ? "" : "s")"
+            )
+        } catch {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func persistStateIfConfigured() {
+        guard configuration.restoresStateOnLaunch else { return }
+        let snapshot = workspaceSnapshot(workspaceID: configuration.workspaceID)
+        try? writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
+    }
+
+    private func workspaceSnapshot(workspaceID: String) -> HudVantageWorkspaceSnapshot {
+        let durableNodes = nodes.compactMap(durableSnapshot)
+        let durableIDs = Set(durableNodes.map(\.id))
+
+        return HudVantageWorkspaceSnapshot(
+            workspaceID: GraphitePath.slugify(workspaceID, fallback: configuration.workspaceID),
+            surfaceTitle: configuration.surfaceTitle,
+            viewport: HudVantageViewportSnapshot(
+                panX: Double(canvasPan.width),
+                panY: Double(canvasPan.height),
+                scale: Double(canvasScale)
+            ),
+            nodes: durableNodes,
+            selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
+        )
+    }
+
+    private func durableSnapshot(for node: TerminalNode) -> HudVantageNodeSnapshot? {
+        guard case .tmux(let target, let path, let remoteHost) = node.runtimeIdentity else {
+            return nil
+        }
+
+        return HudVantageNodeSnapshot(
+            id: node.id,
+            title: node.title,
+            subtitle: node.subtitle,
+            tint: node.tint.rawValue,
+            x: Double(node.origin.x),
+            y: Double(node.origin.y),
+            width: Double(node.size.width),
+            height: Double(node.size.height),
+            zIndex: node.zIndex,
+            runtime: HudVantageRuntimeReference(
+                kind: "tmux",
+                target: target,
+                graphitePath: path?.description,
+                remoteHost: remoteHost
+            )
+        )
+    }
+
+    private func controlNodeSummary(for node: TerminalNode) -> HudVantageControlNode {
+        switch node.runtimeIdentity {
+        case .localPTY:
+            return HudVantageControlNode(
+                id: node.id,
+                title: node.title,
+                runtimeKind: "local-pty",
+                x: Double(node.origin.x),
+                y: Double(node.origin.y),
+                width: Double(node.size.width),
+                height: Double(node.size.height),
+                zIndex: node.zIndex
+            )
+        case .tmux(let target, let path, let remoteHost):
+            return HudVantageControlNode(
+                id: node.id,
+                title: node.title,
+                runtimeKind: "tmux",
+                target: target,
+                graphitePath: path?.description,
+                remoteHost: remoteHost,
+                x: Double(node.origin.x),
+                y: Double(node.origin.y),
+                width: Double(node.size.width),
+                height: Double(node.size.height),
+                zIndex: node.zIndex
+            )
+        }
+    }
+
+    private func terminalNode(
+        from snapshot: HudVantageNodeSnapshot,
+        createIfMissing: Bool
+    ) throws -> TerminalNode? {
+        guard snapshot.runtime.kind == "tmux" else { return nil }
+        guard let targetValue = snapshot.runtime.target else {
+            throw HudVantageStateError.missingRuntimeTarget(snapshot.id)
+        }
+
+        let target = try TmuxTarget.validatedTarget(targetValue)
+        let remoteHost = try validatedRemoteHost(snapshot.runtime.remoteHost)
+        let path = try snapshot.runtime.graphitePath.map(GraphitePath.init(parse:))
+
+        if remoteHost == nil, TerminalNode.localTmuxURL == nil {
+            throw HudVantageStateError.tmuxMissing
+        }
+
+        if remoteHost == nil,
+           !TerminalNode.canCreateTmuxTarget(target, createIfMissing: createIfMissing),
+           !TerminalNode.localTmuxTargetExists(target) {
+            throw HudVantageStateError.missingTmuxTarget(target)
+        }
+
+        let size = CGSize(
+            width: max(300.0, CGFloat(snapshot.width)),
+            height: max(200.0, CGFloat(snapshot.height))
+        )
+
+        return TerminalNode(
+            id: snapshot.id,
+            index: nextIndex,
+            origin: CGPoint(x: snapshot.x, y: snapshot.y),
+            size: size,
+            tint: HudTint.from(token: snapshot.tint),
+            zIndex: snapshot.zIndex,
+            processSpec: TerminalNode.tmuxAttachSpec(
+                target: target,
+                createIfMissing: createIfMissing,
+                remoteHost: remoteHost,
+                workingDirectoryURL: configuration.workingDirectoryURL
+            ),
+            title: snapshot.title,
+            subtitle: snapshot.subtitle,
+            runtimeIdentity: .tmux(
+                target: target,
+                path: path,
+                remoteHost: remoteHost
+            )
+        )
+    }
+
+    private func writeWorkspaceSnapshot(
+        _ snapshot: HudVantageWorkspaceSnapshot,
+        to url: URL
+    ) throws {
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(snapshot)
+        try FileManager.default.createDirectory(
+            at: url.deletingLastPathComponent(),
+            withIntermediateDirectories: true
+        )
+        try data.write(to: url, options: [.atomic])
+    }
+
+    private func readWorkspaceSnapshot(from url: URL) throws -> HudVantageWorkspaceSnapshot {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw HudVantageStateError.stateFileMissing(url.path)
+        }
+
+        let data = try Data(contentsOf: url)
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(HudVantageWorkspaceSnapshot.self, from: data)
+    }
+
+    private func stateURL(for command: HudVantageControlCommand) -> URL {
+        if let statePath = command.statePath?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !statePath.isEmpty {
+            return URL(fileURLWithPath: statePath)
+        }
+        return configuredStateURL()
+    }
+
+    private func configuredStateURL() -> URL {
+        let environment = ProcessInfo.processInfo.environment
+        if let statePath = environment["HUDSON_VANTAGE_STATE_FILE"]
+            ?? environment["TERMINI_CANVAS_STATE_FILE"],
+            !statePath.isEmpty {
+            return URL(fileURLWithPath: statePath)
+        }
+        return configuration.stateURL
+    }
+
     private func selectNode(_ id: UUID) {
         selectedIDs = [id]
         bringToFront(id)
@@ -1278,6 +1722,7 @@ public struct HudVantageSurface: View {
         nodes.first { $0.id == id }?.stop()
         nodes.removeAll { $0.id == id }
         selectedIDs.remove(id)
+        persistStateIfConfigured()
     }
 
     private func move(_ id: UUID, delta: CGSize) {
@@ -1312,7 +1757,8 @@ public struct HudVantageSurface: View {
             origin: CGPoint(x: 88, y: 86),
             size: CGSize(width: 520, height: 330),
             tint: .cyan,
-            zIndex: nextZIndex
+            zIndex: nextZIndex,
+            workingDirectoryURL: configuration.workingDirectoryURL
         )
         nextIndex += 1
         nextZIndex += 1
@@ -1322,7 +1768,8 @@ public struct HudVantageSurface: View {
             origin: CGPoint(x: 420, y: 292),
             size: CGSize(width: 470, height: 292),
             tint: .green,
-            zIndex: nextZIndex
+            zIndex: nextZIndex,
+            workingDirectoryURL: configuration.workingDirectoryURL
         )
         nextIndex += 1
         nextZIndex += 1
@@ -1342,20 +1789,28 @@ public struct HudVantageSurface: View {
     }
 
     private func controlResponse(
-        _ command: TerminiCanvasControlCommand,
+        _ command: HudVantageControlCommand,
         ok: Bool,
-        message: String
-    ) -> TerminiCanvasControlResponse {
-        TerminiCanvasControlResponse(
+        message: String,
+        requiresPermission: Bool? = nil
+    ) -> HudVantageControlResponse {
+        HudVantageControlResponse(
             id: command.id,
             action: command.normalizedAction,
             ok: ok,
             message: message,
+            workspaceID: command.workspaceID ?? configuration.workspaceID,
             nodeCount: nodes.count,
+            nodes: nodes.map(controlNodeSummary),
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,
-            responsePath: controlAPI.responseURL.path
+            responsePath: controlAPI.responseURL.path,
+            statePath: stateURL(for: command).path,
+            tmuxPath: TerminalNode.localTmuxURL?.path,
+            tmuxInstallInProgress: tmuxInstallInProgress,
+            requiresPermission: requiresPermission,
+            installerCommand: TmuxToolchain.homebrewInstallCommandDescription
         )
     }
 
@@ -2049,8 +2504,12 @@ private struct CanvasInspectorPanel: View {
     @Binding var width: CGFloat
     let selectedNodes: [TerminalNode]
     let totalCount: Int
+    let tmuxAvailable: Bool
+    let tmuxInstallInProgress: Bool
+    let tmuxInstallMessage: String
     let onCenterNode: (TerminalNode) -> Void
     let onCloseNode: (UUID) -> Void
+    let onInstallTmux: () -> Void
     let onCollapse: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -2095,17 +2554,53 @@ private struct CanvasInspectorPanel: View {
 
     @ViewBuilder
     private var content: some View {
-        if let node = selectedNodes.first, selectedNodes.count == 1 {
-            TerminalDetailView(
-                node: node,
-                onCenter: { onCenterNode(node) },
-                onClose: { onCloseNode(node.id) }
+        VStack(alignment: .leading, spacing: HudSpacing.xl) {
+            HudVantagePrerequisiteCheck(
+                title: "tmux",
+                status: tmuxPrerequisiteStatus,
+                detail: tmuxPrerequisiteDetail,
+                actionTitle: tmuxAvailable ? nil : tmuxInstallActionTitle,
+                actionIcon: "arrow.down.circle",
+                actionDisabled: tmuxInstallInProgress,
+                action: onInstallTmux
             )
-        } else if selectedNodes.count > 1 {
-            MultiTerminalDetailView(count: selectedNodes.count)
-        } else {
-            EmptyInspectorState()
+
+            if let node = selectedNodes.first, selectedNodes.count == 1 {
+                TerminalDetailView(
+                    node: node,
+                    onCenter: { onCenterNode(node) },
+                    onClose: { onCloseNode(node.id) }
+                )
+            } else if selectedNodes.count > 1 {
+                MultiTerminalDetailView(count: selectedNodes.count)
+            } else {
+                EmptyInspectorState()
+            }
         }
+    }
+
+    private var tmuxPrerequisiteStatus: HudVantagePrerequisiteStatus {
+        if tmuxAvailable {
+            return .ready
+        }
+        if tmuxInstallInProgress {
+            return .running
+        }
+        return .missing
+    }
+
+    private var tmuxPrerequisiteDetail: String {
+        if !tmuxInstallMessage.isEmpty {
+            return tmuxInstallMessage
+        }
+        if tmuxAvailable {
+            return "Local tmux-backed sessions can be attached and restored."
+        }
+        return "Local tmux is required for durable local sessions. Remote tmux over SSH can still be attached without a local install."
+    }
+
+    private var tmuxInstallActionTitle: String {
+        tmuxInstallInProgress ? "Installing..." : "Install tmux"
     }
 }
 

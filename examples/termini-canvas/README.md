@@ -71,6 +71,8 @@ Example commands:
 printf '{"id":"grid-8x8","action":"tile","columns":8,"rows":8,"width":300,"height":200,"gap":18}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-lab","action":"reattach","sessions":["hudson-lab"],"createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-ids","action":"reattach","ids":["hudson.lab.termini.canvas.0042.shell","hudson.lab.agents.codex.0007.worker"]}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"status","action":"status"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"reset","action":"reset"}\n' >> /tmp/termini-canvas-control.jsonl
 ```
@@ -85,6 +87,9 @@ examples/termini-canvas/scripts/canvasctl.sh --wait reattach --remote user@host 
 examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
+examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
+examples/termini-canvas/scripts/canvasctl.sh --wait save
+examples/termini-canvas/scripts/canvasctl.sh --wait restore --create
 ```
 
 That means a Claude, Codex, or shell session outside the app can instantiate
@@ -101,6 +106,21 @@ or reconstruct the visible canvas while the macOS app keeps running.
 Local `targets` must already exist. For a simple session that can be created on
 demand, use `--session NAME --create`.
 
+If local tmux is missing, the app inspector exposes an Install tmux action that
+confirms with the user before running Homebrew. Agents can request the same path
+with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
+/ `confirmInstall: true` before Vantage runs an installer.
+
+`save` persists the current durable tmux-backed canvas state to:
+
+```sh
+/tmp/termini-canvas-state.json
+```
+
+`restore` recreates those saved tmux-backed nodes with their previous bounds,
+z-order, selection, viewport, and Graphite metadata. Use `--state-file PATH` or
+`TERMINI_CANVAS_STATE_FILE` for a different lane.
+
 For direct executable runs, a startup reattach set can be provided with:
 
 ```sh
@@ -108,3 +128,6 @@ TERMINI_CANVAS_REATTACH_IDS="hudson.lab.termini.canvas.0042.shell,hudson.lab.age
 TERMINI_CANVAS_REATTACH_REMOTE_HOST="user@host" \
 HUDSONKIT_WITH_TERMINAL=1 swift run --package-path examples/termini-canvas TerminiCanvas
 ```
+
+The case-study configuration also restores `/tmp/termini-canvas-state.json` on
+launch when that file exists and contains durable tmux nodes.
