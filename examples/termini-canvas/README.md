@@ -94,6 +94,8 @@ examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
 examples/termini-canvas/scripts/canvasctl.sh --wait inspect
 examples/termini-canvas/scripts/canvasctl.sh --wait focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
+examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
+examples/termini-canvas/scripts/canvasctl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
 examples/termini-canvas/scripts/canvasctl.sh --wait save
 examples/termini-canvas/scripts/canvasctl.sh --wait restore --create

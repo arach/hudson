@@ -434,12 +434,14 @@ public struct HudVantageSurface: View {
     @State private var tmuxInstallConfirmationPresented = false
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
-    @State private var canvasPan: CGSize = .zero
-    @State private var canvasScale: CGFloat = 1
+    @State private var canvasState = HudVantageCanvasState(
+        minimumScale: HudVantageSurface.minimumCanvasScale,
+        maximumScale: HudVantageSurface.maximumCanvasScale
+    )
     @State private var panStart: CGSize?
-    @State private var zoomStart: CGFloat = 1
-    @State private var lastViewportSize = CGSize(width: 920, height: 560)
+    @State private var zoomStart: CGFloat?
     @State private var selectionDrag: SelectionDrag?
+    @State private var pendingPersistTask: Task<Void, Never>?
 
     public init(configuration: HudVantageConfiguration = .init()) {
         self.configuration = configuration
@@ -466,6 +468,7 @@ public struct HudVantageSurface: View {
             startControlAPI()
         }
         .onDisappear {
+            pendingPersistTask?.cancel()
             persistStateIfConfigured()
             controlAPI.stop()
             stopAllNodes()
@@ -539,11 +542,9 @@ public struct HudVantageSurface: View {
                 selectedCount: selectedIDs.count,
                 filter: $navigationFilter,
                 selectedIDs: selectedIDs,
-                viewportWorldRect: viewportWorldRect,
-                canvasContentSize: canvasContentSize,
-                canvasPan: canvasPan,
-                canvasScale: canvasScale,
-                viewportSize: lastViewportSize,
+                viewportWorldRect: canvasState.visibleWorldRect,
+                canvasWorldBounds: canvasWorldBounds,
+                canvasScale: canvasState.scale,
                 onSelectNode: selectNode,
                 onCenterWorldPoint: centerCanvas(on:),
                 onFit: fitCanvasToViewport,
@@ -627,8 +628,8 @@ public struct HudVantageSurface: View {
             ZStack(alignment: .topLeading) {
                 activeTheme.palette.bg
                 InfiniteCanvasBackground(
-                    pan: canvasPan,
-                    scale: canvasScale
+                    pan: canvasState.pan,
+                    scale: canvasState.scale
                 )
                 .allowsHitTesting(false)
 
@@ -657,16 +658,20 @@ public struct HudVantageSurface: View {
             .gesture(canvasInteractionGesture)
             .simultaneousGesture(canvasZoomGesture)
             .onAppear {
-                lastViewportSize = proxy.size
+                canvasState = canvasState.withViewportSize(proxy.size)
             }
             .onChange(of: proxy.size) { _, size in
-                lastViewportSize = size
+                canvasState = canvasState.withViewportSize(size)
             }
             .overlay(alignment: .bottomTrailing) {
                 CanvasZoomTool(
-                    scale: canvasScale,
+                    scale: canvasState.scale,
                     onZoomOut: { zoom(by: 0.5) },
                     onZoomIn: { zoom(by: 2) },
+                    onReset: {
+                        resetCanvasViewport()
+                        schedulePersistStateIfConfigured()
+                    },
                     onFit: { fitCanvasToViewport() }
                 )
                 .padding(HudSpacing.xl)
@@ -679,11 +684,12 @@ public struct HudVantageSurface: View {
             .onChanged { value in
                 switch canvasTool {
                 case .hand:
-                    let start = panStart ?? canvasPan
+                    let start = panStart ?? canvasState.pan
                     panStart = start
-                    canvasPan = CGSize(
-                        width: start.width + value.translation.width,
-                        height: start.height + value.translation.height
+                    canvasState = canvasState.replaying(
+                        panX: start.width + value.translation.width,
+                        panY: start.height + value.translation.height,
+                        scale: nil
                     )
                 case .select:
                     selectionDrag = SelectionDrag(
@@ -695,6 +701,7 @@ public struct HudVantageSurface: View {
             }
             .onEnded { _ in
                 panStart = nil
+                schedulePersistStateIfConfigured()
                 selectionDrag = nil
             }
     }
@@ -702,79 +709,46 @@ public struct HudVantageSurface: View {
     private var canvasZoomGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                setCanvasScale(zoomStart * value, around: viewportCenter)
+                let start = zoomStart ?? canvasState.scale
+                zoomStart = start
+                setCanvasScale(start * value, around: canvasState.viewportCenter)
             }
             .onEnded { _ in
-                zoomStart = canvasScale
+                zoomStart = nil
             }
     }
 
     private func zoom(by factor: CGFloat) {
-        setCanvasScale(canvasScale * factor, around: viewportCenter)
+        setCanvasScale(canvasState.scale * factor, around: canvasState.viewportCenter)
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
         if abs(delta.height) >= abs(delta.width) {
             let factor = min(max(exp(delta.height * 0.004), 0.82), 1.22)
-            setCanvasScale(canvasScale * factor, around: viewportPoint)
+            setCanvasScale(canvasState.scale * factor, around: viewportPoint)
         } else {
-            canvasPan.width += delta.width
+            canvasState = canvasState.panned(by: CGSize(width: delta.width, height: 0))
         }
     }
 
     private func handleCanvasMagnify(_ magnification: CGFloat, at viewportPoint: CGPoint) {
         let factor = min(max(1 + magnification, 0.75), 1.35)
-        setCanvasScale(canvasScale * factor, around: viewportPoint)
+        setCanvasScale(canvasState.scale * factor, around: viewportPoint)
     }
 
     private func setCanvasScale(_ proposedScale: CGFloat, around screenPoint: CGPoint) {
-        let oldScale = canvasScale
-        let newScale = clampedScale(proposedScale)
-        guard newScale != oldScale else { return }
-
-        let worldPoint = CGPoint(
-            x: (screenPoint.x - canvasPan.width) / oldScale,
-            y: (screenPoint.y - canvasPan.height) / oldScale
-        )
-
-        canvasScale = newScale
-        zoomStart = newScale
-        canvasPan = CGSize(
-            width: screenPoint.x - worldPoint.x * newScale,
-            height: screenPoint.y - worldPoint.y * newScale
-        )
+        canvasState = canvasState.zoomed(to: proposedScale, around: screenPoint)
+        schedulePersistStateIfConfigured()
     }
 
     private func fitCanvasToViewport() {
-        let viewport = lastViewportSize
-        guard viewport.width > 80, viewport.height > 80 else { return }
-
-        let horizontalScale = (viewport.width - 64) / canvasContentSize.width
-        let verticalScale = (viewport.height - 64) / canvasContentSize.height
-        let scale = clampedScale(min(horizontalScale, verticalScale))
-
-        canvasScale = scale
-        zoomStart = scale
-        canvasPan = CGSize(
-            width: max(32, (viewport.width - canvasContentSize.width * scale) / 2),
-            height: max(32, (viewport.height - canvasContentSize.height * scale) / 2)
-        )
-    }
-
-    private func clampedScale(_ value: CGFloat) -> CGFloat {
-        min(max(value, Self.minimumCanvasScale), Self.maximumCanvasScale)
-    }
-
-    private var viewportCenter: CGPoint {
-        CGPoint(
-            x: lastViewportSize.width / 2,
-            y: lastViewportSize.height / 2
-        )
+        canvasState = canvasState.fitting(canvasWorldBounds)
+        schedulePersistStateIfConfigured()
     }
 
     private func updateMarqueeSelection() {
         guard let selectionDrag else { return }
-        let rect = worldRect(fromViewportRect: selectionDrag.viewportRect)
+        let rect = canvasState.worldRect(fromViewportRect: selectionDrag.viewportRect)
         selectedIDs = Set(
             nodes
                 .filter { node in
@@ -784,40 +758,13 @@ public struct HudVantageSurface: View {
         )
     }
 
-    private func worldRect(fromViewportRect rect: CGRect) -> CGRect {
-        let topLeft = worldPoint(fromViewportPoint: rect.origin)
-        let bottomRight = worldPoint(
-            fromViewportPoint: CGPoint(x: rect.maxX, y: rect.maxY)
-        )
-        return CGRect(
-            x: min(topLeft.x, bottomRight.x),
-            y: min(topLeft.y, bottomRight.y),
-            width: abs(bottomRight.x - topLeft.x),
-            height: abs(bottomRight.y - topLeft.y)
-        )
-    }
-
-    private func worldPoint(fromViewportPoint point: CGPoint) -> CGPoint {
-        CGPoint(
-            x: (point.x - canvasPan.width) / canvasScale,
-            y: (point.y - canvasPan.height) / canvasScale
-        )
-    }
-
-    private var viewportWorldRect: CGRect {
-        worldRect(
-            fromViewportRect: CGRect(
-                origin: .zero,
-                size: lastViewportSize
-            )
-        )
-    }
-
     private func centerCanvas(on worldPoint: CGPoint) {
-        canvasPan = CGSize(
-            width: viewportCenter.x - worldPoint.x * canvasScale,
-            height: viewportCenter.y - worldPoint.y * canvasScale
-        )
+        canvasState = canvasState.centered(on: worldPoint)
+        schedulePersistStateIfConfigured()
+    }
+
+    private func resetCanvasViewport() {
+        canvasState = canvasState.reset()
     }
 
     private func nodeFrame(_ node: TerminalNode) -> CGRect {
@@ -836,13 +783,13 @@ public struct HudVantageSurface: View {
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
-        guard canvasScale >= 0.25 else { return false }
+        guard canvasState.scale >= 0.25 else { return false }
 
         if nodes.count <= 24 {
             return true
         }
 
-        return canvasScale >= 0.58
+        return canvasState.scale >= 0.58
             && selectedIDs.count == 1
             && selectedIDs.contains(node.id)
     }
@@ -854,9 +801,10 @@ public struct HudVantageSurface: View {
                     node: node,
                     isSelected: selectedIDs.contains(node.id),
                     rendersLiveSurface: rendersLiveSurface(for: node),
-                    canvasPan: canvasPan,
-                    canvasScale: canvasScale,
+                    canvasPan: canvasState.pan,
+                    canvasScale: canvasState.scale,
                     onSelect: { selectNode(node.id) },
+                    onDragBegin: { beginDraggingNode(node.id) },
                     onClose: { close(node.id) },
                     onMove: { delta in move(node.id, delta: worldDelta(delta)) },
                     onResize: { delta in resize(node.id, delta: worldDelta(delta)) }
@@ -867,6 +815,7 @@ public struct HudVantageSurface: View {
         .contentShape(Rectangle())
         .onTapGesture {
             selectedIDs.removeAll()
+            schedulePersistStateIfConfigured()
         }
     }
 
@@ -926,8 +875,8 @@ public struct HudVantageSurface: View {
             .padding(.horizontal, HudSpacing.xxl)
 
             ViewportStatusChip(
-                rect: viewportWorldRect,
-                scale: canvasScale,
+                rect: canvasState.visibleWorldRect,
+                scale: canvasState.scale,
                 tool: canvasTool
             )
         }
@@ -1088,6 +1037,8 @@ public struct HudVantageSurface: View {
                 ok: true,
                 message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
             )
+        case "viewport", "view":
+            return applyViewportCommand(command)
         case "perf-reset", "reset-metrics":
             controlCommandCount = 0
             lastControlAction = nil
@@ -1106,6 +1057,7 @@ public struct HudVantageSurface: View {
             return restoreWorkspaceState(command)
         case "clear":
             stopAllNodes()
+            schedulePersistStateIfConfigured()
             return controlResponse(
                 command,
                 ok: true,
@@ -1156,7 +1108,7 @@ public struct HudVantageSurface: View {
         if shouldReset {
             nextIndex = 1
             nextZIndex = 1
-            canvasPan = .zero
+            resetCanvasViewport()
         }
 
         let size = CGSize(
@@ -1208,6 +1160,7 @@ public struct HudVantageSurface: View {
         }
         selectedIDs.removeAll()
         fitCanvasToViewport()
+        schedulePersistStateIfConfigured()
 
         return controlResponse(
             command,
@@ -1451,6 +1404,7 @@ public struct HudVantageSurface: View {
     ) -> HudVantageControlResponse {
         if command.normalizedSelectionMode == "clear" {
             selectedIDs.removeAll()
+            schedulePersistStateIfConfigured()
             return controlResponse(
                 command,
                 ok: true,
@@ -1479,6 +1433,7 @@ public struct HudVantageSurface: View {
             if let first = resolved.first {
                 bringToFront(first.id)
             }
+            schedulePersistStateIfConfigured()
             return controlResponse(
                 command,
                 ok: true,
@@ -1528,6 +1483,31 @@ public struct HudVantageSurface: View {
         } catch {
             return controlNodeErrorResponse(command, error)
         }
+    }
+
+    private func applyViewportCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        if command.reset == true {
+            resetCanvasViewport()
+        }
+        if command.fit == true {
+            fitCanvasToViewport()
+        }
+        if command.panX != nil || command.panY != nil || command.scale != nil {
+            canvasState = canvasState.replaying(
+                panX: command.panX.map { CGFloat($0) },
+                panY: command.panY.map { CGFloat($0) },
+                scale: command.scale.map { CGFloat($0) }
+            )
+        }
+        schedulePersistStateIfConfigured()
+
+        return controlResponse(
+            command,
+            ok: true,
+            message: "viewport updated"
+        )
     }
 
     private func closeNodes(
@@ -1799,9 +1779,11 @@ public struct HudVantageSurface: View {
             let restoredIDs = Set(restored.map(\.id))
             let savedSelection = Set(snapshot.selectedNodeIDs).intersection(restoredIDs)
             selectedIDs = savedSelection.isEmpty ? restoredIDs : savedSelection
-            canvasPan = CGSize(width: snapshot.viewport.panX, height: snapshot.viewport.panY)
-            canvasScale = clampedScale(CGFloat(snapshot.viewport.scale))
-            zoomStart = canvasScale
+            canvasState = canvasState.replaying(
+                panX: CGFloat(snapshot.viewport.panX),
+                panY: CGFloat(snapshot.viewport.panY),
+                scale: CGFloat(snapshot.viewport.scale)
+            )
             nextZIndex = (nodes.map(\.zIndex).max() ?? 0) + 1
 
             return controlResponse(
@@ -1824,6 +1806,16 @@ public struct HudVantageSurface: View {
         try? writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
     }
 
+    private func schedulePersistStateIfConfigured() {
+        guard configuration.restoresStateOnLaunch else { return }
+        pendingPersistTask?.cancel()
+        pendingPersistTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else { return }
+            persistStateIfConfigured()
+        }
+    }
+
     private func workspaceSnapshot(workspaceID: String) -> HudVantageWorkspaceSnapshot {
         let durableNodes = nodes.compactMap(durableSnapshot)
         let durableIDs = Set(durableNodes.map(\.id))
@@ -1832,9 +1824,9 @@ public struct HudVantageSurface: View {
             workspaceID: GraphitePath.slugify(workspaceID, fallback: configuration.workspaceID),
             surfaceTitle: configuration.surfaceTitle,
             viewport: HudVantageViewportSnapshot(
-                panX: Double(canvasPan.width),
-                panY: Double(canvasPan.height),
-                scale: Double(canvasScale)
+                panX: Double(canvasState.pan.width),
+                panY: Double(canvasState.pan.height),
+                scale: Double(canvasState.scale)
             ),
             nodes: durableNodes,
             selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
@@ -1997,6 +1989,15 @@ public struct HudVantageSurface: View {
     private func selectNode(_ id: UUID) {
         selectedIDs = [id]
         bringToFront(id)
+        schedulePersistStateIfConfigured()
+    }
+
+    private func beginDraggingNode(_ id: UUID) {
+        if !selectedIDs.contains(id) {
+            selectedIDs = [id]
+        }
+        bringToFront(id)
+        schedulePersistStateIfConfigured()
     }
 
     private func bringToFront(_ id: UUID) {
@@ -2020,17 +2021,19 @@ public struct HudVantageSurface: View {
         for node in nodes where idsToMove.contains(node.id) {
             node.move(by: delta)
         }
+        schedulePersistStateIfConfigured()
     }
 
     private func resize(_ id: UUID, delta: CGSize) {
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         node.resize(by: delta)
+        schedulePersistStateIfConfigured()
     }
 
     private func worldDelta(_ screenDelta: CGSize) -> CGSize {
         CGSize(
-            width: screenDelta.width / canvasScale,
-            height: screenDelta.height / canvasScale
+            width: screenDelta.width / canvasState.scale,
+            height: screenDelta.height / canvasState.scale
         )
     }
 
@@ -2063,16 +2066,15 @@ public struct HudVantageSurface: View {
 
         nodes = [first, second]
         selectedIDs = [second.id]
-        canvasScale = 1
-        zoomStart = 1
-        canvasPan = .zero
+        resetCanvasViewport()
+        schedulePersistStateIfConfigured()
     }
 
     private func stopAllNodes() {
         nodes.forEach { $0.stop() }
         nodes.removeAll(keepingCapacity: true)
         selectedIDs.removeAll()
-        canvasPan = .zero
+        resetCanvasViewport()
     }
 
     private func controlResponse(
@@ -2110,13 +2112,13 @@ public struct HudVantageSurface: View {
     }
 
     private func controlViewport() -> HudVantageControlViewport {
-        let worldRect = viewportWorldRect
+        let worldRect = canvasState.visibleWorldRect
         return HudVantageControlViewport(
-            panX: Double(canvasPan.width),
-            panY: Double(canvasPan.height),
-            scale: Double(canvasScale),
-            viewportWidth: Double(lastViewportSize.width),
-            viewportHeight: Double(lastViewportSize.height),
+            panX: Double(canvasState.pan.width),
+            panY: Double(canvasState.pan.height),
+            scale: Double(canvasState.scale),
+            viewportWidth: Double(canvasState.viewportSize.width),
+            viewportHeight: Double(canvasState.viewportSize.height),
             worldMinX: Double(worldRect.minX),
             worldMinY: Double(worldRect.minY),
             worldWidth: Double(worldRect.width),
@@ -2196,14 +2198,15 @@ public struct HudVantageSurface: View {
         min(max(value, lower), upper)
     }
 
-    private var canvasContentSize: CGSize {
-        let maxX = nodes.reduce(CGFloat(920)) { partial, node in
-            max(partial, node.origin.x + node.size.width + 96)
+    private var canvasWorldBounds: CGRect {
+        guard let first = nodes.first else {
+            return CGRect(x: 0, y: 0, width: 920, height: 560)
         }
-        let maxY = nodes.reduce(CGFloat(560)) { partial, node in
-            max(partial, node.origin.y + node.size.height + 96)
+
+        let bounds = nodes.dropFirst().reduce(nodeFrame(first)) { rect, node in
+            rect.union(nodeFrame(node))
         }
-        return CGSize(width: maxX, height: maxY)
+        return bounds.insetBy(dx: -96, dy: -96)
     }
 }
 
@@ -2214,6 +2217,7 @@ private struct TerminalNodeView: View {
     let canvasPan: CGSize
     let canvasScale: CGFloat
     let onSelect: () -> Void
+    let onDragBegin: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
     let onResize: (CGSize) -> Void
@@ -2351,7 +2355,7 @@ private struct TerminalNodeView: View {
                 if !isDragging {
                     isDragging = true
                     lastDragTranslation = .zero
-                    onSelect()
+                    onDragBegin()
                 }
 
                 let delta = CGSize(
@@ -2631,10 +2635,8 @@ private struct CanvasNavigationPanel: View {
     @Binding var filter: CanvasNavigationFilter
     let selectedIDs: Set<UUID>
     let viewportWorldRect: CGRect
-    let canvasContentSize: CGSize
-    let canvasPan: CGSize
+    let canvasWorldBounds: CGRect
     let canvasScale: CGFloat
-    let viewportSize: CGSize
     let onSelectNode: (UUID) -> Void
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
@@ -2752,7 +2754,7 @@ private struct CanvasNavigationPanel: View {
             CanvasMiniMap(
                 nodes: minimapNodes,
                 selectedIDs: selectedIDs,
-                worldSize: canvasContentSize,
+                worldBounds: canvasWorldBounds,
                 viewportWorldRect: viewportWorldRect,
                 onCenterWorldPoint: onCenterWorldPoint
             )
@@ -3121,7 +3123,7 @@ private struct CommandKeyButton: View {
 private struct CanvasMiniMap: View {
     let nodes: [TerminalNode]
     let selectedIDs: Set<UUID>
-    let worldSize: CGSize
+    let worldBounds: CGRect
     let viewportWorldRect: CGRect
     let onCenterWorldPoint: (CGPoint) -> Void
     @Environment(\.hudTheme) private var theme
@@ -3157,8 +3159,8 @@ private struct CanvasMiniMap: View {
             roundedRect: CGRect(
                 x: inset.width,
                 y: inset.height,
-                width: worldSize.width * scale,
-                height: worldSize.height * scale
+                width: worldBounds.width * scale,
+                height: worldBounds.height * scale
             ),
             cornerRadius: theme.radius.tight
         )
@@ -3166,8 +3168,8 @@ private struct CanvasMiniMap: View {
 
         for node in nodes {
             let rect = CGRect(
-                x: inset.width + node.origin.x * scale,
-                y: inset.height + node.origin.y * scale,
+                x: inset.width + (node.origin.x - worldBounds.minX) * scale,
+                y: inset.height + (node.origin.y - worldBounds.minY) * scale,
                 width: max(2, node.size.width * scale),
                 height: max(2, node.size.height * scale)
             )
@@ -3182,8 +3184,8 @@ private struct CanvasMiniMap: View {
         }
 
         let viewport = CGRect(
-            x: inset.width + viewportWorldRect.minX * scale,
-            y: inset.height + viewportWorldRect.minY * scale,
+            x: inset.width + (viewportWorldRect.minX - worldBounds.minX) * scale,
+            y: inset.height + (viewportWorldRect.minY - worldBounds.minY) * scale,
             width: viewportWorldRect.width * scale,
             height: viewportWorldRect.height * scale
         )
@@ -3195,23 +3197,23 @@ private struct CanvasMiniMap: View {
         let scale = minimapScale(in: size)
         let inset = minimapInset(in: size, scale: scale)
         return CGPoint(
-            x: min(max((location.x - inset.width) / scale, 0), worldSize.width),
-            y: min(max((location.y - inset.height) / scale, 0), worldSize.height)
+            x: min(max((location.x - inset.width) / scale + worldBounds.minX, worldBounds.minX), worldBounds.maxX),
+            y: min(max((location.y - inset.height) / scale + worldBounds.minY, worldBounds.minY), worldBounds.maxY)
         )
     }
 
     private func minimapScale(in size: CGSize) -> CGFloat {
-        guard worldSize.width > 0, worldSize.height > 0 else { return 1 }
+        guard worldBounds.width > 0, worldBounds.height > 0 else { return 1 }
         return min(
-            (size.width - 16) / worldSize.width,
-            (size.height - 16) / worldSize.height
+            (size.width - 16) / worldBounds.width,
+            (size.height - 16) / worldBounds.height
         )
     }
 
     private func minimapInset(in size: CGSize, scale: CGFloat) -> CGSize {
         CGSize(
-            width: max(8, (size.width - worldSize.width * scale) / 2),
-            height: max(8, (size.height - worldSize.height * scale) / 2)
+            width: max(8, (size.width - worldBounds.width * scale) / 2),
+            height: max(8, (size.height - worldBounds.height * scale) / 2)
         )
     }
 }
@@ -3363,6 +3365,7 @@ private struct CanvasZoomTool: View {
     let scale: CGFloat
     let onZoomOut: () -> Void
     let onZoomIn: () -> Void
+    let onReset: () -> Void
     let onFit: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -3383,6 +3386,12 @@ private struct CanvasZoomTool: View {
                 systemName: "plus.magnifyingglass",
                 help: "Zoom in",
                 action: onZoomIn
+            )
+
+            CanvasIconButton(
+                systemName: "arrow.counterclockwise",
+                help: "Reset zoom",
+                action: onReset
             )
 
             CanvasIconButton(

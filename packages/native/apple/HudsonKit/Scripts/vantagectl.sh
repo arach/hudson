@@ -22,6 +22,7 @@ Usage:
   vantagectl.sh [--wait] focus [NODE...]
   vantagectl.sh [--wait] close [NODE...]
   vantagectl.sh [--wait] metrics [--reset]
+  vantagectl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
   vantagectl.sh [--wait] ensure-tmux [--confirm]
   vantagectl.sh [--wait] save [--state-file PATH]
   vantagectl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
@@ -222,6 +223,27 @@ case "$command" in
       "\"includeMetrics\":true"
       "\"includeViewport\":true"
     )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  viewport|view)
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"viewport\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeViewport\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --reset) parts+=("\"reset\":true"); shift ;;
+        --fit) parts+=("\"fit\":true"); shift ;;
+        --pan-x) parts+=("\"panX\":$(json_number_arg pan-x "${2:?missing pan-x}")"); shift 2 ;;
+        --pan-y) parts+=("\"panY\":$(json_number_arg pan-y "${2:?missing pan-y}")"); shift 2 ;;
+        --scale) parts+=("\"scale\":$(json_number_arg scale "${2:?missing scale}")"); shift 2 ;;
+        *) printf 'unknown viewport option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
     queue_command "$(json_object "${parts[@]}")"
     ;;
 

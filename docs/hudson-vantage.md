@@ -107,6 +107,8 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait select NODE_ID
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait inspect
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait metrics
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --fit
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait ensure-tmux --confirm
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore --create
@@ -138,6 +140,7 @@ The JSONL command contract is intentionally small and durable:
 | `close` / `remove` | Stop and remove selected or targeted nodes |
 | `metrics` / `perf` | Return lightweight node, runtime, viewport, and control latency counters |
 | `perf-reset` | Reset in-memory control latency counters |
+| `viewport` / `view` | Report, reset, fit, or replay exact pan/scale viewport state |
 | `ensure-tmux` / `install-tmux` | Detect local tmux and install it with Homebrew after explicit confirmation |
 | `save` / `snapshot` | Persist durable tmux-backed nodes, bounds, z-order, selection, and viewport |
 | `restore` / `load` | Recreate saved tmux-backed nodes from a state file |
@@ -157,6 +160,10 @@ Node-targeting actions accept `nodeID`, `nodeIDs`, or the legacy `ids` array.
 Selectors can be full UUIDs, UUID prefixes, node titles, tmux targets,
 Graphite paths, or `remoteHost:target` for remote tmux nodes. `select` supports
 `selectionMode` values `replace`, `add`, `remove`, `toggle`, and `clear`.
+
+`viewport` accepts `reset: true`, `fit: true`, and exact replay fields
+`panX`, `panY`, and `scale`. The wrappers expose these as `viewport --reset`,
+`viewport --fit`, and `viewport --pan-x X --pan-y Y --scale N`.
 
 `save` and `restore` use the configured `stateURL` unless a command includes
 `statePath`. The current restore slice intentionally persists tmux-backed nodes

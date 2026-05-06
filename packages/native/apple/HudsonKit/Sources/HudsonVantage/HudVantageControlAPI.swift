@@ -27,6 +27,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var height: Double?
     public var gap: Double?
     public var reset: Bool?
+    public var fit: Bool?
+    public var panX: Double?
+    public var panY: Double?
+    public var scale: Double?
     public var allowLarge: Bool?
     public var includeChildren: Bool?
     public var ids: [String]?
@@ -60,6 +64,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         height: Double? = nil,
         gap: Double? = nil,
         reset: Bool? = nil,
+        fit: Bool? = nil,
+        panX: Double? = nil,
+        panY: Double? = nil,
+        scale: Double? = nil,
         allowLarge: Bool? = nil,
         includeChildren: Bool? = nil,
         ids: [String]? = nil,
@@ -92,6 +100,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.height = height
         self.gap = gap
         self.reset = reset
+        self.fit = fit
+        self.panX = panX
+        self.panY = panY
+        self.scale = scale
         self.allowLarge = allowLarge
         self.includeChildren = includeChildren
         self.ids = ids

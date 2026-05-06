@@ -121,6 +121,34 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.confirmInstall, true)
     }
 
+    func testControlCommandDecodesViewportReplayFields() throws {
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "viewport-1",
+          "action": "viewport",
+          "reset": false,
+          "fit": true,
+          "panX": -120.5,
+          "panY": 44,
+          "scale": 0.25
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "viewport")
+        XCTAssertEqual(command.fit, true)
+        XCTAssertEqual(command.reset, false)
+        XCTAssertEqual(command.panX, -120.5)
+        XCTAssertEqual(command.panY, 44)
+        XCTAssertEqual(command.scale, 0.25)
+    }
+
     func testWorkspaceSnapshotRoundTripsDurableTmuxNode() throws {
         let nodeID = UUID()
         let snapshot = HudVantageWorkspaceSnapshot(
@@ -340,6 +368,33 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(close["apiVersion"] as? String, "v0")
         XCTAssertEqual(close["kind"] as? String, "hudson.vantage.command")
         XCTAssertEqual(close["nodeIDs"] as? [String], ["node-a"])
+    }
+
+    func testControlScriptsEmitViewportCommands() throws {
+        for scriptPath in [
+            "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
+            "examples/termini-canvas/scripts/canvasctl.sh",
+        ] {
+            let command = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "viewport",
+                    "--fit",
+                    "--pan-x", "-120.5",
+                    "--pan-y", "44",
+                    "--scale", "0.25",
+                ]
+            )
+
+            XCTAssertEqual(command["id"] as? String, "test-request")
+            XCTAssertEqual(command["action"] as? String, "viewport")
+            XCTAssertEqual(command["apiVersion"] as? String, "v0")
+            XCTAssertEqual(command["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(command["fit"] as? Bool, true)
+            XCTAssertEqual(try XCTUnwrap(command["panX"] as? NSNumber).doubleValue, -120.5, accuracy: 0.001)
+            XCTAssertEqual(try XCTUnwrap(command["panY"] as? NSNumber).doubleValue, 44, accuracy: 0.001)
+            XCTAssertEqual(try XCTUnwrap(command["scale"] as? NSNumber).doubleValue, 0.25, accuracy: 0.001)
+        }
     }
 
     private func queuedCommandFromScript(
