@@ -2,7 +2,7 @@
 // Shell internals are in 'hudsonkit/shell'.
 
 // Types
-export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode } from './types/app';
+export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
@@ -70,3 +70,5 @@ export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from '.
 
 // Reusable widget (used by apps like Shaper directly)
 export { ZoomControls } from './components/chrome';
+export { CanvasToolDock, PanZoomViewport } from './components/canvas';
+export type { ViewportPan } from './components/canvas';

@@ -188,6 +188,10 @@ function appHasPorts(app: WorkspaceAppConfig['app'] | null | undefined): boolean
   return !!(app?.ports?.outputs?.length || app?.ports?.inputs?.length);
 }
 
+function appShowsPorts(app: WorkspaceAppConfig['app'] | null | undefined): boolean {
+  return appHasPorts(app) && app?.portInspector !== 'hidden';
+}
+
 type AppSettingFieldLike = AppSettingsEntry['config']['sections'][number]['fields'][number];
 type WorkspaceToolScalar = string | number | boolean;
 
@@ -1013,23 +1017,38 @@ function WorkspaceInner({
   const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
   const [fsLeftOpen, setFsLeftOpen] = useState(true);
   const [fsRightOpen, setFsRightOpen] = useState(true);
+  const pendingFullscreenHashRef = useRef<string | null>(null);
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
+  const workspaceAppIdsKey = useMemo(() => workspace.apps.map(c => c.app.id).join('\0'), [workspace.apps]);
 
   // --- URL hash sync (deep-link into focused/fullscreen app) ---
   useEffect(() => {
-    const hash = window.location.hash.slice(1);
-    if (!hash) return;
-    const p = new URLSearchParams(hash);
-    const focus = p.get('focus');
-    const fs = p.get('fullscreen');
-    const allIds = new Set(workspace.apps.map(c => c.app.id));
-    if (focus && allIds.has(focus)) setFocusedAppId(focus);
-    if (fs && allIds.has(fs)) { setFullscreenAppId(fs); setFocusedAppId(fs); }
-  }, []); // eslint-disable-line react-hooks/exhaustive-deps — mount only
+    const applyHash = () => {
+      const hash = window.location.hash.slice(1);
+      if (!hash) return;
+      const p = new URLSearchParams(hash);
+      const focus = p.get('focus');
+      const fs = p.get('fullscreen');
+      const allIds = new Set(workspaceAppIdsKey ? workspaceAppIdsKey.split('\0') : []);
+      if (focus && allIds.has(focus)) setFocusedAppId(focus);
+      if (fs && allIds.has(fs)) {
+        pendingFullscreenHashRef.current = null;
+        setFullscreenAppId(fs);
+        setFocusedAppId(fs);
+      } else {
+        pendingFullscreenHashRef.current = fs;
+      }
+    };
+
+    applyHash();
+    window.addEventListener('hashchange', applyHash);
+    return () => window.removeEventListener('hashchange', applyHash);
+  }, [setFocusedAppId, workspaceAppIdsKey]);
 
   useEffect(() => {
+    if (!fullscreenAppId && pendingFullscreenHashRef.current) return;
     const parts: string[] = [];
     if (focusedAppId) parts.push(`focus=${focusedAppId}`);
     if (fullscreenAppId) parts.push(`fullscreen=${fullscreenAppId}`);
@@ -1044,7 +1063,7 @@ function WorkspaceInner({
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
-  const focusedHasPorts = appHasPorts(focusedApp);
+  const focusedHasPorts = appShowsPorts(focusedApp);
   const hasInspectorOrTools = !!(focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length));
   const hasRightPanelSlot = !!focusedApp?.slots.RightPanel;
   const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts);
@@ -2367,7 +2386,7 @@ function WorkspaceInner({
   const fullscreenConfig = fullscreenAppId
     ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
     : null;
-  const fullscreenHasPorts = appHasPorts(fullscreenConfig?.app);
+  const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
   const fullscreenHasInspectorSurface = !!(
     fullscreenConfig?.app.slots.Inspector ||
     fullscreenConfig?.app.slots.RightPanel ||
@@ -2399,10 +2418,9 @@ function WorkspaceInner({
     <ShellLayoutProvider value={shellLayout}>
       {/* Fullscreen app mode — escapes the canvas entirely */}
       {fullscreenConfig ? (
-        <div className="h-screen flex flex-col" style={{ background: 'rgb(10, 10, 10)' }}>
+        <div className="h-screen flex flex-col bg-background text-foreground">
           {/* Header bar */}
-          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-border"
-            style={{ background: 'rgba(14, 14, 14, 0.97)', backdropFilter: 'blur(20px)' }}>
+          <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-border bg-background/95 backdrop-blur-xl shadow-[var(--hud-shadow-nav)]">
             {/* Left: back button + panel toggle */}
             <button
               onClick={exitFullscreen}
@@ -2458,7 +2476,7 @@ function WorkspaceInner({
           </div>
 
           {/* Body: left panel + content + right panel */}
-          <div className="flex-1 flex overflow-hidden min-h-0">
+          <div className="flex-1 flex overflow-hidden min-h-0 pb-7">
             {/* Left panel */}
             {fullscreenConfig.app.slots.LeftPanel && fsLeftOpen && (
               <div className="w-[240px] shrink-0 border-r border-border overflow-y-auto frame-scrollbar bg-card/80">

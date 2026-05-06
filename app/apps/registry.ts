@@ -29,6 +29,7 @@ import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
 import { logoDesignerApp } from './logo-designer';
+import { imageProcessLabApp } from './image-process-lab';
 import { shaperApp } from './shaper';
 import { traceViewerApp } from './trace-viewer';
 // Terminal is available in the bottom console panel (AI + Terminal tabs)
@@ -70,6 +71,7 @@ function getAppById(id: string): HudsonApp | null {
     'hudson-ai': hudsonAIApp,
     'intent-explorer': intentExplorerApp,
     'logo-designer': logoDesignerApp,
+    'image-process-lab': imageProcessLabApp,
     'shaper': shaperApp,
     'trace-viewer': traceViewerApp,
     'openscout': openscoutApp,
@@ -184,6 +186,11 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       app: shaperApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 580, y: 140, w: 540, h: 420 },
+    },
+    {
+      app: imageProcessLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 580, y: 600, w: 540, h: 460 },
     },
   ];
 }
