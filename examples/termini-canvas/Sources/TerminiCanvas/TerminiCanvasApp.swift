@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonVantage
 
 #if canImport(AppKit)
 import AppKit
@@ -16,7 +17,7 @@ struct TerminiCanvasApp: App {
 
     var body: some Scene {
         WindowGroup("Termini Canvas") {
-            TerminiCanvasRootView()
+            HudVantageSurface(configuration: .terminiCanvasCaseStudy)
                 .frame(minWidth: 980, minHeight: 680)
                 .hudsonAppManifest(
                     HudAppManifest(

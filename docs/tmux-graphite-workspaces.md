@@ -105,6 +105,46 @@ Creating a large terminal grid should be staged:
 
 The control plane is async. The canvas should never wait for 64 terminal surfaces to mount before showing the spatial result.
 
+## Reattach flow
+
+Agentic callers should be able to provide an arbitrary set of durable IDs and
+ask Hudson to rebuild a canvas around them.
+
+Initial sample command shape:
+
+```json
+{
+  "action": "reattach",
+  "ids": [
+    "hudson.lab.termini.canvas.0042.shell",
+    "hudson.lab.agents.codex.0007.worker"
+  ]
+}
+```
+
+The sample also accepts raw tmux `sessions` and `targets`. Graphite ids resolve
+to tmux targets through the registry mapping; raw targets are used directly.
+For day-to-day agent use, the sample exposes this through:
+
+```sh
+examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
+  --id hudson.lab.termini.canvas.0042.shell \
+  --id hudson.lab.agents.codex.0007.worker
+```
+
+Remote tmux uses the same identity model. The local PTY runs SSH, and the
+remote host owns the durable tmux server:
+
+```sh
+examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
+  --remote user@host \
+  --session hudson-lab
+```
+
+This is still a sample-level control API, but it exercises the intended
+contract: runtime identity is durable and the canvas can be reconstructed from
+outside the app.
+
 ## Selection and group actions
 
 Selection is a first-class model, not a visual side effect:

@@ -15,6 +15,51 @@ struct TerminiCanvasControlCommand: Decodable, Sendable {
     var reset: Bool?
     var allowLarge: Bool?
     var includeChildren: Bool?
+    var ids: [String]?
+    var sessions: [String]?
+    var targets: [String]?
+    var createIfMissing: Bool?
+    var remoteHost: String?
+
+    init(
+        id: String? = nil,
+        action: String,
+        columns: Int? = nil,
+        rows: Int? = nil,
+        count: Int? = nil,
+        originX: Double? = nil,
+        originY: Double? = nil,
+        width: Double? = nil,
+        height: Double? = nil,
+        gap: Double? = nil,
+        reset: Bool? = nil,
+        allowLarge: Bool? = nil,
+        includeChildren: Bool? = nil,
+        ids: [String]? = nil,
+        sessions: [String]? = nil,
+        targets: [String]? = nil,
+        createIfMissing: Bool? = nil,
+        remoteHost: String? = nil
+    ) {
+        self.id = id
+        self.action = action
+        self.columns = columns
+        self.rows = rows
+        self.count = count
+        self.originX = originX
+        self.originY = originY
+        self.width = width
+        self.height = height
+        self.gap = gap
+        self.reset = reset
+        self.allowLarge = allowLarge
+        self.includeChildren = includeChildren
+        self.ids = ids
+        self.sessions = sessions
+        self.targets = targets
+        self.createIfMissing = createIfMissing
+        self.remoteHost = remoteHost
+    }
 
     var normalizedAction: String {
         action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -58,18 +103,26 @@ struct TerminiCanvasControlResponse: Encodable, Sendable {
 }
 
 final class TerminiCanvasControlAPI: ObservableObject {
-    let commandURL = URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl")
-    let responseURL = URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl")
+    let commandURL: URL
+    let responseURL: URL
 
     private enum PollEvent {
         case command(TerminiCanvasControlCommand)
         case decodeFailure(String)
     }
 
-    private let queue = DispatchQueue(label: "dev.arach.hudson.termini-canvas.control-api")
+    private let queue = DispatchQueue(label: "dev.arach.hudson.vantage.control-api")
     private var pollTimer: DispatchSourceTimer?
     private var readOffset: UInt64 = 0
     private let decoder = JSONDecoder()
+
+    init(
+        commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
+        responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl")
+    ) {
+        self.commandURL = commandURL
+        self.responseURL = responseURL
+    }
 
     func start(
         handler: @escaping @MainActor (TerminiCanvasControlCommand) -> TerminiCanvasControlResponse

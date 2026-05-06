@@ -7,30 +7,102 @@ import HudsonShell
 import HudsonTerminal
 import Termini
 
+/// Configuration for an embeddable Hudson Vantage.
+///
+/// A Vantage is a spatial operating surface for live runtimes. Hosts provide
+/// product naming, control-plane paths, and an optional working directory while
+/// Hudson owns the canvas interaction model.
+public struct HudVantageConfiguration: Sendable {
+    public var surfaceTitle: String
+    public var surfaceSubtitle: String
+    public var commandURL: URL
+    public var responseURL: URL
+    public var workingDirectoryURL: URL?
+
+    public init(
+        surfaceTitle: String = "Vantage",
+        surfaceSubtitle: String = "native Hudson runtime surface",
+        commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
+        responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl"),
+        workingDirectoryURL: URL? = nil
+    ) {
+        self.surfaceTitle = surfaceTitle
+        self.surfaceSubtitle = surfaceSubtitle
+        self.commandURL = commandURL
+        self.responseURL = responseURL
+        self.workingDirectoryURL = workingDirectoryURL
+    }
+
+    public static let terminiCanvasCaseStudy = HudVantageConfiguration(
+        surfaceTitle: "Termini Canvas",
+        surfaceSubtitle: "native macOS Hudson Vantage case study",
+        commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
+        responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl")
+    )
+}
+
 @MainActor
 private final class TerminalNode: ObservableObject, Identifiable {
+    enum RuntimeIdentity {
+        case localPTY
+        case tmux(target: String, path: GraphitePath?, remoteHost: String?)
+
+        var badge: String {
+            switch self {
+            case .localPTY: "LOCAL PTY"
+            case .tmux(_, _, let remoteHost): remoteHost == nil ? "TMUX" : "SSH TMUX"
+            }
+        }
+
+        var detail: String {
+            switch self {
+            case .localPTY:
+                "zsh · local PTY"
+            case .tmux(let target, _, let remoteHost):
+                remoteHost.map { "\($0) · \(target)" } ?? target
+            }
+        }
+
+        var graphitePath: String? {
+            guard case .tmux(_, let path, _) = self else { return nil }
+            return path?.description
+        }
+    }
+
     let id = UUID()
     let workspace: TerminiLocalPTYWorkspace
     let title: String
     let subtitle: String
     let tint: HudTint
+    let runtimeIdentity: RuntimeIdentity
 
     @Published var origin: CGPoint
     @Published var size: CGSize
     @Published var zIndex: Double
 
-    init(index: Int, origin: CGPoint, size: CGSize, tint: HudTint, zIndex: Double) {
+    init(
+        index: Int,
+        origin: CGPoint,
+        size: CGSize,
+        tint: HudTint,
+        zIndex: Double,
+        processSpec: TerminiProcessSpec? = nil,
+        title: String? = nil,
+        subtitle: String? = nil,
+        runtimeIdentity: RuntimeIdentity = .localPTY
+    ) {
         let controller = TerminiTerminalController()
         self.workspace = TerminiLocalPTYWorkspace(
-            processSpec: Self.localShellSpec(),
+            processSpec: processSpec ?? Self.localShellSpec(),
             controller: controller
         )
-        self.title = "Termini \(index)"
-        self.subtitle = "zsh · local PTY"
+        self.title = title ?? "Termini \(index)"
+        self.subtitle = subtitle ?? runtimeIdentity.detail
         self.origin = origin
         self.size = size
         self.tint = tint
         self.zIndex = zIndex
+        self.runtimeIdentity = runtimeIdentity
         workspace.start()
     }
 
@@ -53,21 +125,105 @@ private final class TerminalNode: ObservableObject, Identifiable {
     }
 
     private static func localShellSpec() -> TerminiProcessSpec {
-        let environment = ProcessInfo.processInfo.environment
-        let shellPath = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
-        return TerminiProcessSpec(
-            executableURL: URL(fileURLWithPath: shellPath),
-            arguments: ["-l"],
-            environment: [
-                "TERM": "xterm-256color",
-                "HUDSON_TERMINI_CANVAS": "1",
-            ],
-            workingDirectoryURL: hudsonRepoRoot
+        shellSpec(
+            executableURL: shellURL,
+            arguments: ["-l"]
         )
     }
 
-    private static var hudsonRepoRoot: URL {
-        URL(fileURLWithPath: #filePath)
+    static func tmuxAttachSpec(
+        target: String,
+        createIfMissing: Bool,
+        remoteHost: String?
+    ) -> TerminiProcessSpec {
+        let canCreate = createIfMissing && Self.isSessionName(target)
+        let tmuxArguments = canCreate
+            ? ["new-session", "-A", "-s", target]
+            : ["attach-session", "-t", target]
+        if let remoteHost {
+            return shellSpec(
+                executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
+                arguments: ["-tt", remoteHost, "tmux"] + tmuxArguments
+            )
+        }
+
+        return shellSpec(
+            executableURL: localTmuxURL ?? URL(fileURLWithPath: "/usr/bin/env"),
+            arguments: localTmuxURL == nil ? ["tmux"] + tmuxArguments : tmuxArguments
+        )
+    }
+
+    static var localTmuxURL: URL? {
+        let environment = ProcessInfo.processInfo.environment
+        let pathCandidates = (environment["PATH"] ?? "")
+            .split(separator: ":")
+            .map { URL(fileURLWithPath: String($0)).appendingPathComponent("tmux") }
+        let commonCandidates = [
+            URL(fileURLWithPath: "/opt/homebrew/bin/tmux"),
+            URL(fileURLWithPath: "/usr/local/bin/tmux"),
+            URL(fileURLWithPath: "/usr/bin/tmux"),
+        ]
+
+        return (pathCandidates + commonCandidates)
+            .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+    }
+
+    static func canCreateTmuxTarget(_ target: String, createIfMissing: Bool) -> Bool {
+        createIfMissing && isSessionName(target)
+    }
+
+    static func localTmuxTargetExists(_ target: String) -> Bool {
+        guard let localTmuxURL else { return false }
+
+        let process = Process()
+        process.executableURL = localTmuxURL
+        process.arguments = ["has-session", "-t", target]
+        process.standardOutput = Pipe()
+        process.standardError = Pipe()
+
+        do {
+            try process.run()
+        } catch {
+            return false
+        }
+        process.waitUntilExit()
+        return process.terminationStatus == 0
+    }
+
+    private static func shellSpec(
+        executableURL: URL,
+        arguments: [String]
+    ) -> TerminiProcessSpec {
+        TerminiProcessSpec(
+            executableURL: executableURL,
+            arguments: arguments,
+            environment: [
+                "TERM": "xterm-256color",
+                "HUDSON_VANTAGE": "1",
+                "HUDSON_TERMINI_CANVAS": "1",
+            ],
+            workingDirectoryURL: defaultWorkingDirectoryURL
+        )
+    }
+
+    private static var shellURL: URL {
+        let environment = ProcessInfo.processInfo.environment
+        let shellPath = environment["SHELL"].flatMap { $0.isEmpty ? nil : $0 } ?? "/bin/zsh"
+        return URL(fileURLWithPath: shellPath)
+    }
+
+    private static func isSessionName(_ target: String) -> Bool {
+        !target.contains(":") && !target.contains(".") && !target.hasPrefix("%")
+    }
+
+    private static var defaultWorkingDirectoryURL: URL {
+        if let configuredPath = ProcessInfo.processInfo.environment["HUDSON_VANTAGE_WORKDIR"],
+           !configuredPath.isEmpty {
+            return URL(fileURLWithPath: configuredPath)
+        }
+
+        return URL(fileURLWithPath: #filePath)
+            .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
             .deletingLastPathComponent()
@@ -118,6 +274,13 @@ private struct SelectionDrag {
     }
 }
 
+private struct TmuxReattachSpec {
+    var target: String
+    var path: GraphitePath?
+    var title: String
+    var remoteHost: String?
+}
+
 private func formattedZoom(_ scale: CGFloat) -> String {
     let percent = scale * 100
 
@@ -133,11 +296,19 @@ private func formattedZoom(_ scale: CGFloat) -> String {
     return "\(Int(percent.rounded()))%"
 }
 
-struct TerminiCanvasRootView: View {
+/// Native Hudson surface for terminal-backed durable runtimes.
+///
+/// The current implementation focuses on local PTYs, local tmux, remote tmux
+/// over SSH, and JSONL-driven external control. It is intentionally embeddable:
+/// Scout, Talkie, Fabric, or a standalone app can each host their own Vantage
+/// by supplying a `HudVantageConfiguration`.
+public struct HudVantageSurface: View {
     private static let tileLimit = 128
     private static let largeTileLimit = 512
     private static let minimumCanvasScale: CGFloat = 0.002
     private static let maximumCanvasScale: CGFloat = 64
+
+    private let configuration: HudVantageConfiguration
 
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
@@ -148,7 +319,7 @@ struct TerminiCanvasRootView: View {
     @State private var inspectorWidth: CGFloat = 300
     @State private var nextIndex = 3
     @State private var nextZIndex: Double = 3
-    @StateObject private var controlAPI = TerminiCanvasControlAPI()
+    @StateObject private var controlAPI: TerminiCanvasControlAPI
     @State private var controlStatus = "API ready"
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
@@ -159,7 +330,17 @@ struct TerminiCanvasRootView: View {
     @State private var lastViewportSize = CGSize(width: 920, height: 560)
     @State private var selectionDrag: SelectionDrag?
 
-    var body: some View {
+    public init(configuration: HudVantageConfiguration = .init()) {
+        self.configuration = configuration
+        _controlAPI = StateObject(
+            wrappedValue: TerminiCanvasControlAPI(
+                commandURL: configuration.commandURL,
+                responseURL: configuration.responseURL
+            )
+        )
+    }
+
+    public var body: some View {
         HudAppShell {
             navigationPanel
         } trailing: {
@@ -231,11 +412,11 @@ struct TerminiCanvasRootView: View {
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
             HudStatusDot(color: HudPalette.statusOk, size: 7)
-            Text("TERMINI CANVAS")
+            Text(configuration.surfaceTitle.uppercased())
                 .font(HudFont.mono(10, weight: .bold))
                 .tracking(1.4)
                 .foregroundStyle(HudPalette.ink)
-            Text("native macOS HudsonKit instantiation")
+            Text(configuration.surfaceSubtitle)
                 .font(HudFont.mono(10))
                 .foregroundStyle(HudPalette.muted)
             Spacer()
@@ -288,16 +469,8 @@ struct TerminiCanvasRootView: View {
                 )
                 .allowsHitTesting(false)
 
-                ZStack(alignment: .topLeading) {
-                    terminalCanvas
-                        .frame(
-                            width: canvasContentSize.width,
-                            height: canvasContentSize.height,
-                            alignment: .topLeading
-                        )
-                }
-                .scaleEffect(canvasScale, anchor: .topLeading)
-                .offset(canvasPan)
+                terminalCanvas
+                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
                 .allowsHitTesting(canvasTool == .select)
 
                 if let rect = selectionDrag?.viewportRect {
@@ -500,6 +673,8 @@ struct TerminiCanvasRootView: View {
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
+        guard canvasScale >= 0.25 else { return false }
+
         if nodes.count <= 24 {
             return true
         }
@@ -516,6 +691,8 @@ struct TerminiCanvasRootView: View {
                     node: node,
                     isSelected: selectedIDs.contains(node.id),
                     rendersLiveSurface: rendersLiveSurface(for: node),
+                    canvasPan: canvasPan,
+                    canvasScale: canvasScale,
                     onSelect: { selectNode(node.id) },
                     onClose: { close(node.id) },
                     onMove: { delta in move(node.id, delta: worldDelta(delta)) },
@@ -614,7 +791,56 @@ struct TerminiCanvasRootView: View {
     private func bootstrapIfNeeded() {
         guard !didBootstrap else { return }
         didBootstrap = true
+        if let command = bootstrapReattachCommand() {
+            let response = reattachTmuxTargets(command)
+            controlStatus = response.message
+            if response.ok {
+                return
+            }
+        }
         resetTerminals()
+    }
+
+    private func bootstrapReattachCommand() -> TerminiCanvasControlCommand? {
+        let environment = ProcessInfo.processInfo.environment
+        let ids = parseEnvironmentList(
+            environment["HUDSON_VANTAGE_REATTACH_IDS"]
+                ?? environment["TERMINI_CANVAS_REATTACH_IDS"]
+        )
+        let sessions = parseEnvironmentList(
+            environment["HUDSON_VANTAGE_REATTACH_SESSIONS"]
+                ?? environment["TERMINI_CANVAS_REATTACH_SESSIONS"]
+        )
+        let targets = parseEnvironmentList(
+            environment["HUDSON_VANTAGE_REATTACH_TARGETS"]
+                ?? environment["TERMINI_CANVAS_REATTACH_TARGETS"]
+        )
+        let remoteHost = environment["HUDSON_VANTAGE_REATTACH_REMOTE_HOST"]
+            ?? environment["TERMINI_CANVAS_REATTACH_REMOTE_HOST"]
+
+        guard !ids.isEmpty || !sessions.isEmpty || !targets.isEmpty else {
+            return nil
+        }
+
+        return TerminiCanvasControlCommand(
+            id: "bootstrap-reattach",
+            action: "reattach",
+            reset: true,
+            ids: ids.isEmpty ? nil : ids,
+            sessions: sessions.isEmpty ? nil : sessions,
+            targets: targets.isEmpty ? nil : targets,
+            createIfMissing: (environment["HUDSON_VANTAGE_REATTACH_CREATE"]
+                ?? environment["TERMINI_CANVAS_REATTACH_CREATE"]) == "1",
+            remoteHost: remoteHost
+        )
+    }
+
+    private func parseEnvironmentList(_ value: String?) -> [String] {
+        guard let value else { return [] }
+        return value
+            .components(separatedBy: CharacterSet(charactersIn: ",;\n"))
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
     }
 
     private func handleControlCommand(
@@ -625,6 +851,8 @@ struct TerminiCanvasRootView: View {
             return tileTerminals(command)
         case "spawn", "new":
             return spawnTerminals(command)
+        case "reattach", "attach", "tmux":
+            return reattachTmuxTargets(command)
         case "clear":
             stopAllNodes()
             return controlResponse(
@@ -768,6 +996,197 @@ struct TerminiCanvasRootView: View {
             ok: true,
             message: "spawned \(count)"
         )
+    }
+
+    private func reattachTmuxTargets(
+        _ command: TerminiCanvasControlCommand
+    ) -> TerminiCanvasControlResponse {
+        let specs: [TmuxReattachSpec]
+        do {
+            specs = try tmuxReattachSpecs(from: command)
+        } catch {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+
+        guard !specs.isEmpty else {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "reattach requires ids, sessions, or targets"
+            )
+        }
+
+        if specs.allSatisfy({ $0.remoteHost == nil }), TerminalNode.localTmuxURL == nil {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux executable not found; install tmux locally or pass remoteHost"
+            )
+        }
+
+        if let missingLocalTarget = specs.first(where: { spec in
+            guard spec.remoteHost == nil else { return false }
+            if TerminalNode.canCreateTmuxTarget(
+                spec.target,
+                createIfMissing: command.createIfMissing == true
+            ) {
+                return false
+            }
+            return !TerminalNode.localTmuxTargetExists(spec.target)
+        }) {
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux target \(missingLocalTarget.target) not found; create it first or use --session NAME --create"
+            )
+        }
+
+        let count = specs.count
+        let columns = clamp(
+            command.columns ?? Int(ceil(sqrt(Double(count)))),
+            lower: 1,
+            upper: 32
+        )
+        let size = CGSize(
+            width: CGFloat(max(300.0, command.width ?? 500.0)),
+            height: CGFloat(max(200.0, command.height ?? 316.0))
+        )
+        let gap = CGFloat(max(0.0, command.gap ?? 22.0))
+        let originX = CGFloat(command.originX ?? 72.0)
+        let originY = CGFloat(command.originY ?? 76.0)
+        let shouldReset = command.reset ?? true
+
+        if shouldReset {
+            stopAllNodes()
+            nextIndex = 1
+            nextZIndex = 1
+        }
+
+        var created: [TerminalNode] = []
+        created.reserveCapacity(count)
+
+        for (offset, spec) in specs.enumerated() {
+            let row = offset / columns
+            let column = offset % columns
+            let origin = CGPoint(
+                x: originX + CGFloat(column) * (size.width + gap),
+                y: originY + CGFloat(row) * (size.height + gap)
+            )
+            let node = TerminalNode(
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint(for: nextIndex),
+                zIndex: nextZIndex,
+                processSpec: TerminalNode.tmuxAttachSpec(
+                    target: spec.target,
+                    createIfMissing: command.createIfMissing == true,
+                    remoteHost: spec.remoteHost
+                ),
+                title: spec.title,
+                subtitle: spec.remoteHost.map { "ssh · \($0)" } ?? "tmux · \(spec.target)",
+                runtimeIdentity: .tmux(
+                    target: spec.target,
+                    path: spec.path,
+                    remoteHost: spec.remoteHost
+                )
+            )
+            created.append(node)
+            nextIndex += 1
+            nextZIndex += 1
+        }
+
+        nodes.append(contentsOf: created)
+        selectedIDs = Set(created.map(\.id))
+        fitCanvasToViewport()
+
+        return controlResponse(
+            command,
+            ok: true,
+            message: "reattached \(count) tmux target\(count == 1 ? "" : "s")"
+        )
+    }
+
+    private func tmuxReattachSpecs(
+        from command: TerminiCanvasControlCommand
+    ) throws -> [TmuxReattachSpec] {
+        var specs: [TmuxReattachSpec] = []
+        let remoteHost = try validatedRemoteHost(command.remoteHost)
+
+        for session in command.sessions ?? [] {
+            let name = try TmuxTarget.validatedName(session, field: "session")
+            specs.append(
+                TmuxReattachSpec(
+                    target: name,
+                    path: nil,
+                    title: "tmux \(name)",
+                    remoteHost: remoteHost
+                )
+            )
+        }
+
+        for target in command.targets ?? [] {
+            let target = try TmuxTarget.validatedTarget(target)
+            specs.append(
+                TmuxReattachSpec(
+                    target: target,
+                    path: nil,
+                    title: "tmux \(target)",
+                    remoteHost: remoteHost
+                )
+            )
+        }
+
+        for id in command.ids ?? [] {
+            if id.hasPrefix("\(GraphitePath.root).") {
+                let path = try GraphitePath(parse: id)
+                let target = try TmuxTarget.from(path: path).windowTarget
+                specs.append(
+                    TmuxReattachSpec(
+                        target: target,
+                        path: path,
+                        title: "\(path.app) \(path.instance)",
+                        remoteHost: remoteHost
+                    )
+                )
+            } else {
+                let target = try TmuxTarget.validatedTarget(id)
+                specs.append(
+                    TmuxReattachSpec(
+                        target: target,
+                        path: nil,
+                        title: "tmux \(target)",
+                        remoteHost: remoteHost
+                    )
+                )
+            }
+        }
+
+        var seen: Set<String> = []
+        return specs.filter { spec in
+            let key = "\(spec.remoteHost ?? "local")|\(spec.target)"
+            guard !seen.contains(key) else { return false }
+            seen.insert(key)
+            return true
+        }
+    }
+
+    private func validatedRemoteHost(_ value: String?) throws -> String? {
+        guard let value else { return nil }
+        let candidate = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !candidate.isEmpty else { return nil }
+
+        let disallowed = CharacterSet.whitespacesAndNewlines
+            .union(CharacterSet(charactersIn: ";'\"`$\\"))
+        guard candidate.rangeOfCharacter(from: disallowed) == nil else {
+            throw TmuxTargetError.invalidField(field: "remoteHost", value: value)
+        }
+
+        return candidate
     }
 
     private func selectNode(_ id: UUID) {
@@ -921,6 +1340,8 @@ private struct TerminalNodeView: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
     let rendersLiveSurface: Bool
+    let canvasPan: CGSize
+    let canvasScale: CGFloat
     let onSelect: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
@@ -931,47 +1352,71 @@ private struct TerminalNodeView: View {
     @State private var isResizing = false
     @State private var lastResizeTranslation: CGSize = .zero
 
-    private var liveOrigin: CGPoint {
-        node.origin
+    private var screenOrigin: CGPoint {
+        CGPoint(
+            x: canvasPan.width + node.origin.x * canvasScale,
+            y: canvasPan.height + node.origin.y * canvasScale
+        )
     }
 
-    private var liveSize: CGSize {
-        node.size
+    private var screenSize: CGSize {
+        CGSize(
+            width: max(2, node.size.width * canvasScale),
+            height: max(2, node.size.height * canvasScale)
+        )
+    }
+
+    private var shouldRenderMarker: Bool {
+        screenSize.width < 110 || screenSize.height < 74
     }
 
     var body: some View {
-        VStack(spacing: 0) {
-            titleBar
-            if rendersLiveSurface {
-                TerminalSurfaceContainer(controller: node.controller)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(HudPalette.bg)
-            } else {
-                TerminalPreview(node: node)
-                    .frame(maxWidth: .infinity, maxHeight: .infinity)
-                    .background(HudPalette.bg)
-            }
-        }
-        .frame(width: liveSize.width, height: liveSize.height)
-        .background(HudPalette.bg)
-        .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
-        .overlay(
-            RoundedRectangle(cornerRadius: HudRadius.card)
-                .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : HudHairline.standard)
-        )
-        .shadow(color: HudSurface.scrim, radius: isSelected ? 22 : 14, x: 0, y: 12)
-        .overlay(alignment: .bottomTrailing) {
-            resizeHandle
-        }
+        nodeSurface
         .position(
-            x: liveOrigin.x + liveSize.width / 2,
-            y: liveOrigin.y + liveSize.height / 2
+            x: screenOrigin.x + screenSize.width / 2,
+            y: screenOrigin.y + screenSize.height / 2
         )
         .zIndex(node.zIndex)
         .transaction { transaction in
             transaction.animation = nil
         }
         .onTapGesture(perform: onSelect)
+    }
+
+    @ViewBuilder
+    private var nodeSurface: some View {
+        if shouldRenderMarker {
+            TerminalNodeMarker(
+                node: node,
+                isSelected: isSelected,
+                screenSize: screenSize
+            )
+            .gesture(dragGesture)
+        } else {
+            VStack(spacing: 0) {
+                titleBar
+                if rendersLiveSurface {
+                    TerminalSurfaceContainer(controller: node.controller)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(HudPalette.bg)
+                } else {
+                    TerminalPreview(node: node)
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(HudPalette.bg)
+                }
+            }
+            .frame(width: screenSize.width, height: screenSize.height)
+            .background(HudPalette.bg)
+            .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+            .overlay(
+                RoundedRectangle(cornerRadius: HudRadius.card)
+                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : HudHairline.standard)
+            )
+            .shadow(color: HudSurface.scrim, radius: isSelected ? 22 : 14, x: 0, y: 12)
+            .overlay(alignment: .bottomTrailing) {
+                resizeHandle
+            }
+        }
     }
 
     private var titleBar: some View {
@@ -1009,27 +1454,29 @@ private struct TerminalNodeView: View {
         .frame(height: 36)
         .background(HudPalette.chrome)
         .contentShape(Rectangle())
-        .gesture(
-            DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
-                .onChanged { value in
-                    if !isDragging {
-                        isDragging = true
-                        lastDragTranslation = .zero
-                        onSelect()
-                    }
+        .gesture(dragGesture)
+    }
 
-                    let delta = CGSize(
-                        width: value.translation.width - lastDragTranslation.width,
-                        height: value.translation.height - lastDragTranslation.height
-                    )
-                    lastDragTranslation = value.translation
-                    onMove(delta)
-                }
-                .onEnded { _ in
-                    isDragging = false
+    private var dragGesture: some Gesture {
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
+            .onChanged { value in
+                if !isDragging {
+                    isDragging = true
                     lastDragTranslation = .zero
+                    onSelect()
                 }
-        )
+
+                let delta = CGSize(
+                    width: value.translation.width - lastDragTranslation.width,
+                    height: value.translation.height - lastDragTranslation.height
+                )
+                lastDragTranslation = value.translation
+                onMove(delta)
+            }
+            .onEnded { _ in
+                isDragging = false
+                lastDragTranslation = .zero
+            }
     }
 
     private var resizeHandle: some View {
@@ -1081,6 +1528,38 @@ private struct ResizeGrip: View {
     }
 }
 
+private struct TerminalNodeMarker: View {
+    @ObservedObject var node: TerminalNode
+    let isSelected: Bool
+    let screenSize: CGSize
+
+    private var markerSize: CGSize {
+        CGSize(
+            width: max(18, min(54, screenSize.width)),
+            height: max(12, min(34, screenSize.height))
+        )
+    }
+
+    var body: some View {
+        RoundedRectangle(cornerRadius: 5)
+            .fill(isSelected ? HudSurface.selected(node.tint.color) : HudSurface.control)
+            .overlay(alignment: .leading) {
+                RoundedRectangle(cornerRadius: 2)
+                    .fill(node.tint.color)
+                    .frame(width: max(3, markerSize.width * 0.12))
+                    .padding(.vertical, 3)
+                    .padding(.leading, 3)
+            }
+            .overlay(
+                RoundedRectangle(cornerRadius: 5)
+                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : HudHairline.standard)
+            )
+            .frame(width: markerSize.width, height: markerSize.height)
+            .shadow(color: HudSurface.scrim, radius: isSelected ? 10 : 5, x: 0, y: 4)
+            .accessibilityLabel(node.title)
+    }
+}
+
 private struct SelectionMarquee: View {
     let rect: CGRect
 
@@ -1129,7 +1608,7 @@ private struct TerminalPreview: View {
             .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: HudSpacing.sm) {
-                HudBadge("LIVE PTY", tint: node.tint.color, dot: true)
+                HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
                 Text("surface virtualized")
                     .font(HudFont.mono(10))
                     .foregroundStyle(HudPalette.muted)
@@ -1531,10 +2010,19 @@ private struct TerminalDetailView: View {
 
             VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HudSectionLabel("Runtime")
-                HudBadge("LOCAL PTY", tint: node.tint.color, dot: true)
-                Text("tmux target pending")
+                HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
+                Text(node.runtimeIdentity.detail)
                     .font(HudFont.mono(10))
                     .foregroundStyle(HudPalette.muted)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.75)
+                if let path = node.runtimeIdentity.graphitePath {
+                    Text(path)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(HudPalette.dim)
+                        .lineLimit(3)
+                        .minimumScaleFactor(0.7)
+                }
             }
 
             HStack(spacing: HudSpacing.md) {

@@ -8,16 +8,13 @@ let package = Package(
     ],
     dependencies: [
         .package(path: "../.."),
-        .package(path: "../../../Termini"),
     ],
     targets: [
         .executableTarget(
             name: "TerminiCanvas",
             dependencies: [
                 .product(name: "HudsonUI", package: "Hudson"),
-                .product(name: "HudsonShell", package: "Hudson"),
-                .product(name: "HudsonTerminal", package: "Hudson"),
-                .product(name: "Termini", package: "Termini"),
+                .product(name: "HudsonVantage", package: "Hudson"),
             ],
             path: "Sources/TerminiCanvas"
         ),

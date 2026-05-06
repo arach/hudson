@@ -46,6 +46,7 @@ var targets: [Target] = [
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
+    products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     dependencies.append(.package(path: "../Termini"))
     targets.append(
         .target(
@@ -56,6 +57,18 @@ if terminalEnabled {
                 .product(name: "TerminiSSH", package: "Termini"),
             ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonTerminal"
+        )
+    )
+    targets.append(
+        .target(
+            name: "HudsonVantage",
+            dependencies: [
+                "HudsonUI",
+                "HudsonShell",
+                "HudsonTerminal",
+                .product(name: "Termini", package: "Termini"),
+            ],
+            path: "packages/native/apple/HudsonKit/Sources/HudsonVantage"
         )
     )
 }
