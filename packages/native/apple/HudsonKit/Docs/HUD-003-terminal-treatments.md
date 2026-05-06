@@ -8,9 +8,9 @@
 
 ## Context
 
-HudsonKit ships one terminal renderer (`TermBridgeKit`, our wrapper around Ghostty — `GhosttyKit.xcframework` is bundled inside TermBridgeKit's SPM artifacts and slices both `macos-arm64_x86_64` and `ios-arm64-simulator`) wired through one host treatment (`HudTerminalDrawer` in `HudAppShell.bottomDrawer`, plus a one-off `TerminalApp` mounted via `HudTakeover` in the demo).
+HudsonKit ships one terminal renderer (`Termini`, the Ghostty-backed renderer + local PTY + SSH package) wired through one host treatment (`HudTerminalDrawer` in `HudAppShell.bottomDrawer`, plus a one-off `TerminalApp` mounted via `HudTakeover` in the demo).
 
-The renderer story is fully settled: TermBridgeKit + Ghostty already runs in production in **Talkie on both macOS and iOS** — we have a working donor to port from, exactly like we did for `HudNavigationSidebar`. The interesting design space is the *frame* around the terminal, where Hudson can actually differentiate. We have at least four meaningfully different framings to ship.
+The renderer story is fully settled: Termini + Ghostty already runs in production in **Talkie on both macOS and iOS** — we have a working donor to port from, exactly like we did for `HudNavigationSidebar`. The interesting design space is the *frame* around the terminal, where Hudson can actually differentiate. We have at least four meaningfully different framings to ship.
 
 Build flag posture stays as-is: `HUDSONKIT_WITH_TERMINAL=1` env var gates the heavy renderer dep so default consumers don't pay for it. Without the flag, `DrawerTerminal` falls back to `FakeTerminalContent` and the build stays light. This ADR doesn't touch the flag — it just adds chrome above it.
 
@@ -22,7 +22,7 @@ Build flag posture stays as-is: `HUDSONKIT_WITH_TERMINAL=1` env var gates the he
 | 2 — Canvas | (n/a — net-new) | Designed from scratch |
 | 3 — Window | `macOS/Talkie/Views/Console/ConsolePopoutManager.swift` | NSHostingController + NSWindow pop-out pattern; "claim the listener while popped, show placeholder inline" semantics |
 | 4 — Tabs | (n/a — net-new) | Builds on treatment 3's window plumbing |
-| Surface (macOS) | `macOS/Talkie/Views/Console/ManagedAgentTerminalView.swift` | `TermBridgeKitTerminalController` + `TermBridgeKitTerminalView` embed pattern |
+| Surface (macOS) | `macOS/Talkie/Views/Console/ManagedAgentTerminalView.swift` | `TerminiTerminalController` + `TerminiTerminalView` embed pattern |
 | Surface (iOS) | `iOS/Talkie iOS/SSH/SSHTerminalGhosttySurfaceView.swift` | iOS-specific surface — confirms cross-platform parity |
 
 ## Decision
@@ -55,7 +55,7 @@ public protocol HudTerminalBackend: Sendable {
 
 Two implementations only:
 
-- `TermBridgeBackend` — current behavior, wraps `HudTerminalSSHSurface`. Lives in `HudsonTerminal` (behind the flag).
+- `TerminiBackend` — current behavior, wraps `HudTerminalSSHSurface`. Lives in `HudsonTerminal` (behind the flag).
 - `MockBackend` — formalizes today's `FakeTerminalContent` so previews and tests have a real type. Lives in `HudsonShell` so it's always available.
 
 This isn't a multi-backend story. It's a seam — exactly enough indirection to let chrome (`HudTerminalCanvas`, `HudTerminalScene`, `HudTerminalDrawer`) compile unconditionally and only resolve to a real renderer when the flag is set. Today's `#if HUDSON_TERMINAL` blocks in `DrawerTerminal.swift` and `TerminalApp.swift` collapse to a single backend resolution.
@@ -158,7 +158,7 @@ Sources/
     ├── HudTerminalSurface.swift     (refactor: backend-resolved)
     ├── HudTerminalSSHSurface.swift  (existing)
     ├── HudTerminalAppearance.swift  (existing)
-    └── TermBridgeBackend.swift    (NEW — wraps current behavior, no behavior change)
+    └── TerminiBackend.swift       (NEW — wraps current behavior, no behavior change)
 ```
 
 ## Phasing
