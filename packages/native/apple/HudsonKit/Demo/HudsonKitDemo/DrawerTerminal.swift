@@ -16,7 +16,7 @@ struct DrawerTerminal: View {
         // the upstream TerminiDemo. If this works the regression is in
         // HudTerminalSurface / HudTerminalSSHSurface; if it still crashes the
         // problem is in the host context (HudAppShell / HudTerminalDrawer).
-        DirectTermBridgeProbe()
+        DirectTerminiProbe()
         #else
         FakeTerminalContent(host: host)
         #endif
@@ -24,7 +24,7 @@ struct DrawerTerminal: View {
 }
 
 #if HUDSON_TERMINAL
-private struct DirectTermBridgeProbe: View {
+private struct DirectTerminiProbe: View {
     @State private var workspace = TerminiLocalPTYWorkspace()
     @State private var appearance = TerminiTerminalAppearance(
         theme: .midnightBloom,

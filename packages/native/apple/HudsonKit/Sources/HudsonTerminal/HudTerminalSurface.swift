@@ -25,7 +25,7 @@ public struct HudTerminalSurface: View {
         TerminiTerminalView(
             controller: controller,
             showsSystemKeyboard: showsSystemKeyboard,
-            appearance: appearance.termBridgeAppearance
+            appearance: appearance.terminiAppearance
         )
         .background(appearance.backgroundColor)
         .contentShape(Rectangle())

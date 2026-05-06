@@ -23,7 +23,7 @@ public struct HudTerminalAppearance: Hashable, Sendable {
 
     public static let `default` = HudTerminalAppearance()
 
-    public var termBridgeAppearance: TerminiTerminalAppearance {
+    public var terminiAppearance: TerminiTerminalAppearance {
         TerminiTerminalAppearance(
             theme: theme,
             fontSize: fontSize,

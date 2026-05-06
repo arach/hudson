@@ -27,7 +27,7 @@ public struct HudTerminalSessionState: Equatable, Sendable {
 
 /// Complete SSH-backed terminal surface for demos and simple host apps.
 ///
-/// The workspace loads `TERMBRIDGEKIT_SSH_*` environment variables on appear
+/// The workspace loads Termini's SSH demo environment configuration on appear
 /// and connects automatically when credentials are present. More advanced
 /// Hudson transports should keep using `HudTerminalSurface` directly.
 public struct HudTerminalSSHSurface: View {
