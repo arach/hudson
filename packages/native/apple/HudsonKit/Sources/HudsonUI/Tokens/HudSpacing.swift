@@ -1,4 +1,5 @@
 import CoreGraphics
+import SwiftUI
 
 /// Spacing scale — synthesized from the values that recur across Lattices'
 /// `LatsDesignSystem` and Hudson's web chrome. Lattices uses inline literals
@@ -66,3 +67,12 @@ public typealias HudsonSpacing = HudSpacing
 public typealias HudsonRadius = HudRadius
 @available(*, deprecated, renamed: "HudLayout")
 public typealias HudsonLayout = HudLayout
+
+// MARK: - Liquid bar geometry
+
+public enum HudLiquidBarMetrics {
+    public static let minHeight: CGFloat = 56
+    public static let itemMinHeight: CGFloat = 44
+    public static let maxWidth: CGFloat = HudLayout.dialogWidth
+    public static let selectionAnimation = Animation.spring(response: 0.32, dampingFraction: 0.8)
+}

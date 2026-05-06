@@ -61,7 +61,7 @@ struct ComplicationsTab: View {
                 Text("Five HUD-coordinated slots")
                     .font(HudFont.ui(HudTextSize.lg, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
-                Text("The data model is the truth — five sparse slots, route-published. The tray is one renderer; swap it to redistribute the same five actions.")
+                Text("The data model is the truth — five sparse slots, route-published. The tray is one renderer; swap it to redistribute the same five actions. For native-aesthetic bottom chrome, use HudLiquidBar instead.")
                     .font(HudFont.ui(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
             }
