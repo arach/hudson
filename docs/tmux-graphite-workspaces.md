@@ -145,6 +145,31 @@ This is still a sample-level control API, but it exercises the intended
 contract: runtime identity is durable and the canvas can be reconstructed from
 outside the app.
 
+## Save and restore
+
+The first Vantage restore slice persists a tiny state file rather than a full
+canvas document system. It contains:
+
+- schema version and workspace id
+- viewport pan and zoom
+- durable tmux-backed node ids, bounds, z-order, tint, title, selection
+- runtime references: tmux target, optional Graphite path, optional remote host
+
+Example:
+
+```sh
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save \
+  --state-file /tmp/scout-vantage-state.json
+
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore \
+  --state-file /tmp/scout-vantage-state.json \
+  --create
+```
+
+For now, local PTYs are intentionally not persisted as durable nodes. The
+runtime boundary is tmux: Hudson restores spatial identity and asks Termini to
+reattach renderers to the saved tmux targets.
+
 ## Selection and group actions
 
 Selection is a first-class model, not a visual side effect:

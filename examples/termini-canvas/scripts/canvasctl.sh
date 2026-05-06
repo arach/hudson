@@ -3,6 +3,7 @@ set -euo pipefail
 
 CONTROL_FILE="${TERMINI_CANVAS_CONTROL_FILE:-/tmp/termini-canvas-control.jsonl}"
 RESPONSE_FILE="${TERMINI_CANVAS_RESPONSE_FILE:-/tmp/termini-canvas-control.responses.jsonl}"
+STATE_FILE="${TERMINI_CANVAS_STATE_FILE:-/tmp/termini-canvas-state.json}"
 REQUEST_ID="canvasctl-$(date +%s)-$$"
 WAIT_FOR_RESPONSE=false
 WAIT_TIMEOUT=5
@@ -16,11 +17,15 @@ Usage:
   canvasctl.sh [--wait] tile COLUMNS ROWS [--width PX] [--height PX] [--gap PX] [--no-reset] [--allow-large]
   canvasctl.sh [--wait] spawn COUNT [--width PX] [--height PX] [--gap PX]
   canvasctl.sh [--wait] reattach [--remote HOST] [--id GRAPHITE_ID] [--session NAME] [--target TARGET] [--create] [--no-reset]
+  canvasctl.sh [--wait] ensure-tmux [--confirm]
+  canvasctl.sh [--wait] save [--state-file PATH]
+  canvasctl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
   canvasctl.sh raw '{"action":"status"}'
 
 Environment:
   TERMINI_CANVAS_CONTROL_FILE   default /tmp/termini-canvas-control.jsonl
   TERMINI_CANVAS_RESPONSE_FILE  default /tmp/termini-canvas-control.responses.jsonl
+  TERMINI_CANVAS_STATE_FILE     default /tmp/termini-canvas-state.json
 EOF
 }
 
@@ -107,6 +112,10 @@ while [[ $# -gt 0 ]]; do
       RESPONSE_FILE="${2:?missing response file}"
       shift 2
       ;;
+    --state-file)
+      STATE_FILE="${2:?missing state file}"
+      shift 2
+      ;;
     -h|--help)
       usage
       exit 0
@@ -134,6 +143,58 @@ case "$command" in
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":$(json_string "$command")"
     )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  save|snapshot)
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"save\""
+      "\"statePath\":$(json_string "$STATE_FILE")"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --state-file) parts[2]="\"statePath\":$(json_string "${2:?missing state file}")"; shift 2 ;;
+        *) printf 'unknown save option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  ensure-tmux|ensuretmux|tmux-ensure|install-tmux|installtmux|tmux-install)
+    confirm=false
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"ensure-tmux\""
+      "\"installer\":\"homebrew\""
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --confirm) confirm=true; shift ;;
+        *) printf 'unknown ensure-tmux option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    parts+=("\"confirmInstall\":$confirm")
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  restore|load)
+    create=false
+    reset=true
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"restore\""
+      "\"statePath\":$(json_string "$STATE_FILE")"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --state-file) parts[2]="\"statePath\":$(json_string "${2:?missing state file}")"; shift 2 ;;
+        --create) create=true; shift ;;
+        --no-reset) reset=false; shift ;;
+        *) printf 'unknown restore option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    parts+=("\"createIfMissing\":$create" "\"reset\":$reset")
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
