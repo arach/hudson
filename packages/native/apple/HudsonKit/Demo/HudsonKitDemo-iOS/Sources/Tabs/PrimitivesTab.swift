@@ -16,6 +16,7 @@ struct PrimitivesTab: View {
     @State private var vaultValue: String = ""
     @State private var vaultMessage: String = ""
     @State private var vaultKeys: [String] = []
+    @State private var showSharing: Bool = false
 
     private let demoVault = HudVault(service: "com.hudsonkit.demoios.vault-demo")
 
@@ -28,6 +29,7 @@ struct PrimitivesTab: View {
         .init(icon: "qrcode.viewfinder",     label: "Scan",     anchor: "QR scanner"),
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
         .init(icon: "key",                   label: "Vault",    anchor: "Vault"),
+        .init(icon: "square.and.arrow.up",   label: "Share",    anchor: "Share"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
         .init(icon: "tablecells.fill",       label: "Table",    anchor: "Table"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
@@ -49,6 +51,7 @@ struct PrimitivesTab: View {
                     sectionQRScanner
                     sectionPermissions
                     sectionVault
+                    sectionShare
                     sectionListRows
                     sectionTable
                     sectionKVRows
@@ -314,6 +317,37 @@ struct PrimitivesTab: View {
             try block()
         } catch {
             vaultMessage = "error: \(error.localizedDescription)"
+        }
+    }
+
+    private var sectionShare: some View {
+        gallerySection("Share", snippet: """
+            @State private var showSharing = false
+
+            HudButton("Share", icon: "square.and.arrow.up", style: .secondary) {
+                showSharing = true
+            }
+            .hudShare(isPresented: $showSharing, items: [
+                .text("Hudson primitives — try them out."),
+                .url(URL(string: "https://hudsonkit.com")!),
+            ])
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                HudButton(
+                    "Share",
+                    icon: "square.and.arrow.up",
+                    style: .secondary
+                ) {
+                    showSharing = true
+                }
+                .hudShare(isPresented: $showSharing, items: [
+                    .text("Hudson primitives — try them out."),
+                    .url(URL(string: "https://hudsonkit.com")!),
+                ])
+                HudInset {
+                    HudKVRow("payload", value: "1 string + 1 url")
+                }
+            }
         }
     }
 
