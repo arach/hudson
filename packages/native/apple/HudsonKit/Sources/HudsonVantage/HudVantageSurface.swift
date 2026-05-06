@@ -18,19 +18,22 @@ public struct HudVantageConfiguration: Sendable {
     public var commandURL: URL
     public var responseURL: URL
     public var workingDirectoryURL: URL?
+    public var followsSystemColorScheme: Bool
 
     public init(
         surfaceTitle: String = "Vantage",
         surfaceSubtitle: String = "native Hudson runtime surface",
         commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
         responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl"),
-        workingDirectoryURL: URL? = nil
+        workingDirectoryURL: URL? = nil,
+        followsSystemColorScheme: Bool = true
     ) {
         self.surfaceTitle = surfaceTitle
         self.surfaceSubtitle = surfaceSubtitle
         self.commandURL = commandURL
         self.responseURL = responseURL
         self.workingDirectoryURL = workingDirectoryURL
+        self.followsSystemColorScheme = followsSystemColorScheme
     }
 
     public static let terminiCanvasCaseStudy = HudVantageConfiguration(
@@ -39,6 +42,44 @@ public struct HudVantageConfiguration: Sendable {
         commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
         responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl")
     )
+}
+
+private enum HudVantageMetrics {
+    static let terminalTitleBarHeight = HudLayout.fieldHeight
+    static let terminalTrafficLightSize = HudDotSize.large
+    static let nodeMinimumScreenSize = HudStrokeWidth.bold
+    static let nodeMarkerMinimumWidth = HudIconSize.micro
+    static let nodeMarkerMaximumWidth = HudIconSize.huge + HudSpacing.sm
+    static let nodeMarkerMinimumHeight = HudSpacing.xl
+    static let nodeMarkerMaximumHeight = HudIconSize.large + HudSpacing.xxs
+    static let nodeMarkerStripeWidth = HudSpacing.xs
+    static let nodeMarkerStripeFraction: CGFloat = 0.12
+    static let resizeGripInset = HudSpacing.xxs + HudStrokeWidth.standard
+    static let resizeGripSize = HudLayout.rowHeightCompact
+    static let minimapHeight: CGFloat = 132
+    static let panelResizeHandleWidth = HudSpacing.xs
+    static let panelResizeIndicatorHeight = HudIconSize.xLarge
+    static let filterButtonHeight = HudLayout.rowHeightCompact - HudSpacing.xs
+    static let commandButtonWidth = HudLayout.rowHeightRegular
+    static let viewportChipHeight = HudLayout.rowHeightCompact - HudSpacing.xxs
+    static let zoomLabelWidth = HudIconSize.huge + HudSpacing.lg
+    static let zoomControlShadowRadius = HudSpacing.xxl
+    static let terminalCardShadowRadius = HudSpacing.xxl
+    static let terminalCardSelectedShadowRadius = HudSpacing.xxxl + HudSpacing.xxs
+}
+
+private extension HudTheme {
+    var vantageControlFill: Color {
+        palette.ink.opacity(HudOpacity.ghost)
+    }
+
+    var vantageControlHoverFill: Color {
+        palette.ink.opacity(HudOpacity.subtle)
+    }
+
+    var vantageShadow: Color {
+        self == .lightDraft ? palette.ink.opacity(HudOpacity.soft) : HudSurface.scrim
+    }
 }
 
 @MainActor
@@ -310,6 +351,9 @@ public struct HudVantageSurface: View {
 
     private let configuration: HudVantageConfiguration
 
+    @Environment(\.colorScheme) private var colorScheme
+    @Environment(\.hudTheme) private var inheritedTheme
+
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
     @State private var navigationFilter: CanvasNavigationFilter = .all
@@ -359,6 +403,50 @@ public struct HudVantageSurface: View {
             stopAllNodes()
             didBootstrap = false
         }
+        .hudTheme(activeTheme)
+        .environment(\.colorScheme, activeColorScheme)
+        .toolbar {
+            ToolbarItemGroup(placement: .navigation) {
+                if navigationCollapsed {
+                    Button {
+                        navigationCollapsed = false
+                    } label: {
+                        Label("Show navigator", systemImage: "sidebar.left")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Show navigator")
+                    .accessibilityLabel("Show navigator")
+                }
+            }
+
+            ToolbarItemGroup(placement: .primaryAction) {
+                if inspectorCollapsed {
+                    Button {
+                        inspectorCollapsed = false
+                    } label: {
+                        Label("Show inspector", systemImage: "sidebar.right")
+                    }
+                    .labelStyle(.iconOnly)
+                    .help("Show inspector")
+                    .accessibilityLabel("Show inspector")
+                }
+            }
+        }
+        .background(HudWindowChrome(colorScheme: activeColorScheme))
+    }
+
+    private var activeColorScheme: ColorScheme {
+        if configuration.followsSystemColorScheme {
+            return colorScheme
+        }
+        return inheritedTheme == .lightDraft ? .light : .dark
+    }
+
+    private var activeTheme: HudTheme {
+        guard configuration.followsSystemColorScheme else {
+            return inheritedTheme
+        }
+        return colorScheme == .dark ? .default : .lightDraft
     }
 
     @ViewBuilder
@@ -411,29 +499,15 @@ public struct HudVantageSurface: View {
 
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: HudPalette.statusOk, size: 7)
+            HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
             Text(configuration.surfaceTitle.uppercased())
                 .font(HudFont.mono(10, weight: .bold))
                 .tracking(1.4)
-                .foregroundStyle(HudPalette.ink)
+                .foregroundStyle(activeTheme.palette.ink)
             Text(configuration.surfaceSubtitle)
                 .font(HudFont.mono(10))
-                .foregroundStyle(HudPalette.muted)
+                .foregroundStyle(activeTheme.palette.muted)
             Spacer()
-            if navigationCollapsed {
-                CanvasIconButton(
-                    systemName: "sidebar.left",
-                    help: "Show navigator",
-                    action: { navigationCollapsed = false }
-                )
-            }
-            if inspectorCollapsed {
-                CanvasIconButton(
-                    systemName: "sidebar.right",
-                    help: "Show inspector",
-                    action: { inspectorCollapsed = false }
-                )
-            }
             CanvasToolSwitch(
                 tool: canvasTool,
                 onSelect: { canvasTool = .select },
@@ -453,8 +527,8 @@ public struct HudVantageSurface: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, HudSpacing.xxl)
                 .frame(height: HudLayout.navHeight)
-                .background(HudPalette.chrome)
-            HudDivider(color: HudHairline.standard)
+                .background(activeTheme.palette.chrome)
+            HudDivider(color: activeTheme.hairline.standard)
             canvasViewport
         }
     }
@@ -462,7 +536,7 @@ public struct HudVantageSurface: View {
     private var canvasViewport: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
-                HudPalette.bg
+                activeTheme.palette.bg
                 InfiniteCanvasBackground(
                     pan: canvasPan,
                     scale: canvasScale
@@ -729,29 +803,29 @@ public struct HudVantageSurface: View {
     private var statusBar: some View {
         ZStack {
             HStack(spacing: HudSpacing.xl) {
-                HudStatusDot(color: HudPalette.statusOk)
+                HudStatusDot(color: activeTheme.palette.statusOk)
                 Text("HUDSONKIT MACOS")
                     .font(HudFont.mono(10, weight: .bold))
                     .tracking(1.4)
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(activeTheme.palette.muted)
                 Text("·")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text("\(nodes.count) nodes")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(activeTheme.palette.muted)
                 Text("·")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text("\(selectedIDs.count) selected")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(activeTheme.palette.muted)
                 Text("·")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text(controlStatus.uppercased())
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(activeTheme.palette.muted)
                 Spacer()
             }
             .padding(.horizontal, HudSpacing.xxl)
@@ -1347,6 +1421,7 @@ private struct TerminalNodeView: View {
     let onMove: (CGSize) -> Void
     let onResize: (CGSize) -> Void
 
+    @Environment(\.hudTheme) private var theme
     @State private var isDragging = false
     @State private var lastDragTranslation: CGSize = .zero
     @State private var isResizing = false
@@ -1361,8 +1436,8 @@ private struct TerminalNodeView: View {
 
     private var screenSize: CGSize {
         CGSize(
-            width: max(2, node.size.width * canvasScale),
-            height: max(2, node.size.height * canvasScale)
+            width: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.width * canvasScale),
+            height: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.height * canvasScale)
         )
     }
 
@@ -1398,21 +1473,28 @@ private struct TerminalNodeView: View {
                 if rendersLiveSurface {
                     TerminalSurfaceContainer(controller: node.controller)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(HudPalette.bg)
+                        .background(theme.palette.bg)
                 } else {
                     TerminalPreview(node: node)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(HudPalette.bg)
+                        .background(theme.palette.bg)
                 }
             }
             .frame(width: screenSize.width, height: screenSize.height)
-            .background(HudPalette.bg)
-            .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+            .background(theme.palette.bg)
+            .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.card)
-                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : HudHairline.standard)
+                RoundedRectangle(cornerRadius: theme.radius.card)
+                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : theme.hairline.standard)
             )
-            .shadow(color: HudSurface.scrim, radius: isSelected ? 22 : 14, x: 0, y: 12)
+            .shadow(
+                color: theme.vantageShadow,
+                radius: isSelected
+                    ? HudVantageMetrics.terminalCardSelectedShadowRadius
+                    : HudVantageMetrics.terminalCardShadowRadius,
+                x: .zero,
+                y: HudSpacing.xl
+            )
             .overlay(alignment: .bottomTrailing) {
                 resizeHandle
             }
@@ -1423,36 +1505,45 @@ private struct TerminalNodeView: View {
         HStack(spacing: HudSpacing.lg) {
             HStack(spacing: HudSpacing.sm) {
                 Circle()
-                    .fill(HudPalette.statusError)
-                    .frame(width: 11, height: 11)
+                    .fill(theme.palette.statusError)
+                    .frame(
+                        width: HudVantageMetrics.terminalTrafficLightSize,
+                        height: HudVantageMetrics.terminalTrafficLightSize
+                    )
                     .onTapGesture {
                         onClose()
                     }
                 Circle()
-                    .fill(HudPalette.statusWarn)
-                    .frame(width: 11, height: 11)
+                    .fill(theme.palette.statusWarn)
+                    .frame(
+                        width: HudVantageMetrics.terminalTrafficLightSize,
+                        height: HudVantageMetrics.terminalTrafficLightSize
+                    )
                 Circle()
                     .fill(node.tint.color)
-                    .frame(width: 11, height: 11)
+                    .frame(
+                        width: HudVantageMetrics.terminalTrafficLightSize,
+                        height: HudVantageMetrics.terminalTrafficLightSize
+                    )
             }
             Image(systemName: "terminal")
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                .foregroundStyle(HudPalette.muted)
+                .foregroundStyle(theme.palette.muted)
             Text(node.title)
                 .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
-                .foregroundStyle(HudPalette.ink)
+                .foregroundStyle(theme.palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
             Spacer()
             Text(node.subtitle)
                 .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.dim)
+                .foregroundStyle(theme.palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
         }
         .padding(.horizontal, HudSpacing.xxl)
-        .frame(height: 36)
-        .background(HudPalette.chrome)
+        .frame(height: HudVantageMetrics.terminalTitleBarHeight)
+        .background(theme.palette.chrome)
         .contentShape(Rectangle())
         .gesture(dragGesture)
     }
@@ -1481,7 +1572,10 @@ private struct TerminalNodeView: View {
 
     private var resizeHandle: some View {
         ResizeGrip()
-            .frame(width: 24, height: 24)
+            .frame(
+                width: HudVantageMetrics.resizeGripSize,
+                height: HudVantageMetrics.resizeGripSize
+            )
             .contentShape(Rectangle())
             .help("Resize")
             .accessibilityLabel("Resize terminal")
@@ -1510,6 +1604,8 @@ private struct TerminalNodeView: View {
 }
 
 private struct ResizeGrip: View {
+    @Environment(\.hudTheme) private var theme
+
     var body: some View {
         Canvas { context, size in
             var path = Path()
@@ -1520,11 +1616,11 @@ private struct ResizeGrip: View {
 
             context.stroke(
                 path,
-                with: .color(HudPalette.dim),
-                style: StrokeStyle(lineWidth: 1, lineCap: .round)
+                with: .color(theme.palette.dim),
+                style: StrokeStyle(lineWidth: HudStrokeWidth.standard, lineCap: .round)
             )
         }
-        .padding(3)
+        .padding(HudVantageMetrics.resizeGripInset)
     }
 }
 
@@ -1533,42 +1629,67 @@ private struct TerminalNodeMarker: View {
     let isSelected: Bool
     let screenSize: CGSize
 
+    @Environment(\.hudTheme) private var theme
+
     private var markerSize: CGSize {
         CGSize(
-            width: max(18, min(54, screenSize.width)),
-            height: max(12, min(34, screenSize.height))
+            width: max(
+                HudVantageMetrics.nodeMarkerMinimumWidth,
+                min(HudVantageMetrics.nodeMarkerMaximumWidth, screenSize.width)
+            ),
+            height: max(
+                HudVantageMetrics.nodeMarkerMinimumHeight,
+                min(HudVantageMetrics.nodeMarkerMaximumHeight, screenSize.height)
+            )
         )
     }
 
     var body: some View {
-        RoundedRectangle(cornerRadius: 5)
-            .fill(isSelected ? HudSurface.selected(node.tint.color) : HudSurface.control)
+        RoundedRectangle(cornerRadius: theme.radius.standard)
+            .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
             .overlay(alignment: .leading) {
-                RoundedRectangle(cornerRadius: 2)
+                RoundedRectangle(cornerRadius: theme.radius.tight)
                     .fill(node.tint.color)
-                    .frame(width: max(3, markerSize.width * 0.12))
-                    .padding(.vertical, 3)
-                    .padding(.leading, 3)
+                    .frame(
+                        width: max(
+                            HudVantageMetrics.nodeMarkerStripeWidth,
+                            markerSize.width * HudVantageMetrics.nodeMarkerStripeFraction
+                        )
+                    )
+                    .padding(.vertical, HudVantageMetrics.resizeGripInset)
+                    .padding(.leading, HudVantageMetrics.resizeGripInset)
             }
             .overlay(
-                RoundedRectangle(cornerRadius: 5)
-                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : HudHairline.standard)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? HudSurface.tintFocus(node.tint.color) : theme.hairline.standard)
             )
             .frame(width: markerSize.width, height: markerSize.height)
-            .shadow(color: HudSurface.scrim, radius: isSelected ? 10 : 5, x: 0, y: 4)
+            .shadow(
+                color: theme.vantageShadow,
+                radius: isSelected ? HudSpacing.lg : HudSpacing.xs,
+                x: .zero,
+                y: HudSpacing.xs
+            )
             .accessibilityLabel(node.title)
     }
 }
 
 private struct SelectionMarquee: View {
     let rect: CGRect
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        RoundedRectangle(cornerRadius: HudRadius.standard)
-            .fill(HudSurface.selected(HudPalette.statusInfo))
+        RoundedRectangle(cornerRadius: theme.radius.standard)
+            .fill(HudSurface.selected(theme.palette.statusInfo))
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(HudSurface.tintFocus(HudPalette.statusInfo), style: StrokeStyle(lineWidth: 1, dash: [6, 4]))
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(
+                        HudSurface.tintFocus(theme.palette.statusInfo),
+                        style: StrokeStyle(
+                            lineWidth: HudStrokeWidth.standard,
+                            dash: [HudSpacing.sm, HudSpacing.xs]
+                        )
+                    )
             )
             .frame(width: max(1, rect.width), height: max(1, rect.height))
             .offset(x: rect.minX, y: rect.minY)
@@ -1578,10 +1699,11 @@ private struct SelectionMarquee: View {
 
 private struct TerminalPreview: View {
     @ObservedObject var node: TerminalNode
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         ZStack(alignment: .topLeading) {
-            HudPalette.bg
+            theme.palette.bg
 
             Canvas { context, size in
                 let columnWidth: CGFloat = 18
@@ -1611,10 +1733,10 @@ private struct TerminalPreview: View {
                 HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
                 Text("surface virtualized")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(theme.palette.muted)
                 Text("zoom/select to attach renderer")
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(theme.palette.dim)
             }
             .padding(HudSpacing.xl)
         }
@@ -1625,6 +1747,7 @@ private struct InfiniteCanvasBackground: View {
     let pan: CGSize
     let scale: CGFloat
     var worldStep: CGFloat = 20
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Canvas { context, size in
@@ -1642,8 +1765,8 @@ private struct InfiniteCanvasBackground: View {
             step: step,
             offsetX: screenOffset(for: pan.width, step: step),
             offsetY: screenOffset(for: pan.height, step: step),
-            color: HudSurface.inset.opacity(0.72),
-            lineWidth: 1
+            color: theme.palette.ink.opacity(HudOpacity.ghost),
+            lineWidth: HudStrokeWidth.standard
         )
 
         strokeGrid(
@@ -1652,7 +1775,7 @@ private struct InfiniteCanvasBackground: View {
             step: majorStep,
             offsetX: screenOffset(for: pan.width, step: majorStep),
             offsetY: screenOffset(for: pan.height, step: majorStep),
-            color: HudSurface.inset.opacity(0.95),
+            color: theme.palette.ink.opacity(HudOpacity.subtle),
             lineWidth: 1.15
         )
     }
@@ -1719,16 +1842,17 @@ private struct CanvasNavigationPanel: View {
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
     let onCollapse: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         HStack(spacing: 0) {
             VStack(spacing: 0) {
                 header
-                HudDivider(color: HudHairline.standard)
+                HudDivider(color: theme.hairline.standard)
                 filters
                     .padding(.horizontal, HudSpacing.xl)
                     .padding(.vertical, HudSpacing.lg)
-                HudDivider(color: HudHairline.subtle)
+                HudDivider(color: theme.hairline.subtle)
 
                 ScrollView {
                     LazyVStack(spacing: HudSpacing.sm) {
@@ -1743,7 +1867,7 @@ private struct CanvasNavigationPanel: View {
                         if nodes.isEmpty {
                             Text("No terminals")
                                 .font(HudFont.mono(10))
-                                .foregroundStyle(HudPalette.dim)
+                                .foregroundStyle(theme.palette.dim)
                                 .frame(maxWidth: .infinity, alignment: .leading)
                                 .padding(HudSpacing.xl)
                         }
@@ -1751,13 +1875,13 @@ private struct CanvasNavigationPanel: View {
                     .padding(HudSpacing.xl)
                 }
 
-                HudDivider(color: HudHairline.subtle)
+                HudDivider(color: theme.hairline.subtle)
                 footer
                     .padding(HudSpacing.xl)
             }
             .frame(width: width)
             .frame(maxHeight: .infinity)
-            .background(HudPalette.chrome)
+            .background(theme.palette.chrome)
 
             PanelResizeHandle(
                 side: .right,
@@ -1769,14 +1893,14 @@ private struct CanvasNavigationPanel: View {
 
     private var header: some View {
         HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: HudPalette.statusInfo)
+            HudStatusDot(color: theme.palette.statusInfo)
             VStack(alignment: .leading, spacing: 1) {
                 Text("Termini Canvas")
                     .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                    .foregroundStyle(HudPalette.ink)
+                    .foregroundStyle(theme.palette.ink)
                 Text("Figma for shells")
                     .font(HudFont.mono(9))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(theme.palette.dim)
             }
             Spacer()
             CanvasIconButton(
@@ -1794,7 +1918,7 @@ private struct CanvasNavigationPanel: View {
             HStack {
                 HudSectionLabel("Workspace")
                 Spacer()
-                HudBadge("\(totalCount)", tint: HudPalette.statusInfo)
+                HudBadge("\(totalCount)", tint: theme.palette.statusInfo)
             }
 
             HStack(spacing: HudSpacing.sm) {
@@ -1809,7 +1933,7 @@ private struct CanvasNavigationPanel: View {
 
             Text("\(selectedCount) selected")
                 .font(HudFont.mono(10))
-                .foregroundStyle(HudPalette.muted)
+                .foregroundStyle(theme.palette.muted)
         }
     }
 
@@ -1825,7 +1949,7 @@ private struct CanvasNavigationPanel: View {
                 )
                 Text(formattedZoom(canvasScale))
                     .font(HudFont.mono(10, weight: .semibold))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(theme.palette.muted)
             }
 
             CanvasMiniMap(
@@ -1835,7 +1959,7 @@ private struct CanvasNavigationPanel: View {
                 viewportWorldRect: viewportWorldRect,
                 onCenterWorldPoint: onCenterWorldPoint
             )
-            .frame(height: 132)
+            .frame(height: HudVantageMetrics.minimapHeight)
         }
     }
 }
@@ -1844,6 +1968,7 @@ private struct CanvasNavigationRow: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
     let action: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: action) {
@@ -1852,23 +1977,23 @@ private struct CanvasNavigationRow: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.title)
                         .font(HudFont.mono(11, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.palette.ink)
                         .lineLimit(1)
                     Text("x \(Int(node.origin.x)) · y \(Int(node.origin.y))")
                         .font(HudFont.mono(9))
-                        .foregroundStyle(HudPalette.dim)
+                        .foregroundStyle(theme.palette.dim)
                 }
                 Spacer()
             }
             .padding(.horizontal, HudSpacing.lg)
             .padding(.vertical, HudSpacing.md)
             .background(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .fill(isSelected ? HudSurface.selected(node.tint.color) : HudSurface.control)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : HudHairline.subtle)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
             )
         }
         .buttonStyle(.plain)
@@ -1886,15 +2011,19 @@ private struct PanelResizeHandle: View {
     let range: ClosedRange<CGFloat>
 
     @State private var startWidth: CGFloat?
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Rectangle()
-            .fill(HudHairline.subtle)
-            .frame(width: 4)
+            .fill(theme.hairline.subtle)
+            .frame(width: HudVantageMetrics.panelResizeHandleWidth)
             .overlay {
-                RoundedRectangle(cornerRadius: 1)
-                    .fill(HudPalette.dim.opacity(0.45))
-                    .frame(width: 1, height: 42)
+                Capsule()
+                    .fill(HudSurface.tintMuted(theme.palette.dim))
+                    .frame(
+                        width: HudStrokeWidth.standard,
+                        height: HudVantageMetrics.panelResizeIndicatorHeight
+                    )
             }
             .contentShape(Rectangle())
             .gesture(
@@ -1923,6 +2052,7 @@ private struct CanvasInspectorPanel: View {
     let onCenterNode: (TerminalNode) -> Void
     let onCloseNode: (UUID) -> Void
     let onCollapse: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         HStack(spacing: 0) {
@@ -1934,7 +2064,7 @@ private struct CanvasInspectorPanel: View {
 
             VStack(spacing: 0) {
                 header
-                HudDivider(color: HudHairline.standard)
+                HudDivider(color: theme.hairline.standard)
 
                 ScrollView {
                     content
@@ -1944,7 +2074,7 @@ private struct CanvasInspectorPanel: View {
             }
             .frame(width: width)
             .frame(maxHeight: .infinity)
-            .background(HudPalette.chrome)
+            .background(theme.palette.chrome)
         }
     }
 
@@ -1952,7 +2082,7 @@ private struct CanvasInspectorPanel: View {
         HStack(spacing: HudSpacing.lg) {
             HudSectionLabel("Detail")
             Spacer()
-            HudBadge("\(totalCount)", tint: HudPalette.statusInfo)
+            HudBadge("\(totalCount)", tint: theme.palette.statusInfo)
             CanvasIconButton(
                 systemName: "sidebar.right",
                 help: "Hide inspector",
@@ -1983,6 +2113,7 @@ private struct TerminalDetailView: View {
     @ObservedObject var node: TerminalNode
     let onCenter: () -> Void
     let onClose: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.xl) {
@@ -1991,10 +2122,10 @@ private struct TerminalDetailView: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.title)
                         .font(HudFont.mono(13, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.palette.ink)
                     Text(node.subtitle)
                         .font(HudFont.mono(10))
-                        .foregroundStyle(HudPalette.dim)
+                        .foregroundStyle(theme.palette.dim)
                 }
                 Spacer()
             }
@@ -2013,13 +2144,13 @@ private struct TerminalDetailView: View {
                 HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
                 Text(node.runtimeIdentity.detail)
                     .font(HudFont.mono(10))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(theme.palette.muted)
                     .lineLimit(2)
                     .minimumScaleFactor(0.75)
                 if let path = node.runtimeIdentity.graphitePath {
                     Text(path)
                         .font(HudFont.mono(9))
-                        .foregroundStyle(HudPalette.dim)
+                        .foregroundStyle(theme.palette.dim)
                         .lineLimit(3)
                         .minimumScaleFactor(0.7)
                 }
@@ -2037,6 +2168,7 @@ private struct TerminalDetailView: View {
 
 private struct InspectorMetricGrid: View {
     let metrics: [(String, String)]
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         LazyVGrid(
@@ -2050,17 +2182,17 @@ private struct InspectorMetricGrid: View {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(metric.0)
                         .font(HudFont.mono(9, weight: .semibold))
-                        .foregroundStyle(HudPalette.dim)
+                        .foregroundStyle(theme.palette.dim)
                     Text(metric.1)
                         .font(HudFont.mono(12, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.palette.ink)
                         .lineLimit(1)
                         .minimumScaleFactor(0.7)
                 }
                 .padding(HudSpacing.md)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
-                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle))
+                .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+                .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
             }
         }
     }
@@ -2068,25 +2200,28 @@ private struct InspectorMetricGrid: View {
 
 private struct MultiTerminalDetailView: View {
     let count: Int
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.lg) {
-            HudBadge("\(count) SELECTED", tint: HudPalette.statusInfo, dot: true)
+            HudBadge("\(count) SELECTED", tint: theme.palette.statusInfo, dot: true)
             Text("Group detail actions land here: tile, move, send, capture, fork workspace.")
                 .font(HudFont.mono(10))
-                .foregroundStyle(HudPalette.muted)
+                .foregroundStyle(theme.palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
 }
 
 private struct EmptyInspectorState: View {
+    @Environment(\.hudTheme) private var theme
+
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.lg) {
-            HudBadge("NO SELECTION", tint: HudPalette.dim)
+            HudBadge("NO SELECTION", tint: theme.palette.dim)
             Text("Select a terminal to inspect its canvas placement and runtime identity.")
                 .font(HudFont.mono(10))
-                .foregroundStyle(HudPalette.muted)
+                .foregroundStyle(theme.palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
     }
@@ -2096,21 +2231,24 @@ private struct CanvasFilterButton: View {
     let title: String
     let isActive: Bool
     let action: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
+        let tint = theme.palette.statusInfo
+
         Button(action: action) {
             Text(title)
                 .font(HudFont.mono(9, weight: .semibold))
-                .foregroundStyle(isActive ? HudPalette.statusInfo : HudPalette.muted)
+                .foregroundStyle(isActive ? tint : theme.palette.muted)
                 .padding(.horizontal, HudSpacing.md)
-                .frame(height: 24)
+                .frame(height: HudVantageMetrics.filterButtonHeight)
                 .background(
-                    RoundedRectangle(cornerRadius: HudRadius.tight)
-                        .fill(isActive ? HudSurface.selected(HudPalette.statusInfo) : HudSurface.control)
+                    RoundedRectangle(cornerRadius: theme.radius.tight)
+                        .fill(isActive ? HudSurface.selected(tint) : theme.vantageControlFill)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: HudRadius.tight)
-                        .stroke(isActive ? HudSurface.tintStrong(HudPalette.statusInfo) : HudHairline.subtle)
+                    RoundedRectangle(cornerRadius: theme.radius.tight)
+                        .stroke(isActive ? HudSurface.tintStrong(tint) : theme.hairline.subtle)
                 )
         }
         .buttonStyle(.plain)
@@ -2119,6 +2257,7 @@ private struct CanvasFilterButton: View {
 
 private struct CommandKeyButton: View {
     let action: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: action) {
@@ -2128,10 +2267,13 @@ private struct CommandKeyButton: View {
                 Text("K")
                     .font(HudFont.mono(10, weight: .semibold))
             }
-            .foregroundStyle(HudPalette.muted)
-            .frame(width: 44, height: 28)
-            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
-            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle))
+            .foregroundStyle(theme.palette.muted)
+            .frame(
+                width: HudVantageMetrics.commandButtonWidth,
+                height: HudLayout.rowHeightCompact
+            )
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
         }
         .buttonStyle(.plain)
         .help("Command palette")
@@ -2145,6 +2287,7 @@ private struct CanvasMiniMap: View {
     let worldSize: CGSize
     let viewportWorldRect: CGRect
     let onCenterWorldPoint: (CGPoint) -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         GeometryReader { proxy in
@@ -2159,12 +2302,12 @@ private struct CanvasMiniMap: View {
                     }
             )
             .background(
-                RoundedRectangle(cornerRadius: HudRadius.card)
-                    .fill(HudSurface.control)
+                RoundedRectangle(cornerRadius: theme.radius.card)
+                    .fill(theme.vantageControlFill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.card)
-                    .stroke(HudHairline.standard)
+                RoundedRectangle(cornerRadius: theme.radius.card)
+                    .stroke(theme.hairline.standard)
             )
         }
     }
@@ -2180,9 +2323,9 @@ private struct CanvasMiniMap: View {
                 width: worldSize.width * scale,
                 height: worldSize.height * scale
             ),
-            cornerRadius: 5
+            cornerRadius: theme.radius.tight
         )
-        context.stroke(worldPath, with: .color(HudHairline.subtle), lineWidth: 1)
+        context.stroke(worldPath, with: .color(theme.hairline.subtle), lineWidth: HudStrokeWidth.standard)
 
         for node in nodes {
             let rect = CGRect(
@@ -2196,7 +2339,7 @@ private struct CanvasMiniMap: View {
             context.fill(path, with: .color(node.tint.color.opacity(selected ? 0.52 : 0.28)))
             context.stroke(
                 path,
-                with: .color(selected ? HudPalette.ink : HudSurface.tintMuted(node.tint.color)),
+                with: .color(selected ? theme.palette.ink : HudSurface.tintMuted(node.tint.color)),
                 lineWidth: selected ? 1.2 : 0.7
             )
         }
@@ -2207,8 +2350,8 @@ private struct CanvasMiniMap: View {
             width: viewportWorldRect.width * scale,
             height: viewportWorldRect.height * scale
         )
-        worldPath = Path(roundedRect: viewport, cornerRadius: 3)
-        context.stroke(worldPath, with: .color(HudPalette.statusInfo), lineWidth: 1.4)
+        worldPath = Path(roundedRect: viewport, cornerRadius: theme.radius.tight)
+        context.stroke(worldPath, with: .color(theme.palette.statusInfo), lineWidth: 1.4)
     }
 
     private func worldPoint(for location: CGPoint, in size: CGSize) -> CGPoint {
@@ -2240,6 +2383,7 @@ private struct ViewportStatusChip: View {
     let rect: CGRect
     let scale: CGFloat
     let tool: CanvasTool
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         HStack(spacing: HudSpacing.md) {
@@ -2250,11 +2394,11 @@ private struct ViewportStatusChip: View {
             )
             .font(HudFont.mono(10, weight: .semibold))
         }
-        .foregroundStyle(HudPalette.muted)
+        .foregroundStyle(theme.palette.muted)
         .padding(.horizontal, HudSpacing.lg)
-        .frame(height: 26)
-        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle))
+        .frame(height: HudVantageMetrics.viewportChipHeight)
+        .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+        .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
     }
 }
 
@@ -2383,6 +2527,7 @@ private struct CanvasZoomTool: View {
     let onZoomOut: () -> Void
     let onZoomIn: () -> Void
     let onFit: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         HStack(spacing: HudSpacing.sm) {
@@ -2394,8 +2539,8 @@ private struct CanvasZoomTool: View {
 
             Text(formattedZoom(scale))
                 .font(HudFont.mono(10, weight: .semibold))
-                .foregroundStyle(HudPalette.muted)
-                .frame(width: 58)
+                .foregroundStyle(theme.palette.muted)
+                .frame(width: HudVantageMetrics.zoomLabelWidth)
 
             CanvasIconButton(
                 systemName: "plus.magnifyingglass",
@@ -2412,14 +2557,19 @@ private struct CanvasZoomTool: View {
         .padding(.horizontal, HudSpacing.md)
         .padding(.vertical, HudSpacing.sm)
         .background(
-            RoundedRectangle(cornerRadius: HudRadius.card)
-                .fill(HudPalette.chrome)
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .fill(theme.palette.chrome)
         )
         .overlay(
-            RoundedRectangle(cornerRadius: HudRadius.card)
-                .stroke(HudHairline.standard)
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .stroke(theme.hairline.standard)
         )
-        .shadow(color: HudSurface.scrim, radius: 14, x: 0, y: 8)
+        .shadow(
+            color: theme.vantageShadow,
+            radius: HudVantageMetrics.zoomControlShadowRadius,
+            x: .zero,
+            y: HudSpacing.md
+        )
     }
 }
 
@@ -2430,19 +2580,20 @@ private struct CanvasIconButton: View {
     let action: () -> Void
 
     @State private var isHovering = false
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: action) {
             Image(systemName: systemName)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                .foregroundStyle(isActive ? HudPalette.statusInfo : HudPalette.muted)
-                .frame(width: 28, height: 28)
+                .foregroundStyle(isActive ? theme.palette.statusInfo : theme.palette.muted)
+                .frame(width: HudIconSize.medium, height: HudIconSize.medium)
                 .background(
-                    RoundedRectangle(cornerRadius: HudRadius.standard)
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
                         .fill(background)
                 )
                 .overlay(
-                    RoundedRectangle(cornerRadius: HudRadius.standard)
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
                         .stroke(border)
                 )
         }
@@ -2454,21 +2605,22 @@ private struct CanvasIconButton: View {
 
     private var background: Color {
         if isActive {
-            return HudSurface.selected(HudPalette.statusInfo)
+            return HudSurface.selected(theme.palette.statusInfo)
         }
-        return isHovering ? HudSurface.hover : HudSurface.control
+        return isHovering ? theme.vantageControlHoverFill : theme.vantageControlFill
     }
 
     private var border: Color {
         if isActive {
-            return HudSurface.tintStrong(HudPalette.statusInfo)
+            return HudSurface.tintStrong(theme.palette.statusInfo)
         }
-        return isHovering ? HudHairline.standard : HudHairline.subtle
+        return isHovering ? theme.hairline.standard : theme.hairline.subtle
     }
 }
 
 private struct TerminalSurfaceContainer: View, Equatable {
     let controller: TerminiTerminalController
+    @Environment(\.colorScheme) private var colorScheme
 
     static func == (lhs: TerminalSurfaceContainer, rhs: TerminalSurfaceContainer) -> Bool {
         lhs.controller === rhs.controller
@@ -2478,7 +2630,7 @@ private struct TerminalSurfaceContainer: View, Equatable {
         HudTerminalSurface(
             controller: controller,
             showsSystemKeyboard: true,
-            appearance: HudTerminalAppearance(fontSize: 12)
+            appearance: .hudsonDefault(for: colorScheme, fontSize: 12)
         )
     }
 }
@@ -2487,6 +2639,7 @@ private struct TerminalInspectorRow: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
     let onSelect: () -> Void
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: onSelect) {
@@ -2495,21 +2648,21 @@ private struct TerminalInspectorRow: View {
                 VStack(alignment: .leading, spacing: HudSpacing.xs) {
                     Text(node.title)
                         .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.palette.ink)
                     Text("\(Int(node.size.width)) x \(Int(node.size.height))")
                         .font(HudFont.mono(HudTextSize.xxs))
-                        .foregroundStyle(HudPalette.muted)
+                        .foregroundStyle(theme.palette.muted)
                 }
                 Spacer()
             }
             .padding(HudSpacing.xl)
             .background(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .fill(isSelected ? HudSurface.selected(node.tint.color) : HudSurface.control)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : HudHairline.subtle)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
             )
         }
         .buttonStyle(.plain)

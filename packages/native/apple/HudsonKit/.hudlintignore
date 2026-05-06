@@ -6,11 +6,6 @@
 # (When invoked with `--root Sources`, paths are relative to Sources/.)
 HudsonUI/Tokens/**
 
-# Vantage is currently an extracted product surface with canvas drawing and
-# terminal virtualization constants. It should move to a sibling package once
-# the module boundary settles, then graduate selected primitives back into core.
-HudsonVantage/**
-
 # Build artifacts.
 **/build/**
 **/DerivedData/**
