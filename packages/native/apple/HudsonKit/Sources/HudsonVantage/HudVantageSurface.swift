@@ -353,6 +353,35 @@ private enum HudVantageStateError: Error, LocalizedError {
     }
 }
 
+private enum HudVantageControlNodeError: Error, LocalizedError {
+    case missingSelector
+    case emptySelection
+    case notFound(String)
+    case ambiguous(String)
+
+    var errorCode: String {
+        switch self {
+        case .missingSelector: "missing_node_selector"
+        case .emptySelection: "empty_selection"
+        case .notFound: "node_not_found"
+        case .ambiguous: "ambiguous_node_selector"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSelector:
+            "node selector required; pass nodeID, nodeIDs, or ids"
+        case .emptySelection:
+            "no nodes are selected"
+        case .notFound(let selector):
+            "node \(selector) not found"
+        case .ambiguous(let selector):
+            "node selector \(selector) matched multiple nodes"
+        }
+    }
+}
+
 private func formattedZoom(_ scale: CGFloat) -> String {
     let percent = scale * 100
 
@@ -396,6 +425,10 @@ public struct HudVantageSurface: View {
     @State private var nextZIndex: Double = 3
     @StateObject private var controlAPI: HudVantageControlAPI
     @State private var controlStatus = "API ready"
+    @State private var controlCommandCount = 0
+    @State private var lastControlAction: String?
+    @State private var lastControlDurationMS: Double?
+    @State private var perfTracker = HudVantagePerfTracker()
     @State private var tmuxInstallInProgress = false
     @State private var tmuxInstallMessage = ""
     @State private var tmuxInstallConfirmationPresented = false
@@ -879,6 +912,12 @@ public struct HudVantageSurface: View {
                 Text("·")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.dim)
+                Text(controlPerfLabel)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                Text("·")
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text(controlStatus.uppercased())
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -893,6 +932,14 @@ public struct HudVantageSurface: View {
             )
         }
         .frame(height: HudLayout.statusBarHeight)
+    }
+
+    private var controlPerfLabel: String {
+        guard let action = lastControlAction, let duration = lastControlDurationMS else {
+            return "api idle"
+        }
+
+        return "\(action) \(String(format: "%.1f", duration))ms"
     }
 
     private func spawnTerminal() {
@@ -913,7 +960,22 @@ public struct HudVantageSurface: View {
 
     private func startControlAPI() {
         controlAPI.start { command in
-            let response = handleControlCommand(command)
+            let startedAt = CFAbsoluteTimeGetCurrent()
+            var response = handleControlCommand(command)
+            let duration = (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            controlCommandCount += 1
+            lastControlAction = command.normalizedAction
+            lastControlDurationMS = duration
+            perfTracker.increment("control.command")
+            perfTracker.increment("control.action.\(command.normalizedAction)")
+            perfTracker.recordTiming("control.\(command.normalizedAction)", durationMS: duration)
+            response.durationMS = duration
+            if response.metrics == nil, command.includeMetrics != false {
+                response.metrics = controlMetrics()
+            }
+            if response.viewport == nil, command.includeViewport != false {
+                response.viewport = controlViewport()
+            }
             controlStatus = response.message
             return response
         }
@@ -1008,10 +1070,34 @@ public struct HudVantageSurface: View {
         switch command.normalizedAction {
         case "tile", "grid":
             return tileTerminals(command)
-        case "spawn", "new":
+        case "spawn", "new", "create":
             return spawnTerminals(command)
         case "reattach", "attach", "tmux":
             return reattachTmuxTargets(command)
+        case "select":
+            return selectNodes(command)
+        case "inspect", "node":
+            return inspectNodes(command)
+        case "focus", "center", "reveal":
+            return focusNodes(command)
+        case "close", "remove":
+            return closeNodes(command)
+        case "metrics", "perf":
+            return controlResponse(
+                command,
+                ok: true,
+                message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
+            )
+        case "perf-reset", "reset-metrics":
+            controlCommandCount = 0
+            lastControlAction = nil
+            lastControlDurationMS = nil
+            perfTracker.reset()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "perf counters reset"
+            )
         case "ensure-tmux", "ensuretmux", "tmux-ensure", "install-tmux", "installtmux", "tmux-install":
             return requestTmuxInstall(command)
         case "save", "snapshot":
@@ -1351,11 +1437,208 @@ public struct HudVantageSurface: View {
 
         let disallowed = CharacterSet.whitespacesAndNewlines
             .union(CharacterSet(charactersIn: ";'\"`$\\"))
-        guard candidate.rangeOfCharacter(from: disallowed) == nil else {
+        guard candidate.rangeOfCharacter(from: disallowed) == nil,
+              !candidate.hasPrefix("-")
+        else {
             throw TmuxTargetError.invalidField(field: "remoteHost", value: value)
         }
 
         return candidate
+    }
+
+    private func selectNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        if command.normalizedSelectionMode == "clear" {
+            selectedIDs.removeAll()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "selection cleared"
+            )
+        }
+
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: false)
+            switch command.normalizedSelectionMode {
+            case "add", "append":
+                selectedIDs.formUnion(resolved.map(\.id))
+            case "remove", "subtract":
+                selectedIDs.subtract(resolved.map(\.id))
+            case "toggle":
+                for id in resolved.map(\.id) {
+                    if selectedIDs.contains(id) {
+                        selectedIDs.remove(id)
+                    } else {
+                        selectedIDs.insert(id)
+                    }
+                }
+            default:
+                selectedIDs = Set(resolved.map(\.id))
+            }
+            if let first = resolved.first {
+                bringToFront(first.id)
+            }
+            return controlResponse(
+                command,
+                ok: true,
+                message: "selected \(selectedIDs.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func inspectNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "inspected \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func focusNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            guard let focusRect = boundingRect(for: resolved) else {
+                throw HudVantageControlNodeError.emptySelection
+            }
+            selectedIDs = Set(resolved.map(\.id))
+            centerCanvas(on: CGPoint(x: focusRect.midX, y: focusRect.midY))
+            if let first = resolved.first {
+                bringToFront(first.id)
+            }
+            return controlResponse(
+                command,
+                ok: true,
+                message: "focused \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func closeNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            let ids = Set(resolved.map(\.id))
+            for node in nodes where ids.contains(node.id) {
+                node.stop()
+            }
+            nodes.removeAll { ids.contains($0.id) }
+            selectedIDs.subtract(ids)
+            persistStateIfConfigured()
+
+            return controlResponse(
+                command,
+                ok: true,
+                message: "closed \(resolved.count)"
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func controlNodeErrorResponse(
+        _ command: HudVantageControlCommand,
+        _ error: Error
+    ) -> HudVantageControlResponse {
+        let nodeError = error as? HudVantageControlNodeError
+        return controlResponse(
+            command,
+            ok: false,
+            message: error.localizedDescription,
+            errorCode: nodeError?.errorCode ?? "node_error"
+        )
+    }
+
+    private func resolveNodes(
+        from command: HudVantageControlCommand,
+        allowSelectionFallback: Bool
+    ) throws -> [TerminalNode] {
+        let selectors = nodeSelectors(from: command)
+        if selectors.isEmpty {
+            if allowSelectionFallback {
+                let selected = nodes.filter { selectedIDs.contains($0.id) }
+                guard !selected.isEmpty else {
+                    throw HudVantageControlNodeError.emptySelection
+                }
+                return selected
+            }
+            throw HudVantageControlNodeError.missingSelector
+        }
+
+        var resolved: [TerminalNode] = []
+        var seen: Set<UUID> = []
+        for selector in selectors {
+            let matches = nodes(matching: selector)
+            guard !matches.isEmpty else {
+                throw HudVantageControlNodeError.notFound(selector)
+            }
+            guard matches.count == 1 else {
+                throw HudVantageControlNodeError.ambiguous(selector)
+            }
+            let node = matches[0]
+            if !seen.contains(node.id) {
+                resolved.append(node)
+                seen.insert(node.id)
+            }
+        }
+        return resolved
+    }
+
+    private func nodeSelectors(from command: HudVantageControlCommand) -> [String] {
+        var selectors: [String] = []
+        if let nodeID = command.nodeID {
+            selectors.append(nodeID)
+        }
+        selectors.append(contentsOf: command.nodeIDs ?? [])
+        selectors.append(contentsOf: command.ids ?? [])
+        return selectors
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func nodes(matching selector: String) -> [TerminalNode] {
+        let normalized = selector.lowercased()
+        return nodes.filter { node in
+            let uuid = node.id.uuidString.lowercased()
+            if uuid == normalized || uuid.hasPrefix(normalized) {
+                return true
+            }
+            if node.title.lowercased() == normalized {
+                return true
+            }
+            switch node.runtimeIdentity {
+            case .localPTY:
+                return false
+            case .tmux(let target, let path, let remoteHost):
+                return target.lowercased() == normalized
+                    || path?.description.lowercased() == normalized
+                    || remoteHost.map { "\($0):\(target)".lowercased() == normalized } == true
+            }
+        }
+    }
+
+    private func boundingRect(for nodes: [TerminalNode]) -> CGRect? {
+        guard let first = nodes.first else { return nil }
+        return nodes.dropFirst().reduce(nodeFrame(first)) { rect, node in
+            rect.union(nodeFrame(node))
+        }
     }
 
     private func requestTmuxInstall(
@@ -1588,7 +1871,9 @@ public struct HudVantageSurface: View {
             return HudVantageControlNode(
                 id: node.id,
                 title: node.title,
+                subtitle: node.subtitle,
                 runtimeKind: "local-pty",
+                selected: selectedIDs.contains(node.id),
                 x: Double(node.origin.x),
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
@@ -1599,10 +1884,12 @@ public struct HudVantageSurface: View {
             return HudVantageControlNode(
                 id: node.id,
                 title: node.title,
+                subtitle: node.subtitle,
                 runtimeKind: "tmux",
                 target: target,
                 graphitePath: path?.description,
                 remoteHost: remoteHost,
+                selected: selectedIDs.contains(node.id),
                 x: Double(node.origin.x),
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
@@ -1792,16 +2079,24 @@ public struct HudVantageSurface: View {
         _ command: HudVantageControlCommand,
         ok: Bool,
         message: String,
-        requiresPermission: Bool? = nil
+        errorCode: String? = nil,
+        requiresPermission: Bool? = nil,
+        nodesOverride: [TerminalNode]? = nil
     ) -> HudVantageControlResponse {
-        HudVantageControlResponse(
+        let responseNodes = nodesOverride ?? nodes
+        return HudVantageControlResponse(
+            apiVersion: command.resolvedAPIVersion,
             id: command.id,
             action: command.normalizedAction,
             ok: ok,
             message: message,
+            errorCode: errorCode,
             workspaceID: command.workspaceID ?? configuration.workspaceID,
             nodeCount: nodes.count,
-            nodes: nodes.map(controlNodeSummary),
+            nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
+            selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
+            viewport: command.includeViewport == false ? nil : controlViewport(),
+            metrics: command.includeMetrics == false ? nil : controlMetrics(),
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,
@@ -1811,6 +2106,53 @@ public struct HudVantageSurface: View {
             tmuxInstallInProgress: tmuxInstallInProgress,
             requiresPermission: requiresPermission,
             installerCommand: TmuxToolchain.homebrewInstallCommandDescription
+        )
+    }
+
+    private func controlViewport() -> HudVantageControlViewport {
+        let worldRect = viewportWorldRect
+        return HudVantageControlViewport(
+            panX: Double(canvasPan.width),
+            panY: Double(canvasPan.height),
+            scale: Double(canvasScale),
+            viewportWidth: Double(lastViewportSize.width),
+            viewportHeight: Double(lastViewportSize.height),
+            worldMinX: Double(worldRect.minX),
+            worldMinY: Double(worldRect.minY),
+            worldWidth: Double(worldRect.width),
+            worldHeight: Double(worldRect.height)
+        )
+    }
+
+    private func controlMetrics() -> HudVantageControlMetrics {
+        let localPTYCount = nodes.filter { node in
+            if case .localPTY = node.runtimeIdentity { return true }
+            return false
+        }.count
+        let tmuxNodes = nodes.filter { node in
+            if case .tmux = node.runtimeIdentity { return true }
+            return false
+        }
+        let remoteTmuxCount = tmuxNodes.filter { node in
+            if case .tmux(_, _, let remoteHost) = node.runtimeIdentity {
+                return remoteHost != nil
+            }
+            return false
+        }.count
+
+        return HudVantageControlMetrics(
+            nodeCount: nodes.count,
+            selectedCount: selectedIDs.count,
+            localPTYCount: localPTYCount,
+            tmuxCount: tmuxNodes.count,
+            remoteTmuxCount: remoteTmuxCount,
+            liveSurfaceCount: nodes.filter { rendersLiveSurface(for: $0) }.count,
+            controlCommandCount: controlCommandCount,
+            lastCommandAction: lastControlAction,
+            lastCommandDurationMS: lastControlDurationMS,
+            perf: perfTracker.snapshot(),
+            minScale: Double(Self.minimumCanvasScale),
+            maxScale: Double(Self.maximumCanvasScale)
         )
     }
 

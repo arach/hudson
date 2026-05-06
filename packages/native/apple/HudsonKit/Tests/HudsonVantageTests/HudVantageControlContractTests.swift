@@ -46,6 +46,8 @@ final class HudVantageControlContractTests: XCTestCase {
     func testControlCommandDecodesRestoreStatePath() throws {
         let json = """
         {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
           "id": "restore-1",
           "action": "restore",
           "workspaceID": "scout-lab",
@@ -60,10 +62,43 @@ final class HudVantageControlContractTests: XCTestCase {
         )
 
         XCTAssertEqual(command.id, "restore-1")
+        XCTAssertEqual(command.resolvedAPIVersion, "v0")
+        XCTAssertEqual(command.kind, "hudson.vantage.command")
         XCTAssertEqual(command.normalizedAction, "restore")
         XCTAssertEqual(command.workspaceID, "scout-lab")
         XCTAssertEqual(command.statePath, "/tmp/scout-vantage-state.json")
         XCTAssertEqual(command.createIfMissing, true)
+    }
+
+    func testControlCommandDecodesV0NodeSelectorsAndIncludeFlags() throws {
+        let json = """
+        {
+          "version": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "select-1",
+          "action": "select",
+          "nodeID": "abc123",
+          "nodeIDs": ["def456", "789abc"],
+          "selectionMode": "toggle",
+          "includeNodes": false,
+          "includeMetrics": true,
+          "includeViewport": true
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.resolvedAPIVersion, "v0")
+        XCTAssertEqual(command.normalizedAction, "select")
+        XCTAssertEqual(command.nodeID, "abc123")
+        XCTAssertEqual(command.nodeIDs, ["def456", "789abc"])
+        XCTAssertEqual(command.normalizedSelectionMode, "toggle")
+        XCTAssertEqual(command.includeNodes, false)
+        XCTAssertEqual(command.includeMetrics, true)
+        XCTAssertEqual(command.includeViewport, true)
     }
 
     func testControlCommandDecodesPermissionGatedTmuxInstall() throws {
@@ -136,15 +171,18 @@ final class HudVantageControlContractTests: XCTestCase {
             action: "status",
             ok: true,
             message: "1 terminals",
+            errorCode: nil,
             workspaceID: "scout-lab",
             nodeCount: 1,
             nodes: [
                 HudVantageControlNode(
                     id: nodeID,
                     title: "codex 0007",
+                    subtitle: "tmux · hudson-lab:agents-codex-0007",
                     runtimeKind: "tmux",
                     target: "hudson-lab:agents-codex-0007",
                     graphitePath: "hudson.lab.agents.codex.0007.worker",
+                    selected: true,
                     x: 120,
                     y: 240,
                     width: 500,
@@ -152,13 +190,50 @@ final class HudVantageControlContractTests: XCTestCase {
                     zIndex: 4
                 )
             ],
+            selectedNodeIDs: [nodeID],
+            viewport: HudVantageControlViewport(
+                panX: 10,
+                panY: 20,
+                scale: 0.8,
+                viewportWidth: 1200,
+                viewportHeight: 800,
+                worldMinX: -12.5,
+                worldMinY: -25,
+                worldWidth: 1500,
+                worldHeight: 1000
+            ),
+            metrics: HudVantageControlMetrics(
+                nodeCount: 1,
+                selectedCount: 1,
+                localPTYCount: 0,
+                tmuxCount: 1,
+                remoteTmuxCount: 0,
+                liveSurfaceCount: 1,
+                controlCommandCount: 12,
+                lastCommandAction: "status",
+                lastCommandDurationMS: 2.4,
+                perf: HudVantagePerfSnapshot(
+                    counters: HudVantagePerfCounters(["control.command": 12]),
+                    timingSamples: [
+                        HudVantagePerfTimingSample(
+                            name: "control.status",
+                            durationMS: 2.4,
+                            recordedAt: Date(timeIntervalSince1970: 12)
+                        )
+                    ],
+                    capturedAt: Date(timeIntervalSince1970: 13)
+                ),
+                minScale: 0.002,
+                maxScale: 64
+            ),
             commandPath: "/tmp/scout-vantage-control.jsonl",
             responsePath: "/tmp/scout-vantage-control.responses.jsonl",
             statePath: "/tmp/scout-vantage-state.json",
             tmuxPath: "/opt/homebrew/bin/tmux",
             tmuxInstallInProgress: false,
             requiresPermission: true,
-            installerCommand: "/opt/homebrew/bin/brew install tmux"
+            installerCommand: "/opt/homebrew/bin/brew install tmux",
+            durationMS: 3.2
         )
 
         let data = try JSONEncoder().encode(response)
@@ -166,13 +241,164 @@ final class HudVantageControlContractTests: XCTestCase {
             JSONSerialization.jsonObject(with: data) as? [String: Any]
         )
 
+        XCTAssertEqual(object["apiVersion"] as? String, "v0")
+        XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
         XCTAssertEqual(object["ok"] as? Bool, true)
         XCTAssertEqual(object["workspaceID"] as? String, "scout-lab")
         XCTAssertEqual(object["nodeCount"] as? Int, 1)
         XCTAssertEqual(object["statePath"] as? String, "/tmp/scout-vantage-state.json")
         XCTAssertEqual(object["tmuxPath"] as? String, "/opt/homebrew/bin/tmux")
         XCTAssertEqual(object["requiresPermission"] as? Bool, true)
+        XCTAssertEqual(object["durationMS"] as? Double, 3.2)
         let nodes = try XCTUnwrap(object["nodes"] as? [[String: Any]])
         XCTAssertEqual(nodes.first?["runtimeKind"] as? String, "tmux")
+        XCTAssertEqual(nodes.first?["subtitle"] as? String, "tmux · hudson-lab:agents-codex-0007")
+        XCTAssertEqual(nodes.first?["selected"] as? Bool, true)
+
+        let selectedNodeIDs = try XCTUnwrap(object["selectedNodeIDs"] as? [String])
+        XCTAssertEqual(selectedNodeIDs, [nodeID.uuidString])
+        let viewport = try XCTUnwrap(object["viewport"] as? [String: Any])
+        XCTAssertEqual(viewport["scale"] as? Double, 0.8)
+        let metrics = try XCTUnwrap(object["metrics"] as? [String: Any])
+        XCTAssertEqual(metrics["tmuxCount"] as? Int, 1)
+        XCTAssertEqual(metrics["controlCommandCount"] as? Int, 12)
+        let perf = try XCTUnwrap(metrics["perf"] as? [String: Any])
+        let counters = try XCTUnwrap(perf["counters"] as? [String: Any])
+        XCTAssertEqual(counters["control.command"] as? Int, 12)
+    }
+
+    func testControlResponseOmitsNilOptionalPayloads() throws {
+        let response = HudVantageControlResponse(
+            id: "flags",
+            action: "status",
+            ok: true,
+            message: "ok",
+            errorCode: "node_not_found",
+            nodeCount: 0,
+            nodes: nil,
+            selectedNodeIDs: [],
+            viewport: nil,
+            metrics: nil,
+            durationMS: 1.5
+        )
+
+        let data = try JSONEncoder().encode(response)
+        let object = try XCTUnwrap(
+            JSONSerialization.jsonObject(with: data) as? [String: Any]
+        )
+
+        XCTAssertEqual(object["apiVersion"] as? String, "v0")
+        XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
+        XCTAssertEqual(object["errorCode"] as? String, "node_not_found")
+        XCTAssertFalse(object.keys.contains("nodes"))
+        XCTAssertFalse(object.keys.contains("viewport"))
+        XCTAssertFalse(object.keys.contains("metrics"))
+    }
+
+    func testVantageCtlEmitsV0MetricsCommand() throws {
+        let command = try queuedCommandFromScript(
+            relativeScriptPath: "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
+            arguments: ["metrics"]
+        )
+
+        XCTAssertEqual(command["id"] as? String, "test-request")
+        XCTAssertEqual(command["action"] as? String, "metrics")
+        XCTAssertEqual(command["apiVersion"] as? String, "v0")
+        XCTAssertEqual(command["kind"] as? String, "hudson.vantage.command")
+        XCTAssertEqual(command["includeMetrics"] as? Bool, true)
+        XCTAssertEqual(command["includeViewport"] as? Bool, true)
+    }
+
+    func testVantageCtlEmitsV0SelectCommandWithNodeIDs() throws {
+        let command = try queuedCommandFromScript(
+            relativeScriptPath: "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
+            arguments: ["select", "node-a", "node-b", "--toggle"]
+        )
+
+        XCTAssertEqual(command["action"] as? String, "select")
+        XCTAssertEqual(command["apiVersion"] as? String, "v0")
+        XCTAssertEqual(command["selectionMode"] as? String, "toggle")
+        XCTAssertEqual(command["nodeIDs"] as? [String], ["node-a", "node-b"])
+    }
+
+    func testCanvasCtlEmitsV0FocusAndCloseCommands() throws {
+        let focus = try queuedCommandFromScript(
+            relativeScriptPath: "examples/termini-canvas/scripts/canvasctl.sh",
+            arguments: ["focus", "node-a"]
+        )
+        let close = try queuedCommandFromScript(
+            relativeScriptPath: "examples/termini-canvas/scripts/canvasctl.sh",
+            arguments: ["close", "node-a"]
+        )
+
+        XCTAssertEqual(focus["action"] as? String, "focus")
+        XCTAssertEqual(focus["apiVersion"] as? String, "v0")
+        XCTAssertEqual(focus["kind"] as? String, "hudson.vantage.command")
+        XCTAssertEqual(focus["nodeIDs"] as? [String], ["node-a"])
+
+        XCTAssertEqual(close["action"] as? String, "close")
+        XCTAssertEqual(close["apiVersion"] as? String, "v0")
+        XCTAssertEqual(close["kind"] as? String, "hudson.vantage.command")
+        XCTAssertEqual(close["nodeIDs"] as? [String], ["node-a"])
+    }
+
+    private func queuedCommandFromScript(
+        relativeScriptPath: String,
+        arguments: [String]
+    ) throws -> [String: Any] {
+        let directory = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString, isDirectory: true)
+        try FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
+        defer {
+            try? FileManager.default.removeItem(at: directory)
+        }
+
+        let commandURL = directory.appendingPathComponent("control.jsonl")
+        let responseURL = directory.appendingPathComponent("responses.jsonl")
+        let scriptURL = try repoRootURL().appendingPathComponent(relativeScriptPath)
+
+        let process = Process()
+        process.executableURL = URL(fileURLWithPath: "/bin/bash")
+        process.arguments = [
+            scriptURL.path,
+            "--control-file", commandURL.path,
+            "--response-file", responseURL.path,
+            "--id", "test-request",
+        ] + arguments
+
+        let output = Pipe()
+        process.standardOutput = output
+        process.standardError = output
+        try process.run()
+        process.waitUntilExit()
+
+        let data = output.fileHandleForReading.readDataToEndOfFile()
+        let processOutput = String(data: data, encoding: .utf8) ?? ""
+        XCTAssertEqual(
+            process.terminationStatus,
+            0,
+            "script failed with output: \(processOutput)"
+        )
+
+        let text = try String(contentsOf: commandURL, encoding: .utf8)
+        let line = try XCTUnwrap(text.split(separator: "\n").last)
+        let jsonData = Data(line.utf8)
+        return try XCTUnwrap(
+            JSONSerialization.jsonObject(with: jsonData) as? [String: Any]
+        )
+    }
+
+    private func repoRootURL() throws -> URL {
+        var url = URL(fileURLWithPath: #filePath)
+        while url.path != "/" {
+            let candidate = url.appendingPathComponent(
+                "packages/native/apple/HudsonKit/Scripts/vantagectl.sh"
+            )
+            if FileManager.default.fileExists(atPath: candidate.path) {
+                return url
+            }
+            url.deleteLastPathComponent()
+        }
+        throw CocoaError(.fileNoSuchFile)
     }
 }

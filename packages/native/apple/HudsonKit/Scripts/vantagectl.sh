@@ -17,6 +17,11 @@ Usage:
   vantagectl.sh [--wait] tile COLUMNS ROWS [--width PX] [--height PX] [--gap PX] [--no-reset] [--allow-large]
   vantagectl.sh [--wait] spawn COUNT [--width PX] [--height PX] [--gap PX]
   vantagectl.sh [--wait] reattach [--remote HOST] [--id GRAPHITE_ID] [--session NAME] [--target TARGET] [--create] [--no-reset]
+  vantagectl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
+  vantagectl.sh [--wait] inspect [NODE...]
+  vantagectl.sh [--wait] focus [NODE...]
+  vantagectl.sh [--wait] close [NODE...]
+  vantagectl.sh [--wait] metrics [--reset]
   vantagectl.sh [--wait] ensure-tmux [--confirm]
   vantagectl.sh [--wait] save [--state-file PATH]
   vantagectl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
@@ -64,6 +69,58 @@ json_object() {
     first=0
   done
   printf '}'
+}
+
+normalize_raw_command() {
+  local raw_json=$1
+  local tmp_file
+  local raw_id
+  tmp_file=$(mktemp "${TMPDIR:-/tmp}/vantagectl.raw.XXXXXX")
+  trap 'rm -f "$tmp_file"' RETURN
+
+  printf '%s' "$raw_json" > "$tmp_file"
+  if ! plutil -convert json -r -o "$tmp_file" "$tmp_file" >/dev/null 2>&1; then
+    printf 'invalid raw command: expected JSON object\n' >&2
+    exit 64
+  fi
+
+  if raw_id=$(plutil -extract id raw -o - "$tmp_file" 2>/dev/null); then
+    REQUEST_ID="$raw_id"
+  elif ! plutil -insert id -string "$REQUEST_ID" "$tmp_file" >/dev/null 2>&1; then
+    printf 'invalid raw command: expected JSON object\n' >&2
+    exit 64
+  fi
+
+  if ! plutil -extract apiVersion raw -o - "$tmp_file" >/dev/null 2>&1 \
+    && ! plutil -extract version raw -o - "$tmp_file" >/dev/null 2>&1; then
+    plutil -insert apiVersion -string v0 "$tmp_file" >/dev/null
+  fi
+
+  if ! plutil -extract kind raw -o - "$tmp_file" >/dev/null 2>&1; then
+    plutil -insert kind -string hudson.vantage.command "$tmp_file" >/dev/null
+  fi
+
+  RAW_COMMAND_JSON=$(plutil -convert json -r -o - "$tmp_file" | tr -d '\n')
+}
+
+json_int_arg() {
+  local name=$1
+  local value=$2
+  if [[ ! "$value" =~ ^-?(0|[1-9][0-9]*)$ ]]; then
+    printf 'invalid %s: expected JSON integer, got %s\n' "$name" "$value" >&2
+    exit 64
+  fi
+  printf '%s' "$value"
+}
+
+json_number_arg() {
+  local name=$1
+  local value=$2
+  if [[ ! "$value" =~ ^-?(0|[1-9][0-9]*)(\.[0-9]+)?([eE][+-]?[0-9]+)?$ ]]; then
+    printf 'invalid %s: expected JSON number, got %s\n' "$name" "$value" >&2
+    exit 64
+  fi
+  printf '%s' "$value"
 }
 
 queue_command() {
@@ -135,29 +192,105 @@ shift || true
 
 case "$command" in
   raw)
-    queue_command "${1:?missing raw JSON command}"
+    normalize_raw_command "${1:?missing raw JSON command}"
+    queue_command "$RAW_COMMAND_JSON"
     ;;
 
   status|reset|clear)
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":$(json_string "$command")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
     )
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
-  save|snapshot)
-    parts=(
-      "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"save\""
-      "\"statePath\":$(json_string "$STATE_FILE")"
-    )
+  metrics|perf)
+    action="metrics"
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --state-file) parts[2]="\"statePath\":$(json_string "${2:?missing state file}")"; shift 2 ;;
+        --reset) action="perf-reset"; shift ;;
+        *) printf 'unknown metrics option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":$(json_string "$action")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeMetrics\":true"
+      "\"includeViewport\":true"
+    )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  select)
+    mode="replace"
+    node_ids=()
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --add) mode="add"; shift ;;
+        --remove|--subtract) mode="remove"; shift ;;
+        --toggle) mode="toggle"; shift ;;
+        --clear) mode="clear"; shift ;;
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"select\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"selectionMode\":$(json_string "$mode")"
+    )
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  inspect|focus|center|reveal|close|remove)
+    node_ids=()
+    action="$command"
+    case "$command" in
+      center|reveal) action="focus" ;;
+      remove) action="close" ;;
+    esac
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":$(json_string "$action")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  save|snapshot)
+    state_path="$STATE_FILE"
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --state-file) state_path="${2:?missing state file}"; shift 2 ;;
         *) printf 'unknown save option: %s\n' "$1" >&2; exit 64 ;;
       esac
     done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"save\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"statePath\":$(json_string "$state_path")"
+    )
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
@@ -166,6 +299,8 @@ case "$command" in
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":\"ensure-tmux\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
       "\"installer\":\"homebrew\""
     )
     while [[ $# -gt 0 ]]; do
@@ -181,19 +316,22 @@ case "$command" in
   restore|load)
     create=false
     reset=true
-    parts=(
-      "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"restore\""
-      "\"statePath\":$(json_string "$STATE_FILE")"
-    )
+    state_path="$STATE_FILE"
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --state-file) parts[2]="\"statePath\":$(json_string "${2:?missing state file}")"; shift 2 ;;
+        --state-file) state_path="${2:?missing state file}"; shift 2 ;;
         --create) create=true; shift ;;
         --no-reset) reset=false; shift ;;
         *) printf 'unknown restore option: %s\n' "$1" >&2; exit 64 ;;
       esac
     done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"restore\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"statePath\":$(json_string "$state_path")"
+    )
     parts+=("\"createIfMissing\":$create" "\"reset\":$reset")
     queue_command "$(json_object "${parts[@]}")"
     ;;
@@ -211,16 +349,18 @@ case "$command" in
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":\"tile\""
-      "\"columns\":$columns"
-      "\"rows\":$rows"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"columns\":$(json_int_arg columns "$columns")"
+      "\"rows\":$(json_int_arg rows "$rows")"
     )
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --width) parts+=("\"width\":${2:?missing width}"); shift 2 ;;
-        --height) parts+=("\"height\":${2:?missing height}"); shift 2 ;;
-        --gap) parts+=("\"gap\":${2:?missing gap}"); shift 2 ;;
-        --origin-x) parts+=("\"originX\":${2:?missing origin-x}"); shift 2 ;;
-        --origin-y) parts+=("\"originY\":${2:?missing origin-y}"); shift 2 ;;
+        --width) parts+=("\"width\":$(json_number_arg width "${2:?missing width}")"); shift 2 ;;
+        --height) parts+=("\"height\":$(json_number_arg height "${2:?missing height}")"); shift 2 ;;
+        --gap) parts+=("\"gap\":$(json_number_arg gap "${2:?missing gap}")"); shift 2 ;;
+        --origin-x) parts+=("\"originX\":$(json_number_arg origin-x "${2:?missing origin-x}")"); shift 2 ;;
+        --origin-y) parts+=("\"originY\":$(json_number_arg origin-y "${2:?missing origin-y}")"); shift 2 ;;
         --no-reset) reset=false; shift ;;
         --allow-large) allow_large=true; shift ;;
         *) printf 'unknown tile option: %s\n' "$1" >&2; exit 64 ;;
@@ -238,15 +378,17 @@ case "$command" in
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":\"spawn\""
-      "\"count\":$count"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"count\":$(json_int_arg count "$count")"
     )
     while [[ $# -gt 0 ]]; do
       case "$1" in
-        --width) parts+=("\"width\":${2:?missing width}"); shift 2 ;;
-        --height) parts+=("\"height\":${2:?missing height}"); shift 2 ;;
-        --gap) parts+=("\"gap\":${2:?missing gap}"); shift 2 ;;
-        --origin-x) parts+=("\"originX\":${2:?missing origin-x}"); shift 2 ;;
-        --origin-y) parts+=("\"originY\":${2:?missing origin-y}"); shift 2 ;;
+        --width) parts+=("\"width\":$(json_number_arg width "${2:?missing width}")"); shift 2 ;;
+        --height) parts+=("\"height\":$(json_number_arg height "${2:?missing height}")"); shift 2 ;;
+        --gap) parts+=("\"gap\":$(json_number_arg gap "${2:?missing gap}")"); shift 2 ;;
+        --origin-x) parts+=("\"originX\":$(json_number_arg origin-x "${2:?missing origin-x}")"); shift 2 ;;
+        --origin-y) parts+=("\"originY\":$(json_number_arg origin-y "${2:?missing origin-y}")"); shift 2 ;;
         *) printf 'unknown spawn option: %s\n' "$1" >&2; exit 64 ;;
       esac
     done
@@ -263,6 +405,8 @@ case "$command" in
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":\"reattach\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
     )
     while [[ $# -gt 0 ]]; do
       case "$1" in
@@ -272,12 +416,12 @@ case "$command" in
         --remote|--remote-host|--ssh) remote="${2:?missing remote host}"; shift 2 ;;
         --create) create=true; shift ;;
         --no-reset) reset=false; shift ;;
-        --columns) parts+=("\"columns\":${2:?missing columns}"); shift 2 ;;
-        --width) parts+=("\"width\":${2:?missing width}"); shift 2 ;;
-        --height) parts+=("\"height\":${2:?missing height}"); shift 2 ;;
-        --gap) parts+=("\"gap\":${2:?missing gap}"); shift 2 ;;
-        --origin-x) parts+=("\"originX\":${2:?missing origin-x}"); shift 2 ;;
-        --origin-y) parts+=("\"originY\":${2:?missing origin-y}"); shift 2 ;;
+        --columns) parts+=("\"columns\":$(json_int_arg columns "${2:?missing columns}")"); shift 2 ;;
+        --width) parts+=("\"width\":$(json_number_arg width "${2:?missing width}")"); shift 2 ;;
+        --height) parts+=("\"height\":$(json_number_arg height "${2:?missing height}")"); shift 2 ;;
+        --gap) parts+=("\"gap\":$(json_number_arg gap "${2:?missing gap}")"); shift 2 ;;
+        --origin-x) parts+=("\"originX\":$(json_number_arg origin-x "${2:?missing origin-x}")"); shift 2 ;;
+        --origin-y) parts+=("\"originY\":$(json_number_arg origin-y "${2:?missing origin-y}")"); shift 2 ;;
         *) printf 'unknown reattach option: %s\n' "$1" >&2; exit 64 ;;
       esac
     done

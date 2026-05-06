@@ -71,6 +71,9 @@ Example commands:
 printf '{"id":"grid-8x8","action":"tile","columns":8,"rows":8,"width":300,"height":200,"gap":18}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-lab","action":"reattach","sessions":["hudson-lab"],"createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-ids","action":"reattach","ids":["hudson.lab.termini.canvas.0042.shell","hudson.lab.agents.codex.0007.worker"]}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"select","action":"select","nodeIDs":["NODE_ID_PREFIX"]}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"inspect","action":"inspect"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"metrics","action":"metrics"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"status","action":"status"}\n' >> /tmp/termini-canvas-control.jsonl
@@ -87,13 +90,26 @@ examples/termini-canvas/scripts/canvasctl.sh --wait reattach --remote user@host 
 examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
+examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
+examples/termini-canvas/scripts/canvasctl.sh --wait inspect
+examples/termini-canvas/scripts/canvasctl.sh --wait focus
+examples/termini-canvas/scripts/canvasctl.sh --wait metrics
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
 examples/termini-canvas/scripts/canvasctl.sh --wait save
 examples/termini-canvas/scripts/canvasctl.sh --wait restore --create
+examples/termini-canvas/scripts/canvasctl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
 That means a Claude, Codex, or shell session outside the app can instantiate
 or reconstruct the visible canvas while the macOS app keeps running.
+
+The v0 command envelope is `apiVersion: "v0"` and
+`kind: "hudson.vantage.command"`. The app still accepts older flat commands,
+but wrappers emit v0 by default. Responses include a matching response kind,
+selected node IDs, viewport, metrics, and per-command latency.
+
+The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
+waitable request id plus the v0 envelope when those fields are missing.
 
 `reattach` accepts:
 
