@@ -33,6 +33,7 @@ var targets: [Target] = [
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
+    .testTarget(name: "HudsonUITests", dependencies: ["HudsonUI"]),
 ]
 
 if voiceEnabled {
@@ -47,6 +48,7 @@ if voiceEnabled {
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
     dependencies.append(.package(path: "/Users/arach/dev/termini"))
+    products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     targets.append(
         .target(
             name: "HudsonTerminal",
@@ -56,6 +58,21 @@ if terminalEnabled {
                 .product(name: "TerminiSSH", package: "Termini"),
             ]
         )
+    )
+    targets.append(
+        .target(
+            name: "HudsonVantage",
+            dependencies: [
+                "HudsonObservability",
+                "HudsonUI",
+                "HudsonShell",
+                "HudsonTerminal",
+                .product(name: "Termini", package: "Termini"),
+            ]
+        )
+    )
+    targets.append(
+        .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"])
     )
     demoDependencies.append("HudsonTerminal")
     demoSwiftSettings.append(.define("HUDSON_TERMINAL"))

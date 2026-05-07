@@ -8,6 +8,7 @@ public struct HudTerminalSurface: View {
     private let showsSystemKeyboard: Bool
     private let appearance: HudTerminalAppearance
     private let onTap: (() -> Void)?
+    @Environment(\.colorScheme) private var colorScheme
 
     public init(
         controller: TerminiTerminalController? = nil,
@@ -22,12 +23,16 @@ public struct HudTerminalSurface: View {
     }
 
     public var body: some View {
+        let resolvedAppearance = appearance == .default
+            ? HudTerminalAppearance.hudsonDefault(for: colorScheme)
+            : appearance
+
         TerminiTerminalView(
             controller: controller,
             showsSystemKeyboard: showsSystemKeyboard,
-            appearance: appearance.termBridgeAppearance
+            appearance: resolvedAppearance.terminiAppearance
         )
-        .background(appearance.backgroundColor)
+        .background(resolvedAppearance.backgroundColor)
         .contentShape(Rectangle())
         .simultaneousGesture(
             TapGesture()

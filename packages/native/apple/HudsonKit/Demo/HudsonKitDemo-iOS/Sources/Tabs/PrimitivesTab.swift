@@ -33,6 +33,9 @@ struct PrimitivesTab: View {
         ```
         """
     )
+    @State private var showSharing: Bool = false
+    @State private var selectedLiquidTab: HudLiquidBarTab.ID = "home"
+    @State private var lastLiquidAction: String = "—"
 
     private let demoVault = HudVault(service: "com.hudsonkit.demoios.vault-demo")
 
@@ -46,11 +49,13 @@ struct PrimitivesTab: View {
         .init(icon: "qrcode.viewfinder",     label: "Scan",     anchor: "QR scanner"),
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
         .init(icon: "key",                   label: "Vault",    anchor: "Vault"),
+        .init(icon: "square.and.arrow.up",   label: "Share",    anchor: "Share"),
         .init(icon: "list.bullet",           label: "List",     anchor: "List rows"),
         .init(icon: "tablecells.fill",       label: "Table",    anchor: "Table"),
         .init(icon: "tablecells",            label: "KV",       anchor: "KV rows"),
         .init(icon: "rectangle.stack",       label: "Cards",    anchor: "Cards & insets"),
         .init(icon: "tray",                  label: "Empty",    anchor: "Empty state"),
+        .init(icon: "water.waves",           label: "Liquid",   anchor: "Liquid bar"),
         .init(icon: "minus",                 label: "Dividers", anchor: "Dividers"),
     ]
 
@@ -68,11 +73,13 @@ struct PrimitivesTab: View {
                     sectionQRScanner
                     sectionPermissions
                     sectionVault
+                    sectionShare
                     sectionListRows
                     sectionTable
                     sectionKVRows
                     sectionCards
                     sectionEmptyState
+                    sectionLiquidBar
                     sectionDividers
                 }
                 .padding(.horizontal, HudSpacing.xl)
@@ -237,6 +244,14 @@ struct PrimitivesTab: View {
                     }
                 }
                 HudPermissionGate(
+                    .speech,
+                    rationale: "Speech recognition turns dictation into text on-device."
+                ) {
+                    HudInset {
+                        HudKVRow("speech", value: "GRANTED")
+                    }
+                }
+                HudPermissionGate(
                     .camera,
                     rationale: "Used for QR-code pairing and photo capture demos."
                 ) {
@@ -337,6 +352,37 @@ struct PrimitivesTab: View {
             try block()
         } catch {
             vaultMessage = "error: \(error.localizedDescription)"
+        }
+    }
+
+    private var sectionShare: some View {
+        gallerySection("Share", snippet: """
+            @State private var showSharing = false
+
+            HudButton("Share", icon: "square.and.arrow.up", style: .secondary) {
+                showSharing = true
+            }
+            .hudShare(isPresented: $showSharing, items: [
+                .text("Hudson primitives — try them out."),
+                .url(URL(string: "https://hudsonkit.com")!),
+            ])
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                HudButton(
+                    "Share",
+                    icon: "square.and.arrow.up",
+                    style: .secondary
+                ) {
+                    showSharing = true
+                }
+                .hudShare(isPresented: $showSharing, items: [
+                    .text("Hudson primitives — try them out."),
+                    .url(URL(string: "https://hudsonkit.com")!),
+                ])
+                HudInset {
+                    HudKVRow("payload", value: "1 string + 1 url")
+                }
+            }
         }
     }
 
@@ -498,6 +544,107 @@ struct PrimitivesTab: View {
                 icon: "antenna.radiowaves.left.and.right"
             )
         }
+    }
+
+
+    private var sectionLiquidBar: some View {
+        gallerySection("Liquid bar", snippet: """
+            HudLiquidBar(tabs: tabs, selection: $selection)
+            HudLiquidBar(actions: actions, tint: .tinted(HudPalette.accent))
+            HudLiquidBar(tint: .clear) { HStack { ... } }
+            """) {
+            VStack(alignment: .leading, spacing: HudSpacing.xxl) {
+                liquidTabsDemo
+                liquidActionsDemo
+                liquidTintVariantsDemo
+                liquidComplicationDemo
+            }
+        }
+    }
+
+    private var liquidTabsDemo: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.md) {
+            HudSectionLabel("LIQUID BAR — TABS")
+            HudInset {
+                HudKVRow("selected", value: selectedLiquidTab)
+            }
+            HudLiquidBar(
+                tabs: liquidTabs,
+                selection: $selectedLiquidTab
+            )
+        }
+    }
+
+    private var liquidActionsDemo: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.md) {
+            HudSectionLabel("LIQUID BAR — ACTIONS")
+            HudLiquidBar(actions: liquidActions, tint: .tinted(HudPalette.accent))
+            HudInset {
+                HudKVRow("last action", value: lastLiquidAction)
+            }
+        }
+    }
+
+    private var liquidTintVariantsDemo: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.md) {
+            HudSectionLabel("LIQUID BAR — TINT VARIANTS")
+            VStack(spacing: HudSpacing.md) {
+                HudLiquidBar(tint: .regular) {
+                    liquidVariantLabel("Regular", icon: "circle.lefthalf.filled")
+                }
+                HudLiquidBar(tint: .tinted(HudPalette.accent)) {
+                    liquidVariantLabel("Tinted", icon: "paintbrush.pointed.fill")
+                }
+                HudLiquidBar(tint: .clear) {
+                    liquidVariantLabel("Clear", icon: "circle.dashed")
+                }
+            }
+        }
+    }
+
+    private var liquidComplicationDemo: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.md) {
+            HudSectionLabel("LIQUID BAR — HOSTING A COMPLICATION")
+            HudLiquidBar(tint: .regular) {
+                HStack(spacing: HudSpacing.xl) {
+                    Image(systemName: "house.fill")
+                    Spacer()
+                    HStack(spacing: HudSpacing.sm) {
+                        HudStatusDot(color: HudPalette.statusOk, pulses: true, label: "live")
+                        Text("LIVE")
+                            .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
+                    }
+                    Spacer()
+                    Image(systemName: "person.crop.circle")
+                }
+                .foregroundStyle(HudPalette.ink)
+            }
+        }
+    }
+
+    private var liquidTabs: [HudLiquidBarTab] {
+        [
+            .init(id: "home", icon: "house.fill", title: "Home"),
+            .init(id: "search", icon: "magnifyingglass", title: "Search"),
+            .init(id: "profile", icon: "person.crop.circle", title: "Profile"),
+        ]
+    }
+
+    private var liquidActions: [HudLiquidBarAction] {
+        [
+            .init(id: "compose", icon: "square.and.pencil", title: "Compose") { lastLiquidAction = "compose" },
+            .init(id: "sync", icon: "arrow.triangle.2.circlepath", title: "Sync") { lastLiquidAction = "sync" },
+            .init(id: "delete", icon: "trash", title: "Delete", role: .destructive) { lastLiquidAction = "delete" },
+        ]
+    }
+
+    private func liquidVariantLabel(_ label: String, icon: String) -> some View {
+        HStack(spacing: HudSpacing.md) {
+            Image(systemName: icon)
+            Text(label)
+                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+        }
+        .foregroundStyle(HudPalette.ink)
     }
 
     private var sectionDividers: some View {

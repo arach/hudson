@@ -38,7 +38,7 @@ The variant enum and the open slot are not mutually exclusive — they coexist. 
 | `bottomDrawer` | `.terminal(host:)`, `.console`, `.notifications`, `.none` | `HudTerminalDrawer` migrates to `.terminal` |
 | `statusBar` | `.minimal`, `.live(metrics:)`, `.path`, `.none` | Apps currently roll their own; variants give shared shapes |
 | `takeover` | `.fullScreen(content:)`, `.sheet(content:)`, `.inspectorBlow(content:)` | Different presentations of the same intent |
-| **Terminal provider** *(runtime, not UI)* | `.embedded(TermBridgeKit)`, `.ssh`, `.local`, `.mock` | Currently gated by `HUDSONKIT_WITH_TERMINAL=1`; the variant enum surfaces the choice without the build flag |
+| **Terminal provider** *(runtime, not UI)* | `.embedded(Termini)`, `.ssh`, `.local`, `.mock` | Currently gated by `HUDSONKIT_WITH_TERMINAL=1`; the variant enum surfaces the choice without the build flag |
 
 Each variant case carries its own input spec — there is no unified "lowest common denominator" type that strips features. A `.sidebar` variant accepts everything `HudNavigationSidebar` needs; a `.rail` variant accepts everything `HudNavigationRail` needs. The enum is a *typed disjoint union*, not a *common subset*.
 

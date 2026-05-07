@@ -2,15 +2,7 @@
 
 /* eslint-disable @next/next/no-img-element */
 
-import {
-  useCallback,
-  useEffect,
-  useRef,
-  useState,
-  type PointerEvent,
-  type ReactNode,
-  type WheelEvent,
-} from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import {
   Clipboard,
   ImageIcon,
@@ -18,12 +10,12 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { CanvasToolDock, type ViewportPan } from 'hudsonkit';
+import { CanvasToolDock, PanZoomViewport, type ViewportPan } from 'hudsonkit';
 import { useShellLayout } from '../../shell/ShellLayoutContext';
 import { applyAnimatedFilter } from './engine/animation';
-import { applyEffectMask, imageDataToPng } from './engine/imageData';
+import { imageDataToPng } from './engine/imageData';
 import { useImageProcess } from './ImageProcessProvider';
-import type { ImageProcessAnimationSettings, ImageProcessEffectMask, SignalMosaicParams } from './types';
+import type { ImageProcessAnimationSettings, SignalMosaicParams } from './types';
 import type { ImageProcessProgram } from './programs/types';
 
 const MIN_PREVIEW_ZOOM = 25;
@@ -36,17 +28,6 @@ function formatDimensions(width?: number, height?: number): string {
 
 function clampPreviewZoom(value: number): number {
   return Math.max(MIN_PREVIEW_ZOOM, Math.min(MAX_PREVIEW_ZOOM, value));
-}
-
-function clampMaskCenter(value: number, size: number): number {
-  const half = Math.min(50, Math.max(0, size / 2));
-  return Math.max(half, Math.min(100 - half, value));
-}
-
-function shouldSkipSpacePan(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  if (!el) return false;
-  return el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.isContentEditable;
 }
 
 function dataUrlToPreviewImageData(dataUrl: string, maxDimension: number): Promise<ImageData> {
@@ -84,7 +65,6 @@ function useLiveFilterPreview({
   params: SignalMosaicParams;
   animation: ImageProcessAnimationSettings;
 }) {
-  const [sourceFrame, setSourceFrame] = useState<ImageData | null>(null);
   const [baseFrame, setBaseFrame] = useState<ImageData | null>(null);
   const [previewDataUrl, setPreviewDataUrl] = useState<string | null>(null);
 
@@ -95,8 +75,8 @@ function useLiveFilterPreview({
     void dataUrlToPreviewImageData(sourceDataUrl, Math.min(840, params.maxDimension)).then(source => {
       if (cancelled) return;
       const base = program.process(source, params);
-      setSourceFrame(source);
       setBaseFrame(base);
+      setPreviewDataUrl(imageDataToPng(base));
     }).catch(() => {
       if (!cancelled) setPreviewDataUrl(null);
     });
@@ -107,161 +87,24 @@ function useLiveFilterPreview({
   }, [params, program, sourceDataUrl]);
 
   useEffect(() => {
-    if (!sourceFrame || !baseFrame) return;
+    if (!baseFrame) return;
     let frame = 0;
     let last = 0;
     const animated = animation.mode !== 'still' && animation.filter !== 'none' && animation.intensity > 0;
-    const renderFrame = (now: number) => {
-      const filtered = applyAnimatedFilter(baseFrame, animation, now, params.seed);
-      setPreviewDataUrl(imageDataToPng(applyEffectMask(sourceFrame, filtered, animation.mask)));
-    };
 
     const render = (now: number) => {
       if (now - last > 92) {
-        renderFrame(now);
+        setPreviewDataUrl(imageDataToPng(applyAnimatedFilter(baseFrame, animation, now, params.seed)));
         last = now;
       }
       if (animated) frame = window.requestAnimationFrame(render);
     };
 
-    renderFrame(window.performance.now());
-    if (!animated) return undefined;
-
     frame = window.requestAnimationFrame(render);
     return () => window.cancelAnimationFrame(frame);
-  }, [animation, baseFrame, params.seed, sourceFrame]);
+  }, [animation, baseFrame, params.seed]);
 
   return previewDataUrl;
-}
-
-function PreviewViewport({
-  children,
-  pan,
-  zoom,
-  panEnabled,
-  onPanChange,
-  onZoomChange,
-}: {
-  children: ReactNode;
-  pan: ViewportPan;
-  zoom: number;
-  panEnabled: boolean;
-  onPanChange: (pan: ViewportPan) => void;
-  onZoomChange: (zoom: number) => void;
-}) {
-  const [spaceHeld, setSpaceHeld] = useState(false);
-  const canPan = panEnabled || spaceHeld;
-  const scale = zoom / 100;
-  const dragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    pan: ViewportPan;
-  } | null>(null);
-
-  useEffect(() => {
-    const handleKeyDown = (event: KeyboardEvent) => {
-      if (event.key !== ' ' || event.repeat || shouldSkipSpacePan(event.target)) return;
-      event.preventDefault();
-      setSpaceHeld(true);
-    };
-    const handleKeyUp = (event: KeyboardEvent) => {
-      if (event.key !== ' ') return;
-      setSpaceHeld(false);
-    };
-    const handleBlur = () => setSpaceHeld(false);
-
-    window.addEventListener('keydown', handleKeyDown);
-    window.addEventListener('keyup', handleKeyUp);
-    window.addEventListener('blur', handleBlur);
-    return () => {
-      window.removeEventListener('keydown', handleKeyDown);
-      window.removeEventListener('keyup', handleKeyUp);
-      window.removeEventListener('blur', handleBlur);
-    };
-  }, []);
-
-  const handlePointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (!canPan || event.button !== 0) return;
-    event.preventDefault();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    dragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      pan,
-    };
-  }, [canPan, pan]);
-
-  const handlePointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    event.preventDefault();
-    onPanChange({
-      x: drag.pan.x + event.clientX - drag.startX,
-      y: drag.pan.y + event.clientY - drag.startY,
-    });
-  }, [onPanChange]);
-
-  const handlePointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    const drag = dragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    dragRef.current = null;
-  }, []);
-
-  const handleWheel = useCallback((event: WheelEvent<HTMLDivElement>) => {
-    if (!event.metaKey && !event.ctrlKey) return;
-    event.preventDefault();
-
-    const nextZoom = clampPreviewZoom(zoom - event.deltaY * 0.12);
-    if (nextZoom === zoom || zoom <= 0) return;
-
-    const rect = event.currentTarget.getBoundingClientRect();
-    const centerX = rect.left + rect.width / 2;
-    const centerY = rect.top + rect.height / 2;
-    const cursorX = event.clientX - centerX;
-    const cursorY = event.clientY - centerY;
-    const scaleRatio = nextZoom / zoom;
-
-    onPanChange({
-      x: cursorX - (cursorX - pan.x) * scaleRatio,
-      y: cursorY - (cursorY - pan.y) * scaleRatio,
-    });
-    onZoomChange(nextZoom);
-  }, [onPanChange, onZoomChange, pan, zoom]);
-
-  return (
-    <div
-      className={`absolute inset-3 overflow-hidden ${canPan ? 'cursor-grab active:cursor-grabbing' : ''}`}
-      style={{ touchAction: 'none' }}
-      onPointerDown={handlePointerDown}
-      onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
-      onPointerCancel={handlePointerUp}
-      onWheel={handleWheel}
-    >
-      <div
-        className="absolute inset-0"
-        style={{
-          transform: `translate3d(${pan.x}px, ${pan.y}px, 0)`,
-          transformOrigin: 'center center',
-        }}
-      >
-        <div
-          className="absolute inset-0"
-          style={{
-            transform: `scale(${scale})`,
-            transformOrigin: 'center center',
-          }}
-        >
-          {children}
-        </div>
-      </div>
-    </div>
-  );
 }
 
 function PreviewPane({
@@ -269,79 +112,24 @@ function PreviewPane({
   caption,
   src,
   active,
-  mask,
-  dimensions,
-  onMaskChange,
+  zoom,
+  pan,
+  canPan,
+  onPanChange,
+  onZoomChange,
 }: {
   title: string;
   caption: string;
   src: string | null;
   active?: boolean;
-  mask?: ImageProcessEffectMask;
-  dimensions?: { width: number; height: number } | null;
-  onMaskChange?: (mask: ImageProcessEffectMask) => void;
+  zoom: number;
+  pan: ViewportPan;
+  canPan: boolean;
+  onPanChange: (pan: ViewportPan) => void;
+  onZoomChange: (zoom: number) => void;
 }) {
-  const maskDragRef = useRef<{
-    pointerId: number;
-    startX: number;
-    startY: number;
-    rect: DOMRect;
-    mask: ImageProcessEffectMask;
-  } | null>(null);
-  const showMask = Boolean(mask?.enabled && dimensions?.width && dimensions.height);
-  const maskStyle = mask ? {
-    left: `${mask.x - mask.width / 2}%`,
-    top: `${mask.y - mask.height / 2}%`,
-    width: `${mask.width}%`,
-    height: `${mask.height}%`,
-    boxShadow: `0 0 0 ${Math.max(0, mask.feather) * 0.35}px color-mix(in srgb, ${mask.enabled ? 'var(--color-emerald-400)' : 'transparent'} 10%, transparent)`,
-  } : undefined;
-  const handleMaskPointerDown = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    if (!mask || !onMaskChange || event.button !== 0) return;
-    const rect = event.currentTarget.parentElement?.getBoundingClientRect();
-    if (!rect) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    event.currentTarget.setPointerCapture(event.pointerId);
-    maskDragRef.current = {
-      pointerId: event.pointerId,
-      startX: event.clientX,
-      startY: event.clientY,
-      rect,
-      mask,
-    };
-  }, [mask, onMaskChange]);
-
-  const handleMaskPointerMove = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    const drag = maskDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    const dx = ((event.clientX - drag.startX) / drag.rect.width) * 100;
-    const dy = ((event.clientY - drag.startY) / drag.rect.height) * 100;
-    onMaskChange?.({
-      ...drag.mask,
-      x: clampMaskCenter(drag.mask.x + dx, drag.mask.width),
-      y: clampMaskCenter(drag.mask.y + dy, drag.mask.height),
-    });
-  }, [onMaskChange]);
-
-  const handleMaskPointerUp = useCallback((event: PointerEvent<HTMLDivElement>) => {
-    const drag = maskDragRef.current;
-    if (!drag || drag.pointerId !== event.pointerId) return;
-
-    event.preventDefault();
-    event.stopPropagation();
-    if (event.currentTarget.hasPointerCapture(event.pointerId)) {
-      event.currentTarget.releasePointerCapture(event.pointerId);
-    }
-    maskDragRef.current = null;
-  }, []);
-
   return (
-    <div className="flex h-full min-h-0 flex-col overflow-hidden rounded-lg border border-border/70 bg-card/86">
+    <div className="min-h-0 flex flex-col rounded-lg border border-border/70 bg-card/86 overflow-hidden">
       <div className="px-3 py-2 border-b border-border/60 flex items-center justify-between">
         <div>
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">{title}</div>
@@ -350,50 +138,25 @@ function PreviewPane({
         {active ? <div className="h-2 w-2 rounded-full bg-emerald-400/70" /> : null}
       </div>
       {src ? (
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-background/45 p-3 [container-type:size]">
-          <div
-            className="relative flex max-h-full max-w-full items-center justify-center"
-            style={dimensions?.width && dimensions.height ? (() => {
-              const aspect = dimensions.width / dimensions.height;
-              return {
-                aspectRatio: `${dimensions.width} / ${dimensions.height}`,
-                width: `min(100cqw, calc(100cqh * ${aspect}))`,
-              };
-            })() : undefined}
-          >
-            <img
-              src={src}
-              alt={title}
-              draggable={false}
-              className="block max-h-full max-w-full select-none object-contain"
-            />
-            {showMask ? (
-              <div className="pointer-events-none absolute inset-0">
-                <div className="pointer-events-none absolute inset-0 bg-background/12" />
-                <div
-                  aria-label="Effect mask area"
-                  title="Drag mask area"
-                  className="pointer-events-auto absolute touch-none cursor-move rounded-[3px] border border-emerald-400/80 bg-emerald-400/10 shadow-[0_0_0_1px_rgba(16,185,129,0.14),0_0_24px_rgba(16,185,129,0.14)]"
-                  style={maskStyle}
-                  onPointerDown={handleMaskPointerDown}
-                  onPointerMove={handleMaskPointerMove}
-                  onPointerUp={handleMaskPointerUp}
-                  onPointerCancel={handleMaskPointerUp}
-                >
-                  <div className="absolute left-1 top-1 rounded bg-background/80 px-1 py-0.5 font-mono text-[8px] uppercase tracking-wider text-emerald-700 backdrop-blur dark:text-emerald-300">
-                    Mask
-                  </div>
-                  <div className="absolute -left-1 -top-1 h-2 w-2 border-l border-t border-emerald-300" />
-                  <div className="absolute -right-1 -top-1 h-2 w-2 border-r border-t border-emerald-300" />
-                  <div className="absolute -bottom-1 -left-1 h-2 w-2 border-b border-l border-emerald-300" />
-                  <div className="absolute -bottom-1 -right-1 h-2 w-2 border-b border-r border-emerald-300" />
-                </div>
-              </div>
-            ) : null}
-          </div>
-        </div>
+        <PanZoomViewport
+          pan={pan}
+          scale={zoom / 100}
+          onPanChange={onPanChange}
+          onScaleChange={(scale) => onZoomChange(scale * 100)}
+          panEnabled={canPan}
+          minScale={MIN_PREVIEW_ZOOM / 100}
+          maxScale={MAX_PREVIEW_ZOOM / 100}
+          className="flex-1 min-h-[220px] bg-background/45"
+        >
+          <img
+            src={src}
+            alt={title}
+            draggable={false}
+            className="max-h-[calc(100%-24px)] max-w-[calc(100%-24px)] select-none object-contain"
+          />
+        </PanZoomViewport>
       ) : (
-        <div className="flex min-h-0 flex-1 items-center justify-center bg-background/45 text-[11px] text-muted-foreground/70">
+        <div className="flex-1 min-h-[220px] w-full flex items-center justify-center bg-background/45 text-[11px] text-muted-foreground/70">
           No output yet
         </div>
       )}
@@ -424,7 +187,6 @@ export function ImageProcessContent() {
     view,
     previewZoom,
     setPreviewZoom,
-    setAnimationParam,
     loadFile,
     loadClipboard,
     clearSource,
@@ -608,46 +370,35 @@ export function ImageProcessContent() {
             </div>
           </div>
         ) : (
-          <PreviewViewport
-            pan={previewPan}
-            zoom={previewZoom}
-            onPanChange={setPreviewPan}
-            onZoomChange={setClampedPreviewZoom}
-            panEnabled={handMode}
-          >
-            <div className={`absolute inset-0 grid gap-3 ${
-              view === 'compare' ? 'lg:grid-cols-2' : 'grid-cols-1'
-            }`}>
-              {(view === 'compare' || view === 'source') && (
-                <PreviewPane
-                  title="Source"
-                  caption="Original image"
-                  src={sourceDataUrl}
-                  dimensions={sourceMeta?.width && sourceMeta.height ? {
-                    width: sourceMeta.width,
-                    height: sourceMeta.height,
-                  } : null}
-                />
-              )}
-              {(view === 'compare' || view === 'processed') && (
-                <PreviewPane
-                  title="Processed"
-                  caption={`${program.name} + ${animation.filter === 'none' ? 'no filter' : animation.filter.replace('-', ' ')}`}
-                  src={liveFilteredDataUrl ?? processedDataUrl}
-                  active={status === 'done'}
-                  mask={animation.mask}
-                  onMaskChange={nextMask => setAnimationParam('mask', nextMask)}
-                  dimensions={manifest ? {
-                    width: manifest.output.width,
-                    height: manifest.output.height,
-                  } : sourceMeta?.width && sourceMeta.height ? {
-                    width: sourceMeta.width,
-                    height: sourceMeta.height,
-                  } : null}
-                />
-              )}
-            </div>
-          </PreviewViewport>
+          <div className={`grid h-full min-h-[520px] gap-3 ${
+            view === 'compare' ? 'lg:grid-cols-2' : 'grid-cols-1'
+          }`}>
+            {(view === 'compare' || view === 'source') && (
+              <PreviewPane
+                title="Source"
+                caption="Original image"
+                src={sourceDataUrl}
+                zoom={previewZoom}
+                pan={previewPan}
+                canPan={handMode}
+                onPanChange={setPreviewPan}
+                onZoomChange={setClampedPreviewZoom}
+              />
+            )}
+            {(view === 'compare' || view === 'processed') && (
+              <PreviewPane
+                title="Processed"
+                caption={`${program.name} + ${animation.filter === 'none' ? 'no filter' : animation.filter.replace('-', ' ')}`}
+                src={liveFilteredDataUrl ?? processedDataUrl}
+                active={status === 'done'}
+                zoom={previewZoom}
+                pan={previewPan}
+                canPan={handMode}
+                onPanChange={setPreviewPan}
+                onZoomChange={setClampedPreviewZoom}
+              />
+            )}
+          </div>
         )}
         <CanvasToolDock
           right={toolDockRight}

@@ -58,6 +58,7 @@ targets:
         INFOPLIST_KEY_UILaunchScreen_Generation: YES
         INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
         INFOPLIST_KEY_NSMicrophoneUsageDescription: "Demo for HudPermissionGate microphone request."
+        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Demo for HudPermissionGate speech-recognition request."
         INFOPLIST_KEY_NSCameraUsageDescription: "Demo for HudPermissionGate camera request."
         INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Demo for HudPermissionGate photos request."
         INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait

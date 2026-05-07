@@ -2,7 +2,7 @@ import Foundation
 import Testing
 @testable import HudsonAI
 
-@Suite("Anthropic HudAI adapter")
+@Suite("Anthropic HudAI adapter", .serialized)
 struct AnthropicHudAIAdapterTests {
     @Test("constructs Anthropic request body with system, tools, usage, and cache envelopes")
     func requestBodyConstruction() async throws {
@@ -133,7 +133,7 @@ struct AnthropicHudAIAdapterTests {
         #expect((tools.first?["cache_control"] as? [String: Any])?["type"] as? String == "ephemeral")
     }
 
-    private static func thrownError(status: Int) async throws -> HudAIError {
+    private func thrownError(status: Int) async throws -> HudAIError {
         let body = Data("{\"error\":{\"message\":\"provider said no\"}}".utf8)
         let session = MockURLProtocol.session(status: status, body: body)
         let client = HudAIClient(

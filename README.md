@@ -27,6 +27,21 @@ A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project
 
 The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
 
+## Native Vantage
+
+Hudson now has an early Apple-native `HudsonVantage` module: an embeddable
+spatial surface for durable runtimes. Scout, Talkie, Fabric, or a standalone
+app can each host **a Vantage** and control it from outside through a JSONL
+control lane.
+
+The first case study is the Termini canvas app:
+
+```sh
+examples/termini-canvas/scripts/run-app.sh
+```
+
+See [Hudson Vantage](./docs/hudson-vantage.md) for the module boundary.
+
 ## Orientation
 
 ```

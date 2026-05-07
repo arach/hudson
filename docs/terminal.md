@@ -31,15 +31,17 @@ import HudsonTerminal
 import Termini
 
 struct TerminalPane: View {
-    @State private var controller = TerminiTerminalController.localShell()
+    @State private var workspace = TerminiLocalPTYWorkspace()
 
     var body: some View {
         HudTerminalSurface(
-            controller: controller,
+            controller: workspace.controller,
             showsSystemKeyboard: true,
             appearance: .default,
             onTap: { /* focus tracking */ }
         )
+        .onAppear { workspace.start() }
+        .onDisappear { workspace.stop() }
     }
 }
 ```
@@ -48,11 +50,12 @@ Tap-to-focus calls `controller?.focus()`. Surface sets `accessibilityIdentifier(
 
 ## HudTerminalSSHSurface
 
-Complete SSH-backed surface for demos and simple host apps. Loads `TERMBRIDGEKIT_SSH_*` env vars on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
+Complete SSH-backed surface for demos and simple host apps. Loads Termini's SSH demo environment configuration on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
 
 ```swift
 import HudsonTerminal
 import Termini
+import TerminiSSH
 
 struct SSHPane: View {
     var body: some View {
@@ -109,4 +112,4 @@ Default theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`),
 
 - Keep the build flag off for apps that don't need a terminal — Termini pulls in NIO + NIOSSH.
 - `HudTerminalSSHSurface` is for demos. Production hosts should compose `HudTerminalSurface` with their own controller lifecycle.
-- HudsonKit does not re-export Termini types — import `Termini` directly for controllers, configs, or themes.
+- HudsonKit does not re-export Termini types — import `Termini` for controllers/local PTY/theme types and `TerminiSSH` for SSH configuration.

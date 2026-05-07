@@ -23,7 +23,19 @@ public struct HudTerminalAppearance: Hashable, Sendable {
 
     public static let `default` = HudTerminalAppearance()
 
-    public var termBridgeAppearance: TerminiTerminalAppearance {
+    public static func hudsonDefault(
+        for colorScheme: ColorScheme,
+        fontSize: Double? = nil,
+        fontFamily: String? = "SF Mono"
+    ) -> HudTerminalAppearance {
+        HudTerminalAppearance(
+            theme: colorScheme == .dark ? .hudsonGraphite : .hudsonPaper,
+            fontSize: fontSize,
+            fontFamily: fontFamily
+        )
+    }
+
+    public var terminiAppearance: TerminiTerminalAppearance {
         TerminiTerminalAppearance(
             theme: theme,
             fontSize: fontSize,
@@ -68,6 +80,36 @@ public extension TerminiTerminalTheme {
             .init(hex: 0x8ED8F8),
             .init(hex: 0xEA8EAA),
             .init(hex: 0x8AE8DD),
+            .init(hex: 0xFFFFFF),
+        ]
+    )
+
+    /// Light Hudson terminal theme for windows running in light mode.
+    static let hudsonPaper = TerminiTerminalTheme(
+        id: "hudson-paper",
+        name: "Hudson Paper",
+        colorScheme: .light,
+        background: .init(hex: 0xFAFAFA),
+        foreground: .init(hex: 0x1F2937),
+        cursor: .init(hex: 0x0891B2),
+        selectionBackground: .init(hex: 0xCFEFF6),
+        selectionForeground: .init(hex: 0x0F172A),
+        ansiPalette: [
+            .init(hex: 0x1F2937),
+            .init(hex: 0xC2410C),
+            .init(hex: 0x15803D),
+            .init(hex: 0xA16207),
+            .init(hex: 0x2563EB),
+            .init(hex: 0x0F766E),
+            .init(hex: 0x0891B2),
+            .init(hex: 0xE5E7EB),
+            .init(hex: 0x64748B),
+            .init(hex: 0xEA580C),
+            .init(hex: 0x16A34A),
+            .init(hex: 0xCA8A04),
+            .init(hex: 0x3B82F6),
+            .init(hex: 0x14B8A6),
+            .init(hex: 0x06B6D4),
             .init(hex: 0xFFFFFF),
         ]
     )

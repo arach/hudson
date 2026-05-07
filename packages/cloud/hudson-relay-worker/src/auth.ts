@@ -68,7 +68,7 @@ async function callback(request: Request, env: Env, fetcher: Fetcher): Promise<R
   if (!code || !state) return json(400, { error: 'missing_oauth_code_or_state' });
   const expected = await verifyToken<OAuthState>(readCookie(request, OAUTH_STATE_COOKIE), env.HUD_SESSION_SECRET);
   if (!expected || expected.expiresAt <= Date.now() || expected.nonce !== state) {
-    return json(400, { error: 'invalid_oauth_state' }, { 'set-cookie': clearCookie(OAUTH_STATE_COOKIE, request.url) });
+    return json(403, { error: 'invalid_oauth_state' }, { 'set-cookie': clearCookie(OAUTH_STATE_COOKIE, request.url) });
   }
   const token = await exchangeCode(fetcher, env, code, redirectUri(request, env));
   if (!token.ok) return json(502, { error: 'github_token_exchange_failed', detail: token.detail });

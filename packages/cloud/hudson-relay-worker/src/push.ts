@@ -82,9 +82,10 @@ async function sendPush(request: Request, env: Env, session: HudSession, fetcher
   const stmt = body.value.deviceId ? env.HUD_DB.prepare(sql).bind(session.providerUserId, body.value.deviceId) : env.HUD_DB.prepare(sql).bind(session.providerUserId);
   const rows = (await stmt.all<PushDeviceRow>()).results ?? [];
   let delivered = 0, failed = 0, rateLimited = 0;
+  let deviceRetryAfterSeconds: number | undefined;
   for (const row of rows.filter(r => r.platform === 'web')) {
     const devLimit = await chargeDeviceLimit(env, session.providerUserId, row.device_id);
-    if (!devLimit.ok) { rateLimited++; await attempt(env, session.providerUserId, row.device_id, itemId, kind, 'rate_limited'); continue; }
+    if (!devLimit.ok) { rateLimited++; deviceRetryAfterSeconds ??= devLimit.retryAfterSeconds; await attempt(env, session.providerUserId, row.device_id, itemId, kind, 'rate_limited'); continue; }
     const sub = await decryptJson<PushSubscriptionJSON>(row.encrypted_subscription, env.HUD_PUSH_TOKEN_ENCRYPTION_KEY);
     const res = await deliverWebPush(fetcher, env, sub, payload, body.value.urgency ?? 'normal');
     if (res.status === 404 || res.status === 410) await revokeDevice(env, row.id);
@@ -93,6 +94,7 @@ async function sendPush(request: Request, env: Env, session: HudSession, fetcher
   }
   await usageUpsert(env, session.providerUserId, delivered, failed);
   await auditLog(env, request, session.providerUserId, 'send', delivered > 0 ? 'sent' : 'no_delivery', JSON.stringify({ itemId, kind, delivered, failed, rateLimited }));
+  if (body.value.deviceId && rateLimited > 0 && delivered === 0 && failed === 0) return json(429, { error: 'rate_limited', retryAfterSeconds: deviceRetryAfterSeconds, rateLimitWindow: 'device-minute' });
   return json(200, { ok: true, delivered, failed, rateLimited });
 }
 
@@ -138,3 +140,5 @@ async function usageUpsert(env: Env, userId: string, delivered: number, failed: 
 async function usage(env: Env, session: HudSession): Promise<Response> { const rows = await env.HUD_DB.prepare('SELECT * FROM hud_push_usage_daily WHERE user_id = ? ORDER BY day DESC LIMIT 30').bind(session.providerUserId).all(); return json(200, { usage: rows.results ?? [] }); }
 async function audit(env: Env, session: HudSession): Promise<Response> { const rows = await env.HUD_DB.prepare('SELECT action,outcome,detail,created_at FROM hud_push_audit_log WHERE user_id = ? ORDER BY created_at DESC LIMIT 100').bind(session.providerUserId).all(); return json(200, { audit: rows.results ?? [] }); }
 async function auditLog(env: Env, request: Request, userId: string | undefined, action: string, outcome: string, detail?: string): Promise<void> { await env.HUD_DB.prepare('INSERT INTO hud_push_audit_log (id,user_id,action,outcome,detail,ip,user_agent,created_at) VALUES (?,?,?,?,?,?,?,?)').bind(randomId('aud'), userId ?? null, action, outcome, detail ?? null, ip(request) ?? null, request.headers.get('user-agent') ?? null, Date.now()).run(); }
+
+export const __test = { chargeBucket };

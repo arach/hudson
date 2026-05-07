@@ -22,23 +22,11 @@ export type ImageProcessProgramId = 'signal-mosaic' | 'field-dither' | 'soft-sca
 export type ImageProcessFilterMode = 'none' | 'signal-wash' | 'ct-scan' | 'print-lab';
 export type ImageProcessAnimationMode = 'still' | 'sine' | 'drift' | 'scan';
 
-export interface ImageProcessEffectMask {
-  enabled: boolean;
-  x: number;
-  y: number;
-  width: number;
-  height: number;
-  feather: number;
-}
-
 export interface ImageProcessAnimationSettings {
   filter: ImageProcessFilterMode;
   mode: ImageProcessAnimationMode;
   intensity: number;
   speed: number;
-  primaryColor: string;
-  secondaryColor: string;
-  mask: ImageProcessEffectMask;
 }
 
 export interface ImageProcessManifest {
@@ -52,7 +40,6 @@ export interface ImageProcessManifest {
     mimeType: 'image/png';
   };
   params: SignalMosaicParams;
-  animation: ImageProcessAnimationSettings;
 }
 
 export type ImageProcessStatus = 'empty' | 'ready' | 'processing' | 'done' | 'error';
@@ -75,14 +62,4 @@ export const DEFAULT_IMAGE_PROCESS_ANIMATION: ImageProcessAnimationSettings = {
   mode: 'sine',
   intensity: 46,
   speed: 42,
-  primaryColor: '#10b981',
-  secondaryColor: '#22d3ee',
-  mask: {
-    enabled: false,
-    x: 50,
-    y: 50,
-    width: 72,
-    height: 58,
-    feather: 22,
-  },
 };

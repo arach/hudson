@@ -102,6 +102,8 @@ HudInspectorToggle(isCollapsed: $inspectorCollapsed)
 
 Free-form work surface for the content slot. Optional grid background, optional pinned header, scrolling body. No opinion on what lives inside.
 
+`HudCanvas` is the current simple surface. The pan/zoom, hand/select, hit-testing, persistence, and multi-app workspace direction is tracked in [Native canvas workspace](./native-canvas-workspace.md).
+
 ```swift
 HudCanvas(showGrid: true) {
     CanvasHeader()

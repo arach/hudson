@@ -42,6 +42,8 @@ public struct HudAppShell<
     private let content: Content
     private let statusBar: StatusBar
 
+    @Environment(\.hudTheme) private var theme
+
     #if os(iOS)
     @Environment(\.horizontalSizeClass) private var sizeClass
     #endif
@@ -64,7 +66,7 @@ public struct HudAppShell<
 
     public var body: some View {
         ZStack {
-            HudPalette.bg.ignoresSafeArea()
+            theme.palette.bg.ignoresSafeArea()
 
             VStack(spacing: 0) {
                 topDrawer
@@ -85,7 +87,7 @@ public struct HudAppShell<
 
                 bottomDrawer
 
-                HudDivider(color: HudHairline.standard)
+                HudDivider(color: theme.hairline.standard)
                 statusBar
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -142,9 +144,11 @@ extension HudAppShell where Leading == EmptyView, Trailing == EmptyView, TopDraw
 /// Vertical hairline used between shell columns. Kept private to the shell so
 /// the rule treatment stays consistent across leading/trailing transitions.
 private struct HudShellVRule: View {
+    @Environment(\.hudTheme) private var theme
+
     var body: some View {
         Rectangle()
-            .fill(HudHairline.standard)
+            .fill(theme.hairline.standard)
             .frame(width: HudStrokeWidth.standard)
             .frame(maxHeight: .infinity)
     }

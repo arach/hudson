@@ -27,7 +27,7 @@ public struct HudTerminalSessionState: Equatable, Sendable {
 
 /// Complete SSH-backed terminal surface for demos and simple host apps.
 ///
-/// The workspace loads `TERMBRIDGEKIT_SSH_*` environment variables on appear
+/// The workspace loads Termini's SSH demo environment configuration on appear
 /// and connects automatically when credentials are present. More advanced
 /// Hudson transports should keep using `HudTerminalSurface` directly.
 public struct HudTerminalSSHSurface: View {
@@ -38,6 +38,7 @@ public struct HudTerminalSSHSurface: View {
 
     @State private var workspace: TerminiSSHWorkspace
     @State private var didAttemptEnvironmentLoad = false
+    @Environment(\.colorScheme) private var colorScheme
 
     private let hostLabel: String
     private let autoConnect: Bool
@@ -65,7 +66,7 @@ public struct HudTerminalSSHSurface: View {
         HudTerminalSurface(
             controller: workspace.controller,
             showsSystemKeyboard: showsSystemKeyboard,
-            appearance: appearance
+            appearance: resolvedAppearance
         )
         .overlay {
             if !workspace.isConnected {
@@ -89,7 +90,7 @@ public struct HudTerminalSSHSurface: View {
     private var statusOverlay: some View {
         ZStack {
             // hudlint:disable next-line opacity
-            appearance.backgroundColor.opacity(0.92)
+            resolvedAppearance.backgroundColor.opacity(0.92)
 
             VStack(spacing: HudSpacing.xl) {
                 HudStatusDot(
@@ -141,6 +142,12 @@ public struct HudTerminalSSHSurface: View {
                 rows: size?.rows
             )
         )
+    }
+
+    private var resolvedAppearance: HudTerminalAppearance {
+        appearance == .default
+            ? HudTerminalAppearance.hudsonDefault(for: colorScheme)
+            : appearance
     }
 
 }

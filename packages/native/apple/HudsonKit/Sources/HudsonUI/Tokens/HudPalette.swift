@@ -132,3 +132,15 @@ public typealias HudsonPalette = HudPalette
 public typealias HudsonTint = HudTint
 @available(*, deprecated, renamed: "HudHairline")
 public typealias HudsonHairline = HudHairline
+
+// MARK: - Elevated surface additions
+
+public extension HudPalette {
+    /// Solid elevated background used when accessibility Reduce Transparency is enabled.
+    static let bgElevated = HudSurface.raised
+}
+
+public enum HudLiquidBarColors {
+    public static let highlightTop = Color.white.opacity(0.18)
+    public static let highlightBottom = Color.white.opacity(0.04)
+}
