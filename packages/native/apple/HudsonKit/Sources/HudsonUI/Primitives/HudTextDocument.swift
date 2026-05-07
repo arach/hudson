@@ -178,6 +178,7 @@ public struct HudTextDocumentSurface: View {
 
     private var showHeader: Bool
     private var showsLineNumbers: Bool
+    private var editorBackend: HudTextDocumentEditorBackend
     private var onSave: ((HudTextDocument) -> Void)?
 
     public init(
@@ -185,12 +186,14 @@ public struct HudTextDocumentSurface: View {
         mode: Binding<HudTextDocumentMode>,
         showHeader: Bool = true,
         showsLineNumbers: Bool = true,
+        editorBackend: HudTextDocumentEditorBackend = .automatic,
         onSave: ((HudTextDocument) -> Void)? = nil
     ) {
         self._document = document
         self._mode = mode
         self.showHeader = showHeader
         self.showsLineNumbers = showsLineNumbers
+        self.editorBackend = editorBackend
         self.onSave = onSave
     }
 
@@ -298,14 +301,14 @@ public struct HudTextDocumentSurface: View {
     }
 
     private var editingSurface: some View {
-        TextEditor(text: valueBinding)
-            .font(editorFont)
-            .foregroundStyle(HudPalette.ink)
-            .tint(HudPalette.statusInfo)
-            .padding(HudSpacing.xl)
-            .scrollContentBackground(.hidden)
-            .background(HudSurface.base)
-            .disabled(document.isReadOnly)
+        HudEditableTextDocumentView(
+            text: valueBinding,
+            kind: document.kind,
+            language: document.language,
+            isReadOnly: document.isReadOnly,
+            showsLineNumbers: showsLineNumbers,
+            backend: editorBackend
+        )
     }
 
     private var readSurface: some View {
