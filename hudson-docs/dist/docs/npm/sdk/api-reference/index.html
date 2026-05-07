@@ -1,0 +1,1606 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="generator" content="Dewey"><title>API Reference - Hudson</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/pagefind/pagefind-ui.css"><script>
+      ;(function () {
+        try { var saved = localStorage.getItem('theme') } catch (e) {}
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script><link rel="stylesheet" href="/_astro/_slug_.BKOwO9D_.css"></head> <body>  <div class="dl"> <!-- Header bar --> <header class="dl-header" data-pagefind-ignore> <div class="dl-header-left"> <a href="/" class="dl-header-brand">Hudson</a> <span class="dl-header-sep">/</span> <a href="/" class="dl-header-brand dl-header-brand--active">Docs</a> </div> <div class="dl-header-right"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer" class="dl-header-link">llms.txt</a> <a href="https://github.com/arachsys/hudson" target="_blank" rel="noopener noreferrer" class="dl-header-icon" title="GitHub"> <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg> </a> <button class="dl-search-btn" type="button" data-search-toggle>
+Search…
+<span class="dl-search-key">⌘K</span> </button> <button class="dl-theme-btn" data-theme-toggle title="Toggle theme"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> </button> </div> </header> <!-- Body --> <div class="dl-body"> <!-- Sidebar --> <nav class="dl-sidebar" data-pagefind-ignore> <div class="dl-nav-section "> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Documentation <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/overview" class="dl-nav-item  "> Overview </a> </li><li> <a href="/docs/quickstart" class="dl-nav-item  "> Quickstart </a> </li><li> <a href="/docs/architecture" class="dl-nav-item  "> Architecture </a> </li><li> <a href="/docs/building-apps" class="dl-nav-item  "> Building Apps </a> </li><li> <a href="/docs/scaffolding" class="dl-nav-item  "> Scaffolding </a> </li><li> <a href="/docs/skill" class="dl-nav-item  "> Skills </a> </li><li> <a href="/docs/api" class="dl-nav-item  "> API Reference </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> NPM Packages <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/npm/index" class="dl-nav-item  "> Packages Overview </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/sdk</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/sdk/getting-started" class="dl-nav-item dl-nav-item--indented "> Getting Started </a> </li><li> <a href="/docs/npm/sdk/building-apps" class="dl-nav-item dl-nav-item--indented "> Building Apps </a> </li><li> <a href="/docs/npm/sdk/api-reference" class="dl-nav-item dl-nav-item--indented active"> API Reference </a> </li><li> <a href="/docs/npm/sdk/systems" class="dl-nav-item dl-nav-item--indented "> Systems </a> </li><li> <a href="/docs/npm/sdk/utilities" class="dl-nav-item dl-nav-item--indented "> Utilities </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/hx</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/hx/hx" class="dl-nav-item dl-nav-item--indented "> Guide </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> CLI Tools <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/cli/index" class="dl-nav-item  "> CLI Overview </a> </li><li> <a href="/docs/cli/create-hudson-app" class="dl-nav-item  "> create-hudson-app </a> </li><li> <a href="/docs/cli/relay" class="dl-nav-item  "> Relay: Terminal Server </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Prompts <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/prompts/create-app" class="dl-nav-item  "> Create a New App </a> </li><li> <a href="/docs/prompts/add-intents" class="dl-nav-item  "> Add Intents </a> </li> </ul> </div> </div> </div> <div class="dl-nav-section dl-nav-section--bordered"> <div class="dl-nav-label dl-nav-label--static">For AI Agents</div> <ul class="dl-nav-list"> <li><a href="/llms.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms.txt</a></li> <li><a href="/llms-full.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms-full.txt</a></li> </ul> </div> </nav> <!-- Main --> <main class="dl-main"> <div class="dl-content-area"> <div class="dl-page-actions" data-pagefind-ignore> <button class="dl-copy-btn" data-copy-agent-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy for agent
+</button> <button class="dl-copy-btn" data-copy-markdown-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy markdown
+</button> </div> <!-- Article --> <article class="docs-prose" data-pagefind-body>  <h1 id="api-reference">API Reference</h1>
+<p>Complete reference for every type, hook, utility, and component exported by <code>@hudsonos/sdk</code>.</p>
+<h2 id="types">Types</h2>
+<h3 id="hudsonapp">HudsonApp</h3>
+<p>The core contract every app must implement to plug into the Hudson shell.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> HudsonApp</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  mode</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">canvas</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">panel</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  leftPanel</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">title</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">icon</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666">; </span><span style="color:#BD976A">headerActions</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  rightPanel</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">title</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">icon</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  Provider</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">&#x3C;{ </span><span style="color:#BD976A">children</span><span style="color:#666666">: </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666"> }>;</span></span>
+<span class="line"><span style="color:#BD976A">  tools</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppTool</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  slots</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#BD976A">    Content</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">    LeftPanel</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">    RightPanel</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;  </span><span style="color:#758575DD">// deprecated</span></span>
+<span class="line"><span style="color:#BD976A">    Inspector</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">    LeftFooter</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">    Terminal</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"><span style="color:#BD976A">  intents</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppIntent</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  manifest</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppManifest</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  settings</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppSettingsConfig</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  ports</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppPorts</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  services</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">ServiceDependency</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  hooks</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#80A665">    useCommands</span><span style="color:#666666">: () => </span><span style="color:#5DA994">CommandOption</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#80A665">    useStatus</span><span style="color:#666666">: () => { </span><span style="color:#BD976A">label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">color</span><span style="color:#666666">: </span><span style="color:#5DA994">StatusColor</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#80A665">    useSearch</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => </span><span style="color:#5DA994">SearchConfig</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    useNavCenter</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    useNavActions</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    useLayoutMode</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">canvas</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">panel</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    useActiveToolHint</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    usePortOutput</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => (</span><span style="color:#BD976A">portId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">unknown</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">    usePortInput</span><span style="color:#CB7676">?</span><span style="color:#666666">: () => (</span><span style="color:#BD976A">portId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#BD976A">data</span><span style="color:#666666">: </span><span style="color:#5DA994">unknown</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="statuscolor">StatusColor</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> StatusColor</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">emerald</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">amber</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">red</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">neutral</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="apptool">AppTool</h3>
+<p>A tool panel entry for the right sidebar accordion.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppTool</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  icon</span><span style="color:#666666">: </span><span style="color:#5DA994">ReactNode</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  Component</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">FC</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="searchconfig">SearchConfig</h3>
+<p>Configuration for the navigation bar search field.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> SearchConfig</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  value</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  onChange</span><span style="color:#666666">: (</span><span style="color:#BD976A">value</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  placeholder</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appmanifest">AppManifest</h3>
+<p>Serializable snapshot of an app’s capabilities for LLM and tooling introspection.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppManifest</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  mode</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">canvas</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">panel</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  commands</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">shortcut</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> }[];</span></span>
+<span class="line"><span style="color:#BD976A">  tools</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> }[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appsettingfield">AppSettingField</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppSettingField</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  key</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  type</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">text</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">number</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">toggle</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">slider</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">segment</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  default</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#5DA994">number</span><span style="color:#666666"> | </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  options</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">value</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> }[];</span><span style="color:#758575DD">  // for 'segment' type</span></span>
+<span class="line"><span style="color:#BD976A">  min</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span><span style="color:#758575DD">     // for 'slider' and 'number'</span></span>
+<span class="line"><span style="color:#BD976A">  max</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  step</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  format</span><span style="color:#CB7676">?</span><span style="color:#666666">: (</span><span style="color:#BD976A">v</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">) => </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span><span style="color:#758575DD">  // for 'slider' display</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appsettingssection">AppSettingsSection</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppSettingsSection</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  fields</span><span style="color:#666666">: </span><span style="color:#5DA994">AppSettingField</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appsettingsconfig">AppSettingsConfig</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppSettingsConfig</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  sections</span><span style="color:#666666">: </span><span style="color:#5DA994">AppSettingsSection</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="hudsonworkspace">HudsonWorkspace</h3>
+<p>A collection of apps that coexist in a shared shell.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> HudsonWorkspace</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  mode</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">canvas</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">panel</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  apps</span><span style="color:#666666">: </span><span style="color:#5DA994">WorkspaceAppConfig</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  defaultFocusedAppId</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="workspaceappconfig">WorkspaceAppConfig</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> WorkspaceAppConfig</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  app</span><span style="color:#666666">: </span><span style="color:#5DA994">HudsonApp</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  canvasMode</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">CanvasParticipation</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  defaultWindowBounds</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">w</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">h</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="canvasparticipation">CanvasParticipation</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> CanvasParticipation</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">native</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">windowed</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<hr>
+<h3 id="appintent">AppIntent</h3>
+<p>Static intent declaration for LLM, voice, and search indexing.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppIntent</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  commandId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  title</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  category</span><span style="color:#666666">: </span><span style="color:#5DA994">IntentCategory</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  keywords</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  params</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">IntentParameter</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  shortcut</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  dangerous</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="intentcategory">IntentCategory</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> IntentCategory</span><span style="color:#666666"> =</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">tool</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">edit</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">file</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">view</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">navigation</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">toggle</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">workspace</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#666666">  |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">settings</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="intentparameter">IntentParameter</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> IntentParameter</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  type</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">string</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">number</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">boolean</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  optional</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  enum</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  default</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#5DA994">number</span><span style="color:#666666"> | </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="catalogappentry">CatalogAppEntry</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> CatalogAppEntry</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  appId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  appName</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  appDescription</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  intents</span><span style="color:#666666">: </span><span style="color:#5DA994">AppIntent</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="intentcatalog">IntentCatalog</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> IntentCatalog</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  version</span><span style="color:#666666">: </span><span style="color:#4C9A91">1</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  generatedAt</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  workspace</span><span style="color:#666666">: { </span><span style="color:#BD976A">id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  shell</span><span style="color:#666666">: </span><span style="color:#5DA994">AppIntent</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  apps</span><span style="color:#666666">: </span><span style="color:#5DA994">CatalogAppEntry</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  index</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, { </span><span style="color:#BD976A">appId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">intent</span><span style="color:#666666">: </span><span style="color:#5DA994">AppIntent</span><span style="color:#666666"> }>;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="servicedefinition">ServiceDefinition</h3>
+<p>Defines an external service that can be installed, started, and health-checked.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ServiceDefinition</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  version</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  icon</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  check</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#BD976A">    healthUrl</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">    port</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"><span style="color:#BD976A">  install</span><span style="color:#666666">: { </span><span style="color:#BD976A">command</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">cwd</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  start</span><span style="color:#666666">: { </span><span style="color:#BD976A">command</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">cwd</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">env</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">string</span><span style="color:#666666">> };</span></span>
+<span class="line"><span style="color:#BD976A">  stop</span><span style="color:#CB7676">?</span><span style="color:#666666">: { </span><span style="color:#BD976A">command</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="servicedependency">ServiceDependency</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ServiceDependency</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  serviceId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  optional</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  reason</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="servicestatus">ServiceStatus</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> ServiceStatus</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">unknown</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">not_installed</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">installed</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">running</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">error</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="servicerecord">ServiceRecord</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ServiceRecord</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  serviceId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  status</span><span style="color:#666666">: </span><span style="color:#5DA994">ServiceStatus</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  pid</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  logFile</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  lastChecked</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  lastChanged</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  error</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="serviceaction">ServiceAction</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ServiceAction</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  serviceId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  action</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">check</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">install</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">start</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">stop</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  triggeredBy</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">user</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">agent</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">system</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  timestamp</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  command</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  output</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  exitCode</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  success</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  durationMs</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="appoutput">AppOutput</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppOutput</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  dataType</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appinput">AppInput</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppInput</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  dataType</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  description</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="appports">AppPorts</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AppPorts</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  outputs</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppOutput</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  inputs</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AppInput</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="pipedefinition">PipeDefinition</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> PipeDefinition</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  name</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  source</span><span style="color:#666666">: { </span><span style="color:#BD976A">appId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">portId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  sink</span><span style="color:#666666">: { </span><span style="color:#BD976A">appId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">portId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  createdAt</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  lastPushedAt</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  enabled</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="commandoption">CommandOption</h3>
+<p>Entry for the command palette.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> CommandOption</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  action</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  shortcut</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  icon</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">ReactNode</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="contextmenuentry">ContextMenuEntry</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> ContextMenuEntry</span><span style="color:#666666"> =</span><span style="color:#5DA994"> ContextMenuAction</span><span style="color:#666666"> |</span><span style="color:#5DA994"> ContextMenuSeparator</span><span style="color:#666666"> |</span><span style="color:#5DA994"> ContextMenuGroup</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="contextmenuaction">ContextMenuAction</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ContextMenuAction</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  action</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  shortcut</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  icon</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">ReactNode</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  disabled</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="contextmenuseparator">ContextMenuSeparator</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ContextMenuSeparator</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  type</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">separator</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="contextmenugroup">ContextMenuGroup</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> ContextMenuGroup</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  type</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">group</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  items</span><span style="color:#666666">: </span><span style="color:#5DA994">ContextMenuAction</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="ai-types">AI Types</h3>
+<p>These types are exported for typing app hooks. The runtime ships separately as <code>@hudsonos/ai</code>.</p>
+<h3 id="hudsonaichat">HudsonAIChat</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> HudsonAIChat</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  messages</span><span style="color:#666666">: </span><span style="color:#5DA994">unknown</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#80A665">  sendMessage</span><span style="color:#666666">: (</span><span style="color:#BD976A">message</span><span style="color:#666666">: { </span><span style="color:#BD976A">role</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">; </span><span style="color:#BD976A">content</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> }) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  stop</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  status</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  setMessages</span><span style="color:#666666">: (</span><span style="color:#BD976A">messages</span><span style="color:#666666">: </span><span style="color:#5DA994">unknown</span><span style="color:#666666">[]) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  clearChat</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  error</span><span style="color:#666666">: </span><span style="color:#5DA994">Error</span><span style="color:#666666"> | </span><span style="color:#CB7676">undefined</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  mode</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">cli</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">api</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  attachments</span><span style="color:#666666">: </span><span style="color:#5DA994">AIAttachment</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#BD976A">  activeAttachments</span><span style="color:#666666">: </span><span style="color:#5DA994">Set</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#80A665">  toggleAttachment</span><span style="color:#666666">: (</span><span style="color:#BD976A">label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="usehudsonaioptions">UseHudsonAIOptions</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> UseHudsonAIOptions</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  toolset</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  context</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">unknown</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#80A665">  onToolCall</span><span style="color:#CB7676">?</span><span style="color:#666666">: (</span><span style="color:#BD976A">toolName</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#BD976A">args</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">unknown</span><span style="color:#666666">>) => </span><span style="color:#5DA994">void</span><span style="color:#666666"> | </span><span style="color:#5DA994">Promise</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">void</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#BD976A">  mode</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">cli</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> | </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">api</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  attachments</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">AIAttachment</span><span style="color:#666666">[];</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="aiattachment">AIAttachment</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> AIAttachment</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  content</span><span style="color:#666666">: () => </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">unknown</span><span style="color:#666666">> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h2 id="hooks">Hooks</h2>
+<p>The SDK provides three hooks for common app needs: persistent state, app settings, and terminal relay. All hooks handle SSR gracefully through the platform adapter system.</p>
+<h3 id="usepersistentstate">usePersistentState</h3>
+<p>A drop-in replacement for <code>useState</code> that persists values to <code>localStorage</code>. The API is identical to React’s <code>useState</code>.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> usePersistentState</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">T</span><span style="color:#666666">>(</span></span>
+<span class="line"><span style="color:#BD976A">  key</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">  initialValue</span><span style="color:#666666">: </span><span style="color:#5DA994">T</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">):</span><span style="color:#666666"> [</span><span style="color:#5DA994">T</span><span style="color:#666666">,</span><span style="color:#5DA994"> React</span><span style="color:#666666">.</span><span style="color:#5DA994">Dispatch</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">SetStateAction</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">T</span><span style="color:#666666">>>]</span></span></code></pre>
+<h4 id="parameters">Parameters</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>key</code></td><td><code>string</code></td><td>The localStorage key. Namespace it with your app ID to avoid collisions.</td></tr><tr><td><code>initialValue</code></td><td><code>T</code></td><td>Default value used when nothing is found in localStorage.</td></tr></tbody></table>
+<h4 id="return-value">Return Value</h4>
+<p>A tuple identical to <code>useState</code>: the current value and a setter function. The setter accepts either a new value or an updater function.</p>
+<h4 id="behavior">Behavior</h4>
+<ol>
+<li>On initial render, reads <code>localStorage.getItem(key)</code> and parses JSON.</li>
+<li>Falls back to <code>initialValue</code> if no stored value exists or parsing fails.</li>
+<li>On SSR (<code>isSSR</code> from PlatformProvider), defers the localStorage read to a <code>useEffect</code>.</li>
+<li>Every state change is written back to localStorage as JSON.</li>
+</ol>
+<h4 id="example">Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> usePersistentState</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> ProjectSettings</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> [</span><span style="color:#BD976A">gridSize</span><span style="color:#666666">,</span><span style="color:#BD976A"> setGridSize</span><span style="color:#666666">]</span><span style="color:#666666"> =</span><span style="color:#80A665"> usePersistentState</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">editor.gridSize</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#4C9A91"> 20</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> [</span><span style="color:#BD976A">snapEnabled</span><span style="color:#666666">,</span><span style="color:#BD976A"> setSnapEnabled</span><span style="color:#666666">]</span><span style="color:#666666"> =</span><span style="color:#80A665"> usePersistentState</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">editor.snap</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#4D9375"> true</span><span style="color:#666666">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">label</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">        Grid size</span></span>
+<span class="line"><span style="color:#666666">        &#x3C;</span><span style="color:#4D9375">input</span></span>
+<span class="line"><span style="color:#BD976A">          type</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">number</span><span style="color:#C98A7D77">"</span></span>
+<span class="line"><span style="color:#BD976A">          value</span><span style="color:#666666">={</span><span style="color:#BD976A">gridSize</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">          onChange</span><span style="color:#666666">={(</span><span style="color:#BD976A">e</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#80A665"> setGridSize</span><span style="color:#666666">(</span><span style="color:#80A665">Number</span><span style="color:#666666">(</span><span style="color:#BD976A">e</span><span style="color:#666666">.</span><span style="color:#BD976A">target</span><span style="color:#666666">.</span><span style="color:#BD976A">value</span><span style="color:#666666">))}</span></span>
+<span class="line"><span style="color:#666666">        /></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;/</span><span style="color:#4D9375">label</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">label</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">        &#x3C;</span><span style="color:#4D9375">input</span></span>
+<span class="line"><span style="color:#BD976A">          type</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">checkbox</span><span style="color:#C98A7D77">"</span></span>
+<span class="line"><span style="color:#BD976A">          checked</span><span style="color:#666666">={</span><span style="color:#BD976A">snapEnabled</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">          onChange</span><span style="color:#666666">={()</span><span style="color:#666666"> =></span><span style="color:#80A665"> setSnapEnabled</span><span style="color:#666666">((</span><span style="color:#BD976A">v</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#CB7676"> !</span><span style="color:#BD976A">v</span><span style="color:#666666">)}</span></span>
+<span class="line"><span style="color:#666666">        /></span></span>
+<span class="line"><span style="color:#DBD7CAEE">        Snap to grid</span></span>
+<span class="line"><span style="color:#666666">      &#x3C;/</span><span style="color:#4D9375">label</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h4 id="key-namespacing">Key Namespacing</h4>
+<p>Use a consistent prefix to avoid collisions between apps:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#758575DD">// Good: namespaced keys</span></span>
+<span class="line"><span style="color:#80A665">usePersistentState</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">shaper.zoom</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#4C9A91"> 0.45</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#80A665">usePersistentState</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">shaper.tool</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">select</span><span style="color:#C98A7D77">'</span><span style="color:#666666">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// Bad: generic keys that could collide</span></span>
+<span class="line"><span style="color:#80A665">usePersistentState</span><span style="color:#666666">(</span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">zoom</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#4C9A91"> 0.45</span><span style="color:#666666">);</span></span></code></pre>
+<hr>
+<h3 id="useappsettings">useAppSettings</h3>
+<p>Manages per-app settings backed by localStorage with merge semantics. Works with the <code>AppSettingsConfig</code> schema to derive defaults and persist user overrides.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> useAppSettings</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#BD976A">  appId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">  config</span><span style="color:#666666">: </span><span style="color:#5DA994">AppSettingsConfig</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">):</span><span style="color:#666666"> [</span><span style="color:#5DA994">AppSettingsValues</span><span style="color:#666666">,</span><span style="color:#666666"> (</span><span style="color:#BD976A">patch</span><span style="color:#666666">: </span><span style="color:#5DA994">Partial</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">AppSettingsValues</span><span style="color:#666666">>)</span><span style="color:#666666"> =></span><span style="color:#5DA994"> void</span><span style="color:#666666">,</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#5DA994"> void</span><span style="color:#666666">]</span></span></code></pre>
+<h4 id="parameters-1">Parameters</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Parameter</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>appId</code></td><td><code>string</code></td><td>Your app’s unique ID. Used to namespace the localStorage key as <code>hudson.app.{appId}.settings</code>.</td></tr><tr><td><code>config</code></td><td><code>AppSettingsConfig</code></td><td>The settings schema, containing sections and fields with defaults.</td></tr></tbody></table>
+<h4 id="return-value-1">Return Value</h4>
+<p>A three-element tuple:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Index</th><th>Type</th><th>Description</th></tr></thead><tbody><tr><td><code>[0]</code></td><td><code>AppSettingsValues</code></td><td>Current merged settings (defaults + user overrides).</td></tr><tr><td><code>[1]</code></td><td><code>(patch) => void</code></td><td>Merge function. Pass partial values to update specific keys.</td></tr><tr><td><code>[2]</code></td><td><code>() => void</code></td><td>Reset function. Restores all settings to their declared defaults.</td></tr></tbody></table>
+<p><code>AppSettingsValues</code> is <code>Record&#x3C;string, string | number | boolean></code>.</p>
+<h4 id="defining-a-settings-schema">Defining a Settings Schema</h4>
+<p>The settings schema uses <code>AppSettingsConfig</code>, which contains sections of typed fields:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#4D9375"> type</span><span style="color:#666666"> {</span><span style="color:#BD976A"> AppSettingsConfig</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> settingsConfig</span><span style="color:#666666">: </span><span style="color:#5DA994">AppSettingsConfig</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  sections</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#666666">    {</span></span>
+<span class="line"><span style="color:#B8A965">      label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Canvas</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">      fields</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#666666">        {</span></span>
+<span class="line"><span style="color:#B8A965">          key</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">gridSize</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Grid Size</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          type</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">slider</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          default</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 20</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          min</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 5</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          max</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 100</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          step</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 5</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#80A665">          format</span><span style="color:#666666">:</span><span style="color:#666666"> (</span><span style="color:#BD976A">v</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#C98A7D77"> `</span><span style="color:#4D9375">${</span><span style="color:#C98A7D">v</span><span style="color:#4D9375">}</span><span style="color:#C98A7D">px</span><span style="color:#C98A7D77">`</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">        },</span></span>
+<span class="line"><span style="color:#666666">        {</span></span>
+<span class="line"><span style="color:#B8A965">          key</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">snapToGrid</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Snap to Grid</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          type</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">toggle</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          default</span><span style="color:#666666">:</span><span style="color:#4D9375"> true</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">        },</span></span>
+<span class="line"><span style="color:#666666">      ],</span></span>
+<span class="line"><span style="color:#666666">    },</span></span>
+<span class="line"><span style="color:#666666">    {</span></span>
+<span class="line"><span style="color:#B8A965">      label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Export</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">      fields</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#666666">        {</span></span>
+<span class="line"><span style="color:#B8A965">          key</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">format</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Export Format</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          type</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">segment</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          default</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">svg</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">          options</span><span style="color:#666666">:</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#666666">            {</span><span style="color:#B8A965"> value</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">svg</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#B8A965"> label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">SVG</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#666666">            {</span><span style="color:#B8A965"> value</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">png</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#B8A965"> label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">PNG</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#666666">            {</span><span style="color:#B8A965"> value</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">json</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#B8A965"> label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">JSON</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#666666">          ],</span></span>
+<span class="line"><span style="color:#666666">        },</span></span>
+<span class="line"><span style="color:#666666">      ],</span></span>
+<span class="line"><span style="color:#666666">    },</span></span>
+<span class="line"><span style="color:#666666">  ],</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<h4 id="field-types">Field Types</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Type</th><th>Control</th><th>Default Type</th></tr></thead><tbody><tr><td><code>'text'</code></td><td>Text input</td><td><code>string</code></td></tr><tr><td><code>'number'</code></td><td>Number input</td><td><code>number</code></td></tr><tr><td><code>'toggle'</code></td><td>On/off switch</td><td><code>boolean</code></td></tr><tr><td><code>'slider'</code></td><td>Range slider with optional <code>format</code></td><td><code>number</code></td></tr><tr><td><code>'segment'</code></td><td>Segmented control with <code>options</code></td><td><code>string</code></td></tr></tbody></table>
+<h4 id="example-1">Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> useAppSettings</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> MyAppProvider</span><span style="color:#666666">({</span><span style="color:#BD976A"> children</span><span style="color:#666666"> }: { </span><span style="color:#BD976A">children</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">ReactNode</span><span style="color:#666666"> })</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> [</span><span style="color:#BD976A">settings</span><span style="color:#666666">,</span><span style="color:#BD976A"> updateSettings</span><span style="color:#666666">,</span><span style="color:#BD976A"> resetSettings</span><span style="color:#666666">]</span><span style="color:#666666"> =</span><span style="color:#80A665"> useAppSettings</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#C98A7D77">    '</span><span style="color:#C98A7D">my-editor</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">    settingsConfig</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  // Read a value</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#BD976A"> gridSize</span><span style="color:#666666"> =</span><span style="color:#BD976A"> settings</span><span style="color:#666666">.</span><span style="color:#BD976A">gridSize</span><span style="color:#4D9375"> as</span><span style="color:#5DA994"> number</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  // Update a value</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#80A665"> handleGridChange</span><span style="color:#666666"> =</span><span style="color:#666666"> (</span><span style="color:#BD976A">size</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#80A665">    updateSettings</span><span style="color:#666666">({</span><span style="color:#B8A965"> gridSize</span><span style="color:#666666">:</span><span style="color:#BD976A"> size</span><span style="color:#666666"> });</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  // Reset to defaults</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#80A665"> handleReset</span><span style="color:#666666"> =</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#80A665">    resetSettings</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#B8A965">EditorContext.Provider</span><span style="color:#BD976A"> value</span><span style="color:#666666">={{</span><span style="color:#BD976A"> settings</span><span style="color:#666666">,</span><span style="color:#BD976A"> updateSettings</span><span style="color:#666666">,</span><span style="color:#BD976A"> resetSettings</span><span style="color:#666666"> }}></span></span>
+<span class="line"><span style="color:#666666">      {</span><span style="color:#BD976A">children</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#B8A965">EditorContext.Provider</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h4 id="registering-settings-on-the-app">Registering Settings on the App</h4>
+<p>Pass the config to the <code>settings</code> field of your <code>HudsonApp</code> definition. The shell reads this to render a settings panel.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> myApp</span><span style="color:#666666">: </span><span style="color:#5DA994">HudsonApp</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  id</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">my-editor</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  name</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Editor</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#758575DD">  // ...</span></span>
+<span class="line"><span style="color:#B8A965">  settings</span><span style="color:#666666">:</span><span style="color:#BD976A"> settingsConfig</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<hr>
+<h3 id="useterminalrelay">useTerminalRelay</h3>
+<p>Connects to a WebSocket-based terminal relay server. The relay manages PTY sessions on a backend, allowing your app to embed a live terminal.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> useTerminalRelay</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#BD976A">  options</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">UseTerminalRelayOptions</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">):</span><span style="color:#5DA994"> TerminalRelayHandle</span></span></code></pre>
+<h4 id="options">Options</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> UseTerminalRelayOptions</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#758575DD">  /** WebSocket URL. Defaults to ws://localhost:3600 */</span></span>
+<span class="line"><span style="color:#BD976A">  url</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">  /** System prompt for the CLI session */</span></span>
+<span class="line"><span style="color:#BD976A">  systemPrompt</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">  /** Working directory for the PTY session */</span></span>
+<span class="line"><span style="color:#BD976A">  cwd</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">  /** Files to bootstrap in the CWD before spawning */</span></span>
+<span class="line"><span style="color:#BD976A">  workspaceFiles</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">string</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#758575DD">  /** Auto-connect on mount. Defaults to false. */</span></span>
+<span class="line"><span style="color:#BD976A">  autoConnect</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Option</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>url</code></td><td><code>'ws://localhost:3600'</code></td><td>WebSocket URL of the relay server.</td></tr><tr><td><code>systemPrompt</code></td><td><code>undefined</code></td><td>Passed to the CLI session on init.</td></tr><tr><td><code>cwd</code></td><td>Server’s <code>$HOME</code></td><td>Working directory for the spawned PTY.</td></tr><tr><td><code>workspaceFiles</code></td><td><code>undefined</code></td><td>Map of relative paths to file contents. Created on the server if missing.</td></tr><tr><td><code>autoConnect</code></td><td><code>false</code></td><td>When <code>true</code>, opens the WebSocket on mount.</td></tr></tbody></table>
+<h4 id="return-value-terminalrelayhandle">Return Value: TerminalRelayHandle</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> TerminalRelayHandle</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  status</span><span style="color:#666666">: </span><span style="color:#5DA994">RelayStatus</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  sessionId</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  error</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  exitCode</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> | </span><span style="color:#CB7676">null</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  onData</span><span style="color:#666666">: (</span><span style="color:#80A665">cb</span><span style="color:#666666">: (</span><span style="color:#BD976A">data</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  sendInput</span><span style="color:#666666">: (</span><span style="color:#BD976A">data</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  sendLine</span><span style="color:#666666">: (</span><span style="color:#BD976A">text</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  resize</span><span style="color:#666666">: (</span><span style="color:#BD976A">cols</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">, </span><span style="color:#BD976A">rows</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  connect</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#80A665">  disconnect</span><span style="color:#666666">: () => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Field</th><th>Description</th></tr></thead><tbody><tr><td><code>status</code></td><td>Connection state: <code>'disconnected'</code>, <code>'connecting'</code>, <code>'connected'</code>, or <code>'error'</code>.</td></tr><tr><td><code>sessionId</code></td><td>Server-assigned session ID after init. <code>null</code> before connection or after exit.</td></tr><tr><td><code>error</code></td><td>Human-readable error message. <code>null</code> when healthy.</td></tr><tr><td><code>exitCode</code></td><td>Process exit code. <code>null</code> while running or before start.</td></tr><tr><td><code>onData</code></td><td>Register a callback to receive terminal output.</td></tr><tr><td><code>sendInput</code></td><td>Send raw keystrokes to the PTY.</td></tr><tr><td><code>sendLine</code></td><td>Send a line of text (appends <code>\r</code> automatically).</td></tr><tr><td><code>resize</code></td><td>Resize the remote terminal. Can be called before connect to set initial size.</td></tr><tr><td><code>connect</code></td><td>Open the WebSocket and initialize or reconnect a session.</td></tr><tr><td><code>disconnect</code></td><td>Close the WebSocket. The server-side session stays alive for reconnection.</td></tr></tbody></table>
+<h4 id="relaystatus">RelayStatus</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> RelayStatus</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">disconnected</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">connecting</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">connected</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> |</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">error</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<h4 id="example-2">Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> useTerminalRelay</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> useEffect</span><span style="color:#666666">,</span><span style="color:#BD976A"> useRef</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> AppTerminal</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#BD976A"> terminal</span><span style="color:#666666"> =</span><span style="color:#80A665"> useTerminalRelay</span><span style="color:#666666">({</span></span>
+<span class="line"><span style="color:#B8A965">    url</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">ws://localhost:3600</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    systemPrompt</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">You are a helpful coding assistant.</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    cwd</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">/Users/me/project</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    autoConnect</span><span style="color:#666666">:</span><span style="color:#4D9375"> false</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  });</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#BD976A"> outputRef</span><span style="color:#666666"> =</span><span style="color:#80A665"> useRef</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">HTMLPreElement</span><span style="color:#666666">>(</span><span style="color:#CB7676">null</span><span style="color:#666666">);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#80A665">  useEffect</span><span style="color:#666666">(()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">    terminal</span><span style="color:#666666">.</span><span style="color:#80A665">onData</span><span style="color:#666666">((</span><span style="color:#BD976A">data</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">      if</span><span style="color:#666666"> (</span><span style="color:#BD976A">outputRef</span><span style="color:#666666">.</span><span style="color:#BD976A">current</span><span style="color:#666666">)</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">        outputRef</span><span style="color:#666666">.</span><span style="color:#BD976A">current</span><span style="color:#666666">.</span><span style="color:#BD976A">textContent</span><span style="color:#CB7676"> +=</span><span style="color:#BD976A"> data</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">      }</span></span>
+<span class="line"><span style="color:#666666">    });</span></span>
+<span class="line"><span style="color:#666666">  },</span><span style="color:#666666"> [</span><span style="color:#BD976A">terminal</span><span style="color:#666666">]);</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">flex flex-col h-full</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">flex items-center gap-2 px-3 py-2 border-b border-neutral-800</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">        &#x3C;</span><span style="color:#4D9375">span</span><span style="color:#BD976A"> className</span><span style="color:#666666">={</span><span style="color:#C98A7D77">`</span><span style="color:#C98A7D">h-2 w-2 rounded-full </span><span style="color:#4D9375">${</span></span>
+<span class="line"><span style="color:#C98A7D">          terminal</span><span style="color:#666666">.</span><span style="color:#C98A7D">status </span><span style="color:#CB7676">===</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">connected</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> ?</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">bg-emerald-500</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> :</span></span>
+<span class="line"><span style="color:#C98A7D">          terminal</span><span style="color:#666666">.</span><span style="color:#C98A7D">status </span><span style="color:#CB7676">===</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">connecting</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> ?</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">bg-amber-500</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> :</span></span>
+<span class="line"><span style="color:#C98A7D">          terminal</span><span style="color:#666666">.</span><span style="color:#C98A7D">status </span><span style="color:#CB7676">===</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">error</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> ?</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">bg-red-500</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> :</span></span>
+<span class="line"><span style="color:#C98A7D77">          '</span><span style="color:#C98A7D">bg-neutral-600</span><span style="color:#C98A7D77">'</span></span>
+<span class="line"><span style="color:#4D9375">        }</span><span style="color:#C98A7D77">`</span><span style="color:#666666">}</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">        &#x3C;</span><span style="color:#4D9375">span</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">text-xs text-neutral-500</span><span style="color:#C98A7D77">"</span><span style="color:#666666">>{</span><span style="color:#BD976A">terminal</span><span style="color:#666666">.</span><span style="color:#BD976A">status</span><span style="color:#666666">}&#x3C;/</span><span style="color:#4D9375">span</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">        {</span><span style="color:#BD976A">terminal</span><span style="color:#666666">.</span><span style="color:#BD976A">status</span><span style="color:#CB7676"> ===</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">disconnected</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> &#x26;&#x26;</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">          &#x3C;</span><span style="color:#4D9375">button</span><span style="color:#BD976A"> onClick</span><span style="color:#666666">={</span><span style="color:#BD976A">terminal</span><span style="color:#666666">.</span><span style="color:#BD976A">connect</span><span style="color:#666666">}</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">text-xs text-cyan-400</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">            Connect</span></span>
+<span class="line"><span style="color:#666666">          &#x3C;/</span><span style="color:#4D9375">button</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">        )}</span></span>
+<span class="line"><span style="color:#666666">      &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">pre</span><span style="color:#BD976A"> ref</span><span style="color:#666666">={</span><span style="color:#BD976A">outputRef</span><span style="color:#666666">}</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">flex-1 p-3 text-xs font-mono text-neutral-400 overflow-auto</span><span style="color:#C98A7D77">"</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h4 id="session-lifecycle">Session Lifecycle</h4>
+<ol>
+<li>Call <code>resize(cols, rows)</code> to set the initial terminal dimensions.</li>
+<li>Call <code>connect()</code> to open the WebSocket.</li>
+<li>On open, the hook sends a <code>session:init</code> message with dimensions, system prompt, and CWD.</li>
+<li>The server responds with <code>session:ready</code> containing the session ID.</li>
+<li>Terminal data flows via <code>terminal:data</code> messages to the <code>onData</code> callback.</li>
+<li>Call <code>sendInput</code> or <code>sendLine</code> to write to the PTY.</li>
+<li>On disconnect and reconnect, the hook sends <code>session:reconnect</code> to resume the existing session.</li>
+<li>If the session has expired, the server responds with <code>session:expired</code> and the hook automatically re-initializes.</li>
+</ol>
+<hr>
+<h2 id="utilities">Utilities</h2>
+<h3 id="sounds">sounds</h3>
+<p>Tactile UI sounds generated with the Web Audio API. No audio files required.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> sounds</span><span style="color:#666666">,</span><span style="color:#BD976A"> click</span><span style="color:#666666">,</span><span style="color:#BD976A"> thock</span><span style="color:#666666">,</span><span style="color:#BD976A"> blipUp</span><span style="color:#666666">,</span><span style="color:#BD976A"> blipDown</span><span style="color:#666666">,</span><span style="color:#BD976A"> pop</span><span style="color:#666666">,</span><span style="color:#BD976A"> confirm</span><span style="color:#666666">,</span><span style="color:#BD976A"> error</span><span style="color:#666666">,</span><span style="color:#BD976A"> whoosh</span><span style="color:#666666">,</span><span style="color:#BD976A"> chime</span><span style="color:#666666">,</span><span style="color:#BD976A"> tick</span><span style="color:#666666">,</span><span style="color:#BD976A"> slideIn</span><span style="color:#666666">,</span><span style="color:#BD976A"> slideOut</span><span style="color:#666666">,</span><span style="color:#BD976A"> boot</span><span style="color:#666666">,</span><span style="color:#BD976A"> ping</span><span style="color:#666666">,</span><span style="color:#BD976A"> type</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<p>See <a href="./utilities.md#sounds">Utilities</a> for the full catalog.</p>
+<h3 id="mute-control">Mute Control</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> isMuted</span><span style="color:#666666">():</span><span style="color:#5DA994"> boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> setMuted</span><span style="color:#666666">(</span><span style="color:#BD976A">muted</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">):</span><span style="color:#5DA994"> void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> toggleMute</span><span style="color:#666666">():</span><span style="color:#5DA994"> boolean</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="sound-preview">Sound Preview</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> preview</span><span style="color:#666666">(</span><span style="color:#BD976A">name</span><span style="color:#666666">: </span><span style="color:#5DA994">SoundName</span><span style="color:#666666">):</span><span style="color:#5DA994"> void</span><span style="color:#666666">;</span></span></code></pre>
+<p>Plays the sound even when muted. Useful for settings previews.</p>
+<h3 id="soundname">SoundName</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> SoundName</span><span style="color:#666666"> =</span><span style="color:#CB7676"> keyof</span><span style="color:#CB7676"> typeof</span><span style="color:#BD976A"> sounds</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">// 'click' | 'thock' | 'blipUp' | 'blipDown' | 'pop' | 'confirm' | 'error' | 'whoosh' | 'chime' | 'tick' | 'slideIn' | 'slideOut' | 'boot' | 'ping' | 'type'</span></span></code></pre>
+<hr>
+<h3 id="logevent">logEvent</h3>
+<p>Event-based debug logging. Only emits when <code>FRAME_DEBUG</code> is enabled (via <code>window.FRAME_DEBUG = true</code> or <code>localStorage.setItem('FRAME_DEBUG', '1')</code>).</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> logEvent</span><span style="color:#666666">(</span><span style="color:#BD976A">label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">,</span><span style="color:#BD976A"> payload</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">unknown</span><span style="color:#666666">>,</span><span style="color:#BD976A"> tag</span><span style="color:#CB7676">?</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">):</span><span style="color:#5DA994"> void</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="frame_log_event">FRAME_LOG_EVENT</h3>
+<p>The CustomEvent type string for log listeners.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">FRAME_LOG_EVENT</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span><span style="color:#758575DD"> // 'frame:log'</span></span></code></pre>
+<h3 id="framelogentry">FrameLogEntry</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> FrameLogEntry</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  id</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  label</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  tag</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  timestamp</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  payload</span><span style="color:#666666">: </span><span style="color:#5DA994">Record</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">string</span><span style="color:#666666">, </span><span style="color:#5DA994">unknown</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h3 id="worldtoscreen">worldToScreen</h3>
+<p>Converts world-space coordinates to screen-space coordinates.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> worldToScreen</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#BD976A">  worldPos</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#BD976A">  panOffset</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#BD976A">  scale</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">  viewportCenter</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#666666">):</span><span style="color:#666666"> {</span><span style="color:#BD976A"> x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span><span style="color:#BD976A"> y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> }</span></span></code></pre>
+<h3 id="screentoworld">screenToWorld</h3>
+<p>Converts screen-space coordinates to world-space coordinates.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> screenToWorld</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#BD976A">  screenPos</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#BD976A">  panOffset</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#BD976A">  scale</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#BD976A">  viewportCenter</span><span style="color:#666666">: { </span><span style="color:#BD976A">x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">; </span><span style="color:#BD976A">y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#666666">):</span><span style="color:#666666"> {</span><span style="color:#BD976A"> x</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span><span style="color:#BD976A"> y</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666"> }</span></span></code></pre>
+<hr>
+<h3 id="derivemanifest">deriveManifest</h3>
+<p>Derives a serializable <code>AppManifest</code> from a <code>HudsonApp</code> definition. Returns the app’s static manifest if one is provided; otherwise builds one from top-level fields.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> deriveManifest</span><span style="color:#666666">(</span><span style="color:#BD976A">app</span><span style="color:#666666">: </span><span style="color:#5DA994">HudsonApp</span><span style="color:#666666">):</span><span style="color:#5DA994"> AppManifest</span></span></code></pre>
+<hr>
+<h3 id="shell_theme">SHELL_THEME</h3>
+<p>Design tokens for Hudson shell chrome. See <a href="./utilities.md#theme">Utilities</a> for full details.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">SHELL_THEME</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#BD976A">  tokens</span><span style="color:#666666">: { </span><span style="color:#BD976A">blur</span><span style="color:#666666">, </span><span style="color:#BD976A">bg</span><span style="color:#666666">, </span><span style="color:#BD976A">border</span><span style="color:#666666">, </span><span style="color:#BD976A">shadow</span><span style="color:#666666">, </span><span style="color:#BD976A">topHighlight</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  base</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  panels</span><span style="color:#666666">: { </span><span style="color:#BD976A">navigationStack</span><span style="color:#666666">, </span><span style="color:#BD976A">manifest</span><span style="color:#666666">, </span><span style="color:#BD976A">inspector</span><span style="color:#666666">, </span><span style="color:#BD976A">minimap</span><span style="color:#666666">, </span><span style="color:#BD976A">statusBar</span><span style="color:#666666">, </span><span style="color:#BD976A">commandDock</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  effects</span><span style="color:#666666">: { </span><span style="color:#BD976A">rightFade</span><span style="color:#666666">, </span><span style="color:#BD976A">leftFade</span><span style="color:#666666">, </span><span style="color:#BD976A">bottomGlow</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  zIndex</span><span style="color:#666666">: { </span><span style="color:#BD976A">canvas</span><span style="color:#666666">, </span><span style="color:#BD976A">worldContent</span><span style="color:#666666">, </span><span style="color:#BD976A">panels</span><span style="color:#666666">, </span><span style="color:#BD976A">minimap</span><span style="color:#666666">, </span><span style="color:#BD976A">navigationStack</span><span style="color:#666666">, </span><span style="color:#BD976A">statusBar</span><span style="color:#666666">, </span><span style="color:#BD976A">drawer</span><span style="color:#666666">, </span><span style="color:#BD976A">modals</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#BD976A">  layout</span><span style="color:#666666">: { </span><span style="color:#BD976A">navHeight</span><span style="color:#666666">, </span><span style="color:#BD976A">panelWidth</span><span style="color:#666666">, </span><span style="color:#BD976A">panelTopOffset</span><span style="color:#666666">, </span><span style="color:#BD976A">statusBarHeight</span><span style="color:#666666">, </span><span style="color:#BD976A">panelBottomOffset</span><span style="color:#666666"> };</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h2 id="platform">Platform</h2>
+<h3 id="platformadapter">PlatformAdapter</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> PlatformAdapter</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  titleBarInset</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  dragRegionProps</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">HTMLAttributes</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">HTMLElement</span><span style="color:#666666">>;</span></span>
+<span class="line"><span style="color:#80A665">  onInteractiveMouseDown</span><span style="color:#CB7676">?</span><span style="color:#666666">: (</span><span style="color:#BD976A">e</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">MouseEvent</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  isSSR</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  apiBaseUrl</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  serviceApiUrl</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="platformlayout">PlatformLayout</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> PlatformLayout</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#BD976A">  navTotalHeight</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  panelTopOffset</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="web_adapter">WEB_ADAPTER</h3>
+<p>Zero-config web defaults. Used when no <code>PlatformProvider</code> is present.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">WEB_ADAPTER</span><span style="color:#666666">: </span><span style="color:#5DA994">PlatformAdapter</span><span style="color:#666666">;</span></span></code></pre>
+<h3 id="platformprovider">PlatformProvider</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> PlatformProvider</span><span style="color:#666666">(</span><span style="color:#BD976A">props</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#BD976A">  adapter</span><span style="color:#666666">: </span><span style="color:#5DA994">PlatformAdapter</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">  children</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">ReactNode</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}):</span><span style="color:#5DA994"> JSX</span><span style="color:#666666">.</span><span style="color:#5DA994">Element</span></span></code></pre>
+<h3 id="useplatform">usePlatform</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> usePlatform</span><span style="color:#666666">():</span><span style="color:#5DA994"> PlatformAdapter</span></span></code></pre>
+<h3 id="useplatformlayout">usePlatformLayout</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> usePlatformLayout</span><span style="color:#666666">():</span><span style="color:#5DA994"> PlatformLayout</span></span></code></pre>
+<hr>
+<h2 id="components">Components</h2>
+<h3 id="zoomcontrols">ZoomControls</h3>
+<p>A canvas zoom widget with plus/minus buttons and an editable percentage display.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> ZoomControls</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#B8A965">ZoomControls</span></span>
+<span class="line"><span style="color:#BD976A">  scale</span><span style="color:#666666">={</span><span style="color:#BD976A">zoom</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">  onZoom</span><span style="color:#666666">={(</span><span style="color:#BD976A">newScale</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#80A665"> setZoom</span><span style="color:#666666">(</span><span style="color:#BD976A">newScale</span><span style="color:#666666">)}</span></span>
+<span class="line"><span style="color:#BD976A">  min</span><span style="color:#666666">={</span><span style="color:#4C9A91">0.1</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">  max</span><span style="color:#666666">={</span><span style="color:#4C9A91">3</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">  step</span><span style="color:#666666">={</span><span style="color:#4C9A91">0.1</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#666666">/></span></span></code></pre>
+<h4 id="props">Props</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Prop</th><th>Type</th><th>Default</th><th>Description</th></tr></thead><tbody><tr><td><code>scale</code></td><td><code>number</code></td><td>—</td><td>Current zoom level (1 = 100%).</td></tr><tr><td><code>onZoom</code></td><td><code>(newScale: number) => void</code></td><td>—</td><td>Called with the clamped new scale on zoom change.</td></tr><tr><td><code>min</code></td><td><code>number</code></td><td><code>0.2</code></td><td>Minimum zoom level.</td></tr><tr><td><code>max</code></td><td><code>number</code></td><td><code>3</code></td><td>Maximum zoom level.</td></tr><tr><td><code>step</code></td><td><code>number</code></td><td><code>0.1</code></td><td>Zoom increment per click.</td></tr></tbody></table>
+<p>The percentage label is clickable for direct numeric input.</p>  </article> <!-- Agent footer --> <div class="dl-agent-footer"> <span class="dl-agent-footer-label">For AI agents</span> <div class="dl-agent-footer-links"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer">llms.txt</a> <span class="dl-agent-footer-sep">|</span> <a href="/llms-full.txt" target="_blank" rel="noopener noreferrer">llms-full.txt</a> </div> </div> </div> </main> <!-- TOC --> <aside class="dl-toc" data-pagefind-ignore> <p class="dl-toc-label">On this page</p> <ul class="dl-toc-list"> <li> <a class="dl-toc-link" data-toc-link data-level="2" href="#types"> Types </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#hudsonapp"> HudsonApp </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#statuscolor"> StatusColor </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#apptool"> AppTool </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#searchconfig"> SearchConfig </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appmanifest"> AppManifest </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appsettingfield"> AppSettingField </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appsettingssection"> AppSettingsSection </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appsettingsconfig"> AppSettingsConfig </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#hudsonworkspace"> HudsonWorkspace </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#workspaceappconfig"> WorkspaceAppConfig </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#canvasparticipation"> CanvasParticipation </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appintent"> AppIntent </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#intentcategory"> IntentCategory </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#intentparameter"> IntentParameter </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#catalogappentry"> CatalogAppEntry </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#intentcatalog"> IntentCatalog </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#servicedefinition"> ServiceDefinition </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#servicedependency"> ServiceDependency </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#servicestatus"> ServiceStatus </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#servicerecord"> ServiceRecord </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#serviceaction"> ServiceAction </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appoutput"> AppOutput </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appinput"> AppInput </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#appports"> AppPorts </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#pipedefinition"> PipeDefinition </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#commandoption"> CommandOption </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#contextmenuentry"> ContextMenuEntry </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#contextmenuaction"> ContextMenuAction </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#contextmenuseparator"> ContextMenuSeparator </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#contextmenugroup"> ContextMenuGroup </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#ai-types"> AI Types </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#hudsonaichat"> HudsonAIChat </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#usehudsonaioptions"> UseHudsonAIOptions </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#aiattachment"> AIAttachment </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#hooks"> Hooks </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#usepersistentstate"> usePersistentState </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useappsettings"> useAppSettings </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useterminalrelay"> useTerminalRelay </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#utilities"> Utilities </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#sounds"> sounds </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#mute-control"> Mute Control </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#sound-preview"> Sound Preview </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#soundname"> SoundName </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#logevent"> logEvent </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#frame_log_event"> FRAME_LOG_EVENT </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#framelogentry"> FrameLogEntry </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#worldtoscreen"> worldToScreen </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#screentoworld"> screenToWorld </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#derivemanifest"> deriveManifest </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#shell_theme"> SHELL_THEME </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#platform"> Platform </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#platformadapter"> PlatformAdapter </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#platformlayout"> PlatformLayout </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#web_adapter"> WEB_ADAPTER </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#platformprovider"> PlatformProvider </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useplatform"> usePlatform </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useplatformlayout"> usePlatformLayout </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#components"> Components </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#zoomcontrols"> ZoomControls </a> </li> </ul> </aside> </div> </div> <style>
+    /* ── Header bar ── */
+    .dl-header {
+      height: 48px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-bg);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .dl-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dl-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dl-header-brand {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-brand:hover { color: var(--color-text); }
+    .dl-header-brand--active { color: var(--color-text); }
+
+    .dl-header-sep {
+      color: var(--color-border);
+      font-size: 14px;
+    }
+
+    .dl-header-link {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-link:hover { color: var(--color-accent); }
+
+    .dl-header-icon {
+      color: var(--color-text-muted);
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .dl-header-icon:hover { color: var(--color-text); }
+
+    .dl-search-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.15s;
+      height: 28px;
+    }
+
+    .dl-search-btn:hover {
+      border-color: var(--color-text-muted);
+      color: var(--color-text);
+    }
+
+    .dl-search-key {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+    }
+
+    .dl-theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    .dl-theme-btn:hover { color: var(--color-text); }
+
+    /* ── Layout shell ── */
+    .dl {
+      min-height: 100vh;
+      background: var(--color-bg);
+      color: var(--color-text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dl-body {
+      display: flex;
+      flex: 1;
+    }
+
+    /* ── Sidebar (tree nav) ── */
+    .dl-sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border);
+      overflow-y: auto;
+      padding: 16px 12px 20px 20px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      align-self: flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .dl-sidebar { display: none; }
+    }
+
+    .dl-nav-section { margin-bottom: 4px; }
+
+    .dl-nav-section--bordered {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .dl-nav-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .dl-nav-label:hover { color: var(--color-text); }
+
+    .dl-nav-label--static {
+      cursor: default;
+    }
+
+    .dl-nav-label--static:hover { color: var(--color-text-muted); }
+
+    .dl-nav-chevron {
+      transition: transform 0.2s;
+      opacity: 0.5;
+    }
+
+    .dl-nav-label[aria-expanded='false'] .dl-nav-chevron {
+      transform: rotate(-90deg);
+    }
+
+    [data-nav-list][data-collapsed='true'] {
+      display: none;
+    }
+
+    .dl-nav-subsection {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      padding: 0 12px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    .dl-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2px;
+    }
+
+    .dl-nav-item {
+      display: block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 300;
+      color: color-mix(in srgb, var(--color-text) 55%, transparent);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .dl-nav-item--indented {
+      padding-left: 20px;
+    }
+
+    .dl-nav-item:hover {
+      color: var(--color-text);
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .dl-nav-item.active {
+      color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    }
+
+    .dl-nav-item--muted {
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .dl-nav-item--muted:hover {
+      color: var(--color-text);
+    }
+
+    /* ── Main content ── */
+    .dl-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dl-content-area {
+      max-width: 768px;
+      margin: 0 auto;
+      padding: 10px 24px 80px;
+    }
+
+    /* ── Copy buttons (matching old Hudson) ── */
+    .dl-page-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .dl-copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: none;
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .dl-copy-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-text-muted);
+    }
+
+    /* ── Prose (matching old Hudson docs.css) ── */
+    .docs-prose {
+      color: var(--color-text);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .docs-prose h1 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 2rem;
+      color: var(--color-text);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .docs-prose h2 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.375rem;
+      color: var(--color-text);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.375rem;
+      border-bottom: 1px solid var(--color-border);
+      line-height: 1.3;
+    }
+
+    .docs-prose h3 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.125rem;
+      color: var(--color-text);
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .docs-prose h4 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      font-size: 1rem;
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .docs-prose p {
+      margin-top: 0;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .docs-prose a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .docs-prose ul {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose ol {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose li {
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose li > ul,
+    .docs-prose li > ol {
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose :not(pre) > code {
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.375rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      color: var(--color-accent);
+    }
+
+    .docs-prose pre {
+      background: #111111 !important;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 300;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .docs-prose pre code {
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      font-size: inherit;
+      font-family: inherit;
+      font-weight: inherit;
+      color: inherit;
+    }
+
+    .docs-prose blockquote {
+      border-left: 3px solid var(--color-accent);
+      padding-left: 1rem;
+      margin-left: 0;
+      margin-bottom: 1.25rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .docs-prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-family: 'Geist Mono', monospace;
+      font-size: 0.8125rem;
+    }
+
+    .docs-prose thead th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .docs-prose tbody td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .docs-prose tbody tr:hover {
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .docs-prose hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 2rem 0;
+    }
+
+    .docs-prose strong {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .docs-prose img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--color-border);
+    }
+
+    /* ── Agent footer ── */
+    .dl-agent-footer {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dl-agent-footer-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    .dl-agent-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dl-agent-footer-links a {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-agent-footer-links a:hover { color: var(--color-accent); }
+
+    .dl-agent-footer-sep {
+      color: var(--color-border);
+      font-size: 11px;
+    }
+
+    /* ── TOC ── */
+    .dl-toc {
+      width: 220px;
+      flex-shrink: 0;
+      padding: 16px 24px 40px 16px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      overflow-y: auto;
+      align-self: flex-start;
+    }
+
+    @media (max-width: 1280px) {
+      .dl-toc { display: none; }
+    }
+
+    .dl-toc-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+      margin: 0 0 16px;
+    }
+
+    .dl-toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-left: 1px solid var(--color-border);
+    }
+
+    .dl-toc-link {
+      display: block;
+      padding: 2px 0 2px 14px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+    }
+
+    .dl-toc-link:hover { color: var(--color-text); }
+
+    .dl-toc-link.is-active {
+      color: var(--color-text);
+      font-weight: 400;
+      border-left-color: var(--color-accent);
+    }
+
+    .dl-toc-link[data-level='3'] { padding-left: 26px; }
+  </style> <script>(function(){const rawMarkdown = "---\ntitle: API Reference\ndescription: Complete reference for every type, hook, utility, and component in @hudsonos/sdk.\nsection: npm\nsubsection: \"@hudsonos/sdk\"\norder: 3\n---\n\n# API Reference\n\nComplete reference for every type, hook, utility, and component exported by `@hudsonos/sdk`.\n\n## Types\n\n### HudsonApp\n\nThe core contract every app must implement to plug into the Hudson shell.\n\n```ts\ninterface HudsonApp {\n  id: string;\n  name: string;\n  description?: string;\n  mode: 'canvas' | 'panel';\n  leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };\n  rightPanel?: { title: string; icon?: ReactNode };\n  Provider: React.FC<{ children: ReactNode }>;\n  tools?: AppTool[];\n  slots: {\n    Content: React.FC;\n    LeftPanel?: React.FC;\n    RightPanel?: React.FC;  // deprecated\n    Inspector?: React.FC;\n    LeftFooter?: React.FC;\n    Terminal?: React.FC;\n  };\n  intents?: AppIntent[];\n  manifest?: AppManifest;\n  settings?: AppSettingsConfig;\n  ports?: AppPorts;\n  services?: ServiceDependency[];\n  hooks: {\n    useCommands: () => CommandOption[];\n    useStatus: () => { label: string; color: StatusColor };\n    useSearch?: () => SearchConfig;\n    useNavCenter?: () => ReactNode | null;\n    useNavActions?: () => ReactNode | null;\n    useLayoutMode?: () => 'canvas' | 'panel';\n    useActiveToolHint?: () => string | null;\n    usePortOutput?: () => (portId: string) => unknown | null;\n    usePortInput?: () => (portId: string, data: unknown) => void;\n  };\n}\n```\n\n### StatusColor\n\n```ts\ntype StatusColor = 'emerald' | 'amber' | 'red' | 'neutral';\n```\n\n### AppTool\n\nA tool panel entry for the right sidebar accordion.\n\n```ts\ninterface AppTool {\n  id: string;\n  name: string;\n  icon: ReactNode;\n  Component: React.FC;\n}\n```\n\n### SearchConfig\n\nConfiguration for the navigation bar search field.\n\n```ts\ninterface SearchConfig {\n  value: string;\n  onChange: (value: string) => void;\n  placeholder?: string;\n}\n```\n\n### AppManifest\n\nSerializable snapshot of an app's capabilities for LLM and tooling introspection.\n\n```ts\ninterface AppManifest {\n  id: string;\n  name: string;\n  description?: string;\n  mode: 'canvas' | 'panel';\n  commands?: { id: string; label: string; shortcut?: string }[];\n  tools?: { id: string; name: string }[];\n}\n```\n\n### AppSettingField\n\n```ts\ninterface AppSettingField {\n  key: string;\n  label: string;\n  type: 'text' | 'number' | 'toggle' | 'slider' | 'segment';\n  default: string | number | boolean;\n  options?: { value: string; label: string }[];  // for 'segment' type\n  min?: number;     // for 'slider' and 'number'\n  max?: number;\n  step?: number;\n  format?: (v: number) => string;  // for 'slider' display\n}\n```\n\n### AppSettingsSection\n\n```ts\ninterface AppSettingsSection {\n  label: string;\n  fields: AppSettingField[];\n}\n```\n\n### AppSettingsConfig\n\n```ts\ninterface AppSettingsConfig {\n  sections: AppSettingsSection[];\n}\n```\n\n---\n\n### HudsonWorkspace\n\nA collection of apps that coexist in a shared shell.\n\n```ts\ninterface HudsonWorkspace {\n  id: string;\n  name: string;\n  description?: string;\n  mode: 'canvas' | 'panel';\n  apps: WorkspaceAppConfig[];\n  defaultFocusedAppId?: string;\n}\n```\n\n### WorkspaceAppConfig\n\n```ts\ninterface WorkspaceAppConfig {\n  app: HudsonApp;\n  canvasMode?: CanvasParticipation;\n  defaultWindowBounds?: { x: number; y: number; w: number; h: number };\n}\n```\n\n### CanvasParticipation\n\n```ts\ntype CanvasParticipation = 'native' | 'windowed';\n```\n\n---\n\n### AppIntent\n\nStatic intent declaration for LLM, voice, and search indexing.\n\n```ts\ninterface AppIntent {\n  commandId: string;\n  title: string;\n  description: string;\n  category: IntentCategory;\n  keywords: string[];\n  params?: IntentParameter[];\n  shortcut?: string;\n  dangerous?: boolean;\n}\n```\n\n### IntentCategory\n\n```ts\ntype IntentCategory =\n  | 'tool'\n  | 'edit'\n  | 'file'\n  | 'view'\n  | 'navigation'\n  | 'toggle'\n  | 'workspace'\n  | 'settings';\n```\n\n### IntentParameter\n\n```ts\ninterface IntentParameter {\n  name: string;\n  description: string;\n  type: 'string' | 'number' | 'boolean';\n  optional?: boolean;\n  enum?: string[];\n  default?: string | number | boolean;\n}\n```\n\n### CatalogAppEntry\n\n```ts\ninterface CatalogAppEntry {\n  appId: string;\n  appName: string;\n  appDescription: string;\n  intents: AppIntent[];\n}\n```\n\n### IntentCatalog\n\n```ts\ninterface IntentCatalog {\n  version: 1;\n  generatedAt: string;\n  workspace: { id: string; name: string };\n  shell: AppIntent[];\n  apps: CatalogAppEntry[];\n  index: Record<string, { appId: string; intent: AppIntent }>;\n}\n```\n\n---\n\n### ServiceDefinition\n\nDefines an external service that can be installed, started, and health-checked.\n\n```ts\ninterface ServiceDefinition {\n  id: string;\n  name: string;\n  description: string;\n  version?: string;\n  icon?: string;\n  check: {\n    healthUrl?: string;\n    port?: number;\n  };\n  install: { command: string; cwd?: string };\n  start: { command: string; cwd?: string; env?: Record<string, string> };\n  stop?: { command?: string };\n}\n```\n\n### ServiceDependency\n\n```ts\ninterface ServiceDependency {\n  serviceId: string;\n  optional?: boolean;\n  reason?: string;\n}\n```\n\n### ServiceStatus\n\n```ts\ntype ServiceStatus = 'unknown' | 'not_installed' | 'installed' | 'running' | 'error';\n```\n\n### ServiceRecord\n\n```ts\ninterface ServiceRecord {\n  serviceId: string;\n  status: ServiceStatus;\n  pid?: number;\n  logFile?: string;\n  lastChecked: number;\n  lastChanged: number;\n  error?: string;\n}\n```\n\n### ServiceAction\n\n```ts\ninterface ServiceAction {\n  id: string;\n  serviceId: string;\n  action: 'check' | 'install' | 'start' | 'stop';\n  triggeredBy: 'user' | 'agent' | 'system';\n  timestamp: number;\n  command?: string;\n  output?: string;\n  exitCode?: number | null;\n  success: boolean;\n  durationMs: number;\n}\n```\n\n---\n\n### AppOutput\n\n```ts\ninterface AppOutput {\n  id: string;\n  name: string;\n  dataType: string;\n  description?: string;\n}\n```\n\n### AppInput\n\n```ts\ninterface AppInput {\n  id: string;\n  name: string;\n  dataType: string;\n  description?: string;\n}\n```\n\n### AppPorts\n\n```ts\ninterface AppPorts {\n  outputs?: AppOutput[];\n  inputs?: AppInput[];\n}\n```\n\n### PipeDefinition\n\n```ts\ninterface PipeDefinition {\n  id: string;\n  name: string;\n  source: { appId: string; portId: string };\n  sink: { appId: string; portId: string };\n  createdAt: number;\n  lastPushedAt: number | null;\n  enabled: boolean;\n}\n```\n\n---\n\n### CommandOption\n\nEntry for the command palette.\n\n```ts\ninterface CommandOption {\n  id: string;\n  label: string;\n  action: () => void;\n  shortcut?: string;\n  icon?: React.ReactNode;\n}\n```\n\n### ContextMenuEntry\n\n```ts\ntype ContextMenuEntry = ContextMenuAction | ContextMenuSeparator | ContextMenuGroup;\n```\n\n### ContextMenuAction\n\n```ts\ninterface ContextMenuAction {\n  id: string;\n  label: string;\n  action: () => void;\n  shortcut?: string;\n  icon?: React.ReactNode;\n  disabled?: boolean;\n}\n```\n\n### ContextMenuSeparator\n\n```ts\ninterface ContextMenuSeparator {\n  type: 'separator';\n}\n```\n\n### ContextMenuGroup\n\n```ts\ninterface ContextMenuGroup {\n  type: 'group';\n  label: string;\n  items: ContextMenuAction[];\n}\n```\n\n---\n\n### AI Types\n\nThese types are exported for typing app hooks. The runtime ships separately as `@hudsonos/ai`.\n\n### HudsonAIChat\n\n```ts\ninterface HudsonAIChat {\n  messages: unknown[];\n  sendMessage: (message: { role: string; content: string }) => void;\n  stop: () => void;\n  status: string;\n  setMessages: (messages: unknown[]) => void;\n  clearChat: () => void;\n  error: Error | undefined;\n  mode: 'cli' | 'api';\n  attachments: AIAttachment[];\n  activeAttachments: Set<string>;\n  toggleAttachment: (label: string) => void;\n}\n```\n\n### UseHudsonAIOptions\n\n```ts\ninterface UseHudsonAIOptions {\n  toolset: string;\n  context?: Record<string, unknown>;\n  onToolCall?: (toolName: string, args: Record<string, unknown>) => void | Promise<void>;\n  mode?: 'cli' | 'api';\n  attachments?: AIAttachment[];\n}\n```\n\n### AIAttachment\n\n```ts\ninterface AIAttachment {\n  label: string;\n  content: () => string | Record<string, unknown> | null;\n}\n```\n\n---\n\n## Hooks\n\nThe SDK provides three hooks for common app needs: persistent state, app settings, and terminal relay. All hooks handle SSR gracefully through the platform adapter system.\n\n### usePersistentState\n\nA drop-in replacement for `useState` that persists values to `localStorage`. The API is identical to React's `useState`.\n\n```ts\nfunction usePersistentState<T>(\n  key: string,\n  initialValue: T,\n): [T, React.Dispatch<React.SetStateAction<T>>]\n```\n\n#### Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `key` | `string` | The localStorage key. Namespace it with your app ID to avoid collisions. |\n| `initialValue` | `T` | Default value used when nothing is found in localStorage. |\n\n#### Return Value\n\nA tuple identical to `useState`: the current value and a setter function. The setter accepts either a new value or an updater function.\n\n#### Behavior\n\n1. On initial render, reads `localStorage.getItem(key)` and parses JSON.\n2. Falls back to `initialValue` if no stored value exists or parsing fails.\n3. On SSR (`isSSR` from PlatformProvider), defers the localStorage read to a `useEffect`.\n4. Every state change is written back to localStorage as JSON.\n\n#### Example\n\n```tsx\nimport { usePersistentState } from '@hudsonos/sdk';\n\nfunction ProjectSettings() {\n  const [gridSize, setGridSize] = usePersistentState('editor.gridSize', 20);\n  const [snapEnabled, setSnapEnabled] = usePersistentState('editor.snap', true);\n\n  return (\n    <div>\n      <label>\n        Grid size\n        <input\n          type=\"number\"\n          value={gridSize}\n          onChange={(e) => setGridSize(Number(e.target.value))}\n        />\n      </label>\n      <label>\n        <input\n          type=\"checkbox\"\n          checked={snapEnabled}\n          onChange={() => setSnapEnabled((v) => !v)}\n        />\n        Snap to grid\n      </label>\n    </div>\n  );\n}\n```\n\n#### Key Namespacing\n\nUse a consistent prefix to avoid collisions between apps:\n\n```tsx\n// Good: namespaced keys\nusePersistentState('shaper.zoom', 0.45);\nusePersistentState('shaper.tool', 'select');\n\n// Bad: generic keys that could collide\nusePersistentState('zoom', 0.45);\n```\n\n---\n\n### useAppSettings\n\nManages per-app settings backed by localStorage with merge semantics. Works with the `AppSettingsConfig` schema to derive defaults and persist user overrides.\n\n```ts\nfunction useAppSettings(\n  appId: string,\n  config: AppSettingsConfig,\n): [AppSettingsValues, (patch: Partial<AppSettingsValues>) => void, () => void]\n```\n\n#### Parameters\n\n| Parameter | Type | Description |\n|-----------|------|-------------|\n| `appId` | `string` | Your app's unique ID. Used to namespace the localStorage key as `hudson.app.{appId}.settings`. |\n| `config` | `AppSettingsConfig` | The settings schema, containing sections and fields with defaults. |\n\n#### Return Value\n\nA three-element tuple:\n\n| Index | Type | Description |\n|-------|------|-------------|\n| `[0]` | `AppSettingsValues` | Current merged settings (defaults + user overrides). |\n| `[1]` | `(patch) => void` | Merge function. Pass partial values to update specific keys. |\n| `[2]` | `() => void` | Reset function. Restores all settings to their declared defaults. |\n\n`AppSettingsValues` is `Record<string, string | number | boolean>`.\n\n#### Defining a Settings Schema\n\nThe settings schema uses `AppSettingsConfig`, which contains sections of typed fields:\n\n```tsx\nimport type { AppSettingsConfig } from '@hudsonos/sdk';\n\nconst settingsConfig: AppSettingsConfig = {\n  sections: [\n    {\n      label: 'Canvas',\n      fields: [\n        {\n          key: 'gridSize',\n          label: 'Grid Size',\n          type: 'slider',\n          default: 20,\n          min: 5,\n          max: 100,\n          step: 5,\n          format: (v) => `${v}px`,\n        },\n        {\n          key: 'snapToGrid',\n          label: 'Snap to Grid',\n          type: 'toggle',\n          default: true,\n        },\n      ],\n    },\n    {\n      label: 'Export',\n      fields: [\n        {\n          key: 'format',\n          label: 'Export Format',\n          type: 'segment',\n          default: 'svg',\n          options: [\n            { value: 'svg', label: 'SVG' },\n            { value: 'png', label: 'PNG' },\n            { value: 'json', label: 'JSON' },\n          ],\n        },\n      ],\n    },\n  ],\n};\n```\n\n#### Field Types\n\n| Type | Control | Default Type |\n|------|---------|-------------|\n| `'text'` | Text input | `string` |\n| `'number'` | Number input | `number` |\n| `'toggle'` | On/off switch | `boolean` |\n| `'slider'` | Range slider with optional `format` | `number` |\n| `'segment'` | Segmented control with `options` | `string` |\n\n#### Example\n\n```tsx\nimport { useAppSettings } from '@hudsonos/sdk';\n\nfunction MyAppProvider({ children }: { children: React.ReactNode }) {\n  const [settings, updateSettings, resetSettings] = useAppSettings(\n    'my-editor',\n    settingsConfig,\n  );\n\n  // Read a value\n  const gridSize = settings.gridSize as number;\n\n  // Update a value\n  const handleGridChange = (size: number) => {\n    updateSettings({ gridSize: size });\n  };\n\n  // Reset to defaults\n  const handleReset = () => {\n    resetSettings();\n  };\n\n  return (\n    <EditorContext.Provider value={{ settings, updateSettings, resetSettings }}>\n      {children}\n    </EditorContext.Provider>\n  );\n}\n```\n\n#### Registering Settings on the App\n\nPass the config to the `settings` field of your `HudsonApp` definition. The shell reads this to render a settings panel.\n\n```tsx\nconst myApp: HudsonApp = {\n  id: 'my-editor',\n  name: 'Editor',\n  // ...\n  settings: settingsConfig,\n};\n```\n\n---\n\n### useTerminalRelay\n\nConnects to a WebSocket-based terminal relay server. The relay manages PTY sessions on a backend, allowing your app to embed a live terminal.\n\n```ts\nfunction useTerminalRelay(\n  options?: UseTerminalRelayOptions,\n): TerminalRelayHandle\n```\n\n#### Options\n\n```ts\ninterface UseTerminalRelayOptions {\n  /** WebSocket URL. Defaults to ws://localhost:3600 */\n  url?: string;\n  /** System prompt for the CLI session */\n  systemPrompt?: string;\n  /** Working directory for the PTY session */\n  cwd?: string;\n  /** Files to bootstrap in the CWD before spawning */\n  workspaceFiles?: Record<string, string>;\n  /** Auto-connect on mount. Defaults to false. */\n  autoConnect?: boolean;\n}\n```\n\n| Option | Default | Description |\n|--------|---------|-------------|\n| `url` | `'ws://localhost:3600'` | WebSocket URL of the relay server. |\n| `systemPrompt` | `undefined` | Passed to the CLI session on init. |\n| `cwd` | Server's `$HOME` | Working directory for the spawned PTY. |\n| `workspaceFiles` | `undefined` | Map of relative paths to file contents. Created on the server if missing. |\n| `autoConnect` | `false` | When `true`, opens the WebSocket on mount. |\n\n#### Return Value: TerminalRelayHandle\n\n```ts\ninterface TerminalRelayHandle {\n  status: RelayStatus;\n  sessionId: string | null;\n  error: string | null;\n  exitCode: number | null;\n  onData: (cb: (data: string) => void) => void;\n  sendInput: (data: string) => void;\n  sendLine: (text: string) => void;\n  resize: (cols: number, rows: number) => void;\n  connect: () => void;\n  disconnect: () => void;\n}\n```\n\n| Field | Description |\n|-------|-------------|\n| `status` | Connection state: `'disconnected'`, `'connecting'`, `'connected'`, or `'error'`. |\n| `sessionId` | Server-assigned session ID after init. `null` before connection or after exit. |\n| `error` | Human-readable error message. `null` when healthy. |\n| `exitCode` | Process exit code. `null` while running or before start. |\n| `onData` | Register a callback to receive terminal output. |\n| `sendInput` | Send raw keystrokes to the PTY. |\n| `sendLine` | Send a line of text (appends `\\r` automatically). |\n| `resize` | Resize the remote terminal. Can be called before connect to set initial size. |\n| `connect` | Open the WebSocket and initialize or reconnect a session. |\n| `disconnect` | Close the WebSocket. The server-side session stays alive for reconnection. |\n\n#### RelayStatus\n\n```ts\ntype RelayStatus = 'disconnected' | 'connecting' | 'connected' | 'error';\n```\n\n#### Example\n\n```tsx\nimport { useTerminalRelay } from '@hudsonos/sdk';\nimport { useEffect, useRef } from 'react';\n\nfunction AppTerminal() {\n  const terminal = useTerminalRelay({\n    url: 'ws://localhost:3600',\n    systemPrompt: 'You are a helpful coding assistant.',\n    cwd: '/Users/me/project',\n    autoConnect: false,\n  });\n\n  const outputRef = useRef<HTMLPreElement>(null);\n\n  useEffect(() => {\n    terminal.onData((data) => {\n      if (outputRef.current) {\n        outputRef.current.textContent += data;\n      }\n    });\n  }, [terminal]);\n\n  return (\n    <div className=\"flex flex-col h-full\">\n      <div className=\"flex items-center gap-2 px-3 py-2 border-b border-neutral-800\">\n        <span className={`h-2 w-2 rounded-full ${\n          terminal.status === 'connected' ? 'bg-emerald-500' :\n          terminal.status === 'connecting' ? 'bg-amber-500' :\n          terminal.status === 'error' ? 'bg-red-500' :\n          'bg-neutral-600'\n        }`} />\n        <span className=\"text-xs text-neutral-500\">{terminal.status}</span>\n        {terminal.status === 'disconnected' && (\n          <button onClick={terminal.connect} className=\"text-xs text-cyan-400\">\n            Connect\n          </button>\n        )}\n      </div>\n      <pre ref={outputRef} className=\"flex-1 p-3 text-xs font-mono text-neutral-400 overflow-auto\" />\n    </div>\n  );\n}\n```\n\n#### Session Lifecycle\n\n1. Call `resize(cols, rows)` to set the initial terminal dimensions.\n2. Call `connect()` to open the WebSocket.\n3. On open, the hook sends a `session:init` message with dimensions, system prompt, and CWD.\n4. The server responds with `session:ready` containing the session ID.\n5. Terminal data flows via `terminal:data` messages to the `onData` callback.\n6. Call `sendInput` or `sendLine` to write to the PTY.\n7. On disconnect and reconnect, the hook sends `session:reconnect` to resume the existing session.\n8. If the session has expired, the server responds with `session:expired` and the hook automatically re-initializes.\n\n---\n\n## Utilities\n\n### sounds\n\nTactile UI sounds generated with the Web Audio API. No audio files required.\n\n```ts\nimport { sounds, click, thock, blipUp, blipDown, pop, confirm, error, whoosh, chime, tick, slideIn, slideOut, boot, ping, type } from '@hudsonos/sdk';\n```\n\nSee [Utilities](./utilities.md#sounds) for the full catalog.\n\n### Mute Control\n\n```ts\nfunction isMuted(): boolean;\nfunction setMuted(muted: boolean): void;\nfunction toggleMute(): boolean;\n```\n\n### Sound Preview\n\n```ts\nfunction preview(name: SoundName): void;\n```\n\nPlays the sound even when muted. Useful for settings previews.\n\n### SoundName\n\n```ts\ntype SoundName = keyof typeof sounds;\n// 'click' | 'thock' | 'blipUp' | 'blipDown' | 'pop' | 'confirm' | 'error' | 'whoosh' | 'chime' | 'tick' | 'slideIn' | 'slideOut' | 'boot' | 'ping' | 'type'\n```\n\n---\n\n### logEvent\n\nEvent-based debug logging. Only emits when `FRAME_DEBUG` is enabled (via `window.FRAME_DEBUG = true` or `localStorage.setItem('FRAME_DEBUG', '1')`).\n\n```ts\nfunction logEvent(label: string, payload: Record<string, unknown>, tag?: string): void;\n```\n\n### FRAME_LOG_EVENT\n\nThe CustomEvent type string for log listeners.\n\n```ts\nconst FRAME_LOG_EVENT: string; // 'frame:log'\n```\n\n### FrameLogEntry\n\n```ts\ninterface FrameLogEntry {\n  id: string;\n  label: string;\n  tag: string;\n  timestamp: string;\n  payload: Record<string, unknown>;\n}\n```\n\n---\n\n### worldToScreen\n\nConverts world-space coordinates to screen-space coordinates.\n\n```ts\nfunction worldToScreen(\n  worldPos: { x: number; y: number },\n  panOffset: { x: number; y: number },\n  scale: number,\n  viewportCenter: { x: number; y: number },\n): { x: number; y: number }\n```\n\n### screenToWorld\n\nConverts screen-space coordinates to world-space coordinates.\n\n```ts\nfunction screenToWorld(\n  screenPos: { x: number; y: number },\n  panOffset: { x: number; y: number },\n  scale: number,\n  viewportCenter: { x: number; y: number },\n): { x: number; y: number }\n```\n\n---\n\n### deriveManifest\n\nDerives a serializable `AppManifest` from a `HudsonApp` definition. Returns the app's static manifest if one is provided; otherwise builds one from top-level fields.\n\n```ts\nfunction deriveManifest(app: HudsonApp): AppManifest\n```\n\n---\n\n### SHELL_THEME\n\nDesign tokens for Hudson shell chrome. See [Utilities](./utilities.md#theme) for full details.\n\n```ts\nconst SHELL_THEME: {\n  tokens: { blur, bg, border, shadow, topHighlight };\n  base: string;\n  panels: { navigationStack, manifest, inspector, minimap, statusBar, commandDock };\n  effects: { rightFade, leftFade, bottomGlow };\n  zIndex: { canvas, worldContent, panels, minimap, navigationStack, statusBar, drawer, modals };\n  layout: { navHeight, panelWidth, panelTopOffset, statusBarHeight, panelBottomOffset };\n}\n```\n\n---\n\n## Platform\n\n### PlatformAdapter\n\n```ts\ninterface PlatformAdapter {\n  titleBarInset: number;\n  dragRegionProps: React.HTMLAttributes<HTMLElement>;\n  onInteractiveMouseDown?: (e: React.MouseEvent) => void;\n  isSSR: boolean;\n  apiBaseUrl: string;\n  serviceApiUrl: string;\n}\n```\n\n### PlatformLayout\n\n```ts\ninterface PlatformLayout {\n  navTotalHeight: number;\n  panelTopOffset: number;\n}\n```\n\n### WEB_ADAPTER\n\nZero-config web defaults. Used when no `PlatformProvider` is present.\n\n```ts\nconst WEB_ADAPTER: PlatformAdapter;\n```\n\n### PlatformProvider\n\n```tsx\nfunction PlatformProvider(props: {\n  adapter: PlatformAdapter;\n  children: React.ReactNode;\n}): JSX.Element\n```\n\n### usePlatform\n\n```ts\nfunction usePlatform(): PlatformAdapter\n```\n\n### usePlatformLayout\n\n```ts\nfunction usePlatformLayout(): PlatformLayout\n```\n\n---\n\n## Components\n\n### ZoomControls\n\nA canvas zoom widget with plus/minus buttons and an editable percentage display.\n\n```tsx\nimport { ZoomControls } from '@hudsonos/sdk';\n\n<ZoomControls\n  scale={zoom}\n  onZoom={(newScale) => setZoom(newScale)}\n  min={0.1}\n  max={3}\n  step={0.1}\n/>\n```\n\n#### Props\n\n| Prop | Type | Default | Description |\n|------|------|---------|-------------|\n| `scale` | `number` | -- | Current zoom level (1 = 100%). |\n| `onZoom` | `(newScale: number) => void` | -- | Called with the clamped new scale on zoom change. |\n| `min` | `number` | `0.2` | Minimum zoom level. |\n| `max` | `number` | `3` | Maximum zoom level. |\n| `step` | `number` | `0.1` | Zoom increment per click. |\n\nThe percentage label is clickable for direct numeric input.\n";
+const agentMarkdown = "";
+
+    // Theme toggle
+    var themeToggle = document.querySelector('[data-theme-toggle]')
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function () {
+        var current = document.documentElement.getAttribute('data-theme') || 'light'
+        var next = current === 'dark' ? 'light' : 'dark'
+        document.documentElement.setAttribute('data-theme', next)
+        try { localStorage.setItem('theme', next) } catch (e) {}
+      })
+    }
+
+    // Collapsible nav sections
+    document.querySelectorAll('[data-nav-toggle]').forEach(function (btn) {
+      var list = btn.parentElement.querySelector('[data-nav-list]')
+      if (!list) return
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true'
+        btn.setAttribute('aria-expanded', String(!expanded))
+        list.dataset.collapsed = String(expanded)
+      })
+    })
+
+    // Copy buttons
+    var safeCopy = function (content, btn) {
+      if (!content) return
+      navigator.clipboard.writeText(content).then(function () {
+        if (btn) {
+          var orig = btn.innerHTML
+          btn.textContent = 'Copied!'
+          setTimeout(function () { btn.innerHTML = orig }, 2000)
+        }
+      }).catch(function () {})
+    }
+
+    document.querySelector('[data-copy-agent-button]')?.addEventListener('click', function () {
+      safeCopy(agentMarkdown || rawMarkdown, this)
+    })
+
+    document.querySelector('[data-copy-markdown-button]')?.addEventListener('click', function () {
+      safeCopy(rawMarkdown, this)
+    })
+
+    // TOC scroll spy
+    var initToc = function () {
+      var tocLinks = Array.from(document.querySelectorAll('[data-toc-link]'))
+      var headings = tocLinks
+        .map(function (link) { return document.querySelector(link.getAttribute('href')) })
+        .filter(Boolean)
+
+      if (!headings.length) return
+      var activeId = null
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return
+            activeId = entry.target.id
+            tocLinks.forEach(function (link) { link.classList.remove('is-active') })
+            var activeLink = document.querySelector('[data-toc-link][href="#' + entry.target.id + '"]')
+            if (activeLink) activeLink.classList.add('is-active')
+          })
+        },
+        { rootMargin: '-80px 0px -66% 0px' },
+      )
+
+      headings.forEach(function (heading) { observer.observe(heading) })
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initToc)
+    } else {
+      initToc()
+    }
+  })();</script>  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-6" data-search-modal data-pagefind-ignore> <div class="w-full max-w-2xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl"> <div class="flex items-center justify-between"> <div> <p class="text-xs uppercase tracking-widest text-[var(--color-text-muted)]">Search</p> <h2 class="text-lg font-semibold">Find docs fast</h2> </div> <button class="text-xs text-[var(--color-text-muted)]" data-search-close>Close</button> </div> <div id="search-modal" class="mt-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"></div> <p id="search-modal-fallback" class="mt-3 hidden text-xs text-[var(--color-text-muted)]">
+Search index is generated on build. Run <code>bun build</code> to enable Pagefind locally.
+</p> </div> </div> <script>
+      (() => {
+        var initUi = function () {
+          window.addEventListener('keydown', function (event) {
+            var isMac = navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+            var isCmdK = isMac ? event.metaKey && event.key.toLowerCase() === 'k' : event.ctrlKey && event.key.toLowerCase() === 'k'
+            if (isCmdK) {
+              event.preventDefault()
+              window.dispatchEvent(new CustomEvent('open-search'))
+            }
+          })
+
+          var searchModal = document.querySelector('[data-search-modal]')
+          var searchClose = document.querySelector('[data-search-close]')
+          var searchToggles = document.querySelectorAll('[data-search-toggle]')
+
+          var loadPagefind = function () {
+            return new Promise(function (resolve) {
+              if (window.PagefindUI) return resolve(true)
+              var existing = document.querySelector('script[data-pagefind]')
+              if (existing) {
+                existing.addEventListener('load', function () { resolve(true) })
+                existing.addEventListener('error', function () { resolve(false) })
+                return
+              }
+              var script = document.createElement('script')
+              script.src = '/pagefind/pagefind-ui.js'
+              script.async = true
+              script.dataset.pagefind = 'true'
+              script.addEventListener('load', function () { resolve(true) })
+              script.addEventListener('error', function () { resolve(false) })
+              document.head.appendChild(script)
+            })
+          }
+
+          var initPagefind = function () {
+            loadPagefind().then(function (ok) {
+              if (ok && window.PagefindUI) {
+                new window.PagefindUI({ element: '#search-modal', showSubResults: true })
+              } else {
+                var fb = document.getElementById('search-modal-fallback')
+                if (fb) fb.classList.remove('hidden')
+              }
+            })
+          }
+
+          var openSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.remove('hidden')
+            searchModal.classList.add('flex')
+            initPagefind()
+          }
+
+          var closeSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.add('hidden')
+            searchModal.classList.remove('flex')
+          }
+
+          searchToggles.forEach(function (btn) { btn.addEventListener('click', openSearch) })
+          searchClose && searchClose.addEventListener('click', closeSearch)
+          searchModal && searchModal.addEventListener('click', function (event) {
+            if (event.target === searchModal) closeSearch()
+          })
+          window.addEventListener('open-search', openSearch)
+        }
+
+        var addCopyButtons = function () {
+          document.querySelectorAll('pre').forEach(function (block) {
+            if (block.dataset.copyReady) return
+            block.dataset.copyReady = 'true'
+            block.style.position = 'relative'
+            var button = document.createElement('button')
+            button.textContent = 'Copy'
+            button.style.cssText = 'position:absolute;right:8px;top:8px;padding:3px 8px;border-radius:4px;background:var(--color-surface-muted);border:1px solid var(--color-border);color:var(--color-text-muted);font-size:11px;cursor:pointer;font-family:"Geist Mono",monospace;transition:all 0.15s;'
+            button.addEventListener('mouseenter', function() { this.style.color = 'var(--color-text)'; })
+            button.addEventListener('mouseleave', function() { this.style.color = 'var(--color-text-muted)'; })
+            button.addEventListener('click', function () {
+              var code = block.querySelector('code')
+              if (!code) return
+              navigator.clipboard.writeText(code.innerText).then(function () {
+                button.textContent = 'Copied'
+                setTimeout(function () { button.textContent = 'Copy' }, 1200)
+              })
+            })
+            block.appendChild(button)
+          })
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initUi)
+          document.addEventListener('DOMContentLoaded', addCopyButtons)
+        } else {
+          initUi()
+          addCopyButtons()
+        }
+      })()
+    </script> </body> </html>

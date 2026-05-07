@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { InterestForm } from './_components/InterestForm';
 import { GlyphWavesBackground } from './_components/GlyphWavesBackground';
+import { HudsonDelightWorkbench, ParallaxBackground } from './_components/LandingDelights';
 import { ThemePreviewControls } from './_components/ThemePreviewControls';
 import { HudsonMark, SiteHeader } from './_components/SiteHeader';
 
@@ -19,11 +20,12 @@ export default function Home() {
   return (
     <main className="relative min-h-screen overflow-x-hidden bg-background text-foreground">
       <GlyphWavesBackground />
-      <BackgroundGrid />
+      <ParallaxBackground />
       <ThemePreviewControls />
       <SiteHeader />
       <Hero />
       <LivePreview />
+      <HudsonDelightWorkbench />
       <Features />
       <CodeSnippet />
       <Shells />
@@ -394,7 +396,7 @@ function ShellCard({
 
 function Interest() {
   return (
-    <section className="relative px-6 md:px-10 py-20 border-t border-border/50">
+    <section id="interest" className="relative px-6 md:px-10 py-20 border-t border-border/50">
       <div className="max-w-2xl mx-auto">
         <HudFrame>
           <div className="px-6 md:px-10 py-10">
@@ -497,33 +499,6 @@ function Corners() {
       <span className={`${base} top-1 right-1 border-t border-r`} />
       <span className={`${base} bottom-1 left-1 border-b border-l`} />
       <span className={`${base} bottom-1 right-1 border-b border-r`} />
-    </>
-  );
-}
-
-function BackgroundGrid() {
-  return (
-    <>
-      <div
-        className="fixed inset-0 pointer-events-none text-foreground opacity-[0.04] dark:opacity-[0.05]"
-        style={{
-          backgroundImage:
-            'linear-gradient(to right, currentColor 1px, transparent 1px), linear-gradient(to bottom, currentColor 1px, transparent 1px)',
-          backgroundSize: '64px 64px',
-          maskImage:
-            'radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%)',
-          WebkitMaskImage:
-            'radial-gradient(ellipse 80% 60% at 50% 0%, #000 30%, transparent 80%)',
-        }}
-      />
-      <div
-        className="fixed -top-40 left-1/2 -translate-x-1/2 w-[900px] h-[600px] pointer-events-none rounded-full opacity-[0.18] dark:opacity-[0.25]"
-        style={{
-          background:
-            'radial-gradient(ellipse at center, rgba(34,211,238,0.4), transparent 60%)',
-          filter: 'blur(80px)',
-        }}
-      />
     </>
   );
 }

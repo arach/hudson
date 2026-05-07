@@ -1,0 +1,918 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="generator" content="Dewey"><title>Overview - Hudson</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/pagefind/pagefind-ui.css"><script>
+      ;(function () {
+        try { var saved = localStorage.getItem('theme') } catch (e) {}
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script><link rel="stylesheet" href="/_astro/_slug_.BKOwO9D_.css"></head> <body>  <div class="dl"> <!-- Header bar --> <header class="dl-header" data-pagefind-ignore> <div class="dl-header-left"> <a href="/" class="dl-header-brand">Hudson</a> <span class="dl-header-sep">/</span> <a href="/" class="dl-header-brand dl-header-brand--active">Docs</a> </div> <div class="dl-header-right"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer" class="dl-header-link">llms.txt</a> <a href="https://github.com/arachsys/hudson" target="_blank" rel="noopener noreferrer" class="dl-header-icon" title="GitHub"> <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg> </a> <button class="dl-search-btn" type="button" data-search-toggle>
+Search…
+<span class="dl-search-key">⌘K</span> </button> <button class="dl-theme-btn" data-theme-toggle title="Toggle theme"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> </button> </div> </header> <!-- Body --> <div class="dl-body"> <!-- Sidebar --> <nav class="dl-sidebar" data-pagefind-ignore> <div class="dl-nav-section "> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Documentation <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/overview" class="dl-nav-item  active"> Overview </a> </li><li> <a href="/docs/quickstart" class="dl-nav-item  "> Quickstart </a> </li><li> <a href="/docs/architecture" class="dl-nav-item  "> Architecture </a> </li><li> <a href="/docs/building-apps" class="dl-nav-item  "> Building Apps </a> </li><li> <a href="/docs/scaffolding" class="dl-nav-item  "> Scaffolding </a> </li><li> <a href="/docs/skill" class="dl-nav-item  "> Skills </a> </li><li> <a href="/docs/api" class="dl-nav-item  "> API Reference </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> NPM Packages <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/npm/index" class="dl-nav-item  "> Packages Overview </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/sdk</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/sdk/getting-started" class="dl-nav-item dl-nav-item--indented "> Getting Started </a> </li><li> <a href="/docs/npm/sdk/building-apps" class="dl-nav-item dl-nav-item--indented "> Building Apps </a> </li><li> <a href="/docs/npm/sdk/api-reference" class="dl-nav-item dl-nav-item--indented "> API Reference </a> </li><li> <a href="/docs/npm/sdk/systems" class="dl-nav-item dl-nav-item--indented "> Systems </a> </li><li> <a href="/docs/npm/sdk/utilities" class="dl-nav-item dl-nav-item--indented "> Utilities </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/hx</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/hx/hx" class="dl-nav-item dl-nav-item--indented "> Guide </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> CLI Tools <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/cli/index" class="dl-nav-item  "> CLI Overview </a> </li><li> <a href="/docs/cli/create-hudson-app" class="dl-nav-item  "> create-hudson-app </a> </li><li> <a href="/docs/cli/relay" class="dl-nav-item  "> Relay: Terminal Server </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Prompts <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/prompts/create-app" class="dl-nav-item  "> Create a New App </a> </li><li> <a href="/docs/prompts/add-intents" class="dl-nav-item  "> Add Intents </a> </li> </ul> </div> </div> </div> <div class="dl-nav-section dl-nav-section--bordered"> <div class="dl-nav-label dl-nav-label--static">For AI Agents</div> <ul class="dl-nav-list"> <li><a href="/llms.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms.txt</a></li> <li><a href="/llms-full.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms-full.txt</a></li> </ul> </div> </nav> <!-- Main --> <main class="dl-main"> <div class="dl-content-area"> <div class="dl-page-actions" data-pagefind-ignore> <button class="dl-copy-btn" data-copy-agent-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy for agent
+</button> <button class="dl-copy-btn" data-copy-markdown-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy markdown
+</button> </div> <!-- Article --> <article class="docs-prose" data-pagefind-body>  <h1 id="overview">Overview</h1>
+<p>Hudson is a <strong>multi-app canvas workspace platform</strong> built with React 19, Next.js 16, and Tailwind CSS v4. It provides a shared shell where multiple applications coexist — each rendering in draggable, resizable windows on an infinite pan/zoom canvas, or in a static panel layout.</p>
+<p>Think of it as a desktop environment in the browser: apps register themselves, the shell provides chrome (navigation bar, side panels, command palette, status bar), and each app just focuses on its own UI and state.</p>
+<h2 id="minimal-example">Minimal Example</h2>
+<p>A Hudson app is a plain object satisfying the <code>HudsonApp</code> interface:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#4D9375"> type</span><span style="color:#666666"> {</span><span style="color:#BD976A"> HudsonApp</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudson/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">export</span><span style="color:#CB7676"> const</span><span style="color:#BD976A"> counterApp</span><span style="color:#666666">: </span><span style="color:#5DA994">HudsonApp</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  id</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">counter</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  name</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Counter</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  mode</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">panel</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#80A665">  Provider</span><span style="color:#666666">:</span><span style="color:#666666"> ({</span><span style="color:#BD976A"> children</span><span style="color:#666666"> })</span><span style="color:#666666"> =></span><span style="color:#666666"> &#x3C;</span><span style="color:#B8A965">CounterCtx.Provider</span><span style="color:#BD976A"> value</span><span style="color:#666666">={</span><span style="color:#BD976A">state</span><span style="color:#666666">}>{</span><span style="color:#BD976A">children</span><span style="color:#666666">}&#x3C;/</span><span style="color:#B8A965">CounterCtx.Provider</span><span style="color:#666666">>,</span></span>
+<span class="line"><span style="color:#B8A965">  slots</span><span style="color:#666666">:</span><span style="color:#666666"> {</span><span style="color:#80A665"> Content</span><span style="color:#666666">:</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#666666">>{</span><span style="color:#BD976A">count</span><span style="color:#666666">}&#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span><span style="color:#666666"> },</span></span>
+<span class="line"><span style="color:#B8A965">  hooks</span><span style="color:#666666">:</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#80A665">    useCommands</span><span style="color:#666666">:</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> [{</span><span style="color:#B8A965"> id</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">counter:reset</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#B8A965"> label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Reset</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#80A665"> action</span><span style="color:#666666">:</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#80A665"> setCount</span><span style="color:#666666">(</span><span style="color:#4C9A91">0</span><span style="color:#666666">)</span><span style="color:#666666"> }],</span></span>
+<span class="line"><span style="color:#80A665">    useStatus</span><span style="color:#666666">:</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> ({</span><span style="color:#B8A965"> label</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">OK</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#B8A965"> color</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">emerald</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> }),</span></span>
+<span class="line"><span style="color:#666666">  },</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<p>Register it in a workspace and it immediately gets panels, command palette, status bar, and canvas windowing — all for free. See the <a href="./quickstart.md">Quickstart</a> for a complete walkthrough.</p>
+<h2 id="architecture">Architecture</h2>
+<p>Hudson has three layers:</p>
+<h3 id="1-frame-ui-packageshudsonsdk">1. Frame UI (<code>packages/@hudson/sdk</code>)</h3>
+<p>The component library and type system. Provides:</p>
+<ul>
+<li><strong>Chrome components</strong> — Frame, NavigationBar, SidePanel, StatusBar, CommandDock, ZoomControls</li>
+<li><strong>Canvas system</strong> — Pan/zoom engine with space-bar gestures</li>
+<li><strong>Window system</strong> — AppWindow with dragging, resizing, maximize/restore</li>
+<li><strong>Overlays</strong> — CommandPalette (Cmd+K), TerminalDrawer, HudsonContextMenu</li>
+<li><strong>Type contracts</strong> — <code>HudsonApp</code>, <code>HudsonWorkspace</code>, <code>AppIntent</code></li>
+<li><strong>Utilities</strong> — Web Audio sounds, persistent state, viewport math</li>
+</ul>
+<h3 id="2-shell-appshell">2. Shell (<code>app/shell/</code>)</h3>
+<p>The runtime orchestrator. <code>WorkspaceShell</code> is the main entry point that:</p>
+<ul>
+<li>Nests all app Providers recursively</li>
+<li>Calls each app’s hooks inside the correct context scope</li>
+<li>Renders app slots into shell chrome (panels, content area, terminal)</li>
+<li>Manages workspace switching, boot animations, and canvas state</li>
+<li>Provides the command palette, merging commands from all active apps</li>
+</ul>
+<h3 id="3-apps-appapps">3. Apps (<code>app/apps/</code>)</h3>
+<p>Self-contained applications that implement the <code>HudsonApp</code> interface. Each app provides:</p>
+<ul>
+<li>A <strong>Provider</strong> (React context) that owns all app state</li>
+<li><strong>Slot components</strong> (Content, LeftPanel, RightPanel, Terminal) rendered by the shell</li>
+<li><strong>Hooks</strong> that bridge app state into shell chrome (commands, status, search, nav)</li>
+<li>Optional <strong>intents</strong> for LLM/voice/search indexing</li>
+</ul>
+<h2 id="key-concepts">Key Concepts</h2>
+<h3 id="workspaces">Workspaces</h3>
+<p>A workspace is a collection of apps that coexist in a shared shell. Each workspace defines:</p>
+<ul>
+<li>A <strong>mode</strong> (<code>canvas</code> or <code>panel</code>) — the global layout strategy</li>
+<li>A list of <strong>apps</strong> with canvas participation settings</li>
+<li>A <strong>default focused app</strong></li>
+</ul>
+<p>Hudson supports multiple workspaces. Users switch between them at runtime.</p>
+<h3 id="frame-modes">Frame Modes</h3>
+<p>Apps can render in two modes:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Mode</th><th>Behavior</th><th>Use Case</th></tr></thead><tbody><tr><td><code>canvas</code></td><td>Infinite pan/zoom world space</td><td>Editors, graph UIs, spatial tools</td></tr><tr><td><code>panel</code></td><td>Static scrollable viewport</td><td>Dashboards, admin interfaces, docs</td></tr></tbody></table>
+<p>Individual apps can override the workspace-level mode via the <code>useLayoutMode</code> hook.</p>
+<h3 id="canvas-participation">Canvas Participation</h3>
+<p>In canvas-mode workspaces, each app chooses how it appears:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Participation</th><th>Behavior</th><th>Example</th></tr></thead><tbody><tr><td><code>native</code></td><td>Renders directly on canvas, no window frame</td><td>Hudson Docs</td></tr><tr><td><code>windowed</code></td><td>Renders inside AppWindow with title bar, dragging, resizing</td><td>Shaper, Intent Explorer</td></tr></tbody></table>
+<h3 id="intent-system">Intent System</h3>
+<p>Hudson includes an intent catalog for LLM/voice integration. Apps declare intents — structured metadata about their commands — which are indexed into a searchable catalog. An execution bridge maps intent <code>commandId</code> values to live command actions.</p>
+<h2 id="current-apps">Current Apps</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>App</th><th>Description</th><th>Mode</th></tr></thead><tbody><tr><td><strong>Shaper</strong></td><td>Bezier curve editor for vector shapes</td><td>Panel (overrides to canvas)</td></tr><tr><td><strong>Hudson Docs</strong></td><td>Documentation browser</td><td>Canvas native</td></tr><tr><td><strong>Intent Explorer</strong></td><td>Browsable intent catalog inspector</td><td>Canvas windowed</td></tr></tbody></table>
+<h2 id="next-steps">Next Steps</h2>
+<ul>
+<li><a href="./quickstart.md">Quickstart</a> — Get Hudson running locally and create your first app</li>
+<li><a href="./building-apps.md">Building Apps</a> — Full integration guide (Provider, slots, hooks, intents, workspaces)</li>
+<li><a href="./api.md">API Reference</a> — Complete reference for @hudson/sdk exports</li>
+</ul>
+<h2 id="tech-stack">Tech Stack</h2>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Layer</th><th>Technology</th></tr></thead><tbody><tr><td>Framework</td><td>Next.js 16 (App Router)</td></tr><tr><td>UI</td><td>React 19</td></tr><tr><td>Styling</td><td>Tailwind CSS v4</td></tr><tr><td>Icons</td><td>lucide-react</td></tr><tr><td>Fonts</td><td>SF Rounded (UI), JetBrains Mono (monospace)</td></tr><tr><td>Package manager</td><td>bun</td></tr><tr><td>Dev server</td><td>Port 3500</td></tr></tbody></table>  </article> <!-- Agent footer --> <div class="dl-agent-footer"> <span class="dl-agent-footer-label">For AI agents</span> <div class="dl-agent-footer-links"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer">llms.txt</a> <span class="dl-agent-footer-sep">|</span> <a href="/llms-full.txt" target="_blank" rel="noopener noreferrer">llms-full.txt</a> </div> </div> </div> </main> <!-- TOC --> <aside class="dl-toc" data-pagefind-ignore> <p class="dl-toc-label">On this page</p> <ul class="dl-toc-list"> <li> <a class="dl-toc-link" data-toc-link data-level="2" href="#minimal-example"> Minimal Example </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#architecture"> Architecture </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#1-frame-ui-packageshudsonsdk"> 1. Frame UI (packages/@hudson/sdk) </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#2-shell-appshell"> 2. Shell (app/shell/) </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#3-apps-appapps"> 3. Apps (app/apps/) </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#key-concepts"> Key Concepts </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#workspaces"> Workspaces </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#frame-modes"> Frame Modes </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#canvas-participation"> Canvas Participation </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#intent-system"> Intent System </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#current-apps"> Current Apps </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#next-steps"> Next Steps </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#tech-stack"> Tech Stack </a> </li> </ul> </aside> </div> </div> <style>
+    /* ── Header bar ── */
+    .dl-header {
+      height: 48px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-bg);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .dl-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dl-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dl-header-brand {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-brand:hover { color: var(--color-text); }
+    .dl-header-brand--active { color: var(--color-text); }
+
+    .dl-header-sep {
+      color: var(--color-border);
+      font-size: 14px;
+    }
+
+    .dl-header-link {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-link:hover { color: var(--color-accent); }
+
+    .dl-header-icon {
+      color: var(--color-text-muted);
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .dl-header-icon:hover { color: var(--color-text); }
+
+    .dl-search-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.15s;
+      height: 28px;
+    }
+
+    .dl-search-btn:hover {
+      border-color: var(--color-text-muted);
+      color: var(--color-text);
+    }
+
+    .dl-search-key {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+    }
+
+    .dl-theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    .dl-theme-btn:hover { color: var(--color-text); }
+
+    /* ── Layout shell ── */
+    .dl {
+      min-height: 100vh;
+      background: var(--color-bg);
+      color: var(--color-text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dl-body {
+      display: flex;
+      flex: 1;
+    }
+
+    /* ── Sidebar (tree nav) ── */
+    .dl-sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border);
+      overflow-y: auto;
+      padding: 16px 12px 20px 20px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      align-self: flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .dl-sidebar { display: none; }
+    }
+
+    .dl-nav-section { margin-bottom: 4px; }
+
+    .dl-nav-section--bordered {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .dl-nav-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .dl-nav-label:hover { color: var(--color-text); }
+
+    .dl-nav-label--static {
+      cursor: default;
+    }
+
+    .dl-nav-label--static:hover { color: var(--color-text-muted); }
+
+    .dl-nav-chevron {
+      transition: transform 0.2s;
+      opacity: 0.5;
+    }
+
+    .dl-nav-label[aria-expanded='false'] .dl-nav-chevron {
+      transform: rotate(-90deg);
+    }
+
+    [data-nav-list][data-collapsed='true'] {
+      display: none;
+    }
+
+    .dl-nav-subsection {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      padding: 0 12px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    .dl-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2px;
+    }
+
+    .dl-nav-item {
+      display: block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 300;
+      color: color-mix(in srgb, var(--color-text) 55%, transparent);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .dl-nav-item--indented {
+      padding-left: 20px;
+    }
+
+    .dl-nav-item:hover {
+      color: var(--color-text);
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .dl-nav-item.active {
+      color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    }
+
+    .dl-nav-item--muted {
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .dl-nav-item--muted:hover {
+      color: var(--color-text);
+    }
+
+    /* ── Main content ── */
+    .dl-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dl-content-area {
+      max-width: 768px;
+      margin: 0 auto;
+      padding: 10px 24px 80px;
+    }
+
+    /* ── Copy buttons (matching old Hudson) ── */
+    .dl-page-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .dl-copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: none;
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .dl-copy-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-text-muted);
+    }
+
+    /* ── Prose (matching old Hudson docs.css) ── */
+    .docs-prose {
+      color: var(--color-text);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .docs-prose h1 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 2rem;
+      color: var(--color-text);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .docs-prose h2 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.375rem;
+      color: var(--color-text);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.375rem;
+      border-bottom: 1px solid var(--color-border);
+      line-height: 1.3;
+    }
+
+    .docs-prose h3 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.125rem;
+      color: var(--color-text);
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .docs-prose h4 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      font-size: 1rem;
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .docs-prose p {
+      margin-top: 0;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .docs-prose a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .docs-prose ul {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose ol {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose li {
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose li > ul,
+    .docs-prose li > ol {
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose :not(pre) > code {
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.375rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      color: var(--color-accent);
+    }
+
+    .docs-prose pre {
+      background: #111111 !important;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 300;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .docs-prose pre code {
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      font-size: inherit;
+      font-family: inherit;
+      font-weight: inherit;
+      color: inherit;
+    }
+
+    .docs-prose blockquote {
+      border-left: 3px solid var(--color-accent);
+      padding-left: 1rem;
+      margin-left: 0;
+      margin-bottom: 1.25rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .docs-prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-family: 'Geist Mono', monospace;
+      font-size: 0.8125rem;
+    }
+
+    .docs-prose thead th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .docs-prose tbody td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .docs-prose tbody tr:hover {
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .docs-prose hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 2rem 0;
+    }
+
+    .docs-prose strong {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .docs-prose img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--color-border);
+    }
+
+    /* ── Agent footer ── */
+    .dl-agent-footer {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dl-agent-footer-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    .dl-agent-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dl-agent-footer-links a {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-agent-footer-links a:hover { color: var(--color-accent); }
+
+    .dl-agent-footer-sep {
+      color: var(--color-border);
+      font-size: 11px;
+    }
+
+    /* ── TOC ── */
+    .dl-toc {
+      width: 220px;
+      flex-shrink: 0;
+      padding: 16px 24px 40px 16px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      overflow-y: auto;
+      align-self: flex-start;
+    }
+
+    @media (max-width: 1280px) {
+      .dl-toc { display: none; }
+    }
+
+    .dl-toc-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+      margin: 0 0 16px;
+    }
+
+    .dl-toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-left: 1px solid var(--color-border);
+    }
+
+    .dl-toc-link {
+      display: block;
+      padding: 2px 0 2px 14px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+    }
+
+    .dl-toc-link:hover { color: var(--color-text); }
+
+    .dl-toc-link.is-active {
+      color: var(--color-text);
+      font-weight: 400;
+      border-left-color: var(--color-accent);
+    }
+
+    .dl-toc-link[data-level='3'] { padding-left: 26px; }
+  </style> <script>(function(){const rawMarkdown = "---\ntitle: Overview\ndescription: Introduction to Hudson — a multi-app canvas workspace platform for React\norder: 1\n---\n\n# Overview\n\nHudson is a **multi-app canvas workspace platform** built with React 19, Next.js 16, and Tailwind CSS v4. It provides a shared shell where multiple applications coexist — each rendering in draggable, resizable windows on an infinite pan/zoom canvas, or in a static panel layout.\n\nThink of it as a desktop environment in the browser: apps register themselves, the shell provides chrome (navigation bar, side panels, command palette, status bar), and each app just focuses on its own UI and state.\n\n## Minimal Example\n\nA Hudson app is a plain object satisfying the `HudsonApp` interface:\n\n```tsx\nimport type { HudsonApp } from '@hudson/sdk';\n\nexport const counterApp: HudsonApp = {\n  id: 'counter',\n  name: 'Counter',\n  mode: 'panel',\n  Provider: ({ children }) => <CounterCtx.Provider value={state}>{children}</CounterCtx.Provider>,\n  slots: { Content: () => <div>{count}</div> },\n  hooks: {\n    useCommands: () => [{ id: 'counter:reset', label: 'Reset', action: () => setCount(0) }],\n    useStatus: () => ({ label: 'OK', color: 'emerald' }),\n  },\n};\n```\n\nRegister it in a workspace and it immediately gets panels, command palette, status bar, and canvas windowing — all for free. See the [Quickstart](./quickstart.md) for a complete walkthrough.\n\n## Architecture\n\nHudson has three layers:\n\n### 1. Frame UI (`packages/@hudson/sdk`)\n\nThe component library and type system. Provides:\n\n- **Chrome components** — Frame, NavigationBar, SidePanel, StatusBar, CommandDock, ZoomControls\n- **Canvas system** — Pan/zoom engine with space-bar gestures\n- **Window system** — AppWindow with dragging, resizing, maximize/restore\n- **Overlays** — CommandPalette (Cmd+K), TerminalDrawer, HudsonContextMenu\n- **Type contracts** — `HudsonApp`, `HudsonWorkspace`, `AppIntent`\n- **Utilities** — Web Audio sounds, persistent state, viewport math\n\n### 2. Shell (`app/shell/`)\n\nThe runtime orchestrator. `WorkspaceShell` is the main entry point that:\n\n- Nests all app Providers recursively\n- Calls each app's hooks inside the correct context scope\n- Renders app slots into shell chrome (panels, content area, terminal)\n- Manages workspace switching, boot animations, and canvas state\n- Provides the command palette, merging commands from all active apps\n\n### 3. Apps (`app/apps/`)\n\nSelf-contained applications that implement the `HudsonApp` interface. Each app provides:\n\n- A **Provider** (React context) that owns all app state\n- **Slot components** (Content, LeftPanel, RightPanel, Terminal) rendered by the shell\n- **Hooks** that bridge app state into shell chrome (commands, status, search, nav)\n- Optional **intents** for LLM/voice/search indexing\n\n## Key Concepts\n\n### Workspaces\n\nA workspace is a collection of apps that coexist in a shared shell. Each workspace defines:\n\n- A **mode** (`canvas` or `panel`) — the global layout strategy\n- A list of **apps** with canvas participation settings\n- A **default focused app**\n\nHudson supports multiple workspaces. Users switch between them at runtime.\n\n### Frame Modes\n\nApps can render in two modes:\n\n| Mode | Behavior | Use Case |\n|------|----------|----------|\n| `canvas` | Infinite pan/zoom world space | Editors, graph UIs, spatial tools |\n| `panel` | Static scrollable viewport | Dashboards, admin interfaces, docs |\n\nIndividual apps can override the workspace-level mode via the `useLayoutMode` hook.\n\n### Canvas Participation\n\nIn canvas-mode workspaces, each app chooses how it appears:\n\n| Participation | Behavior | Example |\n|---------------|----------|---------|\n| `native` | Renders directly on canvas, no window frame | Hudson Docs |\n| `windowed` | Renders inside AppWindow with title bar, dragging, resizing | Shaper, Intent Explorer |\n\n### Intent System\n\nHudson includes an intent catalog for LLM/voice integration. Apps declare intents — structured metadata about their commands — which are indexed into a searchable catalog. An execution bridge maps intent `commandId` values to live command actions.\n\n## Current Apps\n\n| App | Description | Mode |\n|-----|-------------|------|\n| **Shaper** | Bezier curve editor for vector shapes | Panel (overrides to canvas) |\n| **Hudson Docs** | Documentation browser | Canvas native |\n| **Intent Explorer** | Browsable intent catalog inspector | Canvas windowed |\n\n## Next Steps\n\n- [Quickstart](./quickstart.md) — Get Hudson running locally and create your first app\n- [Building Apps](./building-apps.md) — Full integration guide (Provider, slots, hooks, intents, workspaces)\n- [API Reference](./api.md) — Complete reference for @hudson/sdk exports\n\n## Tech Stack\n\n| Layer | Technology |\n|-------|-----------|\n| Framework | Next.js 16 (App Router) |\n| UI | React 19 |\n| Styling | Tailwind CSS v4 |\n| Icons | lucide-react |\n| Fonts | SF Rounded (UI), JetBrains Mono (monospace) |\n| Package manager | bun |\n| Dev server | Port 3500 |\n";
+const agentMarkdown = "";
+
+    // Theme toggle
+    var themeToggle = document.querySelector('[data-theme-toggle]')
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function () {
+        var current = document.documentElement.getAttribute('data-theme') || 'light'
+        var next = current === 'dark' ? 'light' : 'dark'
+        document.documentElement.setAttribute('data-theme', next)
+        try { localStorage.setItem('theme', next) } catch (e) {}
+      })
+    }
+
+    // Collapsible nav sections
+    document.querySelectorAll('[data-nav-toggle]').forEach(function (btn) {
+      var list = btn.parentElement.querySelector('[data-nav-list]')
+      if (!list) return
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true'
+        btn.setAttribute('aria-expanded', String(!expanded))
+        list.dataset.collapsed = String(expanded)
+      })
+    })
+
+    // Copy buttons
+    var safeCopy = function (content, btn) {
+      if (!content) return
+      navigator.clipboard.writeText(content).then(function () {
+        if (btn) {
+          var orig = btn.innerHTML
+          btn.textContent = 'Copied!'
+          setTimeout(function () { btn.innerHTML = orig }, 2000)
+        }
+      }).catch(function () {})
+    }
+
+    document.querySelector('[data-copy-agent-button]')?.addEventListener('click', function () {
+      safeCopy(agentMarkdown || rawMarkdown, this)
+    })
+
+    document.querySelector('[data-copy-markdown-button]')?.addEventListener('click', function () {
+      safeCopy(rawMarkdown, this)
+    })
+
+    // TOC scroll spy
+    var initToc = function () {
+      var tocLinks = Array.from(document.querySelectorAll('[data-toc-link]'))
+      var headings = tocLinks
+        .map(function (link) { return document.querySelector(link.getAttribute('href')) })
+        .filter(Boolean)
+
+      if (!headings.length) return
+      var activeId = null
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return
+            activeId = entry.target.id
+            tocLinks.forEach(function (link) { link.classList.remove('is-active') })
+            var activeLink = document.querySelector('[data-toc-link][href="#' + entry.target.id + '"]')
+            if (activeLink) activeLink.classList.add('is-active')
+          })
+        },
+        { rootMargin: '-80px 0px -66% 0px' },
+      )
+
+      headings.forEach(function (heading) { observer.observe(heading) })
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initToc)
+    } else {
+      initToc()
+    }
+  })();</script>  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-6" data-search-modal data-pagefind-ignore> <div class="w-full max-w-2xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl"> <div class="flex items-center justify-between"> <div> <p class="text-xs uppercase tracking-widest text-[var(--color-text-muted)]">Search</p> <h2 class="text-lg font-semibold">Find docs fast</h2> </div> <button class="text-xs text-[var(--color-text-muted)]" data-search-close>Close</button> </div> <div id="search-modal" class="mt-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"></div> <p id="search-modal-fallback" class="mt-3 hidden text-xs text-[var(--color-text-muted)]">
+Search index is generated on build. Run <code>bun build</code> to enable Pagefind locally.
+</p> </div> </div> <script>
+      (() => {
+        var initUi = function () {
+          window.addEventListener('keydown', function (event) {
+            var isMac = navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+            var isCmdK = isMac ? event.metaKey && event.key.toLowerCase() === 'k' : event.ctrlKey && event.key.toLowerCase() === 'k'
+            if (isCmdK) {
+              event.preventDefault()
+              window.dispatchEvent(new CustomEvent('open-search'))
+            }
+          })
+
+          var searchModal = document.querySelector('[data-search-modal]')
+          var searchClose = document.querySelector('[data-search-close]')
+          var searchToggles = document.querySelectorAll('[data-search-toggle]')
+
+          var loadPagefind = function () {
+            return new Promise(function (resolve) {
+              if (window.PagefindUI) return resolve(true)
+              var existing = document.querySelector('script[data-pagefind]')
+              if (existing) {
+                existing.addEventListener('load', function () { resolve(true) })
+                existing.addEventListener('error', function () { resolve(false) })
+                return
+              }
+              var script = document.createElement('script')
+              script.src = '/pagefind/pagefind-ui.js'
+              script.async = true
+              script.dataset.pagefind = 'true'
+              script.addEventListener('load', function () { resolve(true) })
+              script.addEventListener('error', function () { resolve(false) })
+              document.head.appendChild(script)
+            })
+          }
+
+          var initPagefind = function () {
+            loadPagefind().then(function (ok) {
+              if (ok && window.PagefindUI) {
+                new window.PagefindUI({ element: '#search-modal', showSubResults: true })
+              } else {
+                var fb = document.getElementById('search-modal-fallback')
+                if (fb) fb.classList.remove('hidden')
+              }
+            })
+          }
+
+          var openSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.remove('hidden')
+            searchModal.classList.add('flex')
+            initPagefind()
+          }
+
+          var closeSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.add('hidden')
+            searchModal.classList.remove('flex')
+          }
+
+          searchToggles.forEach(function (btn) { btn.addEventListener('click', openSearch) })
+          searchClose && searchClose.addEventListener('click', closeSearch)
+          searchModal && searchModal.addEventListener('click', function (event) {
+            if (event.target === searchModal) closeSearch()
+          })
+          window.addEventListener('open-search', openSearch)
+        }
+
+        var addCopyButtons = function () {
+          document.querySelectorAll('pre').forEach(function (block) {
+            if (block.dataset.copyReady) return
+            block.dataset.copyReady = 'true'
+            block.style.position = 'relative'
+            var button = document.createElement('button')
+            button.textContent = 'Copy'
+            button.style.cssText = 'position:absolute;right:8px;top:8px;padding:3px 8px;border-radius:4px;background:var(--color-surface-muted);border:1px solid var(--color-border);color:var(--color-text-muted);font-size:11px;cursor:pointer;font-family:"Geist Mono",monospace;transition:all 0.15s;'
+            button.addEventListener('mouseenter', function() { this.style.color = 'var(--color-text)'; })
+            button.addEventListener('mouseleave', function() { this.style.color = 'var(--color-text-muted)'; })
+            button.addEventListener('click', function () {
+              var code = block.querySelector('code')
+              if (!code) return
+              navigator.clipboard.writeText(code.innerText).then(function () {
+                button.textContent = 'Copied'
+                setTimeout(function () { button.textContent = 'Copy' }, 1200)
+              })
+            })
+            block.appendChild(button)
+          })
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initUi)
+          document.addEventListener('DOMContentLoaded', addCopyButtons)
+        } else {
+          initUi()
+          addCopyButtons()
+        }
+      })()
+    </script> </body> </html>
