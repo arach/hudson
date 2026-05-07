@@ -13,7 +13,7 @@ import {
 import { GIFEncoder, applyPalette, quantize } from 'gifenc';
 import { usePersistentState } from 'hudsonkit';
 import { applyAnimatedFilter } from './engine/animation';
-import { drawImageDataToCanvas, imageDataToPng } from './engine/imageData';
+import { applyEffectMask, drawImageDataToCanvas, imageDataToPng } from './engine/imageData';
 import { defaultImageProcessProgram, getImageProcessProgram } from './programs';
 import {
   DEFAULT_IMAGE_PROCESS_ANIMATION,
@@ -386,11 +386,20 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
   const sourceNameRef = useRef('source-image');
   const runIdRef = useRef(0);
   const program = getImageProcessProgram(programId);
-  const normalizedAnimation = useMemo<ImageProcessAnimationSettings>(() => (
-    ANIMATION_MODES.includes(animation.mode) && FILTER_MODES.includes(animation.filter)
-      ? animation
-      : { ...DEFAULT_IMAGE_PROCESS_ANIMATION, ...animation, filter: FILTER_MODES.includes(animation.filter) ? animation.filter : DEFAULT_IMAGE_PROCESS_ANIMATION.filter, mode: ANIMATION_MODES.includes(animation.mode) ? animation.mode : DEFAULT_IMAGE_PROCESS_ANIMATION.mode }
-  ), [animation]);
+  const normalizedAnimation = useMemo<ImageProcessAnimationSettings>(() => ({
+    ...DEFAULT_IMAGE_PROCESS_ANIMATION,
+    ...animation,
+    mask: {
+      ...DEFAULT_IMAGE_PROCESS_ANIMATION.mask,
+      ...animation.mask,
+    },
+    filter: FILTER_MODES.includes(animation.filter)
+      ? animation.filter
+      : DEFAULT_IMAGE_PROCESS_ANIMATION.filter,
+    mode: ANIMATION_MODES.includes(animation.mode)
+      ? animation.mode
+      : DEFAULT_IMAGE_PROCESS_ANIMATION.mode,
+  }), [animation]);
 
   const previewZoom = Math.max(25, Math.min(240, previewZoomRaw));
   const setPreviewZoom = useCallback((zoom: number) => {
@@ -409,7 +418,8 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
       const decoded = await imageSourceToCanvas(sourceDataUrl, params.maxDimension, sourceNameRef.current);
       if (runId !== runIdRef.current) return;
 
-      const output = program.process(decoded.imageData, params);
+      const processed = program.process(decoded.imageData, params);
+      const output = applyEffectMask(decoded.imageData, processed, normalizedAnimation.mask);
       const png = imageDataToPng(output);
       const nextManifest: ImageProcessManifest = {
         app: 'image-process-lab',
@@ -422,6 +432,7 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
           mimeType: 'image/png',
         },
         params,
+        animation: normalizedAnimation,
       };
 
       setSourceMeta(decoded.meta);
@@ -433,7 +444,7 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
       setError(err instanceof Error ? err.message : String(err));
       setStatus('error');
     }
-  }, [params, program, sourceDataUrl]);
+  }, [normalizedAnimation, params, program, sourceDataUrl]);
 
   const loadDataUrl = useCallback(async (dataUrl: string, name = 'piped-image') => {
     sourceNameRef.current = name;
@@ -519,9 +530,14 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
 
     const decoded = await imageSourceToCanvas(sourceDataUrl, maxDimension, sourceNameRef.current);
     const processedBase = program.process(decoded.imageData, params);
+    const maskedBase = applyEffectMask(decoded.imageData, processedBase, normalizedAnimation.mask);
     const frameDurationMs = ANIMATION_EXPORT_DURATION_MS / frameCount;
     const frames = exportFrameTimes(frameCount).map(timeMs => (
-      applyAnimatedFilter(processedBase, normalizedAnimation, timeMs, params.seed)
+      applyEffectMask(
+        decoded.imageData,
+        applyAnimatedFilter(processedBase, normalizedAnimation, timeMs, params.seed),
+        normalizedAnimation.mask,
+      )
     ));
     const frameDataUrls = frames.map(frame => imageDataToPng(frame));
 
@@ -530,7 +546,7 @@ export function ImageProcessProvider({ children }: { children: ReactNode }) {
       height: decoded.imageData.height,
       frameDurationMs,
       sourceDataUrl: imageDataToPng(decoded.imageData),
-      processedDataUrl: imageDataToPng(processedBase),
+      processedDataUrl: imageDataToPng(maskedBase),
       frameDataUrls,
       frames,
       source: decoded.meta,

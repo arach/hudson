@@ -4,7 +4,12 @@ import { Dices, Download, FileJson, Loader2, Play, RefreshCw, RotateCcw, Sliders
 import { useState, type ReactNode } from 'react';
 import { useImageProcess } from './ImageProcessProvider';
 import { imageProcessPrograms } from './programs';
-import type { ImageProcessAnimationMode, ImageProcessFilterMode, SignalMosaicParams } from './types';
+import type {
+  ImageProcessAnimationMode,
+  ImageProcessEffectMask,
+  ImageProcessFilterMode,
+  SignalMosaicParams,
+} from './types';
 
 function SliderRow({
   label,
@@ -40,6 +45,43 @@ function SliderRow({
         onChange={event => onChange(Number(event.target.value))}
         className="w-full accent-emerald-400"
       />
+    </label>
+  );
+}
+
+function isHexColor(value: string): boolean {
+  return /^#[0-9a-fA-F]{6}$/.test(value);
+}
+
+function ColorControl({
+  label,
+  value,
+  onChange,
+}: {
+  label: string;
+  value: string;
+  onChange: (value: string) => void;
+}) {
+  const pickerValue = isHexColor(value) ? value : '#10b981';
+
+  return (
+    <label className="block">
+      <div className="mb-1.5 text-[11px] text-muted-foreground">{label}</div>
+      <div className="flex items-center gap-2 rounded-lg border border-border/70 bg-card/86 px-2 py-1.5">
+        <input
+          type="color"
+          value={pickerValue}
+          onChange={event => onChange(event.target.value)}
+          className="h-6 w-8 shrink-0 cursor-pointer rounded border border-border/70 bg-transparent p-0"
+          title={`${label} color`}
+        />
+        <input
+          type="text"
+          value={value}
+          onChange={event => onChange(event.target.value)}
+          className="min-w-0 flex-1 bg-transparent font-mono text-[10px] uppercase text-foreground/70 outline-none"
+        />
+      </div>
     </label>
   );
 }
@@ -110,6 +152,9 @@ export function ImageProcessInspector() {
 
   const update = <K extends keyof SignalMosaicParams>(key: K) => (value: SignalMosaicParams[K]) => {
     setParam(key, value);
+  };
+  const updateMask = <K extends keyof ImageProcessEffectMask>(key: K) => (value: ImageProcessEffectMask[K]) => {
+    setAnimationParam('mask', { ...animation.mask, [key]: value });
   };
   const filterModes: Array<{ id: ImageProcessFilterMode; label: string; detail: string }> = [
     { id: 'none', label: 'None', detail: 'Recipe output only' },
@@ -231,6 +276,16 @@ export function ImageProcessInspector() {
             })}
           </div>
           <div className="grid grid-cols-2 gap-2">
+            <ColorControl
+              label="Primary"
+              value={animation.primaryColor}
+              onChange={value => setAnimationParam('primaryColor', value)}
+            />
+            <ColorControl
+              label="Secondary"
+              value={animation.secondaryColor}
+              onChange={value => setAnimationParam('secondaryColor', value)}
+            />
             <SliderRow
               label="Intensity"
               value={animation.intensity}
@@ -248,6 +303,27 @@ export function ImageProcessInspector() {
               onChange={value => setAnimationParam('speed', value)}
             />
           </div>
+        </Section>
+
+        <Section title="Effect Mask">
+          <button
+            onClick={() => setAnimationParam('mask', { ...animation.mask, enabled: !animation.mask.enabled })}
+            className="flex w-full items-center justify-between rounded-lg border border-border/70 bg-card/86 px-3 py-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent/8"
+          >
+            <span>Limit effect area</span>
+            {animation.mask.enabled ? (
+              <ToggleRight size={16} className="text-emerald-700 dark:text-emerald-300" />
+            ) : (
+              <ToggleLeft size={16} className="text-muted-foreground/70" />
+            )}
+          </button>
+          <div className="grid grid-cols-2 gap-2">
+            <SliderRow label="Center X" value={animation.mask.x} min={0} max={100} unit="%" onChange={updateMask('x')} />
+            <SliderRow label="Center Y" value={animation.mask.y} min={0} max={100} unit="%" onChange={updateMask('y')} />
+            <SliderRow label="Width" value={animation.mask.width} min={8} max={100} unit="%" onChange={updateMask('width')} />
+            <SliderRow label="Height" value={animation.mask.height} min={8} max={100} unit="%" onChange={updateMask('height')} />
+          </div>
+          <SliderRow label="Feather" value={animation.mask.feather} min={0} max={50} unit="%" onChange={updateMask('feather')} />
         </Section>
 
         <Section title="Output">
