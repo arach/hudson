@@ -96,6 +96,8 @@ examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
 examples/termini-canvas/scripts/canvasctl.sh --wait inspect
 examples/termini-canvas/scripts/canvasctl.sh --wait focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
+examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
+examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
@@ -114,6 +116,11 @@ selected node IDs, viewport, metrics, and per-command latency.
 
 The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
 waitable request id plus the v0 envelope when those fields are missing.
+
+`perf-harness` creates a repeatable local tmux stress scene. The default shape
+is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas
+reattaches to those durable sessions. Use `perf-cleanup --prefix PREFIX` to
+remove the matching harness sessions and nodes when the trial is done.
 
 `reattach` accepts:
 

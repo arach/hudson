@@ -22,6 +22,8 @@ Usage:
   canvasctl.sh [--wait] focus [NODE...]
   canvasctl.sh [--wait] close [NODE...]
   canvasctl.sh [--wait] metrics [--reset]
+  canvasctl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
+  canvasctl.sh [--wait] perf-cleanup [--prefix PREFIX]
   canvasctl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
   canvasctl.sh [--wait] ensure-tmux [--confirm]
   canvasctl.sh [--wait] save [--state-file PATH]
@@ -223,6 +225,63 @@ case "$command" in
       "\"includeMetrics\":true"
       "\"includeViewport\":true"
     )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  perf-harness|harness|stress)
+    count=64
+    active=32
+    mode="tail"
+    reset=true
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"perf-harness\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeMetrics\":true"
+      "\"includeViewport\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --prefix) parts+=("\"prefix\":$(json_string "${2:?missing prefix}")"); shift 2 ;;
+        --sessions|--count) count="${2:?missing sessions}"; shift 2 ;;
+        --active) active="${2:?missing active count}"; shift 2 ;;
+        --mode) mode="${2:?missing mode}"; shift 2 ;;
+        --rate-ms) parts+=("\"rateMS\":$(json_number_arg rate-ms "${2:?missing rate-ms}")"); shift 2 ;;
+        --columns) parts+=("\"columns\":$(json_int_arg columns "${2:?missing columns}")"); shift 2 ;;
+        --width) parts+=("\"width\":$(json_number_arg width "${2:?missing width}")"); shift 2 ;;
+        --height) parts+=("\"height\":$(json_number_arg height "${2:?missing height}")"); shift 2 ;;
+        --gap) parts+=("\"gap\":$(json_number_arg gap "${2:?missing gap}")"); shift 2 ;;
+        --origin-x) parts+=("\"originX\":$(json_number_arg origin-x "${2:?missing origin-x}")"); shift 2 ;;
+        --origin-y) parts+=("\"originY\":$(json_number_arg origin-y "${2:?missing origin-y}")"); shift 2 ;;
+        --no-reset) reset=false; shift ;;
+        *) printf 'unknown perf-harness option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    parts+=(
+      "\"count\":$(json_int_arg sessions "$count")"
+      "\"activeCount\":$(json_int_arg active "$active")"
+      "\"harnessMode\":$(json_string "$mode")"
+      "\"reset\":$reset"
+    )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  perf-cleanup|harness-cleanup|stress-cleanup)
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"perf-cleanup\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeMetrics\":true"
+      "\"includeViewport\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --prefix) parts+=("\"prefix\":$(json_string "${2:?missing prefix}")"); shift 2 ;;
+        *) printf 'unknown perf-cleanup option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
     queue_command "$(json_object "${parts[@]}")"
     ;;
 

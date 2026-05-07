@@ -33,6 +33,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var scale: Double?
     public var allowLarge: Bool?
     public var includeChildren: Bool?
+    public var activeCount: Int?
+    public var harnessMode: String?
+    public var rateMS: Double?
+    public var prefix: String?
     public var ids: [String]?
     public var sessions: [String]?
     public var targets: [String]?
@@ -70,6 +74,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         scale: Double? = nil,
         allowLarge: Bool? = nil,
         includeChildren: Bool? = nil,
+        activeCount: Int? = nil,
+        harnessMode: String? = nil,
+        rateMS: Double? = nil,
+        prefix: String? = nil,
         ids: [String]? = nil,
         sessions: [String]? = nil,
         targets: [String]? = nil,
@@ -106,6 +114,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.scale = scale
         self.allowLarge = allowLarge
         self.includeChildren = includeChildren
+        self.activeCount = activeCount
+        self.harnessMode = harnessMode
+        self.rateMS = rateMS
+        self.prefix = prefix
         self.ids = ids
         self.sessions = sessions
         self.targets = targets

@@ -2,10 +2,13 @@ import Darwin
 import Foundation
 import SwiftUI
 import AppKit
+import HudsonObservability
 import HudsonUI
 import HudsonShell
 import HudsonTerminal
 import Termini
+
+private let hudVantagePerfTrace = HudTrace(category: "vantage.perf")
 
 /// Configuration for an embeddable Hudson Vantage.
 ///
@@ -440,6 +443,8 @@ private func formattedZoom(_ scale: CGFloat) -> String {
 public struct HudVantageSurface: View {
     private static let tileLimit = 128
     private static let largeTileLimit = 512
+    private static let defaultPerfHarnessCount = 64
+    private static let defaultPerfHarnessRateMS = 250.0
     private static let minimumCanvasScale: CGFloat = 0.002
     private static let maximumCanvasScale: CGFloat = 64
 
@@ -467,6 +472,7 @@ public struct HudVantageSurface: View {
     @State private var tmuxInstallInProgress = false
     @State private var tmuxInstallMessage = ""
     @State private var tmuxInstallConfirmationPresented = false
+    @State private var perfHarnessPrefix: String?
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
     @State private var canvasState = HudVantageCanvasState(
@@ -1018,6 +1024,10 @@ public struct HudVantageSurface: View {
 
     private func startControlAPI() {
         controlAPI.start { command in
+            let span = hudVantagePerfTrace.beginSpan(
+                "control.command",
+                metadata: ["action": command.normalizedAction]
+            )
             let startedAt = CFAbsoluteTimeGetCurrent()
             var response = handleControlCommand(command)
             let duration = (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
@@ -1035,6 +1045,7 @@ public struct HudVantageSurface: View {
                 response.viewport = controlViewport()
             }
             controlStatus = response.message
+            span.end(response.ok ? "ok" : "error")
             return response
         }
     }
@@ -1160,6 +1171,10 @@ public struct HudVantageSurface: View {
             )
         case "ensure-tmux", "ensuretmux", "tmux-ensure", "install-tmux", "installtmux", "tmux-install":
             return requestTmuxInstall(command)
+        case "perf-harness", "perfharness", "harness", "stress":
+            return runPerfHarness(command)
+        case "perf-cleanup", "perfcleanup", "harness-cleanup", "stress-cleanup":
+            return cleanupPerfHarness(command)
         case "save", "snapshot":
             return saveWorkspaceState(command)
         case "restore", "load":
@@ -1316,10 +1331,12 @@ public struct HudVantageSurface: View {
     private func reattachTmuxTargets(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("tmux.reattach")
         let specs: [TmuxReattachSpec]
         do {
             specs = try tmuxReattachSpecs(from: command)
         } catch {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1328,6 +1345,7 @@ public struct HudVantageSurface: View {
         }
 
         guard !specs.isEmpty else {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1336,6 +1354,7 @@ public struct HudVantageSurface: View {
         }
 
         if specs.allSatisfy({ $0.remoteHost == nil }), TerminalNode.localTmuxURL == nil {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1353,6 +1372,7 @@ public struct HudVantageSurface: View {
             }
             return !TerminalNode.localTmuxTargetExists(spec.target)
         }) {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1421,11 +1441,295 @@ public struct HudVantageSurface: View {
         fitCanvasToViewport()
         persistStateIfConfigured()
 
+        span.end()
         return controlResponse(
             command,
             ok: true,
             message: "reattached \(count) tmux target\(count == 1 ? "" : "s")"
         )
+    }
+
+    private func runPerfHarness(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("perf.harness")
+        guard TerminalNode.localTmuxURL != nil else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux executable not found; run ensure-tmux first"
+            )
+        }
+
+        let total = clamp(
+            command.count ?? Self.defaultPerfHarnessCount,
+            lower: 1,
+            upper: Self.largeTileLimit
+        )
+        let activeCount = clamp(command.activeCount ?? total / 2, lower: 0, upper: total)
+        let mode = command.harnessMode?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? "tail"
+        let rateMS = max(50.0, command.rateMS ?? Self.defaultPerfHarnessRateMS)
+        let prefix = perfHarnessName(from: command.prefix)
+        let rootURL = URL(fileURLWithPath: "/tmp/hudson-vantage-perf-\(prefix)", isDirectory: true)
+        let shouldReset = command.reset ?? true
+
+        guard mode == "tail" || mode == "idle" else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "unsupported perf harness mode \(mode)"
+            )
+        }
+
+        let startedAt = CFAbsoluteTimeGetCurrent()
+        do {
+            try FileManager.default.createDirectory(
+                at: rootURL,
+                withIntermediateDirectories: true
+            )
+            let sessions = try preparePerfHarnessSessions(
+                prefix: prefix,
+                count: total,
+                activeCount: activeCount,
+                mode: mode,
+                rateMS: rateMS,
+                rootURL: rootURL,
+                reset: shouldReset
+            )
+            perfHarnessPrefix = prefix
+            perfTracker.increment("perfHarness.run")
+            perfTracker.set("perfHarness.sessions", to: total)
+            perfTracker.set("perfHarness.activeSessions", to: activeCount)
+            perfTracker.recordTiming(
+                "perfHarness.prepare",
+                durationMS: (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            )
+
+            let attachCommand = HudVantageControlCommand(
+                apiVersion: command.resolvedAPIVersion,
+                kind: command.kind,
+                id: command.id,
+                action: "reattach",
+                columns: command.columns ?? Int(ceil(sqrt(Double(total)))),
+                originX: command.originX,
+                originY: command.originY,
+                width: command.width ?? 300,
+                height: command.height ?? 200,
+                gap: command.gap ?? 18,
+                reset: shouldReset,
+                includeChildren: command.includeChildren,
+                sessions: sessions,
+                createIfMissing: false,
+                includeNodes: command.includeNodes,
+                includeMetrics: command.includeMetrics,
+                includeViewport: command.includeViewport
+            )
+            let attachResponse = reattachTmuxTargets(attachCommand)
+            guard attachResponse.ok else {
+                span.end("error")
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: attachResponse.message
+                )
+            }
+
+            span.end()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "perf harness \(prefix): \(total) sessions, \(activeCount) active \(mode)"
+            )
+        } catch {
+            span.end("error")
+            perfTracker.increment("perfHarness.error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func cleanupPerfHarness(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("perf.cleanup")
+        guard TerminalNode.localTmuxURL != nil else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux executable not found"
+            )
+        }
+
+        guard let prefix = command.prefix.map({ perfHarnessName(from: $0) }) ?? perfHarnessPrefix else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "perf cleanup requires a prefix"
+            )
+        }
+
+        do {
+            let tmuxSessions = try tmuxHarnessSessions(matching: prefix)
+            for session in tmuxSessions {
+                _ = try runTmuxHarnessCommand(["kill-session", "-t", session], ignoreFailure: true)
+            }
+
+            let targetPrefix = "\(prefix)-"
+            let idsToRemove = Set(
+                nodes.compactMap { node -> UUID? in
+                    guard case .tmux(let target, _, nil) = node.runtimeIdentity,
+                          target.hasPrefix(targetPrefix)
+                    else { return nil }
+                    return node.id
+                }
+            )
+            for node in nodes where idsToRemove.contains(node.id) {
+                node.stop()
+            }
+            nodes.removeAll { idsToRemove.contains($0.id) }
+            selectedIDs.subtract(idsToRemove)
+            if perfHarnessPrefix == prefix {
+                perfHarnessPrefix = nil
+            }
+            schedulePersistStateIfConfigured()
+            perfTracker.increment("perfHarness.cleanup")
+            perfTracker.set("perfHarness.cleanedSessions", to: tmuxSessions.count)
+            span.end()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "cleaned \(tmuxSessions.count) perf harness sessions for \(prefix)"
+            )
+        } catch {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func preparePerfHarnessSessions(
+        prefix: String,
+        count: Int,
+        activeCount: Int,
+        mode: String,
+        rateMS: Double,
+        rootURL: URL,
+        reset: Bool
+    ) throws -> [String] {
+        var sessions: [String] = []
+        sessions.reserveCapacity(count)
+        let rateSeconds = String(format: "%.3f", rateMS / 1_000)
+
+        for index in 1...count {
+            let session = try TmuxTarget.validatedName(
+                "\(prefix)-\(String(format: "%02d", index))",
+                field: "session"
+            )
+            sessions.append(session)
+
+            if reset {
+                _ = try runTmuxHarnessCommand(["kill-session", "-t", session], ignoreFailure: true)
+            }
+
+            if mode == "tail", isPerfHarnessSessionActive(index: index, total: count, activeCount: activeCount) {
+                let logURL = rootURL.appendingPathComponent("\(session).log")
+                FileManager.default.createFile(atPath: logURL.path, contents: Data())
+                let quotedLogPath = shellQuoted(logURL.path)
+                let script = "i=0; while :; do printf '%s hudson-vantage \(session) line %05d\\n' \"$(date +%H:%M:%S)\" \"$i\" >> \(quotedLogPath); i=$((i+1)); sleep \(rateSeconds); done & tail -n 50 -f \(quotedLogPath)"
+                _ = try runTmuxHarnessCommand([
+                    "new-session",
+                    "-d",
+                    "-s",
+                    session,
+                    "sh -lc \(shellQuoted(script))",
+                ])
+            } else {
+                _ = try runTmuxHarnessCommand(["new-session", "-d", "-s", session])
+            }
+        }
+
+        return sessions
+    }
+
+    private func isPerfHarnessSessionActive(index: Int, total: Int, activeCount: Int) -> Bool {
+        guard activeCount > 0, total > 0 else { return false }
+        return (index * activeCount / total) != ((index - 1) * activeCount / total)
+    }
+
+    private func perfHarnessName(from proposedPrefix: String?) -> String {
+        let fallback = "hudson-perf-\(Int(Date().timeIntervalSince1970))"
+        guard let proposedPrefix,
+              !proposedPrefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return fallback
+        }
+        return GraphitePath.slugify(proposedPrefix, fallback: fallback)
+    }
+
+    private func tmuxHarnessSessions(matching prefix: String) throws -> [String] {
+        let output = try runTmuxHarnessCommand(
+            ["list-sessions", "-F", "#S"],
+            allowNoServer: true
+        )
+        let sessionPrefix = "\(prefix)-"
+        return output
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map(String.init)
+            .filter { $0.hasPrefix(sessionPrefix) }
+    }
+
+    private func runTmuxHarnessCommand(
+        _ arguments: [String],
+        ignoreFailure: Bool = false,
+        allowNoServer: Bool = false
+    ) throws -> String {
+        guard let tmuxURL = TerminalNode.localTmuxURL else {
+            throw TmuxRuntimeError.tmuxMissing
+        }
+
+        let process = Process()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.executableURL = tmuxURL
+        process.arguments = arguments
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        try process.run()
+        process.waitUntilExit()
+
+        let stdout = String(
+            data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+        let stderr = String(
+            data: stderrPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+
+        if process.terminationStatus != 0 {
+            if ignoreFailure || (allowNoServer && stderr.localizedCaseInsensitiveContains("no server running")) {
+                return stdout
+            }
+            throw TmuxRuntimeError.commandFailed(status: process.terminationStatus, stderr: stderr)
+        }
+
+        return stdout
+    }
+
+    private func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
     }
 
     private func tmuxReattachSpecs(
@@ -1902,13 +2206,16 @@ public struct HudVantageSurface: View {
 
     private func persistStateIfConfigured() {
         guard configuration.restoresStateOnLaunch else { return }
+        let span = hudVantagePerfTrace.beginSpan("state.persist")
         let startedAt = CFAbsoluteTimeGetCurrent()
         let snapshot = workspaceSnapshot(workspaceID: configuration.workspaceID)
         do {
             try writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
             perfTracker.increment("state.persist.write")
+            span.end()
         } catch {
             perfTracker.increment("state.persist.error")
+            span.end("error")
         }
         perfTracker.recordTiming(
             "state.persist",

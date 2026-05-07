@@ -149,6 +149,34 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.scale, 0.25)
     }
 
+    func testControlCommandDecodesPerfHarnessFields() throws {
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "perf-1",
+          "action": "perf-harness",
+          "count": 64,
+          "activeCount": 32,
+          "harnessMode": "tail",
+          "rateMS": 250,
+          "prefix": "hudson-perf-lab"
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "perf-harness")
+        XCTAssertEqual(command.count, 64)
+        XCTAssertEqual(command.activeCount, 32)
+        XCTAssertEqual(command.harnessMode, "tail")
+        XCTAssertEqual(command.rateMS, 250)
+        XCTAssertEqual(command.prefix, "hudson-perf-lab")
+    }
+
     func testWorkspaceSnapshotRoundTripsDurableTmuxNode() throws {
         let nodeID = UUID()
         let snapshot = HudVantageWorkspaceSnapshot(

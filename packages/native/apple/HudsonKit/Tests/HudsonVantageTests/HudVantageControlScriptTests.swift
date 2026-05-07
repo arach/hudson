@@ -52,6 +52,51 @@ final class HudVantageControlScriptTests: XCTestCase {
         }
     }
 
+    func testScriptsEmitPerfHarnessCommands() throws {
+        for scriptPath in controlScriptPaths {
+            let command = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "perf-harness",
+                    "--prefix", "hudson-perf-lab",
+                    "--sessions", "64",
+                    "--active", "32",
+                    "--mode", "tail",
+                    "--rate-ms", "250",
+                    "--columns", "8",
+                    "--width", "300",
+                    "--height", "200",
+                    "--gap", "18",
+                ]
+            )
+
+            XCTAssertEqual(command["action"] as? String, "perf-harness")
+            XCTAssertEqual(command["apiVersion"] as? String, "v0")
+            XCTAssertEqual(command["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(command["prefix"] as? String, "hudson-perf-lab")
+            XCTAssertEqual(try XCTUnwrap(command["count"] as? NSNumber).intValue, 64)
+            XCTAssertEqual(try XCTUnwrap(command["activeCount"] as? NSNumber).intValue, 32)
+            XCTAssertEqual(command["harnessMode"] as? String, "tail")
+            XCTAssertEqual(try XCTUnwrap(command["rateMS"] as? NSNumber).doubleValue, 250, accuracy: 0.001)
+            XCTAssertEqual(try XCTUnwrap(command["columns"] as? NSNumber).intValue, 8)
+            XCTAssertEqual(try XCTUnwrap(command["width"] as? NSNumber).doubleValue, 300, accuracy: 0.001)
+            XCTAssertEqual(try XCTUnwrap(command["height"] as? NSNumber).doubleValue, 200, accuracy: 0.001)
+            XCTAssertEqual(try XCTUnwrap(command["gap"] as? NSNumber).doubleValue, 18, accuracy: 0.001)
+            XCTAssertEqual(command["includeMetrics"] as? Bool, true)
+            XCTAssertEqual(command["includeViewport"] as? Bool, true)
+
+            let cleanup = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["perf-cleanup", "--prefix", "hudson-perf-lab"]
+            )
+
+            XCTAssertEqual(cleanup["action"] as? String, "perf-cleanup")
+            XCTAssertEqual(cleanup["prefix"] as? String, "hudson-perf-lab")
+            XCTAssertEqual(cleanup["apiVersion"] as? String, "v0")
+            XCTAssertEqual(cleanup["kind"] as? String, "hudson.vantage.command")
+        }
+    }
+
     func testScriptsRejectNumericJSONInjection() throws {
         let invalidCases: [(arguments: [String], message: String)] = [
             (["tile", "2", "2", "--width", #"240,"kind":"bad""#], "invalid width"),

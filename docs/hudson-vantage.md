@@ -107,6 +107,8 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait select NODE_ID
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait inspect
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait metrics
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-harness --sessions 64 --active 32 --mode tail --rate-ms 250
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-cleanup --prefix hudson-perf-1234
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --fit
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait ensure-tmux --confirm
@@ -140,6 +142,8 @@ The JSONL command contract is intentionally small and durable:
 | `close` / `remove` | Stop and remove selected or targeted nodes |
 | `metrics` / `perf` | Return lightweight node, runtime, viewport, and control latency counters |
 | `perf-reset` | Reset in-memory control latency counters |
+| `perf-harness` | Create a repeatable local tmux stress scene with idle and active tail sessions |
+| `perf-cleanup` | Kill harness tmux sessions and remove matching Vantage nodes |
 | `viewport` / `view` | Report, reset, fit, or replay exact pan/scale viewport state |
 | `ensure-tmux` / `install-tmux` | Detect local tmux and install it with Homebrew after explicit confirmation |
 | `save` / `snapshot` | Persist durable tmux-backed nodes, bounds, z-order, selection, and viewport |
@@ -227,6 +231,16 @@ samples and named counters/gauges for control commands, canvas input pressure,
 node move/resize deltas, persistence coalescing, and renderer virtualization
 counts. `perf-reset` clears the in-memory snapshot without touching the
 workspace.
+
+`perf-harness` is the repeatable stress scene. By default it creates 64 local
+tmux sessions, makes 32 of them active with a `tail -n 50 -f` workload, and
+reattaches the canvas to those sessions. Use `--prefix` to make the run easy to
+find or clean up later, `--sessions` and `--active` to change the shape, and
+`--rate-ms` to control the log append cadence. `perf-cleanup --prefix PREFIX`
+kills matching tmux sessions and removes matching nodes from the surface.
+Vantage also emits OSLog signposts for `control.command`, `tmux.reattach`,
+`perf.harness`, `perf.cleanup`, and `state.persist`, so the JSONL counters can
+be correlated with Apple Instruments timelines.
 
 ## Current Boundary
 
