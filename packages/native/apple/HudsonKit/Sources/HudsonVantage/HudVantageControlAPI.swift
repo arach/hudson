@@ -281,6 +281,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
     public var nodeCount: Int
     public var nodes: [HudVantageControlNode]?
     public var selectedNodeIDs: [UUID]?
+    public var focusedNodeID: UUID?
     public var viewport: HudVantageControlViewport?
     public var metrics: HudVantageControlMetrics?
     public var appPID: Int32?
@@ -307,6 +308,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         nodeCount: Int,
         nodes: [HudVantageControlNode]? = nil,
         selectedNodeIDs: [UUID]? = nil,
+        focusedNodeID: UUID? = nil,
         viewport: HudVantageControlViewport? = nil,
         metrics: HudVantageControlMetrics? = nil,
         appPID: Int32? = nil,
@@ -331,6 +333,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         self.nodeCount = nodeCount
         self.nodes = nodes
         self.selectedNodeIDs = selectedNodeIDs
+        self.focusedNodeID = focusedNodeID
         self.viewport = viewport
         self.metrics = metrics
         self.appPID = appPID

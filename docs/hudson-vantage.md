@@ -20,8 +20,8 @@ queue:
 
 1. **External Control API v0** — Version the JSONL contract and make agent
    operations stable: create, restore, tile, select, inspect, focus, close,
-   status, metrics. Current branch: initial implementation and contract tests
-   are in progress.
+   focus-mode, pop-out, status, metrics. The implementation is additive: each
+   new command should extend the v0 envelope without breaking older callers.
 2. **Perf Baseline + Instrumentation** — Measure node count, visible/live
    renderers, control latency, drag/zoom cost, PTY/tmux attach time, memory,
    and beach-ball points before deeper interaction work.
@@ -106,6 +106,9 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote u
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait select NODE_ID
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait inspect
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus-mode
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait popout
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait exit-focus
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait metrics
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-harness --sessions 64 --active 32 --mode tail --rate-ms 250
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-cleanup --prefix hudson-perf-1234
@@ -139,6 +142,9 @@ The JSONL command contract is intentionally small and durable:
 | `select` | Select nodes by UUID prefix, title, tmux target, or Graphite ID |
 | `inspect` / `node` | Return selected or targeted node summaries |
 | `focus` / `center` / `reveal` | Select nodes and center the viewport on their bounds |
+| `focus-mode` / `solo` | Put exactly one selected or targeted terminal into an immersive focus view |
+| `exit-focus` / `unfocus` | Return from terminal focus mode to the full canvas |
+| `popout` / `pop-out` | Open selected or targeted terminals in a separate native window |
 | `close` / `remove` | Stop and remove selected or targeted nodes |
 | `metrics` / `perf` | Return lightweight node, runtime, viewport, and control latency counters |
 | `perf-reset` | Reset in-memory control latency counters |
@@ -222,9 +228,10 @@ Responses echo the request `id` when provided and include `ok`, `message`,
 relevant. `status` and normal command responses include a `nodes` array with
 node IDs, title/subtitle, selection state, bounds, z-order, optional tag,
 runtime kind, tmux target, Graphite path, and remote host when present.
+When terminal focus mode is active, responses include `focusedNodeID`.
 `viewport` reports the current pan/scale and visible world rect. `metrics`
-reports node counts, runtime counts, live surface count, command count, and
-latest command latency.
+reports node counts, runtime counts, live surface count, command count, focus
+mode/pop-out gauges, and latest command latency.
 
 The perf snapshot is intentionally lightweight. It keeps bounded recent timing
 samples and named counters/gauges for control commands, canvas input pressure,
@@ -252,6 +259,7 @@ Hudson Vantage owns:
 - state snapshots for durable tmux-backed nodes
 - local tmux, remote tmux over SSH, and Graphite-style IDs
 - lightweight node tags and tag filters
+- terminal focus mode and selected-group pop-out windows
 - Termini terminal rendering and virtualization policy
 
 Still intentionally thin / next to extract:

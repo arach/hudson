@@ -75,6 +75,8 @@ printf '{"id":"tmux-lab","action":"reattach","sessions":["hudson-lab"],"createIf
 printf '{"id":"tmux-ids","action":"reattach","ids":["hudson.lab.termini.canvas.0042.shell","hudson.lab.agents.codex.0007.worker"]}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"select","action":"select","nodeIDs":["NODE_ID_PREFIX"]}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"inspect","action":"inspect"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"focus-mode","action":"focus-mode"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"popout","action":"popout"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"metrics","action":"metrics"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
@@ -95,6 +97,9 @@ examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
 examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
 examples/termini-canvas/scripts/canvasctl.sh --wait inspect
 examples/termini-canvas/scripts/canvasctl.sh --wait focus
+examples/termini-canvas/scripts/canvasctl.sh --wait focus-mode
+examples/termini-canvas/scripts/canvasctl.sh --wait popout
+examples/termini-canvas/scripts/canvasctl.sh --wait exit-focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
@@ -116,6 +121,11 @@ selected node IDs, viewport, metrics, and per-command latency.
 
 The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
 waitable request id plus the v0 envelope when those fields are missing.
+
+`focus-mode` renders exactly one selected or targeted terminal as the whole
+surface and hides the canvas side panels until `exit-focus` or Escape.
+`popout` opens selected or targeted terminals in a separate native window with
+either a live grid or a single-terminal focus tab.
 
 `perf-harness` creates a repeatable local tmux stress scene. The default shape
 is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas

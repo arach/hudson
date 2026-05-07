@@ -81,6 +81,14 @@ private enum HudVantageMetrics {
     static let zoomControlShadowRadius = HudSpacing.xxl
     static let terminalCardShadowRadius = HudSpacing.xxl
     static let terminalCardSelectedShadowRadius = HudSpacing.xxxl + HudSpacing.xxs
+    static let popOutMinimumWidth = HudLayout.cliffWidth
+    static let popOutMinimumHeight = HudLayout.dialogWidth - HudLayout.rowHeightRegular + HudSpacing.xs
+    static let popOutTabStripMaxWidth = HudLayout.popoverWidth
+        + HudSpacing.huge
+        + HudSpacing.xxxl
+        + HudSpacing.xxxl
+        + HudSpacing.xl
+    static let popOutTerminalPreviewHeight = HudLayout.qrViewfinderSize + HudSpacing.lg
 }
 
 private extension HudTheme {
@@ -461,6 +469,9 @@ public struct HudVantageSurface: View {
     @State private var navigationWidth: CGFloat = 254
     @State private var inspectorCollapsed = false
     @State private var inspectorWidth: CGFloat = 300
+    @State private var focusedNodeID: UUID?
+    @State private var popOutWindows: [UUID: NSWindow] = [:]
+    @State private var popOutDelegates: [UUID: VantagePopOutWindowDelegate] = [:]
     @State private var nextIndex = 3
     @State private var nextZIndex: Double = 3
     @StateObject private var controlAPI: HudVantageControlAPI
@@ -497,11 +508,19 @@ public struct HudVantageSurface: View {
 
     public var body: some View {
         HudAppShell {
-            navigationPanel
+            if !isTerminalFocusActive {
+                navigationPanel
+            }
         } trailing: {
-            inspectorPanel
+            if !isTerminalFocusActive {
+                inspectorPanel
+            }
         } content: {
-            terminalCanvasShell
+            if let focusedNode {
+                focusedTerminalShell(for: focusedNode)
+            } else {
+                terminalCanvasShell
+            }
         } statusBar: {
             statusBar
         }
@@ -514,6 +533,7 @@ public struct HudVantageSurface: View {
             pendingPersistTask = nil
             persistStateIfConfigured()
             controlAPI.stop()
+            closePopOutWindows()
             stopAllNodes()
             didBootstrap = false
         }
@@ -578,6 +598,11 @@ public struct HudVantageSurface: View {
                 }
             }
         }
+        .onExitCommand {
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+        }
         .background(HudWindowChrome(colorScheme: activeColorScheme))
     }
 
@@ -597,6 +622,15 @@ public struct HudVantageSurface: View {
 
     private var effectiveCanvasTool: CanvasTool {
         transientHandActive ? .hand : canvasTool
+    }
+
+    private var focusedNode: TerminalNode? {
+        guard let focusedNodeID else { return nil }
+        return nodes.first { $0.id == focusedNodeID }
+    }
+
+    private var isTerminalFocusActive: Bool {
+        focusedNode != nil
     }
 
     @ViewBuilder
@@ -676,6 +710,16 @@ public struct HudVantageSurface: View {
             )
             CommandKeyButton(action: showCommandPlaceholder)
 
+            HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
+                focusSelection()
+            }
+            .disabled(selectedIDs.count != 1)
+
+            HudButton("Pop out", icon: "rectangle.on.rectangle", style: .secondary) {
+                popOutSelection()
+            }
+            .disabled(selectedIDs.isEmpty)
+
             HudButton("New", icon: "plus", style: .primary(.cyan)) {
                 spawnTerminal()
             }
@@ -692,6 +736,20 @@ public struct HudVantageSurface: View {
             HudDivider(color: activeTheme.hairline.standard)
             canvasViewport
         }
+    }
+
+    private func focusedTerminalShell(for node: TerminalNode) -> some View {
+        TerminalFocusSurface(
+            title: configuration.surfaceTitle,
+            node: node,
+            selectionCount: selectedIDs.count,
+            onExit: exitFocusMode,
+            onPopOut: { popOut(nodes: [node]) },
+            onClose: {
+                exitFocusMode()
+                close(node.id)
+            }
+        )
     }
 
     private var canvasViewport: some View {
@@ -918,6 +976,7 @@ public struct HudVantageSurface: View {
                     canvasPan: canvasState.pan,
                     canvasScale: canvasState.scale,
                     onSelect: { selectNode(node.id) },
+                    onFocus: { enterFocusMode(node.id) },
                     onDragBegin: { beginDraggingNode(node.id) },
                     onClose: { close(node.id) },
                     onMove: { delta in move(node.id, delta: worldDelta(delta)) },
@@ -1149,6 +1208,12 @@ public struct HudVantageSurface: View {
             return inspectNodes(command)
         case "focus", "center", "reveal":
             return focusNodes(command)
+        case "focus-mode", "focusmode", "enter-focus", "enterfocus", "solo":
+            return enterFocusMode(command)
+        case "exit-focus", "exitfocus", "leave-focus", "leavefocus", "unfocus":
+            return exitFocusMode(command)
+        case "popout", "pop-out", "pop-window", "popwindow":
+            return popOutNodes(command)
         case "close", "remove":
             return closeNodes(command)
         case "metrics", "perf":
@@ -1888,6 +1953,61 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func enterFocusMode(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            guard resolved.count == 1, let node = resolved.first else {
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: "focus mode requires exactly one terminal",
+                    errorCode: "invalid_focus_target",
+                    nodesOverride: resolved
+                )
+            }
+            enterFocusMode(node.id)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "focus mode \(node.title)",
+                nodesOverride: [node]
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func exitFocusMode(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        exitFocusMode()
+        return controlResponse(
+            command,
+            ok: true,
+            message: "focus mode closed"
+        )
+    }
+
+    private func popOutNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            selectedIDs = Set(resolved.map(\.id))
+            popOut(nodes: resolved)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "popped out \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
     private func applyViewportCommand(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
@@ -2457,6 +2577,79 @@ public struct HudVantageSurface: View {
         schedulePersistStateIfConfigured()
     }
 
+    private func focusSelection() {
+        guard selectedIDs.count == 1, let id = selectedIDs.first else { return }
+        enterFocusMode(id)
+    }
+
+    private func enterFocusMode(_ id: UUID) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        focusedNodeID = id
+        selectedIDs = [id]
+        bringToFront(id)
+        controlStatus = "Focus mode · \(node.title)"
+        perfTracker.increment("focusMode.enter")
+    }
+
+    private func exitFocusMode() {
+        guard focusedNodeID != nil else { return }
+        focusedNodeID = nil
+        controlStatus = "Focus mode closed"
+        perfTracker.increment("focusMode.exit")
+    }
+
+    private func popOutSelection() {
+        let selected = selectedNodes
+        guard !selected.isEmpty else { return }
+        popOut(nodes: selected)
+    }
+
+    private func popOut(nodes nodesToPopOut: [TerminalNode]) {
+        guard !nodesToPopOut.isEmpty else { return }
+        let windowID = UUID()
+        let title = nodesToPopOut.count == 1
+            ? nodesToPopOut[0].title
+            : "\(nodesToPopOut.count) terminals"
+        let rootView = TerminalPopOutWindow(
+            title: title,
+            nodes: nodesToPopOut
+        ) {
+            popOutWindows[windowID]?.close()
+        }
+        .hudTheme(activeTheme)
+        .environment(\.colorScheme, activeColorScheme)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        let delegate = VantagePopOutWindowDelegate {
+            popOutWindows[windowID] = nil
+            popOutDelegates[windowID] = nil
+        }
+        window.title = "Vantage · \(title)"
+        window.isReleasedWhenClosed = false
+        window.delegate = delegate
+        window.contentViewController = NSHostingController(rootView: rootView)
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+
+        popOutDelegates[windowID] = delegate
+        popOutWindows[windowID] = window
+        controlStatus = "Popped out \(nodesToPopOut.count)"
+        perfTracker.increment("focusMode.popOut")
+        perfTracker.set("focusMode.popOutCount", to: nodesToPopOut.count)
+    }
+
+    private func closePopOutWindows() {
+        let windows = Array(popOutWindows.values)
+        popOutWindows.removeAll()
+        popOutDelegates.removeAll()
+        windows.forEach { $0.close() }
+    }
+
     private func centerNode(_ id: UUID) {
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
@@ -2488,6 +2681,9 @@ public struct HudVantageSurface: View {
         nodes.first { $0.id == id }?.stop()
         nodes.removeAll { $0.id == id }
         selectedIDs.remove(id)
+        if focusedNodeID == id {
+            focusedNodeID = nil
+        }
         persistStateIfConfigured()
     }
 
@@ -2521,6 +2717,7 @@ public struct HudVantageSurface: View {
     }
 
     private func resetTerminals() {
+        focusedNodeID = nil
         stopAllNodes()
         nextIndex = 1
         nextZIndex = 1
@@ -2554,6 +2751,7 @@ public struct HudVantageSurface: View {
     }
 
     private func stopAllNodes() {
+        focusedNodeID = nil
         nodes.forEach { $0.stop() }
         nodes.removeAll(keepingCapacity: true)
         selectedIDs.removeAll()
@@ -2580,6 +2778,7 @@ public struct HudVantageSurface: View {
             nodeCount: nodes.count,
             nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
             selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
+            focusedNodeID: focusedNodeID,
             viewport: command.includeViewport == false ? nil : controlViewport(),
             metrics: command.includeMetrics == false ? nil : controlMetrics(),
             appPID: getpid(),
@@ -2634,6 +2833,8 @@ public struct HudVantageSurface: View {
         perfTracker.set("surface.remoteTmuxCount", to: remoteTmuxCount)
         perfTracker.set("surface.liveSurfaceCount", to: liveSurfaceCount)
         perfTracker.set("surface.virtualizedSurfaceCount", to: virtualizedSurfaceCount)
+        perfTracker.set("surface.focusModeActive", to: isTerminalFocusActive ? 1 : 0)
+        perfTracker.set("surface.popOutWindowCount", to: popOutWindows.count)
 
         return HudVantageControlMetrics(
             nodeCount: nodes.count,
@@ -2724,6 +2925,7 @@ private struct TerminalNodeView: View {
     let canvasPan: CGSize
     let canvasScale: CGFloat
     let onSelect: () -> Void
+    let onFocus: () -> Void
     let onDragBegin: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
@@ -2849,6 +3051,11 @@ private struct TerminalNodeView: View {
                 .foregroundStyle(theme.palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+            CanvasIconButton(
+                systemName: "rectangle.inset.filled",
+                help: "Focus terminal",
+                action: onFocus
+            )
         }
         .padding(.horizontal, HudSpacing.xxl)
         .frame(height: HudVantageMetrics.terminalTitleBarHeight)
@@ -2911,6 +3118,256 @@ private struct TerminalNodeView: View {
                         onTransformEnd()
                     }
             )
+    }
+}
+
+private struct TerminalFocusSurface: View {
+    let title: String
+    @ObservedObject var node: TerminalNode
+    let selectionCount: Int
+    let onExit: () -> Void
+    let onPopOut: () -> Void
+    let onClose: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: HudSpacing.lg) {
+                HudStatusDot(color: node.tint.color)
+                VStack(alignment: .leading, spacing: 1) {
+                    HStack(spacing: HudSpacing.md) {
+                        Text(title.uppercased())
+                            .font(HudFont.mono(10, weight: .bold))
+                            .tracking(1.4)
+                            .foregroundStyle(theme.palette.muted)
+                        HudBadge("FOCUS", tint: node.tint.color, dot: true)
+                    }
+                    Text(node.title)
+                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                        .foregroundStyle(theme.palette.ink)
+                        .lineLimit(1)
+                }
+
+                Text(node.subtitle)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(theme.palette.dim)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+
+                Spacer()
+
+                if selectionCount > 1 {
+                    Text("\(selectionCount) selected")
+                        .font(HudFont.mono(10))
+                        .foregroundStyle(theme.palette.muted)
+                }
+
+                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost, action: onPopOut)
+                HudButton("Close", icon: "xmark", style: .ghost, action: onClose)
+                HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary, action: onExit)
+            }
+            .padding(.horizontal, HudSpacing.xxl)
+            .frame(height: HudLayout.navHeight)
+            .background(theme.palette.chrome)
+
+            HudDivider(color: theme.hairline.standard)
+
+            TerminalSurfaceContainer(controller: node.controller)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(theme.palette.bg)
+        }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background(theme.palette.bg)
+    }
+}
+
+private struct TerminalPopOutWindow: View {
+    let title: String
+    let nodes: [TerminalNode]
+    let onClose: () -> Void
+
+    @State private var focusedID: UUID?
+    @Environment(\.hudTheme) private var theme
+
+    private var focusedNode: TerminalNode? {
+        guard let focusedID else { return nil }
+        return nodes.first { $0.id == focusedID }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            HudDivider(color: theme.hairline.standard)
+            content
+        }
+        .frame(
+            minWidth: HudVantageMetrics.popOutMinimumWidth,
+            minHeight: HudVantageMetrics.popOutMinimumHeight
+        )
+        .background(theme.palette.bg)
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.lg) {
+            HudStatusDot(color: nodes.first?.tint.color ?? theme.palette.statusInfo)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Vantage Pop-out")
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(theme.palette.muted)
+                Text(title)
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                    .lineLimit(1)
+            }
+
+            HudBadge("\(nodes.count)", tint: theme.palette.statusInfo, dot: true)
+
+            if nodes.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: HudSpacing.sm) {
+                        CanvasFilterButton(
+                            title: "Grid",
+                            isActive: focusedID == nil,
+                            action: { focusedID = nil }
+                        )
+                        ForEach(nodes) { node in
+                            CanvasFilterButton(
+                                title: node.title,
+                                isActive: focusedID == node.id,
+                                action: { focusedID = node.id }
+                            )
+                        }
+                    }
+                }
+                .frame(maxWidth: HudVantageMetrics.popOutTabStripMaxWidth)
+            }
+
+            Spacer()
+            HudButton("Close", icon: "xmark", style: .ghost, action: onClose)
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.navHeight)
+        .background(theme.palette.chrome)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if nodes.count == 1, let node = nodes.first {
+            TerminalPopOutTerminal(node: node)
+        } else if let focusedNode {
+            TerminalPopOutTerminal(node: focusedNode)
+        } else {
+            GeometryReader { proxy in
+                ScrollView {
+                    LazyVGrid(
+                        columns: gridColumns(for: proxy.size.width),
+                        spacing: HudSpacing.lg
+                    ) {
+                        ForEach(nodes) { node in
+                            TerminalPopOutCard(node: node) {
+                                focusedID = node.id
+                            }
+                        }
+                    }
+                    .padding(HudSpacing.xxl)
+                }
+            }
+        }
+    }
+
+    private func gridColumns(for width: CGFloat) -> [GridItem] {
+        let count = max(1, min(3, Int(width / 420)))
+        return Array(
+            repeating: GridItem(.flexible(minimum: 320), spacing: HudSpacing.lg),
+            count: count
+        )
+    }
+}
+
+private struct TerminalPopOutTerminal: View {
+    @ObservedObject var node: TerminalNode
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TerminalPopOutTitleBar(node: node)
+            TerminalSurfaceContainer(controller: node.controller)
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(theme.palette.bg)
+        }
+        .background(theme.palette.bg)
+    }
+}
+
+private struct TerminalPopOutCard: View {
+    @ObservedObject var node: TerminalNode
+    let onFocus: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TerminalPopOutTitleBar(node: node, onFocus: onFocus)
+            TerminalSurfaceContainer(controller: node.controller)
+                .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
+                .background(theme.palette.bg)
+        }
+        .background(theme.palette.bg)
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .stroke(theme.hairline.standard)
+        )
+        .shadow(color: theme.vantageShadow, radius: HudSpacing.xl, x: 0, y: HudSpacing.md)
+    }
+}
+
+private struct TerminalPopOutTitleBar: View {
+    @ObservedObject var node: TerminalNode
+    var onFocus: (() -> Void)?
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.lg) {
+            HudStatusDot(color: node.tint.color, size: HudDotSize.small)
+            Image(systemName: "terminal")
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            Text(node.title)
+                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+                .lineLimit(1)
+            Spacer()
+            Text(node.subtitle)
+                .font(HudFont.mono(9))
+                .foregroundStyle(theme.palette.dim)
+                .lineLimit(1)
+            if let onFocus {
+                CanvasIconButton(
+                    systemName: "rectangle.inset.filled",
+                    help: "Focus terminal in pop-out",
+                    action: onFocus
+                )
+            }
+        }
+        .padding(.horizontal, HudSpacing.xl)
+        .frame(height: HudVantageMetrics.terminalTitleBarHeight)
+        .background(theme.palette.chrome)
+    }
+}
+
+private final class VantagePopOutWindowDelegate: NSObject, NSWindowDelegate {
+    private let onClose: @MainActor () -> Void
+
+    init(onClose: @escaping @MainActor () -> Void) {
+        self.onClose = onClose
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        Task { @MainActor in
+            onClose()
+        }
     }
 }
 

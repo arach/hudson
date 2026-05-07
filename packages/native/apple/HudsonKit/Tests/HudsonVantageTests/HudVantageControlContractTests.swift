@@ -287,6 +287,7 @@ final class HudVantageControlContractTests: XCTestCase {
                 )
             ],
             selectedNodeIDs: [nodeID],
+            focusedNodeID: nodeID,
             viewport: HudVantageControlViewport(
                 panX: 10,
                 panY: 20,
@@ -354,6 +355,7 @@ final class HudVantageControlContractTests: XCTestCase {
 
         let selectedNodeIDs = try XCTUnwrap(object["selectedNodeIDs"] as? [String])
         XCTAssertEqual(selectedNodeIDs, [nodeID.uuidString])
+        XCTAssertEqual(object["focusedNodeID"] as? String, nodeID.uuidString)
         let viewport = try XCTUnwrap(object["viewport"] as? [String: Any])
         XCTAssertEqual(viewport["scale"] as? Double, 0.8)
         let metrics = try XCTUnwrap(object["metrics"] as? [String: Any])

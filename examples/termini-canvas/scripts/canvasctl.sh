@@ -20,6 +20,9 @@ Usage:
   canvasctl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
   canvasctl.sh [--wait] inspect [NODE...]
   canvasctl.sh [--wait] focus [NODE...]
+  canvasctl.sh [--wait] focus-mode [NODE]
+  canvasctl.sh [--wait] exit-focus
+  canvasctl.sh [--wait] popout [NODE...]
   canvasctl.sh [--wait] close [NODE...]
   canvasctl.sh [--wait] metrics [--reset]
   canvasctl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
@@ -354,6 +357,41 @@ case "$command" in
     if [[ ${#node_ids[@]} -gt 0 ]]; then
       parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
     fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  focus-mode|focusmode|enter-focus|enterfocus|solo|popout|pop-out|pop-window|popwindow)
+    node_ids=()
+    action="$command"
+    case "$command" in
+      focusmode|enter-focus|enterfocus|solo) action="focus-mode" ;;
+      pop-out|pop-window|popwindow) action="popout" ;;
+    esac
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":$(json_string "$action")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  exit-focus|exitfocus|leave-focus|leavefocus|unfocus)
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"exit-focus\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
     queue_command "$(json_object "${parts[@]}")"
     ;;
 

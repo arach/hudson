@@ -97,6 +97,39 @@ final class HudVantageControlScriptTests: XCTestCase {
         }
     }
 
+    func testScriptsEmitFocusAndPopOutCommands() throws {
+        for scriptPath in controlScriptPaths {
+            let focus = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["focus-mode", "term-1"]
+            )
+
+            XCTAssertEqual(focus["action"] as? String, "focus-mode")
+            XCTAssertEqual(focus["apiVersion"] as? String, "v0")
+            XCTAssertEqual(focus["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(focus["nodeIDs"] as? [String], ["term-1"])
+
+            let popOut = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["popout", "term-1", "term-2"]
+            )
+
+            XCTAssertEqual(popOut["action"] as? String, "popout")
+            XCTAssertEqual(popOut["nodeIDs"] as? [String], ["term-1", "term-2"])
+            XCTAssertEqual(popOut["apiVersion"] as? String, "v0")
+            XCTAssertEqual(popOut["kind"] as? String, "hudson.vantage.command")
+
+            let exitFocus = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["exit-focus"]
+            )
+
+            XCTAssertEqual(exitFocus["action"] as? String, "exit-focus")
+            XCTAssertEqual(exitFocus["apiVersion"] as? String, "v0")
+            XCTAssertEqual(exitFocus["kind"] as? String, "hudson.vantage.command")
+        }
+    }
+
     func testScriptsRejectNumericJSONInjection() throws {
         let invalidCases: [(arguments: [String], message: String)] = [
             (["tile", "2", "2", "--width", #"240,"kind":"bad""#], "invalid width"),
