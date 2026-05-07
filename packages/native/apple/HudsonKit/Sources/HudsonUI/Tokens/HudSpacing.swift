@@ -56,6 +56,9 @@ public enum HudLayout {
     // Primitive defaults — sizes for self-sized primitives (QR codes, avatars, etc).
     public static let qrCodeDefault:    CGFloat = 200
     public static let qrViewfinderSize: CGFloat = 250
+    public static let textDocumentPreviewHeight: CGFloat = 360
+    public static let textDocumentModeButtonHeight: CGFloat = 24
+    public static let textDocumentLineNumberWidth: CGFloat = 36
 }
 
 // MARK: - Deprecated Hudson* aliases
