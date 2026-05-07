@@ -2,10 +2,13 @@ import Darwin
 import Foundation
 import SwiftUI
 import AppKit
+import HudsonObservability
 import HudsonUI
 import HudsonShell
 import HudsonTerminal
 import Termini
+
+private let hudVantagePerfTrace = HudTrace(category: "vantage.perf")
 
 /// Configuration for an embeddable Hudson Vantage.
 ///
@@ -132,6 +135,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     @Published var origin: CGPoint
     @Published var size: CGSize
     @Published var zIndex: Double
+    @Published var tag: CanvasTag?
 
     init(
         id: UUID = UUID(),
@@ -144,6 +148,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         title: String? = nil,
         subtitle: String? = nil,
         runtimeIdentity: RuntimeIdentity = .localPTY,
+        tag: CanvasTag? = nil,
         workingDirectoryURL: URL? = nil
     ) {
         let controller = TerminiTerminalController()
@@ -159,6 +164,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         self.tint = tint
         self.zIndex = zIndex
         self.runtimeIdentity = runtimeIdentity
+        self.tag = tag
         workspace.start()
     }
 
@@ -284,15 +290,12 @@ private final class TerminalNode: ObservableObject, Identifiable {
     }
 }
 
-private enum CanvasTool {
+private enum CanvasTool: String {
     case select
     case hand
 
     var statusLabel: String {
-        switch self {
-        case .select: "select"
-        case .hand: "hand"
-        }
+        rawValue
     }
 }
 
@@ -312,9 +315,43 @@ private enum CanvasNavigationFilter: String, CaseIterable, Identifiable {
     }
 }
 
+private enum CanvasTag: String, CaseIterable, Identifiable {
+    case focus
+    case watch
+    case parked
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .focus: "Focus"
+        case .watch: "Watch"
+        case .parked: "Parked"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .focus: "scope"
+        case .watch: "eye"
+        case .parked: "tray"
+        }
+    }
+
+    func tint(in theme: HudTheme) -> Color {
+        switch self {
+        case .focus: theme.palette.statusOk
+        case .watch: theme.palette.statusInfo
+        case .parked: theme.palette.statusWarn
+        }
+    }
+}
+
 private struct SelectionDrag {
     var start: CGPoint
     var current: CGPoint
+    var baseSelection: Set<UUID>
+    var mode: HudVantageSelectionMode
 
     var viewportRect: CGRect {
         CGRect(
@@ -353,6 +390,35 @@ private enum HudVantageStateError: Error, LocalizedError {
     }
 }
 
+private enum HudVantageControlNodeError: Error, LocalizedError {
+    case missingSelector
+    case emptySelection
+    case notFound(String)
+    case ambiguous(String)
+
+    var errorCode: String {
+        switch self {
+        case .missingSelector: "missing_node_selector"
+        case .emptySelection: "empty_selection"
+        case .notFound: "node_not_found"
+        case .ambiguous: "ambiguous_node_selector"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .missingSelector:
+            "node selector required; pass nodeID, nodeIDs, or ids"
+        case .emptySelection:
+            "no nodes are selected"
+        case .notFound(let selector):
+            "node \(selector) not found"
+        case .ambiguous(let selector):
+            "node selector \(selector) matched multiple nodes"
+        }
+    }
+}
+
 private func formattedZoom(_ scale: CGFloat) -> String {
     let percent = scale * 100
 
@@ -377,6 +443,8 @@ private func formattedZoom(_ scale: CGFloat) -> String {
 public struct HudVantageSurface: View {
     private static let tileLimit = 128
     private static let largeTileLimit = 512
+    private static let defaultPerfHarnessCount = 64
+    private static let defaultPerfHarnessRateMS = 250.0
     private static let minimumCanvasScale: CGFloat = 0.002
     private static let maximumCanvasScale: CGFloat = 64
 
@@ -388,6 +456,7 @@ public struct HudVantageSurface: View {
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
     @State private var navigationFilter: CanvasNavigationFilter = .all
+    @State private var navigationTagFilter: CanvasTag?
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
     @State private var inspectorCollapsed = false
@@ -396,17 +465,25 @@ public struct HudVantageSurface: View {
     @State private var nextZIndex: Double = 3
     @StateObject private var controlAPI: HudVantageControlAPI
     @State private var controlStatus = "API ready"
+    @State private var controlCommandCount = 0
+    @State private var lastControlAction: String?
+    @State private var lastControlDurationMS: Double?
+    @State private var perfTracker = HudVantagePerfTracker()
     @State private var tmuxInstallInProgress = false
     @State private var tmuxInstallMessage = ""
     @State private var tmuxInstallConfirmationPresented = false
+    @State private var perfHarnessPrefix: String?
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
-    @State private var canvasPan: CGSize = .zero
-    @State private var canvasScale: CGFloat = 1
+    @State private var canvasState = HudVantageCanvasState(
+        minimumScale: HudVantageSurface.minimumCanvasScale,
+        maximumScale: HudVantageSurface.maximumCanvasScale
+    )
+    @State private var transientHandActive = false
     @State private var panStart: CGSize?
-    @State private var zoomStart: CGFloat = 1
-    @State private var lastViewportSize = CGSize(width: 920, height: 560)
+    @State private var zoomStart: CGFloat?
     @State private var selectionDrag: SelectionDrag?
+    @State private var pendingPersistTask: Task<Void, Never>?
 
     public init(configuration: HudVantageConfiguration = .init()) {
         self.configuration = configuration
@@ -433,10 +510,33 @@ public struct HudVantageSurface: View {
             startControlAPI()
         }
         .onDisappear {
+            pendingPersistTask?.cancel()
+            pendingPersistTask = nil
             persistStateIfConfigured()
             controlAPI.stop()
             stopAllNodes()
             didBootstrap = false
+        }
+        .onChange(of: canvasTool) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationFilter) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationTagFilter) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationWidth) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: inspectorCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: inspectorWidth) { _, _ in
+            schedulePersistStateIfConfigured()
         }
         .confirmationDialog(
             "Install tmux with Homebrew?",
@@ -495,6 +595,10 @@ public struct HudVantageSurface: View {
         return colorScheme == .dark ? .default : .lightDraft
     }
 
+    private var effectiveCanvasTool: CanvasTool {
+        transientHandActive ? .hand : canvasTool
+    }
+
     @ViewBuilder
     private var navigationPanel: some View {
         if !navigationCollapsed {
@@ -505,13 +609,14 @@ public struct HudVantageSurface: View {
                 totalCount: nodes.count,
                 selectedCount: selectedIDs.count,
                 filter: $navigationFilter,
+                tagFilter: $navigationTagFilter,
                 selectedIDs: selectedIDs,
-                viewportWorldRect: viewportWorldRect,
-                canvasContentSize: canvasContentSize,
-                canvasPan: canvasPan,
-                canvasScale: canvasScale,
-                viewportSize: lastViewportSize,
+                viewportWorldRect: canvasState.visibleWorldRect,
+                canvasWorldBounds: canvasWorldBounds,
+                canvasScale: canvasState.scale,
                 onSelectNode: selectNode,
+                onCenterNode: centerNode,
+                onTagSelection: tagSelection(as:),
                 onCenterWorldPoint: centerCanvas(on:),
                 onFit: fitCanvasToViewport,
                 onCollapse: { navigationCollapsed = true }
@@ -565,7 +670,7 @@ public struct HudVantageSurface: View {
                 .foregroundStyle(activeTheme.palette.muted)
             Spacer()
             CanvasToolSwitch(
-                tool: canvasTool,
+                tool: effectiveCanvasTool,
                 onSelect: { canvasTool = .select },
                 onHand: { canvasTool = .hand }
             )
@@ -594,14 +699,14 @@ public struct HudVantageSurface: View {
             ZStack(alignment: .topLeading) {
                 activeTheme.palette.bg
                 InfiniteCanvasBackground(
-                    pan: canvasPan,
-                    scale: canvasScale
+                    pan: canvasState.pan,
+                    scale: canvasState.scale
                 )
                 .allowsHitTesting(false)
 
                 terminalCanvas
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .allowsHitTesting(canvasTool == .select)
+                    .allowsHitTesting(effectiveCanvasTool == .select)
 
                 if let rect = selectionDrag?.viewportRect {
                     SelectionMarquee(rect: rect)
@@ -618,22 +723,39 @@ public struct HudVantageSurface: View {
                     },
                     onMagnify: { magnification, location in
                         handleCanvasMagnify(magnification, at: location)
+                    },
+                    canBeginSpacePan: { location in
+                        canBeginSpacePan(at: location)
+                    },
+                    onSpacePanChanged: { isActive in
+                        transientHandActive = isActive
                     }
                 )
             )
             .gesture(canvasInteractionGesture)
             .simultaneousGesture(canvasZoomGesture)
             .onAppear {
-                lastViewportSize = proxy.size
+                canvasState = canvasState.withViewportSize(proxy.size)
             }
             .onChange(of: proxy.size) { _, size in
-                lastViewportSize = size
+                canvasState = canvasState.withViewportSize(size)
+            }
+            .onChange(of: transientHandActive) { _, isActive in
+                if isActive {
+                    selectionDrag = nil
+                } else {
+                    panStart = nil
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 CanvasZoomTool(
-                    scale: canvasScale,
+                    scale: canvasState.scale,
                     onZoomOut: { zoom(by: 0.5) },
                     onZoomIn: { zoom(by: 2) },
+                    onReset: {
+                        resetCanvasViewport()
+                        schedulePersistStateIfConfigured()
+                    },
                     onFit: { fitCanvasToViewport() }
                 )
                 .padding(HudSpacing.xl)
@@ -644,147 +766,115 @@ public struct HudVantageSurface: View {
     private var canvasInteractionGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
-                switch canvasTool {
+                switch effectiveCanvasTool {
                 case .hand:
-                    let start = panStart ?? canvasPan
+                    perfTracker.increment("input.canvasPan.delta")
+                    let start = panStart ?? canvasState.pan
                     panStart = start
-                    canvasPan = CGSize(
-                        width: start.width + value.translation.width,
-                        height: start.height + value.translation.height
+                    canvasState = canvasState.replaying(
+                        panX: start.width + value.translation.width,
+                        panY: start.height + value.translation.height,
+                        scale: nil
                     )
                 case .select:
-                    selectionDrag = SelectionDrag(
-                        start: value.startLocation,
-                        current: value.location
-                    )
+                    if var drag = selectionDrag {
+                        drag.current = value.location
+                        selectionDrag = drag
+                    } else {
+                        selectionDrag = SelectionDrag(
+                            start: value.startLocation,
+                            current: value.location,
+                            baseSelection: selectedIDs,
+                            mode: pointerSelectionMode()
+                        )
+                    }
+                    perfTracker.increment("input.marquee.delta")
                     updateMarqueeSelection()
                 }
             }
             .onEnded { _ in
+                perfTracker.increment("input.canvasDrag.end")
                 panStart = nil
+                schedulePersistStateIfConfigured()
                 selectionDrag = nil
             }
+    }
+
+    private func canBeginSpacePan(at viewportPoint: CGPoint) -> Bool {
+        let worldPoint = canvasState.worldPoint(fromViewportPoint: viewportPoint)
+        return !nodes.contains { node in
+            rendersLiveSurface(for: node) && nodeFrame(node).contains(worldPoint)
+        }
     }
 
     private var canvasZoomGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
-                setCanvasScale(zoomStart * value, around: viewportCenter)
+                let start = zoomStart ?? canvasState.scale
+                zoomStart = start
+                setCanvasScale(start * value, around: canvasState.viewportCenter)
             }
             .onEnded { _ in
-                zoomStart = canvasScale
+                zoomStart = nil
             }
     }
 
     private func zoom(by factor: CGFloat) {
-        setCanvasScale(canvasScale * factor, around: viewportCenter)
+        setCanvasScale(canvasState.scale * factor, around: canvasState.viewportCenter)
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
+        perfTracker.increment("input.scroll")
         if abs(delta.height) >= abs(delta.width) {
+            perfTracker.increment("input.scroll.zoom")
             let factor = min(max(exp(delta.height * 0.004), 0.82), 1.22)
-            setCanvasScale(canvasScale * factor, around: viewportPoint)
+            setCanvasScale(canvasState.scale * factor, around: viewportPoint)
         } else {
-            canvasPan.width += delta.width
+            perfTracker.increment("input.scroll.pan")
+            canvasState = canvasState.panned(by: CGSize(width: delta.width, height: 0))
         }
     }
 
     private func handleCanvasMagnify(_ magnification: CGFloat, at viewportPoint: CGPoint) {
+        perfTracker.increment("input.magnify")
         let factor = min(max(1 + magnification, 0.75), 1.35)
-        setCanvasScale(canvasScale * factor, around: viewportPoint)
+        setCanvasScale(canvasState.scale * factor, around: viewportPoint)
     }
 
     private func setCanvasScale(_ proposedScale: CGFloat, around screenPoint: CGPoint) {
-        let oldScale = canvasScale
-        let newScale = clampedScale(proposedScale)
-        guard newScale != oldScale else { return }
-
-        let worldPoint = CGPoint(
-            x: (screenPoint.x - canvasPan.width) / oldScale,
-            y: (screenPoint.y - canvasPan.height) / oldScale
-        )
-
-        canvasScale = newScale
-        zoomStart = newScale
-        canvasPan = CGSize(
-            width: screenPoint.x - worldPoint.x * newScale,
-            height: screenPoint.y - worldPoint.y * newScale
-        )
+        canvasState = canvasState.zoomed(to: proposedScale, around: screenPoint)
+        schedulePersistStateIfConfigured()
     }
 
     private func fitCanvasToViewport() {
-        let viewport = lastViewportSize
-        guard viewport.width > 80, viewport.height > 80 else { return }
-
-        let horizontalScale = (viewport.width - 64) / canvasContentSize.width
-        let verticalScale = (viewport.height - 64) / canvasContentSize.height
-        let scale = clampedScale(min(horizontalScale, verticalScale))
-
-        canvasScale = scale
-        zoomStart = scale
-        canvasPan = CGSize(
-            width: max(32, (viewport.width - canvasContentSize.width * scale) / 2),
-            height: max(32, (viewport.height - canvasContentSize.height * scale) / 2)
-        )
-    }
-
-    private func clampedScale(_ value: CGFloat) -> CGFloat {
-        min(max(value, Self.minimumCanvasScale), Self.maximumCanvasScale)
-    }
-
-    private var viewportCenter: CGPoint {
-        CGPoint(
-            x: lastViewportSize.width / 2,
-            y: lastViewportSize.height / 2
-        )
+        canvasState = canvasState.fitting(canvasWorldBounds)
+        schedulePersistStateIfConfigured()
     }
 
     private func updateMarqueeSelection() {
         guard let selectionDrag else { return }
-        let rect = worldRect(fromViewportRect: selectionDrag.viewportRect)
-        selectedIDs = Set(
+        perfTracker.increment("selection.marquee.update")
+        let rect = canvasState.worldRect(fromViewportRect: selectionDrag.viewportRect)
+        let candidates = Set(
             nodes
                 .filter { node in
                     rect.intersects(nodeFrame(node))
                 }
                 .map(\.id)
         )
-    }
-
-    private func worldRect(fromViewportRect rect: CGRect) -> CGRect {
-        let topLeft = worldPoint(fromViewportPoint: rect.origin)
-        let bottomRight = worldPoint(
-            fromViewportPoint: CGPoint(x: rect.maxX, y: rect.maxY)
-        )
-        return CGRect(
-            x: min(topLeft.x, bottomRight.x),
-            y: min(topLeft.y, bottomRight.y),
-            width: abs(bottomRight.x - topLeft.x),
-            height: abs(bottomRight.y - topLeft.y)
-        )
-    }
-
-    private func worldPoint(fromViewportPoint point: CGPoint) -> CGPoint {
-        CGPoint(
-            x: (point.x - canvasPan.width) / canvasScale,
-            y: (point.y - canvasPan.height) / canvasScale
-        )
-    }
-
-    private var viewportWorldRect: CGRect {
-        worldRect(
-            fromViewportRect: CGRect(
-                origin: .zero,
-                size: lastViewportSize
-            )
-        )
+        perfTracker.set("selection.marquee.candidates", to: candidates.count)
+        selectedIDs = HudVantageSelectionState(ids: selectionDrag.baseSelection)
+            .applying(candidates, mode: selectionDrag.mode)
+            .ids
     }
 
     private func centerCanvas(on worldPoint: CGPoint) {
-        canvasPan = CGSize(
-            width: viewportCenter.x - worldPoint.x * canvasScale,
-            height: viewportCenter.y - worldPoint.y * canvasScale
-        )
+        canvasState = canvasState.centered(on: worldPoint)
+        schedulePersistStateIfConfigured()
+    }
+
+    private func resetCanvasViewport() {
+        canvasState = canvasState.reset()
     }
 
     private func nodeFrame(_ node: TerminalNode) -> CGRect {
@@ -792,24 +882,28 @@ public struct HudVantageSurface: View {
     }
 
     private var navigationNodes: [TerminalNode] {
+        let filteredNodes: [TerminalNode]
         switch navigationFilter {
         case .all:
-            nodes
+            filteredNodes = nodes
         case .selected:
-            nodes.filter { selectedIDs.contains($0.id) }
+            filteredNodes = nodes.filter { selectedIDs.contains($0.id) }
         case .live:
-            nodes.filter { rendersLiveSurface(for: $0) }
+            filteredNodes = nodes.filter { rendersLiveSurface(for: $0) }
         }
+
+        guard let navigationTagFilter else { return filteredNodes }
+        return filteredNodes.filter { $0.tag == navigationTagFilter }
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
-        guard canvasScale >= 0.25 else { return false }
+        guard canvasState.scale >= 0.25 else { return false }
 
         if nodes.count <= 24 {
             return true
         }
 
-        return canvasScale >= 0.58
+        return canvasState.scale >= 0.58
             && selectedIDs.count == 1
             && selectedIDs.contains(node.id)
     }
@@ -821,12 +915,14 @@ public struct HudVantageSurface: View {
                     node: node,
                     isSelected: selectedIDs.contains(node.id),
                     rendersLiveSurface: rendersLiveSurface(for: node),
-                    canvasPan: canvasPan,
-                    canvasScale: canvasScale,
+                    canvasPan: canvasState.pan,
+                    canvasScale: canvasState.scale,
                     onSelect: { selectNode(node.id) },
+                    onDragBegin: { beginDraggingNode(node.id) },
                     onClose: { close(node.id) },
                     onMove: { delta in move(node.id, delta: worldDelta(delta)) },
-                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) }
+                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) },
+                    onTransformEnd: finishNodeTransform
                 )
             }
         }
@@ -834,6 +930,7 @@ public struct HudVantageSurface: View {
         .contentShape(Rectangle())
         .onTapGesture {
             selectedIDs.removeAll()
+            schedulePersistStateIfConfigured()
         }
     }
 
@@ -879,6 +976,12 @@ public struct HudVantageSurface: View {
                 Text("·")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.dim)
+                Text(controlPerfLabel)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                Text("·")
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text(controlStatus.uppercased())
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -887,12 +990,20 @@ public struct HudVantageSurface: View {
             .padding(.horizontal, HudSpacing.xxl)
 
             ViewportStatusChip(
-                rect: viewportWorldRect,
-                scale: canvasScale,
-                tool: canvasTool
+                rect: canvasState.visibleWorldRect,
+                scale: canvasState.scale,
+                tool: effectiveCanvasTool
             )
         }
         .frame(height: HudLayout.statusBarHeight)
+    }
+
+    private var controlPerfLabel: String {
+        guard let action = lastControlAction, let duration = lastControlDurationMS else {
+            return "api idle"
+        }
+
+        return "\(action) \(String(format: "%.1f", duration))ms"
     }
 
     private func spawnTerminal() {
@@ -913,8 +1024,28 @@ public struct HudVantageSurface: View {
 
     private func startControlAPI() {
         controlAPI.start { command in
-            let response = handleControlCommand(command)
+            let span = hudVantagePerfTrace.beginSpan(
+                "control.command",
+                metadata: ["action": command.normalizedAction]
+            )
+            let startedAt = CFAbsoluteTimeGetCurrent()
+            var response = handleControlCommand(command)
+            let duration = (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            controlCommandCount += 1
+            lastControlAction = command.normalizedAction
+            lastControlDurationMS = duration
+            perfTracker.increment("control.command")
+            perfTracker.increment("control.action.\(command.normalizedAction)")
+            perfTracker.recordTiming("control.\(command.normalizedAction)", durationMS: duration)
+            response.durationMS = duration
+            if response.metrics == nil, command.includeMetrics != false {
+                response.metrics = controlMetrics()
+            }
+            if response.viewport == nil, command.includeViewport != false {
+                response.viewport = controlViewport()
+            }
             controlStatus = response.message
+            span.end(response.ok ? "ok" : "error")
             return response
         }
     }
@@ -1008,18 +1139,49 @@ public struct HudVantageSurface: View {
         switch command.normalizedAction {
         case "tile", "grid":
             return tileTerminals(command)
-        case "spawn", "new":
+        case "spawn", "new", "create":
             return spawnTerminals(command)
         case "reattach", "attach", "tmux":
             return reattachTmuxTargets(command)
+        case "select":
+            return selectNodes(command)
+        case "inspect", "node":
+            return inspectNodes(command)
+        case "focus", "center", "reveal":
+            return focusNodes(command)
+        case "close", "remove":
+            return closeNodes(command)
+        case "metrics", "perf":
+            return controlResponse(
+                command,
+                ok: true,
+                message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
+            )
+        case "viewport", "view":
+            return applyViewportCommand(command)
+        case "perf-reset", "reset-metrics":
+            controlCommandCount = 0
+            lastControlAction = nil
+            lastControlDurationMS = nil
+            perfTracker.reset()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "perf counters reset"
+            )
         case "ensure-tmux", "ensuretmux", "tmux-ensure", "install-tmux", "installtmux", "tmux-install":
             return requestTmuxInstall(command)
+        case "perf-harness", "perfharness", "harness", "stress":
+            return runPerfHarness(command)
+        case "perf-cleanup", "perfcleanup", "harness-cleanup", "stress-cleanup":
+            return cleanupPerfHarness(command)
         case "save", "snapshot":
             return saveWorkspaceState(command)
         case "restore", "load":
             return restoreWorkspaceState(command)
         case "clear":
             stopAllNodes()
+            schedulePersistStateIfConfigured()
             return controlResponse(
                 command,
                 ok: true,
@@ -1070,7 +1232,7 @@ public struct HudVantageSurface: View {
         if shouldReset {
             nextIndex = 1
             nextZIndex = 1
-            canvasPan = .zero
+            resetCanvasViewport()
         }
 
         let size = CGSize(
@@ -1122,6 +1284,7 @@ public struct HudVantageSurface: View {
         }
         selectedIDs.removeAll()
         fitCanvasToViewport()
+        schedulePersistStateIfConfigured()
 
         return controlResponse(
             command,
@@ -1168,10 +1331,12 @@ public struct HudVantageSurface: View {
     private func reattachTmuxTargets(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("tmux.reattach")
         let specs: [TmuxReattachSpec]
         do {
             specs = try tmuxReattachSpecs(from: command)
         } catch {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1180,6 +1345,7 @@ public struct HudVantageSurface: View {
         }
 
         guard !specs.isEmpty else {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1188,6 +1354,7 @@ public struct HudVantageSurface: View {
         }
 
         if specs.allSatisfy({ $0.remoteHost == nil }), TerminalNode.localTmuxURL == nil {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1205,6 +1372,7 @@ public struct HudVantageSurface: View {
             }
             return !TerminalNode.localTmuxTargetExists(spec.target)
         }) {
+            span.end("error")
             return controlResponse(
                 command,
                 ok: false,
@@ -1273,11 +1441,295 @@ public struct HudVantageSurface: View {
         fitCanvasToViewport()
         persistStateIfConfigured()
 
+        span.end()
         return controlResponse(
             command,
             ok: true,
             message: "reattached \(count) tmux target\(count == 1 ? "" : "s")"
         )
+    }
+
+    private func runPerfHarness(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("perf.harness")
+        guard TerminalNode.localTmuxURL != nil else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux executable not found; run ensure-tmux first"
+            )
+        }
+
+        let total = clamp(
+            command.count ?? Self.defaultPerfHarnessCount,
+            lower: 1,
+            upper: Self.largeTileLimit
+        )
+        let activeCount = clamp(command.activeCount ?? total / 2, lower: 0, upper: total)
+        let mode = command.harnessMode?
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() ?? "tail"
+        let rateMS = max(50.0, command.rateMS ?? Self.defaultPerfHarnessRateMS)
+        let prefix = perfHarnessName(from: command.prefix)
+        let rootURL = URL(fileURLWithPath: "/tmp/hudson-vantage-perf-\(prefix)", isDirectory: true)
+        let shouldReset = command.reset ?? true
+
+        guard mode == "tail" || mode == "idle" else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "unsupported perf harness mode \(mode)"
+            )
+        }
+
+        let startedAt = CFAbsoluteTimeGetCurrent()
+        do {
+            try FileManager.default.createDirectory(
+                at: rootURL,
+                withIntermediateDirectories: true
+            )
+            let sessions = try preparePerfHarnessSessions(
+                prefix: prefix,
+                count: total,
+                activeCount: activeCount,
+                mode: mode,
+                rateMS: rateMS,
+                rootURL: rootURL,
+                reset: shouldReset
+            )
+            perfHarnessPrefix = prefix
+            perfTracker.increment("perfHarness.run")
+            perfTracker.set("perfHarness.sessions", to: total)
+            perfTracker.set("perfHarness.activeSessions", to: activeCount)
+            perfTracker.recordTiming(
+                "perfHarness.prepare",
+                durationMS: (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            )
+
+            let attachCommand = HudVantageControlCommand(
+                apiVersion: command.resolvedAPIVersion,
+                kind: command.kind,
+                id: command.id,
+                action: "reattach",
+                columns: command.columns ?? Int(ceil(sqrt(Double(total)))),
+                originX: command.originX,
+                originY: command.originY,
+                width: command.width ?? 300,
+                height: command.height ?? 200,
+                gap: command.gap ?? 18,
+                reset: shouldReset,
+                includeChildren: command.includeChildren,
+                sessions: sessions,
+                createIfMissing: false,
+                includeNodes: command.includeNodes,
+                includeMetrics: command.includeMetrics,
+                includeViewport: command.includeViewport
+            )
+            let attachResponse = reattachTmuxTargets(attachCommand)
+            guard attachResponse.ok else {
+                span.end("error")
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: attachResponse.message
+                )
+            }
+
+            span.end()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "perf harness \(prefix): \(total) sessions, \(activeCount) active \(mode)"
+            )
+        } catch {
+            span.end("error")
+            perfTracker.increment("perfHarness.error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func cleanupPerfHarness(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        let span = hudVantagePerfTrace.beginSpan("perf.cleanup")
+        guard TerminalNode.localTmuxURL != nil else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "tmux executable not found"
+            )
+        }
+
+        guard let prefix = command.prefix.map({ perfHarnessName(from: $0) }) ?? perfHarnessPrefix else {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: "perf cleanup requires a prefix"
+            )
+        }
+
+        do {
+            let tmuxSessions = try tmuxHarnessSessions(matching: prefix)
+            for session in tmuxSessions {
+                _ = try runTmuxHarnessCommand(["kill-session", "-t", session], ignoreFailure: true)
+            }
+
+            let targetPrefix = "\(prefix)-"
+            let idsToRemove = Set(
+                nodes.compactMap { node -> UUID? in
+                    guard case .tmux(let target, _, nil) = node.runtimeIdentity,
+                          target.hasPrefix(targetPrefix)
+                    else { return nil }
+                    return node.id
+                }
+            )
+            for node in nodes where idsToRemove.contains(node.id) {
+                node.stop()
+            }
+            nodes.removeAll { idsToRemove.contains($0.id) }
+            selectedIDs.subtract(idsToRemove)
+            if perfHarnessPrefix == prefix {
+                perfHarnessPrefix = nil
+            }
+            schedulePersistStateIfConfigured()
+            perfTracker.increment("perfHarness.cleanup")
+            perfTracker.set("perfHarness.cleanedSessions", to: tmuxSessions.count)
+            span.end()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "cleaned \(tmuxSessions.count) perf harness sessions for \(prefix)"
+            )
+        } catch {
+            span.end("error")
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription
+            )
+        }
+    }
+
+    private func preparePerfHarnessSessions(
+        prefix: String,
+        count: Int,
+        activeCount: Int,
+        mode: String,
+        rateMS: Double,
+        rootURL: URL,
+        reset: Bool
+    ) throws -> [String] {
+        var sessions: [String] = []
+        sessions.reserveCapacity(count)
+        let rateSeconds = String(format: "%.3f", rateMS / 1_000)
+
+        for index in 1...count {
+            let session = try TmuxTarget.validatedName(
+                "\(prefix)-\(String(format: "%02d", index))",
+                field: "session"
+            )
+            sessions.append(session)
+
+            if reset {
+                _ = try runTmuxHarnessCommand(["kill-session", "-t", session], ignoreFailure: true)
+            }
+
+            if mode == "tail", isPerfHarnessSessionActive(index: index, total: count, activeCount: activeCount) {
+                let logURL = rootURL.appendingPathComponent("\(session).log")
+                FileManager.default.createFile(atPath: logURL.path, contents: Data())
+                let quotedLogPath = shellQuoted(logURL.path)
+                let script = "i=0; while :; do printf '%s hudson-vantage \(session) line %05d\\n' \"$(date +%H:%M:%S)\" \"$i\" >> \(quotedLogPath); i=$((i+1)); sleep \(rateSeconds); done & tail -n 50 -f \(quotedLogPath)"
+                _ = try runTmuxHarnessCommand([
+                    "new-session",
+                    "-d",
+                    "-s",
+                    session,
+                    "sh -lc \(shellQuoted(script))",
+                ])
+            } else {
+                _ = try runTmuxHarnessCommand(["new-session", "-d", "-s", session])
+            }
+        }
+
+        return sessions
+    }
+
+    private func isPerfHarnessSessionActive(index: Int, total: Int, activeCount: Int) -> Bool {
+        guard activeCount > 0, total > 0 else { return false }
+        return (index * activeCount / total) != ((index - 1) * activeCount / total)
+    }
+
+    private func perfHarnessName(from proposedPrefix: String?) -> String {
+        let fallback = "hudson-perf-\(Int(Date().timeIntervalSince1970))"
+        guard let proposedPrefix,
+              !proposedPrefix.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
+        else {
+            return fallback
+        }
+        return GraphitePath.slugify(proposedPrefix, fallback: fallback)
+    }
+
+    private func tmuxHarnessSessions(matching prefix: String) throws -> [String] {
+        let output = try runTmuxHarnessCommand(
+            ["list-sessions", "-F", "#S"],
+            allowNoServer: true
+        )
+        let sessionPrefix = "\(prefix)-"
+        return output
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .map(String.init)
+            .filter { $0.hasPrefix(sessionPrefix) }
+    }
+
+    private func runTmuxHarnessCommand(
+        _ arguments: [String],
+        ignoreFailure: Bool = false,
+        allowNoServer: Bool = false
+    ) throws -> String {
+        guard let tmuxURL = TerminalNode.localTmuxURL else {
+            throw TmuxRuntimeError.tmuxMissing
+        }
+
+        let process = Process()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        process.executableURL = tmuxURL
+        process.arguments = arguments
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        try process.run()
+        process.waitUntilExit()
+
+        let stdout = String(
+            data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+        let stderr = String(
+            data: stderrPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+
+        if process.terminationStatus != 0 {
+            if ignoreFailure || (allowNoServer && stderr.localizedCaseInsensitiveContains("no server running")) {
+                return stdout
+            }
+            throw TmuxRuntimeError.commandFailed(status: process.terminationStatus, stderr: stderr)
+        }
+
+        return stdout
+    }
+
+    private func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
     }
 
     private func tmuxReattachSpecs(
@@ -1351,11 +1803,225 @@ public struct HudVantageSurface: View {
 
         let disallowed = CharacterSet.whitespacesAndNewlines
             .union(CharacterSet(charactersIn: ";'\"`$\\"))
-        guard candidate.rangeOfCharacter(from: disallowed) == nil else {
+        guard candidate.rangeOfCharacter(from: disallowed) == nil,
+              !candidate.hasPrefix("-")
+        else {
             throw TmuxTargetError.invalidField(field: "remoteHost", value: value)
         }
 
         return candidate
+    }
+
+    private func selectNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        if command.normalizedSelectionMode == "clear" {
+            selectedIDs.removeAll()
+            schedulePersistStateIfConfigured()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "selection cleared"
+            )
+        }
+
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: false)
+            selectedIDs = HudVantageSelectionState(ids: selectedIDs)
+                .applying(
+                    Set(resolved.map(\.id)),
+                    mode: HudVantageSelectionMode(normalized: command.normalizedSelectionMode)
+                )
+                .ids
+            if let first = resolved.first {
+                bringToFront(first.id)
+            }
+            schedulePersistStateIfConfigured()
+            return controlResponse(
+                command,
+                ok: true,
+                message: "selected \(selectedIDs.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func inspectNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "inspected \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func focusNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            guard let focusRect = boundingRect(for: resolved) else {
+                throw HudVantageControlNodeError.emptySelection
+            }
+            selectedIDs = Set(resolved.map(\.id))
+            centerCanvas(on: CGPoint(x: focusRect.midX, y: focusRect.midY))
+            if let first = resolved.first {
+                bringToFront(first.id)
+            }
+            return controlResponse(
+                command,
+                ok: true,
+                message: "focused \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func applyViewportCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        if command.reset == true {
+            resetCanvasViewport()
+        }
+        if command.fit == true {
+            fitCanvasToViewport()
+        }
+        if command.panX != nil || command.panY != nil || command.scale != nil {
+            canvasState = canvasState.replaying(
+                panX: command.panX.map { CGFloat($0) },
+                panY: command.panY.map { CGFloat($0) },
+                scale: command.scale.map { CGFloat($0) }
+            )
+        }
+        schedulePersistStateIfConfigured()
+
+        return controlResponse(
+            command,
+            ok: true,
+            message: "viewport updated"
+        )
+    }
+
+    private func closeNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            let ids = Set(resolved.map(\.id))
+            for node in nodes where ids.contains(node.id) {
+                node.stop()
+            }
+            nodes.removeAll { ids.contains($0.id) }
+            selectedIDs.subtract(ids)
+            persistStateIfConfigured()
+
+            return controlResponse(
+                command,
+                ok: true,
+                message: "closed \(resolved.count)"
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func controlNodeErrorResponse(
+        _ command: HudVantageControlCommand,
+        _ error: Error
+    ) -> HudVantageControlResponse {
+        let nodeError = error as? HudVantageControlNodeError
+        return controlResponse(
+            command,
+            ok: false,
+            message: error.localizedDescription,
+            errorCode: nodeError?.errorCode ?? "node_error"
+        )
+    }
+
+    private func resolveNodes(
+        from command: HudVantageControlCommand,
+        allowSelectionFallback: Bool
+    ) throws -> [TerminalNode] {
+        let selectors = nodeSelectors(from: command)
+        if selectors.isEmpty {
+            if allowSelectionFallback {
+                let selected = nodes.filter { selectedIDs.contains($0.id) }
+                guard !selected.isEmpty else {
+                    throw HudVantageControlNodeError.emptySelection
+                }
+                return selected
+            }
+            throw HudVantageControlNodeError.missingSelector
+        }
+
+        var resolved: [TerminalNode] = []
+        var seen: Set<UUID> = []
+        for selector in selectors {
+            let matches = nodes(matching: selector)
+            guard !matches.isEmpty else {
+                throw HudVantageControlNodeError.notFound(selector)
+            }
+            guard matches.count == 1 else {
+                throw HudVantageControlNodeError.ambiguous(selector)
+            }
+            let node = matches[0]
+            if !seen.contains(node.id) {
+                resolved.append(node)
+                seen.insert(node.id)
+            }
+        }
+        return resolved
+    }
+
+    private func nodeSelectors(from command: HudVantageControlCommand) -> [String] {
+        var selectors: [String] = []
+        if let nodeID = command.nodeID {
+            selectors.append(nodeID)
+        }
+        selectors.append(contentsOf: command.nodeIDs ?? [])
+        selectors.append(contentsOf: command.ids ?? [])
+        return selectors
+            .map { $0.trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty }
+    }
+
+    private func nodes(matching selector: String) -> [TerminalNode] {
+        let normalized = selector.lowercased()
+        return nodes.filter { node in
+            let uuid = node.id.uuidString.lowercased()
+            if uuid == normalized || uuid.hasPrefix(normalized) {
+                return true
+            }
+            if node.title.lowercased() == normalized {
+                return true
+            }
+            switch node.runtimeIdentity {
+            case .localPTY:
+                return false
+            case .tmux(let target, let path, let remoteHost):
+                return target.lowercased() == normalized
+                    || path?.description.lowercased() == normalized
+                    || remoteHost.map { "\($0):\(target)".lowercased() == normalized } == true
+            }
+        }
+    }
+
+    private func boundingRect(for nodes: [TerminalNode]) -> CGRect? {
+        guard let first = nodes.first else { return nil }
+        return nodes.dropFirst().reduce(nodeFrame(first)) { rect, node in
+            rect.union(nodeFrame(node))
+        }
     }
 
     private func requestTmuxInstall(
@@ -1516,9 +2182,12 @@ public struct HudVantageSurface: View {
             let restoredIDs = Set(restored.map(\.id))
             let savedSelection = Set(snapshot.selectedNodeIDs).intersection(restoredIDs)
             selectedIDs = savedSelection.isEmpty ? restoredIDs : savedSelection
-            canvasPan = CGSize(width: snapshot.viewport.panX, height: snapshot.viewport.panY)
-            canvasScale = clampedScale(CGFloat(snapshot.viewport.scale))
-            zoomStart = canvasScale
+            canvasState = canvasState.replaying(
+                panX: CGFloat(snapshot.viewport.panX),
+                panY: CGFloat(snapshot.viewport.panY),
+                scale: CGFloat(snapshot.viewport.scale)
+            )
+            applyLayoutSnapshot(snapshot.layout)
             nextZIndex = (nodes.map(\.zIndex).max() ?? 0) + 1
 
             return controlResponse(
@@ -1537,8 +2206,40 @@ public struct HudVantageSurface: View {
 
     private func persistStateIfConfigured() {
         guard configuration.restoresStateOnLaunch else { return }
+        let span = hudVantagePerfTrace.beginSpan("state.persist")
+        let startedAt = CFAbsoluteTimeGetCurrent()
         let snapshot = workspaceSnapshot(workspaceID: configuration.workspaceID)
-        try? writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
+        do {
+            try writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
+            perfTracker.increment("state.persist.write")
+            span.end()
+        } catch {
+            perfTracker.increment("state.persist.error")
+            span.end("error")
+        }
+        perfTracker.recordTiming(
+            "state.persist",
+            durationMS: (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+        )
+    }
+
+    private func schedulePersistStateIfConfigured() {
+        guard configuration.restoresStateOnLaunch else { return }
+        perfTracker.increment("state.persist.request")
+        guard pendingPersistTask == nil else {
+            perfTracker.increment("state.persist.coalesced")
+            return
+        }
+        perfTracker.increment("state.persist.scheduled")
+        pendingPersistTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 350_000_000)
+            guard !Task.isCancelled else {
+                pendingPersistTask = nil
+                return
+            }
+            persistStateIfConfigured()
+            pendingPersistTask = nil
+        }
     }
 
     private func workspaceSnapshot(workspaceID: String) -> HudVantageWorkspaceSnapshot {
@@ -1549,13 +2250,44 @@ public struct HudVantageSurface: View {
             workspaceID: GraphitePath.slugify(workspaceID, fallback: configuration.workspaceID),
             surfaceTitle: configuration.surfaceTitle,
             viewport: HudVantageViewportSnapshot(
-                panX: Double(canvasPan.width),
-                panY: Double(canvasPan.height),
-                scale: Double(canvasScale)
+                panX: Double(canvasState.pan.width),
+                panY: Double(canvasState.pan.height),
+                scale: Double(canvasState.scale)
+            ),
+            layout: HudVantageSurfaceLayoutSnapshot(
+                canvasTool: canvasTool.rawValue,
+                navigationFilter: navigationFilter.rawValue,
+                navigationTagFilter: navigationTagFilter?.rawValue,
+                navigationCollapsed: navigationCollapsed,
+                navigationWidth: Double(navigationWidth),
+                inspectorCollapsed: inspectorCollapsed,
+                inspectorWidth: Double(inspectorWidth)
             ),
             nodes: durableNodes,
             selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
         )
+    }
+
+    private func applyLayoutSnapshot(_ layout: HudVantageSurfaceLayoutSnapshot?) {
+        guard let layout else { return }
+
+        if let restoredTool = CanvasTool(rawValue: layout.canvasTool) {
+            canvasTool = restoredTool
+        }
+
+        if let restoredFilter = CanvasNavigationFilter(rawValue: layout.navigationFilter) {
+            navigationFilter = restoredFilter
+        }
+        navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
+
+        navigationCollapsed = layout.navigationCollapsed
+        inspectorCollapsed = layout.inspectorCollapsed
+        navigationWidth = clamped(CGFloat(layout.navigationWidth), to: 210...360)
+        inspectorWidth = clamped(CGFloat(layout.inspectorWidth), to: 250...440)
+    }
+
+    private func clamped(_ value: CGFloat, to range: ClosedRange<CGFloat>) -> CGFloat {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 
     private func durableSnapshot(for node: TerminalNode) -> HudVantageNodeSnapshot? {
@@ -1573,6 +2305,7 @@ public struct HudVantageSurface: View {
             width: Double(node.size.width),
             height: Double(node.size.height),
             zIndex: node.zIndex,
+            tag: node.tag?.rawValue,
             runtime: HudVantageRuntimeReference(
                 kind: "tmux",
                 target: target,
@@ -1588,26 +2321,32 @@ public struct HudVantageSurface: View {
             return HudVantageControlNode(
                 id: node.id,
                 title: node.title,
+                subtitle: node.subtitle,
                 runtimeKind: "local-pty",
+                selected: selectedIDs.contains(node.id),
                 x: Double(node.origin.x),
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
                 height: Double(node.size.height),
-                zIndex: node.zIndex
+                zIndex: node.zIndex,
+                tag: node.tag?.rawValue
             )
         case .tmux(let target, let path, let remoteHost):
             return HudVantageControlNode(
                 id: node.id,
                 title: node.title,
+                subtitle: node.subtitle,
                 runtimeKind: "tmux",
                 target: target,
                 graphitePath: path?.description,
                 remoteHost: remoteHost,
+                selected: selectedIDs.contains(node.id),
                 x: Double(node.origin.x),
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
                 height: Double(node.size.height),
-                zIndex: node.zIndex
+                zIndex: node.zIndex,
+                tag: node.tag?.rawValue
             )
         }
     }
@@ -1659,7 +2398,8 @@ public struct HudVantageSurface: View {
                 target: target,
                 path: path,
                 remoteHost: remoteHost
-            )
+            ),
+            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:))
         )
     }
 
@@ -1708,7 +2448,33 @@ public struct HudVantageSurface: View {
     }
 
     private func selectNode(_ id: UUID) {
-        selectedIDs = [id]
+        selectedIDs = HudVantageSelectionState(ids: selectedIDs)
+            .applying([id], mode: pointerSelectionMode())
+            .ids
+        if selectedIDs.contains(id) {
+            bringToFront(id)
+        }
+        schedulePersistStateIfConfigured()
+    }
+
+    private func centerNode(_ id: UUID) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
+    }
+
+    private func tagSelection(as tag: CanvasTag?) {
+        guard !selectedIDs.isEmpty else { return }
+        nodes
+            .filter { selectedIDs.contains($0.id) }
+            .forEach { $0.tag = tag }
+        schedulePersistStateIfConfigured()
+    }
+
+    private func beginDraggingNode(_ id: UUID) {
+        perfTracker.increment("node.drag.begin")
+        if !selectedIDs.contains(id) {
+            selectedIDs = [id]
+        }
         bringToFront(id)
     }
 
@@ -1726,6 +2492,7 @@ public struct HudVantageSurface: View {
     }
 
     private func move(_ id: UUID, delta: CGSize) {
+        perfTracker.increment("node.move.delta")
         let idsToMove = selectedIDs.contains(id) && selectedIDs.count > 1
             ? selectedIDs
             : Set([id])
@@ -1736,14 +2503,20 @@ public struct HudVantageSurface: View {
     }
 
     private func resize(_ id: UUID, delta: CGSize) {
+        perfTracker.increment("node.resize.delta")
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         node.resize(by: delta)
     }
 
+    private func finishNodeTransform() {
+        perfTracker.increment("node.transform.end")
+        schedulePersistStateIfConfigured()
+    }
+
     private func worldDelta(_ screenDelta: CGSize) -> CGSize {
         CGSize(
-            width: screenDelta.width / canvasScale,
-            height: screenDelta.height / canvasScale
+            width: screenDelta.width / canvasState.scale,
+            height: screenDelta.height / canvasState.scale
         )
     }
 
@@ -1776,32 +2549,39 @@ public struct HudVantageSurface: View {
 
         nodes = [first, second]
         selectedIDs = [second.id]
-        canvasScale = 1
-        zoomStart = 1
-        canvasPan = .zero
+        resetCanvasViewport()
+        schedulePersistStateIfConfigured()
     }
 
     private func stopAllNodes() {
         nodes.forEach { $0.stop() }
         nodes.removeAll(keepingCapacity: true)
         selectedIDs.removeAll()
-        canvasPan = .zero
+        resetCanvasViewport()
     }
 
     private func controlResponse(
         _ command: HudVantageControlCommand,
         ok: Bool,
         message: String,
-        requiresPermission: Bool? = nil
+        errorCode: String? = nil,
+        requiresPermission: Bool? = nil,
+        nodesOverride: [TerminalNode]? = nil
     ) -> HudVantageControlResponse {
-        HudVantageControlResponse(
+        let responseNodes = nodesOverride ?? nodes
+        return HudVantageControlResponse(
+            apiVersion: command.resolvedAPIVersion,
             id: command.id,
             action: command.normalizedAction,
             ok: ok,
             message: message,
+            errorCode: errorCode,
             workspaceID: command.workspaceID ?? configuration.workspaceID,
             nodeCount: nodes.count,
-            nodes: nodes.map(controlNodeSummary),
+            nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
+            selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
+            viewport: command.includeViewport == false ? nil : controlViewport(),
+            metrics: command.includeMetrics == false ? nil : controlMetrics(),
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,
@@ -1811,6 +2591,63 @@ public struct HudVantageSurface: View {
             tmuxInstallInProgress: tmuxInstallInProgress,
             requiresPermission: requiresPermission,
             installerCommand: TmuxToolchain.homebrewInstallCommandDescription
+        )
+    }
+
+    private func controlViewport() -> HudVantageControlViewport {
+        let worldRect = canvasState.visibleWorldRect
+        return HudVantageControlViewport(
+            panX: Double(canvasState.pan.width),
+            panY: Double(canvasState.pan.height),
+            scale: Double(canvasState.scale),
+            viewportWidth: Double(canvasState.viewportSize.width),
+            viewportHeight: Double(canvasState.viewportSize.height),
+            worldMinX: Double(worldRect.minX),
+            worldMinY: Double(worldRect.minY),
+            worldWidth: Double(worldRect.width),
+            worldHeight: Double(worldRect.height)
+        )
+    }
+
+    private func controlMetrics() -> HudVantageControlMetrics {
+        let localPTYCount = nodes.filter { node in
+            if case .localPTY = node.runtimeIdentity { return true }
+            return false
+        }.count
+        let tmuxNodes = nodes.filter { node in
+            if case .tmux = node.runtimeIdentity { return true }
+            return false
+        }
+        let remoteTmuxCount = tmuxNodes.filter { node in
+            if case .tmux(_, _, let remoteHost) = node.runtimeIdentity {
+                return remoteHost != nil
+            }
+            return false
+        }.count
+        let liveSurfaceCount = nodes.filter { rendersLiveSurface(for: $0) }.count
+        let virtualizedSurfaceCount = max(0, nodes.count - liveSurfaceCount)
+
+        perfTracker.set("surface.nodeCount", to: nodes.count)
+        perfTracker.set("surface.selectedCount", to: selectedIDs.count)
+        perfTracker.set("surface.localPTYCount", to: localPTYCount)
+        perfTracker.set("surface.tmuxCount", to: tmuxNodes.count)
+        perfTracker.set("surface.remoteTmuxCount", to: remoteTmuxCount)
+        perfTracker.set("surface.liveSurfaceCount", to: liveSurfaceCount)
+        perfTracker.set("surface.virtualizedSurfaceCount", to: virtualizedSurfaceCount)
+
+        return HudVantageControlMetrics(
+            nodeCount: nodes.count,
+            selectedCount: selectedIDs.count,
+            localPTYCount: localPTYCount,
+            tmuxCount: tmuxNodes.count,
+            remoteTmuxCount: remoteTmuxCount,
+            liveSurfaceCount: liveSurfaceCount,
+            controlCommandCount: controlCommandCount,
+            lastCommandAction: lastControlAction,
+            lastCommandDurationMS: lastControlDurationMS,
+            perf: perfTracker.snapshot(),
+            minScale: Double(Self.minimumCanvasScale),
+            maxScale: Double(Self.maximumCanvasScale)
         )
     }
 
@@ -1854,14 +2691,29 @@ public struct HudVantageSurface: View {
         min(max(value, lower), upper)
     }
 
-    private var canvasContentSize: CGSize {
-        let maxX = nodes.reduce(CGFloat(920)) { partial, node in
-            max(partial, node.origin.x + node.size.width + 96)
+    private func pointerSelectionMode() -> HudVantageSelectionMode {
+        let flags = NSEvent.modifierFlags
+        if flags.contains(.command) {
+            return .toggle
         }
-        let maxY = nodes.reduce(CGFloat(560)) { partial, node in
-            max(partial, node.origin.y + node.size.height + 96)
+        if flags.contains(.option) {
+            return .subtract
         }
-        return CGSize(width: maxX, height: maxY)
+        if flags.contains(.shift) {
+            return .add
+        }
+        return .replace
+    }
+
+    private var canvasWorldBounds: CGRect {
+        guard let first = nodes.first else {
+            return CGRect(x: 0, y: 0, width: 920, height: 560)
+        }
+
+        let bounds = nodes.dropFirst().reduce(nodeFrame(first)) { rect, node in
+            rect.union(nodeFrame(node))
+        }
+        return bounds.insetBy(dx: -96, dy: -96)
     }
 }
 
@@ -1872,9 +2724,11 @@ private struct TerminalNodeView: View {
     let canvasPan: CGSize
     let canvasScale: CGFloat
     let onSelect: () -> Void
+    let onDragBegin: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
     let onResize: (CGSize) -> Void
+    let onTransformEnd: () -> Void
 
     @Environment(\.hudTheme) private var theme
     @State private var isDragging = false
@@ -2009,7 +2863,7 @@ private struct TerminalNodeView: View {
                 if !isDragging {
                     isDragging = true
                     lastDragTranslation = .zero
-                    onSelect()
+                    onDragBegin()
                 }
 
                 let delta = CGSize(
@@ -2022,6 +2876,7 @@ private struct TerminalNodeView: View {
             .onEnded { _ in
                 isDragging = false
                 lastDragTranslation = .zero
+                onTransformEnd()
             }
     }
 
@@ -2053,6 +2908,7 @@ private struct TerminalNodeView: View {
                     .onEnded { _ in
                         isResizing = false
                         lastResizeTranslation = .zero
+                        onTransformEnd()
                     }
             )
     }
@@ -2287,13 +3143,14 @@ private struct CanvasNavigationPanel: View {
     let totalCount: Int
     let selectedCount: Int
     @Binding var filter: CanvasNavigationFilter
+    @Binding var tagFilter: CanvasTag?
     let selectedIDs: Set<UUID>
     let viewportWorldRect: CGRect
-    let canvasContentSize: CGSize
-    let canvasPan: CGSize
+    let canvasWorldBounds: CGRect
     let canvasScale: CGFloat
-    let viewportSize: CGSize
     let onSelectNode: (UUID) -> Void
+    let onCenterNode: (UUID) -> Void
+    let onTagSelection: (CanvasTag?) -> Void
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
     let onCollapse: () -> Void
@@ -2315,7 +3172,8 @@ private struct CanvasNavigationPanel: View {
                             CanvasNavigationRow(
                                 node: node,
                                 isSelected: selectedIDs.contains(node.id),
-                                action: { onSelectNode(node.id) }
+                                onSelect: { onSelectNode(node.id) },
+                                onCenter: { onCenterNode(node.id) }
                             )
                         }
 
@@ -2386,10 +3244,60 @@ private struct CanvasNavigationPanel: View {
                 }
             }
 
+            tagFilterControls
+
             Text("\(selectedCount) selected")
                 .font(HudFont.mono(10))
                 .foregroundStyle(theme.palette.muted)
+
+            if selectedCount > 0 {
+                selectionTagTools
+            }
         }
+    }
+
+    private var tagFilterControls: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HudSectionLabel("Tags")
+            HStack(spacing: HudSpacing.sm) {
+                CanvasTagFilterButton(
+                    tag: nil,
+                    isActive: tagFilter == nil,
+                    count: totalCount,
+                    action: { tagFilter = nil }
+                )
+                ForEach(CanvasTag.allCases) { tag in
+                    CanvasTagFilterButton(
+                        tag: tag,
+                        isActive: tagFilter == tag,
+                        count: tagCount(for: tag),
+                        action: { tagFilter = tag }
+                    )
+                }
+            }
+        }
+    }
+
+    private var selectionTagTools: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HudSectionLabel("Tag Selection")
+            HStack(spacing: HudSpacing.sm) {
+                CanvasTagActionButton(
+                    tag: nil,
+                    action: { onTagSelection(nil) }
+                )
+                ForEach(CanvasTag.allCases) { tag in
+                    CanvasTagActionButton(
+                        tag: tag,
+                        action: { onTagSelection(tag) }
+                    )
+                }
+            }
+        }
+    }
+
+    private func tagCount(for tag: CanvasTag) -> Int {
+        minimapNodes.filter { $0.tag == tag }.count
     }
 
     private var footer: some View {
@@ -2410,7 +3318,7 @@ private struct CanvasNavigationPanel: View {
             CanvasMiniMap(
                 nodes: minimapNodes,
                 selectedIDs: selectedIDs,
-                worldSize: canvasContentSize,
+                worldBounds: canvasWorldBounds,
                 viewportWorldRect: viewportWorldRect,
                 onCenterWorldPoint: onCenterWorldPoint
             )
@@ -2422,36 +3330,153 @@ private struct CanvasNavigationPanel: View {
 private struct CanvasNavigationRow: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
+    let onSelect: () -> Void
+    let onCenter: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.sm) {
+            Button(action: onSelect) {
+                HStack(spacing: HudSpacing.md) {
+                    HudStatusDot(color: node.tint.color, size: 6)
+                    Text(node.title)
+                        .font(HudFont.mono(11, weight: .semibold))
+                        .foregroundStyle(theme.palette.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: HudSpacing.sm)
+                    if let tag = node.tag {
+                        CanvasTagPill(tag: tag)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            CanvasIconButton(
+                systemName: "scope",
+                help: "Center terminal",
+                action: onCenter
+            )
+        }
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
+        )
+    }
+}
+
+private struct CanvasTagPill: View {
+    let tag: CanvasTag
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Text(tag.label.uppercased())
+            .font(HudFont.mono(8, weight: .bold))
+            .foregroundStyle(tag.tint(in: theme))
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudIconSize.micro)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.tight)
+                    .fill(HudSurface.tintFill(tag.tint(in: theme)))
+            )
+    }
+}
+
+private struct CanvasTagFilterButton: View {
+    let tag: CanvasTag?
+    let isActive: Bool
+    let count: Int
     let action: () -> Void
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: HudSpacing.md) {
-                HudStatusDot(color: node.tint.color, size: 6)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(node.title)
-                        .font(HudFont.mono(11, weight: .semibold))
-                        .foregroundStyle(theme.palette.ink)
-                        .lineLimit(1)
-                    Text("x \(Int(node.origin.x)) · y \(Int(node.origin.y))")
-                        .font(HudFont.mono(9))
-                        .foregroundStyle(theme.palette.dim)
-                }
-                Spacer()
+            HStack(spacing: HudSpacing.xs) {
+                Image(systemName: tag?.symbolName ?? "tag")
+                    .font(HudFont.ui(9, weight: .semibold))
+                Text("\(count)")
+                    .font(HudFont.mono(9, weight: .bold))
             }
-            .padding(.horizontal, HudSpacing.lg)
-            .padding(.vertical, HudSpacing.md)
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.rowHeightCompact)
             .background(
                 RoundedRectangle(cornerRadius: theme.radius.standard)
-                    .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
+                    .fill(backgroundColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: theme.radius.standard)
-                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
+                    .stroke(borderColor)
             )
         }
         .buttonStyle(.plain)
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+
+    private var tint: Color {
+        tag?.tint(in: theme) ?? theme.palette.statusInfo
+    }
+
+    private var foregroundColor: Color {
+        isActive ? tint : theme.palette.muted
+    }
+
+    private var backgroundColor: Color {
+        isActive ? HudSurface.tintFill(tint) : theme.vantageControlFill
+    }
+
+    private var borderColor: Color {
+        isActive ? HudSurface.tintBorder(tint) : theme.hairline.subtle
+    }
+
+    private var helpText: String {
+        if let tag {
+            return "Filter by \(tag.label)"
+        }
+        return "Show all tags"
+    }
+}
+
+private struct CanvasTagActionButton: View {
+    let tag: CanvasTag?
+    let action: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: tag?.symbolName ?? "tag.slash")
+                .font(HudFont.ui(10, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .fill(HudSurface.tintFill(tint))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .stroke(HudSurface.tintBorder(tint))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+
+    private var tint: Color {
+        tag?.tint(in: theme) ?? theme.palette.dim
+    }
+
+    private var helpText: String {
+        if let tag {
+            return "Tag selection as \(tag.label)"
+        }
+        return "Clear tags from selection"
     }
 }
 
@@ -2779,7 +3804,7 @@ private struct CommandKeyButton: View {
 private struct CanvasMiniMap: View {
     let nodes: [TerminalNode]
     let selectedIDs: Set<UUID>
-    let worldSize: CGSize
+    let worldBounds: CGRect
     let viewportWorldRect: CGRect
     let onCenterWorldPoint: (CGPoint) -> Void
     @Environment(\.hudTheme) private var theme
@@ -2815,8 +3840,8 @@ private struct CanvasMiniMap: View {
             roundedRect: CGRect(
                 x: inset.width,
                 y: inset.height,
-                width: worldSize.width * scale,
-                height: worldSize.height * scale
+                width: worldBounds.width * scale,
+                height: worldBounds.height * scale
             ),
             cornerRadius: theme.radius.tight
         )
@@ -2824,8 +3849,8 @@ private struct CanvasMiniMap: View {
 
         for node in nodes {
             let rect = CGRect(
-                x: inset.width + node.origin.x * scale,
-                y: inset.height + node.origin.y * scale,
+                x: inset.width + (node.origin.x - worldBounds.minX) * scale,
+                y: inset.height + (node.origin.y - worldBounds.minY) * scale,
                 width: max(2, node.size.width * scale),
                 height: max(2, node.size.height * scale)
             )
@@ -2840,8 +3865,8 @@ private struct CanvasMiniMap: View {
         }
 
         let viewport = CGRect(
-            x: inset.width + viewportWorldRect.minX * scale,
-            y: inset.height + viewportWorldRect.minY * scale,
+            x: inset.width + (viewportWorldRect.minX - worldBounds.minX) * scale,
+            y: inset.height + (viewportWorldRect.minY - worldBounds.minY) * scale,
             width: viewportWorldRect.width * scale,
             height: viewportWorldRect.height * scale
         )
@@ -2853,23 +3878,23 @@ private struct CanvasMiniMap: View {
         let scale = minimapScale(in: size)
         let inset = minimapInset(in: size, scale: scale)
         return CGPoint(
-            x: min(max((location.x - inset.width) / scale, 0), worldSize.width),
-            y: min(max((location.y - inset.height) / scale, 0), worldSize.height)
+            x: min(max((location.x - inset.width) / scale + worldBounds.minX, worldBounds.minX), worldBounds.maxX),
+            y: min(max((location.y - inset.height) / scale + worldBounds.minY, worldBounds.minY), worldBounds.maxY)
         )
     }
 
     private func minimapScale(in size: CGSize) -> CGFloat {
-        guard worldSize.width > 0, worldSize.height > 0 else { return 1 }
+        guard worldBounds.width > 0, worldBounds.height > 0 else { return 1 }
         return min(
-            (size.width - 16) / worldSize.width,
-            (size.height - 16) / worldSize.height
+            (size.width - 16) / worldBounds.width,
+            (size.height - 16) / worldBounds.height
         )
     }
 
     private func minimapInset(in size: CGSize, scale: CGFloat) -> CGSize {
         CGSize(
-            width: max(8, (size.width - worldSize.width * scale) / 2),
-            height: max(8, (size.height - worldSize.height * scale) / 2)
+            width: max(8, (size.width - worldBounds.width * scale) / 2),
+            height: max(8, (size.height - worldBounds.height * scale) / 2)
         )
     }
 }
@@ -2900,9 +3925,16 @@ private struct ViewportStatusChip: View {
 private struct CanvasInputBridge: NSViewRepresentable {
     let onScroll: (CGSize, CGPoint) -> Void
     let onMagnify: (CGFloat, CGPoint) -> Void
+    let canBeginSpacePan: (CGPoint) -> Bool
+    let onSpacePanChanged: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onScroll: onScroll, onMagnify: onMagnify)
+        Coordinator(
+            onScroll: onScroll,
+            onMagnify: onMagnify,
+            canBeginSpacePan: canBeginSpacePan,
+            onSpacePanChanged: onSpacePanChanged
+        )
     }
 
     func makeNSView(context: Context) -> EventView {
@@ -2916,6 +3948,8 @@ private struct CanvasInputBridge: NSViewRepresentable {
     func updateNSView(_ nsView: EventView, context: Context) {
         context.coordinator.onScroll = onScroll
         context.coordinator.onMagnify = onMagnify
+        context.coordinator.canBeginSpacePan = canBeginSpacePan
+        context.coordinator.onSpacePanChanged = onSpacePanChanged
         context.coordinator.view = nsView
     }
 
@@ -2934,28 +3968,40 @@ private struct CanvasInputBridge: NSViewRepresentable {
     final class Coordinator {
         var onScroll: (CGSize, CGPoint) -> Void
         var onMagnify: (CGFloat, CGPoint) -> Void
+        var canBeginSpacePan: (CGPoint) -> Bool
+        var onSpacePanChanged: (Bool) -> Void
         weak var view: EventView?
         private var monitor: Any?
+        private var spacePanActive = false
 
         init(
             onScroll: @escaping (CGSize, CGPoint) -> Void,
-            onMagnify: @escaping (CGFloat, CGPoint) -> Void
+            onMagnify: @escaping (CGFloat, CGPoint) -> Void,
+            canBeginSpacePan: @escaping (CGPoint) -> Bool,
+            onSpacePanChanged: @escaping (Bool) -> Void
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
+            self.canBeginSpacePan = canBeginSpacePan
+            self.onSpacePanChanged = onSpacePanChanged
         }
 
         func installMonitor() {
             guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { [weak self] event in
+            monitor = NSEvent.addLocalMonitorForEvents(
+                matching: [.scrollWheel, .magnify, .keyDown, .keyUp]
+            ) { [weak self] event in
                 guard let self,
                       let view,
-                      view.window === event.window,
-                      let location = self.viewportLocation(for: event)
-                else { return event }
+                      view.window === event.window
+                else {
+                    self?.setSpacePanActive(false)
+                    return event
+                }
 
                 switch event.type {
                 case .scrollWheel:
+                    guard let location = self.viewportLocation(for: event) else { return event }
                     let delta = CGSize(
                         width: event.scrollingDeltaX,
                         height: event.scrollingDeltaY
@@ -2963,7 +4009,21 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     self.onScroll(delta, location)
                     return nil
                 case .magnify:
+                    guard let location = self.viewportLocation(for: event) else { return event }
                     self.onMagnify(event.magnification, location)
+                    return nil
+                case .keyDown:
+                    guard event.keyCode == 49 else { return event }
+                    guard !event.isARepeat else { return self.spacePanActive ? nil : event }
+                    guard let location = self.pointerLocationInViewport(),
+                          self.canBeginSpacePan(location)
+                    else { return event }
+                    self.setSpacePanActive(true)
+                    return nil
+                case .keyUp:
+                    guard event.keyCode == 49 else { return event }
+                    guard self.spacePanActive else { return event }
+                    self.setSpacePanActive(false)
                     return nil
                 default:
                     return event
@@ -2976,16 +4036,34 @@ private struct CanvasInputBridge: NSViewRepresentable {
                 NSEvent.removeMonitor(monitor)
             }
             monitor = nil
+            setSpacePanActive(false)
         }
 
         private func viewportLocation(for event: NSEvent) -> CGPoint? {
             guard let view else { return nil }
             let local = view.convert(event.locationInWindow, from: nil)
+            return viewportLocation(fromLocalPoint: local)
+        }
+
+        private func pointerLocationInViewport() -> CGPoint? {
+            guard let view, let window = view.window else { return nil }
+            let local = view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            return viewportLocation(fromLocalPoint: local)
+        }
+
+        private func viewportLocation(fromLocalPoint local: CGPoint) -> CGPoint? {
+            guard let view else { return nil }
             guard view.bounds.contains(local) else { return nil }
             return CGPoint(
                 x: local.x,
                 y: view.bounds.height - local.y
             )
+        }
+
+        private func setSpacePanActive(_ isActive: Bool) {
+            guard spacePanActive != isActive else { return }
+            spacePanActive = isActive
+            onSpacePanChanged(isActive)
         }
 
         deinit {
@@ -3021,6 +4099,7 @@ private struct CanvasZoomTool: View {
     let scale: CGFloat
     let onZoomOut: () -> Void
     let onZoomIn: () -> Void
+    let onReset: () -> Void
     let onFit: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -3041,6 +4120,12 @@ private struct CanvasZoomTool: View {
                 systemName: "plus.magnifyingglass",
                 help: "Zoom in",
                 action: onZoomIn
+            )
+
+            CanvasIconButton(
+                systemName: "arrow.counterclockwise",
+                help: "Reset zoom",
+                action: onReset
             )
 
             CanvasIconButton(

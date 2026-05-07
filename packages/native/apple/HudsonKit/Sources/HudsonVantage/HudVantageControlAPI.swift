@@ -1,11 +1,23 @@
 import Foundation
 import Combine
 
+public enum HudVantageControlContract {
+    public static let currentVersion = "v0"
+    public static let commandKind = "hudson.vantage.command"
+    public static let responseKind = "hudson.vantage.response"
+}
+
 public struct HudVantageControlCommand: Decodable, Sendable {
+    public var apiVersion: String?
+    public var version: String?
+    public var kind: String?
     public var id: String?
     public var action: String
     public var workspaceID: String?
     public var statePath: String?
+    public var nodeID: String?
+    public var nodeIDs: [String]?
+    public var selectionMode: String?
     public var columns: Int?
     public var rows: Int?
     public var count: Int?
@@ -15,8 +27,16 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var height: Double?
     public var gap: Double?
     public var reset: Bool?
+    public var fit: Bool?
+    public var panX: Double?
+    public var panY: Double?
+    public var scale: Double?
     public var allowLarge: Bool?
     public var includeChildren: Bool?
+    public var activeCount: Int?
+    public var harnessMode: String?
+    public var rateMS: Double?
+    public var prefix: String?
     public var ids: [String]?
     public var sessions: [String]?
     public var targets: [String]?
@@ -24,12 +44,21 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var remoteHost: String?
     public var confirmInstall: Bool?
     public var installer: String?
+    public var includeNodes: Bool?
+    public var includeMetrics: Bool?
+    public var includeViewport: Bool?
 
     public init(
+        apiVersion: String? = nil,
+        version: String? = nil,
+        kind: String? = nil,
         id: String? = nil,
         action: String,
         workspaceID: String? = nil,
         statePath: String? = nil,
+        nodeID: String? = nil,
+        nodeIDs: [String]? = nil,
+        selectionMode: String? = nil,
         columns: Int? = nil,
         rows: Int? = nil,
         count: Int? = nil,
@@ -39,20 +68,37 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         height: Double? = nil,
         gap: Double? = nil,
         reset: Bool? = nil,
+        fit: Bool? = nil,
+        panX: Double? = nil,
+        panY: Double? = nil,
+        scale: Double? = nil,
         allowLarge: Bool? = nil,
         includeChildren: Bool? = nil,
+        activeCount: Int? = nil,
+        harnessMode: String? = nil,
+        rateMS: Double? = nil,
+        prefix: String? = nil,
         ids: [String]? = nil,
         sessions: [String]? = nil,
         targets: [String]? = nil,
         createIfMissing: Bool? = nil,
         remoteHost: String? = nil,
         confirmInstall: Bool? = nil,
-        installer: String? = nil
+        installer: String? = nil,
+        includeNodes: Bool? = nil,
+        includeMetrics: Bool? = nil,
+        includeViewport: Bool? = nil
     ) {
+        self.apiVersion = apiVersion
+        self.version = version
+        self.kind = kind
         self.id = id
         self.action = action
         self.workspaceID = workspaceID
         self.statePath = statePath
+        self.nodeID = nodeID
+        self.nodeIDs = nodeIDs
+        self.selectionMode = selectionMode
         self.columns = columns
         self.rows = rows
         self.count = count
@@ -62,8 +108,16 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.height = height
         self.gap = gap
         self.reset = reset
+        self.fit = fit
+        self.panX = panX
+        self.panY = panY
+        self.scale = scale
         self.allowLarge = allowLarge
         self.includeChildren = includeChildren
+        self.activeCount = activeCount
+        self.harnessMode = harnessMode
+        self.rateMS = rateMS
+        self.prefix = prefix
         self.ids = ids
         self.sessions = sessions
         self.targets = targets
@@ -71,61 +125,164 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.remoteHost = remoteHost
         self.confirmInstall = confirmInstall
         self.installer = installer
+        self.includeNodes = includeNodes
+        self.includeMetrics = includeMetrics
+        self.includeViewport = includeViewport
     }
 
     public var normalizedAction: String {
         action.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    public var resolvedAPIVersion: String {
+        apiVersion ?? version ?? HudVantageControlContract.currentVersion
+    }
+
+    public var normalizedSelectionMode: String {
+        selectionMode?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "replace"
     }
 }
 
 public struct HudVantageControlNode: Encodable, Hashable, Sendable {
     public var id: UUID
     public var title: String
+    public var subtitle: String?
     public var runtimeKind: String
     public var target: String?
     public var graphitePath: String?
     public var remoteHost: String?
+    public var selected: Bool?
     public var x: Double
     public var y: Double
     public var width: Double
     public var height: Double
     public var zIndex: Double
+    public var tag: String?
 
     public init(
         id: UUID,
         title: String,
+        subtitle: String? = nil,
         runtimeKind: String,
         target: String? = nil,
         graphitePath: String? = nil,
         remoteHost: String? = nil,
+        selected: Bool? = nil,
         x: Double,
         y: Double,
         width: Double,
         height: Double,
-        zIndex: Double
+        zIndex: Double,
+        tag: String? = nil
     ) {
         self.id = id
         self.title = title
+        self.subtitle = subtitle
         self.runtimeKind = runtimeKind
         self.target = target
         self.graphitePath = graphitePath
         self.remoteHost = remoteHost
+        self.selected = selected
         self.x = x
         self.y = y
         self.width = width
         self.height = height
         self.zIndex = zIndex
+        self.tag = tag
+    }
+}
+
+public struct HudVantageControlViewport: Encodable, Hashable, Sendable {
+    public var panX: Double
+    public var panY: Double
+    public var scale: Double
+    public var viewportWidth: Double
+    public var viewportHeight: Double
+    public var worldMinX: Double
+    public var worldMinY: Double
+    public var worldWidth: Double
+    public var worldHeight: Double
+
+    public init(
+        panX: Double,
+        panY: Double,
+        scale: Double,
+        viewportWidth: Double,
+        viewportHeight: Double,
+        worldMinX: Double,
+        worldMinY: Double,
+        worldWidth: Double,
+        worldHeight: Double
+    ) {
+        self.panX = panX
+        self.panY = panY
+        self.scale = scale
+        self.viewportWidth = viewportWidth
+        self.viewportHeight = viewportHeight
+        self.worldMinX = worldMinX
+        self.worldMinY = worldMinY
+        self.worldWidth = worldWidth
+        self.worldHeight = worldHeight
+    }
+}
+
+public struct HudVantageControlMetrics: Encodable, Hashable, Sendable {
+    public var nodeCount: Int
+    public var selectedCount: Int
+    public var localPTYCount: Int
+    public var tmuxCount: Int
+    public var remoteTmuxCount: Int
+    public var liveSurfaceCount: Int
+    public var controlCommandCount: Int
+    public var lastCommandAction: String?
+    public var lastCommandDurationMS: Double?
+    public var perf: HudVantagePerfSnapshot?
+    public var minScale: Double
+    public var maxScale: Double
+
+    public init(
+        nodeCount: Int,
+        selectedCount: Int,
+        localPTYCount: Int,
+        tmuxCount: Int,
+        remoteTmuxCount: Int,
+        liveSurfaceCount: Int,
+        controlCommandCount: Int,
+        lastCommandAction: String? = nil,
+        lastCommandDurationMS: Double? = nil,
+        perf: HudVantagePerfSnapshot? = nil,
+        minScale: Double,
+        maxScale: Double
+    ) {
+        self.nodeCount = nodeCount
+        self.selectedCount = selectedCount
+        self.localPTYCount = localPTYCount
+        self.tmuxCount = tmuxCount
+        self.remoteTmuxCount = remoteTmuxCount
+        self.liveSurfaceCount = liveSurfaceCount
+        self.controlCommandCount = controlCommandCount
+        self.lastCommandAction = lastCommandAction
+        self.lastCommandDurationMS = lastCommandDurationMS
+        self.perf = perf
+        self.minScale = minScale
+        self.maxScale = maxScale
     }
 }
 
 public struct HudVantageControlResponse: Encodable, Sendable {
+    public var apiVersion: String
+    public var kind: String
     public var id: String?
     public var action: String
     public var ok: Bool
     public var message: String
+    public var errorCode: String?
     public var workspaceID: String?
     public var nodeCount: Int
     public var nodes: [HudVantageControlNode]?
+    public var selectedNodeIDs: [UUID]?
+    public var viewport: HudVantageControlViewport?
+    public var metrics: HudVantageControlMetrics?
     public var appPID: Int32?
     public var childPIDs: [Int32]?
     public var commandPath: String?
@@ -135,16 +292,23 @@ public struct HudVantageControlResponse: Encodable, Sendable {
     public var tmuxInstallInProgress: Bool?
     public var requiresPermission: Bool?
     public var installerCommand: String?
+    public var durationMS: Double?
     public var timestamp: String
 
     public init(
+        apiVersion: String = HudVantageControlContract.currentVersion,
+        kind: String = HudVantageControlContract.responseKind,
         id: String?,
         action: String,
         ok: Bool,
         message: String,
+        errorCode: String? = nil,
         workspaceID: String? = nil,
         nodeCount: Int,
         nodes: [HudVantageControlNode]? = nil,
+        selectedNodeIDs: [UUID]? = nil,
+        viewport: HudVantageControlViewport? = nil,
+        metrics: HudVantageControlMetrics? = nil,
         appPID: Int32? = nil,
         childPIDs: [Int32]? = nil,
         commandPath: String? = nil,
@@ -153,15 +317,22 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         tmuxPath: String? = nil,
         tmuxInstallInProgress: Bool? = nil,
         requiresPermission: Bool? = nil,
-        installerCommand: String? = nil
+        installerCommand: String? = nil,
+        durationMS: Double? = nil
     ) {
+        self.apiVersion = apiVersion
+        self.kind = kind
         self.id = id
         self.action = action
         self.ok = ok
         self.message = message
+        self.errorCode = errorCode
         self.workspaceID = workspaceID
         self.nodeCount = nodeCount
         self.nodes = nodes
+        self.selectedNodeIDs = selectedNodeIDs
+        self.viewport = viewport
+        self.metrics = metrics
         self.appPID = appPID
         self.childPIDs = childPIDs
         self.commandPath = commandPath
@@ -171,6 +342,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         self.tmuxInstallInProgress = tmuxInstallInProgress
         self.requiresPermission = requiresPermission
         self.installerCommand = installerCommand
+        self.durationMS = durationMS
         self.timestamp = ISO8601DateFormatter().string(from: Date())
     }
 }

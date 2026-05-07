@@ -63,6 +63,7 @@ if terminalEnabled {
         .target(
             name: "HudsonVantage",
             dependencies: [
+                "HudsonObservability",
                 "HudsonUI",
                 "HudsonShell",
                 "HudsonTerminal",

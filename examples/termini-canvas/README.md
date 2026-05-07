@@ -35,14 +35,16 @@ Hudson Vantage-owned:
 - JSONL control API under `/tmp`.
 - 8x8 tiling and renderer virtualization experiments.
 - tmux/Graphite prototype models.
-- Native Vantage shell with navigator, inspector, minimap, and viewport tools.
+- Native Vantage shell with navigator, tag filters, inspector, minimap, and
+  viewport tools.
 
 Expected upstream targets:
 
 - Pan/zoom viewport state and world/screen transforms.
 - Trackpad scroll and magnify gesture handling.
 - Minimap, zoom HUD, viewport readout, resizable panels.
-- Selection, marquee hit testing, z-order, drag/resize cards.
+- Selection, Space-drag panning, modifier-aware marquee hit testing, z-order,
+  drag/resize cards.
 
 Termini-owned:
 
@@ -71,6 +73,9 @@ Example commands:
 printf '{"id":"grid-8x8","action":"tile","columns":8,"rows":8,"width":300,"height":200,"gap":18}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-lab","action":"reattach","sessions":["hudson-lab"],"createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"tmux-ids","action":"reattach","ids":["hudson.lab.termini.canvas.0042.shell","hudson.lab.agents.codex.0007.worker"]}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"select","action":"select","nodeIDs":["NODE_ID_PREFIX"]}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"inspect","action":"inspect"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"metrics","action":"metrics"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"status","action":"status"}\n' >> /tmp/termini-canvas-control.jsonl
@@ -87,13 +92,35 @@ examples/termini-canvas/scripts/canvasctl.sh --wait reattach --remote user@host 
 examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
+examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
+examples/termini-canvas/scripts/canvasctl.sh --wait inspect
+examples/termini-canvas/scripts/canvasctl.sh --wait focus
+examples/termini-canvas/scripts/canvasctl.sh --wait metrics
+examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
+examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
+examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
+examples/termini-canvas/scripts/canvasctl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
 examples/termini-canvas/scripts/canvasctl.sh --wait save
 examples/termini-canvas/scripts/canvasctl.sh --wait restore --create
+examples/termini-canvas/scripts/canvasctl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
 That means a Claude, Codex, or shell session outside the app can instantiate
 or reconstruct the visible canvas while the macOS app keeps running.
+
+The v0 command envelope is `apiVersion: "v0"` and
+`kind: "hudson.vantage.command"`. The app still accepts older flat commands,
+but wrappers emit v0 by default. Responses include a matching response kind,
+selected node IDs, viewport, metrics, and per-command latency.
+
+The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
+waitable request id plus the v0 envelope when those fields are missing.
+
+`perf-harness` creates a repeatable local tmux stress scene. The default shape
+is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas
+reattaches to those durable sessions. Use `perf-cleanup --prefix PREFIX` to
+remove the matching harness sessions and nodes when the trial is done.
 
 `reattach` accepts:
 
@@ -118,8 +145,8 @@ with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
 ```
 
 `restore` recreates those saved tmux-backed nodes with their previous bounds,
-z-order, selection, viewport, and Graphite metadata. Use `--state-file PATH` or
-`TERMINI_CANVAS_STATE_FILE` for a different lane.
+z-order, tags, selection, viewport, and Graphite metadata. Use
+`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
 
 For direct executable runs, a startup reattach set can be provided with:
 

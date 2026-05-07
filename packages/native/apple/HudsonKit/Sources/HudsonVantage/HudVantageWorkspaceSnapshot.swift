@@ -12,6 +12,34 @@ public struct HudVantageViewportSnapshot: Codable, Hashable, Sendable {
     }
 }
 
+public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
+    public var canvasTool: String
+    public var navigationFilter: String
+    public var navigationTagFilter: String?
+    public var navigationCollapsed: Bool
+    public var navigationWidth: Double
+    public var inspectorCollapsed: Bool
+    public var inspectorWidth: Double
+
+    public init(
+        canvasTool: String,
+        navigationFilter: String,
+        navigationTagFilter: String? = nil,
+        navigationCollapsed: Bool,
+        navigationWidth: Double,
+        inspectorCollapsed: Bool,
+        inspectorWidth: Double
+    ) {
+        self.canvasTool = canvasTool
+        self.navigationFilter = navigationFilter
+        self.navigationTagFilter = navigationTagFilter
+        self.navigationCollapsed = navigationCollapsed
+        self.navigationWidth = navigationWidth
+        self.inspectorCollapsed = inspectorCollapsed
+        self.inspectorWidth = inspectorWidth
+    }
+}
+
 public struct HudVantageRuntimeReference: Codable, Hashable, Sendable {
     public var kind: String
     public var target: String?
@@ -41,6 +69,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
     public var width: Double
     public var height: Double
     public var zIndex: Double
+    public var tag: String?
     public var runtime: HudVantageRuntimeReference
 
     public init(
@@ -53,6 +82,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         width: Double,
         height: Double,
         zIndex: Double,
+        tag: String? = nil,
         runtime: HudVantageRuntimeReference
     ) {
         self.id = id
@@ -64,6 +94,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         self.width = width
         self.height = height
         self.zIndex = zIndex
+        self.tag = tag
         self.runtime = runtime
     }
 }
@@ -73,6 +104,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
     public var workspaceID: String
     public var surfaceTitle: String
     public var viewport: HudVantageViewportSnapshot
+    public var layout: HudVantageSurfaceLayoutSnapshot?
     public var nodes: [HudVantageNodeSnapshot]
     public var selectedNodeIDs: [UUID]
     public var savedAt: Date
@@ -82,6 +114,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         workspaceID: String,
         surfaceTitle: String,
         viewport: HudVantageViewportSnapshot,
+        layout: HudVantageSurfaceLayoutSnapshot? = nil,
         nodes: [HudVantageNodeSnapshot],
         selectedNodeIDs: [UUID],
         savedAt: Date = Date()
@@ -90,6 +123,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         self.workspaceID = workspaceID
         self.surfaceTitle = surfaceTitle
         self.viewport = viewport
+        self.layout = layout
         self.nodes = nodes
         self.selectedNodeIDs = selectedNodeIDs
         self.savedAt = savedAt
