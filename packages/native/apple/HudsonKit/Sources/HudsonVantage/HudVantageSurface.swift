@@ -397,6 +397,13 @@ private struct TmuxReattachSpec {
     var remoteHost: String?
 }
 
+private struct TmuxHealthSubject {
+    var nodeID: UUID?
+    var target: String
+    var path: GraphitePath?
+    var remoteHost: String?
+}
+
 private enum HudVantageStateError: Error, LocalizedError {
     case stateFileMissing(String)
     case missingRuntimeTarget(UUID)
@@ -413,6 +420,39 @@ private enum HudVantageStateError: Error, LocalizedError {
             "tmux target \(target) not found; create it first or restore with createIfMissing"
         case .tmuxMissing:
             "tmux executable not found; install tmux locally or restore remote nodes"
+        }
+    }
+}
+
+private enum HudVantageControlStyleError: Error, LocalizedError {
+    case invalidScope(String)
+    case invalidPreset(String)
+    case invalidValue(field: String, value: String)
+    case missingTag
+    case unsupportedField(scope: String, field: String)
+
+    var errorCode: String {
+        switch self {
+        case .invalidScope: "invalid_style_scope"
+        case .invalidPreset: "invalid_style_preset"
+        case .invalidValue: "invalid_style_value"
+        case .missingTag: "missing_style_tag"
+        case .unsupportedField: "unsupported_style_field"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidScope(let scope):
+            "style scope must be workspace, tag, or terminal; got \(scope)"
+        case .invalidPreset(let preset):
+            "unknown style preset \(preset)"
+        case .invalidValue(let field, let value):
+            "unknown \(field) value \(value)"
+        case .missingTag:
+            "tag scope requires a tag"
+        case .unsupportedField(let scope, let field):
+            "\(field) is only supported for workspace style, not \(scope)"
         }
     }
 }
@@ -1440,6 +1480,10 @@ public struct HudVantageSurface: View {
                 ok: true,
                 message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
             )
+        case "style", "set-style", "appearance", "set-appearance", "settings", "set-settings":
+            return applyStyleCommand(command)
+        case "tmux-status", "tmuxstatus", "tmux-health", "tmuxhealth", "health":
+            return tmuxHealthStatus(command)
         case "viewport", "view":
             return applyViewportCommand(command)
         case "perf-reset", "reset-metrics":
@@ -2251,6 +2295,107 @@ public struct HudVantageSurface: View {
         )
     }
 
+    private func applyStyleCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let scope = try resolvedStyleScope(for: command)
+            switch scope {
+            case "workspace":
+                let previous = styleProfile
+                styleProfile = try workspaceStyleProfile(applying: command, to: styleProfile)
+                if previous != styleProfile {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: previous == styleProfile ? "workspace style unchanged" : "workspace style updated",
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            case "tag":
+                try rejectWorkspaceOnlyStyleFields(command, scope: scope)
+                let tag = try controlTag(from: command.tag)
+                let previous = tagStyleOverrides[tag] ?? .empty
+                let updated = try terminalStyleOverride(applying: command, to: previous)
+                if updated.isEmpty {
+                    tagStyleOverrides[tag] = nil
+                } else {
+                    tagStyleOverrides[tag] = updated
+                }
+                if previous != updated {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: previous == updated
+                        ? "\(tag.label) tag style unchanged"
+                        : "\(tag.label) tag style updated",
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            case "terminal":
+                try rejectWorkspaceOnlyStyleFields(command, scope: scope)
+                let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+                var changedCount = 0
+                for node in resolved {
+                    let previous = node.styleOverride ?? .empty
+                    let updated = try terminalStyleOverride(applying: command, to: previous)
+                    node.styleOverride = updated.isEmpty ? nil : updated
+                    if previous != updated {
+                        changedCount += 1
+                    }
+                }
+                if changedCount > 0 {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: changedCount == 0
+                        ? "terminal style unchanged"
+                        : "updated \(changedCount) terminal style\(changedCount == 1 ? "" : "s")",
+                    nodesOverride: resolved,
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            default:
+                throw HudVantageControlStyleError.invalidScope(scope)
+            }
+        } catch let error as HudVantageControlStyleError {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: error.errorCode,
+                style: controlStyleSummary(includeTerminalOverrides: true)
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func tmuxHealthStatus(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let subjects = try tmuxHealthSubjects(from: command)
+            let health = subjects.map(tmuxHealth)
+            return controlResponse(
+                command,
+                ok: true,
+                message: health.isEmpty
+                    ? "no tmux nodes"
+                    : "checked \(health.count) tmux target\(health.count == 1 ? "" : "s")",
+                tmuxHealth: health
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
     private func closeNodes(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
@@ -2272,6 +2417,296 @@ public struct HudVantageSurface: View {
         } catch {
             return controlNodeErrorResponse(command, error)
         }
+    }
+
+    private func resolvedStyleScope(for command: HudVantageControlCommand) throws -> String {
+        if let explicit = command.styleScope?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !explicit.isEmpty {
+            switch explicit.lowercased() {
+            case "workspace", "surface", "global":
+                return "workspace"
+            case "tag", "group":
+                return "tag"
+            case "terminal", "term", "node", "nodes", "selection", "selected":
+                return "terminal"
+            default:
+                throw HudVantageControlStyleError.invalidScope(explicit)
+            }
+        }
+
+        if command.tag?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            return "tag"
+        }
+        if !nodeSelectors(from: command).isEmpty {
+            return "terminal"
+        }
+        return "workspace"
+    }
+
+    private func workspaceStyleProfile(
+        applying command: HudVantageControlCommand,
+        to profile: HudVantageStyleProfile
+    ) throws -> HudVantageStyleProfile {
+        var resolved = command.reset == true ? .adaptive : profile
+
+        if let presetID = trimmed(command.stylePreset) {
+            guard let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(presetID) }) else {
+                throw HudVantageControlStyleError.invalidPreset(presetID)
+            }
+            resolved = preset
+        }
+        if let chromeStyle = trimmed(command.chromeStyle) {
+            resolved.chromeStyle = try controlEnumValue(
+                chromeStyle,
+                field: "chromeStyle",
+                cases: HudVantageChromeStyle.allCases,
+                label: \.label
+            )
+        }
+        if let terminalTheme = trimmed(command.terminalTheme ?? command.terminalThemeID) {
+            resolved.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = trimmed(command.terminalFontFamily) {
+            resolved.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = command.terminalFontSize {
+            resolved.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+        if let canvasGridMode = trimmed(command.canvasGridMode) {
+            resolved.canvasGridMode = try controlEnumValue(
+                canvasGridMode,
+                field: "canvasGridMode",
+                cases: HudVantageCanvasGridMode.allCases,
+                label: \.label
+            )
+        }
+        if let canvasGridStep = command.canvasGridStep {
+            resolved.canvasGridStep = clamp(canvasGridStep, lower: 4, upper: 160)
+        }
+        if let canvasMinorOpacity = command.canvasMinorOpacity {
+            resolved.canvasMinorOpacity = clamp(canvasMinorOpacity, lower: 0, upper: 1)
+        }
+        if let canvasMajorOpacity = command.canvasMajorOpacity {
+            resolved.canvasMajorOpacity = clamp(canvasMajorOpacity, lower: 0, upper: 1)
+        }
+        if let focusPadding = command.focusPadding {
+            resolved.focusPadding = clamp(focusPadding, lower: 0, upper: 160)
+        }
+
+        return resolved
+    }
+
+    private func terminalStyleOverride(
+        applying command: HudVantageControlCommand,
+        to override: HudVantageTerminalStyleOverride
+    ) throws -> HudVantageTerminalStyleOverride {
+        var resolved = command.reset == true ? .empty : override
+
+        if let presetID = trimmed(command.stylePreset) {
+            guard let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(presetID) }) else {
+                throw HudVantageControlStyleError.invalidPreset(presetID)
+            }
+            resolved.terminalThemeID = preset.terminalThemeID
+            resolved.terminalFontFamily = preset.terminalFontFamily
+            resolved.terminalFontSize = preset.terminalFontSize
+        }
+        if let terminalTheme = trimmed(command.terminalTheme ?? command.terminalThemeID) {
+            resolved.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = trimmed(command.terminalFontFamily) {
+            resolved.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = command.terminalFontSize {
+            resolved.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+
+        return resolved
+    }
+
+    private func rejectWorkspaceOnlyStyleFields(
+        _ command: HudVantageControlCommand,
+        scope: String
+    ) throws {
+        if command.chromeStyle != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "chromeStyle")
+        }
+        if command.canvasGridMode != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasGridMode")
+        }
+        if command.canvasGridStep != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasGridStep")
+        }
+        if command.canvasMinorOpacity != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasMinorOpacity")
+        }
+        if command.canvasMajorOpacity != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasMajorOpacity")
+        }
+        if command.focusPadding != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "focusPadding")
+        }
+    }
+
+    private func controlTag(from value: String?) throws -> CanvasTag {
+        guard let value = trimmed(value) else {
+            throw HudVantageControlStyleError.missingTag
+        }
+        guard let tag = CanvasTag.allCases.first(where: { controlToken($0.rawValue) == controlToken(value) || controlToken($0.label) == controlToken(value) }) else {
+            throw HudVantageControlStyleError.invalidValue(field: "tag", value: value)
+        }
+        return tag
+    }
+
+    private func controlEnumValue<T: RawRepresentable>(
+        _ value: String,
+        field: String,
+        cases: [T],
+        label: (T) -> String
+    ) throws -> T where T.RawValue == String {
+        let token = controlToken(value)
+        guard let match = cases.first(where: { controlToken($0.rawValue) == token || controlToken(label($0)) == token }) else {
+            throw HudVantageControlStyleError.invalidValue(field: field, value: value)
+        }
+        return match
+    }
+
+    private func controlToken(_ value: String) -> String {
+        value
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "", options: .regularExpression)
+    }
+
+    private func trimmed(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func tmuxHealthSubjects(from command: HudVantageControlCommand) throws -> [TmuxHealthSubject] {
+        if !nodeSelectors(from: command).isEmpty {
+            do {
+                return try resolveNodes(from: command, allowSelectionFallback: false).compactMap(tmuxHealthSubject)
+            } catch {
+                if command.nodeID != nil || command.nodeIDs?.isEmpty == false {
+                    throw error
+                }
+                return try tmuxReattachSpecs(from: command).map {
+                    TmuxHealthSubject(nodeID: nil, target: $0.target, path: $0.path, remoteHost: $0.remoteHost)
+                }
+            }
+        }
+        if command.sessions?.isEmpty == false || command.targets?.isEmpty == false || command.ids?.isEmpty == false {
+            return try tmuxReattachSpecs(from: command).map {
+                TmuxHealthSubject(nodeID: nil, target: $0.target, path: $0.path, remoteHost: $0.remoteHost)
+            }
+        }
+        return nodes.compactMap(tmuxHealthSubject)
+    }
+
+    private func tmuxHealthSubject(for node: TerminalNode) -> TmuxHealthSubject? {
+        guard case .tmux(let target, let path, let remoteHost) = node.runtimeIdentity else { return nil }
+        return TmuxHealthSubject(
+            nodeID: node.id,
+            target: target,
+            path: path,
+            remoteHost: remoteHost
+        )
+    }
+
+    private func tmuxHealth(for subject: TmuxHealthSubject) -> HudVantageTmuxHealth {
+        let parts = tmuxTargetParts(subject.target)
+
+        if let remoteHost = subject.remoteHost {
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                remoteHost: remoteHost,
+                status: "remote-unverified",
+                session: parts.session,
+                window: parts.window,
+                message: "remote tmux is attached through ssh; noninteractive remote health checks are pending"
+            )
+        }
+
+        guard TerminalNode.localTmuxURL != nil else {
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                status: "tmux-missing",
+                session: parts.session,
+                window: parts.window,
+                message: "tmux executable not found locally"
+            )
+        }
+
+        guard TerminalNode.localTmuxTargetExists(subject.target) else {
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                status: "missing",
+                session: parts.session,
+                window: parts.window,
+                message: "tmux target not found"
+            )
+        }
+
+        let activeWindow = try? runTmuxHarnessCommand([
+            "display-message",
+            "-t",
+            parts.session,
+            "-p",
+            "#{window_name}",
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let attachedClients = (try? runTmuxHarnessCommand([
+            "display-message",
+            "-t",
+            parts.session,
+            "-p",
+            "#{session_attached}",
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)).flatMap(Int.init)
+        let paneCount = try? runTmuxHarnessCommand([
+            "list-panes",
+            "-t",
+            subject.target,
+            "-F",
+            "#{pane_id}",
+        ]).split(separator: "\n", omittingEmptySubsequences: true).count
+
+        return HudVantageTmuxHealth(
+            nodeID: subject.nodeID,
+            target: subject.target,
+            graphitePath: subject.path?.description,
+            status: "running",
+            session: parts.session,
+            window: parts.window,
+            activeWindow: activeWindow,
+            attachedClients: attachedClients,
+            paneCount: paneCount,
+            message: "tmux target is available"
+        )
+    }
+
+    private func tmuxTargetParts(_ target: String) -> (session: String, window: String?) {
+        let paneTrimmed = target.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? target
+        let parts = paneTrimmed.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+        if parts.count == 2 {
+            return (String(parts[0]), String(parts[1]))
+        }
+        return (paneTrimmed, nil)
     }
 
     private func controlNodeErrorResponse(
@@ -3073,7 +3508,9 @@ public struct HudVantageSurface: View {
         message: String,
         errorCode: String? = nil,
         requiresPermission: Bool? = nil,
-        nodesOverride: [TerminalNode]? = nil
+        nodesOverride: [TerminalNode]? = nil,
+        style: HudVantageControlStyle? = nil,
+        tmuxHealth: [HudVantageTmuxHealth]? = nil
     ) -> HudVantageControlResponse {
         let responseNodes = nodesOverride ?? nodes
         return HudVantageControlResponse(
@@ -3090,6 +3527,8 @@ public struct HudVantageSurface: View {
             focusedNodeID: focusedNodeID,
             viewport: command.includeViewport == false ? nil : controlViewport(),
             metrics: command.includeMetrics == false ? nil : controlMetrics(),
+            style: style ?? (command.includeStyle == true ? controlStyleSummary(includeTerminalOverrides: true) : nil),
+            tmuxHealth: tmuxHealth,
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,
@@ -3099,6 +3538,27 @@ public struct HudVantageSurface: View {
             tmuxInstallInProgress: tmuxInstallInProgress,
             requiresPermission: requiresPermission,
             installerCommand: TmuxToolchain.homebrewInstallCommandDescription
+        )
+    }
+
+    private func controlStyleSummary(includeTerminalOverrides: Bool) -> HudVantageControlStyle {
+        let terminalOverrides: [String: HudVantageTerminalStyleOverride]?
+        if includeTerminalOverrides {
+            let values = Dictionary(
+                uniqueKeysWithValues: nodes.compactMap { node -> (String, HudVantageTerminalStyleOverride)? in
+                    guard let override = node.styleOverride, !override.isEmpty else { return nil }
+                    return (node.id.uuidString, override)
+                }
+            )
+            terminalOverrides = values.isEmpty ? nil : values
+        } else {
+            terminalOverrides = nil
+        }
+
+        return HudVantageControlStyle(
+            workspace: styleProfile,
+            tagOverrides: tagStyleSnapshot(),
+            terminalOverrides: terminalOverrides
         )
     }
 
@@ -3198,6 +3658,10 @@ public struct HudVantageSurface: View {
     }
 
     private func clamp(_ value: Int, lower: Int, upper: Int) -> Int {
+        min(max(value, lower), upper)
+    }
+
+    private func clamp(_ value: Double, lower: Double, upper: Double) -> Double {
         min(max(value, lower), upper)
     }
 

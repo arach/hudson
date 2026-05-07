@@ -47,6 +47,20 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var includeNodes: Bool?
     public var includeMetrics: Bool?
     public var includeViewport: Bool?
+    public var includeStyle: Bool?
+    public var styleScope: String?
+    public var stylePreset: String?
+    public var tag: String?
+    public var chromeStyle: String?
+    public var terminalTheme: String?
+    public var terminalThemeID: String?
+    public var terminalFontFamily: String?
+    public var terminalFontSize: Double?
+    public var canvasGridMode: String?
+    public var canvasGridStep: Double?
+    public var canvasMinorOpacity: Double?
+    public var canvasMajorOpacity: Double?
+    public var focusPadding: Double?
 
     public init(
         apiVersion: String? = nil,
@@ -87,7 +101,21 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         installer: String? = nil,
         includeNodes: Bool? = nil,
         includeMetrics: Bool? = nil,
-        includeViewport: Bool? = nil
+        includeViewport: Bool? = nil,
+        includeStyle: Bool? = nil,
+        styleScope: String? = nil,
+        stylePreset: String? = nil,
+        tag: String? = nil,
+        chromeStyle: String? = nil,
+        terminalTheme: String? = nil,
+        terminalThemeID: String? = nil,
+        terminalFontFamily: String? = nil,
+        terminalFontSize: Double? = nil,
+        canvasGridMode: String? = nil,
+        canvasGridStep: Double? = nil,
+        canvasMinorOpacity: Double? = nil,
+        canvasMajorOpacity: Double? = nil,
+        focusPadding: Double? = nil
     ) {
         self.apiVersion = apiVersion
         self.version = version
@@ -128,6 +156,20 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.includeNodes = includeNodes
         self.includeMetrics = includeMetrics
         self.includeViewport = includeViewport
+        self.includeStyle = includeStyle
+        self.styleScope = styleScope
+        self.stylePreset = stylePreset
+        self.tag = tag
+        self.chromeStyle = chromeStyle
+        self.terminalTheme = terminalTheme
+        self.terminalThemeID = terminalThemeID
+        self.terminalFontFamily = terminalFontFamily
+        self.terminalFontSize = terminalFontSize
+        self.canvasGridMode = canvasGridMode
+        self.canvasGridStep = canvasGridStep
+        self.canvasMinorOpacity = canvasMinorOpacity
+        self.canvasMajorOpacity = canvasMajorOpacity
+        self.focusPadding = focusPadding
     }
 
     public var normalizedAction: String {
@@ -140,6 +182,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
 
     public var normalizedSelectionMode: String {
         selectionMode?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "replace"
+    }
+
+    public var normalizedStyleScope: String {
+        styleScope?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "workspace"
     }
 }
 
@@ -269,6 +315,62 @@ public struct HudVantageControlMetrics: Encodable, Hashable, Sendable {
     }
 }
 
+public struct HudVantageControlStyle: Encodable, Hashable, Sendable {
+    public var workspace: HudVantageStyleProfile
+    public var tagOverrides: [String: HudVantageTerminalStyleOverride]?
+    public var terminalOverrides: [String: HudVantageTerminalStyleOverride]?
+
+    public init(
+        workspace: HudVantageStyleProfile,
+        tagOverrides: [String: HudVantageTerminalStyleOverride]? = nil,
+        terminalOverrides: [String: HudVantageTerminalStyleOverride]? = nil
+    ) {
+        self.workspace = workspace
+        self.tagOverrides = tagOverrides
+        self.terminalOverrides = terminalOverrides
+    }
+}
+
+public struct HudVantageTmuxHealth: Encodable, Hashable, Sendable {
+    public var nodeID: UUID?
+    public var target: String?
+    public var graphitePath: String?
+    public var remoteHost: String?
+    public var status: String
+    public var session: String?
+    public var window: String?
+    public var activeWindow: String?
+    public var attachedClients: Int?
+    public var paneCount: Int?
+    public var message: String?
+
+    public init(
+        nodeID: UUID? = nil,
+        target: String? = nil,
+        graphitePath: String? = nil,
+        remoteHost: String? = nil,
+        status: String,
+        session: String? = nil,
+        window: String? = nil,
+        activeWindow: String? = nil,
+        attachedClients: Int? = nil,
+        paneCount: Int? = nil,
+        message: String? = nil
+    ) {
+        self.nodeID = nodeID
+        self.target = target
+        self.graphitePath = graphitePath
+        self.remoteHost = remoteHost
+        self.status = status
+        self.session = session
+        self.window = window
+        self.activeWindow = activeWindow
+        self.attachedClients = attachedClients
+        self.paneCount = paneCount
+        self.message = message
+    }
+}
+
 public struct HudVantageControlResponse: Encodable, Sendable {
     public var apiVersion: String
     public var kind: String
@@ -284,6 +386,8 @@ public struct HudVantageControlResponse: Encodable, Sendable {
     public var focusedNodeID: UUID?
     public var viewport: HudVantageControlViewport?
     public var metrics: HudVantageControlMetrics?
+    public var style: HudVantageControlStyle?
+    public var tmuxHealth: [HudVantageTmuxHealth]?
     public var appPID: Int32?
     public var childPIDs: [Int32]?
     public var commandPath: String?
@@ -311,6 +415,8 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         focusedNodeID: UUID? = nil,
         viewport: HudVantageControlViewport? = nil,
         metrics: HudVantageControlMetrics? = nil,
+        style: HudVantageControlStyle? = nil,
+        tmuxHealth: [HudVantageTmuxHealth]? = nil,
         appPID: Int32? = nil,
         childPIDs: [Int32]? = nil,
         commandPath: String? = nil,
@@ -336,6 +442,8 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         self.focusedNodeID = focusedNodeID
         self.viewport = viewport
         self.metrics = metrics
+        self.style = style
+        self.tmuxHealth = tmuxHealth
         self.appPID = appPID
         self.childPIDs = childPIDs
         self.commandPath = commandPath

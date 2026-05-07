@@ -25,6 +25,8 @@ Usage:
   vantagectl.sh [--wait] popout [NODE...]
   vantagectl.sh [--wait] close [NODE...]
   vantagectl.sh [--wait] metrics [--reset]
+  vantagectl.sh [--wait] style [--scope workspace|tag|terminal] [--tag TAG] [--preset PRESET] [--chrome STYLE] [--terminal-theme THEME] [--font-family FAMILY] [--font-size N] [--grid-mode lines|dots|none] [--grid-step N] [--focus-padding N] [--node NODE...]
+  vantagectl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST]
   vantagectl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
   vantagectl.sh [--wait] perf-cleanup [--prefix PREFIX]
   vantagectl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
@@ -230,6 +232,81 @@ case "$command" in
       "\"includeMetrics\":true"
       "\"includeViewport\":true"
     )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  style|set-style|appearance|set-appearance|settings|set-settings)
+    node_ids=()
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"style\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeStyle\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --scope) parts+=("\"styleScope\":$(json_string "${2:?missing scope}")"); shift 2 ;;
+        --tag) parts+=("\"tag\":$(json_string "${2:?missing tag}")"); shift 2 ;;
+        --preset) parts+=("\"stylePreset\":$(json_string "${2:?missing preset}")"); shift 2 ;;
+        --chrome|--chrome-style) parts+=("\"chromeStyle\":$(json_string "${2:?missing chrome style}")"); shift 2 ;;
+        --terminal-theme|--terminal-theme-id|--theme) parts+=("\"terminalTheme\":$(json_string "${2:?missing terminal theme}")"); shift 2 ;;
+        --font-family|--font) parts+=("\"terminalFontFamily\":$(json_string "${2:?missing font family}")"); shift 2 ;;
+        --font-size|--size) parts+=("\"terminalFontSize\":$(json_number_arg font-size "${2:?missing font size}")"); shift 2 ;;
+        --grid-mode) parts+=("\"canvasGridMode\":$(json_string "${2:?missing grid mode}")"); shift 2 ;;
+        --grid-step) parts+=("\"canvasGridStep\":$(json_number_arg grid-step "${2:?missing grid step}")"); shift 2 ;;
+        --minor-opacity) parts+=("\"canvasMinorOpacity\":$(json_number_arg minor-opacity "${2:?missing minor opacity}")"); shift 2 ;;
+        --major-opacity) parts+=("\"canvasMajorOpacity\":$(json_number_arg major-opacity "${2:?missing major opacity}")"); shift 2 ;;
+        --focus-padding) parts+=("\"focusPadding\":$(json_number_arg focus-padding "${2:?missing focus padding}")"); shift 2 ;;
+        --reset) parts+=("\"reset\":true"); shift ;;
+        --include-style) shift ;;
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  tmux-status|tmuxstatus|tmux-health|tmuxhealth|health)
+    node_ids=()
+    ids=()
+    sessions=()
+    targets=()
+    remote=""
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"tmux-health\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        --id) ids+=("${2:?missing Graphite id}"); shift 2 ;;
+        --session) sessions+=("${2:?missing session}"); shift 2 ;;
+        --target) targets+=("${2:?missing target}"); shift 2 ;;
+        --remote|--remote-host|--ssh) remote="${2:?missing remote host}"; shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    if [[ ${#ids[@]} -gt 0 ]]; then
+      parts+=("\"ids\":$(json_array "${ids[@]}")")
+    fi
+    if [[ ${#sessions[@]} -gt 0 ]]; then
+      parts+=("\"sessions\":$(json_array "${sessions[@]}")")
+    fi
+    if [[ ${#targets[@]} -gt 0 ]]; then
+      parts+=("\"targets\":$(json_array "${targets[@]}")")
+    fi
+    if [[ -n "$remote" ]]; then
+      parts+=("\"remoteHost\":$(json_string "$remote")")
+    fi
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
