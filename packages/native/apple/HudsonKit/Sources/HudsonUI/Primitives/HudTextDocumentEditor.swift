@@ -111,6 +111,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
+        context.coordinator.highlight(kind: kind, language: language)
         context.coordinator.applyPresentation(kind: kind, language: language)
         return scrollView
     }
@@ -139,6 +140,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         }
 
         context.coordinator.applyPresentation(kind: kind, language: language)
+        context.coordinator.highlight(kind: kind, language: language)
         context.coordinator.lineNumberRuler?.needsDisplay = true
     }
 
@@ -166,6 +168,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         @Binding var text: String
         weak var textView: NSTextView?
         weak var scrollView: NSScrollView?
+        private var isHighlighting = false
 
         var lineNumberRuler: HudLineNumberRulerView? {
             scrollView?.verticalRulerView as? HudLineNumberRulerView
@@ -178,6 +181,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
+            highlight(kind: nil, language: nil)
             lineNumberRuler?.needsDisplay = true
         }
 
@@ -197,6 +201,71 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
             } else {
                 textView.textContainerInset = NSSize(width: HudSpacing.xxl, height: HudSpacing.xxl)
             }
+        }
+
+        func highlight(kind: HudTextDocumentKind?, language: String?) {
+            guard !isHighlighting, let textView, let storage = textView.textStorage else { return }
+            let kind = kind ?? currentKind
+            let language = language ?? currentLanguage
+            currentKind = kind
+            currentLanguage = language
+
+            isHighlighting = true
+            defer { isHighlighting = false }
+
+            let selectedRange = textView.selectedRange()
+            let fullRange = NSRange(location: 0, length: (storage.string as NSString).length)
+            guard fullRange.length > 0 else {
+                textView.typingAttributes = baseAttributes
+                return
+            }
+
+            storage.beginEditing()
+            storage.setAttributes(baseAttributes, range: fullRange)
+
+            if kind == .code || kind == .raw {
+                let source = storage.string
+                apply(pattern: #""(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'"#, color: HudAppKitColor.syntaxString, storage: storage, source: source)
+                apply(pattern: #"\b(true|false|null|nil|undefined)\b"#, color: HudAppKitColor.syntaxLiteral, storage: storage, source: source)
+                apply(pattern: #"\b(import|export|from|return|func|function|struct|class|enum|let|var|const|if|else|switch|case|for|while|guard|public|private|try|await|async|throws|some|View)\b"#, color: HudAppKitColor.syntaxKeyword, storage: storage, source: source)
+                apply(pattern: #"\b([0-9]+(?:\.[0-9]+)?)\b"#, color: HudAppKitColor.syntaxNumber, storage: storage, source: source)
+                apply(pattern: #"//.*$|#.*$"#, color: HudAppKitColor.syntaxComment, storage: storage, source: source, options: [.anchorsMatchLines])
+            }
+
+            storage.endEditing()
+            textView.setSelectedRange(clamped(range: selectedRange, length: fullRange.length))
+            textView.typingAttributes = baseAttributes
+        }
+
+        private var currentKind: HudTextDocumentKind = .text
+        private var currentLanguage: String?
+
+        private var baseAttributes: [NSAttributedString.Key: Any] {
+            [
+                .font: HudAppKitFont.editor,
+                .foregroundColor: HudAppKitColor.editorInk,
+            ]
+        }
+
+        private func apply(
+            pattern: String,
+            color: NSColor,
+            storage: NSTextStorage,
+            source: String,
+            options: NSRegularExpression.Options = []
+        ) {
+            guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return }
+            let range = NSRange(location: 0, length: (source as NSString).length)
+            regex.enumerateMatches(in: source, range: range) { match, _, _ in
+                guard let matchRange = match?.range, matchRange.location != NSNotFound else { return }
+                storage.addAttribute(.foregroundColor, value: color, range: matchRange)
+            }
+        }
+
+        private func clamped(range: NSRange, length: Int) -> NSRange {
+            let location = min(range.location, length)
+            let end = min(range.location + range.length, length)
+            return NSRange(location: location, length: max(0, end - location))
         }
     }
 }
@@ -269,6 +338,11 @@ private enum HudAppKitColor {
     static let editorInk = NSColor(HudPalette.ink)
     static let editorCaret = NSColor(HudPalette.statusInfo)
     static let lineNumber = NSColor(HudPalette.dim)
+    static let syntaxComment = NSColor(HudPalette.dim)
+    static let syntaxKeyword = NSColor(HudPalette.statusInfo)
+    static let syntaxLiteral = NSColor(HudPalette.statusWarn)
+    static let syntaxNumber = NSColor(HudTint.teal.color)
+    static let syntaxString = NSColor(HudTint.green.color)
 }
 
 private enum HudAppKitFont {

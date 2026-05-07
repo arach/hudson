@@ -319,6 +319,7 @@ public struct HudTextDocumentSurface: View {
                     language: document.language,
                     showsLineNumbers: showsLineNumbers
                 )
+                .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(HudSpacing.xxl)
             } else {
                 Text(document.value)
@@ -405,6 +406,7 @@ private struct HudCodeText: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func highlightedLine(_ line: String, language: String?) -> AttributedString {
