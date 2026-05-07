@@ -9,6 +9,8 @@ let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMIN
 // hosts that explicitly build with HUDSONKIT_WITH_TERMINAL=1.
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
+    .library(name: "HudsonLive", targets: ["HudsonLive"]),
+    .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -23,8 +25,16 @@ var targets: [Target] = [
         path: "packages/native/apple/HudsonKit/Sources/HudsonObservability"
     ),
     .target(
+        name: "HudsonLive",
+        path: "packages/native/apple/HudsonKit/Sources/HudsonLive"
+    ),
+    .target(
+        name: "HudsonDiff",
+        path: "packages/native/apple/HudsonKit/Sources/HudsonDiff"
+    ),
+    .target(
         name: "HudsonUI",
-        dependencies: ["HudsonObservability"],
+        dependencies: ["HudsonLive", "HudsonObservability"],
         path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
     ),
     .target(
@@ -63,6 +73,8 @@ if terminalEnabled {
         .target(
             name: "HudsonVantage",
             dependencies: [
+                "HudsonDiff",
+                "HudsonLive",
                 "HudsonUI",
                 "HudsonShell",
                 "HudsonTerminal",

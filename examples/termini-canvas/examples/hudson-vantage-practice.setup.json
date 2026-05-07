@@ -1,0 +1,133 @@
+{
+  "kind": "hudson.vantage.setup",
+  "schemaVersion": 1,
+  "workspaceID": "vantage-practice",
+  "surfaceTitle": "Vantage Practice",
+  "createIfMissing": true,
+  "presentation": {
+    "title": "Vantage Practice",
+    "subtitle": "sessions, files, plan, and running diff",
+    "badge": "practice",
+    "cobrand": "powered by Hudson",
+    "productName": "Vantage",
+    "theme": "jade"
+  },
+  "style": {
+    "preset": "jade",
+    "terminalTheme": "jade-night",
+    "canvasGridMode": "dots",
+    "canvasGridStep": 18,
+    "focusPadding": 14,
+    "tagStyles": {
+      "focus": {
+        "terminalThemeID": "jadeNight"
+      },
+      "watch": {
+        "terminalFontSize": 11
+      }
+    }
+  },
+  "viewport": {
+    "fit": true
+  },
+  "layout": {
+    "canvasTool": "select",
+    "navigationFilter": "all",
+    "minimapCollapsed": false,
+    "inspectorCollapsed": false,
+    "navigationWidth": 254,
+    "inspectorWidth": 300
+  },
+  "nodes": [
+    {
+      "id": "hudson.vantage.sessions.tmux.0001.lead",
+      "runtimeKind": "tmux",
+      "target": "hudson-vantage-lead",
+      "title": "lead session",
+      "subtitle": "tmux · hudson-vantage-lead",
+      "tag": "focus",
+      "x": 80,
+      "y": 92,
+      "width": 560,
+      "height": 340,
+      "zIndex": 1
+    },
+    {
+      "id": "hudson.vantage.sessions.tmux.0002.worker",
+      "runtimeKind": "tmux",
+      "target": "hudson-vantage-worker",
+      "title": "worker session",
+      "subtitle": "tmux · hudson-vantage-worker",
+      "tag": "watch",
+      "x": 80,
+      "y": 478,
+      "width": 560,
+      "height": 300,
+      "zIndex": 2
+    },
+    {
+      "id": "hudson.vantage.files.surface",
+      "runtimeKind": "file",
+      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift",
+      "title": "HudVantageSurface.swift",
+      "subtitle": "canvas + node renderer",
+      "language": "swift",
+      "role": "source",
+      "tag": "focus",
+      "x": 700,
+      "y": 92,
+      "width": 620,
+      "height": 360,
+      "zIndex": 3
+    },
+    {
+      "id": "hudson.vantage.files.manifest",
+      "runtimeKind": "file",
+      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSetupManifest.swift",
+      "title": "Setup Manifest",
+      "subtitle": "agent-definable workspace contract",
+      "language": "swift",
+      "role": "contract",
+      "tag": "watch",
+      "x": 1360,
+      "y": 92,
+      "width": 520,
+      "height": 360,
+      "zIndex": 4
+    },
+    {
+      "id": "hudson.vantage.plan.practice",
+      "runtimeKind": "plan",
+      "path": "examples/termini-canvas/examples/vantage-practice/PLAN.md",
+      "title": "Practice Plan",
+      "subtitle": "how this workspace was composed",
+      "language": "markdown",
+      "role": "plan",
+      "tag": "focus",
+      "x": 700,
+      "y": 506,
+      "width": 560,
+      "height": 360,
+      "zIndex": 5
+    },
+    {
+      "id": "hudson.vantage.diff.running",
+      "runtimeKind": "diff",
+      "path": "examples/termini-canvas/examples/vantage-practice/RUNNING.diff",
+      "title": "Running Diff",
+      "subtitle": "review surface placeholder",
+      "language": "diff",
+      "role": "review",
+      "tag": "watch",
+      "x": 1300,
+      "y": 506,
+      "width": 580,
+      "height": 360,
+      "zIndex": 6
+    }
+  ],
+  "selection": [
+    "hudson.vantage.sessions.tmux.0001.lead",
+    "hudson.vantage.plan.practice"
+  ]
+}

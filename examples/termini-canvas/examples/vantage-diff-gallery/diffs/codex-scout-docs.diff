@@ -1,0 +1,65 @@
+diff --git a/README.md b/README.md
+index 0098eda..f7b99a9 100644
+--- a/README.md
++++ b/README.md
+@@ -17,24 +17,36 @@ Repository: <https://github.com/arach/codex-scout>
+
+ ## Install Locally
+
+-From Codex, add this repository as a local plugin marketplace, then install the
+-`scout` plugin from the OpenScout marketplace.
++From Codex, add this repository as a local plugin marketplace:
+
+ For local development, point Codex at this checkout:
+
+ ```text
+-/plugin marketplace add /Users/art/dev/codex-scout
++/plugin marketplace add /Users/arach/dev/codex-scout
+ ```
+
+-## Install From GitHub
++Codex records marketplaces in `~/.codex/config.toml`. If the plugin does not
++appear in your next session after adding the marketplace, enable it explicitly:
++
++```toml
++[plugins."scout@openscout"]
++enabled = true
++```
+
+-Once published:
++## Install From GitHub
+
+ ```text
+ /plugin marketplace add arach/codex-scout
+ ```
+
+-Then install `scout` from the OpenScout marketplace in Codex.
++The marketplace declares the `scout` plugin as installed by default. If your
++Codex build only adds the marketplace and does not enable the plugin, add this
++entry to `~/.codex/config.toml`:
++
++```toml
++[plugins."scout@openscout"]
++enabled = true
++```
+
+ ## Plugin Behavior
+
+@@ -62,4 +74,3 @@ Pages can serve it from the `docs/` folder on `main`.
+ This is an experimental local developer package. It depends on a local
+ OpenScout broker and a `scout` CLI, or Bun so the wrapper can run
+ `bunx @openscout/scout`.
+-
+diff --git a/docs/index.html b/docs/index.html
+index 13733b5..64b54c5 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -317,7 +317,7 @@
+         </div>
+         <div class="terminal-body">
+           <div><span class="prompt">/ </span><span class="cmd">plugin marketplace add arach/codex-scout</span></div>
+-          <div><span class="prompt">/ </span><span class="cmd">plugin install scout@openscout</span></div>
++          <div><span class="prompt">~ </span><span class="cmd">[plugins."scout@openscout"] enabled = true</span></div>
+           <div class="out"># Scout MCP tools and coordination skill available</div>
+         </div>
+       </div>

@@ -1,0 +1,195 @@
+diff --git a/examples/termini-canvas/README.md b/examples/termini-canvas/README.md
+index 611e7b0..6800b23 100644
+--- a/examples/termini-canvas/README.md
++++ b/examples/termini-canvas/README.md
+@@ -6,6 +6,7 @@ A minimal native macOS HudsonKit instantiation focused only on:
+ - `HudVantageSurface`
+ - draggable terminal nodes
+ - Termini-backed local PTY shells via `HudTerminalSurface`
++- manifest-defined file, plan, and diff artifacts on the same canvas
+
+ Run it from the repo root:
+
+@@ -24,6 +25,18 @@ That keeps the visible macOS window and the JSONL control API in the same app pr
+ This example intentionally does not register anything in the existing web demo.
+ It is now a thin host around the reusable `HudsonVantage` module.
+
++On first launch, when no saved state exists, the app applies the practice
++manifest at:
++
++```sh
++examples/termini-canvas/examples/hudson-vantage-practice.setup.json
++```
++
++That practice workspace lays out two tmux sessions, two Hudson source files, a
++plan document, and a running diff placeholder. It is deliberately just a
++manifest: agents and host apps can replace it with their own project setup
++without Vantage needing a top-down product model.
++
+ ## What belongs where
+
+ This app is a pressure-test for native HudsonKit canvas APIs. Most of the
+@@ -104,6 +117,7 @@ examples/termini-canvas/scripts/canvasctl.sh --wait exit-focus
+ examples/termini-canvas/scripts/canvasctl.sh --wait metrics
+ examples/termini-canvas/scripts/canvasctl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
+ examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
++examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/hudson-vantage-practice.setup.json --create --fit
+ examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
+ examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --session hudson-lab
+ examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab
+@@ -131,10 +145,20 @@ selected node IDs, viewport, metrics, and per-command latency.
+ The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
+ waitable request id plus the v0 envelope when those fields are missing.
+
+-`focus-mode` renders exactly one selected or targeted terminal as the whole
++`focus-mode` renders exactly one selected or targeted node as the whole
+ surface and hides the canvas side panels until `exit-focus` or Escape.
+-`popout` opens selected or targeted terminals in a separate native window with
+-either a live grid or a single-terminal focus tab.
++`popout` opens selected or targeted nodes in a separate native window with
++either a live grid or a single-node focus tab.
++
++`setup` can compose a broader canvas than terminals. In addition to `tmux`,
++manifests can create `file`, `plan`, `diff`, `note`, and `preview` artifact
++nodes with `path`, `language`, and `role` metadata. Their canvas cards stay
++native and lightweight. Opened code artifacts use a read-only web renderer slot
++that loads one local shell and updates it with JSON payloads. Diff artifacts are
++parsed into `HudDiffDocument` through the HudsonDiff core target, then rendered
++natively by Vantage. A React/Shiki/Diffs renderer can still consume the same JSON
++later without placing WebViews on the zooming canvas. Git, the filesystem, tmux,
++and the host product remain the real sources of truth.
+
+ `perf-harness` creates a repeatable local tmux stress scene. The default shape
+ is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas
+@@ -163,19 +187,19 @@ confirms with the user before running Homebrew. Agents can request the same path
+ with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
+ / `confirmInstall: true` before Vantage runs an installer.
+
+-`save` persists the current durable tmux-backed canvas state to:
++`save` persists the current durable canvas state to:
+
+ ```sh
+-/tmp/termini-canvas-state.json
++/tmp/hudson-vantage-practice-state.json
+ ```
+
+ `save-workspace` is the same durable format with clearer product language for
+ portable files such as `/tmp/project.vantage.json`. New saves include
+ `kind: "hudson.vantage.workspace"`, optional focus mode state, and
+ tag-derived workspace groups. `restore` and `restore-workspace` recreate those
+-saved tmux-backed nodes with their previous bounds, z-order, tags, groups,
+-selection, focused node, viewport, and Graphite metadata. Use `--state-file
+-PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
++saved tmux and artifact nodes with their previous bounds, z-order, tags, groups,
++selection, focused node, viewport, Graphite metadata, and artifact metadata. Use
++`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
+
+ For direct executable runs, a startup reattach set can be provided with:
+
+@@ -185,5 +209,6 @@ TERMINI_CANVAS_REATTACH_REMOTE_HOST="user@host" \
+ HUDSONKIT_WITH_TERMINAL=1 swift run --package-path examples/termini-canvas TerminiCanvas
+ ```
+
+-The case-study configuration also restores `/tmp/termini-canvas-state.json` on
+-launch when that file exists and contains durable tmux nodes.
++The case-study configuration restores `/tmp/hudson-vantage-practice-state.json`
++on launch when that file exists and contains durable nodes. Remove that file to
++see the bundled practice manifest again.
+diff --git a/packages/native/apple/HudsonKit/Docs/HUD-004-vantage-control-api.md b/packages/native/apple/HudsonKit/Docs/HUD-004-vantage-control-api.md
+index 69e6728..5d3caa7 100644
+--- a/packages/native/apple/HudsonKit/Docs/HUD-004-vantage-control-api.md
++++ b/packages/native/apple/HudsonKit/Docs/HUD-004-vantage-control-api.md
+@@ -89,6 +89,9 @@ The seamless model is a short-lived capability, not a modal on every command:
+ - Mutating commands such as `setup`, `tile`, `spawn`, `reattach`, `style`,
+   `viewport`, `select`, and `popout` are allowed within the enabled workspace
+   and should remain visible in command status/audit output.
++- Setup manifests may ask Vantage to display local file, plan, or diff artifacts.
++  Product hosts should scope path-backed artifact reads to trusted workspace
++  roots and avoid returning file contents over the control response channel.
+ - High-risk commands that install software, kill sessions, remove nodes, touch
+   remote SSH, or cross a product/workspace boundary should require either an
+   explicit `confirm` field, a host policy grant, or a user-visible approval.
+@@ -133,7 +136,9 @@ Node actions accept any of:
+ }
+ ```
+
+-Selectors can be full or prefix UUIDs, exact node titles, tmux targets, remote tmux targets in `host:target` form, or Graphite paths.
++Selectors can be full or prefix UUIDs, exact manifest ids, exact node titles,
++tmux targets, remote tmux targets in `host:target` form, Graphite paths, or
++path-backed artifact paths.
+
+ `selectionMode` accepts `replace`, `add`, `remove`, `toggle`, and `clear`.
+
+@@ -234,6 +239,43 @@ Inline manifests are also accepted under `setup` or `manifest`.
+       "y": 96,
+       "width": 460,
+       "height": 280
++    },
++    {
++      "id": "hudson.scout.files.provider",
++      "runtimeKind": "file",
++      "path": "app/apps/scout/ScoutProvider.tsx",
++      "language": "typescript",
++      "role": "source",
++      "title": "ScoutProvider.tsx",
++      "tag": "focus",
++      "x": 80,
++      "y": 452,
++      "width": 620,
++      "height": 360
++    },
++    {
++      "id": "hudson.scout.plan.current",
++      "runtimeKind": "plan",
++      "path": "docs/scout-plan.md",
++      "language": "markdown",
++      "role": "plan",
++      "title": "Current Plan",
++      "x": 732,
++      "y": 452,
++      "width": 500,
++      "height": 360
++    },
++    {
++      "id": "hudson.scout.diff.running",
++      "runtimeKind": "diff",
++      "path": "/tmp/scout-running.diff",
++      "language": "diff",
++      "role": "review",
++      "title": "Running Diff",
++      "x": 1264,
++      "y": 452,
++      "width": 560,
++      "height": 360
+     }
+   ],
+   "selection": ["hudson.scout.agents.codex.0001.worker"],
+@@ -243,13 +285,26 @@ Inline manifests are also accepted under `setup` or `manifest`.
+
+ Setup application is idempotent:
+
+-- Existing nodes are reused by UUID, Graphite path, or tmux target plus remote
+-  host.
++- Existing nodes are reused by UUID, manifest id, artifact path, Graphite path,
++  or tmux target plus remote host.
+ - Missing nodes are created when `createIfMissing` is true.
+ - `removeMissing` prunes canvas nodes not mentioned in the manifest.
+ - Re-running the same manifest converges placement, tags, style, selection, and
+   viewport instead of duplicating nodes.
+
++Terminals are one node type. `runtimeKind: "file"`, `"plan"`, `"diff"`,
++`"note"`, and `"preview"` create non-PTY canvas artifacts. They are currently
++presentation nodes: Vantage stores layout, identity, tags, and a preview, while
++the filesystem, git diff, tmux session, or host product remains the source of
++truth. The canvas path stays native and lightweight for zoom/pan performance;
++opened code artifacts can use a read-only web renderer slot that loads one local
++shell and receives JSON payload updates. Diff artifacts are parsed into
++`HudDiffDocument` from the HudsonDiff core target, then rendered natively by
++Vantage. Hosts can still drop in richer React/Shiki/Diffs renderers later by
++consuming the same diff JSON, without putting WebViews on the canvas itself.
++Path-backed artifacts read local UTF-8 text for display; responses expose
++metadata such as `path`, `language`, and `role`, but do not echo file contents.
++
+ Presentation fields are intentionally host-friendly. `title`, `subtitle`,
+ `badge`, and `cobrand` are rendered by Vantage today. `productName`, `hostName`,
+ `icon`, `theme`, and `accent` are part of the manifest contract so Scout,

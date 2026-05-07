@@ -262,6 +262,10 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
     public var target: String?
     public var graphitePath: String?
     public var remoteHost: String?
+    public var path: String?
+    public var language: String?
+    public var content: String?
+    public var role: String?
     public var x: Double?
     public var y: Double?
     public var width: Double?
@@ -286,6 +290,10 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
         target: String? = nil,
         graphitePath: String? = nil,
         remoteHost: String? = nil,
+        path: String? = nil,
+        language: String? = nil,
+        content: String? = nil,
+        role: String? = nil,
         x: Double? = nil,
         y: Double? = nil,
         width: Double? = nil,
@@ -309,6 +317,10 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
         self.target = target
         self.graphitePath = graphitePath
         self.remoteHost = remoteHost
+        self.path = path
+        self.language = language
+        self.content = content
+        self.role = role
         self.x = x
         self.y = y
         self.width = width

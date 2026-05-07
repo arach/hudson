@@ -263,6 +263,64 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(manifest.focused, "hudson.scout.agents.codex.0001.worker")
     }
 
+    func testSetupManifestDecodesDocumentArtifactNodes() throws {
+        let json = """
+        {
+          "kind": "hudson.vantage.setup",
+          "schemaVersion": 1,
+          "workspaceID": "vantage-practice",
+          "nodes": [
+            {
+              "id": "hudson.vantage.files.surface",
+              "runtimeKind": "file",
+              "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift",
+              "language": "swift",
+              "role": "source"
+            },
+            {
+              "id": "hudson.vantage.plan.practice",
+              "runtime": {
+                "kind": "plan",
+                "path": "examples/termini-canvas/examples/vantage-practice/PLAN.md",
+                "language": "markdown",
+                "role": "plan"
+              },
+              "title": "Practice Plan"
+            },
+            {
+              "id": "hudson.vantage.diff.running",
+              "runtimeKind": "diff",
+              "content": "diff --git a/file b/file",
+              "language": "diff",
+              "role": "review"
+            }
+          ],
+          "selection": ["hudson.vantage.plan.practice"],
+          "focused": "hudson.vantage.plan.practice"
+        }
+        """
+
+        let manifest = try JSONDecoder().decode(
+            HudVantageSetupManifest.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(manifest.workspaceID, "vantage-practice")
+        XCTAssertEqual(manifest.nodes.count, 3)
+        XCTAssertEqual(manifest.nodes[0].runtimeKind, "file")
+        XCTAssertEqual(manifest.nodes[0].path, "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift")
+        XCTAssertEqual(manifest.nodes[0].language, "swift")
+        XCTAssertEqual(manifest.nodes[0].role, "source")
+        XCTAssertEqual(manifest.nodes[1].runtime?.kind, "plan")
+        XCTAssertEqual(manifest.nodes[1].runtime?.path, "examples/termini-canvas/examples/vantage-practice/PLAN.md")
+        XCTAssertEqual(manifest.nodes[1].runtime?.language, "markdown")
+        XCTAssertEqual(manifest.nodes[1].runtime?.role, "plan")
+        XCTAssertEqual(manifest.nodes[2].runtimeKind, "diff")
+        XCTAssertEqual(manifest.nodes[2].content, "diff --git a/file b/file")
+        XCTAssertEqual(manifest.selection, ["hudson.vantage.plan.practice"])
+        XCTAssertEqual(manifest.focused, "hudson.vantage.plan.practice")
+    }
+
     func testControlCommandDecodesViewportReplayFields() throws {
         let json = """
         {
@@ -409,6 +467,48 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(decoded.focusedNodeID, nodeID)
         XCTAssertEqual(decoded.groups.first?.id, "tag.focus")
         XCTAssertEqual(decoded.groups.first?.nodeIDs, [nodeID])
+    }
+
+    func testWorkspaceSnapshotRoundTripsDocumentArtifactNode() throws {
+        let nodeID = UUID()
+        let snapshot = HudVantageWorkspaceSnapshot(
+            workspaceID: "vantage-practice",
+            surfaceTitle: "Vantage Practice",
+            viewport: HudVantageViewportSnapshot(panX: 0, panY: 0, scale: 1),
+            nodes: [
+                HudVantageNodeSnapshot(
+                    id: nodeID,
+                    externalID: "hudson.vantage.diff.running",
+                    title: "Running Diff",
+                    subtitle: "review surface placeholder",
+                    tint: "teal",
+                    x: 700,
+                    y: 480,
+                    width: 580,
+                    height: 360,
+                    zIndex: 6,
+                    tag: "watch",
+                    runtime: HudVantageRuntimeReference(
+                        kind: "diff",
+                        path: "examples/termini-canvas/examples/vantage-practice/RUNNING.diff",
+                        language: "diff",
+                        content: "diff --git a/file b/file",
+                        role: "review"
+                    )
+                )
+            ],
+            selectedNodeIDs: [nodeID]
+        )
+
+        let data = try JSONEncoder().encode(snapshot)
+        let decoded = try JSONDecoder().decode(HudVantageWorkspaceSnapshot.self, from: data)
+
+        XCTAssertEqual(decoded.nodes.first?.externalID, "hudson.vantage.diff.running")
+        XCTAssertEqual(decoded.nodes.first?.runtime.kind, "diff")
+        XCTAssertEqual(decoded.nodes.first?.runtime.path, "examples/termini-canvas/examples/vantage-practice/RUNNING.diff")
+        XCTAssertEqual(decoded.nodes.first?.runtime.language, "diff")
+        XCTAssertEqual(decoded.nodes.first?.runtime.content, "diff --git a/file b/file")
+        XCTAssertEqual(decoded.nodes.first?.runtime.role, "review")
     }
 
     func testWorkspaceSnapshotDecodesWithoutLayoutForV0Compatibility() throws {
