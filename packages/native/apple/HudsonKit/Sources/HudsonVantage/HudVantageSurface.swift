@@ -89,6 +89,22 @@ private enum HudVantageMetrics {
         + HudSpacing.xxxl
         + HudSpacing.xl
     static let popOutTerminalPreviewHeight = HudLayout.qrViewfinderSize + HudSpacing.lg
+    static let appearanceSheetWidth = HudLayout.cliffWidth
+    static let appearanceSheetHeight = HudLayout.dialogWidth
+        + HudLayout.rowHeightRegular
+        + HudLayout.fieldHeight
+    static let settingsScopeRailWidth = HudLayout.panelWidth
+        - HudSpacing.huge
+        - HudSpacing.xxxl
+        - HudSpacing.xxl
+        - HudSpacing.md
+    static let commandPaletteWidth = HudLayout.popoverWidth
+        + HudLayout.rowHeightRegular
+        + HudSpacing.huge
+        + HudSpacing.md
+    static let commandPaletteTopPadding = HudLayout.navHeight
+        + HudSpacing.huge
+        + HudSpacing.lg
 }
 
 private extension HudTheme {
@@ -144,6 +160,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     @Published var size: CGSize
     @Published var zIndex: Double
     @Published var tag: CanvasTag?
+    @Published var styleOverride: HudVantageTerminalStyleOverride?
 
     init(
         id: UUID = UUID(),
@@ -157,6 +174,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         subtitle: String? = nil,
         runtimeIdentity: RuntimeIdentity = .localPTY,
         tag: CanvasTag? = nil,
+        styleOverride: HudVantageTerminalStyleOverride? = nil,
         workingDirectoryURL: URL? = nil
     ) {
         let controller = TerminiTerminalController()
@@ -173,6 +191,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         self.zIndex = zIndex
         self.runtimeIdentity = runtimeIdentity
         self.tag = tag
+        self.styleOverride = styleOverride?.isEmpty == true ? nil : styleOverride
         workspace.start()
     }
 
@@ -467,6 +486,7 @@ public struct HudVantageSurface: View {
     @State private var navigationTagFilter: CanvasTag?
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
+    @State private var minimapCollapsed = false
     @State private var inspectorCollapsed = false
     @State private var inspectorWidth: CGFloat = 300
     @State private var focusedNodeID: UUID?
@@ -486,6 +506,10 @@ public struct HudVantageSurface: View {
     @State private var perfHarnessPrefix: String?
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
+    @State private var styleProfile: HudVantageStyleProfile = .adaptive
+    @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
+    @State private var appearanceSettingsPresented = false
+    @State private var commandPalettePresented = false
     @State private var canvasState = HudVantageCanvasState(
         minimumScale: HudVantageSurface.minimumCanvasScale,
         maximumScale: HudVantageSurface.maximumCanvasScale
@@ -548,10 +572,19 @@ public struct HudVantageSurface: View {
         .onChange(of: navigationWidth) { _, _ in
             schedulePersistStateIfConfigured()
         }
+        .onChange(of: minimapCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
         .onChange(of: inspectorCollapsed) { _, _ in
             schedulePersistStateIfConfigured()
         }
         .onChange(of: inspectorWidth) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: styleProfile) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: tagStyleOverrides) { _, _ in
             schedulePersistStateIfConfigured()
         }
         .confirmationDialog(
@@ -567,6 +600,43 @@ public struct HudVantageSurface: View {
         }
         .hudTheme(activeTheme)
         .environment(\.colorScheme, activeColorScheme)
+        .overlay {
+            if commandPalettePresented {
+                VantageCommandPalette(
+                    selectedCount: selectedIDs.count,
+                    onOpenAppearance: openAppearanceSettings,
+                    onCreateTerminal: {
+                        commandPalettePresented = false
+                        spawnTerminal()
+                    },
+                    onFocusSelection: {
+                        commandPalettePresented = false
+                        focusSelection()
+                    },
+                    onPopOutSelection: {
+                        commandPalettePresented = false
+                        popOutSelection()
+                    },
+                    onClose: { commandPalettePresented = false }
+                )
+            }
+        }
+        .sheet(isPresented: $appearanceSettingsPresented) {
+            VantageAppearanceSettingsSurface(
+                profile: $styleProfile,
+                tagStyleOverrides: $tagStyleOverrides,
+                selectedNode: singleSelectedNode,
+                inheritedProfile: singleSelectedNode.map { inheritedStyleProfile(for: $0) },
+                selectedStyleOverride: singleSelectedNode.map { terminalStyleBinding(for: $0) },
+                onClose: { appearanceSettingsPresented = false }
+            )
+            .frame(
+                width: HudVantageMetrics.appearanceSheetWidth,
+                height: HudVantageMetrics.appearanceSheetHeight
+            )
+            .hudTheme(activeTheme)
+            .environment(\.colorScheme, activeColorScheme)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 if navigationCollapsed {
@@ -595,7 +665,11 @@ public struct HudVantageSurface: View {
             }
         }
         .onExitCommand {
-            if isTerminalFocusActive {
+            if commandPalettePresented {
+                commandPalettePresented = false
+            } else if appearanceSettingsPresented {
+                appearanceSettingsPresented = false
+            } else if isTerminalFocusActive {
                 exitFocusMode()
             }
         }
@@ -603,17 +677,41 @@ public struct HudVantageSurface: View {
     }
 
     private var activeColorScheme: ColorScheme {
-        if configuration.followsSystemColorScheme {
-            return colorScheme
-        }
-        return inheritedTheme == .lightDraft ? .light : .dark
+        styleProfile.chromeStyle.colorScheme(
+            inheritedTheme: inheritedTheme,
+            systemColorScheme: colorScheme,
+            followsSystemColorScheme: configuration.followsSystemColorScheme
+        )
     }
 
     private var activeTheme: HudTheme {
-        guard configuration.followsSystemColorScheme else {
-            return inheritedTheme
+        styleProfile.chromeStyle.hudTheme(
+            inheritedTheme: inheritedTheme,
+            systemColorScheme: colorScheme,
+            followsSystemColorScheme: configuration.followsSystemColorScheme
+        )
+    }
+
+    private var terminalAppearance: HudTerminalAppearance {
+        styleProfile.terminalAppearance(for: activeColorScheme)
+    }
+
+    private func resolvedStyleProfile(for node: TerminalNode) -> HudVantageStyleProfile {
+        var resolved = styleProfile
+        if let tag = node.tag {
+            resolved = resolved.applyingTerminalOverride(tagStyleOverrides[tag])
         }
-        return colorScheme == .dark ? .default : .lightDraft
+        resolved = resolved.applyingTerminalOverride(node.styleOverride)
+        return resolved
+    }
+
+    private func inheritedStyleProfile(for node: TerminalNode) -> HudVantageStyleProfile {
+        guard let tag = node.tag else { return styleProfile }
+        return styleProfile.applyingTerminalOverride(tagStyleOverrides[tag])
+    }
+
+    private func terminalAppearance(for node: TerminalNode) -> HudTerminalAppearance {
+        resolvedStyleProfile(for: node).terminalAppearance(for: activeColorScheme)
     }
 
     private var effectiveCanvasTool: CanvasTool {
@@ -640,6 +738,7 @@ public struct HudVantageSurface: View {
                 selectedCount: selectedIDs.count,
                 filter: $navigationFilter,
                 tagFilter: $navigationTagFilter,
+                minimapCollapsed: $minimapCollapsed,
                 selectedIDs: selectedIDs,
                 viewportWorldRect: canvasState.visibleWorldRect,
                 canvasWorldBounds: canvasWorldBounds,
@@ -649,6 +748,7 @@ public struct HudVantageSurface: View {
                 onTagSelection: tagSelection(as:),
                 onCenterWorldPoint: centerCanvas(on:),
                 onFit: fitCanvasToViewport,
+                onOpenAppearanceSettings: openAppearanceSettings,
                 onCollapse: { navigationCollapsed = true }
             )
         }
@@ -678,8 +778,29 @@ public struct HudVantageSurface: View {
         nodes.filter { selectedIDs.contains($0.id) }
     }
 
-    private func showCommandPlaceholder() {
-        controlStatus = "Command palette placeholder"
+    private var singleSelectedNode: TerminalNode? {
+        let selected = selectedNodes
+        return selected.count == 1 ? selected[0] : nil
+    }
+
+    private func openCommandPalette() {
+        commandPalettePresented = true
+        controlStatus = "Command palette"
+    }
+
+    private func openAppearanceSettings() {
+        commandPalettePresented = false
+        appearanceSettingsPresented = true
+        controlStatus = "Appearance settings"
+    }
+
+    private func terminalStyleBinding(for node: TerminalNode) -> Binding<HudVantageTerminalStyleOverride> {
+        Binding(
+            get: { node.styleOverride ?? .empty },
+            set: { override in
+                setTerminalStyleOverride(node.id, override: override.isEmpty ? nil : override)
+            }
+        )
     }
 
     private var tmuxInstallPermissionMessage: String {
@@ -734,7 +855,7 @@ public struct HudVantageSurface: View {
                     onSelect: { canvasTool = .select },
                     onHand: { canvasTool = .hand }
                 )
-                CommandKeyButton(action: showCommandPlaceholder)
+                CommandKeyButton(action: openCommandPalette)
 
                 HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
                     focusSelection()
@@ -771,7 +892,8 @@ public struct HudVantageSurface: View {
                 activeTheme.palette.bg
                 InfiniteCanvasBackground(
                     pan: canvasBackgroundPan,
-                    scale: canvasBackgroundScale
+                    scale: canvasBackgroundScale,
+                    styleProfile: styleProfile
                 )
                 .allowsHitTesting(false)
 
@@ -800,7 +922,8 @@ public struct HudVantageSurface: View {
                     },
                     onSpacePanChanged: { isActive in
                         transientHandActive = isActive
-                    }
+                    },
+                    onCommandPalette: openCommandPalette
                 )
             )
             .gesture(canvasInteractionGesture)
@@ -1009,24 +1132,24 @@ public struct HudVantageSurface: View {
 
     private func displayScale(for node: TerminalNode) -> CGFloat {
         guard focusedNode?.id == node.id else { return canvasState.scale }
-
-        let inset = HudSpacing.huge + HudSpacing.xxxl
-        let availableWidth = max(HudLayout.rowHeightRegular, canvasState.viewportSize.width - inset * 2)
-        let availableHeight = max(HudLayout.rowHeightRegular, canvasState.viewportSize.height - inset * 2)
-        guard node.size.width > 0, node.size.height > 0 else { return 1 }
-
-        let fitScale = min(availableWidth / node.size.width, availableHeight / node.size.height)
-        return clamped(fitScale, to: Self.minimumCanvasScale...Self.maximumCanvasScale)
+        return 1
     }
 
     private func displayPan(for node: TerminalNode, scale: CGFloat) -> CGSize {
         guard focusedNode?.id == node.id else { return canvasState.pan }
 
-        let width = node.size.width * scale
-        let height = node.size.height * scale
+        let size = focusScreenSize
         return CGSize(
-            width: (canvasState.viewportSize.width - width) / 2 - node.origin.x * scale,
-            height: (canvasState.viewportSize.height - height) / 2 - node.origin.y * scale
+            width: (canvasState.viewportSize.width - size.width) / 2 - node.origin.x * scale,
+            height: (canvasState.viewportSize.height - size.height) / 2 - node.origin.y * scale
+        )
+    }
+
+    private var focusScreenSize: CGSize {
+        let inset = CGFloat(styleProfile.focusPadding)
+        return CGSize(
+            width: max(360, canvasState.viewportSize.width - inset * 2),
+            height: max(260, canvasState.viewportSize.height - inset * 2)
         )
     }
 
@@ -1041,10 +1164,19 @@ public struct HudVantageSurface: View {
                         isSelected: selectedIDs.contains(node.id),
                         isFocused: isFocused,
                         rendersLiveSurface: rendersLiveSurface(for: node),
+                        workspaceStyleProfile: styleProfile,
+                        tagStyleOverrides: tagStyleOverrides,
+                        activeColorScheme: activeColorScheme,
                         canvasPan: displayPan(for: node, scale: displayScale),
                         canvasScale: displayScale,
+                        screenSizeOverride: isFocused ? focusScreenSize : nil,
                         onSelect: { selectNode(node.id) },
                         onFocus: { enterFocusMode(node.id) },
+                        onPopOut: { popOut(nodes: [node]) },
+                        onAppearanceSettings: {
+                            selectNode(node.id)
+                            openAppearanceSettings()
+                        },
                         onDragBegin: {
                             if !isFocused {
                                 beginDraggingNode(node.id)
@@ -2341,15 +2473,24 @@ public struct HudVantageSurface: View {
                 )
             }
 
-            guard !snapshot.nodes.isEmpty else {
+            let shouldReset = command.reset ?? true
+            if snapshot.nodes.isEmpty {
+                if shouldReset {
+                    resetTerminals()
+                }
+                canvasState = canvasState.replaying(
+                    panX: CGFloat(snapshot.viewport.panX),
+                    panY: CGFloat(snapshot.viewport.panY),
+                    scale: CGFloat(snapshot.viewport.scale)
+                )
+                applyLayoutSnapshot(snapshot.layout)
                 return controlResponse(
                     command,
-                    ok: false,
-                    message: "state has no durable nodes"
+                    ok: true,
+                    message: "restored layout"
                 )
             }
 
-            let shouldReset = command.reset ?? true
             if shouldReset {
                 stopAllNodes()
                 nextIndex = 1
@@ -2474,8 +2615,11 @@ public struct HudVantageSurface: View {
                 navigationTagFilter: navigationTagFilter?.rawValue,
                 navigationCollapsed: navigationCollapsed,
                 navigationWidth: Double(navigationWidth),
+                minimapCollapsed: minimapCollapsed,
                 inspectorCollapsed: inspectorCollapsed,
-                inspectorWidth: Double(inspectorWidth)
+                inspectorWidth: Double(inspectorWidth),
+                style: styleProfile,
+                tagStyles: tagStyleSnapshot()
             ),
             nodes: durableNodes,
             selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) },
@@ -2516,9 +2660,34 @@ public struct HudVantageSurface: View {
         navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
 
         navigationCollapsed = layout.navigationCollapsed
+        if let restoredMinimapCollapsed = layout.minimapCollapsed {
+            minimapCollapsed = restoredMinimapCollapsed
+        }
         inspectorCollapsed = layout.inspectorCollapsed
         navigationWidth = clamped(CGFloat(layout.navigationWidth), to: 210...360)
         inspectorWidth = clamped(CGFloat(layout.inspectorWidth), to: 250...440)
+        if let style = layout.style {
+            styleProfile = style
+        }
+        tagStyleOverrides = restoredTagStyles(from: layout)
+    }
+
+    private func tagStyleSnapshot() -> [String: HudVantageTerminalStyleOverride]? {
+        let snapshot = Dictionary(
+            uniqueKeysWithValues: tagStyleOverrides.compactMap { tag, override in
+                override.isEmpty ? nil : (tag.rawValue, override)
+            }
+        )
+        return snapshot.isEmpty ? nil : snapshot
+    }
+
+    private func restoredTagStyles(
+        from layout: HudVantageSurfaceLayoutSnapshot
+    ) -> [CanvasTag: HudVantageTerminalStyleOverride] {
+        (layout.tagStyles ?? [:]).reduce(into: [:]) { restored, entry in
+            guard let tag = CanvasTag(rawValue: entry.key), !entry.value.isEmpty else { return }
+            restored[tag] = entry.value
+        }
     }
 
     private func clamped(_ value: CGFloat, to range: ClosedRange<CGFloat>) -> CGFloat {
@@ -2541,6 +2710,7 @@ public struct HudVantageSurface: View {
             height: Double(node.size.height),
             zIndex: node.zIndex,
             tag: node.tag?.rawValue,
+            style: node.styleOverride?.isEmpty == true ? nil : node.styleOverride,
             runtime: HudVantageRuntimeReference(
                 kind: "tmux",
                 target: target,
@@ -2634,7 +2804,8 @@ public struct HudVantageSurface: View {
                 path: path,
                 remoteHost: remoteHost
             ),
-            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:))
+            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:)),
+            styleOverride: snapshot.style
         )
     }
 
@@ -2731,9 +2902,16 @@ public struct HudVantageSurface: View {
         let title = nodesToPopOut.count == 1
             ? nodesToPopOut[0].title
             : "\(nodesToPopOut.count) terminals"
+        let terminalAppearances = Dictionary(
+            uniqueKeysWithValues: nodesToPopOut.map { node in
+                (node.id, terminalAppearance(for: node))
+            }
+        )
         let rootView = TerminalPopOutWindow(
             title: title,
-            nodes: nodesToPopOut
+            nodes: nodesToPopOut,
+            terminalAppearances: terminalAppearances,
+            fallbackTerminalAppearance: terminalAppearance
         ) {
             popOutWindows[windowID]?.close()
         }
@@ -2781,6 +2959,15 @@ public struct HudVantageSurface: View {
         nodes
             .filter { selectedIDs.contains($0.id) }
             .forEach { $0.tag = tag }
+        schedulePersistStateIfConfigured()
+    }
+
+    private func setTerminalStyleOverride(
+        _ id: UUID,
+        override: HudVantageTerminalStyleOverride?
+    ) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        node.styleOverride = override?.isEmpty == true ? nil : override
         schedulePersistStateIfConfigured()
     }
 
@@ -3045,10 +3232,16 @@ private struct TerminalNodeView: View {
     let isSelected: Bool
     let isFocused: Bool
     let rendersLiveSurface: Bool
+    let workspaceStyleProfile: HudVantageStyleProfile
+    let tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride]
+    let activeColorScheme: ColorScheme
     let canvasPan: CGSize
     let canvasScale: CGFloat
+    let screenSizeOverride: CGSize?
     let onSelect: () -> Void
     let onFocus: () -> Void
+    let onPopOut: () -> Void
+    let onAppearanceSettings: () -> Void
     let onDragBegin: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
@@ -3069,7 +3262,11 @@ private struct TerminalNodeView: View {
     }
 
     private var screenSize: CGSize {
-        CGSize(
+        if let screenSizeOverride {
+            return screenSizeOverride
+        }
+
+        return CGSize(
             width: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.width * canvasScale),
             height: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.height * canvasScale)
         )
@@ -3077,6 +3274,15 @@ private struct TerminalNodeView: View {
 
     private var shouldRenderMarker: Bool {
         screenSize.width < 110 || screenSize.height < 74
+    }
+
+    private var terminalAppearance: HudTerminalAppearance {
+        var resolved = workspaceStyleProfile
+        if let tag = node.tag {
+            resolved = resolved.applyingTerminalOverride(tagStyleOverrides[tag])
+        }
+        resolved = resolved.applyingTerminalOverride(node.styleOverride)
+        return resolved.terminalAppearance(for: activeColorScheme)
     }
 
     var body: some View {
@@ -3090,6 +3296,14 @@ private struct TerminalNodeView: View {
             transaction.animation = nil
         }
         .onTapGesture(perform: onSelect)
+        .contextMenu {
+            Button(isFocused ? "Focused" : "Focus Terminal", action: onFocus)
+                .disabled(isFocused)
+            Button("Pop Out", action: onPopOut)
+            Button("Appearance Settings", action: onAppearanceSettings)
+            Divider()
+            Button("Close", role: .destructive, action: onClose)
+        }
     }
 
     @ViewBuilder
@@ -3105,9 +3319,12 @@ private struct TerminalNodeView: View {
             VStack(spacing: 0) {
                 titleBar
                 if rendersLiveSurface {
-                    TerminalSurfaceContainer(controller: node.controller)
+                    TerminalSurfaceContainer(
+                        controller: node.controller,
+                        appearance: terminalAppearance
+                    )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(theme.palette.bg)
+                        .background(terminalAppearance.backgroundColor)
                 } else {
                     TerminalPreview(node: node)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -3115,7 +3332,7 @@ private struct TerminalNodeView: View {
                 }
             }
             .frame(width: screenSize.width, height: screenSize.height)
-            .background(theme.palette.bg)
+            .background(terminalAppearance.backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
             .overlay(
                 RoundedRectangle(cornerRadius: theme.radius.card)
@@ -3250,6 +3467,8 @@ private struct TerminalNodeView: View {
 private struct TerminalPopOutWindow: View {
     let title: String
     let nodes: [TerminalNode]
+    let terminalAppearances: [UUID: HudTerminalAppearance]
+    let fallbackTerminalAppearance: HudTerminalAppearance
     let onClose: () -> Void
 
     @State private var focusedID: UUID?
@@ -3320,9 +3539,9 @@ private struct TerminalPopOutWindow: View {
     @ViewBuilder
     private var content: some View {
         if nodes.count == 1, let node = nodes.first {
-            TerminalPopOutTerminal(node: node)
+            TerminalPopOutTerminal(node: node, terminalAppearance: terminalAppearance(for: node))
         } else if let focusedNode {
-            TerminalPopOutTerminal(node: focusedNode)
+            TerminalPopOutTerminal(node: focusedNode, terminalAppearance: terminalAppearance(for: focusedNode))
         } else {
             GeometryReader { proxy in
                 ScrollView {
@@ -3331,7 +3550,10 @@ private struct TerminalPopOutWindow: View {
                         spacing: HudSpacing.lg
                     ) {
                         ForEach(nodes) { node in
-                            TerminalPopOutCard(node: node) {
+                            TerminalPopOutCard(
+                                node: node,
+                                terminalAppearance: terminalAppearance(for: node)
+                            ) {
                                 focusedID = node.id
                             }
                         }
@@ -3349,36 +3571,48 @@ private struct TerminalPopOutWindow: View {
             count: count
         )
     }
+
+    private func terminalAppearance(for node: TerminalNode) -> HudTerminalAppearance {
+        terminalAppearances[node.id] ?? fallbackTerminalAppearance
+    }
 }
 
 private struct TerminalPopOutTerminal: View {
     @ObservedObject var node: TerminalNode
+    let terminalAppearance: HudTerminalAppearance
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
         VStack(spacing: 0) {
             TerminalPopOutTitleBar(node: node)
-            TerminalSurfaceContainer(controller: node.controller)
+            TerminalSurfaceContainer(
+                controller: node.controller,
+                appearance: terminalAppearance
+            )
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(theme.palette.bg)
+                .background(terminalAppearance.backgroundColor)
         }
-        .background(theme.palette.bg)
+        .background(terminalAppearance.backgroundColor)
     }
 }
 
 private struct TerminalPopOutCard: View {
     @ObservedObject var node: TerminalNode
+    let terminalAppearance: HudTerminalAppearance
     let onFocus: () -> Void
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
         VStack(spacing: 0) {
             TerminalPopOutTitleBar(node: node, onFocus: onFocus)
-            TerminalSurfaceContainer(controller: node.controller)
+            TerminalSurfaceContainer(
+                controller: node.controller,
+                appearance: terminalAppearance
+            )
                 .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
-                .background(theme.palette.bg)
+                .background(terminalAppearance.backgroundColor)
         }
-        .background(theme.palette.bg)
+        .background(terminalAppearance.backgroundColor)
         .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.card)
@@ -3579,7 +3813,7 @@ private struct TerminalPreview: View {
 private struct InfiniteCanvasBackground: View {
     let pan: CGSize
     let scale: CGFloat
-    var worldStep: CGFloat = 20
+    let styleProfile: HudVantageStyleProfile
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -3589,8 +3823,34 @@ private struct InfiniteCanvasBackground: View {
     }
 
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {
+        guard styleProfile.canvasGridMode != .none else { return }
+
         let step = normalizedScreenStep
         let majorStep = step * 5
+        let minorColor = theme.palette.ink.opacity(styleProfile.canvasMinorOpacity)
+        let majorColor = theme.palette.ink.opacity(styleProfile.canvasMajorOpacity)
+
+        if styleProfile.canvasGridMode == .dots {
+            drawDots(
+                context: &context,
+                size: size,
+                step: max(step, 14),
+                offsetX: screenOffset(for: pan.width, step: max(step, 14)),
+                offsetY: screenOffset(for: pan.height, step: max(step, 14)),
+                color: minorColor,
+                radius: 0.7
+            )
+            drawDots(
+                context: &context,
+                size: size,
+                step: majorStep,
+                offsetX: screenOffset(for: pan.width, step: majorStep),
+                offsetY: screenOffset(for: pan.height, step: majorStep),
+                color: majorColor,
+                radius: 1.2
+            )
+            return
+        }
 
         strokeGrid(
             context: &context,
@@ -3598,7 +3858,7 @@ private struct InfiniteCanvasBackground: View {
             step: step,
             offsetX: screenOffset(for: pan.width, step: step),
             offsetY: screenOffset(for: pan.height, step: step),
-            color: theme.palette.ink.opacity(HudOpacity.ghost),
+            color: minorColor,
             lineWidth: HudStrokeWidth.standard
         )
 
@@ -3608,7 +3868,7 @@ private struct InfiniteCanvasBackground: View {
             step: majorStep,
             offsetX: screenOffset(for: pan.width, step: majorStep),
             offsetY: screenOffset(for: pan.height, step: majorStep),
-            color: theme.palette.ink.opacity(HudOpacity.subtle),
+            color: majorColor,
             lineWidth: 1.15
         )
     }
@@ -3641,8 +3901,30 @@ private struct InfiniteCanvasBackground: View {
         context.stroke(path, with: .color(color), lineWidth: lineWidth)
     }
 
+    private func drawDots(
+        context: inout GraphicsContext,
+        size: CGSize,
+        step: CGFloat,
+        offsetX: CGFloat,
+        offsetY: CGFloat,
+        color: Color,
+        radius: CGFloat
+    ) {
+        var path = Path()
+        var x = offsetX
+        while x <= size.width {
+            var y = offsetY
+            while y <= size.height {
+                path.addEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+                y += step
+            }
+            x += step
+        }
+        context.fill(path, with: .color(color))
+    }
+
     private var normalizedScreenStep: CGFloat {
-        var step = worldStep * scale
+        var step = CGFloat(styleProfile.canvasGridStep) * scale
         while step < 9 {
             step *= 2
         }
@@ -3666,6 +3948,7 @@ private struct CanvasNavigationPanel: View {
     let selectedCount: Int
     @Binding var filter: CanvasNavigationFilter
     @Binding var tagFilter: CanvasTag?
+    @Binding var minimapCollapsed: Bool
     let selectedIDs: Set<UUID>
     let viewportWorldRect: CGRect
     let canvasWorldBounds: CGRect
@@ -3675,6 +3958,7 @@ private struct CanvasNavigationPanel: View {
     let onTagSelection: (CanvasTag?) -> Void
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
+    let onOpenAppearanceSettings: () -> Void
     let onCollapse: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -3824,9 +4108,20 @@ private struct CanvasNavigationPanel: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: HudSpacing.md) {
+            VantageNavigationSettingsRow(
+                onOpen: onOpenAppearanceSettings
+            )
+
+            HudDivider(color: theme.hairline.subtle)
+
             HStack {
                 HudSectionLabel("Minimap")
                 Spacer()
+                CanvasIconButton(
+                    systemName: minimapCollapsed ? "chevron.down" : "chevron.up",
+                    help: minimapCollapsed ? "Show minimap" : "Hide minimap",
+                    action: { minimapCollapsed.toggle() }
+                )
                 CanvasIconButton(
                     systemName: "viewfinder",
                     help: "Fit world",
@@ -3837,15 +4132,44 @@ private struct CanvasNavigationPanel: View {
                     .foregroundStyle(theme.palette.muted)
             }
 
-            CanvasMiniMap(
-                nodes: minimapNodes,
-                selectedIDs: selectedIDs,
-                worldBounds: canvasWorldBounds,
-                viewportWorldRect: viewportWorldRect,
-                onCenterWorldPoint: onCenterWorldPoint
-            )
-            .frame(height: HudVantageMetrics.minimapHeight)
+            if !minimapCollapsed {
+                CanvasMiniMap(
+                    nodes: minimapNodes,
+                    selectedIDs: selectedIDs,
+                    worldBounds: canvasWorldBounds,
+                    viewportWorldRect: viewportWorldRect,
+                    onCenterWorldPoint: onCenterWorldPoint
+                )
+                .frame(height: HudVantageMetrics.minimapHeight)
+            }
         }
+    }
+}
+
+private struct VantageNavigationSettingsRow: View {
+    let onOpen: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: HudSpacing.md) {
+                Text("Settings")
+                    .font(HudFont.mono(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                Spacer()
+                Image(systemName: "gearshape")
+                    .font(HudFont.ui(12, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
+        }
+        .buttonStyle(.plain)
+        .help("Appearance settings")
+        .accessibilityLabel("Appearance settings")
     }
 }
 
@@ -4151,6 +4475,507 @@ private struct CanvasInspectorPanel: View {
     }
 }
 
+private struct VantageAppearanceSettingsSurface: View {
+    @Binding var profile: HudVantageStyleProfile
+    @Binding var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride]
+    let selectedNode: TerminalNode?
+    let inheritedProfile: HudVantageStyleProfile?
+    let selectedStyleOverride: Binding<HudVantageTerminalStyleOverride>?
+    let onClose: () -> Void
+
+    @State private var selectedScope: VantageAppearanceScope = .workspace
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            HudDivider(color: theme.hairline.standard)
+
+            HStack(spacing: 0) {
+                scopeRail
+                Rectangle()
+                    .fill(theme.hairline.subtle)
+                    .frame(width: HudStrokeWidth.thin)
+                settingsContent
+            }
+        }
+        .background(theme.palette.bg)
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.lg) {
+            Image(systemName: "paintpalette")
+                .font(HudFont.ui(13, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Appearance Settings")
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                Text(profile.name)
+                    .font(HudFont.mono(9))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            Spacer()
+            HudButton("Done", icon: "checkmark", style: .secondary, action: onClose)
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.navHeight)
+        .background(theme.palette.chrome)
+    }
+
+    private var scopeRail: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudSectionLabel("Scope", tint: theme.palette.dim)
+
+            VStack(spacing: HudSpacing.sm) {
+                ForEach(availableScopes) { scope in
+                    VantageSettingsScopeRow(
+                        scope: scope,
+                        isSelected: currentScope == scope,
+                        onSelect: { selectedScope = scope }
+                    )
+                }
+            }
+
+            Spacer()
+        }
+        .padding(HudSpacing.xl)
+        .frame(width: HudVantageMetrics.settingsScopeRailWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(theme.palette.chrome)
+    }
+
+    private var settingsContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HudSpacing.xxl) {
+                contextHeader
+                scopeSettings
+            }
+            .padding(HudSpacing.xxl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var contextHeader: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            Text(currentScope.title)
+                .font(HudFont.ui(18, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+            Text(currentScope.explanation(selectedNode: selectedNode))
+                .font(HudFont.mono(10))
+                .foregroundStyle(theme.palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var scopeSettings: some View {
+        switch currentScope {
+        case .workspace:
+            VantageStyleSettings(profile: $profile)
+
+        case .tag(let tag):
+            VantageTerminalOverrideControls(
+                title: "Terminal Defaults",
+                subtitle: "\(tag.label) tag inherits workspace settings",
+                override: tagStyleBinding(for: tag),
+                baseProfile: profile,
+                inheritedLabel: "Workspace",
+                tint: theme.palette.muted
+            )
+
+        case .terminal:
+            if let selectedNode,
+               let inheritedProfile,
+               let selectedStyleOverride {
+                VantageTerminalOverrideControls(
+                    title: "Terminal Defaults",
+                    subtitle: "\(selectedNode.title) inherits workspace and tag settings",
+                    override: selectedStyleOverride,
+                    baseProfile: inheritedProfile,
+                    inheritedLabel: "Parent",
+                    tint: theme.palette.muted
+                )
+            } else {
+                EmptyTerminalScope()
+            }
+        }
+    }
+
+    private var currentScope: VantageAppearanceScope {
+        availableScopes.contains(selectedScope) ? selectedScope : .workspace
+    }
+
+    private var availableScopes: [VantageAppearanceScope] {
+        var scopes: [VantageAppearanceScope] = [.workspace]
+        scopes.append(contentsOf: CanvasTag.allCases.map(VantageAppearanceScope.tag))
+        if selectedNode != nil {
+            scopes.append(.terminal)
+        }
+        return scopes
+    }
+
+    private func tagStyleBinding(for tag: CanvasTag) -> Binding<HudVantageTerminalStyleOverride> {
+        Binding(
+            get: { tagStyleOverrides[tag] ?? .empty },
+            set: { override in
+                if override.isEmpty {
+                    tagStyleOverrides[tag] = nil
+                } else {
+                    tagStyleOverrides[tag] = override
+                }
+            }
+        )
+    }
+}
+
+private enum VantageAppearanceScope: Hashable, Identifiable {
+    case workspace
+    case tag(CanvasTag)
+    case terminal
+
+    var id: String {
+        switch self {
+        case .workspace: "workspace"
+        case .tag(let tag): "tag.\(tag.rawValue)"
+        case .terminal: "terminal"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .workspace: "Workspace"
+        case .tag(let tag): "\(tag.label) Tag"
+        case .terminal: "Selected Terminal"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .workspace: "Default"
+        case .tag: "Tag override"
+        case .terminal: "Local override"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .workspace: "macwindow"
+        case .tag: "tag"
+        case .terminal: "terminal"
+        }
+    }
+
+    func explanation(selectedNode: TerminalNode?) -> String {
+        switch self {
+        case .workspace:
+            return "Workspace settings define the shell, canvas, and default terminal appearance."
+        case .tag(let tag):
+            return "\(tag.label) tag settings override workspace terminal defaults. Empty values inherit from workspace."
+        case .terminal:
+            let name = selectedNode?.title ?? "The selected terminal"
+            return "\(name) overrides its parent context. Empty values inherit from the workspace and tag cascade."
+        }
+    }
+}
+
+private struct VantageSettingsScopeRow: View {
+    let scope: VantageAppearanceScope
+    let isSelected: Bool
+    let onSelect: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: scope.icon)
+                    .font(HudFont.ui(11, weight: .semibold))
+                    .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.dim)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(scope.title)
+                        .font(HudFont.mono(10, weight: .semibold))
+                        .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
+                    Text(scope.subtitle)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.dim)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(isSelected ? theme.vantageControlFill : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? theme.hairline.standard : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct EmptyTerminalScope: View {
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HudSettingsSection("Terminal Defaults", labelTint: theme.palette.dim) {
+            HudSettingsRow(
+                icon: "terminal",
+                iconColor: theme.palette.dim,
+                title: "No terminal selected",
+                subtitle: "Select a terminal to edit its local override."
+            )
+        }
+    }
+}
+
+private struct VantageStyleSettings: View {
+    @Binding var profile: HudVantageStyleProfile
+    @Environment(\.hudTheme) private var theme
+
+    private let fontFamilies = ["SF Mono", "JetBrains Mono", "Menlo", "Monaco"]
+
+    var body: some View {
+        HudSettingsSection("Workspace Style", labelTint: theme.palette.dim) {
+            HudSettingsPickerRow(
+                title: "Preset",
+                subtitle: "Workspace defaults",
+                value: profile.name,
+                icon: "slider.horizontal.3",
+                iconColor: theme.palette.muted,
+                selection: presetBinding
+            ) {
+                ForEach(HudVantageStyleProfile.presets) { preset in
+                    Text(preset.name).tag(preset.id)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Shell",
+                subtitle: "Window chrome",
+                value: profile.chromeStyle.label,
+                icon: "macwindow",
+                iconColor: theme.palette.muted,
+                selection: $profile.chromeStyle
+            ) {
+                ForEach(HudVantageChromeStyle.allCases) { style in
+                    Text(style.label).tag(style)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Terminal",
+                subtitle: "Workspace default",
+                value: profile.terminalThemeID.label,
+                icon: "terminal",
+                iconColor: theme.palette.muted,
+                selection: $profile.terminalThemeID
+            ) {
+                ForEach(HudVantageTerminalThemeID.allCases) { terminalTheme in
+                    Text(terminalTheme.label).tag(terminalTheme)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Font",
+                subtitle: "\(String(format: "%.1f", profile.terminalFontSize)) pt",
+                value: profile.terminalFontFamily,
+                icon: "textformat",
+                iconColor: theme.palette.muted,
+                selection: $profile.terminalFontFamily
+            ) {
+                ForEach(fontFamilies, id: \.self) { family in
+                    Text(family).tag(family)
+                }
+            }
+
+            HudSettingsSliderRow(
+                title: "Font Size",
+                value: "\(String(format: "%.1f", profile.terminalFontSize)) pt",
+                icon: "textformat.size",
+                iconColor: theme.palette.muted,
+                number: $profile.terminalFontSize,
+                in: 10...18,
+                step: 0.5
+            )
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsControlRow(
+                title: "Grid",
+                subtitle: "\(Int(profile.canvasGridStep)) pt",
+                value: profile.canvasGridMode.label,
+                icon: "grid",
+                iconColor: theme.palette.muted
+            ) {
+                Picker("Grid", selection: $profile.canvasGridMode) {
+                    ForEach(HudVantageCanvasGridMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: HudLayout.popoverWidthCompact / 2)
+            }
+
+            HudSettingsSliderRow(
+                title: "Grid Spacing",
+                value: "\(Int(profile.canvasGridStep)) pt",
+                icon: "square.grid.3x3",
+                iconColor: theme.palette.muted,
+                number: $profile.canvasGridStep,
+                in: 12...40,
+                step: 2
+            )
+
+            HudSettingsSliderRow(
+                title: "Focus Inset",
+                value: "\(Int(profile.focusPadding)) pt",
+                icon: "rectangle.inset.filled",
+                iconColor: theme.palette.muted,
+                number: $profile.focusPadding,
+                in: 4...56,
+                step: 2
+            )
+        }
+    }
+
+    private var presetBinding: Binding<String> {
+        Binding(
+            get: { profile.id },
+            set: { id in
+                if let preset = HudVantageStyleProfile.preset(id: id) {
+                    profile = preset
+                }
+            }
+        )
+    }
+}
+
+private struct VantageTerminalOverrideControls: View {
+    let title: String
+    let subtitle: String
+    @Binding var override: HudVantageTerminalStyleOverride
+    let baseProfile: HudVantageStyleProfile
+    let inheritedLabel: String
+    let tint: Color
+
+    @Environment(\.hudTheme) private var theme
+
+    private let inheritedToken = "__inherit__"
+    private let fontFamilies = ["SF Mono", "JetBrains Mono", "Menlo", "Monaco"]
+
+    var body: some View {
+        HudSettingsSection(title, labelTint: tint) {
+            HudSettingsRow(
+                icon: override.isEmpty ? "arrow.triangle.branch" : "paintbrush",
+                iconColor: tint,
+                title: override.isEmpty ? "Inherited" : "Override",
+                subtitle: subtitle
+            ) {
+                HStack(spacing: HudSpacing.sm) {
+                    HudBadge(override.isEmpty ? "INHERIT" : "OVERRIDE", tint: tint, dot: !override.isEmpty)
+                    Button {
+                        override = .empty
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(HudFont.ui(10, weight: .semibold))
+                            .foregroundStyle(override.isEmpty ? theme.palette.dim : theme.palette.muted)
+                            .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(override.isEmpty)
+                    .help("Reset style override")
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Theme",
+                value: resolvedProfile.terminalThemeID.label,
+                icon: "terminal",
+                iconColor: tint,
+                selection: themeBinding
+            ) {
+                Text(inheritedLabel).tag(inheritedToken)
+                ForEach(HudVantageTerminalThemeID.allCases) { terminalTheme in
+                    Text(terminalTheme.label).tag(terminalTheme.rawValue)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Font",
+                value: resolvedProfile.terminalFontFamily,
+                icon: "textformat",
+                iconColor: tint,
+                selection: fontBinding
+            ) {
+                Text(inheritedLabel).tag(inheritedToken)
+                ForEach(fontFamilies, id: \.self) { family in
+                    Text(family).tag(family)
+                }
+            }
+
+            HudSettingsSliderRow(
+                title: "Size",
+                value: "\(String(format: "%.1f", resolvedProfile.terminalFontSize)) pt",
+                icon: "textformat.size",
+                iconColor: tint,
+                number: fontSizeBinding,
+                in: 10...18,
+                step: 0.5
+            )
+        }
+    }
+
+    private var resolvedProfile: HudVantageStyleProfile {
+        baseProfile.applyingTerminalOverride(override)
+    }
+
+    private var themeBinding: Binding<String> {
+        Binding(
+            get: { override.terminalThemeID?.rawValue ?? inheritedToken },
+            set: { rawValue in
+                override.terminalThemeID = rawValue == inheritedToken
+                    ? nil
+                    : HudVantageTerminalThemeID(rawValue: rawValue)
+            }
+        )
+    }
+
+    private var fontBinding: Binding<String> {
+        Binding(
+            get: { override.terminalFontFamily ?? inheritedToken },
+            set: { value in
+                override.terminalFontFamily = value == inheritedToken ? nil : value
+            }
+        )
+    }
+
+    private var fontSizeBinding: Binding<Double> {
+        Binding(
+            get: { override.terminalFontSize ?? baseProfile.terminalFontSize },
+            set: { value in
+                override.terminalFontSize = value
+            }
+        )
+    }
+
+}
+
 private struct TerminalDetailView: View {
     @ObservedObject var node: TerminalNode
     let onCenter: () -> Void
@@ -4266,6 +5091,139 @@ private struct EmptyInspectorState: View {
                 .foregroundStyle(theme.palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+private struct VantageCommandPalette: View {
+    let selectedCount: Int
+    let onOpenAppearance: () -> Void
+    let onCreateTerminal: () -> Void
+    let onFocusSelection: () -> Void
+    let onPopOutSelection: () -> Void
+    let onClose: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            HudSurface.scrim.opacity(HudOpacity.emphatic)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onClose)
+
+            VStack(spacing: 0) {
+                header
+                HudDivider(color: theme.hairline.standard)
+                VStack(spacing: HudSpacing.sm) {
+                    VantageCommandRow(
+                        icon: "paintpalette",
+                        title: "Appearance Settings",
+                        detail: "Workspace, tag, terminal",
+                        tint: theme.palette.statusInfo,
+                        action: onOpenAppearance
+                    )
+                    VantageCommandRow(
+                        icon: "plus",
+                        title: "New Terminal",
+                        detail: "Create local PTY",
+                        tint: theme.palette.statusOk,
+                        action: onCreateTerminal
+                    )
+                    VantageCommandRow(
+                        icon: "rectangle.inset.filled",
+                        title: "Focus Selection",
+                        detail: "\(selectedCount) selected",
+                        tint: theme.palette.statusInfo,
+                        isDisabled: selectedCount != 1,
+                        action: onFocusSelection
+                    )
+                    VantageCommandRow(
+                        icon: "rectangle.on.rectangle",
+                        title: "Pop Out Selection",
+                        detail: "\(selectedCount) selected",
+                        tint: theme.palette.statusWarn,
+                        isDisabled: selectedCount == 0,
+                        action: onPopOutSelection
+                    )
+                }
+                .padding(HudSpacing.lg)
+            }
+            .frame(width: HudVantageMetrics.commandPaletteWidth)
+            .background(RoundedRectangle(cornerRadius: theme.radius.card).fill(theme.palette.chrome))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.card).stroke(theme.hairline.standard))
+            .shadow(color: theme.vantageShadow, radius: 28, x: 0, y: 18)
+            .padding(.top, HudVantageMetrics.commandPaletteTopPadding)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.md) {
+            Image(systemName: "command")
+                .font(HudFont.ui(13, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            Text("Command Palette")
+                .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+            Spacer()
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(HudFont.ui(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+            }
+            .buttonStyle(.plain)
+            .help("Close")
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .frame(height: HudLayout.navHeight)
+    }
+}
+
+private struct VantageCommandRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+    let tint: Color
+    var isDisabled = false
+    let action: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: icon)
+                    .font(HudFont.ui(12, weight: .semibold))
+                    .foregroundStyle(isDisabled ? theme.palette.dim : tint)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                    .background(
+                        RoundedRectangle(cornerRadius: theme.radius.standard)
+                            .fill(isDisabled ? theme.vantageControlFill : HudSurface.tintFill(tint))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.radius.standard)
+                            .stroke(isDisabled ? theme.hairline.subtle : HudSurface.tintBorder(tint))
+                    )
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(HudFont.mono(10, weight: .semibold))
+                        .foregroundStyle(isDisabled ? theme.palette.dim : theme.palette.ink)
+                    Text(detail)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.dim)
+                }
+                Spacer()
+                Image(systemName: "return")
+                    .font(HudFont.ui(9, weight: .semibold))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 
@@ -4449,13 +5407,15 @@ private struct CanvasInputBridge: NSViewRepresentable {
     let onMagnify: (CGFloat, CGPoint) -> Void
     let canBeginSpacePan: (CGPoint) -> Bool
     let onSpacePanChanged: (Bool) -> Void
+    let onCommandPalette: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onScroll: onScroll,
             onMagnify: onMagnify,
             canBeginSpacePan: canBeginSpacePan,
-            onSpacePanChanged: onSpacePanChanged
+            onSpacePanChanged: onSpacePanChanged,
+            onCommandPalette: onCommandPalette
         )
     }
 
@@ -4472,6 +5432,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         context.coordinator.onMagnify = onMagnify
         context.coordinator.canBeginSpacePan = canBeginSpacePan
         context.coordinator.onSpacePanChanged = onSpacePanChanged
+        context.coordinator.onCommandPalette = onCommandPalette
         context.coordinator.view = nsView
     }
 
@@ -4492,6 +5453,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         var onMagnify: (CGFloat, CGPoint) -> Void
         var canBeginSpacePan: (CGPoint) -> Bool
         var onSpacePanChanged: (Bool) -> Void
+        var onCommandPalette: () -> Void
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
@@ -4500,12 +5462,14 @@ private struct CanvasInputBridge: NSViewRepresentable {
             onScroll: @escaping (CGSize, CGPoint) -> Void,
             onMagnify: @escaping (CGFloat, CGPoint) -> Void,
             canBeginSpacePan: @escaping (CGPoint) -> Bool,
-            onSpacePanChanged: @escaping (Bool) -> Void
+            onSpacePanChanged: @escaping (Bool) -> Void,
+            onCommandPalette: @escaping () -> Void
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
             self.canBeginSpacePan = canBeginSpacePan
             self.onSpacePanChanged = onSpacePanChanged
+            self.onCommandPalette = onCommandPalette
         }
 
         func installMonitor() {
@@ -4535,6 +5499,11 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     self.onMagnify(event.magnification, location)
                     return nil
                 case .keyDown:
+                    if event.modifierFlags.contains(.command),
+                       event.charactersIgnoringModifiers?.lowercased() == "k" {
+                        self.onCommandPalette()
+                        return nil
+                    }
                     guard event.keyCode == 49 else { return event }
                     guard !event.isARepeat else { return self.spacePanActive ? nil : event }
                     guard let location = self.pointerLocationInViewport(),
@@ -4722,17 +5691,18 @@ private struct CanvasIconButton: View {
 
 private struct TerminalSurfaceContainer: View, Equatable {
     let controller: TerminiTerminalController
-    @Environment(\.colorScheme) private var colorScheme
+    let appearance: HudTerminalAppearance
 
     static func == (lhs: TerminalSurfaceContainer, rhs: TerminalSurfaceContainer) -> Bool {
         lhs.controller === rhs.controller
+            && lhs.appearance == rhs.appearance
     }
 
     var body: some View {
         HudTerminalSurface(
             controller: controller,
             showsSystemKeyboard: true,
-            appearance: .hudsonDefault(for: colorScheme, fontSize: 12)
+            appearance: appearance
         )
     }
 }

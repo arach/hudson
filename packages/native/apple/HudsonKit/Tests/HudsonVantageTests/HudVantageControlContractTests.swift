@@ -189,8 +189,16 @@ final class HudVantageControlContractTests: XCTestCase {
                 navigationTagFilter: "focus",
                 navigationCollapsed: true,
                 navigationWidth: 288,
+                minimapCollapsed: true,
                 inspectorCollapsed: false,
-                inspectorWidth: 336
+                inspectorWidth: 336,
+                style: .blueprint,
+                tagStyles: [
+                    "focus": HudVantageTerminalStyleOverride(
+                        terminalThemeID: .jadeNight,
+                        terminalFontSize: 13.5
+                    )
+                ]
             ),
             nodes: [
                 HudVantageNodeSnapshot(
@@ -204,6 +212,10 @@ final class HudVantageControlContractTests: XCTestCase {
                     height: 316,
                     zIndex: 4,
                     tag: "focus",
+                    style: HudVantageTerminalStyleOverride(
+                        terminalThemeID: .hudsonPaper,
+                        terminalFontFamily: "Menlo"
+                    ),
                     runtime: HudVantageRuntimeReference(
                         kind: "tmux",
                         target: "hudson-lab:agents-codex-0007",
@@ -239,8 +251,16 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(decoded.layout?.navigationFilter, "selected")
         XCTAssertEqual(decoded.layout?.navigationTagFilter, "focus")
         XCTAssertEqual(decoded.layout?.navigationCollapsed, true)
+        XCTAssertEqual(decoded.layout?.minimapCollapsed, true)
         XCTAssertEqual(decoded.layout?.inspectorWidth, 336)
+        XCTAssertEqual(decoded.layout?.style?.id, "blueprint")
+        XCTAssertEqual(decoded.layout?.style?.terminalThemeID, .blueprint)
+        XCTAssertEqual(decoded.layout?.style?.canvasGridStep, 24)
+        XCTAssertEqual(decoded.layout?.tagStyles?["focus"]?.terminalThemeID, .jadeNight)
+        XCTAssertEqual(decoded.layout?.tagStyles?["focus"]?.terminalFontSize, 13.5)
         XCTAssertEqual(decoded.nodes.first?.tag, "focus")
+        XCTAssertEqual(decoded.nodes.first?.style?.terminalThemeID, .hudsonPaper)
+        XCTAssertEqual(decoded.nodes.first?.style?.terminalFontFamily, "Menlo")
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "tmux")
         XCTAssertEqual(decoded.nodes.first?.runtime.graphitePath, "hudson.lab.agents.codex.0007.worker")
         XCTAssertEqual(decoded.selectedNodeIDs, [nodeID])

@@ -18,8 +18,11 @@ public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
     public var navigationTagFilter: String?
     public var navigationCollapsed: Bool
     public var navigationWidth: Double
+    public var minimapCollapsed: Bool?
     public var inspectorCollapsed: Bool
     public var inspectorWidth: Double
+    public var style: HudVantageStyleProfile?
+    public var tagStyles: [String: HudVantageTerminalStyleOverride]?
 
     public init(
         canvasTool: String,
@@ -27,16 +30,22 @@ public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
         navigationTagFilter: String? = nil,
         navigationCollapsed: Bool,
         navigationWidth: Double,
+        minimapCollapsed: Bool? = nil,
         inspectorCollapsed: Bool,
-        inspectorWidth: Double
+        inspectorWidth: Double,
+        style: HudVantageStyleProfile? = nil,
+        tagStyles: [String: HudVantageTerminalStyleOverride]? = nil
     ) {
         self.canvasTool = canvasTool
         self.navigationFilter = navigationFilter
         self.navigationTagFilter = navigationTagFilter
         self.navigationCollapsed = navigationCollapsed
         self.navigationWidth = navigationWidth
+        self.minimapCollapsed = minimapCollapsed
         self.inspectorCollapsed = inspectorCollapsed
         self.inspectorWidth = inspectorWidth
+        self.style = style
+        self.tagStyles = tagStyles
     }
 }
 
@@ -89,6 +98,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
     public var height: Double
     public var zIndex: Double
     public var tag: String?
+    public var style: HudVantageTerminalStyleOverride?
     public var runtime: HudVantageRuntimeReference
 
     public init(
@@ -102,6 +112,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         height: Double,
         zIndex: Double,
         tag: String? = nil,
+        style: HudVantageTerminalStyleOverride? = nil,
         runtime: HudVantageRuntimeReference
     ) {
         self.id = id
@@ -114,6 +125,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         self.height = height
         self.zIndex = zIndex
         self.tag = tag
+        self.style = style
         self.runtime = runtime
     }
 }
