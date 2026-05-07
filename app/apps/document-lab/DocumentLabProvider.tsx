@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { HudsonTextDocument, TextDocumentMode } from 'hudsonkit';
+import type { HudsonTextDiff, HudsonTextDocument, TextDocumentMode } from 'hudsonkit';
 
 const initialDocuments: HudsonTextDocument[] = [
   {
@@ -76,11 +76,61 @@ const initialDocuments: HudsonTextDocument[] = [
   },
 ];
 
+const initialDiffs: HudsonTextDiff[] = [
+  {
+    id: 'code-review',
+    title: 'HudsonDocumentSurface.tsx',
+    kind: 'documents',
+    layout: 'split',
+    oldDocument: {
+      title: 'HudsonDocumentSurface.tsx',
+      uri: 'hudson://workspace/HudsonDocumentSurface.tsx',
+      language: 'typescript',
+      value: [
+        "import { TextDocumentSurface } from 'hudsonkit';",
+        '',
+        'export function CanvasDocumentWindow() {',
+        '  return (',
+        '    <TextDocumentSurface',
+        '      document={document}',
+        '      mode="read"',
+        '    />',
+        '  );',
+        '}',
+      ].join('\n'),
+    },
+    newDocument: {
+      title: 'HudsonDocumentSurface.tsx',
+      uri: 'hudson://workspace/HudsonDocumentSurface.tsx',
+      language: 'typescript',
+      value: [
+        "import { TextDiffSurface, TextDocumentSurface } from 'hudsonkit';",
+        '',
+        'export function CanvasDocumentWindow({ compare }) {',
+        '  if (compare) {',
+        '    return <TextDiffSurface diff={compare} layout="split" />;',
+        '  }',
+        '',
+        '  return (',
+        '    <TextDocumentSurface',
+        '      document={document}',
+        '      mode="edit"',
+        '      onChange={updateDocument}',
+        '    />',
+        '  );',
+        '}',
+      ].join('\n'),
+    },
+  },
+];
+
 interface DocumentLabContextValue {
   documents: HudsonTextDocument[];
+  diffs: HudsonTextDiff[];
   activeDocument: HudsonTextDocument;
   activeDocumentId: string;
   activeMode: TextDocumentMode;
+  activeDiff: HudsonTextDiff;
   selectDocument: (id: string) => void;
   setActiveMode: (mode: TextDocumentMode) => void;
   updateActiveDocument: (value: string) => void;
@@ -110,6 +160,7 @@ export function DocumentLabProvider({ children }: { children: ReactNode }) {
   );
 
   const activeMode = modesById[activeDocument.id] ?? (activeDocument.kind === 'markdown' ? 'preview' : 'edit');
+  const activeDiff = initialDiffs[0];
 
   const selectDocument = useCallback((id: string) => {
     setActiveDocumentId(id);
@@ -131,9 +182,11 @@ export function DocumentLabProvider({ children }: { children: ReactNode }) {
 
   const value = useMemo<DocumentLabContextValue>(() => ({
     documents,
+    diffs: initialDiffs,
     activeDocument,
     activeDocumentId,
     activeMode,
+    activeDiff,
     selectDocument,
     setActiveMode,
     updateActiveDocument,
@@ -141,6 +194,7 @@ export function DocumentLabProvider({ children }: { children: ReactNode }) {
   }), [
     activeDocument,
     activeDocumentId,
+    activeDiff,
     activeMode,
     documents,
     saveActiveDocument,

@@ -48,3 +48,17 @@ export type {
   TextDocumentProviderProps,
   TextDocumentSurfaceProps,
 } from './components/controls/TextDocument';
+
+export {
+  TextDiffSurface,
+  createHudsonTextDiff,
+} from './components/controls/TextDiff';
+export type {
+  HudsonTextDiff,
+  HudsonTextDiffSnapshot,
+  HudsonTextDocumentDiff,
+  HudsonTextPatchDiff,
+  TextDiffDetectionInput,
+  TextDiffLayout,
+  TextDiffSurfaceProps,
+} from './components/controls/TextDiff';
