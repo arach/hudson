@@ -164,10 +164,23 @@ export function TextDocumentProvider({
   const [savedValue, setSavedValue] = useState(document.value);
   const [activeMode, setActiveMode] = useState<TextDocumentMode>(mode);
   const documentIdRef = useRef(document.id);
+  const pendingLocalValuesRef = useRef<string[]>([]);
 
   useEffect(() => {
-    if (documentIdRef.current === document.id) return;
-    documentIdRef.current = document.id;
+    if (documentIdRef.current !== document.id) {
+      documentIdRef.current = document.id;
+      pendingLocalValuesRef.current = [];
+      setValue(document.value);
+      setSavedValue(document.value);
+      return;
+    }
+
+    const pendingIndex = pendingLocalValuesRef.current.indexOf(document.value);
+    if (pendingIndex >= 0) {
+      pendingLocalValuesRef.current.splice(0, pendingIndex + 1);
+      return;
+    }
+
     setValue(document.value);
     setSavedValue(document.value);
   }, [document.id, document.value]);
@@ -182,6 +195,7 @@ export function TextDocumentProvider({
   }, [onModeChange]);
 
   const updateValue = useCallback((next: string) => {
+    pendingLocalValuesRef.current = [...pendingLocalValuesRef.current.slice(-9), next];
     setValue(next);
     onChange?.(next);
   }, [onChange]);

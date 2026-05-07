@@ -156,7 +156,8 @@ public enum HudTextDocumentDetector {
             if ext == "txt" || ext == "text" { return .text }
         }
 
-        if value.contains("\n# ") || value.contains("\n```") {
+        if value.range(of: #"(?m)^#{1,6}\s+"#, options: .regularExpression) != nil ||
+            value.range(of: #"(?m)^```"#, options: .regularExpression) != nil {
             return .markdown
         }
 
