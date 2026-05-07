@@ -61,6 +61,28 @@ final class HudVantagePerfTrackerTests: XCTestCase {
         XCTAssertEqual(snapshot.counters["control.command"], 0)
     }
 
+    func testSetStoresCounterGaugeValues() {
+        var tracker = HudVantagePerfTracker()
+
+        tracker.increment("surface.nodeCount", by: 9)
+        tracker.set("surface.nodeCount", to: 3)
+
+        XCTAssertEqual(tracker.counter("surface.nodeCount"), 3)
+    }
+
+    func testTimingSamplesAreCappedToLatestSamples() {
+        var tracker = HudVantagePerfTracker(timingSampleLimit: 2)
+
+        tracker.recordTiming("first", durationMS: 1)
+        tracker.recordTiming("second", durationMS: 2)
+        tracker.recordTiming("third", durationMS: 3)
+
+        XCTAssertEqual(
+            tracker.snapshot().timingSamples.map(\.name),
+            ["second", "third"]
+        )
+    }
+
     func testSnapshotEncodesAndDecodesPerfPayload() throws {
         var counters = HudVantagePerfCounters()
         counters.increment("control.command", by: 2)

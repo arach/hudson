@@ -505,6 +505,7 @@ public struct HudVantageSurface: View {
         }
         .onDisappear {
             pendingPersistTask?.cancel()
+            pendingPersistTask = nil
             persistStateIfConfigured()
             controlAPI.stop()
             stopAllNodes()
@@ -761,6 +762,7 @@ public struct HudVantageSurface: View {
             .onChanged { value in
                 switch effectiveCanvasTool {
                 case .hand:
+                    perfTracker.increment("input.canvasPan.delta")
                     let start = panStart ?? canvasState.pan
                     panStart = start
                     canvasState = canvasState.replaying(
@@ -780,10 +782,12 @@ public struct HudVantageSurface: View {
                             mode: pointerSelectionMode()
                         )
                     }
+                    perfTracker.increment("input.marquee.delta")
                     updateMarqueeSelection()
                 }
             }
             .onEnded { _ in
+                perfTracker.increment("input.canvasDrag.end")
                 panStart = nil
                 schedulePersistStateIfConfigured()
                 selectionDrag = nil
@@ -814,15 +818,19 @@ public struct HudVantageSurface: View {
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
+        perfTracker.increment("input.scroll")
         if abs(delta.height) >= abs(delta.width) {
+            perfTracker.increment("input.scroll.zoom")
             let factor = min(max(exp(delta.height * 0.004), 0.82), 1.22)
             setCanvasScale(canvasState.scale * factor, around: viewportPoint)
         } else {
+            perfTracker.increment("input.scroll.pan")
             canvasState = canvasState.panned(by: CGSize(width: delta.width, height: 0))
         }
     }
 
     private func handleCanvasMagnify(_ magnification: CGFloat, at viewportPoint: CGPoint) {
+        perfTracker.increment("input.magnify")
         let factor = min(max(1 + magnification, 0.75), 1.35)
         setCanvasScale(canvasState.scale * factor, around: viewportPoint)
     }
@@ -839,6 +847,7 @@ public struct HudVantageSurface: View {
 
     private func updateMarqueeSelection() {
         guard let selectionDrag else { return }
+        perfTracker.increment("selection.marquee.update")
         let rect = canvasState.worldRect(fromViewportRect: selectionDrag.viewportRect)
         let candidates = Set(
             nodes
@@ -847,6 +856,7 @@ public struct HudVantageSurface: View {
                 }
                 .map(\.id)
         )
+        perfTracker.set("selection.marquee.candidates", to: candidates.count)
         selectedIDs = HudVantageSelectionState(ids: selectionDrag.baseSelection)
             .applying(candidates, mode: selectionDrag.mode)
             .ids
@@ -905,7 +915,8 @@ public struct HudVantageSurface: View {
                     onDragBegin: { beginDraggingNode(node.id) },
                     onClose: { close(node.id) },
                     onMove: { delta in move(node.id, delta: worldDelta(delta)) },
-                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) }
+                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) },
+                    onTransformEnd: finishNodeTransform
                 )
             }
         }
@@ -1891,17 +1902,36 @@ public struct HudVantageSurface: View {
 
     private func persistStateIfConfigured() {
         guard configuration.restoresStateOnLaunch else { return }
+        let startedAt = CFAbsoluteTimeGetCurrent()
         let snapshot = workspaceSnapshot(workspaceID: configuration.workspaceID)
-        try? writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
+        do {
+            try writeWorkspaceSnapshot(snapshot, to: configuredStateURL())
+            perfTracker.increment("state.persist.write")
+        } catch {
+            perfTracker.increment("state.persist.error")
+        }
+        perfTracker.recordTiming(
+            "state.persist",
+            durationMS: (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+        )
     }
 
     private func schedulePersistStateIfConfigured() {
         guard configuration.restoresStateOnLaunch else { return }
-        pendingPersistTask?.cancel()
+        perfTracker.increment("state.persist.request")
+        guard pendingPersistTask == nil else {
+            perfTracker.increment("state.persist.coalesced")
+            return
+        }
+        perfTracker.increment("state.persist.scheduled")
         pendingPersistTask = Task { @MainActor in
             try? await Task.sleep(nanoseconds: 350_000_000)
-            guard !Task.isCancelled else { return }
+            guard !Task.isCancelled else {
+                pendingPersistTask = nil
+                return
+            }
             persistStateIfConfigured()
+            pendingPersistTask = nil
         }
     }
 
@@ -2134,11 +2164,11 @@ public struct HudVantageSurface: View {
     }
 
     private func beginDraggingNode(_ id: UUID) {
+        perfTracker.increment("node.drag.begin")
         if !selectedIDs.contains(id) {
             selectedIDs = [id]
         }
         bringToFront(id)
-        schedulePersistStateIfConfigured()
     }
 
     private func bringToFront(_ id: UUID) {
@@ -2155,6 +2185,7 @@ public struct HudVantageSurface: View {
     }
 
     private func move(_ id: UUID, delta: CGSize) {
+        perfTracker.increment("node.move.delta")
         let idsToMove = selectedIDs.contains(id) && selectedIDs.count > 1
             ? selectedIDs
             : Set([id])
@@ -2162,12 +2193,16 @@ public struct HudVantageSurface: View {
         for node in nodes where idsToMove.contains(node.id) {
             node.move(by: delta)
         }
-        schedulePersistStateIfConfigured()
     }
 
     private func resize(_ id: UUID, delta: CGSize) {
+        perfTracker.increment("node.resize.delta")
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         node.resize(by: delta)
+    }
+
+    private func finishNodeTransform() {
+        perfTracker.increment("node.transform.end")
         schedulePersistStateIfConfigured()
     }
 
@@ -2282,6 +2317,16 @@ public struct HudVantageSurface: View {
             }
             return false
         }.count
+        let liveSurfaceCount = nodes.filter { rendersLiveSurface(for: $0) }.count
+        let virtualizedSurfaceCount = max(0, nodes.count - liveSurfaceCount)
+
+        perfTracker.set("surface.nodeCount", to: nodes.count)
+        perfTracker.set("surface.selectedCount", to: selectedIDs.count)
+        perfTracker.set("surface.localPTYCount", to: localPTYCount)
+        perfTracker.set("surface.tmuxCount", to: tmuxNodes.count)
+        perfTracker.set("surface.remoteTmuxCount", to: remoteTmuxCount)
+        perfTracker.set("surface.liveSurfaceCount", to: liveSurfaceCount)
+        perfTracker.set("surface.virtualizedSurfaceCount", to: virtualizedSurfaceCount)
 
         return HudVantageControlMetrics(
             nodeCount: nodes.count,
@@ -2289,7 +2334,7 @@ public struct HudVantageSurface: View {
             localPTYCount: localPTYCount,
             tmuxCount: tmuxNodes.count,
             remoteTmuxCount: remoteTmuxCount,
-            liveSurfaceCount: nodes.filter { rendersLiveSurface(for: $0) }.count,
+            liveSurfaceCount: liveSurfaceCount,
             controlCommandCount: controlCommandCount,
             lastCommandAction: lastControlAction,
             lastCommandDurationMS: lastControlDurationMS,
@@ -2376,6 +2421,7 @@ private struct TerminalNodeView: View {
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
     let onResize: (CGSize) -> Void
+    let onTransformEnd: () -> Void
 
     @Environment(\.hudTheme) private var theme
     @State private var isDragging = false
@@ -2523,6 +2569,7 @@ private struct TerminalNodeView: View {
             .onEnded { _ in
                 isDragging = false
                 lastDragTranslation = .zero
+                onTransformEnd()
             }
     }
 
@@ -2554,6 +2601,7 @@ private struct TerminalNodeView: View {
                     .onEnded { _ in
                         isResizing = false
                         lastResizeTranslation = .zero
+                        onTransformEnd()
                     }
             )
     }

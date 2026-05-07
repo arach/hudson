@@ -87,13 +87,16 @@ public struct HudVantagePerfSnapshot: Codable, Hashable, Sendable {
 public struct HudVantagePerfTracker: Sendable {
     private var counters: HudVantagePerfCounters
     private var timingSamples: [HudVantagePerfTimingSample]
+    private var timingSampleLimit: Int
 
     public init(
         counters: HudVantagePerfCounters = HudVantagePerfCounters(),
-        timingSamples: [HudVantagePerfTimingSample] = []
+        timingSamples: [HudVantagePerfTimingSample] = [],
+        timingSampleLimit: Int = 160
     ) {
         self.counters = counters
-        self.timingSamples = timingSamples
+        self.timingSampleLimit = max(0, timingSampleLimit)
+        self.timingSamples = Array(timingSamples.suffix(self.timingSampleLimit))
     }
 
     public var isEmpty: Bool {
@@ -115,6 +118,10 @@ public struct HudVantagePerfTracker: Sendable {
         counters.increment(name, by: amount)
     }
 
+    public mutating func set(_ name: String, to value: Int) {
+        counters.set(name, to: value)
+    }
+
     @discardableResult
     public mutating func recordTiming(
         _ name: String,
@@ -127,6 +134,9 @@ public struct HudVantagePerfTracker: Sendable {
             recordedAt: recordedAt
         )
         timingSamples.append(sample)
+        if timingSamples.count > timingSampleLimit {
+            timingSamples.removeFirst(timingSamples.count - timingSampleLimit)
+        }
         return sample
     }
 

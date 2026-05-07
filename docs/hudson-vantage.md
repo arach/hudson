@@ -222,6 +222,12 @@ runtime kind, tmux target, Graphite path, and remote host when present.
 reports node counts, runtime counts, live surface count, command count, and
 latest command latency.
 
+The perf snapshot is intentionally lightweight. It keeps bounded recent timing
+samples and named counters/gauges for control commands, canvas input pressure,
+node move/resize deltas, persistence coalescing, and renderer virtualization
+counts. `perf-reset` clears the in-memory snapshot without touching the
+workspace.
+
 ## Current Boundary
 
 Hudson Vantage owns:
