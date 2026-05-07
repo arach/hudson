@@ -158,6 +158,7 @@ final class HudVantageControlContractTests: XCTestCase {
             layout: HudVantageSurfaceLayoutSnapshot(
                 canvasTool: "hand",
                 navigationFilter: "selected",
+                navigationTagFilter: "focus",
                 navigationCollapsed: true,
                 navigationWidth: 288,
                 inspectorCollapsed: false,
@@ -174,6 +175,7 @@ final class HudVantageControlContractTests: XCTestCase {
                     width: 500,
                     height: 316,
                     zIndex: 4,
+                    tag: "focus",
                     runtime: HudVantageRuntimeReference(
                         kind: "tmux",
                         target: "hudson-lab:agents-codex-0007",
@@ -197,8 +199,10 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(decoded.viewport.scale, 0.75)
         XCTAssertEqual(decoded.layout?.canvasTool, "hand")
         XCTAssertEqual(decoded.layout?.navigationFilter, "selected")
+        XCTAssertEqual(decoded.layout?.navigationTagFilter, "focus")
         XCTAssertEqual(decoded.layout?.navigationCollapsed, true)
         XCTAssertEqual(decoded.layout?.inspectorWidth, 336)
+        XCTAssertEqual(decoded.nodes.first?.tag, "focus")
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "tmux")
         XCTAssertEqual(decoded.nodes.first?.runtime.graphitePath, "hudson.lab.agents.codex.0007.worker")
         XCTAssertEqual(decoded.selectedNodeIDs, [nodeID])
@@ -250,7 +254,8 @@ final class HudVantageControlContractTests: XCTestCase {
                     y: 240,
                     width: 500,
                     height: 316,
-                    zIndex: 4
+                    zIndex: 4,
+                    tag: "focus"
                 )
             ],
             selectedNodeIDs: [nodeID],
@@ -317,6 +322,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(nodes.first?["runtimeKind"] as? String, "tmux")
         XCTAssertEqual(nodes.first?["subtitle"] as? String, "tmux · hudson-lab:agents-codex-0007")
         XCTAssertEqual(nodes.first?["selected"] as? Bool, true)
+        XCTAssertEqual(nodes.first?["tag"] as? String, "focus")
 
         let selectedNodeIDs = try XCTUnwrap(object["selectedNodeIDs"] as? [String])
         XCTAssertEqual(selectedNodeIDs, [nodeID.uuidString])

@@ -162,6 +162,8 @@ Graphite paths, or `remoteHost:target` for remote tmux nodes. `select` supports
 `selectionMode` values `replace`, `add`, `remove`, `toggle`, and `clear`.
 The native canvas mirrors those modes in direct selection: Shift adds,
 Option subtracts, and Command toggles clicked or marquee-selected nodes.
+Hold Space to temporarily enter the hand tool and drag the canvas without
+leaving Select mode.
 
 `viewport` accepts `reset: true`, `fit: true`, and exact replay fields
 `panX`, `panY`, and `scale`. The wrappers expose these as `viewport --reset`,
@@ -169,9 +171,9 @@ Option subtracts, and Command toggles clicked or marquee-selected nodes.
 
 `save` and `restore` use the configured `stateURL` unless a command includes
 `statePath`. Snapshots include durable tmux-backed nodes, selection, viewport,
-active tool, navigator filter, panel widths, and collapsed panel state. Local
-PTYs remain useful as cheap scratch terminals, but tmux is the durable runtime
-boundary.
+active tool, navigator filters, optional node tags, panel widths, and collapsed
+panel state. Local PTYs remain useful as cheap scratch terminals, but tmux is
+the durable runtime boundary.
 
 `ensure-tmux` is permission-gated. If tmux is already available, it simply
 returns the detected path. If tmux is missing, the UI shows a confirmation
@@ -214,10 +216,11 @@ Responses echo the request `id` when provided and include `ok`, `message`,
 `statePath`, `durationMS`, and `timestamp`. Responses also expose `tmuxPath`,
 `tmuxInstallInProgress`, `requiresPermission`, and `installerCommand` when
 relevant. `status` and normal command responses include a `nodes` array with
-node IDs, title/subtitle, selection state, bounds, z-order, runtime kind, tmux
-target, Graphite path, and remote host when present. `viewport` reports the
-current pan/scale and visible world rect. `metrics` reports node counts,
-runtime counts, live surface count, command count, and latest command latency.
+node IDs, title/subtitle, selection state, bounds, z-order, optional tag,
+runtime kind, tmux target, Graphite path, and remote host when present.
+`viewport` reports the current pan/scale and visible world rect. `metrics`
+reports node counts, runtime counts, live surface count, command count, and
+latest command latency.
 
 ## Current Boundary
 
@@ -228,6 +231,7 @@ Hudson Vantage owns:
 - JSONL control plane
 - state snapshots for durable tmux-backed nodes
 - local tmux, remote tmux over SSH, and Graphite-style IDs
+- lightweight node tags and tag filters
 - Termini terminal rendering and virtualization policy
 
 Still intentionally thin / next to extract:

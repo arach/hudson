@@ -132,6 +132,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     @Published var origin: CGPoint
     @Published var size: CGSize
     @Published var zIndex: Double
+    @Published var tag: CanvasTag?
 
     init(
         id: UUID = UUID(),
@@ -144,6 +145,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         title: String? = nil,
         subtitle: String? = nil,
         runtimeIdentity: RuntimeIdentity = .localPTY,
+        tag: CanvasTag? = nil,
         workingDirectoryURL: URL? = nil
     ) {
         let controller = TerminiTerminalController()
@@ -159,6 +161,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         self.tint = tint
         self.zIndex = zIndex
         self.runtimeIdentity = runtimeIdentity
+        self.tag = tag
         workspace.start()
     }
 
@@ -309,6 +312,38 @@ private enum CanvasNavigationFilter: String, CaseIterable, Identifiable {
     }
 }
 
+private enum CanvasTag: String, CaseIterable, Identifiable {
+    case focus
+    case watch
+    case parked
+
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .focus: "Focus"
+        case .watch: "Watch"
+        case .parked: "Parked"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .focus: "scope"
+        case .watch: "eye"
+        case .parked: "tray"
+        }
+    }
+
+    func tint(in theme: HudTheme) -> Color {
+        switch self {
+        case .focus: theme.palette.statusOk
+        case .watch: theme.palette.statusInfo
+        case .parked: theme.palette.statusWarn
+        }
+    }
+}
+
 private struct SelectionDrag {
     var start: CGPoint
     var current: CGPoint
@@ -416,6 +451,7 @@ public struct HudVantageSurface: View {
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
     @State private var navigationFilter: CanvasNavigationFilter = .all
+    @State private var navigationTagFilter: CanvasTag?
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
     @State private var inspectorCollapsed = false
@@ -437,6 +473,7 @@ public struct HudVantageSurface: View {
         minimumScale: HudVantageSurface.minimumCanvasScale,
         maximumScale: HudVantageSurface.maximumCanvasScale
     )
+    @State private var transientHandActive = false
     @State private var panStart: CGSize?
     @State private var zoomStart: CGFloat?
     @State private var selectionDrag: SelectionDrag?
@@ -477,6 +514,9 @@ public struct HudVantageSurface: View {
             schedulePersistStateIfConfigured()
         }
         .onChange(of: navigationFilter) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationTagFilter) { _, _ in
             schedulePersistStateIfConfigured()
         }
         .onChange(of: navigationCollapsed) { _, _ in
@@ -548,6 +588,10 @@ public struct HudVantageSurface: View {
         return colorScheme == .dark ? .default : .lightDraft
     }
 
+    private var effectiveCanvasTool: CanvasTool {
+        transientHandActive ? .hand : canvasTool
+    }
+
     @ViewBuilder
     private var navigationPanel: some View {
         if !navigationCollapsed {
@@ -558,11 +602,14 @@ public struct HudVantageSurface: View {
                 totalCount: nodes.count,
                 selectedCount: selectedIDs.count,
                 filter: $navigationFilter,
+                tagFilter: $navigationTagFilter,
                 selectedIDs: selectedIDs,
                 viewportWorldRect: canvasState.visibleWorldRect,
                 canvasWorldBounds: canvasWorldBounds,
                 canvasScale: canvasState.scale,
                 onSelectNode: selectNode,
+                onCenterNode: centerNode,
+                onTagSelection: tagSelection(as:),
                 onCenterWorldPoint: centerCanvas(on:),
                 onFit: fitCanvasToViewport,
                 onCollapse: { navigationCollapsed = true }
@@ -616,7 +663,7 @@ public struct HudVantageSurface: View {
                 .foregroundStyle(activeTheme.palette.muted)
             Spacer()
             CanvasToolSwitch(
-                tool: canvasTool,
+                tool: effectiveCanvasTool,
                 onSelect: { canvasTool = .select },
                 onHand: { canvasTool = .hand }
             )
@@ -652,7 +699,7 @@ public struct HudVantageSurface: View {
 
                 terminalCanvas
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                .allowsHitTesting(canvasTool == .select)
+                    .allowsHitTesting(effectiveCanvasTool == .select)
 
                 if let rect = selectionDrag?.viewportRect {
                     SelectionMarquee(rect: rect)
@@ -669,6 +716,12 @@ public struct HudVantageSurface: View {
                     },
                     onMagnify: { magnification, location in
                         handleCanvasMagnify(magnification, at: location)
+                    },
+                    canBeginSpacePan: { location in
+                        canBeginSpacePan(at: location)
+                    },
+                    onSpacePanChanged: { isActive in
+                        transientHandActive = isActive
                     }
                 )
             )
@@ -679,6 +732,13 @@ public struct HudVantageSurface: View {
             }
             .onChange(of: proxy.size) { _, size in
                 canvasState = canvasState.withViewportSize(size)
+            }
+            .onChange(of: transientHandActive) { _, isActive in
+                if isActive {
+                    selectionDrag = nil
+                } else {
+                    panStart = nil
+                }
             }
             .overlay(alignment: .bottomTrailing) {
                 CanvasZoomTool(
@@ -699,7 +759,7 @@ public struct HudVantageSurface: View {
     private var canvasInteractionGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
-                switch canvasTool {
+                switch effectiveCanvasTool {
                 case .hand:
                     let start = panStart ?? canvasState.pan
                     panStart = start
@@ -728,6 +788,13 @@ public struct HudVantageSurface: View {
                 schedulePersistStateIfConfigured()
                 selectionDrag = nil
             }
+    }
+
+    private func canBeginSpacePan(at viewportPoint: CGPoint) -> Bool {
+        let worldPoint = canvasState.worldPoint(fromViewportPoint: viewportPoint)
+        return !nodes.contains { node in
+            rendersLiveSurface(for: node) && nodeFrame(node).contains(worldPoint)
+        }
     }
 
     private var canvasZoomGesture: some Gesture {
@@ -799,14 +866,18 @@ public struct HudVantageSurface: View {
     }
 
     private var navigationNodes: [TerminalNode] {
+        let filteredNodes: [TerminalNode]
         switch navigationFilter {
         case .all:
-            nodes
+            filteredNodes = nodes
         case .selected:
-            nodes.filter { selectedIDs.contains($0.id) }
+            filteredNodes = nodes.filter { selectedIDs.contains($0.id) }
         case .live:
-            nodes.filter { rendersLiveSurface(for: $0) }
+            filteredNodes = nodes.filter { rendersLiveSurface(for: $0) }
         }
+
+        guard let navigationTagFilter else { return filteredNodes }
+        return filteredNodes.filter { $0.tag == navigationTagFilter }
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
@@ -904,7 +975,7 @@ public struct HudVantageSurface: View {
             ViewportStatusChip(
                 rect: canvasState.visibleWorldRect,
                 scale: canvasState.scale,
-                tool: canvasTool
+                tool: effectiveCanvasTool
             )
         }
         .frame(height: HudLayout.statusBarHeight)
@@ -1849,6 +1920,7 @@ public struct HudVantageSurface: View {
             layout: HudVantageSurfaceLayoutSnapshot(
                 canvasTool: canvasTool.rawValue,
                 navigationFilter: navigationFilter.rawValue,
+                navigationTagFilter: navigationTagFilter?.rawValue,
                 navigationCollapsed: navigationCollapsed,
                 navigationWidth: Double(navigationWidth),
                 inspectorCollapsed: inspectorCollapsed,
@@ -1869,6 +1941,7 @@ public struct HudVantageSurface: View {
         if let restoredFilter = CanvasNavigationFilter(rawValue: layout.navigationFilter) {
             navigationFilter = restoredFilter
         }
+        navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
 
         navigationCollapsed = layout.navigationCollapsed
         inspectorCollapsed = layout.inspectorCollapsed
@@ -1895,6 +1968,7 @@ public struct HudVantageSurface: View {
             width: Double(node.size.width),
             height: Double(node.size.height),
             zIndex: node.zIndex,
+            tag: node.tag?.rawValue,
             runtime: HudVantageRuntimeReference(
                 kind: "tmux",
                 target: target,
@@ -1917,7 +1991,8 @@ public struct HudVantageSurface: View {
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
                 height: Double(node.size.height),
-                zIndex: node.zIndex
+                zIndex: node.zIndex,
+                tag: node.tag?.rawValue
             )
         case .tmux(let target, let path, let remoteHost):
             return HudVantageControlNode(
@@ -1933,7 +2008,8 @@ public struct HudVantageSurface: View {
                 y: Double(node.origin.y),
                 width: Double(node.size.width),
                 height: Double(node.size.height),
-                zIndex: node.zIndex
+                zIndex: node.zIndex,
+                tag: node.tag?.rawValue
             )
         }
     }
@@ -1985,7 +2061,8 @@ public struct HudVantageSurface: View {
                 target: target,
                 path: path,
                 remoteHost: remoteHost
-            )
+            ),
+            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:))
         )
     }
 
@@ -2040,6 +2117,19 @@ public struct HudVantageSurface: View {
         if selectedIDs.contains(id) {
             bringToFront(id)
         }
+        schedulePersistStateIfConfigured()
+    }
+
+    private func centerNode(_ id: UUID) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
+    }
+
+    private func tagSelection(as tag: CanvasTag?) {
+        guard !selectedIDs.isEmpty else { return }
+        nodes
+            .filter { selectedIDs.contains($0.id) }
+            .forEach { $0.tag = tag }
         schedulePersistStateIfConfigured()
     }
 
@@ -2698,11 +2788,14 @@ private struct CanvasNavigationPanel: View {
     let totalCount: Int
     let selectedCount: Int
     @Binding var filter: CanvasNavigationFilter
+    @Binding var tagFilter: CanvasTag?
     let selectedIDs: Set<UUID>
     let viewportWorldRect: CGRect
     let canvasWorldBounds: CGRect
     let canvasScale: CGFloat
     let onSelectNode: (UUID) -> Void
+    let onCenterNode: (UUID) -> Void
+    let onTagSelection: (CanvasTag?) -> Void
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
     let onCollapse: () -> Void
@@ -2724,7 +2817,8 @@ private struct CanvasNavigationPanel: View {
                             CanvasNavigationRow(
                                 node: node,
                                 isSelected: selectedIDs.contains(node.id),
-                                action: { onSelectNode(node.id) }
+                                onSelect: { onSelectNode(node.id) },
+                                onCenter: { onCenterNode(node.id) }
                             )
                         }
 
@@ -2795,10 +2889,60 @@ private struct CanvasNavigationPanel: View {
                 }
             }
 
+            tagFilterControls
+
             Text("\(selectedCount) selected")
                 .font(HudFont.mono(10))
                 .foregroundStyle(theme.palette.muted)
+
+            if selectedCount > 0 {
+                selectionTagTools
+            }
         }
+    }
+
+    private var tagFilterControls: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HudSectionLabel("Tags")
+            HStack(spacing: HudSpacing.sm) {
+                CanvasTagFilterButton(
+                    tag: nil,
+                    isActive: tagFilter == nil,
+                    count: totalCount,
+                    action: { tagFilter = nil }
+                )
+                ForEach(CanvasTag.allCases) { tag in
+                    CanvasTagFilterButton(
+                        tag: tag,
+                        isActive: tagFilter == tag,
+                        count: tagCount(for: tag),
+                        action: { tagFilter = tag }
+                    )
+                }
+            }
+        }
+    }
+
+    private var selectionTagTools: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HudSectionLabel("Tag Selection")
+            HStack(spacing: HudSpacing.sm) {
+                CanvasTagActionButton(
+                    tag: nil,
+                    action: { onTagSelection(nil) }
+                )
+                ForEach(CanvasTag.allCases) { tag in
+                    CanvasTagActionButton(
+                        tag: tag,
+                        action: { onTagSelection(tag) }
+                    )
+                }
+            }
+        }
+    }
+
+    private func tagCount(for tag: CanvasTag) -> Int {
+        minimapNodes.filter { $0.tag == tag }.count
     }
 
     private var footer: some View {
@@ -2831,36 +2975,153 @@ private struct CanvasNavigationPanel: View {
 private struct CanvasNavigationRow: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
+    let onSelect: () -> Void
+    let onCenter: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.sm) {
+            Button(action: onSelect) {
+                HStack(spacing: HudSpacing.md) {
+                    HudStatusDot(color: node.tint.color, size: 6)
+                    Text(node.title)
+                        .font(HudFont.mono(11, weight: .semibold))
+                        .foregroundStyle(theme.palette.ink)
+                        .lineLimit(1)
+                    Spacer(minLength: HudSpacing.sm)
+                    if let tag = node.tag {
+                        CanvasTagPill(tag: tag)
+                    }
+                }
+            }
+            .buttonStyle(.plain)
+
+            CanvasIconButton(
+                systemName: "scope",
+                help: "Center terminal",
+                action: onCenter
+            )
+        }
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.xs)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
+        )
+    }
+}
+
+private struct CanvasTagPill: View {
+    let tag: CanvasTag
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Text(tag.label.uppercased())
+            .font(HudFont.mono(8, weight: .bold))
+            .foregroundStyle(tag.tint(in: theme))
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudIconSize.micro)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.tight)
+                    .fill(HudSurface.tintFill(tag.tint(in: theme)))
+            )
+    }
+}
+
+private struct CanvasTagFilterButton: View {
+    let tag: CanvasTag?
+    let isActive: Bool
+    let count: Int
     let action: () -> Void
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: HudSpacing.md) {
-                HudStatusDot(color: node.tint.color, size: 6)
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(node.title)
-                        .font(HudFont.mono(11, weight: .semibold))
-                        .foregroundStyle(theme.palette.ink)
-                        .lineLimit(1)
-                    Text("x \(Int(node.origin.x)) · y \(Int(node.origin.y))")
-                        .font(HudFont.mono(9))
-                        .foregroundStyle(theme.palette.dim)
-                }
-                Spacer()
+            HStack(spacing: HudSpacing.xs) {
+                Image(systemName: tag?.symbolName ?? "tag")
+                    .font(HudFont.ui(9, weight: .semibold))
+                Text("\(count)")
+                    .font(HudFont.mono(9, weight: .bold))
             }
-            .padding(.horizontal, HudSpacing.lg)
-            .padding(.vertical, HudSpacing.md)
+            .foregroundStyle(foregroundColor)
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.rowHeightCompact)
             .background(
                 RoundedRectangle(cornerRadius: theme.radius.standard)
-                    .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
+                    .fill(backgroundColor)
             )
             .overlay(
                 RoundedRectangle(cornerRadius: theme.radius.standard)
-                    .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
+                    .stroke(borderColor)
             )
         }
         .buttonStyle(.plain)
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+
+    private var tint: Color {
+        tag?.tint(in: theme) ?? theme.palette.statusInfo
+    }
+
+    private var foregroundColor: Color {
+        isActive ? tint : theme.palette.muted
+    }
+
+    private var backgroundColor: Color {
+        isActive ? HudSurface.tintFill(tint) : theme.vantageControlFill
+    }
+
+    private var borderColor: Color {
+        isActive ? HudSurface.tintBorder(tint) : theme.hairline.subtle
+    }
+
+    private var helpText: String {
+        if let tag {
+            return "Filter by \(tag.label)"
+        }
+        return "Show all tags"
+    }
+}
+
+private struct CanvasTagActionButton: View {
+    let tag: CanvasTag?
+    let action: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: tag?.symbolName ?? "tag.slash")
+                .font(HudFont.ui(10, weight: .semibold))
+                .foregroundStyle(tint)
+                .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .fill(HudSurface.tintFill(tint))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .stroke(HudSurface.tintBorder(tint))
+                )
+        }
+        .buttonStyle(.plain)
+        .help(helpText)
+        .accessibilityLabel(helpText)
+    }
+
+    private var tint: Color {
+        tag?.tint(in: theme) ?? theme.palette.dim
+    }
+
+    private var helpText: String {
+        if let tag {
+            return "Tag selection as \(tag.label)"
+        }
+        return "Clear tags from selection"
     }
 }
 
@@ -3309,9 +3570,16 @@ private struct ViewportStatusChip: View {
 private struct CanvasInputBridge: NSViewRepresentable {
     let onScroll: (CGSize, CGPoint) -> Void
     let onMagnify: (CGFloat, CGPoint) -> Void
+    let canBeginSpacePan: (CGPoint) -> Bool
+    let onSpacePanChanged: (Bool) -> Void
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(onScroll: onScroll, onMagnify: onMagnify)
+        Coordinator(
+            onScroll: onScroll,
+            onMagnify: onMagnify,
+            canBeginSpacePan: canBeginSpacePan,
+            onSpacePanChanged: onSpacePanChanged
+        )
     }
 
     func makeNSView(context: Context) -> EventView {
@@ -3325,6 +3593,8 @@ private struct CanvasInputBridge: NSViewRepresentable {
     func updateNSView(_ nsView: EventView, context: Context) {
         context.coordinator.onScroll = onScroll
         context.coordinator.onMagnify = onMagnify
+        context.coordinator.canBeginSpacePan = canBeginSpacePan
+        context.coordinator.onSpacePanChanged = onSpacePanChanged
         context.coordinator.view = nsView
     }
 
@@ -3343,28 +3613,40 @@ private struct CanvasInputBridge: NSViewRepresentable {
     final class Coordinator {
         var onScroll: (CGSize, CGPoint) -> Void
         var onMagnify: (CGFloat, CGPoint) -> Void
+        var canBeginSpacePan: (CGPoint) -> Bool
+        var onSpacePanChanged: (Bool) -> Void
         weak var view: EventView?
         private var monitor: Any?
+        private var spacePanActive = false
 
         init(
             onScroll: @escaping (CGSize, CGPoint) -> Void,
-            onMagnify: @escaping (CGFloat, CGPoint) -> Void
+            onMagnify: @escaping (CGFloat, CGPoint) -> Void,
+            canBeginSpacePan: @escaping (CGPoint) -> Bool,
+            onSpacePanChanged: @escaping (Bool) -> Void
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
+            self.canBeginSpacePan = canBeginSpacePan
+            self.onSpacePanChanged = onSpacePanChanged
         }
 
         func installMonitor() {
             guard monitor == nil else { return }
-            monitor = NSEvent.addLocalMonitorForEvents(matching: [.scrollWheel, .magnify]) { [weak self] event in
+            monitor = NSEvent.addLocalMonitorForEvents(
+                matching: [.scrollWheel, .magnify, .keyDown, .keyUp]
+            ) { [weak self] event in
                 guard let self,
                       let view,
-                      view.window === event.window,
-                      let location = self.viewportLocation(for: event)
-                else { return event }
+                      view.window === event.window
+                else {
+                    self?.setSpacePanActive(false)
+                    return event
+                }
 
                 switch event.type {
                 case .scrollWheel:
+                    guard let location = self.viewportLocation(for: event) else { return event }
                     let delta = CGSize(
                         width: event.scrollingDeltaX,
                         height: event.scrollingDeltaY
@@ -3372,7 +3654,21 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     self.onScroll(delta, location)
                     return nil
                 case .magnify:
+                    guard let location = self.viewportLocation(for: event) else { return event }
                     self.onMagnify(event.magnification, location)
+                    return nil
+                case .keyDown:
+                    guard event.keyCode == 49 else { return event }
+                    guard !event.isARepeat else { return self.spacePanActive ? nil : event }
+                    guard let location = self.pointerLocationInViewport(),
+                          self.canBeginSpacePan(location)
+                    else { return event }
+                    self.setSpacePanActive(true)
+                    return nil
+                case .keyUp:
+                    guard event.keyCode == 49 else { return event }
+                    guard self.spacePanActive else { return event }
+                    self.setSpacePanActive(false)
                     return nil
                 default:
                     return event
@@ -3385,16 +3681,34 @@ private struct CanvasInputBridge: NSViewRepresentable {
                 NSEvent.removeMonitor(monitor)
             }
             monitor = nil
+            setSpacePanActive(false)
         }
 
         private func viewportLocation(for event: NSEvent) -> CGPoint? {
             guard let view else { return nil }
             let local = view.convert(event.locationInWindow, from: nil)
+            return viewportLocation(fromLocalPoint: local)
+        }
+
+        private func pointerLocationInViewport() -> CGPoint? {
+            guard let view, let window = view.window else { return nil }
+            let local = view.convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            return viewportLocation(fromLocalPoint: local)
+        }
+
+        private func viewportLocation(fromLocalPoint local: CGPoint) -> CGPoint? {
+            guard let view else { return nil }
             guard view.bounds.contains(local) else { return nil }
             return CGPoint(
                 x: local.x,
                 y: view.bounds.height - local.y
             )
+        }
+
+        private func setSpacePanActive(_ isActive: Bool) {
+            guard spacePanActive != isActive else { return }
+            spacePanActive = isActive
+            onSpacePanChanged(isActive)
         }
 
         deinit {

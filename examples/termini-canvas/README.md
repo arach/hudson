@@ -35,14 +35,16 @@ Hudson Vantage-owned:
 - JSONL control API under `/tmp`.
 - 8x8 tiling and renderer virtualization experiments.
 - tmux/Graphite prototype models.
-- Native Vantage shell with navigator, inspector, minimap, and viewport tools.
+- Native Vantage shell with navigator, tag filters, inspector, minimap, and
+  viewport tools.
 
 Expected upstream targets:
 
 - Pan/zoom viewport state and world/screen transforms.
 - Trackpad scroll and magnify gesture handling.
 - Minimap, zoom HUD, viewport readout, resizable panels.
-- Selection, modifier-aware marquee hit testing, z-order, drag/resize cards.
+- Selection, Space-drag panning, modifier-aware marquee hit testing, z-order,
+  drag/resize cards.
 
 Termini-owned:
 
@@ -136,8 +138,8 @@ with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
 ```
 
 `restore` recreates those saved tmux-backed nodes with their previous bounds,
-z-order, selection, viewport, and Graphite metadata. Use `--state-file PATH` or
-`TERMINI_CANVAS_STATE_FILE` for a different lane.
+z-order, tags, selection, viewport, and Graphite metadata. Use
+`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
 
 For direct executable runs, a startup reattach set can be provided with:
 

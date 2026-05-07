@@ -145,6 +145,7 @@ public struct HudVantageControlNode: Encodable, Hashable, Sendable {
     public var width: Double
     public var height: Double
     public var zIndex: Double
+    public var tag: String?
 
     public init(
         id: UUID,
@@ -159,7 +160,8 @@ public struct HudVantageControlNode: Encodable, Hashable, Sendable {
         y: Double,
         width: Double,
         height: Double,
-        zIndex: Double
+        zIndex: Double,
+        tag: String? = nil
     ) {
         self.id = id
         self.title = title
@@ -174,6 +176,7 @@ public struct HudVantageControlNode: Encodable, Hashable, Sendable {
         self.width = width
         self.height = height
         self.zIndex = zIndex
+        self.tag = tag
     }
 }
 
