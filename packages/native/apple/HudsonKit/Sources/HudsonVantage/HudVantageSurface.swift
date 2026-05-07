@@ -516,11 +516,7 @@ public struct HudVantageSurface: View {
                 inspectorPanel
             }
         } content: {
-            if let focusedNode {
-                focusedTerminalShell(for: focusedNode)
-            } else {
-                terminalCanvasShell
-            }
+            terminalCanvasShell
         } statusBar: {
             statusBar
         }
@@ -694,34 +690,65 @@ public struct HudVantageSurface: View {
 
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
-            Text(configuration.surfaceTitle.uppercased())
-                .font(HudFont.mono(10, weight: .bold))
-                .tracking(1.4)
-                .foregroundStyle(activeTheme.palette.ink)
-            Text(configuration.surfaceSubtitle)
-                .font(HudFont.mono(10))
-                .foregroundStyle(activeTheme.palette.muted)
-            Spacer()
-            CanvasToolSwitch(
-                tool: effectiveCanvasTool,
-                onSelect: { canvasTool = .select },
-                onHand: { canvasTool = .hand }
-            )
-            CommandKeyButton(action: showCommandPlaceholder)
+            if let focusedNode {
+                HudStatusDot(color: focusedNode.tint.color, size: HudDotSize.small)
+                Text(configuration.surfaceTitle.uppercased())
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(activeTheme.palette.ink)
+                HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
+                Text(focusedNode.title)
+                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                Text(focusedNode.subtitle)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Spacer()
 
-            HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
-                focusSelection()
-            }
-            .disabled(selectedIDs.count != 1)
+                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost) {
+                    popOut(nodes: [focusedNode])
+                }
+                HudButton("Close", icon: "xmark", style: .ghost) {
+                    exitFocusMode()
+                    close(focusedNode.id)
+                }
+                HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
+                    exitFocusMode()
+                }
+            } else {
+                HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
+                Text(configuration.surfaceTitle.uppercased())
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(activeTheme.palette.ink)
+                Text(configuration.surfaceSubtitle)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                Spacer()
+                CanvasToolSwitch(
+                    tool: effectiveCanvasTool,
+                    onSelect: { canvasTool = .select },
+                    onHand: { canvasTool = .hand }
+                )
+                CommandKeyButton(action: showCommandPlaceholder)
 
-            HudButton("Pop out", icon: "rectangle.on.rectangle", style: .secondary) {
-                popOutSelection()
-            }
-            .disabled(selectedIDs.isEmpty)
+                HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
+                    focusSelection()
+                }
+                .disabled(selectedIDs.count != 1)
 
-            HudButton("New", icon: "plus", style: .primary(.cyan)) {
-                spawnTerminal()
+                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .secondary) {
+                    popOutSelection()
+                }
+                .disabled(selectedIDs.isEmpty)
+
+                HudButton("New", icon: "plus", style: .primary(.cyan)) {
+                    spawnTerminal()
+                }
             }
         }
     }
@@ -738,35 +765,21 @@ public struct HudVantageSurface: View {
         }
     }
 
-    private func focusedTerminalShell(for node: TerminalNode) -> some View {
-        TerminalFocusSurface(
-            title: configuration.surfaceTitle,
-            node: node,
-            selectionCount: selectedIDs.count,
-            onExit: exitFocusMode,
-            onPopOut: { popOut(nodes: [node]) },
-            onClose: {
-                exitFocusMode()
-                close(node.id)
-            }
-        )
-    }
-
     private var canvasViewport: some View {
         GeometryReader { proxy in
             ZStack(alignment: .topLeading) {
                 activeTheme.palette.bg
                 InfiniteCanvasBackground(
-                    pan: canvasState.pan,
-                    scale: canvasState.scale
+                    pan: canvasBackgroundPan,
+                    scale: canvasBackgroundScale
                 )
                 .allowsHitTesting(false)
 
                 terminalCanvas
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .allowsHitTesting(effectiveCanvasTool == .select)
+                    .allowsHitTesting(isTerminalFocusActive || effectiveCanvasTool == .select)
 
-                if let rect = selectionDrag?.viewportRect {
+                if !isTerminalFocusActive, let rect = selectionDrag?.viewportRect {
                     SelectionMarquee(rect: rect)
                 }
 
@@ -806,17 +819,19 @@ public struct HudVantageSurface: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                CanvasZoomTool(
-                    scale: canvasState.scale,
-                    onZoomOut: { zoom(by: 0.5) },
-                    onZoomIn: { zoom(by: 2) },
-                    onReset: {
-                        resetCanvasViewport()
-                        schedulePersistStateIfConfigured()
-                    },
-                    onFit: { fitCanvasToViewport() }
-                )
-                .padding(HudSpacing.xl)
+                if !isTerminalFocusActive {
+                    CanvasZoomTool(
+                        scale: canvasState.scale,
+                        onZoomOut: { zoom(by: 0.5) },
+                        onZoomIn: { zoom(by: 2) },
+                        onReset: {
+                            resetCanvasViewport()
+                            schedulePersistStateIfConfigured()
+                        },
+                        onFit: { fitCanvasToViewport() }
+                    )
+                    .padding(HudSpacing.xl)
+                }
             }
         }
     }
@@ -824,6 +839,7 @@ public struct HudVantageSurface: View {
     private var canvasInteractionGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
+                guard !isTerminalFocusActive else { return }
                 switch effectiveCanvasTool {
                 case .hand:
                     perfTracker.increment("input.canvasPan.delta")
@@ -851,6 +867,7 @@ public struct HudVantageSurface: View {
                 }
             }
             .onEnded { _ in
+                guard !isTerminalFocusActive else { return }
                 perfTracker.increment("input.canvasDrag.end")
                 panStart = nil
                 schedulePersistStateIfConfigured()
@@ -859,6 +876,7 @@ public struct HudVantageSurface: View {
     }
 
     private func canBeginSpacePan(at viewportPoint: CGPoint) -> Bool {
+        guard !isTerminalFocusActive else { return false }
         let worldPoint = canvasState.worldPoint(fromViewportPoint: viewportPoint)
         return !nodes.contains { node in
             rendersLiveSurface(for: node) && nodeFrame(node).contains(worldPoint)
@@ -868,6 +886,7 @@ public struct HudVantageSurface: View {
     private var canvasZoomGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
+                guard !isTerminalFocusActive else { return }
                 let start = zoomStart ?? canvasState.scale
                 zoomStart = start
                 setCanvasScale(start * value, around: canvasState.viewportCenter)
@@ -882,6 +901,7 @@ public struct HudVantageSurface: View {
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
+        guard !isTerminalFocusActive else { return }
         perfTracker.increment("input.scroll")
         if abs(delta.height) >= abs(delta.width) {
             perfTracker.increment("input.scroll.zoom")
@@ -894,6 +914,7 @@ public struct HudVantageSurface: View {
     }
 
     private func handleCanvasMagnify(_ magnification: CGFloat, at viewportPoint: CGPoint) {
+        guard !isTerminalFocusActive else { return }
         perfTracker.increment("input.magnify")
         let factor = min(max(1 + magnification, 0.75), 1.35)
         setCanvasScale(canvasState.scale * factor, around: viewportPoint)
@@ -955,6 +976,10 @@ public struct HudVantageSurface: View {
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
+        if let focusedNodeID = focusedNode?.id {
+            return node.id == focusedNodeID
+        }
+
         guard canvasState.scale >= 0.25 else { return false }
 
         if nodes.count <= 24 {
@@ -966,28 +991,89 @@ public struct HudVantageSurface: View {
             && selectedIDs.contains(node.id)
     }
 
+    private var canvasBackgroundPan: CGSize {
+        guard let focusedNode else { return canvasState.pan }
+        let scale = displayScale(for: focusedNode)
+        return displayPan(for: focusedNode, scale: scale)
+    }
+
+    private var canvasBackgroundScale: CGFloat {
+        guard let focusedNode else { return canvasState.scale }
+        return displayScale(for: focusedNode)
+    }
+
+    private func shouldRenderNode(_ node: TerminalNode) -> Bool {
+        guard let focusedNodeID = focusedNode?.id else { return true }
+        return node.id == focusedNodeID
+    }
+
+    private func displayScale(for node: TerminalNode) -> CGFloat {
+        guard focusedNode?.id == node.id else { return canvasState.scale }
+
+        let inset = HudSpacing.huge + HudSpacing.xxxl
+        let availableWidth = max(HudLayout.rowHeightRegular, canvasState.viewportSize.width - inset * 2)
+        let availableHeight = max(HudLayout.rowHeightRegular, canvasState.viewportSize.height - inset * 2)
+        guard node.size.width > 0, node.size.height > 0 else { return 1 }
+
+        let fitScale = min(availableWidth / node.size.width, availableHeight / node.size.height)
+        return clamped(fitScale, to: Self.minimumCanvasScale...Self.maximumCanvasScale)
+    }
+
+    private func displayPan(for node: TerminalNode, scale: CGFloat) -> CGSize {
+        guard focusedNode?.id == node.id else { return canvasState.pan }
+
+        let width = node.size.width * scale
+        let height = node.size.height * scale
+        return CGSize(
+            width: (canvasState.viewportSize.width - width) / 2 - node.origin.x * scale,
+            height: (canvasState.viewportSize.height - height) / 2 - node.origin.y * scale
+        )
+    }
+
     private var terminalCanvas: some View {
         ZStack(alignment: .topLeading) {
             ForEach(nodes) { node in
-                TerminalNodeView(
-                    node: node,
-                    isSelected: selectedIDs.contains(node.id),
-                    rendersLiveSurface: rendersLiveSurface(for: node),
-                    canvasPan: canvasState.pan,
-                    canvasScale: canvasState.scale,
-                    onSelect: { selectNode(node.id) },
-                    onFocus: { enterFocusMode(node.id) },
-                    onDragBegin: { beginDraggingNode(node.id) },
-                    onClose: { close(node.id) },
-                    onMove: { delta in move(node.id, delta: worldDelta(delta)) },
-                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) },
-                    onTransformEnd: finishNodeTransform
-                )
+                if shouldRenderNode(node) {
+                    let isFocused = focusedNodeID == node.id
+                    let displayScale = displayScale(for: node)
+                    TerminalNodeView(
+                        node: node,
+                        isSelected: selectedIDs.contains(node.id),
+                        isFocused: isFocused,
+                        rendersLiveSurface: rendersLiveSurface(for: node),
+                        canvasPan: displayPan(for: node, scale: displayScale),
+                        canvasScale: displayScale,
+                        onSelect: { selectNode(node.id) },
+                        onFocus: { enterFocusMode(node.id) },
+                        onDragBegin: {
+                            if !isFocused {
+                                beginDraggingNode(node.id)
+                            }
+                        },
+                        onClose: { close(node.id) },
+                        onMove: { delta in
+                            if !isFocused {
+                                move(node.id, delta: worldDelta(delta, scale: displayScale))
+                            }
+                        },
+                        onResize: { delta in
+                            if !isFocused {
+                                resize(node.id, delta: worldDelta(delta, scale: displayScale))
+                            }
+                        },
+                        onTransformEnd: {
+                            if !isFocused {
+                                finishNodeTransform()
+                            }
+                        }
+                    )
+                }
             }
         }
         .coordinateSpace(name: "termini-canvas")
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !isTerminalFocusActive else { return }
             selectedIDs.removeAll()
             schedulePersistStateIfConfigured()
         }
@@ -2615,9 +2701,14 @@ public struct HudVantageSurface: View {
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         focusedNodeID = id
         selectedIDs = [id]
+        transientHandActive = false
+        panStart = nil
+        zoomStart = nil
+        selectionDrag = nil
         bringToFront(id)
         controlStatus = "Focus mode · \(node.title)"
         perfTracker.increment("focusMode.enter")
+        schedulePersistStateIfConfigured()
     }
 
     private func exitFocusMode() {
@@ -2625,6 +2716,7 @@ public struct HudVantageSurface: View {
         focusedNodeID = nil
         controlStatus = "Focus mode closed"
         perfTracker.increment("focusMode.exit")
+        schedulePersistStateIfConfigured()
     }
 
     private func popOutSelection() {
@@ -2738,10 +2830,11 @@ public struct HudVantageSurface: View {
         schedulePersistStateIfConfigured()
     }
 
-    private func worldDelta(_ screenDelta: CGSize) -> CGSize {
-        CGSize(
-            width: screenDelta.width / canvasState.scale,
-            height: screenDelta.height / canvasState.scale
+    private func worldDelta(_ screenDelta: CGSize, scale: CGFloat? = nil) -> CGSize {
+        let resolvedScale = max(scale ?? canvasState.scale, Self.minimumCanvasScale)
+        return CGSize(
+            width: screenDelta.width / resolvedScale,
+            height: screenDelta.height / resolvedScale
         )
     }
 
@@ -2950,6 +3043,7 @@ public struct HudVantageSurface: View {
 private struct TerminalNodeView: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
+    let isFocused: Bool
     let rendersLiveSurface: Bool
     let canvasPan: CGSize
     let canvasScale: CGFloat
@@ -3036,7 +3130,9 @@ private struct TerminalNodeView: View {
                 y: HudSpacing.xl
             )
             .overlay(alignment: .bottomTrailing) {
-                resizeHandle
+                if !isFocused {
+                    resizeHandle
+                }
             }
         }
     }
@@ -3085,6 +3181,7 @@ private struct TerminalNodeView: View {
                 help: "Focus terminal",
                 action: onFocus
             )
+            .disabled(isFocused)
         }
         .padding(.horizontal, HudSpacing.xxl)
         .frame(height: HudVantageMetrics.terminalTitleBarHeight)
@@ -3147,67 +3244,6 @@ private struct TerminalNodeView: View {
                         onTransformEnd()
                     }
             )
-    }
-}
-
-private struct TerminalFocusSurface: View {
-    let title: String
-    @ObservedObject var node: TerminalNode
-    let selectionCount: Int
-    let onExit: () -> Void
-    let onPopOut: () -> Void
-    let onClose: () -> Void
-
-    @Environment(\.hudTheme) private var theme
-
-    var body: some View {
-        VStack(spacing: 0) {
-            HStack(spacing: HudSpacing.lg) {
-                HudStatusDot(color: node.tint.color)
-                VStack(alignment: .leading, spacing: 1) {
-                    HStack(spacing: HudSpacing.md) {
-                        Text(title.uppercased())
-                            .font(HudFont.mono(10, weight: .bold))
-                            .tracking(1.4)
-                            .foregroundStyle(theme.palette.muted)
-                        HudBadge("FOCUS", tint: node.tint.color, dot: true)
-                    }
-                    Text(node.title)
-                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                        .foregroundStyle(theme.palette.ink)
-                        .lineLimit(1)
-                }
-
-                Text(node.subtitle)
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(theme.palette.dim)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.72)
-
-                Spacer()
-
-                if selectionCount > 1 {
-                    Text("\(selectionCount) selected")
-                        .font(HudFont.mono(10))
-                        .foregroundStyle(theme.palette.muted)
-                }
-
-                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost, action: onPopOut)
-                HudButton("Close", icon: "xmark", style: .ghost, action: onClose)
-                HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary, action: onExit)
-            }
-            .padding(.horizontal, HudSpacing.xxl)
-            .frame(height: HudLayout.navHeight)
-            .background(theme.palette.chrome)
-
-            HudDivider(color: theme.hairline.standard)
-
-            TerminalSurfaceContainer(controller: node.controller)
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(theme.palette.bg)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-        .background(theme.palette.bg)
     }
 }
 
