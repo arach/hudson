@@ -75,8 +75,11 @@ printf '{"id":"tmux-lab","action":"reattach","sessions":["hudson-lab"],"createIf
 printf '{"id":"tmux-ids","action":"reattach","ids":["hudson.lab.termini.canvas.0042.shell","hudson.lab.agents.codex.0007.worker"]}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"select","action":"select","nodeIDs":["NODE_ID_PREFIX"]}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"inspect","action":"inspect"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"focus-mode","action":"focus-mode"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"popout","action":"popout"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"metrics","action":"metrics"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"id":"workspace","action":"save-workspace","statePath":"/tmp/project.vantage.json"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"status","action":"status"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"reset","action":"reset"}\n' >> /tmp/termini-canvas-control.jsonl
@@ -95,14 +98,25 @@ examples/termini-canvas/scripts/canvasctl.sh --wait reattach \
 examples/termini-canvas/scripts/canvasctl.sh --wait select NODE_ID_PREFIX
 examples/termini-canvas/scripts/canvasctl.sh --wait inspect
 examples/termini-canvas/scripts/canvasctl.sh --wait focus
+examples/termini-canvas/scripts/canvasctl.sh --wait focus-mode
+examples/termini-canvas/scripts/canvasctl.sh --wait popout
+examples/termini-canvas/scripts/canvasctl.sh --wait exit-focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
+examples/termini-canvas/scripts/canvasctl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
+examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
+examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --session hudson-lab
+examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab
+examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab --probe-remote --timeout-ms 750
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
 examples/termini-canvas/scripts/canvasctl.sh --wait save
+examples/termini-canvas/scripts/canvasctl.sh --wait save-workspace --state-file /tmp/project.vantage.json
 examples/termini-canvas/scripts/canvasctl.sh --wait restore --create
+examples/termini-canvas/scripts/canvasctl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
 examples/termini-canvas/scripts/canvasctl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
@@ -116,6 +130,11 @@ selected node IDs, viewport, metrics, and per-command latency.
 
 The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
 waitable request id plus the v0 envelope when those fields are missing.
+
+`focus-mode` renders exactly one selected or targeted terminal as the whole
+surface and hides the canvas side panels until `exit-focus` or Escape.
+`popout` opens selected or targeted terminals in a separate native window with
+either a live grid or a single-terminal focus tab.
 
 `perf-harness` creates a repeatable local tmux stress scene. The default shape
 is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas
@@ -133,6 +152,12 @@ remove the matching harness sessions and nodes when the trial is done.
 Local `targets` must already exist. For a simple session that can be created on
 demand, use `--session NAME --create`.
 
+`tmux-health` reports `ready`, `tmux-missing`, or `session-missing` for local
+targets. Remote health is identity-only by default and reports
+`remote-unverified`; use `--probe-remote` for a bounded noninteractive SSH probe
+that may report `ready`, `auth-needed`, `unreachable`, `tmux-missing`,
+`session-missing`, or `remote-error`.
+
 If local tmux is missing, the app inspector exposes an Install tmux action that
 confirms with the user before running Homebrew. Agents can request the same path
 with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
@@ -144,9 +169,13 @@ with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
 /tmp/termini-canvas-state.json
 ```
 
-`restore` recreates those saved tmux-backed nodes with their previous bounds,
-z-order, tags, selection, viewport, and Graphite metadata. Use
-`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
+`save-workspace` is the same durable format with clearer product language for
+portable files such as `/tmp/project.vantage.json`. New saves include
+`kind: "hudson.vantage.workspace"`, optional focus mode state, and
+tag-derived workspace groups. `restore` and `restore-workspace` recreate those
+saved tmux-backed nodes with their previous bounds, z-order, tags, groups,
+selection, focused node, viewport, and Graphite metadata. Use `--state-file
+PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
 
 For direct executable runs, a startup reattach set can be provided with:
 

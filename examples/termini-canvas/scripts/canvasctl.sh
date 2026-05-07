@@ -20,14 +20,22 @@ Usage:
   canvasctl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
   canvasctl.sh [--wait] inspect [NODE...]
   canvasctl.sh [--wait] focus [NODE...]
+  canvasctl.sh [--wait] focus-mode [NODE]
+  canvasctl.sh [--wait] exit-focus
+  canvasctl.sh [--wait] popout [NODE...]
   canvasctl.sh [--wait] close [NODE...]
   canvasctl.sh [--wait] metrics [--reset]
+  canvasctl.sh [--wait] style [--scope workspace|tag|terminal] [--tag TAG] [--preset PRESET] [--chrome STYLE] [--terminal-theme THEME] [--font-family FAMILY] [--font-size N] [--grid-mode lines|dots|none] [--grid-step N] [--focus-padding N] [--node NODE...]
+  canvasctl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST] [--probe-remote] [--timeout-ms N]
   canvasctl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
   canvasctl.sh [--wait] perf-cleanup [--prefix PREFIX]
   canvasctl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
   canvasctl.sh [--wait] ensure-tmux [--confirm]
   canvasctl.sh [--wait] save [--state-file PATH]
+  canvasctl.sh [--wait] save-workspace [--state-file PATH]
   canvasctl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
+  canvasctl.sh [--wait] restore-workspace [--state-file PATH] [--create] [--no-reset]
+  canvasctl.sh [--wait] setup --manifest PATH [--create] [--remove-missing] [--fit]
   canvasctl.sh raw '{"action":"status"}'
 
 Environment:
@@ -228,6 +236,84 @@ case "$command" in
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
+  style|set-style|appearance|set-appearance|settings|set-settings)
+    node_ids=()
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"style\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeStyle\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --scope) parts+=("\"styleScope\":$(json_string "${2:?missing scope}")"); shift 2 ;;
+        --tag) parts+=("\"tag\":$(json_string "${2:?missing tag}")"); shift 2 ;;
+        --preset) parts+=("\"stylePreset\":$(json_string "${2:?missing preset}")"); shift 2 ;;
+        --chrome|--chrome-style) parts+=("\"chromeStyle\":$(json_string "${2:?missing chrome style}")"); shift 2 ;;
+        --terminal-theme|--terminal-theme-id|--theme) parts+=("\"terminalTheme\":$(json_string "${2:?missing terminal theme}")"); shift 2 ;;
+        --font-family|--font) parts+=("\"terminalFontFamily\":$(json_string "${2:?missing font family}")"); shift 2 ;;
+        --font-size|--size) parts+=("\"terminalFontSize\":$(json_number_arg font-size "${2:?missing font size}")"); shift 2 ;;
+        --grid-mode) parts+=("\"canvasGridMode\":$(json_string "${2:?missing grid mode}")"); shift 2 ;;
+        --grid-step) parts+=("\"canvasGridStep\":$(json_number_arg grid-step "${2:?missing grid step}")"); shift 2 ;;
+        --minor-opacity) parts+=("\"canvasMinorOpacity\":$(json_number_arg minor-opacity "${2:?missing minor opacity}")"); shift 2 ;;
+        --major-opacity) parts+=("\"canvasMajorOpacity\":$(json_number_arg major-opacity "${2:?missing major opacity}")"); shift 2 ;;
+        --focus-padding) parts+=("\"focusPadding\":$(json_number_arg focus-padding "${2:?missing focus padding}")"); shift 2 ;;
+        --reset) parts+=("\"reset\":true"); shift ;;
+        --include-style) shift ;;
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  tmux-status|tmuxstatus|tmux-health|tmuxhealth|health)
+    node_ids=()
+    ids=()
+    sessions=()
+    targets=()
+    remote=""
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"tmux-health\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        --id) ids+=("${2:?missing Graphite id}"); shift 2 ;;
+        --session) sessions+=("${2:?missing session}"); shift 2 ;;
+        --target) targets+=("${2:?missing target}"); shift 2 ;;
+        --remote|--remote-host|--ssh) remote="${2:?missing remote host}"; shift 2 ;;
+        --timeout-ms) parts+=("\"timeoutMS\":$(json_number_arg timeout-ms "${2:?missing timeout ms}")"); shift 2 ;;
+        --no-remote-probe|--skip-remote-probe) parts+=("\"probeRemote\":false"); shift ;;
+        --probe-remote) parts+=("\"probeRemote\":true"); shift ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    if [[ ${#ids[@]} -gt 0 ]]; then
+      parts+=("\"ids\":$(json_array "${ids[@]}")")
+    fi
+    if [[ ${#sessions[@]} -gt 0 ]]; then
+      parts+=("\"sessions\":$(json_array "${sessions[@]}")")
+    fi
+    if [[ ${#targets[@]} -gt 0 ]]; then
+      parts+=("\"targets\":$(json_array "${targets[@]}")")
+    fi
+    if [[ -n "$remote" ]]; then
+      parts+=("\"remoteHost\":$(json_string "$remote")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
   perf-harness|harness|stress)
     count=64
     active=32
@@ -357,7 +443,47 @@ case "$command" in
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
-  save|snapshot)
+  focus-mode|focusmode|enter-focus|enterfocus|solo|popout|pop-out|pop-window|popwindow)
+    node_ids=()
+    action="$command"
+    case "$command" in
+      focusmode|enter-focus|enterfocus|solo) action="focus-mode" ;;
+      pop-out|pop-window|popwindow) action="popout" ;;
+    esac
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":$(json_string "$action")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  exit-focus|exitfocus|leave-focus|leavefocus|unfocus)
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"exit-focus\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  save|snapshot|save-workspace|workspace-save|export-workspace)
+    action="$command"
+    case "$command" in
+      snapshot) action="save" ;;
+      workspace-save|export-workspace) action="save-workspace" ;;
+    esac
     state_path="$STATE_FILE"
     while [[ $# -gt 0 ]]; do
       case "$1" in
@@ -367,7 +493,7 @@ case "$command" in
     done
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"save\""
+      "\"action\":$(json_string "$action")"
       "\"apiVersion\":\"v0\""
       "\"kind\":\"hudson.vantage.command\""
       "\"statePath\":$(json_string "$state_path")"
@@ -394,7 +520,12 @@ case "$command" in
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
-  restore|load)
+  restore|load|restore-workspace|workspace-restore|open-workspace|import-workspace)
+    action="$command"
+    case "$command" in
+      load) action="restore" ;;
+      workspace-restore|open-workspace|import-workspace) action="restore-workspace" ;;
+    esac
     create=false
     reset=true
     state_path="$STATE_FILE"
@@ -408,12 +539,47 @@ case "$command" in
     done
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"restore\""
+      "\"action\":$(json_string "$action")"
       "\"apiVersion\":\"v0\""
       "\"kind\":\"hudson.vantage.command\""
       "\"statePath\":$(json_string "$state_path")"
     )
     parts+=("\"createIfMissing\":$create" "\"reset\":$reset")
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  setup|apply-setup|setup-workspace|apply-workspace|compose)
+    manifest_path=""
+    create=false
+    remove_missing=false
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"setup\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeStyle\":true"
+      "\"includeViewport\":true"
+      "\"includeMetrics\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --manifest|--manifest-file|--setup-file) manifest_path="${2:?missing manifest path}"; shift 2 ;;
+        --create) create=true; shift ;;
+        --remove-missing|--remove-missing-nodes|--prune) remove_missing=true; shift ;;
+        --fit) parts+=("\"fit\":true"); shift ;;
+        --reset) parts+=("\"reset\":true"); shift ;;
+        *) printf 'unknown setup option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    if [[ -z "$manifest_path" ]]; then
+      printf 'setup requires --manifest PATH\n' >&2
+      exit 64
+    fi
+    parts+=(
+      "\"manifestPath\":$(json_string "$manifest_path")"
+      "\"createIfMissing\":$create"
+      "\"removeMissing\":$remove_missing"
+    )
     queue_command "$(json_object "${parts[@]}")"
     ;;
 

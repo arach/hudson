@@ -97,6 +97,93 @@ final class HudVantageControlScriptTests: XCTestCase {
         }
     }
 
+    func testScriptsEmitRemoteTmuxHealthOptions() throws {
+        for scriptPath in controlScriptPaths {
+            let command = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "tmux-health",
+                    "--remote", "devbox",
+                    "--session", "hudson-lab",
+                    "--timeout-ms", "750",
+                    "--no-remote-probe",
+                ]
+            )
+
+            XCTAssertEqual(command["action"] as? String, "tmux-health")
+            XCTAssertEqual(command["apiVersion"] as? String, "v0")
+            XCTAssertEqual(command["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(command["remoteHost"] as? String, "devbox")
+            XCTAssertEqual(command["sessions"] as? [String], ["hudson-lab"])
+            XCTAssertEqual(command["probeRemote"] as? Bool, false)
+            XCTAssertEqual(try XCTUnwrap(command["timeoutMS"] as? NSNumber).doubleValue, 750, accuracy: 0.001)
+        }
+    }
+
+    func testScriptsEmitFocusAndPopOutCommands() throws {
+        for scriptPath in controlScriptPaths {
+            let focus = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["focus-mode", "term-1"]
+            )
+
+            XCTAssertEqual(focus["action"] as? String, "focus-mode")
+            XCTAssertEqual(focus["apiVersion"] as? String, "v0")
+            XCTAssertEqual(focus["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(focus["nodeIDs"] as? [String], ["term-1"])
+
+            let popOut = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["popout", "term-1", "term-2"]
+            )
+
+            XCTAssertEqual(popOut["action"] as? String, "popout")
+            XCTAssertEqual(popOut["nodeIDs"] as? [String], ["term-1", "term-2"])
+            XCTAssertEqual(popOut["apiVersion"] as? String, "v0")
+            XCTAssertEqual(popOut["kind"] as? String, "hudson.vantage.command")
+
+            let exitFocus = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["exit-focus"]
+            )
+
+            XCTAssertEqual(exitFocus["action"] as? String, "exit-focus")
+            XCTAssertEqual(exitFocus["apiVersion"] as? String, "v0")
+            XCTAssertEqual(exitFocus["kind"] as? String, "hudson.vantage.command")
+        }
+    }
+
+    func testScriptsEmitWorkspaceDocumentAliases() throws {
+        for scriptPath in controlScriptPaths {
+            let save = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["save-workspace", "--state-file", "/tmp/project.vantage.json"]
+            )
+
+            XCTAssertEqual(save["action"] as? String, "save-workspace")
+            XCTAssertEqual(save["apiVersion"] as? String, "v0")
+            XCTAssertEqual(save["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(save["statePath"] as? String, "/tmp/project.vantage.json")
+
+            let restore = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "restore-workspace",
+                    "--state-file", "/tmp/project.vantage.json",
+                    "--create",
+                    "--no-reset",
+                ]
+            )
+
+            XCTAssertEqual(restore["action"] as? String, "restore-workspace")
+            XCTAssertEqual(restore["apiVersion"] as? String, "v0")
+            XCTAssertEqual(restore["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(restore["statePath"] as? String, "/tmp/project.vantage.json")
+            XCTAssertEqual(restore["createIfMissing"] as? Bool, true)
+            XCTAssertEqual(restore["reset"] as? Bool, false)
+        }
+    }
+
     func testScriptsRejectNumericJSONInjection() throws {
         let invalidCases: [(arguments: [String], message: String)] = [
             (["tile", "2", "2", "--width", #"240,"kind":"bad""#], "invalid width"),

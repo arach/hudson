@@ -12,6 +12,7 @@ public struct HudSettingsSection<Content: View>: View {
     public let title: String
     public var labelTint: Color
     @ViewBuilder public var content: () -> Content
+    @Environment(\.hudTheme) private var theme
 
     public init(
         _ title: String,
@@ -31,8 +32,8 @@ public struct HudSettingsSection<Content: View>: View {
             VStack(spacing: 0) {
                 content()
             }
-            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudPalette.surface))
-            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.palette.surface))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.thin))
         }
         .id(title)
     }
@@ -48,6 +49,7 @@ public struct HudSettingsRow<Badge: View>: View {
     public var subtitle: String?
     public var onTap: (() -> Void)?
     @ViewBuilder public var badge: () -> Badge
+    @Environment(\.hudTheme) private var theme
 
     public init(
         icon: String,
@@ -72,11 +74,11 @@ public struct HudSettingsRow<Badge: View>: View {
             VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                 Text(title)
                     .font(HudFont.ui(HudTextSize.md, weight: .regular))
-                    .foregroundStyle(HudPalette.ink)
+                    .foregroundStyle(theme.palette.ink)
                 if let subtitle {
                     Text(subtitle)
                         .font(HudFont.ui(HudTextSize.xs, weight: .light))
-                        .foregroundStyle(HudPalette.muted)
+                        .foregroundStyle(theme.palette.muted)
                 }
             }
 
@@ -86,7 +88,7 @@ public struct HudSettingsRow<Badge: View>: View {
             if onTap != nil {
                 Image(systemName: "chevron.right")
                     .font(HudFont.ui(HudTextSize.xs, weight: .light))
-                    .foregroundStyle(HudSurface.tintStrong(HudPalette.dim))
+                    .foregroundStyle(HudSurface.tintStrong(theme.palette.dim))
             }
         }
         .padding(.horizontal, HudSpacing.md)
@@ -118,6 +120,155 @@ extension HudSettingsRow where Badge == EmptyView {
             onTap: onTap,
             badge: { EmptyView() }
         )
+    }
+}
+
+public struct HudSettingsControlRow<Control: View>: View {
+    public let title: String
+    public var subtitle: String?
+    public var value: String?
+    public var icon: String?
+    public var iconColor: Color
+    @ViewBuilder public var control: () -> Control
+
+    @Environment(\.hudTheme) private var theme
+
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        value: String? = nil,
+        icon: String? = nil,
+        iconColor: Color = HudPalette.muted,
+        @ViewBuilder control: @escaping () -> Control
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.value = value
+        self.icon = icon
+        self.iconColor = iconColor
+        self.control = control
+    }
+
+    public var body: some View {
+        HStack(alignment: .center, spacing: HudSpacing.xl) {
+            if let icon {
+                HudSettingsLeadingIcon(systemName: icon, color: iconColor)
+            }
+
+            VStack(alignment: .leading, spacing: HudSpacing.xxs) {
+                Text(title)
+                    .font(HudFont.ui(HudTextSize.md, weight: .regular))
+                    .foregroundStyle(theme.palette.ink)
+                HStack(spacing: HudSpacing.sm) {
+                    if let subtitle {
+                        Text(subtitle)
+                    }
+                    if subtitle != nil, value != nil {
+                        Text("·")
+                    }
+                    if let value {
+                        Text(value)
+                    }
+                }
+                .font(HudFont.ui(HudTextSize.xs, weight: .light))
+                .foregroundStyle(theme.palette.muted)
+                .lineLimit(1)
+            }
+
+            Spacer(minLength: HudSpacing.lg)
+            control()
+        }
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.lg)
+    }
+}
+
+public struct HudSettingsPickerRow<SelectionValue: Hashable, Options: View>: View {
+    public let title: String
+    public var subtitle: String?
+    public var value: String?
+    public var icon: String?
+    public var iconColor: Color
+    @Binding public var selection: SelectionValue
+    @ViewBuilder public var options: () -> Options
+
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        value: String? = nil,
+        icon: String? = nil,
+        iconColor: Color = HudPalette.muted,
+        selection: Binding<SelectionValue>,
+        @ViewBuilder options: @escaping () -> Options
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.value = value
+        self.icon = icon
+        self.iconColor = iconColor
+        self._selection = selection
+        self.options = options
+    }
+
+    public var body: some View {
+        HudSettingsControlRow(
+            title: title,
+            subtitle: subtitle,
+            value: value,
+            icon: icon,
+            iconColor: iconColor
+        ) {
+            Picker(title, selection: $selection) {
+                options()
+            }
+            .labelsHidden()
+            .pickerStyle(.menu)
+            .frame(width: HudLayout.popoverWidthCompact / 2)
+        }
+    }
+}
+
+public struct HudSettingsSliderRow: View {
+    public let title: String
+    public var subtitle: String?
+    public var value: String?
+    public var icon: String?
+    public var iconColor: Color
+    @Binding public var number: Double
+    public var bounds: ClosedRange<Double>
+    public var step: Double
+
+    public init(
+        title: String,
+        subtitle: String? = nil,
+        value: String? = nil,
+        icon: String? = nil,
+        iconColor: Color = HudPalette.muted,
+        number: Binding<Double>,
+        in bounds: ClosedRange<Double>,
+        step: Double = 1
+    ) {
+        self.title = title
+        self.subtitle = subtitle
+        self.value = value
+        self.icon = icon
+        self.iconColor = iconColor
+        self._number = number
+        self.bounds = bounds
+        self.step = step
+    }
+
+    public var body: some View {
+        HudSettingsControlRow(
+            title: title,
+            subtitle: subtitle,
+            value: value,
+            icon: icon,
+            iconColor: iconColor
+        ) {
+            Slider(value: $number, in: bounds, step: step)
+                .frame(width: HudLayout.popoverWidthCompact / 2)
+        }
     }
 }
 

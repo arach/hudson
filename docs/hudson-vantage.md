@@ -20,8 +20,8 @@ queue:
 
 1. **External Control API v0** — Version the JSONL contract and make agent
    operations stable: create, restore, tile, select, inspect, focus, close,
-   status, metrics. Current branch: initial implementation and contract tests
-   are in progress.
+   focus-mode, pop-out, status, metrics. The implementation is additive: each
+   new command should extend the v0 envelope without breaking older callers.
 2. **Perf Baseline + Instrumentation** — Measure node count, visible/live
    renderers, control latency, drag/zoom cost, PTY/tmux attach time, memory,
    and beach-ball points before deeper interaction work.
@@ -106,6 +106,9 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote u
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait select NODE_ID
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait inspect
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait focus-mode
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait popout
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait exit-focus
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait metrics
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-harness --sessions 64 --active 32 --mode tail --rate-ms 250
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait perf-cleanup --prefix hudson-perf-1234
@@ -113,7 +116,9 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --fit
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait ensure-tmux --confirm
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save-workspace --state-file /tmp/project.vantage.json
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore --create
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
@@ -139,6 +144,9 @@ The JSONL command contract is intentionally small and durable:
 | `select` | Select nodes by UUID prefix, title, tmux target, or Graphite ID |
 | `inspect` / `node` | Return selected or targeted node summaries |
 | `focus` / `center` / `reveal` | Select nodes and center the viewport on their bounds |
+| `focus-mode` / `solo` | Put exactly one selected or targeted terminal into an immersive focus view |
+| `exit-focus` / `unfocus` | Return from terminal focus mode to the full canvas |
+| `popout` / `pop-out` | Open selected or targeted terminals in a separate native window |
 | `close` / `remove` | Stop and remove selected or targeted nodes |
 | `metrics` / `perf` | Return lightweight node, runtime, viewport, and control latency counters |
 | `perf-reset` | Reset in-memory control latency counters |
@@ -147,7 +155,9 @@ The JSONL command contract is intentionally small and durable:
 | `viewport` / `view` | Report, reset, fit, or replay exact pan/scale viewport state |
 | `ensure-tmux` / `install-tmux` | Detect local tmux and install it with Homebrew after explicit confirmation |
 | `save` / `snapshot` | Persist durable tmux-backed nodes, bounds, z-order, selection, and viewport |
+| `save-workspace` / `export-workspace` | Persist a portable Vantage workspace document |
 | `restore` / `load` | Recreate saved tmux-backed nodes from a state file |
+| `restore-workspace` / `open-workspace` | Recreate a portable Vantage workspace document |
 | `clear` | Remove all nodes |
 | `reset` | Return to the two-terminal local PTY starter layout |
 
@@ -173,11 +183,14 @@ leaving Select mode.
 `panX`, `panY`, and `scale`. The wrappers expose these as `viewport --reset`,
 `viewport --fit`, and `viewport --pan-x X --pan-y Y --scale N`.
 
-`save` and `restore` use the configured `stateURL` unless a command includes
-`statePath`. Snapshots include durable tmux-backed nodes, selection, viewport,
-active tool, navigator filters, optional node tags, panel widths, and collapsed
-panel state. Local PTYs remain useful as cheap scratch terminals, but tmux is
-the durable runtime boundary.
+`save`/`save-workspace` and `restore`/`restore-workspace` use the configured
+`stateURL` unless a command includes `statePath`. New saves are portable
+workspace documents with `kind: "hudson.vantage.workspace"`. They include
+durable tmux-backed nodes, selection, an optional focused node, viewport,
+active tool, navigator filters, optional node tags, tag-derived groups, panel
+widths, and collapsed panel state. Older state files without `kind`, `layout`,
+`focusedNodeID`, or `groups` still decode. Local PTYs remain useful as cheap
+scratch terminals, but tmux is the durable runtime boundary.
 
 `ensure-tmux` is permission-gated. If tmux is already available, it simply
 returns the detected path. If tmux is missing, the UI shows a confirmation
@@ -222,9 +235,10 @@ Responses echo the request `id` when provided and include `ok`, `message`,
 relevant. `status` and normal command responses include a `nodes` array with
 node IDs, title/subtitle, selection state, bounds, z-order, optional tag,
 runtime kind, tmux target, Graphite path, and remote host when present.
+When terminal focus mode is active, responses include `focusedNodeID`.
 `viewport` reports the current pan/scale and visible world rect. `metrics`
-reports node counts, runtime counts, live surface count, command count, and
-latest command latency.
+reports node counts, runtime counts, live surface count, command count, focus
+mode/pop-out gauges, and latest command latency.
 
 The perf snapshot is intentionally lightweight. It keeps bounded recent timing
 samples and named counters/gauges for control commands, canvas input pressure,
@@ -252,6 +266,7 @@ Hudson Vantage owns:
 - state snapshots for durable tmux-backed nodes
 - local tmux, remote tmux over SSH, and Graphite-style IDs
 - lightweight node tags and tag filters
+- terminal focus mode and selected-group pop-out windows
 - Termini terminal rendering and virtualization policy
 
 Still intentionally thin / next to extract:

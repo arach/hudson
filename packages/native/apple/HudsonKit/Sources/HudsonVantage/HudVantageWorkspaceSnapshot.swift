@@ -18,8 +18,11 @@ public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
     public var navigationTagFilter: String?
     public var navigationCollapsed: Bool
     public var navigationWidth: Double
+    public var minimapCollapsed: Bool?
     public var inspectorCollapsed: Bool
     public var inspectorWidth: Double
+    public var style: HudVantageStyleProfile?
+    public var tagStyles: [String: HudVantageTerminalStyleOverride]?
 
     public init(
         canvasTool: String,
@@ -27,16 +30,41 @@ public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
         navigationTagFilter: String? = nil,
         navigationCollapsed: Bool,
         navigationWidth: Double,
+        minimapCollapsed: Bool? = nil,
         inspectorCollapsed: Bool,
-        inspectorWidth: Double
+        inspectorWidth: Double,
+        style: HudVantageStyleProfile? = nil,
+        tagStyles: [String: HudVantageTerminalStyleOverride]? = nil
     ) {
         self.canvasTool = canvasTool
         self.navigationFilter = navigationFilter
         self.navigationTagFilter = navigationTagFilter
         self.navigationCollapsed = navigationCollapsed
         self.navigationWidth = navigationWidth
+        self.minimapCollapsed = minimapCollapsed
         self.inspectorCollapsed = inspectorCollapsed
         self.inspectorWidth = inspectorWidth
+        self.style = style
+        self.tagStyles = tagStyles
+    }
+}
+
+public struct HudVantageWorkspaceGroupSnapshot: Codable, Identifiable, Hashable, Sendable {
+    public var id: String
+    public var name: String
+    public var nodeIDs: [UUID]
+    public var tags: [String]
+
+    public init(
+        id: String,
+        name: String,
+        nodeIDs: [UUID],
+        tags: [String] = []
+    ) {
+        self.id = id
+        self.name = name
+        self.nodeIDs = nodeIDs
+        self.tags = tags
     }
 }
 
@@ -70,6 +98,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
     public var height: Double
     public var zIndex: Double
     public var tag: String?
+    public var style: HudVantageTerminalStyleOverride?
     public var runtime: HudVantageRuntimeReference
 
     public init(
@@ -83,6 +112,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         height: Double,
         zIndex: Double,
         tag: String? = nil,
+        style: HudVantageTerminalStyleOverride? = nil,
         runtime: HudVantageRuntimeReference
     ) {
         self.id = id
@@ -95,11 +125,15 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         self.height = height
         self.zIndex = zIndex
         self.tag = tag
+        self.style = style
         self.runtime = runtime
     }
 }
 
 public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
+    public static let documentKind = "hudson.vantage.workspace"
+
+    public var kind: String
     public var schemaVersion: Int
     public var workspaceID: String
     public var surfaceTitle: String
@@ -107,9 +141,12 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
     public var layout: HudVantageSurfaceLayoutSnapshot?
     public var nodes: [HudVantageNodeSnapshot]
     public var selectedNodeIDs: [UUID]
+    public var focusedNodeID: UUID?
+    public var groups: [HudVantageWorkspaceGroupSnapshot]
     public var savedAt: Date
 
     public init(
+        kind: String = HudVantageWorkspaceSnapshot.documentKind,
         schemaVersion: Int = 1,
         workspaceID: String,
         surfaceTitle: String,
@@ -117,8 +154,11 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         layout: HudVantageSurfaceLayoutSnapshot? = nil,
         nodes: [HudVantageNodeSnapshot],
         selectedNodeIDs: [UUID],
+        focusedNodeID: UUID? = nil,
+        groups: [HudVantageWorkspaceGroupSnapshot] = [],
         savedAt: Date = Date()
     ) {
+        self.kind = kind
         self.schemaVersion = schemaVersion
         self.workspaceID = workspaceID
         self.surfaceTitle = surfaceTitle
@@ -126,6 +166,43 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         self.layout = layout
         self.nodes = nodes
         self.selectedNodeIDs = selectedNodeIDs
+        self.focusedNodeID = focusedNodeID
+        self.groups = groups
         self.savedAt = savedAt
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case kind
+        case schemaVersion
+        case workspaceID
+        case surfaceTitle
+        case viewport
+        case layout
+        case nodes
+        case selectedNodeIDs
+        case focusedNodeID
+        case groups
+        case savedAt
+    }
+
+    public init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        kind = try container.decodeIfPresent(String.self, forKey: .kind)
+            ?? Self.documentKind
+        schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion)
+            ?? 1
+        workspaceID = try container.decode(String.self, forKey: .workspaceID)
+        surfaceTitle = try container.decode(String.self, forKey: .surfaceTitle)
+        viewport = try container.decode(HudVantageViewportSnapshot.self, forKey: .viewport)
+        layout = try container.decodeIfPresent(HudVantageSurfaceLayoutSnapshot.self, forKey: .layout)
+        nodes = try container.decodeIfPresent([HudVantageNodeSnapshot].self, forKey: .nodes)
+            ?? []
+        selectedNodeIDs = try container.decodeIfPresent([UUID].self, forKey: .selectedNodeIDs)
+            ?? []
+        focusedNodeID = try container.decodeIfPresent(UUID.self, forKey: .focusedNodeID)
+        groups = try container.decodeIfPresent([HudVantageWorkspaceGroupSnapshot].self, forKey: .groups)
+            ?? []
+        savedAt = try container.decodeIfPresent(Date.self, forKey: .savedAt)
+            ?? Date()
     }
 }

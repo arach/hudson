@@ -81,6 +81,30 @@ private enum HudVantageMetrics {
     static let zoomControlShadowRadius = HudSpacing.xxl
     static let terminalCardShadowRadius = HudSpacing.xxl
     static let terminalCardSelectedShadowRadius = HudSpacing.xxxl + HudSpacing.xxs
+    static let popOutMinimumWidth = HudLayout.cliffWidth
+    static let popOutMinimumHeight = HudLayout.dialogWidth - HudLayout.rowHeightRegular + HudSpacing.xs
+    static let popOutTabStripMaxWidth = HudLayout.popoverWidth
+        + HudSpacing.huge
+        + HudSpacing.xxxl
+        + HudSpacing.xxxl
+        + HudSpacing.xl
+    static let popOutTerminalPreviewHeight = HudLayout.qrViewfinderSize + HudSpacing.lg
+    static let appearanceSheetWidth = HudLayout.cliffWidth
+    static let appearanceSheetHeight = HudLayout.dialogWidth
+        + HudLayout.rowHeightRegular
+        + HudLayout.fieldHeight
+    static let settingsScopeRailWidth = HudLayout.panelWidth
+        - HudSpacing.huge
+        - HudSpacing.xxxl
+        - HudSpacing.xxl
+        - HudSpacing.md
+    static let commandPaletteWidth = HudLayout.popoverWidth
+        + HudLayout.rowHeightRegular
+        + HudSpacing.huge
+        + HudSpacing.md
+    static let commandPaletteTopPadding = HudLayout.navHeight
+        + HudSpacing.huge
+        + HudSpacing.lg
 }
 
 private extension HudTheme {
@@ -136,6 +160,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     @Published var size: CGSize
     @Published var zIndex: Double
     @Published var tag: CanvasTag?
+    @Published var styleOverride: HudVantageTerminalStyleOverride?
 
     init(
         id: UUID = UUID(),
@@ -149,6 +174,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         subtitle: String? = nil,
         runtimeIdentity: RuntimeIdentity = .localPTY,
         tag: CanvasTag? = nil,
+        styleOverride: HudVantageTerminalStyleOverride? = nil,
         workingDirectoryURL: URL? = nil
     ) {
         let controller = TerminiTerminalController()
@@ -165,6 +191,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
         self.zIndex = zIndex
         self.runtimeIdentity = runtimeIdentity
         self.tag = tag
+        self.styleOverride = styleOverride?.isEmpty == true ? nil : styleOverride
         workspace.start()
     }
 
@@ -211,7 +238,11 @@ private final class TerminalNode: ObservableObject, Identifiable {
         if let remoteHost {
             return shellSpec(
                 executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-                arguments: ["-tt", remoteHost, "tmux"] + tmuxArguments,
+                arguments: [
+                    "-tt",
+                    remoteHost,
+                    "sh -lc \(shellQuoted(remoteTmuxAttachScript(target: target, createIfMissing: canCreate)))",
+                ],
                 workingDirectoryURL: workingDirectoryURL
             )
         }
@@ -262,6 +293,44 @@ private final class TerminalNode: ObservableObject, Identifiable {
             ],
             workingDirectoryURL: workingDirectoryURL ?? defaultWorkingDirectoryURL
         )
+    }
+
+    private static func remoteTmuxAttachScript(
+        target: String,
+        createIfMissing: Bool
+    ) -> String {
+        let quotedTarget = shellQuoted(target)
+        if createIfMissing {
+            return """
+            export TERM=xterm-256color
+            if ! command -v tmux >/dev/null 2>&1; then
+              printf 'tmux not found on remote host\\n' >&2
+              exit 127
+            fi
+            exec tmux new-session -A -s \(quotedTarget)
+            """
+        }
+
+        return """
+        export TERM=xterm-256color
+        target=\(quotedTarget)
+        if ! command -v tmux >/dev/null 2>&1; then
+          printf 'tmux not found on remote host\\n' >&2
+          exit 127
+        fi
+        for _ in 1 2 3 4 5; do
+          if tmux has-session -t "$target" >/dev/null 2>&1; then
+            exec tmux attach-session -t "$target"
+          fi
+          sleep 0.25
+        done
+        printf 'tmux target %s not found on remote host\\n' "$target" >&2
+        exit 1
+        """
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
     }
 
     private static var shellURL: URL {
@@ -370,6 +439,38 @@ private struct TmuxReattachSpec {
     var remoteHost: String?
 }
 
+private struct TmuxHealthSubject {
+    var nodeID: UUID?
+    var target: String
+    var path: GraphitePath?
+    var remoteHost: String?
+}
+
+private struct VantagePresentationState: Hashable {
+    var title: String?
+    var subtitle: String?
+    var badge: String?
+    var cobrand: String?
+    var productName: String?
+    var hostName: String?
+    var icon: String?
+    var theme: String?
+    var accent: String?
+
+    mutating func apply(_ presentation: HudVantageSetupPresentation?) {
+        guard let presentation else { return }
+        title = presentation.title ?? title
+        subtitle = presentation.subtitle ?? subtitle
+        badge = presentation.badge ?? badge
+        cobrand = presentation.cobrand ?? cobrand
+        productName = presentation.productName ?? productName
+        hostName = presentation.hostName ?? hostName
+        icon = presentation.icon ?? icon
+        theme = presentation.theme ?? theme
+        accent = presentation.accent ?? accent
+    }
+}
+
 private enum HudVantageStateError: Error, LocalizedError {
     case stateFileMissing(String)
     case missingRuntimeTarget(UUID)
@@ -386,6 +487,68 @@ private enum HudVantageStateError: Error, LocalizedError {
             "tmux target \(target) not found; create it first or restore with createIfMissing"
         case .tmuxMissing:
             "tmux executable not found; install tmux locally or restore remote nodes"
+        }
+    }
+}
+
+private enum HudVantageSetupError: Error, LocalizedError {
+    case missingManifest
+    case manifestFileMissing(String)
+    case unsupportedRuntime(String)
+    case missingRuntimeTarget(String)
+
+    var errorCode: String {
+        switch self {
+        case .missingManifest: "missing_setup_manifest"
+        case .manifestFileMissing: "setup_manifest_missing"
+        case .unsupportedRuntime: "unsupported_setup_runtime"
+        case .missingRuntimeTarget: "missing_setup_runtime_target"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .missingManifest:
+            "setup requires an inline manifest or manifestPath"
+        case .manifestFileMissing(let path):
+            "setup manifest not found: \(path)"
+        case .unsupportedRuntime(let runtime):
+            "unsupported setup runtime \(runtime)"
+        case .missingRuntimeTarget(let title):
+            "setup node \(title) is missing a tmux target"
+        }
+    }
+}
+
+private enum HudVantageControlStyleError: Error, LocalizedError {
+    case invalidScope(String)
+    case invalidPreset(String)
+    case invalidValue(field: String, value: String)
+    case missingTag
+    case unsupportedField(scope: String, field: String)
+
+    var errorCode: String {
+        switch self {
+        case .invalidScope: "invalid_style_scope"
+        case .invalidPreset: "invalid_style_preset"
+        case .invalidValue: "invalid_style_value"
+        case .missingTag: "missing_style_tag"
+        case .unsupportedField: "unsupported_style_field"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .invalidScope(let scope):
+            "style scope must be workspace, tag, or terminal; got \(scope)"
+        case .invalidPreset(let preset):
+            "unknown style preset \(preset)"
+        case .invalidValue(let field, let value):
+            "unknown \(field) value \(value)"
+        case .missingTag:
+            "tag scope requires a tag"
+        case .unsupportedField(let scope, let field):
+            "\(field) is only supported for workspace style, not \(scope)"
         }
     }
 }
@@ -459,8 +622,12 @@ public struct HudVantageSurface: View {
     @State private var navigationTagFilter: CanvasTag?
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
+    @State private var minimapCollapsed = false
     @State private var inspectorCollapsed = false
     @State private var inspectorWidth: CGFloat = 300
+    @State private var focusedNodeID: UUID?
+    @State private var popOutWindows: [UUID: NSWindow] = [:]
+    @State private var popOutDelegates: [UUID: VantagePopOutWindowDelegate] = [:]
     @State private var nextIndex = 3
     @State private var nextZIndex: Double = 3
     @StateObject private var controlAPI: HudVantageControlAPI
@@ -475,6 +642,11 @@ public struct HudVantageSurface: View {
     @State private var perfHarnessPrefix: String?
     @State private var didBootstrap = false
     @State private var canvasTool: CanvasTool = .select
+    @State private var styleProfile: HudVantageStyleProfile = .adaptive
+    @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
+    @State private var presentationState = VantagePresentationState()
+    @State private var appearanceSettingsPresented = false
+    @State private var commandPalettePresented = false
     @State private var canvasState = HudVantageCanvasState(
         minimumScale: HudVantageSurface.minimumCanvasScale,
         maximumScale: HudVantageSurface.maximumCanvasScale
@@ -497,9 +669,13 @@ public struct HudVantageSurface: View {
 
     public var body: some View {
         HudAppShell {
-            navigationPanel
+            if !isTerminalFocusActive {
+                navigationPanel
+            }
         } trailing: {
-            inspectorPanel
+            if !isTerminalFocusActive {
+                inspectorPanel
+            }
         } content: {
             terminalCanvasShell
         } statusBar: {
@@ -514,6 +690,7 @@ public struct HudVantageSurface: View {
             pendingPersistTask = nil
             persistStateIfConfigured()
             controlAPI.stop()
+            closePopOutWindows()
             stopAllNodes()
             didBootstrap = false
         }
@@ -532,10 +709,19 @@ public struct HudVantageSurface: View {
         .onChange(of: navigationWidth) { _, _ in
             schedulePersistStateIfConfigured()
         }
+        .onChange(of: minimapCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
         .onChange(of: inspectorCollapsed) { _, _ in
             schedulePersistStateIfConfigured()
         }
         .onChange(of: inspectorWidth) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: styleProfile) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: tagStyleOverrides) { _, _ in
             schedulePersistStateIfConfigured()
         }
         .confirmationDialog(
@@ -551,6 +737,43 @@ public struct HudVantageSurface: View {
         }
         .hudTheme(activeTheme)
         .environment(\.colorScheme, activeColorScheme)
+        .overlay {
+            if commandPalettePresented {
+                VantageCommandPalette(
+                    selectedCount: selectedIDs.count,
+                    onOpenAppearance: openAppearanceSettings,
+                    onCreateTerminal: {
+                        commandPalettePresented = false
+                        spawnTerminal()
+                    },
+                    onFocusSelection: {
+                        commandPalettePresented = false
+                        focusSelection()
+                    },
+                    onPopOutSelection: {
+                        commandPalettePresented = false
+                        popOutSelection()
+                    },
+                    onClose: { commandPalettePresented = false }
+                )
+            }
+        }
+        .sheet(isPresented: $appearanceSettingsPresented) {
+            VantageAppearanceSettingsSurface(
+                profile: $styleProfile,
+                tagStyleOverrides: $tagStyleOverrides,
+                selectedNode: singleSelectedNode,
+                inheritedProfile: singleSelectedNode.map { inheritedStyleProfile(for: $0) },
+                selectedStyleOverride: singleSelectedNode.map { terminalStyleBinding(for: $0) },
+                onClose: { appearanceSettingsPresented = false }
+            )
+            .frame(
+                width: HudVantageMetrics.appearanceSheetWidth,
+                height: HudVantageMetrics.appearanceSheetHeight
+            )
+            .hudTheme(activeTheme)
+            .environment(\.colorScheme, activeColorScheme)
+        }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
                 if navigationCollapsed {
@@ -578,25 +801,67 @@ public struct HudVantageSurface: View {
                 }
             }
         }
+        .onExitCommand {
+            if commandPalettePresented {
+                commandPalettePresented = false
+            } else if appearanceSettingsPresented {
+                appearanceSettingsPresented = false
+            } else if isTerminalFocusActive {
+                exitFocusMode()
+            }
+        }
         .background(HudWindowChrome(colorScheme: activeColorScheme))
     }
 
     private var activeColorScheme: ColorScheme {
-        if configuration.followsSystemColorScheme {
-            return colorScheme
-        }
-        return inheritedTheme == .lightDraft ? .light : .dark
+        styleProfile.chromeStyle.colorScheme(
+            inheritedTheme: inheritedTheme,
+            systemColorScheme: colorScheme,
+            followsSystemColorScheme: configuration.followsSystemColorScheme
+        )
     }
 
     private var activeTheme: HudTheme {
-        guard configuration.followsSystemColorScheme else {
-            return inheritedTheme
+        styleProfile.chromeStyle.hudTheme(
+            inheritedTheme: inheritedTheme,
+            systemColorScheme: colorScheme,
+            followsSystemColorScheme: configuration.followsSystemColorScheme
+        )
+    }
+
+    private var terminalAppearance: HudTerminalAppearance {
+        styleProfile.terminalAppearance(for: activeColorScheme)
+    }
+
+    private func resolvedStyleProfile(for node: TerminalNode) -> HudVantageStyleProfile {
+        var resolved = styleProfile
+        if let tag = node.tag {
+            resolved = resolved.applyingTerminalOverride(tagStyleOverrides[tag])
         }
-        return colorScheme == .dark ? .default : .lightDraft
+        resolved = resolved.applyingTerminalOverride(node.styleOverride)
+        return resolved
+    }
+
+    private func inheritedStyleProfile(for node: TerminalNode) -> HudVantageStyleProfile {
+        guard let tag = node.tag else { return styleProfile }
+        return styleProfile.applyingTerminalOverride(tagStyleOverrides[tag])
+    }
+
+    private func terminalAppearance(for node: TerminalNode) -> HudTerminalAppearance {
+        resolvedStyleProfile(for: node).terminalAppearance(for: activeColorScheme)
     }
 
     private var effectiveCanvasTool: CanvasTool {
         transientHandActive ? .hand : canvasTool
+    }
+
+    private var focusedNode: TerminalNode? {
+        guard let focusedNodeID else { return nil }
+        return nodes.first { $0.id == focusedNodeID }
+    }
+
+    private var isTerminalFocusActive: Bool {
+        focusedNode != nil
     }
 
     @ViewBuilder
@@ -610,6 +875,7 @@ public struct HudVantageSurface: View {
                 selectedCount: selectedIDs.count,
                 filter: $navigationFilter,
                 tagFilter: $navigationTagFilter,
+                minimapCollapsed: $minimapCollapsed,
                 selectedIDs: selectedIDs,
                 viewportWorldRect: canvasState.visibleWorldRect,
                 canvasWorldBounds: canvasWorldBounds,
@@ -619,6 +885,7 @@ public struct HudVantageSurface: View {
                 onTagSelection: tagSelection(as:),
                 onCenterWorldPoint: centerCanvas(on:),
                 onFit: fitCanvasToViewport,
+                onOpenAppearanceSettings: openAppearanceSettings,
                 onCollapse: { navigationCollapsed = true }
             )
         }
@@ -648,8 +915,29 @@ public struct HudVantageSurface: View {
         nodes.filter { selectedIDs.contains($0.id) }
     }
 
-    private func showCommandPlaceholder() {
-        controlStatus = "Command palette placeholder"
+    private var singleSelectedNode: TerminalNode? {
+        let selected = selectedNodes
+        return selected.count == 1 ? selected[0] : nil
+    }
+
+    private func openCommandPalette() {
+        commandPalettePresented = true
+        controlStatus = "Command palette"
+    }
+
+    private func openAppearanceSettings() {
+        commandPalettePresented = false
+        appearanceSettingsPresented = true
+        controlStatus = "Appearance settings"
+    }
+
+    private func terminalStyleBinding(for node: TerminalNode) -> Binding<HudVantageTerminalStyleOverride> {
+        Binding(
+            get: { node.styleOverride ?? .empty },
+            set: { override in
+                setTerminalStyleOverride(node.id, override: override.isEmpty ? nil : override)
+            }
+        )
     }
 
     private var tmuxInstallPermissionMessage: String {
@@ -658,26 +946,85 @@ public struct HudVantageSurface: View {
         return "Vantage will run \(command). This is only needed for local tmux-backed sessions."
     }
 
+    private var presentationTitle: String {
+        presentationState.title ?? presentationState.productName ?? configuration.surfaceTitle
+    }
+
+    private var presentationSubtitle: String {
+        presentationState.subtitle ?? presentationState.cobrand ?? configuration.surfaceSubtitle
+    }
+
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
-            Text(configuration.surfaceTitle.uppercased())
-                .font(HudFont.mono(10, weight: .bold))
-                .tracking(1.4)
-                .foregroundStyle(activeTheme.palette.ink)
-            Text(configuration.surfaceSubtitle)
-                .font(HudFont.mono(10))
-                .foregroundStyle(activeTheme.palette.muted)
-            Spacer()
-            CanvasToolSwitch(
-                tool: effectiveCanvasTool,
-                onSelect: { canvasTool = .select },
-                onHand: { canvasTool = .hand }
-            )
-            CommandKeyButton(action: showCommandPlaceholder)
+            if let focusedNode {
+                HudStatusDot(color: focusedNode.tint.color, size: HudDotSize.small)
+                Text(presentationTitle.uppercased())
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(activeTheme.palette.ink)
+                if let badge = presentationState.badge {
+                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
+                HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
+                Text(focusedNode.title)
+                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.82)
+                Text(focusedNode.subtitle)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.75)
+                Spacer()
 
-            HudButton("New", icon: "plus", style: .primary(.cyan)) {
-                spawnTerminal()
+                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost) {
+                    popOut(nodes: [focusedNode])
+                }
+                HudButton("Close", icon: "xmark", style: .ghost) {
+                    exitFocusMode()
+                    close(focusedNode.id)
+                }
+                HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
+                    exitFocusMode()
+                }
+            } else {
+                HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
+                Text(presentationTitle.uppercased())
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(activeTheme.palette.ink)
+                if let badge = presentationState.badge {
+                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
+                Text(presentationSubtitle)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                if let cobrand = presentationState.cobrand,
+                   cobrand != presentationSubtitle {
+                    HudBadge(cobrand.uppercased(), tint: activeTheme.palette.muted, dot: false)
+                }
+                Spacer()
+                CanvasToolSwitch(
+                    tool: effectiveCanvasTool,
+                    onSelect: { canvasTool = .select },
+                    onHand: { canvasTool = .hand }
+                )
+                CommandKeyButton(action: openCommandPalette)
+
+                HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
+                    focusSelection()
+                }
+                .disabled(selectedIDs.count != 1)
+
+                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .secondary) {
+                    popOutSelection()
+                }
+                .disabled(selectedIDs.isEmpty)
+
+                HudButton("New", icon: "plus", style: .primary(.cyan)) {
+                    spawnTerminal()
+                }
             }
         }
     }
@@ -699,16 +1046,17 @@ public struct HudVantageSurface: View {
             ZStack(alignment: .topLeading) {
                 activeTheme.palette.bg
                 InfiniteCanvasBackground(
-                    pan: canvasState.pan,
-                    scale: canvasState.scale
+                    pan: canvasBackgroundPan,
+                    scale: canvasBackgroundScale,
+                    styleProfile: styleProfile
                 )
                 .allowsHitTesting(false)
 
                 terminalCanvas
                     .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-                    .allowsHitTesting(effectiveCanvasTool == .select)
+                    .allowsHitTesting(isTerminalFocusActive || effectiveCanvasTool == .select)
 
-                if let rect = selectionDrag?.viewportRect {
+                if !isTerminalFocusActive, let rect = selectionDrag?.viewportRect {
                     SelectionMarquee(rect: rect)
                 }
 
@@ -729,7 +1077,8 @@ public struct HudVantageSurface: View {
                     },
                     onSpacePanChanged: { isActive in
                         transientHandActive = isActive
-                    }
+                    },
+                    onCommandPalette: openCommandPalette
                 )
             )
             .gesture(canvasInteractionGesture)
@@ -748,17 +1097,19 @@ public struct HudVantageSurface: View {
                 }
             }
             .overlay(alignment: .bottomTrailing) {
-                CanvasZoomTool(
-                    scale: canvasState.scale,
-                    onZoomOut: { zoom(by: 0.5) },
-                    onZoomIn: { zoom(by: 2) },
-                    onReset: {
-                        resetCanvasViewport()
-                        schedulePersistStateIfConfigured()
-                    },
-                    onFit: { fitCanvasToViewport() }
-                )
-                .padding(HudSpacing.xl)
+                if !isTerminalFocusActive {
+                    CanvasZoomTool(
+                        scale: canvasState.scale,
+                        onZoomOut: { zoom(by: 0.5) },
+                        onZoomIn: { zoom(by: 2) },
+                        onReset: {
+                            resetCanvasViewport()
+                            schedulePersistStateIfConfigured()
+                        },
+                        onFit: { fitCanvasToViewport() }
+                    )
+                    .padding(HudSpacing.xl)
+                }
             }
         }
     }
@@ -766,6 +1117,7 @@ public struct HudVantageSurface: View {
     private var canvasInteractionGesture: some Gesture {
         DragGesture(minimumDistance: 2)
             .onChanged { value in
+                guard !isTerminalFocusActive else { return }
                 switch effectiveCanvasTool {
                 case .hand:
                     perfTracker.increment("input.canvasPan.delta")
@@ -793,6 +1145,7 @@ public struct HudVantageSurface: View {
                 }
             }
             .onEnded { _ in
+                guard !isTerminalFocusActive else { return }
                 perfTracker.increment("input.canvasDrag.end")
                 panStart = nil
                 schedulePersistStateIfConfigured()
@@ -801,6 +1154,7 @@ public struct HudVantageSurface: View {
     }
 
     private func canBeginSpacePan(at viewportPoint: CGPoint) -> Bool {
+        guard !isTerminalFocusActive else { return false }
         let worldPoint = canvasState.worldPoint(fromViewportPoint: viewportPoint)
         return !nodes.contains { node in
             rendersLiveSurface(for: node) && nodeFrame(node).contains(worldPoint)
@@ -810,6 +1164,7 @@ public struct HudVantageSurface: View {
     private var canvasZoomGesture: some Gesture {
         MagnificationGesture()
             .onChanged { value in
+                guard !isTerminalFocusActive else { return }
                 let start = zoomStart ?? canvasState.scale
                 zoomStart = start
                 setCanvasScale(start * value, around: canvasState.viewportCenter)
@@ -824,6 +1179,7 @@ public struct HudVantageSurface: View {
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
+        guard !isTerminalFocusActive else { return }
         perfTracker.increment("input.scroll")
         if abs(delta.height) >= abs(delta.width) {
             perfTracker.increment("input.scroll.zoom")
@@ -836,6 +1192,7 @@ public struct HudVantageSurface: View {
     }
 
     private func handleCanvasMagnify(_ magnification: CGFloat, at viewportPoint: CGPoint) {
+        guard !isTerminalFocusActive else { return }
         perfTracker.increment("input.magnify")
         let factor = min(max(1 + magnification, 0.75), 1.35)
         setCanvasScale(canvasState.scale * factor, around: viewportPoint)
@@ -897,6 +1254,10 @@ public struct HudVantageSurface: View {
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
+        if let focusedNodeID = focusedNode?.id {
+            return node.id == focusedNodeID
+        }
+
         guard canvasState.scale >= 0.25 else { return false }
 
         if nodes.count <= 24 {
@@ -908,27 +1269,98 @@ public struct HudVantageSurface: View {
             && selectedIDs.contains(node.id)
     }
 
+    private var canvasBackgroundPan: CGSize {
+        guard let focusedNode else { return canvasState.pan }
+        let scale = displayScale(for: focusedNode)
+        return displayPan(for: focusedNode, scale: scale)
+    }
+
+    private var canvasBackgroundScale: CGFloat {
+        guard let focusedNode else { return canvasState.scale }
+        return displayScale(for: focusedNode)
+    }
+
+    private func shouldRenderNode(_ node: TerminalNode) -> Bool {
+        guard let focusedNodeID = focusedNode?.id else { return true }
+        return node.id == focusedNodeID
+    }
+
+    private func displayScale(for node: TerminalNode) -> CGFloat {
+        guard focusedNode?.id == node.id else { return canvasState.scale }
+        return 1
+    }
+
+    private func displayPan(for node: TerminalNode, scale: CGFloat) -> CGSize {
+        guard focusedNode?.id == node.id else { return canvasState.pan }
+
+        let size = focusScreenSize
+        return CGSize(
+            width: (canvasState.viewportSize.width - size.width) / 2 - node.origin.x * scale,
+            height: (canvasState.viewportSize.height - size.height) / 2 - node.origin.y * scale
+        )
+    }
+
+    private var focusScreenSize: CGSize {
+        let inset = CGFloat(styleProfile.focusPadding)
+        return CGSize(
+            width: max(360, canvasState.viewportSize.width - inset * 2),
+            height: max(260, canvasState.viewportSize.height - inset * 2)
+        )
+    }
+
     private var terminalCanvas: some View {
         ZStack(alignment: .topLeading) {
             ForEach(nodes) { node in
-                TerminalNodeView(
-                    node: node,
-                    isSelected: selectedIDs.contains(node.id),
-                    rendersLiveSurface: rendersLiveSurface(for: node),
-                    canvasPan: canvasState.pan,
-                    canvasScale: canvasState.scale,
-                    onSelect: { selectNode(node.id) },
-                    onDragBegin: { beginDraggingNode(node.id) },
-                    onClose: { close(node.id) },
-                    onMove: { delta in move(node.id, delta: worldDelta(delta)) },
-                    onResize: { delta in resize(node.id, delta: worldDelta(delta)) },
-                    onTransformEnd: finishNodeTransform
-                )
+                if shouldRenderNode(node) {
+                    let isFocused = focusedNodeID == node.id
+                    let displayScale = displayScale(for: node)
+                    TerminalNodeView(
+                        node: node,
+                        isSelected: selectedIDs.contains(node.id),
+                        isFocused: isFocused,
+                        rendersLiveSurface: rendersLiveSurface(for: node),
+                        workspaceStyleProfile: styleProfile,
+                        tagStyleOverrides: tagStyleOverrides,
+                        activeColorScheme: activeColorScheme,
+                        canvasPan: displayPan(for: node, scale: displayScale),
+                        canvasScale: displayScale,
+                        screenSizeOverride: isFocused ? focusScreenSize : nil,
+                        onSelect: { selectNode(node.id) },
+                        onFocus: { enterFocusMode(node.id) },
+                        onPopOut: { popOut(nodes: [node]) },
+                        onAppearanceSettings: {
+                            selectNode(node.id)
+                            openAppearanceSettings()
+                        },
+                        onDragBegin: {
+                            if !isFocused {
+                                beginDraggingNode(node.id)
+                            }
+                        },
+                        onClose: { close(node.id) },
+                        onMove: { delta in
+                            if !isFocused {
+                                move(node.id, delta: worldDelta(delta, scale: displayScale))
+                            }
+                        },
+                        onResize: { delta in
+                            if !isFocused {
+                                resize(node.id, delta: worldDelta(delta, scale: displayScale))
+                            }
+                        },
+                        onTransformEnd: {
+                            if !isFocused {
+                                finishNodeTransform()
+                            }
+                        }
+                    )
+                }
             }
         }
         .coordinateSpace(name: "termini-canvas")
         .contentShape(Rectangle())
         .onTapGesture {
+            guard !isTerminalFocusActive else { return }
             selectedIDs.removeAll()
             schedulePersistStateIfConfigured()
         }
@@ -1149,6 +1581,12 @@ public struct HudVantageSurface: View {
             return inspectNodes(command)
         case "focus", "center", "reveal":
             return focusNodes(command)
+        case "focus-mode", "focusmode", "enter-focus", "enterfocus", "solo":
+            return enterFocusMode(command)
+        case "exit-focus", "exitfocus", "leave-focus", "leavefocus", "unfocus":
+            return exitFocusMode(command)
+        case "popout", "pop-out", "pop-window", "popwindow":
+            return popOutNodes(command)
         case "close", "remove":
             return closeNodes(command)
         case "metrics", "perf":
@@ -1157,6 +1595,10 @@ public struct HudVantageSurface: View {
                 ok: true,
                 message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
             )
+        case "style", "set-style", "appearance", "set-appearance", "settings", "set-settings":
+            return applyStyleCommand(command)
+        case "tmux-status", "tmuxstatus", "tmux-health", "tmuxhealth", "health":
+            return tmuxHealthStatus(command)
         case "viewport", "view":
             return applyViewportCommand(command)
         case "perf-reset", "reset-metrics":
@@ -1175,10 +1617,12 @@ public struct HudVantageSurface: View {
             return runPerfHarness(command)
         case "perf-cleanup", "perfcleanup", "harness-cleanup", "stress-cleanup":
             return cleanupPerfHarness(command)
-        case "save", "snapshot":
+        case "save", "snapshot", "save-workspace", "workspace-save", "export-workspace":
             return saveWorkspaceState(command)
-        case "restore", "load":
+        case "restore", "load", "restore-workspace", "workspace-restore", "open-workspace", "import-workspace":
             return restoreWorkspaceState(command)
+        case "setup", "apply-setup", "setup-workspace", "apply-workspace", "compose":
+            return applySetupCommand(command)
         case "clear":
             stopAllNodes()
             schedulePersistStateIfConfigured()
@@ -1888,6 +2332,61 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func enterFocusMode(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            guard resolved.count == 1, let node = resolved.first else {
+                return controlResponse(
+                    command,
+                    ok: false,
+                    message: "focus mode requires exactly one terminal",
+                    errorCode: "invalid_focus_target",
+                    nodesOverride: resolved
+                )
+            }
+            enterFocusMode(node.id)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "focus mode \(node.title)",
+                nodesOverride: [node]
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func exitFocusMode(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        exitFocusMode()
+        return controlResponse(
+            command,
+            ok: true,
+            message: "focus mode closed"
+        )
+    }
+
+    private func popOutNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+            selectedIDs = Set(resolved.map(\.id))
+            popOut(nodes: resolved)
+            return controlResponse(
+                command,
+                ok: true,
+                message: "popped out \(resolved.count)",
+                nodesOverride: resolved
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
     private func applyViewportCommand(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
@@ -1913,6 +2412,568 @@ public struct HudVantageSurface: View {
         )
     }
 
+    private func applySetupCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let manifest = try setupManifest(from: command)
+            let report = applySetupManifest(manifest, command: command)
+            let health = manifest.nodes.isEmpty
+                ? nil
+                : nodes.compactMap(tmuxHealthSubject).map {
+                    tmuxHealth(
+                        for: $0,
+                        probeRemote: false,
+                        timeoutSeconds: remoteHealthTimeoutSeconds(from: command)
+                    )
+                }
+            let failedCount = report.failedNodes.count
+            return controlResponse(
+                command,
+                ok: failedCount == 0,
+                message: failedCount == 0
+                    ? setupSuccessMessage(report)
+                    : "setup applied with \(failedCount) failure\(failedCount == 1 ? "" : "s")",
+                errorCode: failedCount == 0 ? nil : "setup_partial_failure",
+                nodesOverride: setupResponseNodes(from: report),
+                style: controlStyleSummary(includeTerminalOverrides: true),
+                tmuxHealth: health,
+                setup: report
+            )
+        } catch let error as HudVantageSetupError {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: error.errorCode
+            )
+        } catch {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: "setup_error"
+            )
+        }
+    }
+
+    private func setupSuccessMessage(_ report: HudVantageSetupReport) -> String {
+        let created = report.createdNodeIDs.count
+        let reused = report.reusedNodeIDs.count
+        let removed = report.removedNodeIDs.count
+        return "setup applied: \(created) created, \(reused) reused, \(removed) removed"
+    }
+
+    private func setupResponseNodes(from report: HudVantageSetupReport) -> [TerminalNode]? {
+        let ids = Set(report.createdNodeIDs + report.reusedNodeIDs + report.updatedNodeIDs)
+        guard !ids.isEmpty else { return nil }
+        return nodes.filter { ids.contains($0.id) }
+    }
+
+    private func setupManifest(from command: HudVantageControlCommand) throws -> HudVantageSetupManifest {
+        if let manifest = command.setupManifest {
+            return manifest
+        }
+
+        guard let path = trimmed(command.manifestPath ?? command.statePath) else {
+            throw HudVantageSetupError.missingManifest
+        }
+
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw HudVantageSetupError.manifestFileMissing(path)
+        }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(HudVantageSetupManifest.self, from: data)
+    }
+
+    private func applySetupManifest(
+        _ manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) -> HudVantageSetupReport {
+        let span = hudVantagePerfTrace.beginSpan("setup.apply")
+        var report = HudVantageSetupReport(
+            workspaceID: manifest.workspaceID ?? command.workspaceID ?? configuration.workspaceID,
+            presentation: manifest.presentation
+        )
+        var touchedIDs = Set<UUID>()
+
+        presentationState.apply(manifest.presentation)
+        applySetupPresentationTheme(manifest.presentation)
+        if let style = manifest.style {
+            applySetupStyle(style)
+        }
+        if let layout = manifest.layout {
+            applySetupLayout(layout)
+        }
+
+        let createIfMissing = command.createIfMissing
+            ?? manifest.createIfMissing
+            ?? false
+        let removeMissing = command.removeMissing
+            ?? manifest.removeMissing
+            ?? false
+
+        for (offset, setupNode) in manifest.nodes.enumerated() {
+            do {
+                if let existing = try existingSetupNode(for: setupNode) {
+                    let didUpdate = try updateExistingSetupNode(existing, from: setupNode)
+                    report.reusedNodeIDs.append(existing.id)
+                    if didUpdate {
+                        report.updatedNodeIDs.append(existing.id)
+                    }
+                    touchedIDs.insert(existing.id)
+                } else {
+                    let node = try terminalNode(
+                        from: setupNode,
+                        offset: offset,
+                        createIfMissing: setupNode.createIfMissing ?? createIfMissing
+                    )
+                    nodes.append(node)
+                    report.createdNodeIDs.append(node.id)
+                    touchedIDs.insert(node.id)
+                    nextIndex += 1
+                }
+            } catch {
+                report.failedNodes.append(
+                    HudVantageSetupFailure(
+                        id: setupNode.id ?? setupNode.nodeID?.uuidString,
+                        title: setupNode.title,
+                        message: error.localizedDescription
+                    )
+                )
+            }
+        }
+
+        if removeMissing {
+            let removed = nodes
+                .filter { !touchedIDs.contains($0.id) }
+                .map(\.id)
+            if !removed.isEmpty {
+                for node in nodes where removed.contains(node.id) {
+                    node.stop()
+                }
+                nodes.removeAll { removed.contains($0.id) }
+                selectedIDs.subtract(removed)
+                report.removedNodeIDs = removed
+            }
+        }
+
+        applySetupSelection(manifest, touchedIDs: touchedIDs)
+        applySetupViewport(manifest.viewport, command: command)
+        nextZIndex = max(nextZIndex, (nodes.map(\.zIndex).max() ?? 0) + 1)
+        controlStatus = "Setup · \(report.createdNodeIDs.count) created · \(report.reusedNodeIDs.count) reused"
+        perfTracker.increment("setup.apply")
+        perfTracker.set("setup.created", to: report.createdNodeIDs.count)
+        perfTracker.set("setup.reused", to: report.reusedNodeIDs.count)
+        perfTracker.set("setup.failed", to: report.failedNodes.count)
+        schedulePersistStateIfConfigured()
+        span.end(report.failedNodes.isEmpty ? "ok" : "partial")
+        return report
+    }
+
+    private func applySetupPresentationTheme(_ presentation: HudVantageSetupPresentation?) {
+        guard let theme = trimmed(presentation?.theme),
+              styleProfile.id == HudVantageStyleProfile.adaptive.id,
+              let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(theme) })
+        else { return }
+        styleProfile = preset
+    }
+
+    private func applySetupStyle(_ style: HudVantageSetupStyle) {
+        let command = HudVantageControlCommand(
+            action: "style",
+            stylePreset: style.stylePreset ?? style.preset,
+            chromeStyle: style.chromeStyle,
+            terminalTheme: style.terminalTheme,
+            terminalThemeID: style.terminalThemeID,
+            terminalFontFamily: style.terminalFontFamily,
+            terminalFontSize: style.terminalFontSize,
+            canvasGridMode: style.canvasGridMode,
+            canvasGridStep: style.canvasGridStep,
+            canvasMinorOpacity: style.canvasMinorOpacity,
+            canvasMajorOpacity: style.canvasMajorOpacity,
+            focusPadding: style.focusPadding
+        )
+        if let updated = try? workspaceStyleProfile(applying: command, to: styleProfile) {
+            styleProfile = updated
+        }
+        for entry in style.tagStyles ?? [:] {
+            guard let tag = try? controlTag(from: entry.key), !entry.value.isEmpty else { continue }
+            tagStyleOverrides[tag] = entry.value
+        }
+    }
+
+    private func applySetupLayout(_ layout: HudVantageSetupLayout) {
+        if let tool = layout.canvasTool.flatMap(CanvasTool.init(rawValue:)) {
+            canvasTool = tool
+        }
+        if let filter = layout.navigationFilter.flatMap(CanvasNavigationFilter.init(rawValue:)) {
+            navigationFilter = filter
+        }
+        if let tag = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:)) {
+            navigationTagFilter = tag
+        }
+        if let navigationCollapsed = layout.navigationCollapsed {
+            self.navigationCollapsed = navigationCollapsed
+        }
+        if let navigationWidth = layout.navigationWidth {
+            self.navigationWidth = clamped(CGFloat(navigationWidth), to: 210...360)
+        }
+        if let minimapCollapsed = layout.minimapCollapsed {
+            self.minimapCollapsed = minimapCollapsed
+        }
+        if let inspectorCollapsed = layout.inspectorCollapsed {
+            self.inspectorCollapsed = inspectorCollapsed
+        }
+        if let inspectorWidth = layout.inspectorWidth {
+            self.inspectorWidth = clamped(CGFloat(inspectorWidth), to: 250...440)
+        }
+    }
+
+    private func applySetupViewport(
+        _ viewport: HudVantageSetupViewport?,
+        command: HudVantageControlCommand
+    ) {
+        if viewport?.reset == true || command.reset == true {
+            resetCanvasViewport()
+        }
+        if viewport?.fit == true || command.fit == true {
+            fitCanvasToViewport()
+        }
+        if viewport?.panX != nil || viewport?.panY != nil || viewport?.scale != nil {
+            canvasState = canvasState.replaying(
+                panX: viewport?.panX.map { CGFloat($0) },
+                panY: viewport?.panY.map { CGFloat($0) },
+                scale: viewport?.scale.map { CGFloat($0) }
+            )
+        }
+    }
+
+    private func applySetupSelection(
+        _ manifest: HudVantageSetupManifest,
+        touchedIDs: Set<UUID>
+    ) {
+        var selected = Set(manifest.selectedNodeIDs).intersection(Set(nodes.map(\.id)))
+        for selector in manifest.selection {
+            let matches = nodes(matching: selector)
+            if matches.count == 1, let node = matches.first {
+                selected.insert(node.id)
+            }
+        }
+        if selected.isEmpty {
+            selected = touchedIDs
+        }
+        selectedIDs = selected
+
+        if let focusedID = manifest.focusedNodeID, nodes.contains(where: { $0.id == focusedID }) {
+            focusedNodeID = focusedID
+        } else if let selector = manifest.focused,
+                  let node = nodes(matching: selector).first {
+            focusedNodeID = node.id
+        }
+    }
+
+    private func existingSetupNode(for setupNode: HudVantageSetupNode) throws -> TerminalNode? {
+        if let uuid = setupNode.nodeID ?? setupNode.id.flatMap(UUID.init(uuidString:)) {
+            return nodes.first { $0.id == uuid }
+        }
+        if let path = try setupGraphitePath(for: setupNode) {
+            return nodes.first { node in
+                guard case .tmux(_, let nodePath, _) = node.runtimeIdentity else { return false }
+                return nodePath == path
+            }
+        }
+        if let target = try setupTmuxTarget(for: setupNode) {
+            let remoteHost = try validatedRemoteHost(setupNode.remoteHost ?? setupNode.runtime?.remoteHost)
+            return nodes.first { node in
+                guard case .tmux(let nodeTarget, _, let nodeRemoteHost) = node.runtimeIdentity else { return false }
+                return nodeTarget == target && nodeRemoteHost == remoteHost
+            }
+        }
+        return nil
+    }
+
+    private func updateExistingSetupNode(
+        _ node: TerminalNode,
+        from setupNode: HudVantageSetupNode
+    ) throws -> Bool {
+        var changed = false
+        if let x = setupNode.x {
+            node.origin.x = CGFloat(x)
+            changed = true
+        }
+        if let y = setupNode.y {
+            node.origin.y = CGFloat(y)
+            changed = true
+        }
+        if let width = setupNode.width {
+            node.size.width = max(300, CGFloat(width))
+            changed = true
+        }
+        if let height = setupNode.height {
+            node.size.height = max(200, CGFloat(height))
+            changed = true
+        }
+        if let zIndex = setupNode.zIndex {
+            node.zIndex = zIndex
+            changed = true
+        }
+        if let tagValue = setupNode.tag {
+            node.tag = tagValue.isEmpty ? nil : try controlTag(from: tagValue)
+            changed = true
+        }
+        if let style = try setupNodeStyleOverride(setupNode) {
+            node.styleOverride = style.isEmpty ? nil : style
+            changed = true
+        }
+        return changed
+    }
+
+    private func terminalNode(
+        from setupNode: HudVantageSetupNode,
+        offset: Int,
+        createIfMissing: Bool
+    ) throws -> TerminalNode {
+        let runtimeKind = setupRuntimeKind(for: setupNode)
+        let nodeID = setupNode.nodeID
+            ?? setupNode.id.flatMap(UUID.init(uuidString:))
+            ?? UUID()
+        let origin = CGPoint(
+            x: CGFloat(setupNode.x ?? (72 + Double(offset * 38))),
+            y: CGFloat(setupNode.y ?? (76 + Double(offset * 38)))
+        )
+        let size = CGSize(
+            width: max(300, CGFloat(setupNode.width ?? 500)),
+            height: max(200, CGFloat(setupNode.height ?? 316))
+        )
+        let tint = HudTint.from(token: setupNode.tint ?? tint(for: nextIndex).rawValue)
+        let zIndex = setupNode.zIndex ?? nextZIndex
+        nextZIndex = max(nextZIndex, zIndex + 1)
+        let tag = try setupNode.tag.map { try controlTag(from: $0) }
+        let style = try setupNodeStyleOverride(setupNode)
+
+        switch runtimeKind {
+        case "local-pty", "localpty", "pty":
+            return TerminalNode(
+                id: nodeID,
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint,
+                zIndex: zIndex,
+                title: setupNode.title,
+                subtitle: setupNode.subtitle,
+                tag: tag,
+                styleOverride: style,
+                workingDirectoryURL: configuration.workingDirectoryURL
+            )
+
+        case "tmux", "remote-tmux", "sshtmux", "ssh-tmux":
+            guard let target = try setupTmuxTarget(for: setupNode) else {
+                throw HudVantageSetupError.missingRuntimeTarget(setupNode.title ?? setupNode.id ?? "untitled")
+            }
+            let path = try setupGraphitePath(for: setupNode)
+            let remoteHost = try validatedRemoteHost(setupNode.remoteHost ?? setupNode.runtime?.remoteHost)
+            if remoteHost == nil, TerminalNode.localTmuxURL == nil {
+                throw HudVantageStateError.tmuxMissing
+            }
+            if remoteHost == nil,
+               !TerminalNode.canCreateTmuxTarget(target, createIfMissing: createIfMissing),
+               !TerminalNode.localTmuxTargetExists(target) {
+                throw HudVantageStateError.missingTmuxTarget(target)
+            }
+            return TerminalNode(
+                id: nodeID,
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint,
+                zIndex: zIndex,
+                processSpec: TerminalNode.tmuxAttachSpec(
+                    target: target,
+                    createIfMissing: createIfMissing,
+                    remoteHost: remoteHost,
+                    workingDirectoryURL: configuration.workingDirectoryURL
+                ),
+                title: setupNode.title ?? path.map { "\($0.app) \($0.instance)" } ?? "tmux \(target)",
+                subtitle: setupNode.subtitle ?? remoteHost.map { "ssh · \($0)" } ?? "tmux · \(target)",
+                runtimeIdentity: .tmux(target: target, path: path, remoteHost: remoteHost),
+                tag: tag,
+                styleOverride: style
+            )
+
+        default:
+            throw HudVantageSetupError.unsupportedRuntime(runtimeKind)
+        }
+    }
+
+    private func setupRuntimeKind(for setupNode: HudVantageSetupNode) -> String {
+        let kind = setupNode.runtime?.kind
+            ?? setupNode.runtimeKind
+            ?? ((setupNode.target ?? setupNode.runtime?.target ?? setupNode.graphitePath ?? setupNode.runtime?.graphitePath) == nil
+                ? "local-pty"
+                : "tmux")
+        return kind.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func setupGraphitePath(for setupNode: HudVantageSetupNode) throws -> GraphitePath? {
+        let candidate = setupNode.graphitePath
+            ?? setupNode.runtime?.graphitePath
+            ?? (setupNode.id?.hasPrefix("\(GraphitePath.root).") == true ? setupNode.id : nil)
+        return try candidate.map(GraphitePath.init(parse:))
+    }
+
+    private func setupTmuxTarget(for setupNode: HudVantageSetupNode) throws -> String? {
+        if let target = setupNode.target ?? setupNode.runtime?.target {
+            return try TmuxTarget.validatedTarget(target)
+        }
+        if let path = try setupGraphitePath(for: setupNode) {
+            return try TmuxTarget.from(path: path).windowTarget
+        }
+        if setupRuntimeKind(for: setupNode).contains("tmux"),
+           let id = setupNode.id,
+           UUID(uuidString: id) == nil {
+            return try TmuxTarget.validatedTarget(id)
+        }
+        return nil
+    }
+
+    private func setupNodeStyleOverride(
+        _ setupNode: HudVantageSetupNode
+    ) throws -> HudVantageTerminalStyleOverride? {
+        var override = setupNode.style ?? .empty
+        if let terminalTheme = setupNode.terminalTheme ?? setupNode.terminalThemeID {
+            override.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = setupNode.terminalFontFamily {
+            override.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = setupNode.terminalFontSize {
+            override.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+        return override.isEmpty ? nil : override
+    }
+
+    private func applyStyleCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let scope = try resolvedStyleScope(for: command)
+            switch scope {
+            case "workspace":
+                let previous = styleProfile
+                styleProfile = try workspaceStyleProfile(applying: command, to: styleProfile)
+                if previous != styleProfile {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: previous == styleProfile ? "workspace style unchanged" : "workspace style updated",
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            case "tag":
+                try rejectWorkspaceOnlyStyleFields(command, scope: scope)
+                let tag = try controlTag(from: command.tag)
+                let previous = tagStyleOverrides[tag] ?? .empty
+                let updated = try terminalStyleOverride(applying: command, to: previous)
+                if updated.isEmpty {
+                    tagStyleOverrides[tag] = nil
+                } else {
+                    tagStyleOverrides[tag] = updated
+                }
+                if previous != updated {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: previous == updated
+                        ? "\(tag.label) tag style unchanged"
+                        : "\(tag.label) tag style updated",
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            case "terminal":
+                try rejectWorkspaceOnlyStyleFields(command, scope: scope)
+                let resolved = try resolveNodes(from: command, allowSelectionFallback: true)
+                var changedCount = 0
+                for node in resolved {
+                    let previous = node.styleOverride ?? .empty
+                    let updated = try terminalStyleOverride(applying: command, to: previous)
+                    node.styleOverride = updated.isEmpty ? nil : updated
+                    if previous != updated {
+                        changedCount += 1
+                    }
+                }
+                if changedCount > 0 {
+                    schedulePersistStateIfConfigured()
+                }
+                return controlResponse(
+                    command,
+                    ok: true,
+                    message: changedCount == 0
+                        ? "terminal style unchanged"
+                        : "updated \(changedCount) terminal style\(changedCount == 1 ? "" : "s")",
+                    nodesOverride: resolved,
+                    style: controlStyleSummary(includeTerminalOverrides: true)
+                )
+
+            default:
+                throw HudVantageControlStyleError.invalidScope(scope)
+            }
+        } catch let error as HudVantageControlStyleError {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: error.errorCode,
+                style: controlStyleSummary(includeTerminalOverrides: true)
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func tmuxHealthStatus(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let subjects = try tmuxHealthSubjects(from: command)
+            let health = subjects.map {
+                tmuxHealth(
+                    for: $0,
+                    probeRemote: command.probeRemote ?? false,
+                    timeoutSeconds: remoteHealthTimeoutSeconds(from: command)
+                )
+            }
+            return controlResponse(
+                command,
+                ok: true,
+                message: health.isEmpty
+                    ? "no tmux nodes"
+                    : "checked \(health.count) tmux target\(health.count == 1 ? "" : "s")",
+                tmuxHealth: health
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func remoteHealthTimeoutSeconds(from command: HudVantageControlCommand) -> Double {
+        let timeoutMS = command.timeoutMS ?? 3_000
+        return clamp(timeoutMS / 1_000, lower: 0.5, upper: 30)
+    }
+
     private func closeNodes(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
@@ -1934,6 +2995,321 @@ public struct HudVantageSurface: View {
         } catch {
             return controlNodeErrorResponse(command, error)
         }
+    }
+
+    private func resolvedStyleScope(for command: HudVantageControlCommand) throws -> String {
+        if let explicit = command.styleScope?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !explicit.isEmpty {
+            switch explicit.lowercased() {
+            case "workspace", "surface", "global":
+                return "workspace"
+            case "tag", "group":
+                return "tag"
+            case "terminal", "term", "node", "nodes", "selection", "selected":
+                return "terminal"
+            default:
+                throw HudVantageControlStyleError.invalidScope(explicit)
+            }
+        }
+
+        if command.tag?.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            return "tag"
+        }
+        if !nodeSelectors(from: command).isEmpty {
+            return "terminal"
+        }
+        return "workspace"
+    }
+
+    private func workspaceStyleProfile(
+        applying command: HudVantageControlCommand,
+        to profile: HudVantageStyleProfile
+    ) throws -> HudVantageStyleProfile {
+        var resolved = command.reset == true ? .adaptive : profile
+
+        if let presetID = trimmed(command.stylePreset) {
+            guard let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(presetID) }) else {
+                throw HudVantageControlStyleError.invalidPreset(presetID)
+            }
+            resolved = preset
+        }
+        if let chromeStyle = trimmed(command.chromeStyle) {
+            resolved.chromeStyle = try controlEnumValue(
+                chromeStyle,
+                field: "chromeStyle",
+                cases: HudVantageChromeStyle.allCases,
+                label: \.label
+            )
+        }
+        if let terminalTheme = trimmed(command.terminalTheme ?? command.terminalThemeID) {
+            resolved.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = trimmed(command.terminalFontFamily) {
+            resolved.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = command.terminalFontSize {
+            resolved.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+        if let canvasGridMode = trimmed(command.canvasGridMode) {
+            resolved.canvasGridMode = try controlEnumValue(
+                canvasGridMode,
+                field: "canvasGridMode",
+                cases: HudVantageCanvasGridMode.allCases,
+                label: \.label
+            )
+        }
+        if let canvasGridStep = command.canvasGridStep {
+            resolved.canvasGridStep = clamp(canvasGridStep, lower: 4, upper: 160)
+        }
+        if let canvasMinorOpacity = command.canvasMinorOpacity {
+            resolved.canvasMinorOpacity = clamp(canvasMinorOpacity, lower: 0, upper: 1)
+        }
+        if let canvasMajorOpacity = command.canvasMajorOpacity {
+            resolved.canvasMajorOpacity = clamp(canvasMajorOpacity, lower: 0, upper: 1)
+        }
+        if let focusPadding = command.focusPadding {
+            resolved.focusPadding = clamp(focusPadding, lower: 0, upper: 160)
+        }
+
+        return resolved
+    }
+
+    private func terminalStyleOverride(
+        applying command: HudVantageControlCommand,
+        to override: HudVantageTerminalStyleOverride
+    ) throws -> HudVantageTerminalStyleOverride {
+        var resolved = command.reset == true ? .empty : override
+
+        if let presetID = trimmed(command.stylePreset) {
+            guard let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(presetID) }) else {
+                throw HudVantageControlStyleError.invalidPreset(presetID)
+            }
+            resolved.terminalThemeID = preset.terminalThemeID
+            resolved.terminalFontFamily = preset.terminalFontFamily
+            resolved.terminalFontSize = preset.terminalFontSize
+        }
+        if let terminalTheme = trimmed(command.terminalTheme ?? command.terminalThemeID) {
+            resolved.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = trimmed(command.terminalFontFamily) {
+            resolved.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = command.terminalFontSize {
+            resolved.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+
+        return resolved
+    }
+
+    private func rejectWorkspaceOnlyStyleFields(
+        _ command: HudVantageControlCommand,
+        scope: String
+    ) throws {
+        if command.chromeStyle != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "chromeStyle")
+        }
+        if command.canvasGridMode != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasGridMode")
+        }
+        if command.canvasGridStep != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasGridStep")
+        }
+        if command.canvasMinorOpacity != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasMinorOpacity")
+        }
+        if command.canvasMajorOpacity != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "canvasMajorOpacity")
+        }
+        if command.focusPadding != nil {
+            throw HudVantageControlStyleError.unsupportedField(scope: scope, field: "focusPadding")
+        }
+    }
+
+    private func controlTag(from value: String?) throws -> CanvasTag {
+        guard let value = trimmed(value) else {
+            throw HudVantageControlStyleError.missingTag
+        }
+        guard let tag = CanvasTag.allCases.first(where: { controlToken($0.rawValue) == controlToken(value) || controlToken($0.label) == controlToken(value) }) else {
+            throw HudVantageControlStyleError.invalidValue(field: "tag", value: value)
+        }
+        return tag
+    }
+
+    private func controlEnumValue<T: RawRepresentable>(
+        _ value: String,
+        field: String,
+        cases: [T],
+        label: (T) -> String
+    ) throws -> T where T.RawValue == String {
+        let token = controlToken(value)
+        guard let match = cases.first(where: { controlToken($0.rawValue) == token || controlToken(label($0)) == token }) else {
+            throw HudVantageControlStyleError.invalidValue(field: field, value: value)
+        }
+        return match
+    }
+
+    private func controlToken(_ value: String) -> String {
+        value
+            .folding(options: [.diacriticInsensitive, .caseInsensitive], locale: Locale(identifier: "en_US_POSIX"))
+            .lowercased()
+            .replacingOccurrences(of: #"[^a-z0-9]+"#, with: "", options: .regularExpression)
+    }
+
+    private func trimmed(_ value: String?) -> String? {
+        guard let value else { return nil }
+        let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private func tmuxHealthSubjects(from command: HudVantageControlCommand) throws -> [TmuxHealthSubject] {
+        if !nodeSelectors(from: command).isEmpty {
+            do {
+                return try resolveNodes(from: command, allowSelectionFallback: false).compactMap(tmuxHealthSubject)
+            } catch {
+                if command.nodeID != nil || command.nodeIDs?.isEmpty == false {
+                    throw error
+                }
+                return try tmuxReattachSpecs(from: command).map {
+                    TmuxHealthSubject(nodeID: nil, target: $0.target, path: $0.path, remoteHost: $0.remoteHost)
+                }
+            }
+        }
+        if command.sessions?.isEmpty == false || command.targets?.isEmpty == false || command.ids?.isEmpty == false {
+            return try tmuxReattachSpecs(from: command).map {
+                TmuxHealthSubject(nodeID: nil, target: $0.target, path: $0.path, remoteHost: $0.remoteHost)
+            }
+        }
+        return nodes.compactMap(tmuxHealthSubject)
+    }
+
+    private func tmuxHealthSubject(for node: TerminalNode) -> TmuxHealthSubject? {
+        guard case .tmux(let target, let path, let remoteHost) = node.runtimeIdentity else { return nil }
+        return TmuxHealthSubject(
+            nodeID: node.id,
+            target: target,
+            path: path,
+            remoteHost: remoteHost
+        )
+    }
+
+    private func tmuxHealth(
+        for subject: TmuxHealthSubject,
+        probeRemote: Bool = false,
+        timeoutSeconds: Double = 3
+    ) -> HudVantageTmuxHealth {
+        let parts = tmuxTargetParts(subject.target)
+
+        if let remoteHost = subject.remoteHost {
+            guard probeRemote else {
+                return HudVantageTmuxHealth(
+                    nodeID: subject.nodeID,
+                    target: subject.target,
+                    graphitePath: subject.path?.description,
+                    remoteHost: remoteHost,
+                    status: "remote-unverified",
+                    session: parts.session,
+                    window: parts.window,
+                    message: "remote tmux probe skipped"
+                )
+            }
+
+            let result = TmuxRemoteHealthProbe().check(
+                remoteHost: remoteHost,
+                target: subject.target,
+                timeoutSeconds: timeoutSeconds
+            )
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                remoteHost: remoteHost,
+                status: result.status,
+                session: result.session ?? parts.session,
+                window: result.window ?? parts.window,
+                activeWindow: result.activeWindow,
+                attachedClients: result.attachedClients,
+                paneCount: result.paneCount,
+                message: result.message
+            )
+        }
+
+        guard TerminalNode.localTmuxURL != nil else {
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                status: "tmux-missing",
+                session: parts.session,
+                window: parts.window,
+                message: "tmux executable not found locally"
+            )
+        }
+
+        guard TerminalNode.localTmuxTargetExists(subject.target) else {
+            return HudVantageTmuxHealth(
+                nodeID: subject.nodeID,
+                target: subject.target,
+                graphitePath: subject.path?.description,
+                status: "session-missing",
+                session: parts.session,
+                window: parts.window,
+                message: "tmux target not found"
+            )
+        }
+
+        let activeWindow = try? runTmuxHarnessCommand([
+            "display-message",
+            "-t",
+            subject.target,
+            "-p",
+            "#{window_name}",
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)
+        let attachedClients = (try? runTmuxHarnessCommand([
+            "display-message",
+            "-t",
+            subject.target,
+            "-p",
+            "#{session_attached}",
+        ]).trimmingCharacters(in: .whitespacesAndNewlines)).flatMap(Int.init)
+        let paneCount = try? runTmuxHarnessCommand([
+            "list-panes",
+            "-t",
+            subject.target,
+            "-F",
+            "#{pane_id}",
+        ]).split(separator: "\n", omittingEmptySubsequences: true).count
+
+        return HudVantageTmuxHealth(
+            nodeID: subject.nodeID,
+            target: subject.target,
+            graphitePath: subject.path?.description,
+            status: "ready",
+            session: parts.session,
+            window: parts.window,
+            activeWindow: activeWindow,
+            attachedClients: attachedClients,
+            paneCount: paneCount,
+            message: "tmux target is available"
+        )
+    }
+
+    private func tmuxTargetParts(_ target: String) -> (session: String, window: String?) {
+        let paneTrimmed = target.split(separator: ".", maxSplits: 1, omittingEmptySubsequences: false).first.map(String.init) ?? target
+        let parts = paneTrimmed.split(separator: ":", maxSplits: 1, omittingEmptySubsequences: false)
+        if parts.count == 2 {
+            return (String(parts[0]), String(parts[1]))
+        }
+        return (paneTrimmed, nil)
     }
 
     private func controlNodeErrorResponse(
@@ -2135,15 +3511,24 @@ public struct HudVantageSurface: View {
                 )
             }
 
-            guard !snapshot.nodes.isEmpty else {
+            let shouldReset = command.reset ?? true
+            if snapshot.nodes.isEmpty {
+                if shouldReset {
+                    resetTerminals()
+                }
+                canvasState = canvasState.replaying(
+                    panX: CGFloat(snapshot.viewport.panX),
+                    panY: CGFloat(snapshot.viewport.panY),
+                    scale: CGFloat(snapshot.viewport.scale)
+                )
+                applyLayoutSnapshot(snapshot.layout)
                 return controlResponse(
                     command,
-                    ok: false,
-                    message: "state has no durable nodes"
+                    ok: true,
+                    message: "restored layout"
                 )
             }
 
-            let shouldReset = command.reset ?? true
             if shouldReset {
                 stopAllNodes()
                 nextIndex = 1
@@ -2182,6 +3567,11 @@ public struct HudVantageSurface: View {
             let restoredIDs = Set(restored.map(\.id))
             let savedSelection = Set(snapshot.selectedNodeIDs).intersection(restoredIDs)
             selectedIDs = savedSelection.isEmpty ? restoredIDs : savedSelection
+            if let savedFocus = snapshot.focusedNodeID, restoredIDs.contains(savedFocus) {
+                focusedNodeID = savedFocus
+            } else {
+                focusedNodeID = nil
+            }
             canvasState = canvasState.replaying(
                 panX: CGFloat(snapshot.viewport.panX),
                 panY: CGFloat(snapshot.viewport.panY),
@@ -2245,6 +3635,9 @@ public struct HudVantageSurface: View {
     private func workspaceSnapshot(workspaceID: String) -> HudVantageWorkspaceSnapshot {
         let durableNodes = nodes.compactMap(durableSnapshot)
         let durableIDs = Set(durableNodes.map(\.id))
+        let focusedDurableID = focusedNodeID.flatMap { id in
+            durableIDs.contains(id) ? id : nil
+        }
 
         return HudVantageWorkspaceSnapshot(
             workspaceID: GraphitePath.slugify(workspaceID, fallback: configuration.workspaceID),
@@ -2260,12 +3653,36 @@ public struct HudVantageSurface: View {
                 navigationTagFilter: navigationTagFilter?.rawValue,
                 navigationCollapsed: navigationCollapsed,
                 navigationWidth: Double(navigationWidth),
+                minimapCollapsed: minimapCollapsed,
                 inspectorCollapsed: inspectorCollapsed,
-                inspectorWidth: Double(inspectorWidth)
+                inspectorWidth: Double(inspectorWidth),
+                style: styleProfile,
+                tagStyles: tagStyleSnapshot()
             ),
             nodes: durableNodes,
-            selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
+            selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) },
+            focusedNodeID: focusedDurableID,
+            groups: workspaceGroups(from: durableNodes)
         )
+    }
+
+    private func workspaceGroups(
+        from durableNodes: [HudVantageNodeSnapshot]
+    ) -> [HudVantageWorkspaceGroupSnapshot] {
+        let grouped = Dictionary(grouping: durableNodes) { node in
+            node.tag
+        }
+        return grouped.compactMap { tag, nodes in
+            guard let tag else { return nil }
+            let label = CanvasTag(rawValue: tag)?.label ?? tag
+            return HudVantageWorkspaceGroupSnapshot(
+                id: "tag.\(tag)",
+                name: label,
+                nodeIDs: nodes.map(\.id).sorted { $0.uuidString < $1.uuidString },
+                tags: [tag]
+            )
+        }
+        .sorted { $0.id < $1.id }
     }
 
     private func applyLayoutSnapshot(_ layout: HudVantageSurfaceLayoutSnapshot?) {
@@ -2281,9 +3698,34 @@ public struct HudVantageSurface: View {
         navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
 
         navigationCollapsed = layout.navigationCollapsed
+        if let restoredMinimapCollapsed = layout.minimapCollapsed {
+            minimapCollapsed = restoredMinimapCollapsed
+        }
         inspectorCollapsed = layout.inspectorCollapsed
         navigationWidth = clamped(CGFloat(layout.navigationWidth), to: 210...360)
         inspectorWidth = clamped(CGFloat(layout.inspectorWidth), to: 250...440)
+        if let style = layout.style {
+            styleProfile = style
+        }
+        tagStyleOverrides = restoredTagStyles(from: layout)
+    }
+
+    private func tagStyleSnapshot() -> [String: HudVantageTerminalStyleOverride]? {
+        let snapshot = Dictionary(
+            uniqueKeysWithValues: tagStyleOverrides.compactMap { tag, override in
+                override.isEmpty ? nil : (tag.rawValue, override)
+            }
+        )
+        return snapshot.isEmpty ? nil : snapshot
+    }
+
+    private func restoredTagStyles(
+        from layout: HudVantageSurfaceLayoutSnapshot
+    ) -> [CanvasTag: HudVantageTerminalStyleOverride] {
+        (layout.tagStyles ?? [:]).reduce(into: [:]) { restored, entry in
+            guard let tag = CanvasTag(rawValue: entry.key), !entry.value.isEmpty else { return }
+            restored[tag] = entry.value
+        }
     }
 
     private func clamped(_ value: CGFloat, to range: ClosedRange<CGFloat>) -> CGFloat {
@@ -2306,6 +3748,7 @@ public struct HudVantageSurface: View {
             height: Double(node.size.height),
             zIndex: node.zIndex,
             tag: node.tag?.rawValue,
+            style: node.styleOverride?.isEmpty == true ? nil : node.styleOverride,
             runtime: HudVantageRuntimeReference(
                 kind: "tmux",
                 target: target,
@@ -2399,7 +3842,8 @@ public struct HudVantageSurface: View {
                 path: path,
                 remoteHost: remoteHost
             ),
-            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:))
+            tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:)),
+            styleOverride: snapshot.style
         )
     }
 
@@ -2457,6 +3901,92 @@ public struct HudVantageSurface: View {
         schedulePersistStateIfConfigured()
     }
 
+    private func focusSelection() {
+        guard selectedIDs.count == 1, let id = selectedIDs.first else { return }
+        enterFocusMode(id)
+    }
+
+    private func enterFocusMode(_ id: UUID) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        focusedNodeID = id
+        selectedIDs = [id]
+        transientHandActive = false
+        panStart = nil
+        zoomStart = nil
+        selectionDrag = nil
+        bringToFront(id)
+        controlStatus = "Focus mode · \(node.title)"
+        perfTracker.increment("focusMode.enter")
+        schedulePersistStateIfConfigured()
+    }
+
+    private func exitFocusMode() {
+        guard focusedNodeID != nil else { return }
+        focusedNodeID = nil
+        controlStatus = "Focus mode closed"
+        perfTracker.increment("focusMode.exit")
+        schedulePersistStateIfConfigured()
+    }
+
+    private func popOutSelection() {
+        let selected = selectedNodes
+        guard !selected.isEmpty else { return }
+        popOut(nodes: selected)
+    }
+
+    private func popOut(nodes nodesToPopOut: [TerminalNode]) {
+        guard !nodesToPopOut.isEmpty else { return }
+        let windowID = UUID()
+        let title = nodesToPopOut.count == 1
+            ? nodesToPopOut[0].title
+            : "\(nodesToPopOut.count) terminals"
+        let terminalAppearances = Dictionary(
+            uniqueKeysWithValues: nodesToPopOut.map { node in
+                (node.id, terminalAppearance(for: node))
+            }
+        )
+        let rootView = TerminalPopOutWindow(
+            title: title,
+            nodes: nodesToPopOut,
+            terminalAppearances: terminalAppearances,
+            fallbackTerminalAppearance: terminalAppearance
+        ) {
+            popOutWindows[windowID]?.close()
+        }
+        .hudTheme(activeTheme)
+        .environment(\.colorScheme, activeColorScheme)
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 980, height: 680),
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        let delegate = VantagePopOutWindowDelegate {
+            popOutWindows[windowID] = nil
+            popOutDelegates[windowID] = nil
+        }
+        window.title = "Vantage · \(title)"
+        window.isReleasedWhenClosed = false
+        window.delegate = delegate
+        window.contentViewController = NSHostingController(rootView: rootView)
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+
+        popOutDelegates[windowID] = delegate
+        popOutWindows[windowID] = window
+        controlStatus = "Popped out \(nodesToPopOut.count)"
+        perfTracker.increment("focusMode.popOut")
+        perfTracker.set("focusMode.popOutCount", to: nodesToPopOut.count)
+    }
+
+    private func closePopOutWindows() {
+        let windows = Array(popOutWindows.values)
+        popOutWindows.removeAll()
+        popOutDelegates.removeAll()
+        windows.forEach { $0.close() }
+    }
+
     private func centerNode(_ id: UUID) {
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
@@ -2467,6 +3997,15 @@ public struct HudVantageSurface: View {
         nodes
             .filter { selectedIDs.contains($0.id) }
             .forEach { $0.tag = tag }
+        schedulePersistStateIfConfigured()
+    }
+
+    private func setTerminalStyleOverride(
+        _ id: UUID,
+        override: HudVantageTerminalStyleOverride?
+    ) {
+        guard let node = nodes.first(where: { $0.id == id }) else { return }
+        node.styleOverride = override?.isEmpty == true ? nil : override
         schedulePersistStateIfConfigured()
     }
 
@@ -2488,6 +4027,9 @@ public struct HudVantageSurface: View {
         nodes.first { $0.id == id }?.stop()
         nodes.removeAll { $0.id == id }
         selectedIDs.remove(id)
+        if focusedNodeID == id {
+            focusedNodeID = nil
+        }
         persistStateIfConfigured()
     }
 
@@ -2513,14 +4055,16 @@ public struct HudVantageSurface: View {
         schedulePersistStateIfConfigured()
     }
 
-    private func worldDelta(_ screenDelta: CGSize) -> CGSize {
-        CGSize(
-            width: screenDelta.width / canvasState.scale,
-            height: screenDelta.height / canvasState.scale
+    private func worldDelta(_ screenDelta: CGSize, scale: CGFloat? = nil) -> CGSize {
+        let resolvedScale = max(scale ?? canvasState.scale, Self.minimumCanvasScale)
+        return CGSize(
+            width: screenDelta.width / resolvedScale,
+            height: screenDelta.height / resolvedScale
         )
     }
 
     private func resetTerminals() {
+        focusedNodeID = nil
         stopAllNodes()
         nextIndex = 1
         nextZIndex = 1
@@ -2554,6 +4098,7 @@ public struct HudVantageSurface: View {
     }
 
     private func stopAllNodes() {
+        focusedNodeID = nil
         nodes.forEach { $0.stop() }
         nodes.removeAll(keepingCapacity: true)
         selectedIDs.removeAll()
@@ -2566,7 +4111,10 @@ public struct HudVantageSurface: View {
         message: String,
         errorCode: String? = nil,
         requiresPermission: Bool? = nil,
-        nodesOverride: [TerminalNode]? = nil
+        nodesOverride: [TerminalNode]? = nil,
+        style: HudVantageControlStyle? = nil,
+        tmuxHealth: [HudVantageTmuxHealth]? = nil,
+        setup: HudVantageSetupReport? = nil
     ) -> HudVantageControlResponse {
         let responseNodes = nodesOverride ?? nodes
         return HudVantageControlResponse(
@@ -2580,8 +4128,12 @@ public struct HudVantageSurface: View {
             nodeCount: nodes.count,
             nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
             selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
+            focusedNodeID: focusedNodeID,
             viewport: command.includeViewport == false ? nil : controlViewport(),
             metrics: command.includeMetrics == false ? nil : controlMetrics(),
+            style: style ?? (command.includeStyle == true ? controlStyleSummary(includeTerminalOverrides: true) : nil),
+            tmuxHealth: tmuxHealth,
+            setup: setup,
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,
@@ -2591,6 +4143,27 @@ public struct HudVantageSurface: View {
             tmuxInstallInProgress: tmuxInstallInProgress,
             requiresPermission: requiresPermission,
             installerCommand: TmuxToolchain.homebrewInstallCommandDescription
+        )
+    }
+
+    private func controlStyleSummary(includeTerminalOverrides: Bool) -> HudVantageControlStyle {
+        let terminalOverrides: [String: HudVantageTerminalStyleOverride]?
+        if includeTerminalOverrides {
+            let values = Dictionary(
+                uniqueKeysWithValues: nodes.compactMap { node -> (String, HudVantageTerminalStyleOverride)? in
+                    guard let override = node.styleOverride, !override.isEmpty else { return nil }
+                    return (node.id.uuidString, override)
+                }
+            )
+            terminalOverrides = values.isEmpty ? nil : values
+        } else {
+            terminalOverrides = nil
+        }
+
+        return HudVantageControlStyle(
+            workspace: styleProfile,
+            tagOverrides: tagStyleSnapshot(),
+            terminalOverrides: terminalOverrides
         )
     }
 
@@ -2634,6 +4207,8 @@ public struct HudVantageSurface: View {
         perfTracker.set("surface.remoteTmuxCount", to: remoteTmuxCount)
         perfTracker.set("surface.liveSurfaceCount", to: liveSurfaceCount)
         perfTracker.set("surface.virtualizedSurfaceCount", to: virtualizedSurfaceCount)
+        perfTracker.set("surface.focusModeActive", to: isTerminalFocusActive ? 1 : 0)
+        perfTracker.set("surface.popOutWindowCount", to: popOutWindows.count)
 
         return HudVantageControlMetrics(
             nodeCount: nodes.count,
@@ -2691,6 +4266,10 @@ public struct HudVantageSurface: View {
         min(max(value, lower), upper)
     }
 
+    private func clamp(_ value: Double, lower: Double, upper: Double) -> Double {
+        min(max(value, lower), upper)
+    }
+
     private func pointerSelectionMode() -> HudVantageSelectionMode {
         let flags = NSEvent.modifierFlags
         if flags.contains(.command) {
@@ -2720,10 +4299,18 @@ public struct HudVantageSurface: View {
 private struct TerminalNodeView: View {
     @ObservedObject var node: TerminalNode
     let isSelected: Bool
+    let isFocused: Bool
     let rendersLiveSurface: Bool
+    let workspaceStyleProfile: HudVantageStyleProfile
+    let tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride]
+    let activeColorScheme: ColorScheme
     let canvasPan: CGSize
     let canvasScale: CGFloat
+    let screenSizeOverride: CGSize?
     let onSelect: () -> Void
+    let onFocus: () -> Void
+    let onPopOut: () -> Void
+    let onAppearanceSettings: () -> Void
     let onDragBegin: () -> Void
     let onClose: () -> Void
     let onMove: (CGSize) -> Void
@@ -2744,7 +4331,11 @@ private struct TerminalNodeView: View {
     }
 
     private var screenSize: CGSize {
-        CGSize(
+        if let screenSizeOverride {
+            return screenSizeOverride
+        }
+
+        return CGSize(
             width: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.width * canvasScale),
             height: max(HudVantageMetrics.nodeMinimumScreenSize, node.size.height * canvasScale)
         )
@@ -2752,6 +4343,15 @@ private struct TerminalNodeView: View {
 
     private var shouldRenderMarker: Bool {
         screenSize.width < 110 || screenSize.height < 74
+    }
+
+    private var terminalAppearance: HudTerminalAppearance {
+        var resolved = workspaceStyleProfile
+        if let tag = node.tag {
+            resolved = resolved.applyingTerminalOverride(tagStyleOverrides[tag])
+        }
+        resolved = resolved.applyingTerminalOverride(node.styleOverride)
+        return resolved.terminalAppearance(for: activeColorScheme)
     }
 
     var body: some View {
@@ -2765,6 +4365,14 @@ private struct TerminalNodeView: View {
             transaction.animation = nil
         }
         .onTapGesture(perform: onSelect)
+        .contextMenu {
+            Button(isFocused ? "Focused" : "Focus Terminal", action: onFocus)
+                .disabled(isFocused)
+            Button("Pop Out", action: onPopOut)
+            Button("Appearance Settings", action: onAppearanceSettings)
+            Divider()
+            Button("Close", role: .destructive, action: onClose)
+        }
     }
 
     @ViewBuilder
@@ -2780,9 +4388,12 @@ private struct TerminalNodeView: View {
             VStack(spacing: 0) {
                 titleBar
                 if rendersLiveSurface {
-                    TerminalSurfaceContainer(controller: node.controller)
+                    TerminalSurfaceContainer(
+                        controller: node.controller,
+                        appearance: terminalAppearance
+                    )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
-                        .background(theme.palette.bg)
+                        .background(terminalAppearance.backgroundColor)
                 } else {
                     TerminalPreview(node: node)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -2790,7 +4401,7 @@ private struct TerminalNodeView: View {
                 }
             }
             .frame(width: screenSize.width, height: screenSize.height)
-            .background(theme.palette.bg)
+            .background(terminalAppearance.backgroundColor)
             .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
             .overlay(
                 RoundedRectangle(cornerRadius: theme.radius.card)
@@ -2805,7 +4416,9 @@ private struct TerminalNodeView: View {
                 y: HudSpacing.xl
             )
             .overlay(alignment: .bottomTrailing) {
-                resizeHandle
+                if !isFocused {
+                    resizeHandle
+                }
             }
         }
     }
@@ -2849,6 +4462,12 @@ private struct TerminalNodeView: View {
                 .foregroundStyle(theme.palette.dim)
                 .lineLimit(1)
                 .minimumScaleFactor(0.75)
+            CanvasIconButton(
+                systemName: "rectangle.inset.filled",
+                help: "Focus terminal",
+                action: onFocus
+            )
+            .disabled(isFocused)
         }
         .padding(.horizontal, HudSpacing.xxl)
         .frame(height: HudVantageMetrics.terminalTitleBarHeight)
@@ -2911,6 +4530,212 @@ private struct TerminalNodeView: View {
                         onTransformEnd()
                     }
             )
+    }
+}
+
+private struct TerminalPopOutWindow: View {
+    let title: String
+    let nodes: [TerminalNode]
+    let terminalAppearances: [UUID: HudTerminalAppearance]
+    let fallbackTerminalAppearance: HudTerminalAppearance
+    let onClose: () -> Void
+
+    @State private var focusedID: UUID?
+    @Environment(\.hudTheme) private var theme
+
+    private var focusedNode: TerminalNode? {
+        guard let focusedID else { return nil }
+        return nodes.first { $0.id == focusedID }
+    }
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            HudDivider(color: theme.hairline.standard)
+            content
+        }
+        .frame(
+            minWidth: HudVantageMetrics.popOutMinimumWidth,
+            minHeight: HudVantageMetrics.popOutMinimumHeight
+        )
+        .background(theme.palette.bg)
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.lg) {
+            HudStatusDot(color: nodes.first?.tint.color ?? theme.palette.statusInfo)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Vantage Pop-out")
+                    .font(HudFont.mono(10, weight: .bold))
+                    .tracking(1.4)
+                    .foregroundStyle(theme.palette.muted)
+                Text(title)
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                    .lineLimit(1)
+            }
+
+            HudBadge("\(nodes.count)", tint: theme.palette.statusInfo, dot: true)
+
+            if nodes.count > 1 {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: HudSpacing.sm) {
+                        CanvasFilterButton(
+                            title: "Grid",
+                            isActive: focusedID == nil,
+                            action: { focusedID = nil }
+                        )
+                        ForEach(nodes) { node in
+                            CanvasFilterButton(
+                                title: node.title,
+                                isActive: focusedID == node.id,
+                                action: { focusedID = node.id }
+                            )
+                        }
+                    }
+                }
+                .frame(maxWidth: HudVantageMetrics.popOutTabStripMaxWidth)
+            }
+
+            Spacer()
+            HudButton("Close", icon: "xmark", style: .ghost, action: onClose)
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.navHeight)
+        .background(theme.palette.chrome)
+    }
+
+    @ViewBuilder
+    private var content: some View {
+        if nodes.count == 1, let node = nodes.first {
+            TerminalPopOutTerminal(node: node, terminalAppearance: terminalAppearance(for: node))
+        } else if let focusedNode {
+            TerminalPopOutTerminal(node: focusedNode, terminalAppearance: terminalAppearance(for: focusedNode))
+        } else {
+            GeometryReader { proxy in
+                ScrollView {
+                    LazyVGrid(
+                        columns: gridColumns(for: proxy.size.width),
+                        spacing: HudSpacing.lg
+                    ) {
+                        ForEach(nodes) { node in
+                            TerminalPopOutCard(
+                                node: node,
+                                terminalAppearance: terminalAppearance(for: node)
+                            ) {
+                                focusedID = node.id
+                            }
+                        }
+                    }
+                    .padding(HudSpacing.xxl)
+                }
+            }
+        }
+    }
+
+    private func gridColumns(for width: CGFloat) -> [GridItem] {
+        let count = max(1, min(3, Int(width / 420)))
+        return Array(
+            repeating: GridItem(.flexible(minimum: 320), spacing: HudSpacing.lg),
+            count: count
+        )
+    }
+
+    private func terminalAppearance(for node: TerminalNode) -> HudTerminalAppearance {
+        terminalAppearances[node.id] ?? fallbackTerminalAppearance
+    }
+}
+
+private struct TerminalPopOutTerminal: View {
+    @ObservedObject var node: TerminalNode
+    let terminalAppearance: HudTerminalAppearance
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TerminalPopOutTitleBar(node: node)
+            TerminalSurfaceContainer(
+                controller: node.controller,
+                appearance: terminalAppearance
+            )
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .background(terminalAppearance.backgroundColor)
+        }
+        .background(terminalAppearance.backgroundColor)
+    }
+}
+
+private struct TerminalPopOutCard: View {
+    @ObservedObject var node: TerminalNode
+    let terminalAppearance: HudTerminalAppearance
+    let onFocus: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            TerminalPopOutTitleBar(node: node, onFocus: onFocus)
+            TerminalSurfaceContainer(
+                controller: node.controller,
+                appearance: terminalAppearance
+            )
+                .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
+                .background(terminalAppearance.backgroundColor)
+        }
+        .background(terminalAppearance.backgroundColor)
+        .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .stroke(theme.hairline.standard)
+        )
+        .shadow(color: theme.vantageShadow, radius: HudSpacing.xl, x: 0, y: HudSpacing.md)
+    }
+}
+
+private struct TerminalPopOutTitleBar: View {
+    @ObservedObject var node: TerminalNode
+    var onFocus: (() -> Void)?
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.lg) {
+            HudStatusDot(color: node.tint.color, size: HudDotSize.small)
+            Image(systemName: "terminal")
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            Text(node.title)
+                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+                .lineLimit(1)
+            Spacer()
+            Text(node.subtitle)
+                .font(HudFont.mono(9))
+                .foregroundStyle(theme.palette.dim)
+                .lineLimit(1)
+            if let onFocus {
+                CanvasIconButton(
+                    systemName: "rectangle.inset.filled",
+                    help: "Focus terminal in pop-out",
+                    action: onFocus
+                )
+            }
+        }
+        .padding(.horizontal, HudSpacing.xl)
+        .frame(height: HudVantageMetrics.terminalTitleBarHeight)
+        .background(theme.palette.chrome)
+    }
+}
+
+private final class VantagePopOutWindowDelegate: NSObject, NSWindowDelegate {
+    private let onClose: @MainActor () -> Void
+
+    init(onClose: @escaping @MainActor () -> Void) {
+        self.onClose = onClose
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        Task { @MainActor in
+            onClose()
+        }
     }
 }
 
@@ -3057,7 +4882,7 @@ private struct TerminalPreview: View {
 private struct InfiniteCanvasBackground: View {
     let pan: CGSize
     let scale: CGFloat
-    var worldStep: CGFloat = 20
+    let styleProfile: HudVantageStyleProfile
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -3067,8 +4892,34 @@ private struct InfiniteCanvasBackground: View {
     }
 
     private func drawGrid(context: inout GraphicsContext, size: CGSize) {
+        guard styleProfile.canvasGridMode != .none else { return }
+
         let step = normalizedScreenStep
         let majorStep = step * 5
+        let minorColor = theme.palette.ink.opacity(styleProfile.canvasMinorOpacity)
+        let majorColor = theme.palette.ink.opacity(styleProfile.canvasMajorOpacity)
+
+        if styleProfile.canvasGridMode == .dots {
+            drawDots(
+                context: &context,
+                size: size,
+                step: max(step, 14),
+                offsetX: screenOffset(for: pan.width, step: max(step, 14)),
+                offsetY: screenOffset(for: pan.height, step: max(step, 14)),
+                color: minorColor,
+                radius: 0.7
+            )
+            drawDots(
+                context: &context,
+                size: size,
+                step: majorStep,
+                offsetX: screenOffset(for: pan.width, step: majorStep),
+                offsetY: screenOffset(for: pan.height, step: majorStep),
+                color: majorColor,
+                radius: 1.2
+            )
+            return
+        }
 
         strokeGrid(
             context: &context,
@@ -3076,7 +4927,7 @@ private struct InfiniteCanvasBackground: View {
             step: step,
             offsetX: screenOffset(for: pan.width, step: step),
             offsetY: screenOffset(for: pan.height, step: step),
-            color: theme.palette.ink.opacity(HudOpacity.ghost),
+            color: minorColor,
             lineWidth: HudStrokeWidth.standard
         )
 
@@ -3086,7 +4937,7 @@ private struct InfiniteCanvasBackground: View {
             step: majorStep,
             offsetX: screenOffset(for: pan.width, step: majorStep),
             offsetY: screenOffset(for: pan.height, step: majorStep),
-            color: theme.palette.ink.opacity(HudOpacity.subtle),
+            color: majorColor,
             lineWidth: 1.15
         )
     }
@@ -3119,8 +4970,30 @@ private struct InfiniteCanvasBackground: View {
         context.stroke(path, with: .color(color), lineWidth: lineWidth)
     }
 
+    private func drawDots(
+        context: inout GraphicsContext,
+        size: CGSize,
+        step: CGFloat,
+        offsetX: CGFloat,
+        offsetY: CGFloat,
+        color: Color,
+        radius: CGFloat
+    ) {
+        var path = Path()
+        var x = offsetX
+        while x <= size.width {
+            var y = offsetY
+            while y <= size.height {
+                path.addEllipse(in: CGRect(x: x - radius, y: y - radius, width: radius * 2, height: radius * 2))
+                y += step
+            }
+            x += step
+        }
+        context.fill(path, with: .color(color))
+    }
+
     private var normalizedScreenStep: CGFloat {
-        var step = worldStep * scale
+        var step = CGFloat(styleProfile.canvasGridStep) * scale
         while step < 9 {
             step *= 2
         }
@@ -3144,6 +5017,7 @@ private struct CanvasNavigationPanel: View {
     let selectedCount: Int
     @Binding var filter: CanvasNavigationFilter
     @Binding var tagFilter: CanvasTag?
+    @Binding var minimapCollapsed: Bool
     let selectedIDs: Set<UUID>
     let viewportWorldRect: CGRect
     let canvasWorldBounds: CGRect
@@ -3153,6 +5027,7 @@ private struct CanvasNavigationPanel: View {
     let onTagSelection: (CanvasTag?) -> Void
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
+    let onOpenAppearanceSettings: () -> Void
     let onCollapse: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -3302,9 +5177,20 @@ private struct CanvasNavigationPanel: View {
 
     private var footer: some View {
         VStack(alignment: .leading, spacing: HudSpacing.md) {
+            VantageNavigationSettingsRow(
+                onOpen: onOpenAppearanceSettings
+            )
+
+            HudDivider(color: theme.hairline.subtle)
+
             HStack {
                 HudSectionLabel("Minimap")
                 Spacer()
+                CanvasIconButton(
+                    systemName: minimapCollapsed ? "chevron.down" : "chevron.up",
+                    help: minimapCollapsed ? "Show minimap" : "Hide minimap",
+                    action: { minimapCollapsed.toggle() }
+                )
                 CanvasIconButton(
                     systemName: "viewfinder",
                     help: "Fit world",
@@ -3315,15 +5201,44 @@ private struct CanvasNavigationPanel: View {
                     .foregroundStyle(theme.palette.muted)
             }
 
-            CanvasMiniMap(
-                nodes: minimapNodes,
-                selectedIDs: selectedIDs,
-                worldBounds: canvasWorldBounds,
-                viewportWorldRect: viewportWorldRect,
-                onCenterWorldPoint: onCenterWorldPoint
-            )
-            .frame(height: HudVantageMetrics.minimapHeight)
+            if !minimapCollapsed {
+                CanvasMiniMap(
+                    nodes: minimapNodes,
+                    selectedIDs: selectedIDs,
+                    worldBounds: canvasWorldBounds,
+                    viewportWorldRect: viewportWorldRect,
+                    onCenterWorldPoint: onCenterWorldPoint
+                )
+                .frame(height: HudVantageMetrics.minimapHeight)
+            }
         }
+    }
+}
+
+private struct VantageNavigationSettingsRow: View {
+    let onOpen: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: onOpen) {
+            HStack(spacing: HudSpacing.md) {
+                Text("Settings")
+                    .font(HudFont.mono(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                Spacer()
+                Image(systemName: "gearshape")
+                    .font(HudFont.ui(12, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
+        }
+        .buttonStyle(.plain)
+        .help("Appearance settings")
+        .accessibilityLabel("Appearance settings")
     }
 }
 
@@ -3629,6 +5544,507 @@ private struct CanvasInspectorPanel: View {
     }
 }
 
+private struct VantageAppearanceSettingsSurface: View {
+    @Binding var profile: HudVantageStyleProfile
+    @Binding var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride]
+    let selectedNode: TerminalNode?
+    let inheritedProfile: HudVantageStyleProfile?
+    let selectedStyleOverride: Binding<HudVantageTerminalStyleOverride>?
+    let onClose: () -> Void
+
+    @State private var selectedScope: VantageAppearanceScope = .workspace
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            header
+            HudDivider(color: theme.hairline.standard)
+
+            HStack(spacing: 0) {
+                scopeRail
+                Rectangle()
+                    .fill(theme.hairline.subtle)
+                    .frame(width: HudStrokeWidth.thin)
+                settingsContent
+            }
+        }
+        .background(theme.palette.bg)
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.lg) {
+            Image(systemName: "paintpalette")
+                .font(HudFont.ui(13, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            VStack(alignment: .leading, spacing: 1) {
+                Text("Appearance Settings")
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                Text(profile.name)
+                    .font(HudFont.mono(9))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            Spacer()
+            HudButton("Done", icon: "checkmark", style: .secondary, action: onClose)
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .frame(height: HudLayout.navHeight)
+        .background(theme.palette.chrome)
+    }
+
+    private var scopeRail: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudSectionLabel("Scope", tint: theme.palette.dim)
+
+            VStack(spacing: HudSpacing.sm) {
+                ForEach(availableScopes) { scope in
+                    VantageSettingsScopeRow(
+                        scope: scope,
+                        isSelected: currentScope == scope,
+                        onSelect: { selectedScope = scope }
+                    )
+                }
+            }
+
+            Spacer()
+        }
+        .padding(HudSpacing.xl)
+        .frame(width: HudVantageMetrics.settingsScopeRailWidth)
+        .frame(maxHeight: .infinity, alignment: .top)
+        .background(theme.palette.chrome)
+    }
+
+    private var settingsContent: some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: HudSpacing.xxl) {
+                contextHeader
+                scopeSettings
+            }
+            .padding(HudSpacing.xxl)
+            .frame(maxWidth: .infinity, alignment: .leading)
+        }
+    }
+
+    private var contextHeader: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            Text(currentScope.title)
+                .font(HudFont.ui(18, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+            Text(currentScope.explanation(selectedNode: selectedNode))
+                .font(HudFont.mono(10))
+                .foregroundStyle(theme.palette.muted)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    @ViewBuilder
+    private var scopeSettings: some View {
+        switch currentScope {
+        case .workspace:
+            VantageStyleSettings(profile: $profile)
+
+        case .tag(let tag):
+            VantageTerminalOverrideControls(
+                title: "Terminal Defaults",
+                subtitle: "\(tag.label) tag inherits workspace settings",
+                override: tagStyleBinding(for: tag),
+                baseProfile: profile,
+                inheritedLabel: "Workspace",
+                tint: theme.palette.muted
+            )
+
+        case .terminal:
+            if let selectedNode,
+               let inheritedProfile,
+               let selectedStyleOverride {
+                VantageTerminalOverrideControls(
+                    title: "Terminal Defaults",
+                    subtitle: "\(selectedNode.title) inherits workspace and tag settings",
+                    override: selectedStyleOverride,
+                    baseProfile: inheritedProfile,
+                    inheritedLabel: "Parent",
+                    tint: theme.palette.muted
+                )
+            } else {
+                EmptyTerminalScope()
+            }
+        }
+    }
+
+    private var currentScope: VantageAppearanceScope {
+        availableScopes.contains(selectedScope) ? selectedScope : .workspace
+    }
+
+    private var availableScopes: [VantageAppearanceScope] {
+        var scopes: [VantageAppearanceScope] = [.workspace]
+        scopes.append(contentsOf: CanvasTag.allCases.map(VantageAppearanceScope.tag))
+        if selectedNode != nil {
+            scopes.append(.terminal)
+        }
+        return scopes
+    }
+
+    private func tagStyleBinding(for tag: CanvasTag) -> Binding<HudVantageTerminalStyleOverride> {
+        Binding(
+            get: { tagStyleOverrides[tag] ?? .empty },
+            set: { override in
+                if override.isEmpty {
+                    tagStyleOverrides[tag] = nil
+                } else {
+                    tagStyleOverrides[tag] = override
+                }
+            }
+        )
+    }
+}
+
+private enum VantageAppearanceScope: Hashable, Identifiable {
+    case workspace
+    case tag(CanvasTag)
+    case terminal
+
+    var id: String {
+        switch self {
+        case .workspace: "workspace"
+        case .tag(let tag): "tag.\(tag.rawValue)"
+        case .terminal: "terminal"
+        }
+    }
+
+    var title: String {
+        switch self {
+        case .workspace: "Workspace"
+        case .tag(let tag): "\(tag.label) Tag"
+        case .terminal: "Selected Terminal"
+        }
+    }
+
+    var subtitle: String {
+        switch self {
+        case .workspace: "Default"
+        case .tag: "Tag override"
+        case .terminal: "Local override"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .workspace: "macwindow"
+        case .tag: "tag"
+        case .terminal: "terminal"
+        }
+    }
+
+    func explanation(selectedNode: TerminalNode?) -> String {
+        switch self {
+        case .workspace:
+            return "Workspace settings define the shell, canvas, and default terminal appearance."
+        case .tag(let tag):
+            return "\(tag.label) tag settings override workspace terminal defaults. Empty values inherit from workspace."
+        case .terminal:
+            let name = selectedNode?.title ?? "The selected terminal"
+            return "\(name) overrides its parent context. Empty values inherit from the workspace and tag cascade."
+        }
+    }
+}
+
+private struct VantageSettingsScopeRow: View {
+    let scope: VantageAppearanceScope
+    let isSelected: Bool
+    let onSelect: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: onSelect) {
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: scope.icon)
+                    .font(HudFont.ui(11, weight: .semibold))
+                    .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.dim)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(scope.title)
+                        .font(HudFont.mono(10, weight: .semibold))
+                        .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
+                    Text(scope.subtitle)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.dim)
+                }
+                Spacer()
+            }
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(isSelected ? theme.vantageControlFill : Color.clear)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? theme.hairline.standard : Color.clear)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct EmptyTerminalScope: View {
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HudSettingsSection("Terminal Defaults", labelTint: theme.palette.dim) {
+            HudSettingsRow(
+                icon: "terminal",
+                iconColor: theme.palette.dim,
+                title: "No terminal selected",
+                subtitle: "Select a terminal to edit its local override."
+            )
+        }
+    }
+}
+
+private struct VantageStyleSettings: View {
+    @Binding var profile: HudVantageStyleProfile
+    @Environment(\.hudTheme) private var theme
+
+    private let fontFamilies = ["SF Mono", "JetBrains Mono", "Menlo", "Monaco"]
+
+    var body: some View {
+        HudSettingsSection("Workspace Style", labelTint: theme.palette.dim) {
+            HudSettingsPickerRow(
+                title: "Preset",
+                subtitle: "Workspace defaults",
+                value: profile.name,
+                icon: "slider.horizontal.3",
+                iconColor: theme.palette.muted,
+                selection: presetBinding
+            ) {
+                ForEach(HudVantageStyleProfile.presets) { preset in
+                    Text(preset.name).tag(preset.id)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Shell",
+                subtitle: "Window chrome",
+                value: profile.chromeStyle.label,
+                icon: "macwindow",
+                iconColor: theme.palette.muted,
+                selection: $profile.chromeStyle
+            ) {
+                ForEach(HudVantageChromeStyle.allCases) { style in
+                    Text(style.label).tag(style)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Terminal",
+                subtitle: "Workspace default",
+                value: profile.terminalThemeID.label,
+                icon: "terminal",
+                iconColor: theme.palette.muted,
+                selection: $profile.terminalThemeID
+            ) {
+                ForEach(HudVantageTerminalThemeID.allCases) { terminalTheme in
+                    Text(terminalTheme.label).tag(terminalTheme)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Font",
+                subtitle: "\(String(format: "%.1f", profile.terminalFontSize)) pt",
+                value: profile.terminalFontFamily,
+                icon: "textformat",
+                iconColor: theme.palette.muted,
+                selection: $profile.terminalFontFamily
+            ) {
+                ForEach(fontFamilies, id: \.self) { family in
+                    Text(family).tag(family)
+                }
+            }
+
+            HudSettingsSliderRow(
+                title: "Font Size",
+                value: "\(String(format: "%.1f", profile.terminalFontSize)) pt",
+                icon: "textformat.size",
+                iconColor: theme.palette.muted,
+                number: $profile.terminalFontSize,
+                in: 10...18,
+                step: 0.5
+            )
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsControlRow(
+                title: "Grid",
+                subtitle: "\(Int(profile.canvasGridStep)) pt",
+                value: profile.canvasGridMode.label,
+                icon: "grid",
+                iconColor: theme.palette.muted
+            ) {
+                Picker("Grid", selection: $profile.canvasGridMode) {
+                    ForEach(HudVantageCanvasGridMode.allCases) { mode in
+                        Text(mode.label).tag(mode)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: HudLayout.popoverWidthCompact / 2)
+            }
+
+            HudSettingsSliderRow(
+                title: "Grid Spacing",
+                value: "\(Int(profile.canvasGridStep)) pt",
+                icon: "square.grid.3x3",
+                iconColor: theme.palette.muted,
+                number: $profile.canvasGridStep,
+                in: 12...40,
+                step: 2
+            )
+
+            HudSettingsSliderRow(
+                title: "Focus Inset",
+                value: "\(Int(profile.focusPadding)) pt",
+                icon: "rectangle.inset.filled",
+                iconColor: theme.palette.muted,
+                number: $profile.focusPadding,
+                in: 4...56,
+                step: 2
+            )
+        }
+    }
+
+    private var presetBinding: Binding<String> {
+        Binding(
+            get: { profile.id },
+            set: { id in
+                if let preset = HudVantageStyleProfile.preset(id: id) {
+                    profile = preset
+                }
+            }
+        )
+    }
+}
+
+private struct VantageTerminalOverrideControls: View {
+    let title: String
+    let subtitle: String
+    @Binding var override: HudVantageTerminalStyleOverride
+    let baseProfile: HudVantageStyleProfile
+    let inheritedLabel: String
+    let tint: Color
+
+    @Environment(\.hudTheme) private var theme
+
+    private let inheritedToken = "__inherit__"
+    private let fontFamilies = ["SF Mono", "JetBrains Mono", "Menlo", "Monaco"]
+
+    var body: some View {
+        HudSettingsSection(title, labelTint: tint) {
+            HudSettingsRow(
+                icon: override.isEmpty ? "arrow.triangle.branch" : "paintbrush",
+                iconColor: tint,
+                title: override.isEmpty ? "Inherited" : "Override",
+                subtitle: subtitle
+            ) {
+                HStack(spacing: HudSpacing.sm) {
+                    HudBadge(override.isEmpty ? "INHERIT" : "OVERRIDE", tint: tint, dot: !override.isEmpty)
+                    Button {
+                        override = .empty
+                    } label: {
+                        Image(systemName: "arrow.counterclockwise")
+                            .font(HudFont.ui(10, weight: .semibold))
+                            .foregroundStyle(override.isEmpty ? theme.palette.dim : theme.palette.muted)
+                            .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                    }
+                    .buttonStyle(.plain)
+                    .disabled(override.isEmpty)
+                    .help("Reset style override")
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Theme",
+                value: resolvedProfile.terminalThemeID.label,
+                icon: "terminal",
+                iconColor: tint,
+                selection: themeBinding
+            ) {
+                Text(inheritedLabel).tag(inheritedToken)
+                ForEach(HudVantageTerminalThemeID.allCases) { terminalTheme in
+                    Text(terminalTheme.label).tag(terminalTheme.rawValue)
+                }
+            }
+
+            HudDivider(color: theme.hairline.subtle)
+
+            HudSettingsPickerRow(
+                title: "Font",
+                value: resolvedProfile.terminalFontFamily,
+                icon: "textformat",
+                iconColor: tint,
+                selection: fontBinding
+            ) {
+                Text(inheritedLabel).tag(inheritedToken)
+                ForEach(fontFamilies, id: \.self) { family in
+                    Text(family).tag(family)
+                }
+            }
+
+            HudSettingsSliderRow(
+                title: "Size",
+                value: "\(String(format: "%.1f", resolvedProfile.terminalFontSize)) pt",
+                icon: "textformat.size",
+                iconColor: tint,
+                number: fontSizeBinding,
+                in: 10...18,
+                step: 0.5
+            )
+        }
+    }
+
+    private var resolvedProfile: HudVantageStyleProfile {
+        baseProfile.applyingTerminalOverride(override)
+    }
+
+    private var themeBinding: Binding<String> {
+        Binding(
+            get: { override.terminalThemeID?.rawValue ?? inheritedToken },
+            set: { rawValue in
+                override.terminalThemeID = rawValue == inheritedToken
+                    ? nil
+                    : HudVantageTerminalThemeID(rawValue: rawValue)
+            }
+        )
+    }
+
+    private var fontBinding: Binding<String> {
+        Binding(
+            get: { override.terminalFontFamily ?? inheritedToken },
+            set: { value in
+                override.terminalFontFamily = value == inheritedToken ? nil : value
+            }
+        )
+    }
+
+    private var fontSizeBinding: Binding<Double> {
+        Binding(
+            get: { override.terminalFontSize ?? baseProfile.terminalFontSize },
+            set: { value in
+                override.terminalFontSize = value
+            }
+        )
+    }
+
+}
+
 private struct TerminalDetailView: View {
     @ObservedObject var node: TerminalNode
     let onCenter: () -> Void
@@ -3744,6 +6160,139 @@ private struct EmptyInspectorState: View {
                 .foregroundStyle(theme.palette.muted)
                 .fixedSize(horizontal: false, vertical: true)
         }
+    }
+}
+
+private struct VantageCommandPalette: View {
+    let selectedCount: Int
+    let onOpenAppearance: () -> Void
+    let onCreateTerminal: () -> Void
+    let onFocusSelection: () -> Void
+    let onPopOutSelection: () -> Void
+    let onClose: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            HudSurface.scrim.opacity(HudOpacity.emphatic)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onClose)
+
+            VStack(spacing: 0) {
+                header
+                HudDivider(color: theme.hairline.standard)
+                VStack(spacing: HudSpacing.sm) {
+                    VantageCommandRow(
+                        icon: "paintpalette",
+                        title: "Appearance Settings",
+                        detail: "Workspace, tag, terminal",
+                        tint: theme.palette.statusInfo,
+                        action: onOpenAppearance
+                    )
+                    VantageCommandRow(
+                        icon: "plus",
+                        title: "New Terminal",
+                        detail: "Create local PTY",
+                        tint: theme.palette.statusOk,
+                        action: onCreateTerminal
+                    )
+                    VantageCommandRow(
+                        icon: "rectangle.inset.filled",
+                        title: "Focus Selection",
+                        detail: "\(selectedCount) selected",
+                        tint: theme.palette.statusInfo,
+                        isDisabled: selectedCount != 1,
+                        action: onFocusSelection
+                    )
+                    VantageCommandRow(
+                        icon: "rectangle.on.rectangle",
+                        title: "Pop Out Selection",
+                        detail: "\(selectedCount) selected",
+                        tint: theme.palette.statusWarn,
+                        isDisabled: selectedCount == 0,
+                        action: onPopOutSelection
+                    )
+                }
+                .padding(HudSpacing.lg)
+            }
+            .frame(width: HudVantageMetrics.commandPaletteWidth)
+            .background(RoundedRectangle(cornerRadius: theme.radius.card).fill(theme.palette.chrome))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.card).stroke(theme.hairline.standard))
+            .shadow(color: theme.vantageShadow, radius: 28, x: 0, y: 18)
+            .padding(.top, HudVantageMetrics.commandPaletteTopPadding)
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.md) {
+            Image(systemName: "command")
+                .font(HudFont.ui(13, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+            Text("Command Palette")
+                .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+            Spacer()
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(HudFont.ui(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+            }
+            .buttonStyle(.plain)
+            .help("Close")
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .frame(height: HudLayout.navHeight)
+    }
+}
+
+private struct VantageCommandRow: View {
+    let icon: String
+    let title: String
+    let detail: String
+    let tint: Color
+    var isDisabled = false
+    let action: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: icon)
+                    .font(HudFont.ui(12, weight: .semibold))
+                    .foregroundStyle(isDisabled ? theme.palette.dim : tint)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                    .background(
+                        RoundedRectangle(cornerRadius: theme.radius.standard)
+                            .fill(isDisabled ? theme.vantageControlFill : HudSurface.tintFill(tint))
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: theme.radius.standard)
+                            .stroke(isDisabled ? theme.hairline.subtle : HudSurface.tintBorder(tint))
+                    )
+
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title)
+                        .font(HudFont.mono(10, weight: .semibold))
+                        .foregroundStyle(isDisabled ? theme.palette.dim : theme.palette.ink)
+                    Text(detail)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.dim)
+                }
+                Spacer()
+                Image(systemName: "return")
+                    .font(HudFont.ui(9, weight: .semibold))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle))
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
     }
 }
 
@@ -3927,13 +6476,15 @@ private struct CanvasInputBridge: NSViewRepresentable {
     let onMagnify: (CGFloat, CGPoint) -> Void
     let canBeginSpacePan: (CGPoint) -> Bool
     let onSpacePanChanged: (Bool) -> Void
+    let onCommandPalette: () -> Void
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
             onScroll: onScroll,
             onMagnify: onMagnify,
             canBeginSpacePan: canBeginSpacePan,
-            onSpacePanChanged: onSpacePanChanged
+            onSpacePanChanged: onSpacePanChanged,
+            onCommandPalette: onCommandPalette
         )
     }
 
@@ -3950,6 +6501,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         context.coordinator.onMagnify = onMagnify
         context.coordinator.canBeginSpacePan = canBeginSpacePan
         context.coordinator.onSpacePanChanged = onSpacePanChanged
+        context.coordinator.onCommandPalette = onCommandPalette
         context.coordinator.view = nsView
     }
 
@@ -3970,6 +6522,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         var onMagnify: (CGFloat, CGPoint) -> Void
         var canBeginSpacePan: (CGPoint) -> Bool
         var onSpacePanChanged: (Bool) -> Void
+        var onCommandPalette: () -> Void
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
@@ -3978,12 +6531,14 @@ private struct CanvasInputBridge: NSViewRepresentable {
             onScroll: @escaping (CGSize, CGPoint) -> Void,
             onMagnify: @escaping (CGFloat, CGPoint) -> Void,
             canBeginSpacePan: @escaping (CGPoint) -> Bool,
-            onSpacePanChanged: @escaping (Bool) -> Void
+            onSpacePanChanged: @escaping (Bool) -> Void,
+            onCommandPalette: @escaping () -> Void
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
             self.canBeginSpacePan = canBeginSpacePan
             self.onSpacePanChanged = onSpacePanChanged
+            self.onCommandPalette = onCommandPalette
         }
 
         func installMonitor() {
@@ -4013,6 +6568,11 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     self.onMagnify(event.magnification, location)
                     return nil
                 case .keyDown:
+                    if event.modifierFlags.contains(.command),
+                       event.charactersIgnoringModifiers?.lowercased() == "k" {
+                        self.onCommandPalette()
+                        return nil
+                    }
                     guard event.keyCode == 49 else { return event }
                     guard !event.isARepeat else { return self.spacePanActive ? nil : event }
                     guard let location = self.pointerLocationInViewport(),
@@ -4200,17 +6760,18 @@ private struct CanvasIconButton: View {
 
 private struct TerminalSurfaceContainer: View, Equatable {
     let controller: TerminiTerminalController
-    @Environment(\.colorScheme) private var colorScheme
+    let appearance: HudTerminalAppearance
 
     static func == (lhs: TerminalSurfaceContainer, rhs: TerminalSurfaceContainer) -> Bool {
         lhs.controller === rhs.controller
+            && lhs.appearance == rhs.appearance
     }
 
     var body: some View {
         HudTerminalSurface(
             controller: controller,
             showsSystemKeyboard: true,
-            appearance: .hudsonDefault(for: colorScheme, fontSize: 12)
+            appearance: appearance
         )
     }
 }

@@ -121,6 +121,148 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.confirmInstall, true)
     }
 
+    func testControlCommandDecodesRemoteTmuxHealthProbeOptions() throws {
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "remote-health-1",
+          "action": "tmux-health",
+          "remoteHost": "devbox",
+          "sessions": ["hudson-lab"],
+          "probeRemote": false,
+          "timeoutMS": 750
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "tmux-health")
+        XCTAssertEqual(command.remoteHost, "devbox")
+        XCTAssertEqual(command.sessions, ["hudson-lab"])
+        XCTAssertEqual(command.probeRemote, false)
+        XCTAssertEqual(command.timeoutMS, 750)
+    }
+
+    func testControlCommandDecodesStyleFields() throws {
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "style-1",
+          "action": "style",
+          "styleScope": "tag",
+          "tag": "focus",
+          "stylePreset": "jade",
+          "chromeStyle": "graphite",
+          "terminalTheme": "hudson-paper",
+          "terminalFontFamily": "Menlo",
+          "terminalFontSize": 14.5,
+          "canvasGridMode": "dots",
+          "canvasGridStep": 24,
+          "canvasMinorOpacity": 0.12,
+          "canvasMajorOpacity": 0.22,
+          "focusPadding": 20,
+          "includeStyle": true
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "style")
+        XCTAssertEqual(command.normalizedStyleScope, "tag")
+        XCTAssertEqual(command.tag, "focus")
+        XCTAssertEqual(command.stylePreset, "jade")
+        XCTAssertEqual(command.chromeStyle, "graphite")
+        XCTAssertEqual(command.terminalTheme, "hudson-paper")
+        XCTAssertEqual(command.terminalFontFamily, "Menlo")
+        XCTAssertEqual(command.terminalFontSize, 14.5)
+        XCTAssertEqual(command.canvasGridMode, "dots")
+        XCTAssertEqual(command.canvasGridStep, 24)
+        XCTAssertEqual(command.canvasMinorOpacity, 0.12)
+        XCTAssertEqual(command.canvasMajorOpacity, 0.22)
+        XCTAssertEqual(command.focusPadding, 20)
+        XCTAssertEqual(command.includeStyle, true)
+    }
+
+    func testControlCommandDecodesSetupManifestFields() throws {
+        let nodeID = UUID()
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "setup-1",
+          "action": "setup",
+          "manifestPath": "/tmp/scout.vantage.setup.json",
+          "createIfMissing": true,
+          "removeMissing": true,
+          "setup": {
+            "kind": "hudson.vantage.setup",
+            "schemaVersion": 1,
+            "workspaceID": "scout-lab",
+            "presentation": {
+              "title": "Scout Vantage",
+              "subtitle": "native operating surface",
+              "badge": "project",
+              "cobrand": "powered by Hudson",
+              "theme": "jade"
+            },
+            "style": {
+              "preset": "jade",
+              "terminalTheme": "hudson-paper"
+            },
+            "viewport": {
+              "fit": true,
+              "scale": 0.75
+            },
+            "nodes": [
+              {
+                "id": "hudson.scout.agents.codex.0001.worker",
+                "nodeID": "\(nodeID.uuidString)",
+                "runtimeKind": "tmux",
+                "target": "hudson-scout:agents-codex-0001",
+                "tag": "focus",
+                "x": 80,
+                "y": 96,
+                "width": 520,
+                "height": 320
+              }
+            ],
+            "selection": ["hudson.scout.agents.codex.0001.worker"],
+            "focused": "hudson.scout.agents.codex.0001.worker"
+          }
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "setup")
+        XCTAssertEqual(command.manifestPath, "/tmp/scout.vantage.setup.json")
+        XCTAssertEqual(command.createIfMissing, true)
+        XCTAssertEqual(command.removeMissing, true)
+        let manifest = try XCTUnwrap(command.setupManifest)
+        XCTAssertEqual(manifest.workspaceID, "scout-lab")
+        XCTAssertEqual(manifest.presentation?.title, "Scout Vantage")
+        XCTAssertEqual(manifest.presentation?.cobrand, "powered by Hudson")
+        XCTAssertEqual(manifest.presentation?.theme, "jade")
+        XCTAssertEqual(manifest.style?.preset, "jade")
+        XCTAssertEqual(manifest.viewport?.fit, true)
+        XCTAssertEqual(manifest.nodes.first?.id, "hudson.scout.agents.codex.0001.worker")
+        XCTAssertEqual(manifest.nodes.first?.nodeID, nodeID)
+        XCTAssertEqual(manifest.nodes.first?.target, "hudson-scout:agents-codex-0001")
+        XCTAssertEqual(manifest.selection, ["hudson.scout.agents.codex.0001.worker"])
+        XCTAssertEqual(manifest.focused, "hudson.scout.agents.codex.0001.worker")
+    }
+
     func testControlCommandDecodesViewportReplayFields() throws {
         let json = """
         {
@@ -189,8 +331,16 @@ final class HudVantageControlContractTests: XCTestCase {
                 navigationTagFilter: "focus",
                 navigationCollapsed: true,
                 navigationWidth: 288,
+                minimapCollapsed: true,
                 inspectorCollapsed: false,
-                inspectorWidth: 336
+                inspectorWidth: 336,
+                style: .blueprint,
+                tagStyles: [
+                    "focus": HudVantageTerminalStyleOverride(
+                        terminalThemeID: .jadeNight,
+                        terminalFontSize: 13.5
+                    )
+                ]
             ),
             nodes: [
                 HudVantageNodeSnapshot(
@@ -204,6 +354,10 @@ final class HudVantageControlContractTests: XCTestCase {
                     height: 316,
                     zIndex: 4,
                     tag: "focus",
+                    style: HudVantageTerminalStyleOverride(
+                        terminalThemeID: .hudsonPaper,
+                        terminalFontFamily: "Menlo"
+                    ),
                     runtime: HudVantageRuntimeReference(
                         kind: "tmux",
                         target: "hudson-lab:agents-codex-0007",
@@ -212,7 +366,16 @@ final class HudVantageControlContractTests: XCTestCase {
                     )
                 )
             ],
-            selectedNodeIDs: [nodeID]
+            selectedNodeIDs: [nodeID],
+            focusedNodeID: nodeID,
+            groups: [
+                HudVantageWorkspaceGroupSnapshot(
+                    id: "tag.focus",
+                    name: "Focus",
+                    nodeIDs: [nodeID],
+                    tags: ["focus"]
+                )
+            ]
         )
 
         let encoder = JSONEncoder()
@@ -223,17 +386,29 @@ final class HudVantageControlContractTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(HudVantageWorkspaceSnapshot.self, from: data)
 
+        XCTAssertEqual(decoded.kind, HudVantageWorkspaceSnapshot.documentKind)
         XCTAssertEqual(decoded.workspaceID, "scout-lab")
         XCTAssertEqual(decoded.viewport.scale, 0.75)
         XCTAssertEqual(decoded.layout?.canvasTool, "hand")
         XCTAssertEqual(decoded.layout?.navigationFilter, "selected")
         XCTAssertEqual(decoded.layout?.navigationTagFilter, "focus")
         XCTAssertEqual(decoded.layout?.navigationCollapsed, true)
+        XCTAssertEqual(decoded.layout?.minimapCollapsed, true)
         XCTAssertEqual(decoded.layout?.inspectorWidth, 336)
+        XCTAssertEqual(decoded.layout?.style?.id, "blueprint")
+        XCTAssertEqual(decoded.layout?.style?.terminalThemeID, .blueprint)
+        XCTAssertEqual(decoded.layout?.style?.canvasGridStep, 24)
+        XCTAssertEqual(decoded.layout?.tagStyles?["focus"]?.terminalThemeID, .jadeNight)
+        XCTAssertEqual(decoded.layout?.tagStyles?["focus"]?.terminalFontSize, 13.5)
         XCTAssertEqual(decoded.nodes.first?.tag, "focus")
+        XCTAssertEqual(decoded.nodes.first?.style?.terminalThemeID, .hudsonPaper)
+        XCTAssertEqual(decoded.nodes.first?.style?.terminalFontFamily, "Menlo")
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "tmux")
         XCTAssertEqual(decoded.nodes.first?.runtime.graphitePath, "hudson.lab.agents.codex.0007.worker")
         XCTAssertEqual(decoded.selectedNodeIDs, [nodeID])
+        XCTAssertEqual(decoded.focusedNodeID, nodeID)
+        XCTAssertEqual(decoded.groups.first?.id, "tag.focus")
+        XCTAssertEqual(decoded.groups.first?.nodeIDs, [nodeID])
     }
 
     func testWorkspaceSnapshotDecodesWithoutLayoutForV0Compatibility() throws {
@@ -254,9 +429,12 @@ final class HudVantageControlContractTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let snapshot = try decoder.decode(HudVantageWorkspaceSnapshot.self, from: Data(json.utf8))
 
+        XCTAssertEqual(snapshot.kind, HudVantageWorkspaceSnapshot.documentKind)
         XCTAssertEqual(snapshot.workspaceID, "legacy-lab")
         XCTAssertNil(snapshot.layout)
         XCTAssertEqual(snapshot.selectedNodeIDs, [nodeID])
+        XCTAssertNil(snapshot.focusedNodeID)
+        XCTAssertEqual(snapshot.groups, [])
     }
 
     func testControlResponseCanReturnStructuredNodeSummaries() throws {
@@ -287,6 +465,7 @@ final class HudVantageControlContractTests: XCTestCase {
                 )
             ],
             selectedNodeIDs: [nodeID],
+            focusedNodeID: nodeID,
             viewport: HudVantageControlViewport(
                 panX: 10,
                 panY: 20,
@@ -322,6 +501,42 @@ final class HudVantageControlContractTests: XCTestCase {
                 minScale: 0.002,
                 maxScale: 64
             ),
+            style: HudVantageControlStyle(
+                workspace: .jade,
+                tagOverrides: [
+                    "focus": HudVantageTerminalStyleOverride(terminalThemeID: .jadeNight),
+                ],
+                terminalOverrides: [
+                    nodeID.uuidString: HudVantageTerminalStyleOverride(terminalFontSize: 14),
+                ]
+            ),
+            tmuxHealth: [
+                HudVantageTmuxHealth(
+                    nodeID: nodeID,
+                    target: "hudson-lab:agents-codex-0007",
+                    graphitePath: "hudson.lab.agents.codex.0007.worker",
+                    status: "ready",
+                    session: "hudson-lab",
+                    window: "agents-codex-0007",
+                    activeWindow: "agents-codex-0007",
+                    attachedClients: 1,
+                    paneCount: 1,
+                    message: "tmux target is available"
+                ),
+            ],
+            setup: HudVantageSetupReport(
+                workspaceID: "scout-lab",
+                presentation: HudVantageSetupPresentation(
+                    title: "Scout Vantage",
+                    cobrand: "powered by Hudson",
+                    theme: "jade"
+                ),
+                createdNodeIDs: [nodeID],
+                reusedNodeIDs: [],
+                updatedNodeIDs: [nodeID],
+                removedNodeIDs: [],
+                failedNodes: []
+            ),
             commandPath: "/tmp/scout-vantage-control.jsonl",
             responsePath: "/tmp/scout-vantage-control.responses.jsonl",
             statePath: "/tmp/scout-vantage-state.json",
@@ -354,6 +569,7 @@ final class HudVantageControlContractTests: XCTestCase {
 
         let selectedNodeIDs = try XCTUnwrap(object["selectedNodeIDs"] as? [String])
         XCTAssertEqual(selectedNodeIDs, [nodeID.uuidString])
+        XCTAssertEqual(object["focusedNodeID"] as? String, nodeID.uuidString)
         let viewport = try XCTUnwrap(object["viewport"] as? [String: Any])
         XCTAssertEqual(viewport["scale"] as? Double, 0.8)
         let metrics = try XCTUnwrap(object["metrics"] as? [String: Any])
@@ -362,6 +578,25 @@ final class HudVantageControlContractTests: XCTestCase {
         let perf = try XCTUnwrap(metrics["perf"] as? [String: Any])
         let counters = try XCTUnwrap(perf["counters"] as? [String: Any])
         XCTAssertEqual(counters["control.command"] as? Int, 12)
+        let style = try XCTUnwrap(object["style"] as? [String: Any])
+        let workspaceStyle = try XCTUnwrap(style["workspace"] as? [String: Any])
+        XCTAssertEqual(workspaceStyle["id"] as? String, "jade")
+        let tagOverrides = try XCTUnwrap(style["tagOverrides"] as? [String: Any])
+        let focusOverride = try XCTUnwrap(tagOverrides["focus"] as? [String: Any])
+        XCTAssertEqual(focusOverride["terminalThemeID"] as? String, "jadeNight")
+        let terminalOverrides = try XCTUnwrap(style["terminalOverrides"] as? [String: Any])
+        let nodeOverride = try XCTUnwrap(terminalOverrides[nodeID.uuidString] as? [String: Any])
+        XCTAssertEqual(nodeOverride["terminalFontSize"] as? Int, 14)
+        let health = try XCTUnwrap(object["tmuxHealth"] as? [[String: Any]])
+        XCTAssertEqual(health.first?["status"] as? String, "ready")
+        XCTAssertEqual(health.first?["session"] as? String, "hudson-lab")
+        let setup = try XCTUnwrap(object["setup"] as? [String: Any])
+        XCTAssertEqual(setup["workspaceID"] as? String, "scout-lab")
+        let presentation = try XCTUnwrap(setup["presentation"] as? [String: Any])
+        XCTAssertEqual(presentation["title"] as? String, "Scout Vantage")
+        XCTAssertEqual(presentation["cobrand"] as? String, "powered by Hudson")
+        XCTAssertEqual(presentation["theme"] as? String, "jade")
+        XCTAssertEqual(setup["createdNodeIDs"] as? [String], [nodeID.uuidString])
     }
 
     func testControlResponseOmitsNilOptionalPayloads() throws {
@@ -463,6 +698,75 @@ final class HudVantageControlContractTests: XCTestCase {
             XCTAssertEqual(try XCTUnwrap(command["panX"] as? NSNumber).doubleValue, -120.5, accuracy: 0.001)
             XCTAssertEqual(try XCTUnwrap(command["panY"] as? NSNumber).doubleValue, 44, accuracy: 0.001)
             XCTAssertEqual(try XCTUnwrap(command["scale"] as? NSNumber).doubleValue, 0.25, accuracy: 0.001)
+        }
+    }
+
+    func testControlScriptsEmitStyleAndTmuxHealthCommands() throws {
+        for scriptPath in [
+            "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
+            "examples/termini-canvas/scripts/canvasctl.sh",
+        ] {
+            let style = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "style",
+                    "--scope", "workspace",
+                    "--preset", "jade",
+                    "--terminal-theme", "hudson-paper",
+                    "--font-size", "14.5",
+                    "--grid-mode", "dots",
+                    "--focus-padding", "20",
+                ]
+            )
+
+            XCTAssertEqual(style["id"] as? String, "test-request")
+            XCTAssertEqual(style["action"] as? String, "style")
+            XCTAssertEqual(style["apiVersion"] as? String, "v0")
+            XCTAssertEqual(style["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(style["includeStyle"] as? Bool, true)
+            XCTAssertEqual(style["styleScope"] as? String, "workspace")
+            XCTAssertEqual(style["stylePreset"] as? String, "jade")
+            XCTAssertEqual(style["terminalTheme"] as? String, "hudson-paper")
+            XCTAssertEqual(try XCTUnwrap(style["terminalFontSize"] as? NSNumber).doubleValue, 14.5, accuracy: 0.001)
+            XCTAssertEqual(style["canvasGridMode"] as? String, "dots")
+            XCTAssertEqual(style["focusPadding"] as? Int, 20)
+
+            let health = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "tmux-health",
+                    "--session", "hudson-lab",
+                    "--remote", "devbox",
+                ]
+            )
+
+            XCTAssertEqual(health["id"] as? String, "test-request")
+            XCTAssertEqual(health["action"] as? String, "tmux-health")
+            XCTAssertEqual(health["apiVersion"] as? String, "v0")
+            XCTAssertEqual(health["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(health["sessions"] as? [String], ["hudson-lab"])
+            XCTAssertEqual(health["remoteHost"] as? String, "devbox")
+
+            let setup = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "setup",
+                    "--manifest", "/tmp/scout.vantage.setup.json",
+                    "--create",
+                    "--remove-missing",
+                    "--fit",
+                ]
+            )
+
+            XCTAssertEqual(setup["id"] as? String, "test-request")
+            XCTAssertEqual(setup["action"] as? String, "setup")
+            XCTAssertEqual(setup["apiVersion"] as? String, "v0")
+            XCTAssertEqual(setup["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(setup["manifestPath"] as? String, "/tmp/scout.vantage.setup.json")
+            XCTAssertEqual(setup["createIfMissing"] as? Bool, true)
+            XCTAssertEqual(setup["removeMissing"] as? Bool, true)
+            XCTAssertEqual(setup["fit"] as? Bool, true)
+            XCTAssertEqual(setup["includeStyle"] as? Bool, true)
         }
     }
 
