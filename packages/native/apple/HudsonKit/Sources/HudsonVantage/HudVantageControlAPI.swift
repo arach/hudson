@@ -213,12 +213,16 @@ public struct HudVantageControlCommand: Decodable, Sendable {
 
 public struct HudVantageControlNode: Encodable, Hashable, Sendable {
     public var id: UUID
+    public var externalID: String?
     public var title: String
     public var subtitle: String?
     public var runtimeKind: String
     public var target: String?
     public var graphitePath: String?
     public var remoteHost: String?
+    public var path: String?
+    public var language: String?
+    public var role: String?
     public var selected: Bool?
     public var x: Double
     public var y: Double
@@ -229,12 +233,16 @@ public struct HudVantageControlNode: Encodable, Hashable, Sendable {
 
     public init(
         id: UUID,
+        externalID: String? = nil,
         title: String,
         subtitle: String? = nil,
         runtimeKind: String,
         target: String? = nil,
         graphitePath: String? = nil,
         remoteHost: String? = nil,
+        path: String? = nil,
+        language: String? = nil,
+        role: String? = nil,
         selected: Bool? = nil,
         x: Double,
         y: Double,
@@ -244,12 +252,16 @@ public struct HudVantageControlNode: Encodable, Hashable, Sendable {
         tag: String? = nil
     ) {
         self.id = id
+        self.externalID = externalID
         self.title = title
         self.subtitle = subtitle
         self.runtimeKind = runtimeKind
         self.target = target
         self.graphitePath = graphitePath
         self.remoteHost = remoteHost
+        self.path = path
+        self.language = language
+        self.role = role
         self.selected = selected
         self.x = x
         self.y = y

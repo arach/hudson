@@ -2,6 +2,9 @@ import Darwin
 import Foundation
 import SwiftUI
 import AppKit
+import WebKit
+import HudsonDiff
+import HudsonLive
 import HudsonObservability
 import HudsonUI
 import HudsonShell
@@ -12,9 +15,9 @@ private let hudVantagePerfTrace = HudTrace(category: "vantage.perf")
 
 /// Configuration for an embeddable Hudson Vantage.
 ///
-/// A Vantage is a spatial operating surface for live runtimes. Hosts provide
-/// product naming, control-plane paths, and an optional working directory while
-/// Hudson owns the canvas interaction model.
+/// A Vantage is a spatial operating surface for live runtimes and artifacts.
+/// Hosts provide product naming, control-plane paths, and an optional working
+/// directory while Hudson owns the canvas interaction model.
 public struct HudVantageConfiguration: Sendable {
     public var workspaceID: String
     public var surfaceTitle: String
@@ -22,6 +25,7 @@ public struct HudVantageConfiguration: Sendable {
     public var commandURL: URL
     public var responseURL: URL
     public var stateURL: URL
+    public var launchSetupURL: URL?
     public var workingDirectoryURL: URL?
     public var followsSystemColorScheme: Bool
     public var restoresStateOnLaunch: Bool
@@ -33,6 +37,7 @@ public struct HudVantageConfiguration: Sendable {
         commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
         responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl"),
         stateURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-state.json"),
+        launchSetupURL: URL? = nil,
         workingDirectoryURL: URL? = nil,
         followsSystemColorScheme: Bool = true,
         restoresStateOnLaunch: Bool = false
@@ -43,6 +48,7 @@ public struct HudVantageConfiguration: Sendable {
         self.commandURL = commandURL
         self.responseURL = responseURL
         self.stateURL = stateURL
+        self.launchSetupURL = launchSetupURL
         self.workingDirectoryURL = workingDirectoryURL
         self.followsSystemColorScheme = followsSystemColorScheme
         self.restoresStateOnLaunch = restoresStateOnLaunch
@@ -62,6 +68,12 @@ public struct HudVantageConfiguration: Sendable {
 private enum HudVantageMetrics {
     static let terminalTitleBarHeight = HudLayout.fieldHeight
     static let terminalTrafficLightSize = HudDotSize.large
+    static let terminalCompactChromeWidth: CGFloat = 320
+    static let terminalMinimalChromeWidth: CGFloat = 196
+    static let terminalCompactChromeHeight: CGFloat = 176
+    static let terminalMinimalChromeHeight: CGFloat = 132
+    static let terminalSecondaryChromeWidth: CGFloat = 430
+    static let terminalSecondaryChromeHeight: CGFloat = 220
     static let nodeMinimumScreenSize = HudStrokeWidth.bold
     static let nodeMarkerMinimumWidth = HudIconSize.micro
     static let nodeMarkerMaximumWidth = HudIconSize.huge + HudSpacing.sm
@@ -121,16 +133,159 @@ private extension HudTheme {
     }
 }
 
+private enum VantageDocumentKind: String, Hashable {
+    case file
+    case plan
+    case diff
+    case note
+    case preview
+
+    init(runtimeKind: String) {
+        switch runtimeKind {
+        case "code", "code-file", "source", "source-file":
+            self = .file
+        case "plan", "plan-doc", "plan-document":
+            self = .plan
+        case "diff", "patch", "review-diff", "running-diff":
+            self = .diff
+        case "preview", "app-preview", "browser-preview":
+            self = .preview
+        case "note", "markdown", "document":
+            self = .note
+        default:
+            self = .file
+        }
+    }
+
+    var runtimeKind: String {
+        switch self {
+        case .file: "file"
+        case .plan: "plan"
+        case .diff: "diff"
+        case .note: "note"
+        case .preview: "preview"
+        }
+    }
+
+    var badge: String {
+        switch self {
+        case .file: "FILE"
+        case .plan: "PLAN"
+        case .diff: "DIFF"
+        case .note: "NOTE"
+        case .preview: "PREVIEW"
+        }
+    }
+
+    var symbolName: String {
+        switch self {
+        case .file: "doc.text"
+        case .plan: "checklist"
+        case .diff: "arrow.triangle.pull"
+        case .note: "note.text"
+        case .preview: "rectangle.on.rectangle"
+        }
+    }
+}
+
+private enum VantageDocumentContentSource: Hashable {
+    case inline
+    case path
+    case empty
+}
+
+private struct VantageDocumentContent {
+    var text: String
+    var byteCount: Int
+    var readByteCount: Int
+    var truncated: Bool
+}
+
+private struct VantageDocumentArtifact {
+    var kind: VantageDocumentKind
+    var path: String?
+    var language: String?
+    var content: String
+    var role: String?
+    var contentSource: VantageDocumentContentSource
+    var byteCount: Int
+    var readByteCount: Int
+    var truncated: Bool
+    var diffDocument: HudDiffDocument?
+
+    var detail: String {
+        if let path, !path.isEmpty {
+            return path
+        }
+        if let role, !role.isEmpty {
+            return role
+        }
+        return kind.badge.lowercased()
+    }
+}
+
+private final class VantageArtifactFileWatcher {
+    let url: URL
+    private var source: DispatchSourceFileSystemObject?
+    private var fileDescriptor: CInt = -1
+    private var isArmed = false
+
+    init?(
+        url: URL,
+        onChange: @escaping @MainActor () -> Void
+    ) {
+        let descriptor = open(url.path, O_EVTONLY)
+        guard descriptor >= 0 else { return nil }
+
+        self.url = url
+        self.fileDescriptor = descriptor
+
+        let source = DispatchSource.makeFileSystemObjectSource(
+            fileDescriptor: descriptor,
+            eventMask: [.write, .extend, .attrib, .delete, .rename],
+            queue: .main
+        )
+        source.setEventHandler { [weak self] in
+            guard self?.isArmed == true else { return }
+            Task { @MainActor in
+                onChange()
+            }
+        }
+        source.setCancelHandler {
+            close(descriptor)
+        }
+        self.source = source
+        source.resume()
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.25) { [weak self] in
+            self?.isArmed = true
+        }
+    }
+
+    deinit {
+        cancel()
+    }
+
+    func cancel() {
+        guard let source else { return }
+        self.source = nil
+        isArmed = false
+        fileDescriptor = -1
+        source.cancel()
+    }
+}
+
 @MainActor
 private final class TerminalNode: ObservableObject, Identifiable {
     enum RuntimeIdentity {
         case localPTY
         case tmux(target: String, path: GraphitePath?, remoteHost: String?)
+        case document(VantageDocumentArtifact)
 
         var badge: String {
             switch self {
             case .localPTY: "LOCAL PTY"
             case .tmux(_, _, let remoteHost): remoteHost == nil ? "TMUX" : "SSH TMUX"
+            case .document(let artifact): artifact.kind.badge
             }
         }
 
@@ -140,6 +295,8 @@ private final class TerminalNode: ObservableObject, Identifiable {
                 "zsh · local PTY"
             case .tmux(let target, _, let remoteHost):
                 remoteHost.map { "\($0) · \(target)" } ?? target
+            case .document(let artifact):
+                artifact.detail
             }
         }
 
@@ -147,23 +304,44 @@ private final class TerminalNode: ObservableObject, Identifiable {
             guard case .tmux(_, let path, _) = self else { return nil }
             return path?.description
         }
+
+        var isTerminal: Bool {
+            switch self {
+            case .localPTY, .tmux:
+                return true
+            case .document:
+                return false
+            }
+        }
+
+        var symbolName: String {
+            switch self {
+            case .localPTY, .tmux:
+                return "terminal"
+            case .document(let artifact):
+                return artifact.kind.symbolName
+            }
+        }
     }
 
     let id: UUID
-    let workspace: TerminiLocalPTYWorkspace
-    let title: String
-    let subtitle: String
+    let externalID: String?
+    let workspace: TerminiLocalPTYWorkspace?
+    @Published var title: String
+    @Published var subtitle: String
     let tint: HudTint
-    let runtimeIdentity: RuntimeIdentity
+    @Published var runtimeIdentity: RuntimeIdentity
 
     @Published var origin: CGPoint
     @Published var size: CGSize
     @Published var zIndex: Double
     @Published var tag: CanvasTag?
     @Published var styleOverride: HudVantageTerminalStyleOverride?
+    @Published var liveSource: HudLiveSourceDescriptor?
 
     init(
         id: UUID = UUID(),
+        externalID: String? = nil,
         index: Int,
         origin: CGPoint,
         size: CGSize,
@@ -175,14 +353,18 @@ private final class TerminalNode: ObservableObject, Identifiable {
         runtimeIdentity: RuntimeIdentity = .localPTY,
         tag: CanvasTag? = nil,
         styleOverride: HudVantageTerminalStyleOverride? = nil,
+        liveSource: HudLiveSourceDescriptor? = nil,
         workingDirectoryURL: URL? = nil
     ) {
-        let controller = TerminiTerminalController()
+        let controller = runtimeIdentity.isTerminal ? TerminiTerminalController() : nil
         self.id = id
-        self.workspace = TerminiLocalPTYWorkspace(
-            processSpec: processSpec ?? Self.localShellSpec(workingDirectoryURL: workingDirectoryURL),
-            controller: controller
-        )
+        self.externalID = externalID
+        self.workspace = controller.map {
+            TerminiLocalPTYWorkspace(
+                processSpec: processSpec ?? Self.localShellSpec(workingDirectoryURL: workingDirectoryURL),
+                controller: $0
+            )
+        }
         self.title = title ?? "Termini \(index)"
         self.subtitle = subtitle ?? runtimeIdentity.detail
         self.origin = origin
@@ -192,11 +374,25 @@ private final class TerminalNode: ObservableObject, Identifiable {
         self.runtimeIdentity = runtimeIdentity
         self.tag = tag
         self.styleOverride = styleOverride?.isEmpty == true ? nil : styleOverride
-        workspace.start()
+        self.liveSource = liveSource
+        workspace?.start()
     }
 
-    var controller: TerminiTerminalController {
-        workspace.controller
+    var controller: TerminiTerminalController? {
+        workspace?.controller
+    }
+
+    var isTerminal: Bool {
+        runtimeIdentity.isTerminal
+    }
+
+    var symbolName: String {
+        runtimeIdentity.symbolName
+    }
+
+    var documentArtifact: VantageDocumentArtifact? {
+        guard case .document(let artifact) = runtimeIdentity else { return nil }
+        return artifact
     }
 
     func move(by delta: CGSize) {
@@ -210,7 +406,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
     }
 
     func stop() {
-        workspace.stop()
+        workspace?.stop()
     }
 
     private static func localShellSpec() -> TerminiProcessSpec {
@@ -597,12 +793,23 @@ private func formattedZoom(_ scale: CGFloat) -> String {
     return "\(Int(percent.rounded()))%"
 }
 
-/// Native Hudson surface for terminal-backed durable runtimes.
+private func formattedBytes(_ bytes: Int) -> String {
+    if bytes < 1_024 {
+        return "\(bytes)b"
+    }
+    if bytes < 1_024 * 1_024 {
+        return String(format: "%.1fkb", Double(bytes) / 1_024)
+    }
+    return String(format: "%.1fmb", Double(bytes) / (1_024 * 1_024))
+}
+
+/// Native Hudson surface for composable agent workspaces.
 ///
 /// The current implementation focuses on local PTYs, local tmux, remote tmux
-/// over SSH, and JSONL-driven external control. It is intentionally embeddable:
-/// Scout, Talkie, Fabric, or a standalone app can each host their own Vantage
-/// by supplying a `HudVantageConfiguration`.
+/// over SSH, manifest-defined file/plan/diff artifacts, and JSONL-driven
+/// external control. It is intentionally embeddable: Scout, Talkie, Fabric, or
+/// a standalone app can each host their own Vantage by supplying a
+/// `HudVantageConfiguration`.
 public struct HudVantageSurface: View {
     private static let tileLimit = 128
     private static let largeTileLimit = 512
@@ -656,6 +863,9 @@ public struct HudVantageSurface: View {
     @State private var zoomStart: CGFloat?
     @State private var selectionDrag: SelectionDrag?
     @State private var pendingPersistTask: Task<Void, Never>?
+    @State private var documentWatchers: [UUID: VantageArtifactFileWatcher] = [:]
+    @State private var pendingArtifactReloadIDs: Set<UUID> = []
+    @State private var pendingArtifactReloadTask: Task<Void, Never>?
 
     public init(configuration: HudVantageConfiguration = .init()) {
         self.configuration = configuration
@@ -684,10 +894,14 @@ public struct HudVantageSurface: View {
         .onAppear {
             bootstrapIfNeeded()
             startControlAPI()
+            synchronizeDocumentWatchers()
         }
         .onDisappear {
             pendingPersistTask?.cancel()
             pendingPersistTask = nil
+            pendingArtifactReloadTask?.cancel()
+            pendingArtifactReloadTask = nil
+            cancelDocumentWatchers()
             persistStateIfConfigured()
             controlAPI.stop()
             closePopOutWindows()
@@ -1254,6 +1468,8 @@ public struct HudVantageSurface: View {
     }
 
     private func rendersLiveSurface(for node: TerminalNode) -> Bool {
+        guard node.isTerminal else { return false }
+
         if let focusedNodeID = focusedNode?.id {
             return node.id == focusedNodeID
         }
@@ -1402,6 +1618,12 @@ public struct HudVantageSurface: View {
                 Text("·")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.dim)
+                Text("\(liveSourceCount) live")
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.muted)
+                Text("·")
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(activeTheme.palette.dim)
                 Text("\(selectedIDs.count) selected")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -1436,6 +1658,10 @@ public struct HudVantageSurface: View {
         }
 
         return "\(action) \(String(format: "%.1f", duration))ms"
+    }
+
+    private var liveSourceCount: Int {
+        nodes.compactMap(\.liveSource).filter { $0.status.isReceiving }.count
     }
 
     private func spawnTerminal() {
@@ -1499,6 +1725,13 @@ public struct HudVantageSurface: View {
                 return
             }
         }
+        if let command = bootstrapSetupCommand() {
+            let response = applySetupCommand(command)
+            controlStatus = response.message
+            if response.ok || !nodes.isEmpty {
+                return
+            }
+        }
         resetTerminals()
     }
 
@@ -1557,6 +1790,24 @@ public struct HudVantageSurface: View {
         )
     }
 
+    private func bootstrapSetupCommand() -> HudVantageControlCommand? {
+        let environment = ProcessInfo.processInfo.environment
+        let setupPath = environment["HUDSON_VANTAGE_SETUP_FILE"]
+            ?? environment["TERMINI_CANVAS_SETUP_FILE"]
+            ?? configuration.launchSetupURL?.path
+        guard let setupPath, !setupPath.isEmpty else { return nil }
+
+        return HudVantageControlCommand(
+            id: "bootstrap-setup",
+            action: "setup",
+            workspaceID: configuration.workspaceID,
+            manifestPath: setupPath,
+            fit: true,
+            createIfMissing: true,
+            includeStyle: true
+        )
+    }
+
     private func parseEnvironmentList(_ value: String?) -> [String] {
         guard let value else { return [] }
         return value
@@ -1595,6 +1846,8 @@ public struct HudVantageSurface: View {
                 ok: true,
                 message: "\(nodes.count) nodes · \(selectedIDs.count) selected"
             )
+        case "reload", "reload-documents", "refresh", "refresh-documents":
+            return reloadDocumentNodes(command)
         case "style", "set-style", "appearance", "set-appearance", "settings", "set-settings":
             return applyStyleCommand(command)
         case "tmux-status", "tmuxstatus", "tmux-health", "tmuxhealth", "health":
@@ -1629,20 +1882,20 @@ public struct HudVantageSurface: View {
             return controlResponse(
                 command,
                 ok: true,
-                message: "cleared terminals"
+                message: "cleared nodes"
             )
         case "reset":
             resetTerminals()
             return controlResponse(
                 command,
                 ok: true,
-                message: "reset terminals"
+                message: "reset nodes"
             )
         case "status":
             return controlResponse(
                 command,
                 ok: true,
-                message: "\(nodes.count) terminals"
+                message: "\(nodes.count) nodes"
             )
         default:
             return controlResponse(
@@ -2308,6 +2561,338 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func reloadDocumentNodes(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let targetNodes: [TerminalNode]
+            if nodeSelectors(from: command).isEmpty {
+                let selectedDocuments = nodes.filter { node in
+                    selectedIDs.contains(node.id) && node.documentArtifact != nil
+                }
+                targetNodes = selectedDocuments.isEmpty
+                    ? nodes.filter { $0.documentArtifact != nil }
+                    : selectedDocuments
+            } else {
+                targetNodes = try resolveNodes(from: command, allowSelectionFallback: false)
+            }
+
+            var reloaded: [TerminalNode] = []
+            var skipped = 0
+            for node in targetNodes {
+                if reloadDocumentNode(node) {
+                    reloaded.append(node)
+                } else {
+                    skipped += 1
+                }
+            }
+
+            if !reloaded.isEmpty {
+                perfTracker.increment("artifact.reload", by: reloaded.count)
+                restartDocumentWatchers(for: Set(reloaded.map(\.id)))
+                synchronizeDocumentWatchers()
+                schedulePersistStateIfConfigured()
+            }
+
+            return controlResponse(
+                command,
+                ok: true,
+                message: "reloaded \(reloaded.count) document\(reloaded.count == 1 ? "" : "s")"
+                    + (skipped > 0 ? " · skipped \(skipped)" : ""),
+                nodesOverride: reloaded
+            )
+        } catch {
+            return controlNodeErrorResponse(command, error)
+        }
+    }
+
+    private func reloadDocumentNode(_ node: TerminalNode) -> Bool {
+        guard case .document(let artifact) = node.runtimeIdentity,
+              artifact.contentSource != .inline,
+              let path = artifact.path,
+              !path.isEmpty
+        else {
+            return false
+        }
+
+        let updated = documentArtifact(
+            kind: artifact.kind,
+            path: path,
+            language: artifact.language,
+            inlineContent: nil,
+            role: artifact.role
+        )
+        node.runtimeIdentity = .document(updated)
+        node.subtitle = updated.detail
+        recordDocumentLiveEvent(
+            for: node,
+            kind: "document.reload",
+            summary: "\(updated.kind.badge.lowercased()) reloaded"
+        )
+        return true
+    }
+
+    private func synchronizeDocumentWatchers() {
+        let watchableNodes = nodes.filter { node in
+            guard case .document(let artifact) = node.runtimeIdentity,
+                  artifact.contentSource != .inline,
+                  let path = artifact.path,
+                  !path.isEmpty
+            else {
+                return false
+            }
+            return FileManager.default.fileExists(atPath: documentURL(for: path).path)
+        }
+        let watchableIDs = Set(watchableNodes.map(\.id))
+
+        let staleWatcherIDs = documentWatchers.keys.filter { !watchableIDs.contains($0) }
+        for id in staleWatcherIDs {
+            documentWatchers[id]?.cancel()
+            documentWatchers[id] = nil
+            if let node = nodes.first(where: { $0.id == id }) {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .offline,
+                    detail: "watch detached"
+                )
+            }
+        }
+
+        for node in nodes where node.documentArtifact == nil {
+            node.liveSource = nil
+        }
+
+        for node in nodes where node.documentArtifact != nil && !watchableIDs.contains(node.id) {
+            guard let artifact = node.documentArtifact else { continue }
+            if artifact.contentSource == .inline {
+                node.liveSource = nil
+            } else {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .offline,
+                    detail: "path unavailable"
+                )
+            }
+        }
+
+        for node in watchableNodes {
+            guard let artifact = node.documentArtifact,
+                  let path = artifact.path
+            else { continue }
+            if documentWatchers[node.id] != nil {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .live,
+                    detail: liveDetail(for: artifact)
+                )
+                continue
+            }
+
+            updateDocumentLiveSource(
+                for: node,
+                status: .connecting,
+                detail: "attaching file watcher"
+            )
+            let url = documentURL(for: path)
+            documentWatchers[node.id] = VantageArtifactFileWatcher(url: url) { [id = node.id] in
+                scheduleArtifactReload(for: id)
+            }
+            if documentWatchers[node.id] != nil {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .live,
+                    detail: liveDetail(for: artifact)
+                )
+                perfTracker.increment("artifact.watch.started")
+            } else {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .error,
+                    detail: "file watcher failed"
+                )
+                perfTracker.increment("artifact.watch.failed")
+            }
+        }
+
+        perfTracker.set("artifact.watch.active", to: documentWatchers.count)
+    }
+
+    private func cancelDocumentWatchers() {
+        for watcher in documentWatchers.values {
+            watcher.cancel()
+        }
+        documentWatchers.removeAll()
+        perfTracker.set("artifact.watch.active", to: 0)
+    }
+
+    private func scheduleArtifactReload(for id: UUID) {
+        if let node = nodes.first(where: { $0.id == id }) {
+            updateDocumentLiveSource(
+                for: node,
+                status: .replaying,
+                detail: "file changed; reloading"
+            )
+        }
+        pendingArtifactReloadIDs.insert(id)
+        perfTracker.increment("artifact.watch.event")
+        guard pendingArtifactReloadTask == nil else {
+            perfTracker.increment("artifact.watch.coalesced")
+            return
+        }
+
+        pendingArtifactReloadTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 180_000_000)
+            guard !Task.isCancelled else {
+                pendingArtifactReloadTask = nil
+                return
+            }
+
+            let ids = pendingArtifactReloadIDs
+            pendingArtifactReloadIDs.removeAll()
+            pendingArtifactReloadTask = nil
+            reloadChangedArtifacts(ids)
+        }
+    }
+
+    private func reloadChangedArtifacts(_ ids: Set<UUID>) {
+        let startedAt = CFAbsoluteTimeGetCurrent()
+        var reloaded = 0
+        for id in ids {
+            guard let node = nodes.first(where: { $0.id == id }) else { continue }
+            if reloadDocumentNode(node) {
+                reloaded += 1
+            } else {
+                updateDocumentLiveSource(
+                    for: node,
+                    status: .stale,
+                    detail: "change detected; reload skipped"
+                )
+            }
+        }
+        if reloaded > 0 {
+            perfTracker.increment("artifact.watch.reload", by: reloaded)
+            perfTracker.recordTiming(
+                "artifact.watch.reload",
+                durationMS: (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            )
+            restartDocumentWatchers(for: ids)
+            synchronizeDocumentWatchers()
+            schedulePersistStateIfConfigured()
+        }
+    }
+
+    private func restartDocumentWatchers(for ids: Set<UUID>) {
+        for id in ids {
+            documentWatchers[id]?.cancel()
+            documentWatchers[id] = nil
+        }
+    }
+
+    private func documentLiveSourceID(for node: TerminalNode) -> String {
+        let stableID = node.externalID?.trimmingCharacters(in: .whitespacesAndNewlines)
+        let nodeToken = (stableID?.isEmpty == false ? stableID : node.id.uuidString) ?? node.id.uuidString
+        return "vantage.\(configuration.workspaceID).artifact.\(GraphitePath.slugify(nodeToken, fallback: node.id.uuidString.lowercased()))"
+    }
+
+    private func updateDocumentLiveSource(
+        for node: TerminalNode,
+        status: HudLiveStatus,
+        detail: String? = nil
+    ) {
+        guard let artifact = node.documentArtifact else {
+            node.liveSource = nil
+            return
+        }
+
+        let descriptor = baseDocumentLiveSource(
+            for: node,
+            artifact: artifact,
+            status: status,
+            detail: detail
+        )
+        node.liveSource = descriptor
+    }
+
+    private func recordDocumentLiveEvent(
+        for node: TerminalNode,
+        kind: String,
+        summary: String
+    ) {
+        guard let artifact = node.documentArtifact else {
+            node.liveSource = nil
+            return
+        }
+
+        let descriptor = baseDocumentLiveSource(
+            for: node,
+            artifact: artifact,
+            status: .live,
+            detail: liveDetail(for: artifact)
+        )
+        let timestamp = Date()
+        let event = HudLiveEvent(
+            id: "\(kind):\(node.id.uuidString):\(Int(timestamp.timeIntervalSince1970 * 1_000))",
+            sourceID: descriptor.id,
+            timestamp: timestamp,
+            kind: kind,
+            summary: summary,
+            metadata: liveMetadata(for: node, artifact: artifact)
+        )
+        node.liveSource = descriptor.receiving(event)
+    }
+
+    private func baseDocumentLiveSource(
+        for node: TerminalNode,
+        artifact: VantageDocumentArtifact,
+        status: HudLiveStatus,
+        detail: String?
+    ) -> HudLiveSourceDescriptor {
+        var descriptor = node.liveSource ?? HudLiveSourceDescriptor(
+            id: documentLiveSourceID(for: node),
+            label: node.title,
+            kind: "artifact.\(artifact.kind.runtimeKind)",
+            status: status,
+            detail: detail ?? liveDetail(for: artifact),
+            capabilities: .snapshotOnly,
+            metadata: liveMetadata(for: node, artifact: artifact)
+        )
+        descriptor.label = node.title
+        descriptor.kind = "artifact.\(artifact.kind.runtimeKind)"
+        descriptor.status = status
+        descriptor.detail = detail ?? liveDetail(for: artifact)
+        descriptor.capabilities = .snapshotOnly
+        descriptor.metadata = liveMetadata(for: node, artifact: artifact)
+        return descriptor
+    }
+
+    private func liveDetail(for artifact: VantageDocumentArtifact) -> String {
+        if let path = artifact.path, !path.isEmpty {
+            return "watching \(URL(fileURLWithPath: path).lastPathComponent)"
+        }
+        return artifact.detail
+    }
+
+    private func liveMetadata(
+        for node: TerminalNode,
+        artifact: VantageDocumentArtifact
+    ) -> [String: String] {
+        var metadata: [String: String] = [
+            "nodeID": node.id.uuidString,
+            "workspaceID": configuration.workspaceID,
+            "artifactKind": artifact.kind.runtimeKind,
+        ]
+        if let externalID = node.externalID {
+            metadata["externalID"] = externalID
+        }
+        if let path = artifact.path {
+            metadata["path"] = path
+        }
+        if let role = artifact.role {
+            metadata["role"] = role
+        }
+        return metadata
+    }
+
     private func focusNodes(
         _ command: HudVantageControlCommand
     ) -> HudVantageControlResponse {
@@ -2341,7 +2926,7 @@ public struct HudVantageSurface: View {
                 return controlResponse(
                     command,
                     ok: false,
-                    message: "focus mode requires exactly one terminal",
+                    message: "focus mode requires exactly one node",
                     errorCode: "invalid_focus_target",
                     nodesOverride: resolved
                 )
@@ -2569,6 +3154,7 @@ public struct HudVantageSurface: View {
         perfTracker.set("setup.created", to: report.createdNodeIDs.count)
         perfTracker.set("setup.reused", to: report.reusedNodeIDs.count)
         perfTracker.set("setup.failed", to: report.failedNodes.count)
+        synchronizeDocumentWatchers()
         schedulePersistStateIfConfigured()
         span.end(report.failedNodes.isEmpty ? "ok" : "partial")
         return report
@@ -2680,6 +3266,18 @@ public struct HudVantageSurface: View {
         if let uuid = setupNode.nodeID ?? setupNode.id.flatMap(UUID.init(uuidString:)) {
             return nodes.first { $0.id == uuid }
         }
+        if let externalID = setupNode.id?.trimmingCharacters(in: .whitespacesAndNewlines),
+           !externalID.isEmpty,
+           let match = nodes.first(where: { $0.externalID == externalID }) {
+            return match
+        }
+        if isDocumentRuntimeKind(setupRuntimeKind(for: setupNode)),
+           let path = setupDocumentPath(for: setupNode) {
+            return nodes.first { node in
+                guard case .document(let artifact) = node.runtimeIdentity else { return false }
+                return artifact.path == path
+            }
+        }
         if let path = try setupGraphitePath(for: setupNode) {
             return nodes.first { node in
                 guard case .tmux(_, let nodePath, _) = node.runtimeIdentity else { return false }
@@ -2729,6 +3327,13 @@ public struct HudVantageSurface: View {
             node.styleOverride = style.isEmpty ? nil : style
             changed = true
         }
+        if isDocumentRuntimeKind(setupRuntimeKind(for: setupNode)) {
+            let artifact = documentArtifact(from: setupNode, runtimeKind: setupRuntimeKind(for: setupNode))
+            node.runtimeIdentity = .document(artifact)
+            node.title = setupNode.title ?? documentTitle(for: artifact)
+            node.subtitle = setupNode.subtitle ?? artifact.detail
+            changed = true
+        }
         return changed
     }
 
@@ -2756,9 +3361,31 @@ public struct HudVantageSurface: View {
         let style = try setupNodeStyleOverride(setupNode)
 
         switch runtimeKind {
+        case "file", "code", "code-file", "source", "source-file",
+             "plan", "plan-doc", "plan-document",
+             "diff", "patch", "review-diff", "running-diff",
+             "note", "markdown", "document",
+             "preview", "app-preview", "browser-preview":
+            let artifact = documentArtifact(from: setupNode, runtimeKind: runtimeKind)
+            return TerminalNode(
+                id: nodeID,
+                externalID: setupNode.id,
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint,
+                zIndex: zIndex,
+                title: setupNode.title ?? documentTitle(for: artifact),
+                subtitle: setupNode.subtitle ?? artifact.detail,
+                runtimeIdentity: .document(artifact),
+                tag: tag,
+                styleOverride: style
+            )
+
         case "local-pty", "localpty", "pty":
             return TerminalNode(
                 id: nodeID,
+                externalID: setupNode.id,
                 index: nextIndex,
                 origin: origin,
                 size: size,
@@ -2787,6 +3414,7 @@ public struct HudVantageSurface: View {
             }
             return TerminalNode(
                 id: nodeID,
+                externalID: setupNode.id,
                 index: nextIndex,
                 origin: origin,
                 size: size,
@@ -2813,10 +3441,208 @@ public struct HudVantageSurface: View {
     private func setupRuntimeKind(for setupNode: HudVantageSetupNode) -> String {
         let kind = setupNode.runtime?.kind
             ?? setupNode.runtimeKind
-            ?? ((setupNode.target ?? setupNode.runtime?.target ?? setupNode.graphitePath ?? setupNode.runtime?.graphitePath) == nil
-                ? "local-pty"
-                : "tmux")
+            ?? ((setupNode.path ?? setupNode.runtime?.path ?? setupNode.content ?? setupNode.runtime?.content) == nil
+                ? ((setupNode.target ?? setupNode.runtime?.target ?? setupNode.graphitePath ?? setupNode.runtime?.graphitePath) == nil
+                    ? "local-pty"
+                    : "tmux")
+                : "file")
         return kind.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func isDocumentRuntimeKind(_ runtimeKind: String) -> Bool {
+        switch runtimeKind {
+        case "file", "code", "code-file", "source", "source-file",
+             "plan", "plan-doc", "plan-document",
+             "diff", "patch", "review-diff", "running-diff",
+             "note", "markdown", "document",
+             "preview", "app-preview", "browser-preview":
+            return true
+        default:
+            return false
+        }
+    }
+
+    private func setupDocumentPath(for setupNode: HudVantageSetupNode) -> String? {
+        trimmed(setupNode.path ?? setupNode.runtime?.path ?? setupNode.target ?? setupNode.runtime?.target)
+    }
+
+    private func documentArtifact(
+        from setupNode: HudVantageSetupNode,
+        runtimeKind: String
+    ) -> VantageDocumentArtifact {
+        let kind = VantageDocumentKind(runtimeKind: runtimeKind)
+        let path = setupDocumentPath(for: setupNode)
+        let language = trimmed(setupNode.language ?? setupNode.runtime?.language)
+            ?? inferredLanguage(from: path)
+        let inlineContent = setupNode.content ?? setupNode.runtime?.content
+        return documentArtifact(
+            kind: kind,
+            path: path,
+            language: language,
+            inlineContent: inlineContent,
+            role: trimmed(setupNode.role ?? setupNode.runtime?.role)
+        )
+    }
+
+    private func documentArtifact(
+        kind: VantageDocumentKind,
+        path: String?,
+        language: String?,
+        inlineContent: String?,
+        role: String?
+    ) -> VantageDocumentArtifact {
+        let content: VantageDocumentContent
+        let source: VantageDocumentContentSource
+        if let inlineContent {
+            content = VantageDocumentContent(
+                text: inlineContent,
+                byteCount: inlineContent.utf8.count,
+                readByteCount: inlineContent.utf8.count,
+                truncated: false
+            )
+            source = .inline
+        } else if let path {
+            content = readDocumentPreview(path: path, kind: kind)
+            source = .path
+        } else {
+            content = VantageDocumentContent(
+                text: "",
+                byteCount: 0,
+                readByteCount: 0,
+                truncated: false
+            )
+            source = .empty
+        }
+
+        let diffDocument = kind == .diff
+            ? parseDiffDocument(
+                content.text,
+                title: path?.split(separator: "/").last.map(String.init),
+                language: language ?? "diff"
+            )
+            : nil
+
+        return VantageDocumentArtifact(
+            kind: kind,
+            path: path,
+            language: language,
+            content: content.text,
+            role: role,
+            contentSource: source,
+            byteCount: content.byteCount,
+            readByteCount: content.readByteCount,
+            truncated: content.truncated,
+            diffDocument: diffDocument
+        )
+    }
+
+    private func documentTitle(for artifact: VantageDocumentArtifact) -> String {
+        if let path = artifact.path,
+           let last = path.split(separator: "/").last,
+           !last.isEmpty {
+            return String(last)
+        }
+        return artifact.kind.badge.capitalized
+    }
+
+    private func inferredLanguage(from path: String?) -> String? {
+        guard let ext = path?.split(separator: ".").last?.lowercased() else { return nil }
+        switch ext {
+        case "swift": return "swift"
+        case "ts", "tsx": return "typescript"
+        case "js", "jsx": return "javascript"
+        case "json": return "json"
+        case "md", "markdown": return "markdown"
+        case "diff", "patch": return "diff"
+        case "sh", "bash", "zsh": return "shell"
+        default: return String(ext)
+        }
+    }
+
+    private func parseDiffDocument(
+        _ text: String,
+        title: String?,
+        language: String?
+    ) -> HudDiffDocument {
+        let startedAt = CFAbsoluteTimeGetCurrent()
+        let document = HudUnifiedDiffParser.parse(
+            text,
+            title: title,
+            language: language
+        )
+        let duration = (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+        perfTracker.increment("artifact.diff.parse")
+        perfTracker.increment("artifact.diff.files", by: document.stats.files)
+        perfTracker.increment("artifact.diff.hunks", by: document.stats.hunks)
+        perfTracker.increment("artifact.diff.rows", by: document.rows.count)
+        perfTracker.recordTiming("artifact.diff.parse", durationMS: duration)
+        return document
+    }
+
+    private func readDocumentPreview(
+        path: String,
+        kind: VantageDocumentKind
+    ) -> VantageDocumentContent {
+        let url = documentURL(for: path)
+        let limit = documentPreviewByteLimit(for: kind)
+        do {
+            let startedAt = CFAbsoluteTimeGetCurrent()
+            let data = try Data(contentsOf: url, options: [.mappedIfSafe])
+            let previewData = data.prefix(limit)
+            guard var text = String(data: previewData, encoding: .utf8) else {
+                return VantageDocumentContent(
+                    text: "Unable to preview \(path): file is not UTF-8 text.",
+                    byteCount: data.count,
+                    readByteCount: previewData.count,
+                    truncated: data.count > previewData.count
+                )
+            }
+            if data.count > previewData.count {
+                text += "\n\n... truncated preview ..."
+                perfTracker.increment("artifact.document.truncated")
+            }
+            let duration = (CFAbsoluteTimeGetCurrent() - startedAt) * 1_000
+            perfTracker.increment("artifact.document.read")
+            perfTracker.increment("artifact.document.bytes", by: data.count)
+            perfTracker.increment("artifact.document.readBytes", by: previewData.count)
+            if kind == .diff {
+                perfTracker.increment("artifact.diff.read")
+                perfTracker.increment("artifact.diff.bytes", by: data.count)
+            }
+            perfTracker.recordTiming("artifact.document.read", durationMS: duration)
+            return VantageDocumentContent(
+                text: text,
+                byteCount: data.count,
+                readByteCount: previewData.count,
+                truncated: data.count > previewData.count
+            )
+        } catch {
+            perfTracker.increment("artifact.document.readError")
+            return VantageDocumentContent(
+                text: "Unable to preview \(path): \(error.localizedDescription)",
+                byteCount: 0,
+                readByteCount: 0,
+                truncated: false
+            )
+        }
+    }
+
+    private func documentPreviewByteLimit(for kind: VantageDocumentKind) -> Int {
+        switch kind {
+        case .diff:
+            1_024 * 1_024
+        default:
+            16 * 1024
+        }
+    }
+
+    private func documentURL(for path: String) -> URL {
+        if path.hasPrefix("/") {
+            return URL(fileURLWithPath: path)
+        }
+        let base = configuration.workingDirectoryURL
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        return base.appendingPathComponent(path)
     }
 
     private func setupGraphitePath(for setupNode: HudVantageSetupNode) throws -> GraphitePath? {
@@ -2985,6 +3811,7 @@ public struct HudVantageSurface: View {
             }
             nodes.removeAll { ids.contains($0.id) }
             selectedIDs.subtract(ids)
+            synchronizeDocumentWatchers()
             persistStateIfConfigured()
 
             return controlResponse(
@@ -3382,6 +4209,9 @@ public struct HudVantageSurface: View {
             if node.title.lowercased() == normalized {
                 return true
             }
+            if node.externalID?.lowercased() == normalized {
+                return true
+            }
             switch node.runtimeIdentity {
             case .localPTY:
                 return false
@@ -3389,6 +4219,9 @@ public struct HudVantageSurface: View {
                 return target.lowercased() == normalized
                     || path?.description.lowercased() == normalized
                     || remoteHost.map { "\($0):\(target)".lowercased() == normalized } == true
+            case .document(let artifact):
+                return artifact.path?.lowercased() == normalized
+                    || artifact.role?.lowercased() == normalized
             }
         }
     }
@@ -3579,6 +4412,7 @@ public struct HudVantageSurface: View {
             )
             applyLayoutSnapshot(snapshot.layout)
             nextZIndex = (nodes.map(\.zIndex).max() ?? 0) + 1
+            synchronizeDocumentWatchers()
 
             return controlResponse(
                 command,
@@ -3733,12 +4567,30 @@ public struct HudVantageSurface: View {
     }
 
     private func durableSnapshot(for node: TerminalNode) -> HudVantageNodeSnapshot? {
-        guard case .tmux(let target, let path, let remoteHost) = node.runtimeIdentity else {
+        let runtime: HudVantageRuntimeReference
+        switch node.runtimeIdentity {
+        case .localPTY:
             return nil
+        case .tmux(let target, let path, let remoteHost):
+            runtime = HudVantageRuntimeReference(
+                kind: "tmux",
+                target: target,
+                graphitePath: path?.description,
+                remoteHost: remoteHost
+            )
+        case .document(let artifact):
+            runtime = HudVantageRuntimeReference(
+                kind: artifact.kind.runtimeKind,
+                path: artifact.path,
+                language: artifact.language,
+                content: artifact.contentSource == .inline ? artifact.content : nil,
+                role: artifact.role
+            )
         }
 
         return HudVantageNodeSnapshot(
             id: node.id,
+            externalID: node.externalID,
             title: node.title,
             subtitle: node.subtitle,
             tint: node.tint.rawValue,
@@ -3749,12 +4601,7 @@ public struct HudVantageSurface: View {
             zIndex: node.zIndex,
             tag: node.tag?.rawValue,
             style: node.styleOverride?.isEmpty == true ? nil : node.styleOverride,
-            runtime: HudVantageRuntimeReference(
-                kind: "tmux",
-                target: target,
-                graphitePath: path?.description,
-                remoteHost: remoteHost
-            )
+            runtime: runtime
         )
     }
 
@@ -3763,6 +4610,7 @@ public struct HudVantageSurface: View {
         case .localPTY:
             return HudVantageControlNode(
                 id: node.id,
+                externalID: node.externalID,
                 title: node.title,
                 subtitle: node.subtitle,
                 runtimeKind: "local-pty",
@@ -3777,12 +4625,31 @@ public struct HudVantageSurface: View {
         case .tmux(let target, let path, let remoteHost):
             return HudVantageControlNode(
                 id: node.id,
+                externalID: node.externalID,
                 title: node.title,
                 subtitle: node.subtitle,
                 runtimeKind: "tmux",
                 target: target,
                 graphitePath: path?.description,
                 remoteHost: remoteHost,
+                selected: selectedIDs.contains(node.id),
+                x: Double(node.origin.x),
+                y: Double(node.origin.y),
+                width: Double(node.size.width),
+                height: Double(node.size.height),
+                zIndex: node.zIndex,
+                tag: node.tag?.rawValue
+            )
+        case .document(let artifact):
+            return HudVantageControlNode(
+                id: node.id,
+                externalID: node.externalID,
+                title: node.title,
+                subtitle: node.subtitle,
+                runtimeKind: artifact.kind.runtimeKind,
+                path: artifact.path,
+                language: artifact.language,
+                role: artifact.role,
                 selected: selectedIDs.contains(node.id),
                 x: Double(node.origin.x),
                 y: Double(node.origin.y),
@@ -3798,7 +4665,39 @@ public struct HudVantageSurface: View {
         from snapshot: HudVantageNodeSnapshot,
         createIfMissing: Bool
     ) throws -> TerminalNode? {
-        guard snapshot.runtime.kind == "tmux" else { return nil }
+        let runtimeKind = snapshot.runtime.kind
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        if isDocumentRuntimeKind(runtimeKind) {
+            let kind = VantageDocumentKind(runtimeKind: runtimeKind)
+            let path = snapshot.runtime.path
+            let artifact = documentArtifact(
+                kind: kind,
+                path: path,
+                language: snapshot.runtime.language ?? inferredLanguage(from: snapshot.runtime.path),
+                inlineContent: snapshot.runtime.content,
+                role: snapshot.runtime.role
+            )
+            return TerminalNode(
+                id: snapshot.id,
+                externalID: snapshot.externalID,
+                index: nextIndex,
+                origin: CGPoint(x: snapshot.x, y: snapshot.y),
+                size: CGSize(
+                    width: max(300.0, CGFloat(snapshot.width)),
+                    height: max(200.0, CGFloat(snapshot.height))
+                ),
+                tint: HudTint.from(token: snapshot.tint),
+                zIndex: snapshot.zIndex,
+                title: snapshot.title,
+                subtitle: snapshot.subtitle,
+                runtimeIdentity: .document(artifact),
+                tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:)),
+                styleOverride: snapshot.style
+            )
+        }
+
+        guard runtimeKind == "tmux" else { return nil }
         guard let targetValue = snapshot.runtime.target else {
             throw HudVantageStateError.missingRuntimeTarget(snapshot.id)
         }
@@ -3824,6 +4723,7 @@ public struct HudVantageSurface: View {
 
         return TerminalNode(
             id: snapshot.id,
+            externalID: snapshot.externalID,
             index: nextIndex,
             origin: CGPoint(x: snapshot.x, y: snapshot.y),
             size: size,
@@ -3939,7 +4839,7 @@ public struct HudVantageSurface: View {
         let windowID = UUID()
         let title = nodesToPopOut.count == 1
             ? nodesToPopOut[0].title
-            : "\(nodesToPopOut.count) terminals"
+            : "\(nodesToPopOut.count) nodes"
         let terminalAppearances = Dictionary(
             uniqueKeysWithValues: nodesToPopOut.map { node in
                 (node.id, terminalAppearance(for: node))
@@ -4099,6 +4999,7 @@ public struct HudVantageSurface: View {
 
     private func stopAllNodes() {
         focusedNodeID = nil
+        cancelDocumentWatchers()
         nodes.forEach { $0.stop() }
         nodes.removeAll(keepingCapacity: true)
         selectedIDs.removeAll()
@@ -4199,6 +5100,9 @@ public struct HudVantageSurface: View {
         }.count
         let liveSurfaceCount = nodes.filter { rendersLiveSurface(for: $0) }.count
         let virtualizedSurfaceCount = max(0, nodes.count - liveSurfaceCount)
+        let documentNodes = nodes.compactMap(\.documentArtifact)
+        let diffNodes = documentNodes.filter { $0.kind == .diff }
+        let truncatedDocumentCount = documentNodes.filter(\.truncated).count
 
         perfTracker.set("surface.nodeCount", to: nodes.count)
         perfTracker.set("surface.selectedCount", to: selectedIDs.count)
@@ -4207,6 +5111,9 @@ public struct HudVantageSurface: View {
         perfTracker.set("surface.remoteTmuxCount", to: remoteTmuxCount)
         perfTracker.set("surface.liveSurfaceCount", to: liveSurfaceCount)
         perfTracker.set("surface.virtualizedSurfaceCount", to: virtualizedSurfaceCount)
+        perfTracker.set("surface.documentCount", to: documentNodes.count)
+        perfTracker.set("surface.diffCount", to: diffNodes.count)
+        perfTracker.set("surface.truncatedDocumentCount", to: truncatedDocumentCount)
         perfTracker.set("surface.focusModeActive", to: isTerminalFocusActive ? 1 : 0)
         perfTracker.set("surface.popOutWindowCount", to: popOutWindows.count)
 
@@ -4345,6 +5252,68 @@ private struct TerminalNodeView: View {
         screenSize.width < 110 || screenSize.height < 74
     }
 
+    private enum TitleBarMode: Equatable {
+        case full
+        case compact
+        case minimal
+    }
+
+    private var titleBarMode: TitleBarMode {
+        if screenSize.width < HudVantageMetrics.terminalMinimalChromeWidth
+            || screenSize.height < HudVantageMetrics.terminalMinimalChromeHeight {
+            return .minimal
+        }
+        if screenSize.width < HudVantageMetrics.terminalCompactChromeWidth
+            || screenSize.height < HudVantageMetrics.terminalCompactChromeHeight {
+            return .compact
+        }
+        return .full
+    }
+
+    private var titleBarSpacing: CGFloat {
+        switch titleBarMode {
+        case .full: HudSpacing.lg
+        case .compact: HudSpacing.md
+        case .minimal: HudSpacing.sm
+        }
+    }
+
+    private var titleBarHorizontalPadding: CGFloat {
+        switch titleBarMode {
+        case .full: HudSpacing.xxl
+        case .compact: HudSpacing.lg
+        case .minimal: HudSpacing.md
+        }
+    }
+
+    private var shouldShowSecondaryTitleChrome: Bool {
+        titleBarMode == .full
+            && screenSize.width >= HudVantageMetrics.terminalSecondaryChromeWidth
+            && screenSize.height >= HudVantageMetrics.terminalSecondaryChromeHeight
+    }
+
+    private var shouldShowCompactFocusButton: Bool {
+        titleBarMode == .compact
+            && screenSize.width >= HudVantageMetrics.terminalCompactChromeWidth - HudSpacing.xxxl
+            && screenSize.height >= HudVantageMetrics.terminalCompactChromeHeight
+    }
+
+    private var titleBarKindLabel: String {
+        switch node.runtimeIdentity {
+        case .localPTY:
+            "PTY"
+        case .tmux(_, _, let remoteHost):
+            remoteHost == nil ? "TMUX" : "SSH"
+        case .document(let artifact):
+            artifact.kind.badge
+        }
+    }
+
+    private var shouldShowKindBadge: Bool {
+        titleBarMode == .compact
+            && screenSize.width >= HudVantageMetrics.terminalMinimalChromeWidth + HudSpacing.xxxl
+    }
+
     private var terminalAppearance: HudTerminalAppearance {
         var resolved = workspaceStyleProfile
         if let tag = node.tag {
@@ -4366,7 +5335,7 @@ private struct TerminalNodeView: View {
         }
         .onTapGesture(perform: onSelect)
         .contextMenu {
-            Button(isFocused ? "Focused" : "Focus Terminal", action: onFocus)
+            Button(isFocused ? "Focused" : "Focus Node", action: onFocus)
                 .disabled(isFocused)
             Button("Pop Out", action: onPopOut)
             Button("Appearance Settings", action: onAppearanceSettings)
@@ -4387,13 +5356,21 @@ private struct TerminalNodeView: View {
         } else {
             VStack(spacing: 0) {
                 titleBar
-                if rendersLiveSurface {
+                if rendersLiveSurface, let controller = node.controller {
                     TerminalSurfaceContainer(
-                        controller: node.controller,
+                        controller: controller,
                         appearance: terminalAppearance
                     )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(terminalAppearance.backgroundColor)
+                } else if node.documentArtifact != nil {
+                    DocumentArtifactPreview(
+                        node: node,
+                        mode: isFocused ? .full : .canvas,
+                        canvasDetail: documentCanvasDetail
+                    )
+                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                        .background(theme.palette.bg)
                 } else {
                     TerminalPreview(node: node)
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -4401,7 +5378,7 @@ private struct TerminalNodeView: View {
                 }
             }
             .frame(width: screenSize.width, height: screenSize.height)
-            .background(terminalAppearance.backgroundColor)
+            .background(node.isTerminal ? terminalAppearance.backgroundColor : theme.palette.bg)
             .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
             .overlay(
                 RoundedRectangle(cornerRadius: theme.radius.card)
@@ -4424,56 +5401,128 @@ private struct TerminalNodeView: View {
     }
 
     private var titleBar: some View {
-        HStack(spacing: HudSpacing.lg) {
-            HStack(spacing: HudSpacing.sm) {
-                Circle()
-                    .fill(theme.palette.statusError)
-                    .frame(
-                        width: HudVantageMetrics.terminalTrafficLightSize,
-                        height: HudVantageMetrics.terminalTrafficLightSize
-                    )
-                    .onTapGesture {
-                        onClose()
-                    }
-                Circle()
-                    .fill(theme.palette.statusWarn)
-                    .frame(
-                        width: HudVantageMetrics.terminalTrafficLightSize,
-                        height: HudVantageMetrics.terminalTrafficLightSize
-                    )
-                Circle()
-                    .fill(node.tint.color)
-                    .frame(
-                        width: HudVantageMetrics.terminalTrafficLightSize,
-                        height: HudVantageMetrics.terminalTrafficLightSize
-                    )
-            }
-            Image(systemName: "terminal")
-                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                .foregroundStyle(theme.palette.muted)
+        HStack(spacing: titleBarSpacing) {
+            titleBarLeadingChrome
             Text(node.title)
-                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                .font(HudFont.mono(titleBarMode == .minimal ? HudTextSize.xxs : HudTextSize.sm, weight: .semibold))
                 .foregroundStyle(theme.palette.ink)
                 .lineLimit(1)
                 .minimumScaleFactor(0.82)
-            Spacer()
-            Text(node.subtitle)
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(theme.palette.dim)
-                .lineLimit(1)
-                .minimumScaleFactor(0.75)
-            CanvasIconButton(
-                systemName: "rectangle.inset.filled",
-                help: "Focus terminal",
-                action: onFocus
-            )
-            .disabled(isFocused)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            if titleBarMode == .full {
+                if shouldShowSecondaryTitleChrome {
+                    Text(node.subtitle)
+                        .font(HudFont.mono(HudTextSize.xxs))
+                        .foregroundStyle(theme.palette.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.75)
+                        .truncationMode(.middle)
+                }
+                if let liveSource = node.liveSource {
+                    HudLiveIndicator(source: liveSource, displayMode: .compact)
+                }
+                titleBarFocusButton
+            } else if titleBarMode == .compact {
+                if let liveSource = node.liveSource {
+                    HudLiveIndicator(source: liveSource, displayMode: .dot)
+                }
+                if shouldShowCompactFocusButton {
+                    titleBarFocusButton
+                }
+            } else if let liveSource = node.liveSource {
+                HudLiveIndicator(source: liveSource, displayMode: .dot)
+            }
         }
-        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.horizontal, titleBarHorizontalPadding)
         .frame(height: HudVantageMetrics.terminalTitleBarHeight)
         .background(theme.palette.chrome)
         .contentShape(Rectangle())
         .gesture(dragGesture)
+    }
+
+    private var documentCanvasDetail: DocumentArtifactCanvasDetail {
+        if screenSize.width >= 640, screenSize.height >= 380 {
+            return .preview
+        }
+        if screenSize.width >= 430, screenSize.height >= 250 {
+            return .metrics
+        }
+        return .summary
+    }
+
+    @ViewBuilder
+    private var titleBarLeadingChrome: some View {
+        switch titleBarMode {
+        case .full:
+            fullTitleBarLights
+            Image(systemName: node.symbolName)
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+        case .compact:
+            if shouldShowKindBadge {
+                HudBadge(titleBarKindLabel, tint: node.tint.color, dot: true)
+            } else {
+                sourceDot
+                Image(systemName: node.symbolName)
+                    .font(HudFont.ui(HudTextSize.xxs, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+            }
+        case .minimal:
+            sourceDot
+            Image(systemName: node.symbolName)
+                .font(HudFont.ui(HudTextSize.xxs, weight: .semibold))
+                .foregroundStyle(theme.palette.muted)
+        }
+    }
+
+    private var fullTitleBarLights: some View {
+        HStack(spacing: HudSpacing.sm) {
+            closeLight
+            Circle()
+                .fill(theme.palette.statusWarn)
+                .frame(
+                    width: HudVantageMetrics.terminalTrafficLightSize,
+                    height: HudVantageMetrics.terminalTrafficLightSize
+                )
+            Circle()
+                .fill(node.tint.color)
+                .frame(
+                    width: HudVantageMetrics.terminalTrafficLightSize,
+                    height: HudVantageMetrics.terminalTrafficLightSize
+                )
+        }
+    }
+
+    private var sourceDot: some View {
+        Circle()
+            .fill(node.tint.color)
+            .frame(
+                width: HudVantageMetrics.terminalTrafficLightSize,
+                height: HudVantageMetrics.terminalTrafficLightSize
+            )
+    }
+
+    private var closeLight: some View {
+        Circle()
+            .fill(theme.palette.statusError)
+            .frame(
+                width: HudVantageMetrics.terminalTrafficLightSize,
+                height: HudVantageMetrics.terminalTrafficLightSize
+            )
+            .onTapGesture {
+                onClose()
+            }
+    }
+
+    private var titleBarFocusButton: some View {
+        CanvasIconButton(
+            systemName: "rectangle.inset.filled",
+            help: "Focus node",
+            action: onFocus
+        )
+        .disabled(isFocused)
     }
 
     private var dragGesture: some Gesture {
@@ -4507,7 +5556,7 @@ private struct TerminalNodeView: View {
             )
             .contentShape(Rectangle())
             .help("Resize")
-            .accessibilityLabel("Resize terminal")
+            .accessibilityLabel("Resize node")
             .gesture(
                 DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
                     .onChanged { value in
@@ -4654,14 +5703,20 @@ private struct TerminalPopOutTerminal: View {
     var body: some View {
         VStack(spacing: 0) {
             TerminalPopOutTitleBar(node: node)
-            TerminalSurfaceContainer(
-                controller: node.controller,
-                appearance: terminalAppearance
-            )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-                .background(terminalAppearance.backgroundColor)
+            if let controller = node.controller {
+                TerminalSurfaceContainer(
+                    controller: controller,
+                    appearance: terminalAppearance
+                )
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(terminalAppearance.backgroundColor)
+            } else {
+                DocumentArtifactPreview(node: node, mode: .full, canvasDetail: .preview)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+                    .background(theme.palette.bg)
+            }
         }
-        .background(terminalAppearance.backgroundColor)
+        .background(node.isTerminal ? terminalAppearance.backgroundColor : theme.palette.bg)
     }
 }
 
@@ -4674,14 +5729,20 @@ private struct TerminalPopOutCard: View {
     var body: some View {
         VStack(spacing: 0) {
             TerminalPopOutTitleBar(node: node, onFocus: onFocus)
-            TerminalSurfaceContainer(
-                controller: node.controller,
-                appearance: terminalAppearance
-            )
-                .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
-                .background(terminalAppearance.backgroundColor)
+            if let controller = node.controller {
+                TerminalSurfaceContainer(
+                    controller: controller,
+                    appearance: terminalAppearance
+                )
+                    .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
+                    .background(terminalAppearance.backgroundColor)
+            } else {
+                DocumentArtifactPreview(node: node, mode: .canvas, canvasDetail: .metrics)
+                    .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
+                    .background(theme.palette.bg)
+            }
         }
-        .background(terminalAppearance.backgroundColor)
+        .background(node.isTerminal ? terminalAppearance.backgroundColor : theme.palette.bg)
         .clipShape(RoundedRectangle(cornerRadius: theme.radius.card))
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.card)
@@ -4699,7 +5760,7 @@ private struct TerminalPopOutTitleBar: View {
     var body: some View {
         HStack(spacing: HudSpacing.lg) {
             HudStatusDot(color: node.tint.color, size: HudDotSize.small)
-            Image(systemName: "terminal")
+            Image(systemName: node.symbolName)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(theme.palette.muted)
             Text(node.title)
@@ -4714,7 +5775,7 @@ private struct TerminalPopOutTitleBar: View {
             if let onFocus {
                 CanvasIconButton(
                     systemName: "rectangle.inset.filled",
-                    help: "Focus terminal in pop-out",
+                    help: "Focus node in pop-out",
                     action: onFocus
                 )
             }
@@ -4876,6 +5937,1176 @@ private struct TerminalPreview: View {
             }
             .padding(HudSpacing.xl)
         }
+    }
+}
+
+private enum DocumentArtifactPreviewMode {
+    case canvas
+    case full
+}
+
+private enum DocumentArtifactCanvasDetail {
+    case summary
+    case metrics
+    case preview
+}
+
+private struct DocumentArtifactPreview: View {
+    @ObservedObject var node: TerminalNode
+    let mode: DocumentArtifactPreviewMode
+    let canvasDetail: DocumentArtifactCanvasDetail
+    @Environment(\.hudTheme) private var theme
+
+    private var artifact: VantageDocumentArtifact? {
+        node.documentArtifact
+    }
+
+    var body: some View {
+        switch mode {
+        case .canvas:
+            lightweightCanvasPreview
+                .background(theme.palette.bg)
+        case .full:
+            ZStack(alignment: .topLeading) {
+                theme.palette.bg
+
+                VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                    header
+
+                    if let path = artifact?.path {
+                        Text(path)
+                            .font(HudFont.mono(9))
+                            .foregroundStyle(theme.palette.dim)
+                            .lineLimit(2)
+                            .minimumScaleFactor(0.74)
+                    }
+
+                    fullPreview
+                }
+                .padding(HudSpacing.xl)
+            }
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.md) {
+            HudBadge(artifact?.kind.badge ?? "DOC", tint: node.tint.color, dot: true)
+            if let language = artifact?.language {
+                HudBadge(language.uppercased(), tint: theme.palette.statusInfo)
+            }
+            if let role = artifact?.role {
+                HudBadge(role.uppercased(), tint: theme.palette.dim)
+            }
+            Spacer(minLength: 0)
+        }
+    }
+
+    @ViewBuilder
+    private var lightweightCanvasPreview: some View {
+        switch artifact?.kind {
+        case .diff:
+            DiffArtifactCanvasPreview(
+                document: diffDocument,
+                tint: node.tint.color,
+                byteCount: artifact?.byteCount ?? 0,
+                readByteCount: artifact?.readByteCount ?? 0,
+                isTruncated: artifact?.truncated == true,
+                detail: canvasDetail
+            )
+        case .plan, .note:
+            PlanArtifactCanvasPreview(text: previewText, tint: node.tint.color)
+        default:
+            CodeArtifactCanvasPreview(
+                text: previewText,
+                detail: compactDetail,
+                tint: node.tint.color
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var fullPreview: some View {
+        switch artifact?.kind {
+        case .diff:
+            DiffArtifactFullPreview(document: diffDocument, tint: node.tint.color)
+        case .plan, .note:
+            PlanArtifactFullPreview(text: previewText, tint: node.tint.color)
+        default:
+            CodeArtifactFullPreview(
+                text: previewText,
+                language: artifact?.language,
+                tint: node.tint.color
+            )
+        }
+    }
+
+    private var compactDetail: String {
+        if let path = artifact?.path?.split(separator: "/").last {
+            return String(path)
+        }
+        if let role = artifact?.role {
+            return role
+        }
+        return "manifest-defined artifact"
+    }
+
+    private var previewText: String {
+        let text = artifact?.content.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !text.isEmpty {
+            return text
+        }
+        return "No preview content."
+    }
+
+    private var diffDocument: HudDiffDocument {
+        if let document = artifact?.diffDocument {
+            return document
+        }
+        return HudUnifiedDiffParser.parse(
+            previewText,
+            title: node.title,
+            language: artifact?.language ?? "diff"
+        )
+    }
+}
+
+private struct CodeArtifactCanvasPreview: View {
+    let text: String
+    let detail: String
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            previewBackground
+
+            Canvas { context, size in
+                let gutterWidth: CGFloat = 34
+                let rowHeight: CGFloat = 14
+                let rows = max(4, Int((size.height - HudSpacing.xxl) / rowHeight))
+                let maxWidth = max(24, size.width - gutterWidth - HudSpacing.xxl)
+
+                for row in 0..<rows {
+                    let y = HudSpacing.lg + CGFloat(row) * rowHeight
+                    let numberRect = CGRect(x: HudSpacing.md, y: y, width: 14, height: 1)
+                    let codeRect = CGRect(
+                        x: gutterWidth,
+                        y: y,
+                        width: maxWidth * lineWidthFactor(row),
+                        height: 1.2
+                    )
+                    context.fill(
+                        Path(roundedRect: numberRect, cornerRadius: 0.6),
+                        with: .color(theme.palette.dim.opacity(HudOpacity.soft))
+                    )
+                    context.fill(
+                        Path(roundedRect: codeRect, cornerRadius: 0.6),
+                        with: .color(rowTint(row).opacity(lineOpacity(row)))
+                    )
+                }
+            }
+            .allowsHitTesting(false)
+
+            VStack(alignment: .leading, spacing: HudSpacing.sm) {
+                Text("CODE")
+                    .font(HudFont.mono(10, weight: .bold))
+                    .foregroundStyle(tint)
+                Text(detail)
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(theme.palette.muted)
+                    .lineLimit(2)
+                    .minimumScaleFactor(0.72)
+                Text("focus for line view")
+                    .font(HudFont.mono(9))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            .padding(HudSpacing.xl)
+        }
+        .artifactCardStroke(theme: theme)
+    }
+
+    private var previewBackground: some View {
+        RoundedRectangle(cornerRadius: theme.radius.standard)
+            .fill(theme.palette.ink.opacity(HudOpacity.ghost))
+    }
+
+    private func lineWidthFactor(_ row: Int) -> CGFloat {
+        min(0.95, 0.34 + CGFloat((row * 7) % 11) / 18)
+    }
+
+    private func rowTint(_ row: Int) -> Color {
+        row % 6 == 0 ? tint : theme.palette.ink
+    }
+
+    private func lineOpacity(_ row: Int) -> Double {
+        HudOpacity.subtle + Double(row % 4) * HudOpacity.ghost
+    }
+}
+
+private struct DiffArtifactCanvasPreview: View {
+    let document: HudDiffDocument
+    let tint: Color
+    let byteCount: Int
+    let readByteCount: Int
+    let isTruncated: Bool
+    let detail: DocumentArtifactCanvasDetail
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        ZStack(alignment: .topLeading) {
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(theme.palette.ink.opacity(HudOpacity.ghost))
+
+            VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                HStack(spacing: HudSpacing.sm) {
+                    HudBadge("DIFF", tint: tint, dot: true)
+                    DiffStatPill(
+                        label: "\(document.stats.files)f",
+                        color: theme.palette.statusInfo
+                    )
+                    DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.statusOk)
+                    DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.statusError)
+                    if document.stats.hunks > 0 {
+                        DiffStatPill(
+                            label: "\(document.stats.hunks)h",
+                            color: theme.palette.muted
+                        )
+                    }
+                    Spacer(minLength: 0)
+                }
+
+                diffBody
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+                HStack(spacing: HudSpacing.sm) {
+                    Text(footerLabel)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.dim)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.78)
+                    Spacer(minLength: 0)
+                    if isTruncated {
+                        HudBadge("TRUNC", tint: theme.palette.statusWarn)
+                    }
+                }
+            }
+            .padding(HudSpacing.xl)
+        }
+        .artifactCardStroke(theme: theme)
+    }
+
+    @ViewBuilder
+    private var diffBody: some View {
+        switch detail {
+        case .summary:
+            diffSkeleton
+        case .metrics:
+            ZStack(alignment: .topLeading) {
+                diffSkeleton
+                fileList
+                    .padding(.top, HudSpacing.sm)
+            }
+        case .preview:
+            diffSnippet
+        }
+    }
+
+    private var diffSkeleton: some View {
+        Canvas { context, size in
+            let rowHeight: CGFloat = 16
+            let rows = max(4, Int(size.height / rowHeight))
+            let maxWidth = max(40, size.width - HudSpacing.xxl)
+            for row in 0..<rows {
+                let kind = row % 5
+                let color = kind == 1
+                    ? theme.palette.statusOk
+                    : (kind == 3 ? theme.palette.statusError : theme.palette.ink)
+                let barRect = CGRect(
+                    x: 0,
+                    y: CGFloat(row) * rowHeight + 2,
+                    width: 3,
+                    height: rowHeight - 6
+                )
+                let lineRect = CGRect(
+                    x: HudSpacing.md,
+                    y: CGFloat(row) * rowHeight + 5,
+                    width: maxWidth * min(0.9, 0.42 + CGFloat((row * 5) % 9) / 16),
+                    height: 1.2
+                )
+                context.fill(
+                    Path(roundedRect: barRect, cornerRadius: 1),
+                    with: .color(color.opacity(kind == 0 ? 0.16 : 0.7))
+                )
+                context.fill(
+                    Path(roundedRect: lineRect, cornerRadius: 0.6),
+                    with: .color(color.opacity(kind == 0 ? 0.14 : 0.28))
+                )
+            }
+        }
+        .allowsHitTesting(false)
+    }
+
+    private var fileList: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.xs) {
+            ForEach(Array(document.files.prefix(4))) { file in
+                HStack(spacing: HudSpacing.sm) {
+                    Circle()
+                        .fill(file.stats.deletions > 0 ? theme.palette.statusError : theme.palette.statusOk)
+                        .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
+                    Text(file.displayPath)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.muted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Text("+\(file.stats.additions) -\(file.stats.deletions)")
+                        .font(HudFont.mono(8))
+                        .foregroundStyle(theme.palette.dim)
+                }
+            }
+        }
+        .padding(HudSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
+        )
+    }
+
+    private var diffSnippet: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.xs) {
+            if let firstFile = document.files.first {
+                HStack(spacing: HudSpacing.sm) {
+                    Text(firstFile.displayPath)
+                        .font(HudFont.mono(9, weight: .semibold))
+                        .foregroundStyle(theme.palette.muted)
+                        .lineLimit(1)
+                        .truncationMode(.middle)
+                    Spacer(minLength: 0)
+                    Text("+\(firstFile.stats.additions) -\(firstFile.stats.deletions)")
+                        .font(HudFont.mono(8))
+                        .foregroundStyle(theme.palette.dim)
+                }
+            }
+            ForEach(snippetRows) { row in
+                HStack(spacing: HudSpacing.sm) {
+                    Text(row.marker)
+                        .font(HudFont.mono(9, weight: .bold))
+                        .foregroundStyle(color(for: row.kind))
+                        .frame(width: HudSpacing.lg)
+                    Text(row.text.isEmpty ? " " : row.text)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(row.kind == .context ? theme.palette.muted : color(for: row.kind))
+                        .lineLimit(1)
+                        .truncationMode(.tail)
+                }
+            }
+        }
+        .padding(HudSpacing.md)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
+        )
+    }
+
+    private var snippetRows: [HudDiffRow] {
+        document.files
+            .first?
+            .hunks
+            .first?
+            .rows
+            .prefix(8)
+            .map { $0 } ?? []
+    }
+
+    private func color(for kind: HudDiffRowKind) -> Color {
+        switch kind {
+        case .addition: theme.palette.statusOk
+        case .deletion: theme.palette.statusError
+        case .context: theme.palette.muted
+        case .metadata: theme.palette.statusInfo
+        }
+    }
+
+
+    private var footerLabel: String {
+        let fileLabel = "\(document.stats.files) file\(document.stats.files == 1 ? "" : "s")"
+        let hunkLabel = "\(document.stats.hunks) hunk\(document.stats.hunks == 1 ? "" : "s")"
+        if byteCount > 0 {
+            return "\(fileLabel) · \(hunkLabel) · \(formattedBytes(readByteCount))"
+        }
+        return "\(fileLabel) · \(hunkLabel)"
+    }
+}
+
+private struct PlanArtifactCanvasPreview: View {
+    let text: String
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudBadge("PLAN", tint: tint, dot: true)
+            VStack(alignment: .leading, spacing: HudSpacing.md) {
+                ForEach(planLines, id: \.self) { line in
+                    HStack(spacing: HudSpacing.md) {
+                        Circle()
+                            .stroke(tint.opacity(HudOpacity.emphatic), lineWidth: HudStrokeWidth.standard)
+                            .frame(width: HudDotSize.medium, height: HudDotSize.medium)
+                        Text(line)
+                            .font(HudFont.mono(10))
+                            .foregroundStyle(theme.palette.muted)
+                            .lineLimit(1)
+                    }
+                }
+            }
+            Spacer(minLength: 0)
+        }
+        .padding(HudSpacing.xl)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(theme.palette.ink.opacity(HudOpacity.ghost))
+        )
+        .artifactCardStroke(theme: theme)
+    }
+
+    private var planLines: [String] {
+        let lines = text
+            .split(separator: "\n")
+            .map { String($0).trimmingCharacters(in: .whitespacesAndNewlines) }
+            .filter { !$0.isEmpty && !$0.hasPrefix("#") }
+            .prefix(6)
+            .map { line in
+                line
+                    .replacingOccurrences(of: #"^[-*]\s+"#, with: "", options: .regularExpression)
+                    .replacingOccurrences(of: #"^\d+\.\s+"#, with: "", options: .regularExpression)
+            }
+        return lines.isEmpty ? ["Manifest-defined plan"] : Array(lines)
+    }
+}
+
+private struct CodeArtifactFullPreview: View {
+    let text: String
+    let language: String?
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    private var lines: [String] {
+        previewLines(text, limit: 420)
+    }
+
+    var body: some View {
+        ReadOnlyArtifactWebPreview(
+            payload: ArtifactHTMLRenderer.codePayload(
+                lines: lines,
+                language: language,
+                tintHex: "#5eead4"
+            )
+        )
+        .artifactFullSurface(theme: theme)
+    }
+
+    private func syntaxTint(for line: String) -> Color {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") {
+            return theme.palette.dim
+        }
+        if trimmed.hasPrefix("import ") || trimmed.hasPrefix("@") {
+            return theme.palette.statusInfo
+        }
+        if trimmed.contains("func ") || trimmed.contains("struct ") || trimmed.contains("class ") {
+            return tint
+        }
+        if trimmed.contains("let ") || trimmed.contains("var ") {
+            return theme.palette.statusOk
+        }
+        return theme.palette.ink
+    }
+}
+
+private struct CodeLineRow: View {
+    let number: Int
+    let line: String
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            Text("\(number)")
+                .font(HudFont.mono(10))
+                .foregroundStyle(theme.palette.dim)
+                .frame(width: HudIconSize.huge, alignment: .trailing)
+                .padding(.trailing, HudSpacing.lg)
+            Rectangle()
+                .fill(tint.opacity(number % 7 == 0 ? HudOpacity.muted : HudOpacity.subtle))
+                .frame(width: HudStrokeWidth.bold)
+                .padding(.trailing, HudSpacing.lg)
+            Text(line.isEmpty ? " " : line)
+                .font(HudFont.mono(11))
+                .foregroundStyle(tint)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .padding(.vertical, HudSpacing.xxs)
+        .padding(.trailing, HudSpacing.xxl)
+    }
+}
+
+private struct DiffArtifactFullPreview: View {
+    let document: HudDiffDocument
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        NativeDiffFullPreview(document: document, tint: tint)
+        .artifactFullSurface(theme: theme)
+    }
+}
+
+private struct NativeDiffFullPreview: View {
+    let document: HudDiffDocument
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: HudSpacing.md) {
+                HudBadge("DIFF", tint: tint, dot: true)
+                Text("\(document.stats.files) file\(document.stats.files == 1 ? "" : "s")")
+                    .font(HudFont.mono(10))
+                    .foregroundStyle(theme.palette.muted)
+                Spacer(minLength: 0)
+                DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.statusOk)
+                DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.statusError)
+            }
+            .padding(.horizontal, HudSpacing.xl)
+            .frame(height: HudLayout.rowHeightRegular)
+
+            HudDivider(color: theme.hairline.subtle)
+
+            ScrollView([.vertical, .horizontal]) {
+                LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
+                    ForEach(document.files) { file in
+                        NativeDiffFileSection(file: file, tint: tint)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .padding(.vertical, HudSpacing.md)
+            }
+        }
+    }
+}
+
+private struct NativeDiffFileSection: View {
+    let file: HudDiffFile
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HStack(spacing: HudSpacing.md) {
+                HudStatusDot(color: theme.palette.statusWarn, size: HudDotSize.small)
+                Text(file.displayPath)
+                    .font(HudFont.mono(11, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+                Text("+\(file.stats.additions) -\(file.stats.deletions)")
+                    .font(HudFont.mono(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.dim)
+            }
+            .padding(.horizontal, HudSpacing.xl)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(theme.palette.statusWarn.opacity(HudOpacity.ghost))
+
+            ForEach(file.hunks) { hunk in
+                NativeDiffHunkSection(hunk: hunk)
+            }
+        }
+    }
+}
+
+private struct NativeDiffHunkSection: View {
+    let hunk: HudDiffHunk
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(hunk.header ?? "@@ -\(hunk.oldStart),\(hunk.oldLineCount) +\(hunk.newStart),\(hunk.newLineCount) @@")
+                .font(HudFont.mono(10, weight: .semibold))
+                .foregroundStyle(theme.palette.statusInfo)
+                .padding(.horizontal, HudSpacing.xl)
+                .frame(minWidth: HudLayout.cliffWidth, minHeight: HudLayout.rowHeightCompact, alignment: .leading)
+                .background(theme.palette.statusInfo.opacity(HudOpacity.ghost))
+
+            ForEach(hunk.rows) { row in
+                NativeDiffRowView(row: row)
+            }
+        }
+    }
+}
+
+private struct NativeDiffRowView: View {
+    let row: HudDiffRow
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 0) {
+            Rectangle()
+                .fill(barColor)
+                .frame(width: HudStrokeWidth.bold + HudStrokeWidth.standard)
+            Text(row.oldLine.map(String.init) ?? "")
+                .font(HudFont.mono(10))
+                .foregroundStyle(gutterColor)
+                .frame(width: HudLayout.rowHeightRegular, alignment: .trailing)
+                .padding(.trailing, HudSpacing.md)
+            Text(row.newLine.map(String.init) ?? "")
+                .font(HudFont.mono(10))
+                .foregroundStyle(gutterColor)
+                .frame(width: HudLayout.rowHeightRegular, alignment: .trailing)
+                .padding(.trailing, HudSpacing.lg)
+            Text(row.marker)
+                .font(HudFont.mono(11, weight: .semibold))
+                .foregroundStyle(barColor)
+                .frame(width: HudIconSize.micro, alignment: .center)
+            Text(row.text.isEmpty ? " " : row.text)
+                .font(HudFont.mono(11))
+                .foregroundStyle(textColor)
+                .textSelection(.enabled)
+                .fixedSize(horizontal: true, vertical: false)
+        }
+        .frame(minWidth: HudLayout.cliffWidth, minHeight: HudSpacing.xxxl, alignment: .leading)
+        .background(backgroundColor)
+    }
+
+    private var barColor: Color {
+        switch row.kind {
+        case .addition: theme.palette.statusOk
+        case .deletion: theme.palette.statusError
+        case .context: Color.clear
+        case .metadata: theme.palette.dim
+        }
+    }
+
+    private var backgroundColor: Color {
+        switch row.kind {
+        case .addition: theme.palette.statusOk.opacity(HudOpacity.subtle)
+        case .deletion: theme.palette.statusError.opacity(HudOpacity.subtle)
+        case .metadata: theme.palette.ink.opacity(HudOpacity.ghost)
+        case .context: Color.clear
+        }
+    }
+
+    private var gutterColor: Color {
+        switch row.kind {
+        case .addition, .deletion: barColor.opacity(HudOpacity.emphatic)
+        default: theme.palette.dim
+        }
+    }
+
+    private var textColor: Color {
+        switch row.kind {
+        case .addition, .deletion: theme.palette.ink
+        case .metadata: theme.palette.muted
+        case .context: theme.palette.ink.opacity(HudOpacity.emphatic)
+        }
+    }
+}
+
+private struct PlanArtifactFullPreview: View {
+    let text: String
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        VStack(spacing: 0) {
+            artifactHeader(title: "PLAN", detail: "workspace intent", tint: tint)
+            HudDivider(color: theme.hairline.subtle)
+            ScrollView {
+                VStack(alignment: .leading, spacing: HudSpacing.lg) {
+                    ForEach(Array(previewLines(text, limit: 180).enumerated()), id: \.offset) { _, line in
+                        PlanLineRow(line: line, tint: tint)
+                    }
+                }
+                .padding(HudSpacing.xl)
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+        .artifactFullSurface(theme: theme)
+    }
+}
+
+private struct PlanLineRow: View {
+    let line: String
+    let tint: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        if line.hasPrefix("#") {
+            Text(line.replacingOccurrences(of: #"^#+\s*"#, with: "", options: .regularExpression))
+                .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+        } else {
+            HStack(alignment: .top, spacing: HudSpacing.md) {
+                Circle()
+                    .fill(tint.opacity(HudOpacity.emphatic))
+                    .frame(width: HudDotSize.small, height: HudDotSize.small)
+                    .padding(.top, HudSpacing.sm)
+                Text(cleanedLine)
+                    .font(HudFont.mono(11))
+                    .foregroundStyle(theme.palette.muted)
+                    .textSelection(.enabled)
+            }
+        }
+    }
+
+    private var cleanedLine: String {
+        line
+            .replacingOccurrences(of: #"^[-*]\s+"#, with: "", options: .regularExpression)
+            .replacingOccurrences(of: #"^\d+\.\s+"#, with: "", options: .regularExpression)
+    }
+}
+
+private struct DiffStatPill: View {
+    let label: String
+    let color: Color
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Text(label)
+            .font(HudFont.mono(9, weight: .bold))
+            .foregroundStyle(color)
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.rowHeightCompact)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.tight)
+                    .fill(color.opacity(HudOpacity.subtle))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.tight)
+                    .stroke(color.opacity(HudOpacity.soft))
+            )
+    }
+}
+
+private struct ArtifactWebPayload: Codable, Equatable {
+    var kind: String
+    var title: String
+    var subtitle: String
+    var tintHex: String
+    var stats: [ArtifactWebStat] = []
+    var rows: [ArtifactWebRow]
+}
+
+private struct ArtifactWebStat: Codable, Equatable {
+    var label: String
+    var kind: String
+}
+
+private struct ArtifactWebRow: Codable, Equatable {
+    var kind: String
+    var number: Int?
+    var oldLine: Int?
+    var newLine: Int?
+    var marker: String?
+    var text: String
+}
+
+private struct ReadOnlyArtifactWebPreview: NSViewRepresentable {
+    let payload: ArtifactWebPayload
+
+    func makeNSView(context: Context) -> WKWebView {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.navigationDelegate = context.coordinator
+        webView.setValue(false, forKey: "drawsBackground")
+        webView.loadHTMLString(ArtifactHTMLRenderer.shellHTML, baseURL: nil)
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.payload = payload
+        context.coordinator.renderPayloadIfReady(in: webView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(payload: payload)
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate {
+        var payload: ArtifactWebPayload
+        private var isReady = false
+        private var renderedPayload: ArtifactWebPayload?
+        private let encoder = JSONEncoder()
+
+        init(payload: ArtifactWebPayload) {
+            self.payload = payload
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            isReady = true
+            renderPayloadIfReady(in: webView, force: true)
+        }
+
+        func renderPayloadIfReady(in webView: WKWebView, force: Bool = false) {
+            guard isReady else { return }
+            guard force || renderedPayload != payload else { return }
+            guard let data = try? encoder.encode(payload),
+                  let json = String(data: data, encoding: .utf8)
+            else { return }
+
+            renderedPayload = payload
+            webView.evaluateJavaScript("window.__hudsonRender(\(json));", completionHandler: nil)
+        }
+    }
+}
+
+private enum ArtifactHTMLRenderer {
+    static func codePayload(lines: [String], language: String?, tintHex: String) -> ArtifactWebPayload {
+        ArtifactWebPayload(
+            kind: "code",
+            title: language?.uppercased() ?? "CODE",
+            subtitle: "\(lines.count) visible lines",
+            tintHex: tintHex,
+            rows: lines.enumerated().map { index, line in
+                ArtifactWebRow(
+                    kind: codeKind(line),
+                    number: index + 1,
+                    text: line.isEmpty ? " " : line
+                )
+            }
+        )
+    }
+
+    static let shellHTML = #"""
+        <!doctype html>
+        <html>
+        <head>
+          <meta charset="utf-8">
+          <meta name="viewport" content="width=device-width, initial-scale=1">
+          <style>
+            :root {
+              color-scheme: dark;
+              --bg: #111414;
+              --panel: #151918;
+              --panel-2: #0d100f;
+              --line: rgba(255,255,255,.08);
+              --line-soft: rgba(255,255,255,.05);
+              --text: #e6f2ed;
+              --muted: #7f8d89;
+              --dim: #56625f;
+              --tint: #5eead4;
+              --add: #24d77e;
+              --del: #ff5f6d;
+              --info: #4aa8ff;
+              --warn: #f7b955;
+            }
+            * { box-sizing: border-box; }
+            html, body {
+              width: 100%;
+              min-height: 100%;
+              margin: 0;
+              background: var(--bg);
+              color: var(--text);
+              font: 12px ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+              overflow: auto;
+            }
+            body { padding: 0; }
+            header {
+              position: sticky;
+              top: 0;
+              z-index: 2;
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              min-height: 40px;
+              padding: 8px 14px;
+              border-bottom: 1px solid var(--line);
+              background: color-mix(in srgb, var(--panel-2) 92%, transparent);
+              backdrop-filter: blur(16px);
+            }
+            .badge {
+              display: inline-flex;
+              align-items: center;
+              gap: 6px;
+              height: 20px;
+              padding: 0 8px;
+              border: 1px solid color-mix(in srgb, var(--tint) 45%, transparent);
+              border-radius: 5px;
+              color: var(--tint);
+              background: color-mix(in srgb, var(--tint) 14%, transparent);
+              font-weight: 700;
+              letter-spacing: .08em;
+              font-size: 10px;
+            }
+            .badge:before {
+              content: "";
+              width: 5px;
+              height: 5px;
+              border-radius: 999px;
+              background: var(--tint);
+            }
+            .subtitle { color: var(--muted); font-size: 11px; }
+            .spacer { flex: 1; }
+            .stats {
+              display: inline-flex;
+              align-items: center;
+              gap: 8px;
+            }
+            .stat {
+              height: 22px;
+              min-width: 32px;
+              display: inline-flex;
+              align-items: center;
+              justify-content: center;
+              padding: 0 8px;
+              border-radius: 5px;
+              font-weight: 700;
+            }
+            .stat.add { color: var(--add); background: color-mix(in srgb, var(--add) 13%, transparent); }
+            .stat.del { color: var(--del); background: color-mix(in srgb, var(--del) 13%, transparent); }
+            .stat.info { color: var(--info); background: color-mix(in srgb, var(--info) 13%, transparent); }
+            main {
+              width: max-content;
+              min-width: 100%;
+              padding: 10px 0 18px 0;
+            }
+            pre {
+              margin: 0;
+              white-space: pre;
+              font: inherit;
+              line-height: 18px;
+            }
+            .code-row,
+            .diff-row {
+              display: grid;
+              align-items: start;
+              min-height: 20px;
+            }
+            .code-row {
+              grid-template-columns: 52px 3px minmax(620px, max-content);
+              column-gap: 14px;
+              padding: 1px 22px 1px 0;
+            }
+            .code-row .ln,
+            .diff-row .ln {
+              color: var(--dim);
+              text-align: right;
+              user-select: none;
+            }
+            .code-row .bar {
+              width: 2px;
+              min-height: 18px;
+              border-radius: 2px;
+              background: var(--line);
+            }
+            .code-row.decl .bar { background: color-mix(in srgb, var(--tint) 68%, transparent); }
+            .code-row.import .bar { background: color-mix(in srgb, var(--info) 62%, transparent); }
+            .code-row.comment pre { color: var(--muted); }
+            .code-row.decl pre { color: var(--text); font-weight: 700; }
+            .code-row.import pre { color: #b9dcff; }
+            .diff-row {
+              grid-template-columns: 3px 30px 30px 16px minmax(540px, max-content);
+              column-gap: 8px;
+              padding: 1px 24px 1px 0;
+            }
+            .diff-row .change-bar {
+              width: 3px;
+              min-height: 20px;
+              border-radius: 2px;
+              background: transparent;
+            }
+            .diff-row .mark {
+              color: var(--dim);
+              text-align: center;
+              font-weight: 700;
+              user-select: none;
+            }
+            .diff-row.file,
+            .diff-row.hunk,
+            .diff-row.meta {
+              grid-template-columns: 3px 16px minmax(540px, max-content);
+              column-gap: 8px;
+            }
+            .diff-row.file .old,
+            .diff-row.file .new,
+            .diff-row.hunk .old,
+            .diff-row.hunk .new,
+            .diff-row.meta .old,
+            .diff-row.meta .new {
+              display: none;
+            }
+            .diff-row.file .mark,
+            .diff-row.hunk .mark,
+            .diff-row.meta .mark {
+              grid-column: 2;
+            }
+            .diff-row.file pre,
+            .diff-row.hunk pre,
+            .diff-row.meta pre {
+              grid-column: 3;
+            }
+            .diff-row.add {
+              background: linear-gradient(90deg, color-mix(in srgb, var(--add) 11%, transparent), transparent 72%);
+            }
+            .diff-row.add .change-bar { background: var(--add); }
+            .diff-row.add .mark,
+            .diff-row.add .ln { color: var(--add); }
+            .diff-row.del {
+              background: linear-gradient(90deg, color-mix(in srgb, var(--del) 12%, transparent), transparent 72%);
+            }
+            .diff-row.del .change-bar { background: var(--del); }
+            .diff-row.del .mark,
+            .diff-row.del .ln { color: var(--del); }
+            .diff-row.hunk {
+              margin-top: 8px;
+              background: color-mix(in srgb, var(--info) 10%, transparent);
+              color: #b9dcff;
+            }
+            .diff-row.hunk .change-bar { background: var(--info); }
+            .diff-row.file {
+              margin-top: 10px;
+              background: color-mix(in srgb, var(--warn) 10%, transparent);
+              font-weight: 700;
+            }
+            .diff-row.file .change-bar { background: var(--warn); }
+            .diff-row.meta { color: var(--muted); background: var(--line-soft); }
+            ::selection { background: color-mix(in srgb, var(--tint) 35%, transparent); }
+          </style>
+        </head>
+        <body>
+          <header>
+            <span id="badge" class="badge">READY</span>
+            <span id="subtitle" class="subtitle">waiting for payload</span>
+            <span class="spacer"></span>
+            <span id="stats" class="stats"></span>
+          </header>
+          <main id="content" class="code-view"></main>
+          <script>
+            (function () {
+              const badge = document.getElementById("badge");
+              const subtitle = document.getElementById("subtitle");
+              const stats = document.getElementById("stats");
+              const content = document.getElementById("content");
+
+              function textElement(tag, className, value) {
+                const element = document.createElement(tag);
+                if (className) element.className = className;
+                element.textContent = value == null || value === "" ? " " : String(value);
+                return element;
+              }
+
+              function renderStats(values) {
+                stats.replaceChildren();
+                (values || []).forEach(function (stat) {
+                  const element = textElement("span", "stat " + (stat.kind || "info"), stat.label);
+                  stats.appendChild(element);
+                });
+              }
+
+              function renderCodeRow(row) {
+                const element = document.createElement("div");
+                element.className = "code-row " + (row.kind || "plain");
+                element.appendChild(textElement("div", "ln", row.number));
+                const bar = document.createElement("div");
+                bar.className = "bar";
+                element.appendChild(bar);
+                element.appendChild(textElement("pre", "", row.text));
+                return element;
+              }
+
+              function renderDiffRow(row) {
+                const element = document.createElement("div");
+                element.className = "diff-row " + (row.kind || "ctx");
+                const bar = document.createElement("div");
+                bar.className = "change-bar";
+                element.appendChild(bar);
+                element.appendChild(textElement("div", "ln old", row.oldLine));
+                element.appendChild(textElement("div", "ln new", row.newLine));
+                element.appendChild(textElement("div", "mark", row.marker));
+                element.appendChild(textElement("pre", "", row.text));
+                return element;
+              }
+
+              window.__hudsonRender = function (payload) {
+                const next = payload || {};
+                document.documentElement.style.setProperty("--tint", next.tintHex || "#5eead4");
+                badge.textContent = next.title || "PREVIEW";
+                subtitle.textContent = next.subtitle || "";
+                renderStats(next.stats);
+                content.className = next.kind === "diff" ? "diff-view" : "code-view";
+                content.replaceChildren();
+                (next.rows || []).forEach(function (row) {
+                  content.appendChild(next.kind === "diff" ? renderDiffRow(row) : renderCodeRow(row));
+                });
+              };
+            }());
+          </script>
+        </body>
+        </html>
+        """#
+
+    private static func codeKind(_ line: String) -> String {
+        let trimmed = line.trimmingCharacters(in: .whitespaces)
+        if trimmed.hasPrefix("//") || trimmed.hasPrefix("#") {
+            return "comment"
+        }
+        if trimmed.hasPrefix("import ") || trimmed.hasPrefix("@") {
+            return "import"
+        }
+        if trimmed.contains("func ") || trimmed.contains("struct ") || trimmed.contains("class ") {
+            return "decl"
+        }
+        return "plain"
+    }
+}
+
+private func artifactHeader(title: String, detail: String, tint: Color) -> some View {
+    HStack(spacing: HudSpacing.md) {
+        HudBadge(title, tint: tint, dot: true)
+        Text(detail)
+            .font(HudFont.mono(10))
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+        Spacer(minLength: 0)
+    }
+    .padding(.horizontal, HudSpacing.xl)
+    .frame(height: HudLayout.rowHeightRegular)
+}
+
+private func previewLines(_ text: String, limit: Int) -> [String] {
+    Array(
+        text
+            .split(separator: "\n", omittingEmptySubsequences: false)
+            .prefix(limit)
+            .map(String.init)
+    )
+}
+
+private extension View {
+    func artifactCardStroke(theme: HudTheme) -> some View {
+        self
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(theme.hairline.subtle)
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+    }
+
+    func artifactFullSurface(theme: HudTheme) -> some View {
+        self
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(theme.palette.ink.opacity(HudOpacity.ghost))
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(theme.hairline.subtle)
+            )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
     }
 }
 
@@ -5053,7 +7284,7 @@ private struct CanvasNavigationPanel: View {
                         }
 
                         if nodes.isEmpty {
-                            Text("No terminals")
+                            Text("No nodes")
                                 .font(HudFont.mono(10))
                                 .foregroundStyle(theme.palette.dim)
                                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -5268,7 +7499,7 @@ private struct CanvasNavigationRow: View {
 
             CanvasIconButton(
                 systemName: "scope",
-                help: "Center terminal",
+                help: "Center node",
                 action: onCenter
             )
         }
@@ -5735,6 +7966,7 @@ private enum VantageAppearanceScope: Hashable, Identifiable {
         }
     }
 
+    @MainActor
     func explanation(selectedNode: TerminalNode?) -> String {
         switch self {
         case .workspace:
@@ -6092,6 +8324,13 @@ private struct TerminalDetailView: View {
                 }
             }
 
+            if let liveSource = node.liveSource {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    HudSectionLabel("Live Source")
+                    HudLiveIndicator(source: liveSource, displayMode: .expanded)
+                }
+            }
+
             HStack(spacing: HudSpacing.md) {
                 HudButton("Center", icon: "scope", style: .secondary, action: onCenter)
                 HudButton("Close", icon: "xmark", style: .ghost, action: onClose)
@@ -6155,7 +8394,7 @@ private struct EmptyInspectorState: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.lg) {
             HudBadge("NO SELECTION", tint: theme.palette.dim)
-            Text("Select a terminal to inspect its canvas placement and runtime identity.")
+            Text("Select a node to inspect its canvas placement and runtime identity.")
                 .font(HudFont.mono(10))
                 .foregroundStyle(theme.palette.muted)
                 .fixedSize(horizontal: false, vertical: true)

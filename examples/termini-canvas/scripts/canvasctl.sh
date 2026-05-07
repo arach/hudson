@@ -19,6 +19,7 @@ Usage:
   canvasctl.sh [--wait] reattach [--remote HOST] [--id GRAPHITE_ID] [--session NAME] [--target TARGET] [--create] [--no-reset]
   canvasctl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
   canvasctl.sh [--wait] inspect [NODE...]
+  canvasctl.sh [--wait] reload-documents [NODE...]
   canvasctl.sh [--wait] focus [NODE...]
   canvasctl.sh [--wait] focus-mode [NODE]
   canvasctl.sh [--wait] exit-focus
@@ -434,6 +435,26 @@ case "$command" in
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
       "\"action\":$(json_string "$action")"
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+    )
+    if [[ ${#node_ids[@]} -gt 0 ]]; then
+      parts+=("\"nodeIDs\":$(json_array "${node_ids[@]}")")
+    fi
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  reload|reload-documents|refresh|refresh-documents)
+    node_ids=()
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --node|--node-id) node_ids+=("${2:?missing node id}"); shift 2 ;;
+        *) node_ids+=("$1"); shift ;;
+      esac
+    done
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"reload-documents\""
       "\"apiVersion\":\"v0\""
       "\"kind\":\"hudson.vantage.command\""
     )

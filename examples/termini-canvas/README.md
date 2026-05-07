@@ -6,6 +6,7 @@ A minimal native macOS HudsonKit instantiation focused only on:
 - `HudVantageSurface`
 - draggable terminal nodes
 - Termini-backed local PTY shells via `HudTerminalSurface`
+- manifest-defined file, plan, and diff artifacts on the same canvas
 
 Run it from the repo root:
 
@@ -23,6 +24,18 @@ That keeps the visible macOS window and the JSONL control API in the same app pr
 
 This example intentionally does not register anything in the existing web demo.
 It is now a thin host around the reusable `HudsonVantage` module.
+
+On first launch, when no saved state exists, the app applies the practice
+manifest at:
+
+```sh
+examples/termini-canvas/examples/hudson-vantage-practice.setup.json
+```
+
+That practice workspace lays out two tmux sessions, two Hudson source files, a
+plan document, and a running diff placeholder. It is deliberately just a
+manifest: agents and host apps can replace it with their own project setup
+without Vantage needing a top-down product model.
 
 ## What belongs where
 
@@ -104,6 +117,7 @@ examples/termini-canvas/scripts/canvasctl.sh --wait exit-focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/hudson-vantage-practice.setup.json --create --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --session hudson-lab
 examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab
@@ -131,10 +145,20 @@ selected node IDs, viewport, metrics, and per-command latency.
 The wrapper `raw` command normalizes ad hoc JSON objects by injecting a
 waitable request id plus the v0 envelope when those fields are missing.
 
-`focus-mode` renders exactly one selected or targeted terminal as the whole
+`focus-mode` renders exactly one selected or targeted node as the whole
 surface and hides the canvas side panels until `exit-focus` or Escape.
-`popout` opens selected or targeted terminals in a separate native window with
-either a live grid or a single-terminal focus tab.
+`popout` opens selected or targeted nodes in a separate native window with
+either a live grid or a single-node focus tab.
+
+`setup` can compose a broader canvas than terminals. In addition to `tmux`,
+manifests can create `file`, `plan`, `diff`, `note`, and `preview` artifact
+nodes with `path`, `language`, and `role` metadata. Their canvas cards stay
+native and lightweight. Opened code artifacts use a read-only web renderer slot
+that loads one local shell and updates it with JSON payloads. Diff artifacts are
+parsed into `HudDiffDocument` through the HudsonDiff core target, then rendered
+natively by Vantage. A React/Shiki/Diffs renderer can still consume the same JSON
+later without placing WebViews on the zooming canvas. Git, the filesystem, tmux,
+and the host product remain the real sources of truth.
 
 `perf-harness` creates a repeatable local tmux stress scene. The default shape
 is 64 sessions with 32 active `tail -n 50 -f` workloads, then the canvas
@@ -163,19 +187,19 @@ confirms with the user before running Homebrew. Agents can request the same path
 with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
 / `confirmInstall: true` before Vantage runs an installer.
 
-`save` persists the current durable tmux-backed canvas state to:
+`save` persists the current durable canvas state to:
 
 ```sh
-/tmp/termini-canvas-state.json
+/tmp/hudson-vantage-practice-state.json
 ```
 
 `save-workspace` is the same durable format with clearer product language for
 portable files such as `/tmp/project.vantage.json`. New saves include
 `kind: "hudson.vantage.workspace"`, optional focus mode state, and
 tag-derived workspace groups. `restore` and `restore-workspace` recreate those
-saved tmux-backed nodes with their previous bounds, z-order, tags, groups,
-selection, focused node, viewport, and Graphite metadata. Use `--state-file
-PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
+saved tmux and artifact nodes with their previous bounds, z-order, tags, groups,
+selection, focused node, viewport, Graphite metadata, and artifact metadata. Use
+`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
 
 For direct executable runs, a startup reattach set can be provided with:
 
@@ -185,5 +209,6 @@ TERMINI_CANVAS_REATTACH_REMOTE_HOST="user@host" \
 HUDSONKIT_WITH_TERMINAL=1 swift run --package-path examples/termini-canvas TerminiCanvas
 ```
 
-The case-study configuration also restores `/tmp/termini-canvas-state.json` on
-launch when that file exists and contains durable tmux nodes.
+The case-study configuration restores `/tmp/hudson-vantage-practice-state.json`
+on launch when that file exists and contains durable nodes. Remove that file to
+see the bundled practice manifest again.

@@ -15,6 +15,8 @@ let voiceEnabled    = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"
 
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
+    .library(name: "HudsonLive", targets: ["HudsonLive"]),
+    .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -28,12 +30,16 @@ var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
     .target(name: "HudsonObservability"),
-    .target(name: "HudsonUI", dependencies: ["HudsonObservability"]),
+    .target(name: "HudsonLive"),
+    .target(name: "HudsonDiff"),
+    .target(name: "HudsonUI", dependencies: ["HudsonLive", "HudsonObservability"]),
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
-    .testTarget(name: "HudsonUITests", dependencies: ["HudsonUI"]),
+    .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"]),
+    .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"]),
+    .testTarget(name: "HudsonUITests", dependencies: ["HudsonUI", "HudsonLive"]),
 ]
 
 if voiceEnabled {
@@ -63,6 +69,8 @@ if terminalEnabled {
         .target(
             name: "HudsonVantage",
             dependencies: [
+                "HudsonDiff",
+                "HudsonLive",
                 "HudsonObservability",
                 "HudsonUI",
                 "HudsonShell",

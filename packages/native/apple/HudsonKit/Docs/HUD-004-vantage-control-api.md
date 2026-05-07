@@ -89,6 +89,9 @@ The seamless model is a short-lived capability, not a modal on every command:
 - Mutating commands such as `setup`, `tile`, `spawn`, `reattach`, `style`,
   `viewport`, `select`, and `popout` are allowed within the enabled workspace
   and should remain visible in command status/audit output.
+- Setup manifests may ask Vantage to display local file, plan, or diff artifacts.
+  Product hosts should scope path-backed artifact reads to trusted workspace
+  roots and avoid returning file contents over the control response channel.
 - High-risk commands that install software, kill sessions, remove nodes, touch
   remote SSH, or cross a product/workspace boundary should require either an
   explicit `confirm` field, a host policy grant, or a user-visible approval.
@@ -133,7 +136,9 @@ Node actions accept any of:
 }
 ```
 
-Selectors can be full or prefix UUIDs, exact node titles, tmux targets, remote tmux targets in `host:target` form, or Graphite paths.
+Selectors can be full or prefix UUIDs, exact manifest ids, exact node titles,
+tmux targets, remote tmux targets in `host:target` form, Graphite paths, or
+path-backed artifact paths.
 
 `selectionMode` accepts `replace`, `add`, `remove`, `toggle`, and `clear`.
 
@@ -234,6 +239,43 @@ Inline manifests are also accepted under `setup` or `manifest`.
       "y": 96,
       "width": 460,
       "height": 280
+    },
+    {
+      "id": "hudson.scout.files.provider",
+      "runtimeKind": "file",
+      "path": "app/apps/scout/ScoutProvider.tsx",
+      "language": "typescript",
+      "role": "source",
+      "title": "ScoutProvider.tsx",
+      "tag": "focus",
+      "x": 80,
+      "y": 452,
+      "width": 620,
+      "height": 360
+    },
+    {
+      "id": "hudson.scout.plan.current",
+      "runtimeKind": "plan",
+      "path": "docs/scout-plan.md",
+      "language": "markdown",
+      "role": "plan",
+      "title": "Current Plan",
+      "x": 732,
+      "y": 452,
+      "width": 500,
+      "height": 360
+    },
+    {
+      "id": "hudson.scout.diff.running",
+      "runtimeKind": "diff",
+      "path": "/tmp/scout-running.diff",
+      "language": "diff",
+      "role": "review",
+      "title": "Running Diff",
+      "x": 1264,
+      "y": 452,
+      "width": 560,
+      "height": 360
     }
   ],
   "selection": ["hudson.scout.agents.codex.0001.worker"],
@@ -243,12 +285,25 @@ Inline manifests are also accepted under `setup` or `manifest`.
 
 Setup application is idempotent:
 
-- Existing nodes are reused by UUID, Graphite path, or tmux target plus remote
-  host.
+- Existing nodes are reused by UUID, manifest id, artifact path, Graphite path,
+  or tmux target plus remote host.
 - Missing nodes are created when `createIfMissing` is true.
 - `removeMissing` prunes canvas nodes not mentioned in the manifest.
 - Re-running the same manifest converges placement, tags, style, selection, and
   viewport instead of duplicating nodes.
+
+Terminals are one node type. `runtimeKind: "file"`, `"plan"`, `"diff"`,
+`"note"`, and `"preview"` create non-PTY canvas artifacts. They are currently
+presentation nodes: Vantage stores layout, identity, tags, and a preview, while
+the filesystem, git diff, tmux session, or host product remains the source of
+truth. The canvas path stays native and lightweight for zoom/pan performance;
+opened code artifacts can use a read-only web renderer slot that loads one local
+shell and receives JSON payload updates. Diff artifacts are parsed into
+`HudDiffDocument` from the HudsonDiff core target, then rendered natively by
+Vantage. Hosts can still drop in richer React/Shiki/Diffs renderers later by
+consuming the same diff JSON, without putting WebViews on the canvas itself.
+Path-backed artifacts read local UTF-8 text for display; responses expose
+metadata such as `path`, `language`, and `role`, but do not echo file contents.
 
 Presentation fields are intentionally host-friendly. `title`, `subtitle`,
 `badge`, and `cobrand` are rendered by Vantage today. `productName`, `hostName`,

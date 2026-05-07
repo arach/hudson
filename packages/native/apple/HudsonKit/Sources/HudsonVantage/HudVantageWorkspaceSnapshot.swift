@@ -73,22 +73,35 @@ public struct HudVantageRuntimeReference: Codable, Hashable, Sendable {
     public var target: String?
     public var graphitePath: String?
     public var remoteHost: String?
+    public var path: String?
+    public var language: String?
+    public var content: String?
+    public var role: String?
 
     public init(
         kind: String,
         target: String? = nil,
         graphitePath: String? = nil,
-        remoteHost: String? = nil
+        remoteHost: String? = nil,
+        path: String? = nil,
+        language: String? = nil,
+        content: String? = nil,
+        role: String? = nil
     ) {
         self.kind = kind
         self.target = target
         self.graphitePath = graphitePath
         self.remoteHost = remoteHost
+        self.path = path
+        self.language = language
+        self.content = content
+        self.role = role
     }
 }
 
 public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable {
     public var id: UUID
+    public var externalID: String?
     public var title: String
     public var subtitle: String
     public var tint: String
@@ -103,6 +116,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
 
     public init(
         id: UUID,
+        externalID: String? = nil,
         title: String,
         subtitle: String,
         tint: String,
@@ -116,6 +130,7 @@ public struct HudVantageNodeSnapshot: Codable, Identifiable, Hashable, Sendable 
         runtime: HudVantageRuntimeReference
     ) {
         self.id = id
+        self.externalID = externalID
         self.title = title
         self.subtitle = subtitle
         self.tint = tint
