@@ -72,3 +72,37 @@ export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from '.
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
+
+export {
+  CodeEditor,
+  CodeViewer,
+  TextDocumentProvider,
+  TextDocumentSurface,
+  TextDocumentSurfaceInner,
+  TextDiffSurface,
+  createHudsonTextDocument,
+  createHudsonTextDiff,
+  detectTextDocumentKind,
+  inferDocumentLanguage,
+  useTextDocument,
+} from './controls';
+export type {
+  CodeEditorProps,
+  CodeLanguage,
+  CodeViewerProps,
+  DocumentLanguage,
+  HudsonTextDocument,
+  TextDocumentDetectionInput,
+  TextDocumentContextValue,
+  TextDocumentKind,
+  TextDocumentMode,
+  TextDocumentProviderProps,
+  TextDocumentSurfaceProps,
+  HudsonTextDiff,
+  HudsonTextDiffSnapshot,
+  HudsonTextDocumentDiff,
+  HudsonTextPatchDiff,
+  TextDiffDetectionInput,
+  TextDiffLayout,
+  TextDiffSurfaceProps,
+} from './controls';

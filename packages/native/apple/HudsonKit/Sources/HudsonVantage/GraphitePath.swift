@@ -95,7 +95,6 @@ struct GraphitePath: Codable, Hashable, Sendable, CustomStringConvertible {
         return candidate
     }
 }
-
 enum GraphitePathError: Error, LocalizedError, Equatable, Sendable {
     case emptyComponent(String)
     case invalidComponent(field: String, value: String)
@@ -112,4 +111,3 @@ enum GraphitePathError: Error, LocalizedError, Equatable, Sendable {
         }
     }
 }
-

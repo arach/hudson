@@ -1,0 +1,1436 @@
+<!DOCTYPE html><html lang="en"> <head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1"><meta name="generator" content="Dewey"><title>Utilities - Hudson</title><link rel="preconnect" href="https://fonts.googleapis.com"><link rel="preconnect" href="https://fonts.gstatic.com" crossorigin><link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&family=Geist+Mono:wght@100..900&display=swap" rel="stylesheet"><link rel="stylesheet" href="/pagefind/pagefind-ui.css"><script>
+      ;(function () {
+        try { var saved = localStorage.getItem('theme') } catch (e) {}
+        var theme = saved || (window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light')
+        document.documentElement.setAttribute('data-theme', theme)
+      })()
+    </script><link rel="stylesheet" href="/_astro/_slug_.BKOwO9D_.css"></head> <body>  <div class="dl"> <!-- Header bar --> <header class="dl-header" data-pagefind-ignore> <div class="dl-header-left"> <a href="/" class="dl-header-brand">Hudson</a> <span class="dl-header-sep">/</span> <a href="/" class="dl-header-brand dl-header-brand--active">Docs</a> </div> <div class="dl-header-right"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer" class="dl-header-link">llms.txt</a> <a href="https://github.com/arachsys/hudson" target="_blank" rel="noopener noreferrer" class="dl-header-icon" title="GitHub"> <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M12 0c-6.626 0-12 5.373-12 12 0 5.302 3.438 9.8 8.207 11.387.599.111.793-.261.793-.577v-2.234c-3.338.726-4.033-1.416-4.033-1.416-.546-1.387-1.333-1.756-1.333-1.756-1.089-.745.083-.729.083-.729 1.205.084 1.839 1.237 1.839 1.237 1.07 1.834 2.807 1.304 3.492.997.107-.775.418-1.305.762-1.604-2.665-.305-5.467-1.334-5.467-5.931 0-1.311.469-2.381 1.236-3.221-.124-.303-.535-1.524.117-3.176 0 0 1.008-.322 3.301 1.23.957-.266 1.983-.399 3.003-.404 1.02.005 2.047.138 3.006.404 2.291-1.552 3.297-1.23 3.297-1.23.653 1.653.242 2.874.118 3.176.77.84 1.235 1.911 1.235 3.221 0 4.609-2.807 5.624-5.479 5.921.43.372.823 1.102.823 2.222v3.293c0 .319.192.694.801.576 4.765-1.589 8.199-6.086 8.199-11.386 0-6.627-5.373-12-12-12z"></path></svg> </a> <button class="dl-search-btn" type="button" data-search-toggle>
+Search…
+<span class="dl-search-key">⌘K</span> </button> <button class="dl-theme-btn" data-theme-toggle title="Toggle theme"> <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="12" cy="12" r="5"></circle><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"></path></svg> </button> </div> </header> <!-- Body --> <div class="dl-body"> <!-- Sidebar --> <nav class="dl-sidebar" data-pagefind-ignore> <div class="dl-nav-section "> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Documentation <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/overview" class="dl-nav-item  "> Overview </a> </li><li> <a href="/docs/quickstart" class="dl-nav-item  "> Quickstart </a> </li><li> <a href="/docs/architecture" class="dl-nav-item  "> Architecture </a> </li><li> <a href="/docs/building-apps" class="dl-nav-item  "> Building Apps </a> </li><li> <a href="/docs/scaffolding" class="dl-nav-item  "> Scaffolding </a> </li><li> <a href="/docs/skill" class="dl-nav-item  "> Skills </a> </li><li> <a href="/docs/api" class="dl-nav-item  "> API Reference </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> NPM Packages <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/npm/index" class="dl-nav-item  "> Packages Overview </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/sdk</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/sdk/getting-started" class="dl-nav-item dl-nav-item--indented "> Getting Started </a> </li><li> <a href="/docs/npm/sdk/building-apps" class="dl-nav-item dl-nav-item--indented "> Building Apps </a> </li><li> <a href="/docs/npm/sdk/api-reference" class="dl-nav-item dl-nav-item--indented "> API Reference </a> </li><li> <a href="/docs/npm/sdk/systems" class="dl-nav-item dl-nav-item--indented "> Systems </a> </li><li> <a href="/docs/npm/sdk/utilities" class="dl-nav-item dl-nav-item--indented active"> Utilities </a> </li> </ul> </div><div> <div class="dl-nav-subsection">@hudsonos/hx</div> <ul class="dl-nav-list"> <li> <a href="/docs/npm/hx/hx" class="dl-nav-item dl-nav-item--indented "> Guide </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> CLI Tools <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/cli/index" class="dl-nav-item  "> CLI Overview </a> </li><li> <a href="/docs/cli/create-hudson-app" class="dl-nav-item  "> create-hudson-app </a> </li><li> <a href="/docs/cli/relay" class="dl-nav-item  "> Relay: Terminal Server </a> </li> </ul> </div> </div> </div><div class="dl-nav-section dl-nav-section--bordered"> <button class="dl-nav-label" data-nav-toggle aria-expanded="true"> Prompts <svg class="dl-nav-chevron" width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="6 9 12 15 18 9"></polyline></svg> </button> <div data-nav-list> <div>  <ul class="dl-nav-list"> <li> <a href="/docs/prompts/create-app" class="dl-nav-item  "> Create a New App </a> </li><li> <a href="/docs/prompts/add-intents" class="dl-nav-item  "> Add Intents </a> </li> </ul> </div> </div> </div> <div class="dl-nav-section dl-nav-section--bordered"> <div class="dl-nav-label dl-nav-label--static">For AI Agents</div> <ul class="dl-nav-list"> <li><a href="/llms.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms.txt</a></li> <li><a href="/llms-full.txt" target="_blank" class="dl-nav-item dl-nav-item--muted">llms-full.txt</a></li> </ul> </div> </nav> <!-- Main --> <main class="dl-main"> <div class="dl-content-area"> <div class="dl-page-actions" data-pagefind-ignore> <button class="dl-copy-btn" data-copy-agent-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy for agent
+</button> <button class="dl-copy-btn" data-copy-markdown-button> <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>
+Copy markdown
+</button> </div> <!-- Article --> <article class="docs-prose" data-pagefind-body>  <h1 id="utilities">Utilities</h1>
+<p>Hudson ships three utility systems: the <strong>Platform Adapter</strong> for abstracting host-specific concerns, the <strong>Theme</strong> for design tokens and layout measurements, and the <strong>Sounds</strong> library for tactile UI audio feedback.</p>
+<h2 id="platform-adapter">Platform Adapter</h2>
+<p>The platform adapter system abstracts host-specific concerns so the Hudson shell runs identically on web (Next.js) and native hosts (Electrobun, Tauri, Electron). Apps access the adapter through a React context.</p>
+<h3 id="how-it-works">How It Works</h3>
+<ol>
+<li>The host wraps the app root in a <code>PlatformProvider</code> with a custom adapter.</li>
+<li>Shell components and hooks call <code>usePlatform()</code> to read adapter values.</li>
+<li>If no provider is present, the context falls back to <code>WEB_ADAPTER</code>.</li>
+</ol>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>Host (Next.js / Electrobun / Tauri)</span></span>
+<span class="line"><span>  |</span></span>
+<span class="line"><span>  +-- PlatformProvider adapter={myAdapter}</span></span>
+<span class="line"><span>       |</span></span>
+<span class="line"><span>       +-- WorkspaceShell</span></span>
+<span class="line"><span>            |</span></span>
+<span class="line"><span>            +-- usePlatform()   -> reads adapter values</span></span>
+<span class="line"><span>            +-- usePlatformLayout()  -> derives layout math</span></span></code></pre>
+<h3 id="platformadapter-interface">PlatformAdapter Interface</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> PlatformAdapter</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#758575DD">  /** Extra vertical inset above the nav bar for native title bars (0 for web). */</span></span>
+<span class="line"><span style="color:#BD976A">  titleBarInset</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  /** HTML attributes spread onto the nav bar to enable native window dragging. */</span></span>
+<span class="line"><span style="color:#BD976A">  dragRegionProps</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">HTMLAttributes</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">HTMLElement</span><span style="color:#666666">>;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  /** Called on mousedown of interactive elements inside a drag region to prevent drag. */</span></span>
+<span class="line"><span style="color:#80A665">  onInteractiveMouseDown</span><span style="color:#CB7676">?</span><span style="color:#666666">: (</span><span style="color:#BD976A">e</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">MouseEvent</span><span style="color:#666666">) => </span><span style="color:#5DA994">void</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  /** Whether the host uses SSR (true for Next.js, false for native). */</span></span>
+<span class="line"><span style="color:#BD976A">  isSSR</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  /** Base URL for API calls. Empty string = same-origin (web). */</span></span>
+<span class="line"><span style="color:#BD976A">  apiBaseUrl</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  /** Base URL for service management API. Empty string = same-origin (web). */</span></span>
+<span class="line"><span style="color:#BD976A">  serviceApiUrl</span><span style="color:#666666">: </span><span style="color:#5DA994">string</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h4 id="field-details">Field Details</h4>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Field</th><th>Web Default</th><th>Native Example</th><th>Purpose</th></tr></thead><tbody><tr><td><code>titleBarInset</code></td><td><code>0</code></td><td><code>28</code></td><td>Pushes content below the native title bar.</td></tr><tr><td><code>dragRegionProps</code></td><td><code>{}</code></td><td><code>{ style: { WebkitAppRegion: 'drag' } }</code></td><td>Makes the nav bar act as a native drag region.</td></tr><tr><td><code>onInteractiveMouseDown</code></td><td><code>undefined</code></td><td>Stops drag propagation</td><td>Prevents buttons inside the drag region from initiating window drag.</td></tr><tr><td><code>isSSR</code></td><td><code>true</code></td><td><code>false</code></td><td>Controls hydration-safe localStorage access in <code>usePersistentState</code>.</td></tr><tr><td><code>apiBaseUrl</code></td><td><code>''</code></td><td><code>'http://localhost:3600'</code></td><td>Prefix for fetch calls. Empty uses same-origin.</td></tr><tr><td><code>serviceApiUrl</code></td><td><code>''</code></td><td><code>'http://localhost:3601'</code></td><td>Prefix for service management API calls.</td></tr></tbody></table>
+<h3 id="web_adapter">WEB_ADAPTER</h3>
+<p>The default adapter for browser-based deployments. Zero configuration needed.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> WEB_ADAPTER</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">WEB_ADAPTER</span><span style="color:#666666">: </span><span style="color:#5DA994">PlatformAdapter</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  titleBarInset</span><span style="color:#666666">: </span><span style="color:#4C9A91">0</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  dragRegionProps</span><span style="color:#666666">: {},</span></span>
+<span class="line"><span style="color:#B8A965">  onInteractiveMouseDown</span><span style="color:#666666">: </span><span style="color:#CB7676">undefined</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  isSSR</span><span style="color:#666666">: </span><span style="color:#4D9375">true</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  apiBaseUrl</span><span style="color:#666666">: </span><span style="color:#C98A7D77">''</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  serviceApiUrl</span><span style="color:#666666">: </span><span style="color:#C98A7D77">''</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<p>You do not need to use <code>PlatformProvider</code> if running on the web with default settings. The context falls back to <code>WEB_ADAPTER</code> automatically.</p>
+<h3 id="platformprovider">PlatformProvider</h3>
+<p>Wrap your app root to override platform defaults.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> PlatformProvider</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> App</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#B8A965">PlatformProvider</span><span style="color:#BD976A"> adapter</span><span style="color:#666666">={</span><span style="color:#BD976A">myAdapter</span><span style="color:#666666">}></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#B8A965">WorkspaceShell</span><span style="color:#BD976A"> workspace</span><span style="color:#666666">={</span><span style="color:#BD976A">myWorkspace</span><span style="color:#666666">}</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#B8A965">PlatformProvider</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="useplatform">usePlatform</h3>
+<p>Read the active platform adapter from any component.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> usePlatform</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> MyComponent</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> {</span><span style="color:#BD976A"> isSSR</span><span style="color:#666666">,</span><span style="color:#BD976A"> apiBaseUrl</span><span style="color:#666666"> }</span><span style="color:#666666"> =</span><span style="color:#80A665"> usePlatform</span><span style="color:#666666">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#80A665"> fetchData</span><span style="color:#666666"> =</span><span style="color:#CB7676"> async</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">    const</span><span style="color:#BD976A"> res</span><span style="color:#666666"> =</span><span style="color:#4D9375"> await</span><span style="color:#80A665"> fetch</span><span style="color:#666666">(</span><span style="color:#C98A7D77">`</span><span style="color:#4D9375">${</span><span style="color:#C98A7D">apiBaseUrl</span><span style="color:#4D9375">}</span><span style="color:#C98A7D">/api/data</span><span style="color:#C98A7D77">`</span><span style="color:#666666">);</span></span>
+<span class="line"><span style="color:#4D9375">    return</span><span style="color:#BD976A"> res</span><span style="color:#666666">.</span><span style="color:#80A665">json</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">  // ...</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="useplatformlayout">usePlatformLayout</h3>
+<p>Derives layout measurements from the base shell theme combined with the active platform adapter. Use this instead of hardcoding pixel values.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">interface</span><span style="color:#5DA994"> PlatformLayout</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#758575DD">  /** Total nav bar height including native title bar inset. */</span></span>
+<span class="line"><span style="color:#BD976A">  navTotalHeight</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">  /** Top offset for side panels (same as navTotalHeight). */</span></span>
+<span class="line"><span style="color:#BD976A">  panelTopOffset</span><span style="color:#666666">: </span><span style="color:#5DA994">number</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> usePlatformLayout</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> SidePanel</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> {</span><span style="color:#BD976A"> panelTopOffset</span><span style="color:#666666"> }</span><span style="color:#666666"> =</span><span style="color:#80A665"> usePlatformLayout</span><span style="color:#666666">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> style</span><span style="color:#666666">={{</span><span style="color:#B8A965"> top</span><span style="color:#666666">:</span><span style="color:#BD976A"> panelTopOffset</span><span style="color:#666666">,</span><span style="color:#B8A965"> position</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">fixed</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> }}></span></span>
+<span class="line"><span style="color:#666666">      {</span><span style="color:#758575DD">/* panel content */</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<p>The layout values are derived as:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>navTotalHeight = SHELL_THEME.layout.navHeight + adapter.titleBarInset</span></span>
+<span class="line"><span>panelTopOffset = navTotalHeight</span></span></code></pre>
+<h3 id="writing-a-custom-adapter">Writing a Custom Adapter</h3>
+<p>To run Hudson inside a native host like Electrobun or Tauri, create a custom adapter.</p>
+<h4 id="electrobun-example">Electrobun Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#4D9375"> type</span><span style="color:#666666"> {</span><span style="color:#BD976A"> PlatformAdapter</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> ELECTROBUN_ADAPTER</span><span style="color:#666666">: </span><span style="color:#5DA994">PlatformAdapter</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  titleBarInset</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 28</span><span style="color:#666666">,</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B8A965">  dragRegionProps</span><span style="color:#666666">:</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">    style</span><span style="color:#666666">:</span><span style="color:#666666"> {</span><span style="color:#B8A965"> WebkitAppRegion</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">drag</span><span style="color:#C98A7D77">'</span><span style="color:#666666"> }</span><span style="color:#4D9375"> as</span><span style="color:#5DA994"> React</span><span style="color:#666666">.</span><span style="color:#5DA994">CSSProperties</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  },</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#80A665">  onInteractiveMouseDown</span><span style="color:#666666">:</span><span style="color:#666666"> (</span><span style="color:#BD976A">e</span><span style="color:#666666">: </span><span style="color:#5DA994">React</span><span style="color:#666666">.</span><span style="color:#5DA994">MouseEvent</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#758575DD">    // Prevent drag when clicking buttons inside the nav bar</span></span>
+<span class="line"><span style="color:#666666">    (</span><span style="color:#BD976A">e</span><span style="color:#666666">.</span><span style="color:#BD976A">currentTarget</span><span style="color:#4D9375"> as</span><span style="color:#5DA994"> HTMLElement</span><span style="color:#666666">).</span><span style="color:#BD976A">style</span><span style="color:#666666">.</span><span style="color:#80A665">setProperty</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#C98A7D77">      '</span><span style="color:#C98A7D">-webkit-app-region</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#C98A7D77">      '</span><span style="color:#C98A7D">no-drag</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">    );</span></span>
+<span class="line"><span style="color:#80A665">    requestAnimationFrame</span><span style="color:#666666">(()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#666666">      (</span><span style="color:#BD976A">e</span><span style="color:#666666">.</span><span style="color:#BD976A">currentTarget</span><span style="color:#4D9375"> as</span><span style="color:#5DA994"> HTMLElement</span><span style="color:#666666">).</span><span style="color:#BD976A">style</span><span style="color:#666666">.</span><span style="color:#80A665">removeProperty</span><span style="color:#666666">(</span></span>
+<span class="line"><span style="color:#C98A7D77">        '</span><span style="color:#C98A7D">-webkit-app-region</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">      );</span></span>
+<span class="line"><span style="color:#666666">    });</span></span>
+<span class="line"><span style="color:#666666">  },</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B8A965">  isSSR</span><span style="color:#666666">:</span><span style="color:#4D9375"> false</span><span style="color:#666666">,</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B8A965">  apiBaseUrl</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">http://localhost:3600</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#B8A965">  serviceApiUrl</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">http://localhost:3601</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<h4 id="tauri-example">Tauri Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#4D9375"> type</span><span style="color:#666666"> {</span><span style="color:#BD976A"> PlatformAdapter</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> TAURI_ADAPTER</span><span style="color:#666666">: </span><span style="color:#5DA994">PlatformAdapter</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  titleBarInset</span><span style="color:#666666">:</span><span style="color:#4C9A91"> 32</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  dragRegionProps</span><span style="color:#666666">:</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#C98A7D77">    '</span><span style="color:#C98A7D">data-tauri-drag-region</span><span style="color:#C98A7D77">'</span><span style="color:#666666">:</span><span style="color:#4D9375"> true</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  }</span><span style="color:#4D9375"> as</span><span style="color:#5DA994"> React</span><span style="color:#666666">.</span><span style="color:#5DA994">HTMLAttributes</span><span style="color:#666666">&#x3C;</span><span style="color:#5DA994">HTMLElement</span><span style="color:#666666">>,</span></span>
+<span class="line"><span style="color:#B8A965">  isSSR</span><span style="color:#666666">:</span><span style="color:#4D9375"> false</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  apiBaseUrl</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">http://localhost:3600</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">  serviceApiUrl</span><span style="color:#666666">:</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">http://localhost:3601</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<h4 id="using-the-adapter">Using the Adapter</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> PlatformProvider</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> NativeApp</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#B8A965">PlatformProvider</span><span style="color:#BD976A"> adapter</span><span style="color:#666666">={</span><span style="color:#BD976A">ELECTROBUN_ADAPTER</span><span style="color:#666666">}></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#B8A965">WorkspaceShell</span><span style="color:#BD976A"> workspace</span><span style="color:#666666">={</span><span style="color:#BD976A">myWorkspace</span><span style="color:#666666">}</span><span style="color:#666666"> /></span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#B8A965">PlatformProvider</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="ssr-considerations">SSR Considerations</h3>
+<p>When <code>isSSR</code> is <code>true</code> (the default for web), <code>usePersistentState</code> defers localStorage reads to a <code>useEffect</code> to avoid hydration mismatches. Native hosts set <code>isSSR: false</code> to read localStorage synchronously on first render, since there is no server-side rendering step.</p>
+<hr>
+<h2 id="theme">Theme</h2>
+<p>Hudson uses a consolidated design token system called <code>SHELL_THEME</code> for all shell chrome components. The theme defines Tailwind CSS classes, z-index layers, and layout measurements.</p>
+<h3 id="shell_theme">SHELL_THEME</h3>
+<p>Import the theme tokens:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> SHELL_THEME</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<h4 id="structure">Structure</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">const </span><span style="color:#BD976A">SHELL_THEME</span><span style="color:#666666"> =</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#B8A965">  tokens</span><span style="color:#666666">: {</span></span>
+<span class="line"><span style="color:#B8A965">    blur</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">backdrop-blur-xl</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    bg</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">bg-neutral-950/95</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    border</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">border border-neutral-700/80</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    shadow</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#B8A965">    topHighlight</span><span style="color:#666666">: </span><span style="color:#C98A7D77">'</span><span style="color:#C98A7D">before:absolute before:top-0 before:left-0 before:right-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  },</span></span>
+<span class="line"><span style="color:#B8A965">  base</span><span style="color:#666666">: </span><span style="color:#BD976A">string</span><span style="color:#666666">,  </span><span style="color:#758575DD">// Combined: bg + blur + border + shadow</span></span>
+<span class="line"><span style="color:#B8A965">  panels</span><span style="color:#666666">: { ... },</span></span>
+<span class="line"><span style="color:#B8A965">  effects</span><span style="color:#666666">: { ... },</span></span>
+<span class="line"><span style="color:#B8A965">  zIndex</span><span style="color:#666666">: { ... },</span></span>
+<span class="line"><span style="color:#B8A965">  layout</span><span style="color:#666666">: { ... },</span></span>
+<span class="line"><span style="color:#666666">};</span></span></code></pre>
+<h4 id="tokens">tokens</h4>
+<p>Atomic Tailwind class groups for composing custom surfaces.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Token</th><th>Classes</th><th>Usage</th></tr></thead><tbody><tr><td><code>blur</code></td><td><code>backdrop-blur-xl</code></td><td>Glass-morphism backdrop blur</td></tr><tr><td><code>bg</code></td><td><code>bg-neutral-950/95</code></td><td>Near-opaque dark background</td></tr><tr><td><code>border</code></td><td><code>border border-neutral-700/80</code></td><td>Subtle border</td></tr><tr><td><code>shadow</code></td><td>Complex box-shadow</td><td>Depth + inner highlight</td></tr><tr><td><code>topHighlight</code></td><td>Pseudo-element gradient</td><td>Top-edge light reflection</td></tr></tbody></table>
+<h4 id="base">base</h4>
+<p>The combined base style for panels and overlays:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="plaintext"><code><span class="line"><span>bg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[...]</span></span></code></pre>
+<p>Use this as a starting point when building custom panels that match the shell style:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> className</span><span style="color:#666666">={</span><span style="color:#C98A7D77">`</span><span style="color:#4D9375">${</span><span style="color:#C98A7D">SHELL_THEME</span><span style="color:#666666">.</span><span style="color:#C98A7D">base</span><span style="color:#4D9375">}</span><span style="color:#C98A7D"> rounded-lg p-4</span><span style="color:#C98A7D77">`</span><span style="color:#666666">}></span></span>
+<span class="line"><span style="color:#DBD7CAEE">  Custom panel content</span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span></code></pre>
+<h4 id="panels">panels</h4>
+<p>Pre-composed class strings for each shell region.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Panel</th><th>Description</th></tr></thead><tbody><tr><td><code>navigationStack</code></td><td>Top navigation bar container</td></tr><tr><td><code>manifest</code></td><td>Left sidebar panel</td></tr><tr><td><code>inspector</code></td><td>Right sidebar panel</td></tr><tr><td><code>minimap</code></td><td>Minimap overlay (bottom-left)</td></tr><tr><td><code>statusBar</code></td><td>Bottom status bar</td></tr><tr><td><code>commandDock</code></td><td>Command dock (bottom-right)</td></tr></tbody></table>
+<h4 id="effects">effects</h4>
+<p>Utility class strings for edge effects.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Effect</th><th>Description</th></tr></thead><tbody><tr><td><code>rightFade</code></td><td>Right-edge fade gradient (pseudo-element)</td></tr><tr><td><code>leftFade</code></td><td>Left-edge fade gradient (pseudo-element)</td></tr><tr><td><code>bottomGlow</code></td><td>Bottom-edge glow gradient (pseudo-element)</td></tr></tbody></table>
+<h4 id="zindex">zIndex</h4>
+<p>Z-index values for layering.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Layer</th><th>Value</th><th>Usage</th></tr></thead><tbody><tr><td><code>canvas</code></td><td><code>0</code></td><td>Canvas background</td></tr><tr><td><code>worldContent</code></td><td><code>10</code></td><td>Content rendered in world space</td></tr><tr><td><code>panels</code></td><td><code>40</code></td><td>Side panels</td></tr><tr><td><code>minimap</code></td><td><code>45</code></td><td>Minimap overlay</td></tr><tr><td><code>navigationStack</code></td><td><code>50</code></td><td>Navigation bar</td></tr><tr><td><code>statusBar</code></td><td><code>60</code></td><td>Status bar</td></tr><tr><td><code>drawer</code></td><td><code>70</code></td><td>Bottom drawer (terminal)</td></tr><tr><td><code>modals</code></td><td><code>100</code></td><td>Modals and command palette</td></tr></tbody></table>
+<p>When positioning custom overlays, use these values to ensure correct stacking:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> style</span><span style="color:#666666">={{</span><span style="color:#B8A965"> zIndex</span><span style="color:#666666">:</span><span style="color:#BD976A"> SHELL_THEME</span><span style="color:#666666">.</span><span style="color:#BD976A">zIndex</span><span style="color:#666666">.</span><span style="color:#BD976A">modals</span><span style="color:#666666"> }}></span></span>
+<span class="line"><span style="color:#DBD7CAEE">  My overlay</span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span></code></pre>
+<h4 id="layout">layout</h4>
+<p>Pixel measurements for shell chrome regions.</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Measurement</th><th>Value</th><th>Description</th></tr></thead><tbody><tr><td><code>navHeight</code></td><td><code>48</code></td><td>Navigation bar height (before platform inset)</td></tr><tr><td><code>panelWidth</code></td><td><code>280</code></td><td>Side panel width</td></tr><tr><td><code>panelTopOffset</code></td><td><code>48</code></td><td>Top offset for panels (same as navHeight)</td></tr><tr><td><code>statusBarHeight</code></td><td><code>28</code></td><td>Status bar height</td></tr><tr><td><code>panelBottomOffset</code></td><td><code>28</code></td><td>Bottom offset for panels (same as statusBarHeight)</td></tr></tbody></table>
+<p>For platform-aware layout values, use <code>usePlatformLayout()</code> instead of reading these directly. The hook adds the native title bar inset.</p>
+<h3 id="tailwind-css-v4-setup">Tailwind CSS v4 Setup</h3>
+<p>Hudson uses Tailwind CSS v4. To ensure Tailwind scans the SDK’s classes, add a <code>@source</code> directive in your CSS:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="css"><code><span class="line"><span style="color:#666666">@</span><span style="color:#4D9375">import</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">tailwindcss</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#666666">@</span><span style="color:#4D9375">source</span><span style="color:#DBD7CAEE"> "../node_modules/@hudsonos/sdk/dist/**/*.js"</span><span style="color:#666666">;</span></span></code></pre>
+<p>This tells Tailwind to scan the SDK’s compiled output for class names.</p>
+<h3 id="scrollbar-styles">Scrollbar Styles</h3>
+<p>The SDK ships a CSS file with dark-themed scrollbar styles for panels. Import it in your app:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="css"><code><span class="line"><span style="color:#666666">@</span><span style="color:#4D9375">import</span><span style="color:#C98A7D77"> "</span><span style="color:#C98A7D">@hudsonos/sdk/styles.css</span><span style="color:#C98A7D77">"</span><span style="color:#666666">;</span></span></code></pre>
+<p>This provides the <code>.frame-scrollbar</code> class:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#666666">&#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">frame-scrollbar overflow-auto</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">  Scrollable content with styled scrollbars</span></span>
+<span class="line"><span style="color:#666666">&#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span></code></pre>
+<p>The styles apply:</p>
+<ul>
+<li>A 4px-wide scrollbar track (transparent background)</li>
+<li>A subtle white/12% thumb with rounded corners</li>
+<li>A brighter white/22% thumb on hover</li>
+<li>Firefox-compatible <code>scrollbar-width: thin</code> and <code>scrollbar-color</code></li>
+</ul>
+<h3 id="color-guidelines">Color Guidelines</h3>
+<p>Hudson’s design language uses a dark neutral palette with cool accent colors.</p>
+<p><strong>Do use:</strong></p>
+<ul>
+<li><code>cyan</code> / <code>blue</code> / <code>teal</code> / <code>emerald</code> for accents and highlights</li>
+<li><code>neutral-950</code> through <code>neutral-400</code> for backgrounds and text</li>
+<li>Semi-transparent whites (<code>white/5</code>, <code>white/10</code>) for hover states</li>
+</ul>
+<p><strong>Do not use:</strong></p>
+<ul>
+<li>Purple tones</li>
+<li>Bright saturated backgrounds</li>
+<li>Pure white text (prefer <code>neutral-200</code> or <code>neutral-300</code>)</li>
+</ul>
+<h4 id="status-colors">Status Colors</h4>
+<p>The shell uses these semantic colors for status indicators:</p>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Color</th><th>Tailwind Class</th><th>Meaning</th></tr></thead><tbody><tr><td>Emerald</td><td><code>text-emerald-400</code></td><td>Ready, success, healthy</td></tr><tr><td>Amber</td><td><code>text-amber-400</code></td><td>In progress, warning</td></tr><tr><td>Red</td><td><code>text-red-400</code></td><td>Error, failure</td></tr><tr><td>Neutral</td><td><code>text-neutral-400</code></td><td>Inactive, idle</td></tr></tbody></table>
+<h3 id="theme-example-custom-panel">Theme Example: Custom Panel</h3>
+<p>Build a panel that matches the shell aesthetic:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> SHELL_THEME</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> CustomOverlay</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">div</span></span>
+<span class="line"><span style="color:#BD976A">      className</span><span style="color:#666666">={</span><span style="color:#C98A7D77">`</span><span style="color:#4D9375">${</span><span style="color:#C98A7D">SHELL_THEME</span><span style="color:#666666">.</span><span style="color:#C98A7D">base</span><span style="color:#4D9375">}</span><span style="color:#C98A7D"> rounded-lg p-4 fixed</span><span style="color:#C98A7D77">`</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">      style</span><span style="color:#666666">={{</span><span style="color:#B8A965"> zIndex</span><span style="color:#666666">:</span><span style="color:#BD976A"> SHELL_THEME</span><span style="color:#666666">.</span><span style="color:#BD976A">zIndex</span><span style="color:#666666">.</span><span style="color:#BD976A">modals</span><span style="color:#666666"> }}</span></span>
+<span class="line"><span style="color:#666666">    ></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">h3</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">text-sm font-medium text-neutral-200 mb-2</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">        Custom Panel</span></span>
+<span class="line"><span style="color:#666666">      &#x3C;/</span><span style="color:#4D9375">h3</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      &#x3C;</span><span style="color:#4D9375">p</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">text-xs text-neutral-400</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#DBD7CAEE">        This panel uses SHELL_THEME tokens for a consistent look.</span></span>
+<span class="line"><span style="color:#666666">      &#x3C;/</span><span style="color:#4D9375">p</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<hr>
+<h2 id="sounds">Sounds</h2>
+<p>The SDK includes a tactile UI sound library generated entirely with the Web Audio API. No audio files are shipped.</p>
+<h3 id="import">Import</h3>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> sounds</span><span style="color:#666666">,</span><span style="color:#BD976A"> click</span><span style="color:#666666">,</span><span style="color:#BD976A"> thock</span><span style="color:#666666">,</span><span style="color:#BD976A"> confirm</span><span style="color:#666666">,</span><span style="color:#BD976A"> isMuted</span><span style="color:#666666">,</span><span style="color:#BD976A"> setMuted</span><span style="color:#666666">,</span><span style="color:#BD976A"> preview</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span></code></pre>
+<p>All sound functions and controls are named exports from the SDK barrel.</p>
+<h3 id="available-sounds">Available Sounds</h3>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+<table><thead><tr><th>Function</th><th>Description</th><th>Suggested Usage</th></tr></thead><tbody><tr><td><code>click()</code></td><td>Soft click</td><td>Button press, toggle</td></tr><tr><td><code>thock()</code></td><td>Deep thock with attack</td><td>Panel open, focus change</td></tr><tr><td><code>blipUp()</code></td><td>Rising frequency blip</td><td>Success, task complete</td></tr><tr><td><code>blipDown()</code></td><td>Falling frequency blip</td><td>Dismiss, close</td></tr><tr><td><code>pop()</code></td><td>Quick pop</td><td>Command palette open, modal</td></tr><tr><td><code>confirm()</code></td><td>Two-tone ascending</td><td>Save, commit</td></tr><tr><td><code>error()</code></td><td>Two-tone descending</td><td>Soft error</td></tr><tr><td><code>whoosh()</code></td><td>Noise sweep</td><td>Transition, navigation</td></tr><tr><td><code>chime()</code></td><td>Four-note ascending chime</td><td>System init (bypasses mute)</td></tr><tr><td><code>tick()</code></td><td>Quick tick</td><td>Checkbox, step progress</td></tr><tr><td><code>slideIn()</code></td><td>Rising sweep</td><td>Drawer open</td></tr><tr><td><code>slideOut()</code></td><td>Falling sweep</td><td>Drawer close</td></tr><tr><td><code>boot()</code></td><td>Four-tone ascending sequence</td><td>System boot</td></tr><tr><td><code>ping()</code></td><td>High bell tone</td><td>Notification</td></tr><tr><td><code>type()</code></td><td>Randomized mechanical keystroke</td><td>Typing feedback</td></tr></tbody></table>
+<h3 id="usage">Usage</h3>
+<p>Call any sound function directly. Sounds are fire-and-forget with no return value.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> sounds</span><span style="color:#666666">,</span><span style="color:#BD976A"> confirm</span><span style="color:#666666">,</span><span style="color:#BD976A"> click</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> SaveButton</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#80A665"> handleSave</span><span style="color:#666666"> =</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#80A665">    save</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#80A665">    confirm</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">button</span><span style="color:#BD976A"> onClick</span><span style="color:#666666">={()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span><span style="color:#80A665"> handleSave</span><span style="color:#666666">();</span><span style="color:#80A665"> click</span><span style="color:#666666">();</span><span style="color:#666666"> }}></span></span>
+<span class="line"><span style="color:#DBD7CAEE">      Save</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">button</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h4 id="using-the-sounds-object">Using the sounds Object</h4>
+<p>All sounds are also available as a named object for dynamic access:</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> sounds</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// Call by name</span></span>
+<span class="line"><span style="color:#BD976A">sounds</span><span style="color:#666666">.</span><span style="color:#80A665">click</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#BD976A">sounds</span><span style="color:#666666">.</span><span style="color:#80A665">confirm</span><span style="color:#666666">();</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#758575DD">// Dynamic access</span></span>
+<span class="line"><span style="color:#CB7676">const</span><span style="color:#BD976A"> soundName</span><span style="color:#666666"> =</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">blipUp</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#BD976A">sounds</span><span style="color:#666666">[</span><span style="color:#BD976A">soundName</span><span style="color:#666666">]();</span></span></code></pre>
+<h4 id="soundname-type">SoundName Type</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">type</span><span style="color:#5DA994"> SoundName</span><span style="color:#666666"> =</span><span style="color:#CB7676"> keyof</span><span style="color:#CB7676"> typeof</span><span style="color:#BD976A"> sounds</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#758575DD">// 'click' | 'thock' | 'blipUp' | 'blipDown' | 'pop' | 'confirm' | 'error' | 'whoosh' | 'chime' | 'tick' | 'slideIn' | 'slideOut' | 'boot' | 'ping' | 'type'</span></span></code></pre>
+<h3 id="mute-control">Mute Control</h3>
+<p>Sounds are muted by default. The mute state is persisted in <code>localStorage</code> under the key <code>frame_sounds</code>.</p>
+<h4 id="ismuted">isMuted</h4>
+<p>Returns the current mute state.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> isMuted</span><span style="color:#666666">():</span><span style="color:#5DA994"> boolean</span><span style="color:#666666">;</span></span></code></pre>
+<h4 id="setmuted">setMuted</h4>
+<p>Sets the mute state and persists it.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> setMuted</span><span style="color:#666666">(</span><span style="color:#BD976A">muted</span><span style="color:#666666">: </span><span style="color:#5DA994">boolean</span><span style="color:#666666">):</span><span style="color:#5DA994"> void</span><span style="color:#666666">;</span></span></code></pre>
+<h4 id="togglemute">toggleMute</h4>
+<p>Toggles mute and returns the new state.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> toggleMute</span><span style="color:#666666">():</span><span style="color:#5DA994"> boolean</span><span style="color:#666666">;</span></span></code></pre>
+<h4 id="mute-toggle-button-example">Mute Toggle Button Example</h4>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> isMuted</span><span style="color:#666666">,</span><span style="color:#BD976A"> toggleMute</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> useState</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">react</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> SoundToggle</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#666666"> [</span><span style="color:#BD976A">muted</span><span style="color:#666666">,</span><span style="color:#BD976A"> setMutedState</span><span style="color:#666666">]</span><span style="color:#666666"> =</span><span style="color:#80A665"> useState</span><span style="color:#666666">(</span><span style="color:#80A665">isMuted</span><span style="color:#666666">());</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#80A665"> handleToggle</span><span style="color:#666666"> =</span><span style="color:#666666"> ()</span><span style="color:#666666"> =></span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#80A665">    toggleMute</span><span style="color:#666666">();</span></span>
+<span class="line"><span style="color:#80A665">    setMutedState</span><span style="color:#666666">(</span><span style="color:#80A665">isMuted</span><span style="color:#666666">());</span></span>
+<span class="line"><span style="color:#666666">  };</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">button</span><span style="color:#BD976A"> onClick</span><span style="color:#666666">={</span><span style="color:#BD976A">handleToggle</span><span style="color:#666666">}></span></span>
+<span class="line"><span style="color:#666666">      {</span><span style="color:#BD976A">muted</span><span style="color:#CB7676"> ?</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Unmute</span><span style="color:#C98A7D77">'</span><span style="color:#CB7676"> :</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">Mute</span><span style="color:#C98A7D77">'</span><span style="color:#666666">}</span><span style="color:#DBD7CAEE"> sounds</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">button</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="preview">Preview</h3>
+<p>The <code>preview</code> function plays a sound even when muted. It temporarily disables mute, plays the sound, then restores the previous mute state. Use this in settings panels to let users hear sounds before enabling them.</p>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="ts"><code><span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> preview</span><span style="color:#666666">(</span><span style="color:#BD976A">name</span><span style="color:#666666">: </span><span style="color:#5DA994">SoundName</span><span style="color:#666666">):</span><span style="color:#5DA994"> void</span><span style="color:#666666">;</span></span></code></pre>
+<pre class="astro-code vitesse-dark" style="background-color:#121212;color:#dbd7caee; overflow-x: auto;" tabindex="0" data-language="tsx"><code><span class="line"><span style="color:#4D9375">import</span><span style="color:#666666"> {</span><span style="color:#BD976A"> preview</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"><span style="color:#4D9375">import</span><span style="color:#4D9375"> type</span><span style="color:#666666"> {</span><span style="color:#BD976A"> SoundName</span><span style="color:#666666"> }</span><span style="color:#4D9375"> from</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">@hudsonos/sdk</span><span style="color:#C98A7D77">'</span><span style="color:#666666">;</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#CB7676">function</span><span style="color:#80A665"> SoundPreviewer</span><span style="color:#666666">()</span><span style="color:#666666"> {</span></span>
+<span class="line"><span style="color:#CB7676">  const</span><span style="color:#BD976A"> soundNames</span><span style="color:#666666">: </span><span style="color:#5DA994">SoundName</span><span style="color:#666666">[] =</span><span style="color:#666666"> [</span></span>
+<span class="line"><span style="color:#C98A7D77">    '</span><span style="color:#C98A7D">click</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">thock</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">blipUp</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">blipDown</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">pop</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#C98A7D77">    '</span><span style="color:#C98A7D">confirm</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">error</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">whoosh</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">tick</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">boot</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span><span style="color:#C98A7D77"> '</span><span style="color:#C98A7D">ping</span><span style="color:#C98A7D77">'</span><span style="color:#666666">,</span></span>
+<span class="line"><span style="color:#666666">  ];</span></span>
+<span class="line"></span>
+<span class="line"><span style="color:#4D9375">  return</span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;</span><span style="color:#4D9375">div</span><span style="color:#BD976A"> className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">space-y-1</span><span style="color:#C98A7D77">"</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      {</span><span style="color:#BD976A">soundNames</span><span style="color:#666666">.</span><span style="color:#80A665">map</span><span style="color:#666666">((</span><span style="color:#BD976A">name</span><span style="color:#666666">)</span><span style="color:#666666"> =></span><span style="color:#666666"> (</span></span>
+<span class="line"><span style="color:#666666">        &#x3C;</span><span style="color:#4D9375">button</span></span>
+<span class="line"><span style="color:#BD976A">          key</span><span style="color:#666666">={</span><span style="color:#BD976A">name</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#BD976A">          onClick</span><span style="color:#666666">={()</span><span style="color:#666666"> =></span><span style="color:#80A665"> preview</span><span style="color:#666666">(</span><span style="color:#BD976A">name</span><span style="color:#666666">)}</span></span>
+<span class="line"><span style="color:#BD976A">          className</span><span style="color:#666666">=</span><span style="color:#C98A7D77">"</span><span style="color:#C98A7D">block text-xs text-neutral-400 hover:text-cyan-400</span><span style="color:#C98A7D77">"</span></span>
+<span class="line"><span style="color:#666666">        ></span></span>
+<span class="line"><span style="color:#666666">          {</span><span style="color:#BD976A">name</span><span style="color:#666666">}</span></span>
+<span class="line"><span style="color:#666666">        &#x3C;/</span><span style="color:#4D9375">button</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">      ))}</span></span>
+<span class="line"><span style="color:#666666">    &#x3C;/</span><span style="color:#4D9375">div</span><span style="color:#666666">></span></span>
+<span class="line"><span style="color:#666666">  );</span></span>
+<span class="line"><span style="color:#666666">}</span></span></code></pre>
+<h3 id="technical-details">Technical Details</h3>
+<ul>
+<li>Sounds are generated using the Web Audio API’s <code>OscillatorNode</code> and <code>BufferSource</code> (for noise).</li>
+<li>Each sound function creates short-lived audio nodes and schedules them on the <code>AudioContext</code> timeline.</li>
+<li>The <code>AudioContext</code> is lazily created on first use and resumed if suspended (browser autoplay policy).</li>
+<li>The <code>type()</code> sound adds randomized pitch and volume for a natural feel.</li>
+<li>The <code>chime()</code> sound always plays, bypassing the mute setting. It is intended for system-level events.</li>
+<li>All sound functions are wrapped in <code>try/catch</code> and fail silently if the Web Audio API is unavailable.</li>
+</ul>  </article> <!-- Agent footer --> <div class="dl-agent-footer"> <span class="dl-agent-footer-label">For AI agents</span> <div class="dl-agent-footer-links"> <a href="/llms.txt" target="_blank" rel="noopener noreferrer">llms.txt</a> <span class="dl-agent-footer-sep">|</span> <a href="/llms-full.txt" target="_blank" rel="noopener noreferrer">llms-full.txt</a> </div> </div> </div> </main> <!-- TOC --> <aside class="dl-toc" data-pagefind-ignore> <p class="dl-toc-label">On this page</p> <ul class="dl-toc-list"> <li> <a class="dl-toc-link" data-toc-link data-level="2" href="#platform-adapter"> Platform Adapter </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#how-it-works"> How It Works </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#platformadapter-interface"> PlatformAdapter Interface </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#web_adapter"> WEB_ADAPTER </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#platformprovider"> PlatformProvider </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useplatform"> usePlatform </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#useplatformlayout"> usePlatformLayout </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#writing-a-custom-adapter"> Writing a Custom Adapter </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#ssr-considerations"> SSR Considerations </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#theme"> Theme </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#shell_theme"> SHELL_THEME </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#tailwind-css-v4-setup"> Tailwind CSS v4 Setup </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#scrollbar-styles"> Scrollbar Styles </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#color-guidelines"> Color Guidelines </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#theme-example-custom-panel"> Theme Example: Custom Panel </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="2" href="#sounds"> Sounds </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#import"> Import </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#available-sounds"> Available Sounds </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#usage"> Usage </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#mute-control"> Mute Control </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#preview"> Preview </a> </li><li> <a class="dl-toc-link" data-toc-link data-level="3" href="#technical-details"> Technical Details </a> </li> </ul> </aside> </div> </div> <style>
+    /* ── Header bar ── */
+    .dl-header {
+      height: 48px;
+      flex-shrink: 0;
+      border-bottom: 1px solid var(--color-border);
+      background: var(--color-bg);
+      backdrop-filter: blur(12px);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .dl-header-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .dl-header-right {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dl-header-brand {
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-brand:hover { color: var(--color-text); }
+    .dl-header-brand--active { color: var(--color-text); }
+
+    .dl-header-sep {
+      color: var(--color-border);
+      font-size: 14px;
+    }
+
+    .dl-header-link {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-header-link:hover { color: var(--color-accent); }
+
+    .dl-header-icon {
+      color: var(--color-text-muted);
+      transition: color 0.15s;
+      display: flex;
+      align-items: center;
+    }
+
+    .dl-header-icon:hover { color: var(--color-text); }
+
+    .dl-search-btn {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 4px 10px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: var(--color-surface);
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      cursor: pointer;
+      transition: all 0.15s;
+      height: 28px;
+    }
+
+    .dl-search-btn:hover {
+      border-color: var(--color-text-muted);
+      color: var(--color-text);
+    }
+
+    .dl-search-key {
+      font-size: 9px;
+      text-transform: uppercase;
+      letter-spacing: 0.2em;
+      opacity: 0.6;
+    }
+
+    .dl-theme-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: none;
+      border: none;
+      color: var(--color-text-muted);
+      cursor: pointer;
+      padding: 4px;
+      transition: color 0.15s;
+    }
+
+    .dl-theme-btn:hover { color: var(--color-text); }
+
+    /* ── Layout shell ── */
+    .dl {
+      min-height: 100vh;
+      background: var(--color-bg);
+      color: var(--color-text);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .dl-body {
+      display: flex;
+      flex: 1;
+    }
+
+    /* ── Sidebar (tree nav) ── */
+    .dl-sidebar {
+      width: 260px;
+      flex-shrink: 0;
+      border-right: 1px solid var(--color-border);
+      overflow-y: auto;
+      padding: 16px 12px 20px 20px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      align-self: flex-start;
+    }
+
+    @media (max-width: 768px) {
+      .dl-sidebar { display: none; }
+    }
+
+    .dl-nav-section { margin-bottom: 4px; }
+
+    .dl-nav-section--bordered {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--color-border);
+    }
+
+    .dl-nav-label {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      width: 100%;
+      padding: 0 12px;
+      margin-bottom: 8px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 400;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+      background: none;
+      border: none;
+      cursor: pointer;
+      transition: color 0.15s;
+    }
+
+    .dl-nav-label:hover { color: var(--color-text); }
+
+    .dl-nav-label--static {
+      cursor: default;
+    }
+
+    .dl-nav-label--static:hover { color: var(--color-text-muted); }
+
+    .dl-nav-chevron {
+      transition: transform 0.2s;
+      opacity: 0.5;
+    }
+
+    .dl-nav-label[aria-expanded='false'] .dl-nav-chevron {
+      transform: rotate(-90deg);
+    }
+
+    [data-nav-list][data-collapsed='true'] {
+      display: none;
+    }
+
+    .dl-nav-subsection {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      font-weight: 300;
+      color: var(--color-text-muted);
+      padding: 0 12px;
+      margin-top: 12px;
+      margin-bottom: 6px;
+    }
+
+    .dl-nav-list {
+      list-style: none;
+      padding: 0;
+      margin: 0 0 2px;
+    }
+
+    .dl-nav-item {
+      display: block;
+      padding: 6px 12px;
+      border-radius: 6px;
+      font-size: 14px;
+      font-weight: 300;
+      color: color-mix(in srgb, var(--color-text) 55%, transparent);
+      text-decoration: none;
+      transition: all 0.15s;
+    }
+
+    .dl-nav-item--indented {
+      padding-left: 20px;
+    }
+
+    .dl-nav-item:hover {
+      color: var(--color-text);
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .dl-nav-item.active {
+      color: var(--color-accent);
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+    }
+
+    .dl-nav-item--muted {
+      font-family: 'Geist Mono', monospace;
+      font-size: 13px;
+      color: var(--color-text-muted);
+    }
+
+    .dl-nav-item--muted:hover {
+      color: var(--color-text);
+    }
+
+    /* ── Main content ── */
+    .dl-main {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .dl-content-area {
+      max-width: 768px;
+      margin: 0 auto;
+      padding: 10px 24px 80px;
+    }
+
+    /* ── Copy buttons (matching old Hudson) ── */
+    .dl-page-actions {
+      display: flex;
+      justify-content: flex-end;
+      gap: 8px;
+      margin-bottom: 2px;
+    }
+
+    .dl-copy-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--color-border);
+      background: none;
+      color: var(--color-text-muted);
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+
+    .dl-copy-btn:hover {
+      color: var(--color-text);
+      border-color: var(--color-text-muted);
+    }
+
+    /* ── Prose (matching old Hudson docs.css) ── */
+    .docs-prose {
+      color: var(--color-text);
+      line-height: 1.75;
+      font-size: 15px;
+    }
+
+    .docs-prose h1 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 2rem;
+      color: var(--color-text);
+      margin-top: 0;
+      margin-bottom: 1rem;
+      line-height: 1.2;
+    }
+
+    .docs-prose h2 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.375rem;
+      color: var(--color-text);
+      margin-top: 2.5rem;
+      margin-bottom: 0.75rem;
+      padding-bottom: 0.375rem;
+      border-bottom: 1px solid var(--color-border);
+      line-height: 1.3;
+    }
+
+    .docs-prose h3 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      letter-spacing: 0.025em;
+      font-size: 1.125rem;
+      color: var(--color-text);
+      margin-top: 2rem;
+      margin-bottom: 0.5rem;
+      line-height: 1.4;
+    }
+
+    .docs-prose h4 {
+      font-family: 'Geist Mono', monospace;
+      font-weight: 400;
+      font-size: 1rem;
+      color: var(--color-text);
+      margin-top: 1.5rem;
+      margin-bottom: 0.5rem;
+    }
+
+    .docs-prose p {
+      margin-top: 0;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose a {
+      color: var(--color-accent);
+      text-decoration: none;
+      font-weight: 400;
+    }
+
+    .docs-prose a:hover {
+      text-decoration: underline;
+      text-underline-offset: 2px;
+    }
+
+    .docs-prose ul {
+      list-style-type: disc;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose ol {
+      list-style-type: decimal;
+      padding-left: 1.5rem;
+      margin-bottom: 1.25rem;
+    }
+
+    .docs-prose li {
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose li > ul,
+    .docs-prose li > ol {
+      margin-top: 0.375rem;
+      margin-bottom: 0.375rem;
+    }
+
+    .docs-prose :not(pre) > code {
+      background: color-mix(in srgb, var(--color-accent) 10%, transparent);
+      border: 1px solid color-mix(in srgb, var(--color-accent) 20%, transparent);
+      border-radius: 0.25rem;
+      padding: 0.125rem 0.375rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      color: var(--color-accent);
+    }
+
+    .docs-prose pre {
+      background: #111111 !important;
+      border: 1px solid var(--color-border);
+      border-radius: 0.5rem;
+      padding: 1rem;
+      overflow-x: auto;
+      margin-bottom: 1.5rem;
+      font-size: 0.8125rem;
+      font-family: 'Geist Mono', monospace;
+      font-weight: 300;
+      line-height: 1.6;
+      position: relative;
+    }
+
+    .docs-prose pre code {
+      background: none !important;
+      border: none !important;
+      padding: 0 !important;
+      font-size: inherit;
+      font-family: inherit;
+      font-weight: inherit;
+      color: inherit;
+    }
+
+    .docs-prose blockquote {
+      border-left: 3px solid var(--color-accent);
+      padding-left: 1rem;
+      margin-left: 0;
+      margin-bottom: 1.25rem;
+      color: var(--color-text-muted);
+      font-style: italic;
+    }
+
+    .docs-prose table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 1.5rem;
+      font-family: 'Geist Mono', monospace;
+      font-size: 0.8125rem;
+    }
+
+    .docs-prose thead th {
+      text-align: left;
+      font-weight: 600;
+      color: var(--color-text);
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      white-space: nowrap;
+    }
+
+    .docs-prose tbody td {
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--color-border);
+      color: var(--color-text);
+    }
+
+    .docs-prose tbody tr:hover {
+      background: color-mix(in srgb, var(--color-border) 40%, transparent);
+    }
+
+    .docs-prose hr {
+      border: none;
+      border-top: 1px solid var(--color-border);
+      margin: 2rem 0;
+    }
+
+    .docs-prose strong {
+      color: var(--color-text);
+      font-weight: 500;
+    }
+
+    .docs-prose img {
+      max-width: 100%;
+      border-radius: 0.5rem;
+      border: 1px solid var(--color-border);
+    }
+
+    /* ── Agent footer ── */
+    .dl-agent-footer {
+      margin-top: 40px;
+      padding-top: 24px;
+      border-top: 1px solid color-mix(in srgb, var(--color-border) 50%, transparent);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .dl-agent-footer-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--color-text-muted);
+    }
+
+    .dl-agent-footer-links {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .dl-agent-footer-links a {
+      font-family: 'Geist Mono', monospace;
+      font-size: 11px;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+    }
+
+    .dl-agent-footer-links a:hover { color: var(--color-accent); }
+
+    .dl-agent-footer-sep {
+      color: var(--color-border);
+      font-size: 11px;
+    }
+
+    /* ── TOC ── */
+    .dl-toc {
+      width: 220px;
+      flex-shrink: 0;
+      padding: 16px 24px 40px 16px;
+      position: sticky;
+      top: 48px;
+      height: calc(100vh - 48px);
+      overflow-y: auto;
+      align-self: flex-start;
+    }
+
+    @media (max-width: 1280px) {
+      .dl-toc { display: none; }
+    }
+
+    .dl-toc-label {
+      font-family: 'Geist Mono', monospace;
+      font-size: 10px;
+      font-weight: 500;
+      text-transform: uppercase;
+      letter-spacing: 0.14em;
+      color: var(--color-text-muted);
+      margin: 0 0 16px;
+    }
+
+    .dl-toc-list {
+      list-style: none;
+      padding: 0;
+      margin: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+      border-left: 1px solid var(--color-border);
+    }
+
+    .dl-toc-link {
+      display: block;
+      padding: 2px 0 2px 14px;
+      font-family: 'Geist Mono', monospace;
+      font-size: 12px;
+      font-weight: 400;
+      color: var(--color-text-muted);
+      text-decoration: none;
+      transition: color 0.15s;
+      margin-left: -1px;
+      border-left: 1px solid transparent;
+    }
+
+    .dl-toc-link:hover { color: var(--color-text); }
+
+    .dl-toc-link.is-active {
+      color: var(--color-text);
+      font-weight: 400;
+      border-left-color: var(--color-accent);
+    }
+
+    .dl-toc-link[data-level='3'] { padding-left: 26px; }
+  </style> <script>(function(){const rawMarkdown = "---\ntitle: Utilities\ndescription: Platform adapters, design tokens, and UI sounds\nsection: npm\nsubsection: \"@hudsonos/sdk\"\norder: 5\n---\n\n# Utilities\n\nHudson ships three utility systems: the **Platform Adapter** for abstracting host-specific concerns, the **Theme** for design tokens and layout measurements, and the **Sounds** library for tactile UI audio feedback.\n\n## Platform Adapter\n\nThe platform adapter system abstracts host-specific concerns so the Hudson shell runs identically on web (Next.js) and native hosts (Electrobun, Tauri, Electron). Apps access the adapter through a React context.\n\n### How It Works\n\n1. The host wraps the app root in a `PlatformProvider` with a custom adapter.\n2. Shell components and hooks call `usePlatform()` to read adapter values.\n3. If no provider is present, the context falls back to `WEB_ADAPTER`.\n\n```\nHost (Next.js / Electrobun / Tauri)\n  |\n  +-- PlatformProvider adapter={myAdapter}\n       |\n       +-- WorkspaceShell\n            |\n            +-- usePlatform()   -> reads adapter values\n            +-- usePlatformLayout()  -> derives layout math\n```\n\n### PlatformAdapter Interface\n\n```ts\ninterface PlatformAdapter {\n  /** Extra vertical inset above the nav bar for native title bars (0 for web). */\n  titleBarInset: number;\n\n  /** HTML attributes spread onto the nav bar to enable native window dragging. */\n  dragRegionProps: React.HTMLAttributes<HTMLElement>;\n\n  /** Called on mousedown of interactive elements inside a drag region to prevent drag. */\n  onInteractiveMouseDown?: (e: React.MouseEvent) => void;\n\n  /** Whether the host uses SSR (true for Next.js, false for native). */\n  isSSR: boolean;\n\n  /** Base URL for API calls. Empty string = same-origin (web). */\n  apiBaseUrl: string;\n\n  /** Base URL for service management API. Empty string = same-origin (web). */\n  serviceApiUrl: string;\n}\n```\n\n#### Field Details\n\n| Field | Web Default | Native Example | Purpose |\n|-------|-------------|----------------|---------|\n| `titleBarInset` | `0` | `28` | Pushes content below the native title bar. |\n| `dragRegionProps` | `{}` | `{ style: { WebkitAppRegion: 'drag' } }` | Makes the nav bar act as a native drag region. |\n| `onInteractiveMouseDown` | `undefined` | Stops drag propagation | Prevents buttons inside the drag region from initiating window drag. |\n| `isSSR` | `true` | `false` | Controls hydration-safe localStorage access in `usePersistentState`. |\n| `apiBaseUrl` | `''` | `'http://localhost:3600'` | Prefix for fetch calls. Empty uses same-origin. |\n| `serviceApiUrl` | `''` | `'http://localhost:3601'` | Prefix for service management API calls. |\n\n### WEB_ADAPTER\n\nThe default adapter for browser-based deployments. Zero configuration needed.\n\n```ts\nimport { WEB_ADAPTER } from '@hudsonos/sdk';\n\nconst WEB_ADAPTER: PlatformAdapter = {\n  titleBarInset: 0,\n  dragRegionProps: {},\n  onInteractiveMouseDown: undefined,\n  isSSR: true,\n  apiBaseUrl: '',\n  serviceApiUrl: '',\n};\n```\n\nYou do not need to use `PlatformProvider` if running on the web with default settings. The context falls back to `WEB_ADAPTER` automatically.\n\n### PlatformProvider\n\nWrap your app root to override platform defaults.\n\n```tsx\nimport { PlatformProvider } from '@hudsonos/sdk';\n\nfunction App() {\n  return (\n    <PlatformProvider adapter={myAdapter}>\n      <WorkspaceShell workspace={myWorkspace} />\n    </PlatformProvider>\n  );\n}\n```\n\n### usePlatform\n\nRead the active platform adapter from any component.\n\n```tsx\nimport { usePlatform } from '@hudsonos/sdk';\n\nfunction MyComponent() {\n  const { isSSR, apiBaseUrl } = usePlatform();\n\n  const fetchData = async () => {\n    const res = await fetch(`${apiBaseUrl}/api/data`);\n    return res.json();\n  };\n\n  // ...\n}\n```\n\n### usePlatformLayout\n\nDerives layout measurements from the base shell theme combined with the active platform adapter. Use this instead of hardcoding pixel values.\n\n```ts\ninterface PlatformLayout {\n  /** Total nav bar height including native title bar inset. */\n  navTotalHeight: number;\n  /** Top offset for side panels (same as navTotalHeight). */\n  panelTopOffset: number;\n}\n```\n\n```tsx\nimport { usePlatformLayout } from '@hudsonos/sdk';\n\nfunction SidePanel() {\n  const { panelTopOffset } = usePlatformLayout();\n\n  return (\n    <div style={{ top: panelTopOffset, position: 'fixed' }}>\n      {/* panel content */}\n    </div>\n  );\n}\n```\n\nThe layout values are derived as:\n\n```\nnavTotalHeight = SHELL_THEME.layout.navHeight + adapter.titleBarInset\npanelTopOffset = navTotalHeight\n```\n\n### Writing a Custom Adapter\n\nTo run Hudson inside a native host like Electrobun or Tauri, create a custom adapter.\n\n#### Electrobun Example\n\n```tsx\nimport type { PlatformAdapter } from '@hudsonos/sdk';\n\nconst ELECTROBUN_ADAPTER: PlatformAdapter = {\n  titleBarInset: 28,\n\n  dragRegionProps: {\n    style: { WebkitAppRegion: 'drag' } as React.CSSProperties,\n  },\n\n  onInteractiveMouseDown: (e: React.MouseEvent) => {\n    // Prevent drag when clicking buttons inside the nav bar\n    (e.currentTarget as HTMLElement).style.setProperty(\n      '-webkit-app-region',\n      'no-drag',\n    );\n    requestAnimationFrame(() => {\n      (e.currentTarget as HTMLElement).style.removeProperty(\n        '-webkit-app-region',\n      );\n    });\n  },\n\n  isSSR: false,\n\n  apiBaseUrl: 'http://localhost:3600',\n\n  serviceApiUrl: 'http://localhost:3601',\n};\n```\n\n#### Tauri Example\n\n```tsx\nimport type { PlatformAdapter } from '@hudsonos/sdk';\n\nconst TAURI_ADAPTER: PlatformAdapter = {\n  titleBarInset: 32,\n  dragRegionProps: {\n    'data-tauri-drag-region': true,\n  } as React.HTMLAttributes<HTMLElement>,\n  isSSR: false,\n  apiBaseUrl: 'http://localhost:3600',\n  serviceApiUrl: 'http://localhost:3601',\n};\n```\n\n#### Using the Adapter\n\n```tsx\nimport { PlatformProvider } from '@hudsonos/sdk';\n\nfunction NativeApp() {\n  return (\n    <PlatformProvider adapter={ELECTROBUN_ADAPTER}>\n      <WorkspaceShell workspace={myWorkspace} />\n    </PlatformProvider>\n  );\n}\n```\n\n### SSR Considerations\n\nWhen `isSSR` is `true` (the default for web), `usePersistentState` defers localStorage reads to a `useEffect` to avoid hydration mismatches. Native hosts set `isSSR: false` to read localStorage synchronously on first render, since there is no server-side rendering step.\n\n---\n\n## Theme\n\nHudson uses a consolidated design token system called `SHELL_THEME` for all shell chrome components. The theme defines Tailwind CSS classes, z-index layers, and layout measurements.\n\n### SHELL_THEME\n\nImport the theme tokens:\n\n```tsx\nimport { SHELL_THEME } from '@hudsonos/sdk';\n```\n\n#### Structure\n\n```ts\nconst SHELL_THEME = {\n  tokens: {\n    blur: 'backdrop-blur-xl',\n    bg: 'bg-neutral-950/95',\n    border: 'border border-neutral-700/80',\n    shadow: 'shadow-[0_0_30px_rgba(0,0,0,0.8),inset_0_1px_0_rgba(255,255,255,0.08)]',\n    topHighlight: 'before:absolute before:top-0 before:left-0 before:right-0 before:h-px before:bg-gradient-to-r before:from-transparent before:via-white/10 before:to-transparent',\n  },\n  base: string,  // Combined: bg + blur + border + shadow\n  panels: { ... },\n  effects: { ... },\n  zIndex: { ... },\n  layout: { ... },\n};\n```\n\n#### tokens\n\nAtomic Tailwind class groups for composing custom surfaces.\n\n| Token | Classes | Usage |\n|-------|---------|-------|\n| `blur` | `backdrop-blur-xl` | Glass-morphism backdrop blur |\n| `bg` | `bg-neutral-950/95` | Near-opaque dark background |\n| `border` | `border border-neutral-700/80` | Subtle border |\n| `shadow` | Complex box-shadow | Depth + inner highlight |\n| `topHighlight` | Pseudo-element gradient | Top-edge light reflection |\n\n#### base\n\nThe combined base style for panels and overlays:\n\n```\nbg-neutral-950/95 backdrop-blur-xl border border-neutral-700/80 shadow-[...]\n```\n\nUse this as a starting point when building custom panels that match the shell style:\n\n```tsx\n<div className={`${SHELL_THEME.base} rounded-lg p-4`}>\n  Custom panel content\n</div>\n```\n\n#### panels\n\nPre-composed class strings for each shell region.\n\n| Panel | Description |\n|-------|-------------|\n| `navigationStack` | Top navigation bar container |\n| `manifest` | Left sidebar panel |\n| `inspector` | Right sidebar panel |\n| `minimap` | Minimap overlay (bottom-left) |\n| `statusBar` | Bottom status bar |\n| `commandDock` | Command dock (bottom-right) |\n\n#### effects\n\nUtility class strings for edge effects.\n\n| Effect | Description |\n|--------|-------------|\n| `rightFade` | Right-edge fade gradient (pseudo-element) |\n| `leftFade` | Left-edge fade gradient (pseudo-element) |\n| `bottomGlow` | Bottom-edge glow gradient (pseudo-element) |\n\n#### zIndex\n\nZ-index values for layering.\n\n| Layer | Value | Usage |\n|-------|-------|-------|\n| `canvas` | `0` | Canvas background |\n| `worldContent` | `10` | Content rendered in world space |\n| `panels` | `40` | Side panels |\n| `minimap` | `45` | Minimap overlay |\n| `navigationStack` | `50` | Navigation bar |\n| `statusBar` | `60` | Status bar |\n| `drawer` | `70` | Bottom drawer (terminal) |\n| `modals` | `100` | Modals and command palette |\n\nWhen positioning custom overlays, use these values to ensure correct stacking:\n\n```tsx\n<div style={{ zIndex: SHELL_THEME.zIndex.modals }}>\n  My overlay\n</div>\n```\n\n#### layout\n\nPixel measurements for shell chrome regions.\n\n| Measurement | Value | Description |\n|-------------|-------|-------------|\n| `navHeight` | `48` | Navigation bar height (before platform inset) |\n| `panelWidth` | `280` | Side panel width |\n| `panelTopOffset` | `48` | Top offset for panels (same as navHeight) |\n| `statusBarHeight` | `28` | Status bar height |\n| `panelBottomOffset` | `28` | Bottom offset for panels (same as statusBarHeight) |\n\nFor platform-aware layout values, use `usePlatformLayout()` instead of reading these directly. The hook adds the native title bar inset.\n\n### Tailwind CSS v4 Setup\n\nHudson uses Tailwind CSS v4. To ensure Tailwind scans the SDK's classes, add a `@source` directive in your CSS:\n\n```css\n@import \"tailwindcss\";\n@source \"../node_modules/@hudsonos/sdk/dist/**/*.js\";\n```\n\nThis tells Tailwind to scan the SDK's compiled output for class names.\n\n### Scrollbar Styles\n\nThe SDK ships a CSS file with dark-themed scrollbar styles for panels. Import it in your app:\n\n```css\n@import \"@hudsonos/sdk/styles.css\";\n```\n\nThis provides the `.frame-scrollbar` class:\n\n```tsx\n<div className=\"frame-scrollbar overflow-auto\">\n  Scrollable content with styled scrollbars\n</div>\n```\n\nThe styles apply:\n- A 4px-wide scrollbar track (transparent background)\n- A subtle white/12% thumb with rounded corners\n- A brighter white/22% thumb on hover\n- Firefox-compatible `scrollbar-width: thin` and `scrollbar-color`\n\n### Color Guidelines\n\nHudson's design language uses a dark neutral palette with cool accent colors.\n\n**Do use:**\n- `cyan` / `blue` / `teal` / `emerald` for accents and highlights\n- `neutral-950` through `neutral-400` for backgrounds and text\n- Semi-transparent whites (`white/5`, `white/10`) for hover states\n\n**Do not use:**\n- Purple tones\n- Bright saturated backgrounds\n- Pure white text (prefer `neutral-200` or `neutral-300`)\n\n#### Status Colors\n\nThe shell uses these semantic colors for status indicators:\n\n| Color | Tailwind Class | Meaning |\n|-------|---------------|---------|\n| Emerald | `text-emerald-400` | Ready, success, healthy |\n| Amber | `text-amber-400` | In progress, warning |\n| Red | `text-red-400` | Error, failure |\n| Neutral | `text-neutral-400` | Inactive, idle |\n\n### Theme Example: Custom Panel\n\nBuild a panel that matches the shell aesthetic:\n\n```tsx\nimport { SHELL_THEME } from '@hudsonos/sdk';\n\nfunction CustomOverlay() {\n  return (\n    <div\n      className={`${SHELL_THEME.base} rounded-lg p-4 fixed`}\n      style={{ zIndex: SHELL_THEME.zIndex.modals }}\n    >\n      <h3 className=\"text-sm font-medium text-neutral-200 mb-2\">\n        Custom Panel\n      </h3>\n      <p className=\"text-xs text-neutral-400\">\n        This panel uses SHELL_THEME tokens for a consistent look.\n      </p>\n    </div>\n  );\n}\n```\n\n---\n\n## Sounds\n\nThe SDK includes a tactile UI sound library generated entirely with the Web Audio API. No audio files are shipped.\n\n### Import\n\n```tsx\nimport { sounds, click, thock, confirm, isMuted, setMuted, preview } from '@hudsonos/sdk';\n```\n\nAll sound functions and controls are named exports from the SDK barrel.\n\n### Available Sounds\n\n| Function | Description | Suggested Usage |\n|----------|-------------|-----------------|\n| `click()` | Soft click | Button press, toggle |\n| `thock()` | Deep thock with attack | Panel open, focus change |\n| `blipUp()` | Rising frequency blip | Success, task complete |\n| `blipDown()` | Falling frequency blip | Dismiss, close |\n| `pop()` | Quick pop | Command palette open, modal |\n| `confirm()` | Two-tone ascending | Save, commit |\n| `error()` | Two-tone descending | Soft error |\n| `whoosh()` | Noise sweep | Transition, navigation |\n| `chime()` | Four-note ascending chime | System init (bypasses mute) |\n| `tick()` | Quick tick | Checkbox, step progress |\n| `slideIn()` | Rising sweep | Drawer open |\n| `slideOut()` | Falling sweep | Drawer close |\n| `boot()` | Four-tone ascending sequence | System boot |\n| `ping()` | High bell tone | Notification |\n| `type()` | Randomized mechanical keystroke | Typing feedback |\n\n### Usage\n\nCall any sound function directly. Sounds are fire-and-forget with no return value.\n\n```tsx\nimport { sounds, confirm, click } from '@hudsonos/sdk';\n\nfunction SaveButton() {\n  const handleSave = () => {\n    save();\n    confirm();\n  };\n\n  return (\n    <button onClick={() => { handleSave(); click(); }}>\n      Save\n    </button>\n  );\n}\n```\n\n#### Using the sounds Object\n\nAll sounds are also available as a named object for dynamic access:\n\n```tsx\nimport { sounds } from '@hudsonos/sdk';\n\n// Call by name\nsounds.click();\nsounds.confirm();\n\n// Dynamic access\nconst soundName = 'blipUp';\nsounds[soundName]();\n```\n\n#### SoundName Type\n\n```ts\ntype SoundName = keyof typeof sounds;\n// 'click' | 'thock' | 'blipUp' | 'blipDown' | 'pop' | 'confirm' | 'error' | 'whoosh' | 'chime' | 'tick' | 'slideIn' | 'slideOut' | 'boot' | 'ping' | 'type'\n```\n\n### Mute Control\n\nSounds are muted by default. The mute state is persisted in `localStorage` under the key `frame_sounds`.\n\n#### isMuted\n\nReturns the current mute state.\n\n```ts\nfunction isMuted(): boolean;\n```\n\n#### setMuted\n\nSets the mute state and persists it.\n\n```ts\nfunction setMuted(muted: boolean): void;\n```\n\n#### toggleMute\n\nToggles mute and returns the new state.\n\n```ts\nfunction toggleMute(): boolean;\n```\n\n#### Mute Toggle Button Example\n\n```tsx\nimport { isMuted, toggleMute } from '@hudsonos/sdk';\nimport { useState } from 'react';\n\nfunction SoundToggle() {\n  const [muted, setMutedState] = useState(isMuted());\n\n  const handleToggle = () => {\n    toggleMute();\n    setMutedState(isMuted());\n  };\n\n  return (\n    <button onClick={handleToggle}>\n      {muted ? 'Unmute' : 'Mute'} sounds\n    </button>\n  );\n}\n```\n\n### Preview\n\nThe `preview` function plays a sound even when muted. It temporarily disables mute, plays the sound, then restores the previous mute state. Use this in settings panels to let users hear sounds before enabling them.\n\n```ts\nfunction preview(name: SoundName): void;\n```\n\n```tsx\nimport { preview } from '@hudsonos/sdk';\nimport type { SoundName } from '@hudsonos/sdk';\n\nfunction SoundPreviewer() {\n  const soundNames: SoundName[] = [\n    'click', 'thock', 'blipUp', 'blipDown', 'pop',\n    'confirm', 'error', 'whoosh', 'tick', 'boot', 'ping',\n  ];\n\n  return (\n    <div className=\"space-y-1\">\n      {soundNames.map((name) => (\n        <button\n          key={name}\n          onClick={() => preview(name)}\n          className=\"block text-xs text-neutral-400 hover:text-cyan-400\"\n        >\n          {name}\n        </button>\n      ))}\n    </div>\n  );\n}\n```\n\n### Technical Details\n\n- Sounds are generated using the Web Audio API's `OscillatorNode` and `BufferSource` (for noise).\n- Each sound function creates short-lived audio nodes and schedules them on the `AudioContext` timeline.\n- The `AudioContext` is lazily created on first use and resumed if suspended (browser autoplay policy).\n- The `type()` sound adds randomized pitch and volume for a natural feel.\n- The `chime()` sound always plays, bypassing the mute setting. It is intended for system-level events.\n- All sound functions are wrapped in `try/catch` and fail silently if the Web Audio API is unavailable.\n";
+const agentMarkdown = "";
+
+    // Theme toggle
+    var themeToggle = document.querySelector('[data-theme-toggle]')
+    if (themeToggle) {
+      themeToggle.addEventListener('click', function () {
+        var current = document.documentElement.getAttribute('data-theme') || 'light'
+        var next = current === 'dark' ? 'light' : 'dark'
+        document.documentElement.setAttribute('data-theme', next)
+        try { localStorage.setItem('theme', next) } catch (e) {}
+      })
+    }
+
+    // Collapsible nav sections
+    document.querySelectorAll('[data-nav-toggle]').forEach(function (btn) {
+      var list = btn.parentElement.querySelector('[data-nav-list]')
+      if (!list) return
+      btn.addEventListener('click', function () {
+        var expanded = btn.getAttribute('aria-expanded') === 'true'
+        btn.setAttribute('aria-expanded', String(!expanded))
+        list.dataset.collapsed = String(expanded)
+      })
+    })
+
+    // Copy buttons
+    var safeCopy = function (content, btn) {
+      if (!content) return
+      navigator.clipboard.writeText(content).then(function () {
+        if (btn) {
+          var orig = btn.innerHTML
+          btn.textContent = 'Copied!'
+          setTimeout(function () { btn.innerHTML = orig }, 2000)
+        }
+      }).catch(function () {})
+    }
+
+    document.querySelector('[data-copy-agent-button]')?.addEventListener('click', function () {
+      safeCopy(agentMarkdown || rawMarkdown, this)
+    })
+
+    document.querySelector('[data-copy-markdown-button]')?.addEventListener('click', function () {
+      safeCopy(rawMarkdown, this)
+    })
+
+    // TOC scroll spy
+    var initToc = function () {
+      var tocLinks = Array.from(document.querySelectorAll('[data-toc-link]'))
+      var headings = tocLinks
+        .map(function (link) { return document.querySelector(link.getAttribute('href')) })
+        .filter(Boolean)
+
+      if (!headings.length) return
+      var activeId = null
+
+      var observer = new IntersectionObserver(
+        function (entries) {
+          entries.forEach(function (entry) {
+            if (!entry.isIntersecting) return
+            activeId = entry.target.id
+            tocLinks.forEach(function (link) { link.classList.remove('is-active') })
+            var activeLink = document.querySelector('[data-toc-link][href="#' + entry.target.id + '"]')
+            if (activeLink) activeLink.classList.add('is-active')
+          })
+        },
+        { rootMargin: '-80px 0px -66% 0px' },
+      )
+
+      headings.forEach(function (heading) { observer.observe(heading) })
+    }
+
+    if (document.readyState === 'loading') {
+      document.addEventListener('DOMContentLoaded', initToc)
+    } else {
+      initToc()
+    }
+  })();</script>  <div class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50 p-6" data-search-modal data-pagefind-ignore> <div class="w-full max-w-2xl rounded-2xl border border-[var(--color-border)] bg-[var(--color-surface)] p-6 shadow-xl"> <div class="flex items-center justify-between"> <div> <p class="text-xs uppercase tracking-widest text-[var(--color-text-muted)]">Search</p> <h2 class="text-lg font-semibold">Find docs fast</h2> </div> <button class="text-xs text-[var(--color-text-muted)]" data-search-close>Close</button> </div> <div id="search-modal" class="mt-4 rounded-[var(--radius-md)] border border-[var(--color-border)] bg-[var(--color-surface-muted)] p-4"></div> <p id="search-modal-fallback" class="mt-3 hidden text-xs text-[var(--color-text-muted)]">
+Search index is generated on build. Run <code>bun build</code> to enable Pagefind locally.
+</p> </div> </div> <script>
+      (() => {
+        var initUi = function () {
+          window.addEventListener('keydown', function (event) {
+            var isMac = navigator.platform && navigator.platform.toUpperCase().indexOf('MAC') >= 0
+            var isCmdK = isMac ? event.metaKey && event.key.toLowerCase() === 'k' : event.ctrlKey && event.key.toLowerCase() === 'k'
+            if (isCmdK) {
+              event.preventDefault()
+              window.dispatchEvent(new CustomEvent('open-search'))
+            }
+          })
+
+          var searchModal = document.querySelector('[data-search-modal]')
+          var searchClose = document.querySelector('[data-search-close]')
+          var searchToggles = document.querySelectorAll('[data-search-toggle]')
+
+          var loadPagefind = function () {
+            return new Promise(function (resolve) {
+              if (window.PagefindUI) return resolve(true)
+              var existing = document.querySelector('script[data-pagefind]')
+              if (existing) {
+                existing.addEventListener('load', function () { resolve(true) })
+                existing.addEventListener('error', function () { resolve(false) })
+                return
+              }
+              var script = document.createElement('script')
+              script.src = '/pagefind/pagefind-ui.js'
+              script.async = true
+              script.dataset.pagefind = 'true'
+              script.addEventListener('load', function () { resolve(true) })
+              script.addEventListener('error', function () { resolve(false) })
+              document.head.appendChild(script)
+            })
+          }
+
+          var initPagefind = function () {
+            loadPagefind().then(function (ok) {
+              if (ok && window.PagefindUI) {
+                new window.PagefindUI({ element: '#search-modal', showSubResults: true })
+              } else {
+                var fb = document.getElementById('search-modal-fallback')
+                if (fb) fb.classList.remove('hidden')
+              }
+            })
+          }
+
+          var openSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.remove('hidden')
+            searchModal.classList.add('flex')
+            initPagefind()
+          }
+
+          var closeSearch = function () {
+            if (!searchModal) return
+            searchModal.classList.add('hidden')
+            searchModal.classList.remove('flex')
+          }
+
+          searchToggles.forEach(function (btn) { btn.addEventListener('click', openSearch) })
+          searchClose && searchClose.addEventListener('click', closeSearch)
+          searchModal && searchModal.addEventListener('click', function (event) {
+            if (event.target === searchModal) closeSearch()
+          })
+          window.addEventListener('open-search', openSearch)
+        }
+
+        var addCopyButtons = function () {
+          document.querySelectorAll('pre').forEach(function (block) {
+            if (block.dataset.copyReady) return
+            block.dataset.copyReady = 'true'
+            block.style.position = 'relative'
+            var button = document.createElement('button')
+            button.textContent = 'Copy'
+            button.style.cssText = 'position:absolute;right:8px;top:8px;padding:3px 8px;border-radius:4px;background:var(--color-surface-muted);border:1px solid var(--color-border);color:var(--color-text-muted);font-size:11px;cursor:pointer;font-family:"Geist Mono",monospace;transition:all 0.15s;'
+            button.addEventListener('mouseenter', function() { this.style.color = 'var(--color-text)'; })
+            button.addEventListener('mouseleave', function() { this.style.color = 'var(--color-text-muted)'; })
+            button.addEventListener('click', function () {
+              var code = block.querySelector('code')
+              if (!code) return
+              navigator.clipboard.writeText(code.innerText).then(function () {
+                button.textContent = 'Copied'
+                setTimeout(function () { button.textContent = 'Copy' }, 1200)
+              })
+            })
+            block.appendChild(button)
+          })
+        }
+
+        if (document.readyState === 'loading') {
+          document.addEventListener('DOMContentLoaded', initUi)
+          document.addEventListener('DOMContentLoaded', addCopyButtons)
+        } else {
+          initUi()
+          addCopyButtons()
+        }
+      })()
+    </script> </body> </html>

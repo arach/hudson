@@ -39,6 +39,7 @@ import { assetsApp } from './assets';
 import { apiInspectorApp } from './api-inspector';
 import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
+import { documentLabApp } from './document-lab';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -79,6 +80,7 @@ function getAppById(id: string): HudsonApp | null {
     'api-inspector': apiInspectorApp,
     'json-explorer': jsonExplorerApp,
     'notepad': notepadApp,
+    'document-lab': documentLabApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -164,6 +166,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       app: jsonExplorerApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 420, y: 380, w: 620, h: 500 },
+    },
+    {
+      app: documentLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -120, y: 1020, w: 880, h: 620 },
     },
   ];
 }
@@ -308,6 +315,28 @@ export function getLogoStudioWorkspace(): HudsonWorkspace {
   };
 }
 
+/** Document Lab — development workspace for shared text, markdown, and code surfaces. */
+export function getDocumentLabWorkspace(): HudsonWorkspace {
+  return {
+    id: 'document-lab',
+    name: 'Document Lab',
+    description: 'Shared document primitive across text, markdown, and code surfaces',
+    mode: 'canvas',
+    apps: [{
+      app: documentLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -460, y: -300, w: 920, h: 640 },
+    }, {
+      app: notepadApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 500, y: -260, w: 620, h: 560 },
+    }],
+    defaultFocusedAppId: 'document-lab',
+    defaultScale: 0.8,
+    leftNavigation: 'on',
+  };
+}
+
 
 // Backwards-compat: callers that import `hudsonOSWorkspace` as a const get
 // a cached snapshot created on first access.
@@ -334,6 +363,7 @@ export function getCoreWorkspaces(): HudsonWorkspace[] {
     { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
     { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
+    { workspace: getDocumentLabWorkspace(), source: 'core:document-lab' },
   ]);
 }
 

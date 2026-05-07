@@ -4,11 +4,35 @@ import HudsonUI
 struct PrimitivesTab: View {
     @State private var fieldText: String = ""
     @State private var selectedRow: String? = "alpha"
+    @State private var documentMode: HudTextDocumentMode = .preview
+    @State private var document = HudTextDocumentDetector.makeDocument(
+        id: "demo-document",
+        title: "AgentProvider.swift",
+        uri: "Sources/AgentProvider.swift",
+        mediaType: "text/x-swift",
+        value: """
+        import SwiftUI
+        import HudsonUI
+
+        public struct AgentProvider: View {
+            let title: String
+            @State private var isConnected = true
+
+            public var body: some View {
+                HudCard {
+                    Text(title)
+                        .font(HudFont.mono(HudTextSize.base))
+                }
+            }
+        }
+        """
+    )
 
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.xxxl) {
             buttons
             fieldsAndBadges
+            textDocuments
             listRows
             kvRows
             emptyState
@@ -44,6 +68,14 @@ struct PrimitivesTab: View {
                     }
                 }
             }
+        }
+    }
+
+    private var textDocuments: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.xl) {
+            HudSectionLabel("Text documents")
+            HudTextDocumentSurface(document: $document, mode: $documentMode)
+                .frame(height: HudLayout.textDocumentPreviewHeight)
         }
     }
 

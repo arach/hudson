@@ -16,6 +16,23 @@ struct PrimitivesTab: View {
     @State private var vaultValue: String = ""
     @State private var vaultMessage: String = ""
     @State private var vaultKeys: [String] = []
+    @State private var documentMode: HudTextDocumentMode = .preview
+    @State private var document = HudTextDocumentDetector.makeDocument(
+        id: "ios-demo-document",
+        title: "SessionSummary.md",
+        uri: "Notes/SessionSummary.md",
+        mediaType: "text/markdown",
+        value: """
+        # Session Summary
+
+        Hudson text documents share one model across plain text, markdown, code,
+        and raw files.
+
+        ```swift
+        HudTextDocumentSurface(document: $document, mode: $mode)
+        ```
+        """
+    )
     @State private var showSharing: Bool = false
     @State private var selectedLiquidTab: HudLiquidBarTab.ID = "home"
     @State private var lastLiquidAction: String = "—"
@@ -27,6 +44,7 @@ struct PrimitivesTab: View {
         .init(icon: "circle.fill",           label: "Status",   anchor: "Status"),
         .init(icon: "tag",                   label: "Badges",   anchor: "Badges"),
         .init(icon: "textformat",            label: "Field",    anchor: "Field"),
+        .init(icon: "doc.text",              label: "Docs",     anchor: "Text documents"),
         .init(icon: "qrcode",                label: "QR",       anchor: "QR code"),
         .init(icon: "qrcode.viewfinder",     label: "Scan",     anchor: "QR scanner"),
         .init(icon: "lock.shield",           label: "Perms",    anchor: "Permissions"),
@@ -50,6 +68,7 @@ struct PrimitivesTab: View {
                     sectionStatusDots
                     sectionBadges
                     sectionField
+                    sectionTextDocuments
                     sectionQRCode
                     sectionQRScanner
                     sectionPermissions
@@ -141,6 +160,18 @@ struct PrimitivesTab: View {
                 HudField("Search agents…", text: $fieldText, icon: "magnifyingglass")
                 HudField("Plain field",     text: $fieldQuery)
             }
+        }
+    }
+
+    private var sectionTextDocuments: some View {
+        gallerySection("Text documents", snippet: """
+            @State var mode: HudTextDocumentMode = .preview
+            @State var document = HudTextDocumentDetector.makeDocument(...)
+
+            HudTextDocumentSurface(document: $document, mode: $mode)
+            """) {
+            HudTextDocumentSurface(document: $document, mode: $documentMode)
+                .frame(height: HudLayout.textDocumentPreviewHeight)
         }
     }
 

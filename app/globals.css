@@ -189,3 +189,40 @@ body {
   0%, 100% { transform: scaleX(0.67); opacity: 0.5; }
   50% { transform: scaleX(1); opacity: 1; }
 }
+
+.landing-hotspot-on {
+  outline: 1px solid oklch(var(--accent) / 0.28);
+  outline-offset: -1px;
+}
+
+.landing-hotspot-on::after {
+  content: "";
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 6px;
+  height: 6px;
+  border-radius: 999px;
+  background: oklch(var(--accent));
+  box-shadow: 0 0 0 4px oklch(var(--accent) / 0.14);
+  pointer-events: none;
+  z-index: 20;
+}
+
+.landing-hotspot-on:hover::before {
+  content: attr(data-hotspot-label);
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  max-width: min(320px, calc(100% - 20px));
+  z-index: 30;
+  border: 1px solid oklch(var(--border));
+  border-radius: 6px;
+  background: oklch(var(--card) / 0.96);
+  color: oklch(var(--foreground));
+  box-shadow: 0 16px 48px -28px oklch(var(--foreground) / 0.35);
+  padding: 6px 8px;
+  font-size: 11px;
+  line-height: 1.35;
+  pointer-events: none;
+}

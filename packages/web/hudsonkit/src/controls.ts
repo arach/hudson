@@ -28,4 +28,37 @@ export { CodeViewer } from './components/controls/CodeViewer';
 export type { CodeViewerProps, CodeLanguage } from './components/controls/CodeViewer';
 
 export { CodeEditor } from './components/controls/CodeEditor';
-export type { CodeEditorProps } from './components/controls/CodeEditor';
+export type { CodeEditorProps, DocumentLanguage } from './components/controls/CodeEditor';
+
+export {
+  TextDocumentProvider,
+  TextDocumentSurface,
+  TextDocumentSurfaceInner,
+  createHudsonTextDocument,
+  detectTextDocumentKind,
+  inferDocumentLanguage,
+  useTextDocument,
+} from './components/controls/TextDocument';
+export type {
+  HudsonTextDocument,
+  TextDocumentDetectionInput,
+  TextDocumentContextValue,
+  TextDocumentKind,
+  TextDocumentMode,
+  TextDocumentProviderProps,
+  TextDocumentSurfaceProps,
+} from './components/controls/TextDocument';
+
+export {
+  TextDiffSurface,
+  createHudsonTextDiff,
+} from './components/controls/TextDiff';
+export type {
+  HudsonTextDiff,
+  HudsonTextDiffSnapshot,
+  HudsonTextDocumentDiff,
+  HudsonTextPatchDiff,
+  TextDiffDetectionInput,
+  TextDiffLayout,
+  TextDiffSurfaceProps,
+} from './components/controls/TextDiff';

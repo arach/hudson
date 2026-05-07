@@ -258,7 +258,7 @@ function tokenize(code: string, language: CodeLanguage): Token[][] {
 // ---------------------------------------------------------------------------
 
 const TOKEN_COLORS: Record<TokenType, string> = {
-  keyword: 'text-purple-300',
+  keyword: 'text-cyan-300',
   type: 'text-cyan-300',
   string: 'text-emerald-300',
   template: 'text-emerald-300/80',
