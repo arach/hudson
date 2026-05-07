@@ -93,6 +93,7 @@ export interface AppManifest {
  *  declares 'duplicable' also supports fresh spawn; a 'spawnable' app does not
  *  advertise a Duplicate gesture. */
 export type MultiInstanceMode = 'singleton' | 'spawnable' | 'duplicable';
+export type PortInspectorMode = 'default' | 'compact' | 'hidden';
 
 export interface HudsonApp {
   /** Unique identifier (used as key + localStorage namespace) */
@@ -152,6 +153,8 @@ export interface HudsonApp {
 
   /** Static port declarations for inter-app data piping */
   ports?: AppPorts;
+  /** Controls how prominently static ports appear in the shell inspector */
+  portInspector?: PortInspectorMode;
 
   /** Services this app depends on */
   services?: ServiceDependency[];
