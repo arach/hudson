@@ -46,7 +46,7 @@ if voiceEnabled {
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    dependencies.append(.package(path: "/Users/arach/dev/Termini"))
+    dependencies.append(.package(path: "/Users/arach/dev/termini"))
     targets.append(
         .target(
             name: "HudsonTerminal",

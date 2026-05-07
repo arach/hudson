@@ -10,7 +10,7 @@ packages:
   HudsonKit:
     path: ../..
   Termini:
-    path: /Users/arach/dev/Termini
+    path: /Users/arach/dev/termini
 
 targets:
   HudsonKitDemoIOS:

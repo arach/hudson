@@ -9,7 +9,7 @@ section: "macOS Apps"
 
 ## Overview
 
-`HudsonTerminal` is a Hudson-vocabulary layer over [Termini](https://github.com/arach/Termini) — the renderer + local PTY + SSH stack at `/Users/arach/dev/Termini`. Hudson owns the design contract (theme, status overlay, focus, chrome); Termini owns the renderer and transport.
+`HudsonTerminal` is a Hudson-vocabulary layer over [Termini](https://github.com/arach/Termini) — the renderer + local PTY + SSH stack at `/Users/arach/dev/termini`. Hudson owns the design contract (theme, status overlay, focus, chrome); Termini owns the renderer and transport.
 
 Termini is heavy (NIO, NIOSSH, renderer), so the module is gated behind `HUDSONKIT_WITH_TERMINAL=1`. Main `HudsonKit` ships with zero terminal dependencies.
 
