@@ -81,19 +81,20 @@ public enum HudTextDocumentDetector {
         title: String,
         uri: String? = nil,
         mediaType: String? = nil,
+        kind: HudTextDocumentKind? = nil,
         language: String? = nil,
         value: String,
         isReadOnly: Bool = false
     ) -> HudTextDocument {
         let resolvedLanguage = language ?? inferLanguage(title: title, uri: uri, mediaType: mediaType)
-        let kind = detectKind(title: title, uri: uri, mediaType: mediaType, language: resolvedLanguage, value: value)
+        let resolvedKind = kind ?? detectKind(title: title, uri: uri, mediaType: mediaType, language: resolvedLanguage, value: value)
         return HudTextDocument(
             id: id,
             title: title,
             uri: uri,
             mediaType: mediaType,
             language: resolvedLanguage,
-            kind: kind,
+            kind: resolvedKind,
             value: value,
             isReadOnly: isReadOnly
         )

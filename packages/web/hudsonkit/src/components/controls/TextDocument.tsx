@@ -36,6 +36,8 @@ export interface TextDocumentDetectionInput {
   uri?: string;
   filename?: string;
   mediaType?: string;
+  kind?: TextDocumentKind;
+  language?: DocumentLanguage;
   value: string;
   readOnly?: boolean;
 }
@@ -109,14 +111,14 @@ export function detectTextDocumentKind(input: TextDocumentDetectionInput): TextD
 
 export function createHudsonTextDocument(input: TextDocumentDetectionInput): HudsonTextDocument {
   const title = input.title ?? input.filename ?? input.uri?.split('/').pop() ?? 'Untitled';
-  const language = inferDocumentLanguage(input);
+  const language = input.language ?? inferDocumentLanguage(input);
   return {
     id: input.id ?? input.uri ?? title,
     title,
     uri: input.uri,
     mediaType: input.mediaType,
     language,
-    kind: detectTextDocumentKind(input),
+    kind: input.kind ?? detectTextDocumentKind(input),
     value: input.value,
     readOnly: input.readOnly,
   };
