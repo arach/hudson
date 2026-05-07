@@ -61,6 +61,54 @@ Responses are also one JSON object per line.
 
 `ok: false` means the command was decoded but could not be applied. Decode failures are reported with `action: "decode"` and no request `id`.
 
+## Security and Seamless Control
+
+The control API is meant to make agent-driven setup feel immediate: Scout,
+Talkie, Codex, or a shell script should be able to open Vantage and arrange the
+native surface without a manual ceremony for every low-risk command. The same
+path can also create terminals, attach tmux sessions, close nodes, trigger
+installs, and touch SSH. That means the security model needs to be explicit.
+
+V0 should be treated as an opt-in local control surface. A host should only
+start the watcher when the user or product has enabled external control for the
+current workspace. Development defaults use predictable `/tmp` paths for easy
+inspection, but product hosts should prefer per-user, app-scoped paths with
+owner-only permissions and should rotate those paths when a workspace/session is
+reset.
+
+The seamless model is a short-lived capability, not a modal on every command:
+
+- A trusted launcher can create the control files, response files, and optional
+  state file, then pass those paths to the agent process it started.
+- A future host may add a per-session token or nonce to the command envelope.
+  Agents launched by the host get it automatically; unrelated local processes do
+  not.
+- Read-only commands such as `status`, `inspect`, `metrics`, and bounded
+  `tmux-health` should run without repeated prompts once the channel is trusted;
+  remote probes still require an explicit `probeRemote` opt-in or host policy.
+- Mutating commands such as `setup`, `tile`, `spawn`, `reattach`, `style`,
+  `viewport`, `select`, and `popout` are allowed within the enabled workspace
+  and should remain visible in command status/audit output.
+- High-risk commands that install software, kill sessions, remove nodes, touch
+  remote SSH, or cross a product/workspace boundary should require either an
+  explicit `confirm` field, a host policy grant, or a user-visible approval.
+
+Remote operations keep the same bias: make the happy path smooth, but never
+background-prompt for credentials. Remote health probes are bounded and
+noninteractive; remote terminal attachment uses the user's existing SSH setup and
+surfaces authentication/host-key problems inside the terminal or health status.
+
+Security backlog:
+
+- Per-session capability token in the JSONL envelope.
+- Host-owned path allocation with owner-only permissions and stale-file cleanup.
+- Command classes (`read`, `mutate`, `destructive`, `network`, `install`) with a
+  default policy matrix.
+- Structured audit records for command id, action, caller label, affected node
+  ids, and result.
+- Redaction rules so responses do not echo secrets, environment values, or full
+  command lines unless explicitly requested by a trusted host.
+
 ## Common Include Flags
 
 Most responses include nodes, viewport, and metrics by default. Agents can opt out when sending high-volume commands.
@@ -114,7 +162,7 @@ Selectors can be full or prefix UUIDs, exact node titles, tmux targets, remote t
 | `restore` / `restore-workspace` | Restore a durable workspace snapshot. |
 | `setup` / `apply-workspace` | Apply a declarative Vantage setup manifest. |
 | `style` | Apply or inspect workspace, tag, or terminal appearance settings. |
-| `tmux-health` | Inspect local tmux targets and report remote tmux identity status. |
+| `tmux-health` | Inspect local tmux targets and optionally run bounded, noninteractive remote probes. |
 
 ## Setup Manifests
 
@@ -300,22 +348,33 @@ Inspect health:
   "id": "health-remote",
   "action": "tmux-health",
   "remoteHost": "devbox",
-  "sessions": ["hudson-lab"]
+  "sessions": ["hudson-lab"],
+  "probeRemote": true,
+  "timeoutMS": 750
 }
 ```
 
-Local health checks verify that tmux exists, the target exists, and return session/window/pane details where available. Remote health currently reports the remote identity and marks it `remote-unverified`; it deliberately does not open a background SSH health probe until the host app provides an explicit auth UX and timeout policy.
+Local health checks verify that tmux exists, the target exists, and return session/window/pane details where available. Remote health returns identity-only `remote-unverified` by default so status checks do not unexpectedly touch the network or pause canvas interaction. Set `probeRemote: true` to run a bounded noninteractive SSH probe: it never asks for passwords, does not open an interactive shell, and reports status quickly according to `timeoutMS` (default 3000, clamped to 500-30000 ms).
+
+Remote identity is the tuple of `remoteHost`, tmux `target`, and optional Graphite path. Agents should treat that tuple as the durable address: the canvas node can disappear, but the tmux session remains findable by the same remote host and target.
+
+Health status values:
+
+- `ready`: tmux exists and the target is attachable.
+- `auth-needed`: SSH authentication or host-key approval is required.
+- `unreachable`: the host cannot be reached within the timeout.
+- `tmux-missing`: tmux was not found locally or on the remote host.
+- `session-missing`: tmux exists, but the requested session/window/target was not found.
+- `remote-error`: SSH completed but the probe could not classify the failure.
+- `remote-unverified`: remote identity was returned without probing because `probeRemote` was false or omitted.
 
 Remote hardening backlog:
 
-- Noninteractive reconnect check with bounded timeout and no password prompt.
-- Session readiness polling before attach.
-- Active tmux window discovery so toolbar/UI state can sync after reconnect.
 - Terminal size synchronization on attach and resize.
-- Explicit `TERM=xterm-256color` and tmux-friendly key/mouse policy.
-- Remote identity docs covering `remoteHost`, tmux target, and Graphite path together.
+- tmux-friendly key/mouse policy and deeper remote latency feedback.
+- Better auth UX that can guide users through host-key approval without background prompts.
 
-The readiness/window/TERM items are informed by Scion's tmux runtime approach:
+The readiness/window/TERM direction is informed by Scion's tmux runtime approach:
 https://github.com/GoogleCloudPlatform/scion
 
 ## Shell Wrapper Examples
@@ -325,6 +384,8 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait status
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait setup --manifest /tmp/scout.vantage.setup.json --create --fit
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait tmux-health --session hudson-lab
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait tmux-health --remote devbox --session hudson-lab
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait tmux-health --remote devbox --session hudson-lab --probe-remote --timeout-ms 750
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote devbox --session hudson-lab
 ```
 

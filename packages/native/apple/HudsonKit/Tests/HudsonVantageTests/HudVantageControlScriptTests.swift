@@ -97,6 +97,29 @@ final class HudVantageControlScriptTests: XCTestCase {
         }
     }
 
+    func testScriptsEmitRemoteTmuxHealthOptions() throws {
+        for scriptPath in controlScriptPaths {
+            let command = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "tmux-health",
+                    "--remote", "devbox",
+                    "--session", "hudson-lab",
+                    "--timeout-ms", "750",
+                    "--no-remote-probe",
+                ]
+            )
+
+            XCTAssertEqual(command["action"] as? String, "tmux-health")
+            XCTAssertEqual(command["apiVersion"] as? String, "v0")
+            XCTAssertEqual(command["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(command["remoteHost"] as? String, "devbox")
+            XCTAssertEqual(command["sessions"] as? [String], ["hudson-lab"])
+            XCTAssertEqual(command["probeRemote"] as? Bool, false)
+            XCTAssertEqual(try XCTUnwrap(command["timeoutMS"] as? NSNumber).doubleValue, 750, accuracy: 0.001)
+        }
+    }
+
     func testScriptsEmitFocusAndPopOutCommands() throws {
         for scriptPath in controlScriptPaths {
             let focus = try queuedCommandFromScript(

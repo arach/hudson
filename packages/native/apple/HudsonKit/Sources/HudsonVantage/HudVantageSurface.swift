@@ -238,7 +238,11 @@ private final class TerminalNode: ObservableObject, Identifiable {
         if let remoteHost {
             return shellSpec(
                 executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
-                arguments: ["-tt", remoteHost, "tmux"] + tmuxArguments,
+                arguments: [
+                    "-tt",
+                    remoteHost,
+                    "sh -lc \(shellQuoted(remoteTmuxAttachScript(target: target, createIfMissing: canCreate)))",
+                ],
                 workingDirectoryURL: workingDirectoryURL
             )
         }
@@ -289,6 +293,44 @@ private final class TerminalNode: ObservableObject, Identifiable {
             ],
             workingDirectoryURL: workingDirectoryURL ?? defaultWorkingDirectoryURL
         )
+    }
+
+    private static func remoteTmuxAttachScript(
+        target: String,
+        createIfMissing: Bool
+    ) -> String {
+        let quotedTarget = shellQuoted(target)
+        if createIfMissing {
+            return """
+            export TERM=xterm-256color
+            if ! command -v tmux >/dev/null 2>&1; then
+              printf 'tmux not found on remote host\\n' >&2
+              exit 127
+            fi
+            exec tmux new-session -A -s \(quotedTarget)
+            """
+        }
+
+        return """
+        export TERM=xterm-256color
+        target=\(quotedTarget)
+        if ! command -v tmux >/dev/null 2>&1; then
+          printf 'tmux not found on remote host\\n' >&2
+          exit 127
+        fi
+        for _ in 1 2 3 4 5; do
+          if tmux has-session -t "$target" >/dev/null 2>&1; then
+            exec tmux attach-session -t "$target"
+          fi
+          sleep 0.25
+        done
+        printf 'tmux target %s not found on remote host\\n' "$target" >&2
+        exit 1
+        """
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
     }
 
     private static var shellURL: URL {
@@ -2378,7 +2420,13 @@ public struct HudVantageSurface: View {
             let report = applySetupManifest(manifest, command: command)
             let health = manifest.nodes.isEmpty
                 ? nil
-                : nodes.compactMap(tmuxHealthSubject).map(tmuxHealth)
+                : nodes.compactMap(tmuxHealthSubject).map {
+                    tmuxHealth(
+                        for: $0,
+                        probeRemote: false,
+                        timeoutSeconds: remoteHealthTimeoutSeconds(from: command)
+                    )
+                }
             let failedCount = report.failedNodes.count
             return controlResponse(
                 command,
@@ -2901,7 +2949,13 @@ public struct HudVantageSurface: View {
     ) -> HudVantageControlResponse {
         do {
             let subjects = try tmuxHealthSubjects(from: command)
-            let health = subjects.map(tmuxHealth)
+            let health = subjects.map {
+                tmuxHealth(
+                    for: $0,
+                    probeRemote: command.probeRemote ?? false,
+                    timeoutSeconds: remoteHealthTimeoutSeconds(from: command)
+                )
+            }
             return controlResponse(
                 command,
                 ok: true,
@@ -2913,6 +2967,11 @@ public struct HudVantageSurface: View {
         } catch {
             return controlNodeErrorResponse(command, error)
         }
+    }
+
+    private func remoteHealthTimeoutSeconds(from command: HudVantageControlCommand) -> Double {
+        let timeoutMS = command.timeoutMS ?? 3_000
+        return clamp(timeoutMS / 1_000, lower: 0.5, upper: 30)
     }
 
     private func closeNodes(
@@ -3143,19 +3202,44 @@ public struct HudVantageSurface: View {
         )
     }
 
-    private func tmuxHealth(for subject: TmuxHealthSubject) -> HudVantageTmuxHealth {
+    private func tmuxHealth(
+        for subject: TmuxHealthSubject,
+        probeRemote: Bool = false,
+        timeoutSeconds: Double = 3
+    ) -> HudVantageTmuxHealth {
         let parts = tmuxTargetParts(subject.target)
 
         if let remoteHost = subject.remoteHost {
+            guard probeRemote else {
+                return HudVantageTmuxHealth(
+                    nodeID: subject.nodeID,
+                    target: subject.target,
+                    graphitePath: subject.path?.description,
+                    remoteHost: remoteHost,
+                    status: "remote-unverified",
+                    session: parts.session,
+                    window: parts.window,
+                    message: "remote tmux probe skipped"
+                )
+            }
+
+            let result = TmuxRemoteHealthProbe().check(
+                remoteHost: remoteHost,
+                target: subject.target,
+                timeoutSeconds: timeoutSeconds
+            )
             return HudVantageTmuxHealth(
                 nodeID: subject.nodeID,
                 target: subject.target,
                 graphitePath: subject.path?.description,
                 remoteHost: remoteHost,
-                status: "remote-unverified",
-                session: parts.session,
-                window: parts.window,
-                message: "remote tmux is attached through ssh; noninteractive remote health checks are pending"
+                status: result.status,
+                session: result.session ?? parts.session,
+                window: result.window ?? parts.window,
+                activeWindow: result.activeWindow,
+                attachedClients: result.attachedClients,
+                paneCount: result.paneCount,
+                message: result.message
             )
         }
 
@@ -3176,7 +3260,7 @@ public struct HudVantageSurface: View {
                 nodeID: subject.nodeID,
                 target: subject.target,
                 graphitePath: subject.path?.description,
-                status: "missing",
+                status: "session-missing",
                 session: parts.session,
                 window: parts.window,
                 message: "tmux target not found"
@@ -3186,14 +3270,14 @@ public struct HudVantageSurface: View {
         let activeWindow = try? runTmuxHarnessCommand([
             "display-message",
             "-t",
-            parts.session,
+            subject.target,
             "-p",
             "#{window_name}",
         ]).trimmingCharacters(in: .whitespacesAndNewlines)
         let attachedClients = (try? runTmuxHarnessCommand([
             "display-message",
             "-t",
-            parts.session,
+            subject.target,
             "-p",
             "#{session_attached}",
         ]).trimmingCharacters(in: .whitespacesAndNewlines)).flatMap(Int.init)
@@ -3209,7 +3293,7 @@ public struct HudVantageSurface: View {
             nodeID: subject.nodeID,
             target: subject.target,
             graphitePath: subject.path?.description,
-            status: "running",
+            status: "ready",
             session: parts.session,
             window: parts.window,
             activeWindow: activeWindow,

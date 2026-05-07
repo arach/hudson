@@ -106,6 +106,8 @@ examples/termini-canvas/scripts/canvasctl.sh --wait style --scope workspace --pr
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
 examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --session hudson-lab
+examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab
+examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --remote user@host --session hudson-lab --probe-remote --timeout-ms 750
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
@@ -149,6 +151,12 @@ remove the matching harness sessions and nodes when the trial is done.
 
 Local `targets` must already exist. For a simple session that can be created on
 demand, use `--session NAME --create`.
+
+`tmux-health` reports `ready`, `tmux-missing`, or `session-missing` for local
+targets. Remote health is identity-only by default and reports
+`remote-unverified`; use `--probe-remote` for a bounded noninteractive SSH probe
+that may report `ready`, `auth-needed`, `unreachable`, `tmux-missing`,
+`session-missing`, or `remote-error`.
 
 If local tmux is missing, the app inspector exposes an Install tmux action that
 confirms with the user before running Homebrew. Agents can request the same path

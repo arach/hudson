@@ -49,6 +49,8 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var includeMetrics: Bool?
     public var includeViewport: Bool?
     public var includeStyle: Bool?
+    public var probeRemote: Bool?
+    public var timeoutMS: Double?
     public var styleScope: String?
     public var stylePreset: String?
     public var tag: String?
@@ -108,6 +110,8 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         includeMetrics: Bool? = nil,
         includeViewport: Bool? = nil,
         includeStyle: Bool? = nil,
+        probeRemote: Bool? = nil,
+        timeoutMS: Double? = nil,
         styleScope: String? = nil,
         stylePreset: String? = nil,
         tag: String? = nil,
@@ -166,6 +170,8 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.includeMetrics = includeMetrics
         self.includeViewport = includeViewport
         self.includeStyle = includeStyle
+        self.probeRemote = probeRemote
+        self.timeoutMS = timeoutMS
         self.styleScope = styleScope
         self.stylePreset = stylePreset
         self.tag = tag

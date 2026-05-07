@@ -26,7 +26,7 @@ Usage:
   vantagectl.sh [--wait] close [NODE...]
   vantagectl.sh [--wait] metrics [--reset]
   vantagectl.sh [--wait] style [--scope workspace|tag|terminal] [--tag TAG] [--preset PRESET] [--chrome STYLE] [--terminal-theme THEME] [--font-family FAMILY] [--font-size N] [--grid-mode lines|dots|none] [--grid-step N] [--focus-padding N] [--node NODE...]
-  vantagectl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST]
+  vantagectl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST] [--probe-remote] [--timeout-ms N]
   vantagectl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
   vantagectl.sh [--wait] perf-cleanup [--prefix PREFIX]
   vantagectl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
@@ -290,6 +290,9 @@ case "$command" in
         --session) sessions+=("${2:?missing session}"); shift 2 ;;
         --target) targets+=("${2:?missing target}"); shift 2 ;;
         --remote|--remote-host|--ssh) remote="${2:?missing remote host}"; shift 2 ;;
+        --timeout-ms) parts+=("\"timeoutMS\":$(json_number_arg timeout-ms "${2:?missing timeout ms}")"); shift 2 ;;
+        --no-remote-probe|--skip-remote-probe) parts+=("\"probeRemote\":false"); shift ;;
+        --probe-remote) parts+=("\"probeRemote\":true"); shift ;;
         *) node_ids+=("$1"); shift ;;
       esac
     done

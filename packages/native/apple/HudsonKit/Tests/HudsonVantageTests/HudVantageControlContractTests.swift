@@ -121,6 +121,32 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.confirmInstall, true)
     }
 
+    func testControlCommandDecodesRemoteTmuxHealthProbeOptions() throws {
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "remote-health-1",
+          "action": "tmux-health",
+          "remoteHost": "devbox",
+          "sessions": ["hudson-lab"],
+          "probeRemote": false,
+          "timeoutMS": 750
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "tmux-health")
+        XCTAssertEqual(command.remoteHost, "devbox")
+        XCTAssertEqual(command.sessions, ["hudson-lab"])
+        XCTAssertEqual(command.probeRemote, false)
+        XCTAssertEqual(command.timeoutMS, 750)
+    }
+
     func testControlCommandDecodesStyleFields() throws {
         let json = """
         {
@@ -489,7 +515,7 @@ final class HudVantageControlContractTests: XCTestCase {
                     nodeID: nodeID,
                     target: "hudson-lab:agents-codex-0007",
                     graphitePath: "hudson.lab.agents.codex.0007.worker",
-                    status: "running",
+                    status: "ready",
                     session: "hudson-lab",
                     window: "agents-codex-0007",
                     activeWindow: "agents-codex-0007",
@@ -562,7 +588,7 @@ final class HudVantageControlContractTests: XCTestCase {
         let nodeOverride = try XCTUnwrap(terminalOverrides[nodeID.uuidString] as? [String: Any])
         XCTAssertEqual(nodeOverride["terminalFontSize"] as? Int, 14)
         let health = try XCTUnwrap(object["tmuxHealth"] as? [[String: Any]])
-        XCTAssertEqual(health.first?["status"] as? String, "running")
+        XCTAssertEqual(health.first?["status"] as? String, "ready")
         XCTAssertEqual(health.first?["session"] as? String, "hudson-lab")
         let setup = try XCTUnwrap(object["setup"] as? [String: Any])
         XCTAssertEqual(setup["workspaceID"] as? String, "scout-lab")

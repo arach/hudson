@@ -196,6 +196,249 @@ struct TmuxProcessResult: Codable, Hashable, Sendable {
     }
 }
 
+struct TmuxRemoteHealthProbeResult: Codable, Hashable, Sendable {
+    var status: String
+    var session: String?
+    var window: String?
+    var activeWindow: String?
+    var attachedClients: Int?
+    var paneCount: Int?
+    var message: String
+}
+
+struct TmuxRemoteHealthCommand: Hashable, Sendable {
+    var executableURL: URL
+    var arguments: [String]
+}
+
+struct TmuxRemoteHealthProcessResult: Hashable, Sendable {
+    var status: Int32
+    var stdout: String
+    var stderr: String
+    var timedOut: Bool
+}
+
+struct TmuxRemoteHealthProbe: Sendable {
+    private static let defaultTimeoutSeconds = 3.0
+
+    var processRunner: @Sendable (TmuxRemoteHealthCommand, Double) -> TmuxRemoteHealthProcessResult
+
+    init(
+        processRunner: (@Sendable (TmuxRemoteHealthCommand, Double) -> TmuxRemoteHealthProcessResult)? = nil
+    ) {
+        self.processRunner = processRunner ?? { command, timeoutSeconds in
+            TmuxRemoteHealthProcess.run(command, timeoutSeconds: timeoutSeconds)
+        }
+    }
+
+    func check(
+        remoteHost: String,
+        target: String,
+        timeoutSeconds: Double = Self.defaultTimeoutSeconds
+    ) -> TmuxRemoteHealthProbeResult {
+        let command = Self.command(
+            remoteHost: remoteHost,
+            target: target,
+            timeoutSeconds: timeoutSeconds
+        )
+        let result = processRunner(command, timeoutSeconds)
+        return Self.result(from: result)
+    }
+
+    static func command(
+        remoteHost: String,
+        target: String,
+        timeoutSeconds: Double
+    ) -> TmuxRemoteHealthCommand {
+        let connectTimeout = max(1, Int(ceil(timeoutSeconds)))
+        return TmuxRemoteHealthCommand(
+            executableURL: URL(fileURLWithPath: "/usr/bin/ssh"),
+            arguments: [
+                "-T",
+                "-o", "BatchMode=yes",
+                "-o", "NumberOfPasswordPrompts=0",
+                "-o", "PasswordAuthentication=no",
+                "-o", "KbdInteractiveAuthentication=no",
+                "-o", "ConnectionAttempts=1",
+                "-o", "ConnectTimeout=\(connectTimeout)",
+                "-o", "ServerAliveInterval=1",
+                "-o", "ServerAliveCountMax=1",
+                "-o", "LogLevel=ERROR",
+                remoteHost,
+                "sh -lc \(shellQuoted(remoteHealthScript(target: target)))",
+            ]
+        )
+    }
+
+    static func result(from processResult: TmuxRemoteHealthProcessResult) -> TmuxRemoteHealthProbeResult {
+        if processResult.timedOut {
+            return TmuxRemoteHealthProbeResult(
+                status: "unreachable",
+                message: "remote tmux health check timed out"
+            )
+        }
+
+        let fields = parseHealthFields(processResult.stdout)
+        if let status = fields["VANTAGE_STATUS"] {
+            return TmuxRemoteHealthProbeResult(
+                status: status,
+                session: nilIfEmpty(fields["VANTAGE_SESSION"]),
+                window: nilIfEmpty(fields["VANTAGE_WINDOW"]),
+                activeWindow: nilIfEmpty(fields["VANTAGE_ACTIVE_WINDOW"]),
+                attachedClients: fields["VANTAGE_ATTACHED"].flatMap(Int.init),
+                paneCount: fields["VANTAGE_PANES"].flatMap(Int.init),
+                message: message(forRemoteStatus: status)
+            )
+        }
+
+        let combinedError = "\(processResult.stderr)\n\(processResult.stdout)"
+        return TmuxRemoteHealthProbeResult(
+            status: classifiedSSHFailureStatus(from: combinedError, status: processResult.status),
+            message: classifiedSSHFailureMessage(from: combinedError, status: processResult.status)
+        )
+    }
+
+    private static func remoteHealthScript(target: String) -> String {
+        let quotedTarget = shellQuoted(target)
+        return """
+        target=\(quotedTarget)
+        if ! command -v tmux >/dev/null 2>&1; then
+          printf 'VANTAGE_STATUS=tmux-missing\\n'
+          exit 42
+        fi
+        if ! tmux has-session -t "$target" >/dev/null 2>&1; then
+          printf 'VANTAGE_STATUS=session-missing\\n'
+          exit 44
+        fi
+        printf 'VANTAGE_STATUS=ready\\n'
+        printf 'VANTAGE_SESSION=%s\\n' "$(tmux display-message -t "$target" -p '#{session_name}' 2>/dev/null)"
+        printf 'VANTAGE_WINDOW=%s\\n' "$(tmux display-message -t "$target" -p '#{window_name}' 2>/dev/null)"
+        printf 'VANTAGE_ACTIVE_WINDOW=%s\\n' "$(tmux display-message -t "$target" -p '#{window_name}' 2>/dev/null)"
+        printf 'VANTAGE_ATTACHED=%s\\n' "$(tmux display-message -t "$target" -p '#{session_attached}' 2>/dev/null)"
+        printf 'VANTAGE_PANES=%s\\n' "$(tmux list-panes -t "$target" -F '#{pane_id}' 2>/dev/null | wc -l | tr -d ' ')"
+        """
+    }
+
+    private static func parseHealthFields(_ stdout: String) -> [String: String] {
+        stdout
+            .split(separator: "\n", omittingEmptySubsequences: true)
+            .reduce(into: [:]) { fields, line in
+                let parts = line.split(separator: "=", maxSplits: 1, omittingEmptySubsequences: false)
+                guard parts.count == 2 else { return }
+                fields[String(parts[0])] = String(parts[1])
+            }
+    }
+
+    private static func classifiedSSHFailureStatus(from error: String, status: Int32) -> String {
+        let normalized = error.lowercased()
+        if normalized.contains("permission denied")
+            || normalized.contains("publickey")
+            || normalized.contains("authentication failed")
+            || normalized.contains("host key verification failed")
+            || normalized.contains("remote host identification has changed") {
+            return "auth-needed"
+        }
+        if normalized.contains("could not resolve hostname")
+            || normalized.contains("name or service not known")
+            || normalized.contains("nodename nor servname")
+            || normalized.contains("no route to host")
+            || normalized.contains("connection timed out")
+            || normalized.contains("operation timed out")
+            || normalized.contains("connection refused") {
+            return "unreachable"
+        }
+        return status == 255 ? "auth-needed" : "remote-error"
+    }
+
+    private static func classifiedSSHFailureMessage(from error: String, status: Int32) -> String {
+        switch classifiedSSHFailureStatus(from: error, status: status) {
+        case "auth-needed":
+            return "remote ssh authentication or host-key approval is needed"
+        case "unreachable":
+            return "remote host is unreachable"
+        default:
+            let trimmed = error.trimmingCharacters(in: .whitespacesAndNewlines)
+            return trimmed.isEmpty ? "remote tmux health check failed" : trimmed
+        }
+    }
+
+    private static func message(forRemoteStatus status: String) -> String {
+        switch status {
+        case "ready":
+            return "remote tmux target is ready"
+        case "tmux-missing":
+            return "tmux executable not found on remote host"
+        case "session-missing":
+            return "remote tmux session or target was not found"
+        default:
+            return "remote tmux health returned \(status)"
+        }
+    }
+
+    private static func nilIfEmpty(_ value: String?) -> String? {
+        guard let value, !value.isEmpty else { return nil }
+        return value
+    }
+
+    private static func shellQuoted(_ value: String) -> String {
+        "'\(value.replacingOccurrences(of: "'", with: "'\"'\"'"))'"
+    }
+}
+
+enum TmuxRemoteHealthProcess {
+    static func run(
+        _ command: TmuxRemoteHealthCommand,
+        timeoutSeconds: Double
+    ) -> TmuxRemoteHealthProcessResult {
+        let process = Process()
+        let stdoutPipe = Pipe()
+        let stderrPipe = Pipe()
+        var timedOut = false
+        let finished = DispatchSemaphore(value: 0)
+
+        process.executableURL = command.executableURL
+        process.arguments = command.arguments
+        process.standardOutput = stdoutPipe
+        process.standardError = stderrPipe
+        process.terminationHandler = { _ in
+            finished.signal()
+        }
+
+        do {
+            try process.run()
+        } catch {
+            return TmuxRemoteHealthProcessResult(
+                status: 127,
+                stdout: "",
+                stderr: error.localizedDescription,
+                timedOut: false
+            )
+        }
+
+        if finished.wait(timeout: .now() + timeoutSeconds) == .timedOut {
+            timedOut = true
+            process.terminate()
+            process.waitUntilExit()
+        }
+
+        let stdout = String(
+            data: stdoutPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+        let stderr = String(
+            data: stderrPipe.fileHandleForReading.readDataToEndOfFile(),
+            encoding: .utf8
+        ) ?? ""
+
+        return TmuxRemoteHealthProcessResult(
+            status: process.terminationStatus,
+            stdout: stdout,
+            stderr: stderr,
+            timedOut: timedOut
+        )
+    }
+}
+
 enum TmuxRuntimeError: Error, LocalizedError, Equatable, Sendable {
     case tmuxMissing
     case commandFailed(status: Int32, stderr: String)
