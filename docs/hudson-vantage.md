@@ -160,15 +160,18 @@ Node-targeting actions accept `nodeID`, `nodeIDs`, or the legacy `ids` array.
 Selectors can be full UUIDs, UUID prefixes, node titles, tmux targets,
 Graphite paths, or `remoteHost:target` for remote tmux nodes. `select` supports
 `selectionMode` values `replace`, `add`, `remove`, `toggle`, and `clear`.
+The native canvas mirrors those modes in direct selection: Shift adds,
+Option subtracts, and Command toggles clicked or marquee-selected nodes.
 
 `viewport` accepts `reset: true`, `fit: true`, and exact replay fields
 `panX`, `panY`, and `scale`. The wrappers expose these as `viewport --reset`,
 `viewport --fit`, and `viewport --pan-x X --pan-y Y --scale N`.
 
 `save` and `restore` use the configured `stateURL` unless a command includes
-`statePath`. The current restore slice intentionally persists tmux-backed nodes
-only. Local PTYs remain useful as cheap scratch terminals, but tmux is the
-durable runtime boundary.
+`statePath`. Snapshots include durable tmux-backed nodes, selection, viewport,
+active tool, navigator filter, panel widths, and collapsed panel state. Local
+PTYs remain useful as cheap scratch terminals, but tmux is the durable runtime
+boundary.
 
 `ensure-tmux` is permission-gated. If tmux is already available, it simply
 returns the detected path. If tmux is missing, the UI shows a confirmation

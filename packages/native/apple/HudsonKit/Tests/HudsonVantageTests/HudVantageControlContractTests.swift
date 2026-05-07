@@ -155,6 +155,14 @@ final class HudVantageControlContractTests: XCTestCase {
             workspaceID: "scout-lab",
             surfaceTitle: "Scout Vantage",
             viewport: HudVantageViewportSnapshot(panX: 12, panY: -40, scale: 0.75),
+            layout: HudVantageSurfaceLayoutSnapshot(
+                canvasTool: "hand",
+                navigationFilter: "selected",
+                navigationCollapsed: true,
+                navigationWidth: 288,
+                inspectorCollapsed: false,
+                inspectorWidth: 336
+            ),
             nodes: [
                 HudVantageNodeSnapshot(
                     id: nodeID,
@@ -187,9 +195,36 @@ final class HudVantageControlContractTests: XCTestCase {
 
         XCTAssertEqual(decoded.workspaceID, "scout-lab")
         XCTAssertEqual(decoded.viewport.scale, 0.75)
+        XCTAssertEqual(decoded.layout?.canvasTool, "hand")
+        XCTAssertEqual(decoded.layout?.navigationFilter, "selected")
+        XCTAssertEqual(decoded.layout?.navigationCollapsed, true)
+        XCTAssertEqual(decoded.layout?.inspectorWidth, 336)
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "tmux")
         XCTAssertEqual(decoded.nodes.first?.runtime.graphitePath, "hudson.lab.agents.codex.0007.worker")
         XCTAssertEqual(decoded.selectedNodeIDs, [nodeID])
+    }
+
+    func testWorkspaceSnapshotDecodesWithoutLayoutForV0Compatibility() throws {
+        let nodeID = UUID()
+        let json = """
+        {
+          "schemaVersion": 1,
+          "workspaceID": "legacy-lab",
+          "surfaceTitle": "Legacy Vantage",
+          "viewport": { "panX": 0, "panY": 0, "scale": 1 },
+          "nodes": [],
+          "selectedNodeIDs": ["\(nodeID.uuidString)"],
+          "savedAt": "2026-05-07T00:00:00Z"
+        }
+        """
+
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        let snapshot = try decoder.decode(HudVantageWorkspaceSnapshot.self, from: Data(json.utf8))
+
+        XCTAssertEqual(snapshot.workspaceID, "legacy-lab")
+        XCTAssertNil(snapshot.layout)
+        XCTAssertEqual(snapshot.selectedNodeIDs, [nodeID])
     }
 
     func testControlResponseCanReturnStructuredNodeSummaries() throws {

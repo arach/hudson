@@ -284,15 +284,12 @@ private final class TerminalNode: ObservableObject, Identifiable {
     }
 }
 
-private enum CanvasTool {
+private enum CanvasTool: String {
     case select
     case hand
 
     var statusLabel: String {
-        switch self {
-        case .select: "select"
-        case .hand: "hand"
-        }
+        rawValue
     }
 }
 
@@ -315,6 +312,8 @@ private enum CanvasNavigationFilter: String, CaseIterable, Identifiable {
 private struct SelectionDrag {
     var start: CGPoint
     var current: CGPoint
+    var baseSelection: Set<UUID>
+    var mode: HudVantageSelectionMode
 
     var viewportRect: CGRect {
         CGRect(
@@ -473,6 +472,24 @@ public struct HudVantageSurface: View {
             controlAPI.stop()
             stopAllNodes()
             didBootstrap = false
+        }
+        .onChange(of: canvasTool) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationFilter) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: navigationWidth) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: inspectorCollapsed) { _, _ in
+            schedulePersistStateIfConfigured()
+        }
+        .onChange(of: inspectorWidth) { _, _ in
+            schedulePersistStateIfConfigured()
         }
         .confirmationDialog(
             "Install tmux with Homebrew?",
@@ -692,10 +709,17 @@ public struct HudVantageSurface: View {
                         scale: nil
                     )
                 case .select:
-                    selectionDrag = SelectionDrag(
-                        start: value.startLocation,
-                        current: value.location
-                    )
+                    if var drag = selectionDrag {
+                        drag.current = value.location
+                        selectionDrag = drag
+                    } else {
+                        selectionDrag = SelectionDrag(
+                            start: value.startLocation,
+                            current: value.location,
+                            baseSelection: selectedIDs,
+                            mode: pointerSelectionMode()
+                        )
+                    }
                     updateMarqueeSelection()
                 }
             }
@@ -749,13 +773,16 @@ public struct HudVantageSurface: View {
     private func updateMarqueeSelection() {
         guard let selectionDrag else { return }
         let rect = canvasState.worldRect(fromViewportRect: selectionDrag.viewportRect)
-        selectedIDs = Set(
+        let candidates = Set(
             nodes
                 .filter { node in
                     rect.intersects(nodeFrame(node))
                 }
                 .map(\.id)
         )
+        selectedIDs = HudVantageSelectionState(ids: selectionDrag.baseSelection)
+            .applying(candidates, mode: selectionDrag.mode)
+            .ids
     }
 
     private func centerCanvas(on worldPoint: CGPoint) {
@@ -1414,22 +1441,12 @@ public struct HudVantageSurface: View {
 
         do {
             let resolved = try resolveNodes(from: command, allowSelectionFallback: false)
-            switch command.normalizedSelectionMode {
-            case "add", "append":
-                selectedIDs.formUnion(resolved.map(\.id))
-            case "remove", "subtract":
-                selectedIDs.subtract(resolved.map(\.id))
-            case "toggle":
-                for id in resolved.map(\.id) {
-                    if selectedIDs.contains(id) {
-                        selectedIDs.remove(id)
-                    } else {
-                        selectedIDs.insert(id)
-                    }
-                }
-            default:
-                selectedIDs = Set(resolved.map(\.id))
-            }
+            selectedIDs = HudVantageSelectionState(ids: selectedIDs)
+                .applying(
+                    Set(resolved.map(\.id)),
+                    mode: HudVantageSelectionMode(normalized: command.normalizedSelectionMode)
+                )
+                .ids
             if let first = resolved.first {
                 bringToFront(first.id)
             }
@@ -1784,6 +1801,7 @@ public struct HudVantageSurface: View {
                 panY: CGFloat(snapshot.viewport.panY),
                 scale: CGFloat(snapshot.viewport.scale)
             )
+            applyLayoutSnapshot(snapshot.layout)
             nextZIndex = (nodes.map(\.zIndex).max() ?? 0) + 1
 
             return controlResponse(
@@ -1828,9 +1846,38 @@ public struct HudVantageSurface: View {
                 panY: Double(canvasState.pan.height),
                 scale: Double(canvasState.scale)
             ),
+            layout: HudVantageSurfaceLayoutSnapshot(
+                canvasTool: canvasTool.rawValue,
+                navigationFilter: navigationFilter.rawValue,
+                navigationCollapsed: navigationCollapsed,
+                navigationWidth: Double(navigationWidth),
+                inspectorCollapsed: inspectorCollapsed,
+                inspectorWidth: Double(inspectorWidth)
+            ),
             nodes: durableNodes,
             selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
         )
+    }
+
+    private func applyLayoutSnapshot(_ layout: HudVantageSurfaceLayoutSnapshot?) {
+        guard let layout else { return }
+
+        if let restoredTool = CanvasTool(rawValue: layout.canvasTool) {
+            canvasTool = restoredTool
+        }
+
+        if let restoredFilter = CanvasNavigationFilter(rawValue: layout.navigationFilter) {
+            navigationFilter = restoredFilter
+        }
+
+        navigationCollapsed = layout.navigationCollapsed
+        inspectorCollapsed = layout.inspectorCollapsed
+        navigationWidth = clamped(CGFloat(layout.navigationWidth), to: 210...360)
+        inspectorWidth = clamped(CGFloat(layout.inspectorWidth), to: 250...440)
+    }
+
+    private func clamped(_ value: CGFloat, to range: ClosedRange<CGFloat>) -> CGFloat {
+        min(max(value, range.lowerBound), range.upperBound)
     }
 
     private func durableSnapshot(for node: TerminalNode) -> HudVantageNodeSnapshot? {
@@ -1987,8 +2034,12 @@ public struct HudVantageSurface: View {
     }
 
     private func selectNode(_ id: UUID) {
-        selectedIDs = [id]
-        bringToFront(id)
+        selectedIDs = HudVantageSelectionState(ids: selectedIDs)
+            .applying([id], mode: pointerSelectionMode())
+            .ids
+        if selectedIDs.contains(id) {
+            bringToFront(id)
+        }
         schedulePersistStateIfConfigured()
     }
 
@@ -2196,6 +2247,20 @@ public struct HudVantageSurface: View {
 
     private func clamp(_ value: Int, lower: Int, upper: Int) -> Int {
         min(max(value, lower), upper)
+    }
+
+    private func pointerSelectionMode() -> HudVantageSelectionMode {
+        let flags = NSEvent.modifierFlags
+        if flags.contains(.command) {
+            return .toggle
+        }
+        if flags.contains(.option) {
+            return .subtract
+        }
+        if flags.contains(.shift) {
+            return .add
+        }
+        return .replace
     }
 
     private var canvasWorldBounds: CGRect {

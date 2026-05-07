@@ -12,6 +12,31 @@ public struct HudVantageViewportSnapshot: Codable, Hashable, Sendable {
     }
 }
 
+public struct HudVantageSurfaceLayoutSnapshot: Codable, Hashable, Sendable {
+    public var canvasTool: String
+    public var navigationFilter: String
+    public var navigationCollapsed: Bool
+    public var navigationWidth: Double
+    public var inspectorCollapsed: Bool
+    public var inspectorWidth: Double
+
+    public init(
+        canvasTool: String,
+        navigationFilter: String,
+        navigationCollapsed: Bool,
+        navigationWidth: Double,
+        inspectorCollapsed: Bool,
+        inspectorWidth: Double
+    ) {
+        self.canvasTool = canvasTool
+        self.navigationFilter = navigationFilter
+        self.navigationCollapsed = navigationCollapsed
+        self.navigationWidth = navigationWidth
+        self.inspectorCollapsed = inspectorCollapsed
+        self.inspectorWidth = inspectorWidth
+    }
+}
+
 public struct HudVantageRuntimeReference: Codable, Hashable, Sendable {
     public var kind: String
     public var target: String?
@@ -73,6 +98,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
     public var workspaceID: String
     public var surfaceTitle: String
     public var viewport: HudVantageViewportSnapshot
+    public var layout: HudVantageSurfaceLayoutSnapshot?
     public var nodes: [HudVantageNodeSnapshot]
     public var selectedNodeIDs: [UUID]
     public var savedAt: Date
@@ -82,6 +108,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         workspaceID: String,
         surfaceTitle: String,
         viewport: HudVantageViewportSnapshot,
+        layout: HudVantageSurfaceLayoutSnapshot? = nil,
         nodes: [HudVantageNodeSnapshot],
         selectedNodeIDs: [UUID],
         savedAt: Date = Date()
@@ -90,6 +117,7 @@ public struct HudVantageWorkspaceSnapshot: Codable, Hashable, Sendable {
         self.workspaceID = workspaceID
         self.surfaceTitle = surfaceTitle
         self.viewport = viewport
+        self.layout = layout
         self.nodes = nodes
         self.selectedNodeIDs = selectedNodeIDs
         self.savedAt = savedAt

@@ -42,7 +42,7 @@ Expected upstream targets:
 - Pan/zoom viewport state and world/screen transforms.
 - Trackpad scroll and magnify gesture handling.
 - Minimap, zoom HUD, viewport readout, resizable panels.
-- Selection, marquee hit testing, z-order, drag/resize cards.
+- Selection, modifier-aware marquee hit testing, z-order, drag/resize cards.
 
 Termini-owned:
 
