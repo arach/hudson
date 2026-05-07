@@ -130,6 +130,37 @@ final class HudVantageControlScriptTests: XCTestCase {
         }
     }
 
+    func testScriptsEmitWorkspaceDocumentAliases() throws {
+        for scriptPath in controlScriptPaths {
+            let save = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: ["save-workspace", "--state-file", "/tmp/project.vantage.json"]
+            )
+
+            XCTAssertEqual(save["action"] as? String, "save-workspace")
+            XCTAssertEqual(save["apiVersion"] as? String, "v0")
+            XCTAssertEqual(save["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(save["statePath"] as? String, "/tmp/project.vantage.json")
+
+            let restore = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "restore-workspace",
+                    "--state-file", "/tmp/project.vantage.json",
+                    "--create",
+                    "--no-reset",
+                ]
+            )
+
+            XCTAssertEqual(restore["action"] as? String, "restore-workspace")
+            XCTAssertEqual(restore["apiVersion"] as? String, "v0")
+            XCTAssertEqual(restore["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(restore["statePath"] as? String, "/tmp/project.vantage.json")
+            XCTAssertEqual(restore["createIfMissing"] as? Bool, true)
+            XCTAssertEqual(restore["reset"] as? Bool, false)
+        }
+    }
+
     func testScriptsRejectNumericJSONInjection() throws {
         let invalidCases: [(arguments: [String], message: String)] = [
             (["tile", "2", "2", "--width", #"240,"kind":"bad""#], "invalid width"),

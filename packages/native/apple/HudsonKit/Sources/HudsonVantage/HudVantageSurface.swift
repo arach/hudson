@@ -1240,9 +1240,9 @@ public struct HudVantageSurface: View {
             return runPerfHarness(command)
         case "perf-cleanup", "perfcleanup", "harness-cleanup", "stress-cleanup":
             return cleanupPerfHarness(command)
-        case "save", "snapshot":
+        case "save", "snapshot", "save-workspace", "workspace-save", "export-workspace":
             return saveWorkspaceState(command)
-        case "restore", "load":
+        case "restore", "load", "restore-workspace", "workspace-restore", "open-workspace", "import-workspace":
             return restoreWorkspaceState(command)
         case "clear":
             stopAllNodes()
@@ -2302,6 +2302,11 @@ public struct HudVantageSurface: View {
             let restoredIDs = Set(restored.map(\.id))
             let savedSelection = Set(snapshot.selectedNodeIDs).intersection(restoredIDs)
             selectedIDs = savedSelection.isEmpty ? restoredIDs : savedSelection
+            if let savedFocus = snapshot.focusedNodeID, restoredIDs.contains(savedFocus) {
+                focusedNodeID = savedFocus
+            } else {
+                focusedNodeID = nil
+            }
             canvasState = canvasState.replaying(
                 panX: CGFloat(snapshot.viewport.panX),
                 panY: CGFloat(snapshot.viewport.panY),
@@ -2365,6 +2370,9 @@ public struct HudVantageSurface: View {
     private func workspaceSnapshot(workspaceID: String) -> HudVantageWorkspaceSnapshot {
         let durableNodes = nodes.compactMap(durableSnapshot)
         let durableIDs = Set(durableNodes.map(\.id))
+        let focusedDurableID = focusedNodeID.flatMap { id in
+            durableIDs.contains(id) ? id : nil
+        }
 
         return HudVantageWorkspaceSnapshot(
             workspaceID: GraphitePath.slugify(workspaceID, fallback: configuration.workspaceID),
@@ -2384,8 +2392,29 @@ public struct HudVantageSurface: View {
                 inspectorWidth: Double(inspectorWidth)
             ),
             nodes: durableNodes,
-            selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) }
+            selectedNodeIDs: selectedIDs.filter { durableIDs.contains($0) },
+            focusedNodeID: focusedDurableID,
+            groups: workspaceGroups(from: durableNodes)
         )
+    }
+
+    private func workspaceGroups(
+        from durableNodes: [HudVantageNodeSnapshot]
+    ) -> [HudVantageWorkspaceGroupSnapshot] {
+        let grouped = Dictionary(grouping: durableNodes) { node in
+            node.tag
+        }
+        return grouped.compactMap { tag, nodes in
+            guard let tag else { return nil }
+            let label = CanvasTag(rawValue: tag)?.label ?? tag
+            return HudVantageWorkspaceGroupSnapshot(
+                id: "tag.\(tag)",
+                name: label,
+                nodeIDs: nodes.map(\.id).sorted { $0.uuidString < $1.uuidString },
+                tags: [tag]
+            )
+        }
+        .sorted { $0.id < $1.id }
     }
 
     private func applyLayoutSnapshot(_ layout: HudVantageSurfaceLayoutSnapshot?) {

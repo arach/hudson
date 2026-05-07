@@ -30,7 +30,9 @@ Usage:
   canvasctl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
   canvasctl.sh [--wait] ensure-tmux [--confirm]
   canvasctl.sh [--wait] save [--state-file PATH]
+  canvasctl.sh [--wait] save-workspace [--state-file PATH]
   canvasctl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
+  canvasctl.sh [--wait] restore-workspace [--state-file PATH] [--create] [--no-reset]
   canvasctl.sh raw '{"action":"status"}'
 
 Environment:
@@ -395,7 +397,12 @@ case "$command" in
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
-  save|snapshot)
+  save|snapshot|save-workspace|workspace-save|export-workspace)
+    action="$command"
+    case "$command" in
+      snapshot) action="save" ;;
+      workspace-save|export-workspace) action="save-workspace" ;;
+    esac
     state_path="$STATE_FILE"
     while [[ $# -gt 0 ]]; do
       case "$1" in
@@ -405,7 +412,7 @@ case "$command" in
     done
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"save\""
+      "\"action\":$(json_string "$action")"
       "\"apiVersion\":\"v0\""
       "\"kind\":\"hudson.vantage.command\""
       "\"statePath\":$(json_string "$state_path")"
@@ -432,7 +439,12 @@ case "$command" in
     queue_command "$(json_object "${parts[@]}")"
     ;;
 
-  restore|load)
+  restore|load|restore-workspace|workspace-restore|open-workspace|import-workspace)
+    action="$command"
+    case "$command" in
+      load) action="restore" ;;
+      workspace-restore|open-workspace|import-workspace) action="restore-workspace" ;;
+    esac
     create=false
     reset=true
     state_path="$STATE_FILE"
@@ -446,7 +458,7 @@ case "$command" in
     done
     parts=(
       "\"id\":$(json_string "$REQUEST_ID")"
-      "\"action\":\"restore\""
+      "\"action\":$(json_string "$action")"
       "\"apiVersion\":\"v0\""
       "\"kind\":\"hudson.vantage.command\""
       "\"statePath\":$(json_string "$state_path")"

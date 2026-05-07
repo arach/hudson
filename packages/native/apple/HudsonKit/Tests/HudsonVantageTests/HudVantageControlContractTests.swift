@@ -212,7 +212,16 @@ final class HudVantageControlContractTests: XCTestCase {
                     )
                 )
             ],
-            selectedNodeIDs: [nodeID]
+            selectedNodeIDs: [nodeID],
+            focusedNodeID: nodeID,
+            groups: [
+                HudVantageWorkspaceGroupSnapshot(
+                    id: "tag.focus",
+                    name: "Focus",
+                    nodeIDs: [nodeID],
+                    tags: ["focus"]
+                )
+            ]
         )
 
         let encoder = JSONEncoder()
@@ -223,6 +232,7 @@ final class HudVantageControlContractTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let decoded = try decoder.decode(HudVantageWorkspaceSnapshot.self, from: data)
 
+        XCTAssertEqual(decoded.kind, HudVantageWorkspaceSnapshot.documentKind)
         XCTAssertEqual(decoded.workspaceID, "scout-lab")
         XCTAssertEqual(decoded.viewport.scale, 0.75)
         XCTAssertEqual(decoded.layout?.canvasTool, "hand")
@@ -234,6 +244,9 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "tmux")
         XCTAssertEqual(decoded.nodes.first?.runtime.graphitePath, "hudson.lab.agents.codex.0007.worker")
         XCTAssertEqual(decoded.selectedNodeIDs, [nodeID])
+        XCTAssertEqual(decoded.focusedNodeID, nodeID)
+        XCTAssertEqual(decoded.groups.first?.id, "tag.focus")
+        XCTAssertEqual(decoded.groups.first?.nodeIDs, [nodeID])
     }
 
     func testWorkspaceSnapshotDecodesWithoutLayoutForV0Compatibility() throws {
@@ -254,9 +267,12 @@ final class HudVantageControlContractTests: XCTestCase {
         decoder.dateDecodingStrategy = .iso8601
         let snapshot = try decoder.decode(HudVantageWorkspaceSnapshot.self, from: Data(json.utf8))
 
+        XCTAssertEqual(snapshot.kind, HudVantageWorkspaceSnapshot.documentKind)
         XCTAssertEqual(snapshot.workspaceID, "legacy-lab")
         XCTAssertNil(snapshot.layout)
         XCTAssertEqual(snapshot.selectedNodeIDs, [nodeID])
+        XCTAssertNil(snapshot.focusedNodeID)
+        XCTAssertEqual(snapshot.groups, [])
     }
 
     func testControlResponseCanReturnStructuredNodeSummaries() throws {

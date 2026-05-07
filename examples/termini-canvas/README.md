@@ -79,6 +79,7 @@ printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"focus-mode","ac
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"popout","action":"popout"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"apiVersion":"v0","kind":"hudson.vantage.command","id":"metrics","action":"metrics"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"save","action":"save"}\n' >> /tmp/termini-canvas-control.jsonl
+printf '{"id":"workspace","action":"save-workspace","statePath":"/tmp/project.vantage.json"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"restore","action":"restore","createIfMissing":true}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"status","action":"status"}\n' >> /tmp/termini-canvas-control.jsonl
 printf '{"id":"reset","action":"reset"}\n' >> /tmp/termini-canvas-control.jsonl
@@ -107,7 +108,9 @@ examples/termini-canvas/scripts/canvasctl.sh --wait viewport --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 examples/termini-canvas/scripts/canvasctl.sh --wait ensure-tmux --confirm
 examples/termini-canvas/scripts/canvasctl.sh --wait save
+examples/termini-canvas/scripts/canvasctl.sh --wait save-workspace --state-file /tmp/project.vantage.json
 examples/termini-canvas/scripts/canvasctl.sh --wait restore --create
+examples/termini-canvas/scripts/canvasctl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
 examples/termini-canvas/scripts/canvasctl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
@@ -154,9 +157,13 @@ with `ensure-tmux` or `install-tmux`, but the command must include `--confirm`
 /tmp/termini-canvas-state.json
 ```
 
-`restore` recreates those saved tmux-backed nodes with their previous bounds,
-z-order, tags, selection, viewport, and Graphite metadata. Use
-`--state-file PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
+`save-workspace` is the same durable format with clearer product language for
+portable files such as `/tmp/project.vantage.json`. New saves include
+`kind: "hudson.vantage.workspace"`, optional focus mode state, and
+tag-derived workspace groups. `restore` and `restore-workspace` recreate those
+saved tmux-backed nodes with their previous bounds, z-order, tags, groups,
+selection, focused node, viewport, and Graphite metadata. Use `--state-file
+PATH` or `TERMINI_CANVAS_STATE_FILE` for a different lane.
 
 For direct executable runs, a startup reattach set can be provided with:
 

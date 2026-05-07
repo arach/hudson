@@ -116,7 +116,9 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --fit
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait ensure-tmux --confirm
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save-workspace --state-file /tmp/project.vantage.json
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore --create
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
@@ -153,7 +155,9 @@ The JSONL command contract is intentionally small and durable:
 | `viewport` / `view` | Report, reset, fit, or replay exact pan/scale viewport state |
 | `ensure-tmux` / `install-tmux` | Detect local tmux and install it with Homebrew after explicit confirmation |
 | `save` / `snapshot` | Persist durable tmux-backed nodes, bounds, z-order, selection, and viewport |
+| `save-workspace` / `export-workspace` | Persist a portable Vantage workspace document |
 | `restore` / `load` | Recreate saved tmux-backed nodes from a state file |
+| `restore-workspace` / `open-workspace` | Recreate a portable Vantage workspace document |
 | `clear` | Remove all nodes |
 | `reset` | Return to the two-terminal local PTY starter layout |
 
@@ -179,11 +183,14 @@ leaving Select mode.
 `panX`, `panY`, and `scale`. The wrappers expose these as `viewport --reset`,
 `viewport --fit`, and `viewport --pan-x X --pan-y Y --scale N`.
 
-`save` and `restore` use the configured `stateURL` unless a command includes
-`statePath`. Snapshots include durable tmux-backed nodes, selection, viewport,
-active tool, navigator filters, optional node tags, panel widths, and collapsed
-panel state. Local PTYs remain useful as cheap scratch terminals, but tmux is
-the durable runtime boundary.
+`save`/`save-workspace` and `restore`/`restore-workspace` use the configured
+`stateURL` unless a command includes `statePath`. New saves are portable
+workspace documents with `kind: "hudson.vantage.workspace"`. They include
+durable tmux-backed nodes, selection, an optional focused node, viewport,
+active tool, navigator filters, optional node tags, tag-derived groups, panel
+widths, and collapsed panel state. Older state files without `kind`, `layout`,
+`focusedNodeID`, or `groups` still decode. Local PTYs remain useful as cheap
+scratch terminals, but tmux is the durable runtime boundary.
 
 `ensure-tmux` is permission-gated. If tmux is already available, it simply
 returns the detected path. If tmux is missing, the UI shows a confirmation
