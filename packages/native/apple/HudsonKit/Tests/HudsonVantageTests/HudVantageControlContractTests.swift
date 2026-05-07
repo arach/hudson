@@ -165,6 +165,78 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.includeStyle, true)
     }
 
+    func testControlCommandDecodesSetupManifestFields() throws {
+        let nodeID = UUID()
+        let json = """
+        {
+          "apiVersion": "v0",
+          "kind": "hudson.vantage.command",
+          "id": "setup-1",
+          "action": "setup",
+          "manifestPath": "/tmp/scout.vantage.setup.json",
+          "createIfMissing": true,
+          "removeMissing": true,
+          "setup": {
+            "kind": "hudson.vantage.setup",
+            "schemaVersion": 1,
+            "workspaceID": "scout-lab",
+            "presentation": {
+              "title": "Scout Vantage",
+              "subtitle": "native operating surface",
+              "badge": "project",
+              "cobrand": "powered by Hudson",
+              "theme": "jade"
+            },
+            "style": {
+              "preset": "jade",
+              "terminalTheme": "hudson-paper"
+            },
+            "viewport": {
+              "fit": true,
+              "scale": 0.75
+            },
+            "nodes": [
+              {
+                "id": "hudson.scout.agents.codex.0001.worker",
+                "nodeID": "\(nodeID.uuidString)",
+                "runtimeKind": "tmux",
+                "target": "hudson-scout:agents-codex-0001",
+                "tag": "focus",
+                "x": 80,
+                "y": 96,
+                "width": 520,
+                "height": 320
+              }
+            ],
+            "selection": ["hudson.scout.agents.codex.0001.worker"],
+            "focused": "hudson.scout.agents.codex.0001.worker"
+          }
+        }
+        """
+
+        let command = try JSONDecoder().decode(
+            HudVantageControlCommand.self,
+            from: Data(json.utf8)
+        )
+
+        XCTAssertEqual(command.normalizedAction, "setup")
+        XCTAssertEqual(command.manifestPath, "/tmp/scout.vantage.setup.json")
+        XCTAssertEqual(command.createIfMissing, true)
+        XCTAssertEqual(command.removeMissing, true)
+        let manifest = try XCTUnwrap(command.setupManifest)
+        XCTAssertEqual(manifest.workspaceID, "scout-lab")
+        XCTAssertEqual(manifest.presentation?.title, "Scout Vantage")
+        XCTAssertEqual(manifest.presentation?.cobrand, "powered by Hudson")
+        XCTAssertEqual(manifest.presentation?.theme, "jade")
+        XCTAssertEqual(manifest.style?.preset, "jade")
+        XCTAssertEqual(manifest.viewport?.fit, true)
+        XCTAssertEqual(manifest.nodes.first?.id, "hudson.scout.agents.codex.0001.worker")
+        XCTAssertEqual(manifest.nodes.first?.nodeID, nodeID)
+        XCTAssertEqual(manifest.nodes.first?.target, "hudson-scout:agents-codex-0001")
+        XCTAssertEqual(manifest.selection, ["hudson.scout.agents.codex.0001.worker"])
+        XCTAssertEqual(manifest.focused, "hudson.scout.agents.codex.0001.worker")
+    }
+
     func testControlCommandDecodesViewportReplayFields() throws {
         let json = """
         {
@@ -426,6 +498,19 @@ final class HudVantageControlContractTests: XCTestCase {
                     message: "tmux target is available"
                 ),
             ],
+            setup: HudVantageSetupReport(
+                workspaceID: "scout-lab",
+                presentation: HudVantageSetupPresentation(
+                    title: "Scout Vantage",
+                    cobrand: "powered by Hudson",
+                    theme: "jade"
+                ),
+                createdNodeIDs: [nodeID],
+                reusedNodeIDs: [],
+                updatedNodeIDs: [nodeID],
+                removedNodeIDs: [],
+                failedNodes: []
+            ),
             commandPath: "/tmp/scout-vantage-control.jsonl",
             responsePath: "/tmp/scout-vantage-control.responses.jsonl",
             statePath: "/tmp/scout-vantage-state.json",
@@ -479,6 +564,13 @@ final class HudVantageControlContractTests: XCTestCase {
         let health = try XCTUnwrap(object["tmuxHealth"] as? [[String: Any]])
         XCTAssertEqual(health.first?["status"] as? String, "running")
         XCTAssertEqual(health.first?["session"] as? String, "hudson-lab")
+        let setup = try XCTUnwrap(object["setup"] as? [String: Any])
+        XCTAssertEqual(setup["workspaceID"] as? String, "scout-lab")
+        let presentation = try XCTUnwrap(setup["presentation"] as? [String: Any])
+        XCTAssertEqual(presentation["title"] as? String, "Scout Vantage")
+        XCTAssertEqual(presentation["cobrand"] as? String, "powered by Hudson")
+        XCTAssertEqual(presentation["theme"] as? String, "jade")
+        XCTAssertEqual(setup["createdNodeIDs"] as? [String], [nodeID.uuidString])
     }
 
     func testControlResponseOmitsNilOptionalPayloads() throws {
@@ -628,6 +720,27 @@ final class HudVantageControlContractTests: XCTestCase {
             XCTAssertEqual(health["kind"] as? String, "hudson.vantage.command")
             XCTAssertEqual(health["sessions"] as? [String], ["hudson-lab"])
             XCTAssertEqual(health["remoteHost"] as? String, "devbox")
+
+            let setup = try queuedCommandFromScript(
+                relativeScriptPath: scriptPath,
+                arguments: [
+                    "setup",
+                    "--manifest", "/tmp/scout.vantage.setup.json",
+                    "--create",
+                    "--remove-missing",
+                    "--fit",
+                ]
+            )
+
+            XCTAssertEqual(setup["id"] as? String, "test-request")
+            XCTAssertEqual(setup["action"] as? String, "setup")
+            XCTAssertEqual(setup["apiVersion"] as? String, "v0")
+            XCTAssertEqual(setup["kind"] as? String, "hudson.vantage.command")
+            XCTAssertEqual(setup["manifestPath"] as? String, "/tmp/scout.vantage.setup.json")
+            XCTAssertEqual(setup["createIfMissing"] as? Bool, true)
+            XCTAssertEqual(setup["removeMissing"] as? Bool, true)
+            XCTAssertEqual(setup["fit"] as? Bool, true)
+            XCTAssertEqual(setup["includeStyle"] as? Bool, true)
         }
     }
 

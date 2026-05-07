@@ -112,8 +112,101 @@ Selectors can be full or prefix UUIDs, exact node titles, tmux targets, remote t
 | `ensure-tmux` | Permission-gated local tmux prerequisite check/install. |
 | `save` / `save-workspace` | Persist a durable workspace snapshot. |
 | `restore` / `restore-workspace` | Restore a durable workspace snapshot. |
+| `setup` / `apply-workspace` | Apply a declarative Vantage setup manifest. |
 | `style` | Apply or inspect workspace, tag, or terminal appearance settings. |
 | `tmux-health` | Inspect local tmux targets and report remote tmux identity status. |
+
+## Setup Manifests
+
+`setup` is the high-level contract for host apps and agents. Instead of issuing
+many small commands, an agent can describe the intended native surface: identity,
+presentation, style, nodes, tags, selection, and viewport.
+
+```json
+{
+  "apiVersion": "v0",
+  "kind": "hudson.vantage.command",
+  "id": "setup-scout",
+  "action": "setup",
+  "manifestPath": "/tmp/scout.vantage.setup.json",
+  "createIfMissing": true,
+  "removeMissing": false,
+  "fit": true
+}
+```
+
+Inline manifests are also accepted under `setup` or `manifest`.
+
+```json
+{
+  "kind": "hudson.vantage.setup",
+  "schemaVersion": 1,
+  "workspaceID": "scout-lab",
+  "presentation": {
+    "title": "Scout Vantage",
+    "subtitle": "project operating surface",
+    "badge": "workspace",
+    "cobrand": "powered by Hudson",
+    "productName": "Scout",
+    "hostName": "Talkie",
+    "theme": "jade"
+  },
+  "style": {
+    "preset": "jade",
+    "terminalTheme": "hudson-paper",
+    "tagStyles": {
+      "focus": { "terminalThemeID": "jadeNight" }
+    }
+  },
+  "viewport": { "fit": true },
+  "layout": {
+    "canvasTool": "select",
+    "navigationFilter": "all",
+    "minimapCollapsed": false,
+    "inspectorCollapsed": false
+  },
+  "nodes": [
+    {
+      "id": "hudson.scout.agents.codex.0001.worker",
+      "runtimeKind": "tmux",
+      "target": "hudson-scout-codex-0001",
+      "title": "codex 0001",
+      "tag": "focus",
+      "x": 80,
+      "y": 96,
+      "width": 520,
+      "height": 320
+    },
+    {
+      "id": "hudson.scout.logs.tail.0001.watch",
+      "runtimeKind": "tmux",
+      "target": "hudson-scout-logs",
+      "tag": "watch",
+      "x": 632,
+      "y": 96,
+      "width": 460,
+      "height": 280
+    }
+  ],
+  "selection": ["hudson.scout.agents.codex.0001.worker"],
+  "focused": "hudson.scout.agents.codex.0001.worker"
+}
+```
+
+Setup application is idempotent:
+
+- Existing nodes are reused by UUID, Graphite path, or tmux target plus remote
+  host.
+- Missing nodes are created when `createIfMissing` is true.
+- `removeMissing` prunes canvas nodes not mentioned in the manifest.
+- Re-running the same manifest converges placement, tags, style, selection, and
+  viewport instead of duplicating nodes.
+
+Presentation fields are intentionally host-friendly. `title`, `subtitle`,
+`badge`, and `cobrand` are rendered by Vantage today. `productName`, `hostName`,
+`icon`, `theme`, and `accent` are part of the manifest contract so Scout,
+Talkie, Codex, or a standalone Vantage host can keep branded setup files even
+when a specific host chooses different chrome.
 
 ## Appearance Control
 
@@ -230,6 +323,7 @@ https://github.com/GoogleCloudPlatform/scion
 ```bash
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait status
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
+packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait setup --manifest /tmp/scout.vantage.setup.json --create --fit
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait tmux-health --session hudson-lab
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote devbox --session hudson-lab
 ```
@@ -239,4 +333,5 @@ Termini Canvas exposes the same commands through:
 ```bash
 examples/termini-canvas/scripts/canvasctl.sh --wait status
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
 ```

@@ -15,6 +15,7 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var action: String
     public var workspaceID: String?
     public var statePath: String?
+    public var manifestPath: String?
     public var nodeID: String?
     public var nodeIDs: [String]?
     public var selectionMode: String?
@@ -61,6 +62,9 @@ public struct HudVantageControlCommand: Decodable, Sendable {
     public var canvasMinorOpacity: Double?
     public var canvasMajorOpacity: Double?
     public var focusPadding: Double?
+    public var removeMissing: Bool?
+    public var setup: HudVantageSetupManifest?
+    public var manifest: HudVantageSetupManifest?
 
     public init(
         apiVersion: String? = nil,
@@ -70,6 +74,7 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         action: String,
         workspaceID: String? = nil,
         statePath: String? = nil,
+        manifestPath: String? = nil,
         nodeID: String? = nil,
         nodeIDs: [String]? = nil,
         selectionMode: String? = nil,
@@ -115,7 +120,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         canvasGridStep: Double? = nil,
         canvasMinorOpacity: Double? = nil,
         canvasMajorOpacity: Double? = nil,
-        focusPadding: Double? = nil
+        focusPadding: Double? = nil,
+        removeMissing: Bool? = nil,
+        setup: HudVantageSetupManifest? = nil,
+        manifest: HudVantageSetupManifest? = nil
     ) {
         self.apiVersion = apiVersion
         self.version = version
@@ -124,6 +132,7 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.action = action
         self.workspaceID = workspaceID
         self.statePath = statePath
+        self.manifestPath = manifestPath
         self.nodeID = nodeID
         self.nodeIDs = nodeIDs
         self.selectionMode = selectionMode
@@ -170,6 +179,9 @@ public struct HudVantageControlCommand: Decodable, Sendable {
         self.canvasMinorOpacity = canvasMinorOpacity
         self.canvasMajorOpacity = canvasMajorOpacity
         self.focusPadding = focusPadding
+        self.removeMissing = removeMissing
+        self.setup = setup
+        self.manifest = manifest
     }
 
     public var normalizedAction: String {
@@ -186,6 +198,10 @@ public struct HudVantageControlCommand: Decodable, Sendable {
 
     public var normalizedStyleScope: String {
         styleScope?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased() ?? "workspace"
+    }
+
+    public var setupManifest: HudVantageSetupManifest? {
+        setup ?? manifest
     }
 }
 
@@ -388,6 +404,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
     public var metrics: HudVantageControlMetrics?
     public var style: HudVantageControlStyle?
     public var tmuxHealth: [HudVantageTmuxHealth]?
+    public var setup: HudVantageSetupReport?
     public var appPID: Int32?
     public var childPIDs: [Int32]?
     public var commandPath: String?
@@ -417,6 +434,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         metrics: HudVantageControlMetrics? = nil,
         style: HudVantageControlStyle? = nil,
         tmuxHealth: [HudVantageTmuxHealth]? = nil,
+        setup: HudVantageSetupReport? = nil,
         appPID: Int32? = nil,
         childPIDs: [Int32]? = nil,
         commandPath: String? = nil,
@@ -444,6 +462,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         self.metrics = metrics
         self.style = style
         self.tmuxHealth = tmuxHealth
+        self.setup = setup
         self.appPID = appPID
         self.childPIDs = childPIDs
         self.commandPath = commandPath

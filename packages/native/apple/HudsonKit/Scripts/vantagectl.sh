@@ -35,6 +35,7 @@ Usage:
   vantagectl.sh [--wait] save-workspace [--state-file PATH]
   vantagectl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
   vantagectl.sh [--wait] restore-workspace [--state-file PATH] [--create] [--no-reset]
+  vantagectl.sh [--wait] setup --manifest PATH [--create] [--remove-missing] [--fit]
   vantagectl.sh raw '{"action":"status"}'
 
 Environment:
@@ -541,6 +542,41 @@ case "$command" in
       "\"statePath\":$(json_string "$state_path")"
     )
     parts+=("\"createIfMissing\":$create" "\"reset\":$reset")
+    queue_command "$(json_object "${parts[@]}")"
+    ;;
+
+  setup|apply-setup|setup-workspace|apply-workspace|compose)
+    manifest_path=""
+    create=false
+    remove_missing=false
+    parts=(
+      "\"id\":$(json_string "$REQUEST_ID")"
+      "\"action\":\"setup\""
+      "\"apiVersion\":\"v0\""
+      "\"kind\":\"hudson.vantage.command\""
+      "\"includeStyle\":true"
+      "\"includeViewport\":true"
+      "\"includeMetrics\":true"
+    )
+    while [[ $# -gt 0 ]]; do
+      case "$1" in
+        --manifest|--manifest-file|--setup-file) manifest_path="${2:?missing manifest path}"; shift 2 ;;
+        --create) create=true; shift ;;
+        --remove-missing|--remove-missing-nodes|--prune) remove_missing=true; shift ;;
+        --fit) parts+=("\"fit\":true"); shift ;;
+        --reset) parts+=("\"reset\":true"); shift ;;
+        *) printf 'unknown setup option: %s\n' "$1" >&2; exit 64 ;;
+      esac
+    done
+    if [[ -z "$manifest_path" ]]; then
+      printf 'setup requires --manifest PATH\n' >&2
+      exit 64
+    fi
+    parts+=(
+      "\"manifestPath\":$(json_string "$manifest_path")"
+      "\"createIfMissing\":$create"
+      "\"removeMissing\":$remove_missing"
+    )
     queue_command "$(json_object "${parts[@]}")"
     ;;
 

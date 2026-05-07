@@ -404,6 +404,31 @@ private struct TmuxHealthSubject {
     var remoteHost: String?
 }
 
+private struct VantagePresentationState: Hashable {
+    var title: String?
+    var subtitle: String?
+    var badge: String?
+    var cobrand: String?
+    var productName: String?
+    var hostName: String?
+    var icon: String?
+    var theme: String?
+    var accent: String?
+
+    mutating func apply(_ presentation: HudVantageSetupPresentation?) {
+        guard let presentation else { return }
+        title = presentation.title ?? title
+        subtitle = presentation.subtitle ?? subtitle
+        badge = presentation.badge ?? badge
+        cobrand = presentation.cobrand ?? cobrand
+        productName = presentation.productName ?? productName
+        hostName = presentation.hostName ?? hostName
+        icon = presentation.icon ?? icon
+        theme = presentation.theme ?? theme
+        accent = presentation.accent ?? accent
+    }
+}
+
 private enum HudVantageStateError: Error, LocalizedError {
     case stateFileMissing(String)
     case missingRuntimeTarget(UUID)
@@ -420,6 +445,35 @@ private enum HudVantageStateError: Error, LocalizedError {
             "tmux target \(target) not found; create it first or restore with createIfMissing"
         case .tmuxMissing:
             "tmux executable not found; install tmux locally or restore remote nodes"
+        }
+    }
+}
+
+private enum HudVantageSetupError: Error, LocalizedError {
+    case missingManifest
+    case manifestFileMissing(String)
+    case unsupportedRuntime(String)
+    case missingRuntimeTarget(String)
+
+    var errorCode: String {
+        switch self {
+        case .missingManifest: "missing_setup_manifest"
+        case .manifestFileMissing: "setup_manifest_missing"
+        case .unsupportedRuntime: "unsupported_setup_runtime"
+        case .missingRuntimeTarget: "missing_setup_runtime_target"
+        }
+    }
+
+    var errorDescription: String? {
+        switch self {
+        case .missingManifest:
+            "setup requires an inline manifest or manifestPath"
+        case .manifestFileMissing(let path):
+            "setup manifest not found: \(path)"
+        case .unsupportedRuntime(let runtime):
+            "unsupported setup runtime \(runtime)"
+        case .missingRuntimeTarget(let title):
+            "setup node \(title) is missing a tmux target"
         }
     }
 }
@@ -548,6 +602,7 @@ public struct HudVantageSurface: View {
     @State private var canvasTool: CanvasTool = .select
     @State private var styleProfile: HudVantageStyleProfile = .adaptive
     @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
+    @State private var presentationState = VantagePresentationState()
     @State private var appearanceSettingsPresented = false
     @State private var commandPalettePresented = false
     @State private var canvasState = HudVantageCanvasState(
@@ -849,14 +904,25 @@ public struct HudVantageSurface: View {
         return "Vantage will run \(command). This is only needed for local tmux-backed sessions."
     }
 
+    private var presentationTitle: String {
+        presentationState.title ?? presentationState.productName ?? configuration.surfaceTitle
+    }
+
+    private var presentationSubtitle: String {
+        presentationState.subtitle ?? presentationState.cobrand ?? configuration.surfaceSubtitle
+    }
+
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
             if let focusedNode {
                 HudStatusDot(color: focusedNode.tint.color, size: HudDotSize.small)
-                Text(configuration.surfaceTitle.uppercased())
+                Text(presentationTitle.uppercased())
                     .font(HudFont.mono(10, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(activeTheme.palette.ink)
+                if let badge = presentationState.badge {
+                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
                 HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
                 Text(focusedNode.title)
                     .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
@@ -882,13 +948,20 @@ public struct HudVantageSurface: View {
                 }
             } else {
                 HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
-                Text(configuration.surfaceTitle.uppercased())
+                Text(presentationTitle.uppercased())
                     .font(HudFont.mono(10, weight: .bold))
                     .tracking(1.4)
                     .foregroundStyle(activeTheme.palette.ink)
-                Text(configuration.surfaceSubtitle)
+                if let badge = presentationState.badge {
+                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
+                Text(presentationSubtitle)
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
+                if let cobrand = presentationState.cobrand,
+                   cobrand != presentationSubtitle {
+                    HudBadge(cobrand.uppercased(), tint: activeTheme.palette.muted, dot: false)
+                }
                 Spacer()
                 CanvasToolSwitch(
                     tool: effectiveCanvasTool,
@@ -1506,6 +1579,8 @@ public struct HudVantageSurface: View {
             return saveWorkspaceState(command)
         case "restore", "load", "restore-workspace", "workspace-restore", "open-workspace", "import-workspace":
             return restoreWorkspaceState(command)
+        case "setup", "apply-setup", "setup-workspace", "apply-workspace", "compose":
+            return applySetupCommand(command)
         case "clear":
             stopAllNodes()
             schedulePersistStateIfConfigured()
@@ -2293,6 +2368,450 @@ public struct HudVantageSurface: View {
             ok: true,
             message: "viewport updated"
         )
+    }
+
+    private func applySetupCommand(
+        _ command: HudVantageControlCommand
+    ) -> HudVantageControlResponse {
+        do {
+            let manifest = try setupManifest(from: command)
+            let report = applySetupManifest(manifest, command: command)
+            let health = manifest.nodes.isEmpty
+                ? nil
+                : nodes.compactMap(tmuxHealthSubject).map(tmuxHealth)
+            let failedCount = report.failedNodes.count
+            return controlResponse(
+                command,
+                ok: failedCount == 0,
+                message: failedCount == 0
+                    ? setupSuccessMessage(report)
+                    : "setup applied with \(failedCount) failure\(failedCount == 1 ? "" : "s")",
+                errorCode: failedCount == 0 ? nil : "setup_partial_failure",
+                nodesOverride: setupResponseNodes(from: report),
+                style: controlStyleSummary(includeTerminalOverrides: true),
+                tmuxHealth: health,
+                setup: report
+            )
+        } catch let error as HudVantageSetupError {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: error.errorCode
+            )
+        } catch {
+            return controlResponse(
+                command,
+                ok: false,
+                message: error.localizedDescription,
+                errorCode: "setup_error"
+            )
+        }
+    }
+
+    private func setupSuccessMessage(_ report: HudVantageSetupReport) -> String {
+        let created = report.createdNodeIDs.count
+        let reused = report.reusedNodeIDs.count
+        let removed = report.removedNodeIDs.count
+        return "setup applied: \(created) created, \(reused) reused, \(removed) removed"
+    }
+
+    private func setupResponseNodes(from report: HudVantageSetupReport) -> [TerminalNode]? {
+        let ids = Set(report.createdNodeIDs + report.reusedNodeIDs + report.updatedNodeIDs)
+        guard !ids.isEmpty else { return nil }
+        return nodes.filter { ids.contains($0.id) }
+    }
+
+    private func setupManifest(from command: HudVantageControlCommand) throws -> HudVantageSetupManifest {
+        if let manifest = command.setupManifest {
+            return manifest
+        }
+
+        guard let path = trimmed(command.manifestPath ?? command.statePath) else {
+            throw HudVantageSetupError.missingManifest
+        }
+
+        guard FileManager.default.fileExists(atPath: path) else {
+            throw HudVantageSetupError.manifestFileMissing(path)
+        }
+
+        let data = try Data(contentsOf: URL(fileURLWithPath: path))
+        let decoder = JSONDecoder()
+        decoder.dateDecodingStrategy = .iso8601
+        return try decoder.decode(HudVantageSetupManifest.self, from: data)
+    }
+
+    private func applySetupManifest(
+        _ manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) -> HudVantageSetupReport {
+        let span = hudVantagePerfTrace.beginSpan("setup.apply")
+        var report = HudVantageSetupReport(
+            workspaceID: manifest.workspaceID ?? command.workspaceID ?? configuration.workspaceID,
+            presentation: manifest.presentation
+        )
+        var touchedIDs = Set<UUID>()
+
+        presentationState.apply(manifest.presentation)
+        applySetupPresentationTheme(manifest.presentation)
+        if let style = manifest.style {
+            applySetupStyle(style)
+        }
+        if let layout = manifest.layout {
+            applySetupLayout(layout)
+        }
+
+        let createIfMissing = command.createIfMissing
+            ?? manifest.createIfMissing
+            ?? false
+        let removeMissing = command.removeMissing
+            ?? manifest.removeMissing
+            ?? false
+
+        for (offset, setupNode) in manifest.nodes.enumerated() {
+            do {
+                if let existing = try existingSetupNode(for: setupNode) {
+                    let didUpdate = try updateExistingSetupNode(existing, from: setupNode)
+                    report.reusedNodeIDs.append(existing.id)
+                    if didUpdate {
+                        report.updatedNodeIDs.append(existing.id)
+                    }
+                    touchedIDs.insert(existing.id)
+                } else {
+                    let node = try terminalNode(
+                        from: setupNode,
+                        offset: offset,
+                        createIfMissing: setupNode.createIfMissing ?? createIfMissing
+                    )
+                    nodes.append(node)
+                    report.createdNodeIDs.append(node.id)
+                    touchedIDs.insert(node.id)
+                    nextIndex += 1
+                }
+            } catch {
+                report.failedNodes.append(
+                    HudVantageSetupFailure(
+                        id: setupNode.id ?? setupNode.nodeID?.uuidString,
+                        title: setupNode.title,
+                        message: error.localizedDescription
+                    )
+                )
+            }
+        }
+
+        if removeMissing {
+            let removed = nodes
+                .filter { !touchedIDs.contains($0.id) }
+                .map(\.id)
+            if !removed.isEmpty {
+                for node in nodes where removed.contains(node.id) {
+                    node.stop()
+                }
+                nodes.removeAll { removed.contains($0.id) }
+                selectedIDs.subtract(removed)
+                report.removedNodeIDs = removed
+            }
+        }
+
+        applySetupSelection(manifest, touchedIDs: touchedIDs)
+        applySetupViewport(manifest.viewport, command: command)
+        nextZIndex = max(nextZIndex, (nodes.map(\.zIndex).max() ?? 0) + 1)
+        controlStatus = "Setup · \(report.createdNodeIDs.count) created · \(report.reusedNodeIDs.count) reused"
+        perfTracker.increment("setup.apply")
+        perfTracker.set("setup.created", to: report.createdNodeIDs.count)
+        perfTracker.set("setup.reused", to: report.reusedNodeIDs.count)
+        perfTracker.set("setup.failed", to: report.failedNodes.count)
+        schedulePersistStateIfConfigured()
+        span.end(report.failedNodes.isEmpty ? "ok" : "partial")
+        return report
+    }
+
+    private func applySetupPresentationTheme(_ presentation: HudVantageSetupPresentation?) {
+        guard let theme = trimmed(presentation?.theme),
+              styleProfile.id == HudVantageStyleProfile.adaptive.id,
+              let preset = HudVantageStyleProfile.presets.first(where: { controlToken($0.id) == controlToken(theme) })
+        else { return }
+        styleProfile = preset
+    }
+
+    private func applySetupStyle(_ style: HudVantageSetupStyle) {
+        let command = HudVantageControlCommand(
+            action: "style",
+            stylePreset: style.stylePreset ?? style.preset,
+            chromeStyle: style.chromeStyle,
+            terminalTheme: style.terminalTheme,
+            terminalThemeID: style.terminalThemeID,
+            terminalFontFamily: style.terminalFontFamily,
+            terminalFontSize: style.terminalFontSize,
+            canvasGridMode: style.canvasGridMode,
+            canvasGridStep: style.canvasGridStep,
+            canvasMinorOpacity: style.canvasMinorOpacity,
+            canvasMajorOpacity: style.canvasMajorOpacity,
+            focusPadding: style.focusPadding
+        )
+        if let updated = try? workspaceStyleProfile(applying: command, to: styleProfile) {
+            styleProfile = updated
+        }
+        for entry in style.tagStyles ?? [:] {
+            guard let tag = try? controlTag(from: entry.key), !entry.value.isEmpty else { continue }
+            tagStyleOverrides[tag] = entry.value
+        }
+    }
+
+    private func applySetupLayout(_ layout: HudVantageSetupLayout) {
+        if let tool = layout.canvasTool.flatMap(CanvasTool.init(rawValue:)) {
+            canvasTool = tool
+        }
+        if let filter = layout.navigationFilter.flatMap(CanvasNavigationFilter.init(rawValue:)) {
+            navigationFilter = filter
+        }
+        if let tag = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:)) {
+            navigationTagFilter = tag
+        }
+        if let navigationCollapsed = layout.navigationCollapsed {
+            self.navigationCollapsed = navigationCollapsed
+        }
+        if let navigationWidth = layout.navigationWidth {
+            self.navigationWidth = clamped(CGFloat(navigationWidth), to: 210...360)
+        }
+        if let minimapCollapsed = layout.minimapCollapsed {
+            self.minimapCollapsed = minimapCollapsed
+        }
+        if let inspectorCollapsed = layout.inspectorCollapsed {
+            self.inspectorCollapsed = inspectorCollapsed
+        }
+        if let inspectorWidth = layout.inspectorWidth {
+            self.inspectorWidth = clamped(CGFloat(inspectorWidth), to: 250...440)
+        }
+    }
+
+    private func applySetupViewport(
+        _ viewport: HudVantageSetupViewport?,
+        command: HudVantageControlCommand
+    ) {
+        if viewport?.reset == true || command.reset == true {
+            resetCanvasViewport()
+        }
+        if viewport?.fit == true || command.fit == true {
+            fitCanvasToViewport()
+        }
+        if viewport?.panX != nil || viewport?.panY != nil || viewport?.scale != nil {
+            canvasState = canvasState.replaying(
+                panX: viewport?.panX.map { CGFloat($0) },
+                panY: viewport?.panY.map { CGFloat($0) },
+                scale: viewport?.scale.map { CGFloat($0) }
+            )
+        }
+    }
+
+    private func applySetupSelection(
+        _ manifest: HudVantageSetupManifest,
+        touchedIDs: Set<UUID>
+    ) {
+        var selected = Set(manifest.selectedNodeIDs).intersection(Set(nodes.map(\.id)))
+        for selector in manifest.selection {
+            let matches = nodes(matching: selector)
+            if matches.count == 1, let node = matches.first {
+                selected.insert(node.id)
+            }
+        }
+        if selected.isEmpty {
+            selected = touchedIDs
+        }
+        selectedIDs = selected
+
+        if let focusedID = manifest.focusedNodeID, nodes.contains(where: { $0.id == focusedID }) {
+            focusedNodeID = focusedID
+        } else if let selector = manifest.focused,
+                  let node = nodes(matching: selector).first {
+            focusedNodeID = node.id
+        }
+    }
+
+    private func existingSetupNode(for setupNode: HudVantageSetupNode) throws -> TerminalNode? {
+        if let uuid = setupNode.nodeID ?? setupNode.id.flatMap(UUID.init(uuidString:)) {
+            return nodes.first { $0.id == uuid }
+        }
+        if let path = try setupGraphitePath(for: setupNode) {
+            return nodes.first { node in
+                guard case .tmux(_, let nodePath, _) = node.runtimeIdentity else { return false }
+                return nodePath == path
+            }
+        }
+        if let target = try setupTmuxTarget(for: setupNode) {
+            let remoteHost = try validatedRemoteHost(setupNode.remoteHost ?? setupNode.runtime?.remoteHost)
+            return nodes.first { node in
+                guard case .tmux(let nodeTarget, _, let nodeRemoteHost) = node.runtimeIdentity else { return false }
+                return nodeTarget == target && nodeRemoteHost == remoteHost
+            }
+        }
+        return nil
+    }
+
+    private func updateExistingSetupNode(
+        _ node: TerminalNode,
+        from setupNode: HudVantageSetupNode
+    ) throws -> Bool {
+        var changed = false
+        if let x = setupNode.x {
+            node.origin.x = CGFloat(x)
+            changed = true
+        }
+        if let y = setupNode.y {
+            node.origin.y = CGFloat(y)
+            changed = true
+        }
+        if let width = setupNode.width {
+            node.size.width = max(300, CGFloat(width))
+            changed = true
+        }
+        if let height = setupNode.height {
+            node.size.height = max(200, CGFloat(height))
+            changed = true
+        }
+        if let zIndex = setupNode.zIndex {
+            node.zIndex = zIndex
+            changed = true
+        }
+        if let tagValue = setupNode.tag {
+            node.tag = tagValue.isEmpty ? nil : try controlTag(from: tagValue)
+            changed = true
+        }
+        if let style = try setupNodeStyleOverride(setupNode) {
+            node.styleOverride = style.isEmpty ? nil : style
+            changed = true
+        }
+        return changed
+    }
+
+    private func terminalNode(
+        from setupNode: HudVantageSetupNode,
+        offset: Int,
+        createIfMissing: Bool
+    ) throws -> TerminalNode {
+        let runtimeKind = setupRuntimeKind(for: setupNode)
+        let nodeID = setupNode.nodeID
+            ?? setupNode.id.flatMap(UUID.init(uuidString:))
+            ?? UUID()
+        let origin = CGPoint(
+            x: CGFloat(setupNode.x ?? (72 + Double(offset * 38))),
+            y: CGFloat(setupNode.y ?? (76 + Double(offset * 38)))
+        )
+        let size = CGSize(
+            width: max(300, CGFloat(setupNode.width ?? 500)),
+            height: max(200, CGFloat(setupNode.height ?? 316))
+        )
+        let tint = HudTint.from(token: setupNode.tint ?? tint(for: nextIndex).rawValue)
+        let zIndex = setupNode.zIndex ?? nextZIndex
+        nextZIndex = max(nextZIndex, zIndex + 1)
+        let tag = try setupNode.tag.map { try controlTag(from: $0) }
+        let style = try setupNodeStyleOverride(setupNode)
+
+        switch runtimeKind {
+        case "local-pty", "localpty", "pty":
+            return TerminalNode(
+                id: nodeID,
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint,
+                zIndex: zIndex,
+                title: setupNode.title,
+                subtitle: setupNode.subtitle,
+                tag: tag,
+                styleOverride: style,
+                workingDirectoryURL: configuration.workingDirectoryURL
+            )
+
+        case "tmux", "remote-tmux", "sshtmux", "ssh-tmux":
+            guard let target = try setupTmuxTarget(for: setupNode) else {
+                throw HudVantageSetupError.missingRuntimeTarget(setupNode.title ?? setupNode.id ?? "untitled")
+            }
+            let path = try setupGraphitePath(for: setupNode)
+            let remoteHost = try validatedRemoteHost(setupNode.remoteHost ?? setupNode.runtime?.remoteHost)
+            if remoteHost == nil, TerminalNode.localTmuxURL == nil {
+                throw HudVantageStateError.tmuxMissing
+            }
+            if remoteHost == nil,
+               !TerminalNode.canCreateTmuxTarget(target, createIfMissing: createIfMissing),
+               !TerminalNode.localTmuxTargetExists(target) {
+                throw HudVantageStateError.missingTmuxTarget(target)
+            }
+            return TerminalNode(
+                id: nodeID,
+                index: nextIndex,
+                origin: origin,
+                size: size,
+                tint: tint,
+                zIndex: zIndex,
+                processSpec: TerminalNode.tmuxAttachSpec(
+                    target: target,
+                    createIfMissing: createIfMissing,
+                    remoteHost: remoteHost,
+                    workingDirectoryURL: configuration.workingDirectoryURL
+                ),
+                title: setupNode.title ?? path.map { "\($0.app) \($0.instance)" } ?? "tmux \(target)",
+                subtitle: setupNode.subtitle ?? remoteHost.map { "ssh · \($0)" } ?? "tmux · \(target)",
+                runtimeIdentity: .tmux(target: target, path: path, remoteHost: remoteHost),
+                tag: tag,
+                styleOverride: style
+            )
+
+        default:
+            throw HudVantageSetupError.unsupportedRuntime(runtimeKind)
+        }
+    }
+
+    private func setupRuntimeKind(for setupNode: HudVantageSetupNode) -> String {
+        let kind = setupNode.runtime?.kind
+            ?? setupNode.runtimeKind
+            ?? ((setupNode.target ?? setupNode.runtime?.target ?? setupNode.graphitePath ?? setupNode.runtime?.graphitePath) == nil
+                ? "local-pty"
+                : "tmux")
+        return kind.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    }
+
+    private func setupGraphitePath(for setupNode: HudVantageSetupNode) throws -> GraphitePath? {
+        let candidate = setupNode.graphitePath
+            ?? setupNode.runtime?.graphitePath
+            ?? (setupNode.id?.hasPrefix("\(GraphitePath.root).") == true ? setupNode.id : nil)
+        return try candidate.map(GraphitePath.init(parse:))
+    }
+
+    private func setupTmuxTarget(for setupNode: HudVantageSetupNode) throws -> String? {
+        if let target = setupNode.target ?? setupNode.runtime?.target {
+            return try TmuxTarget.validatedTarget(target)
+        }
+        if let path = try setupGraphitePath(for: setupNode) {
+            return try TmuxTarget.from(path: path).windowTarget
+        }
+        if setupRuntimeKind(for: setupNode).contains("tmux"),
+           let id = setupNode.id,
+           UUID(uuidString: id) == nil {
+            return try TmuxTarget.validatedTarget(id)
+        }
+        return nil
+    }
+
+    private func setupNodeStyleOverride(
+        _ setupNode: HudVantageSetupNode
+    ) throws -> HudVantageTerminalStyleOverride? {
+        var override = setupNode.style ?? .empty
+        if let terminalTheme = setupNode.terminalTheme ?? setupNode.terminalThemeID {
+            override.terminalThemeID = try controlEnumValue(
+                terminalTheme,
+                field: "terminalTheme",
+                cases: HudVantageTerminalThemeID.allCases,
+                label: \.label
+            )
+        }
+        if let terminalFontFamily = setupNode.terminalFontFamily {
+            override.terminalFontFamily = terminalFontFamily
+        }
+        if let terminalFontSize = setupNode.terminalFontSize {
+            override.terminalFontSize = clamp(terminalFontSize, lower: 8, upper: 28)
+        }
+        return override.isEmpty ? nil : override
     }
 
     private func applyStyleCommand(
@@ -3510,7 +4029,8 @@ public struct HudVantageSurface: View {
         requiresPermission: Bool? = nil,
         nodesOverride: [TerminalNode]? = nil,
         style: HudVantageControlStyle? = nil,
-        tmuxHealth: [HudVantageTmuxHealth]? = nil
+        tmuxHealth: [HudVantageTmuxHealth]? = nil,
+        setup: HudVantageSetupReport? = nil
     ) -> HudVantageControlResponse {
         let responseNodes = nodesOverride ?? nodes
         return HudVantageControlResponse(
@@ -3529,6 +4049,7 @@ public struct HudVantageSurface: View {
             metrics: command.includeMetrics == false ? nil : controlMetrics(),
             style: style ?? (command.includeStyle == true ? controlStyleSummary(includeTerminalOverrides: true) : nil),
             tmuxHealth: tmuxHealth,
+            setup: setup,
             appPID: getpid(),
             childPIDs: command.includeChildren == true ? childProcessIDs() : nil,
             commandPath: controlAPI.commandURL.path,

@@ -104,6 +104,7 @@ examples/termini-canvas/scripts/canvasctl.sh --wait exit-focus
 examples/termini-canvas/scripts/canvasctl.sh --wait metrics
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
 examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
 examples/termini-canvas/scripts/canvasctl.sh --wait tmux-health --session hudson-lab
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
 examples/termini-canvas/scripts/canvasctl.sh --wait perf-cleanup --prefix hudson-perf-lab
