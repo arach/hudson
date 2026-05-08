@@ -89,6 +89,7 @@ private enum HudVantageMetrics {
     static let filterButtonHeight = HudLayout.rowHeightCompact - HudSpacing.xs
     static let commandButtonWidth = HudLayout.rowHeightRegular
     static let viewportChipHeight = HudLayout.rowHeightCompact - HudSpacing.xxs
+    static let statusBarHeight = HudLayout.statusBarHeight + HudSpacing.sm
     static let zoomLabelWidth = HudIconSize.huge + HudSpacing.lg
     static let zoomControlShadowRadius = HudSpacing.xxl
     static let terminalCardShadowRadius = HudSpacing.xxl
@@ -114,6 +115,9 @@ private enum HudVantageMetrics {
         + HudLayout.rowHeightRegular
         + HudSpacing.huge
         + HudSpacing.md
+    static let lensWidth = HudLayout.dialogWidth
+        + HudLayout.rowHeightRegular
+        + HudSpacing.huge
     static let commandPaletteTopPadding = HudLayout.navHeight
         + HudSpacing.huge
         + HudSpacing.lg
@@ -564,6 +568,52 @@ private enum CanvasTool: String {
     }
 }
 
+private enum VantageLensTarget: Hashable {
+    case node(UUID)
+}
+
+private struct VantageLensResult: Identifiable, Hashable {
+    var target: VantageLensTarget
+    var icon: String
+    var title: String
+    var detail: String
+    var badge: String
+    var snippet: String
+    var tint: HudTint
+    var score: Int
+
+    var id: VantageLensTarget { target }
+}
+
+private struct VantagePersistenceToken: Hashable {
+    var canvasTool: CanvasTool
+    var navigationFilter: CanvasNavigationFilter
+    var navigationTagFilter: CanvasTag?
+    var navigationCollapsed: Bool
+    var navigationWidth: CGFloat
+    var minimapCollapsed: Bool
+    var inspectorCollapsed: Bool
+    var inspectorWidth: CGFloat
+    var styleProfile: HudVantageStyleProfile
+    var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride]
+}
+
+private enum VantageSpotlightKind {
+    case agents
+    case code
+    case plans
+    case diffs
+
+    var label: String {
+        switch self {
+        case .agents: "agents"
+        case .code: "code"
+        case .plans: "plans"
+        case .diffs: "diffs"
+        }
+    }
+}
+
 private enum CanvasNavigationFilter: String, CaseIterable, Identifiable {
     case all
     case selected
@@ -838,6 +888,7 @@ public struct HudVantageSurface: View {
     @State private var nextIndex = 3
     @State private var nextZIndex: Double = 3
     @StateObject private var controlAPI: HudVantageControlAPI
+    @StateObject private var frameRateMonitor = HudVantageFrameRateMonitor()
     @State private var controlStatus = "API ready"
     @State private var controlCommandCount = 0
     @State private var lastControlAction: String?
@@ -854,6 +905,9 @@ public struct HudVantageSurface: View {
     @State private var presentationState = VantagePresentationState()
     @State private var appearanceSettingsPresented = false
     @State private var commandPalettePresented = false
+    @State private var lensPresented = false
+    @State private var lensQuery = ""
+    @State private var lensSelectedIndex = 0
     @State private var canvasState = HudVantageCanvasState(
         minimumScale: HudVantageSurface.minimumCanvasScale,
         maximumScale: HudVantageSurface.maximumCanvasScale
@@ -878,19 +932,11 @@ public struct HudVantageSurface: View {
     }
 
     public var body: some View {
-        HudAppShell {
-            if !isTerminalFocusActive {
-                navigationPanel
-            }
-        } trailing: {
-            if !isTerminalFocusActive {
-                inspectorPanel
-            }
-        } content: {
-            terminalCanvasShell
-        } statusBar: {
-            statusBar
-        }
+        AnyView(surfaceBody)
+    }
+
+    private var surfaceBody: some View {
+        shellView
         .onAppear {
             bootstrapIfNeeded()
             startControlAPI()
@@ -904,39 +950,16 @@ public struct HudVantageSurface: View {
             cancelDocumentWatchers()
             persistStateIfConfigured()
             controlAPI.stop()
+            frameRateMonitor.reset()
             closePopOutWindows()
             stopAllNodes()
             didBootstrap = false
         }
-        .onChange(of: canvasTool) { _, _ in
+        .onChange(of: persistenceToken) { _, _ in
             schedulePersistStateIfConfigured()
         }
-        .onChange(of: navigationFilter) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: navigationTagFilter) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: navigationCollapsed) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: navigationWidth) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: minimapCollapsed) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: inspectorCollapsed) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: inspectorWidth) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: styleProfile) { _, _ in
-            schedulePersistStateIfConfigured()
-        }
-        .onChange(of: tagStyleOverrides) { _, _ in
-            schedulePersistStateIfConfigured()
+        .onChange(of: lensQuery) { _, _ in
+            lensSelectedIndex = 0
         }
         .confirmationDialog(
             "Install tmux with Homebrew?",
@@ -952,41 +975,10 @@ public struct HudVantageSurface: View {
         .hudTheme(activeTheme)
         .environment(\.colorScheme, activeColorScheme)
         .overlay {
-            if commandPalettePresented {
-                VantageCommandPalette(
-                    selectedCount: selectedIDs.count,
-                    onOpenAppearance: openAppearanceSettings,
-                    onCreateTerminal: {
-                        commandPalettePresented = false
-                        spawnTerminal()
-                    },
-                    onFocusSelection: {
-                        commandPalettePresented = false
-                        focusSelection()
-                    },
-                    onPopOutSelection: {
-                        commandPalettePresented = false
-                        popOutSelection()
-                    },
-                    onClose: { commandPalettePresented = false }
-                )
-            }
+            AnyView(surfaceOverlay)
         }
         .sheet(isPresented: $appearanceSettingsPresented) {
-            VantageAppearanceSettingsSurface(
-                profile: $styleProfile,
-                tagStyleOverrides: $tagStyleOverrides,
-                selectedNode: singleSelectedNode,
-                inheritedProfile: singleSelectedNode.map { inheritedStyleProfile(for: $0) },
-                selectedStyleOverride: singleSelectedNode.map { terminalStyleBinding(for: $0) },
-                onClose: { appearanceSettingsPresented = false }
-            )
-            .frame(
-                width: HudVantageMetrics.appearanceSheetWidth,
-                height: HudVantageMetrics.appearanceSheetHeight
-            )
-            .hudTheme(activeTheme)
-            .environment(\.colorScheme, activeColorScheme)
+            AnyView(appearanceSettingsSheet)
         }
         .toolbar {
             ToolbarItemGroup(placement: .navigation) {
@@ -1016,15 +1008,42 @@ public struct HudVantageSurface: View {
             }
         }
         .onExitCommand {
-            if commandPalettePresented {
-                commandPalettePresented = false
-            } else if appearanceSettingsPresented {
+            if dismissTopOverlay() {
+                return
+            }
+            if appearanceSettingsPresented {
                 appearanceSettingsPresented = false
             } else if isTerminalFocusActive {
                 exitFocusMode()
             }
         }
         .background(HudWindowChrome(colorScheme: activeColorScheme))
+    }
+
+    private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
+        HudAppShell {
+            AnyView(navigationShellSlot)
+        } trailing: {
+            AnyView(inspectorShellSlot)
+        } content: {
+            AnyView(terminalCanvasShell)
+        } statusBar: {
+            AnyView(statusBar)
+        }
+    }
+
+    @ViewBuilder
+    private var navigationShellSlot: some View {
+        if !isTerminalFocusActive {
+            navigationPanel
+        }
+    }
+
+    @ViewBuilder
+    private var inspectorShellSlot: some View {
+        if !isTerminalFocusActive {
+            inspectorPanel
+        }
     }
 
     private var activeColorScheme: ColorScheme {
@@ -1045,6 +1064,94 @@ public struct HudVantageSurface: View {
 
     private var terminalAppearance: HudTerminalAppearance {
         styleProfile.terminalAppearance(for: activeColorScheme)
+    }
+
+    private var persistenceToken: VantagePersistenceToken {
+        VantagePersistenceToken(
+            canvasTool: canvasTool,
+            navigationFilter: navigationFilter,
+            navigationTagFilter: navigationTagFilter,
+            navigationCollapsed: navigationCollapsed,
+            navigationWidth: navigationWidth,
+            minimapCollapsed: minimapCollapsed,
+            inspectorCollapsed: inspectorCollapsed,
+            inspectorWidth: inspectorWidth,
+            styleProfile: styleProfile,
+            tagStyleOverrides: tagStyleOverrides
+        )
+    }
+
+    @ViewBuilder
+    private var surfaceOverlay: some View {
+        commandPaletteOverlay
+        lensOverlay
+    }
+
+    @ViewBuilder
+    private var commandPaletteOverlay: some View {
+        if commandPalettePresented {
+            VantageCommandPalette(
+                selectedCount: selectedIDs.count,
+                onOpenAppearance: openAppearanceSettings,
+                onOpenLens: {
+                    commandPalettePresented = false
+                    openLens()
+                },
+                onLayoutByTag: {
+                    commandPalettePresented = false
+                    layoutNodesByTag()
+                },
+                onCreateTerminal: {
+                    commandPalettePresented = false
+                    spawnTerminal()
+                },
+                onFocusSelection: {
+                    commandPalettePresented = false
+                    focusSelection()
+                },
+                onPopOutSelection: {
+                    commandPalettePresented = false
+                    popOutSelection()
+                },
+                onClose: { commandPalettePresented = false }
+            )
+        }
+    }
+
+    @ViewBuilder
+    private var lensOverlay: some View {
+        if lensPresented {
+            VantageLensOverlay(
+                query: $lensQuery,
+                selectedIndex: $lensSelectedIndex,
+                results: lensResults,
+                onClose: closeLens,
+                onActivate: activateLensResult,
+                onHoverResult: hoverLensResult
+            )
+        }
+    }
+
+    private var appearanceSettingsSheet: some View {
+        VantageAppearanceSettingsSurface(
+            profile: $styleProfile,
+            tagStyleOverrides: $tagStyleOverrides,
+            selectedNode: singleSelectedNode,
+            inheritedProfile: singleSelectedNode.map { inheritedStyleProfile(for: $0) },
+            selectedStyleOverride: singleSelectedNode.map { terminalStyleBinding(for: $0) },
+            onClose: { appearanceSettingsPresented = false }
+        )
+        .frame(
+            width: HudVantageMetrics.appearanceSheetWidth,
+            height: HudVantageMetrics.appearanceSheetHeight
+        )
+        .hudTheme(activeTheme)
+        .environment(\.colorScheme, activeColorScheme)
+    }
+
+    private func hoverLensResult(_ result: VantageLensResult) {
+        guard let index = lensResults.firstIndex(of: result) else { return }
+        lensSelectedIndex = index
     }
 
     private func resolvedStyleProfile(for node: TerminalNode) -> HudVantageStyleProfile {
@@ -1135,14 +1242,198 @@ public struct HudVantageSurface: View {
     }
 
     private func openCommandPalette() {
+        lensPresented = false
         commandPalettePresented = true
         controlStatus = "Command palette"
     }
 
     private func openAppearanceSettings() {
         commandPalettePresented = false
+        lensPresented = false
         appearanceSettingsPresented = true
         controlStatus = "Appearance settings"
+    }
+
+    @discardableResult
+    private func dismissTopOverlay() -> Bool {
+        if lensPresented {
+            closeLens()
+            return true
+        }
+        if commandPalettePresented {
+            commandPalettePresented = false
+            return true
+        }
+        return false
+    }
+
+    private func openLens() {
+        commandPalettePresented = false
+        lensPresented = true
+        lensSelectedIndex = 0
+        controlStatus = "Lens"
+    }
+
+    private func closeLens() {
+        lensPresented = false
+        lensQuery = ""
+        lensSelectedIndex = 0
+    }
+
+    private var lensResults: [VantageLensResult] {
+        guard lensPresented else { return [] }
+        return searchLensResults(matching: lensQuery)
+    }
+
+    private func searchLensResults(matching query: String) -> [VantageLensResult] {
+        let trimmedQuery = query.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalizedQuery = trimmedQuery.lowercased()
+
+        let results = nodes.compactMap { node -> VantageLensResult? in
+            let fields = lensSearchFields(for: node)
+            let haystack = fields.joined(separator: "\n").lowercased()
+            let score = lensScore(
+                query: normalizedQuery,
+                node: node,
+                fields: fields,
+                haystack: haystack
+            )
+
+            if !normalizedQuery.isEmpty, score == nil {
+                return nil
+            }
+
+            return VantageLensResult(
+                target: .node(node.id),
+                icon: node.symbolName,
+                title: node.title,
+                detail: node.subtitle,
+                badge: node.runtimeIdentity.badge,
+                snippet: lensSnippet(
+                    query: normalizedQuery,
+                    fields: fields,
+                    fallback: node.runtimeIdentity.detail
+                ),
+                tint: node.tint,
+                score: score ?? 900
+            )
+        }
+
+        return results
+            .sorted { lhs, rhs in
+                if lhs.score != rhs.score {
+                    return lhs.score < rhs.score
+                }
+                return lhs.title.localizedStandardCompare(rhs.title) == .orderedAscending
+            }
+            .prefix(24)
+            .map { $0 }
+    }
+
+    private func lensSearchFields(for node: TerminalNode) -> [String] {
+        var fields = [
+            node.title,
+            node.subtitle,
+            node.id.uuidString,
+            node.externalID ?? "",
+            node.tag?.rawValue ?? "",
+            node.tag?.label ?? "",
+            node.runtimeIdentity.badge,
+            node.runtimeIdentity.detail,
+        ]
+
+        switch node.runtimeIdentity {
+        case .localPTY:
+            break
+        case .tmux(let target, let path, let remoteHost):
+            fields.append(target)
+            fields.append(path?.description ?? "")
+            fields.append(remoteHost ?? "")
+        case .document(let artifact):
+            fields.append(artifact.kind.runtimeKind)
+            fields.append(artifact.path ?? "")
+            fields.append(artifact.language ?? "")
+            fields.append(artifact.role ?? "")
+            fields.append(artifact.content)
+        }
+
+        if let visibleText = node.controller?.visibleText(), !visibleText.isEmpty {
+            fields.append(visibleText)
+        }
+
+        return fields.filter { !$0.isEmpty }
+    }
+
+    private func lensScore(
+        query: String,
+        node: TerminalNode,
+        fields: [String],
+        haystack: String
+    ) -> Int? {
+        guard !query.isEmpty else {
+            return selectedIDs.contains(node.id) ? 80 : 900
+        }
+
+        if node.title.lowercased().hasPrefix(query) {
+            return 0
+        }
+        if node.title.lowercased().contains(query) {
+            return 10
+        }
+        if node.tag?.rawValue.lowercased() == query || node.tag?.label.lowercased() == query {
+            return 20
+        }
+        if node.runtimeIdentity.badge.lowercased().contains(query) {
+            return 30
+        }
+        if fields.dropFirst(2).contains(where: { $0.lowercased().contains(query) }) {
+            return 40
+        }
+        if haystack.contains(query) {
+            return 70
+        }
+        return nil
+    }
+
+    private func lensSnippet(query: String, fields: [String], fallback: String) -> String {
+        guard !query.isEmpty else { return fallback }
+        guard let field = fields.first(where: { $0.lowercased().contains(query) }) else {
+            return fallback
+        }
+
+        let lines = field.split(whereSeparator: \.isNewline).map(String.init)
+        let match = lines.first { $0.lowercased().contains(query) } ?? field
+        let trimmed = match.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard trimmed.count > 140 else { return trimmed }
+        return "\(trimmed.prefix(137))..."
+    }
+
+    private func activateLensResult(_ result: VantageLensResult) {
+        switch result.target {
+        case .node(let id):
+            guard nodes.contains(where: { $0.id == id }) else { return }
+            selectedIDs = [id]
+            centerNode(id)
+            bringToFront(id)
+            controlStatus = "Lens: \(result.title)"
+        }
+        closeLens()
+    }
+
+    private func selectNextLensResult(_ delta: Int) {
+        let results = lensResults
+        guard !results.isEmpty else {
+            lensSelectedIndex = 0
+            return
+        }
+        lensSelectedIndex = (lensSelectedIndex + delta + results.count) % results.count
+    }
+
+    private func activateSelectedLensResult() {
+        let results = lensResults
+        guard !results.isEmpty else { return }
+        let index = min(max(lensSelectedIndex, 0), results.count - 1)
+        activateLensResult(results[index])
     }
 
     private func terminalStyleBinding(for node: TerminalNode) -> Binding<HudVantageTerminalStyleOverride> {
@@ -1274,6 +1565,10 @@ public struct HudVantageSurface: View {
                     SelectionMarquee(rect: rect)
                 }
 
+                CanvasFrameRateProbe(
+                    monitor: frameRateMonitor,
+                    onSample: updateFrameRatePerfCounters
+                )
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()
@@ -1292,7 +1587,10 @@ public struct HudVantageSurface: View {
                     onSpacePanChanged: { isActive in
                         transientHandActive = isActive
                     },
-                    onCommandPalette: openCommandPalette
+                    onCommandPalette: openCommandPalette,
+                    onShortcut: handleCanvasShortcut,
+                    isLensPresented: lensPresented,
+                    cursor: canvasCursor
                 )
             )
             .gesture(canvasInteractionGesture)
@@ -1323,6 +1621,16 @@ public struct HudVantageSurface: View {
                         onFit: { fitCanvasToViewport() }
                     )
                     .padding(HudSpacing.xl)
+                }
+            }
+            .overlay(alignment: .topTrailing) {
+                if !isTerminalFocusActive {
+                    CanvasFrameRateHUD(
+                        sample: frameRateMonitor.sample,
+                        nodeCount: nodes.count
+                    )
+                    .padding(.top, HudSpacing.xl)
+                    .padding(.trailing, HudSpacing.xxl)
                 }
             }
         }
@@ -1390,6 +1698,52 @@ public struct HudVantageSurface: View {
 
     private func zoom(by factor: CGFloat) {
         setCanvasScale(canvasState.scale * factor, around: canvasState.viewportCenter)
+    }
+
+    private func handleCanvasShortcut(_ shortcut: CanvasKeyboardShortcut) {
+        switch shortcut {
+        case .openLens:
+            openLens()
+        case .lensNext:
+            guard lensPresented else { return }
+            selectNextLensResult(1)
+        case .lensPrevious:
+            guard lensPresented else { return }
+            selectNextLensResult(-1)
+        case .lensActivate:
+            guard lensPresented else { return }
+            activateSelectedLensResult()
+        case .escape:
+            if dismissTopOverlay() {
+                return
+            }
+            if isTerminalFocusActive {
+                exitFocusMode()
+            } else {
+                selectedIDs.removeAll()
+                controlStatus = "Selection cleared"
+            }
+        case .pan(let delta):
+            guard !lensPresented, !isTerminalFocusActive else { return }
+            canvasState = canvasState.panned(by: delta)
+            controlStatus = "Canvas travel"
+            schedulePersistStateIfConfigured()
+        case .resetViewport:
+            guard !lensPresented, !isTerminalFocusActive else { return }
+            resetCanvasViewport()
+            schedulePersistStateIfConfigured()
+            controlStatus = "Viewport reset"
+        case .fitViewport:
+            guard !lensPresented, !isTerminalFocusActive else { return }
+            fitCanvasToViewport()
+            controlStatus = "Fit canvas"
+        case .layoutByTag:
+            guard !lensPresented, !isTerminalFocusActive else { return }
+            layoutNodesByTag()
+        case .spotlight(let kind):
+            guard !lensPresented, !isTerminalFocusActive else { return }
+            spotlight(kind)
+        }
     }
 
     private func handleCanvasScroll(delta: CGSize, at viewportPoint: CGPoint) {
@@ -1604,14 +1958,6 @@ public struct HudVantageSurface: View {
     private var statusBar: some View {
         ZStack {
             HStack(spacing: HudSpacing.xl) {
-                HudStatusDot(color: activeTheme.palette.statusOk)
-                Text("HUDSONKIT MACOS")
-                    .font(HudFont.mono(10, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(activeTheme.palette.muted)
-                Text("·")
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.dim)
                 Text("\(nodes.count) nodes")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -1649,7 +1995,14 @@ public struct HudVantageSurface: View {
                 tool: effectiveCanvasTool
             )
         }
-        .frame(height: HudLayout.statusBarHeight)
+        .frame(height: HudVantageMetrics.statusBarHeight)
+    }
+
+    private var canvasCursor: CanvasCursor {
+        if transientHandActive || panStart != nil {
+            return .closedHand
+        }
+        return effectiveCanvasTool == .hand ? .openHand : .arrow
     }
 
     private var controlPerfLabel: String {
@@ -1658,6 +2011,19 @@ public struct HudVantageSurface: View {
         }
 
         return "\(action) \(String(format: "%.1f", duration))ms"
+    }
+
+    private func updateFrameRatePerfCounters(_ sample: HudVantageFrameRateSample?) {
+        guard let sample else {
+            perfTracker.set("surface.fps", to: 0)
+            perfTracker.set("surface.frameMS", to: 0)
+            perfTracker.set("surface.slowestFrameMS", to: 0)
+            return
+        }
+
+        perfTracker.set("surface.fps", to: sample.roundedFramesPerSecond)
+        perfTracker.set("surface.frameMS", to: sample.roundedAverageFrameDurationMS)
+        perfTracker.set("surface.slowestFrameMS", to: Int(sample.slowestFrameDurationMS.rounded()))
     }
 
     private var liveSourceCount: Int {
@@ -4900,6 +5266,88 @@ public struct HudVantageSurface: View {
         schedulePersistStateIfConfigured()
     }
 
+    private func layoutNodesByTag() {
+        guard !nodes.isEmpty else { return }
+
+        let visibleOrigin = canvasState.worldPoint(
+            fromViewportPoint: CGPoint(x: HudSpacing.huge, y: HudSpacing.huge)
+        )
+        let groups = tagLayoutGroups()
+        var x = visibleOrigin.x
+        let y = visibleOrigin.y
+        let columnGap: CGFloat = 72
+        let rowGap: CGFloat = 48
+
+        for group in groups {
+            var columnY = y
+            let columnWidth = max(420, group.nodes.map(\.size.width).max() ?? 420)
+            for node in group.nodes {
+                node.origin = CGPoint(x: x, y: columnY)
+                node.zIndex = nextZIndex
+                nextZIndex += 1
+                columnY += node.size.height + rowGap
+            }
+            x += columnWidth + columnGap
+        }
+
+        if let rect = boundingRect(for: nodes) {
+            canvasState = canvasState.fitting(rect)
+        }
+        controlStatus = navigationTagFilter.map { "Grouped \($0.label)" } ?? "Grouped by tag"
+        schedulePersistStateIfConfigured()
+    }
+
+    private func tagLayoutGroups() -> [(tag: CanvasTag?, nodes: [TerminalNode])] {
+        var orderedTags: [CanvasTag?] = []
+        if let navigationTagFilter {
+            orderedTags.append(navigationTagFilter)
+        }
+        orderedTags.append(contentsOf: CanvasTag.allCases.map(Optional.some))
+        orderedTags.append(nil)
+
+        var seen: Set<String> = []
+        return orderedTags.compactMap { tag in
+            let key = tag?.rawValue ?? "__untagged"
+            guard seen.insert(key).inserted else { return nil }
+            let groupedNodes = nodes
+                .filter { $0.tag == tag }
+                .sorted { $0.title.localizedStandardCompare($1.title) == .orderedAscending }
+            guard !groupedNodes.isEmpty else { return nil }
+            return (tag, groupedNodes)
+        }
+    }
+
+    private func spotlight(_ kind: VantageSpotlightKind) {
+        let scopedNodes = navigationTagFilter.map { tag in
+            nodes.filter { $0.tag == tag }
+        } ?? nodes
+        let matches = scopedNodes.filter { node in
+            switch kind {
+            case .agents:
+                return node.isTerminal
+            case .code:
+                return node.documentArtifact?.kind == .file
+            case .plans:
+                return node.documentArtifact?.kind == .plan
+            case .diffs:
+                return node.documentArtifact?.kind == .diff
+            }
+        }
+
+        guard !matches.isEmpty else {
+            controlStatus = "No \(kind.label)"
+            return
+        }
+
+        selectedIDs = Set(matches.map(\.id))
+        navigationFilter = .selected
+        if let rect = boundingRect(for: matches) {
+            canvasState = canvasState.fitting(rect)
+        }
+        controlStatus = "Spotlight \(kind.label)"
+        schedulePersistStateIfConfigured()
+    }
+
     private func setTerminalStyleOverride(
         _ id: UUID,
         override: HudVantageTerminalStyleOverride?
@@ -6253,7 +6701,7 @@ private struct DiffArtifactCanvasPreview: View {
                     Circle()
                         .fill(file.stats.deletions > 0 ? theme.palette.statusError : theme.palette.statusOk)
                         .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
-                    Text(file.displayPath)
+                    Text(file.displayPath(fallback: document.title))
                         .font(HudFont.mono(9))
                         .foregroundStyle(theme.palette.muted)
                         .lineLimit(1)
@@ -6276,7 +6724,7 @@ private struct DiffArtifactCanvasPreview: View {
         VStack(alignment: .leading, spacing: HudSpacing.xs) {
             if let firstFile = document.files.first {
                 HStack(spacing: HudSpacing.sm) {
-                    Text(firstFile.displayPath)
+                    Text(firstFile.displayPath(fallback: document.title))
                         .font(HudFont.mono(9, weight: .semibold))
                         .foregroundStyle(theme.palette.muted)
                         .lineLimit(1)
@@ -6487,7 +6935,7 @@ private struct NativeDiffFullPreview: View {
             ScrollView([.vertical, .horizontal]) {
                 LazyVStack(alignment: .leading, spacing: 0, pinnedViews: []) {
                     ForEach(document.files) { file in
-                        NativeDiffFileSection(file: file, tint: tint)
+                        NativeDiffFileSection(file: file, fallbackTitle: document.title, tint: tint)
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -6499,6 +6947,7 @@ private struct NativeDiffFullPreview: View {
 
 private struct NativeDiffFileSection: View {
     let file: HudDiffFile
+    let fallbackTitle: String?
     let tint: Color
     @Environment(\.hudTheme) private var theme
 
@@ -6506,7 +6955,7 @@ private struct NativeDiffFileSection: View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: HudSpacing.md) {
                 HudStatusDot(color: theme.palette.statusWarn, size: HudDotSize.small)
-                Text(file.displayPath)
+                Text(file.displayPath(fallback: fallbackTitle))
                     .font(HudFont.mono(11, weight: .semibold))
                     .foregroundStyle(theme.palette.ink)
                     .lineLimit(1)
@@ -8402,9 +8851,196 @@ private struct EmptyInspectorState: View {
     }
 }
 
+private struct VantageLensOverlay: View {
+    @Binding var query: String
+    @Binding var selectedIndex: Int
+    let results: [VantageLensResult]
+    let onClose: () -> Void
+    let onActivate: (VantageLensResult) -> Void
+    let onHoverResult: (VantageLensResult) -> Void
+
+    @FocusState private var searchFocused: Bool
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        ZStack(alignment: .top) {
+            HudSurface.scrim.opacity(HudOpacity.emphatic)
+                .ignoresSafeArea()
+                .onTapGesture(perform: onClose)
+
+            VStack(spacing: 0) {
+                header
+                HudDivider(color: theme.hairline.standard)
+                resultList
+            }
+            .frame(width: HudVantageMetrics.lensWidth)
+            .background(RoundedRectangle(cornerRadius: theme.radius.card).fill(theme.palette.chrome))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.card).stroke(theme.hairline.standard))
+            .shadow(color: theme.vantageShadow, radius: HudSpacing.huge, x: 0, y: HudSpacing.xxl)
+            .padding(.top, HudVantageMetrics.commandPaletteTopPadding)
+        }
+        .onAppear {
+            searchFocused = true
+            selectedIndex = min(max(selectedIndex, 0), max(results.count - 1, 0))
+        }
+    }
+
+    private var header: some View {
+        HStack(spacing: HudSpacing.md) {
+            Image(systemName: "magnifyingglass")
+                .font(HudFont.ui(13, weight: .semibold))
+                .foregroundStyle(theme.palette.statusInfo)
+                .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(HudSurface.tintFill(theme.palette.statusInfo)))
+                .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(HudSurface.tintBorder(theme.palette.statusInfo)))
+
+            TextField("Search titles, tags, files, diffs, terminal buffers", text: $query)
+                .textFieldStyle(.plain)
+                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                .foregroundStyle(theme.palette.ink)
+                .focused($searchFocused)
+                .onSubmit {
+                    activateSelectedResult()
+                }
+
+            VantageShortcutHint("RETURN")
+            VantageShortcutHint("ESC")
+
+            Button(action: onClose) {
+                Image(systemName: "xmark")
+                    .font(HudFont.ui(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+            }
+            .buttonStyle(.plain)
+            .help("Close Lens")
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .frame(height: HudLayout.navHeight)
+    }
+
+    @ViewBuilder
+    private var resultList: some View {
+        if results.isEmpty {
+            VStack(spacing: HudSpacing.md) {
+                Image(systemName: query.isEmpty ? "rectangle.stack.badge.plus" : "magnifyingglass")
+                    .font(HudFont.ui(18, weight: .semibold))
+                    .foregroundStyle(theme.palette.dim)
+                Text(query.isEmpty ? "Start typing to search the canvas" : "No matches")
+                    .font(HudFont.mono(10, weight: .semibold))
+                    .foregroundStyle(theme.palette.muted)
+            }
+            .frame(maxWidth: .infinity)
+            .frame(height: HudLayout.rowHeightRegular * 3)
+        } else {
+            ScrollView {
+                LazyVStack(spacing: HudSpacing.sm) {
+                    ForEach(results.indices, id: \.self) { index in
+                        let result = results[index]
+                        VantageLensResultRow(
+                            result: result,
+                            isSelected: index == clampedSelectedIndex,
+                            action: { onActivate(result) }
+                        )
+                        .onHover { hovering in
+                            if hovering {
+                                onHoverResult(result)
+                            }
+                        }
+                    }
+                }
+                .padding(HudSpacing.lg)
+            }
+            .frame(maxHeight: HudLayout.dialogWidth)
+        }
+    }
+
+    private var clampedSelectedIndex: Int {
+        guard !results.isEmpty else { return 0 }
+        return min(max(selectedIndex, 0), results.count - 1)
+    }
+
+    private func activateSelectedResult() {
+        guard !results.isEmpty else { return }
+        onActivate(results[clampedSelectedIndex])
+    }
+}
+
+private struct VantageLensResultRow: View {
+    let result: VantageLensResult
+    let isSelected: Bool
+    let action: () -> Void
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: result.icon)
+                    .font(HudFont.ui(12, weight: .semibold))
+                    .foregroundStyle(result.tint.color)
+                    .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                    .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(HudSurface.tintFill(result.tint.color)))
+                    .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(HudSurface.tintBorder(result.tint.color)))
+
+                VStack(alignment: .leading, spacing: HudSpacing.xxs) {
+                    HStack(spacing: HudSpacing.sm) {
+                        Text(result.title)
+                            .font(HudFont.mono(10, weight: .semibold))
+                            .foregroundStyle(theme.palette.ink)
+                            .lineLimit(1)
+                        HudBadge(result.badge, tint: result.tint.color, dot: false)
+                    }
+                    Text(result.snippet.isEmpty ? result.detail : result.snippet)
+                        .font(HudFont.mono(9))
+                        .foregroundStyle(theme.palette.muted)
+                        .lineLimit(1)
+                }
+
+                Spacer()
+
+                Image(systemName: "viewfinder")
+                    .font(HudFont.ui(10, weight: .semibold))
+                    .foregroundStyle(isSelected ? result.tint.color : theme.palette.dim)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: HudLayout.rowHeightRegular)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(isSelected ? HudSurface.selected(result.tint.color) : theme.vantageControlFill)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(isSelected ? HudSurface.tintBorder(result.tint.color) : theme.hairline.subtle)
+            )
+        }
+        .buttonStyle(.plain)
+    }
+}
+
+private struct VantageShortcutHint: View {
+    let title: String
+    @Environment(\.hudTheme) private var theme
+
+    init(_ title: String) {
+        self.title = title
+    }
+
+    var body: some View {
+        Text(title)
+            .font(HudFont.mono(8, weight: .bold))
+            .foregroundStyle(theme.palette.dim)
+            .padding(.horizontal, HudSpacing.sm)
+            .frame(height: HudLayout.textDocumentModeButtonHeight)
+            .background(RoundedRectangle(cornerRadius: theme.radius.tight).fill(theme.vantageControlFill))
+            .overlay(RoundedRectangle(cornerRadius: theme.radius.tight).stroke(theme.hairline.subtle))
+    }
+}
+
 private struct VantageCommandPalette: View {
     let selectedCount: Int
     let onOpenAppearance: () -> Void
+    let onOpenLens: () -> Void
+    let onLayoutByTag: () -> Void
     let onCreateTerminal: () -> Void
     let onFocusSelection: () -> Void
     let onPopOutSelection: () -> Void
@@ -8422,6 +9058,20 @@ private struct VantageCommandPalette: View {
                 header
                 HudDivider(color: theme.hairline.standard)
                 VStack(spacing: HudSpacing.sm) {
+                    VantageCommandRow(
+                        icon: "magnifyingglass",
+                        title: "Vantage Lens",
+                        detail: "Cmd+F or / · nodes, artifacts, visible terminals",
+                        tint: theme.palette.statusInfo,
+                        action: onOpenLens
+                    )
+                    VantageCommandRow(
+                        icon: "square.grid.2x2",
+                        title: "Group By Tag",
+                        detail: "G · focus, watch, parked, untagged",
+                        tint: theme.palette.statusOk,
+                        action: onLayoutByTag
+                    )
                     VantageCommandRow(
                         icon: "paintpalette",
                         title: "Appearance Settings",
@@ -8710,12 +9360,152 @@ private struct ViewportStatusChip: View {
     }
 }
 
+private struct CanvasFrameRateProbe: View {
+    @ObservedObject var monitor: HudVantageFrameRateMonitor
+    let onSample: (HudVantageFrameRateSample) -> Void
+
+    var body: some View {
+        TimelineView(.animation(minimumInterval: 1.0 / 60.0, paused: false)) { context in
+            Color.clear
+                .onAppear {
+                    recordFrame(at: context.date)
+                }
+                .onChange(of: context.date) { _, date in
+                    recordFrame(at: date)
+                }
+        }
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    private func recordFrame(at date: Date) {
+        guard let sample = monitor.recordFrame(at: date) else {
+            return
+        }
+        onSample(sample)
+    }
+}
+
+private struct CanvasFrameRateHUD: View {
+    let sample: HudVantageFrameRateSample?
+    let nodeCount: Int
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.md) {
+            Circle()
+                .fill(statusColor)
+                .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
+
+            Text(fpsText)
+                .font(HudFont.mono(10, weight: .bold))
+                .monospacedDigit()
+                .foregroundStyle(theme.palette.ink)
+
+            Text("FPS")
+                .font(HudFont.mono(9, weight: .semibold))
+                .foregroundStyle(theme.palette.dim)
+
+            Text("·")
+                .font(HudFont.mono(10))
+                .foregroundStyle(theme.palette.dim)
+
+            Text(frameDurationText)
+                .font(HudFont.mono(10, weight: .semibold))
+                .monospacedDigit()
+                .foregroundStyle(theme.palette.muted)
+
+            Text("·")
+                .font(HudFont.mono(10))
+                .foregroundStyle(theme.palette.dim)
+
+            Text("\(nodeCount) nodes")
+                .font(HudFont.mono(9, weight: .semibold))
+                .foregroundStyle(theme.palette.dim)
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .frame(height: HudLayout.rowHeightCompact)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .fill(theme.palette.chrome.opacity(HudOpacity.emphatic))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.standard)
+                .stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.thin)
+        )
+        .shadow(
+            color: theme.vantageShadow,
+            radius: HudSpacing.xl,
+            x: 0,
+            y: HudSpacing.sm
+        )
+        .help("Canvas frame rate, average frame time, and current node count")
+    }
+
+    private var fpsText: String {
+        guard let sample else {
+            return "--"
+        }
+        return "\(sample.roundedFramesPerSecond)"
+    }
+
+    private var frameDurationText: String {
+        guard let sample else {
+            return "sampling"
+        }
+        return "\(String(format: "%.1f", sample.averageFrameDurationMS))ms"
+    }
+
+    private var statusColor: Color {
+        guard let sample else {
+            return theme.palette.dim
+        }
+        if sample.framesPerSecond >= 50 {
+            return theme.palette.statusOk
+        }
+        if sample.framesPerSecond >= 30 {
+            return theme.palette.statusWarn
+        }
+        return theme.palette.statusError
+    }
+}
+
+private enum CanvasCursor: Equatable {
+    case arrow
+    case openHand
+    case closedHand
+
+    var nsCursor: NSCursor {
+        switch self {
+        case .arrow: return .arrow
+        case .openHand: return .openHand
+        case .closedHand: return .closedHand
+        }
+    }
+}
+
+private enum CanvasKeyboardShortcut {
+    case openLens
+    case lensNext
+    case lensPrevious
+    case lensActivate
+    case escape
+    case pan(CGSize)
+    case resetViewport
+    case fitViewport
+    case layoutByTag
+    case spotlight(VantageSpotlightKind)
+}
+
 private struct CanvasInputBridge: NSViewRepresentable {
     let onScroll: (CGSize, CGPoint) -> Void
     let onMagnify: (CGFloat, CGPoint) -> Void
     let canBeginSpacePan: (CGPoint) -> Bool
     let onSpacePanChanged: (Bool) -> Void
     let onCommandPalette: () -> Void
+    let onShortcut: (CanvasKeyboardShortcut) -> Void
+    let isLensPresented: Bool
+    let cursor: CanvasCursor
 
     func makeCoordinator() -> Coordinator {
         Coordinator(
@@ -8723,13 +9513,15 @@ private struct CanvasInputBridge: NSViewRepresentable {
             onMagnify: onMagnify,
             canBeginSpacePan: canBeginSpacePan,
             onSpacePanChanged: onSpacePanChanged,
-            onCommandPalette: onCommandPalette
+            onCommandPalette: onCommandPalette,
+            onShortcut: onShortcut
         )
     }
 
     func makeNSView(context: Context) -> EventView {
         let view = EventView()
         view.coordinator = context.coordinator
+        view.cursor = cursor.nsCursor
         context.coordinator.view = view
         context.coordinator.installMonitor()
         return view
@@ -8741,7 +9533,10 @@ private struct CanvasInputBridge: NSViewRepresentable {
         context.coordinator.canBeginSpacePan = canBeginSpacePan
         context.coordinator.onSpacePanChanged = onSpacePanChanged
         context.coordinator.onCommandPalette = onCommandPalette
+        context.coordinator.onShortcut = onShortcut
+        context.coordinator.isLensPresented = isLensPresented
         context.coordinator.view = nsView
+        nsView.cursor = cursor.nsCursor
     }
 
     static func dismantleNSView(_ nsView: EventView, coordinator: Coordinator) {
@@ -8750,9 +9545,33 @@ private struct CanvasInputBridge: NSViewRepresentable {
 
     final class EventView: NSView {
         weak var coordinator: Coordinator?
+        var cursor = NSCursor.arrow {
+            didSet {
+                guard cursor != oldValue else { return }
+                discardCursorRects()
+                window?.invalidateCursorRects(for: self)
+                setCursorIfPointerIsInside()
+            }
+        }
 
         override func hitTest(_ point: NSPoint) -> NSView? {
             nil
+        }
+
+        override func resetCursorRects() {
+            addCursorRect(bounds, cursor: cursor)
+        }
+
+        override func viewDidMoveToWindow() {
+            super.viewDidMoveToWindow()
+            setCursorIfPointerIsInside()
+        }
+
+        func setCursorIfPointerIsInside() {
+            guard let window else { return }
+            let local = convert(window.mouseLocationOutsideOfEventStream, from: nil)
+            guard bounds.contains(local) else { return }
+            cursor.set()
         }
     }
 
@@ -8762,6 +9581,8 @@ private struct CanvasInputBridge: NSViewRepresentable {
         var canBeginSpacePan: (CGPoint) -> Bool
         var onSpacePanChanged: (Bool) -> Void
         var onCommandPalette: () -> Void
+        var onShortcut: (CanvasKeyboardShortcut) -> Void
+        var isLensPresented = false
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
@@ -8771,13 +9592,15 @@ private struct CanvasInputBridge: NSViewRepresentable {
             onMagnify: @escaping (CGFloat, CGPoint) -> Void,
             canBeginSpacePan: @escaping (CGPoint) -> Bool,
             onSpacePanChanged: @escaping (Bool) -> Void,
-            onCommandPalette: @escaping () -> Void
+            onCommandPalette: @escaping () -> Void,
+            onShortcut: @escaping (CanvasKeyboardShortcut) -> Void
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
             self.canBeginSpacePan = canBeginSpacePan
             self.onSpacePanChanged = onSpacePanChanged
             self.onCommandPalette = onCommandPalette
+            self.onShortcut = onShortcut
         }
 
         func installMonitor() {
@@ -8807,11 +9630,31 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     self.onMagnify(event.magnification, location)
                     return nil
                 case .keyDown:
+                    if self.isLensPresented {
+                        if let shortcut = self.lensShortcut(for: event) {
+                            self.onShortcut(shortcut)
+                            return nil
+                        }
+                        return event
+                    }
+
                     if event.modifierFlags.contains(.command),
                        event.charactersIgnoringModifiers?.lowercased() == "k" {
                         self.onCommandPalette()
                         return nil
                     }
+
+                    if event.modifierFlags.contains(.command),
+                       event.charactersIgnoringModifiers?.lowercased() == "f" {
+                        self.onShortcut(.openLens)
+                        return nil
+                    }
+
+                    if let shortcut = self.canvasShortcut(for: event) {
+                        self.onShortcut(shortcut)
+                        return nil
+                    }
+
                     guard event.keyCode == 49 else { return event }
                     guard !event.isARepeat else { return self.spacePanActive ? nil : event }
                     guard let location = self.pointerLocationInViewport(),
@@ -8859,10 +9702,73 @@ private struct CanvasInputBridge: NSViewRepresentable {
             )
         }
 
+        private func lensShortcut(for event: NSEvent) -> CanvasKeyboardShortcut? {
+            switch event.keyCode {
+            case 36:
+                return .lensActivate
+            case 53:
+                return .escape
+            case 125:
+                return .lensNext
+            case 126:
+                return .lensPrevious
+            default:
+                return nil
+            }
+        }
+
+        private func canvasShortcut(for event: NSEvent) -> CanvasKeyboardShortcut? {
+            guard event.modifierFlags.intersection([.command, .control, .option]).isEmpty else {
+                return nil
+            }
+            guard let location = pointerLocationInViewport(),
+                  canBeginSpacePan(location)
+            else {
+                return nil
+            }
+
+            let multiplier: CGFloat = event.modifierFlags.contains(.shift) ? 2.5 : 1
+            let step = HudLayout.rowHeightRegular * 3 * multiplier
+            let token = event.charactersIgnoringModifiers?.lowercased()
+
+            switch token {
+            case "/":
+                return .openLens
+            case "h":
+                return .pan(CGSize(width: step, height: 0))
+            case "j":
+                return .pan(CGSize(width: 0, height: -step))
+            case "k":
+                return .pan(CGSize(width: 0, height: step))
+            case "l":
+                return .pan(CGSize(width: -step, height: 0))
+            case "0":
+                return .resetViewport
+            case "1":
+                return .fitViewport
+            case "g":
+                return .layoutByTag
+            case "a":
+                return .spotlight(.agents)
+            case "c":
+                return .spotlight(.code)
+            case "p":
+                return .spotlight(.plans)
+            case "d":
+                return .spotlight(.diffs)
+            default:
+                if event.keyCode == 53 {
+                    return .escape
+                }
+                return nil
+            }
+        }
+
         private func setSpacePanActive(_ isActive: Bool) {
             guard spacePanActive != isActive else { return }
             spacePanActive = isActive
             onSpacePanChanged(isActive)
+            view?.setCursorIfPointerIsInside()
         }
 
         deinit {
@@ -8879,14 +9785,14 @@ private struct CanvasToolSwitch: View {
     var body: some View {
         HStack(spacing: HudSpacing.sm) {
             CanvasIconButton(
-                systemName: "cursorarrow",
+                systemName: tool == .select ? "cursorarrow.rays" : "cursorarrow",
                 help: "Select terminals",
                 isActive: tool == .select,
                 action: onSelect
             )
             CanvasIconButton(
-                systemName: "hand.raised",
-                help: "Pan canvas",
+                systemName: tool == .hand ? "hand.raised.fill" : "hand.raised",
+                help: tool == .hand ? "Hand mode active" : "Pan canvas",
                 isActive: tool == .hand,
                 action: onHand
             )
