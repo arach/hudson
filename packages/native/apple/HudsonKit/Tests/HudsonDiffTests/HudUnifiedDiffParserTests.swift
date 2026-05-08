@@ -60,4 +60,36 @@ struct HudUnifiedDiffParserTests {
         #expect(decoded.stats.additions == 1)
         #expect(decoded.stats.deletions == 1)
     }
+
+    @Test("pathless diffs use the document title as the file label")
+    func pathlessDiffUsesTitleAsFileLabel() {
+        let document = HudUnifiedDiffParser.parse(
+            """
+            @@ -1 +1 @@
+            -before
+            +after
+            """,
+            title: "running-diff.diff"
+        )
+
+        #expect(document.files.count == 1)
+        #expect(document.title == "running-diff.diff")
+        #expect(document.files[0].displayPath(fallback: document.title) == "running-diff.diff")
+        #expect(document.files[0].displayPath == "Diff chunk")
+    }
+
+    @Test("missing diff labels fall back to a neutral chunk name")
+    func missingDiffLabelUsesNeutralFallback() {
+        let document = HudUnifiedDiffParser.parse(
+            """
+            raw diff summary
+            without file metadata
+            """,
+            title: "undefined"
+        )
+
+        #expect(document.files.count == 1)
+        #expect(document.title == "undefined")
+        #expect(document.files[0].displayPath(fallback: document.title) == "Diff chunk")
+    }
 }

@@ -52,7 +52,11 @@ public struct HudDiffFile: Codable, Equatable, Sendable, Identifiable {
     }
 
     public var displayPath: String {
-        newPath ?? oldPath ?? "Untitled"
+        displayPath()
+    }
+
+    public func displayPath(fallback: String? = nil) -> String {
+        newPath ?? oldPath ?? fallbackDisplayLabel(fallback) ?? "Diff chunk"
     }
 
     public var rows: [HudDiffRow] {
@@ -189,4 +193,13 @@ private func normalizedPath(_ path: String?) -> String? {
         return String(path.dropFirst(2))
     }
     return path
+}
+
+private func fallbackDisplayLabel(_ value: String?) -> String? {
+    guard let value else { return nil }
+    let trimmed = value.trimmingCharacters(in: .whitespacesAndNewlines)
+    guard !trimmed.isEmpty else { return nil }
+    let lowered = trimmed.lowercased()
+    guard lowered != "undefined", lowered != "untitled" else { return nil }
+    return trimmed
 }
