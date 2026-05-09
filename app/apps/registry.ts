@@ -40,6 +40,7 @@ import { apiInspectorApp } from './api-inspector';
 import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
 import { documentLabApp } from './document-lab';
+import { themeDesignerApp } from './theme-designer';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -81,6 +82,7 @@ function getAppById(id: string): HudsonApp | null {
     'json-explorer': jsonExplorerApp,
     'notepad': notepadApp,
     'document-lab': documentLabApp,
+    'theme-designer': themeDesignerApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -171,6 +173,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       app: documentLabApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -120, y: 1020, w: 880, h: 620 },
+    },
+    {
+      app: themeDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
     },
   ];
 }

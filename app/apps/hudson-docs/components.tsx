@@ -788,6 +788,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
               options={[
                 { value: 'hudson', label: 'Hudson' },
                 { value: 'editorial', label: 'Editorial' },
+                { value: 'drafting', label: 'Drafting' },
               ]}
               onChange={v => onUpdate({ template: v })}
             />

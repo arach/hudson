@@ -433,7 +433,8 @@ Theme: Light
 Theme: Dark
 Theme: System
 Template: Hudson
-Template: Editorial`}
+Template: Editorial
+Template: Drafting`}
         </pre>
       </div>
     </div>

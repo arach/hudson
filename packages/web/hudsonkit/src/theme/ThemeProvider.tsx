@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import {
   DEFAULT_TEMPLATE,
@@ -14,7 +15,7 @@ import {
 } from './script';
 
 export type HudsonTheme = 'light' | 'dark' | 'system';
-export type HudsonTemplate = 'hudson' | 'editorial';
+export type HudsonTemplate = 'hudson' | 'editorial' | 'drafting' | (string & {});
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
@@ -59,7 +60,7 @@ function readUrlOverride(): StoredThemeState {
     const p = q.get('template');
     return {
       theme: t === 'light' || t === 'dark' || t === 'system' ? t : undefined,
-      template: p === 'hudson' || p === 'editorial' ? p : undefined,
+      template: p && /^[a-z][a-z0-9-]{1,64}$/.test(p) ? p : undefined,
     };
   } catch {
     return {};
@@ -96,6 +97,14 @@ function readStoredThemeState(
   }
 }
 
+const subscribeNoop = () => () => {};
+const getHydrated = () => true;
+const getServerHydrated = () => false;
+
+function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeNoop, getHydrated, getServerHydrated);
+}
+
 function resolveTheme(theme: HudsonTheme) {
   if (theme === 'system') {
     if (typeof window !== 'undefined') {
@@ -105,6 +114,10 @@ function resolveTheme(theme: HudsonTheme) {
   }
 
   return theme;
+}
+
+function resolveInitialTheme(theme: HudsonTheme): 'light' | 'dark' {
+  return theme === 'system' ? 'dark' : theme;
 }
 
 function writeThemeAttributes(
@@ -142,26 +155,28 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const parentTheme = useContext(ThemeContext);
 
-  const [theme, setThemeState] = useState<HudsonTheme>(() =>
-    readStoredThemeState(storageKey, defaultTheme, defaultTemplate).theme ?? defaultTheme,
-  );
-  const [template, setTemplateState] = useState<HudsonTemplate>(() =>
-    readStoredThemeState(storageKey, defaultTheme, defaultTemplate).template ?? defaultTemplate,
-  );
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(theme));
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  // Seed from SSR-safe defaults only. URL/localStorage overrides are already
+  // applied to <html> by the pre-paint script, then read post-mount below so
+  // the first client render matches the server markup.
+  const [theme, setThemeState] = useState<HudsonTheme>(defaultTheme);
+  const [template, setTemplateState] = useState<HudsonTemplate>(defaultTemplate);
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveInitialTheme(defaultTheme));
+  const [clientStateReady, setClientStateReady] = useState(false);
+  const mounted = useHydrated();
 
   useEffect(() => {
     if (parentTheme) return;
 
-    const state = readStoredThemeState(storageKey, defaultTheme, defaultTemplate);
-    if (state.theme && state.theme !== theme) setThemeState(state.theme);
-    if (state.template && state.template !== template) setTemplateState(state.template);
-  }, [defaultTemplate, defaultTheme, parentTheme, storageKey, template, theme]);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const state = readStoredThemeState(storageKey, defaultTheme, defaultTemplate);
+      setThemeState(state.theme ?? defaultTheme);
+      setTemplateState(state.template ?? defaultTemplate);
+      setClientStateReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [defaultTemplate, defaultTheme, parentTheme, storageKey]);
 
   useEffect(() => {
     if (parentTheme) return;
@@ -177,14 +192,14 @@ export function ThemeProvider({
   }, [parentTheme, theme]);
 
   useEffect(() => {
-    if (parentTheme) return;
+    if (parentTheme || !clientStateReady) return;
     writeThemeAttributes(resolvedTheme, template, rootElement);
-  }, [parentTheme, resolvedTheme, rootElement, template]);
+  }, [clientStateReady, parentTheme, resolvedTheme, rootElement, template]);
 
   useEffect(() => {
-    if (parentTheme) return;
+    if (parentTheme || !clientStateReady) return;
     writeStoredThemeState(storageKey, theme, template);
-  }, [parentTheme, storageKey, template, theme]);
+  }, [clientStateReady, parentTheme, storageKey, template, theme]);
 
   useEffect(() => {
     if (parentTheme) return;

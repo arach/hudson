@@ -1,7 +1,7 @@
 export interface ThemeScriptOptions {
   storageKey?: string;
   defaultTheme?: 'light' | 'dark' | 'system';
-  defaultTemplate?: 'hudson' | 'editorial';
+  defaultTemplate?: string;
 }
 
 export const DEFAULT_THEME_STORAGE_KEY = 'hudson.theme';

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BootSplash, phaseAtLeast } from './BootSplash';
 import type { BootPhase } from './BootSplash';
@@ -17,8 +17,6 @@ import {
   AppWindow,
 } from 'hudsonkit/shell';
 import {
-  usePersistentState,
-  useDebouncedPersistentState,
   useSaveIndicator,
   usePlatformLayout,
   sounds,
@@ -92,6 +90,117 @@ const TILE = {
   multiH: 600,
   gap: 40,
 } as const;
+
+export type WindowBounds = { x: number; y: number; w: number; h: number };
+
+export interface WorkspaceShellInitialState {
+  activeWorkspaceId: string;
+  activatedAppIds: string[];
+  focusedAppId: string;
+  tileWindowBounds: Record<string, WindowBounds>;
+  theme: 'dark' | 'light';
+  template: string;
+  leftCollapsed?: boolean;
+  rightCollapsed?: boolean;
+}
+
+
+const subscribeNoop = () => () => {};
+const getHydrated = () => true;
+const getServerHydrated = () => false;
+
+function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeNoop, getHydrated, getServerHydrated);
+}
+
+function readStorage<T>(key: string): T | undefined {
+  try {
+    const saved = localStorage.getItem(key);
+    if (saved) return JSON.parse(saved) as T;
+  } catch {}
+  return undefined;
+}
+
+function writeStorage(key: string, value: unknown) {
+  try {
+    localStorage.setItem(key, JSON.stringify(value));
+    window.dispatchEvent(new CustomEvent('hudson:saved', { detail: { key } }));
+  } catch {}
+}
+
+function usePersistentState<T>(
+  key: string,
+  initialValue: T,
+  options: { enabled?: boolean } = {},
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const hydrated = useHydrated();
+  const enabled = options.enabled ?? true;
+  const [state, setState] = useState<T>(initialValue);
+  const [restoreReady, setRestoreReady] = useState(!enabled);
+
+  useEffect(() => {
+    if (!enabled || !hydrated) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const saved = readStorage<T>(key);
+      if (saved !== undefined) setState(saved);
+      setRestoreReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [key, enabled, hydrated]);
+
+  useEffect(() => {
+    if (!enabled || !hydrated || !restoreReady) return;
+    writeStorage(key, state);
+  }, [key, state, enabled, hydrated, restoreReady]);
+
+  return [state, setState];
+}
+
+function useDebouncedPersistentState<T>(
+  key: string,
+  initialValue: T,
+  delayMs = 300,
+  options: { enabled?: boolean } = {},
+): [T, React.Dispatch<React.SetStateAction<T>>] {
+  const hydrated = useHydrated();
+  const enabled = options.enabled ?? true;
+  const [state, setState] = useState<T>(initialValue);
+  const [restoreReady, setRestoreReady] = useState(!enabled);
+
+  useEffect(() => {
+    if (!enabled || !hydrated) return;
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const saved = readStorage<T>(key);
+      if (saved !== undefined) setState(saved);
+      setRestoreReady(true);
+    });
+    return () => { cancelled = true; };
+  }, [key, enabled, hydrated]);
+
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!enabled || !hydrated || !restoreReady) return;
+    if (timerRef.current) clearTimeout(timerRef.current);
+    timerRef.current = setTimeout(() => writeStorage(key, state), delayMs);
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
+  }, [key, state, delayMs, enabled, hydrated, restoreReady]);
+
+  const stateRef = useRef(state);
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+  useEffect(() => {
+    return () => {
+      if (enabled) writeStorage(key, stateRef.current);
+    };
+  }, [key, enabled]);
+
+  return [state, setState];
+}
 
 function getPendingTerminalAppIdKey(workspaceId: string): string {
   return `hudson.ws.${workspaceId}.terminal.pending-active`;
@@ -271,7 +380,7 @@ function buildShellSettingsPatch(
         ? { theme: value }
         : null;
     case 'template':
-      return value === 'hudson' || value === 'editorial'
+      return typeof value === 'string' && /^[a-z][a-z0-9-]{1,64}$/.test(value)
         ? { template: value }
         : null;
     case 'masterMute':
@@ -339,9 +448,10 @@ function buildShellSettingsPatch(
 function useWindowBounds(
   workspaceId: string,
   appId: string,
-  defaults: { x: number; y: number; w: number; h: number },
+  defaults: WindowBounds,
+  persistState: boolean,
 ) {
-  return usePersistentState(`hudson.ws.${workspaceId}.win.${appId}`, defaults);
+  return usePersistentState(`hudson.ws.${workspaceId}.win.${appId}`, defaults, { enabled: persistState });
 }
 
 // ---------------------------------------------------------------------------
@@ -352,6 +462,7 @@ interface WorkspaceShellProps {
   defaultWorkspaceId: string;
   bootMode?: 'full' | 'condensed' | 'none';
   persistSession?: boolean;
+  initialState?: WorkspaceShellInitialState;
 }
 
 interface ProviderRuntimeState {
@@ -368,9 +479,13 @@ export function WorkspaceShell({
   defaultWorkspaceId,
   bootMode = 'none',
   persistSession = true,
+  initialState,
 }: WorkspaceShellProps) {
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
-  const [activeWorkspaceId, setActiveWorkspaceId] = useState(defaultWorkspaceId);
+  const initialWorkspaceId = initialState && workspaces.some(w => w.id === initialState.activeWorkspaceId)
+    ? initialState.activeWorkspaceId
+    : defaultWorkspaceId;
+  const [activeWorkspaceId, setActiveWorkspaceId] = useState(initialWorkspaceId);
   const [hasSession, setHasSession] = useState(false);
   const [bootPhase, setBootPhase] = useState<BootPhase>(bootMode === 'none' ? 'done' : 'brand');
   const [booted, setBooted] = useState(bootMode === 'none');
@@ -386,6 +501,7 @@ export function WorkspaceShell({
   }, [persistSession, workspaces]);
 
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
+  const activeInitialState = initialState?.activeWorkspaceId === workspace.id ? initialState : undefined;
 
   // --- Disabled apps (persisted to disk via workspace-state API) ---
   const [disabledAppIdsArr, setDisabledAppIdsArr] = useState<string[]>([]);
@@ -393,6 +509,10 @@ export function WorkspaceShell({
 
   // Load disabled apps from disk
   useEffect(() => {
+    if (!persistSession) {
+      disabledLoaded.current = true;
+      return;
+    }
     disabledLoaded.current = false;
     fetch(`/api/workspace-state?id=${workspace.id}`)
       .then(r => r.json())
@@ -406,12 +526,12 @@ export function WorkspaceShell({
       })
       .catch(() => { disabledLoaded.current = true; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace.id]);
+  }, [persistSession, workspace.id]);
 
   // Save disabled apps to disk (debounced)
   const disabledSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!disabledLoaded.current) return;
+    if (!persistSession || !disabledLoaded.current) return;
     if (disabledSaveRef.current) clearTimeout(disabledSaveRef.current);
     disabledSaveRef.current = setTimeout(() => {
       fetch('/api/workspace-state', {
@@ -420,17 +540,21 @@ export function WorkspaceShell({
         body: JSON.stringify({ id: workspace.id, state: { disabledApps: disabledAppIdsArr } }),
       }).catch(() => {});
     }, 1000);
-  }, [disabledAppIdsArr, workspace.id]);
+  }, [disabledAppIdsArr, persistSession, workspace.id]);
 
   const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
   const initialShowLauncher = bootMode !== 'none' && !hasSession;
   const defaultProviderVisibleAppIds = useMemo(
-    () => initialShowLauncher ? [] : workspace.apps
-      .filter(config => !disabledAppIds.has(config.app.id))
-      .map(config => config.app.id),
-    [workspace, disabledAppIds, initialShowLauncher],
+    () => {
+      const initialIds = activeInitialState?.activatedAppIds;
+      if (initialIds) return initialIds.filter(id => workspace.apps.some(config => config.app.id === id) && !disabledAppIds.has(id));
+      return initialShowLauncher ? [] : workspace.apps
+        .filter(config => !disabledAppIds.has(config.app.id))
+        .map(config => config.app.id);
+    },
+    [activeInitialState, workspace, disabledAppIds, initialShowLauncher],
   );
-  const defaultProviderFocusedAppId = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
+  const defaultProviderFocusedAppId = activeInitialState?.focusedAppId ?? workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
   const [providerRuntime, setProviderRuntime] = useState<ProviderRuntimeState>({
     visibleAppIds: defaultProviderVisibleAppIds,
     focusedAppId: defaultProviderFocusedAppId,
@@ -491,6 +615,7 @@ export function WorkspaceShell({
       initialShowLauncher={initialShowLauncher}
       onProviderRuntimeChange={handleProviderRuntimeChange}
       persistSession={persistSession}
+      initialState={activeInitialState}
     />
   );
 
@@ -612,6 +737,7 @@ function WorkspaceInner({
   initialShowLauncher,
   onProviderRuntimeChange,
   persistSession,
+  initialState,
 }: {
   workspace: HudsonWorkspace;
   /** Full workspace including disabled apps (for workspace editor) */
@@ -626,6 +752,7 @@ function WorkspaceInner({
   initialShowLauncher: boolean;
   onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
   persistSession: boolean;
+  initialState?: WorkspaceShellInitialState;
 }) {
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
@@ -696,11 +823,16 @@ function WorkspaceInner({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace]);
+
   // --- Focus state (persisted per workspace) ---
-  const defaultFocus = workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
+  const defaultFocus = initialState?.focusedAppId && allAppIds.includes(initialState.focusedAppId)
+    ? initialState.focusedAppId
+    : workspace.defaultFocusedAppId ?? workspace.apps[0]?.app.id ?? '';
   const [focusedAppId, setFocusedAppIdRaw] = usePersistentState(
     `hudson.ws.${workspace.id}.focus`,
     defaultFocus,
+    { enabled: persistSession },
   );
   const focusedIdx = allAppHooks.findIndex(h => h.appId === focusedAppId);
   const focused = allAppHooks[focusedIdx >= 0 ? focusedIdx : 0];
@@ -754,14 +886,19 @@ function WorkspaceInner({
 
   // --- Activated apps tracking (persisted to disk via /api/workspace-state) ---
   const isFullBoot = bootMode === 'full';
-  const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace]);
-  const defaultVisible = isFullBoot && initialShowLauncher ? [] : allAppIds;
+  const defaultVisible = initialState?.activatedAppIds
+    ? initialState.activatedAppIds.filter(id => allAppIds.includes(id))
+    : isFullBoot && initialShowLauncher ? [] : allAppIds;
   const [activatedAppIdsArr, setActivatedAppIdsArr] = useState<string[]>(defaultVisible);
   const wsStateReady = useRef(false);
   const savePending = useRef(0);
 
   // Load from disk on mount / workspace switch
   useEffect(() => {
+    if (!persistSession) {
+      wsStateReady.current = true;
+      return;
+    }
     wsStateReady.current = false;
     savePending.current++;
     const gen = savePending.current;
@@ -778,12 +915,12 @@ function WorkspaceInner({
       })
       .catch(() => { wsStateReady.current = true; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [workspace.id]);
+  }, [persistSession, workspace.id]);
 
   // Save to disk on change (debounced, only after initial load completes)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
-    if (!wsStateReady.current) return; // Don't save until disk load finishes
+    if (!persistSession || !wsStateReady.current) return; // Don't save until disk load finishes
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
       fetch('/api/workspace-state', {
@@ -792,7 +929,7 @@ function WorkspaceInner({
         body: JSON.stringify({ id: workspace.id, state: { visibleApps: activatedAppIdsArr } }),
       }).catch(() => {});
     }, 1000);
-  }, [activatedAppIdsArr, workspace.id]);
+  }, [activatedAppIdsArr, persistSession, workspace.id]);
 
   // Derive Set for fast lookups, filtered to only include current workspace's apps
   const activatedAppIds = useMemo(
@@ -882,6 +1019,7 @@ function WorkspaceInner({
   const [appOrder, setAppOrder] = usePersistentState<string[]>(
     `hudson.ws.${workspace.id}.appOrder`,
     allFullAppIds,
+    { enabled: persistSession },
   );
   // Ensure order includes all current apps (handles new apps added to workspace)
   const normalizedAppOrder = useMemo(() => {
@@ -896,6 +1034,9 @@ function WorkspaceInner({
 
   // --- Window reset key (bumped to force WindowedApp remount) ---
   const [windowResetKey, setWindowResetKey] = useState(0);
+  const [windowBoundsOverrides, setWindowBoundsOverrides] = useState<Record<string, WindowBounds>>(
+    initialState?.tileWindowBounds ?? {},
+  );
 
   // --- Dynamic windows (e.g. spawned terminals, not tied to static workspace apps) ---
   const [dynamicWindows, setDynamicWindows] = useState<DynamicWindowEntry[]>([]);
@@ -930,19 +1071,18 @@ function WorkspaceInner({
     if (n === 0) return;
 
     const { gap } = TILE;
+    const nextBounds: Record<string, WindowBounds> = {};
 
     if (n === 1) {
       const { singleW: w, singleH: h } = TILE;
-      const key = `hudson.ws.${workspace.id}.win.${windowed[0].app.id}`;
-      try { localStorage.setItem(key, JSON.stringify({ x: -w / 2, y: -h / 2, w, h })); } catch {}
+      nextBounds[windowed[0].app.id] = { x: -w / 2, y: -h / 2, w, h };
     } else if (n === 2) {
       const { multiW: w, multiH: h } = TILE;
       const totalW = w * 2 + gap;
       windowed.forEach((config, i) => {
-        const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
         const x = -totalW / 2 + i * (w + gap);
         const y = -h / 2;
-        try { localStorage.setItem(key, JSON.stringify({ x, y, w, h })); } catch {}
+        nextBounds[config.app.id] = { x, y, w, h };
       });
     } else {
       // Grid layout for 3+
@@ -954,13 +1094,21 @@ function WorkspaceInner({
       windowed.forEach((config, i) => {
         const col = i % cols;
         const row = Math.floor(i / cols);
-        const key = `hudson.ws.${workspace.id}.win.${config.app.id}`;
         const x = -totalW / 2 + col * (w + gap);
         const y = -totalH / 2 + row * (h + gap);
-        try { localStorage.setItem(key, JSON.stringify({ x, y, w, h })); } catch {}
+        nextBounds[config.app.id] = { x, y, w, h };
       });
     }
-  }, [workspace]);
+
+    setWindowBoundsOverrides(previous => ({ ...previous, ...nextBounds }));
+    if (persistSession) {
+      for (const [appId, bounds] of Object.entries(nextBounds)) {
+        const key = `hudson.ws.${workspace.id}.win.${appId}`;
+        try { localStorage.setItem(key, JSON.stringify(bounds)); } catch {}
+      }
+    }
+  }, [persistSession, workspace]);
+
 
   const handleDismissLauncher = useCallback(() => {
     const finalIds = activatedAppIds.size === 0
@@ -1001,14 +1149,19 @@ function WorkspaceInner({
   // --- Shell state (same as AppShell) ---
   const [leftCollapsed, setLeftCollapsed] = usePersistentState(
     `hudson.ws.${workspace.id}.leftCollapsed`,
-    leftNavigationMode === 'minimized',
+    initialState?.leftCollapsed ?? leftNavigationMode === 'minimized',
+    { enabled: persistSession },
   );
-  const [rightCollapsed, setRightCollapsed] = usePersistentState(`hudson.ws.${workspace.id}.rightCollapsed`, DEFAULTS.rightCollapsed);
-  const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth);
-  const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth);
+  const [rightCollapsed, setRightCollapsed] = usePersistentState(
+    `hudson.ws.${workspace.id}.rightCollapsed`,
+    initialState?.rightCollapsed ?? DEFAULTS.rightCollapsed,
+    { enabled: persistSession },
+  );
+  const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth, { enabled: persistSession });
+  const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth, { enabled: persistSession });
 
-  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS);
-  const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS);
+  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
+  const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
   const [showCommandPalette, setShowCommandPalette] = useState(false);
@@ -1018,9 +1171,9 @@ function WorkspaceInner({
   const [fsLeftOpen, setFsLeftOpen] = useState(true);
   const [fsRightOpen, setFsRightOpen] = useState(true);
   const pendingFullscreenHashRef = useRef<string | null>(null);
-  const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal);
+  const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal, { enabled: persistSession });
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
-  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight);
+  const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight, { enabled: persistSession });
   const workspaceAppIdsKey = useMemo(() => workspace.apps.map(c => c.app.id).join('\0'), [workspace.apps]);
 
   // --- URL hash sync (deep-link into focused/fullscreen app) ---
@@ -1058,8 +1211,8 @@ function WorkspaceInner({
     }
   }, [focusedAppId, fullscreenAppId]);
 
-  const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed);
-  const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides);
+  const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed, { enabled: persistSession });
+  const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides, { enabled: persistSession });
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
@@ -1075,12 +1228,11 @@ function WorkspaceInner({
   // handleFitAll reads from the ref (it's event-driven, doesn't need reactivity).
   // Minimap indicators read from state, updated via a debounced flush so
   // dragging/resizing a window doesn't re-render the entire shell each frame.
-  type Bounds = { x: number; y: number; w: number; h: number };
-  const windowBoundsRef = useRef<Record<string, Bounds>>({});
-  const [windowBoundsMap, setWindowBoundsMap] = useState<Record<string, Bounds>>({});
+  const windowBoundsRef = useRef<Record<string, WindowBounds>>(initialState?.tileWindowBounds ?? {});
+  const [windowBoundsMap, setWindowBoundsMap] = useState<Record<string, WindowBounds>>(initialState?.tileWindowBounds ?? {});
   const boundsFlushTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const reportWindowBounds = useCallback((appId: string, bounds: Bounds) => {
+  const reportWindowBounds = useCallback((appId: string, bounds: WindowBounds) => {
     const old = windowBoundsRef.current[appId];
     if (old && old.x === bounds.x && old.y === bounds.y &&
         old.w === bounds.w && old.h === bounds.h) return;
@@ -1128,9 +1280,19 @@ function WorkspaceInner({
   }, [appsWithTerminal, activatedAppIds]);
 
   // --- Settings ---
+  const initialShellSettings = useMemo(
+    () => initialState
+      ? mergeHudsonSettings(DEFAULT_SHELL_SETTINGS, {
+          theme: initialState.theme,
+          template: initialState.template,
+        })
+      : DEFAULT_SHELL_SETTINGS,
+    [initialState],
+  );
   const [storedShellSettings, setShellSettings] = usePersistentState<HudsonSettings>(
     'hudson.settings',
-    DEFAULT_SHELL_SETTINGS,
+    initialShellSettings,
+    { enabled: persistSession },
   );
   const shellSettings = useMemo(
     () => normalizeHudsonSettings(storedShellSettings),
@@ -1237,13 +1399,18 @@ function WorkspaceInner({
     playSound('blipUp');
   }, [viewport, playSound]);
 
-  // Fire delayed fit-all after launcher dismiss (gives apps time to render + report bounds)
+  // Fire delayed fit-all after launcher dismiss (gives apps time to render + report bounds).
+  // Embeds skip the boot/launcher choreography, so don't pay the delayed-fit tax there.
   useEffect(() => {
     if (!pendingFitAllRef.current) return;
     pendingFitAllRef.current = false;
+    if (bootMode === 'none') {
+      handleFitAll();
+      return;
+    }
     const timer = setTimeout(handleFitAll, FIT_ALL_DELAY_MS);
     return () => clearTimeout(timer);
-  }, [showLauncher, handleFitAll]);
+  }, [bootMode, showLauncher, handleFitAll]);
 
   // --- Resize (ref-driven during drag, state flush on mouseup) ---
   const handleResizeStart = useCallback(
@@ -1436,6 +1603,11 @@ function WorkspaceInner({
         id: 'shell:template:editorial',
         label: 'Template: Editorial',
         action: () => updateShellSettings({ template: 'editorial' }),
+      },
+      {
+        id: 'shell:template:drafting',
+        label: 'Template: Drafting',
+        action: () => updateShellSettings({ template: 'drafting' }),
       },
       {
         id: 'shell:docs',
@@ -2347,6 +2519,8 @@ function WorkspaceInner({
           appHooksMap={Object.fromEntries(allAppHooks.map(h => [h.appId, h]))}
           onEnterFullscreen={enterFullscreen}
           windowBoundsMap={windowBoundsMap}
+          windowBoundsOverrides={windowBoundsOverrides}
+          persistWindowState={persistSession}
         />
       )}
     </div>
@@ -2841,6 +3015,8 @@ function MultiAppCanvas({
   appHooksMap,
   onEnterFullscreen,
   windowBoundsMap,
+  windowBoundsOverrides,
+  persistWindowState,
 }: {
   workspace: HudsonWorkspace;
   focusedAppId: string;
@@ -2859,7 +3035,9 @@ function MultiAppCanvas({
   zOrderMap: Record<string, number>;
   appHooksMap: Record<string, AppHookData>;
   onEnterFullscreen: (appId: string) => void;
-  windowBoundsMap: Record<string, { x: number; y: number; w: number; h: number }>;
+  windowBoundsMap: Record<string, WindowBounds>;
+  windowBoundsOverrides: Record<string, WindowBounds>;
+  persistWindowState: boolean;
 }) {
   // Separate native vs windowed apps — filter by activated when launcher is open
   const nativeApps = workspace.apps.filter(c => (c.canvasMode ?? 'native') === 'native');
@@ -2911,6 +3089,8 @@ function MultiAppCanvas({
             <WindowedApp
               config={config}
               workspaceId={workspace.id}
+              initialBounds={windowBoundsOverrides[config.app.id]}
+              persistWindowState={persistWindowState}
               isFocused={config.app.id === focusedAppId}
               onFocus={() => onFocusApp(config.app.id)}
               onClose={() => onCloseApp(config.app.id)}
@@ -3063,6 +3243,8 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
 function WindowedApp({
   config,
   workspaceId,
+  initialBounds,
+  persistWindowState,
   isFocused,
   onFocus,
   onClose,
@@ -3076,6 +3258,8 @@ function WindowedApp({
 }: {
   config: WorkspaceAppConfig;
   workspaceId: string;
+  initialBounds?: WindowBounds;
+  persistWindowState: boolean;
   isFocused: boolean;
   onFocus: () => void;
   onClose: () => void;
@@ -3087,8 +3271,11 @@ function WindowedApp({
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
-  const defaults = config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 };
-  const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults);
+  const defaults = useMemo(
+    () => initialBounds ?? config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 },
+    [config.defaultWindowBounds, initialBounds],
+  );
+  const [bounds, setBounds] = useWindowBounds(workspaceId, config.app.id, defaults, persistWindowState);
   const layout = useShellLayout();
   const { navTotalHeight } = usePlatformLayout();
 
@@ -3133,7 +3320,7 @@ function WindowedApp({
       });
       setIsMaximized(true);
     }
-  }, [isMaximized, preMaxBounds, setBounds, onResetView, layout]);
+  }, [isMaximized, preMaxBounds, setBounds, onResetView, layout, navTotalHeight]);
 
   const handleResetWindow = useCallback(() => {
     setBounds(defaults);

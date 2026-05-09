@@ -197,3 +197,113 @@
   --ring: 0.69 0.16 40;
   --radius: 4px;
 }
+
+/* ───────────────────────────────────────────────────────────────────────────
+   Drafting template — engineering-drawing aesthetic.
+   ───────────────────────────────────────────────────────────────────────────
+   Slate paper, cream ink, amber accent. Brand-neutral; pairs with any host
+   wanting a draughtsman's-table feel (ozalid prints, blueprint plates, etc.)
+   without binding to a specific consumer. Typography defaults to display
+   serif + mono metadata, matching the technical-document register. */
+[data-hudson-template="drafting"] {
+  --hud-bg: oklch(var(--background));
+  --hud-surface: oklch(var(--card));
+  --hud-ink: oklch(var(--foreground));
+  --hud-muted: oklch(var(--muted-foreground));
+  --hud-dim: oklch(var(--muted-foreground) / 0.78);
+  --hud-border: oklch(var(--border) / 0.82);
+  --hud-radius: var(--radius);
+  --hud-shadow-soft: oklch(var(--foreground) / 0.14);
+  --hud-accent: oklch(var(--accent));
+  --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-status-ok: oklch(var(--success));
+  --hud-status-warn: oklch(var(--warning));
+  --hud-status-error: oklch(var(--destructive));
+  --hud-status-info: oklch(var(--info));
+}
+
+[data-hudson-template="drafting"][data-hudson-theme="dark"] {
+  /* Slate paper-on-canvas: short, restrained shadows; the engineering-drawing
+     register relies on hairlines and gridding more than glow. */
+  --hud-shadow-panel: 0 0 20px rgba(0, 0, 0, 0.55), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  --hud-shadow-bar: 0 -3px 20px rgba(0, 0, 0, 0.45), inset 0 1px 0 rgba(255, 255, 255, 0.04);
+  --hud-shadow-nav: 0 2px 20px rgba(0, 0, 0, 0.40);
+  --hud-shadow-minimap: 0 0 14px rgba(0, 0, 0, 0.55);
+  --hud-edge-fade-dark: rgba(0, 0, 0, 0.18);
+  --hud-edge-fade-bottom: rgba(0, 0, 0, 0.24);
+  /* Dot grid: low-chroma cream against slate. Reads as drafted layout grid. */
+  --hud-canvas-dot-minor: rgba(232, 220, 200, 0.07);
+  --hud-canvas-dot-major: rgba(232, 220, 200, 0.12);
+}
+
+[data-hudson-template="drafting"][data-hudson-theme="light"] {
+  /* Linen paper — short, low-opacity drop; no white inset. */
+  --hud-shadow-panel: 0 1px 2px rgba(60, 40, 20, 0.05), 0 8px 24px -12px rgba(60, 40, 20, 0.10);
+  --hud-shadow-bar: 0 -1px 2px rgba(60, 40, 20, 0.05), 0 -8px 24px -16px rgba(60, 40, 20, 0.08);
+  --hud-shadow-nav: 0 1px 2px rgba(60, 40, 20, 0.05), 0 6px 16px -12px rgba(60, 40, 20, 0.08);
+  --hud-shadow-minimap: 0 1px 2px rgba(60, 40, 20, 0.05), 0 6px 16px -8px rgba(60, 40, 20, 0.08);
+  --hud-edge-fade-dark: rgba(60, 40, 20, 0.04);
+  --hud-edge-fade-bottom: rgba(60, 40, 20, 0.06);
+  /* Warm graphite dots for a paper-and-pencil register. */
+  --hud-canvas-dot-minor: rgba(60, 40, 20, 0.08);
+  --hud-canvas-dot-major: rgba(60, 40, 20, 0.14);
+}
+
+[data-hudson-template="drafting"][data-hudson-theme="dark"] {
+  color-scheme: dark;
+  /* Canvas: dark slate with a touch of cool blue chroma — the colour of
+     mid-tone vellum lit from above. */
+  --background: 0.20 0.02 240;
+  --foreground: 0.94 0.005 240;
+  --card: 0.24 0.02 240;
+  --card-foreground: 0.94 0.005 240;
+  --popover: 0.22 0.02 240;
+  --popover-foreground: 0.94 0.005 240;
+  /* Primary = cream paper inverse (decisive ink). */
+  --primary: 0.94 0.005 240;
+  --primary-foreground: 0.20 0.02 240;
+  --secondary: 0.28 0.02 240;
+  --secondary-foreground: 0.94 0.005 240;
+  --muted: 0.28 0.02 240;
+  --muted-foreground: 0.70 0.008 240;
+  /* Accent = amber stamp ink. Warm balance against the cool slate. */
+  --accent: 0.72 0.18 60;
+  --accent-foreground: 0.20 0.02 240;
+  --destructive: 0.62 0.20 25;
+  --destructive-foreground: 0.99 0 0;
+  --warning: 0.78 0.16 75;
+  --success: 0.66 0.14 150;
+  --info: 0.62 0.10 220;
+  --border: 0.40 0.012 240;
+  --input: 0.40 0.012 240;
+  --ring: 0.72 0.18 60;
+  --radius: 0px;
+}
+
+[data-hudson-template="drafting"][data-hudson-theme="light"] {
+  color-scheme: light;
+  /* Canvas: warm linen — the off-white of drafting paper, slight ochre. */
+  --background: 0.95 0.012 70;
+  --foreground: 0.22 0.014 60;
+  --card: 1 0 0;
+  --card-foreground: 0.22 0.014 60;
+  --popover: 1 0 0;
+  --popover-foreground: 0.22 0.014 60;
+  --primary: 0.22 0.014 60;
+  --primary-foreground: 0.97 0.012 85;
+  --secondary: 0.92 0.014 70;
+  --secondary-foreground: 0.22 0.014 60;
+  --muted: 0.92 0.014 70;
+  --muted-foreground: 0.52 0.010 60;
+  --accent: 0.62 0.18 50;
+  --accent-foreground: 0.99 0 0;
+  --destructive: 0.55 0.22 25;
+  --destructive-foreground: 0.99 0 0;
+  --warning: 0.72 0.16 75;
+  --success: 0.58 0.14 150;
+  --info: 0.55 0.08 220;
+  --border: 0.78 0.010 60;
+  --input: 0.78 0.010 60;
+  --ring: 0.62 0.18 50;
+  --radius: 0px;
+}

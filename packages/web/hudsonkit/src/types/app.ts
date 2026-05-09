@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
+import type { AppExports } from './embed';
 import type { AppIntent } from './intent';
 import type { AppPorts } from './port';
 import type { ServiceDependency } from './service';
@@ -155,6 +156,9 @@ export interface HudsonApp {
   ports?: AppPorts;
   /** Controls how prominently static ports appear in the shell inspector */
   portInspector?: PortInspectorMode;
+
+  /** Embeddable surfaces and other export declarations */
+  exports?: AppExports;
 
   /** Services this app depends on */
   services?: ServiceDependency[];
