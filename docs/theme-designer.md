@@ -49,3 +49,16 @@ Embeds apply themes by setting `data-hudson-template` and `data-hudson-theme` on
 ```
 
 When “Register ?ref preset” is enabled during a dev save, the app adds a consumer entry to `app/embed/registry.ts` that maps the ref id to the saved template and selected light/dark default. Consumers can then use that `?ref=<id>` URL without hand-writing palette overrides.
+
+## Multi-tenant theming
+
+Because `[data-hudson-template=”...”][data-hudson-theme=”...”]` selectors match at arbitrary DOM depth — not just on `<html>` — nesting two distinctly-themed subtrees in one document is fully supported. Each subtree's CSS custom properties cascade independently, so a `drafting` dark embed and a `hudson` dark embed can coexist in the same tab with no token bleed between them. A live demo of this pattern is available at `/demo/multi-theme`.
+
+```tsx
+<div data-hudson-template=”hudson” data-hudson-theme=”dark”>
+  {/* hudson-themed subtree */}
+  <div data-hudson-template=”editorial” data-hudson-theme=”light”>
+    {/* editorial-themed sub-subtree */}
+  </div>
+</div>
+```
