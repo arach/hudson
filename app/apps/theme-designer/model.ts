@@ -252,6 +252,8 @@ function ensureTemplate(map: Map<string, ThemeTemplateRecord>, id: string): Them
 
 export function parseThemeCss(css: string): ThemeDesignerSnapshot {
   const templates = new Map<string, ThemeTemplateRecord>();
+  // NOTE: this regex does not handle values containing `{`/`}` (e.g. nested CSS,
+  // `@supports` blocks). A real CSS tokenizer would be required to fix that.
   const blockRe = /([^{}]+)\{([^{}]*)\}/g;
   let match: RegExpExecArray | null;
 
@@ -313,6 +315,44 @@ export function allTokenKeys(template: ThemeTemplateRecord): string[] {
   ].filter(key => key === 'color-scheme' || key.startsWith('--')));
 }
 
+export function isSafeTokenKey(key: string): boolean {
+  return key === 'color-scheme' || /^--[a-zA-Z0-9-]+$/.test(key);
+}
+
+export function isSafeTokenValue(key: string, value: string): boolean {
+  const trimmed = value.trim();
+  if (!trimmed || trimmed.length > 1000) return false;
+  if (key === 'color-scheme') return trimmed === 'dark' || trimmed === 'light';
+  // Values are emitted directly into source CSS declarations; reject syntax
+  // that can terminate the declaration/block or smuggle imports/URLs.
+  if (/[;{}]/.test(trimmed)) return false;
+  if (/\/\*|\*\//.test(trimmed)) return false;
+  if (/[\u0000-\u001F\u007F]/.test(trimmed)) return false;
+  if (/\burl\s*\(/i.test(trimmed) || /@import/i.test(trimmed)) return false;
+  return true;
+}
+
+export function validateTemplateTokens(template: ThemeTemplateRecord): string[] {
+  const issues: string[] = [];
+  const maps: [string, TokenMap][] = [
+    ['base', template.base],
+    ['dark', template.themes.dark],
+    ['light', template.themes.light],
+  ];
+
+  for (const [scope, map] of maps) {
+    for (const [key, value] of Object.entries(map)) {
+      if (!isSafeTokenKey(key)) {
+        issues.push(`${scope}: invalid token key ${JSON.stringify(key)}`);
+      } else if (typeof value !== 'string' || !isSafeTokenValue(key, value)) {
+        issues.push(`${scope}: unsafe value for ${key}`);
+      }
+    }
+  }
+
+  return issues;
+}
+
 export function emitTemplateCss(template: ThemeTemplateRecord, id = template.id): string {
   const blocks = THEME_MODES.map(mode => {
     const tokens = effectiveTokens(template, mode);
@@ -354,7 +394,11 @@ function parseNumber(value: string | undefined): number | null {
   return Number.isFinite(n) ? n : null;
 }
 
-export function parseOklchValue(value: string, resolver?: (name: string) => string | undefined): OklchParts | null {
+export function parseOklchValue(
+  value: string,
+  resolver?: (name: string) => string | undefined,
+  _visited: ReadonlySet<string> = new Set(),
+): OklchParts | null {
   const trimmed = value.trim();
   const wrapped = trimmed.match(/^oklch\((.*)\)$/i);
   const inner = wrapped ? wrapped[1].trim() : trimmed;
@@ -362,25 +406,41 @@ export function parseOklchValue(value: string, resolver?: (name: string) => stri
   const colorPart = parts[0];
   const alpha = parseNumber(parts[1]);
 
-  const aliasMatch = colorPart.match(/^var\((--[\w-]+)\)$/);
+  // Accept `var(--x)` or `var(--x, fallback)` — fallback is ignored here;
+  // the live CSS still applies it. Only the alias name is used for resolution.
+  const aliasMatch = colorPart.match(/^var\((--[\w-]+)(?:,\s*[^)]*)?\)$/);
   if (aliasMatch) {
-    const resolved = resolver?.(aliasMatch[1]);
+    const aliasName = aliasMatch[1];
+    // Guard against circular aliases.
+    if (_visited.has(aliasName)) return null;
+    const resolved = resolver?.(aliasName);
     if (!resolved) return null;
-    const parsed = parseOklchValue(resolved, resolver);
+    const nextVisited = new Set(_visited).add(aliasName);
+    const parsed = parseOklchValue(resolved, resolver, nextVisited);
     if (!parsed) return null;
     return {
       ...parsed,
       alpha: alpha ?? parsed.alpha,
       wrapper: true,
-      alias: aliasMatch[1],
+      alias: aliasName,
     };
   }
 
-  const nums = colorPart.split(/\s+/).filter(Boolean);
-  if (nums.length < 3) return null;
-  const l = parseNumber(nums[0]);
-  const c = parseNumber(nums[1]);
-  const h = parseNumber(nums[2]);
+  const rawNums = colorPart.split(/\s+/).filter(Boolean);
+  if (rawNums.length < 3) return null;
+
+  // Accept percentage notation for L: `70%` → 0.7
+  const lRaw = rawNums[0].endsWith('%')
+    ? String(parseFloat(rawNums[0]) / 100)
+    : rawNums[0];
+  // Accept `deg` suffix on hue: `180deg` → `180`
+  const hRaw = rawNums[2].toLowerCase().endsWith('deg')
+    ? rawNums[2].slice(0, -3)
+    : rawNums[2];
+
+  const l = parseNumber(lRaw);
+  const c = parseNumber(rawNums[1]);
+  const h = parseNumber(hRaw);
   if (l === null || c === null || h === null) return null;
 
   return {

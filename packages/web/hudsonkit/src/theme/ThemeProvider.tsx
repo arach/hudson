@@ -116,6 +116,10 @@ function resolveTheme(theme: HudsonTheme) {
   return theme;
 }
 
+function resolveInitialTheme(theme: HudsonTheme): 'light' | 'dark' {
+  return theme === 'system' ? 'dark' : theme;
+}
+
 function writeThemeAttributes(
   resolvedTheme: 'light' | 'dark',
   template: HudsonTemplate,
@@ -151,13 +155,13 @@ export function ThemeProvider({
 }: ThemeProviderProps) {
   const parentTheme = useContext(ThemeContext);
 
-  const [theme, setThemeState] = useState<HudsonTheme>(() =>
-    readStoredThemeState(storageKey, defaultTheme, defaultTemplate).theme ?? defaultTheme,
-  );
-  const [template, setTemplateState] = useState<HudsonTemplate>(() =>
-    readStoredThemeState(storageKey, defaultTheme, defaultTemplate).template ?? defaultTemplate,
-  );
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(theme));
+  // Seed from SSR-safe defaults only. URL/localStorage overrides are already
+  // applied to <html> by the pre-paint script, then read post-mount below so
+  // the first client render matches the server markup.
+  const [theme, setThemeState] = useState<HudsonTheme>(defaultTheme);
+  const [template, setTemplateState] = useState<HudsonTemplate>(defaultTemplate);
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveInitialTheme(defaultTheme));
+  const [clientStateReady, setClientStateReady] = useState(false);
   const mounted = useHydrated();
 
   useEffect(() => {
@@ -167,11 +171,12 @@ export function ThemeProvider({
     queueMicrotask(() => {
       if (cancelled) return;
       const state = readStoredThemeState(storageKey, defaultTheme, defaultTemplate);
-      if (state.theme && state.theme !== theme) setThemeState(state.theme);
-      if (state.template && state.template !== template) setTemplateState(state.template);
+      setThemeState(state.theme ?? defaultTheme);
+      setTemplateState(state.template ?? defaultTemplate);
+      setClientStateReady(true);
     });
     return () => { cancelled = true; };
-  }, [defaultTemplate, defaultTheme, parentTheme, storageKey, template, theme]);
+  }, [defaultTemplate, defaultTheme, parentTheme, storageKey]);
 
   useEffect(() => {
     if (parentTheme) return;
@@ -187,14 +192,14 @@ export function ThemeProvider({
   }, [parentTheme, theme]);
 
   useEffect(() => {
-    if (parentTheme) return;
+    if (parentTheme || !clientStateReady) return;
     writeThemeAttributes(resolvedTheme, template, rootElement);
-  }, [parentTheme, resolvedTheme, rootElement, template]);
+  }, [clientStateReady, parentTheme, resolvedTheme, rootElement, template]);
 
   useEffect(() => {
-    if (parentTheme) return;
+    if (parentTheme || !clientStateReady) return;
     writeStoredThemeState(storageKey, theme, template);
-  }, [parentTheme, storageKey, template, theme]);
+  }, [clientStateReady, parentTheme, storageKey, template, theme]);
 
   useEffect(() => {
     if (parentTheme) return;

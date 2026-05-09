@@ -149,18 +149,24 @@ export function ThemeDesignerProvider({
   const [saveStatus, setSaveStatus] = useState('Loading templates…');
   const [importCss, setImportCss] = useState('');
   const [isDev, setIsDev] = useState(false);
+  const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const appliedKeysRef = useRef<Set<string>>(new Set());
 
   // Sync state to the actual <html> dataset after hydration. The pre-paint
   // script may have flipped these from the SSR defaults based on localStorage
   // or URL params; that's fine — we just match it post-mount.
   useEffect(() => {
-    const mode = readDatasetMode();
-    const template = readDatasetTemplate();
-    setSelectedMode(mode);
-    setSelectedTemplateIdState(template);
-    setExportTemplateIdState(defaultCustomId(template));
-    setRefIdState(defaultCustomId(template));
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const mode = readDatasetMode();
+      const template = readDatasetTemplate();
+      setSelectedMode(mode);
+      setSelectedTemplateIdState(template);
+      setExportTemplateIdState(defaultCustomId(template));
+      setRefIdState(defaultCustomId(template));
+    });
+    return () => { cancelled = true; };
   }, []);
 
   useEffect(() => {
@@ -180,16 +186,26 @@ export function ThemeDesignerProvider({
         setSelectedTemplateIdState(nextTemplate);
         setExportTemplateIdState(defaultCustomId(nextTemplate));
         setRefIdState(defaultCustomId(nextTemplate));
+        setTemplatesLoaded(true);
         setSaveStatus('Ready');
       })
       .catch(error => {
-        if (!cancelled) setSaveStatus(`Using fallback tokens · ${String(error)}`);
+        if (!cancelled) {
+          const fallback = fallbackTemplate();
+          setTemplates([fallback]);
+          setSavedTemplates([fallback]);
+          setSelectedTemplateIdState(fallback.id);
+          setExportTemplateIdState(defaultCustomId(fallback.id));
+          setRefIdState(defaultCustomId(fallback.id));
+          setTemplatesLoaded(true);
+          setSaveStatus(`Using fallback tokens · ${String(error)}`);
+        }
       });
     return () => { cancelled = true; };
   }, []);
 
   const currentTemplate = useMemo(
-    () => templates.find(template => template.id === selectedTemplateId) ?? templates[0] ?? null,
+    () => templates.find(template => template.id === selectedTemplateId) ?? null,
     [selectedTemplateId, templates],
   );
 
@@ -225,7 +241,7 @@ export function ThemeDesignerProvider({
   }, [exportTemplateId, refId]);
 
   useEffect(() => {
-    if (!currentTemplate || !visible || disabled) return;
+    if (!templatesLoaded || !currentTemplate || currentTemplate.id !== selectedTemplateId || !visible || disabled) return;
     const root = document.documentElement;
     root.dataset.hudsonTemplate = currentTemplate.id;
     root.dataset.hudsonTheme = selectedMode;
@@ -245,7 +261,7 @@ export function ThemeDesignerProvider({
       for (const key of appliedKeysRef.current) root.style.removeProperty(key);
       appliedKeysRef.current.clear();
     };
-  }, [currentTemplate, selectedMode, visible, disabled]);
+  }, [currentTemplate, selectedMode, selectedTemplateId, templatesLoaded, visible, disabled]);
 
   const setSelectedTemplateId = useCallback((id: string) => {
     setSelectedTemplateIdState(id);

@@ -7,7 +7,9 @@ import {
   isValidTemplateId,
   parseThemeCss,
   sanitizeTemplateId,
+  validateTemplateTokens,
   type ThemeTemplateRecord,
+  type TokenMap,
 } from '@/app/apps/theme-designer/model';
 
 export const runtime = 'nodejs';
@@ -25,6 +27,62 @@ const REGISTRY_PATH = join(process.cwd(), 'app', 'embed', 'registry.ts');
 
 function jsonError(message: string, status = 400) {
   return NextResponse.json({ ok: false, error: message }, { status });
+}
+
+
+function isPlainObject(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+function normalizeTokenMap(value: unknown): TokenMap | null {
+  if (!isPlainObject(value)) return null;
+  const map: TokenMap = {};
+  for (const [key, tokenValue] of Object.entries(value)) {
+    if (typeof tokenValue !== 'string') return null;
+    map[key] = tokenValue;
+  }
+  return map;
+}
+
+function isLoopbackHostname(hostname: string): boolean {
+  const clean = hostname.toLowerCase().replace(/^\[|\]$/g, '');
+  return clean === 'localhost' || clean === '127.0.0.1' || clean === '::1';
+}
+
+function isTrustedDevWriteRequest(req: NextRequest): boolean {
+  const requestUrl = new URL(req.url);
+  if (!isLoopbackHostname(requestUrl.hostname)) return false;
+
+  const fetchSite = req.headers.get('sec-fetch-site');
+  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) return false;
+
+  const origin = req.headers.get('origin');
+  if (origin) {
+    try {
+      const originUrl = new URL(origin);
+      return originUrl.origin === requestUrl.origin && isLoopbackHostname(originUrl.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  const referer = req.headers.get('referer');
+  if (referer) {
+    try {
+      const refererUrl = new URL(referer);
+      return refererUrl.origin === requestUrl.origin && isLoopbackHostname(refererUrl.hostname);
+    } catch {
+      return false;
+    }
+  }
+
+  // Non-browser local tooling (curl, tests) generally sends neither Origin nor
+  // Referer; keep it usable, but only on a loopback dev server.
+  return true;
+}
+
+function isValidWorkspaceId(value: string): boolean {
+  return /^[a-z][a-z0-9-]{0,63}$/.test(value);
 }
 
 function escapeRegExp(value: string): string {
@@ -97,6 +155,12 @@ export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV !== 'development') {
     return jsonError('Theme Designer can write source files only in development.', 403);
   }
+  if (!isTrustedDevWriteRequest(req)) {
+    return jsonError('Theme Designer writeback is limited to same-origin loopback development requests.', 403);
+  }
+  if (!req.headers.get('content-type')?.toLowerCase().includes('application/json')) {
+    return jsonError('Theme Designer writeback expects an application/json body.', 415);
+  }
 
   let body: SaveBody;
   try {
@@ -106,21 +170,31 @@ export async function POST(req: NextRequest) {
   }
 
   const template = body.template;
-  if (!template) return jsonError('Missing template payload.');
-  const id = sanitizeTemplateId(template.id);
+  if (!template || !isPlainObject(template)) return jsonError('Missing template payload.');
+  const id = sanitizeTemplateId(typeof template.id === 'string' ? template.id : '');
   if (!isValidTemplateId(id)) return jsonError('Template id must be kebab-case and start with a letter.');
   if ((BUILT_IN_TEMPLATE_IDS as readonly string[]).includes(id)) {
     return jsonError('Built-in templates are read-only in the designer. Save as a new template id.');
   }
 
+  const themes = isPlainObject(template.themes) ? template.themes : null;
+  const base = normalizeTokenMap(template.base ?? {});
+  const dark = normalizeTokenMap(themes?.dark ?? {});
+  const light = normalizeTokenMap(themes?.light ?? {});
+  if (!base || !dark || !light) return jsonError('Template token maps must contain string values only.');
+
   const normalized: ThemeTemplateRecord = {
     id,
-    base: { ...template.base },
+    base,
     themes: {
-      dark: { ...template.themes.dark, 'color-scheme': 'dark' },
-      light: { ...template.themes.light, 'color-scheme': 'light' },
+      dark: { ...dark, 'color-scheme': 'dark' },
+      light: { ...light, 'color-scheme': 'light' },
     },
   };
+  const tokenIssues = validateTemplateTokens(normalized);
+  if (tokenIssues.length > 0) {
+    return jsonError(`Unsafe token payload: ${tokenIssues.slice(0, 3).join('; ')}`);
+  }
 
   try {
     const current = await readFile(TOKENS_PATH, 'utf-8');
@@ -129,13 +203,16 @@ export async function POST(req: NextRequest) {
 
     let ref: { updated: boolean; reason?: string } | undefined;
     if (body.registerRef) {
-      const refId = sanitizeTemplateId(body.refId || id);
+      const refId = sanitizeTemplateId(typeof body.refId === 'string' ? body.refId : id);
       if (!isValidTemplateId(refId)) return jsonError('Preset ref id must be kebab-case and start with a letter.');
+      const defaultWorkspace = typeof body.defaultWorkspace === 'string' ? body.defaultWorkspace : 'hudson-os';
+      if (!isValidWorkspaceId(defaultWorkspace)) return jsonError('Default workspace id must be kebab-case.');
+      const defaultTheme = body.defaultTheme === 'light' ? 'light' : 'dark';
       ref = await upsertConsumerRef({
         refId,
         templateId: id,
-        theme: body.defaultTheme ?? 'dark',
-        defaultWorkspace: body.defaultWorkspace || 'hudson-os',
+        theme: defaultTheme,
+        defaultWorkspace,
       });
     }
 
