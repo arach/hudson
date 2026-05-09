@@ -1,8 +1,10 @@
 'use client';
 
-import { Download, FileCode2, Save, Upload, Clipboard, Link2, CopyPlus } from 'lucide-react';
+import { useState } from 'react';
+import { Download, FileCode2, Save, Upload, Clipboard, Link2, CopyPlus, Share2, ChevronDown, ChevronRight } from 'lucide-react';
 import { BUILT_IN_TEMPLATE_IDS, THEME_MODES, templateLabel } from './model';
 import { useThemeDesigner } from './ThemeDesignerProvider';
+import { ShareEmbedPanel } from './ShareEmbedPanel';
 
 function PanelButton({ children, onClick, disabled, title }: {
   children: React.ReactNode;
@@ -26,6 +28,7 @@ function PanelButton({ children, onClick, disabled, title }: {
 export function ThemeDesignerLeftPanel() {
   const designer = useThemeDesigner();
   const builtIn = (BUILT_IN_TEMPLATE_IDS as readonly string[]).includes(designer.selectedTemplateId);
+  const [shareOpen, setShareOpen] = useState(false);
 
   return (
     <div className="flex h-full flex-col overflow-hidden bg-background text-foreground">
@@ -138,6 +141,22 @@ export function ThemeDesignerLeftPanel() {
               {designer.refSnippet}
             </code>
           </div>
+        </section>
+
+        <section className="rounded-lg border border-border bg-card/70 overflow-hidden">
+          <button
+            type="button"
+            onClick={() => setShareOpen(open => !open)}
+            className="flex w-full items-center justify-between gap-2 p-3 text-[10px] font-mono uppercase tracking-[0.18em] text-muted-foreground transition hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            <span className="flex items-center gap-2"><Share2 size={12} /> Share / Embed</span>
+            {shareOpen ? <ChevronDown size={12} /> : <ChevronRight size={12} />}
+          </button>
+          {shareOpen && (
+            <div className="border-t border-border p-3">
+              <ShareEmbedPanel />
+            </div>
+          )}
         </section>
 
         <section className="space-y-2 rounded-lg border border-border bg-card/70 p-3">
