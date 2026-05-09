@@ -271,7 +271,7 @@ function buildShellSettingsPatch(
         ? { theme: value }
         : null;
     case 'template':
-      return value === 'hudson' || value === 'editorial'
+      return typeof value === 'string' && /^[a-z][a-z0-9-]{1,64}$/.test(value)
         ? { template: value }
         : null;
     case 'masterMute':
@@ -1436,6 +1436,11 @@ function WorkspaceInner({
         id: 'shell:template:editorial',
         label: 'Template: Editorial',
         action: () => updateShellSettings({ template: 'editorial' }),
+      },
+      {
+        id: 'shell:template:drafting',
+        label: 'Template: Drafting',
+        action: () => updateShellSettings({ template: 'drafting' }),
       },
       {
         id: 'shell:docs',

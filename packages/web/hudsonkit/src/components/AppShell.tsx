@@ -198,6 +198,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
         { id: 'shell:theme:system', label: 'Theme: System', action: () => theme.setTheme('system') },
         { id: 'shell:template:hudson', label: 'Template: Hudson', action: () => theme.setTemplate('hudson') },
         { id: 'shell:template:editorial', label: 'Template: Editorial', action: () => theme.setTemplate('editorial') },
+        { id: 'shell:template:drafting', label: 'Template: Drafting', action: () => theme.setTemplate('drafting') },
       );
     }
     return cmds;

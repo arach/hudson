@@ -544,6 +544,7 @@ function SettingsTab() {
           options={[
             { value: 'hudson', label: 'Hudson' },
             { value: 'editorial', label: 'Editorial' },
+            { value: 'drafting', label: 'Drafting' },
           ]}
           onChange={v => onUpdateShellSettings({ template: v })}
         />

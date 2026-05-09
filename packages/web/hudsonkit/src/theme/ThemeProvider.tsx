@@ -6,6 +6,7 @@ import React, {
   useEffect,
   useMemo,
   useState,
+  useSyncExternalStore,
 } from 'react';
 import {
   DEFAULT_TEMPLATE,
@@ -14,7 +15,7 @@ import {
 } from './script';
 
 export type HudsonTheme = 'light' | 'dark' | 'system';
-export type HudsonTemplate = 'hudson' | 'editorial';
+export type HudsonTemplate = 'hudson' | 'editorial' | 'drafting' | (string & {});
 
 export interface ThemeProviderProps {
   children: React.ReactNode;
@@ -59,7 +60,7 @@ function readUrlOverride(): StoredThemeState {
     const p = q.get('template');
     return {
       theme: t === 'light' || t === 'dark' || t === 'system' ? t : undefined,
-      template: p === 'hudson' || p === 'editorial' ? p : undefined,
+      template: p && /^[a-z][a-z0-9-]{1,64}$/.test(p) ? p : undefined,
     };
   } catch {
     return {};
@@ -94,6 +95,14 @@ function readStoredThemeState(
       template: override.template ?? defaultTemplate,
     };
   }
+}
+
+const subscribeNoop = () => () => {};
+const getHydrated = () => true;
+const getServerHydrated = () => false;
+
+function useHydrated(): boolean {
+  return useSyncExternalStore(subscribeNoop, getHydrated, getServerHydrated);
 }
 
 function resolveTheme(theme: HudsonTheme) {
@@ -149,18 +158,19 @@ export function ThemeProvider({
     readStoredThemeState(storageKey, defaultTheme, defaultTemplate).template ?? defaultTemplate,
   );
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(theme));
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-  }, []);
+  const mounted = useHydrated();
 
   useEffect(() => {
     if (parentTheme) return;
 
-    const state = readStoredThemeState(storageKey, defaultTheme, defaultTemplate);
-    if (state.theme && state.theme !== theme) setThemeState(state.theme);
-    if (state.template && state.template !== template) setTemplateState(state.template);
+    let cancelled = false;
+    queueMicrotask(() => {
+      if (cancelled) return;
+      const state = readStoredThemeState(storageKey, defaultTheme, defaultTemplate);
+      if (state.theme && state.theme !== theme) setThemeState(state.theme);
+      if (state.template && state.template !== template) setTemplateState(state.template);
+    });
+    return () => { cancelled = true; };
   }, [defaultTemplate, defaultTheme, parentTheme, storageKey, template, theme]);
 
   useEffect(() => {

@@ -7,6 +7,7 @@ export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, Workspac
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
+export type { EmbedSurface, EmbedSizing, AppExports } from './types/embed';
 export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSeparator, ContextMenuGroup } from './components/overlays';
 
 // Hooks
