@@ -1,0 +1,17 @@
+{
+  "name": "hudsonkit-embed-worker",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "dev": "wrangler dev --config wrangler.toml",
+    "deploy": "wrangler deploy",
+    "snapshot": "node scripts/snapshot-chunks.mjs",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@cloudflare/workers-types": "^4.20250525.0",
+    "typescript": "^5.9.3",
+    "wrangler": "^4.16.0"
+  }
+}
