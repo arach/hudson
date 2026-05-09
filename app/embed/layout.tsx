@@ -24,10 +24,10 @@ function safeJsonForInlineScript(value: unknown): string {
   const LS = String.fromCharCode(0x2028);
   const PS = String.fromCharCode(0x2029);
   return JSON.stringify(value)
-    .replace(/</g, '\u003c')
-    .replace(/>/g, '\u003e')
-    .split(LS).join('\u2028')
-    .split(PS).join('\u2029');
+    .replace(/</g, '\\u003c')
+    .replace(/>/g, '\\u003e')
+    .split(LS).join('\\u2028')
+    .split(PS).join('\\u2029');
 }
 
 function getEmbedThemeScript(): string {
@@ -35,7 +35,7 @@ function getEmbedThemeScript(): string {
     Object.values(consumers).map((c) => [c.ref, { t: c.template, m: c.theme }]),
   );
   const json = safeJsonForInlineScript(refMap);
-  return `(function(){try{var r=new URLSearchParams(location.search).get('ref');if(!r)return;var c=(${json})[r];if(!c)return;var d=document.documentElement;d.dataset.hudsonTemplate=c.t;d.dataset.hudsonTheme=c.m;}catch(e){}})();`;
+  return `(function(){try{var q=new URLSearchParams(location.search),r=q.get('ref'),c=r&&(${json})[r],t=q.get('template')||(c&&c.t)||'hudson',m=q.get('theme')||(c&&c.m)||'dark';if(m!=='dark'&&m!=='light')m='dark';var d=document.documentElement;if(r)d.dataset.hudsonRef=r;d.dataset.hudsonTemplate=t;d.dataset.hudsonTheme=m;}catch(e){}})();`;
 }
 
 export default function EmbedLayout({

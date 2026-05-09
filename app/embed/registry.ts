@@ -22,6 +22,10 @@ export interface ConsumerConfig {
   theme: EmbedTheme;
   template: string;
   defaultWorkspace: string;
+  /** App to focus when this consumer opens a workspace embed. */
+  defaultFocus?: string;
+  /** Optional subset/order of apps to show by default in workspace embeds. */
+  defaultApps?: string[];
   /** `--hud-*` semantic tokens for components that opt into hudsonkit tokens. */
   palette: Record<string, string>;
   /** `--hud-font-*` family tokens. */
@@ -44,6 +48,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     theme: 'dark',
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
+    defaultFocus: 'hudson-docs',
     palette: {
       '--hud-bg':           'oklch(0.20 0.02 240)',
       '--hud-bg-2':         'oklch(0.24 0.02 240)',
@@ -74,6 +79,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     theme: 'dark',
     template: 'hudson',
     defaultWorkspace: 'hudson-os',
+    defaultFocus: 'hudson-docs',
     palette: {
       '--hud-bg':           'oklch(0.16 0.005 240)',
       '--hud-bg-2':         'oklch(0.20 0.005 240)',

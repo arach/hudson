@@ -19,39 +19,47 @@
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { CSSProperties } from 'react';
-import { consumerThemeStyle, resolveConsumer } from '../../registry';
+import { consumers, consumerThemeStyle } from '../../registry';
+import { resolveEmbedInitialState, type EmbedSearchParams } from '../../initial-state';
+import { getCoreWorkspaces } from '../../../apps/registry';
 import { EmbedHandshake } from './EmbedHandshake';
 import { EmbedWorkspace } from './EmbedWorkspace';
 
 interface EmbedPageProps {
   params: Promise<{ appId: string; surface: string }>;
-  searchParams: Promise<{ ref?: string | string[] }>;
+  searchParams: Promise<EmbedSearchParams>;
 }
 
 export default async function EmbedPage({ params, searchParams }: EmbedPageProps) {
   const { appId, surface } = await params;
   const sp = await searchParams;
-  const ref = Array.isArray(sp.ref) ? sp.ref[0] : sp.ref;
-  const consumer = resolveConsumer(ref);
+  const initialState = resolveEmbedInitialState(sp, consumers, getCoreWorkspaces());
+  const ref = initialState.ref;
   const themeStyle = consumerThemeStyle(ref);
 
   if (surface === 'workspace') {
     return (
       <div
-        data-hudson-template={consumer?.template}
-        data-hudson-theme={consumer?.theme}
+        data-hudson-ref={ref}
+        data-hudson-template={initialState.template}
+        data-hudson-theme={initialState.theme}
+        data-hudson-workspace={initialState.activeWorkspaceId}
+        data-hudson-focus={initialState.focusedAppId}
         style={{ ...themeStyle, minHeight: '100vh' } as CSSProperties}
       >
         <EmbedHandshake surface={surface} />
-        <EmbedWorkspace />
+        <EmbedWorkspace initialState={initialState} />
       </div>
     );
   }
 
   return (
     <div
-      data-hudson-template={consumer?.template}
-      data-hudson-theme={consumer?.theme}
+      data-hudson-ref={ref}
+      data-hudson-template={initialState.template}
+      data-hudson-theme={initialState.theme}
+      data-hudson-workspace={initialState.activeWorkspaceId}
+      data-hudson-focus={initialState.focusedAppId}
       style={{
         ...themeStyle,
         minHeight: '100vh',
