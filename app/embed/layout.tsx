@@ -11,11 +11,30 @@ export const metadata: Metadata = {
 // scrollbar styling) matches the consumer immediately. The page itself bakes
 // the same attrs onto its wrapper for the visible content. The mapping is
 // inlined from the consumer registry — small enough to ship inline.
+
+/**
+ * HTML-safe JSON serializer for use inside an inline <script>.
+ * JSON.stringify alone is not safe: a `</script>` substring in a string value
+ * would terminate the script block. We also escape U+2028 / U+2029 which are
+ * line-terminators in JS but valid inside JSON strings.
+ */
+function safeJsonForInlineScript(value: unknown): string {
+  // U+2028 and U+2029 cannot appear literally inside a JS regex literal
+  // (they are line terminators), so we use String.fromCharCode to build them.
+  const LS = String.fromCharCode(0x2028);
+  const PS = String.fromCharCode(0x2029);
+  return JSON.stringify(value)
+    .replace(/</g, '\u003c')
+    .replace(/>/g, '\u003e')
+    .split(LS).join('\u2028')
+    .split(PS).join('\u2029');
+}
+
 function getEmbedThemeScript(): string {
   const refMap = Object.fromEntries(
     Object.values(consumers).map((c) => [c.ref, { t: c.template, m: c.theme }]),
   );
-  const json = JSON.stringify(refMap);
+  const json = safeJsonForInlineScript(refMap);
   return `(function(){try{var r=new URLSearchParams(location.search).get('ref');if(!r)return;var c=(${json})[r];if(!c)return;var d=document.documentElement;d.dataset.hudsonTemplate=c.t;d.dataset.hudsonTheme=c.m;}catch(e){}})();`;
 }
 
