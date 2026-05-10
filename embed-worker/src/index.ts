@@ -140,7 +140,12 @@ export default {
 
     const route = parseEmbedPath(url.pathname);
     if (!route) {
-      return new Response('Not Found', { status: 404 });
+      // Some /embed/* paths are static assets shipped with Pages — most
+      // importantly /embed/client.js (the standalone embed mount bundle).
+      // The CF route pattern (`hudsonkit.com/embed/*`) sends those requests
+      // to this worker, so we must hand them back to origin or the worker's
+      // 404 wins over Pages' static asset and the embed never mounts.
+      return fetch(request);
     }
 
     const { appId, surface } = route;
