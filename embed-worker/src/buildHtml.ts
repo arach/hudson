@@ -45,10 +45,18 @@
 
 import type { ResolvedEmbedState } from './index.ts';
 import chunks from './chunks.json';
+import clientManifest from './client-manifest.json';
 
 // URL for the standalone embed client bundle (built by bundle-client.mjs,
 // served from Pages CDN as a static file in /public/embed/).
-const EMBED_CLIENT_URL = '/embed/client.js';
+//
+// We append `?v=<hash>` so each new bundle is a fresh cache key without
+// touching the file URL. The Pages CDN serves the same physical file
+// regardless of `?v=`, so the Worker and Pages deploys can run in any order
+// (or one without the other) without 404s. The hash is content-derived (see
+// bundle-client.mjs); when client.js bytes don't change, neither does ?v=,
+// so browser caches stay warm across no-op rebuilds.
+const EMBED_CLIENT_URL = `/embed/client.js?v=${clientManifest.hash}`;
 
 /**
  * HTML-safe JSON serializer. Escapes </script> sequences and Unicode line
