@@ -97,6 +97,11 @@
       "import": "./dist/table.js",
       "default": "./dist/table.js"
     },
+    "./player": {
+      "types": "./dist/player.d.ts",
+      "import": "./dist/player.js",
+      "default": "./dist/player.js"
+    },
     "./styles": "./dist/styles.css"
   },
   "files": [
