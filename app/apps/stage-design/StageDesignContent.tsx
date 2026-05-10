@@ -11,12 +11,15 @@ import type {
 import { SIZING_PRESETS } from '../../shell/decor/types';
 
 const FIELD_LABEL =
-  'block text-[10px] uppercase tracking-[0.18em] text-white/40 font-mono mb-1.5';
+  'block text-[10px] uppercase tracking-[0.18em] text-[var(--hud-ink-3)] font-mono mb-1.5';
 const FIELD_INPUT =
-  'w-full bg-white/[0.03] border border-white/10 rounded-[3px] px-2 py-1.5 text-[13px] text-white/90 font-mono outline-none focus:border-[var(--hud-accent,#f59e0b)] transition-colors';
+  'w-full bg-[var(--hud-bg-2)] border border-[var(--hud-line)] rounded-[3px] px-2 py-1.5 text-[13px] text-[var(--hud-ink)] font-mono outline-none placeholder:text-[var(--hud-ink-3)] focus:border-[var(--hud-accent,#f59e0b)] transition-colors';
 const FIELD_TEXTAREA = FIELD_INPUT + ' resize-y min-h-[64px]';
 const SECTION_HEAD =
-  'text-[10px] uppercase tracking-[0.22em] text-white/40 font-mono mb-3';
+  'text-[10px] uppercase tracking-[0.22em] text-[var(--hud-ink-3)] font-mono mb-3';
+const SUBTLE_LINK =
+  'text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)] underline-offset-2 hover:underline disabled:opacity-40';
+const CAN_SAVE_SNAPSHOTS = process.env.NODE_ENV === 'development';
 
 export function StageDesignContent() {
   const decor = useWorkspaceDecor();
@@ -27,36 +30,40 @@ export function StageDesignContent() {
     return (
       <div className="h-full overflow-auto p-6 max-w-2xl">
         <div className={SECTION_HEAD}>Stage</div>
-        <h1 className="text-[24px] font-display italic text-white/90 mb-4">
+        <h1 className="text-[24px] font-display italic text-[var(--hud-ink)] mb-4">
           The workspace canvas, set.
         </h1>
-        <p className="text-[13px] text-white/60 leading-relaxed mb-6 max-w-[60ch]">
+        <p className="text-[13px] text-[var(--hud-ink-2)] leading-relaxed mb-6 max-w-[60ch]">
           Stage Design manages the read-only placards on this workspace canvas
           — text, images, and web embeds that live behind your app windows. Use
           the + buttons up top to place an item, then select it from the left to
           edit its content here.
         </p>
 
-        <div className="flex items-center gap-3 text-[11px] font-mono text-white/50">
+        <div className="flex items-center gap-3 text-[11px] font-mono text-[var(--hud-ink-2)]">
           <span>{decor.items.length} placed</span>
           <span className="opacity-30">·</span>
           <span>{decor.visible ? 'visible' : 'hidden'}</span>
-          <span className="opacity-30">·</span>
-          <button
-            type="button"
-            onClick={() => { void decor.saveSnapshot(); }}
-            className="text-white/50 hover:text-white/80 underline-offset-2 hover:underline disabled:opacity-40"
-            disabled={decor.isSaving}
-          >
-            {decor.isSaving ? 'saving' : 'save snapshot'}
-          </button>
+          {CAN_SAVE_SNAPSHOTS ? (
+            <>
+              <span className="opacity-30">·</span>
+              <button
+                type="button"
+                onClick={() => { void decor.saveSnapshot(); }}
+                className={SUBTLE_LINK}
+                disabled={decor.isSaving}
+              >
+                {decor.isSaving ? 'saving' : 'save snapshot'}
+              </button>
+            </>
+          ) : null}
           {decor.items.length > 0 ? (
             <>
               <span className="opacity-30">·</span>
               <button
                 type="button"
                 onClick={decor.resetToSeed}
-                className="text-white/50 hover:text-white/80 underline-offset-2 hover:underline"
+                className={SUBTLE_LINK}
               >
                 reset to seed
               </button>
@@ -72,7 +79,7 @@ export function StageDesignContent() {
       <div className={SECTION_HEAD}>Selected · {selected.type}</div>
       <ItemEditor item={selected} />
 
-      <div className="mt-8 pt-4 border-t border-white/[0.08] flex items-center justify-between">
+      <div className="mt-8 pt-4 border-t border-[var(--hud-line)] flex items-center justify-between">
         <button
           type="button"
           onClick={() => decor.removeItem(selected.id)}
@@ -83,7 +90,7 @@ export function StageDesignContent() {
         <button
           type="button"
           onClick={() => decor.selectItem(null)}
-          className="text-[11px] font-mono text-white/40 hover:text-white/70 transition-colors"
+          className="text-[11px] font-mono text-[var(--hud-ink-3)] hover:text-[var(--hud-ink)] transition-colors"
         >
           Close
         </button>
@@ -174,7 +181,7 @@ function SizingRow({ item }: { item: DecorationItem }) {
                 'px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] font-mono border rounded-[3px] transition-colors ' +
                 (isActive
                   ? 'border-[var(--hud-accent,#f59e0b)] text-[var(--hud-accent,#f59e0b)]'
-                  : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20')
+                  : 'border-[var(--hud-line)] text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)] hover:border-[var(--hud-line-strong)]')
               }
             >
               {p}
@@ -205,7 +212,7 @@ function TextEditor({ item }: { item: TextDecor }) {
               'px-3 py-1.5 text-[10px] uppercase tracking-[0.18em] font-mono border rounded-[3px] transition-colors ' +
               (item.subtype === s
                 ? 'border-[var(--hud-accent,#f59e0b)] text-[var(--hud-accent,#f59e0b)]'
-                : 'border-white/10 text-white/50 hover:text-white/80 hover:border-white/20')
+                : 'border-[var(--hud-line)] text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)] hover:border-[var(--hud-line-strong)]')
             }
           >
             {s}
@@ -309,7 +316,7 @@ function WebEditor({ item }: { item: WebDecor }) {
       <SizingRow item={item} />
       <PositionRow item={item} />
 
-      <div className="mt-4 text-[11px] font-mono text-white/40 leading-relaxed">
+      <div className="mt-4 text-[11px] font-mono text-[var(--hud-ink-3)] leading-relaxed">
         Many sites block iframe embedding (X-Frame-Options). When that happens,
         the placard renders a link card with the hostname and title instead.
       </div>

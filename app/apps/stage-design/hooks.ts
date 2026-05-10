@@ -6,9 +6,11 @@ import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw, Save } f
 import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
 import { StageDesignHeaderActions, StageDesignNavCenter } from './StageDesignChrome';
 
+const CAN_SAVE_SNAPSHOTS = process.env.NODE_ENV === 'development';
+
 export function useStageDesignCommands(): CommandOption[] {
   const decor = useWorkspaceDecor();
-  return [
+  const commands: CommandOption[] = [
     {
       id: 'stage:add-text',
       label: 'Stage · Add text',
@@ -40,18 +42,21 @@ export function useStageDesignCommands(): CommandOption[] {
       action: () => decor.setVisible(!decor.visible),
     },
     {
-      id: 'stage:save-snapshot',
-      label: 'Stage · Save snapshot',
-      icon: createElement(Save, { size: 14 }),
-      action: () => { void decor.saveSnapshot(); },
-    },
-    {
       id: 'stage:reset-seed',
       label: 'Stage · Reset to seed',
       icon: createElement(RotateCcw, { size: 14 }),
       action: () => decor.resetToSeed(),
     },
   ];
+  if (CAN_SAVE_SNAPSHOTS) {
+    commands.splice(5, 0, {
+      id: 'stage:save-snapshot',
+      label: 'Stage · Save snapshot',
+      icon: createElement(Save, { size: 14 }),
+      action: () => { void decor.saveSnapshot(); },
+    });
+  }
+  return commands;
 }
 
 export function useStageDesignStatus() {

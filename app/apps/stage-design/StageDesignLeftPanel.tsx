@@ -42,9 +42,9 @@ export function StageDesignLeftPanel() {
 
   if (decor.items.length === 0) {
     return (
-      <div className="px-3 py-4 text-[11px] text-white/40 font-mono">
+      <div className="px-3 py-4 text-[11px] text-[var(--hud-ink-2)] font-mono">
         No items placed.
-        <div className="mt-2 text-white/30">
+        <div className="mt-2 text-[var(--hud-ink-3)]">
           Use the + buttons in the navigation bar to add text, images, or web embeds to the canvas.
         </div>
       </div>
@@ -62,8 +62,8 @@ export function StageDesignLeftPanel() {
             className={
               'group flex items-center border-l-2 ' +
               (isSelected
-                ? 'border-l-[var(--hud-accent,#f59e0b)] bg-white/[0.04] text-white/90'
-                : 'border-l-transparent hover:bg-white/[0.025] text-white/60 hover:text-white/80')
+                ? 'border-l-[var(--hud-accent,#f59e0b)] bg-[var(--hud-accent-soft)] text-[var(--hud-ink)]'
+                : 'border-l-transparent hover:bg-[var(--hud-accent-soft)] text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)]')
             }
           >
             <button
@@ -74,7 +74,7 @@ export function StageDesignLeftPanel() {
               <Icon size={12} />
               <div className="min-w-0 flex-1">
                 <div className="truncate">{itemLabel(item)}</div>
-                <div className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-0.5">
+                <div className="text-[9px] uppercase tracking-[0.18em] text-[var(--hud-ink-3)] mt-0.5">
                   {itemSubtype(item)}
                 </div>
               </div>
@@ -85,7 +85,7 @@ export function StageDesignLeftPanel() {
                 e.stopPropagation();
                 decor.removeItem(item.id);
               }}
-              className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white/70"
+              className="opacity-0 group-hover:opacity-100 text-[var(--hud-ink-3)] hover:text-[var(--hud-ink)]"
               aria-label="Remove"
             >
               <Trash2 size={11} />

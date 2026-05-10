@@ -1,4 +1,4 @@
-import { defineConfig } from 'vitest/config';
+import { configDefaults, defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
 export default defineConfig({
@@ -6,12 +6,20 @@ export default defineConfig({
     environment: 'jsdom',
     setupFiles: ['./test/setup.ts'],
     globals: true,
+    exclude: [
+      ...configDefaults.exclude,
+      '.claude/**',
+      'examples/**/.build/**',
+    ],
   },
   resolve: {
-    alias: {
-      '@': resolve(__dirname, '.'),
-      'hudsonkit/shell': resolve(__dirname, 'packages/web/hudsonkit/src/shell.ts'),
-      'hudsonkit': resolve(__dirname, 'packages/web/hudsonkit/src/index.ts'),
-    },
+    alias: [
+      { find: '@', replacement: resolve(__dirname, '.') },
+      {
+        find: /^hudsonkit\/(.+)$/,
+        replacement: `${resolve(__dirname, 'packages/web/hudsonkit/src')}/$1.ts`,
+      },
+      { find: 'hudsonkit', replacement: resolve(__dirname, 'packages/web/hudsonkit/src/index.ts') },
+    ],
   },
 });
