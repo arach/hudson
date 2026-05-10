@@ -61,6 +61,8 @@ export type { FrameLogEntry } from './lib/logger';
 export { worldToScreen, screenToWorld } from './lib/viewport';
 export { probeVoxAvailability } from './lib/voxProbe';
 export type { VoxAvailability } from './lib/voxProbe';
+export { safeLocalStorage, safeSessionStorage } from './lib/safe-storage';
+export type { SafeStorage } from './lib/safe-storage';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
