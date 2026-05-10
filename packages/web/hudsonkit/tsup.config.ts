@@ -32,6 +32,7 @@ export default defineConfig([
       push: 'src/push.ts',
       'push/sw': 'src/push/sw.ts',
       table: 'src/table.ts',
+      player: 'src/player.ts',
     },
     format: ['esm'],
     dts: true,

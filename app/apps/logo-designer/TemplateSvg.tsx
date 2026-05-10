@@ -10,15 +10,130 @@ import type { LogoParams } from './LogoProvider';
 
 const MASK_SIZE = 128;
 
+interface RasterizeOpts {
+  /** If true, compute the actual path bounding box and fit it to the mask — rather than
+   *  using the SVG's declared viewBox verbatim. Upstream apps (e.g. Shaper) often export
+   *  with fixed padding inside a 512×512 viewBox, which otherwise makes the shape appear
+   *  small and off-center in the logo. Defaults to true. */
+  fit?: boolean;
+  /** Extra margin around the fitted shape as a fraction of its longest side (0 = fill). */
+  margin?: number;
+}
+
+export interface RasterizeResult {
+  mask: Uint8Array;
+  /** Effective viewBox used to draw the mask, in the SOURCE SVG's coordinate space.
+   *  When fit is applied this is the path bbox (expanded by margin); otherwise it
+   *  matches the SVG's declared viewBox. Templates that also render the piped paths
+   *  directly can use this to keep their rendering aligned with the mask. */
+  viewBox: [number, number, number, number];
+}
+
+interface PathBounds { x: number; y: number; w: number; h: number }
+
+/** Measure the true geometric bounds of all drawable elements in an SVG string
+ *  using DOM getBBox(). Returns bounds in the SVG's user coordinate system.
+ *  Crucially, this is NOT clipped by the SVG's declared viewBox — geometry
+ *  extending past the viewBox edge is still reported. */
+function measurePathBounds(svgString: string): PathBounds | null {
+  if (typeof document === 'undefined' || typeof document.body === 'undefined') return null;
+  const container = document.createElement('div');
+  // Render offscreen with no clipping so getBBox sees full geometry.
+  container.style.cssText = 'position:absolute;visibility:hidden;left:-99999px;top:0;width:1px;height:1px;overflow:visible;pointer-events:none;';
+  container.innerHTML = svgString;
+  const svgEl = container.querySelector('svg');
+  if (!svgEl) return null;
+  document.body.appendChild(container);
+  try {
+    const selector = 'path,circle,rect,ellipse,line,polyline,polygon';
+    const nodes = svgEl.querySelectorAll(selector);
+    let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+    nodes.forEach((n) => {
+      try {
+        const b = (n as SVGGraphicsElement).getBBox();
+        if (!isFinite(b.width) || !isFinite(b.height)) return;
+        if (b.width === 0 && b.height === 0) return;
+        if (b.x < minX) minX = b.x;
+        if (b.y < minY) minY = b.y;
+        if (b.x + b.width > maxX) maxX = b.x + b.width;
+        if (b.y + b.height > maxY) maxY = b.y + b.height;
+      } catch {
+        /* skip unmeasurable nodes */
+      }
+    });
+    if (!isFinite(minX) || !isFinite(minY) || !isFinite(maxX) || !isFinite(maxY)) return null;
+    const w = maxX - minX;
+    const h = maxY - minY;
+    if (w <= 0 || h <= 0) return null;
+    return { x: minX, y: minY, w, h };
+  } catch {
+    return null;
+  } finally {
+    try { document.body.removeChild(container); } catch { /* already removed */ }
+  }
+}
+
+/** Fallback bbox measurement via pixel scanning. Uses an ENLARGED virtual
+ *  viewBox (3× the declared one) so overflow geometry is included even though
+ *  we can't use getBBox. Less accurate than getBBox but always available. */
+function measureByScratchCanvas(
+  paths: Element[],
+  vx: number, vy: number, vw: number, vh: number,
+  yFlip: boolean,
+): PathBounds | null {
+  if (typeof document === 'undefined') return null;
+  const SCRATCH = 384;
+  // Enlarge the sampled region 3× around the declared viewBox so paths that
+  // extend outside it still get captured.
+  const expand = 1.0;
+  const evx = vx - vw * expand;
+  const evy = vy - vh * expand;
+  const evw = vw * (1 + 2 * expand);
+  const evh = vh * (1 + 2 * expand);
+  const scratch = document.createElement('canvas');
+  scratch.width = SCRATCH;
+  scratch.height = SCRATCH;
+  const sctx = scratch.getContext('2d');
+  if (!sctx) return null;
+  sctx.setTransform(SCRATCH / evw, 0, 0, SCRATCH / evh, -evx * SCRATCH / evw, -evy * SCRATCH / evh);
+  if (yFlip) sctx.scale(1, -1);
+  sctx.fillStyle = '#000';
+  for (const pathEl of paths) {
+    const d = pathEl.getAttribute('d');
+    if (d) sctx.fill(new Path2D(d));
+  }
+  const sd = sctx.getImageData(0, 0, SCRATCH, SCRATCH).data;
+  let minX = SCRATCH, minY = SCRATCH, maxX = -1, maxY = -1;
+  for (let y = 0; y < SCRATCH; y++) {
+    for (let x = 0; x < SCRATCH; x++) {
+      if (sd[(y * SCRATCH + x) * 4 + 3] > 32) {
+        if (x < minX) minX = x;
+        if (x > maxX) maxX = x;
+        if (y < minY) minY = y;
+        if (y > maxY) maxY = y;
+      }
+    }
+  }
+  if (maxX < 0 || maxY < 0) return null;
+  const sx = evw / SCRATCH;
+  const sy = evh / SCRATCH;
+  return {
+    x: evx + minX * sx,
+    y: evy + minY * sy,
+    w: (maxX - minX + 1) * sx,
+    h: (maxY - minY + 1) * sy,
+  };
+}
+
 /** Rasterize an SVG string to a binary mask via offscreen canvas. */
-function rasterizeSvgToMask(svgString: string): Uint8Array | null {
+function rasterizeSvgToMask(
+  svgString: string,
+  opts: RasterizeOpts = {},
+): RasterizeResult | null {
   if (typeof document === 'undefined') return null;
   try {
-    const canvas = document.createElement('canvas');
-    canvas.width = MASK_SIZE;
-    canvas.height = MASK_SIZE;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return null;
+    const fit = opts.fit ?? true;
+    const margin = Math.max(0, opts.margin ?? 0);
 
     const parser = new DOMParser();
     const doc = parser.parseFromString(svgString, 'image/svg+xml');
@@ -26,17 +141,45 @@ function rasterizeSvgToMask(svgString: string): Uint8Array | null {
     if (!svgEl) return null;
 
     const vb = svgEl.getAttribute('viewBox')?.split(/[\s,]+/).map(Number);
-    const [vx, vy, vw, vh] = vb && vb.length === 4 ? vb : [0, 0, 512, 512];
+    let [vx, vy, vw, vh] = vb && vb.length === 4 ? vb : [0, 0, 512, 512];
 
-    ctx.setTransform(MASK_SIZE / vw, 0, 0, MASK_SIZE / vh, -vx * MASK_SIZE / vw, -vy * MASK_SIZE / vh);
-
+    const paths = Array.from(doc.querySelectorAll('path'));
     const gEl = doc.querySelector('g[transform]');
-    if (gEl?.getAttribute('transform')?.includes('scale(1,-1)')) {
-      ctx.scale(1, -1);
+    const yFlip = gEl?.getAttribute('transform')?.includes('scale(1,-1)') ?? false;
+
+    // ── Optional fit pass: compute TRUE path bounds and use them as the effective
+    // source viewBox, so padding/empty regions around the shape don't shrink it
+    // inside the mask. Critically, path geometry can extend OUTSIDE the declared
+    // viewBox (e.g. a shape drawn past Shaper's 512×512 canvas edge) — we need to
+    // include that overflow, which viewBox-clipped canvas rasterization misses.
+    if (fit && paths.length > 0) {
+      const bounds = measurePathBounds(svgString) ?? measureByScratchCanvas(paths, vx, vy, vw, vh, yFlip);
+      if (bounds) {
+        const { x: bx, y: by, w: bw, h: bh } = bounds;
+        // Preserve aspect ratio: center a square around the content bbox so
+        // non-square shapes aren't horizontally/vertically stretched.
+        const cx = bx + bw / 2;
+        const cy = by + bh / 2;
+        const side = Math.max(bw, bh);
+        const padded = side * (1 + margin * 2);
+        vx = cx - padded / 2;
+        vy = cy - padded / 2;
+        vw = padded;
+        vh = padded;
+      }
     }
 
+    const canvas = document.createElement('canvas');
+    canvas.width = MASK_SIZE;
+    canvas.height = MASK_SIZE;
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return null;
+
+    ctx.setTransform(MASK_SIZE / vw, 0, 0, MASK_SIZE / vh, -vx * MASK_SIZE / vw, -vy * MASK_SIZE / vh);
+    if (yFlip) ctx.scale(1, -1);
+
     ctx.fillStyle = '#000';
-    for (const pathEl of doc.querySelectorAll('path')) {
+    for (const pathEl of paths) {
       const d = pathEl.getAttribute('d');
       if (d) ctx.fill(new Path2D(d));
     }
@@ -46,7 +189,7 @@ function rasterizeSvgToMask(svgString: string): Uint8Array | null {
     for (let i = 0; i < mask.length; i++) {
       mask[i] = imageData.data[i * 4 + 3] > 128 ? 1 : 0;
     }
-    return mask;
+    return { mask, viewBox: [vx, vy, vw, vh] };
   } catch {
     return null;
   }
@@ -276,16 +419,24 @@ export function useTemplateRender(
     if (backgroundSvg) {
       p.__pipedSvg = backgroundSvg;
       p.__pipedPaths = extractPaths(backgroundSvg);
-      const vbMatch = backgroundSvg.match(/viewBox="([^"]+)"/);
-      if (vbMatch) {
-        const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
-        if (parts.length === 4) p.__pipedViewBox = parts;
-      }
       p.__pipedYFlip = /scale\(\s*1\s*,\s*-1\s*\)/.test(backgroundSvg);
-      const mask = rasterizeSvgToMask(backgroundSvg);
-      if (mask) {
-        p.__shapeMask = mask;
+      const fit = typeof p.fitShapeToCanvas === 'boolean' ? p.fitShapeToCanvas : true;
+      const margin = typeof p.shapeMargin === 'number' ? p.shapeMargin : 0;
+      const result = rasterizeSvgToMask(backgroundSvg, { fit, margin });
+      if (result) {
+        p.__shapeMask = result.mask;
         p.__shapeMaskSize = MASK_SIZE;
+        // Expose the EFFECTIVE viewBox (post-fit) so templates that render the
+        // piped paths directly stay aligned with the mask.
+        p.__pipedViewBox = result.viewBox;
+      } else {
+        // Mask rasterization failed — still expose the declared viewBox so
+        // downstream consumers don't see undefined.
+        const vbMatch = backgroundSvg.match(/viewBox="([^"]+)"/);
+        if (vbMatch) {
+          const parts = vbMatch[1].trim().split(/[\s,]+/).map(Number);
+          if (parts.length === 4) p.__pipedViewBox = parts;
+        }
       }
     }
 
