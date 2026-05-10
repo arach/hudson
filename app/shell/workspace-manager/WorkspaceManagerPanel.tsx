@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { useWorkspaceManager } from './WorkspaceManagerContext';
 import type { WindowBounds } from './WorkspaceManagerContext';
+import { safeLocalStorage } from 'hudsonkit';
 import type { ServiceStatus } from 'hudsonkit';
 import type { AppSettingsEntry } from '../../apps/hudson-docs/components';
 import {
@@ -500,9 +501,9 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
             <div className="mt-3">
               <button
                 onClick={() => {
-                  const keys = Object.keys(localStorage).filter(k => k.startsWith(`hudson.ws.${workspace.id}.`));
+                  const keys = safeLocalStorage.keys().filter(k => k.startsWith(`hudson.ws.${workspace.id}.`));
                   if (keys.length > 0 && confirm(`Clear ${keys.length} persisted keys for this workspace?`)) {
-                    keys.forEach(k => localStorage.removeItem(k));
+                    keys.forEach(k => safeLocalStorage.removeItem(k));
                     window.location.reload();
                   }
                 }}
