@@ -158,8 +158,12 @@ export default {
           'Content-Type': 'text/html; charset=utf-8',
           // Embed pages are not indexed
           'X-Robots-Tag': 'noindex, nofollow',
-          // Allow framing from any origin (embed use-case)
-          'X-Frame-Options': 'ALLOWALL',
+          // Allow framing from any origin (embed use-case). `X-Frame-Options:
+          // ALLOWALL` is non-standard and ignored by every modern browser, so
+          // we use `frame-ancestors` from CSP — the actual standard — instead.
+          // Future-proof: tighten to a host allow-list when consumer registry
+          // grows host metadata (e.g. `frame-ancestors *.hudsonkit.com …`).
+          'Content-Security-Policy': 'frame-ancestors *;',
           // Edge cache strategy:
           //   max-age=60        — browsers reuse for a minute (fast back/forward)
           //   s-maxage=300      — CF edge serves cached HTML for 5 minutes
