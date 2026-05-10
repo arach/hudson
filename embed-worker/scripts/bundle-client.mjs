@@ -87,6 +87,14 @@ await build({
   platform: 'browser',
   // Force NODE_ENV so dev-only branches in app code dead-code-eliminate.
   define: { 'process.env.NODE_ENV': '"production"' },
+  // Some transitive deps reference `process.env.SOMETHING` or just `process`
+  // outside of guarded checks. In a browser there's no `process` global, so
+  // the bundle throws `ReferenceError: process is not defined` before React
+  // can mount. Inject a minimal shim at the top of the bundle so any such
+  // access falls through to undefined harmlessly.
+  banner: {
+    js: "if(typeof globalThis.process==='undefined')globalThis.process={env:{}};",
+  },
   plugins: [hudsonkitResolverPlugin, stubAppsLocalPlugin],
   // Tree-shake aggressively
   treeShaking: true,
