@@ -1,6 +1,7 @@
 'use client';
 
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
+import { ExternalLink } from 'lucide-react';
 import { encodeThemeForEmbed } from './embed-theme';
 import { useStudio } from '@/marketing/theme/StudioContext';
 
@@ -51,6 +52,7 @@ export type HudsonEmbedProps = {
   className?: string;
   style?: CSSProperties;
   title?: string;
+  popout?: boolean;
   themeMap?: Record<string, string>;
   themeFrom?: string;
   // Iframe loading priority. The hero embed sets 'eager'; everything below
@@ -136,6 +138,7 @@ export function HudsonEmbed({
   className,
   style,
   title,
+  popout = true,
   themeMap = DEFAULT_THEME_MAP,
   themeFrom,
   priority = 'lazy',
@@ -270,20 +273,35 @@ export function HudsonEmbed({
   })();
 
   return (
-    <iframe
-      ref={iframeRef}
-      src={iframeSrc}
-      title={title ?? `hudson embed · ${surface}`}
-      data-hudson-embed-surface={surface}
-      className={className}
-      loading={priority === 'eager' ? 'eager' : 'lazy'}
-      // @ts-expect-error fetchPriority is valid HTML; React 19 typings lag
-      fetchPriority={priority === 'eager' ? 'high' : 'low'}
-      // Workspace embeds may render Voice/AI/canvas content with audio replies
-      // and presenter-mode flips. autoplay/fullscreen/encrypted-media unblock
-      // those flows in the iframe without forcing a user gesture per surface.
-      allow="microphone; clipboard-write; autoplay; fullscreen; encrypted-media"
-      style={{ display: 'block', border: 0, ...sizeStyle, ...style }}
-    />
+    <>
+      {popout ? (
+        <a
+          className="hudson-embed-popout"
+          href={iframeSrc}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label={`Open ${surface} embed in a full view`}
+          title="Open full view"
+        >
+          <span>Open full</span>
+          <ExternalLink size={12} strokeWidth={1.8} />
+        </a>
+      ) : null}
+      <iframe
+        ref={iframeRef}
+        src={iframeSrc}
+        title={title ?? `hudson embed · ${surface}`}
+        data-hudson-embed-surface={surface}
+        className={className}
+        loading={priority === 'eager' ? 'eager' : 'lazy'}
+        // @ts-expect-error fetchPriority is valid HTML; React 19 typings lag
+        fetchPriority={priority === 'eager' ? 'high' : 'low'}
+        // Workspace embeds may render Voice/AI/canvas content with audio replies
+        // and presenter-mode flips. autoplay/fullscreen/encrypted-media unblock
+        // those flows in the iframe without forcing a user gesture per surface.
+        allow="microphone; clipboard-write; autoplay; fullscreen; encrypted-media"
+        style={{ display: 'block', border: 0, ...sizeStyle, ...style }}
+      />
+    </>
   );
 }

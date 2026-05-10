@@ -1,6 +1,5 @@
 'use client';
 
-import { useState } from 'react';
 import { HudsonEmbed } from '@/marketing/lib/embed';
 import { EmbedFrame } from '@/marketing/primitives/EmbedFrame';
 import { Eyebrow } from '@/marketing/primitives/Eyebrow';
@@ -26,17 +25,7 @@ const PARTS = [
   { n: '04', t: 'SHIP', l: 'Three surfaces, zero forks.', b: 'iOS through TestFlight, macOS notarized, Web via CDN. One command.' },
 ];
 
-type Layout = 'stack' | 'toggle';
-
-const LAYOUT_OPTIONS: Array<{ id: Layout; label: string }> = [
-  { id: 'stack', label: 'Stack' },
-  { id: 'toggle', label: 'Toggle' },
-];
-
 export function Sheet02Possession() {
-  const [layout, setLayout] = useState<Layout>('stack');
-  const [active, setActive] = useState<'mock' | 'live'>('mock');
-
   return (
     <Sheet
       id="possession"
@@ -60,59 +49,12 @@ export function Sheet02Possession() {
         </h2>
 
         <p className="subhead" style={{ marginBottom: 32, fontSize: 17 }}>
-          The same workspace shell twice. <strong>Mock</strong>: a stripped-down schematic — same
-          design language, same colors, no recreated content. <strong>Live</strong>: the real
-          primitives, rendered from the SDK. Same chrome any Hudson app inherits.
+          This is the real workspace shell, rendered from the SDK. Same chrome, canvas,
+          app windows, command surface, and live decoration layer any Hudson app inherits.
         </p>
 
-        <div
-          style={{
-            display: 'flex',
-            justifyContent: 'space-between',
-            alignItems: 'center',
-            marginBottom: 18,
-            gap: 18,
-            flexWrap: 'wrap',
-          }}
-        >
-          <span
-            style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              letterSpacing: '0.20em',
-              textTransform: 'uppercase',
-              color: 'var(--ink-3)',
-            }}
-          >
-            FIG. 02 · LAYOUT
-          </span>
-          <LayoutToggle layout={layout} setLayout={setLayout} />
-        </div>
-
         <div style={{ marginBottom: 56 }}>
-          {layout === 'stack' && (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 36 }}>
-              <EmbedSlot kind="mock" height={720} />
-              <EmbedSlot kind="live" height={720} />
-            </div>
-          )}
-
-          {layout === 'toggle' && (
-            <div>
-              <div
-                style={{
-                  display: 'flex',
-                  justifyContent: 'flex-start',
-                  gap: 6,
-                  marginBottom: 14,
-                }}
-              >
-                <ActiveButton current={active} target="mock" set={setActive} label="MOCK · spec" />
-                <ActiveButton current={active} target="live" set={setActive} label="LIVE · primitives" />
-              </div>
-              <EmbedSlot kind={active} height={720} />
-            </div>
-          )}
+          <EmbedSlot height={720} />
         </div>
 
         <div
@@ -201,129 +143,27 @@ export function Sheet02Possession() {
   );
 }
 
-function EmbedSlot({ kind, height }: { kind: 'mock' | 'live'; height: number }) {
-  const isMock = kind === 'mock';
+function EmbedSlot({ height }: { height: number }) {
   return (
     <div style={{ position: 'relative' }}>
       <div className="embed-plate__caption">
-        <span
-          className="live"
-          style={!isMock ? undefined : { background: 'var(--ink-2)' }}
-        />
-        FIG. 02-{isMock ? 'A' : 'B'} ·{' '}
-        <span style={{ color: 'var(--accent-deep)', fontWeight: 600 }}>
-          {isMock ? 'MOCK' : 'LIVE'}
-        </span>
+        <span className="live" />
+        FIG. 02-A · <span style={{ color: 'var(--accent-deep)', fontWeight: 600 }}>LIVE</span>
         <span style={{ color: 'var(--ink-faint)' }}> · </span>
-        <span>{isMock ? 'the spec, drawn' : 'the spec, running'}</span>
+        <span>the spec, running</span>
       </div>
       <EmbedFrame height={height}>
-        {isMock ? (
-          <HudsonEmbed
-            src="/embed/hudson/workspace"
-            surface="workspace"
-            sizing={{ mode: 'fill' }}
-            density="comfy"
-            workspace="self"
-            template="hudson"
-            consumerId="hudsonos"
-            title="Hudson workspace · mock spec"
-          />
-        ) : (
-          <HudsonEmbed
-            src="/embed/hudson/workspace"
-            surface="workspace"
-            sizing={{ mode: 'fill' }}
-            density="comfy"
-            workspace="self"
-            template="drafting"
-            consumerId="hudson-linen"
-            title="Hudson workspace · live primitives · linen"
-          />
-        )}
+        <HudsonEmbed
+          src="/embed/hudson/workspace"
+          surface="workspace"
+          sizing={{ mode: 'fill' }}
+          density="comfy"
+          workspace="self"
+          template="drafting"
+          consumerId="hudson-linen"
+          title="Hudson workspace · live primitives · linen"
+        />
       </EmbedFrame>
     </div>
-  );
-}
-
-function LayoutToggle({
-  layout,
-  setLayout,
-}: {
-  layout: Layout;
-  setLayout: (l: Layout) => void;
-}) {
-  return (
-    <div
-      role="tablist"
-      aria-label="layout mode"
-      style={{
-        display: 'inline-grid',
-        gridTemplateColumns: `repeat(${LAYOUT_OPTIONS.length}, auto)`,
-        border: '1px solid var(--ink)',
-      }}
-    >
-      {LAYOUT_OPTIONS.map((opt, i) => {
-        const isActive = opt.id === layout;
-        return (
-          <button
-            key={opt.id}
-            type="button"
-            role="tab"
-            aria-selected={isActive}
-            onClick={() => setLayout(opt.id)}
-            style={{
-              padding: '7px 14px',
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              letterSpacing: '0.18em',
-              textTransform: 'uppercase',
-              background: isActive ? 'var(--ink)' : 'var(--paper)',
-              color: isActive ? 'var(--paper)' : 'var(--ink-1)',
-              border: 0,
-              borderRight:
-                i < LAYOUT_OPTIONS.length - 1 ? '1px solid var(--ink)' : 0,
-              cursor: 'pointer',
-            }}
-          >
-            {opt.label}
-          </button>
-        );
-      })}
-    </div>
-  );
-}
-
-function ActiveButton({
-  current,
-  target,
-  set,
-  label,
-}: {
-  current: 'mock' | 'live';
-  target: 'mock' | 'live';
-  set: (v: 'mock' | 'live') => void;
-  label: string;
-}) {
-  const isActive = current === target;
-  return (
-    <button
-      type="button"
-      onClick={() => set(target)}
-      aria-pressed={isActive}
-      style={{
-        padding: '6px 12px',
-        fontFamily: 'var(--font-mono)',
-        fontSize: 10,
-        letterSpacing: '0.16em',
-        textTransform: 'uppercase',
-        background: isActive ? 'var(--accent)' : 'var(--paper)',
-        color: isActive ? 'var(--paper)' : 'var(--ink-1)',
-        border: '1px solid ' + (isActive ? 'var(--accent)' : 'var(--ink)'),
-        cursor: 'pointer',
-      }}
-    >
-      {label}
-    </button>
   );
 }

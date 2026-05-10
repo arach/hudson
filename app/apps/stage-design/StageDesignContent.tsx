@@ -31,7 +31,7 @@ export function StageDesignContent() {
           The workspace canvas, set.
         </h1>
         <p className="text-[13px] text-white/60 leading-relaxed mb-6 max-w-[60ch]">
-          Stage Design manages the read-only placards on this workspace's canvas
+          Stage Design manages the read-only placards on this workspace canvas
           — text, images, and web embeds that live behind your app windows. Use
           the + buttons up top to place an item, then select it from the left to
           edit its content here.
@@ -41,6 +41,15 @@ export function StageDesignContent() {
           <span>{decor.items.length} placed</span>
           <span className="opacity-30">·</span>
           <span>{decor.visible ? 'visible' : 'hidden'}</span>
+          <span className="opacity-30">·</span>
+          <button
+            type="button"
+            onClick={() => { void decor.saveSnapshot(); }}
+            className="text-white/50 hover:text-white/80 underline-offset-2 hover:underline disabled:opacity-40"
+            disabled={decor.isSaving}
+          >
+            {decor.isSaving ? 'saving' : 'save snapshot'}
+          </button>
           {decor.items.length > 0 ? (
             <>
               <span className="opacity-30">·</span>

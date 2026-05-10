@@ -1,4 +1,4 @@
-import type { DecorationItem } from './types';
+import type { DecorationItem, DecorState } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Build-sequence seed for the `hudson-os` workspace.
@@ -101,4 +101,8 @@ export const HUDSON_OS_SEED: DecorationItem[] = [
 
 export const SEED_BY_WORKSPACE: Record<string, DecorationItem[]> = {
   'hudson-os': HUDSON_OS_SEED,
+};
+
+export const INITIAL_DECOR_BY_WORKSPACE: Record<string, DecorState> = {
+  'hudson-os': { items: HUDSON_OS_SEED, visible: true },
 };

@@ -61,6 +61,7 @@ export type DecorationType = DecorationItem['type'];
 export interface DecorState {
   items: DecorationItem[];
   visible: boolean;
+  updatedAt?: number;
 }
 
 export const EMPTY_DECOR_STATE: DecorState = { items: [], visible: true };

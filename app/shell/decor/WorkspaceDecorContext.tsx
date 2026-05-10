@@ -4,10 +4,13 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
+  useRef,
+  useState,
   type ReactNode,
 } from 'react';
-import { usePersistentState } from 'hudsonkit';
+import { createHudsonId, usePersistentState } from 'hudsonkit';
 import type {
   DecorationItem,
   DecorationType,
@@ -18,7 +21,7 @@ import type {
   StepCardDecor,
 } from './types';
 import { EMPTY_DECOR_STATE } from './types';
-import { SEED_BY_WORKSPACE } from './seed';
+import { INITIAL_DECOR_BY_WORKSPACE, SEED_BY_WORKSPACE } from './seed';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Context
@@ -36,6 +39,10 @@ export interface WorkspaceDecorContextValue {
   updateItem: (id: string, patch: Partial<DecorationItem>) => void;
   removeItem: (id: string) => void;
   resetToSeed: () => void;
+  saveSnapshot: () => Promise<void>;
+  isSaving: boolean;
+  lastSavedAt: number | null;
+  saveError: string | null;
 }
 
 const WorkspaceDecorContext = createContext<WorkspaceDecorContextValue | null>(null);
@@ -57,7 +64,17 @@ export function useOptionalWorkspaceDecor(): WorkspaceDecorContextValue | null {
 // ─────────────────────────────────────────────────────────────────────────────
 
 function newId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return createHudsonId('decor', 10);
+}
+
+function touchState(state: DecorState): DecorState {
+  return { ...state, updatedAt: Date.now() };
+}
+
+function isDecorState(value: unknown): value is DecorState {
+  if (!value || typeof value !== 'object') return false;
+  const state = value as Partial<DecorState>;
+  return Array.isArray(state.items) && typeof state.visible === 'boolean';
 }
 
 function makeItem(
@@ -137,6 +154,8 @@ export function WorkspaceDecorProvider({
   children: ReactNode;
 }) {
   const initial = useMemo<DecorState>(() => {
+    const cached = INITIAL_DECOR_BY_WORKSPACE[workspaceId];
+    if (cached) return cached;
     const seed = SEED_BY_WORKSPACE[workspaceId];
     if (seed && seed.length > 0) return { items: seed, visible: true };
     return EMPTY_DECOR_STATE;
@@ -152,15 +171,61 @@ export function WorkspaceDecorProvider({
     null,
   );
 
+  const [isSaving, setIsSaving] = useState(false);
+  const [lastSavedAt, setLastSavedAt] = useState<number | null>(null);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const stateRef = useRef(state);
+  const checkedInitialRestoreRef = useRef(false);
+
+  useEffect(() => {
+    stateRef.current = state;
+  }, [state]);
+
+  useEffect(() => {
+    if (checkedInitialRestoreRef.current) return;
+    checkedInitialRestoreRef.current = true;
+    const seed = SEED_BY_WORKSPACE[workspaceId];
+    if (!seed || seed.length === 0) return;
+    if (state.items.length > 0) return;
+
+    setState({ items: seed, visible: true });
+  }, [workspaceId, state.items.length, setState]);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    async function restoreCachedSnapshot() {
+      try {
+        const res = await fetch(`/api/workspace-decor?id=${encodeURIComponent(workspaceId)}`);
+        if (!res.ok) return;
+        const cached = await res.json();
+        if (cancelled || !isDecorState(cached)) return;
+
+        setState((current) => {
+          const currentUpdatedAt = current.updatedAt ?? 0;
+          const cachedUpdatedAt = cached.updatedAt ?? 0;
+          if (cachedUpdatedAt > currentUpdatedAt) return cached;
+          return current;
+        });
+        if (typeof cached.updatedAt === 'number') setLastSavedAt(cached.updatedAt);
+      } catch {
+        // The API is a local/dev cache. Static embeds can run without it.
+      }
+    }
+
+    void restoreCachedSnapshot();
+    return () => { cancelled = true; };
+  }, [workspaceId, setState]);
+
   const setVisible = useCallback(
-    (v: boolean) => setState((s) => ({ ...s, visible: v })),
+    (v: boolean) => setState((s) => touchState({ ...s, visible: v })),
     [setState],
   );
 
   const addItem = useCallback(
     (type: DecorationType, atCenter?: { x: number; y: number }) => {
       const item = makeItem(type, atCenter ?? { x: 0, y: 0 });
-      setState((s) => ({ ...s, items: [...s.items, item] }));
+      setState((s) => touchState({ ...s, items: [...s.items, item] }));
       setSelectedId(item.id);
       return item.id;
     },
@@ -169,19 +234,21 @@ export function WorkspaceDecorProvider({
 
   const updateItem = useCallback(
     (id: string, patch: Partial<DecorationItem>) => {
-      setState((s) => ({
-        ...s,
-        items: s.items.map((it) =>
-          it.id === id ? ({ ...it, ...patch } as DecorationItem) : it,
-        ),
-      }));
+      setState((s) =>
+        touchState({
+          ...s,
+          items: s.items.map((it) =>
+            it.id === id ? ({ ...it, ...patch } as DecorationItem) : it,
+          ),
+        }),
+      );
     },
     [setState],
   );
 
   const removeItem = useCallback(
     (id: string) => {
-      setState((s) => ({ ...s, items: s.items.filter((it) => it.id !== id) }));
+      setState((s) => touchState({ ...s, items: s.items.filter((it) => it.id !== id) }));
       setSelectedId((cur) => (cur === id ? null : cur));
     },
     [setState, setSelectedId],
@@ -189,9 +256,39 @@ export function WorkspaceDecorProvider({
 
   const resetToSeed = useCallback(() => {
     const seed = SEED_BY_WORKSPACE[workspaceId];
-    setState({ items: seed ?? [], visible: true });
+    setState(touchState({ items: seed ?? [], visible: true }));
     setSelectedId(null);
   }, [workspaceId, setState, setSelectedId]);
+
+  const saveSnapshot = useCallback(async () => {
+    const snapshot = touchState(stateRef.current);
+    setState(snapshot);
+    setIsSaving(true);
+    setSaveError(null);
+    try {
+      const res = await fetch('/api/workspace-decor', {
+        method: 'POST',
+        headers: { 'content-type': 'application/json' },
+        body: JSON.stringify({ id: workspaceId, state: snapshot }),
+      });
+      if (!res.ok) {
+        const body = await res.json().catch(() => null);
+        throw new Error(body?.error ?? `Save failed (${res.status})`);
+      }
+      const saved = await res.json();
+      const savedAt = typeof saved.updatedAt === 'number' ? saved.updatedAt : snapshot.updatedAt ?? Date.now();
+      setLastSavedAt(savedAt);
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('hudson:saved', {
+          detail: { key: `hudson.ws.${workspaceId}.decor.cache` },
+        }));
+      }
+    } catch (err) {
+      setSaveError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setIsSaving(false);
+    }
+  }, [workspaceId, setState]);
 
   const value = useMemo<WorkspaceDecorContextValue>(
     () => ({
@@ -205,6 +302,10 @@ export function WorkspaceDecorProvider({
       updateItem,
       removeItem,
       resetToSeed,
+      saveSnapshot,
+      isSaving,
+      lastSavedAt,
+      saveError,
     }),
     [
       workspaceId,
@@ -217,6 +318,10 @@ export function WorkspaceDecorProvider({
       updateItem,
       removeItem,
       resetToSeed,
+      saveSnapshot,
+      isSaving,
+      lastSavedAt,
+      saveError,
     ],
   );
 

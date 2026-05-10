@@ -64,7 +64,8 @@ export function resolveEmbedInitialState(
   const workspaceAppIdSet = new Set(workspaceAppIds);
   const requestedApps = cleanApps(firstParam(searchParams, 'apps'))
     ?? consumer?.defaultApps?.map(cleanId).filter((id): id is string => Boolean(id));
-  let activatedAppIds = (requestedApps ?? workspaceAppIds).filter(id => workspaceAppIdSet.has(id));
+  const defaultWorkspaceApps = workspace.defaultActivatedAppIds?.filter(id => workspaceAppIdSet.has(id));
+  let activatedAppIds = (requestedApps ?? defaultWorkspaceApps ?? workspaceAppIds).filter(id => workspaceAppIdSet.has(id));
 
   const requestedFocus = cleanId(firstParam(searchParams, 'focus'))
     ?? cleanId(consumer?.defaultFocus)

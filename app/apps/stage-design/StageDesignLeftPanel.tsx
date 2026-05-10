@@ -57,24 +57,28 @@ export function StageDesignLeftPanel() {
         const Icon = ICONS[item.type];
         const isSelected = decor.selectedId === item.id;
         return (
-          <button
+          <div
             key={item.id}
-            type="button"
-            onClick={() => decor.selectItem(item.id)}
             className={
-              'group flex items-center gap-2 px-3 py-2 text-left text-[12px] border-l-2 ' +
+              'group flex items-center border-l-2 ' +
               (isSelected
                 ? 'border-l-[var(--hud-accent,#f59e0b)] bg-white/[0.04] text-white/90'
                 : 'border-l-transparent hover:bg-white/[0.025] text-white/60 hover:text-white/80')
             }
           >
-            <Icon size={12} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{itemLabel(item)}</div>
-              <div className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-0.5">
-                {itemSubtype(item)}
+            <button
+              type="button"
+              onClick={() => decor.selectItem(item.id)}
+              className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-[12px]"
+            >
+              <Icon size={12} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate">{itemLabel(item)}</div>
+                <div className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-0.5">
+                  {itemSubtype(item)}
+                </div>
               </div>
-            </div>
+            </button>
             <button
               type="button"
               onClick={(e) => {
@@ -86,7 +90,7 @@ export function StageDesignLeftPanel() {
             >
               <Trash2 size={11} />
             </button>
-          </button>
+          </div>
         );
       })}
     </div>

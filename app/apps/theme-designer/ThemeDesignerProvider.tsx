@@ -116,15 +116,31 @@ function defaultCustomId(sourceId: string): string {
 // hydration mismatch.
 const SSR_DEFAULT_MODE: ThemeMode = 'dark';
 const SSR_DEFAULT_TEMPLATE = 'hudson';
+const ACTIVE_HUDSON_THEME_SELECTOR =
+  '[data-hudson-workspace][data-hudson-template][data-hudson-theme], [data-hudson-surface][data-hudson-template][data-hudson-theme]';
 
-function readDatasetMode(): ThemeMode {
-  if (typeof document === 'undefined') return SSR_DEFAULT_MODE;
-  return document.documentElement.dataset.hudsonTheme === 'light' ? 'light' : 'dark';
+function activeHudsonThemeElement(scope?: HTMLElement | null): HTMLElement {
+  if (typeof document === 'undefined') return undefined as never;
+  const closest = scope?.closest<HTMLElement>(ACTIVE_HUDSON_THEME_SELECTOR);
+  if (closest) return closest;
+  return document.querySelector<HTMLElement>(ACTIVE_HUDSON_THEME_SELECTOR) ?? document.documentElement;
 }
 
-function readDatasetTemplate(): string {
+function themeTargets(scope?: HTMLElement | null): HTMLElement[] {
+  if (typeof document === 'undefined') return [];
+  const html = document.documentElement;
+  const active = activeHudsonThemeElement(scope);
+  return active === html ? [html] : [html, active];
+}
+
+function readDatasetMode(scope?: HTMLElement | null): ThemeMode {
+  if (typeof document === 'undefined') return SSR_DEFAULT_MODE;
+  return activeHudsonThemeElement(scope).dataset.hudsonTheme === 'light' ? 'light' : 'dark';
+}
+
+function readDatasetTemplate(scope?: HTMLElement | null): string {
   if (typeof document === 'undefined') return SSR_DEFAULT_TEMPLATE;
-  return document.documentElement.dataset.hudsonTemplate || SSR_DEFAULT_TEMPLATE;
+  return activeHudsonThemeElement(scope).dataset.hudsonTemplate || SSR_DEFAULT_TEMPLATE;
 }
 
 export function ThemeDesignerProvider({
@@ -151,6 +167,7 @@ export function ThemeDesignerProvider({
   const [isDev, setIsDev] = useState(false);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
   const appliedKeysRef = useRef<Set<string>>(new Set());
+  const scopeRef = useRef<HTMLDivElement | null>(null);
 
   // Sync state to the actual <html> dataset after hydration. The pre-paint
   // script may have flipped these from the SSR defaults based on localStorage
@@ -159,8 +176,8 @@ export function ThemeDesignerProvider({
     let cancelled = false;
     queueMicrotask(() => {
       if (cancelled) return;
-      const mode = readDatasetMode();
-      const template = readDatasetTemplate();
+      const mode = readDatasetMode(scopeRef.current);
+      const template = readDatasetTemplate(scopeRef.current);
       setSelectedMode(mode);
       setSelectedTemplateIdState(template);
       setExportTemplateIdState(defaultCustomId(template));
@@ -181,9 +198,11 @@ export function ThemeDesignerProvider({
         setTemplates(parsed.map(cloneTemplate));
         setSavedTemplates(parsed.map(cloneTemplate));
         setIsDev(Boolean(data.dev));
-        const rootTemplate = readDatasetTemplate();
+        const rootTemplate = readDatasetTemplate(scopeRef.current);
+        const rootMode = readDatasetMode(scopeRef.current);
         const nextTemplate = parsed.some(template => template.id === rootTemplate) ? rootTemplate : parsed[0].id;
         setSelectedTemplateIdState(nextTemplate);
+        setSelectedMode(rootMode);
         setExportTemplateIdState(defaultCustomId(nextTemplate));
         setRefIdState(defaultCustomId(nextTemplate));
         setTemplatesLoaded(true);
@@ -242,23 +261,29 @@ export function ThemeDesignerProvider({
 
   useEffect(() => {
     if (!templatesLoaded || !currentTemplate || currentTemplate.id !== selectedTemplateId || !visible || disabled) return;
-    const root = document.documentElement;
-    root.dataset.hudsonTemplate = currentTemplate.id;
-    root.dataset.hudsonTheme = selectedMode;
+    const targets = themeTargets(scopeRef.current);
+    for (const target of targets) {
+      target.dataset.hudsonTemplate = currentTemplate.id;
+      target.dataset.hudsonTheme = selectedMode;
+    }
 
     const tokens = effectiveTokens(currentTemplate, selectedMode);
     const nextKeys = new Set(Object.keys(tokens));
-    for (const key of appliedKeysRef.current) {
-      if (!nextKeys.has(key)) root.style.removeProperty(key);
-    }
-    for (const [key, value] of Object.entries(tokens)) {
-      if (key === 'color-scheme') root.style.setProperty('color-scheme', value);
-      else if (key.startsWith('--')) root.style.setProperty(key, value);
+    for (const target of targets) {
+      for (const key of appliedKeysRef.current) {
+        if (!nextKeys.has(key)) target.style.removeProperty(key);
+      }
+      for (const [key, value] of Object.entries(tokens)) {
+        if (key === 'color-scheme') target.style.setProperty('color-scheme', value);
+        else if (key.startsWith('--')) target.style.setProperty(key, value);
+      }
     }
     appliedKeysRef.current = nextKeys;
 
     return () => {
-      for (const key of appliedKeysRef.current) root.style.removeProperty(key);
+      for (const target of targets) {
+        for (const key of appliedKeysRef.current) target.style.removeProperty(key);
+      }
       appliedKeysRef.current.clear();
     };
   }, [currentTemplate, selectedMode, selectedTemplateId, templatesLoaded, visible, disabled]);
@@ -282,10 +307,11 @@ export function ThemeDesignerProvider({
   const updateToken = useCallback((key: string, value: string) => {
     if (!currentTemplate) return;
     if (typeof document !== 'undefined') {
-      const root = document.documentElement;
-      root.dataset.hudsonTemplate = currentTemplate.id;
-      root.dataset.hudsonTheme = selectedMode;
-      root.style.setProperty(key, value);
+      for (const target of themeTargets(scopeRef.current)) {
+        target.dataset.hudsonTemplate = currentTemplate.id;
+        target.dataset.hudsonTheme = selectedMode;
+        target.style.setProperty(key, value);
+      }
     }
     const next = updateTemplateToken(currentTemplate, selectedMode, key, value);
     setTemplates(previous => replaceTemplate(previous, next));
@@ -451,7 +477,13 @@ export function ThemeDesignerProvider({
     createCopy,
   ]);
 
-  return <ThemeDesignerContext.Provider value={value}>{children}</ThemeDesignerContext.Provider>;
+  return (
+    <ThemeDesignerContext.Provider value={value}>
+      <div ref={scopeRef} style={{ display: 'contents' }}>
+        {children}
+      </div>
+    </ThemeDesignerContext.Provider>
+  );
 }
 
 export function useThemeDesigner() {

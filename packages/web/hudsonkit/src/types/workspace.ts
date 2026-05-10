@@ -49,8 +49,12 @@ export interface HudsonWorkspace {
   apps: WorkspaceAppConfig[];
   /** Which app receives focus by default */
   defaultFocusedAppId?: string;
+  /** Which apps open by default. Others remain available from the launcher/nav. */
+  defaultActivatedAppIds?: string[];
   /** Initial canvas zoom when the workspace first boots. Defaults to 1 (100%). */
   defaultScale?: number;
+  /** Initial canvas pan offset when the workspace first boots. Defaults to (0,0). */
+  defaultPan?: { x: number; y: number };
   /**
    * Optional structural left navigation for canvas workspaces.
    * - 'on': render expanded

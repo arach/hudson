@@ -6,6 +6,8 @@ import { WorkspaceShell, type WorkspaceShellInitialState } from '../../../shell/
 import { coreWorkspaces } from '../../../apps/registry';
 
 export function EmbedWorkspace({ initialState }: { initialState: WorkspaceShellInitialState }) {
+  const embedWorkspaces = coreWorkspaces.filter(workspace => workspace.id === initialState.activeWorkspaceId);
+
   return (
     <ThemeProvider
       defaultTheme={initialState.theme}
@@ -13,7 +15,7 @@ export function EmbedWorkspace({ initialState }: { initialState: WorkspaceShellI
     >
       <Suspense fallback={null}>
         <WorkspaceShell
-          workspaces={coreWorkspaces}
+          workspaces={embedWorkspaces.length > 0 ? embedWorkspaces : coreWorkspaces}
           defaultWorkspaceId={initialState.activeWorkspaceId}
           bootMode="none"
           persistSession={false}
