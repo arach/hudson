@@ -125,6 +125,9 @@ local.db-*
 # fonts (bundled locally, not committed)
 public/fonts/
 
+# embed bundle (built artifact, see embed-worker/scripts/bundle-client.mjs)
+public/embed/
+
 # resend config
 .resend
 
