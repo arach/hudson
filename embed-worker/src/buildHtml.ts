@@ -10,7 +10,7 @@
 // The document loads:
 //   1. /embed/client.js — standalone React entry bundled via esbuild
 //      (see embed-worker/scripts/bundle-client.mjs, output: public/embed/client.js)
-//      This reads window.__HUDSON_INITIAL__ and mounts EmbedWorkspace.
+//      This reads window.__HUDSON_INITIAL__ and mounts the requested surface.
 //
 //   2. Next.js chunk fallback — if /embed/client.js is not yet built/deployed,
 //      the Worker falls back to loading the known Next.js static chunks from
@@ -148,14 +148,16 @@ function buildPrePaintScript(state: ResolvedEmbedState): string {
  */
 export function buildHtml(
   state: ResolvedEmbedState,
-  _appId: string,
-  _surface: string,
+  appId: string,
+  surface: string,
 ): string {
   const tokenCss = buildTokenCss(state);
   const inlineStyle = buildInlineStyle(state);
   const prePaint = buildPrePaintScript(state);
 
   const payload = {
+    appId,
+    surface,
     ref: state.ref,
     template: state.template,
     theme: state.theme,
@@ -183,7 +185,7 @@ export function buildHtml(
   //   - Form input rule scoped to the embed root forces ≥16px font-size on
   //     focusable inputs so iOS doesn't auto-zoom on focus. Uses max(16px,1em)
   //     so consumers that ship a larger base size still win.
-  return `<!DOCTYPE html><!-- Hudson Embed Worker | ref=${state.ref ?? 'none'} template=${state.template} theme=${state.theme} -->
+  return `<!DOCTYPE html><!-- Hudson Embed Worker | app=${appId} surface=${surface} ref=${state.ref ?? 'none'} template=${state.template} theme=${state.theme} -->
 <html lang="en" data-hudson-template="${state.template}" data-hudson-theme="${state.theme}"${state.ref ? ` data-hudson-ref="${state.ref}"` : ''}>
 <head>
   <meta charset="utf-8">
@@ -224,6 +226,8 @@ ${linkTags}
     data-hudson-ref="${state.ref ?? ''}"
     data-hudson-template="${state.template}"
     data-hudson-theme="${state.theme}"
+    data-hudson-app="${appId}"
+    data-hudson-surface="${surface}"
     data-hudson-workspace="${state.activeWorkspaceId}"
     data-hudson-focus="${state.focusedAppId}"
 ${inlineStyle ? `    style="${inlineStyle}"\n` : ''}  ></div>
