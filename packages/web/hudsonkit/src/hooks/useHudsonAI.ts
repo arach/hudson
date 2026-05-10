@@ -4,6 +4,7 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
+import { createHudsonId } from '../lib/id';
 import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
 import type { MutableRefObject } from 'react';
 
@@ -125,7 +126,7 @@ export function useHudsonAI({
   const onErrorRef = useRef(onError);
 
   // CLI session ID — one per chat lifetime, regenerated on clear
-  const sessionIdRef = useRef(sessionId ?? crypto.randomUUID());
+  const sessionIdRef = useRef(sessionId ?? createHudsonId('session', 24));
 
   // Track which attachments are toggled on
   const [activeAttachments, setActiveAttachments] = useState<Set<string>>(new Set());
@@ -232,7 +233,7 @@ export function useHudsonAI({
   const processedRef = useRef(collectProcessedToolCallIds(initialMessages));
 
   const clearChat = useCallback(() => {
-    const nextSessionId = crypto.randomUUID();
+    const nextSessionId = createHudsonId('session', 24);
     sessionIdRef.current = nextSessionId;
     onSessionIdChange?.(nextSessionId);
     processedRef.current.clear();

@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
-import { sounds } from 'hudsonkit';
+import { createHudsonId, sounds } from 'hudsonkit';
 import { useShaperAI, type AiActivityEntry } from './useShaperAI';
 import type {
   BezierData,
@@ -457,7 +457,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const newProject = useCallback(() => {
     if (projectImage?.url.startsWith('blob:')) URL.revokeObjectURL(projectImage.url);
     clearSession();
-    const id = crypto.randomUUID();
+    const id = createHudsonId('project', 24);
     setProjectId(id);
     setProjectMeta({ id, name: 'Untitled', createdAt: Date.now() });
     setProjectImage(null);

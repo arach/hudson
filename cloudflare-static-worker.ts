@@ -45,7 +45,17 @@ type UIMessageChunk =
   | { type: 'error'; errorText: string };
 
 function createId(prefix: string) {
-  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+  const globalCrypto = globalThis.crypto;
+  if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
+    return `${prefix}-${globalCrypto.randomUUID().slice(0, 8)}`;
+  }
+  if (globalCrypto && typeof globalCrypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(4);
+    globalCrypto.getRandomValues(bytes);
+    const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${prefix}-${id}`;
+  }
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function extractMessageText(message: ChatMessage): string {

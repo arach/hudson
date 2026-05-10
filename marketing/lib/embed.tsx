@@ -84,44 +84,29 @@ const DEFAULT_FONT_MAP: Record<string, string> = {
 };
 
 const DEFAULT_APP_EMBED_ORIGIN = 'https://app.hudsonkit.com';
+const DEV_APP_EMBED_ORIGIN = process.env.NEXT_PUBLIC_HUDSON_APP_ORIGIN ?? '';
+const NODE_ENV = process.env.NODE_ENV;
 
 function currentOrigin(): string {
   if (typeof window === 'undefined') return DEFAULT_APP_EMBED_ORIGIN;
   return window.location.origin;
 }
 
-function isLocalHostname(hostname: string): boolean {
-  return (
-    hostname === 'localhost' ||
-    hostname === '127.0.0.1' ||
-    hostname === '0.0.0.0' ||
-    hostname === '::1' ||
-    hostname.endsWith('.local')
-  );
-}
-
 function appEmbedOrigin(): string {
-  const configured = process.env.NEXT_PUBLIC_HUDSON_APP_ORIGIN?.trim();
+  const configured = DEV_APP_EMBED_ORIGIN.trim();
   if (configured) return configured.replace(/\/$/, '');
-  if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {
-    return window.location.origin;
-  }
+  if (NODE_ENV !== 'production') return '';
   return DEFAULT_APP_EMBED_ORIGIN;
-}
-
-function shouldUseAbsoluteAppEmbedOrigin(): boolean {
-  if (process.env.NEXT_PUBLIC_HUDSON_APP_ORIGIN?.trim()) return true;
-  if (typeof window === 'undefined') return true;
-  return !isLocalHostname(window.location.hostname);
 }
 
 function resolveEmbedUrl(src: string): { url: URL; absolute: boolean } | null {
   try {
     const isAbsolute = /^https?:\/\//i.test(src);
     const isEmbedPath = src.startsWith('/embed');
-    const base = !isAbsolute && isEmbedPath ? appEmbedOrigin() : currentOrigin();
+    const embedOrigin = isEmbedPath ? appEmbedOrigin() : '';
+    const base = !isAbsolute && isEmbedPath && embedOrigin ? embedOrigin : currentOrigin();
     const url = new URL(src, base);
-    return { url, absolute: isAbsolute || (isEmbedPath && shouldUseAbsoluteAppEmbedOrigin()) };
+    return { url, absolute: isAbsolute || Boolean(embedOrigin) };
   } catch {
     return null;
   }

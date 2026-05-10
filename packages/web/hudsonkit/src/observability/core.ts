@@ -14,17 +14,14 @@ import type {
   HTraceSpan,
   HUnsubscribe,
 } from '../types/observability';
+import { createHudsonId } from '../lib/id';
 
 const DEFAULT_BUFFER_SIZE = 200;
 
 const defaultNow = () => Date.now();
 
 const createDefaultId = () => {
-  const random =
-    typeof crypto !== 'undefined' && 'randomUUID' in crypto
-      ? crypto.randomUUID()
-      : Math.random().toString(36).slice(2, 10);
-  return `h_${random}`;
+  return createHudsonId('h', 12);
 };
 
 const serializeError = (error: unknown) => {

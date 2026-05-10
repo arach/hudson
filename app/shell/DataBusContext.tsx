@@ -10,7 +10,7 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from 'hudsonkit';
+import { createHudsonId, type HudsonWorkspace, type WorkspaceAppConfig, type PipeDefinition, type AppOutput, type AppInput } from 'hudsonkit';
 import { useEventSourceInvalidation } from '../hooks/useEventSourceInvalidation';
 
 const PIPE_FALLBACK_POLL_MS = 300_000;
@@ -225,7 +225,7 @@ export function DataBusProvider({
       const res = await fetch('/api/pipes', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pipe: { ...partial, id: crypto.randomUUID().slice(0, 8) } }),
+        body: JSON.stringify({ pipe: { ...partial, id: createHudsonId('', 8) } }),
       });
       const data = await res.json();
       if (data.pipe) {

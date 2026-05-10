@@ -1,6 +1,6 @@
 'use client';
 
-import { useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from 'hudsonkit';
+import { createHudsonId, useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from 'hudsonkit';
 import { AlertTriangle, Camera, Loader2 } from 'lucide-react';
 import type { AIAttachment } from 'hudsonkit';
 import { useLogo, defaults } from './LogoProvider';
@@ -164,7 +164,7 @@ export function LogoTerminal() {
             // Still create with raw source so AI can see error and fix
           }
 
-          const id = crypto.randomUUID().slice(0, 8);
+          const id = createHudsonId('', 8);
           const template: LogoTemplate = {
             id,
             name: args.name as string,

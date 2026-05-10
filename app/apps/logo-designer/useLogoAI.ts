@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
-import { useHudsonAI, usePlatform } from 'hudsonkit';
+import { createHudsonId, useHudsonAI, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
@@ -109,7 +109,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           const source = args.renderBody as string;
           const customParams = (args.params as TemplateParam[]) ?? [];
           const result = await compileTemplate(source, compileEndpoint);
-          const id = crypto.randomUUID().slice(0, 8);
+          const id = createHudsonId('', 8);
           const template: LogoTemplate = {
             id,
             name: args.name as string,

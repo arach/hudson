@@ -63,6 +63,7 @@ export { probeVoxAvailability } from './lib/voxProbe';
 export type { VoxAvailability } from './lib/voxProbe';
 export { safeLocalStorage, safeSessionStorage } from './lib/safe-storage';
 export type { SafeStorage } from './lib/safe-storage';
+export { createHudsonId } from './lib/id';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
