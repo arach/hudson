@@ -1,12 +1,5 @@
-// Static export: all theme resolution happens client-side via WorkspaceEmbedClient
-// (postMessage API and URL params are read in the browser, not at build time)
-import { Suspense } from 'react';
-import WorkspaceEmbedClient from './WorkspaceEmbedClient';
+import { redirect } from 'next/navigation';
 
 export default function WorkspaceEmbedPage() {
-  return (
-    <Suspense>
-      <WorkspaceEmbedClient />
-    </Suspense>
-  );
+  redirect('/embed/hudson/workspace');
 }

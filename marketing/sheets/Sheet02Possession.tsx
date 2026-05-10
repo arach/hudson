@@ -220,7 +220,7 @@ function EmbedSlot({ kind, height }: { kind: 'mock' | 'live'; height: number }) 
       <EmbedFrame height={height}>
         {isMock ? (
           <HudsonEmbed
-            src="/embed/workspace"
+            src="/embed/hudson/workspace"
             surface="workspace"
             sizing={{ mode: 'fill' }}
             density="comfy"

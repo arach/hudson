@@ -83,6 +83,50 @@ const DEFAULT_FONT_MAP: Record<string, string> = {
   '--font-mono': '--hud-font-mono',
 };
 
+const DEFAULT_APP_EMBED_ORIGIN = 'https://app.hudsonkit.com';
+
+function currentOrigin(): string {
+  if (typeof window === 'undefined') return DEFAULT_APP_EMBED_ORIGIN;
+  return window.location.origin;
+}
+
+function isLocalHostname(hostname: string): boolean {
+  return (
+    hostname === 'localhost' ||
+    hostname === '127.0.0.1' ||
+    hostname === '0.0.0.0' ||
+    hostname === '::1' ||
+    hostname.endsWith('.local')
+  );
+}
+
+function appEmbedOrigin(): string {
+  const configured = process.env.NEXT_PUBLIC_HUDSON_APP_ORIGIN?.trim();
+  if (configured) return configured.replace(/\/$/, '');
+  if (typeof window !== 'undefined' && isLocalHostname(window.location.hostname)) {
+    return window.location.origin;
+  }
+  return DEFAULT_APP_EMBED_ORIGIN;
+}
+
+function shouldUseAbsoluteAppEmbedOrigin(): boolean {
+  if (process.env.NEXT_PUBLIC_HUDSON_APP_ORIGIN?.trim()) return true;
+  if (typeof window === 'undefined') return true;
+  return !isLocalHostname(window.location.hostname);
+}
+
+function resolveEmbedUrl(src: string): { url: URL; absolute: boolean } | null {
+  try {
+    const isAbsolute = /^https?:\/\//i.test(src);
+    const isEmbedPath = src.startsWith('/embed');
+    const base = !isAbsolute && isEmbedPath ? appEmbedOrigin() : currentOrigin();
+    const url = new URL(src, base);
+    return { url, absolute: isAbsolute || (isEmbedPath && shouldUseAbsoluteAppEmbedOrigin()) };
+  } catch {
+    return null;
+  }
+}
+
 function readVars(el: Element, map: Record<string, string>): Record<string, string> {
   const computed = getComputedStyle(el);
   const out: Record<string, string> = {};
@@ -114,40 +158,32 @@ export function HudsonEmbed({
   const iframeRef = useRef<HTMLIFrameElement>(null);
   const [reportedHeight, setReportedHeight] = useState<number | null>(null);
   const { state: studioState } = useStudio();
+  const resolvedEmbed = resolveEmbedUrl(src);
 
   const targetOrigin = (() => {
-    try {
-      if (typeof window === 'undefined') return '*';
-      return new URL(src, window.location.origin).origin;
-    } catch {
-      return '*';
-    }
+    return resolvedEmbed?.url.origin ?? '*';
   })();
 
   const encodedPalette = encodeThemeForEmbed(studioState);
 
   const iframeSrc = (() => {
-    try {
-      const isAbsolute = /^https?:\/\//i.test(src);
-      const url = new URL(src, typeof window === 'undefined' ? 'http://localhost' : window.location.origin);
-      if (consumerId) url.searchParams.set('ref', consumerId);
-      url.searchParams.set('mode', sizing.mode);
-      if (sizing.mode === 'fixed') {
-        url.searchParams.set('sizex', String(sizing.width));
-        url.searchParams.set('sizey', String(sizing.height));
-      }
-      if (density) url.searchParams.set('density', density);
-      url.searchParams.set('surface', surface);
-      if (template) url.searchParams.set('template', template);
-      // When a consumerId is provided, defer theme to the registry entry
-      // (light/dark drives `data-hudson-theme` and the tokens.css cascade).
-      // Without a consumerId, fall back to dark — Hudson's native default.
-      if (!consumerId) url.searchParams.set('theme', 'dark');
-      url.searchParams.set('palette', encodedPalette);
-      return isAbsolute ? url.toString() : url.pathname + url.search;
-    } catch {
-      return src;
+    if (!resolvedEmbed) return src;
+    const { url, absolute } = resolvedEmbed;
+    if (consumerId) url.searchParams.set('ref', consumerId);
+    url.searchParams.set('mode', sizing.mode);
+    if (sizing.mode === 'fixed') {
+      url.searchParams.set('sizex', String(sizing.width));
+      url.searchParams.set('sizey', String(sizing.height));
     }
+    if (density) url.searchParams.set('density', density);
+    url.searchParams.set('surface', surface);
+    if (template) url.searchParams.set('template', template);
+    // When a consumerId is provided, defer theme to the registry entry
+    // (light/dark drives `data-hudson-theme` and the tokens.css cascade).
+    // Without a consumerId, fall back to dark — Hudson's native default.
+    if (!consumerId) url.searchParams.set('theme', 'dark');
+    url.searchParams.set('palette', encodedPalette);
+    return absolute ? url.toString() : url.pathname + url.search;
   })();
 
   const buildPalette = useCallback(() => {
