@@ -409,7 +409,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('shaper-session');
+    try { localStorage.removeItem('shaper-session'); } catch { /* storage unavailable */ }
   }, []);
 
   const startProjectFromImage = useCallback(async (image: ProjectImage) => {
