@@ -5,7 +5,7 @@
  * Bundles app/embed/client.tsx into a single self-contained JS file using
  * esbuild. Output lands at public/embed/client.js and is served by Pages CDN.
  *
- * The Worker's fallback HTML shell references this as:
+ * The Worker's HTML shell references this as:
  *   <script src="/embed/client.js" type="module"></script>
  *
  * Usage (from repo root):
@@ -29,6 +29,45 @@ if (!existsSync(outDir)) {
   mkdirSync(outDir, { recursive: true });
 }
 
+const sdkSrc = join(root, 'packages/web/hudsonkit/src');
+
+// Resolve `hudsonkit` and `hudsonkit/<sub>` against the SDK source tree (top-
+// level barrel files like src/shell.ts, src/controls.ts). The package's
+// exports map points at dist/, but the embed client bundle is built from
+// source so local SDK edits flow through without a separate SDK build step.
+const hudsonkitResolverPlugin = {
+  name: 'hudsonkit-src-resolver',
+  setup(build) {
+    build.onResolve({ filter: /^hudsonkit($|\/)/ }, (args) => {
+      if (args.path === 'hudsonkit') {
+        return { path: join(sdkSrc, 'index.ts') };
+      }
+      const sub = args.path.slice('hudsonkit/'.length);
+      return { path: join(sdkSrc, `${sub}.ts`) };
+    });
+  },
+};
+
+// Replace the dev-only registry sidecar with a no-op stub. The runtime call
+// site in app/apps/registry.ts gates the require() on NODE_ENV ===
+// 'development', but esbuild can't always prune through CommonJS require, so
+// we explicitly stub it. Without this, the bundler walks into whatever the
+// developer has on disk at app/local/apps.local.ts (which often imports
+// sibling projects like ~/dev/arc) and fails to resolve.
+const stubAppsLocalPlugin = {
+  name: 'stub-apps-local',
+  setup(build) {
+    build.onResolve({ filter: /(^|\/)local\/apps\.local$/ }, (args) => ({
+      path: args.path,
+      namespace: 'stub-apps-local',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'stub-apps-local' }, () => ({
+      contents: 'module.exports = { localApps: [], localWorkspaces: [] };',
+      loader: 'js',
+    }));
+  },
+};
+
 console.log('[bundle-client] Bundling embed client entry...');
 
 await build({
@@ -46,11 +85,9 @@ await build({
   jsx: 'automatic',
   // Mark Node built-ins as external (shouldn't be any in the embed client)
   platform: 'browser',
-  // Resolve monorepo alias for hudsonkit
-  alias: {
-    'hudsonkit': join(root, 'packages/web/hudsonkit/src/index.ts'),
-    'hudsonkit/shell': join(root, 'packages/web/hudsonkit/src/shell/index.ts'),
-  },
+  // Force NODE_ENV so dev-only branches in app code dead-code-eliminate.
+  define: { 'process.env.NODE_ENV': '"production"' },
+  plugins: [hudsonkitResolverPlugin, stubAppsLocalPlugin],
   // Tree-shake aggressively
   treeShaking: true,
   logLevel: 'info',
