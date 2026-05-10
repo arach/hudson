@@ -20,6 +20,27 @@
 //      pre-paint script + CSS vars give correct theming immediately.
 //
 // Web Standards only — no HTMLRewriter, no CF bindings, no caches.default.
+//
+// ─── Iframe consumer contract ─────────────────────────────────────────────────
+// The HTML shell here is the *content* of a consumer iframe — it is not the
+// page that owns the iframe element. When a third-party page embeds Hudson
+// they paste an <iframe> snippet that loads one of these /embed/<app>/<surface>
+// URLs. The recommended `allow` attribute for that <iframe> is:
+//
+//   allow="autoplay; fullscreen; encrypted-media; clipboard-write; microphone"
+//
+// Rationale:
+//   - autoplay         — preview surfaces may auto-play sample audio/video
+//   - fullscreen       — canvas surfaces support a full-screen mode
+//   - encrypted-media  — needed by anything using EME (some demo content)
+//   - clipboard-write  — copy-to-clipboard buttons in the workspace UI
+//   - microphone       — voice input in HudsonAI / Assistant surfaces
+//
+// `camera` and `geolocation` are intentionally NOT in the canonical list — no
+// current surface uses them, so they should not be requested by default.
+//
+// The canonical embed snippet rendered by the marketing site lives at
+// `marketing/lib/embed.tsx`. Keep that snippet in sync with this list.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import type { ResolvedEmbedState } from './index.ts';
@@ -143,19 +164,53 @@ export function buildHtml(
 
   // The pre-paint script + consumer tokens go in <head>; the React mount goes
   // at the end of <body> so the #hudson-embed-root div is already in the DOM.
+  //
+  // iPhone Safari hardening (see docs/embed-mobile-notes if expanding):
+  //   - viewport-fit=cover lets safe-area-inset-* env() vars resolve inside
+  //     the iframe so any chrome that hugs an edge can use them.
+  //   - 100dvh (with 100vh fallback) avoids the URL-bar / tab-strip / bottom-
+  //     bar mis-sizing of vh on iOS Safari.
+  //   - overscroll-behavior: contain prevents iframe-internal scroll from
+  //     chaining into the host page's scroll (rubber-band, pull-to-refresh).
+  //   - Form input rule scoped to the embed root forces ≥16px font-size on
+  //     focusable inputs so iOS doesn't auto-zoom on focus. Uses max(16px,1em)
+  //     so consumers that ship a larger base size still win.
   return `<!DOCTYPE html><!-- Hudson Embed Worker | ref=${state.ref ?? 'none'} template=${state.template} theme=${state.theme} -->
 <html lang="en" data-hudson-template="${state.template}" data-hudson-theme="${state.theme}"${state.ref ? ` data-hudson-ref="${state.ref}"` : ''}>
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
   <title>Hudson — Embed</title>
   <meta name="robots" content="noindex, nofollow">
-${tokenCss ? `  <style id="hudson-worker-tokens">\n${tokenCss}\n  </style>` : ''}
+  <style id="hudson-worker-shell">
+    html, body { margin: 0; padding: 0; }
+    body { overflow: hidden; background: var(--hud-bg, oklch(0.16 0.005 240)); }
+    #hudson-embed-root {
+      /* 100vh is wrong on iOS Safari (see comment above). 100dvh tracks the
+         current visible viewport; declared after 100vh as a progressive
+         enhancement so older browsers fall back gracefully. */
+      min-height: 100vh;
+      min-height: 100dvh;
+      /* Prevent scroll-chaining into the host page when the iframe content
+         scrolls. Touch-action stays auto so the canvas inside can still
+         drive its own pan/zoom gestures. */
+      overscroll-behavior: contain;
+    }
+    /* iOS Safari auto-zooms when an input <16px gets focus. Anchor at 16px
+       and let consumers go bigger via 1em. Scoped to the embed root so we
+       don't fight host-page styles if this DOM ever escapes its iframe. */
+    #hudson-embed-root input,
+    #hudson-embed-root select,
+    #hudson-embed-root textarea {
+      font-size: max(16px, 1em);
+    }
+${tokenCss}
+  </style>
   <script id="__HUDSON_INITIAL__">window.__HUDSON_INITIAL__=${safeJson(payload)};</script>
   <script>${prePaint}</script>
 ${linkTags}
 </head>
-<body style="margin:0;padding:0;overflow:hidden;background:var(--hud-bg,oklch(0.16 0.005 240))">
+<body>
   <div
     id="hudson-embed-root"
     data-hudson-ref="${state.ref ?? ''}"
@@ -163,8 +218,7 @@ ${linkTags}
     data-hudson-theme="${state.theme}"
     data-hudson-workspace="${state.activeWorkspaceId}"
     data-hudson-focus="${state.focusedAppId}"
-    style="${inlineStyle}${inlineStyle ? '; ' : ''}min-height: 100vh"
-  ></div>
+${inlineStyle ? `    style="${inlineStyle}"\n` : ''}  ></div>
   <script type="module" src="${EMBED_CLIENT_URL}" crossorigin="anonymous"></script>
 </body>
 </html>`;
