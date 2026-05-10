@@ -91,6 +91,9 @@ next-env.d.ts
 # vercel
 .vercel
 
+# wrangler / cloudflare local dev state
+.wrangler/
+
 # misc build artifacts
 .cache/
 .parcel-cache/

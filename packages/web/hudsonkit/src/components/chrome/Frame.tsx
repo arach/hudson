@@ -52,7 +52,7 @@ const Frame: React.FC<FrameProps> = ({
   onViewportChange, onCanvasClick,
   canvasProps,
   zoomSensitivity,
-  zoomControlsRightOffset: _zoomControlsRightOffset,
+  zoomControlsRightOffset,
   canvasContextMenuItems,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -254,8 +254,14 @@ const Frame: React.FC<FrameProps> = ({
         />
       )}
 
-      {/* Zoom controls (canvas mode) — pinned to the frame's bottom-right corner. */}
-      <div className="absolute bottom-[44px] right-4 z-30">
+      {/* Zoom controls (canvas mode) — pinned to the bottom-right of the
+          visible canvas viewport. The right offset shifts the controls left
+          when the shell's right inspector is open so they don't get hidden
+          behind it. */}
+      <div
+        className="absolute bottom-[44px] z-30"
+        style={{ right: 16 + (zoomControlsRightOffset ?? 0) }}
+      >
         <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
       </div>
 

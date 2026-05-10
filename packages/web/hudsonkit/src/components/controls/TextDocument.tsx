@@ -260,25 +260,25 @@ export function TextDocumentSurfaceInner({
   const editable = !document.readOnly && mode !== 'read' && mode !== 'preview';
 
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden border border-white/[0.06] bg-[#0a0f12] ${className ?? ''}`}>
+    <div className={`flex min-h-0 flex-col overflow-hidden border border-border/60 bg-card/85 ${className ?? ''}`}>
       {showHeader && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] bg-white/[0.025] px-3 py-2">
-          <FileText size={13} className="shrink-0 text-cyan-300/55" />
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
+          <FileText size={13} className="shrink-0 text-cyan-700/70 dark:text-cyan-300/55" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium text-white/78">{document.title}</div>
-            <div className="truncate font-mono text-[10px] text-white/28">
+            <div className="truncate text-[12px] font-medium text-foreground/86">{document.title}</div>
+            <div className="truncate font-mono text-[10px] text-muted-foreground">
               {document.uri ?? document.mediaType ?? document.kind}
             </div>
           </div>
           {dirty && (
-            <span className="font-mono text-[9px] uppercase tracking-wider text-amber-300/70">Modified</span>
+            <span className="font-mono text-[9px] uppercase tracking-wider text-amber-700/80 dark:text-amber-300/70">Modified</span>
           )}
           {isMarkdown && (
-            <div className="flex rounded border border-white/[0.08] bg-white/[0.03] p-0.5">
+            <div className="flex rounded border border-border/60 bg-card/60 p-0.5">
               <button
                 type="button"
                 onClick={() => setMode('preview')}
-                className={`rounded px-2 py-1 text-[10px] ${mode === 'preview' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+                className={`rounded px-2 py-1 text-[10px] ${mode === 'preview' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
                 title="Preview markdown"
               >
                 <Eye size={12} />
@@ -286,7 +286,7 @@ export function TextDocumentSurfaceInner({
               <button
                 type="button"
                 onClick={() => setMode('edit')}
-                className={`rounded px-2 py-1 text-[10px] ${mode === 'edit' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+                className={`rounded px-2 py-1 text-[10px] ${mode === 'edit' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
                 title="Edit markdown source"
               >
                 <Pencil size={12} />
@@ -294,11 +294,11 @@ export function TextDocumentSurfaceInner({
             </div>
           )}
           {isCode && (
-            <div className="flex rounded border border-white/[0.08] bg-white/[0.03] p-0.5">
+            <div className="flex rounded border border-border/60 bg-card/60 p-0.5">
               <button
                 type="button"
                 onClick={() => setMode('read')}
-                className={`rounded px-2 py-1 text-[10px] ${mode === 'read' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+                className={`rounded px-2 py-1 text-[10px] ${mode === 'read' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
                 title="Read only"
               >
                 <Eye size={12} />
@@ -306,7 +306,7 @@ export function TextDocumentSurfaceInner({
               <button
                 type="button"
                 onClick={() => setMode('edit')}
-                className={`rounded px-2 py-1 text-[10px] ${mode === 'edit' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+                className={`rounded px-2 py-1 text-[10px] ${mode === 'edit' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
                 title="Edit code"
               >
                 <Pencil size={12} />
@@ -317,7 +317,7 @@ export function TextDocumentSurfaceInner({
             <button
               type="button"
               onClick={save}
-              className="rounded border border-cyan-300/15 bg-cyan-400/10 p-1.5 text-cyan-200/75 hover:bg-cyan-400/16 hover:text-cyan-100"
+              className="rounded border border-cyan-700/30 dark:border-cyan-300/15 bg-cyan-700/10 dark:bg-cyan-400/10 p-1.5 text-cyan-700 dark:text-cyan-200/75 hover:bg-cyan-700/15 dark:hover:bg-cyan-400/16 hover:text-cyan-700 dark:hover:text-cyan-100"
               title="Save document"
             >
               <Save size={13} />
@@ -355,7 +355,7 @@ function DocumentBody({ editable }: { editable: boolean }) {
       <textarea
         value={value}
         onChange={event => updateValue(event.target.value)}
-        className="min-h-0 flex-1 resize-none bg-[#0a0f12] px-5 py-4 font-mono text-[12px] leading-relaxed text-white/72 outline-none placeholder:text-white/18"
+        className="min-h-0 flex-1 resize-none bg-card/85 px-5 py-4 font-mono text-[12px] leading-relaxed text-foreground/82 outline-none placeholder:text-muted-foreground"
         placeholder="Start typing..."
         spellCheck={false}
       />
@@ -363,7 +363,7 @@ function DocumentBody({ editable }: { editable: boolean }) {
   }
 
   return (
-    <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap bg-[#0a0f12] px-5 py-4 font-mono text-[12px] leading-relaxed text-white/72">
+    <pre className="min-h-0 flex-1 overflow-auto whitespace-pre-wrap bg-card/85 px-5 py-4 font-mono text-[12px] leading-relaxed text-foreground/82">
       {value}
     </pre>
   );
@@ -371,22 +371,22 @@ function DocumentBody({ editable }: { editable: boolean }) {
 
 function MarkdownPreview({ markdown, className }: { markdown: string; className?: string }) {
   return (
-    <div className={`text-[13px] leading-relaxed text-white/68 ${className ?? ''}`}>
+    <div className={`text-[13px] leading-relaxed text-foreground/76 ${className ?? ''}`}>
       <ReactMarkdown
         remarkPlugins={[remarkGfm]}
         components={{
-          h1: props => <h1 className="mb-3 mt-1 text-[18px] font-semibold text-white/90" {...props} />,
-          h2: props => <h2 className="mb-2 mt-5 text-[15px] font-semibold text-white/86" {...props} />,
-          h3: props => <h3 className="mb-2 mt-4 text-[13px] font-semibold text-white/82" {...props} />,
+          h1: props => <h1 className="mb-3 mt-1 text-[18px] font-semibold text-foreground/92" {...props} />,
+          h2: props => <h2 className="mb-2 mt-5 text-[15px] font-semibold text-foreground/88" {...props} />,
+          h3: props => <h3 className="mb-2 mt-4 text-[13px] font-semibold text-foreground/84" {...props} />,
           p: props => <p className="my-3" {...props} />,
-          ul: props => <ul className="my-3 list-disc space-y-1 pl-5 text-white/62" {...props} />,
-          ol: props => <ol className="my-3 list-decimal space-y-1 pl-5 text-white/62" {...props} />,
-          blockquote: props => <blockquote className="my-3 border-l-2 border-cyan-300/35 pl-3 text-white/46 italic" {...props} />,
-          a: props => <a className="text-cyan-300/78 underline underline-offset-2 hover:text-cyan-200" target="_blank" rel="noreferrer" {...props} />,
-          hr: props => <hr className="my-5 border-white/[0.08]" {...props} />,
+          ul: props => <ul className="my-3 list-disc space-y-1 pl-5 text-foreground/72" {...props} />,
+          ol: props => <ol className="my-3 list-decimal space-y-1 pl-5 text-foreground/72" {...props} />,
+          blockquote: props => <blockquote className="my-3 border-l-2 border-cyan-700/40 dark:border-cyan-300/35 pl-3 text-muted-foreground italic" {...props} />,
+          a: props => <a className="text-cyan-700 dark:text-cyan-300/78 underline underline-offset-2 hover:text-cyan-700/80 dark:hover:text-cyan-200" target="_blank" rel="noreferrer" {...props} />,
+          hr: props => <hr className="my-5 border-border/60" {...props} />,
           table: props => <div className="my-4 overflow-auto"><table className="w-full border-collapse text-left" {...props} /></div>,
-          th: props => <th className="border border-white/[0.08] bg-white/[0.04] px-2 py-1 text-white/78" {...props} />,
-          td: props => <td className="border border-white/[0.06] px-2 py-1 text-white/62" {...props} />,
+          th: props => <th className="border border-border/60 bg-muted/40 px-2 py-1 text-foreground/82" {...props} />,
+          td: props => <td className="border border-border/60 px-2 py-1 text-foreground/72" {...props} />,
           code: ({ children, className: codeClassName, ...props }) => {
             const match = /language-(\w+)/.exec(codeClassName ?? '');
             const code = String(children).replace(/\n$/, '');
@@ -402,7 +402,7 @@ function MarkdownPreview({ markdown, className }: { markdown: string; className?
               );
             }
             return (
-              <code className="rounded bg-white/[0.06] px-1 py-0.5 font-mono text-[12px] text-cyan-200/80" {...props}>
+              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[12px] text-cyan-700 dark:text-cyan-200/80" {...props}>
                 {children}
               </code>
             );

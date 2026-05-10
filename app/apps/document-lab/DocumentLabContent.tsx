@@ -18,7 +18,7 @@ export function DocumentLabContent() {
   } = useDocumentLab();
 
   return (
-    <div className="flex h-full min-h-[calc(100vh-28px)] flex-col bg-[#070b0d] px-3 pb-3 pt-14">
+    <div className="flex h-full min-h-[calc(100vh-28px)] flex-col bg-background px-3 pb-3 pt-14">
       <div className="mb-2 flex shrink-0 gap-1 overflow-x-auto">
         {documents.map(document => (
           <button
@@ -27,21 +27,21 @@ export function DocumentLabContent() {
             onClick={() => selectDocument(document.id)}
             className={`shrink-0 rounded border px-3 py-1.5 text-left transition-colors ${
               document.id === activeDocumentId
-                ? 'border-cyan-300/24 bg-cyan-400/12 text-cyan-100'
-                : 'border-white/[0.06] bg-white/[0.03] text-white/46 hover:bg-white/[0.055] hover:text-white/72'
+                ? 'border-cyan-700/40 dark:border-cyan-300/24 bg-cyan-700/10 dark:bg-cyan-400/12 text-cyan-700 dark:text-cyan-100'
+                : 'border-border/60 bg-card/60 text-muted-foreground hover:bg-muted/60 hover:text-foreground/80'
             }`}
           >
             <span className="block text-[11px] font-medium">{document.title}</span>
-            <span className="block font-mono text-[9px] uppercase tracking-wider text-white/30">{document.kind}</span>
+            <span className="block font-mono text-[9px] uppercase tracking-wider text-muted-foreground/80">{document.kind}</span>
           </button>
         ))}
         {diffs.map(diff => (
           <div
             key={diff.id}
-            className="shrink-0 rounded border border-emerald-300/18 bg-emerald-400/10 px-3 py-1.5 text-left text-emerald-100"
+            className="shrink-0 rounded border border-emerald-700/30 dark:border-emerald-300/18 bg-emerald-700/10 dark:bg-emerald-400/10 px-3 py-1.5 text-left text-emerald-700 dark:text-emerald-100"
           >
             <span className="block text-[11px] font-medium">{diff.title}</span>
-            <span className="block font-mono text-[9px] uppercase tracking-wider text-emerald-200/45">diff</span>
+            <span className="block font-mono text-[9px] uppercase tracking-wider text-emerald-700/70 dark:text-emerald-200/45">diff</span>
           </div>
         ))}
       </div>

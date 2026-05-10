@@ -74,7 +74,7 @@ export function AI({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto frame-scrollbar p-3 space-y-3">
         {messages.length === 0 && (
-          <div className="text-neutral-500 text-center py-8 select-none">
+          <div className="text-muted-foreground/80 text-center py-8 select-none">
             {placeholder}
           </div>
         )}
@@ -84,8 +84,8 @@ export function AI({
             <div
               className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-wrap break-words leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-emerald-500/10 text-emerald-100 border border-emerald-500/20'
-                  : 'bg-neutral-800/50 text-neutral-200 border border-neutral-700/50'
+                  ? 'bg-accent/10 text-accent-foreground border border-accent/20'
+                  : 'bg-muted/50 text-foreground border border-border/50'
               }`}
             >
               {(msg.parts ?? []).map((part, i) => {
@@ -101,7 +101,7 @@ export function AI({
                     .join(', ');
                   return (
                     <div key={i} className="text-[11px] text-cyan-400/70 mt-1 font-mono">
-                      <span className="text-neutral-500">{'↳ '}</span>
+                      <span className="text-muted-foreground/80">{'↳ '}</span>
                       {name}({argStr})
                     </div>
                   );
@@ -114,7 +114,7 @@ export function AI({
 
         {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex justify-start">
-            <div className="bg-neutral-800/50 border border-neutral-700/50 rounded-lg px-3 py-2 text-neutral-400">
+            <div className="bg-muted/50 border border-border/50 rounded-lg px-3 py-2 text-muted-foreground">
               <span className="animate-pulse">...</span>
             </div>
           </div>
@@ -130,11 +130,11 @@ export function AI({
       )}
 
       {/* Input bar */}
-      <div className="px-3 py-2.5 border-t border-neutral-700/50 bg-neutral-900/50">
+      <div className="px-3 py-2.5 border-t border-border/50 bg-background/60">
         {/* Attachment toggles */}
         {hasAttachments && (
           <div className="flex items-center gap-1.5 mb-2">
-            <Paperclip size={11} className="text-neutral-500 shrink-0" />
+            <Paperclip size={11} className="text-muted-foreground/80 shrink-0" />
             {attachments.map((att) => {
               const isActive = activeAttachments.has(att.label);
               return (
@@ -145,7 +145,7 @@ export function AI({
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     isActive
                       ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-                      : 'text-neutral-500 border-neutral-700 hover:text-neutral-300 hover:border-neutral-600'
+                      : 'text-muted-foreground/80 border-border hover:text-foreground hover:border-neutral-600'
                   }`}
                 >
                   {att.label}
@@ -153,16 +153,16 @@ export function AI({
               );
             })}
             {activeAttachments.size > 0 && (
-              <span className="text-[10px] text-neutral-600 ml-1">attached</span>
+              <span className="text-[10px] text-muted-foreground/60 ml-1">attached</span>
             )}
           </div>
         )}
-        <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-neutral-700 bg-neutral-800/60 px-3 py-2 focus-within:border-emerald-500/40 transition-colors">
+        <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 focus-within:border-accent/40 transition-colors">
           {messages.length > 0 && (
             <button
               type="button"
               onClick={() => clearChat()}
-              className="p-1 rounded text-neutral-500 hover:text-neutral-300 hover:bg-neutral-700 transition-colors"
+              className="p-1 rounded text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
               title="Clear"
             >
               <Trash2 size={12} />
@@ -175,7 +175,7 @@ export function AI({
             onChange={(e) => setInput(e.target.value)}
             onKeyDown={onKeyDown}
             placeholder={placeholder}
-            className="flex-1 bg-transparent outline-none text-neutral-100 placeholder:text-neutral-500 caret-emerald-400"
+            className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground/80 caret-accent"
             disabled={isStreaming}
           />
           {isStreaming ? (
@@ -191,7 +191,7 @@ export function AI({
             <button
               type="submit"
               disabled={!input.trim()}
-              className="text-[11px] px-2 py-1 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 hover:bg-emerald-500/20 disabled:opacity-30 disabled:cursor-default transition-colors"
+              className="text-[11px] px-2 py-1 rounded bg-accent/10 text-accent border border-accent/30 hover:bg-accent/20 disabled:opacity-30 disabled:cursor-default transition-colors"
             >
               Send
             </button>

@@ -48,34 +48,34 @@ export type RequestTab = 'params' | 'headers' | 'body';
 export type ResponseTab = 'body' | 'headers';
 
 export const METHOD_COLORS: Record<HttpMethod, string> = {
-  GET: 'text-emerald-400',
-  POST: 'text-amber-400',
-  PUT: 'text-blue-400',
-  PATCH: 'text-cyan-400',
-  DELETE: 'text-red-400',
-  HEAD: 'text-neutral-400',
-  OPTIONS: 'text-neutral-400',
+  GET: 'text-emerald-700 dark:text-emerald-400',
+  POST: 'text-amber-700 dark:text-amber-400',
+  PUT: 'text-blue-700 dark:text-blue-400',
+  PATCH: 'text-cyan-700 dark:text-cyan-400',
+  DELETE: 'text-red-700 dark:text-red-400',
+  HEAD: 'text-muted-foreground',
+  OPTIONS: 'text-muted-foreground',
 };
 
 export const METHOD_BG_COLORS: Record<HttpMethod, string> = {
-  GET: 'bg-emerald-500/10 border-emerald-500/20',
-  POST: 'bg-amber-500/10 border-amber-500/20',
-  PUT: 'bg-blue-500/10 border-blue-500/20',
-  PATCH: 'bg-cyan-500/10 border-cyan-500/20',
-  DELETE: 'bg-red-500/10 border-red-500/20',
-  HEAD: 'bg-neutral-500/10 border-neutral-500/20',
-  OPTIONS: 'bg-neutral-500/10 border-neutral-500/20',
+  GET: 'bg-emerald-700/10 dark:bg-emerald-500/10 border-emerald-700/30 dark:border-emerald-500/20',
+  POST: 'bg-amber-700/10 dark:bg-amber-500/10 border-amber-700/30 dark:border-amber-500/20',
+  PUT: 'bg-blue-700/10 dark:bg-blue-500/10 border-blue-700/30 dark:border-blue-500/20',
+  PATCH: 'bg-cyan-700/10 dark:bg-cyan-500/10 border-cyan-700/30 dark:border-cyan-500/20',
+  DELETE: 'bg-red-700/10 dark:bg-red-500/10 border-red-700/30 dark:border-red-500/20',
+  HEAD: 'bg-muted/40 border-border/40',
+  OPTIONS: 'bg-muted/40 border-border/40',
 };
 
 export const STATUS_COLORS: Record<string, string> = {
-  '2': 'text-emerald-400',
-  '3': 'text-blue-400',
-  '4': 'text-amber-400',
-  '5': 'text-red-400',
+  '2': 'text-emerald-700 dark:text-emerald-400',
+  '3': 'text-blue-700 dark:text-blue-400',
+  '4': 'text-amber-700 dark:text-amber-400',
+  '5': 'text-red-700 dark:text-red-400',
 };
 
 export function getStatusColor(status: number): string {
-  return STATUS_COLORS[String(status)[0]] ?? 'text-neutral-400';
+  return STATUS_COLORS[String(status)[0]] ?? 'text-muted-foreground';
 }
 
 export function formatBytes(bytes: number): string {

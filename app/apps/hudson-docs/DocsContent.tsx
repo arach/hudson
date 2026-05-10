@@ -41,7 +41,7 @@ export function DocsContent() {
               onClick={() => { if (!isDraggingRef.current) setSelectedCard('hub'); }}
               style={{ boxShadow: hubShadow }}
               className={`w-[480px] p-6 border rounded-lg bg-card/78 backdrop-blur-sm pointer-events-auto cursor-grab active:cursor-grabbing transition-all ${
-                isHubSelected ? 'border-emerald-500/80' : 'border-border/70 hover:border-border'
+                isHubSelected ? 'border-accent/80' : 'border-border/70 hover:border-border'
               }`}
             >
               <h1 className="text-xl font-bold text-foreground mb-1 font-mono tracking-wider">HUDSON</h1>
@@ -58,13 +58,13 @@ export function DocsContent() {
                       onClick={() => toggleSheet(c.id)}
                       className={`p-2.5 rounded border text-left transition-all cursor-pointer pointer-events-auto ${
                         isOpen
-                          ? 'border-emerald-500/50 bg-emerald-500/5'
+                          ? 'border-accent/50 bg-accent/5'
                           : 'border-border/60 bg-background/55 hover:border-border hover:bg-accent/8'
                       }`}
                     >
                       <div className="flex items-center gap-1.5 mb-0.5">
-                        <Icon size={10} className={isOpen ? 'text-emerald-400' : 'text-muted-foreground'} />
-                        <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-emerald-400' : 'text-emerald-400/70'}`}>{c.label}</span>
+                        <Icon size={10} className={isOpen ? 'text-accent' : 'text-muted-foreground'} />
+                        <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-accent' : 'text-accent/70'}`}>{c.label}</span>
                       </div>
                       <div className="text-muted-foreground text-[9px] font-mono leading-tight mb-0.5">{c.ns}</div>
                       <div className="text-foreground/76 text-[10px] leading-tight">{c.desc}</div>
@@ -86,13 +86,13 @@ export function DocsContent() {
                         onClick={() => toggleSheet(sheetId)}
                         className={`w-full p-2 rounded border text-left transition-all cursor-pointer pointer-events-auto flex items-center gap-2 ${
                           isOpen
-                            ? 'border-emerald-500/50 bg-emerald-500/5'
+                            ? 'border-accent/50 bg-accent/5'
                             : 'border-border/60 bg-background/55 hover:border-border hover:bg-accent/8'
                         }`}
                       >
-                        <Bot size={10} className={isOpen ? 'text-emerald-400' : 'text-muted-foreground'} />
+                        <Bot size={10} className={isOpen ? 'text-accent' : 'text-muted-foreground'} />
                         <div className="min-w-0">
-                          <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-emerald-400' : 'text-emerald-400/70'}`}>{doc.title}</span>
+                          <span className={`font-bold tracking-wider text-[10px] ${isOpen ? 'text-accent' : 'text-accent/70'}`}>{doc.title}</span>
                           <div className="text-foreground/76 text-[10px] leading-tight">{doc.description}</div>
                         </div>
                       </button>

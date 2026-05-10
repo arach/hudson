@@ -8,13 +8,13 @@
   --card-foreground: 0.95 0 0;
   --popover: 0.16 0 0;
   --popover-foreground: 0.95 0 0;
-  --primary: 0.75 0.17 162;
+  --primary: 0.70 0.16 50;
   --primary-foreground: 0.145 0 0;
   --secondary: 0.24 0 0;
   --secondary-foreground: 0.95 0 0;
   --muted: 0.22 0 0;
   --muted-foreground: 0.64 0 0;
-  --accent: 0.72 0.18 162;
+  --accent: 0.68 0.16 50;
   --accent-foreground: 0.145 0 0;
   --destructive: 0.62 0.24 25;
   --destructive-foreground: 0.98 0 0;
@@ -23,7 +23,7 @@
   --info: 0.62 0.2 250;
   --border: 0.28 0 0;
   --input: 0.28 0 0;
-  --ring: 0.72 0.18 162;
+  --ring: 0.68 0.16 50;
   --radius: 8px;
   --hudson-font-size: 13px;
   --hudson-font-family: system-ui;

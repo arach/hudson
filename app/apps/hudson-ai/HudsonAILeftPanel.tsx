@@ -48,7 +48,7 @@ export function HudsonAILeftPanel() {
     <div className="h-full min-h-0 overflow-y-auto frame-scrollbar p-3 space-y-4">
       <div className="rounded-xl border border-border/70 bg-card/72 p-3 space-y-3">
         <div className="flex items-center gap-2">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+          <div className="flex h-8 w-8 items-center justify-center rounded-lg border border-cyan-700/30 dark:border-cyan-500/20 bg-cyan-700/10 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300">
             <Sparkles size={14} />
           </div>
           <div className="min-w-0">

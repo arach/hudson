@@ -39,12 +39,12 @@ const CanvasToolDock: React.FC<CanvasToolDockProps> = ({
       transition: 'right 200ms ease, bottom 200ms ease',
     }}
   >
-    <div className="pointer-events-auto flex flex-col overflow-hidden rounded-md border border-border bg-card/95 shadow-[0_0_18px_rgba(0,0,0,0.16)] backdrop-blur-xl">
+    <div className="pointer-events-auto flex flex-col overflow-hidden rounded-none border border-border bg-card shadow-[var(--hud-shadow-panel)]">
       <button
         onClick={() => onHandModeChange(!handMode)}
         className={`flex h-8 w-9 items-center justify-center transition-colors ${
           handMode
-            ? 'bg-emerald-700/12 text-emerald-800 dark:text-emerald-200'
+            ? 'bg-accent/10 text-accent-foreground'
             : 'text-muted-foreground hover:bg-accent/10 hover:text-foreground'
         }`}
         title={handMode ? 'Hand mode on' : 'Hand mode'}

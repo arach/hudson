@@ -100,10 +100,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
           className="flex items-center px-4 py-3 border-b gap-3 focus-within:ring-2 focus-within:outline-none"
           style={{ ...chromeBorderStyle, ...focusRingStyle }}
         >
-          <Search className="text-muted-foreground" size={18} />
+          <Search className="text-muted-foreground" size={16} strokeWidth={1.5} />
           <input
             ref={inputRef}
-            className="flex-1 bg-transparent border-none outline-none text-popover-foreground placeholder:text-muted-foreground font-mono text-sm"
+            className="flex-1 bg-transparent border-none outline-none text-popover-foreground placeholder:text-muted-foreground font-mono text-[12px] font-normal"
             style={{ boxShadow: 'none' }}
             placeholder="Type a command or search..."
             value={query}
@@ -111,14 +111,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
             onKeyDown={handleKeyDown}
             autoFocus
           />
-          <div className="px-1.5 py-0.5 rounded bg-muted border text-[12px] text-muted-foreground font-mono" style={chromeBorderStyle}>ESC</div>
+          <div className="px-1.5 py-0.5 rounded bg-muted border text-[10px] text-muted-foreground font-mono tracking-[0.12em]" style={chromeBorderStyle}>ESC</div>
         </div>
 
         {/* Results */}
         <div className="max-h-[300px] overflow-y-auto py-2 relative">
           <div className="pb-2">
             {filteredCommands.length === 0 ? (
-              <div className="px-4 py-8 text-center text-muted-foreground text-xs font-mono">No matching commands</div>
+              <div className="px-4 py-8 text-center text-muted-foreground text-[11px] font-mono">No matching commands</div>
             ) : (
               filteredCommands.map((cmd, idx) => (
               <div
@@ -133,10 +133,10 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
               >
                 {cmd.icon && <div className={`${idx === selectedIndex ? 'text-accent' : 'text-muted-foreground'}`}>{cmd.icon}</div>}
                 <div className="flex-1">
-                  <div className={`text-sm ${idx === selectedIndex ? 'text-accent' : 'text-popover-foreground'}`}>{cmd.label}</div>
+                  <div className={`text-[12px] ${idx === selectedIndex ? 'text-accent font-medium' : 'text-foreground/80 font-normal'}`}>{cmd.label}</div>
                 </div>
                 {cmd.shortcut && (
-                  <div className="text-[12px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded border" style={chromeBorderStyle}>{cmd.shortcut}</div>
+                  <div className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded border tracking-[0.04em]" style={chromeBorderStyle}>{cmd.shortcut}</div>
                 )}
                 {idx === selectedIndex && <CornerDownLeft size={14} className="text-accent ml-2" />}
               </div>
@@ -151,11 +151,11 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
 
         {/* Footer */}
         <div
-          className="px-4 py-1.5 bg-card/90 backdrop-blur-sm border-t flex justify-between items-center text-[12px] text-muted-foreground font-mono relative z-10"
+          className="px-4 py-1.5 bg-card/90 backdrop-blur-sm border-t flex justify-between items-center text-[10px] text-muted-foreground font-mono relative z-10 tracking-[0.18em] uppercase"
           style={chromeBorderStyle}
         >
           <span>Command Palette</span>
-          <span>{filteredCommands.length} matches</span>
+          <span className="tracking-[0.04em] normal-case">{filteredCommands.length} matches</span>
         </div>
       </div>
     </div>

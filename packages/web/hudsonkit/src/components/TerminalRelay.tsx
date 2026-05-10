@@ -437,7 +437,7 @@ export function TerminalRelay({
         </div>
         <div>
           <div className="text-[12px] text-neutral-300 font-medium mb-1">Relay service not running</div>
-          <div className="text-[11px] text-neutral-500 leading-relaxed">
+          <div className="text-[11px] text-muted-foreground/80 leading-relaxed">
             {onStartService
               ? 'Start the relay service to open a terminal session.'
               : 'Start the relay service from the Workspace Manager.'}
@@ -449,7 +449,7 @@ export function TerminalRelay({
               type="button"
               onClick={handleStartAndConnect}
               disabled={starting}
-              className="text-[11px] px-4 py-1.5 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors font-medium disabled:opacity-50"
+              className="text-[11px] px-4 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-medium disabled:opacity-50"
             >
               {starting ? 'Starting...' : 'Start Service'}
             </button>
@@ -457,7 +457,7 @@ export function TerminalRelay({
           <button
             type="button"
             onClick={() => connect()}
-            className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
           >
             Retry
           </button>
@@ -465,7 +465,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
             >
               Settings
             </button>
@@ -480,11 +480,11 @@ export function TerminalRelay({
           <span className="text-red-400 text-sm">!</span>
         </div>
         <span className="text-red-400 text-[12px] font-medium">Session failed</span>
-        <code className="text-[11px] text-neutral-400 bg-neutral-800/80 px-3 py-2 rounded-md whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto w-full text-left">
+        <code className="text-[11px] text-muted-foreground bg-muted/80 px-3 py-2 rounded-md whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto w-full text-left">
           {error}
         </code>
         {exitCode !== null && exitCode !== 0 && (
-          <span className="text-[10px] text-neutral-600">Exit code {exitCode}</span>
+          <span className="text-[10px] text-muted-foreground/60">Exit code {exitCode}</span>
         )}
         <button
           type="button"
@@ -498,16 +498,16 @@ export function TerminalRelay({
   } else if (status === 'disconnected' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-4 max-w-xs text-center px-4">
-        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-          <span className="text-neutral-500 text-[14px]">&#9655;</span>
+        <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center">
+          <span className="text-muted-foreground/80 text-[14px]">&#9655;</span>
         </div>
         <div>
           <div className="text-[12px] text-neutral-300 font-medium mb-1">Terminal relay disconnected</div>
-          <div className="text-[11px] text-neutral-500 leading-relaxed">Set working directory and connect.</div>
+          <div className="text-[11px] text-muted-foreground/80 leading-relaxed">Set working directory and connect.</div>
         </div>
         {/* Editable CWD */}
         <form className="w-full" onSubmit={(e) => { e.preventDefault(); connect(); }}>
-          <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1 block text-left">
+          <label className="text-[10px] font-mono text-muted-foreground/80 uppercase tracking-wider mb-1 block text-left">
             Working Directory
           </label>
           <input
@@ -515,17 +515,17 @@ export function TerminalRelay({
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
             placeholder="~/dev/my-project"
-            className="w-full bg-neutral-800/80 border border-neutral-700/50 rounded px-3 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-cyan-500/40 transition-colors"
+            className="w-full bg-muted/80 border border-border/50 rounded px-3 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-accent/40 transition-colors"
             spellCheck={false}
             autoComplete="off"
           />
         </form>
         {configItems && configItems.length > 0 && (
-          <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-neutral-800/60 border border-neutral-700/40 rounded-md px-3 py-2">
+          <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-muted/60 border border-border/40 rounded-md px-3 py-2">
             {configItems.map(item => (
               <div key={item.label} className="contents">
-                <span className="text-neutral-500">{item.label}</span>
-                <span className="text-neutral-400 truncate text-left">{item.value}</span>
+                <span className="text-muted-foreground/80">{item.label}</span>
+                <span className="text-muted-foreground truncate text-left">{item.value}</span>
               </div>
             ))}
           </div>
@@ -542,7 +542,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
             >
               Settings
             </button>
@@ -554,11 +554,11 @@ export function TerminalRelay({
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-6 h-6 border-2 border-neutral-600 border-t-cyan-400 rounded-full animate-spin" />
-        <span className="text-[12px] text-neutral-400">Connecting to relay...</span>
+        <span className="text-[12px] text-muted-foreground">Connecting to relay...</span>
         <button
           type="button"
           onClick={() => { disconnect(); }}
-          className="text-[10px] px-3 py-1 rounded-full border border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+          className="text-[10px] px-3 py-1 rounded-full border border-border text-muted-foreground/80 hover:text-neutral-300 hover:bg-white/5 transition-colors"
         >
           Cancel
         </button>
@@ -577,7 +577,7 @@ export function TerminalRelay({
       onDrop={handleDrop}
     >
       {overlay && (
-        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10 bg-neutral-900/90">
+        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10 bg-background/95">
           {overlay}
         </div>
       )}
