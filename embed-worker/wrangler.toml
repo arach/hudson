@@ -7,3 +7,7 @@ account_id = "7f500c31ebdac9ae0271933b83f09722"
 [[routes]]
 pattern = "hudsonkit.com/embed/*"
 zone_name = "hudsonkit.com"
+
+[[routes]]
+pattern = "app.hudsonkit.com/embed/*"
+zone_name = "hudsonkit.com"

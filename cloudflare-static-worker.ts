@@ -1,6 +1,7 @@
 import { loadToolset } from './app/api/ai/toolsets';
 
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const APP_HOST = 'app.hudsonkit.com';
 
 interface Env {
   ASSETS: {
@@ -154,6 +155,17 @@ function removeToolMarkup(text: string) {
     .trim();
 }
 
+function serveAppRoot(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+  if (host !== APP_HOST || url.pathname !== '/') {
+    return null;
+  }
+
+  url.pathname = '/app/';
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
 function writeAssistantResponse(
   write: (chunk: UIMessageChunk) => void,
   text: string,
@@ -233,6 +245,9 @@ export default {
     if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
       return handleAIChat(request, env);
     }
+
+    const appRootResponse = serveAppRoot(request, env);
+    if (appRootResponse) return appRootResponse;
 
     return env.ASSETS.fetch(request);
   },
