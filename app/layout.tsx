@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import {
   JetBrains_Mono,
   Jura,
@@ -139,6 +139,17 @@ var attrSet=function(){var n=document.querySelector('.hudson-site');if(n)n.setAt
 if(document.readyState!=='loading')attrSet();
 else document.addEventListener('DOMContentLoaded',attrSet);
 }catch(e){}})();`;
+
+// viewport-fit=cover lets the page paint into the iPhone safe-area regions
+// (notch, Dynamic Island, home indicator). All marketing surfaces consume
+// env(safe-area-inset-*) where it matters (sticky sheet header, fixed
+// studio console). Workspace and embed surfaces benefit too — this is the
+// shared root layout.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+};
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://hudsonkit.com"),

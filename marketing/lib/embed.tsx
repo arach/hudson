@@ -258,7 +258,10 @@ export function HudsonEmbed({
       loading={priority === 'eager' ? 'eager' : 'lazy'}
       // @ts-expect-error fetchPriority is valid HTML; React 19 typings lag
       fetchPriority={priority === 'eager' ? 'high' : 'low'}
-      allow="microphone; clipboard-write"
+      // Workspace embeds may render Voice/AI/canvas content with audio replies
+      // and presenter-mode flips. autoplay/fullscreen/encrypted-media unblock
+      // those flows in the iframe without forcing a user gesture per surface.
+      allow="microphone; clipboard-write; autoplay; fullscreen; encrypted-media"
       style={{ display: 'block', border: 0, ...sizeStyle, ...style }}
     />
   );

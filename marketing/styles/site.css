@@ -9,6 +9,13 @@
    ───────────────────────────────────────────────────────────── */
 
 .hudson-site {
+  /* Sheet padding — driven by Sheet primitive via CSS variable so the
+     responsive cascade can shrink it on phones without per-sheet overrides.
+     The sticky header reads the X token to compute its negative margins
+     so its rule extends edge-to-edge regardless of padding. */
+  --sheet-pad-x: 64px;
+  --sheet-pad-bottom: 72px;
+
   /* Slate paper — dark, cool, faintly blue-grey */
   --paper:        oklch(0.20 0.02 240);
   --paper-2:      oklch(0.24 0.02 240);
@@ -633,15 +640,27 @@
   .hudson-site .reflow-split-arrow { transform: rotate(90deg); margin: 0 auto; }
 }
 
-@media (max-width: 720px) {
-  .hudson-site .h-display { font-size: 44px !important; }
-  .hudson-site .h-section { font-size: 32px !important; }
-  .hudson-site .reflow-platforms { grid-template-columns: 1fr !important; }
-}
+/* ─── iPhone / phone-class viewports ─────────────────────────────────────
+   A single breakpoint at 720px catches every iPhone (SE 375, 16 393, 16 Pro
+   Max 430) in portrait — and most in landscape too once the system chrome
+   eats horizontal space. The rules below address the full audit:
+   document overflow, sheet padding, sticky header collapse, embed height,
+   tap targets ≥44pt, body / input font floor for the iOS auto-zoom rule,
+   and home-indicator inset for the floating studio console.
+
+   Inline styles in the sheets carry rigid `gridTemplateColumns: 'repeat(N,
+   1fr)'` declarations. CSS specificity normally can't beat inline style;
+   we use `!important` on the responsive overrides so the same CSS rule can
+   collapse those grids without rewriting every sheet to use a class. */
+
 .studio-console {
   position: fixed;
-  right: 16px;
-  bottom: 16px;
+  /* Respect the iOS home indicator + landscape rounded corners. The
+     max() pattern keeps the desktop offset (16px) when the device
+     reports no inset, and grows to env(safe-area-inset-*) on phones
+     in viewport-fit=cover mode. */
+  right: max(16px, env(safe-area-inset-right));
+  bottom: max(16px, env(safe-area-inset-bottom));
   z-index: 50;
   font-family: var(--font-mono, ui-monospace, monospace);
   color: var(--ink);
@@ -669,12 +688,18 @@
 
 .studio-console__panel {
   width: 320px;
+  /* Phones don't have 320px of horizontal room once safe-area insets and
+     the home indicator are accounted for. Cap at the available width and
+     let the panel shrink to fit without the chrome border being clipped. */
+  max-width: calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)));
   background: var(--paper);
   border: var(--stroke-w) solid var(--ink);
   box-shadow: 0 6px 0 var(--paper-edge);
   display: flex;
   flex-direction: column;
-  max-height: calc(100vh - 48px);
+  /* Allow scroll inside the panel rather than letting it push past the top
+     of the screen on short phones in landscape. */
+  max-height: calc(100vh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
 }
 
 .studio-console__head {
@@ -773,10 +798,14 @@
 
 .hudson-site .sheet-header {
   position: sticky;
-  top: 0;
+  /* Slot under the iOS notch / Dynamic Island when the page is rendered with
+     viewport-fit=cover. Falls back to 0 on devices that report no inset. */
+  top: env(safe-area-inset-top, 0px);
   z-index: 20;
-  margin-left: -64px;
-  margin-right: -64px;
+  /* Match the parent sheet padding so the bar's bottom rule + tick ruler
+     extend edge-to-edge no matter how wide the gutters are. */
+  margin-left: calc(var(--sheet-pad-x, 64px) * -1);
+  margin-right: calc(var(--sheet-pad-x, 64px) * -1);
 }
 
 /* Tick ruler — sits above the bar, on the section's paper, not inside the bar.
@@ -795,13 +824,16 @@
     var(--paper);
 }
 
-/* Bar — three-column grid: wordmark | title block | studio button */
+/* Bar — three-column grid: wordmark | title block | studio button.
+   Padding is half of the sheet gutter so it reads as an inner trim while
+   still letting the bar's bottom border touch the sheet edges via the
+   negative margins on .sheet-header. */
 .hudson-site .sheet-header__bar {
   display: grid;
   grid-template-columns: 160px minmax(0, 1fr) 184px;
   align-items: stretch;
   gap: 16px;
-  padding: 12px 32px;
+  padding: 12px max(12px, calc(var(--sheet-pad-x, 64px) / 2));
   background: var(--paper);
   border-bottom: 1px solid var(--ink);
 }
@@ -1127,3 +1159,280 @@
    sheet-body card borders read as 1.5px structural strokes around
    discrete content — that's the engineering-drawing intent and reads
    cleaner once the persistent chrome above is settled. */
+@media (max-width: 720px) {
+  .hudson-site {
+    /* 16px gutters — matches the iOS HIG margin and lets the headline
+       boxes still breathe at the smallest iPhone width. */
+    --sheet-pad-x: 16px;
+    --sheet-pad-bottom: 48px;
+    /* Body font floor — 13px reads as small print under HIG and pairs
+       badly with the eng-drawing tracking on dim OKLCH ink. 16px keeps
+       the marketing prose legible in sun. */
+    font-size: 16px;
+  }
+
+  /* Headlines retain the existing clamp() shape on desktop; here we just
+     pin the floor explicitly so designers can tune phone size without
+     fighting the clamp upper bound. */
+  .hudson-site .h-display { font-size: 44px !important; }
+  .hudson-site .h-section { font-size: 32px !important; }
+
+  /* Inline sheet wrappers all set max-width 1100/1300 + repeat(N, 1fr).
+     Reflow them into a single column on phones so nothing ever overflows
+     the 343px-wide sheet body (375 viewport - 16*2 gutter). */
+  .hudson-site .sheet > .sheet-body > div[style*='grid-template-columns'],
+  .hudson-site .sheet > .sheet-body > div > div[style*='grid-template-columns'] {
+    grid-template-columns: 1fr !important;
+    gap: 24px !important;
+  }
+
+  /* Reflow flags that already exist for tablet. The earlier
+     (max-width: 1180px) cascade only narrowed reflow-platforms to 3
+     columns; here we drop it to 1. */
+  .hudson-site .reflow-platforms { grid-template-columns: 1fr !important; }
+
+  /* Possession sticky aside — drop the sticky and let the spec stack
+     under the embeds where there's actually room to read 11pt mono
+     against the eng-drawing background. */
+  .hudson-site .sheet .spec { font-size: 12px; }
+  .hudson-site .sheet .spec__row--header > div,
+  .hudson-site .sheet .spec__k { font-size: 11px; }
+
+  /* ── Sticky sheet header: collapse the 3-col grid below 600px ─────────
+     The existing template `160px minmax(0,1fr) 184px` requires ~485px
+     just to fit. On any iPhone we drop the wordmark and the right
+     INSTRUMENTS slot to a compact bar, hide the sheet number ratio, and
+     elide the slug — the badge keeps the wayfinding cue. */
+  .hudson-site .sheet-header__bar {
+    grid-template-columns: minmax(0, 1fr) auto;
+    gap: 8px;
+    padding: 8px 12px;
+  }
+  .hudson-site .sheet-header__brand {
+    /* Wordmark hidden on phones — the badge in the title block already
+       carries the "you are on sheet N of HUDSONKIT" signal. */
+    display: none;
+  }
+  .hudson-site .sheet-header__title {
+    grid-template-columns: auto minmax(0, 1fr);
+  }
+  .hudson-site .sheet-header__title-cell--end {
+    /* Drop the "Sheet 02 / 07" cell — it's a pleasant detail, not load-
+       bearing — to free the title room to ellipsize cleanly. */
+    display: none;
+  }
+  .hudson-site .sheet-header__title-badge {
+    padding: 0 12px;
+  }
+  .hudson-site .sheet-header__title-badge-name {
+    /* Mute the long badge name on phones; the number reads as nav. */
+    display: none;
+  }
+  .hudson-site .sheet-header__title-cell {
+    padding: 6px 10px;
+  }
+  .hudson-site .sheet-header__tools {
+    /* Studio "INSTRUMENTS" trigger collapses to an icon-y compact form
+       (the count badge still reads). Keep min-width so the chevron + label
+       aren't crushed when active. */
+    min-width: 100px;
+  }
+  .hudson-site .drafting-tools__trigger {
+    grid-template-columns: 14px 1fr auto;
+    padding: 0 8px;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+  }
+
+  /* Body padding-top — the sticky header is shorter on phones, so let the
+     hero content breathe at a smaller offset. */
+  .hudson-site .sheet-body { padding-top: 32px; }
+
+  /* ── Embed plate ──────────────────────────────────────────────────────
+     EmbedFrame writes both --embed-h (desktop) and --embed-h-mobile (a
+     clamp() that scales with the viewport). Switch to the mobile token
+     here; the workspace UI inside is still tuned for ≥800px so the
+     iframe will scroll internally, but at least the page itself doesn't
+     have a 720-tall letterbox.
+
+     Important: NO fallback in the var() — Sheet02HalfPlotter renders an
+     `.embed-plate` inline with an `aspect-ratio` (1100/620) but no
+     `--embed-h-mobile`. If we forced a height of 60vh there, the
+     aspect-ratio would compute width = 400 × 1100/620 ≈ 710px and break
+     out of the 343px sheet body. With no fallback, the rule is `height:
+     ;` for that node — invalid declaration, browser ignores it, the
+     aspect-ratio + `width: 100%` still produces a phone-friendly canvas. */
+  .hudson-site .embed-plate { height: var(--embed-h-mobile) !important; }
+
+  /* Plotter canvas is the only `.embed-plate` that uses inline
+     aspect-ratio rather than EmbedFrame's height tokens. Pin it to the
+     sheet body width and let aspect-ratio drive the height naturally. */
+  .hudson-site .embed-plate[data-cal-label='plotter canvas'] {
+    width: 100%;
+    max-width: 100%;
+    height: auto !important;
+  }
+
+  /* ── Hero + parts cards: shrink the rigid max-widths the sheet bodies
+     declare via inline `style={{ maxWidth: 1300 }}`. We can't override an
+     inline style without !important, but a generous max-width: 100% on
+     the immediate child of .sheet-body short-circuits any overflow. */
+  .hudson-site .sheet-body > div { max-width: 100% !important; }
+
+  /* Hero stat grid — collapse 4 columns to 2 on phones; full stack at SE. */
+  .hudson-site .hud-card[data-cal-label='stats grid'] {
+    grid-template-columns: repeat(2, 1fr) !important;
+  }
+  .hudson-site .hud-card[data-cal-label='stats grid'] > div:nth-child(2n) {
+    border-right: 0 !important;
+  }
+  .hudson-site .hud-card[data-cal-label='stats grid'] > div:nth-child(odd) {
+    border-right: 1px solid var(--line-strong) !important;
+  }
+  .hudson-site .hud-card[data-cal-label='stats grid'] > div:nth-child(-n+2) {
+    border-bottom: 1px solid var(--line-strong);
+  }
+
+  /* Footer plate — reads as a stacked label/value on phones rather than
+     a horizontal strip that pushes off-screen. */
+  .hudson-site .footer-plate {
+    flex-wrap: wrap;
+    gap: 8px;
+    padding: 10px 12px;
+    left: 12px;
+    right: 12px;
+  }
+
+  /* ── Tap targets ──────────────────────────────────────────────────────
+     Apple HIG asks for 44×44pt minimum on touch surfaces. Buttons and
+     plotter chips are well below that. Bump padding/min-height; keep
+     visual style otherwise unchanged. */
+  .hudson-site .btn {
+    min-height: 44px;
+    padding: 12px 18px;
+  }
+
+  .hudson-site .plotter-chip {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+
+  /* Studio Console chips inside the popover panel — sit in a flex-wrap
+     grid; bumping their hit target lets thumb-tap discovery work. */
+  .hudson-site .studio-console__chip {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  /* Drafting toolbar items in the floating panel. */
+  .hudson-site .drafting-tools__item {
+    min-height: 44px;
+    padding: 12px 12px;
+  }
+
+  /* Range sliders — the 12×12 thumb is below 44pt. The visual track stays
+     1px ink (engineering style) but the thumb grows so it's actually
+     grabbable. The negative margin keeps the thumb centered on the track. */
+  .hudson-site input[type='range']::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    margin-top: -14px;
+  }
+  .hudson-site input[type='range']::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+  .hudson-site input[type='range'] { height: 28px; }
+
+  /* ── Form input font floor ────────────────────────────────────────────
+     iOS auto-zooms when a focused input is rendered below 16px. The
+     Studio Console search and the plotter phrase entry are the relevant
+     surfaces; we apply broadly to inputs/textareas/selects but only on
+     phones so desktop typography is untouched. */
+  .hudson-site input[type='text'],
+  .hudson-site input[type='search'],
+  .hudson-site input[type='email'],
+  .hudson-site input[type='url'],
+  .hudson-site input[type='tel'],
+  .hudson-site input[type='number'],
+  .hudson-site textarea,
+  .hudson-site select {
+    font-size: 16px;
+  }
+
+  /* ── Sticky aside on Sheet02Possession ────────────────────────────────
+     Stacks naturally once the parent grid collapses; nothing else to do
+     beyond ensuring spec tables don't blow out width. */
+  .hudson-site .spec { width: 100%; }
+
+  /* ── Final CTA banner on Sheet07 — flex row blows up; stack it. ── */
+  .hudson-site .hud-card[data-cal-label='final CTA banner'] {
+    flex-direction: column !important;
+    align-items: flex-start !important;
+    padding: 28px 24px !important;
+    gap: 24px !important;
+  }
+  .hudson-site .hud-card[data-cal-label='final CTA banner'] > div:last-child {
+    width: 100%;
+    min-width: 0 !important;
+  }
+}
+
+/* ─── Touch-screen / coarse-pointer overrides ─────────────────────────────
+   The 720px width breakpoint above catches portrait phones, but iPhone 16
+   landscape (852pt) and 16 Pro Max landscape (932pt) sit above it while
+   still being touch surfaces. Apple HIG's 44pt floor applies regardless of
+   width. `(pointer: coarse)` matches every touchscreen including large
+   tablets and avoids penalizing desktop with a mouse. We duplicate just
+   the tap-target / form-input rules here, leaving layout (column reflow,
+   sheet padding, sticky header collapse) gated by the 720px width — those
+   only need to fire when there's not enough horizontal room. */
+@media (pointer: coarse) {
+  .hudson-site .btn {
+    min-height: 44px;
+    padding: 12px 18px;
+  }
+
+  .hudson-site .plotter-chip {
+    min-height: 44px;
+    padding: 12px 14px;
+    font-size: 11px;
+  }
+
+  .hudson-site .studio-console__chip {
+    min-height: 36px;
+    padding: 8px 12px;
+  }
+
+  .hudson-site .drafting-tools__item {
+    min-height: 44px;
+    padding: 12px 12px;
+  }
+
+  /* Larger thumb / track height for touch — same shape as the 720px block
+     but applies on any touch device regardless of viewport width. */
+  .hudson-site input[type='range']::-webkit-slider-thumb {
+    width: 28px;
+    height: 28px;
+    margin-top: -14px;
+  }
+  .hudson-site input[type='range']::-moz-range-thumb {
+    width: 28px;
+    height: 28px;
+  }
+  .hudson-site input[type='range'] { height: 28px; }
+
+  /* iOS auto-zoom-on-focus floor. Same selector list as the width-gated
+     block above; doubles up safely. */
+  .hudson-site input[type='text'],
+  .hudson-site input[type='search'],
+  .hudson-site input[type='email'],
+  .hudson-site input[type='url'],
+  .hudson-site input[type='tel'],
+  .hudson-site input[type='number'],
+  .hudson-site textarea,
+  .hudson-site select {
+    font-size: 16px;
+  }
+}

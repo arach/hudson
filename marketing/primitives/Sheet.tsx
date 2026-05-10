@@ -16,8 +16,12 @@ export type SheetProps = {
   children: ReactNode;
 };
 
+// Padding is driven by a CSS variable so the responsive cascade in site.css
+// can collapse it on phones (16px gutters) without each sheet having to
+// override its inline style. The sticky header relies on this same variable
+// for its negative margins so its rule still extends edge-to-edge.
 const DEFAULT_STYLE: CSSProperties = {
-  padding: '0 64px 72px',
+  padding: '0 var(--sheet-pad-x, 64px) var(--sheet-pad-bottom, 72px)',
   position: 'relative',
 };
 
