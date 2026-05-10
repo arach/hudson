@@ -45,7 +45,7 @@ function SectionTitle({ children }: { children: ReactNode }) {
 
 function ScopeBadge({ label }: { label: string }) {
   return (
-    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.12em] text-cyan-300/80">
+    <span className="rounded-full border border-cyan-700/30 dark:border-cyan-500/20 bg-cyan-700/10 dark:bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-[0.12em] text-cyan-700 dark:text-cyan-300/80">
       {label}
     </span>
   );
@@ -84,8 +84,8 @@ function SurfaceTabButton({
       onClick={onClick}
       className={`rounded-full border px-3 py-1.5 text-[10px] font-mono uppercase tracking-[0.12em] transition-colors ${
         active
-          ? 'border-cyan-500/25 bg-cyan-500/10 text-cyan-300'
-          : 'border-border/70 text-muted-foreground hover:border-cyan-500/20 hover:text-cyan-300'
+          ? 'border-cyan-700/40 dark:border-cyan-500/25 bg-cyan-700/10 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+          : 'border-border/70 text-muted-foreground hover:border-cyan-700/30 dark:hover:border-cyan-500/20 hover:text-cyan-700 dark:hover:text-cyan-300'
       }`}
     >
       {label}
@@ -110,8 +110,8 @@ function ActionButton({
       onClick={onClick}
       className={`inline-flex items-center gap-1.5 rounded-md border px-2.5 py-1.5 text-[10px] font-mono transition-colors ${
         variant === 'primary'
-          ? 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300 hover:bg-cyan-500/15'
-          : 'border-border/70 text-muted-foreground hover:border-cyan-500/20 hover:text-cyan-300'
+          ? 'border-cyan-700/30 dark:border-cyan-500/20 bg-cyan-700/10 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300 hover:bg-cyan-700/15 dark:hover:bg-cyan-500/15'
+          : 'border-border/70 text-muted-foreground hover:border-cyan-700/30 dark:hover:border-cyan-500/20 hover:text-cyan-700 dark:hover:text-cyan-300'
       }`}
     >
       {icon}
@@ -132,7 +132,7 @@ function CapabilityRow({
   return (
     <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
       <div className="flex items-center gap-2 text-[11px] font-medium text-foreground/78">
-        <span className="text-cyan-300/75">{icon}</span>
+        <span className="text-cyan-700 dark:text-cyan-300/75">{icon}</span>
         {label}
       </div>
       <div className="mt-1 text-[10px] leading-relaxed text-foreground/62">{description}</div>
@@ -151,7 +151,7 @@ function ConstructionNode({
 }) {
   return (
     <div className="rounded-xl border border-border/60 bg-background/52 px-3 py-3">
-      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-cyan-300/70">
+      <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300/70">
         {label}
       </div>
       <div className="mt-2 text-[11px] leading-relaxed text-foreground/74">{description}</div>
@@ -179,7 +179,7 @@ function SettingSelect({
       <select
         value={value}
         onChange={event => onChange(event.target.value)}
-        className="w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-[11px] text-foreground/78 focus:border-cyan-500/25 focus:outline-none"
+        className="w-full rounded-lg border border-border/70 bg-card px-3 py-2 text-[11px] text-foreground/78 focus:border-cyan-700/40 dark:focus:border-cyan-500/25 focus:outline-none"
       >
         {options.map(option => (
           <option key={option.value} value={option.value}>
@@ -353,9 +353,9 @@ export function HudsonAIContent() {
 
   return (
     <div className="h-full min-h-0 overflow-y-auto frame-scrollbar p-4 space-y-4">
-      <div className="rounded-2xl border border-cyan-500/15 bg-gradient-to-br from-cyan-500/[0.12] via-white/[0.03] to-transparent p-4">
+      <div className="rounded-2xl border border-cyan-700/20 dark:border-cyan-500/15 bg-gradient-to-br from-cyan-700/[0.10] dark:from-cyan-500/[0.12] via-foreground/[0.03] to-transparent p-4">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-cyan-700/30 dark:border-cyan-500/20 bg-cyan-700/10 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300">
             <Sparkles size={18} />
           </div>
           <div className="min-w-0 space-y-2">
@@ -536,7 +536,7 @@ export function HudsonAIContent() {
                   label="Voice Provider"
                   value={
                     <span className="inline-flex items-center gap-1">
-                      <Radio size={11} className="text-cyan-300/70" />
+                      <Radio size={11} className="text-cyan-700 dark:text-cyan-300/70" />
                       {voiceProviderLabel} / {voiceSettings.replyModel || 'default'}
                     </span>
                   }
@@ -563,8 +563,8 @@ export function HudsonAIContent() {
                   onClick={() => openWorkspaceSettings('settings')}
                 />
               </div>
-              <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.07] px-3 py-3">
-                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.14em] text-cyan-300/80">
+              <div className="rounded-xl border border-cyan-700/20 dark:border-cyan-500/15 bg-cyan-700/[0.07] dark:bg-cyan-500/[0.07] px-3 py-3">
+                <div className="flex items-center gap-2 text-[10px] font-mono uppercase tracking-[0.14em] text-cyan-700 dark:text-cyan-300/80">
                   <Volume2 size={11} />
                   Next Turn
                 </div>
@@ -721,7 +721,7 @@ export function HudsonAIContent() {
                 </>
               ) : (
                 <>
-                  <div className="rounded-xl border border-cyan-500/15 bg-cyan-500/[0.07] px-3 py-3 text-[11px] leading-relaxed text-foreground/72">
+                  <div className="rounded-xl border border-cyan-700/20 dark:border-cyan-500/15 bg-cyan-700/[0.07] dark:bg-cyan-500/[0.07] px-3 py-3 text-[11px] leading-relaxed text-foreground/72">
                     This workspace currently inherits the Hudson default: {globalProviderLabel} / {globalModelLabel}.
                   </div>
                   <div className="flex flex-wrap gap-2">
@@ -771,8 +771,8 @@ export function HudsonAIContent() {
                       onClick={() => setRequestedAppId(app.id)}
                       className={`w-full rounded-xl border px-3 py-3 text-left transition-colors ${
                         isSelected
-                          ? 'border-cyan-500/25 bg-cyan-500/10'
-                          : 'border-border/60 bg-background/52 hover:border-cyan-500/20'
+                          ? 'border-cyan-700/40 dark:border-cyan-500/25 bg-cyan-700/10 dark:bg-cyan-500/10'
+                          : 'border-border/60 bg-background/52 hover:border-cyan-700/30 dark:hover:border-cyan-500/20'
                       }`}
                     >
                       <div className="flex items-center justify-between gap-2">
@@ -879,13 +879,13 @@ export function HudsonAIContent() {
                             onClick={() => setRequestedIntentId(intent.commandId)}
                             className={`w-full rounded-lg border px-2.5 py-2 text-left transition-colors ${
                               isSelected
-                                ? 'border-cyan-500/25 bg-cyan-500/10'
-                                : 'border-border/60 bg-card/80 hover:border-cyan-500/20'
+                                ? 'border-cyan-700/40 dark:border-cyan-500/25 bg-cyan-700/10 dark:bg-cyan-500/10'
+                                : 'border-border/60 bg-card/80 hover:border-cyan-700/30 dark:hover:border-cyan-500/20'
                             }`}
                           >
                             <div className="flex items-center justify-between gap-2">
                               <span className="text-[11px] text-foreground/78">{intent.title}</span>
-                              <span className="text-[9px] font-mono text-cyan-300/70">{intent.category}</span>
+                              <span className="text-[9px] font-mono text-cyan-700 dark:text-cyan-300/70">{intent.category}</span>
                             </div>
                             <div className="mt-1 text-[10px] leading-relaxed text-muted-foreground">
                               {intent.description}
@@ -1017,7 +1017,7 @@ export function HudsonAIContent() {
                   </div>
                 </div>
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[10px] font-mono text-muted-foreground hover:text-cyan-300 transition-colors">
+                  <summary className="cursor-pointer text-[10px] font-mono text-muted-foreground hover:text-cyan-700 dark:hover:text-cyan-300 transition-colors">
                     Show prompt text
                   </summary>
                   <div className="mt-2 rounded-lg border border-border/50 bg-background/60 px-3 py-2 text-[10px] font-mono leading-relaxed text-foreground/64">

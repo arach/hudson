@@ -1,0 +1,1129 @@
+/* ─────────────────────────────────────────────────────────────
+   Hudson Site — engineering drawing palette
+   Slate paper, light ink, amber accent. Honest and precise.
+
+   The .hudson-site selector carries the *default* state.
+   Studio overrides ship as a single <style id="hudson-theme">
+   in <head>, emitted server-side from the resolved cookie state.
+   Empty-cookie visitors see these defaults at FCP. No flicker.
+   ───────────────────────────────────────────────────────────── */
+
+.hudson-site {
+  /* Slate paper — dark, cool, faintly blue-grey */
+  --paper:        oklch(0.20 0.02 240);
+  --paper-2:      oklch(0.24 0.02 240);
+  --paper-3:      oklch(0.28 0.02 240);
+  --paper-edge:   oklch(0.12 0.02 240);
+
+  /* Ink — light on dark */
+  --ink:          oklch(0.94 0.005 240);
+  --ink-1:        oklch(0.85 0.005 240);
+  --ink-2:        oklch(0.70 0.008 240);
+  --ink-3:        oklch(0.55 0.01 240);
+  --ink-faint:    oklch(0.42 0.012 240);
+
+  /* Lines */
+  --line:         oklch(0.40 0.012 240);
+  --line-strong:  oklch(0.62 0.012 240);
+  --line-grid:    oklch(0.32 0.012 240);
+
+  /* Accent — emerald, canonical hudson */
+  --accent:       oklch(0.62 0.16 162);
+  --accent-deep:  oklch(0.50 0.16 162);
+  --accent-soft:  oklch(0.62 0.16 162 / 0.10);
+  --accent-line:  oklch(0.62 0.16 162 / 0.45);
+
+  /* Typography — overridden by StudioConsole at runtime */
+  --font-display: var(--font-cormorant), 'Times New Roman', serif;
+  --font-body:    var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono:    var(--font-jetbrains-mono), ui-monospace, monospace;
+
+  /* Syntax highlighting — semantic, not theme-coupled */
+  --syntax-kw:  oklch(0.78 0.13 320);
+  --syntax-str: var(--accent);
+  --syntax-num: oklch(0.78 0.17 75);
+  --syntax-com: oklch(0.55 0 0);
+  --syntax-at:  oklch(0.72 0.18 250);
+
+  /* Grid intensity (0..1) */
+  --grid-opacity-minor: 0.18;
+  --grid-opacity-major: 0.30;
+
+  /* Stroke weight */
+  --stroke-w: 1.5px;
+
+  /* Two radius classes — sync independently from the studio console.
+     --radius-ui = small UI: btn, code, tag, kbd, chips, console panel
+     --radius-card = larger content boxes: hero stats, app cards, step cards, feature cards, manifest box, final-note */
+  --radius-ui: 0px;
+  --radius-card: 0px;
+
+  /* Body weight */
+  --font-weight-body: 400;
+
+  /* Sticky sheet header height — read by sheet-internal sticky elements
+     (e.g. plotter Control Deck) so they offset cleanly from the chrome. */
+  --sheet-header-h: 96px;
+
+  background: var(--paper);
+  color: var(--ink);
+  font-family: var(--font-body);
+  font-weight: var(--font-weight-body);
+  font-size: 14px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+}
+
+.hudson-site ::selection { background: var(--accent); color: var(--paper); }
+.hudson-site a { color: inherit; text-decoration: none; }
+.hudson-site button { font-family: inherit; cursor: pointer; }
+
+/* ─── Sheet — the drawing-page container ─── */
+
+/* Grid hue is intentionally fixed (oklch(... 240)) — the engineering-drawing
+   grid is structural, not a theme variable. Opacity is the only knob. */
+.hudson-site .sheet {
+  position: relative;
+  margin: 0 auto;
+  background: var(--paper);
+  background-image:
+    linear-gradient(to right,  color-mix(in oklch, var(--line-grid) calc(var(--grid-opacity-minor) * 100%), transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--line-grid) calc(var(--grid-opacity-minor) * 100%), transparent) 1px, transparent 1px),
+    linear-gradient(to right,  color-mix(in oklch, var(--line) calc(var(--grid-opacity-major) * 100%), transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--line) calc(var(--grid-opacity-major) * 100%), transparent) 1px, transparent 1px);
+  background-size: 12px 12px, 12px 12px, 72px 72px, 72px 72px;
+  background-position: 0 0;
+}
+
+.hudson-site .sheet--bordered {
+  border-top: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+
+.hudson-site .sheet__rule {
+  position: absolute;
+  left: 0; right: 0; top: 0;
+  height: 18px;
+  pointer-events: none;
+  border-bottom: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 11px,
+      var(--ink-2) 11px, var(--ink-2) 12px) bottom / 100% 4px no-repeat,
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 71px,
+      var(--ink) 71px, var(--ink) 72px) bottom / 100% 8px no-repeat;
+}
+
+.hudson-site .sheet__rule--left {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 18px;
+  z-index: 30;
+  pointer-events: none;
+  border-right: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(to bottom,
+      transparent 0, transparent 11px,
+      var(--ink-2) 11px, var(--ink-2) 12px) right / 4px 100% no-repeat,
+    repeating-linear-gradient(to bottom,
+      transparent 0, transparent 71px,
+      var(--ink) 71px, var(--ink) 72px) right / 8px 100% no-repeat;
+}
+
+/* ─── Title block ─── */
+
+.hudson-site .titleblock {
+  position: absolute;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper);
+  display: grid;
+  color: var(--ink);
+}
+.hudson-site .titleblock--top-right {
+  top: 28px; right: 32px;
+  width: 280px;
+  grid-template-columns: 1fr 1fr;
+}
+.hudson-site .titleblock__cell {
+  padding: 6px 8px;
+  border-right: 1px solid var(--line-strong);
+  border-bottom: 1px solid var(--line-strong);
+}
+.hudson-site .titleblock__cell:nth-child(2n) { border-right: 0; }
+.hudson-site .titleblock__cell--full {
+  grid-column: span 2;
+  padding: 8px;
+  border-right: 0;
+  border-bottom: 1px solid var(--line-strong);
+  display: flex; align-items: center; gap: 8px;
+}
+.hudson-site .titleblock__cell--last { border-bottom: 0; }
+.hudson-site .titleblock__label {
+  display: block;
+  font-size: 8px;
+  color: var(--ink-2);
+  letter-spacing: 0.18em;
+  margin-bottom: 2px;
+}
+.hudson-site .titleblock__value {
+  font-size: 11px;
+  color: var(--ink);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+}
+
+/* ─── Slug ─── */
+
+.hudson-site .slug {
+  position: absolute;
+  left: 32px; top: 28px;
+  display: flex; flex-direction: column; gap: 2px;
+  font-family: var(--font-mono);
+  letter-spacing: 0.18em;
+  color: var(--ink-3);
+  text-transform: uppercase;
+  line-height: 1.25;
+}
+.hudson-site .slug__sheet {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  color: var(--ink-2);
+}
+.hudson-site .slug__title {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  letter-spacing: 0.18em;
+  margin-top: 2px;
+}
+
+/* ─── Footer plate ─── */
+
+.hudson-site .footer-plate {
+  position: absolute;
+  left: 32px; right: 32px; bottom: 18px;
+  display: flex; align-items: center; gap: 18px;
+  padding: 8px 14px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.hudson-site .footer-plate__divider { width: 1px; height: 14px; background: var(--line-strong); }
+.hudson-site .footer-plate__strong  { color: var(--ink); font-weight: 600; }
+
+/* ─── Headlines ─── */
+
+.hudson-site .h-display {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(54px, 7.6vw, 120px);
+  line-height: 0.96;
+  letter-spacing: -0.025em;
+  color: var(--ink);
+  margin: 0;
+}
+.hudson-site .h-display em { font-style: italic; font-weight: 400; }
+.hudson-site .h-display .boxed {
+  display: inline-block;
+  border: var(--stroke-w) solid var(--ink);
+  padding: 0 0.18em 0.05em;
+  margin: 0 0.04em;
+  font-style: normal;
+}
+.hudson-site .h-display .underline {
+  border-bottom: var(--stroke-w) solid var(--accent);
+  padding-bottom: 0.04em;
+}
+.hudson-site .h-section {
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(40px, 5.4vw, 78px);
+  line-height: 0.98;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  margin: 0;
+}
+.hudson-site .h-section em { font-style: italic; }
+.hudson-site .subhead {
+  font-family: var(--font-body);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--ink-1);
+  max-width: 56ch;
+  margin: 0;
+}
+.hudson-site .eyebrow {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: inline-flex; align-items: center; gap: 8px;
+}
+.hudson-site .eyebrow::before {
+  content: ''; display: inline-block;
+  width: 24px; height: 1px; background: var(--ink-2);
+}
+
+/* ─── Buttons ─── */
+
+.hudson-site .btn {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 11px 18px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  text-decoration: none;
+  border-radius: var(--radius-ui);
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--ink);
+  color: var(--paper);
+  transition: background 0.15s, color 0.15s, border-color 0.15s, border-radius 0.15s;
+}
+.hudson-site .btn:hover { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.hudson-site .btn--ghost { background: transparent; color: var(--ink); }
+.hudson-site .btn--ghost:hover { background: var(--ink); color: var(--paper); }
+.hudson-site .btn--accent { background: var(--accent); border-color: var(--accent); color: var(--paper); }
+.hudson-site .btn--accent:hover { background: var(--accent-deep); border-color: var(--accent-deep); }
+
+/* Disabled state — visible across all .btn variants. Without this, a disabled
+   accent button looks fully active and silently rejects clicks. */
+.hudson-site .btn[disabled],
+.hudson-site .btn[aria-disabled='true'] {
+  opacity: 0.45;
+  cursor: not-allowed;
+  background: var(--ink-3);
+  border-color: var(--ink-3);
+  color: var(--paper);
+  pointer-events: auto;
+}
+.hudson-site .btn[disabled]:hover,
+.hudson-site .btn[aria-disabled='true']:hover {
+  background: var(--ink-3);
+  border-color: var(--ink-3);
+  color: var(--paper);
+}
+
+/* ─── Plotter preset chips — engineering tag, used in the Control Deck phrase
+   row. Active chip inverts ink/paper to read as a hard-stamped selection. */
+.hudson-site .plotter-chip {
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  padding: 4px 8px;
+  background: var(--paper);
+  border: 1px solid var(--line-strong);
+  color: var(--ink-1);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.hudson-site .plotter-chip:hover {
+  border-color: var(--ink);
+  color: var(--ink);
+  background: var(--paper-2);
+}
+.hudson-site .plotter-chip[aria-pressed='true'] {
+  background: var(--ink);
+  border-color: var(--ink);
+  color: var(--paper);
+}
+
+/* ─── Native range slider — drafting tick handle.
+   Replaces the OS-default thumb (which leaks chrome-grey/oklch on dark themes
+   and reads off-brand against the engineering chrome) with a 12×12 ink square
+   and a 1px line track. The track is built off currentColor so accent-color
+   on the input still tints the active fill on Chromium. */
+.hudson-site input[type='range'] {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 100%;
+  height: 12px;
+  background: transparent;
+  accent-color: var(--accent);
+  cursor: ew-resize;
+}
+.hudson-site input[type='range']::-webkit-slider-runnable-track {
+  height: 1px;
+  background: var(--line-strong);
+}
+.hudson-site input[type='range']::-moz-range-track {
+  height: 1px;
+  background: var(--line-strong);
+}
+.hudson-site input[type='range']::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  appearance: none;
+  width: 12px;
+  height: 12px;
+  margin-top: -6px;
+  background: var(--accent);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  cursor: ew-resize;
+}
+.hudson-site input[type='range']::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  background: var(--accent);
+  border: 1px solid var(--ink);
+  border-radius: 0;
+  cursor: ew-resize;
+}
+.hudson-site input[type='range']:hover::-webkit-slider-thumb { background: var(--accent-deep); }
+.hudson-site input[type='range']:hover::-moz-range-thumb     { background: var(--accent-deep); }
+
+/* ─── Focus rings — keyboard-only, accent halo, applied across every
+   interactive surface so tab navigation is legible. The UA outline is
+   suppressed by the buttons/inputs above; this puts it back consistently. */
+.hudson-site :where(
+  .btn,
+  .studio-console__toggle,
+  .studio-console__chip,
+  .studio-console__seg-btn,
+  .studio-console__reset,
+  .studio-console__close,
+  .drafting-tools__trigger,
+  .drafting-tools__item,
+  .drafting-tools__config-toggle,
+  .sheet-header__brand,
+  input[type='text'],
+  input[type='range'],
+  button,
+  a
+):focus-visible {
+  outline: 2px solid var(--accent);
+  outline-offset: 2px;
+}
+
+/* ─── Spec table ─── */
+
+.hudson-site .spec {
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+}
+.hudson-site .spec__row {
+  display: grid;
+  grid-template-columns: 130px 1fr;
+  border-bottom: 1px solid var(--line);
+}
+.hudson-site .spec__row:last-child { border-bottom: 0; }
+.hudson-site .spec__row--header {
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+.hudson-site .spec__row--header > div { padding: 6px 12px; }
+.hudson-site .spec__k {
+  padding: 8px 12px;
+  color: var(--ink-2);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 10px;
+  border-right: 1px solid var(--line);
+  background: var(--paper-2);
+}
+.hudson-site .spec__v {
+  padding: 8px 12px;
+  color: var(--ink);
+  letter-spacing: 0.04em;
+}
+.hudson-site .spec__v--accent { color: var(--accent-deep); font-weight: 600; }
+
+/* ─── Parts list card ─── */
+
+.hudson-site .part {
+  position: relative;
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper);
+  padding: 22px 22px 18px;
+  display: flex; flex-direction: column; gap: 12px;
+}
+.hudson-site .part__num {
+  position: absolute;
+  top: -1px; left: -1px;
+  width: 36px; height: 36px;
+  background: var(--ink); color: var(--paper);
+  display: grid; place-items: center;
+  font-family: var(--font-mono);
+  font-size: 12px; font-weight: 700;
+  letter-spacing: 0.1em;
+}
+.hudson-site .part__title {
+  font-family: var(--font-mono);
+  font-size: 12px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  margin: 0 0 0 28px;
+}
+.hudson-site .part__lede {
+  font-family: var(--font-display);
+  font-size: 26px;
+  line-height: 1.05;
+  color: var(--ink);
+  margin: 0;
+}
+.hudson-site .part__body {
+  font-size: 13px;
+  color: var(--ink-1);
+  line-height: 1.55;
+  margin: 0;
+}
+
+/* ─── Pulse animation (live dots) ─── */
+
+@keyframes hudPulse {
+  0%, 100% { box-shadow: 0 0 0 3px var(--accent-soft); }
+  50%      { box-shadow: 0 0 0 6px var(--accent-soft); }
+}
+
+/* ─── Snap-to-sheet (Studio toggle) ─── */
+.hudson-site.snap {
+  scroll-snap-type: y proximity;
+  scroll-behavior: smooth;
+}
+.hudson-site.snap .sheet {
+  scroll-snap-align: start;
+  scroll-snap-stop: normal;
+}
+
+/* ─── Paper grain (Studio toggle) ─── */
+.hudson-site.grain::before {
+  content: '';
+  position: fixed; inset: 0;
+  pointer-events: none;
+  z-index: 1;
+  opacity: 0.4;
+  mix-blend-mode: multiply;
+  background-image: url("data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='160' height='160'><filter id='n'><feTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/><feColorMatrix values='0 0 0 0 0.13   0 0 0 0 0.16   0 0 0 0 0.20   0 0 0 0 0.06 0'/></filter><rect width='100%' height='100%' filter='url(%23n)'/></svg>");
+}
+
+/* ─── UI radius — small chrome-y elements ─── */
+.hudson-site .code,
+.hudson-site pre.code,
+.hudson-site .tag,
+.hudson-site .kbd { border-radius: var(--radius-ui); transition: border-radius 0.15s; }
+
+/* ─── Card radius — larger content panels ─── */
+.hudson-site .spec,
+.hudson-site .part,
+.hudson-site .hud-card { border-radius: var(--radius-card); transition: border-radius 0.15s; }
+
+/* ─── Embed plate ─── */
+
+.hudson-site .embed-plate {
+  position: relative;
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--ink);
+  box-shadow: 0 2px 0 var(--paper-edge);
+}
+.hudson-site .embed-plate__caption {
+  position: absolute;
+  top: -28px; left: 0;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: flex; align-items: center; gap: 10px;
+}
+.hudson-site .embed-plate__caption .live {
+  display: inline-block;
+  width: 7px; height: 7px;
+  background: var(--accent);
+  border-radius: 50%;
+  box-shadow: 0 0 0 3px var(--accent-soft);
+  animation: hudPulse 1.6s ease-in-out infinite;
+}
+.hudson-site .embed-plate__corner {
+  position: absolute;
+  width: 12px; height: 12px;
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper);
+}
+.hudson-site .embed-plate__corner--tl { top: -7px; left: -7px; }
+.hudson-site .embed-plate__corner--tr { top: -7px; right: -7px; }
+.hudson-site .embed-plate__corner--bl { bottom: -7px; left: -7px; }
+.hudson-site .embed-plate__corner--br { bottom: -7px; right: -7px; }
+.hudson-site .embed-plate iframe {
+  display: block; border: 0;
+  width: 100%; height: 100%;
+  background: oklch(0.145 0 0);
+}
+
+/* Placeholder embed */
+.hudson-site .embed-stub {
+  width: 100%; height: 100%;
+  background:
+    repeating-linear-gradient(135deg,
+      oklch(0.18 0 0) 0, oklch(0.18 0 0) 14px,
+      oklch(0.20 0 0) 14px, oklch(0.20 0 0) 28px);
+  display: grid; place-items: center;
+  position: relative;
+}
+.hudson-site .embed-stub__label {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--accent);
+  background: var(--ink);
+  border: 1px solid var(--accent);
+  padding: 10px 16px;
+}
+
+/* ─── Tag / kbd ─── */
+
+.hudson-site .tag {
+  display: inline-flex; align-items: center;
+  padding: 2px 7px;
+  border: 1px solid var(--line-strong);
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  background: var(--paper);
+}
+.hudson-site .tag--accent { color: var(--accent-deep); border-color: var(--accent); background: var(--accent-soft); }
+.hudson-site .tag--ink { color: var(--paper); background: var(--ink); border-color: var(--ink); }
+
+/* ─── Code block ─── */
+
+.hudson-site .code {
+  background: var(--ink);
+  color: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 12px;
+  line-height: 1.6;
+  padding: 16px 18px;
+  border: var(--stroke-w) solid var(--ink);
+  white-space: pre;
+  overflow-x: auto;
+}
+.hudson-site .code .kw  { color: var(--syntax-kw); }
+.hudson-site .code .str { color: var(--syntax-str); }
+.hudson-site .code .num { color: var(--syntax-num); }
+.hudson-site .code .com { color: var(--syntax-com); font-style: italic; }
+.hudson-site .code .at  { color: var(--syntax-at); }
+
+/* ─── Responsive ─── */
+
+@media (max-width: 1180px) {
+  .hudson-site .reflow-stack { grid-template-columns: 1fr !important; }
+  .hudson-site .reflow-hide-narrow { display: none !important; }
+  .hudson-site .reflow-assembly { grid-template-columns: 1fr !important; gap: 32px !important; }
+  .hudson-site .reflow-platforms { grid-column: span 1 !important; grid-template-columns: repeat(3, 1fr) !important; }
+  .hudson-site .reflow-split-arrow { transform: rotate(90deg); margin: 0 auto; }
+}
+
+@media (max-width: 720px) {
+  .hudson-site .h-display { font-size: 44px !important; }
+  .hudson-site .h-section { font-size: 32px !important; }
+  .hudson-site .reflow-platforms { grid-template-columns: 1fr !important; }
+}
+.studio-console {
+  position: fixed;
+  right: 16px;
+  bottom: 16px;
+  z-index: 50;
+  font-family: var(--font-mono, ui-monospace, monospace);
+  color: var(--ink);
+}
+
+.studio-console__toggle {
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 10px 14px;
+  background: var(--ink);
+  color: var(--paper);
+  border: var(--stroke-w) solid var(--ink);
+  font-family: inherit;
+  font-size: 11px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  cursor: pointer;
+  box-shadow: 0 4px 0 var(--paper-edge);
+}
+.studio-console__toggle:hover { background: var(--accent); border-color: var(--accent); }
+.studio-console__toggle .dot {
+  width: 7px; height: 7px; border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px var(--accent-soft);
+}
+
+.studio-console__panel {
+  width: 320px;
+  background: var(--paper);
+  border: var(--stroke-w) solid var(--ink);
+  box-shadow: 0 6px 0 var(--paper-edge);
+  display: flex;
+  flex-direction: column;
+  max-height: calc(100vh - 48px);
+}
+
+.studio-console__head {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--ink);
+  color: var(--paper);
+  font-size: 10px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+}
+.studio-console__head svg { display: block; }
+.studio-console__close {
+  background: transparent; border: 0; color: var(--paper);
+  font-family: inherit; font-size: 12px; cursor: pointer;
+  padding: 0 4px;
+}
+
+.studio-console__body {
+  padding: 14px 14px 16px;
+  overflow-y: auto;
+  display: flex; flex-direction: column; gap: 18px;
+}
+
+.studio-console__group {
+  display: flex; flex-direction: column; gap: 8px;
+}
+.studio-console__label {
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+  display: flex; align-items: center; justify-content: space-between;
+}
+.studio-console__label .meta {
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  color: var(--ink-3);
+  text-transform: none;
+}
+
+.studio-console__chips {
+  display: flex; flex-wrap: wrap; gap: 6px;
+}
+.studio-console__chip {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 5px 8px;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  background: var(--paper);
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.studio-console__chip:hover { border-color: var(--ink); }
+.studio-console__chip[aria-pressed="true"] {
+  background: var(--ink);
+  color: var(--paper);
+  border-color: var(--ink);
+}
+.studio-console__chip .swatch {
+  width: 10px; height: 10px;
+  border: 1px solid var(--ink);
+  display: inline-block;
+}
+
+.studio-console__row {
+  display: grid;
+  grid-template-columns: 70px 1fr;
+  align-items: center;
+  gap: 8px;
+}
+.studio-console__row input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+}
+
+.studio-console__reset {
+  align-self: flex-start;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: transparent;
+  color: var(--ink);
+  border: 1px solid var(--line-strong);
+  padding: 6px 10px;
+  cursor: pointer;
+}
+.studio-console__reset:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+
+/* ─── Sticky sheet header — rule, wordmark, title block, studio button ─── */
+
+.hudson-site .sheet-header {
+  position: sticky;
+  top: 0;
+  z-index: 20;
+  margin-left: -64px;
+  margin-right: -64px;
+}
+
+/* Tick ruler — sits above the bar, on the section's paper, not inside the bar.
+   Solid paper background so scrolled content doesn't bleed through the empty
+   space between ticks while the sticky header is overlapping a section seam. */
+.hudson-site .sheet-header__rule {
+  height: 16px;
+  border-bottom: 1px solid var(--line);
+  background:
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 11px,
+      var(--ink-2) 11px, var(--ink-2) 12px) bottom / 100% 4px no-repeat,
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 71px,
+      var(--ink) 71px, var(--ink) 72px) bottom / 100% 8px no-repeat,
+    var(--paper);
+}
+
+/* Bar — three-column grid: wordmark | title block | studio button */
+.hudson-site .sheet-header__bar {
+  display: grid;
+  grid-template-columns: 160px minmax(0, 1fr) 184px;
+  align-items: stretch;
+  gap: 16px;
+  padding: 12px 32px;
+  background: var(--paper);
+  border-bottom: 1px solid var(--ink);
+}
+
+/* Wordmark — visual peer of the studio button on the right */
+.hudson-site .sheet-header__brand {
+  display: grid;
+  place-items: center;
+  padding: 0 12px;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  color: var(--ink);
+}
+
+/* Title block — single bordered box; three cells separated by 1px ink dividers.
+   Fixed badge + sheet-count widths guarantee zero layout shift between sheets.
+   End cell: 108px so labels with the % suffix ("02% / 07") don't truncate. */
+.hudson-site .sheet-header__title {
+  display: grid;
+  grid-template-columns: 168px minmax(0, 1fr) 108px;
+  align-items: stretch;
+  border: 1px solid var(--ink);
+  background: var(--paper);
+  font-family: var(--font-mono);
+  min-width: 0;
+}
+
+/* Cell 1 — sheet badge: dark ink fill, paper text, num + name inline */
+.hudson-site .sheet-header__title-badge {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+  padding: 0 16px;
+  background: var(--ink);
+  color: var(--paper);
+}
+.hudson-site .sheet-header__title-badge-num {
+  font-size: 13px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+}
+.hudson-site .sheet-header__title-badge-name {
+  font-size: 9px;
+  font-weight: 600;
+  letter-spacing: 0.20em;
+  text-transform: uppercase;
+  opacity: 0.92;
+}
+
+/* Cells 2 + 3 — paper-filled stacks: small label / value */
+.hudson-site .sheet-header__title-cell {
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: 2px;
+  padding: 8px 16px;
+  min-width: 0;
+  border-left: 1px solid var(--ink);
+}
+.hudson-site .sheet-header__title-cell--end {
+  align-items: flex-start;
+}
+.hudson-site .sheet-header__title-label {
+  font-size: 8px;
+  letter-spacing: 0.24em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.hudson-site .sheet-header__title-value {
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+
+.hudson-site .sheet-header__tools { min-width: 0; }
+
+.hudson-site .sheet-body { padding-top: 56px; }
+
+/* ─── Studio — collapsed trigger in the bar's right slot ─── */
+
+.hudson-site .drafting-tools__trigger {
+  display: grid;
+  grid-template-columns: 14px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  height: 100%;
+  padding: 0 12px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--ink);
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+.hudson-site .drafting-tools__trigger:hover { background: var(--paper-2); }
+.hudson-site .drafting-tools__trigger.is-open {
+  background: var(--ink);
+  color: var(--paper);
+}
+.hudson-site .drafting-tools__chev {
+  display: inline-grid;
+  place-items: center;
+  width: 14px;
+  height: 14px;
+  font-size: 13px;
+  line-height: 1;
+}
+.hudson-site .drafting-tools__label {
+  text-align: left;
+  letter-spacing: 0.22em;
+}
+.hudson-site .drafting-tools__count {
+  display: inline-grid;
+  place-items: center;
+  min-width: 16px;
+  height: 16px;
+  padding: 0 4px;
+  background: var(--accent);
+  color: var(--paper);
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.04em;
+}
+
+/* ─── Studio — popover panel ─── */
+
+.hudson-site .drafting-tools__panel {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: 0;
+  z-index: 25;
+  width: 256px;
+  background: var(--paper);
+  border: 1px solid var(--ink);
+  box-shadow: 0 4px 0 var(--paper-edge);
+  font-family: var(--font-mono);
+  display: flex;
+  flex-direction: column;
+}
+
+.hudson-site .drafting-tools__group {
+  border-bottom: 1px solid var(--ink);
+}
+.hudson-site .drafting-tools__group:last-child { border-bottom: 0; }
+
+.hudson-site .drafting-tools__item {
+  display: grid;
+  grid-template-columns: 16px 1fr auto;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  background: transparent;
+  border: 0;
+  font-family: inherit;
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-1);
+  cursor: pointer;
+  text-align: left;
+}
+.hudson-site .drafting-tools__item:hover { background: var(--paper-2); color: var(--ink); }
+.hudson-site .drafting-tools__item.is-active {
+  color: var(--accent);
+  background: var(--accent-soft);
+}
+.hudson-site .drafting-tools__item-icon {
+  display: inline-grid;
+  place-items: center;
+  width: 16px;
+  height: 16px;
+}
+.hudson-site .drafting-tools__item-label { font-weight: 600; }
+.hudson-site .drafting-tools__item-state {
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  font-weight: 700;
+  color: var(--ink-3);
+}
+.hudson-site .drafting-tools__item.is-active .drafting-tools__item-state { color: var(--accent); }
+
+.hudson-site .drafting-tools__config {
+  background: var(--paper-2);
+  border-top: 1px solid var(--line);
+  padding: 8px 12px 12px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.hudson-site .drafting-tools__config-row {
+  display: grid;
+  grid-template-columns: 44px 1fr auto;
+  align-items: center;
+  gap: 8px;
+  font-family: var(--font-mono);
+  font-size: 9px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+.hudson-site .drafting-tools__config-label { font-weight: 600; }
+.hudson-site .drafting-tools__config-slider {
+  width: 100%;
+  height: 14px;
+  accent-color: var(--accent-deep);
+}
+.hudson-site .drafting-tools__config-value {
+  min-width: 36px;
+  text-align: right;
+  color: var(--ink);
+  font-weight: 600;
+}
+.hudson-site .drafting-tools__config-toggle {
+  padding: 3px 8px;
+  font-family: inherit;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  background: var(--paper);
+  color: var(--ink-2);
+  border: 1px solid var(--ink);
+  cursor: pointer;
+}
+.hudson-site .drafting-tools__config-toggle.is-on {
+  background: var(--accent);
+  color: var(--paper);
+  border-color: var(--accent);
+}
+
+/* ─────────────────────────────────────────────────────────────
+   Dark paper guard — slate (cyano blueprint)
+
+   The drafting line system was tuned for light paper, where --ink
+   is near-black and reads as a 1.5px structural border. Inverted
+   onto dark paper, --ink becomes near-white, and every border /
+   stroke / divider screams. We don't redesign — we soften the
+   bright lines into a mid-tone that still reads as engineered
+   linework but doesn't dominate. Grid opacity is also pulled down
+   ~15% so the 12px/72px lattice stays readable, not noisy.
+
+   --line-strong on slate is oklch(0.62 0.012 240) — that's our
+   target for "structural border on dark paper". --line on slate is
+   oklch(0.40 0.012 240) — used for "internal divider on dark paper".
+   ───────────────────────────────────────────────────────────── */
+
+.hudson-site[data-paper='slate'] {
+  /* 1) Tone down the structural-grid background a notch */
+  --grid-opacity-minor: 0.10;
+  --grid-opacity-major: 0.18;
+}
+
+/* 2) Borders that read as bright-on-dark when --ink is light.
+   Re-route them to --line-strong (mid) or --line (low) without
+   touching the typographic uses of --ink (text fills, badge bgs,
+   accent-on-ink chips). */
+.hudson-site[data-paper='slate'] .sheet-header__bar { border-bottom-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .sheet-header__brand,
+.hudson-site[data-paper='slate'] .sheet-header__title,
+.hudson-site[data-paper='slate'] .sheet-header__title-cell { border-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .sheet-header__title-cell { border-left-color: var(--line-strong); }
+
+.hudson-site[data-paper='slate'] .drafting-tools__trigger,
+.hudson-site[data-paper='slate'] .drafting-tools__panel { border-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .drafting-tools__group { border-bottom-color: var(--line); }
+.hudson-site[data-paper='slate'] .drafting-tools__config-toggle { border-color: var(--line-strong); }
+
+.hudson-site[data-paper='slate'] .sheet--bordered { border-color: var(--line); }
+.hudson-site[data-paper='slate'] .sheet__rule,
+.hudson-site[data-paper='slate'] .sheet__rule--left,
+.hudson-site[data-paper='slate'] .sheet-header__rule { border-color: var(--line); }
+
+.hudson-site[data-paper='slate'] .titleblock { border-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .footer-plate { border-color: var(--line-strong); }
+
+.hudson-site[data-paper='slate'] .spec { border-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .part { border-color: var(--line-strong); }
+
+/* Embed plate — keep a bright-ish frame so the frame still reads as
+   a hard plate against the diagram, but step it down off pure --ink.
+   Caption corners stay paper-filled so they continue to "punch out". */
+.hudson-site[data-paper='slate'] .embed-plate { border-color: var(--line-strong); }
+.hudson-site[data-paper='slate'] .embed-plate__corner { border-color: var(--line-strong); }
+
+/* Sheet-header rule: --ink-2 ticks on dark go too bright. Step them
+   down to --ink-3 so they read as a structural mark, not a stripe. */
+.hudson-site[data-paper='slate'] .sheet-header__rule {
+  background:
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 11px,
+      var(--ink-3) 11px, var(--ink-3) 12px) bottom / 100% 4px no-repeat,
+    repeating-linear-gradient(to right,
+      transparent 0, transparent 71px,
+      var(--ink-2) 71px, var(--ink-2) 72px) bottom / 100% 8px no-repeat,
+    var(--paper);
+}
+
+/* Note: many sheet bodies set "border: var(--stroke-w) solid var(--ink)"
+   as inline styles (Sheet01 hero stat, Sheet03 feature cards, AppCard,
+   ManifestBox, PlatformFrame, Sheet07 quickstart steps, .part). Inline
+   styles outrank class selectors, so we can't soften those from here
+   without --important. Those components also rely on --ink for text
+   fills inside the same subtree, so a localized --ink override would
+   demote the typography too. The chrome overrides above (sticky header,
+   embed plate, spec, drafting tools, titleblock, footer plate) cover the
+   majority of the visible "wall of bright lines" feeling. The remaining
+   sheet-body card borders read as 1.5px structural strokes around
+   discrete content — that's the engineering-drawing intent and reads
+   cleaner once the persistent chrome above is settled. */

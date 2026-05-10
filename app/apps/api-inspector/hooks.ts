@@ -51,7 +51,7 @@ export function useApiInspectorStatus(): { label: string; color: StatusColor } {
 export function useApiInspectorNavCenter() {
   const { request } = useApiInspector();
   return createElement('span', {
-    className: 'text-[10px] font-mono text-neutral-500 uppercase tracking-wider',
+    className: 'text-[10px] font-mono text-muted-foreground uppercase tracking-wider',
   }, request.method);
 }
 
@@ -62,10 +62,10 @@ export function useApiInspectorNavActions() {
   const { response } = useApiInspector();
   if (!response) return null;
   return createElement('span', {
-    className: 'text-[11px] font-mono text-neutral-400 flex items-center gap-2',
+    className: 'text-[11px] font-mono text-muted-foreground flex items-center gap-2',
   },
-    createElement('span', { className: `font-bold ${response.status < 400 ? 'text-emerald-400' : 'text-red-400'}` }, `${response.status}`),
-    createElement('span', { className: 'text-neutral-600' }, '|'),
+    createElement('span', { className: `font-bold ${response.status < 400 ? 'text-emerald-700 dark:text-emerald-400' : 'text-red-700 dark:text-red-400'}` }, `${response.status}`),
+    createElement('span', { className: 'text-muted-foreground/60' }, '|'),
     createElement('span', {}, `${response.timing.durationMs}ms`),
   );
 }

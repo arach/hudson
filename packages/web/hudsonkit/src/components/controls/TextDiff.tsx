@@ -12,6 +12,7 @@ import {
 import type { DocumentLanguage } from './CodeEditor';
 import type { HudsonTextDocument, TextDocumentDetectionInput } from './TextDocument';
 import { createHudsonTextDocument } from './TextDocument';
+import { useOptionalTheme } from '../../theme/ThemeProvider';
 
 export type TextDiffLayout = 'split' | 'unified';
 
@@ -79,7 +80,7 @@ export interface TextDiffSurfaceProps {
   className?: string;
 }
 
-const HUDSON_DIFF_CSS = `
+const HUDSON_DIFF_CSS_DARK = `
 :host {
   --diffs-dark-bg: #0a0f12;
   --diffs-dark: rgb(226 240 244 / 0.82);
@@ -114,6 +115,43 @@ const HUDSON_DIFF_CSS = `
 }
 `;
 
+// Light variant — paper-friendly addition/deletion tints + saturated-mid hue
+// for additions/deletions/modified. Reads on cream linen and white surfaces.
+const HUDSON_DIFF_CSS_LIGHT = `
+:host {
+  --diffs-light-bg: #fafaf7;
+  --diffs-light: rgb(31 41 55 / 0.92);
+  --diffs-font-family: "JetBrains Mono", "SF Mono", ui-monospace, monospace;
+  --diffs-header-font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --diffs-font-size: 12px;
+  --diffs-line-height: 19px;
+  --diffs-gap-block: 6px;
+  --diffs-gap-inline: 8px;
+  --diffs-bg-buffer-override: #fafaf7;
+  --diffs-bg-context-override: #f4f3ed;
+  --diffs-bg-separator-override: #ebe8df;
+  --diffs-bg-addition-override: rgb(21 128 61 / 0.10);
+  --diffs-bg-addition-emphasis-override: rgb(21 128 61 / 0.20);
+  --diffs-bg-deletion-override: rgb(185 28 28 / 0.10);
+  --diffs-bg-deletion-emphasis-override: rgb(185 28 28 / 0.20);
+  --diffs-addition-color: #15803d;
+  --diffs-deletion-color: #b91c1c;
+  --diffs-modified-color: #0e7490;
+  color-scheme: light;
+}
+
+[data-diffs-header=default] {
+  border-bottom: 1px solid rgb(0 0 0 / 0.08);
+  min-height: 34px;
+  padding-inline: 12px;
+}
+
+[data-code]::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+`;
+
 export function TextDiffSurface({
   diff,
   layout,
@@ -124,6 +162,11 @@ export function TextDiffSurface({
 }: TextDiffSurfaceProps) {
   const [internalLayout, setInternalLayout] = useState<TextDiffLayout>(layout ?? diff.layout ?? 'split');
   const activeLayout = layout ?? internalLayout;
+
+  // Pick the diff theme to match the active hudson theme. Provider may be
+  // absent (SSR / unwired previews) — fall back to dark in that case.
+  const themeContext = useOptionalTheme();
+  const isLight = themeContext?.resolvedTheme === 'light';
 
   useEffect(() => {
     if (layout !== undefined) return;
@@ -141,10 +184,10 @@ export function TextDiffSurface({
     hunkSeparators: 'line-info-basic',
     lineDiffType: 'word-alt',
     overflow: 'wrap',
-    themeType: 'dark',
-    unsafeCSS: HUDSON_DIFF_CSS,
+    themeType: isLight ? 'light' : 'dark',
+    unsafeCSS: isLight ? HUDSON_DIFF_CSS_LIGHT : HUDSON_DIFF_CSS_DARK,
     ...diff.options,
-  }), [activeLayout, diff.options]);
+  }), [activeLayout, diff.options, isLight]);
 
   const documentFiles = useMemo(() => {
     if (diff.kind !== 'documents') return null;
@@ -154,22 +197,28 @@ export function TextDiffSurface({
     };
   }, [diff]);
 
+  // Wrapper bg is driven by --hud-diff-surface-bg ([data-hudson-theme] in
+  // tokens.css), not isLight. resolvedTheme is undefined during SSR/hydration
+  // by design, so a JS-driven style would diverge from the server HTML.
   return (
-    <div className={`flex min-h-0 flex-col overflow-hidden border border-white/[0.06] bg-[#0a0f12] ${className ?? ''}`}>
+    <div
+      className={`flex min-h-0 flex-col overflow-hidden border border-border/60 ${className ?? ''}`}
+      style={{ backgroundColor: 'var(--hud-diff-surface-bg, #0a0f12)' }}
+    >
       {showHeader && (
-        <div className="flex shrink-0 items-center gap-2 border-b border-white/[0.06] bg-white/[0.025] px-3 py-2">
-          <FileDiff size={13} className="shrink-0 text-cyan-300/55" />
+        <div className="flex shrink-0 items-center gap-2 border-b border-border/60 bg-muted/40 px-3 py-2">
+          <FileDiff size={13} className="shrink-0 text-cyan-700/70 dark:text-cyan-300/55" />
           <div className="min-w-0 flex-1">
-            <div className="truncate text-[12px] font-medium text-white/78">{diff.title}</div>
-            <div className="truncate font-mono text-[10px] uppercase tracking-wider text-white/28">
+            <div className="truncate text-[12px] font-medium text-foreground/86">{diff.title}</div>
+            <div className="truncate font-mono text-[10px] uppercase tracking-wider text-muted-foreground">
               {diff.kind === 'patch' ? 'PATCH' : `${fileNameFor(diff.oldDocument)} -> ${fileNameFor(diff.newDocument)}`}
             </div>
           </div>
-          <div className="flex rounded border border-white/[0.08] bg-white/[0.03] p-0.5">
+          <div className="flex rounded border border-border/60 bg-card/60 p-0.5">
             <button
               type="button"
               onClick={() => setLayout('split')}
-              className={`rounded px-2 py-1 text-[10px] ${activeLayout === 'split' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+              className={`rounded px-2 py-1 text-[10px] ${activeLayout === 'split' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
               title="Split diff"
             >
               <Columns2 size={12} />
@@ -177,7 +226,7 @@ export function TextDiffSurface({
             <button
               type="button"
               onClick={() => setLayout('unified')}
-              className={`rounded px-2 py-1 text-[10px] ${activeLayout === 'unified' ? 'bg-cyan-400/15 text-cyan-200' : 'text-white/34 hover:text-white/62'}`}
+              className={`rounded px-2 py-1 text-[10px] ${activeLayout === 'unified' ? 'bg-cyan-700/15 dark:bg-cyan-400/15 text-cyan-700 dark:text-cyan-200' : 'text-muted-foreground hover:text-foreground/72'}`}
               title="Unified diff"
             >
               <Rows3 size={12} />
@@ -185,7 +234,10 @@ export function TextDiffSurface({
           </div>
         </div>
       )}
-      <div className="min-h-0 flex-1 overflow-auto bg-[#0a0f12]">
+      <div
+        className="min-h-0 flex-1 overflow-auto"
+        style={{ backgroundColor: 'var(--hud-diff-surface-bg, #0a0f12)' }}
+      >
         {diff.kind === 'patch' ? (
           <PatchDiff
             patch={diff.patch}

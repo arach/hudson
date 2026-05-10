@@ -108,7 +108,7 @@ export function HudsonAIInspector() {
                     <span className="rounded-full border border-border/70 px-1.5 py-0.5 text-[9px] font-mono text-muted-foreground">
                       {visibleLabel}
                     </span>
-                    <span className="rounded-full border border-cyan-500/20 bg-cyan-500/10 px-1.5 py-0.5 text-[9px] font-mono text-cyan-300/80">
+                    <span className="rounded-full border border-cyan-700/30 dark:border-cyan-500/20 bg-cyan-700/10 dark:bg-cyan-500/10 px-1.5 py-0.5 text-[9px] font-mono text-cyan-700 dark:text-cyan-300/80">
                       {focusLabel}
                     </span>
                   </div>
@@ -169,7 +169,7 @@ export function HudsonAIInspector() {
               >
                 <div className="flex items-center justify-between gap-2">
                   <div className="text-[11px] font-medium text-foreground/76">{intent.title}</div>
-                  <div className="text-[10px] font-mono text-cyan-300/75">{intent.category}</div>
+                  <div className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300/75">{intent.category}</div>
                 </div>
                 <div className="mt-1 text-[10px] text-foreground/62">
                   {intent.appName} • {intent.commandId}
@@ -193,7 +193,7 @@ export function HudsonAIInspector() {
                   >
                     <div className="flex items-center justify-between gap-2">
                       <div className="text-[11px] font-medium text-foreground/76">{service.name}</div>
-                      <div className="text-[10px] font-mono text-cyan-300/75">{service.status}</div>
+                      <div className="text-[10px] font-mono text-cyan-700 dark:text-cyan-300/75">{service.status}</div>
                     </div>
                     {service.description && (
                       <div className="mt-1 text-[10px] text-foreground/62">{service.description}</div>

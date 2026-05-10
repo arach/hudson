@@ -63,7 +63,7 @@ const ZoomControls: React.FC<ZoomControlsProps> = ({
 
   return (
     <div
-      className="pointer-events-auto flex flex-col items-center bg-card/95 backdrop-blur-xl border rounded-md shadow-[0_0_20px_rgba(0,0,0,0.6)] overflow-hidden"
+      className="pointer-events-auto flex flex-col items-center bg-card/95 border rounded-none shadow-[var(--hud-shadow-panel)] overflow-hidden"
       style={chromeBorderStyle}
     >
       <button

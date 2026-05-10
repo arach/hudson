@@ -18,7 +18,7 @@ export function useDocsCommands(): CommandOption[] {
 }
 
 export function useDocsStatus(): { label: string; color: StatusColor } {
-  return { label: 'READY', color: 'emerald' };
+  return { label: 'READY', color: 'amber' };
 }
 
 export function useDocsSearch(): SearchConfig {

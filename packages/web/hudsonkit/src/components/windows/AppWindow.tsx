@@ -260,12 +260,12 @@ const AppWindow: React.FC<AppWindowProps> = ({
     >
       {/* Window chrome */}
       <div
-        className={`w-full h-full flex flex-col rounded-lg overflow-hidden border transition-shadow duration-200 ${
+        className={`w-full h-full flex flex-col rounded-lg overflow-hidden border transition-colors duration-200 ${
           isFocused
-            ? 'border-accent/45 shadow-[0_24px_70px_color-mix(in_srgb,oklch(var(--accent))_18%,transparent)]'
-            : 'border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.22)]'
+            ? 'border-accent/60'
+            : 'border-border/80 shadow-[0_4px_18px_rgba(0,0,0,0.10)]'
         }`}
-        style={{ background: 'color-mix(in srgb, oklch(var(--card)) 92%, transparent)', backdropFilter: 'blur(20px)' }}
+        style={{ background: 'oklch(var(--card))' }}
       >
         {/* Title bar */}
         <div

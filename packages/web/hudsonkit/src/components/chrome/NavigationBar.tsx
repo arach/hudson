@@ -21,6 +21,38 @@ interface NavigationBarProps {
   };
 }
 
+/**
+ * Drafting-style mark — a 14px registration glyph (square + crosshair + tick)
+ * intended to read as a title-block stamp from an engineering drawing.
+ * Strokes use `currentColor` so it themes through `text-foreground` or accent.
+ */
+const HudsonMark: React.FC<{ title: string }> = ({ title }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="0.75"
+    strokeLinecap="square"
+    aria-hidden="true"
+    focusable="false"
+    role="img"
+    style={{ flex: 'none' }}
+  >
+    <title>{title}</title>
+    {/* Outer registration box */}
+    <rect x="1" y="1" width="12" height="12" />
+    {/* Crosshair */}
+    <line x1="7" y1="3.25" x2="7" y2="10.75" />
+    <line x1="3.25" y1="7" x2="10.75" y2="7" />
+    {/* Center pin — small filled accent dot */}
+    <circle cx="7" cy="7" r="0.9" fill="var(--hud-accent, currentColor)" stroke="none" />
+    {/* Title-block tick on bottom edge */}
+    <line x1="1" y1="11.25" x2="13" y2="11.25" strokeWidth="0.5" opacity="0.55" />
+  </svg>
+);
+
 const NavigationBar: React.FC<NavigationBarProps> = ({
   title, subtitle, center, actions, onTitleClick, search,
 }) => {
@@ -35,21 +67,23 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
       {...dragRegionProps}
     >
       <div
-        className="bg-background/95 backdrop-blur-xl border-b shadow-[var(--hud-shadow-nav)] flex items-end px-4"
+        className="bg-background/95 border-b shadow-[var(--hud-shadow-nav)] flex items-end px-4"
         style={{ height: navTotalHeight, borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
       >
-        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/8 to-transparent" />
-
         {/* Left: Branding */}
         <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
           <button
             onClick={onTitleClick}
-            className="text-[18px] sm:text-[22px] font-bold text-foreground tracking-[0.16em] sm:tracking-[0.25em] font-mono leading-none bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
+            aria-label={title}
+            className="group flex items-center gap-[7px] text-foreground/85 hover:text-foreground transition-colors bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-sm px-0.5 -mx-0.5 leading-none"
           >
-            {title}
+            <HudsonMark title={title} />
+            <span className="font-mono text-[11px] tracking-[0.06em] lowercase leading-none">
+              {title}
+            </span>
           </button>
           {subtitle && (
-            <span className="text-xs font-mono text-muted-foreground">{subtitle}</span>
+            <span className="text-xs font-mono font-light text-muted-foreground">{subtitle}</span>
           )}
         </div>
 
@@ -66,7 +100,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
 
           {/* Search / Scope filter */}
           {search && (
-            <div className="hidden sm:block relative w-[220px] max-w-[34vw] bg-card border border-input rounded px-2.5 shadow-[inset_0_1px_0_oklch(var(--foreground)/0.02)] hover:border-ring/60 focus-within:border-ring focus-within:ring-1 focus-within:ring-ring/30 focus-within:bg-card transition-all duration-200">
+            <div className="hidden sm:block relative w-[220px] max-w-[34vw] bg-card border border-input rounded px-2.5 shadow-[inset_0_1px_0_oklch(var(--foreground)/0.02)] hover:border-ring/60 focus-within:border-ring focus-within:bg-card transition-colors duration-200">
               <Search size={11} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
               <input
                 type="text"
@@ -74,8 +108,8 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                 onChange={(e) => search.onChange(e.target.value)}
                 placeholder={search.placeholder ?? 'Search...'}
                 className={`
-                  w-full h-7 pl-5 pr-6 bg-transparent text-[12px] font-mono tracking-wider
-                  placeholder:text-muted-foreground text-foreground
+                  w-full h-7 pl-5 pr-6 bg-transparent text-[11px] font-mono font-normal tracking-[0.02em]
+                  placeholder:text-muted-foreground/80 placeholder:font-light text-foreground
                   focus:outline-none transition-all duration-200
                   ${isFiltered ? 'text-accent' : ''}
                 `}

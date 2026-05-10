@@ -15,6 +15,17 @@
   --hud-status-info: oklch(var(--info));
 }
 
+/* Diff surface bg — flips on the data-hudson-theme attribute set by
+   HudsonThemeScript pre-paint, so SSR HTML and the first client render
+   agree without reading resolvedTheme (which is undefined during SSR by
+   design). See TextDiff.tsx. */
+[data-hudson-theme="dark"] {
+  --hud-diff-surface-bg: #0a0f12;
+}
+[data-hudson-theme="light"] {
+  --hud-diff-surface-bg: #fafaf7;
+}
+
 /* ───────────────────────────────────────────────────────────────────────────
    Theme-aware chrome shadows & effects
    ───────────────────────────────────────────────────────────────────────────

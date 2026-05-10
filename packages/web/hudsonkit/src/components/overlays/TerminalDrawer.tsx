@@ -83,8 +83,8 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
     <div
       ref={drawerRef}
       className={`
-        fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t
-        bg-card/95 backdrop-blur-xl
+        fixed left-0 right-0 shadow-[0_-2px_12px_rgba(0,0,0,0.16)] flex flex-col border-t
+        bg-card
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
         transition-all duration-300 ease-in-out
       `}
@@ -101,7 +101,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
           {title || (
             <div className="flex items-center gap-2 text-accent">
               <Terminal size={14} />
-              <span className="text-xs font-bold tracking-widest font-mono">TERMINAL</span>
+              <span className="text-[10px] font-light tracking-[0.18em] font-mono uppercase">TERMINAL</span>
             </div>
           )}
           {headerActions}

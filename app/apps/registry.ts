@@ -41,6 +41,7 @@ import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
 import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
+import { stageDesignApp } from './stage-design';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -83,6 +84,7 @@ function getAppById(id: string): HudsonApp | null {
     'notepad': notepadApp,
     'document-lab': documentLabApp,
     'theme-designer': themeDesignerApp,
+    'stage-design': stageDesignApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)

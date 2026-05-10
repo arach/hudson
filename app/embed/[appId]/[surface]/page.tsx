@@ -24,6 +24,8 @@ import { resolveEmbedInitialState, type EmbedSearchParams } from '../../initial-
 import { getCoreWorkspaces } from '../../../apps/registry';
 import { EmbedHandshake } from './EmbedHandshake';
 import { EmbedWorkspace } from './EmbedWorkspace';
+import { EmbedVoice } from './EmbedVoice';
+import { EmbedDocs } from './EmbedDocs';
 
 interface EmbedPageProps {
   params: Promise<{ appId: string; surface: string }>;
@@ -49,6 +51,36 @@ export default async function EmbedPage({ params, searchParams }: EmbedPageProps
       >
         <EmbedHandshake surface={surface} />
         <EmbedWorkspace initialState={initialState} />
+      </div>
+    );
+  }
+
+  if (surface === 'voice') {
+    return (
+      <div
+        data-hudson-ref={ref}
+        data-hudson-template={initialState.template}
+        data-hudson-theme={initialState.theme}
+        data-hudson-surface="voice"
+        style={{ ...themeStyle, minHeight: '100vh' } as CSSProperties}
+      >
+        <EmbedHandshake surface={surface} />
+        <EmbedVoice />
+      </div>
+    );
+  }
+
+  if (surface === 'docs') {
+    return (
+      <div
+        data-hudson-ref={ref}
+        data-hudson-template={initialState.template}
+        data-hudson-theme={initialState.theme}
+        data-hudson-surface="docs"
+        style={{ ...themeStyle, minHeight: '100vh' } as CSSProperties}
+      >
+        <EmbedHandshake surface={surface} />
+        <EmbedDocs />
       </div>
     );
   }

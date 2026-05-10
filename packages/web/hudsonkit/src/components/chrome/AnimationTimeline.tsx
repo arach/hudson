@@ -88,7 +88,7 @@ const AnimationTimeline: React.FC<AnimationTimelineProps> = ({
   return (
     <div className="fixed z-40 pointer-events-auto" style={style}>
       <div
-        className="h-16 bg-card/95 backdrop-blur-xl border-t border-l border-r shadow-[0_-4px_30px_rgba(0,0,0,0.5)] flex items-center px-4 gap-4"
+        className="h-16 bg-card/95 border-t border-l border-r shadow-[var(--hud-shadow-bar)] flex items-center px-4 gap-4"
         style={chromeBorderStyle}
       >
         <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-foreground/5 to-transparent" />
