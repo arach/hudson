@@ -52,6 +52,8 @@ import type { EditorTab } from './workspace-manager';
 import type { ServiceStatus } from 'hudsonkit';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
+import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
+import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { hudsonAISettings } from '../apps/hudson-ai/settings';
 
@@ -90,6 +92,40 @@ const TILE = {
   multiH: 600,
   gap: 40,
 } as const;
+
+// [perf] Mount tracer — logs first-mount of a labeled component, with delta
+// from the canvas:start mark set in WorkspaceInner. performance.mark() is
+// always emitted (cheap; shows up in DevTools Performance), but console
+// output is gated behind ?perf=1 or localStorage.hudsonPerf === '1' so we
+// don't spam consoles in prod.
+function isPerfLogEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('perf') === '1') return true;
+    if (window.localStorage?.getItem('hudsonPerf') === '1') return true;
+  } catch {}
+  return false;
+}
+
+function useCanvasMountTrace(label: string) {
+  const fired = useRef(false);
+  useEffect(() => {
+    if (fired.current) return;
+    fired.current = true;
+    if (typeof performance === 'undefined') return;
+    const t = performance.now();
+    try { performance.mark(`canvas:mount:${label}`); } catch {}
+    if (!isPerfLogEnabled()) return;
+    const start = performance.getEntriesByName('canvas:start')[0];
+    const delta = start ? `  Δ=${(t - start.startTime).toFixed(1)}ms` : '';
+    console.log(`[perf] mount ${label}  @${t.toFixed(1)}ms${delta}`);
+  }, []);
+}
+
+function MountTrace({ label, children }: { label: string; children: ReactNode }) {
+  useCanvasMountTrace(label);
+  return <>{children}</>;
+}
 
 export type WindowBounds = { x: number; y: number; w: number; h: number };
 
@@ -270,14 +306,14 @@ function getWorkspaceServiceStatus(
   );
 
   if (requiredServiceIds.size === 0) {
-    return { label: 'READY', color: 'emerald' };
+    return { label: 'READY', color: 'amber' };
   }
 
   const hasError = [...requiredServiceIds].some(id => registry.records[id]?.status === 'error');
   const allRunning = [...requiredServiceIds].every(id => registry.records[id]?.status === 'running');
 
   if (hasError) return { label: 'ERROR', color: 'red' };
-  if (allRunning) return { label: 'NOMINAL', color: 'emerald' };
+  if (allRunning) return { label: 'NOMINAL', color: 'amber' };
   return { label: 'DEGRADED', color: 'amber' };
 }
 
@@ -633,10 +669,14 @@ export function WorkspaceShell({
     );
   }
 
-  // DataBusProvider wraps above all app Providers so port hooks can register
+  // DataBusProvider wraps above all app Providers so port hooks can register.
+  // WorkspaceDecorProvider sits at the same level so the stage-design app and
+  // the shell render layer share the same workspace-scoped state.
   tree = (
     <ActiveWorkspaceProvider workspaceId={workspace.id}>
-      <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+      <WorkspaceDecorProvider workspaceId={workspace.id}>
+        <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+      </WorkspaceDecorProvider>
     </ActiveWorkspaceProvider>
   );
 
@@ -759,6 +799,14 @@ function WorkspaceInner({
   const panelsVisible = phaseAtLeast(bootPhase, 'panels-in');
   const isSingleApp = workspace.apps.length === 1;
   const isMultiApp = !isSingleApp;
+
+  // [perf] Canvas timing — paired with `canvas:painted` in MultiAppCanvas.
+  // Mark is always emitted; log is gated by ?perf=1 / localStorage.hudsonPerf.
+  useEffect(() => {
+    if (typeof performance === 'undefined') return;
+    performance.mark('canvas:start');
+    if (isPerfLogEnabled()) console.log(`[perf] canvas:start @ ${performance.now().toFixed(1)}ms`);
+  }, []);
 
   // gridOpacity is computed below after shellSettings is declared
 
@@ -3047,13 +3095,42 @@ function MultiAppCanvas({
   const visibleNative = nativeApps.filter(c => activatedAppIds.has(c.app.id));
   const visibleWindowed = windowedApps.filter(c => activatedAppIds.has(c.app.id));
 
+  // [perf] Canvas timing — paired with `canvas:start` in WorkspaceInner.
+  // Fires once when first apps are placed; double-rAF so the browser has
+  // actually committed paint before we mark.
+  const canvasPaintedRef = useRef(false);
+  useEffect(() => {
+    if (canvasPaintedRef.current) return;
+    if (visibleWindowed.length === 0 && visibleNative.length === 0) return;
+    canvasPaintedRef.current = true;
+    if (typeof performance === 'undefined') return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        performance.mark('canvas:painted');
+        const log = isPerfLogEnabled();
+        try {
+          const m = performance.measure('canvas-ready', 'canvas:start', 'canvas:painted');
+          if (log) console.log(`[perf] canvas-ready: ${m.duration.toFixed(1)}ms (windowed=${visibleWindowed.length}, native=${visibleNative.length})`);
+        } catch {
+          if (log) console.log(`[perf] canvas:painted @ ${performance.now().toFixed(1)}ms`);
+        }
+      });
+    });
+  }, [visibleWindowed.length, visibleNative.length]);
+
   // Pipes from DataBus
   const { pipes } = useDataBus();
 
   return (
     <>
+      {/* Workspace decoration layer — read-only placards behind app windows.
+          Temporarily disabled to test whether this is the source of slow
+          app-window first paint. Re-enable by uncommenting the line below. */}
+      {/* <DecorationLayer worldScale={worldScale} /> */}
       {/* Pipe connection arrows between apps */}
-      <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />
+      <MountTrace label="PipeConnectorLayer">
+        <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />
+      </MountTrace>
       {/* Native apps render directly on canvas */}
       <AnimatePresence>
         {visibleNative.map(config => (
@@ -3066,11 +3143,15 @@ function MultiAppCanvas({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
-              <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-                <config.app.slots.Content />
-              </AppSlotErrorBoundary>
-            </ServiceBanner>
+            <MountTrace label={`Native:${config.app.id}`}>
+              <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
+                <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+                  <MountTrace label={`Content:${config.app.id}`}>
+                    <config.app.slots.Content />
+                  </MountTrace>
+                </AppSlotErrorBoundary>
+              </ServiceBanner>
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3086,22 +3167,24 @@ function MultiAppCanvas({
             transition={{ duration: 0.15 }}
             style={{ zIndex: zOrderMap[config.app.id] ?? 1, position: 'relative' }}
           >
-            <WindowedApp
-              config={config}
-              workspaceId={workspace.id}
-              initialBounds={windowBoundsOverrides[config.app.id]}
-              persistWindowState={persistWindowState}
-              isFocused={config.app.id === focusedAppId}
-              onFocus={() => onFocusApp(config.app.id)}
-              onClose={() => onCloseApp(config.app.id)}
-              worldScale={worldScale}
-              onResetView={onResetView}
-              onReportBounds={onReportBounds}
-              onOpenServices={onOpenServices}
-              onOpenInspector={onOpenInspector}
-              navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
-              onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
-            />
+            <MountTrace label={`WindowedWrapper:${config.app.id}`}>
+              <WindowedApp
+                config={config}
+                workspaceId={workspace.id}
+                initialBounds={windowBoundsOverrides[config.app.id]}
+                persistWindowState={persistWindowState}
+                isFocused={config.app.id === focusedAppId}
+                onFocus={() => onFocusApp(config.app.id)}
+                onClose={() => onCloseApp(config.app.id)}
+                worldScale={worldScale}
+                onResetView={onResetView}
+                onReportBounds={onReportBounds}
+                onOpenServices={onOpenServices}
+                onOpenInspector={onOpenInspector}
+                navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
+                onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
+              />
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3117,13 +3200,15 @@ function MultiAppCanvas({
             transition={{ duration: 0.15 }}
             style={{ zIndex: zOrderMap[dw.id] ?? 1, position: 'relative' }}
           >
-            <DynamicWindowedApp
-              win={dw}
-              isFocused={dw.id === focusedAppId}
-              onFocus={() => onFocusApp(dw.id)}
-              onClose={() => onCloseDynamicWindow(dw.id)}
-              worldScale={worldScale}
-            />
+            <MountTrace label={`DynamicWrapper:${dw.id}`}>
+              <DynamicWindowedApp
+                win={dw}
+                isFocused={dw.id === focusedAppId}
+                onFocus={() => onFocusApp(dw.id)}
+                onClose={() => onCloseDynamicWindow(dw.id)}
+                worldScale={worldScale}
+              />
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3147,6 +3232,7 @@ function DynamicWindowedApp({
   onClose: () => void;
   worldScale: number;
 }) {
+  useCanvasMountTrace(`DynamicWindowedApp:${win.id}`);
   const [bounds, setBounds] = useState(win.bounds);
 
   return (
@@ -3271,6 +3357,7 @@ function WindowedApp({
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
+  useCanvasMountTrace(`WindowedApp:${config.app.id}`);
   const defaults = useMemo(
     () => initialBounds ?? config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 },
     [config.defaultWindowBounds, initialBounds],
@@ -3414,7 +3501,9 @@ function WindowedApp({
       >
         <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
           <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-            <config.app.slots.Content />
+            <MountTrace label={`WindowedContent:${config.app.id}`}>
+              <config.app.slots.Content />
+            </MountTrace>
           </AppSlotErrorBoundary>
         </ServiceBanner>
       </AppWindow>

@@ -155,9 +155,18 @@ export default {
           'X-Robots-Tag': 'noindex, nofollow',
           // Allow framing from any origin (embed use-case)
           'X-Frame-Options': 'ALLOWALL',
-          // Short CDN cache — the Worker itself caches nothing; let CF edge
-          // cache for a short window. Personalised params bust the cache.
-          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+          // Edge cache strategy:
+          //   max-age=60        — browsers reuse for a minute (fast back/forward)
+          //   s-maxage=300      — CF edge serves cached HTML for 5 minutes
+          //   swr=86400         — for 24h after expiry, CF returns stale and
+          //                       refreshes in the background, so visitors
+          //                       almost never wait for a full revalidate
+          //   sie=86400         — if the worker errors during revalidate, CF
+          //                       keeps serving the stale copy for a day
+          // Cache key is the full URL — `?ref=`, `?template=`, `?theme=` all
+          // produce distinct cached variants automatically.
+          'Cache-Control':
+            'public, max-age=60, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400',
           // Worker attribution
           'X-Hudson-Worker': '1',
           'X-Hudson-Ref': state.ref ?? '',
