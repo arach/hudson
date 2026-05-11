@@ -13,6 +13,9 @@
 import { consumers, resolveConsumer, type ConsumerConfig } from './registry.ts';
 import { buildHtml } from './buildHtml.ts';
 
+const STATIC_ASSET_ORIGIN = 'https://app.hudsonkit.com';
+const STATIC_EMBED_ASSET_PATHS = new Set(['/embed/client.js', '/embed/client.css']);
+
 // ── Types ─────────────────────────────────────────────────────────────────────
 
 export interface ResolvedEmbedState {
@@ -117,6 +120,21 @@ function parseEmbedPath(pathname: string): { appId: string; surface: string } | 
   return { appId: m[1], surface: m[2] };
 }
 
+async function fetchStaticEmbedAsset(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const assetUrl = new URL(`${url.pathname}${url.search}`, STATIC_ASSET_ORIGIN);
+  const response = await fetch(new Request(assetUrl, request));
+  const headers = new Headers(response.headers);
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('X-Hudson-Asset-Proxy', '1');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export default {
@@ -131,6 +149,10 @@ export default {
         consumers: Object.keys(consumers),
         timestamp: new Date().toISOString(),
       });
+    }
+
+    if (STATIC_EMBED_ASSET_PATHS.has(url.pathname)) {
+      return fetchStaticEmbedAsset(request);
     }
 
     // Only handle GET requests to /embed/<appId>/<surface>
