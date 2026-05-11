@@ -63,7 +63,7 @@ export function Sheet01Hero() {
           <em>drawn</em> to <span className="boxed">spec</span>.
         </h1>
 
-        <p className="subhead" style={{ marginBottom: 36, fontSize: 18 }}>
+        <p className="subhead" style={{ marginBottom: 36, fontSize: 16 }}>
           Hudson is the chrome your apps share — nav, panels, command palette, status bar, voice.
           Declare what your app <em>is</em>; the framework renders it on iOS, macOS, and the web
           from the same source.

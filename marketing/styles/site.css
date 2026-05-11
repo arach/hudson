@@ -66,7 +66,7 @@
   --radius-card: 0px;
 
   /* Body weight */
-  --font-weight-body: 400;
+  --font-weight-body: 300;
 
   /* Sticky sheet header height — read by sheet-internal sticky elements
      (e.g. plotter Control Deck) so they offset cleanly from the chrome. */
@@ -76,7 +76,7 @@
   color: var(--ink);
   font-family: var(--font-body);
   font-weight: var(--font-weight-body);
-  font-size: 14px;
+  font-size: 12.5px;
   line-height: 1.5;
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
@@ -233,7 +233,7 @@
 .hudson-site .h-display {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(54px, 7.6vw, 120px);
+  font-size: clamp(46px, 6.5vw, 100px);
   line-height: 0.96;
   letter-spacing: -0.025em;
   color: var(--ink);
@@ -254,7 +254,7 @@
 .hudson-site .h-section {
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(40px, 5.4vw, 78px);
+  font-size: clamp(34px, 4.4vw, 62px);
   line-height: 0.98;
   letter-spacing: -0.02em;
   color: var(--ink);
@@ -263,7 +263,7 @@
 .hudson-site .h-section em { font-style: italic; }
 .hudson-site .subhead {
   font-family: var(--font-body);
-  font-size: 16px;
+  font-size: 14px;
   line-height: 1.55;
   color: var(--ink-1);
   max-width: 56ch;
