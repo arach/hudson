@@ -38,7 +38,7 @@ export interface ConsumerConfig {
 }
 
 export const consumers: Record<string, ConsumerConfig> = {
-  // hudsonos.com — engineering-drawing marketing site.
+  // Drafting marketing preset for the HudsonKit site.
   // Theming is driven by the `drafting` template (slate paper + amber accent),
   // applied via [data-hudson-template="drafting"] on <html>. The palette/fonts
   // below remain as `--hud-*` semantic-token complements; shadcn vars come
@@ -49,6 +49,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
     palette: {
       '--hud-bg':           'oklch(0.20 0.02 240)',
       '--hud-bg-2':         'oklch(0.24 0.02 240)',
@@ -83,6 +84,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
     palette: {
       '--hud-bg':           'oklch(0.95 0.012 70)',
       '--hud-bg-2':         'oklch(0.97 0.010 70)',
@@ -114,6 +116,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'hudson',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
     palette: {
       '--hud-bg':           'oklch(0.16 0.005 240)',
       '--hud-bg-2':         'oklch(0.20 0.005 240)',

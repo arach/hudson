@@ -6,7 +6,7 @@
 // instead of the static default-only page that Pages serves.
 //
 // Web Standards only — no CF bindings, no HTMLRewriter, no caches.default.
-// Same handler runs on Deno Deploy, Vercel Edge, or self-hosted workerd.
+// Same handler can run on Deno Deploy or self-hosted workerd.
 // CF-specific config lives exclusively in wrangler.toml.
 // ─────────────────────────────────────────────────────────────────────────────
 

@@ -1,0 +1,51 @@
+name: Deploy Cloudflare
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-cloudflare-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  deploy:
+    name: Deploy HudsonKit site and embed worker
+    runs-on: ubuntu-latest
+    environment: production
+    env:
+      CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Install embed worker dependencies
+        run: bun install --cwd embed-worker --frozen-lockfile
+
+      - name: Test
+        run: bun run test
+
+      - name: Typecheck
+        run: bunx tsc --noEmit
+
+      - name: Build static site
+        run: bun run build:site
+
+      - name: Snapshot embed chunks
+        run: bun run embed:snapshot
+
+      - name: Deploy HudsonKit site worker
+        run: bunx wrangler deploy
+
+      - name: Deploy embed worker
+        run: bun run --cwd embed-worker deploy

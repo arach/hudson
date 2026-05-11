@@ -510,6 +510,12 @@ function sameAppIdList(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, idx) => id === b[idx]);
 }
 
+function defaultActivatedIdsForWorkspace(workspace: HudsonWorkspace): string[] {
+  const appIds = workspace.apps.map(config => config.app.id);
+  const defaults = workspace.defaultActivatedAppIds?.filter(id => appIds.includes(id)) ?? [];
+  return defaults.length > 0 ? defaults : appIds;
+}
+
 export function WorkspaceShell({
   workspaces,
   defaultWorkspaceId,
@@ -584,9 +590,8 @@ export function WorkspaceShell({
     () => {
       const initialIds = activeInitialState?.activatedAppIds;
       if (initialIds) return initialIds.filter(id => workspace.apps.some(config => config.app.id === id) && !disabledAppIds.has(id));
-      return initialShowLauncher ? [] : workspace.apps
-        .filter(config => !disabledAppIds.has(config.app.id))
-        .map(config => config.app.id);
+      return initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(workspace)
+        .filter(id => !disabledAppIds.has(id));
     },
     [activeInitialState, workspace, disabledAppIds, initialShowLauncher],
   );
@@ -936,7 +941,7 @@ function WorkspaceInner({
   const isFullBoot = bootMode === 'full';
   const defaultVisible = initialState?.activatedAppIds
     ? initialState.activatedAppIds.filter(id => allAppIds.includes(id))
-    : isFullBoot && initialShowLauncher ? [] : allAppIds;
+    : isFullBoot && initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(workspace);
   const [activatedAppIdsArr, setActivatedAppIdsArr] = useState<string[]>(defaultVisible);
   const wsStateReady = useRef(false);
   const savePending = useRef(0);
@@ -956,8 +961,7 @@ function WorkspaceInner({
         if (gen !== savePending.current) return; // stale
         if (data.visibleApps && Array.isArray(data.visibleApps)) {
           const validIds = (data.visibleApps as string[]).filter(id => allAppIds.includes(id));
-          const missing = allAppIds.filter(id => !validIds.includes(id));
-          setActivatedAppIdsArr([...validIds, ...missing]);
+          setActivatedAppIdsArr(validIds.length > 0 ? validIds : defaultActivatedIdsForWorkspace(workspace));
         }
         wsStateReady.current = true;
       })
@@ -1160,7 +1164,7 @@ function WorkspaceInner({
 
   const handleDismissLauncher = useCallback(() => {
     const finalIds = activatedAppIds.size === 0
-      ? new Set(workspace.apps.map(c => c.app.id))
+      ? new Set(defaultActivatedIdsForWorkspace(workspace))
       : activatedAppIds;
 
     setActivatedAppIds(finalIds);
@@ -1173,7 +1177,7 @@ function WorkspaceInner({
     if (persistSession) {
       saveSession(activeWorkspaceId);
     }
-  }, [workspace.apps, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
+  }, [workspace, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
@@ -1208,7 +1212,7 @@ function WorkspaceInner({
   const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth, { enabled: persistSession });
   const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth, { enabled: persistSession });
 
-  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
+  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, workspace.defaultPan ?? DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
@@ -3123,10 +3127,8 @@ function MultiAppCanvas({
 
   return (
     <>
-      {/* Workspace decoration layer — read-only placards behind app windows.
-          Temporarily disabled to test whether this is the source of slow
-          app-window first paint. Re-enable by uncommenting the line below. */}
-      {/* <DecorationLayer worldScale={worldScale} /> */}
+      {/* Workspace decoration layer — read-only placards behind app windows. */}
+      <DecorationLayer worldScale={worldScale} />
       {/* Pipe connection arrows between apps */}
       <MountTrace label="PipeConnectorLayer">
         <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />

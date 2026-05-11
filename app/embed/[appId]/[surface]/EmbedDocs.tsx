@@ -14,7 +14,7 @@
 
 import { useState, type CSSProperties } from 'react';
 
-const WORKSPACE_URL = 'https://app.hudsonos.com/?focus=hudson-docs';
+const WORKSPACE_URL = 'https://app.hudsonkit.com/?focus=hudson-docs';
 
 interface Topic {
   id: string;
@@ -146,7 +146,7 @@ function Header() {
 function Footer() {
   return (
     <footer style={FOOTER}>
-      <span>app.hudsonos.com/docs</span>
+      <span>app.hudsonkit.com/docs</span>
       <span>v0.2 · live</span>
     </footer>
   );

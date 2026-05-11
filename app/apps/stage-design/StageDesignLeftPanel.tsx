@@ -42,9 +42,9 @@ export function StageDesignLeftPanel() {
 
   if (decor.items.length === 0) {
     return (
-      <div className="px-3 py-4 text-[11px] text-white/40 font-mono">
+      <div className="px-3 py-4 text-[11px] text-[var(--hud-ink-2)] font-mono">
         No items placed.
-        <div className="mt-2 text-white/30">
+        <div className="mt-2 text-[var(--hud-ink-3)]">
           Use the + buttons in the navigation bar to add text, images, or web embeds to the canvas.
         </div>
       </div>
@@ -57,36 +57,40 @@ export function StageDesignLeftPanel() {
         const Icon = ICONS[item.type];
         const isSelected = decor.selectedId === item.id;
         return (
-          <button
+          <div
             key={item.id}
-            type="button"
-            onClick={() => decor.selectItem(item.id)}
             className={
-              'group flex items-center gap-2 px-3 py-2 text-left text-[12px] border-l-2 ' +
+              'group flex items-center border-l-2 ' +
               (isSelected
-                ? 'border-l-[var(--hud-accent,#f59e0b)] bg-white/[0.04] text-white/90'
-                : 'border-l-transparent hover:bg-white/[0.025] text-white/60 hover:text-white/80')
+                ? 'border-l-[var(--hud-accent,#f59e0b)] bg-[var(--hud-accent-soft)] text-[var(--hud-ink)]'
+                : 'border-l-transparent hover:bg-[var(--hud-accent-soft)] text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)]')
             }
           >
-            <Icon size={12} />
-            <div className="min-w-0 flex-1">
-              <div className="truncate">{itemLabel(item)}</div>
-              <div className="text-[9px] uppercase tracking-[0.18em] text-white/30 mt-0.5">
-                {itemSubtype(item)}
+            <button
+              type="button"
+              onClick={() => decor.selectItem(item.id)}
+              className="flex min-w-0 flex-1 items-center gap-2 px-3 py-2 text-left text-[12px]"
+            >
+              <Icon size={12} />
+              <div className="min-w-0 flex-1">
+                <div className="truncate">{itemLabel(item)}</div>
+                <div className="text-[9px] uppercase tracking-[0.18em] text-[var(--hud-ink-3)] mt-0.5">
+                  {itemSubtype(item)}
+                </div>
               </div>
-            </div>
+            </button>
             <button
               type="button"
               onClick={(e) => {
                 e.stopPropagation();
                 decor.removeItem(item.id);
               }}
-              className="opacity-0 group-hover:opacity-100 text-white/30 hover:text-white/70"
+              className="opacity-0 group-hover:opacity-100 text-[var(--hud-ink-3)] hover:text-[var(--hud-ink)]"
               aria-label="Remove"
             >
               <Trash2 size={11} />
             </button>
-          </button>
+          </div>
         );
       })}
     </div>

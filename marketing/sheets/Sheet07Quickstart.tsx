@@ -31,7 +31,7 @@ const FOOTER_COLS = [
   { h: 'Legal', links: ['License (MINE)', 'Contributing', 'Code of Conduct', 'Security'] },
 ];
 
-const WORKSPACE_URL = 'https://app.hudsonos.com';
+const WORKSPACE_URL = 'https://app.hudsonkit.com';
 const GITHUB_URL = 'https://github.com/arach/hudsonos';
 
 export function Sheet07Quickstart() {

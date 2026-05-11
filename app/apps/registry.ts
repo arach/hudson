@@ -101,6 +101,7 @@ interface WorkspaceJson {
   description?: string;
   mode?: 'canvas' | 'panel';
   defaultFocusedAppId?: string;
+  defaultActivatedAppIds?: string[];
   apps: {
     appId: string;
     canvasMode?: CanvasParticipation;
@@ -140,6 +141,7 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
           mode: ws.mode ?? 'canvas',
           apps,
           defaultFocusedAppId: ws.defaultFocusedAppId,
+          defaultActivatedAppIds: ws.defaultActivatedAppIds,
         } as HudsonWorkspace;
       })
       .filter((ws): ws is HudsonWorkspace => ws !== null);
@@ -152,6 +154,16 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
     {
+      app: stageDesignApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 300, y: -320, w: 430, h: 560 },
+    },
+    {
+      app: themeDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
+    },
+    {
       app: hudsonDocsApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -520, y: -280, w: 900, h: 650 },
@@ -160,26 +172,6 @@ function getCoreApps(): WorkspaceAppConfig[] {
       app: hudsonAIApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
-    },
-    {
-      app: apiInspectorApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -420, y: 420, w: 760, h: 560 },
-    },
-    {
-      app: jsonExplorerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 420, y: 380, w: 620, h: 500 },
-    },
-    {
-      app: documentLabApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -120, y: 1020, w: 880, h: 620 },
-    },
-    {
-      app: themeDesignerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
     },
   ];
 }
@@ -272,12 +264,14 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
 export function getHudsonKitWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
-    name: 'HudsonKit',
+    name: 'Hudson Kit workspace',
     description: 'Clean docs, AI, and API workspace',
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
-    defaultScale: 0.5,
+    defaultActivatedAppIds: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultScale: 0.45,
+    defaultPan: { x: -331, y: -222 },
     leftNavigation: 'on',
   };
 }

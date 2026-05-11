@@ -2,13 +2,15 @@
 
 import { createElement } from 'react';
 import type { CommandOption } from 'hudsonkit';
-import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw } from 'lucide-react';
+import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
 import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
 import { StageDesignHeaderActions, StageDesignNavCenter } from './StageDesignChrome';
 
+const CAN_SAVE_SNAPSHOTS = process.env.NODE_ENV === 'development';
+
 export function useStageDesignCommands(): CommandOption[] {
   const decor = useWorkspaceDecor();
-  return [
+  const commands: CommandOption[] = [
     {
       id: 'stage:add-text',
       label: 'Stage · Add text',
@@ -46,10 +48,25 @@ export function useStageDesignCommands(): CommandOption[] {
       action: () => decor.resetToSeed(),
     },
   ];
+  if (CAN_SAVE_SNAPSHOTS) {
+    commands.splice(5, 0, {
+      id: 'stage:save-snapshot',
+      label: 'Stage · Save snapshot',
+      icon: createElement(Save, { size: 14 }),
+      action: () => { void decor.saveSnapshot(); },
+    });
+  }
+  return commands;
 }
 
 export function useStageDesignStatus() {
   const decor = useWorkspaceDecor();
+  if (decor.saveError) {
+    return { label: 'save failed', color: 'red' as const };
+  }
+  if (decor.isSaving) {
+    return { label: 'saving snapshot', color: 'amber' as const };
+  }
   if (!decor.visible) {
     return { label: `${decor.items.length} placed · hidden`, color: 'amber' as const };
   }

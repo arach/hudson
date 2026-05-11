@@ -700,7 +700,7 @@ function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
           n="02"
           t="Wire it into Hudson"
           b="Hudson owns the start/stop. Bind voice to ⌘K, a hotkey, or push-to-talk inside your app."
-          href="https://app.hudsonos.com"
+          href="https://app.hudsonkit.com"
         />
       </div>
     </Card>
