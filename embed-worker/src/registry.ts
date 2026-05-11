@@ -21,7 +21,7 @@ export interface ConsumerConfig {
 }
 
 export const consumers: Record<string, ConsumerConfig> = {
-  // hudsonos.com — engineering-drawing marketing site.
+  // Drafting marketing preset for the HudsonKit site.
   hudsonos: {
     ref: 'hudsonos',
     theme: 'dark',

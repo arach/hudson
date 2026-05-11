@@ -38,7 +38,7 @@ export interface ConsumerConfig {
 }
 
 export const consumers: Record<string, ConsumerConfig> = {
-  // hudsonos.com — engineering-drawing marketing site.
+  // Drafting marketing preset for the HudsonKit site.
   // Theming is driven by the `drafting` template (slate paper + amber accent),
   // applied via [data-hudson-template="drafting"] on <html>. The palette/fonts
   // below remain as `--hud-*` semantic-token complements; shadcn vars come

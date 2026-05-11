@@ -106,37 +106,6 @@ const APP_INFO: Record<string, AppInfo> = {
 // ---------------------------------------------------------------------------
 function InfoPopout({ appId, name, onClose }: { appId: string; name: string; onClose: () => void }) {
   const info = APP_INFO[appId];
-  const [email, setEmail] = useState('');
-  const [submitted, setSubmitted] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
-  const [error, setError] = useState('');
-
-  const handleContact = useCallback(async () => {
-    if (!email.trim()) return;
-    setSubmitting(true);
-    setError('');
-    try {
-      const res = await fetch('/api/contact', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          email: email.trim(),
-          useCase: `Interest in ${name} (${appId})`,
-          context: `Module info popout on ${typeof window !== 'undefined' ? window.location.href : 'app'}`,
-          message: `User expressed interest in the ${name} module from the Hudson app launcher.`,
-        }),
-      });
-      if (!res.ok) {
-        const data = await res.json().catch(() => ({}));
-        throw new Error(data.error || 'Something went wrong');
-      }
-      setSubmitted(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Something went wrong');
-    } finally {
-      setSubmitting(false);
-    }
-  }, [email, name, appId]);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -207,43 +176,6 @@ function InfoPopout({ appId, name, onClose }: { appId: string; name: string; onC
             </>
           ) : (
             <p className="text-[13px] font-mono text-neutral-500">No additional info available.</p>
-          )}
-        </div>
-
-        {/* Contact / intent capture */}
-        <div className="px-5 py-4 border-t border-white/[0.06]">
-          {submitted ? (
-            <p className="text-[13px] font-mono text-emerald-400">
-              Thanks — we&apos;ll be in touch.
-            </p>
-          ) : (
-            <>
-              <p className="text-[12px] font-mono text-neutral-500 mb-3">
-                Want to learn more? Drop your email and we&apos;ll reach out.
-              </p>
-              <form
-                className="flex gap-2"
-                onSubmit={(e) => { e.preventDefault(); handleContact(); }}
-              >
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  placeholder="you@email.com"
-                  className="flex-1 bg-white/[0.04] border border-white/[0.08] rounded-md px-3 py-1.5 text-[12px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-emerald-500/40 transition-colors"
-                />
-                <button
-                  type="submit"
-                  disabled={submitting || !email.trim()}
-                  className="px-3 py-1.5 rounded-md text-[12px] font-mono tracking-wide cursor-pointer transition-colors bg-emerald-500/15 border border-emerald-500/30 text-emerald-300 hover:bg-emerald-500/25 disabled:opacity-40 disabled:cursor-default"
-                >
-                  {submitting ? 'Sending...' : 'Contact us'}
-                </button>
-              </form>
-              {error && (
-                <p className="text-[11px] font-mono text-red-400 mt-2">{error}</p>
-              )}
-            </>
           )}
         </div>
       </motion.div>
