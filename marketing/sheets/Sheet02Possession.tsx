@@ -39,34 +39,33 @@ export function Sheet02Possession() {
         right: ['SCALE', '1 : 1'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '28px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>02 / Live Embed · spec ↔ live</Eyebrow>
         </div>
 
-        <h2 className="h-section" style={{ marginBottom: 20 }}>
+        <h2 className="h-section" style={{ marginBottom: 16 }}>
           The component <em>below</em> is a Hudson embed.
         </h2>
 
-        <p className="subhead" style={{ marginBottom: 32, fontSize: 17 }}>
+        <p className="subhead" style={{ marginBottom: 38 }}>
           This is the real workspace shell, rendered from the SDK. Same chrome, canvas,
           app windows, command surface, and live decoration layer any Hudson app inherits.
         </p>
 
-        <div style={{ marginBottom: 56 }}>
-          <EmbedSlot height={720} />
-        </div>
-
         <div
+          className="sheet02-possession__live-grid"
           style={{
             display: 'grid',
             gridTemplateColumns: '1fr 320px',
-            gap: 40,
+            gap: 32,
             alignItems: 'start',
             marginBottom: 64,
           }}
         >
-          <div style={{ alignSelf: 'start' }}>
+          <div>
+            <EmbedSlot height="clamp(430px, 34vw, 540px)" />
+
             <div
               style={{
                 display: 'flex',
@@ -78,6 +77,7 @@ export function Sheet02Possession() {
                 color: 'var(--ink-2)',
                 textTransform: 'uppercase',
                 paddingTop: 12,
+                marginTop: 32,
                 borderTop: '1px solid var(--line)',
               }}
             >
@@ -143,7 +143,7 @@ export function Sheet02Possession() {
   );
 }
 
-function EmbedSlot({ height }: { height: number }) {
+function EmbedSlot({ height }: { height: number | string }) {
   return (
     <div style={{ position: 'relative' }}>
       <div className="embed-plate__caption">
