@@ -50,22 +50,31 @@ const hudsonkitResolverPlugin = {
   },
 };
 
-// Replace the dev-only registry sidecar with a no-op stub. The runtime call
+// Replace the dev-only registry sidecars with no-op stubs. The runtime call
 // site in app/apps/registry.ts gates the require() on NODE_ENV ===
 // 'development', but esbuild can't always prune through CommonJS require, so
-// we explicitly stub it. Without this, the bundler walks into whatever the
-// developer has on disk at app/local/apps.local.ts (which often imports
-// sibling projects like ~/dev/arc) and fails to resolve.
-const stubAppsLocalPlugin = {
-  name: 'stub-apps-local',
+// we explicitly stub them. Without this, the bundler walks into whatever the
+// developer has on disk at app/local/ and can fail on local-only imports or
+// ignored JSON.
+const stubLocalRegistryPlugin = {
+  name: 'stub-local-registry',
   setup(build) {
     build.onResolve({ filter: /(^|\/)local\/apps\.local$/ }, (args) => ({
       path: args.path,
-      namespace: 'stub-apps-local',
+      namespace: 'stub-local-apps',
     }));
-    build.onLoad({ filter: /.*/, namespace: 'stub-apps-local' }, () => ({
+    build.onLoad({ filter: /.*/, namespace: 'stub-local-apps' }, () => ({
       contents: 'module.exports = { localApps: [], localWorkspaces: [] };',
       loader: 'js',
+    }));
+
+    build.onResolve({ filter: /(^|\/)local\/workspaces\.json$/ }, (args) => ({
+      path: args.path,
+      namespace: 'stub-local-workspaces',
+    }));
+    build.onLoad({ filter: /.*/, namespace: 'stub-local-workspaces' }, () => ({
+      contents: '[]',
+      loader: 'json',
     }));
   },
 };
@@ -97,7 +106,7 @@ await build({
   banner: {
     js: "if(typeof globalThis.process==='undefined')globalThis.process={env:{}};",
   },
-  plugins: [hudsonkitResolverPlugin, stubAppsLocalPlugin],
+  plugins: [hudsonkitResolverPlugin, stubLocalRegistryPlugin],
   // Tree-shake aggressively
   treeShaking: true,
   logLevel: 'info',
