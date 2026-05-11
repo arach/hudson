@@ -35,6 +35,9 @@ jobs:
       - name: Test
         run: bun run test
 
+      - name: Build HudsonKit package
+        run: bun run --cwd packages/web/hudsonkit build:js
+
       - name: Typecheck
         run: bunx tsc --noEmit
 
