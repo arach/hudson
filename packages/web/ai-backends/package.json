@@ -1,0 +1,38 @@
+{
+  "name": "@hudson/ai-backends",
+  "version": "0.1.0",
+  "description": "Backend interface + portable toolset registry for Hudson AI surfaces.",
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./toolsets": {
+      "types": "./dist/toolsets.d.ts",
+      "import": "./dist/toolsets.js",
+      "default": "./dist/toolsets.js"
+    }
+  },
+  "files": [
+    "dist",
+    "src"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arach/hudson.git",
+    "directory": "packages/web/ai-backends"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "tsup": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}
