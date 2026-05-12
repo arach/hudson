@@ -11,4 +11,7 @@ export default defineConfig({
   treeshake: true,
   clean: true,
   outDir: 'dist',
+  external: [
+    '@earendil-works/pi-ai',
+  ],
 });

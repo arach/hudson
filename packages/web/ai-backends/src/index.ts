@@ -31,6 +31,9 @@ export { hudVaultResolver } from './credentials';
 // Dispatch helper
 export { aggregateStream } from './dispatch';
 
+// Adapters
+export { createPiAiBackend, type PiAiConfig, type PiAiMeta, type PiAiBackendOptions } from './adapters/pi-ai';
+
 // Toolset types + registry (also available via '@hudson/ai-backends/toolsets')
 export type { ToolsetDefinition } from './toolsets/types';
 export type { ToolsetRegistry } from './toolsets/registry';
