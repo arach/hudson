@@ -9,9 +9,10 @@ export interface AIModelPreset extends AISelectOption {
 }
 
 export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
-  { label: 'Copilot', value: 'copilot' },
   { label: 'MiniMax', value: 'minimax' },
-  { label: 'GitHub Models', value: 'github' },
+  { label: 'OpenCode', value: 'opencode' },
+  { label: 'GitHub Copilot', value: 'github-copilot' },
+  { label: 'OpenAI Codex', value: 'openai-codex' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'OpenAI', value: 'openai' },
   { label: 'X.ai', value: 'xai' },
@@ -20,6 +21,7 @@ export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
 ];
 
 export const AI_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'Gemini 3 Flash', value: 'gemini-3-flash' },
   { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview' },
   { label: 'Gemini 3 Pro', value: 'gemini-3-pro-preview' },
   { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview' },
@@ -42,34 +44,52 @@ export const AI_MODEL_OPTIONS: AISelectOption[] = [
 
 export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
   {
-    label: 'Copilot / Gemini 3 Flash',
-    value: 'copilot:gemini-3-flash-preview',
-    provider: 'copilot',
-    model: 'gemini-3-flash-preview',
+    label: 'MiniMax / M2.7',
+    value: 'minimax:MiniMax-M2.7',
+    provider: 'minimax',
+    model: 'MiniMax-M2.7',
   },
   {
-    label: 'Copilot / Gemini 3 Pro',
-    value: 'copilot:gemini-3-pro-preview',
-    provider: 'copilot',
-    model: 'gemini-3-pro-preview',
+    label: 'OpenCode / Gemini 3 Flash',
+    value: 'opencode:gemini-3-flash',
+    provider: 'opencode',
+    model: 'gemini-3-flash',
   },
   {
-    label: 'Copilot / Claude Sonnet 4.6',
-    value: 'copilot:claude-sonnet-4.6',
-    provider: 'copilot',
-    model: 'claude-sonnet-4.6',
-  },
-  {
-    label: 'Copilot / GPT-5.4',
-    value: 'copilot:gpt-5.4',
-    provider: 'copilot',
+    label: 'OpenCode / GPT-5.4',
+    value: 'opencode:gpt-5.4',
+    provider: 'opencode',
     model: 'gpt-5.4',
   },
   {
-    label: 'Copilot / GPT-4o',
-    value: 'copilot:gpt-4o',
-    provider: 'copilot',
-    model: 'gpt-4o',
+    label: 'GitHub Copilot / Gemini 3 Flash',
+    value: 'github-copilot:gemini-3-flash-preview',
+    provider: 'github-copilot',
+    model: 'gemini-3-flash-preview',
+  },
+  {
+    label: 'GitHub Copilot / Gemini 3 Pro',
+    value: 'github-copilot:gemini-3-pro-preview',
+    provider: 'github-copilot',
+    model: 'gemini-3-pro-preview',
+  },
+  {
+    label: 'GitHub Copilot / Claude Sonnet 4.6',
+    value: 'github-copilot:claude-sonnet-4.6',
+    provider: 'github-copilot',
+    model: 'claude-sonnet-4.6',
+  },
+  {
+    label: 'GitHub Copilot / GPT-5.4',
+    value: 'github-copilot:gpt-5.4',
+    provider: 'github-copilot',
+    model: 'gpt-5.4',
+  },
+  {
+    label: 'OpenAI Codex / GPT-5.4',
+    value: 'openai-codex:gpt-5.4',
+    provider: 'openai-codex',
+    model: 'gpt-5.4',
   },
   {
     label: 'Anthropic / Claude Sonnet 4',

@@ -34,6 +34,10 @@ interface FrameProps {
   zoomSensitivity?: number;
   /** Right offset for zoom controls in px (tracks right panel width) */
   zoomControlsRightOffset?: number;
+  /** Bottom offset for zoom controls in px (tracks bottom drawers like terminal) */
+  zoomControlsBottomOffset?: number;
+  /** Whether to render canvas zoom controls */
+  showZoomControls?: boolean;
   /** Context menu items shown on right-click on canvas background */
   canvasContextMenuItems?: ContextMenuEntry[];
 }
@@ -53,6 +57,8 @@ const Frame: React.FC<FrameProps> = ({
   canvasProps,
   zoomSensitivity,
   zoomControlsRightOffset,
+  zoomControlsBottomOffset,
+  showZoomControls = true,
   canvasContextMenuItems,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
@@ -90,6 +96,14 @@ const Frame: React.FC<FrameProps> = ({
     const tag = el.tagName;
     if (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable) return true;
     if (el.closest?.('.xterm')) return true;
+    return false;
+  });
+  const shouldSkipWheelZoomRef = useRef((e: WheelEvent) => {
+    const el = e.target as HTMLElement | null;
+    if (!el) return false;
+    if (el.closest?.('[data-hudson-terminal-drawer]')) return true;
+    const tag = el.tagName;
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || el.isContentEditable) return true;
     return false;
   });
 
@@ -175,6 +189,7 @@ const Frame: React.FC<FrameProps> = ({
   useEffect(() => {
     if (mode !== 'canvas') return;
     const handleWheel = (e: WheelEvent) => {
+      if (shouldSkipWheelZoomRef.current(e)) return;
       if (e.ctrlKey || e.metaKey) {
         e.preventDefault();
         const prevScale = scaleRef.current;
@@ -255,15 +270,19 @@ const Frame: React.FC<FrameProps> = ({
       )}
 
       {/* Zoom controls (canvas mode) — pinned to the bottom-right of the
-          visible canvas viewport. The right offset shifts the controls left
-          when the shell's right inspector is open so they don't get hidden
-          behind it. */}
-      <div
-        className="absolute bottom-[44px] z-30"
-        style={{ right: 16 + (zoomControlsRightOffset ?? 0) }}
-      >
-        <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
-      </div>
+          visible canvas viewport. The offsets shift the controls away from
+          shell chrome such as the right inspector and bottom terminal drawer. */}
+      {showZoomControls && (
+        <div
+          className="fixed z-[60] transition-all duration-200 ease-out"
+          style={{
+            right: 20 + (zoomControlsRightOffset ?? 0),
+            bottom: 44 + (zoomControlsBottomOffset ?? 0),
+          }}
+        >
+          <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
+        </div>
+      )}
 
       {/* Layer 2: Static HUD chrome (fixed, never scales) */}
       <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">

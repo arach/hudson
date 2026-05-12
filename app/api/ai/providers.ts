@@ -1,153 +1,186 @@
 /**
  * Hudson AI provider registry.
  *
- * Uses the same pattern as @arach/ai but imports from Hudson's own
- * AI SDK packages to avoid version mismatches with the ai-sdk/react hooks.
+ * PiAI owns the provider/model catalog. Hudson keeps only a small compatibility
+ * layer for older provider IDs, local auth stores, and clearer error messages.
  */
 
-import { createOpenAI } from '@ai-sdk/openai';
-import { createAnthropic } from '@ai-sdk/anthropic';
-import { readFileSync, existsSync } from 'fs';
+import {
+  getEnvApiKey,
+  getModel,
+  getModels,
+  type Api,
+  type KnownProvider,
+  type Model,
+} from '@earendil-works/pi-ai';
+import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
 
-export type ProviderName = 'minimax' | 'anthropic' | 'openai' | 'groq' | 'xai' | 'github' | 'google' | 'copilot';
+export type ProviderName = KnownProvider | 'copilot' | 'github';
 
-export const DEFAULT_MODELS: Record<ProviderName, string> = {
+export const DEFAULT_MODELS: Record<string, string> = {
+  opencode: 'gemini-3-flash',
   minimax: 'MiniMax-M2.7',
   anthropic: 'claude-sonnet-4-20250514',
   openai: 'gpt-4o-mini',
   groq: 'llama-3.3-70b-versatile',
   xai: 'grok-4-1-fast',
-  github: 'gpt-4o',
-  google: 'gemini-2.0-flash',
-  copilot: 'gemini-3-flash-preview',  // also: gemini-3-pro-preview, claude-sonnet-4.6, gpt-5.4, gpt-4o
+  google: 'gemini-3-flash-preview',
+  'github-copilot': 'gemini-3-flash-preview',
+  copilot: 'gemini-3-flash-preview',
+  'openai-codex': 'gpt-5.4',
+  github: 'gemini-3-flash-preview',
+};
+
+const PROVIDER_ALIASES: Record<string, KnownProvider> = {
+  copilot: 'github-copilot',
+  github: 'github-copilot',
+};
+
+const OPENCODE_AUTH_PROVIDER_KEYS: Record<string, string[]> = {
+  opencode: ['opencode'],
+  minimax: ['minimax'],
+  'minimax-cn': ['minimax-cn-coding-plan'],
+  anthropic: ['anthropic'],
+  google: ['google'],
+  'github-copilot': ['github-copilot'],
+  copilot: ['github-copilot'],
 };
 
 interface CredentialStore {
-  minimax?: string;
-  anthropic?: string;
-  openai?: string;
-  groq?: string;
-  elevenlabs?: string;
-  xai?: string;
-  github?: string;
-  google?: string;
-  copilot?: string;
+  [provider: string]: string | undefined;
 }
 
-let _cachedCreds: CredentialStore | null = null;
+let cachedCredentials: CredentialStore | null = null;
 
-export function loadCredentials(): CredentialStore {
-  if (_cachedCreds) return _cachedCreds;
-  const creds: CredentialStore = {};
+function readJsonFile(path: string): unknown {
+  if (!existsSync(path)) return null;
+  try {
+    return JSON.parse(readFileSync(path, 'utf-8'));
+  } catch {
+    return null;
+  }
+}
 
-  if (process.env.MINIMAX_API_KEY) creds.minimax = process.env.MINIMAX_API_KEY;
-  if (process.env.ANTHROPIC_API_KEY) creds.anthropic = process.env.ANTHROPIC_API_KEY;
-  if (process.env.OPENAI_API_KEY) creds.openai = process.env.OPENAI_API_KEY;
-  if (process.env.GROQ_API_KEY) creds.groq = process.env.GROQ_API_KEY;
-  if (process.env.ELEVENLABS_API_KEY) creds.elevenlabs = process.env.ELEVENLABS_API_KEY;
-  if (process.env.XAI_API_KEY) creds.xai = process.env.XAI_API_KEY;
-  if (process.env.GITHUB_TOKEN) creds.github = process.env.GITHUB_TOKEN;
-  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) creds.google = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+function readCredentialValue(value: unknown): string | undefined {
+  if (!value || typeof value !== 'object') return undefined;
+  const record = value as Record<string, unknown>;
+  const key = record.key ?? record.access;
+  return typeof key === 'string' && key.length > 0 ? key : undefined;
+}
 
-  // Copilot OAuth token — from OpenCode's auth store
-  if (!creds.copilot) {
-    const authPath = join(homedir(), '.local', 'share', 'opencode', 'auth.json');
-    if (existsSync(authPath)) {
-      try {
-        const auth = JSON.parse(readFileSync(authPath, 'utf-8'));
-        const cp = auth['github-copilot'];
-        if (cp?.access) creds.copilot = cp.access;
-      } catch { /* ignore */ }
+function normalizeProviderName(provider?: string): KnownProvider {
+  const requested = provider || 'opencode';
+  return (PROVIDER_ALIASES[requested] ?? requested) as KnownProvider;
+}
+
+function normalizeModelId(provider: KnownProvider, model?: string): string {
+  const fallback = DEFAULT_MODELS[provider] ?? DEFAULT_MODELS.opencode;
+  if (!model) return fallback;
+
+  if (provider === 'opencode') {
+    if (model === 'gemini-3-flash-preview') return 'gemini-3-flash';
+    if (model === 'gemini-3-pro-preview') return 'gemini-3-pro';
+    if (model === 'gemini-3.1-pro-preview') return 'gemini-3.1-pro';
+  }
+
+  return model;
+}
+
+function providerHasModel(provider: KnownProvider, modelId: string): boolean {
+  try {
+    return getModels(provider).some(model => model.id === modelId);
+  } catch {
+    return false;
+  }
+}
+
+function sampleModels(provider: KnownProvider): string {
+  try {
+    return getModels(provider).slice(0, 8).map(model => model.id).join(', ');
+  } catch {
+    return 'none';
+  }
+}
+
+function loadOpencodeCredentials(creds: CredentialStore) {
+  const auth = readJsonFile(join(homedir(), '.local', 'share', 'opencode', 'auth.json'));
+  if (!auth || typeof auth !== 'object') return;
+  const record = auth as Record<string, unknown>;
+
+  for (const [provider, keys] of Object.entries(OPENCODE_AUTH_PROVIDER_KEYS)) {
+    for (const key of keys) {
+      const value = readCredentialValue(record[key]);
+      if (value) {
+        creds[normalizeProviderName(provider)] ??= value;
+        break;
+      }
     }
   }
+}
 
-  const latticesConfig = join(homedir(), '.lattices', 'inference.json');
-  if (existsSync(latticesConfig)) {
-    try {
-      const cfg = JSON.parse(readFileSync(latticesConfig, 'utf-8'));
-      if (cfg.keys) {
-        for (const k of Object.keys(DEFAULT_MODELS) as (keyof CredentialStore)[]) {
-          if (!creds[k] && cfg.keys[k]) creds[k] = cfg.keys[k];
-        }
-      }
-    } catch { /* ignore */ }
+function loadLatticesCredentials(creds: CredentialStore) {
+  const cfg = readJsonFile(join(homedir(), '.lattices', 'inference.json'));
+  if (!cfg || typeof cfg !== 'object') return;
+  const keys = (cfg as { keys?: Record<string, unknown> }).keys;
+  if (!keys || typeof keys !== 'object') return;
+
+  for (const [provider, value] of Object.entries(keys)) {
+    if (typeof value === 'string' && value.length > 0) {
+      creds[normalizeProviderName(provider)] ??= value;
+    }
+  }
+}
+
+export function loadCredentials(): CredentialStore {
+  if (cachedCredentials) return cachedCredentials;
+
+  const creds: CredentialStore = {};
+  for (const provider of Object.keys(DEFAULT_MODELS)) {
+    const normalized = normalizeProviderName(provider);
+    const envKey = getEnvApiKey(normalized);
+    if (envKey) creds[normalized] = envKey;
   }
 
-  _cachedCreds = creds;
+  loadOpencodeCredentials(creds);
+  loadLatticesCredentials(creds);
+
+  cachedCredentials = creds;
   return creds;
 }
 
-export function clearCredentialCache() { _cachedCreds = null; }
-
-export function availableProviders(): ProviderName[] {
-  const creds = loadCredentials();
-  return (Object.keys(DEFAULT_MODELS) as ProviderName[]).filter(k => !!creds[k]);
+export function clearCredentialCache() {
+  cachedCredentials = null;
 }
 
-function getModel(provider: ProviderName, modelId: string) {
+export function availableProviders(): KnownProvider[] {
   const creds = loadCredentials();
-  switch (provider) {
-    case 'minimax': {
-      const minimax = createOpenAI({ baseURL: 'https://api.minimax.io/v1', apiKey: creds.minimax });
-      return minimax.chat(modelId);
-    }
-    case 'anthropic': {
-      const anthropic = createAnthropic({ apiKey: creds.anthropic });
-      return anthropic(modelId);
-    }
-    case 'openai': {
-      const openai = createOpenAI({ apiKey: creds.openai });
-      return openai(modelId);
-    }
-    case 'groq': {
-      const groq = createOpenAI({ baseURL: 'https://api.groq.com/openai/v1', apiKey: creds.groq });
-      return groq(modelId);
-    }
-    case 'xai': {
-      const xai = createOpenAI({ baseURL: 'https://api.x.ai/v1', apiKey: creds.xai });
-      return xai(modelId);
-    }
-    case 'github': {
-      // GitHub Models API — accessible with Copilot subscription via GITHUB_TOKEN
-      // Supports: gemini-2.0-flash, gpt-4o, gpt-4o-mini, Llama, Cohere, etc.
-      const gh = createOpenAI({
-        baseURL: 'https://models.inference.ai.azure.com',
-        apiKey: creds.github,
-      });
-      return gh.chat(modelId);
-    }
-    case 'google': {
-      // Google AI Studio direct — needs GOOGLE_GENERATIVE_AI_API_KEY
-      const google = createOpenAI({
-        baseURL: 'https://generativelanguage.googleapis.com/v1beta/openai/',
-        apiKey: creds.google,
-      });
-      return google.chat(modelId);
-    }
-    case 'copilot': {
-      // GitHub Copilot API — uses OpenCode's OAuth token
-      // Available models: gpt-4o, gpt-4.1, gpt-4o-mini, claude-sonnet-4
-      const copilot = createOpenAI({
-        baseURL: 'https://api.githubcopilot.com',
-        apiKey: creds.copilot,
-        headers: { 'Copilot-Integration-Id': 'vscode-chat' },
-      });
-      return copilot.chat(modelId);
-    }
-  }
+  return Object.keys(creds).filter(provider => !!creds[provider]) as KnownProvider[];
 }
 
-export function resolveModel(provider?: string, model?: string) {
-  const p = (provider || 'minimax') as ProviderName;
-  const m = model || DEFAULT_MODELS[p] || DEFAULT_MODELS.minimax;
-  const creds = loadCredentials();
-  if (!creds[p]) {
-    const available = availableProviders();
+export function resolveApiKey(provider?: string): string | undefined {
+  const normalized = normalizeProviderName(provider);
+  return loadCredentials()[normalized] ?? getEnvApiKey(normalized);
+}
+
+export function resolveModel(provider?: string, model?: string): Model<Api> {
+  const normalizedProvider = normalizeProviderName(provider);
+  const normalizedModel = normalizeModelId(normalizedProvider, model);
+
+  if (!providerHasModel(normalizedProvider, normalizedModel)) {
     throw new Error(
-      `No API key for provider "${p}". Set ${p.toUpperCase()}_API_KEY in .env.local or ~/.lattices/inference.json. Available: ${available.length > 0 ? available.join(', ') : 'none'}`,
+      `Provider "${normalizedProvider}" does not expose model "${normalizedModel}". Try one of: ${sampleModels(normalizedProvider)}`,
     );
   }
-  return getModel(p, m);
+
+  const apiKey = resolveApiKey(normalizedProvider);
+  if (!apiKey && normalizedProvider !== 'google-vertex' && normalizedProvider !== 'amazon-bedrock') {
+    const available = availableProviders();
+    throw new Error(
+      `No API key for provider "${normalizedProvider}". Available local providers: ${available.length > 0 ? available.join(', ') : 'none'}`,
+    );
+  }
+
+  return getModel(normalizedProvider, normalizedModel as never) as Model<Api>;
 }

@@ -327,6 +327,8 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   const showPanels = layoutMode === 'panel';
   // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
   const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const showCanvasZoomControls = !showTerminal || !isTerminalMaximized;
 
   // Content insets — offset content area so it doesn't render behind fixed chrome
   const contentStyle: React.CSSProperties = frameMode === 'panel' ? {
@@ -348,6 +350,9 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
       scale={scale}
       onPan={handlePan}
       onZoom={handleZoom}
+      zoomControlsRightOffset={showPanels && !rightCollapsed ? rightWidth : 0}
+      zoomControlsBottomOffset={terminalCanvasBottomOffset}
+      showZoomControls={showCanvasZoomControls}
       hud={
         <>
           <NavigationBar

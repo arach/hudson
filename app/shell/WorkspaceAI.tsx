@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
+import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useHudsonAI, usePersistentState, useDebouncedPersistentState, probeVoxAvailability } from 'hudsonkit';
 import type { UIMessage } from 'ai';
@@ -1249,6 +1249,18 @@ export function WorkspaceAI({
                   {chat.status === 'submitted' ? 'Thinking' : 'Writing'}
                 </span>
               </div>
+            </div>
+          </div>
+        )}
+
+        {chat.error && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-lg border border-red-500/15 bg-red-500/5 px-3 py-2 text-[11px] leading-relaxed text-red-200/80">
+              <div className="mb-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-red-300/80">
+                <AlertTriangle size={11} />
+                Hudson AI error
+              </div>
+              {chat.error.message}
             </div>
           </div>
         )}

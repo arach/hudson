@@ -82,6 +82,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   return (
     <div
       ref={drawerRef}
+      data-hudson-terminal-drawer
       className={`
         fixed left-0 right-0 shadow-[0_-2px_12px_rgba(0,0,0,0.16)] flex flex-col border-t
         bg-card
