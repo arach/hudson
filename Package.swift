@@ -12,12 +12,16 @@ var products: [Product] = [
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
+    .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
     .library(name: "HudsonVoice", targets: ["HudsonVoice"]),
 ]
 
-var dependencies: [Package.Dependency] = []
+var dependencies: [Package.Dependency] = [
+    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", from: "0.10.0"),
+    .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", branch: "with-generated-files"),
+]
 
 var targets: [Target] = [
     .target(
@@ -34,8 +38,18 @@ var targets: [Target] = [
     ),
     .target(
         name: "HudsonUI",
-        dependencies: ["HudsonLive", "HudsonObservability"],
+        dependencies: [
+            "HudsonLive",
+            "HudsonObservability",
+            .product(name: "SwiftTreeSitter", package: "SwiftTreeSitter"),
+            .product(name: "TreeSitterSwift", package: "tree-sitter-swift"),
+        ],
         path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
+    ),
+    .target(
+        name: "HudsonWorkflow",
+        dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonWorkflow"
     ),
     .target(
         name: "HudsonBridge",

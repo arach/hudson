@@ -15,6 +15,7 @@ import {
   CommandDock,
   TerminalDrawer,
   AppWindow,
+  SHELL_THEME,
 } from 'hudsonkit/shell';
 import {
   useSaveIndicator,
@@ -1255,6 +1256,21 @@ function WorkspaceInner({
   const [fsLeftOpen, setFsLeftOpen] = useState(true);
   const [fsRightOpen, setFsRightOpen] = useState(true);
   const pendingFullscreenHashRef = useRef<string | null>(null);
+  const fullscreenConfig = fullscreenAppId
+    ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
+    : null;
+  const fullscreenHook = fullscreenAppId
+    ? allAppHooksRaw.find(h => h.appId === fullscreenAppId)
+    : null;
+  const fullscreenLayoutMode = fullscreenHook?.layoutMode ?? fullscreenConfig?.app.mode ?? null;
+  const isCanvasFocusMode = !!fullscreenConfig && fullscreenLayoutMode === 'canvas';
+  const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
+  const fullscreenHasInspectorSurface = !!(
+    fullscreenConfig?.app.slots.Inspector ||
+    fullscreenConfig?.app.slots.RightPanel ||
+    fullscreenConfig?.app.tools?.length ||
+    fullscreenHasPorts
+  );
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal, { enabled: persistSession });
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight, { enabled: persistSession });
@@ -1907,6 +1923,10 @@ function WorkspaceInner({
     }),
     [showLeftNavigation, leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
   );
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const canvasHeightAboveTerminal = viewport.height - SHELL_THEME.layout.statusBarHeight - terminalCanvasBottomOffset;
+  const showCanvasZoomControls = !showTerminal
+    || (!isTerminalMaximized && (viewport.height === 0 || canvasHeightAboveTerminal >= 160));
 
   // --- Left panel footer ---
   const leftFooter = (
@@ -1954,7 +1974,13 @@ function WorkspaceInner({
   );
 
   // --- Left/Right sidebar content ---
-  const leftPanelContent = isSingleApp ? (
+  const leftPanelContent = isCanvasFocusMode && fullscreenConfig ? (
+    fullscreenConfig.app.slots.LeftPanel && (
+      <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="LeftPanel">
+        <fullscreenConfig.app.slots.LeftPanel />
+      </AppSlotErrorBoundary>
+    )
+  ) : isSingleApp ? (
     singleApp?.slots.LeftPanel && (
       <AppSlotErrorBoundary appName={singleApp.name} slotName="LeftPanel">
         <singleApp.slots.LeftPanel />
@@ -2018,13 +2044,17 @@ function WorkspaceInner({
   ) : null;
 
   // --- Panel titles ---
-  const leftPanelTitle = isSingleApp
+  const leftPanelTitle = isCanvasFocusMode && fullscreenConfig
+    ? (fullscreenConfig.app.leftPanel?.title ?? 'Navigation')
+    : isSingleApp
     ? (singleApp?.leftPanel?.title ?? 'Navigation')
     : 'Navigation';
   const rightPanelTitle = isSingleApp
     ? (singleApp?.rightPanel?.title ?? 'Inspector')
     : 'Inspector';
-  const leftPanelIcon = isSingleApp ? singleApp?.leftPanel?.icon : undefined;
+  const leftPanelIcon = isCanvasFocusMode && fullscreenConfig
+    ? fullscreenConfig.app.leftPanel?.icon
+    : isSingleApp ? singleApp?.leftPanel?.icon : undefined;
   const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedHasPorts ? <Activity size={12} /> : undefined);
   const leftHeaderActions = isSingleApp && singleApp?.leftPanel?.headerActions
     ? <singleApp.leftPanel.headerActions />
@@ -2810,14 +2840,30 @@ function WorkspaceInner({
   // --- World content (always rendered — launcher overlays on top) ---
   const SingleContent = singleApp?.slots.Content ?? null;
   const singleAppConfig = isSingleApp ? workspace.apps[0] : null;
+  const CanvasFocusContent = isCanvasFocusMode ? fullscreenConfig?.app.slots.Content ?? null : null;
+  const canvasFocusContentNode = isCanvasFocusMode && fullscreenConfig && CanvasFocusContent ? (
+    <ServiceBanner appConfig={fullscreenConfig} onOpenServices={openWorkspaceManager}>
+      <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
+        <CanvasFocusContent />
+      </AppSlotErrorBoundary>
+    </ServiceBanner>
+  ) : null;
+  const singleContentNode = isSingleApp && SingleContent && singleAppConfig ? (
+    <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
+      <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
+        <SingleContent />
+      </AppSlotErrorBoundary>
+    </ServiceBanner>
+  ) : null;
+  const focusedCanvasContentNode = canvasFocusContentNode ?? singleContentNode;
   const worldContent = (
     <div data-hudson-world>
-      {isSingleApp && SingleContent && singleAppConfig ? (
-        <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
-          <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
-            <SingleContent />
-          </AppSlotErrorBoundary>
-        </ServiceBanner>
+      {focusedCanvasContentNode ? (
+        isCanvasMode ? (
+          <div className="pointer-events-auto" style={{ transform: 'translate(-50%, -50%)' }}>
+            {focusedCanvasContentNode}
+          </div>
+        ) : focusedCanvasContentNode
       ) : (
         <MultiAppCanvas
           workspace={workspace}
@@ -2879,17 +2925,6 @@ function WorkspaceInner({
     onResetShellSettings: resetShellSettings,
   }), [fullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
 
-  // --- Fullscreen app config ---
-  const fullscreenConfig = fullscreenAppId
-    ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
-    : null;
-  const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
-  const fullscreenHasInspectorSurface = !!(
-    fullscreenConfig?.app.slots.Inspector ||
-    fullscreenConfig?.app.slots.RightPanel ||
-    fullscreenConfig?.app.tools?.length ||
-    fullscreenHasPorts
-  );
   const hudsonAIRuntime = useMemo(() => ({
     workspace,
     onToolCall: handleWorkspaceToolCall,
@@ -2913,8 +2948,8 @@ function WorkspaceInner({
     <ServiceRegistryProvider value={serviceRegistry}>
     <WorkspaceManagerProvider value={wmData}>
     <ShellLayoutProvider value={shellLayout}>
-      {/* Fullscreen app mode — escapes the canvas entirely */}
-      {fullscreenConfig ? (
+      {/* Focus mode: canvas apps stay in the Hudson canvas; panel apps use the fullscreen layout. */}
+      {fullscreenConfig && !isCanvasFocusMode ? (
         <div className="h-screen flex flex-col bg-background text-foreground">
           {/* Header bar */}
           <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-border bg-background/95 backdrop-blur-xl shadow-[var(--hud-shadow-nav)]">
@@ -3094,6 +3129,8 @@ function WorkspaceInner({
         onViewportChange={setViewport}
         zoomSensitivity={shellSettings.zoomSensitivity}
         zoomControlsRightOffset={effectiveRightWidth}
+        zoomControlsBottomOffset={terminalCanvasBottomOffset}
+        showZoomControls={showCanvasZoomControls}
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
@@ -3116,10 +3153,20 @@ function WorkspaceInner({
                   />
                 }
                 search={focused.search ?? undefined}
-                center={isSingleApp ? focused.navCenter : undefined}
+                center={(isSingleApp || isCanvasFocusMode) ? focused.navCenter : undefined}
                 actions={
                   <>
                     {focused.navActions}
+                    {isCanvasFocusMode && (
+                      <button
+                        onClick={exitFullscreen}
+                        className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
+                        title="Exit Focus Mode"
+                        aria-label="Exit Focus Mode"
+                      >
+                        <Minimize2 size={14} />
+                      </button>
+                    )}
                     <a
                       href="/docs"
                       target="_blank"
