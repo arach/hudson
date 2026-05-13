@@ -17,6 +17,8 @@ public struct HudCanvas<Header: View, Content: View>: View {
     public let header: Header
     public let content: Content
 
+    @Environment(\.hudTheme) private var theme
+
     public init(
         showGrid: Bool = true,
         @ViewBuilder header: () -> Header,
@@ -34,8 +36,8 @@ public struct HudCanvas<Header: View, Content: View>: View {
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.horizontal, HudSpacing.xxl)
                     .frame(height: HudLayout.navHeight)
-                    .background(HudPalette.chrome)
-                HudDivider(color: HudHairline.standard)
+                    .background(theme.palette.chrome)
+                HudDivider(color: theme.hairline.standard)
             }
 
             ZStack {

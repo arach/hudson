@@ -146,11 +146,59 @@ interface LogoState {
   aiError: string | null;
   /** Streaming AI messages */
   aiMessages: { role: string; parts: { type: string; text?: string }[] }[];
+  /** Full chat handle — for surfaces (LogoChat, matrix trace) that need the
+   *  SDK <AI/> component or direct access. Shared across all surfaces; the
+   *  conversation is one logical thread. */
+  aiChat: ReturnType<typeof useLogoAI>['aiChat'];
   /** Force refresh templates from server */
   refreshTemplates: () => void;
   /** Element inspect mode — shows geometry overlay on canvas */
   inspectMode: boolean;
   toggleInspectMode: () => void;
+  /** Content view — single-template preview vs comparison matrix */
+  view: 'preview' | 'matrix';
+  setView: (v: 'preview' | 'matrix') => void;
+  /** Picked cell meta from the matrix view (winners). */
+  picks: MatrixPick[];
+  togglePick: (pick: MatrixPick) => void;
+  clearPicks: () => void;
+  /** Per-pick free-text instruction sent alongside the cell to the AI. */
+  updatePickInstruction: (key: string, instruction: string) => void;
+  /** Versioned matrix sessions — v1 is the preset, v2+ are AI-spawned. */
+  sessions: MatrixSession[];
+  /** Currently displayed session version (1-based). */
+  activeSession: number;
+  setActiveSession: (version: number) => void;
+  /** Stamp a new session (mode='new', default) or target the active session (mode='append').
+   *  AI-spawned templates land in the targeted session. Returns the targeted version. */
+  beginAiSession: (picks: MatrixPick[], sourceTemplateId: string, mode?: 'new' | 'append') => number;
+  /** Dismiss a non-pinned (non-v1) session. */
+  dismissSession: (version: number) => void;
+}
+
+export interface MatrixSession {
+  version: number;
+  label: string;
+  kind: 'preset' | 'ai';
+  /** v1: [sourceTemplateId]; v2+: AI-spawned templates (filled as they arrive). */
+  templateIds: string[];
+  sourceTemplateId: string;
+  sourcePicks?: MatrixPick[];
+  createdAt: number;
+}
+
+export interface MatrixPick {
+  key: string;
+  family: string;
+  paramKey: string;
+  value: string | number | boolean;
+  overrides: Record<string, string | number | boolean>;
+  resolvedParams: Record<string, string | number | boolean>;
+  row: number;
+  col: number;
+  coordLabel: string;
+  /** Free-text instruction added by the user before send. Defaulted to '' on toggle. */
+  instruction?: string;
 }
 
 const Ctx = createContext<LogoState | null>(null);
@@ -351,6 +399,67 @@ export function LogoProvider({
   const togglePreviews = useCallback(() => setShowPreviews(v => !v), []);
   const [inspectMode, setInspectMode] = useState(false);
   const toggleInspectMode = useCallback(() => setInspectMode(v => !v), []);
+  const [view, setView] = usePersistentState<'preview' | 'matrix'>('logo.view', 'preview');
+  const [picks, setPicks] = useState<MatrixPick[]>([]);
+  const togglePick = useCallback((pick: MatrixPick) => {
+    setPicks(prev => {
+      const idx = prev.findIndex(p => p.key === pick.key);
+      return idx >= 0
+        ? prev.filter((_, i) => i !== idx)
+        : [...prev, { ...pick, instruction: pick.instruction ?? '' }];
+    });
+  }, []);
+  const clearPicks = useCallback(() => setPicks([]), []);
+  const updatePickInstruction = useCallback((key: string, instruction: string) => {
+    setPicks(prev => prev.map(p => p.key === key ? { ...p, instruction } : p));
+  }, []);
+
+  // Versioned matrix sessions — v1 is seeded lazily by the matrix view when
+  // it first mounts (it knows which template is the source). Subsequent
+  // versions are stamped by `beginAiSession` when picks are sent to the AI.
+  const [sessions, setSessions] = useState<MatrixSession[]>([]);
+  const [activeSession, setActiveSession] = useState<number>(1);
+  // Where the next addTemplate landing should bucket — set by beginAiSession.
+  const pendingTargetSessionRef = useRef<number | null>(null);
+  const beginAiSession = useCallback((sessionPicks: MatrixPick[], sourceTemplateId: string, mode: 'new' | 'append' = 'new'): number => {
+    if (mode === 'append') {
+      // Direct AI-spawned templates into the currently active AI session.
+      pendingTargetSessionRef.current = activeSession;
+      return activeSession;
+    }
+    let nextVersion = 1;
+    setSessions(prev => {
+      const lastV = prev.reduce((max, s) => Math.max(max, s.version), 0);
+      nextVersion = lastV + 1;
+      const session: MatrixSession = {
+        version: nextVersion,
+        label: `v${nextVersion}`,
+        kind: 'ai',
+        templateIds: [],
+        sourceTemplateId,
+        sourcePicks: sessionPicks.map(p => ({ ...p })),
+        createdAt: Date.now(),
+      };
+      return [...prev, session];
+    });
+    setActiveSession(v => Math.max(v, nextVersion));
+    pendingTargetSessionRef.current = nextVersion;
+    return nextVersion;
+  }, [activeSession]);
+
+  const dismissSession = useCallback((version: number) => {
+    if (version === 1) return; // v1 (preset) is pinned
+    setSessions(prev => prev.filter(s => s.version !== version));
+    setActiveSession(curr => {
+      if (curr !== version) return curr;
+      // Drop active down to nearest remaining; sessions list excludes v1, so
+      // fall back to v1 if no other version is left.
+      return 1;
+    });
+    if (pendingTargetSessionRef.current === version) {
+      pendingTargetSessionRef.current = null;
+    }
+  }, []);
 
   // Pending terminal command queue (toolbar → terminal relay)
   const pendingCmdRef = useRef<string | null>(null);
@@ -509,6 +618,19 @@ export function LogoProvider({
   const addTemplate = useCallback(async (template: LogoTemplate) => {
     // Optimistically add to local state
     setTemplates(prev => [...prev, template]);
+    // Bucket into the targeted session (set by beginAiSession). If no target
+    // (e.g. addTemplate fired outside an AI round), skip session bucketing.
+    setSessions(prev => {
+      const target = pendingTargetSessionRef.current;
+      if (target == null) return prev;
+      const idx = prev.findIndex(s => s.version === target);
+      if (idx === -1) return prev;
+      const s = prev[idx];
+      if (s.kind !== 'ai' || s.templateIds.includes(template.id)) return prev;
+      const next = [...prev];
+      next[idx] = { ...s, templateIds: [...s.templateIds, template.id] };
+      return next;
+    });
     // Persist to server
     try {
       await fetch(templateEndpoint, {
@@ -518,6 +640,7 @@ export function LogoProvider({
           id: template.id,
           name: template.name,
           description: template.description,
+          parentId: template.parentId,
           renderBody: template.sourceCode || template.renderBody,
           params: template.params,
         }),
@@ -615,7 +738,7 @@ export function LogoProvider({
   }, [setCustomParamValues]);
 
   // Background AI (works without terminal)
-  const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages } = useLogoAI({
+  const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat } = useLogoAI({
     params, setParam, setVariant, resetDefaults, presets,
     templates, addTemplate, updateTemplate, deleteTemplate,
     customParamValues, setCustomParam, refreshTemplates, appSettings,
@@ -631,8 +754,10 @@ export function LogoProvider({
     showPreviews, togglePreviews,
     lightParams,
     sendTerminalCommand, consumeTerminalCommand,
-    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
+    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
+    view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   }), [
     params, setParam, setVariant, resetDefaults,
     templates, addTemplate, updateTemplate, deleteTemplate,
@@ -643,8 +768,10 @@ export function LogoProvider({
     showPreviews, togglePreviews,
     lightParams,
     sendTerminalCommand, consumeTerminalCommand,
-    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, refreshTemplates,
+    sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
+    view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   ]);
 
   return (

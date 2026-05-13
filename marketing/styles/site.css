@@ -618,6 +618,337 @@
   padding: 10px 16px;
 }
 
+/* ─── Build workspace story diagram ─── */
+
+.hudson-site .workspace-story-plate {
+  --accent: oklch(0.66 0.17 175);
+  --accent-deep: oklch(0.52 0.15 178);
+  --accent-soft: oklch(0.66 0.17 175 / 0.12);
+  --accent-line: oklch(0.66 0.17 175 / 0.46);
+  position: relative;
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper-edge);
+  box-shadow: 0 2px 0 var(--paper-edge);
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.hudson-site .workspace-story-canvas {
+  position: relative;
+  min-width: 980px;
+  height: clamp(500px, 48vw, 650px);
+  min-height: 500px;
+  overflow: hidden;
+  background:
+    radial-gradient(circle at 1px 1px, color-mix(in oklch, var(--accent) 42%, transparent) 1px, transparent 1.2px),
+    linear-gradient(to right, color-mix(in oklch, var(--line-grid) 64%, transparent) 1px, transparent 1px),
+    linear-gradient(to bottom, color-mix(in oklch, var(--line-grid) 64%, transparent) 1px, transparent 1px),
+    linear-gradient(135deg, color-mix(in oklch, var(--paper-2) 80%, black) 0%, var(--paper-edge) 100%);
+  background-size: 24px 24px, 72px 72px, 72px 72px, auto;
+  color: var(--ink);
+}
+
+.hudson-site .workspace-story-canvas__chrome {
+  position: absolute;
+  pointer-events: none;
+  border: 1px solid color-mix(in oklch, var(--accent) 36%, transparent);
+  background: color-mix(in oklch, var(--paper) 72%, transparent);
+  opacity: 0.62;
+}
+
+.hudson-site .workspace-story-canvas__chrome--nav {
+  left: 24px;
+  right: 24px;
+  top: 24px;
+  height: 30px;
+}
+
+.hudson-site .workspace-story-canvas__chrome--left {
+  left: 24px;
+  top: 70px;
+  bottom: 72px;
+  width: 30px;
+}
+
+.hudson-site .workspace-story-canvas__chrome--status {
+  left: 24px;
+  right: 24px;
+  bottom: 24px;
+  height: 26px;
+}
+
+.hudson-site .workspace-story-edges {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+  pointer-events: none;
+}
+
+.hudson-site .workspace-story-edge {
+  fill: none;
+  stroke: var(--line-strong);
+  stroke-width: 1.1;
+  stroke-dasharray: 5 7;
+  opacity: 0.28;
+  transition: opacity 0.16s, stroke 0.16s, stroke-width 0.16s;
+}
+
+.hudson-site .workspace-story-edges g.is-active .workspace-story-edge {
+  stroke: var(--accent);
+  stroke-width: 1.7;
+  opacity: 0.9;
+  stroke-dasharray: 0;
+  filter: drop-shadow(0 0 8px var(--accent-soft));
+}
+
+.hudson-site .workspace-story-edge-label {
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  fill: var(--ink-3);
+}
+
+.hudson-site .workspace-story-edges g.is-active .workspace-story-edge-label {
+  fill: var(--accent);
+}
+
+.hudson-site .workspace-story-node {
+  --node-accent: var(--accent);
+  --node-accent-soft: var(--accent-soft);
+  position: absolute;
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr);
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line-strong);
+  background: color-mix(in oklch, var(--paper) 88%, transparent);
+  color: var(--ink-2);
+  text-align: left;
+  font-family: var(--font-mono);
+  box-shadow: 0 0 0 1px color-mix(in oklch, var(--paper-edge) 55%, transparent);
+  backdrop-filter: blur(10px);
+  transition: transform 0.16s, color 0.16s, border-color 0.16s, background 0.16s, box-shadow 0.16s, opacity 0.16s;
+}
+
+.hudson-site .workspace-story-node:hover,
+.hudson-site .workspace-story-node.is-active {
+  transform: translateY(-2px);
+  border-color: var(--node-accent);
+  color: var(--ink);
+  background: color-mix(in oklch, var(--node-accent-soft) 70%, var(--paper));
+  box-shadow:
+    0 0 0 1px color-mix(in oklch, var(--node-accent) 36%, transparent),
+    0 12px 30px -24px var(--node-accent);
+}
+
+.hudson-site .workspace-story-node:not(.is-active) {
+  opacity: 0.68;
+}
+
+.hudson-site .workspace-story-node svg {
+  color: var(--node-accent);
+}
+
+.hudson-site .workspace-story-node--canvas {
+  --node-accent: oklch(0.66 0.17 175);
+  --node-accent-soft: oklch(0.66 0.17 175 / 0.13);
+}
+
+.hudson-site .workspace-story-node--layer {
+  --node-accent: oklch(0.67 0.15 235);
+  --node-accent-soft: oklch(0.67 0.15 235 / 0.13);
+}
+
+.hudson-site .workspace-story-node--ux {
+  --node-accent: oklch(0.69 0.16 155);
+  --node-accent-soft: oklch(0.69 0.16 155 / 0.13);
+}
+
+.hudson-site .workspace-story-node--app {
+  --node-accent: oklch(0.72 0.14 195);
+  --node-accent-soft: oklch(0.72 0.14 195 / 0.13);
+}
+
+.hudson-site .workspace-story-node strong {
+  display: block;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hudson-site .workspace-story-node small {
+  display: block;
+  margin-top: 3px;
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 9px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--ink-3);
+}
+
+.hudson-site .workspace-story-command {
+  position: absolute;
+  left: 96px;
+  right: 96px;
+  bottom: 82px;
+  display: grid;
+  grid-template-columns: 1fr 230px;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid color-mix(in oklch, var(--accent) 48%, transparent);
+  background: color-mix(in oklch, var(--paper-edge) 88%, transparent);
+  padding: 10px;
+  font-family: var(--font-mono);
+  backdrop-filter: blur(14px);
+}
+
+.hudson-site .workspace-story-command span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  color: var(--ink-1);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+}
+
+.hudson-site .workspace-story-command input {
+  min-width: 0;
+  width: 100%;
+  box-sizing: border-box;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink);
+  padding: 8px 10px;
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  outline: none;
+}
+
+.hudson-site .workspace-story-command input:focus {
+  border-color: var(--accent);
+}
+
+.hudson-site .workspace-story-deck {
+  --accent: oklch(0.66 0.17 175);
+  --accent-deep: oklch(0.52 0.15 178);
+  --accent-soft: oklch(0.66 0.17 175 / 0.12);
+  --accent-line: oklch(0.66 0.17 175 / 0.46);
+  position: sticky;
+  top: calc(var(--sheet-header-h, 96px) + 16px);
+  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper);
+  padding: 18px;
+  display: flex;
+  flex-direction: column;
+  gap: 18px;
+}
+
+.hudson-site .workspace-story-deck__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  gap: 12px;
+  border-bottom: 1px solid var(--line-strong);
+  padding-bottom: 10px;
+  font-family: var(--font-mono);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--ink-2);
+}
+
+.hudson-site .workspace-story-deck__head span:first-child {
+  color: var(--ink);
+  font-size: 11px;
+}
+
+.hudson-site .workspace-story-active {
+  border-left: 2px solid var(--accent);
+  padding-left: 14px;
+}
+
+.hudson-site .workspace-story-active > div {
+  font-family: var(--font-mono);
+  font-size: 11px;
+  letter-spacing: 0.2em;
+  color: var(--accent);
+}
+
+.hudson-site .workspace-story-active h3 {
+  margin: 8px 0 8px;
+  font-family: var(--font-display);
+  font-size: 28px;
+  line-height: 1.04;
+  color: var(--ink);
+  font-weight: 400;
+}
+
+.hudson-site .workspace-story-active p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.58;
+  color: var(--ink-1);
+}
+
+.hudson-site .workspace-story-steps {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 8px;
+}
+
+.hudson-site .workspace-story-step {
+  display: grid;
+  grid-template-columns: 34px 20px 1fr;
+  align-items: center;
+  gap: 10px;
+  min-height: 42px;
+  border: 1px solid var(--line-strong);
+  background: var(--paper);
+  color: var(--ink-2);
+  font-family: var(--font-mono);
+  text-align: left;
+  padding: 8px 10px;
+  transition: background 0.14s, color 0.14s, border-color 0.14s;
+}
+
+.hudson-site .workspace-story-step:hover,
+.hudson-site .workspace-story-step.is-active {
+  border-color: var(--accent);
+  background: var(--accent-soft);
+  color: var(--ink);
+}
+
+.hudson-site .workspace-story-step span,
+.hudson-site .workspace-story-step strong {
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+}
+
+.hudson-site .workspace-story-step svg {
+  color: var(--accent);
+}
+
+.hudson-site .workspace-story-map-row .spec__k {
+  color: var(--ink-2);
+}
+
 /* ─── Tag / kbd ─── */
 
 .hudson-site .tag {
@@ -1296,6 +1627,30 @@
     height: auto !important;
   }
 
+  .hudson-site .workspace-story-plate {
+    margin-top: 8px;
+  }
+
+  .hudson-site .workspace-story-canvas {
+    height: 560px;
+    min-height: 560px;
+  }
+
+  .hudson-site .workspace-story-command {
+    left: 80px;
+    right: auto;
+    width: 800px;
+    grid-template-columns: 1fr 260px;
+  }
+
+  .hudson-site .workspace-story-deck {
+    position: static;
+  }
+
+  .hudson-site .workspace-story-step {
+    min-height: 44px;
+  }
+
   /* ── Hero + parts cards: shrink the rigid max-widths the sheet bodies
      declare via inline `style={{ maxWidth: 1300 }}`. We can't override an
      inline style without !important, but a generous max-width: 100% on
@@ -1457,5 +1812,427 @@
   .hudson-site textarea,
   .hudson-site select {
     font-size: 16px;
+  }
+}
+
+/* ─── LogoComparisonSheet primitive ──────────────────────────────────────
+   De-scoped from .hudson-site so it works inside the workspace shell too.
+   Themed via local CSS vars; the marketing block below overrides them. */
+.logo-comparison-sheet {
+  --lcs-title: #d4cfc4;
+  --lcs-meta: #8a8273;
+  --lcs-line: rgba(127, 117, 100, 0.20);
+  --lcs-selected-ring: #FF5346;
+  --lcs-cell-bg: transparent;
+  display: flex;
+  flex-direction: column;
+  gap: 28px;
+}
+.hudson-site .logo-comparison-sheet {
+  --lcs-title: var(--ink, #19170f);
+  --lcs-meta: var(--label-mid, #8a8273);
+  --lcs-line: var(--line, #e5e3dc);
+}
+.logo-comparison-sheet__row {
+  display: grid;
+  grid-template-columns: 184px 1fr;
+  gap: 24px;
+  align-items: start;
+  padding: 18px 0;
+  border-top: 1px solid var(--lcs-line);
+}
+.logo-comparison-sheet__row:first-child {
+  border-top: 0;
+  padding-top: 0;
+}
+.logo-comparison-sheet__row-label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding-top: 4px;
+}
+.logo-comparison-sheet__row-title {
+  font-size: 13px;
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--lcs-title);
+}
+.logo-comparison-sheet__row-param {
+  display: flex;
+  gap: 6px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 10px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--lcs-meta);
+}
+.logo-comparison-sheet__row-param code {
+  font-family: inherit;
+  color: var(--lcs-title);
+}
+.logo-comparison-sheet__row-caption {
+  margin: 4px 0 0;
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--lcs-meta);
+  max-width: 26ch;
+}
+.logo-comparison-sheet__row-cells {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+}
+.logo-comparison-sheet__cell {
+  appearance: none;
+  background: var(--lcs-cell-bg);
+  border: 1px solid transparent;
+  padding: 6px;
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  margin: 0;
+  cursor: pointer;
+  transition: border-color 120ms ease, transform 120ms ease, background-color 120ms ease;
+  text-align: inherit;
+  color: inherit;
+  font: inherit;
+}
+.logo-comparison-sheet__cell:hover {
+  border-color: rgba(127, 117, 100, 0.35);
+}
+.logo-comparison-sheet__cell:active {
+  transform: scale(0.96);
+  background: rgba(255, 83, 70, 0.10);
+}
+.logo-comparison-sheet__cell--selected {
+  border-color: var(--lcs-selected-ring);
+  background: rgba(255, 83, 70, 0.06);
+  animation: logo-comparison-sheet__flash 320ms ease-out;
+}
+.logo-comparison-sheet__cell--selected:hover {
+  border-color: var(--lcs-selected-ring);
+}
+@keyframes logo-comparison-sheet__flash {
+  0%   { box-shadow: 0 0 0 0 rgba(255, 83, 70, 0.55); }
+  60%  { box-shadow: 0 0 0 6px rgba(255, 83, 70, 0.18); }
+  100% { box-shadow: 0 0 0 0 rgba(255, 83, 70, 0); }
+}
+@keyframes logo-iter-pulse {
+  0%, 100% { box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.08), 0 0 18px rgba(34, 211, 238, 0.10); }
+  50%      { box-shadow: 0 0 0 1px rgba(34, 211, 238, 0.18), 0 0 26px rgba(34, 211, 238, 0.22); }
+}
+@keyframes logo-iter-sweep {
+  0%   { transform: translateX(-100%); }
+  100% { transform: translateX(100%); }
+}
+/* Matrix toolbar — minimal underline-tab pattern.
+   Custom props are exposed for theming/reuse. Tabs are bare in their resting
+   state; only the active tab carries the emerald accent (2px underline). The
+   toolbar is sticky with a soft scrim that fades to the near-black canvas. */
+.logo-matrix-toolbar {
+  --lmt-accent:        rgb(110, 231, 183);      /* emerald-300 */
+  --lmt-accent-soft:   rgba(16, 185, 129, 0.14);
+  --lmt-accent-pulse:  rgb(103, 232, 249);      /* cyan-300 */
+  --lmt-fg:            rgba(244, 239, 230, 0.92);
+  --lmt-fg-muted:      rgba(207, 199, 184, 0.55);
+  --lmt-fg-soft:       rgba(207, 199, 184, 0.75);
+  --lmt-hairline:      rgba(127, 117, 100, 0.18);
+  --lmt-scrim-top:     rgba(10, 10, 10, 0.92);
+  --lmt-hover-bg:      rgba(255, 255, 255, 0.04);
+  --lmt-active-bg:     rgba(255, 255, 255, 0.06);
+
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: stretch;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 6px 12px 0;
+  min-height: 36px;
+  background: linear-gradient(to bottom, var(--lmt-scrim-top) 65%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  border-bottom: 1px solid var(--lmt-hairline);
+  font-family: var(--font-jetbrains-mono, ui-monospace, monospace);
+}
+
+/* Back + Trace: matched edge actions with the same vocabulary as a tab,
+   but no underline affordance (they don't participate in tab selection). */
+.logo-matrix-back,
+.logo-matrix-trace {
+  appearance: none;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 6px 9px;
+  background: transparent;
+  color: var(--lmt-fg-muted);
+  border: 0;
+  border-radius: 6px;
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: background-color 120ms ease, color 120ms ease;
+}
+.logo-matrix-back:hover,
+.logo-matrix-trace:hover {
+  color: var(--lmt-fg);
+  background: var(--lmt-hover-bg);
+}
+.logo-matrix-back > span,
+.logo-matrix-trace > span {
+  white-space: nowrap;
+}
+.logo-matrix-trace--active {
+  color: var(--lmt-accent);
+  background: var(--lmt-accent-soft);
+}
+.logo-matrix-trace__pulse {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 5px;
+  height: 5px;
+  border-radius: 999px;
+  background: var(--lmt-accent-pulse);
+  box-shadow: 0 0 0 0 rgba(103, 232, 249, 0.55);
+  animation: logo-matrix-trace-pulse 1.4s ease-out infinite;
+}
+@keyframes logo-matrix-trace-pulse {
+  0%   { box-shadow: 0 0 0 0   rgba(103, 232, 249, 0.55); }
+  70%  { box-shadow: 0 0 0 5px rgba(103, 232, 249, 0);    }
+  100% { box-shadow: 0 0 0 0   rgba(103, 232, 249, 0);    }
+}
+
+/* Tabs row — sits flush with the toolbar's bottom hairline. The active tab's
+   ::after is the 2px emerald underline that visually replaces the hairline. */
+.logo-matrix-tabs {
+  display: flex;
+  align-items: stretch;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+}
+.logo-matrix-tabs::-webkit-scrollbar { display: none; }
+
+.logo-matrix-tab {
+  position: relative;
+  display: inline-flex;
+  align-items: stretch;
+  flex: 0 0 auto;
+  min-width: 0;
+  border-radius: 6px 6px 0 0;
+  transition: background-color 120ms ease;
+}
+.logo-matrix-tab:hover {
+  background: var(--lmt-hover-bg);
+}
+.logo-matrix-tab--active {
+  background: var(--lmt-active-bg);
+}
+.logo-matrix-tab--active::after {
+  content: '';
+  position: absolute;
+  left: 6px;
+  right: 6px;
+  bottom: -1px;             /* overlap the toolbar's 1px hairline */
+  height: 2px;
+  background: var(--lmt-accent);
+  border-radius: 2px 2px 0 0;
+  box-shadow: 0 0 8px rgba(16, 185, 129, 0.35);
+}
+
+.logo-matrix-tab__main {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px 7px;
+  background: transparent;
+  color: var(--lmt-fg-muted);
+  border: 0;
+  font: inherit;
+  font-size: 10.5px;
+  letter-spacing: 0.04em;
+  cursor: pointer;
+  transition: color 120ms ease;
+}
+.logo-matrix-tab:hover .logo-matrix-tab__main {
+  color: var(--lmt-fg-soft);
+}
+.logo-matrix-tab--active .logo-matrix-tab__main {
+  color: var(--lmt-fg);
+}
+.logo-matrix-tab__label {
+  white-space: nowrap;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Preset (v1) — pinned, subtly differentiated. A tiny emerald dot before the
+   label so v1 doesn't look orphaned next to closeable siblings. */
+.logo-matrix-tab--preset .logo-matrix-tab__main {
+  padding-left: 16px;
+}
+.logo-matrix-tab--preset .logo-matrix-tab__main::before {
+  content: '';
+  position: absolute;
+  left: 8px;
+  top: 50%;
+  width: 4px;
+  height: 4px;
+  margin-top: -2px;
+  border-radius: 999px;
+  background: var(--lmt-accent);
+  opacity: 0.55;
+}
+
+.logo-matrix-tab__badge {
+  display: inline-flex;
+  min-width: 16px;
+  height: 15px;
+  align-items: center;
+  justify-content: center;
+  padding: 0 4px;
+  border-radius: 999px;
+  background: var(--lmt-accent-soft);
+  color: var(--lmt-accent);
+  font-size: 9.5px;
+  letter-spacing: 0;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Close × — hover-revealed so the resting row stays calm. The active tab
+   keeps its close visible so the primary action target is always discoverable.
+   Width animates from 0 → auto to avoid layout jitter when revealing. */
+.logo-matrix-tab__close {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 0;
+  padding: 0;
+  margin-right: 0;
+  background: transparent;
+  color: var(--lmt-fg-muted);
+  border: 0;
+  border-radius: 4px;
+  cursor: pointer;
+  opacity: 0;
+  overflow: hidden;
+  transition: width 120ms ease, opacity 120ms ease, margin-right 120ms ease,
+              color 120ms ease, background-color 120ms ease;
+}
+.logo-matrix-tab:hover .logo-matrix-tab__close,
+.logo-matrix-tab--active .logo-matrix-tab__close,
+.logo-matrix-tab__close:focus-visible {
+  width: 16px;
+  opacity: 1;
+  margin-right: 6px;
+}
+.logo-matrix-tab__close:hover {
+  color: var(--lmt-fg);
+  background: rgba(255, 255, 255, 0.08);
+}
+@keyframes logo-canvas-spotlight {
+  0%   { box-shadow: inset 0 0 0 0 rgba(16, 185, 129, 0);     background-color: rgba(16, 185, 129, 0); }
+  20%  { box-shadow: inset 0 0 0 3px rgba(16, 185, 129, 0.55); background-color: rgba(16, 185, 129, 0.08); }
+  100% { box-shadow: inset 0 0 0 0 rgba(16, 185, 129, 0);     background-color: rgba(16, 185, 129, 0); }
+}
+.logo-canvas-spotlight::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  animation: logo-canvas-spotlight 1.4s ease-out forwards;
+  border-radius: inherit;
+}
+.logo-comparison-sheet__cell svg {
+  display: block;
+  border-radius: 8px;
+  background: transparent;
+  /* Pass clicks straight through to the wrapping button — the SVG content was
+     intercepting events when it had visible-painted regions and dangerouslySetInnerHTML. */
+  pointer-events: none;
+}
+/* Window port dots: reveal on window hover; connected ports stay visible. */
+[data-app-window]:hover [data-window-port] {
+  opacity: 1 !important;
+}
+[data-app-window] [data-window-port][data-port-connected="true"] {
+  opacity: 1 !important;
+}
+[data-window-port]:active {
+  transform: translateY(-50%) scale(0.85) !important;
+}
+
+.logo-comparison-sheet__cell-check {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  width: 20px;
+  height: 20px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 999px;
+  background: var(--lcs-selected-ring);
+  color: #ffffff;
+  box-shadow: 0 0 0 2px rgba(14, 13, 10, 0.45);
+  pointer-events: none;
+}
+.logo-comparison-sheet__coord {
+  position: absolute;
+  top: 6px;
+  left: 6px;
+  font-family: var(--font-jetbrains-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 8.5px;
+  letter-spacing: 0.08em;
+  line-height: 1;
+  padding: 3px 5px;
+  border-radius: 4px;
+  background: rgba(14, 13, 10, 0.55);
+  color: rgba(244, 239, 230, 0.55);
+  backdrop-filter: blur(2px);
+  pointer-events: none;
+  text-transform: lowercase;
+  user-select: none;
+}
+.logo-comparison-sheet__coord--selected {
+  background: var(--lcs-selected-ring);
+  color: #ffffff;
+}
+.logo-comparison-sheet__cell figcaption {
+  font-family: var(--font-jetbrains-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 9.5px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--lcs-meta);
+  max-width: 14ch;
+  text-align: center;
+  line-height: 1.3;
+}
+.logo-comparison-sheet--missing {
+  padding: 24px;
+  border: 1px dashed var(--lcs-line);
+  border-radius: 8px;
+  font-size: 12px;
+  color: var(--lcs-meta);
+}
+.logo-comparison-sheet--missing code {
+  font-family: var(--font-jetbrains-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  color: var(--lcs-title);
+}
+@media (max-width: 760px) {
+  .logo-comparison-sheet__row {
+    grid-template-columns: 1fr;
+    gap: 12px;
   }
 }

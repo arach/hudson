@@ -6,15 +6,36 @@ function log(msg: string) {
   console.log(`[${ts}] logo/compile: ${msg}`);
 }
 
+/**
+ * LLMs writing JS-inside-JSON often over-escape template literals — they emit
+ * `\`` (backslash-backtick) and `\${` instead of bare backtick / `${`. JSON
+ * doesn't require escaping these, and the surplus backslashes survive into
+ * the renderBody, where the JS parser then hits `\`` outside a template
+ * literal context and bails with "Invalid or unexpected token".
+ *
+ * We normalize before compile. The legitimate use of `\${` (escaping `${`
+ * inside a template literal to keep it literal) is exceedingly rare for SVG
+ * render bodies and not worth preserving over the common LLM-output bug.
+ */
+function normalizeLLMEscapes(source: string): string {
+  return source
+    .replace(/\\`/g, '`')
+    .replace(/\\\$\{/g, '${');
+}
+
 export async function POST(request: Request) {
   try {
-    const { source } = (await request.json()) as { source: string };
+    const { source: rawSource } = (await request.json()) as { source: string };
 
-    if (typeof source !== 'string' || !source.trim()) {
+    if (typeof rawSource !== 'string' || !rawSource.trim()) {
       log('ERROR: empty source');
       return NextResponse.json({ error: 'source is required' }, { status: 400 });
     }
 
+    const source = normalizeLLMEscapes(rawSource);
+    if (source !== rawSource) {
+      log(`normalized LLM over-escapes (${rawSource.length} → ${source.length} chars)`);
+    }
     log(`compiling ${source.length} chars`);
 
     // Compile TypeScript → JavaScript (strip types only)

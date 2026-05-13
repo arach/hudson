@@ -1,11 +1,8 @@
 'use client';
 
-import { createHudsonId, useHudsonAI, AI, useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from 'hudsonkit';
+import { useTerminalRelay, TerminalRelay, usePlatform, captureWorkspace } from 'hudsonkit';
 import { AlertTriangle, Camera, Loader2 } from 'lucide-react';
-import type { AIAttachment } from 'hudsonkit';
-import { useLogo, defaults } from './LogoProvider';
-import { isBuiltinVariant } from './types';
-import type { LogoTemplate, TemplateParam } from './types';
+import { useLogo } from './LogoProvider';
 import { useMemo, useState, useCallback, useEffect } from 'react';
 import { buildSystemPrompt, buildClaudeMd } from './prompts';
 import type { ModelTier } from './prompts';
@@ -31,11 +28,6 @@ async function compileTemplate(source: string, endpoint: string): Promise<{ js: 
   }
 }
 
-// ---------------------------------------------------------------------------
-// Modes
-// ---------------------------------------------------------------------------
-type TerminalMode = 'chat' | 'relay';
-
 function isHostedBrowserDemo() {
   if (typeof window === 'undefined') return false;
   return !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
@@ -43,15 +35,12 @@ function isHostedBrowserDemo() {
 
 export function LogoTerminal() {
   const {
-    params, setParam, setVariant, resetDefaults, presets,
-    templates, addTemplate, updateTemplate, deleteTemplate,
-    customParamValues, setCustomParam,
+    params, presets, templates, customParamValues,
     appSettings, apiBaseUrl,
     consumeTerminalCommand,
   } = useLogo();
 
   const relayUrl = String(appSettings.relayUrl || 'ws://localhost:3600');
-  const compileEndpoint = `${apiBaseUrl}${String(appSettings.compileEndpoint || '/api/logo/compile')}`;
   const homeFolder = String(appSettings.homeFolder || '~/hudson/logos');
   const modelTier = (appSettings.modelTier as ModelTier) || 'comprehensive';
   const relayBackend = (appSettings.relayBackend as 'pty' | 'tmux') || 'pty';
@@ -63,19 +52,11 @@ export function LogoTerminal() {
   const [hostedDemo, setHostedDemo] = useState(false);
   const relayServiceDown = !hostedDemo && relayRecord != null && relayRecord.status !== 'running';
 
-  const [mode, setMode] = useState<TerminalMode>('relay');
-
   useEffect(() => {
     setHostedDemo(isHostedBrowserDemo());
   }, []);
 
-  useEffect(() => {
-    if (hostedDemo && mode === 'relay') {
-      setMode('chat');
-    }
-  }, [hostedDemo, mode]);
-
-  // ---- Relay mode ----
+  // ---- Relay session ----
   // Build a rich system prompt with full dynamic context
   const promptCtx = useMemo(() => ({
     params,
@@ -115,113 +96,6 @@ export function LogoTerminal() {
     }, 300);
     return () => clearInterval(id);
   }, [consumeTerminalCommand, relay]);
-
-  // ---- Chat mode (fallback) ----
-  const attachments: AIAttachment[] = useMemo(() => [
-    {
-      label: 'SVG',
-      content: () => {
-        const svg = document.querySelector('svg[viewBox]');
-        return svg ? svg.outerHTML : null;
-      },
-    },
-  ], []);
-
-  const chat = useHudsonAI({
-    toolset: 'logo',
-    context: { params, presets, templates, customParamValues },
-    attachments,
-    onToolCall: async (name, args) => {
-      switch (name) {
-        case 'set_param':
-          setParam(args.key as keyof typeof params, args.value as never);
-          break;
-
-        case 'set_variant':
-          setVariant(args.variant as string);
-          break;
-
-        case 'apply_preset': {
-          const p = presets.find(
-            pr => pr.label.toLowerCase() === (args.preset_label as string).toLowerCase(),
-          );
-          if (p) Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof typeof params, v as never));
-          break;
-        }
-
-        case 'reset_defaults':
-          resetDefaults();
-          break;
-
-        case 'create_template': {
-          const source = args.renderBody as string;
-          const customParams = (args.params as TemplateParam[]) ?? [];
-
-          // Compile via server
-          const result = await compileTemplate(source, compileEndpoint);
-          if ('error' in result) {
-            console.warn('[logo] Template compilation failed:', result.error);
-            // Still create with raw source so AI can see error and fix
-          }
-
-          const id = createHudsonId('', 8);
-          const template: LogoTemplate = {
-            id,
-            name: args.name as string,
-            description: (args.description as string) ?? '',
-            renderBody: 'js' in result ? result.js : source,
-            sourceCode: source,
-            params: customParams,
-            createdAt: Date.now(),
-            updatedAt: Date.now(),
-          };
-          addTemplate(template);
-          setVariant(id);
-          break;
-        }
-
-        case 'update_template': {
-          const templateId = args.templateId as string;
-          const updates: Partial<Omit<LogoTemplate, 'id'>> = {};
-          if (args.name) updates.name = args.name as string;
-          if (args.description) updates.description = args.description as string;
-          if (args.renderBody) {
-            const source = args.renderBody as string;
-            updates.sourceCode = source;
-
-            // Compile via server
-            const result = await compileTemplate(source, compileEndpoint);
-            if ('error' in result) {
-              console.warn('[logo] Template update compilation failed:', result.error);
-              updates.renderBody = source; // fallback to raw source
-            } else {
-              updates.renderBody = result.js;
-            }
-          }
-          if (args.params) updates.params = args.params as TemplateParam[];
-          updateTemplate(templateId, updates);
-          break;
-        }
-
-        case 'delete_template': {
-          const id = args.templateId as string;
-          // Don't allow deleting built-in templates
-          if (isBuiltinVariant(id)) break;
-          if (params.variant === id) {
-            setVariant('negative-space');
-          }
-          deleteTemplate(id);
-          break;
-        }
-
-        case 'set_custom_param': {
-          const activeId = params.variant;
-          setCustomParam(activeId, args.key as string, args.value as number | string);
-          break;
-        }
-      }
-    },
-  });
 
   // Config summary for the relay disconnected CTA
   const relayConfigItems = useMemo(() => [
@@ -287,8 +161,7 @@ export function LogoTerminal() {
     <div className="flex flex-col h-full">
       {/* Header — right-aligned controls */}
       <div className="flex items-center gap-1 px-3 py-1.5 border-b border-border/60 bg-muted/40">
-        {/* Screenshot — left side of bar */}
-        {mode === 'relay' && relay.status === 'connected' && (
+        {relay.status === 'connected' && (
           <button
             type="button"
             onClick={handleScreenshot}
@@ -300,24 +173,7 @@ export function LogoTerminal() {
           </button>
         )}
         <div className="flex-1" />
-        {hostedDemo ? (
-          <span className="text-[10px] px-2 py-0.5 rounded-full border bg-info/15 text-info border-info/40">
-            Workers AI
-          </span>
-        ) : (
-          <button
-            type="button"
-            onClick={() => setMode(m => m === 'chat' ? 'relay' : 'chat')}
-            className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
-              mode === 'chat'
-                ? 'bg-info/15 text-info border-info/40'
-                : 'text-muted-foreground border-border hover:text-foreground/80 hover:border-border'
-            }`}
-          >
-            Chat
-          </button>
-        )}
-        {mode === 'relay' && relay.status !== 'connected' && (
+        {relay.status !== 'connected' && !hostedDemo && (
           <button
             type="button"
             onClick={() => relay.connect()}
@@ -326,7 +182,7 @@ export function LogoTerminal() {
             Connect
           </button>
         )}
-        {mode === 'relay' && relay.status === 'connected' && (
+        {relay.status === 'connected' && (
           <>
             <button
               type="button"
@@ -346,7 +202,7 @@ export function LogoTerminal() {
           </>
         )}
       </div>
-      {mode === 'relay' && relayServiceDown && (
+      {relayServiceDown && (
         <div className="shrink-0 flex items-center gap-2.5 px-3 py-2 border-b border-border/60 bg-muted/60 text-[11px]">
           <AlertTriangle size={12} className="text-warning/80 shrink-0" />
           <div className="flex-1 min-w-0">
@@ -371,13 +227,8 @@ export function LogoTerminal() {
           </button>
         </div>
       )}
-      {/* Content */}
       <div className="flex-1 min-h-0">
-        {mode === 'relay' ? (
-          <TerminalRelay relay={relay} configItems={relayConfigItems} onOpenSettings={openSettings} onStartService={handleStartRelay} />
-        ) : (
-          <AI chat={chat} placeholder="Describe a logo design or ask me to create one..." />
-        )}
+        <TerminalRelay relay={relay} configItems={relayConfigItems} onOpenSettings={openSettings} onStartService={handleStartRelay} />
       </div>
     </div>
   );

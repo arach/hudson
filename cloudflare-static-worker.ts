@@ -2,6 +2,7 @@ import { loadToolset } from './app/api/ai/toolsets';
 
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const APP_HOST = 'app.hudsonkit.com';
+const MARKETING_HOSTS = new Set(['hudsonkit.com', 'www.hudsonkit.com']);
 
 interface Env {
   ASSETS: {
@@ -176,6 +177,17 @@ function serveAppRoot(request: Request, env: Env) {
   return env.ASSETS.fetch(new Request(url, request));
 }
 
+function serveMarketingRoot(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+  if (!MARKETING_HOSTS.has(host) || url.pathname !== '/') {
+    return null;
+  }
+
+  url.pathname = '/landing/';
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
 function writeAssistantResponse(
   write: (chunk: UIMessageChunk) => void,
   text: string,
@@ -258,6 +270,9 @@ export default {
 
     const appRootResponse = serveAppRoot(request, env);
     if (appRootResponse) return appRootResponse;
+
+    const marketingRootResponse = serveMarketingRoot(request, env);
+    if (marketingRootResponse) return marketingRootResponse;
 
     return env.ASSETS.fetch(request);
   },

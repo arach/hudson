@@ -27,19 +27,19 @@ export function Sheet03Voice() {
   return (
     <Sheet
       id="voice"
-      num="03"
+      num="04"
       slugTitle="VOICE LOOP"
       slugSub="signal flow"
       sheetTitle="Voice → Intent → Command"
       footer={{
-        left: ['SHEET', '03 / 07'],
+        left: ['SHEET', '04 / 08'],
         mid: 'VOICE LOOP · signal flow',
         right: ['LATENCY', '< 80 ms'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>03 / Voice loop · sub-80ms</Eyebrow>
+          <Eyebrow>04 / Voice loop · sub-80ms</Eyebrow>
         </div>
 
         <div

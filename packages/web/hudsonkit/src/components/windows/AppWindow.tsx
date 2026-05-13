@@ -33,6 +33,11 @@ interface AppWindowProps {
   onToggleMaximize?: () => void;
   /** Context menu items shown on right-click */
   contextMenuItems?: ContextMenuEntry[];
+  /** Optional decorations rendered inside the window's positioned root,
+   *  on top of the chrome — used by the shell for port dots, status pills,
+   *  etc. The container has `pointer-events: none` so individual decorations
+   *  must opt in to interaction. */
+  decorations?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -65,6 +70,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isMaximized: isMaximizedProp,
   onToggleMaximize: onToggleMaximizeProp,
   contextMenuItems,
+  decorations,
   children,
 }) => {
   const windowRef = useRef<HTMLDivElement>(null);
@@ -342,6 +348,16 @@ const AppWindow: React.FC<AppWindowProps> = ({
 
         return <div key={edge} style={style} onMouseDown={handleResizeStart(edge)} />;
       })}
+
+      {decorations && (
+        <div
+          className="absolute inset-0"
+          style={{ pointerEvents: 'none', zIndex: 20 }}
+          aria-hidden="false"
+        >
+          {decorations}
+        </div>
+      )}
     </div>
   );
 

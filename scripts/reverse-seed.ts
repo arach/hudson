@@ -10,7 +10,7 @@ const OUT = join(import.meta.dirname, '..', 'app', 'apps', 'logo-designer', 'bui
 
 const builtins = [
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
-  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic',
+  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic', 't-decoration',
 ];
 
 let ts = `/**

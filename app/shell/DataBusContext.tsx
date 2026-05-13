@@ -72,6 +72,10 @@ export function useDataBus() {
   return ctx;
 }
 
+export function useOptionalDataBus() {
+  return useContext(DataBusCtx);
+}
+
 /** Get activity log entries for a specific app (push or receive). */
 export function usePortActivity(appId: string): PortActivityEntry[] {
   const { portActivity } = useDataBus();

@@ -1,6 +1,7 @@
 import type { ComponentType } from 'react';
 import { Sheet01Hero } from './Sheet01Hero';
 import { Sheet02Possession } from './Sheet02Possession';
+import { Sheet02BuildWorkspace } from './Sheet02BuildWorkspace';
 import { Sheet02HalfPlotter } from './Sheet02HalfPlotter';
 import { Sheet03Voice } from './Sheet03Voice';
 import { Sheet04Surfaces } from './Sheet04Surfaces';
@@ -17,6 +18,7 @@ export type SheetEntry = {
 export const sheets: SheetEntry[] = [
   { id: 'hero', label: 'Hero', Component: Sheet01Hero },
   { id: 'possession', label: 'Live Workspace', Component: Sheet02Possession },
+  { id: 'build-workspace', label: 'Build Workspace', Component: Sheet02BuildWorkspace },
   { id: 'plotter', label: 'The Plotter', Component: Sheet02HalfPlotter },
   { id: 'voice', label: 'Voice Loop', Component: Sheet03Voice },
   { id: 'surfaces', label: 'Multi-Surface', Component: Sheet04Surfaces },

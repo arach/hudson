@@ -2,9 +2,10 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useEffect } from 'react';
-import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search, Crosshair, Globe, Monitor, Package, ExternalLink } from 'lucide-react';
+import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search, Crosshair, Globe, Monitor, Package, ExternalLink, Sparkles, Trash2, Send, ClipboardCopy, Plus } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
+import { builtinRenderBodies, type BuiltinDef } from './builtinRenderBodies';
 import {
   ParamSection, ParamSlider, ParamToggle, ParamColor, ParamEnum, ParamText, ParamGrid,
 } from 'hudsonkit/controls';
@@ -20,17 +21,19 @@ const EXPORT_SIZES = [512, 256, 128, 64, 32, 16] as const;
 export function LogoInspectorHeaderActions() {
   const { inspectMode, toggleInspectMode } = useLogo();
   return (
-    <button
-      onClick={toggleInspectMode}
-      className={`p-1 rounded transition-colors ${
-        inspectMode
-          ? 'text-info bg-info/15'
-          : 'text-muted-foreground/80 hover:text-foreground/80 hover:bg-muted/40'
-      }`}
-      title={inspectMode ? 'Exit inspect mode' : 'Inspect element parameters'}
-    >
-      <Crosshair size={12} />
-    </button>
+    <div className="flex items-center gap-1">
+      <button
+        onClick={toggleInspectMode}
+        className={`p-1 rounded transition-colors ${
+          inspectMode
+            ? 'text-info bg-info/15'
+            : 'text-muted-foreground/80 hover:text-foreground/80 hover:bg-muted/40'
+        }`}
+        title={inspectMode ? 'Exit inspect mode' : 'Inspect element parameters'}
+      >
+        <Crosshair size={12} />
+      </button>
+    </div>
   );
 }
 
@@ -194,12 +197,129 @@ function ExportButton({
 }
 
 // ---------------------------------------------------------------------------
+// Prompt helpers — render an SVG and format a param schema for the AI prompt
+// ---------------------------------------------------------------------------
+
+type ParamValue = string | number | boolean;
+
+function resolveDefaults(def: BuiltinDef): Record<string, ParamValue> {
+  const out: Record<string, ParamValue> = {};
+  const p = def.params as Record<string, { default: ParamValue }> | undefined;
+  if (!p) return out;
+  for (const [k, decl] of Object.entries(p)) out[k] = decl.default;
+  return out;
+}
+
+function renderInlineSvg(renderBody: string, params: Record<string, unknown>, vb = 256): string {
+  try {
+    // eslint-disable-next-line no-new-func
+    const fn = new Function('p', 'vb', renderBody);
+    const inner = fn(params, vb);
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vb} ${vb}" width="${vb}" height="${vb}">${typeof inner === 'string' ? inner : ''}</svg>`;
+  } catch {
+    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${vb} ${vb}"><!-- render error --></svg>`;
+  }
+}
+
+function formatParamSchema(paramsObj: Record<string, unknown> | undefined): string {
+  if (!paramsObj) return '(no schema declared)';
+  const lines: string[] = [];
+  for (const [key, raw] of Object.entries(paramsObj)) {
+    const decl = raw as { type?: string; default?: unknown; min?: number; max?: number; step?: number; options?: unknown[]; values?: unknown[] };
+    const parts: string[] = [`${key}:`];
+    if (decl.type) parts.push(decl.type);
+    parts.push(`default=${JSON.stringify(decl.default)}`);
+    if (decl.min !== undefined || decl.max !== undefined) parts.push(`range=${decl.min ?? '?'}..${decl.max ?? '?'}`);
+    const enumVals = decl.options ?? decl.values;
+    if (Array.isArray(enumVals)) parts.push(`enum=[${enumVals.map(v => JSON.stringify(v)).join(', ')}]`);
+    lines.push(parts.join(' '));
+  }
+  return lines.join('\n');
+}
+
+// ---------------------------------------------------------------------------
 // Inspector — params + preview + export
 // ---------------------------------------------------------------------------
 
 export function LogoInspector() {
-  const { params, setParam, templates, customParamValues, setCustomParam, apiBaseUrl, showPreviews, togglePreviews } = useLogo();
+  const { params, setParam, templates, customParamValues, setCustomParam, apiBaseUrl, showPreviews, togglePreviews, view, picks, clearPicks, updatePickInstruction, sendAiMessage, aiStatus, beginAiSession, activeSession } = useLogo();
   const previewRef = useRef<HTMLDivElement>(null);
+
+  const buildPicksPrompt = useCallback(() => {
+    if (picks.length === 0) return '';
+    const variantId = params.variant;
+    const n = picks.length;
+    const plural = n === 1 ? '' : 's';
+
+    const pickBlocks = picks.map((pick, idx) => {
+      const overrides = JSON.stringify(pick.overrides);
+      const note = pick.instruction?.trim()
+        ? `instruction: "${pick.instruction.trim()}"`
+        : 'instruction: (none — explore within the template\'s param vocabulary)';
+      return `- pick ${idx + 1}/${n} [${pick.coordLabel}] ${pick.family} — overrides: ${overrides} · ${note}`;
+    }).join('\n');
+
+    return [
+      `# Iterate on \`${variantId}\` — ${n} pick${plural}`,
+      '',
+      `Call \`get_template_source("${variantId}")\` first to fetch the active template's renderBody and params schema. Use that as the source of truth — do not regenerate or refactor it.`,
+      '',
+      `## Picks (${n})`,
+      pickBlocks,
+      '',
+      '## Directive',
+      `Call \`create_template\` **exactly ${n} time${plural}**, once per pick in order. For each pick:`,
+      `- **renderBody**: copy the active template's renderBody verbatim (do not refactor, rename, or restructure)`,
+      `- **params**: the active template's param schema, with the pick's overrides baked into the matching \`default\` values. Honor the instruction by adjusting 1-2 additional defaults within the existing vocabulary (enum values must stay in-set; no new params).`,
+      `- **name**: \`${variantId}-<short-kebab-handle>\` describing the direction`,
+      `- **description**: 1 sentence on what this pick explores`,
+      `- **parentId**: \`"${variantId}"\` — this nests the new variant under \`${variantId}\` in the variant tree`,
+      '',
+      `Do not stop after the first call — continue until all ${n} call${plural} ${n === 1 ? 'is' : 'are'} made. End with a 1-2 sentence summary of how the new variants relate.`,
+    ].join('\n');
+  }, [picks, params.variant]);
+
+  const [sentInfo, setSentInfo] = useState<{ count: number; startedAt: number } | null>(null);
+  const handleSendToAi = useCallback((mode: 'new' | 'append' = 'new') => {
+    const prompt = buildPicksPrompt();
+    if (!prompt) return;
+    const count = picks.length;
+    // 'new': stamp a v(N+1) session so AI-created templates land there.
+    // 'append': route AI-created templates into the currently active session.
+    beginAiSession(picks, params.variant, mode);
+    sendAiMessage(prompt);
+    setSentInfo({ count, startedAt: Date.now() });
+    clearPicks();
+  }, [buildPicksPrompt, picks, params.variant, sendAiMessage, clearPicks, beginAiSession]);
+
+  // Keep the "sent" banner alive while AI is working, plus a 2s tail after it
+  // returns to ready. Different visual states: sending → working → done.
+  const aiWorking = aiStatus !== 'ready' && aiStatus !== 'error';
+  const sentPhase: 'idle' | 'working' | 'done' = !sentInfo
+    ? 'idle'
+    : aiWorking
+      ? 'working'
+      : 'done';
+  useEffect(() => {
+    if (!sentInfo || sentPhase !== 'done') return;
+    const elapsedSinceSent = Date.now() - sentInfo.startedAt;
+    const tail = Math.max(0, 2500 - elapsedSinceSent);
+    const timer = setTimeout(() => setSentInfo(null), tail);
+    return () => clearTimeout(timer);
+  }, [sentInfo, sentPhase]);
+
+  const [picksPromptCopied, setPicksPromptCopied] = useState(false);
+  const handleCopyPicksPrompt = useCallback(async () => {
+    const prompt = buildPicksPrompt();
+    if (!prompt) return;
+    try {
+      await navigator.clipboard.writeText(prompt);
+      setPicksPromptCopied(true);
+      setTimeout(() => setPicksPromptCopied(false), 1500);
+    } catch {
+      /* ignore — clipboard can fail in some browser contexts */
+    }
+  }, [buildPicksPrompt]);
 
   const activeTemplate = templates.find(t => t.id === params.variant);
 
@@ -337,6 +457,115 @@ export function LogoInspector() {
         <div className="flex items-center gap-2 px-1 pb-2">
           <span className="text-[12px] font-medium text-foreground/80 truncate">{activeTemplate.name}</span>
           <span className="text-[9px] text-muted-foreground/80 font-mono shrink-0">{activeTemplate.id}</span>
+        </div>
+      )}
+
+      {/* ── Matrix picks panel ── */}
+      {view === 'matrix' && (
+        <div className="mb-2 rounded border border-border/60 bg-muted/20 p-2.5">
+          <div className="flex items-center justify-between mb-1.5">
+            <span className="text-[10px] uppercase tracking-[0.16em] text-muted-foreground/80 font-mono">
+              Picks · {picks.length}
+            </span>
+            {picks.length > 0 && (
+              <button
+                onClick={clearPicks}
+                className="text-muted-foreground/70 hover:text-foreground/80 transition-colors"
+                title="Clear picks"
+              >
+                <Trash2 size={11} />
+              </button>
+            )}
+          </div>
+          {sentInfo && (
+            <div className={`relative mb-2 overflow-hidden flex items-center gap-2 rounded border px-2.5 py-2 text-[11px] ${
+              sentPhase === 'working'
+                ? 'border-cyan-500/40 bg-cyan-500/10 text-cyan-300 shadow-[0_0_0_1px_rgba(34,211,238,0.08),0_0_18px_rgba(34,211,238,0.12)] animate-[logo-iter-pulse_2s_ease-in-out_infinite]'
+                : 'border-accent/35 bg-accent/10 text-accent'
+            }`}>
+              {sentPhase === 'working' ? (
+                <Loader2 size={12} className="animate-spin shrink-0" />
+              ) : (
+                <Check size={12} className="shrink-0" />
+              )}
+              <span className="min-w-0 truncate">
+                {sentPhase === 'working'
+                  ? `AI iterating on ${sentInfo.count} pick${sentInfo.count === 1 ? '' : 's'}…`
+                  : `Sent ${sentInfo.count} pick${sentInfo.count === 1 ? '' : 's'} · open AI tab to follow up`}
+              </span>
+              <span className="ml-auto shrink-0 text-[9.5px] font-mono uppercase tracking-[0.12em] opacity-70">
+                {sentPhase === 'working' ? 'streaming' : 'open ai →'}
+              </span>
+              {sentPhase === 'working' && (
+                <span
+                  aria-hidden="true"
+                  className="absolute inset-x-0 bottom-0 h-px bg-gradient-to-r from-transparent via-cyan-300/70 to-transparent animate-[logo-iter-sweep_1.6s_linear_infinite]"
+                />
+              )}
+            </div>
+          )}
+          {picks.length === 0 ? (
+            <p className="text-[11px] text-muted-foreground/70 leading-snug">
+              Click cells in the matrix to multi-select winners. Selected cells stack here; add a per-pick instruction (optional), then send the whole batch to the AI.
+            </p>
+          ) : (
+            <>
+              <ul className="space-y-2 mb-2 max-h-[320px] overflow-y-auto frame-scrollbar pr-1">
+                {picks.map(pick => (
+                  <li
+                    key={pick.key}
+                    className="rounded border border-border/50 bg-background/40 px-2 py-1.5"
+                  >
+                    <div className="flex items-baseline gap-1.5 text-[10.5px] font-mono leading-tight">
+                      <span className="rounded bg-accent/15 text-accent px-1.5 py-0.5 text-[9.5px] tracking-wide tabular-nums">
+                        {pick.coordLabel}
+                      </span>
+                      <span className="text-muted-foreground/75 truncate">{pick.family}</span>
+                    </div>
+                    <div className="mt-1 text-[10px] font-mono text-foreground/70 truncate" title={`${pick.paramKey}=${String(pick.value)}`}>
+                      <span>{pick.paramKey}</span>
+                      <span className="text-muted-foreground/40">=</span>
+                      <span className="text-accent">{String(pick.value)}</span>
+                    </div>
+                    <textarea
+                      value={pick.instruction}
+                      onChange={e => updatePickInstruction(pick.key, e.target.value)}
+                      placeholder={`How should ${pick.coordLabel} evolve? (optional)`}
+                      rows={2}
+                      className="mt-1.5 w-full resize-none rounded border border-border/40 bg-muted/30 px-1.5 py-1 text-[10.5px] font-mono text-foreground/85 placeholder:text-muted-foreground/40 focus:border-accent/50 focus:outline-none"
+                    />
+                  </li>
+                ))}
+              </ul>
+              <div className="flex gap-1.5">
+                <button
+                  onClick={() => handleSendToAi('new')}
+                  className="flex-1 flex items-center justify-center gap-1.5 py-1.5 px-2 rounded bg-accent/15 hover:bg-accent/25 text-accent text-[11px] font-medium transition-colors"
+                  title={`Send picks as new v${activeSession + 1} grid`}
+                >
+                  <Send size={11} />
+                  Send to AI
+                </button>
+                {activeSession >= 2 && (
+                  <button
+                    onClick={() => handleSendToAi('append')}
+                    className="flex items-center justify-center gap-1 py-1.5 px-2.5 rounded border border-border/60 bg-muted/30 hover:bg-muted/55 text-foreground/75 text-[11px] font-medium transition-colors"
+                    title={`Add new variants to the current v${activeSession} grid instead of starting v${activeSession + 1}`}
+                  >
+                    <Plus size={11} />
+                    Append
+                  </button>
+                )}
+                <button
+                  onClick={handleCopyPicksPrompt}
+                  className="flex items-center justify-center py-1.5 px-2 rounded bg-muted/40 hover:bg-muted/60 text-foreground/80 transition-colors"
+                  title="Copy the structured prompt — paste into Claude.ai, Claude Code, or any AI tool"
+                >
+                  {picksPromptCopied ? <Check size={11} /> : <ClipboardCopy size={11} />}
+                </button>
+              </div>
+            </>
+          )}
         </div>
       )}
 

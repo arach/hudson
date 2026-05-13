@@ -13,5 +13,6 @@ export default defineConfig({
   outDir: 'dist',
   external: [
     '@earendil-works/pi-ai',
+    'ai',
   ],
 });

@@ -6,9 +6,13 @@ import { LogoContent } from './LogoContent';
 import { LogoLeftPanel } from './LogoLeftPanel';
 import { LogoInspector, LogoInspectorHeaderActions } from './LogoInspector';
 import { LogoTerminal } from './LogoTerminal';
+import { LogoChat } from './LogoChat';
 import { useLogoCommands, useLogoStatus } from './hooks';
 import { useLogoPortOutput, useLogoPortInput } from './ports';
 import { logoSettings } from './settings';
+import { logoIntents } from './intents';
+
+const IS_DEV_ENV = process.env.NODE_ENV === 'development';
 
 export const logoDesignerApp: HudsonApp = {
   id: 'logo-designer',
@@ -19,6 +23,7 @@ export const logoDesignerApp: HudsonApp = {
   ports: {
     outputs: [
       { id: 'params', name: 'Logo Params', dataType: 'json', description: 'Current logo parameters as JSON' },
+      { id: 'animation-job', name: 'Animation Job', dataType: 'json', description: 'Selected logo variant payload for Preframe animation' },
     ],
     inputs: [
       { id: 'background-svg', name: 'Background SVG', dataType: 'svg', description: 'SVG to use as logo background layer' },
@@ -30,16 +35,22 @@ export const logoDesignerApp: HudsonApp = {
 
   Provider: LogoProvider,
 
+  intents: logoIntents,
+
   settings: logoSettings,
 
   services: [
     { serviceId: 'relay', optional: true, reason: 'Required for AI terminal sessions and template compilation' },
+    ...(IS_DEV_ENV
+      ? [{ serviceId: 'preframe', optional: true, reason: 'Required for Logo animation render jobs' }]
+      : []),
   ],
 
   slots: {
     Content: LogoContent,
     LeftPanel: LogoLeftPanel,
     Inspector: LogoInspector,
+    Chat: LogoChat,
     Terminal: LogoTerminal,
   },
 

@@ -133,6 +133,8 @@ interface UIMessagePart {
   parts: { type: string; text?: string }[];
 }
 
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export function streamFromCLI(
   messages: UIMessagePart[],
   toolset: string,
@@ -141,6 +143,11 @@ export function streamFromCLI(
 ): Response {
   const { system, toolPrompt, tools } = loadToolset(toolset, context);
   const cli = process.env.AI_CLI_COMMAND ?? 'claude';
+
+  // Claude Code requires --session-id to be a UUID. Hudson hands us its own
+  // prefixed id format (e.g. "session_<hex>"), so only honor real UUIDs —
+  // otherwise fall back to stateless mode and embed history in the prompt.
+  const usableSession = sessionId && UUID_RE.test(sessionId) ? sessionId : undefined;
 
   // Extract just the latest user message text
   const lastUser = [...messages].reverse().find(m => m.role === 'user');
@@ -151,7 +158,7 @@ export function streamFromCLI(
 
   // When there's no session, we need to include history in the prompt
   let prompt: string;
-  if (!sessionId) {
+  if (!usableSession) {
     const historyLines: string[] = [];
     for (const msg of messages.slice(0, -1)) {
       const text = msg.parts
@@ -185,12 +192,12 @@ export function streamFromCLI(
 
   // Session management: first turn creates with --session-id, subsequent
   // turns continue with --resume (CLI rejects reusing --session-id).
-  if (sessionId) {
+  if (usableSession) {
     const hasHistory = messages.some(m => m.role === 'assistant');
     if (hasHistory) {
-      args.push('--resume', sessionId);
+      args.push('--resume', usableSession);
     } else {
-      args.push('--session-id', sessionId);
+      args.push('--session-id', usableSession);
     }
   } else {
     args.push('--no-session-persistence');

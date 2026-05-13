@@ -13,6 +13,8 @@ const eslintConfig = defineConfig([
     ".data/**",
     "examples/**/.build/**",
     "out/**",
+    "site/out/**",
+    "site/site/out/**",
     "build/**",
     "public/embed/**",
     "next-env.d.ts",

@@ -51,6 +51,9 @@ jobs:
       - name: Install dependencies
         run: bun install --frozen-lockfile
 
+      - name: AI backends build
+        run: bun run --filter @hudson/ai-backends build
+
       - name: HudsonKit build
         run: bun run --cwd packages/web/hudsonkit build:js
 

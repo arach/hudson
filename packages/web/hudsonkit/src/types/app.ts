@@ -135,6 +135,12 @@ export interface HudsonApp {
     RightPanel?: React.FC;
     Inspector?: React.FC;
     LeftFooter?: React.FC;
+    /** App-level Chat surface — the "designed UI" AI lens. Should consume the
+     *  app's Provider state (same conversation as the rest of the app), not
+     *  spawn its own chat hook. */
+    Chat?: React.FC;
+    /** App-level Terminal surface — usually a PTY/relay session for long-form
+     *  coding work, distinct from the Chat surface. */
     Terminal?: React.FC;
     /** Full-viewport component rendered above the shell when useTakeover
      *  returns active. When present, the rest of the shell is marked

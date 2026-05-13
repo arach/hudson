@@ -62,7 +62,6 @@ const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
 };
 const WORKSPACE_AI_CHAT_ID = 'hudson-workspace-ai';
 const WORKSPACE_AI_MESSAGES_STORAGE_KEY = 'hudson.workspace-ai.chat.messages';
-const WORKSPACE_AI_SESSION_STORAGE_KEY = 'hudson.workspace-ai.chat.session-id';
 
 export interface WorkspaceAIComposerRequest {
   id: number;
@@ -299,11 +298,6 @@ export function WorkspaceAI({
     [],
     160,
   );
-  const [persistedSessionId, setPersistedSessionId] = usePersistentState(
-    WORKSPACE_AI_SESSION_STORAGE_KEY,
-    '',
-  );
-
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -472,8 +466,6 @@ export function WorkspaceAI({
     context: scopedContext,
     provider: activeProvider,
     model: activeModel,
-    sessionId: persistedSessionId || undefined,
-    onSessionIdChange: setPersistedSessionId,
     onToolCall: async (name, args) => {
       if (name === 'change_workspace_scope') {
         const targetWorkspaceId = typeof args.workspaceId === 'string' ? args.workspaceId : workspace.id;

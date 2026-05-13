@@ -60,7 +60,11 @@ function getLocalRegistry(): {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('../local/apps.local');
+    const mod = require('../local/apps.local');
+    return {
+      localApps: mod.localApps ?? [],
+      localWorkspaces: mod.localWorkspaces ?? [],
+    };
   } catch {
     return { localApps: [], localWorkspaces: [] };
   }
@@ -151,6 +155,28 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
   }
 }
 
+function getPreframeAppConfig(): WorkspaceAppConfig | null {
+  if (!IS_DEV_ENV) return null;
+
+  try {
+    // Optional sibling app: ~/dev/preframe. Kept out of production bundles.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('../../../preframe/catalog');
+    const app = mod.catalogApp ?? mod.preframeApp ?? mod.default;
+    if (!app) return null;
+    return {
+      app,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1160, y: -300, w: 900, h: 720 },
+    } as WorkspaceAppConfig;
+  } catch (error) {
+    if (IS_DEV_ENV) {
+      console.warn('[registry] preframe sibling app not available; skipping', error);
+    }
+    return null;
+  }
+}
+
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
     {
@@ -177,6 +203,8 @@ function getCoreApps(): WorkspaceAppConfig[] {
 }
 
 function getLogoStudioApps(): WorkspaceAppConfig[] {
+  const preframeAppConfig = getPreframeAppConfig();
+
   return [
     {
       app: logoDesignerApp,
@@ -200,6 +228,7 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 580, y: 600, w: 540, h: 460 },
     },
+    ...(preframeAppConfig ? [preframeAppConfig] : []),
   ];
 }
 

@@ -497,6 +497,399 @@ return svg;`,
   },
 };
 
+const tDecoration: BuiltinDef = {
+  name: 'T Decoration',
+  description: 'Lowercase t with parametric decoration treatments (Talkie brand). Single template covering the cassette/audio mark catalog: stem-top indicators, T-cross marks, crossbar treatments, surface effects.',
+  renderBody: `\
+const {
+  glyphScale, glyphInk, glyphFontWeight, glyphFontFamily,
+  showCanvas, canvasColor, canvasRadius,
+  decoration, decorationColor, decorationScale, decorationOpacity,
+  dotShape, dotOffsetY, showHalo, haloOpacity,
+} = p;
+
+// ── Glyph geometry (calibrated for JBM Medium, baseline = size * 0.86) ──
+const T_CELL_CENTER = 0.31;
+const T_STEM_OFFSET_FROM_ANCHOR = -0.034;
+const T_STEM_WIDTH = 0.08;
+const T_CROSS_Y = 0.469;
+const T_CROSSBAR_LEFT = 0.115;
+const T_CROSSBAR_RIGHT = 0.4825;
+
+// ── Map to vb-square canvas (Logo Designer renders at vb=512) ──
+const size  = vb * glyphScale;
+const cellW = size * 0.62;
+const originX = (vb - cellW) / 2;
+const originY = (vb - size) / 2;
+
+const anchorX       = originX + size * T_CELL_CENTER;
+const baseline      = originY + size * 0.86;
+const stemCx        = anchorX + size * T_STEM_OFFSET_FROM_ANCHOR;
+const crossY        = originY + size * T_CROSS_Y;
+const stemW         = size * T_STEM_WIDTH;
+const crossbarLeft  = originX + size * T_CROSSBAR_LEFT;
+const crossbarRight = originX + size * T_CROSSBAR_RIGHT;
+const stemTopY      = originY + size * 0.14;
+const stemBaseline  = originY + size * 0.86;
+const dotCy         = originY + size * 0.12;
+
+const uid = 'td' + Math.random().toString(36).slice(2, 6);
+const fontSize = size * 0.78;
+
+// ── Mutable render state ──
+let defsBlock  = '';
+let beforeParts = [];   // emitted between canvas + glyph (behind the t)
+let afterParts  = [];   // emitted after glyph (in front)
+let glyphFill  = glyphInk;
+let glyphStyle = '';
+let glyphMaskAttr = '';
+
+// ── Helper: render the configurable decoration "dot" shape ──
+function dotShapeSvg(cx, cy, baseR, fill, opacity) {
+  const r = baseR * decorationScale;
+  if (dotShape === 'square') {
+    const w = r * 2;
+    return \`<rect x="\${cx - r}" y="\${cy - r}" width="\${w}" height="\${w}" fill="\${fill}" opacity="\${opacity}"/>\`;
+  }
+  if (dotShape === 'rounded-square') {
+    const w = r * 2;
+    return \`<rect x="\${cx - r}" y="\${cy - r}" width="\${w}" height="\${w}" rx="\${r * 0.35}" fill="\${fill}" opacity="\${opacity}"/>\`;
+  }
+  if (dotShape === 'rect-wide') {
+    return \`<rect x="\${cx - r * 1.4}" y="\${cy - r * 0.65}" width="\${r * 2.8}" height="\${r * 1.3}" rx="\${r * 0.5}" fill="\${fill}" opacity="\${opacity}"/>\`;
+  }
+  if (dotShape === 'rect-tall') {
+    return \`<rect x="\${cx - r * 0.65}" y="\${cy - r * 1.4}" width="\${r * 1.3}" height="\${r * 2.8}" rx="\${r * 0.5}" fill="\${fill}" opacity="\${opacity}"/>\`;
+  }
+  return \`<circle cx="\${cx}" cy="\${cy}" r="\${r}" fill="\${fill}" opacity="\${opacity}"/>\`;
+}
+
+switch (decoration) {
+  case 'none':
+    break;
+
+  case 'stem-top-dot': {
+    const baseR = stemW * 0.5;
+    const cy = dotCy + dotOffsetY;
+    if (showHalo) {
+      afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR * decorationScale * 3}" fill="\${decorationColor}" opacity="\${haloOpacity * 0.5}"/>\`);
+      afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR * decorationScale * 1.8}" fill="\${decorationColor}" opacity="\${haloOpacity}"/>\`);
+    }
+    afterParts.push(dotShapeSvg(stemCx, cy, baseR, decorationColor, decorationOpacity));
+    break;
+  }
+
+  case 'stem-top-lamp': {
+    const baseR = stemW * 0.5 * decorationScale;
+    const cy = dotCy + dotOffsetY;
+    afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR * 3}" fill="\${decorationColor}" opacity="\${0.08 * decorationOpacity}"/>\`);
+    afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR * 1.8}" fill="\${decorationColor}" opacity="\${0.15 * decorationOpacity}"/>\`);
+    afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    afterParts.push(\`<circle cx="\${stemCx}" cy="\${cy}" r="\${baseR * 0.5}" fill="#FCEBD5" opacity="\${0.8 * decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'cross-chip': {
+    const w = stemW * 0.68 * decorationScale;
+    afterParts.push(\`<rect x="\${stemCx - w / 2}" y="\${crossY - w / 2}" width="\${w}" height="\${w}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'cross-knockout': {
+    const w = stemW * 0.7 * decorationScale;
+    defsBlock += \`<mask id="m-\${uid}"><rect width="100%" height="100%" fill="white"/><rect x="\${stemCx - w / 2}" y="\${crossY - w / 2}" width="\${w}" height="\${w}" fill="black"/></mask>\`;
+    glyphMaskAttr = \` mask="url(#m-\${uid})"\`;
+    break;
+  }
+
+  case 'cross-flush-cap': {
+    const w = stemW * decorationScale;
+    afterParts.push(\`<rect x="\${stemCx - w / 2}" y="\${crossY - w / 2}" width="\${w}" height="\${w}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'cross-registration': {
+    const w = stemW * 1.15 * decorationScale;
+    const sw = Math.max(0.75, size * 0.005);
+    afterParts.push(\`<rect x="\${stemCx - w / 2}" y="\${crossY - w / 2}" width="\${w}" height="\${w}" fill="none" stroke="\${decorationColor}" stroke-width="\${sw}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'cross-annotation': {
+    const w = stemW * 0.55 * decorationScale;
+    const gap = stemW * 0.55;
+    const x = stemCx + stemW / 2 + gap;
+    const y = (originY + size * 0.43) - w;
+    afterParts.push(\`<rect x="\${x}" y="\${y}" width="\${w}" height="\${w}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'crossbar-caps': {
+    const w = stemW * decorationScale;
+    const gap = stemW * 0.45;
+    const xL = crossbarLeft - gap - w;
+    const xR = crossbarRight + gap;
+    const y = crossY - w / 2;
+    afterParts.push(\`<g fill="\${decorationColor}" opacity="\${decorationOpacity}"><rect x="\${xL}" y="\${y}" width="\${w}" height="\${w}"/><rect x="\${xR}" y="\${y}" width="\${w}" height="\${w}"/></g>\`);
+    break;
+  }
+
+  case 'crossbar-pin': {
+    const r = stemW * 0.25 * decorationScale;
+    afterParts.push(\`<circle cx="\${crossbarRight}" cy="\${crossY}" r="\${r}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'crossbar-slot': {
+    const slotW = stemW * 0.35 * decorationScale;
+    const slotH = stemW * 1.4 * decorationScale;
+    const sx = stemCx + stemW * 1.8;
+    defsBlock += \`<mask id="m-\${uid}"><rect width="100%" height="100%" fill="white"/><rect x="\${sx - slotW / 2}" y="\${crossY - slotH / 2}" width="\${slotW}" height="\${slotH}" fill="black"/></mask>\`;
+    glyphMaskAttr = \` mask="url(#m-\${uid})"\`;
+    break;
+  }
+
+  case 'stem-dot': {
+    const r = stemW * 0.28 * decorationScale;
+    const y = crossY + (stemBaseline - crossY) * 0.45;
+    afterParts.push(\`<circle cx="\${stemCx}" cy="\${y}" r="\${r}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'stem-foot': {
+    const tickW = stemW * 1.6 * decorationScale;
+    const tickH = Math.max(1.5, size * 0.008);
+    const y = stemBaseline + size * 0.01;
+    afterParts.push(\`<rect x="\${stemCx - tickW / 2}" y="\${y}" width="\${tickW}" height="\${tickH}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'stem-cross-hairline': {
+    const len = stemW * 1.8 * decorationScale;
+    const sw = Math.max(0.75, size * 0.004);
+    afterParts.push(\`<line x1="\${stemCx - len}" y1="\${crossY + len * 0.6}" x2="\${stemCx + len}" y2="\${crossY - len * 0.6}" stroke="\${decorationColor}" stroke-width="\${sw}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'ascender-notch': {
+    const w = stemW * 0.5 * decorationScale;
+    const y = originY + size * 0.155;
+    defsBlock += \`<mask id="m-\${uid}"><rect width="100%" height="100%" fill="white"/><rect x="\${stemCx - w / 2}" y="\${y}" width="\${w}" height="\${w}" fill="black"/></mask>\`;
+    glyphMaskAttr = \` mask="url(#m-\${uid})"\`;
+    break;
+  }
+
+  case 'descender-hook-accent': {
+    const w = stemW * 0.4 * decorationScale;
+    const x = stemCx - stemW * 0.8;
+    const y = stemBaseline - stemW * 0.2;
+    afterParts.push(\`<rect x="\${x}" y="\${y}" width="\${w}" height="\${w}" rx="\${w * 0.15}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    break;
+  }
+
+  case 'gradient-fill': {
+    defsBlock += \`<linearGradient id="g-\${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="\${decorationColor}"/><stop offset="100%" stop-color="#6B4422"/></linearGradient>\`;
+    glyphFill = \`url(#g-\${uid})\`;
+    break;
+  }
+
+  case 'glow-halo': {
+    defsBlock += \`<filter id="f-\${uid}" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="6" result="b1"/><feGaussianBlur in="SourceGraphic" stdDeviation="2" result="b2"/><feMerge><feMergeNode in="b1"/><feMergeNode in="b2"/><feMergeNode in="SourceGraphic"/></feMerge></filter>\`;
+    afterParts.push(\`<text x="\${anchorX}" y="\${baseline}" text-anchor="middle" font-family="\${glyphFontFamily}" font-weight="\${glyphFontWeight}" font-size="\${fontSize}" fill="none" stroke="\${decorationColor}" stroke-width="2" filter="url(#f-\${uid})" opacity="\${0.7 * decorationOpacity}">t</text>\`);
+    break;
+  }
+
+  case 'debossed': {
+    glyphFill = '#B8A88E';
+    defsBlock += \`<filter id="f-\${uid}" x="-5%" y="-5%" width="110%" height="110%"><feGaussianBlur in="SourceAlpha" stdDeviation="2.5" result="blur"/><feOffset dx="1.5" dy="2.5" result="off"/><feFlood flood-color="#0E0D0A" flood-opacity="0.55" result="c"/><feComposite in="c" in2="off" operator="in" result="shadow"/><feOffset in="SourceAlpha" dx="-1" dy="-1.5" result="off2"/><feGaussianBlur in="off2" stdDeviation="1.5" result="blur2"/><feFlood flood-color="#F4EFE6" flood-opacity="0.3" result="c2"/><feComposite in="c2" in2="blur2" operator="in" result="hi"/><feMerge><feMergeNode in="shadow"/><feMergeNode in="hi"/><feMergeNode in="SourceGraphic"/></feMerge></filter>\`;
+    glyphStyle = \` style="filter:url(#f-\${uid})"\`;
+    break;
+  }
+
+  case 'chrome': {
+    defsBlock += \`<linearGradient id="g-\${uid}" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="#E8E8E8"/><stop offset="25%" stop-color="#A0A0A0"/><stop offset="50%" stop-color="#D4D4D4"/><stop offset="75%" stop-color="#8A8A8A"/><stop offset="100%" stop-color="#C0C0C0"/></linearGradient>\`;
+    glyphFill = \`url(#g-\${uid})\`;
+    break;
+  }
+
+  case 'tape-spool': {
+    const cx1 = originX + cellW * 0.28;
+    const cx2 = originX + cellW * 0.72;
+    const cy = originY + size * 0.58;
+    const rr = size * 0.16 * decorationScale;
+    beforeParts.push(\`<g stroke="\${decorationColor}" fill="none" opacity="\${0.18 * decorationOpacity}"><circle cx="\${cx1}" cy="\${cy}" r="\${rr}" stroke-width="1.5"/><circle cx="\${cx1}" cy="\${cy}" r="\${rr * 0.45}" stroke-width="1"/><circle cx="\${cx2}" cy="\${cy}" r="\${rr * 0.8}" stroke-width="1.5"/><circle cx="\${cx2}" cy="\${cy}" r="\${rr * 0.35}" stroke-width="1"/></g>\`);
+    break;
+  }
+
+  case 'letterpress': {
+    defsBlock += \`<filter id="f-\${uid}" x="-5%" y="-5%" width="110%" height="110%"><feTurbulence type="fractalNoise" baseFrequency="0.04" numOctaves="4" result="noise"/><feDisplacementMap in="SourceGraphic" in2="noise" scale="3" xChannelSelector="R" yChannelSelector="G"/></filter>\`;
+    glyphStyle = \` style="filter:url(#f-\${uid})"\`;
+    break;
+  }
+}
+
+// ── Compose final SVG ──
+let svg = '';
+if (showCanvas) {
+  svg += \`<rect width="\${vb}" height="\${vb}" rx="\${canvasRadius}" fill="\${canvasColor}"/>\`;
+}
+if (defsBlock) svg += \`<defs>\${defsBlock}</defs>\`;
+svg += beforeParts.join('');
+svg += \`<text x="\${anchorX}" y="\${baseline}" text-anchor="middle" font-family="\${glyphFontFamily}" font-weight="\${glyphFontWeight}" font-size="\${fontSize}" fill="\${glyphFill}"\${glyphMaskAttr}\${glyphStyle}>t</text>\`;
+svg += afterParts.join('');
+
+return svg;`,
+  params: {
+      "glyphScale": {
+          "label": "Glyph size",
+          "type": "number",
+          "default": 0.85,
+          "min": 0.4,
+          "max": 1,
+          "step": 0.01,
+          "group": "Glyph"
+      },
+      "glyphInk": {
+          "label": "Glyph color",
+          "type": "color",
+          "default": "#F4EFE6",
+          "group": "Glyph"
+      },
+      "glyphFontWeight": {
+          "label": "Glyph weight",
+          "type": "enum",
+          "default": "500",
+          "options": [
+              "300",
+              "400",
+              "500",
+              "600",
+              "700"
+          ],
+          "group": "Glyph"
+      },
+      "glyphFontFamily": {
+          "label": "Glyph family",
+          "type": "text",
+          "default": "JetBrains Mono",
+          "placeholder": "JetBrains Mono",
+          "group": "Glyph"
+      },
+      "showCanvas": {
+          "label": "Show canvas",
+          "type": "toggle",
+          "default": true,
+          "group": "Canvas"
+      },
+      "canvasColor": {
+          "label": "Canvas color",
+          "type": "color",
+          "default": "#0E0D0A",
+          "group": "Canvas"
+      },
+      "canvasRadius": {
+          "label": "Canvas radius",
+          "type": "number",
+          "default": 40,
+          "min": 0,
+          "max": 256,
+          "step": 1,
+          "group": "Canvas"
+      },
+      "decoration": {
+          "label": "Decoration",
+          "type": "enum",
+          "default": "stem-top-dot",
+          "options": [
+              "none",
+              "stem-top-dot",
+              "stem-top-lamp",
+              "cross-chip",
+              "cross-knockout",
+              "cross-flush-cap",
+              "cross-registration",
+              "cross-annotation",
+              "crossbar-caps",
+              "crossbar-pin",
+              "crossbar-slot",
+              "stem-dot",
+              "stem-foot",
+              "stem-cross-hairline",
+              "ascender-notch",
+              "descender-hook-accent",
+              "gradient-fill",
+              "glow-halo",
+              "debossed",
+              "chrome",
+              "tape-spool",
+              "letterpress"
+          ],
+          "group": "Decoration"
+      },
+      "decorationColor": {
+          "label": "Decoration color",
+          "type": "color",
+          "default": "#FF5346",
+          "group": "Decoration"
+      },
+      "decorationScale": {
+          "label": "Decoration scale",
+          "type": "number",
+          "default": 1,
+          "min": 0.25,
+          "max": 2.5,
+          "step": 0.05,
+          "group": "Decoration"
+      },
+      "decorationOpacity": {
+          "label": "Decoration opacity",
+          "type": "number",
+          "default": 1,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "group": "Decoration"
+      },
+      "dotShape": {
+          "label": "Dot shape",
+          "type": "enum",
+          "default": "circle",
+          "options": [
+              "circle",
+              "square",
+              "rounded-square",
+              "rect-wide",
+              "rect-tall"
+          ],
+          "group": "Dot"
+      },
+      "dotOffsetY": {
+          "label": "Dot y-offset",
+          "type": "number",
+          "default": 0,
+          "min": -200,
+          "max": 200,
+          "step": 1,
+          "group": "Dot"
+      },
+      "showHalo": {
+          "label": "Show halo",
+          "type": "toggle",
+          "default": false,
+          "group": "Dot"
+      },
+      "haloOpacity": {
+          "label": "Halo opacity",
+          "type": "number",
+          "default": 0.15,
+          "min": 0,
+          "max": 1,
+          "step": 0.05,
+          "group": "Dot"
+      }
+  },
+};
+
 export const builtinRenderBodies: Record<string, BuiltinDef> = {
   'negative-space': negativeSpace,
   'green-channel': greenChannel,
@@ -506,4 +899,5 @@ export const builtinRenderBodies: Record<string, BuiltinDef> = {
   'app-windows': appWindows,
   'dot-matrix': dotMatrix,
   'mosaic': mosaic,
+  't-decoration': tDecoration,
 };

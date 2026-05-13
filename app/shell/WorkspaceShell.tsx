@@ -44,6 +44,7 @@ import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
 import { PortInspector } from './PortInspector';
+import { WindowPorts } from './WindowPorts';
 import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
@@ -306,14 +307,14 @@ function getWorkspaceServiceStatus(
   );
 
   if (requiredServiceIds.size === 0) {
-    return { label: 'READY', color: 'amber' };
+    return { label: 'READY', color: 'emerald' };
   }
 
   const hasError = [...requiredServiceIds].some(id => registry.records[id]?.status === 'error');
   const allRunning = [...requiredServiceIds].every(id => registry.records[id]?.status === 'running');
 
   if (hasError) return { label: 'ERROR', color: 'red' };
-  if (allRunning) return { label: 'NOMINAL', color: 'amber' };
+  if (allRunning) return { label: 'NOMINAL', color: 'emerald' };
   return { label: 'DEGRADED', color: 'amber' };
 }
 
@@ -1297,34 +1298,43 @@ function WorkspaceInner({
     }, BOUNDS_FLUSH_MS);
   }, []);
 
-  // --- Terminal tab state (Hudson global + per-app) ---
+  // --- Console drawer state — single AI / Terminal toggle in the drawer header.
+  //
+  // `consoleWorkspaceKind` is the universal "which mode am I in" — the body
+  // routes to the focused app's Chat or Terminal slot if present, else the
+  // workspace-level fallback (`workspaceAINode` / `hudsonTerminalNode`).
+  //
+  // `activeTerminalAppId` is preserved as a back-compat write-only handle.
+  // External callers (intents, voice, command-palette) keep calling
+  // `setActiveTerminalAppId(HUDSON_AI_ID)` etc; we mirror that into the kind.
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
   const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
-  // Default to the focused app's terminal if it has one
-  const focusedHasTerminal = appsWithTerminal.some(c => c.app.id === focusedAppId);
-  const [activeTerminalAppId, setActiveTerminalAppId] = useState(() => {
+  const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
+  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
+  const [activeTerminalAppId, setActiveTerminalAppIdRaw] = useState(() => {
     const pendingTerminalAppId = consumePendingTerminalAppId(workspace.id);
     if (pendingTerminalAppId) return pendingTerminalAppId;
-    return focusedHasTerminal ? focusedAppId : HUDSON_AI_ID;
+    return HUDSON_AI_ID;
   });
+  const setActiveTerminalAppId = useCallback((id: string) => {
+    setActiveTerminalAppIdRaw(id);
+    if (id === HUDSON_TERMINAL_ID) setConsoleWorkspaceKind('terminal');
+    else if (id === HUDSON_AI_ID) setConsoleWorkspaceKind('ai');
+  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID]);
   const [hudsonAIComposerRequest, setHudsonAIComposerRequest] = useState<WorkspaceAIComposerRequest | null>(null);
   const [voiceTriggerNonce, setVoiceTriggerNonce] = useState(0);
+
+  const focusedConsoleApp = appsWithConsoleSurface.find(c => c.app.id === focusedAppId)?.app ?? null;
   const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
     ?? null;
+  const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
+    setConsoleWorkspaceKind(kind);
+    setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
+  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID]);
 
-  // Follow focused app — switch terminal tab when focus changes to an app with a terminal,
-  // but only if the user is already on an app-specific terminal tab (not AI or Hudson Terminal).
-  const activeTermRef = useRef(activeTerminalAppId);
-  activeTermRef.current = activeTerminalAppId;
-  useEffect(() => {
-    if (activeTermRef.current === HUDSON_AI_ID || activeTermRef.current === HUDSON_TERMINAL_ID) return;
-    if (appsWithTerminal.some(c => c.app.id === focusedAppId)) {
-      setActiveTerminalAppId(focusedAppId);
-    }
-  }, [focusedAppId, appsWithTerminal]);
-
-  // Sort terminal tabs: active (visible) apps first, inactive at the end
+  // Sort terminal tabs: active (visible) apps first, inactive at the end.
+  // Retained for back-compat with anything that still inspects this list.
   const sortedTerminalApps = useMemo(() => {
     const active = appsWithTerminal.filter(c => activatedAppIds.has(c.app.id));
     const inactive = appsWithTerminal.filter(c => !activatedAppIds.has(c.app.id));
@@ -2142,6 +2152,26 @@ function WorkspaceInner({
     });
   }, [setShowTerminal]);
 
+  // Apps can ask the shell to close the console drawer when they want to
+  // surface a result on the canvas (e.g., Logo's "Open" affordance after a
+  // create_template tool call).
+  useEffect(() => {
+    const onClose = () => { setShowTerminal(false); playSound('slideOut'); };
+    window.addEventListener('hudson:close-terminal', onClose);
+    return () => window.removeEventListener('hudson:close-terminal', onClose);
+  }, [setShowTerminal, playSound]);
+
+  // Apps can ask the shell to open settings (workspace editor, settings tab).
+  // Optional detail.tab targets a specific editor tab.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: EditorTab } | undefined>).detail;
+      openSettings(detail?.tab ?? 'settings');
+    };
+    window.addEventListener('hudson:open-settings', onOpen);
+    return () => window.removeEventListener('hudson:open-settings', onOpen);
+  }, [openSettings]);
+
   // --- Workspace AI tool call handler ---
   const handleWorkspaceToolCall = useCallback(async (name: string, args: Record<string, unknown>) => {
     switch (name) {
@@ -2396,6 +2426,40 @@ function WorkspaceInner({
     }
   }, [termSnapping]);
 
+  // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
+  // Active tab in bright emerald with an underline + subtle bg tint for contrast;
+  // inactive in muted gray and clickable.
+  const consoleTitle = (
+    <div className="flex items-stretch -my-1.5 h-[34px]">
+      <button
+        type="button"
+        onClick={() => openWorkspaceConsole('terminal')}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+          consoleWorkspaceKind === 'terminal'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+        }`}
+        title="Terminal — app's Terminal slot if present, else system terminal"
+      >
+        <TerminalSquare size={13} />
+        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">TERMINAL</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => openWorkspaceConsole('ai')}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+          consoleWorkspaceKind === 'ai'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+        }`}
+        title="AI — app's Chat slot if present, else workspace AI"
+      >
+        <Sparkles size={13} />
+        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">AI</span>
+      </button>
+    </div>
+  );
+
   const terminalHeaderActions = (
     <button
       type="button"
@@ -2426,118 +2490,32 @@ function WorkspaceInner({
     />
   );
 
+  // Console body: routed by the AI / Terminal toggle in the drawer header.
+  // - AI mode    → focused app's Chat slot if present, else workspace AI
+  // - Terminal   → focused app's Terminal slot if present, else system terminal
+  // No tab strip — the existing TerminalDrawer header chrome owns the toggle.
   const terminalContent = (() => {
-    // No app terminals — show AI + Terminal tabs
-    if (appsWithTerminal.length === 0) {
+    if (consoleWorkspaceKind === 'ai') {
+      if (focusedConsoleApp?.slots.Chat) {
+        const ChatSlot = focusedConsoleApp.slots.Chat;
+        return (
+          <AppSlotErrorBoundary appName={focusedConsoleApp.name} slotName="Chat">
+            <ChatSlot />
+          </AppSlotErrorBoundary>
+        );
+      }
+      return workspaceAINode;
+    }
+    // Terminal kind
+    if (focusedConsoleApp?.slots.Terminal) {
+      const TerminalSlot = focusedConsoleApp.slots.Terminal;
       return (
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="shrink-0 flex items-center border-b border-border min-w-0">
-            <button
-              onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
-                activeTerminalAppId === HUDSON_AI_ID
-                  ? 'text-info border-b border-info bg-info/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              <Sparkles size={10} />
-              AI
-            </button>
-            <button
-              onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                activeTerminalAppId === HUDSON_TERMINAL_ID
-                  ? 'text-info border-b border-info bg-info/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              Terminal
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden min-w-0">
-            {activeTerminalAppId === HUDSON_AI_ID ? workspaceAINode : hudsonTerminalNode}
-          </div>
-        </div>
+        <AppSlotErrorBoundary appName={focusedConsoleApp.name} slotName="Terminal">
+          <TerminalSlot />
+        </AppSlotErrorBoundary>
       );
     }
-
-    // Has app terminals — AI first, then Hudson, then app terminals
-    const activeApps = sortedTerminalApps.filter(c => activatedAppIds.has(c.app.id));
-    const inactiveApps = sortedTerminalApps.filter(c => !activatedAppIds.has(c.app.id));
-
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 flex items-center border-b border-border min-w-0">
-          {/* AI tab — primary */}
-          <button
-            onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
-            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
-              activeTerminalAppId === HUDSON_AI_ID
-                ? 'text-info border-b border-info bg-info/5'
-                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-            }`}
-          >
-            <Sparkles size={10} />
-            AI
-          </button>
-          {/* Hudson terminal tab */}
-          <button
-            onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
-            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-              activeTerminalAppId === HUDSON_TERMINAL_ID
-                ? 'text-info border-b border-info bg-info/5'
-                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-            }`}
-          >
-            Terminal
-          </button>
-          {/* Separator between system and app tabs */}
-          <div className="h-3 w-px bg-border mx-1" />
-          {/* Active app tabs */}
-          {activeApps.map(config => (
-            <button
-              key={config.app.id}
-              onClick={() => setActiveTerminalAppId(config.app.id)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                config.app.id === activeTerminalAppId
-                  ? 'text-accent border-b border-accent bg-accent/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              {config.app.name}
-            </button>
-          ))}
-          {/* Inactive app tabs */}
-          {inactiveApps.length > 0 && activeApps.length > 0 && (
-            <div className="h-3 w-px bg-border mx-1" />
-          )}
-          {inactiveApps.map(config => (
-            <button
-              key={config.app.id}
-              onClick={() => setActiveTerminalAppId(config.app.id)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors opacity-30 ${
-                config.app.id === activeTerminalAppId
-                  ? 'text-accent border-b border-accent bg-accent/5 opacity-100'
-                  : 'text-muted-foreground hover:text-foreground/80 hover:opacity-60'
-              }`}
-            >
-              {config.app.name}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-hidden min-w-0">
-          {activeTerminalAppId === HUDSON_AI_ID ? (
-            workspaceAINode
-          ) : activeTerminalAppId === HUDSON_TERMINAL_ID ? (
-            hudsonTerminalNode
-          ) : activeTerminalApp?.slots.Terminal ? (
-            <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
-              <activeTerminalApp.slots.Terminal />
-            </AppSlotErrorBoundary>
-          ) : null}
-        </div>
-      </div>
-    );
+    return hudsonTerminalNode;
   })();
 
   // --- World content (always rendered — launcher overlays on top) ---
@@ -2805,6 +2783,7 @@ function WorkspaceInner({
               isMaximized={isTerminalMaximized}
               height={terminalHeight}
               onHeightChange={setTerminalHeight}
+              title={consoleTitle}
               headerActions={terminalHeaderActions}
             >
               {terminalContent}
@@ -2989,6 +2968,8 @@ function WorkspaceInner({
                 isMaximized={isTerminalMaximized}
                 height={terminalHeight}
                 onHeightChange={setTerminalHeight}
+                title={consoleTitle}
+                headerActions={terminalHeaderActions}
               >
                 {terminalContent}
               </TerminalDrawer>
@@ -3500,6 +3481,13 @@ function WindowedApp({
         isMaximized={isMaximized}
         onToggleMaximize={handleToggleMaximize}
         contextMenuItems={contextMenuItems}
+        decorations={
+          <WindowPorts
+            appId={config.app.id}
+            inputs={config.app.ports?.inputs}
+            outputs={config.app.ports?.outputs}
+          />
+        }
       >
         <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
           <AppSlotErrorBoundary appName={config.app.name} slotName="Content">

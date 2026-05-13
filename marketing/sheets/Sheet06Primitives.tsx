@@ -17,19 +17,19 @@ export function Sheet06Primitives() {
   return (
     <Sheet
       id="primitives"
-      num="06"
+      num="07"
       slugTitle="PRIMITIVES"
       slugSub="reference · all 8"
       sheetTitle="Primitives — Reference Sheet"
       footer={{
-        left: ['SHEET', '06 / 07'],
+        left: ['SHEET', '07 / 08'],
         mid: 'PRIMITIVES — REFERENCE SHEET · 8 COMPONENTS',
         right: ['LOC', '~ 2,400'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>06 / Primitives · the kit</Eyebrow>
+          <Eyebrow>07 / Primitives · the kit</Eyebrow>
         </div>
 
         <div

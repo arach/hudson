@@ -12,6 +12,7 @@ const cloudflareConfiguredOut = join(root, 'site', 'site', 'out');
 
 const staticRoutes = [
   'index',
+  'landing',
   'preview',
   'app',
   'demo',

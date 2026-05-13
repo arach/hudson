@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from './index';
+import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
 
 // ---------------------------------------------------------------------------
 // Parameter keys (shared between tools and prompt)
@@ -101,15 +101,18 @@ Declare template-specific params that appear as sliders/pickers in the inspector
 - After creating a template, it auto-activates. Use set_param/set_custom_param to refine.
 - If a template errors, you'll see the error in context — fix it with update_template.
 
+## Reading template source
+
+Template renderBody/params are **not** pre-loaded into your context. Call \`get_template_source(id)\` to fetch a template's source on demand — for the active template, the read-only built-ins, or any custom template. This keeps your context lean and lets you pull only what you need for the task at hand.
+
 ## Editing Templates In Place
 
-**IMPORTANT: When modifying an existing template, ALWAYS use update_template — do NOT create a new template.** The active template's full source code is shown in your context under "Active Template Source." Read it, make your changes, and call update_template with the modified renderBody.
+**IMPORTANT: When modifying an existing template, ALWAYS use update_template — do NOT create a new template.**
 
 Workflow for iterating on a design:
-1. Create a template with create_template (only once, for the initial design)
-2. For ALL subsequent changes, use update_template with the existing templateId
-3. Read the current source from context, modify it, pass the full updated code
-4. You can also add/remove custom params by passing a new params array
+1. Call \`get_template_source(activeVariantId)\` to read the current source
+2. Modify the renderBody and/or params, then call \`update_template\` with the existing templateId and the changes
+3. The 8 read-only built-ins (see below) cannot be modified — clone them with \`create_template\` instead
 
 ## Built-in Variants
 
@@ -161,7 +164,11 @@ function context(ctx: Record<string, unknown>): string {
     sections.push(`## Current SVG\n\`\`\`svg\n${svg}\n\`\`\``);
   }
 
-  // Templates
+  // Templates — only the registry (name, id, description, param count). Source
+  // is NOT injected by default: the AI fetches what it needs via
+  // `get_template_source(id)`. This keeps each request lean for the common case
+  // (tweaking params, applying presets, set_variant) where the source is dead
+  // weight in the context window.
   if (templates && templates.length > 0) {
     const activeVariant = (params as Record<string, unknown>).variant as string;
 
@@ -169,21 +176,14 @@ function context(ctx: Record<string, unknown>): string {
       const active = t.id === activeVariant ? ' **(active)**' : '';
       return `- **${t.name}** (id: \`${t.id}\`)${active}: ${t.description} — ${t.params.length} custom params`;
     });
-    sections.push(`## Templates\n${lines.join('\n')}`);
+    sections.push(
+      `## Templates\n${lines.join('\n')}\n\n` +
+      `_Call \`get_template_source(id)\` to read any template's renderBody + params before editing or cloning._`,
+    );
 
-    // Include source of active template so AI can read/edit it
     const active = templates.find(t => t.id === activeVariant);
-    if (active) {
-      // Show sourceCode if available, otherwise renderBody
-      const code = active.sourceCode || active.renderBody;
-      sections.push(
-        `## Active Template Source: ${active.name}\n` +
-        `\`\`\`typescript\n${code}\n\`\`\`\n` +
-        `Custom params: \`${JSON.stringify(active.params)}\``
-      );
-      if (customParamValues && customParamValues[active.id]) {
-        sections.push(`Custom param values: \`${JSON.stringify(customParamValues[active.id])}\``);
-      }
+    if (active && customParamValues && customParamValues[active.id]) {
+      sections.push(`## Active template custom param values\n\`${JSON.stringify(customParamValues[active.id])}\``);
     }
   }
 
@@ -193,8 +193,35 @@ function context(ctx: Record<string, unknown>): string {
 // ---------------------------------------------------------------------------
 // Tools
 // ---------------------------------------------------------------------------
-function tools(_ctx: Record<string, unknown>) {
+function tools(ctx: Record<string, unknown>) {
   return {
+    get_template_source: tool({
+      description: 'Read a template\'s source (renderBody, params, name, description) by id. Call this before update_template, or before create_template if cloning an existing template. Lets you pull the source on demand instead of having every template inlined in context.',
+      inputSchema: z.object({
+        id: z.string().describe('Template id — e.g. "negative-space", "t-decoration", or a custom hex id'),
+      }),
+      execute: async ({ id }) => {
+        const templates = (ctx.templates ?? []) as Array<{
+          id: string;
+          name?: string;
+          description?: string;
+          renderBody?: string;
+          sourceCode?: string;
+          params?: unknown[];
+        }>;
+        const t = templates.find(tt => tt.id === id);
+        if (!t) return { found: false, id, error: `No template with id "${id}". Use the Templates list to find a valid id.` };
+        return {
+          found: true,
+          id: t.id,
+          name: t.name ?? id,
+          description: t.description ?? '',
+          renderBody: t.sourceCode || t.renderBody || '',
+          params: t.params ?? [],
+        };
+      },
+    }),
+
     set_param: tool({
       description: 'Set a single logo design parameter.',
       inputSchema: z.object({
@@ -227,12 +254,13 @@ function tools(_ctx: Record<string, unknown>) {
     }),
 
     create_template: tool({
-      description: 'Create a new logo template. Write the renderBody in TypeScript — the backend compiles it. The template auto-activates after creation.',
+      description: 'Create a new logo template. Write the renderBody in TypeScript — the backend compiles it. The template auto-activates after creation. When iterating on picks from a variation matrix, pass `parentId` so the new template nests under the source in the variant tree.',
       inputSchema: z.object({
         name: z.string().describe('Human-readable template name'),
         description: z.string().describe('Short description of the design'),
         renderBody: z.string().describe('TypeScript function body: receives (p, vb), must return SVG inner string'),
         params: z.array(templateParamSchema).describe('Custom parameter declarations for this template'),
+        parentId: z.string().optional().describe('Id of the template this was spawned from (for AI-iterated variants). Renders nested under the parent in the variant nav.'),
       }),
       execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
     }),

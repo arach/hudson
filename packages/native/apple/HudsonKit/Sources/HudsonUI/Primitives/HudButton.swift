@@ -41,15 +41,15 @@ public struct HudButton: View {
             HStack(spacing: HudSpacing.md) {
                 if let icon {
                     Image(systemName: icon)
-                        .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
+                        .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 }
                 Text(title)
-                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
-                    .tracking(0.5)
+                    .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
+                    .tracking(0)
             }
             .foregroundStyle(foreground)
-            .padding(.horizontal, HudSpacing.xxl)
-            .frame(minHeight: HudLayout.buttonHeight)
+            .padding(.horizontal, HudSpacing.xl)
+            .frame(minHeight: HudLayout.rowHeightCompact)
             .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
             .overlay(
                 RoundedRectangle(cornerRadius: HudRadius.standard)
@@ -57,7 +57,6 @@ public struct HudButton: View {
             )
             .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
             .opacity(isEnabled ? 1 : HudOpacity.muted)
-            .scaleEffect(isHovering && isEnabled ? 1.015 : 1)
         }
         .buttonStyle(.plain)
         .focusable(isEnabled)
@@ -92,7 +91,7 @@ public struct HudButton: View {
         case .primary(let tint):
             // Per-state primary fill; values calibrated below the global token scale.
             // hudlint:disable next-line opacity
-            return HudSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.26 : 0.18)
+            return HudSurface.tint(tint.color, opacity: isHovering && isEnabled ? 0.18 : 0.12)
         case .secondary:
             return theme.palette.ink.opacity(isHovering && isEnabled ? HudOpacity.subtle : HudOpacity.ghost)
         case .ghost:

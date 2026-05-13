@@ -38,19 +38,19 @@ export function Sheet07Quickstart() {
   return (
     <Sheet
       id="quickstart"
-      num="07"
+      num="08"
       slugTitle="QUICKSTART"
       slugSub="install · scaffold · build"
       sheetTitle="Quickstart — End Sheet"
       footer={{
-        left: ['SHEET', '07 / 07'],
+        left: ['SHEET', '08 / 08'],
         mid: 'HUDSONKIT — END OF DRAWING SET',
         right: ['LICENSE', 'MINE'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>07 / Quickstart · the page turns</Eyebrow>
+          <Eyebrow>08 / Quickstart · the page turns</Eyebrow>
         </div>
 
         <div
@@ -66,7 +66,7 @@ export function Sheet07Quickstart() {
             End of our drawing. <em>Start</em> of yours.
           </h2>
           <p className="subhead" style={{ fontSize: 16 }}>
-            Seven sheets in, you&rsquo;ve seen the shape of a Hudson app: manifest, primitives, voice
+            Eight sheets in, you&rsquo;ve seen the shape of a Hudson app: manifest, primitives, voice
             loop, the whole drawing set. Now the drawing ends and the build begins. Three commands
             and the docs are waiting.
           </p>

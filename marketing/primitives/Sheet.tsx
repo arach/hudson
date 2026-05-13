@@ -28,7 +28,7 @@ const DEFAULT_STYLE: CSSProperties = {
 export function Sheet({
   id,
   num,
-  total = '07',
+  total = '08',
   slugTitle,
   slugSub,
   sheetTitle,

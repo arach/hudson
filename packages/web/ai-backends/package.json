@@ -32,15 +32,20 @@
     "test": "vitest run"
   },
   "peerDependencies": {
-    "@earendil-works/pi-ai": ">=0.74.0"
+    "@earendil-works/pi-ai": ">=0.74.0",
+    "ai": ">=6.0.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "ai": {
       "optional": true
     }
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.74.0",
+    "ai": "^6.0.0",
     "tsup": "^8.0.0",
     "vitest": "^3.0.0"
   }
