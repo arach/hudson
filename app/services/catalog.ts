@@ -18,7 +18,7 @@ const preframeService: ServiceDefinition = {
   name: 'Preframe',
   description: 'Local Preframe render queue and Remotion-backed logo animation service',
   icon: 'Film',
-  check: { healthUrl: 'http://localhost:4100/health', port: 3100 },
+  check: { healthUrl: 'http://localhost:3100/api/health', port: 3100 },
   install: { command: 'bun install', cwd: '../preframe' },
   start: { command: 'bun run dev', cwd: '../preframe', env: { JOBS_PORT: '4100' } },
 };
