@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from './index';
+import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
 
 // ---------------------------------------------------------------------------
 // App-level system prompt

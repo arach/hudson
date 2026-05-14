@@ -1,24 +1,19 @@
 import { z } from 'zod';
+import { defaultRegistry } from '@hudson/ai-backends/toolsets';
 import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
 import { intentsToolset } from './intents';
 import { shaperToolset } from './shaper';
 
-export interface ToolsetDefinition {
-  /** Static app-level system prompt — capabilities, personality, constraints. */
-  system: string;
-  /** Dynamic instance context — current state snapshot. Receives the context from the client. */
-  context: (ctx: Record<string, unknown>) => string;
-  /** Tool definitions. Receives context for validation/defaults. */
-  tools: (ctx: Record<string, unknown>) => Record<string, unknown>;
-}
+// Re-export the canonical ToolsetDefinition type from the package so any
+// remaining internal imports of `ToolsetDefinition from './index'` still work.
+export type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
 
-const registry: Record<string, ToolsetDefinition> = {
-  logo: logoToolset,
-  workspace: workspaceToolset,
-  intents: intentsToolset,
-  shaper: shaperToolset,
-};
+// Register the app's toolsets on the package's default registry at module init.
+defaultRegistry.register('logo', logoToolset);
+defaultRegistry.register('workspace', workspaceToolset);
+defaultRegistry.register('intents', intentsToolset);
+defaultRegistry.register('shaper', shaperToolset);
 
 /**
  * Convert the Zod-based tool definitions into a text block that can be
@@ -58,7 +53,7 @@ ${toolDocs}`;
 }
 
 export function loadToolset(id: string, context: Record<string, unknown>) {
-  const entry = registry[id];
+  const entry = defaultRegistry.resolve(id);
   if (!entry) return { tools: {}, system: undefined, toolPrompt: '' };
 
   // Compose the full system prompt: app knowledge + instance context

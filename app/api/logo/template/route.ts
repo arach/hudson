@@ -22,6 +22,8 @@ interface TemplateMeta {
   name?: string;
   description?: string;
   builtin?: boolean;
+  /** Id of the template this was spawned from — drives family-tree nesting. */
+  parentId?: string;
   params?: Record<string, {
     type: 'number' | 'color' | 'toggle' | 'enum';
     label: string;
@@ -39,6 +41,7 @@ interface ParsedTemplate {
   description: string;
   renderBody: string;
   builtin: boolean;
+  parentId?: string;
   params: {
     key: string;
     label: string;
@@ -85,6 +88,7 @@ function parseTemplate(id: string, source: string, mtime: number): ParsedTemplat
     description: meta.description || '',
     renderBody: source.trim(),
     builtin: meta.builtin || false,
+    parentId: meta.parentId,
     params,
     createdAt: mtime,
     updatedAt: mtime,
@@ -173,14 +177,41 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     log(`POST: id=${body.id ?? 'none'} name=${body.name ?? 'none'} action=${body.action ?? 'save'} renderBody=${body.renderBody ? `${body.renderBody.length} chars` : 'none'}`);
-    const { id, name, description, renderBody, params, action } = body as {
+    const { id, name, description, parentId, renderBody, params, action } = body as {
       id?: string;
       name?: string;
       description?: string;
+      parentId?: string;
       renderBody?: string;
-      params?: Record<string, TemplateMeta['params']>;
+      /** Client may send params as an array (LogoTemplate.params) or a Record. */
+      params?: NonNullable<TemplateMeta['params']> | Array<{
+        key: string;
+        label?: string;
+        type?: 'number' | 'color' | 'toggle' | 'enum';
+        default?: number | string | boolean;
+        min?: number;
+        max?: number;
+        step?: number;
+        options?: string[];
+      }>;
       action?: 'delete';
     };
+
+    // Normalize params: client sends an array of {key, ...rest}; the file format
+    // stores a Record<key, rest>. Convert either way.
+    const paramsRecord: NonNullable<TemplateMeta['params']> | undefined = (() => {
+      if (!params) return undefined;
+      if (Array.isArray(params)) {
+        const out: NonNullable<TemplateMeta['params']> = {};
+        for (const p of params) {
+          if (!p || !p.key) continue;
+          const { key, ...rest } = p;
+          out[key] = rest as NonNullable<TemplateMeta['params']>[string];
+        }
+        return out;
+      }
+      return params;
+    })();
 
     await ensureDir();
 
@@ -203,8 +234,29 @@ export async function POST(request: Request) {
     const filePath = join(TEMPLATES_DIR, `${templateId}.js`);
 
     if (renderBody) {
-      // Full file content provided — write as-is
-      await writeFile(filePath, renderBody.trim() + '\n', 'utf-8');
+      // The client sends a bare render body (just the JS that produces the
+      // SVG inner) — the file format requires a `const meta = {...}` header
+      // so parseTemplate can read back name/description/params. If the body
+      // already has a meta block (e.g. someone hand-edited a full file), pass
+      // it through verbatim; otherwise prepend a meta block synthesized from
+      // the request fields.
+      const trimmed = renderBody.trim();
+      const hasMetaHeader = /^\s*const\s+meta\s*=/.test(trimmed);
+      let fileContent: string;
+      if (hasMetaHeader) {
+        fileContent = trimmed + '\n';
+      } else {
+        const meta: Record<string, unknown> = {};
+        if (name) meta.name = name;
+        if (description) meta.description = description;
+        if (parentId) meta.parentId = parentId;
+        if (paramsRecord && Object.keys(paramsRecord).length > 0) meta.params = paramsRecord;
+        const metaStr = Object.keys(meta).length > 0
+          ? `const meta = ${JSON.stringify(meta, null, 2)};\n\n`
+          : '';
+        fileContent = metaStr + trimmed + '\n';
+      }
+      await writeFile(filePath, fileContent, 'utf-8');
     } else if (name || description) {
       // Partial update — read existing, update meta
       let existingSource: string;
@@ -217,6 +269,7 @@ export async function POST(request: Request) {
       const existingMeta = extractMeta(existingSource);
       if (name) existingMeta.name = name;
       if (description) existingMeta.description = description;
+      if (parentId) existingMeta.parentId = parentId;
       // Rebuild meta line and replace in source
       const metaStr = `const meta = ${JSON.stringify(existingMeta, null, 2)};`;
       const updated = existingSource.replace(/const meta\s*=\s*\{[\s\S]*?\};/, metaStr);

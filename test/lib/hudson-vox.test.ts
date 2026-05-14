@@ -6,17 +6,30 @@ import {
 } from '@/app/lib/tts/voxBridge';
 
 describe('Hudson Vox bridge helpers', () => {
-  it('parses Vox streaming synthesis chunks', () => {
+  it('parses Vox streaming session NDJSON envelopes (VOX-002 contract)', () => {
     const chunks = parseHudsonVoxNdjson([
-      JSON.stringify({ type: 'started', sessionId: 'session_1' }),
+      JSON.stringify({ event: 'session.state', data: { sessionId: 'speech_1', state: 'starting', previous: null } }),
       JSON.stringify({
-        type: 'complete',
-        result: {
-          audioBase64: 'AQID',
-          contentType: 'audio/aac',
-          format: 'aac',
+        event: 'session.audio',
+        data: {
+          sessionId: 'speech_1',
+          sequence: 0,
           modelId: 'avspeech:system',
           voiceId: 'Samantha',
+          format: 'wav',
+          contentType: 'audio/wav',
+          audioBase64: 'AQID',
+          audioBytes: 3,
+        },
+      }),
+      JSON.stringify({
+        event: 'session.final',
+        data: {
+          sessionId: 'speech_1',
+          modelId: 'avspeech:system',
+          voiceId: 'Samantha',
+          format: 'wav',
+          contentType: 'audio/wav',
           audioBytes: 3,
           elapsedMs: 42,
           metrics: { audioDurationMs: 240 },
@@ -25,17 +38,20 @@ describe('Hudson Vox bridge helpers', () => {
       '',
     ].join('\n'));
 
-    expect(chunks).toHaveLength(2);
+    expect(chunks).toHaveLength(3);
     expect(chunks[1]).toMatchObject({
-      type: 'complete',
-      result: {
-        audioBase64: 'AQID',
-        modelId: 'avspeech:system',
-      },
+      event: 'session.audio',
+      data: { audioBase64: 'AQID', sequence: 0 },
+    });
+    expect(chunks[2]).toMatchObject({
+      event: 'session.final',
+      data: { metrics: { audioDurationMs: 240 } },
     });
   });
 
-  it('builds Hudson speech responses from Vox synthesis results', () => {
+  it('builds Hudson speech responses from a synthesize.generate result', () => {
+    // Phase 1 `synthesize.generate` is wav-only. The result shape comes
+    // straight from the JSON-RPC envelope's `result` object.
     const response = buildHudsonVoxSpeechResponse({
       requestId: 'req_123',
       request: {
@@ -44,12 +60,12 @@ describe('Hudson Vox bridge helpers', () => {
         model: 'avspeech:system',
         voice: 'Samantha',
         rate: 1.1,
-        format: 'aac',
+        format: 'wav',
       },
       result: {
         audioBase64: 'AQID',
-        contentType: 'audio/aac',
-        format: 'aac',
+        contentType: 'audio/wav',
+        format: 'wav',
         modelId: 'avspeech:system',
         voiceId: 'Samantha',
         audioBytes: 3,
@@ -64,14 +80,14 @@ describe('Hudson Vox bridge helpers', () => {
       model: 'avspeech:system',
       voice: 'Samantha',
       rate: 1.1,
-      format: 'aac',
+      format: 'wav',
       cached: false,
       audio: {
         base64: 'AQID',
-        mimeType: 'audio/aac',
+        mimeType: 'audio/wav',
       },
       audioBase64: 'AQID',
-      mimeType: 'audio/aac',
+      mimeType: 'audio/wav',
       durationMs: 240,
       metadata: {
         backend: 'vox',

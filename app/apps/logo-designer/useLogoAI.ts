@@ -2,7 +2,7 @@
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
 import { createHudsonId, useHudsonAI, usePlatform } from 'hudsonkit';
-import type { AppSettingsValues } from 'hudsonkit';
+import type { AppSettingsValues, AIAttachment } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
 import { isBuiltinVariant } from './types';
@@ -73,9 +73,23 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     return value;
   };
 
+  // Attachable context the user can toggle on from the chat composer.
+  const attachments: AIAttachment[] = useMemo(() => [
+    {
+      label: 'SVG',
+      content: () => {
+        if (typeof document === 'undefined') return null;
+        const svg = document.querySelector('svg[viewBox]');
+        return svg ? svg.outerHTML : null;
+      },
+    },
+  ], []);
+
   const chat = useHudsonAI({
     toolset: 'logo',
+    chatId: 'logo-app-chat',
     context,
+    attachments,
     provider: String(appSettings.aiProvider || 'minimax'),
     model: String(appSettings.aiModel || 'MiniMax-M2.7'),
     onToolCall: async (name, args) => {
@@ -109,14 +123,22 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           const source = args.renderBody as string;
           const customParams = (args.params as TemplateParam[]) ?? [];
           const result = await compileTemplate(source, compileEndpoint);
+          if ('error' in result) {
+            // Don't save a template that won't compile — it just clutters the
+            // variant nav with broken entries. Surface the error so the AI
+            // sees it and (in a future iteration) can retry with a fix.
+            logActivity('error', `create_template "${args.name}" failed to compile: ${result.error.slice(0, 80)}`);
+            break;
+          }
           const id = createHudsonId('', 8);
           const template: LogoTemplate = {
             id,
             name: args.name as string,
             description: (args.description as string) ?? '',
-            renderBody: 'js' in result ? result.js : source,
+            renderBody: result.js,
             sourceCode: source,
             params: customParams,
+            parentId: typeof args.parentId === 'string' && args.parentId.length > 0 ? args.parentId : undefined,
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
@@ -133,9 +155,13 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           if (args.description) updates.description = args.description as string;
           if (args.renderBody) {
             const source = args.renderBody as string;
-            updates.sourceCode = source;
             const result = await compileTemplate(source, compileEndpoint);
-            updates.renderBody = 'js' in result ? result.js : source;
+            if ('error' in result) {
+              logActivity('error', `update_template "${args.name ?? templateId}" failed to compile: ${result.error.slice(0, 80)}`);
+              break;
+            }
+            updates.sourceCode = source;
+            updates.renderBody = result.js;
           }
           if (args.params) updates.params = args.params as TemplateParam[];
           updateTemplate(templateId, updates);
@@ -189,5 +215,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     aiMessages: chat?.messages ?? [],
     aiActivity: activity,
     aiError: chatError ? String(chatError) : null,
+    /** Full chat handle — for surfaces that want the SDK's <AI/> component. */
+    aiChat: chat,
   };
 }

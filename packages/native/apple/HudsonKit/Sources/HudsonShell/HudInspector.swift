@@ -11,6 +11,8 @@ import HudsonUI
 /// The header slot is meant for a section title or action row; the content
 /// slot scrolls.
 public struct HudInspector<Header: View, Content: View>: View {
+    @Environment(\.hudTheme) private var theme
+
     @Binding public var isCollapsed: Bool
     public let header: Header
     public let content: Content
@@ -31,7 +33,7 @@ public struct HudInspector<Header: View, Content: View>: View {
         } else {
             VStack(spacing: 0) {
                 headerBar
-                HudDivider(color: HudHairline.standard)
+                HudDivider(color: theme.hairline.standard)
 
                 ScrollView {
                     VStack(alignment: .leading, spacing: HudSpacing.xl) {
@@ -43,7 +45,7 @@ public struct HudInspector<Header: View, Content: View>: View {
             }
             .frame(width: HudLayout.panelWidth)
             .frame(maxHeight: .infinity)
-            .background(HudPalette.chrome)
+            .background(theme.palette.chrome)
         }
     }
 

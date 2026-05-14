@@ -34,7 +34,7 @@ export function Sheet02Possession() {
       slugSub="elevation · 1:1 scale"
       sheetTitle="Possession Mode — Live Embed"
       footer={{
-        left: ['SHEET', '02 / 07'],
+        left: ['SHEET', '02 / 08'],
         mid: 'LIVE EMBED · POSSESSION MODE — workspace = self',
         right: ['SCALE', '1 : 1'],
       }}

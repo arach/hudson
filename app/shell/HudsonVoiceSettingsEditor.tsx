@@ -130,7 +130,7 @@ export function HudsonVoiceSettingsEditor({
         const nextModels = data.models?.length
           ? data.models
           : selectedProvider?.models ?? [];
-        const nextOptions = [
+        const rawOptions = [
           createDefaultVoiceOption(selectedProvider?.label ?? 'Vox'),
           ...(data.voices ?? []).map(voice => ({
             label: voice.label ?? voice.id,
@@ -138,6 +138,14 @@ export function HudsonVoiceSettingsEditor({
             previewText: voice.previewText,
           })),
         ];
+        // The default option can collide with an upstream voice id, and some
+        // providers occasionally return duplicates. First occurrence wins.
+        const seenValues = new Set<string>();
+        const nextOptions = rawOptions.filter(option => {
+          if (seenValues.has(option.value)) return false;
+          seenValues.add(option.value);
+          return true;
+        });
 
         setVoiceProviders(nextProviders);
         setVoiceModels(nextModels);

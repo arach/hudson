@@ -41,19 +41,19 @@ export function Sheet05Apps() {
   return (
     <Sheet
       id="apps"
-      num="05"
+      num="06"
       slugTitle="APPS GALLERY"
       slugSub="real software, public"
       sheetTitle="Apps Built on Hudson"
       footer={{
-        left: ['SHEET', '05 / 07'],
+        left: ['SHEET', '06 / 08'],
         mid: 'APPS GALLERY · 4 IN PRODUCTION · MORE IN-FLIGHT',
         right: ['INSTALLS', '2,847'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>05 / Apps gallery · in production</Eyebrow>
+          <Eyebrow>06 / Apps gallery · in production</Eyebrow>
         </div>
 
         <div

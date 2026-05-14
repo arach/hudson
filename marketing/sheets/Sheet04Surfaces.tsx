@@ -9,19 +9,19 @@ export function Sheet04Surfaces() {
   return (
     <Sheet
       id="surfaces"
-      num="04"
+      num="05"
       slugTitle="MULTI-SURFACE"
       slugSub="three views, one source"
       sheetTitle="One Manifest, Three Surfaces"
       footer={{
-        left: ['SHEET', '04 / 07'],
+        left: ['SHEET', '05 / 08'],
         mid: 'MULTI-SURFACE — ONE MANIFEST, THREE TARGETS',
         right: ['FORKS', '0'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>04 / Multi-surface</Eyebrow>
+          <Eyebrow>05 / Multi-surface</Eyebrow>
         </div>
 
         <h2 className="h-section" style={{ marginBottom: 48 }}>
@@ -56,7 +56,7 @@ export function Sheet04Surfaces() {
               textTransform: 'uppercase',
             }}
           >
-            FIG. 04-A · ASSEMBLY
+            FIG. 05-A · ASSEMBLY
           </div>
 
           <div

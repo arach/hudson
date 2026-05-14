@@ -1,6 +1,14 @@
+import { existsSync, readFileSync } from 'fs';
+import { homedir } from 'os';
+import { join } from 'path';
+import { randomUUID } from 'crypto';
+
 export const HUDSON_VOX_DEFAULT_MODEL = 'avspeech:system';
 export const HUDSON_VOX_DEFAULT_PROVIDER = 'vox';
 export const HUDSON_VOX_BASE_URL = process.env.VOX_COMPANION_URL ?? 'http://127.0.0.1:43115';
+const HUDSON_VOX_RPC_HOST = '127.0.0.1';
+const HUDSON_VOX_RPC_DEFAULT_PORT = 42137;
+const HUDSON_VOX_RPC_TIMEOUT_MS = 30_000;
 
 export type HudsonVoxAudioFormat = 'mp3' | 'wav' | 'aac' | 'opus' | 'aiff';
 export type HudsonVoxMetadataValue = string | number | boolean | null;
@@ -165,20 +173,89 @@ export function parseHudsonVoxNdjson(text: string): unknown[] {
     .map(line => JSON.parse(line));
 }
 
-function pickVoxSynthesisResult(chunks: unknown[]): VoxSynthesisResult {
-  for (let index = chunks.length - 1; index >= 0; index -= 1) {
-    const chunk = chunks[index];
-    if (!chunk || typeof chunk !== 'object') continue;
-    const record = chunk as Record<string, unknown>;
-    if (record.error) {
-      throw new Error(typeof record.error === 'string' ? record.error : 'Vox synthesis failed.');
-    }
-    if (record.result && typeof record.result === 'object') {
-      return record.result as VoxSynthesisResult;
-    }
+export function resolveHudsonVoxRpcPort(env: NodeJS.ProcessEnv = process.env): number {
+  const runtimePath = env.VOX_RUNTIME_PATH ?? join(env.VOX_HOME ?? join(homedir(), '.vox'), 'runtime.json');
+  if (existsSync(runtimePath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(runtimePath, 'utf-8')) as { port?: unknown };
+      const port = Number(parsed.port);
+      if (Number.isFinite(port) && port > 0) return port;
+    } catch { /* fall through */ }
   }
+  const fromEnv = Number(env.VOX_PORT);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : HUDSON_VOX_RPC_DEFAULT_PORT;
+}
 
-  throw new Error('Vox did not return a synthesis result.');
+interface VoxRpcEnvelope {
+  id?: unknown;
+  result?: unknown;
+  error?: unknown;
+}
+
+async function callHudsonVoxRpc(
+  method: string,
+  params: Record<string, unknown>,
+  timeoutMs = HUDSON_VOX_RPC_TIMEOUT_MS,
+): Promise<Record<string, unknown>> {
+  const port = resolveHudsonVoxRpcPort();
+  const id = randomUUID();
+  const socket = new WebSocket(`ws://${HUDSON_VOX_RPC_HOST}:${port}`);
+
+  return await new Promise<Record<string, unknown>>((resolve, reject) => {
+    const timer = setTimeout(() => {
+      cleanup();
+      reject(new Error(`Vox ${method} timed out after ${timeoutMs}ms.`));
+    }, timeoutMs);
+
+    const cleanup = () => {
+      clearTimeout(timer);
+      socket.onopen = null;
+      socket.onmessage = null;
+      socket.onerror = null;
+      socket.onclose = null;
+      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
+        socket.close();
+      }
+    };
+
+    socket.onopen = () => {
+      socket.send(JSON.stringify({ id, method, params }));
+    };
+
+    socket.onmessage = (event: MessageEvent) => {
+      const raw = typeof event.data === 'string'
+        ? event.data
+        : event.data instanceof ArrayBuffer
+          ? new TextDecoder().decode(event.data)
+          : '';
+      if (!raw) return;
+      let payload: VoxRpcEnvelope;
+      try {
+        payload = JSON.parse(raw) as VoxRpcEnvelope;
+      } catch {
+        return;
+      }
+      if (payload.id !== id) return;
+      cleanup();
+      if (payload.error) {
+        reject(new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error)));
+        return;
+      }
+      resolve(payload.result && typeof payload.result === 'object'
+        ? payload.result as Record<string, unknown>
+        : {});
+    };
+
+    socket.onerror = () => {
+      cleanup();
+      reject(new Error(`Could not connect to Vox on port ${port}.`));
+    };
+
+    socket.onclose = () => {
+      cleanup();
+      reject(new Error('Vox closed the connection before returning a result.'));
+    };
+  });
 }
 
 function normalizeHudsonVoxVoice(voice: VoxVoiceRecord): HudsonVoxVoice | null {
@@ -294,28 +371,25 @@ export function buildHudsonVoxSpeechResponse(args: {
 }
 
 export async function synthesizeHudsonVoxSpeech(request: HudsonVoxSpeechRequest): Promise<HudsonVoxSpeechResponse> {
-  const response = await fetch(voxUrl('/speak'), {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
-      clientId: resolveVoxClientId(request.metadata),
-      text: request.text,
-      modelId: normalizeModelId(request.model),
-      voiceId: request.voice || undefined,
-      format: request.format ?? 'aac',
-      speed: request.rate ?? 1,
-      instructions: request.instructions || undefined,
-    }),
+  // VOX-002 Phase 1: `synthesize.generate` is fixed to wav. The streaming
+  // session route is the only path that accepts other formats today.
+  const result = await callHudsonVoxRpc('synthesize.generate', {
+    clientId: resolveVoxClientId(request.metadata),
+    text: request.text,
+    modelId: normalizeModelId(request.model),
+    voiceId: request.voice || undefined,
+    format: 'wav',
+    speed: request.rate ?? 1,
+    instructions: request.instructions || undefined,
   });
 
-  const text = await response.text();
-  if (!response.ok) {
-    throw new Error(text || `Vox synthesis failed (${response.status}).`);
+  if (typeof result.audioBase64 !== 'string' || !result.audioBase64) {
+    throw new Error('Vox returned no audio.');
   }
 
   return buildHudsonVoxSpeechResponse({
     request,
-    result: pickVoxSynthesisResult(parseHudsonVoxNdjson(text)),
+    result: result as VoxSynthesisResult,
   });
 }
 

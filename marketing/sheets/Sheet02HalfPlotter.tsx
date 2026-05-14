@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useMemo, useRef, useState } from 'react';
 import { PLOTTER_FONT } from '@/marketing/lib/plotter-font';
 import { Eyebrow } from '@/marketing/primitives/Eyebrow';
 import { Sheet } from '@/marketing/primitives/Sheet';
@@ -24,7 +24,6 @@ export function Sheet02HalfPlotter() {
   const [speed, setSpeed] = useState(420);
   const [weight, setWeight] = useState(0.9);
   const [jitter, setJitter] = useState(0.4);
-  const [scale, setScale] = useState(1.6);
   const [accent, setAccent] = useState<PlotterAccent>('ink');
   const [paperTone, setPaperTone] = useState('var(--paper, oklch(0.96 0.005 200))');
   const [runId, setRunId] = useState(1);
@@ -72,8 +71,8 @@ export function Sheet02HalfPlotter() {
     URL.revokeObjectURL(url);
   }, [runId]);
 
-  useEffect(() => {
-    if (!phrase.length) return;
+  const scale = useMemo(() => {
+    if (!phrase.length) return 1.6;
     const upper = phrase.toUpperCase();
     let raw = 0;
     for (const ch of upper) {
@@ -87,14 +86,13 @@ export function Sheet02HalfPlotter() {
     const widthFit = availW / raw;
     const heightFit = availH / PLOTTER_GLYPH_BOX_H;
     const fit = Math.min(widthFit, heightFit);
-    const s = Math.max(0.55, Math.min(1.85, fit));
-    setScale(s);
+    return Math.max(0.55, Math.min(1.85, fit));
   }, [phrase]);
 
   return (
     <Sheet
       id="plotter"
-      num="02½"
+      num="03"
       slugTitle="THE PLOTTER"
       slugSub="phrase → drafting specimen"
       sheetTitle="Drafting Plotter — HP-7475A EMU"
@@ -106,7 +104,7 @@ export function Sheet02HalfPlotter() {
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0', position: 'relative' }}>
         <div style={{ marginBottom: 16 }}>
-          <Eyebrow>Interactive · 02½</Eyebrow>
+          <Eyebrow>03 / Interactive plotter</Eyebrow>
         </div>
 
         <div
@@ -120,7 +118,7 @@ export function Sheet02HalfPlotter() {
         >
           <div>
             <h2 className="h-section" style={{ marginBottom: 14, maxWidth: '16ch' }}>
-              Type a phrase. <em>Watch it draw</em>.
+              Describe something. <em>It appears on the canvas</em>.
             </h2>
             <p className="subhead" style={{ marginBottom: 28, maxWidth: '52ch' }}>
               A virtual pen plotter renders your words in single-stroke drafting type, then

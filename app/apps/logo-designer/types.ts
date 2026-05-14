@@ -128,6 +128,11 @@ export interface LogoTemplate {
   /** Original TypeScript source (what the AI reads/edits). */
   sourceCode?: string;
   params: TemplateParam[];
+  /** Optional: id of the template this was spawned from (AI iteration on picks).
+   *  Builds a family-tree relationship — children render nested under their parent
+   *  in the variant nav. Roots (built-ins, hand-authored, promoted variants) have
+   *  no parentId. */
+  parentId?: string;
   createdAt: number;
   updatedAt: number;
 }
@@ -144,6 +149,7 @@ export const BUILTIN_IDS = new Set([
   'app-windows',
   'dot-matrix',
   'mosaic',
+  't-decoration',
 ]);
 
 export function isBuiltinVariant(id: string): boolean {

@@ -1,12 +1,16 @@
 'use client';
 
-import { useRef, useCallback, useState } from 'react';
-import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb } from 'lucide-react';
+import { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb, ScrollText, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, Film } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
 import type { WordmarkConfig } from './types';
 import { LogoSvg } from './LogoSvg';
 import { WordmarkSvg } from './WordmarkSvg';
+import { LogoComparisonSheet, type LogoComparisonCellMeta } from './LogoComparisonSheet';
+import { LogoVersionGrid } from './LogoVersionGrid';
+import { MATRIX_PRESETS } from './LogoMatrixPresets';
+import { useOptionalDataBus } from '../../shell/DataBusContext';
 
 // ---------------------------------------------------------------------------
 // Mini pan/zoom canvas
@@ -175,14 +179,496 @@ function GeometryOverlay({ params, size }: { params: LogoParams; size: number })
 }
 
 // ---------------------------------------------------------------------------
+// Trace panel — structured turn-by-turn view of the AI conversation
+// ---------------------------------------------------------------------------
+
+type TracePart =
+  | { kind: 'text'; text: string }
+  | { kind: 'tool'; toolName: string; state: string; input?: unknown; output?: unknown; toolCallId: string };
+
+interface TraceTurn {
+  role: 'user' | 'assistant';
+  parts: TracePart[];
+}
+
+function normalizeTrace(messages: unknown[]): TraceTurn[] {
+  const turns: TraceTurn[] = [];
+  for (const raw of messages) {
+    const m = raw as { role?: string; parts?: unknown[] };
+    if (!m || (m.role !== 'user' && m.role !== 'assistant')) continue;
+    const parts: TracePart[] = [];
+    for (const p of m.parts ?? []) {
+      const part = p as Record<string, unknown>;
+      const t = String(part.type ?? '');
+      if (t === 'text' && typeof part.text === 'string') {
+        parts.push({ kind: 'text', text: part.text });
+      } else if (t.startsWith('tool-') || t === 'dynamic-tool') {
+        const toolName = String(part.toolName ?? t.replace(/^tool-/, ''));
+        parts.push({
+          kind: 'tool',
+          toolName,
+          state: String(part.state ?? 'unknown'),
+          input: part.input,
+          output: part.output,
+          toolCallId: String(part.toolCallId ?? ''),
+        });
+      }
+    }
+    if (parts.length > 0) turns.push({ role: m.role, parts });
+  }
+  return turns;
+}
+
+function stripThink(text: string): string {
+  return text.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+}
+
+function TraceText({ text, role }: { text: string; role: 'user' | 'assistant' }) {
+  const cleaned = role === 'assistant' ? stripThink(text) : text;
+  const [expanded, setExpanded] = useState(role === 'assistant');
+  const truncate = role === 'user' && cleaned.length > 320;
+  const shown = !expanded && truncate ? cleaned.slice(0, 320) + '…' : cleaned;
+  return (
+    <div className="text-[11px] font-mono leading-relaxed text-foreground/80 whitespace-pre-wrap break-words">
+      {shown}
+      {truncate && (
+        <button
+          onClick={() => setExpanded(e => !e)}
+          className="ml-1 text-accent/80 hover:text-accent text-[10px] underline-offset-2 hover:underline"
+        >
+          {expanded ? 'collapse' : 'expand'}
+        </button>
+      )}
+    </div>
+  );
+}
+
+function TraceToolBlock({ part }: { part: Extract<TracePart, { kind: 'tool' }> }) {
+  const [expanded, setExpanded] = useState(false);
+  const inputStr = part.input !== undefined ? JSON.stringify(part.input, null, 2) : null;
+  const outputStr = part.output !== undefined ? JSON.stringify(part.output, null, 2) : null;
+  const inputPreview = inputStr ? inputStr.replace(/\s+/g, ' ').slice(0, 110) : null;
+  const isDone = part.state === 'output-available' || part.state === 'result';
+  const isError = part.state === 'output-error';
+  return (
+    <div className={`rounded border ${isError ? 'border-red-500/30 bg-red-500/5' : isDone ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-cyan-500/25 bg-cyan-500/5'} px-2 py-1.5`}>
+      <button
+        onClick={() => setExpanded(e => !e)}
+        className="flex items-center gap-1.5 w-full text-left"
+      >
+        {expanded ? <ChevronDown size={11} className="opacity-60 shrink-0" /> : <ChevronRight size={11} className="opacity-60 shrink-0" />}
+        <span className={`font-mono text-[10.5px] ${isError ? 'text-red-300' : isDone ? 'text-emerald-300' : 'text-cyan-300'}`}>
+          {part.toolName}
+        </span>
+        <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground/60 shrink-0">
+          {part.state}
+        </span>
+        {!expanded && inputPreview && (
+          <span className="font-mono text-[10px] text-muted-foreground/65 truncate ml-1">
+            {inputPreview}
+          </span>
+        )}
+      </button>
+      {expanded && (
+        <div className="mt-1.5 space-y-1">
+          {inputStr && (
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-mono mb-0.5">input</div>
+              <pre className="text-[10px] font-mono bg-background/40 rounded p-1.5 overflow-x-auto leading-snug whitespace-pre-wrap break-all">{inputStr}</pre>
+            </div>
+          )}
+          {outputStr && (
+            <div>
+              <div className="text-[9px] uppercase tracking-wider text-muted-foreground/60 font-mono mb-0.5">output</div>
+              <pre className="text-[10px] font-mono bg-background/40 rounded p-1.5 overflow-x-auto leading-snug whitespace-pre-wrap break-all max-h-[180px] overflow-y-auto">{outputStr}</pre>
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}
+
+function LogoMatrixTrace({
+  aiMessages,
+  aiStatus,
+  onClose,
+}: {
+  aiMessages: unknown[];
+  aiStatus: string;
+  onClose: () => void;
+}) {
+  const turns = useMemo(() => normalizeTrace(aiMessages), [aiMessages]);
+  return (
+    <aside className="absolute right-0 top-0 h-full w-[440px] z-20 border-l border-border/60 bg-card/95 backdrop-blur-xl flex flex-col pointer-events-auto">
+      <header className="flex items-center justify-between gap-2 px-3 py-2 border-b border-border/50 shrink-0">
+        <div className="flex items-center gap-1.5">
+          <ScrollText size={12} className="text-accent" />
+          <span className="text-[10px] font-mono uppercase tracking-[0.16em] text-foreground/85">AI Trace</span>
+          <span className="text-[10px] font-mono text-muted-foreground/60">· {turns.length} turn{turns.length === 1 ? '' : 's'}</span>
+          {aiStatus === 'streaming' && (
+            <span className="inline-flex items-center gap-1 ml-1 text-[9.5px] font-mono uppercase tracking-wider text-cyan-300">
+              <span className="inline-block w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+              streaming
+            </span>
+          )}
+        </div>
+        <button
+          onClick={onClose}
+          className="text-muted-foreground/70 hover:text-foreground/80 transition-colors"
+          title="Close trace"
+        >
+          <X size={12} />
+        </button>
+      </header>
+      <div className="flex-1 overflow-y-auto frame-scrollbar px-3 py-2 space-y-3">
+        {turns.length === 0 && (
+          <p className="text-[11px] text-muted-foreground/70 leading-snug">
+            No AI activity yet. Pick variants and send to AI — the prompt, assistant response, and tool calls will appear here.
+          </p>
+        )}
+        {turns.map((turn, i) => (
+          <div key={i} className="space-y-1.5">
+            <div className="flex items-center gap-1.5">
+              <span className={`font-mono text-[9px] uppercase tracking-[0.16em] px-1.5 py-0.5 rounded ${
+                turn.role === 'user' ? 'bg-muted/40 text-muted-foreground/80' : 'bg-accent/15 text-accent'
+              }`}>
+                {turn.role}
+              </span>
+              <span className="font-mono text-[9px] text-muted-foreground/45">turn {i + 1}</span>
+            </div>
+            {turn.parts.map((part, j) =>
+              part.kind === 'text' ? (
+                <TraceText key={j} text={part.text} role={turn.role} />
+              ) : (
+                <TraceToolBlock key={j} part={part} />
+              ),
+            )}
+          </div>
+        ))}
+      </div>
+    </aside>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// Matrix view — comparison grid for the current template
+// ---------------------------------------------------------------------------
+function LogoMatrixView({
+  templateId: initialTemplateId,
+  picks,
+  onTogglePick,
+  aiStatus,
+  aiActivity,
+  aiMessages,
+  onAnimateSelected,
+}: {
+  templateId: string;
+  picks: { key: string }[];
+  onTogglePick: (pick: LogoComparisonCellMeta) => void;
+  aiStatus: string;
+  aiActivity: { id: number; tool: string; summary: string; timestamp: number }[];
+  aiMessages: { role: string; parts: { type: string; text?: string }[] }[];
+  onAnimateSelected: () => void;
+}) {
+  // Snapshot the matrix's templateId on mount so AI tool calls that flip
+  // `params.variant` (via setVariant after create_template) don't blank out
+  // the matrix. Toggle preview → matrix to refresh the snapshot.
+  const [templateId] = useState(initialTemplateId);
+  const { templates, setVariant, setView: setViewFromCtx, sessions, activeSession, setActiveSession, dismissSession } = useLogo();
+  const preset = MATRIX_PRESETS[templateId];
+  const selectedKeys = new Set(picks.map(p => p.key));
+  const [traceOpen, setTraceOpen] = useState(false);
+
+  // Seed v1 (the preset session) once on mount. Subsequent versions are
+  // stamped by `beginAiSession` from the Inspector when picks are sent.
+  useEffect(() => {
+    if (sessions.length === 0) {
+      // Reach into context: setSessions isn't exposed, but the matrix only
+      // needs to display v1 — we synthesize it inline below if absent.
+    }
+  }, [sessions.length]);
+
+  // The displayed session — v1 falls back to a synthesized preset session.
+  const activeSessionObj = useMemo(() => {
+    const real = sessions.find(s => s.version === activeSession);
+    if (real) return real;
+    // Synthetic v1 if sessions is empty
+    return {
+      version: 1,
+      label: 'v1 · base',
+      kind: 'preset' as const,
+      templateIds: [templateId],
+      sourceTemplateId: templateId,
+      createdAt: 0,
+    };
+  }, [sessions, activeSession, templateId]);
+  const isPresetView = activeSessionObj.kind === 'preset';
+  // Templates for v2+ sessions, resolved against the current templates list.
+  const sessionTemplates = useMemo(() => {
+    if (isPresetView) return [];
+    return activeSessionObj.templateIds
+      .map(id => templates.find(t => t.id === id))
+      .filter((t): t is NonNullable<typeof t> => Boolean(t));
+  }, [isPresetView, activeSessionObj, templates]);
+
+  // Tabs to render: always include v1, then any AI sessions.
+  const tabs = useMemo(() => {
+    const out: { version: number; label: string; kind: 'preset' | 'ai'; count: number }[] = [
+      { version: 1, label: 'v1 · base', kind: 'preset', count: 0 },
+    ];
+    for (const s of sessions) {
+      if (s.version === 1) continue;
+      out.push({ version: s.version, label: s.label, kind: s.kind, count: s.templateIds.length });
+    }
+    return out;
+  }, [sessions]);
+
+  // Detect new templates that landed after this matrix view mounted.
+  // The IDs we knew about at mount-time become the baseline; anything new
+  // since is treated as "AI-spawned" and surfaced in a banner.
+  const [baselineIds] = useState(() => new Set(templates.map(t => t.id)));
+  const [dismissedSet, setDismissedSet] = useState<Set<string>>(new Set());
+  const newTemplates = templates.filter(
+    t => !baselineIds.has(t.id) && !dismissedSet.has(t.id),
+  );
+  const handleDismissBanner = useCallback(() => {
+    setDismissedSet(prev => {
+      const next = new Set(prev);
+      for (const t of newTemplates) next.add(t.id);
+      return next;
+    });
+  }, [newTemplates]);
+  const handlePreviewLatest = useCallback(() => {
+    const latest = newTemplates[newTemplates.length - 1];
+    if (!latest) return;
+    setVariant(latest.id);
+    setViewFromCtx('preview');
+  }, [newTemplates, setVariant, setViewFromCtx]);
+
+  // Latest assistant text, stripped of <think> blocks (same as preview view's HUD)
+  const lastAssistant = [...(aiMessages ?? [])].reverse().find(m => m.role === 'assistant');
+  const rawText = lastAssistant?.parts
+    ?.filter(p => p.type === 'text')
+    .map(p => p.text ?? '')
+    .join('') ?? '';
+  const streamText = rawText.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  const showHud = aiStatus === 'streaming' || aiActivity.length > 0;
+
+  return (
+    <div className="relative h-full">
+      <div
+        className="h-full overflow-y-auto overflow-x-hidden frame-scrollbar"
+        style={{ background: 'radial-gradient(circle at 50% 50%, rgba(20,20,20,1) 0%, rgba(10,10,10,1) 100%)' }}
+      >
+        {/* Matrix toolbar — back-to-preview + (conditional) version tabs + trace.
+            Sticky so it rides scroll. Tabs only render when there's something to switch between. */}
+        <div className="logo-matrix-toolbar">
+          <button
+            type="button"
+            onClick={() => setViewFromCtx('preview')}
+            className="logo-matrix-back"
+            title="Back to preview"
+          >
+            <ChevronLeft size={12} />
+            <span>Preview</span>
+          </button>
+          {tabs.length >= 2 && (
+            <div className="logo-matrix-tabs" role="tablist" aria-label="Matrix versions">
+              {tabs.map(tab => {
+                const active = tab.version === activeSession;
+                const closable = tab.version !== 1;
+                return (
+                  <div
+                    key={tab.version}
+                    className={`logo-matrix-tab${active ? ' logo-matrix-tab--active' : ''}${tab.kind === 'preset' ? ' logo-matrix-tab--preset' : ''}`}
+                  >
+                    <button
+                      type="button"
+                      role="tab"
+                      aria-selected={active}
+                      onClick={() => setActiveSession(tab.version)}
+                      className="logo-matrix-tab__main"
+                      title={tab.kind === 'preset' ? 'Base preset matrix' : `${tab.count} AI-spawned variant${tab.count === 1 ? '' : 's'}`}
+                    >
+                      <span className="logo-matrix-tab__label">{tab.label}</span>
+                      {tab.kind === 'ai' && (
+                        <span className="logo-matrix-tab__badge">{tab.count}</span>
+                      )}
+                    </button>
+                    {closable && (
+                      <button
+                        type="button"
+                        onClick={e => { e.stopPropagation(); dismissSession(tab.version); }}
+                        className="logo-matrix-tab__close"
+                        aria-label={`Dismiss ${tab.label}`}
+                        title={`Dismiss ${tab.label}`}
+                      >
+                        <X size={9} strokeWidth={2.5} />
+                      </button>
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+          <button
+            type="button"
+            onClick={onAnimateSelected}
+            disabled={picks.length === 0}
+            className={`logo-matrix-trace ${picks.length > 0 ? 'border-cyan-400/30 text-cyan-200' : 'opacity-40 cursor-not-allowed'}`}
+            title={picks.length > 0 ? 'Send selected variant(s) to Preframe' : 'Select at least one variant to animate'}
+          >
+            <Film size={11} />
+            <span>Animate{picks.length > 0 ? ` ${picks.length}` : ''}</span>
+          </button>
+          <button
+            onClick={() => setTraceOpen(o => !o)}
+            className={`logo-matrix-trace${traceOpen ? ' logo-matrix-trace--active' : ''}`}
+            title="Toggle AI trace panel"
+          >
+            <ScrollText size={11} />
+            <span>Trace</span>
+            {aiStatus === 'streaming' && (
+              <span className="logo-matrix-trace__pulse" aria-hidden="true" />
+            )}
+          </button>
+        </div>
+        <div style={{ padding: '20px 28px 64px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
+          {newTemplates.length > 0 && (
+            <div
+              className="mb-6 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3"
+              role="status"
+            >
+              <div className="flex items-center justify-between gap-3 mb-1.5">
+                <div className="flex items-center gap-2">
+                  <Sparkles size={12} className="text-emerald-300" />
+                  <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-emerald-300">
+                    AI saved {newTemplates.length} new variant{newTemplates.length === 1 ? '' : 's'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <button
+                    type="button"
+                    onClick={handlePreviewLatest}
+                    className="rounded border border-emerald-500/35 bg-emerald-500/15 px-2.5 py-1 text-[10.5px] font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
+                  >
+                    Preview latest →
+                  </button>
+                  <button
+                    type="button"
+                    onClick={handleDismissBanner}
+                    className="rounded p-1 text-emerald-300/70 transition-colors hover:bg-emerald-500/15 hover:text-emerald-200"
+                    title="Dismiss"
+                  >
+                    <X size={11} />
+                  </button>
+                </div>
+              </div>
+              <ul className="space-y-0.5">
+                {newTemplates.slice(-5).map(t => (
+                  <li key={t.id} className="text-[10.5px] font-mono text-emerald-100/80 truncate">
+                    <span className="text-emerald-300/60">+</span> {t.name}{' '}
+                    <span className="text-emerald-300/50">· {t.id.slice(0, 8)}</span>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {isPresetView ? (
+            preset ? (
+              <LogoComparisonSheet
+                templateId={preset.templateId}
+                baseParams={preset.baseParams}
+                families={preset.families}
+                cellSize={120}
+                selectedKeys={selectedKeys}
+                onToggleCell={onTogglePick}
+              />
+            ) : (
+              <div className="logo-comparison-sheet logo-comparison-sheet--missing">
+                No matrix preset defined for <code>{templateId}</code>. Add one in{' '}
+                <code>LogoMatrixPresets.ts</code> or switch to a template with a preset (e.g., <code>t-decoration</code>).
+              </div>
+            )
+          ) : (
+            <LogoVersionGrid
+              templates={sessionTemplates}
+              cellSize={120}
+              emptyHint={aiStatus === 'streaming'
+                ? 'AI is generating variants for this round…'
+                : 'No variants in this round yet.'}
+            />
+          )}
+        </div>
+      </div>
+
+      {/* AI HUD — streaming response + tool calls. Stays pinned to the bottom
+          of the matrix viewport, independent of scroll. Mirrors the preview
+          view's HUD so the same activity is visible in both modes. */}
+      {showHud && (
+        <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-1" style={{ maxWidth: 420 }}>
+          {aiStatus === 'streaming' && streamText && (
+            <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-black/70 backdrop-blur-xl border border-white/10 text-white/55 max-h-[140px] overflow-y-auto frame-scrollbar pointer-events-auto">
+              {streamText.slice(-360)}
+              <span className="inline-block w-1.5 h-3 bg-emerald-400/70 ml-0.5 animate-pulse" />
+            </div>
+          )}
+          {aiActivity.slice(-3).map((entry, i) => {
+            const fading = false;
+            return (
+              <div
+                key={entry.id}
+                className={`text-[9.5px] font-mono px-2 py-0.5 rounded bg-black/50 backdrop-blur-sm transition-opacity duration-1000 ${
+                  fading && i < 2 ? 'opacity-25' : 'opacity-80'
+                }`}
+              >
+                <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/80'}>{entry.tool}</span>
+                <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/50' : 'text-white/45'}`}>{entry.summary}</span>
+              </div>
+            );
+          })}
+        </div>
+      )}
+
+      {traceOpen && (
+        <LogoMatrixTrace
+          aiMessages={aiMessages}
+          aiStatus={aiStatus}
+          onClose={() => setTraceOpen(false)}
+        />
+      )}
+    </div>
+  );
+}
+
+// ---------------------------------------------------------------------------
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates, inspectMode } = useLogo();
+  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates, inspectMode, view, picks, togglePick, setView } = useLogo();
+  const dataBus = useOptionalDataBus();
+  const hasMatrixPreset = Boolean(MATRIX_PRESETS[params.variant]);
+
   const [spaceHeld, setSpaceHeld] = useState(false);
+  const [spotlight, setSpotlight] = useState(false);
   const gridOpacity = 0.4; // Fixed — workspace-level grid opacity is in shell settings
   const canvas = useCanvasControls();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // When an AI-saved template is opened from the chat, flash the canvas so
+  // the user notices the workspace has just become the result-viewing context.
+  useEffect(() => {
+    const onSpotlight = () => {
+      setSpotlight(false);
+      // Force a re-trigger of the keyframe even if it's already running.
+      requestAnimationFrame(() => setSpotlight(true));
+      window.setTimeout(() => setSpotlight(false), 1400);
+    };
+    window.addEventListener('hudson:logo-spotlight', onSpotlight);
+    return () => window.removeEventListener('hudson:logo-spotlight', onSpotlight);
+  }, []);
 
   const handleKeyDown = useCallback((e: React.KeyboardEvent) => {
     if (e.code === 'Space' && !e.repeat && !(e.target as HTMLElement).closest('input, textarea, select')) {
@@ -266,11 +752,37 @@ export function LogoContent() {
     });
   }, [params.wordmark, setParam]);
 
+  const handleAnimateSelected = useCallback(() => {
+    if (picks.length === 0) {
+      console.warn('[logo] Select at least one matrix variant before animating.');
+      return;
+    }
+    const pushed = dataBus?.pushDirect('logo-designer', 'animation-job', 'preframe-catalog', 'logo-animation-job');
+    if (!pushed) {
+      console.warn('[logo] Preframe animation port is not available. Start/register Preframe and try again.');
+    }
+  }, [dataBus, picks.length]);
+
+  if (view === 'matrix') {
+    return (
+      <LogoMatrixView
+        templateId={params.variant}
+        picks={picks}
+        onTogglePick={togglePick}
+        aiStatus={aiStatus}
+        aiActivity={aiActivity}
+        aiMessages={aiMessages}
+        onAnimateSelected={handleAnimateSelected}
+      />
+    );
+  }
+
   return (
     <div className="flex h-full overflow-hidden">
       <div
         ref={containerRef}
-        className={`flex-1 relative overflow-hidden min-w-0 ${spaceHeld ? 'cursor-grab active:cursor-grabbing' : ''}`}
+        data-logo-content-root
+        className={`flex-1 relative overflow-hidden min-w-0 ${spaceHeld ? 'cursor-grab active:cursor-grabbing' : ''} ${spotlight ? 'logo-canvas-spotlight' : ''}`}
         style={{ background: 'radial-gradient(circle at 50% 50%, rgba(20,20,20,1) 0%, rgba(10,10,10,1) 100%)' }}
         tabIndex={0}
         data-panning={spaceHeld ? 'true' : 'false'}
@@ -352,6 +864,34 @@ export function LogoContent() {
           >
             <Grid3X3 size={11} />
             Sizes
+          </button>
+
+          {hasMatrixPreset && (
+            <>
+              <div className="w-px h-4 bg-white/10" />
+              <button
+                onClick={() => setView('matrix')}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+                title="Open the variation matrix for this template"
+              >
+                <LayoutGrid size={11} />
+                Matrix
+              </button>
+            </>
+          )}
+
+          <div className="w-px h-4 bg-white/10" />
+
+          <button
+            onClick={handleAnimateSelected}
+            disabled={picks.length === 0}
+            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
+              picks.length > 0 ? 'bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25' : 'text-neutral-600 cursor-not-allowed opacity-55'
+            }`}
+            title={picks.length > 0 ? 'Send selected variant(s) to Preframe' : 'Select at least one matrix variant to animate'}
+          >
+            <Film size={11} />
+            Animate{picks.length > 0 ? ` ${picks.length}` : ''}
           </button>
 
           <div className="w-px h-4 bg-white/10" />
@@ -487,8 +1027,7 @@ export function LogoContent() {
               )}
               {/* Tool calls */}
               {aiActivity.slice(-3).map((entry, i) => {
-                const age = Date.now() - entry.timestamp;
-                const fading = age > 8000;
+                const fading = false;
                 return (
                   <div
                     key={entry.id}

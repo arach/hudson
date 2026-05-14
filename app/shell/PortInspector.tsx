@@ -1,7 +1,7 @@
 'use client';
 
-import { useCallback, useMemo, useState } from 'react';
-import { Activity, ArrowRight, Check, Inbox, Link2, Play, Send, Unlink, X } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { Activity, ArrowRight, Check, ChevronDown, ChevronRight, Inbox, Link2, Play, Send, Unlink, X } from 'lucide-react';
 import type { AppInput, AppOutput, PipeDefinition } from 'hudsonkit';
 import { useDataBus, usePortActivity, type PortActivityEntry, type PortCatalogEntry } from './DataBusContext';
 
@@ -137,11 +137,29 @@ function ActivityRow({ entry }: { entry: PortActivityEntry }) {
   );
 }
 
+const EXPAND_STORAGE_KEY = 'hudson.portInspectorExpanded';
+
+function usePersistedExpanded(): [boolean, (v: boolean) => void] {
+  const [expanded, setExpanded] = useState(false);
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(EXPAND_STORAGE_KEY);
+      if (raw === '1') setExpanded(true);
+    } catch { /* ignore — SSR / private mode */ }
+  }, []);
+  const update = useCallback((v: boolean) => {
+    setExpanded(v);
+    try { window.localStorage.setItem(EXPAND_STORAGE_KEY, v ? '1' : '0'); } catch { /* ignore */ }
+  }, []);
+  return [expanded, update];
+}
+
 export function PortInspector({ appId }: PortInspectorProps) {
   const { getPortCatalog, createPipe, deletePipe, pushPipe, pipes } = useDataBus();
   const activity = usePortActivity(appId);
   const [busyPipeId, setBusyPipeId] = useState<string | null>(null);
   const [busyConnectionKey, setBusyConnectionKey] = useState<string | null>(null);
+  const [expanded, setExpanded] = usePersistedExpanded();
 
   const catalog = getPortCatalog();
   const current = findApp(catalog, appId);
@@ -222,17 +240,30 @@ export function PortInspector({ appId }: PortInspectorProps) {
 
   return (
     <div className="border-t border-border/60">
-      <section className="border-b border-border/60 px-4 py-3">
-        <div className="mb-3 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2 text-[11px] font-mono font-semibold uppercase tracking-[0.18em] text-foreground">
-            <Activity size={12} className="text-cyan-400" />
-            Ports
-          </div>
+      <button
+        type="button"
+        onClick={() => setExpanded(!expanded)}
+        className="flex w-full items-center justify-between gap-3 px-4 py-2 transition-colors hover:bg-muted/30"
+        aria-expanded={expanded}
+        title={expanded ? 'Collapse ports panel' : 'Expand ports panel'}
+      >
+        <div className="flex items-center gap-2 text-[11px] font-mono font-semibold uppercase tracking-[0.18em] text-foreground">
+          <Activity size={12} className="text-cyan-400" />
+          Ports
+        </div>
+        <div className="flex items-center gap-2">
           <PortBadge tone={relatedPipes.length > 0 ? 'cyan' : 'neutral'}>
             {relatedPipes.length === 1 ? '1 link' : `${relatedPipes.length} links`}
           </PortBadge>
+          {expanded
+            ? <ChevronDown size={12} className="text-muted-foreground" />
+            : <ChevronRight size={12} className="text-muted-foreground" />}
         </div>
+      </button>
 
+      {expanded && (
+      <>
+      <section className="border-t border-b border-border/60 px-4 py-3">
         <div className="space-y-3">
           <PortDefinitionList title="Outputs" ports={current.outputs} tone="cyan" />
           <PortDefinitionList title="Inputs" ports={current.inputs} tone="emerald" />
@@ -365,6 +396,8 @@ export function PortInspector({ appId }: PortInspectorProps) {
           </div>
         )}
       </section>
+      </>
+      )}
     </div>
   );
 }

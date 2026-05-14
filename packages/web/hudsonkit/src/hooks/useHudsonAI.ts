@@ -4,7 +4,6 @@ import { useChat } from '@ai-sdk/react';
 import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
-import { createHudsonId } from '../lib/id';
 import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
 import type { MutableRefObject } from 'react';
 
@@ -36,10 +35,6 @@ export interface UseHudsonAIOptions {
   provider?: string;
   /** Model ID override (e.g. 'MiniMax-M2.7', 'claude-sonnet-4-20250514') */
   model?: string;
-  /** Stable backend session ID used for CLI mode reconnection. */
-  sessionId?: string;
-  /** Called whenever the hook establishes or resets its session ID. */
-  onSessionIdChange?: (sessionId: string) => void;
   /** Called when the assistant response finishes streaming. */
   onFinish?: ChatOnFinishCallback<UIMessage>;
   /** Called when the chat stream errors. */
@@ -54,7 +49,6 @@ function buildHudsonAIRequestBody(args: {
   contextRef: MutableRefObject<Record<string, unknown> | undefined>;
   toolsetRef: MutableRefObject<string>;
   modeRef: MutableRefObject<AIMode>;
-  sessionIdRef: MutableRefObject<string>;
   providerRef: MutableRefObject<string | undefined>;
   modelRef: MutableRefObject<string | undefined>;
 }) {
@@ -71,7 +65,6 @@ function buildHudsonAIRequestBody(args: {
     toolset: args.toolsetRef.current,
     context: { ...args.contextRef.current, ...resolved },
     mode: args.modeRef.current,
-    sessionId: args.sessionIdRef.current,
     provider: args.providerRef.current,
     model: args.modelRef.current,
   };
@@ -116,17 +109,12 @@ export function useHudsonAI({
   attachments,
   provider,
   model,
-  sessionId,
-  onSessionIdChange,
   onFinish,
   onError,
 }: UseHudsonAIOptions) {
   const onToolCallRef = useRef(onToolCall);
   const onFinishRef = useRef(onFinish);
   const onErrorRef = useRef(onError);
-
-  // CLI session ID — one per chat lifetime, regenerated on clear
-  const sessionIdRef = useRef(sessionId ?? createHudsonId('session', 24));
 
   // Track which attachments are toggled on
   const [activeAttachments, setActiveAttachments] = useState<Set<string>>(new Set());
@@ -162,16 +150,6 @@ export function useHudsonAI({
   useEffect(() => {
     onErrorRef.current = onError;
   }, [onError]);
-
-  useEffect(() => {
-    if (sessionId && sessionId !== sessionIdRef.current) {
-      sessionIdRef.current = sessionId;
-    }
-  }, [sessionId]);
-
-  useEffect(() => {
-    onSessionIdChange?.(sessionIdRef.current);
-  }, [onSessionIdChange]);
 
   useEffect(() => {
     activeAttachmentsRef.current = activeAttachments;
@@ -213,7 +191,6 @@ export function useHudsonAI({
         contextRef,
         toolsetRef,
         modeRef,
-        sessionIdRef,
         providerRef,
         modelRef,
       }),
@@ -233,12 +210,9 @@ export function useHudsonAI({
   const processedRef = useRef(collectProcessedToolCallIds(initialMessages));
 
   const clearChat = useCallback(() => {
-    const nextSessionId = createHudsonId('session', 24);
-    sessionIdRef.current = nextSessionId;
-    onSessionIdChange?.(nextSessionId);
     processedRef.current.clear();
     chat.setMessages([]);
-  }, [chat, onSessionIdChange]);
+  }, [chat]);
 
   // Watch for tool parts in messages and fire the callback
   const { messages } = chat;
