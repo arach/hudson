@@ -33,6 +33,8 @@ export default defineConfig([
       'push/sw': 'src/push/sw.ts',
       table: 'src/table.ts',
       player: 'src/player.ts',
+      primitives: 'src/primitives.ts',
+      patterns: 'src/patterns.ts',
     },
     format: ['esm'],
     dts: true,
