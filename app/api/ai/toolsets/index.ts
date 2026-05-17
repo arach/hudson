@@ -4,6 +4,7 @@ import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
 import { intentsToolset } from './intents';
 import { shaperToolset } from './shaper';
+import { dayStackToolset } from './day-stack';
 
 // Re-export the canonical ToolsetDefinition type from the package so any
 // remaining internal imports of `ToolsetDefinition from './index'` still work.
@@ -14,6 +15,7 @@ defaultRegistry.register('logo', logoToolset);
 defaultRegistry.register('workspace', workspaceToolset);
 defaultRegistry.register('intents', intentsToolset);
 defaultRegistry.register('shaper', shaperToolset);
+defaultRegistry.register('day-stack', dayStackToolset);
 
 /**
  * Convert the Zod-based tool definitions into a text block that can be

@@ -42,6 +42,7 @@ import { notepadApp } from './notepad';
 import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
+import { dayStackApp } from './day-stack';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -89,6 +90,7 @@ function getAppById(id: string): HudsonApp | null {
     'document-lab': documentLabApp,
     'theme-designer': themeDesignerApp,
     'stage-design': stageDesignApp,
+    'day-stack': dayStackApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -305,6 +307,20 @@ export function getHudsonKitWorkspace(): HudsonWorkspace {
   };
 }
 
+/** Personal — lightweight daily planning and focus workspace. */
+export function getPersonalWorkspace(): HudsonWorkspace {
+  return {
+    id: 'personal',
+    name: 'Personal',
+    description: 'Daily focus stack, intentions, and lightweight planning',
+    mode: 'panel',
+    apps: [{ app: dayStackApp }],
+    defaultFocusedAppId: 'day-stack',
+    defaultActivatedAppIds: ['day-stack'],
+    leftNavigation: 'on',
+  };
+}
+
 /** Scout Ops — Hudson workspace centered on the OpenScout operator surface. */
 export function getScoutOpsWorkspace(): HudsonWorkspace {
   return {
@@ -396,6 +412,7 @@ export function getCoreWorkspaces(): HudsonWorkspace[] {
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
     { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
     { workspace: getDocumentLabWorkspace(), source: 'core:document-lab' },
+    { workspace: getPersonalWorkspace(), source: 'core:personal' },
   ]);
 }
 
