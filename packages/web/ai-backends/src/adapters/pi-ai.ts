@@ -448,6 +448,13 @@ function streamUI(req: PiAiUIRequest): Response {
   }
 
   const piModel = getModel(providerConfig.provider as never, modelId as never);
+  if (!piModel) {
+    throw new Error(
+      `No pi-ai model registered for "${providerConfig.provider}/${modelId}". ` +
+      `pi-ai's registry is keyed by exact (provider, modelId) pairs. ` +
+      `Pick a model that exists for "${providerConfig.provider}", or switch providers.`,
+    );
+  }
   const piMessages = toPiUIMessages(req.messages);
   const maxSteps = req.maxSteps ?? DEFAULT_MAX_STEPS;
 
