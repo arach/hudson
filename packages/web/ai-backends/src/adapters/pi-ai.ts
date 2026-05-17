@@ -1,6 +1,15 @@
 // ---------------------------------------------------------------------------
 // pi-ai adapter — in-process dispatch via @earendil-works/pi-ai
 //
+// Two surfaces:
+//   * stream(req): the Backend interface — yields Hudson StreamEvent.
+//   * streamUI(req): returns a Next-compatible Response carrying a standard
+//     UIMessageStream. Hudson's chat route uses this fast path so the client
+//     hooks (useHudsonAI / useChat) see the SDK-native stream shape directly
+//     (text-start/text-delta/text-end + tool-input-available/tool-output-
+//     available) and we can run a multi-step tool execution loop in the
+//     adapter rather than the route.
+//
 // Streaming-first: translates pi-ai's AssistantMessageEvent stream into
 // Hudson's 8 semantic StreamEvent types. Stateless — no sessions.
 // ---------------------------------------------------------------------------
@@ -9,14 +18,20 @@ import {
   stream as piAiStream,
   getModel,
   getEnvApiKey,
+  type AssistantMessage,
   type AssistantMessageEvent,
   type Context,
   type Message as PiAiMessage,
   type UserMessage,
   type AssistantMessage as PiAiAssistantMessage,
-  type TextContent,
   type Tool as PiAiTool,
+  type ToolCall,
 } from '@earendil-works/pi-ai';
+import {
+  createUIMessageStream,
+  createUIMessageStreamResponse,
+  generateId,
+} from 'ai';
 
 import type {
   Backend,
@@ -183,14 +198,359 @@ function* translateEvent(event: AssistantMessageEvent): Iterable<StreamEvent<PiA
 }
 
 // ---------------------------------------------------------------------------
+// streamUI() — Next-compatible UIMessageStream fast path
+//
+// Lifts the multi-step tool-execution loop out of the Hudson chat route so
+// every consumer of the pi-ai backend gets identical loop semantics.
+// ---------------------------------------------------------------------------
+
+/** Tool shape the route passes in (Hudson tools, Zod inputSchema + execute). */
+export interface HudsonTool {
+  description?: string;
+  inputSchema?: {
+    toJSONSchema?: () => unknown;
+  };
+  execute?: (args: Record<string, unknown>) => Promise<unknown> | unknown;
+}
+
+/** Minimal UI message shape the route forwards from the client. */
+export interface PiAiUIMessagePart {
+  type: string;
+  text?: string;
+}
+
+export interface PiAiUIMessage {
+  role: 'user' | 'assistant' | 'system' | string;
+  parts?: PiAiUIMessagePart[];
+  content?: unknown;
+}
+
+/** Compiled toolset the route loads server-side (tools + composed system). */
+export interface PiAiCompiledToolset {
+  tools: Record<string, HudsonTool>;
+  system?: string;
+}
+
+export interface PiAiUIRequest {
+  messages: PiAiUIMessage[];
+  toolset: string;
+  context?: Record<string, unknown>;
+  provider?: string;
+  model?: string;
+  /**
+   * Loader the route injects so the package stays free of app-side toolset
+   * resolution (Zod schemas, toolPrompt composition, etc.).
+   */
+  loadToolset: (id: string, ctx: Record<string, unknown>) => PiAiCompiledToolset;
+  /** Credential resolver injected by the route — keeps file paths out of the package. */
+  loadCredentials: () => Record<string, string | undefined>;
+  /**
+   * Optional per-provider default model map. The route passes Hudson's
+   * DEFAULT_MODELS so we resolve the same defaults the rest of the app uses.
+   * If absent, the caller must supply `model`, otherwise we fall back to
+   * pi-ai's own resolution via `getModel`.
+   */
+  defaultModels?: Record<string, string>;
+  /** Max tool-call rounds. Defaults to {@link DEFAULT_MAX_STEPS}. */
+  maxSteps?: number;
+}
+
+export interface PiAiBackend extends Backend<PiAiConfig, PiAiMeta> {
+  /**
+   * Fast path: run a multi-step pi-ai loop and return a UIMessageStream-
+   * shaped Response. Emits text-start/text-delta/text-end +
+   * tool-input-available/tool-output-available events. Executes tool
+   * `execute` callbacks server-side and feeds results back into pi-ai
+   * until the model produces a final response (or MAX_STEPS is hit).
+   */
+  streamUI(req: PiAiUIRequest): Response;
+}
+
+const DEFAULT_MAX_STEPS = 12;
+
+interface PiProviderConfig {
+  provider: string;
+  credentialKey: string;
+}
+
+function normalizeProvider(provider?: string): PiProviderConfig {
+  switch (provider) {
+    case undefined:
+    case '':
+    case 'copilot':
+      return { provider: 'github-copilot', credentialKey: 'copilot' };
+    case 'github':
+      return { provider: 'github-copilot', credentialKey: 'copilot' };
+    default:
+      return { provider, credentialKey: provider };
+  }
+}
+
+function resolveModelId(
+  provider: string | undefined,
+  model: string | undefined,
+  defaults?: Record<string, string>,
+): string | undefined {
+  if (model) return model;
+  const key = provider || 'copilot';
+  if (defaults?.[key]) return defaults[key];
+  if (defaults?.copilot) return defaults.copilot;
+  return undefined;
+}
+
+function stripJsonSchemaMetadata(schema: unknown): unknown {
+  if (!schema || typeof schema !== 'object') return schema;
+  const cloned = JSON.parse(JSON.stringify(schema)) as Record<string, unknown>;
+  delete cloned.$schema;
+  delete cloned['~standard'];
+  return cloned;
+}
+
+function schemaForTool(tool: HudsonTool): Record<string, unknown> {
+  const jsonSchema = tool.inputSchema?.toJSONSchema?.();
+  const schema = stripJsonSchemaMetadata(jsonSchema);
+  if (schema && typeof schema === 'object') return schema as Record<string, unknown>;
+  return { type: 'object', properties: {}, additionalProperties: true };
+}
+
+function compilePiTools(tools: Record<string, HudsonTool>): PiAiTool[] {
+  return Object.entries(tools).map(([name, tool]) => ({
+    name,
+    description: tool.description ?? name,
+    parameters: schemaForTool(tool) as PiAiTool['parameters'],
+  }));
+}
+
+function textFromParts(parts: PiAiUIMessagePart[] | undefined): string {
+  return (parts ?? [])
+    .filter((part) => part.type === 'text' && typeof part.text === 'string')
+    .map((part) => part.text)
+    .join('\n');
+}
+
+function contentToText(content: unknown): string {
+  if (typeof content === 'string') return content;
+  if (!Array.isArray(content)) return '';
+  return content
+    .filter((part) => part && typeof part === 'object' && (part as PiAiUIMessagePart).type === 'text')
+    .map((part) => (part as PiAiUIMessagePart).text ?? '')
+    .join('\n');
+}
+
+function emptyUsage() {
+  return {
+    input: 0,
+    output: 0,
+    cacheRead: 0,
+    cacheWrite: 0,
+    totalTokens: 0,
+    cost: {
+      input: 0,
+      output: 0,
+      cacheRead: 0,
+      cacheWrite: 0,
+      total: 0,
+    },
+  };
+}
+
+function toPiUIMessages(messages: PiAiUIMessage[]): PiAiMessage[] {
+  const converted: PiAiMessage[] = [];
+
+  for (const message of messages) {
+    const text = textFromParts(message.parts) || contentToText(message.content);
+    if (!text.trim()) continue;
+    if (message.role === 'user') {
+      converted.push({ role: 'user', content: text, timestamp: Date.now() });
+    } else if (message.role === 'assistant') {
+      converted.push({
+        role: 'assistant',
+        content: [{ type: 'text', text }],
+        api: 'openai-completions',
+        provider: 'hudson-history',
+        model: 'history',
+        usage: emptyUsage(),
+        stopReason: 'stop',
+        timestamp: Date.now(),
+      } as AssistantMessage);
+    }
+  }
+
+  return converted;
+}
+
+async function executeHudsonTool(
+  tools: Record<string, HudsonTool>,
+  toolCall: ToolCall,
+): Promise<{ result: unknown; isError: boolean }> {
+  const tool = tools[toolCall.name];
+  if (!tool?.execute) {
+    return { result: { error: `Unknown tool: ${toolCall.name}` }, isError: true };
+  }
+
+  try {
+    return { result: await tool.execute(toolCall.arguments), isError: false };
+  } catch (err) {
+    const message = err instanceof Error ? err.message : String(err);
+    return { result: { error: message }, isError: true };
+  }
+}
+
+function resultText(result: unknown): string {
+  if (typeof result === 'string') return result;
+  return JSON.stringify(result);
+}
+
+function appendToolResult(
+  messages: PiAiMessage[],
+  toolCall: ToolCall,
+  result: unknown,
+  isError: boolean,
+) {
+  messages.push({
+    role: 'toolResult',
+    toolCallId: toolCall.id,
+    toolName: toolCall.name,
+    content: [{ type: 'text', text: resultText(result) }],
+    details: result,
+    isError,
+    timestamp: Date.now(),
+  });
+}
+
+interface PendingToolResult {
+  toolCall: ToolCall;
+  result: unknown;
+  isError: boolean;
+}
+
+function uiLog(msg: string) {
+  const ts = new Date().toISOString().slice(11, 23);
+  // eslint-disable-next-line no-console
+  console.log(`[${ts}] ai-backends:pi-ai ${msg}`);
+}
+
+function streamUI(req: PiAiUIRequest): Response {
+  const { tools, system } = req.loadToolset(req.toolset, req.context ?? {});
+  const piTools = compilePiTools(tools);
+  const providerConfig = normalizeProvider(req.provider);
+  const modelId = resolveModelId(req.provider, req.model, req.defaultModels);
+  const credentials = req.loadCredentials();
+  const apiKey = credentials[providerConfig.credentialKey] || getEnvApiKey(providerConfig.provider);
+
+  if (!apiKey) {
+    throw new Error(`No API key for provider "${req.provider || 'copilot'}".`);
+  }
+  if (!modelId) {
+    throw new Error(
+      `No model resolved for provider "${req.provider || 'copilot'}". Pass model in the request or supply defaultModels.`,
+    );
+  }
+
+  const piModel = getModel(providerConfig.provider as never, modelId as never);
+  const piMessages = toPiUIMessages(req.messages);
+  const maxSteps = req.maxSteps ?? DEFAULT_MAX_STEPS;
+
+  uiLog(`model resolved: ${providerConfig.provider}/${modelId}`);
+  uiLog(`tools: [${piTools.map((tool) => tool.name).join(', ')}] | system: ${system?.length ?? 0} chars`);
+
+  const stream = createUIMessageStream({
+    execute: async ({ writer }) => {
+      for (let step = 0; step < maxSteps; step++) {
+        const assistantStream = piAiStream(
+          piModel,
+          {
+            systemPrompt: system,
+            messages: piMessages,
+            tools: piTools.length > 0 ? piTools : undefined,
+          },
+          { apiKey } as never,
+        );
+
+        let textPartId: string | null = null;
+        let finalMessage: AssistantMessage | null = null;
+        let toolCalls = 0;
+        const pendingToolResults: PendingToolResult[] = [];
+
+        const endText = () => {
+          if (textPartId) {
+            writer.write({ type: 'text-end', id: textPartId });
+            textPartId = null;
+          }
+        };
+
+        const emitText = (delta: string) => {
+          if (!textPartId) {
+            textPartId = generateId();
+            writer.write({ type: 'text-start', id: textPartId });
+          }
+          writer.write({ type: 'text-delta', id: textPartId, delta });
+        };
+
+        for await (const event of assistantStream) {
+          if (event.type === 'text_delta') {
+            emitText(event.delta);
+          } else if (event.type === 'toolcall_end') {
+            endText();
+            toolCalls += 1;
+            const toolCall = event.toolCall;
+            const toolCallId = toolCall.id || generateId();
+            uiLog(`tool_call: ${toolCall.name}`);
+            writer.write({
+              type: 'tool-input-available',
+              toolCallId,
+              toolName: toolCall.name,
+              input: toolCall.arguments,
+              dynamic: true,
+            });
+
+            const { result, isError } = await executeHudsonTool(tools, toolCall);
+            writer.write({
+              type: 'tool-output-available',
+              toolCallId,
+              output: result,
+              dynamic: true,
+            });
+            pendingToolResults.push({ toolCall: { ...toolCall, id: toolCallId }, result, isError });
+          } else if (event.type === 'done') {
+            finalMessage = event.message;
+          } else if (event.type === 'error') {
+            finalMessage = event.error;
+            throw new Error(event.error.errorMessage || 'pi-ai stream failed');
+          }
+        }
+
+        endText();
+
+        if (finalMessage) {
+          piMessages.push(finalMessage);
+          for (const pending of pendingToolResults) {
+            appendToolResult(piMessages, pending.toolCall, pending.result, pending.isError);
+          }
+          uiLog(`step ${step + 1}: reason=${finalMessage.stopReason} | toolCalls=${toolCalls}`);
+        }
+
+        if (!finalMessage || toolCalls === 0) {
+          return;
+        }
+      }
+
+      uiLog(`stopped after ${maxSteps} steps`);
+    },
+  });
+
+  return createUIMessageStreamResponse({ stream });
+}
+
+// ---------------------------------------------------------------------------
 // Backend factory
 // ---------------------------------------------------------------------------
 
-export function createPiAiBackend(opts?: PiAiBackendOptions): Backend<PiAiConfig, PiAiMeta> {
+export function createPiAiBackend(opts?: PiAiBackendOptions): PiAiBackend {
   const credentials = opts?.credentials ?? hudVaultResolver;
   const registry = opts?.registry ?? defaultRegistry;
 
-  return {
+  const backend: PiAiBackend = {
     id: 'pi-ai',
     label: 'Pi AI',
     surface: 'chat',
@@ -271,7 +631,11 @@ export function createPiAiBackend(opts?: PiAiBackendOptions): Backend<PiAiConfig
     },
 
     async dispatch(req: DispatchRequest<PiAiConfig>): Promise<DispatchResult<PiAiMeta>> {
-      return aggregateStream(this as Backend<PiAiConfig, PiAiMeta>, req);
+      return aggregateStream(backend, req);
     },
+
+    streamUI,
   };
+
+  return backend;
 }

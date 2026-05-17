@@ -32,7 +32,18 @@ export { hudVaultResolver } from './credentials';
 export { aggregateStream } from './dispatch';
 
 // Adapters
-export { createPiAiBackend, type PiAiConfig, type PiAiMeta, type PiAiBackendOptions } from './adapters/pi-ai';
+export {
+  createPiAiBackend,
+  type PiAiConfig,
+  type PiAiMeta,
+  type PiAiBackendOptions,
+  type PiAiBackend,
+  type PiAiUIRequest,
+  type PiAiUIMessage,
+  type PiAiUIMessagePart,
+  type PiAiCompiledToolset,
+  type HudsonTool,
+} from './adapters/pi-ai';
 export {
   createVercelAiBackend,
   type VercelAiConfig,

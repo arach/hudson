@@ -11,6 +11,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 ## Web
 
 - **[Building apps](./building-apps.md)** — the `HudsonApp` contract with walkthrough
+- **[Building app AI](./building-app-ai.md)** — adding an AI surface to a Hudson app (toolset + hook pattern)
 - **[API reference](./api.md)** — every `hudsonkit` export, organized by subpath
 - **[Settings](./settings.md)** — declarative app-level settings schema with persisted values
 - **[Multi-instance](./multi-instance.md)** — per-instance state scoping

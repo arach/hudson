@@ -140,8 +140,8 @@ function getModel(provider: ProviderName, modelId: string) {
 }
 
 export function resolveModel(provider?: string, model?: string) {
-  const p = (provider || 'minimax') as ProviderName;
-  const m = model || DEFAULT_MODELS[p] || DEFAULT_MODELS.minimax;
+  const p = (provider || 'copilot') as ProviderName;
+  const m = model || DEFAULT_MODELS[p] || DEFAULT_MODELS.copilot;
   const creds = loadCredentials();
   if (!creds[p]) {
     const available = availableProviders();
