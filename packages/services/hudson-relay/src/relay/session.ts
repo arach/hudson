@@ -147,6 +147,13 @@ function findPiBin(): string | null {
   return findBin('pi', 'PI_BIN');
 }
 
+/** Map Hudson-facing provider ids to the exact provider names accepted by the Pi CLI. */
+function normalizePiProviderForCli(provider?: string): string | undefined {
+  if (!provider) return undefined;
+  if (provider === 'copilot' || provider === 'github') return 'github-copilot';
+  return provider;
+}
+
 /** Check if a tmux session exists. */
 function tmuxSessionExists(name: string): boolean {
   try {
@@ -267,7 +274,8 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
 
   if (agent === 'pi') {
     agentArgs = ['--verbose'];
-    if (msg.provider) agentArgs.push('--provider', msg.provider);
+    const provider = normalizePiProviderForCli(msg.provider);
+    if (provider) agentArgs.push('--provider', provider);
     if (msg.model) agentArgs.push('--model', msg.model);
     if (msg.systemPrompt) agentArgs.push('--system-prompt', msg.systemPrompt);
   } else {

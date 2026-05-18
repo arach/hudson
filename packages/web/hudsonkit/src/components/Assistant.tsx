@@ -14,7 +14,7 @@ import type { AssistantVoiceKit } from '../types/voice-kit';
 
 // ---------------------------------------------------------------------------
 // Generic dual-mode Assistant.
-// - Default: PTY relay (leans on the user's existing CLI auth — claude/pi/codex)
+// - Default: PTY relay (leans on the user's existing Claude CLI auth)
 // - Toggle: API chat (native tool calls; dispatches via app.intents → useCommands)
 // ---------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ export function Assistant({
   state,
   relayUrl = 'ws://localhost:3600',
   cwd,
-  agent = 'pi',
+  agent = 'claude',
   provider,
   model,
   backend = 'pty',

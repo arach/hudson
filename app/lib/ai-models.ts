@@ -9,7 +9,7 @@ export interface AIModelPreset extends AISelectOption {
 }
 
 export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
-  { label: 'Copilot', value: 'copilot' },
+  { label: 'GitHub Copilot', value: 'copilot' },
   { label: 'MiniMax', value: 'minimax' },
   { label: 'GitHub Models', value: 'github' },
   { label: 'Anthropic', value: 'anthropic' },
@@ -38,6 +38,19 @@ export const AI_MODEL_OPTIONS: AISelectOption[] = [
   { label: 'Grok 4.1 Fast', value: 'grok-4-1-fast' },
   { label: 'Grok Code Fast', value: 'grok-code-fast-1' },
   { label: 'Llama 3.1 405B', value: 'Meta-Llama-3.1-405B-Instruct' },
+];
+
+export const PI_CLI_PROVIDER_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax', value: 'minimax' },
+  { label: 'GitHub Copilot', value: 'github-copilot' },
+];
+
+export const PI_CLI_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
+  { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed' },
+  { label: 'Copilot / Gemini 3 Flash', value: 'gemini-3-flash-preview' },
+  { label: 'Copilot / Claude Sonnet 4.6', value: 'claude-sonnet-4.6' },
+  { label: 'Copilot / GPT-5.4', value: 'gpt-5.4' },
 ];
 
 export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [

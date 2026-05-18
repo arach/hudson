@@ -1,51 +1,63 @@
 import type { AppSettingsConfig } from 'hudsonkit';
-import { AI_MODEL_OPTIONS, AI_PROVIDER_OPTIONS } from '../../lib/ai-models';
+import {
+  AI_MODEL_OPTIONS,
+  AI_PROVIDER_OPTIONS,
+  PI_CLI_MODEL_OPTIONS,
+  PI_CLI_PROVIDER_OPTIONS,
+} from '../../lib/ai-models';
 
 export const logoSettings: AppSettingsConfig = {
   sections: [
     {
-      label: 'AI (Background)',
+      label: 'AI (Logo)',
       fields: [
         {
           key: 'aiProvider',
           label: 'Provider',
+          description: 'Logo chat and background edits run through the Pi backend. This is independent from terminal settings.',
           type: 'select',
-          default: 'copilot',
+          default: 'minimax',
           options: AI_PROVIDER_OPTIONS,
         },
         {
           key: 'aiModel',
           label: 'Model',
+          description: 'Default model for Logo chat, template generation, and parameter edits.',
           type: 'select',
-          default: 'gemini-3-flash-preview',
+          default: 'MiniMax-M2.7',
           options: AI_MODEL_OPTIONS,
         },
       ],
     },
     {
-      label: 'Agent (Terminal)',
+      label: 'Terminal (Logo)',
       fields: [
         {
-          key: 'agent',
+          key: 'terminalAgent',
           label: 'CLI Agent',
+          description: 'XTerm -> Hudson Relay -> Claude CLI by default. Switch to Pi only for app-specific terminal experiments.',
           type: 'segment',
-          default: 'pi',
+          default: 'claude',
           options: [
             { label: 'Claude', value: 'claude' },
             { label: 'Pi', value: 'pi' },
           ],
         },
         {
-          key: 'provider',
-          label: 'Provider',
-          type: 'text',
-          default: 'copilot',
+          key: 'terminalProvider',
+          label: 'Pi Provider',
+          description: 'Only used when the Logo terminal CLI agent is Pi. The Pi CLI expects github-copilot, not copilot.',
+          type: 'select',
+          default: 'minimax',
+          options: PI_CLI_PROVIDER_OPTIONS,
         },
         {
-          key: 'model',
-          label: 'Model',
-          type: 'text',
-          default: 'gemini-3-flash-preview',
+          key: 'terminalModel',
+          label: 'Pi Model',
+          description: 'Only used when the Logo terminal CLI agent is Pi.',
+          type: 'select',
+          default: 'MiniMax-M2.7',
+          options: PI_CLI_MODEL_OPTIONS,
         },
       ],
     },

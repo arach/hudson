@@ -90,8 +90,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     chatId: 'logo-app-chat',
     context,
     attachments,
-    provider: String(appSettings.aiProvider || 'copilot'),
-    model: String(appSettings.aiModel || 'gemini-3-flash-preview'),
+    provider: String(appSettings.aiProvider || 'minimax'),
+    model: String(appSettings.aiModel || 'MiniMax-M2.7'),
     onToolCall: async (name, args) => {
       try {
       console.log('[useLogoAI] tool call:', name, JSON.stringify(args).slice(0, 200));

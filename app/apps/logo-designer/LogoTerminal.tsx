@@ -24,9 +24,11 @@ export function LogoTerminal() {
   const homeFolder = String(appSettings.homeFolder || '~/hudson/logos');
   const modelTier = (appSettings.modelTier as ModelTier) || 'comprehensive';
   const relayBackend = (appSettings.relayBackend as 'pty' | 'tmux') || 'pty';
-  const relayAgent = (appSettings.agent as 'claude' | 'pi') || 'pi';
-  const relayProvider = String(appSettings.provider || 'copilot');
-  const relayModel = String(appSettings.model || 'gemini-3-flash-preview');
+  const relayAgent = appSettings.terminalAgent === 'pi' ? 'pi' : 'claude';
+  const configuredProvider = String(appSettings.terminalProvider || 'minimax').trim();
+  const configuredModel = String(appSettings.terminalModel || 'MiniMax-M2.7').trim();
+  const relayProvider = relayAgent === 'pi' ? configuredProvider || 'minimax' : undefined;
+  const relayModel = relayAgent === 'pi' ? configuredModel || 'MiniMax-M2.7' : undefined;
   const serviceRegistry = useServiceRegistryContext();
   const relayRecord = serviceRegistry.records.relay;
   const [hostedDemo, setHostedDemo] = useState(false);
@@ -81,7 +83,14 @@ export function LogoTerminal() {
   const relayConfigItems = useMemo(() => [
     { label: 'Relay', value: relayUrl },
     { label: 'CWD', value: homeFolder },
-  ], [relayUrl, homeFolder]);
+    { label: 'CLI', value: relayAgent },
+    ...(relayAgent === 'pi'
+      ? [
+          { label: 'Provider', value: relayProvider ?? 'minimax' },
+          { label: 'Model', value: relayModel ?? 'MiniMax-M2.7' },
+        ]
+      : []),
+  ], [relayUrl, homeFolder, relayAgent, relayProvider, relayModel]);
 
   // Start relay service via the service API
   const { serviceApiUrl } = usePlatform();
