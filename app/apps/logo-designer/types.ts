@@ -150,6 +150,14 @@ export const BUILTIN_IDS = new Set([
   'dot-matrix',
   'mosaic',
   't-decoration',
+  't-texture-phosphor',
+  't-texture-dot-matrix',
+  't-texture-pixel',
+  't-texture-halftone',
+  't-texture-letterpress',
+  't-texture-etched',
+  't-texture-chrome',
+  't-texture-particle',
 ]);
 
 export function isBuiltinVariant(id: string): boolean {

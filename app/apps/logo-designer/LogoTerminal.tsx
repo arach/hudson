@@ -8,26 +8,6 @@ import { buildSystemPrompt, buildClaudeMd } from './prompts';
 import type { ModelTier } from './prompts';
 import { useServiceRegistryContext } from '../../services/ServiceRegistryContext';
 
-// ---------------------------------------------------------------------------
-// Server-side compile helper
-// ---------------------------------------------------------------------------
-async function compileTemplate(source: string, endpoint: string): Promise<{ js: string } | { error: string }> {
-  try {
-    const res = await fetch(endpoint, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ source }),
-    });
-    const data = await res.json();
-    if (!res.ok || data.error) {
-      return { error: data.error ?? `HTTP ${res.status}` };
-    }
-    return { js: data.js };
-  } catch (err) {
-    return { error: err instanceof Error ? err.message : String(err) };
-  }
-}
-
 function isHostedBrowserDemo() {
   if (typeof window === 'undefined') return false;
   return !['localhost', '127.0.0.1', '[::1]'].includes(window.location.hostname);
@@ -45,8 +25,8 @@ export function LogoTerminal() {
   const modelTier = (appSettings.modelTier as ModelTier) || 'comprehensive';
   const relayBackend = (appSettings.relayBackend as 'pty' | 'tmux') || 'pty';
   const relayAgent = (appSettings.agent as 'claude' | 'pi') || 'pi';
-  const relayProvider = String(appSettings.provider || 'minimax');
-  const relayModel = String(appSettings.model || 'MiniMax-M2.7');
+  const relayProvider = String(appSettings.provider || 'copilot');
+  const relayModel = String(appSettings.model || 'gemini-3-flash-preview');
   const serviceRegistry = useServiceRegistryContext();
   const relayRecord = serviceRegistry.records.relay;
   const [hostedDemo, setHostedDemo] = useState(false);

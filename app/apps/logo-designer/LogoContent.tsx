@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useCallback, useState, useMemo, useEffect } from 'react';
+import { useRef, useCallback, useState, useMemo, useEffect, type CSSProperties } from 'react';
 import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb, ScrollText, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, Film } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
@@ -11,6 +11,50 @@ import { LogoComparisonSheet, type LogoComparisonCellMeta } from './LogoComparis
 import { LogoVersionGrid } from './LogoVersionGrid';
 import { MATRIX_PRESETS } from './LogoMatrixPresets';
 import { useOptionalDataBus } from '../../shell/DataBusContext';
+
+const LOGO_WORK_SURFACE_STYLE: CSSProperties = {
+  background: [
+    'radial-gradient(',
+    'circle at 50% 42%, ',
+    'color-mix(in oklab, oklch(var(--card)) 78%, oklch(var(--background)) 22%) 0%, ',
+    'oklch(var(--background)) 58%, ',
+    'color-mix(in oklab, oklch(var(--secondary)) 72%, oklch(var(--background)) 28%) 100%',
+    ')',
+  ].join(''),
+};
+
+const LOGO_GRID_DOT_FILL = 'color-mix(in oklab, oklch(var(--foreground)) 16%, transparent)';
+const LOGO_PREVIEW_LABEL_CLASS = 'text-[11px] text-muted-foreground/70';
+const LOGO_TOOLBAR_BUTTON_BASE = 'flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors';
+const LOGO_TOOLBAR_BUTTON_ACTIVE = 'bg-muted text-foreground';
+const LOGO_TOOLBAR_BUTTON_IDLE = 'text-muted-foreground hover:text-foreground hover:bg-muted/70';
+const LOGO_TOOLBAR_DIVIDER_CLASS = 'w-px h-4 bg-border/70';
+const LOGO_DARK_PREVIEW_STAGE_CLASS = 'rounded-[48px] bg-neutral-950 shadow-lg ring-1 ring-border/70';
+
+type AiAction = 'polish' | 'explore' | 'simplify' | 'elevate' | 'remix' | 'edit';
+
+const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string) => string }[] = [
+  {
+    id: 'polish', icon: Wand2, label: 'Polish', desc: 'Subtle refinements', color: 'text-emerald-400',
+    prompt: (ctx) => `Polish this logo with subtle improvements. Adjust colors for better harmony, refine proportions, improve spacing and balance. Keep the same concept — just make it cleaner and more intentional. Apply changes directly.\n\n${ctx}`,
+  },
+  {
+    id: 'explore', icon: Shuffle, label: 'Explore', desc: 'Create 3 variations', color: 'text-cyan-400',
+    prompt: (ctx, name) => `Create 3 distinct variations of this logo by modifying the template's renderBody. Explore different visual approaches — different geometries, compositions, or effects. Save each as "${name}-v1", "${name}-v2", "${name}-v3". Keep the color palette.\n\n${ctx}`,
+  },
+  {
+    id: 'simplify', icon: Minimize2, label: 'Simplify', desc: 'Remove complexity', color: 'text-amber-400',
+    prompt: (ctx) => `Simplify this logo. Remove decorative elements, reduce the number of shapes, increase negative space. The mark should read clearly at 16px. Less is more — find the essential geometry and remove everything else. Apply changes directly.\n\n${ctx}`,
+  },
+  {
+    id: 'elevate', icon: Maximize2, label: 'Elevate', desc: 'Add sophistication', color: 'text-teal-500',
+    prompt: (ctx) => `Elevate this logo to feel more premium and sophisticated. Add subtle depth through layered opacity, refine the geometry for better mathematical harmony, improve the color palette for more richness. Think Pentagram or Wolff Olins level. Apply changes directly.\n\n${ctx}`,
+  },
+  {
+    id: 'remix', icon: Zap, label: 'Remix', desc: 'Fresh take, same spirit', color: 'text-rose-400',
+    prompt: (ctx, name) => `Remix this logo — keep the core concept and color palette but reimagine the visual execution. Try a completely different geometric approach. Create a fresh take that feels related but distinctly new. Save as "${name}-remix". \n\n${ctx}`,
+  },
+];
 
 // ---------------------------------------------------------------------------
 // Mini pan/zoom canvas
@@ -459,7 +503,7 @@ function LogoMatrixView({
     <div className="relative h-full">
       <div
         className="h-full overflow-y-auto overflow-x-hidden frame-scrollbar"
-        style={{ background: 'radial-gradient(circle at 50% 50%, rgba(20,20,20,1) 0%, rgba(10,10,10,1) 100%)' }}
+        style={LOGO_WORK_SURFACE_STYLE}
       >
         {/* Matrix toolbar — back-to-preview + (conditional) version tabs + trace.
             Sticky so it rides scroll. Tabs only render when there's something to switch between. */}
@@ -610,7 +654,7 @@ function LogoMatrixView({
       {showHud && (
         <div className="pointer-events-none absolute bottom-3 left-3 z-10 flex flex-col gap-1" style={{ maxWidth: 420 }}>
           {aiStatus === 'streaming' && streamText && (
-            <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-black/70 backdrop-blur-xl border border-white/10 text-white/55 max-h-[140px] overflow-y-auto frame-scrollbar pointer-events-auto">
+            <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-card/90 backdrop-blur-xl border border-border/70 text-muted-foreground max-h-[140px] overflow-y-auto frame-scrollbar pointer-events-auto shadow-lg">
               {streamText.slice(-360)}
               <span className="inline-block w-1.5 h-3 bg-emerald-400/70 ml-0.5 animate-pulse" />
             </div>
@@ -620,12 +664,12 @@ function LogoMatrixView({
             return (
               <div
                 key={entry.id}
-                className={`text-[9.5px] font-mono px-2 py-0.5 rounded bg-black/50 backdrop-blur-sm transition-opacity duration-1000 ${
+                className={`text-[9.5px] font-mono px-2 py-0.5 rounded bg-card/80 border border-border/50 backdrop-blur-sm transition-opacity duration-1000 ${
                   fading && i < 2 ? 'opacity-25' : 'opacity-80'
                 }`}
               >
-                <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/80'}>{entry.tool}</span>
-                <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/50' : 'text-white/45'}`}>{entry.summary}</span>
+                <span className={entry.tool === 'error' ? 'text-red-500/80' : 'text-emerald-500/80'}>{entry.tool}</span>
+                <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-500/65' : 'text-muted-foreground'}`}>{entry.summary}</span>
               </div>
             );
           })}
@@ -702,30 +746,6 @@ export function LogoContent() {
     return { svgMarkup, tmplName: tmpl?.name ?? params.variant, paramSummary };
   }, [params, templates]);
 
-  type AiAction = 'polish' | 'explore' | 'simplify' | 'elevate' | 'remix' | 'edit';
-  const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string) => string }[] = [
-    {
-      id: 'polish', icon: Wand2, label: 'Polish', desc: 'Subtle refinements', color: 'text-emerald-400',
-      prompt: (ctx, name) => `Polish this logo with subtle improvements. Adjust colors for better harmony, refine proportions, improve spacing and balance. Keep the same concept — just make it cleaner and more intentional. Apply changes directly.\n\n${ctx}`,
-    },
-    {
-      id: 'explore', icon: Shuffle, label: 'Explore', desc: 'Create 3 variations', color: 'text-cyan-400',
-      prompt: (ctx, name) => `Create 3 distinct variations of this logo by modifying the template's renderBody. Explore different visual approaches — different geometries, compositions, or effects. Save each as "${name}-v1", "${name}-v2", "${name}-v3". Keep the color palette.\n\n${ctx}`,
-    },
-    {
-      id: 'simplify', icon: Minimize2, label: 'Simplify', desc: 'Remove complexity', color: 'text-amber-400',
-      prompt: (ctx) => `Simplify this logo. Remove decorative elements, reduce the number of shapes, increase negative space. The mark should read clearly at 16px. Less is more — find the essential geometry and remove everything else. Apply changes directly.\n\n${ctx}`,
-    },
-    {
-      id: 'elevate', icon: Maximize2, label: 'Elevate', desc: 'Add sophistication', color: 'text-violet-400',
-      prompt: (ctx) => `Elevate this logo to feel more premium and sophisticated. Add subtle depth through layered opacity, refine the geometry for better mathematical harmony, improve the color palette for more richness. Think Pentagram or Wolff Olins level. Apply changes directly.\n\n${ctx}`,
-    },
-    {
-      id: 'remix', icon: Zap, label: 'Remix', desc: 'Fresh take, same spirit', color: 'text-rose-400',
-      prompt: (ctx, name) => `Remix this logo — keep the core concept and color palette but reimagine the visual execution. Try a completely different geometric approach. Create a fresh take that feels related but distinctly new. Save as "${name}-remix". \n\n${ctx}`,
-    },
-  ];
-
   const handleAiAction = useCallback((action: AiAction, editText?: string) => {
     const { svgMarkup, tmplName, paramSummary } = buildContext();
     const ctx = `Template: "${tmplName}"\nParams: ${paramSummary}\nCurrent SVG:\n\`\`\`svg\n${svgMarkup}\n\`\`\``;
@@ -783,7 +803,7 @@ export function LogoContent() {
         ref={containerRef}
         data-logo-content-root
         className={`flex-1 relative overflow-hidden min-w-0 ${spaceHeld ? 'cursor-grab active:cursor-grabbing' : ''} ${spotlight ? 'logo-canvas-spotlight' : ''}`}
-        style={{ background: 'radial-gradient(circle at 50% 50%, rgba(20,20,20,1) 0%, rgba(10,10,10,1) 100%)' }}
+        style={LOGO_WORK_SURFACE_STYLE}
         tabIndex={0}
         data-panning={spaceHeld ? 'true' : 'false'}
         onWheel={canvas.handleWheel}
@@ -802,7 +822,7 @@ export function LogoContent() {
             <defs>
               <pattern id="logo-grid" width={20 * canvas.pan.zoom} height={20 * canvas.pan.zoom} patternUnits="userSpaceOnUse"
                 patternTransform={`translate(${canvas.pan.x % (20 * canvas.pan.zoom)} ${canvas.pan.y % (20 * canvas.pan.zoom)})`}>
-                <circle cx={10 * canvas.pan.zoom} cy={10 * canvas.pan.zoom} r={0.8} fill="rgba(255,255,255,0.15)" />
+                <circle cx={10 * canvas.pan.zoom} cy={10 * canvas.pan.zoom} r={0.8} fill={LOGO_GRID_DOT_FILL} />
               </pattern>
             </defs>
             <rect width="100%" height="100%" fill="url(#logo-grid)" />
@@ -811,11 +831,11 @@ export function LogoContent() {
         )}
 
         {/* Floating toolbar */}
-        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-px rounded-lg border border-white/10 bg-black/60 backdrop-blur-xl p-0.5">
+        <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-px rounded-lg border border-border/70 bg-card/85 text-muted-foreground shadow-lg backdrop-blur-xl p-0.5">
           <button
             onClick={() => setParam('lightEnabled', !params.lightEnabled)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-              params.lightEnabled ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'
+            className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+              params.lightEnabled ? LOGO_TOOLBAR_BUTTON_ACTIVE : LOGO_TOOLBAR_BUTTON_IDLE
             }`}
             title={params.lightEnabled ? 'Disable light mode' : 'Enable light mode'}
           >
@@ -823,12 +843,12 @@ export function LogoContent() {
             Light
           </button>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           <button
             onClick={() => setParam('lightingEnabled', !params.lightingEnabled)}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-              params.lightingEnabled ? 'bg-amber-500/15 text-amber-400' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'
+            className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+              params.lightingEnabled ? 'bg-amber-500/15 text-amber-600' : LOGO_TOOLBAR_BUTTON_IDLE
             }`}
             title={params.lightingEnabled ? 'Disable lighting' : 'Enable lighting'}
           >
@@ -836,7 +856,7 @@ export function LogoContent() {
             Lighting
           </button>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           <button
             onClick={() => {
@@ -844,8 +864,8 @@ export function LogoContent() {
               const idx = cycle.indexOf(params.wordmark.layout);
               setParam('wordmark', { ...params.wordmark, layout: cycle[(idx + 1) % cycle.length] });
             }}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-              params.wordmark.layout !== 'icon-only' ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'
+            className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+              params.wordmark.layout !== 'icon-only' ? LOGO_TOOLBAR_BUTTON_ACTIVE : LOGO_TOOLBAR_BUTTON_IDLE
             }`}
             title={`Wordmark: ${params.wordmark.layout}`}
           >
@@ -853,12 +873,12 @@ export function LogoContent() {
             {params.wordmark.layout === 'icon-only' ? 'Wordmark' : params.wordmark.layout === 'horizontal' ? 'Horiz' : 'Stack'}
           </button>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           <button
             onClick={togglePreviews}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-              showPreviews ? 'bg-white/10 text-white' : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/5'
+            className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+              showPreviews ? LOGO_TOOLBAR_BUTTON_ACTIVE : LOGO_TOOLBAR_BUTTON_IDLE
             }`}
             title={showPreviews ? 'Hide asset catalog' : 'Show asset catalog'}
           >
@@ -868,10 +888,10 @@ export function LogoContent() {
 
           {hasMatrixPreset && (
             <>
-              <div className="w-px h-4 bg-white/10" />
+              <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
               <button
                 onClick={() => setView('matrix')}
-                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+                className={`${LOGO_TOOLBAR_BUTTON_BASE} ${LOGO_TOOLBAR_BUTTON_IDLE}`}
                 title="Open the variation matrix for this template"
               >
                 <LayoutGrid size={11} />
@@ -880,13 +900,13 @@ export function LogoContent() {
             </>
           )}
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           <button
             onClick={handleAnimateSelected}
             disabled={picks.length === 0}
-            className={`flex items-center gap-1.5 px-2.5 py-1.5 rounded-md text-[10px] font-mono transition-colors ${
-              picks.length > 0 ? 'bg-cyan-500/15 text-cyan-300 hover:bg-cyan-500/25' : 'text-neutral-600 cursor-not-allowed opacity-55'
+            className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+              picks.length > 0 ? 'bg-cyan-500/15 text-cyan-600 hover:bg-cyan-500/25' : 'text-muted-foreground cursor-not-allowed opacity-55'
             }`}
             title={picks.length > 0 ? 'Send selected variant(s) to Preframe' : 'Select at least one matrix variant to animate'}
           >
@@ -894,7 +914,7 @@ export function LogoContent() {
             Animate{picks.length > 0 ? ` ${picks.length}` : ''}
           </button>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           {/* AI actions */}
           <div className="relative">
@@ -904,7 +924,7 @@ export function LogoContent() {
                 aiError ? 'bg-red-500/15 text-red-400'
                 : aiStatus === 'streaming' ? 'bg-emerald-500/20 text-emerald-400 animate-pulse'
                 : aiMenuOpen ? 'bg-emerald-500/15 text-emerald-400'
-                : 'text-neutral-500 hover:text-emerald-400 hover:bg-emerald-500/10'
+                : 'text-muted-foreground hover:text-emerald-500 hover:bg-emerald-500/10'
               }`}
               title="AI actions"
             >
@@ -912,9 +932,9 @@ export function LogoContent() {
               {aiStatus === 'streaming' ? 'Working...' : aiError ? 'Error' : 'AI'}
             </button>
             {aiMenuOpen && (
-              <div className="absolute top-full mt-2 right-0 w-[220px] rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-2xl shadow-2xl shadow-black/50 overflow-hidden z-50">
+              <div className="absolute top-full mt-2 right-0 w-[220px] rounded-xl border border-border/70 bg-popover/95 text-popover-foreground backdrop-blur-2xl shadow-2xl shadow-foreground/10 overflow-hidden z-50">
                 <div className="px-3 pt-2.5 pb-1.5">
-                  <div className="text-[9px] font-mono uppercase tracking-widest text-white/20">Actions</div>
+                  <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground/70">Actions</div>
                 </div>
                 {AI_ACTIONS.map((action) => {
                   const Icon = action.icon;
@@ -923,37 +943,37 @@ export function LogoContent() {
                       key={action.id}
                       onClick={() => handleAiAction(action.id)}
                       disabled={aiStatus === 'streaming'}
-                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-white/[0.04] active:bg-white/[0.07] transition-colors disabled:opacity-30 disabled:pointer-events-none"
+                      className="w-full flex items-center gap-2.5 px-3 py-2 text-left hover:bg-muted/70 active:bg-muted transition-colors disabled:opacity-30 disabled:pointer-events-none"
                     >
                       <Icon size={14} className={`${action.color} shrink-0`} />
                       <div className="min-w-0">
-                        <div className="text-[11px] text-white/80">{action.label}</div>
-                        <div className="text-[9px] text-white/25">{action.desc}</div>
+                        <div className="text-[11px] text-foreground/90">{action.label}</div>
+                        <div className="text-[9px] text-muted-foreground">{action.desc}</div>
                       </div>
                     </button>
                   );
                 })}
-                <div className="border-t border-white/[0.05] mt-1" />
+                <div className="border-t border-border/60 mt-1" />
                 <button
                   onClick={() => { setAiMenuOpen(false); setEditOpen(true); }}
                   disabled={aiStatus === 'streaming'}
-                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-white/[0.04] transition-colors disabled:opacity-30"
+                  className="w-full flex items-center gap-2.5 px-3 py-2.5 text-left hover:bg-muted/70 transition-colors disabled:opacity-30"
                 >
-                  <Pencil size={14} className="text-white/40 shrink-0" />
+                  <Pencil size={14} className="text-muted-foreground shrink-0" />
                   <div className="min-w-0">
-                    <div className="text-[11px] text-white/80">Edit</div>
-                    <div className="text-[9px] text-white/25">Describe what to change</div>
+                    <div className="text-[11px] text-foreground/90">Edit</div>
+                    <div className="text-[9px] text-muted-foreground">Describe what to change</div>
                   </div>
                 </button>
               </div>
             )}
           </div>
 
-          <div className="w-px h-4 bg-white/10" />
+          <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
 
           <button
             onClick={canvas.reset}
-            className="px-2 py-1.5 rounded-md text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            className="px-2 py-1.5 rounded-md text-muted-foreground hover:text-foreground hover:bg-muted/70 transition-colors"
             title="Reset view"
           >
             <RotateCcw size={11} />
@@ -963,15 +983,15 @@ export function LogoContent() {
 
         {/* Edit modal */}
         {editOpen && (
-          <div className="absolute inset-0 z-40 flex items-center justify-center bg-black/40 backdrop-blur-sm"
+          <div className="absolute inset-0 z-40 flex items-center justify-center bg-background/50 backdrop-blur-sm"
             onClick={e => { if (e.target === e.currentTarget) setEditOpen(false); }}>
-            <div className="w-[440px] rounded-xl border border-white/10 bg-neutral-950/95 backdrop-blur-2xl shadow-2xl p-5">
+            <div className="w-[440px] rounded-xl border border-border/70 bg-popover/95 text-popover-foreground backdrop-blur-2xl shadow-2xl shadow-foreground/10 p-5">
               <div className="flex items-center justify-between mb-4">
                 <div className="flex items-center gap-2">
-                  <Pencil size={14} className="text-white/40" />
-                  <span className="text-[13px] text-white/80 font-medium">Edit with AI</span>
+                  <Pencil size={14} className="text-muted-foreground" />
+                  <span className="text-[13px] text-foreground/90 font-medium">Edit with AI</span>
                 </div>
-                <button onClick={() => setEditOpen(false)} className="p-1 text-white/20 hover:text-white/50 transition-colors">
+                <button onClick={() => setEditOpen(false)} className="p-1 text-muted-foreground hover:text-foreground transition-colors">
                   <X size={14} />
                 </button>
               </div>
@@ -983,10 +1003,10 @@ export function LogoContent() {
                   onChange={e => setEditInput(e.target.value)}
                   placeholder="Make the gaps wider, soften the corners, try a warmer palette..."
                   autoFocus
-                  className="w-full px-4 py-3 rounded-lg bg-white/[0.04] border border-white/10 text-[13px] text-white/90 placeholder:text-white/20 outline-none focus:border-emerald-500/30 transition-colors"
+                  className="w-full px-4 py-3 rounded-lg bg-muted/60 border border-border text-[13px] text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-emerald-500/40 transition-colors"
                 />
                 <div className="flex items-center justify-between mt-3">
-                  <span className="text-[9px] text-white/15 font-mono">Enter to send</span>
+                  <span className="text-[9px] text-muted-foreground/70 font-mono">Enter to send</span>
                   <button
                     type="submit"
                     disabled={!editInput.trim()}
@@ -1002,7 +1022,7 @@ export function LogoContent() {
         )}
 
         {/* Zoom indicator */}
-        <div className="absolute bottom-2 right-2 z-10 text-[10px] font-mono text-white/20">
+        <div className="absolute bottom-2 right-2 z-10 text-[10px] font-mono text-muted-foreground/70">
           {Math.round(canvas.pan.zoom * 100)}%
         </div>
 
@@ -1020,7 +1040,7 @@ export function LogoContent() {
             <div className="absolute bottom-2 left-2 z-10 flex flex-col gap-1 max-w-[380px]">
               {/* Streaming thought */}
               {aiStatus === 'streaming' && streamText && (
-                <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-black/60 backdrop-blur-xl border border-white/8 text-white/40 max-h-[120px] overflow-y-auto frame-scrollbar">
+                <div className="text-[10px] font-mono leading-relaxed px-3 py-2 rounded-lg bg-card/90 backdrop-blur-xl border border-border/70 text-muted-foreground max-h-[120px] overflow-y-auto frame-scrollbar shadow-lg">
                   {streamText.slice(-300)}
                   <span className="inline-block w-1.5 h-3 bg-emerald-400/60 ml-0.5 animate-pulse" />
                 </div>
@@ -1031,12 +1051,12 @@ export function LogoContent() {
                 return (
                   <div
                     key={entry.id}
-                    className={`text-[9px] font-mono px-2 py-0.5 rounded bg-black/40 backdrop-blur-sm transition-opacity duration-1000 ${
+                    className={`text-[9px] font-mono px-2 py-0.5 rounded bg-card/80 border border-border/50 backdrop-blur-sm transition-opacity duration-1000 ${
                       fading && i < 2 ? 'opacity-20' : 'opacity-70'
                     }`}
                   >
-                    <span className={entry.tool === 'error' ? 'text-red-400/70' : 'text-emerald-400/70'}>{entry.tool}</span>
-                    <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-300/40' : 'text-white/30'}`}>{entry.summary}</span>
+                    <span className={entry.tool === 'error' ? 'text-red-500/80' : 'text-emerald-500/80'}>{entry.tool}</span>
+                    <span className={`ml-1.5 ${entry.tool === 'error' ? 'text-red-500/65' : 'text-muted-foreground'}`}>{entry.summary}</span>
                   </div>
                 );
               })}
@@ -1058,14 +1078,16 @@ export function LogoContent() {
             {hasWordmark ? (
               <div className="flex flex-col items-center gap-8">
                 <div className="flex flex-col items-center gap-2">
-                  <DraggableWordmark
-                    params={params}
-                    size={400}
-                    mode="dark"
-                    zoom={canvas.pan.zoom}
-                    onOffsetChange={handleWordmarkOffset}
-                  />
-                  <span className="text-[11px] text-white/20">
+                  <div className={`${LOGO_DARK_PREVIEW_STAGE_CLASS} p-8`}>
+                    <DraggableWordmark
+                      params={params}
+                      size={400}
+                      mode="dark"
+                      zoom={canvas.pan.zoom}
+                      onOffsetChange={handleWordmarkOffset}
+                    />
+                  </div>
+                  <span className={LOGO_PREVIEW_LABEL_CLASS}>
                     {params.lightEnabled ? 'Dark' : params.wordmark.layout}
                   </span>
                 </div>
@@ -1086,18 +1108,18 @@ export function LogoContent() {
               <div className="flex gap-8 items-start">
                 {/* Dark icon with geometry overlay */}
                 <div className="flex flex-col items-center gap-2">
-                  <div className="relative">
+                  <div className={`${LOGO_DARK_PREVIEW_STAGE_CLASS} relative`}>
                     <LogoSvg params={params} size={512} />
                     {inspectMode && <GeometryOverlay params={params} size={512} />}
                   </div>
-                  <span className="text-[11px] text-white/20">
+                  <span className={LOGO_PREVIEW_LABEL_CLASS}>
                     {params.lightEnabled ? 'Dark' : '512px'}
                   </span>
                 </div>
                 {params.lightEnabled && (
                   <div className="flex flex-col items-center gap-2">
                     <LogoSvg params={lightParams} size={512} />
-                    <span className="text-[11px] text-white/20">Light</span>
+                    <span className={LOGO_PREVIEW_LABEL_CLASS}>Light</span>
                   </div>
                 )}
               </div>
@@ -1105,8 +1127,8 @@ export function LogoContent() {
 
             {/* ── Asset catalog (Xcode-style rows) ── */}
             {showPreviews && (
-              <div className="rounded-lg border border-white/10 overflow-hidden" style={{ background: 'rgba(20,20,22,0.90)' }}>
-                <div className="flex items-center px-4 py-2 border-b border-white/8 text-[10px] font-mono uppercase tracking-wider text-white/25">
+              <div className="rounded-lg border border-border/70 bg-card/90 text-card-foreground overflow-hidden shadow-lg">
+                <div className="flex items-center px-4 py-2 border-b border-border/60 text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
                   <span className="w-[80px] shrink-0">Size</span>
                   <span className="flex-1">Dark</span>
                   {params.lightEnabled && <span className="flex-1">Light</span>}
@@ -1114,16 +1136,16 @@ export function LogoContent() {
                 {[512, 256, 128, 64, 32, 16].map((sz, i) => (
                   <div
                     key={sz}
-                    className={`flex items-center px-4 py-3 ${i > 0 ? 'border-t border-white/[0.04]' : ''}`}
+                    className={`flex items-center px-4 py-3 ${i > 0 ? 'border-t border-border/50' : ''}`}
                     style={{ minHeight: Math.max(sz + 16, 48) }}
                   >
                     <div className="w-[80px] shrink-0 flex flex-col">
-                      <span className="text-[11px] font-mono text-white/40">{sz}px</span>
-                      <span className="text-[9px] font-mono text-white/15">{sz}&times;{sz}</span>
+                      <span className="text-[11px] font-mono text-muted-foreground">{sz}px</span>
+                      <span className="text-[9px] font-mono text-muted-foreground/60">{sz}&times;{sz}</span>
                     </div>
                     <div className="flex-1 flex items-center justify-center">
                       <div
-                        className="rounded border border-white/8 flex items-center justify-center"
+                        className="rounded border border-border/60 flex items-center justify-center"
                         style={{
                           width: sz + 8, height: sz + 8,
                           backgroundImage: 'linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%), linear-gradient(45deg, rgba(255,255,255,0.03) 25%, transparent 25%, transparent 75%, rgba(255,255,255,0.03) 75%)',
