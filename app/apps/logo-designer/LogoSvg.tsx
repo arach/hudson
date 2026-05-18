@@ -13,6 +13,22 @@ export function LogoSvg({ params, size }: Props) {
   const { templates, customParamValues, backgroundSvg, setVariant, refreshTemplates } = useLogo();
   const template = templates.find(t => t.id === params.variant);
 
+  if (templates.length === 0) {
+    return (
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width={size} height={size}>
+          <rect width="512" height="512" rx="40" fill="oklch(var(--muted))" />
+          <rect x="176" y="238" width="160" height="20" rx="10" fill="oklch(var(--muted-foreground) / 0.16)" />
+          <rect x="206" y="278" width="100" height="12" rx="6" fill="oklch(var(--muted-foreground) / 0.10)" />
+        </svg>
+        <div className="absolute inset-0 flex flex-col items-center justify-center gap-3">
+          <RefreshCw size={20} className="animate-spin text-muted-foreground/70" />
+          <span className="text-[13px] text-muted-foreground font-mono">Loading templates</span>
+        </div>
+      </div>
+    );
+  }
+
   if (!template) {
     const fallback = templates[0];
     return (
