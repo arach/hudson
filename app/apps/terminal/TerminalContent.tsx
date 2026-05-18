@@ -94,24 +94,24 @@ export function TerminalContent({ initialCwd = '~' }: { initialCwd?: string } = 
   }, [activeTabId]);
 
   return (
-    <div className="w-full h-full flex flex-col bg-[#0a0a0a]">
+    <div className="w-full h-full flex flex-col bg-background text-foreground">
       {/* Tab bar — only show when multiple tabs */}
       {tabs.length > 1 && (
-        <div className="h-7 shrink-0 flex items-center gap-px px-1 bg-neutral-900/80 border-b border-neutral-700/40 overflow-x-auto">
+        <div className="h-7 shrink-0 flex items-center gap-px px-1 bg-card/80 border-b border-border/60 overflow-x-auto">
           {tabs.map(tab => (
             <button
               key={tab.id}
               onClick={() => setActiveTabId(tab.id)}
               className={`group flex items-center gap-1.5 px-2.5 h-6 rounded text-[11px] font-mono transition-colors ${
                 tab.id === activeTabId
-                  ? 'bg-white/8 text-neutral-200'
-                  : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/4'
+                  ? 'bg-muted text-foreground'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
               }`}
             >
               <span className="truncate max-w-[100px]">{tab.label}</span>
               <span
                 onClick={(e) => { e.stopPropagation(); closeTab(tab.id); }}
-                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-white/10 hover:text-red-400 transition-all"
+                className="opacity-0 group-hover:opacity-100 p-0.5 rounded hover:bg-destructive/10 hover:text-destructive transition-all"
               >
                 <X size={9} />
               </span>
@@ -119,7 +119,7 @@ export function TerminalContent({ initialCwd = '~' }: { initialCwd?: string } = 
           ))}
           <button
             onClick={addTab}
-            className="p-1 rounded text-neutral-500 hover:text-neutral-300 hover:bg-white/6 transition-colors"
+            className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             title="New terminal"
           >
             <Plus size={11} />
@@ -144,7 +144,7 @@ export function TerminalContent({ initialCwd = '~' }: { initialCwd?: string } = 
       {tabs.length === 1 && (
         <button
           onClick={addTab}
-          className="absolute top-1 right-1 z-10 p-1 rounded text-neutral-600 hover:text-neutral-300 hover:bg-white/8 transition-colors"
+          className="absolute top-1 right-1 z-10 p-1 rounded text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           title="New terminal"
         >
           <Plus size={12} />
