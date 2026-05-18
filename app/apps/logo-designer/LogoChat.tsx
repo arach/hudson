@@ -1,8 +1,9 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { isToolUIPart, getToolName } from 'ai';
-import { AlertCircle, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Loader2, Paperclip, Settings, Square, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Loader2, Mic, Paperclip, Settings, Square, Trash2 } from 'lucide-react';
+import { useVoiceInput } from 'hudsonkit/voice';
 import { useLogo } from './LogoProvider';
 import type { LogoTemplate } from './types';
 
@@ -22,9 +23,6 @@ const LOGO_CHAT_SESSION_ID = 'logo-app-chat';
  */
 export function LogoChat() {
   const { aiChat, appSettings } = useLogo();
-  const [input, setInput] = useState('');
-  const inputRef = useRef<HTMLInputElement>(null);
-  const scrollRef = useRef<HTMLDivElement>(null);
 
   if (!aiChat) {
     return (
@@ -34,6 +32,19 @@ export function LogoChat() {
     );
   }
 
+  return <LogoChatSurface aiChat={aiChat} appSettings={appSettings} />;
+}
+
+function LogoChatSurface({
+  aiChat,
+  appSettings,
+}: {
+  aiChat: NonNullable<ReturnType<typeof useLogo>['aiChat']>;
+  appSettings: ReturnType<typeof useLogo>['appSettings'];
+}) {
+  const [input, setInput] = useState('');
+  const inputRef = useRef<HTMLInputElement>(null);
+  const scrollRef = useRef<HTMLDivElement>(null);
   const {
     messages, sendMessage, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
@@ -44,6 +55,51 @@ export function LogoChat() {
   const harness = 'api'; // chat surface always goes through /api/ai/chat (not CLI)
   const isStreaming = status === 'streaming' || status === 'submitted';
   const hasAttachments = attachments.length > 0;
+
+  const applyVoiceTranscript = useCallback((transcript: string) => {
+    const text = transcript.trim();
+    if (!text) return;
+    setInput(prev => {
+      const existing = prev.trim();
+      return existing ? `${existing} ${text}` : text;
+    });
+    requestAnimationFrame(() => inputRef.current?.focus());
+  }, []);
+
+  const {
+    status: voiceStatus,
+    error: voiceError,
+    start: startVoice,
+    stop: stopVoice,
+    isSupported: isVoiceSupported,
+  } = useVoiceInput({
+    surface: 'logo-chat',
+    metadata: { appId: 'logo-designer', sessionId: LOGO_CHAT_SESSION_ID },
+    onTranscript: applyVoiceTranscript,
+  });
+
+  const handleVoiceClick = useCallback(() => {
+    if (voiceStatus === 'recording') {
+      stopVoice();
+      return;
+    }
+    void startVoice();
+  }, [startVoice, stopVoice, voiceStatus]);
+
+  const voiceBusy = voiceStatus === 'recording' || voiceStatus === 'transcribing';
+  const voiceDisabled = voiceStatus !== 'recording' && (isStreaming || voiceStatus === 'transcribing' || !isVoiceSupported);
+  const voiceStatusText = voiceStatus === 'recording'
+    ? 'Listening...'
+    : voiceStatus === 'transcribing'
+      ? 'Transcribing...'
+      : voiceError;
+  const voiceButtonTitle = !isVoiceSupported
+    ? 'Voice input is not supported in this browser'
+    : voiceStatus === 'recording'
+      ? 'Stop voice input'
+      : voiceStatus === 'transcribing'
+        ? 'Transcribing...'
+        : 'Dictate prompt';
 
   useEffect(() => {
     const el = scrollRef.current;
@@ -135,6 +191,16 @@ export function LogoChat() {
             })}
           </div>
         )}
+        {(voiceBusy || voiceError) && (
+          <div className={`mb-2 flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] ${
+            voiceError
+              ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
+              : 'border-accent/25 bg-accent/10 text-muted-foreground'
+          }`}>
+            <Mic size={11} className={voiceStatus === 'recording' ? 'text-red-500 animate-pulse' : 'text-accent'} />
+            <span className="truncate">{voiceStatusText}</span>
+          </div>
+        )}
         <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 focus-within:border-accent/40 transition-colors">
           {messages.length > 0 && (
             <button
@@ -146,6 +212,20 @@ export function LogoChat() {
               <Trash2 size={12} />
             </button>
           )}
+          <button
+            type="button"
+            onClick={handleVoiceClick}
+            disabled={voiceDisabled}
+            className={`p-1 rounded transition-colors shrink-0 ${
+              voiceStatus === 'recording'
+                ? 'text-red-500 bg-red-500/10 hover:bg-red-500/15'
+                : 'text-muted-foreground/80 hover:text-accent hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed'
+            }`}
+            title={voiceButtonTitle}
+            aria-label={voiceButtonTitle}
+          >
+            <Mic size={12} />
+          </button>
           <input
             ref={inputRef}
             type="text"
@@ -656,7 +736,6 @@ function TemplateThumb({ template, size }: { template: LogoTemplate; size: numbe
     try {
       const defaults: Record<string, unknown> = {};
       for (const p of template.params ?? []) defaults[p.key] = p.default;
-      // eslint-disable-next-line no-new-func
       const fn = new Function('p', 'vb', template.renderBody);
       const inner = fn(defaults, 256);
       return typeof inner === 'string' ? inner : '';

@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, type CSSProperties } from 'react';
 import type { TerminalRelayHandle } from '../hooks/useTerminalRelay';
 import { usePlatform } from '../platform/PlatformContext';
+import { useOptionalTheme } from '../theme/ThemeProvider';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -13,10 +14,14 @@ interface TerminalRelayConfigItem {
   value: string;
 }
 
+type TerminalColorScheme = 'dark' | 'light' | 'auto';
+
 interface TerminalRelayProps {
   relay: TerminalRelayHandle;
   fontSize?: number;
   fontFamily?: string;
+  /** Follow the Hudson theme by default, using terminal-specific ANSI palettes. */
+  colorScheme?: TerminalColorScheme;
   /** Key/value pairs shown in the disconnected state so users can see current config at a glance */
   configItems?: TerminalRelayConfigItem[];
   /** Called when the user clicks "Settings" in the disconnected overlay */
@@ -55,31 +60,57 @@ export async function captureWorkspace(): Promise<Blob | null> {
 }
 
 // ---------------------------------------------------------------------------
-// One Dark theme for xterm.js
+// Terminal-specific xterm palettes. These intentionally do not mirror the
+// workspace card theme: CLI ANSI output needs a stable contrast context.
 // ---------------------------------------------------------------------------
 
-const XTERM_THEME = {
-  background: '#1a1a1a',
-  foreground: '#abb2bf',
-  cursor: '#528bff',
-  cursorAccent: '#1a1a1a',
-  selectionBackground: '#3e4451',
-  selectionForeground: '#abb2bf',
-  black: '#1a1a1a',
-  red: '#e06c75',
-  green: '#98c379',
-  yellow: '#e5c07b',
-  blue: '#61afef',
-  magenta: '#c678dd',
-  cyan: '#56b6c2',
-  white: '#abb2bf',
-  brightBlack: '#5c6370',
-  brightRed: '#e06c75',
-  brightGreen: '#98c379',
-  brightYellow: '#e5c07b',
-  brightBlue: '#61afef',
-  brightMagenta: '#c678dd',
-  brightCyan: '#56b6c2',
+const XTERM_CONSOLE_DARK_THEME = {
+  background: '#091112',
+  foreground: '#d7e5e2',
+  cursor: '#35d7d0',
+  cursorAccent: '#091112',
+  selectionBackground: '#173739',
+  selectionForeground: '#f3fbf9',
+  black: '#091112',
+  red: '#ff6b6b',
+  green: '#35d07f',
+  yellow: '#f5c451',
+  blue: '#62b4ff',
+  magenta: '#ff7ab6',
+  cyan: '#32d5ca',
+  white: '#d7e5e2',
+  brightBlack: '#667777',
+  brightRed: '#ff8f8f',
+  brightGreen: '#5ee79f',
+  brightYellow: '#ffd36e',
+  brightBlue: '#8dccff',
+  brightMagenta: '#ff9fca',
+  brightCyan: '#67eee3',
+  brightWhite: '#ffffff',
+};
+
+const XTERM_CONSOLE_LIGHT_THEME = {
+  background: '#f7faf9',
+  foreground: '#111a19',
+  cursor: '#006f6a',
+  cursorAccent: '#f7faf9',
+  selectionBackground: '#c0e7e2',
+  selectionForeground: '#0d1716',
+  black: '#111a19',
+  red: '#9f1f18',
+  green: '#006c46',
+  yellow: '#704600',
+  blue: '#075985',
+  magenta: '#9d174d',
+  cyan: '#006f6a',
+  white: '#dbe5e2',
+  brightBlack: '#52635f',
+  brightRed: '#c2271f',
+  brightGreen: '#007f55',
+  brightYellow: '#865b00',
+  brightBlue: '#0369a1',
+  brightMagenta: '#be185d',
+  brightCyan: '#007f89',
   brightWhite: '#ffffff',
 };
 
@@ -93,9 +124,9 @@ const XTERM_CSS = `
 .xterm.focus, .xterm:focus { outline: none; }
 .xterm .xterm-helpers { position: absolute; top: 0; z-index: 5; }
 .xterm .xterm-helper-textarea { padding: 0; border: 0; margin: 0; position: absolute; opacity: 0; left: -9999em; top: 0; width: 0; height: 0; z-index: -5; white-space: nowrap; overflow: hidden; resize: none; }
-.xterm .composition-view { background: #000; color: #FFF; display: none; position: absolute; white-space: nowrap; z-index: 1; }
+.xterm .composition-view { background: var(--hud-terminal-bg, #091112); color: var(--hud-terminal-fg, #d7e5e2); display: none; position: absolute; white-space: nowrap; z-index: 1; }
 .xterm .composition-view.active { display: block; }
-.xterm .xterm-viewport { background-color: #000; overflow-y: scroll; cursor: default; position: absolute; right: 0; left: 0; top: 0; bottom: 0; }
+.xterm .xterm-viewport { background-color: var(--hud-terminal-bg, transparent); overflow-y: scroll; cursor: default; position: absolute; right: 0; left: 0; top: 0; bottom: 0; }
 .xterm .xterm-screen { position: relative; }
 .xterm .xterm-screen canvas { position: absolute; left: 0; top: 0; }
 .xterm-char-measure-element { display: inline-block; visibility: hidden; position: absolute; top: 0; left: -9999em; line-height: normal; }
@@ -168,6 +199,7 @@ export function TerminalRelay({
   relay,
   fontSize = 12,
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
+  colorScheme = 'auto',
   configItems,
   onOpenSettings,
   onStartService,
@@ -176,6 +208,14 @@ export function TerminalRelay({
   const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect, disconnect } = relay;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
+  const themeContext = useOptionalTheme();
+  const resolvedColorScheme = colorScheme === 'auto'
+    ? (themeContext?.resolvedTheme === 'light' ? 'light' : 'dark')
+    : colorScheme;
+  const xtermTheme = resolvedColorScheme === 'light'
+    ? XTERM_CONSOLE_LIGHT_THEME
+    : XTERM_CONSOLE_DARK_THEME;
+  const minimumContrastRatio = resolvedColorScheme === 'light' ? 4.5 : 3;
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
@@ -303,7 +343,8 @@ export function TerminalRelay({
       terminal = new Terminal({
         fontSize,
         fontFamily,
-        theme: XTERM_THEME,
+        theme: xtermTheme,
+        minimumContrastRatio,
         cursorBlink: true,
         cursorStyle: 'bar',
         allowTransparency: true,
@@ -363,6 +404,14 @@ export function TerminalRelay({
     term.options.fontFamily = fontFamily;
     try { fitRef.current?.fit(); } catch {}
   }, [fontSize, fontFamily]);
+
+  // ---- Keep xterm colors aligned with the terminal color scheme ----
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = xtermTheme;
+    term.options.minimumContrastRatio = minimumContrastRatio;
+  }, [minimumContrastRatio, xtermTheme]);
 
   // ---- Wire relay.onData → terminal.write ----
   useEffect(() => {
@@ -436,7 +485,7 @@ export function TerminalRelay({
           <span className="text-amber-400 text-[14px]">!</span>
         </div>
         <div>
-          <div className="text-[12px] text-neutral-300 font-medium mb-1">Relay service not running</div>
+          <div className="text-[12px] text-foreground font-medium mb-1">Relay service not running</div>
           <div className="text-[11px] text-muted-foreground/80 leading-relaxed">
             {onStartService
               ? 'Start the relay service to open a terminal session.'
@@ -457,7 +506,7 @@ export function TerminalRelay({
           <button
             type="button"
             onClick={() => connect()}
-            className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             Retry
           </button>
@@ -465,7 +514,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               Settings
             </button>
@@ -502,7 +551,7 @@ export function TerminalRelay({
           <span className="text-muted-foreground/80 text-[14px]">&#9655;</span>
         </div>
         <div>
-          <div className="text-[12px] text-neutral-300 font-medium mb-1">Terminal relay disconnected</div>
+          <div className="text-[12px] text-foreground font-medium mb-1">Terminal relay disconnected</div>
           <div className="text-[11px] text-muted-foreground/80 leading-relaxed">Set working directory and connect.</div>
         </div>
         {/* Editable CWD */}
@@ -542,7 +591,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               Settings
             </button>
@@ -553,12 +602,12 @@ export function TerminalRelay({
   } else if (status === 'connecting' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="w-6 h-6 border-2 border-neutral-600 border-t-cyan-400 rounded-full animate-spin" />
+        <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-cyan-500 rounded-full animate-spin" />
         <span className="text-[12px] text-muted-foreground">Connecting to relay...</span>
         <button
           type="button"
           onClick={() => { disconnect(); }}
-          className="text-[10px] px-3 py-1 rounded-full border border-border text-muted-foreground/80 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+          className="text-[10px] px-3 py-1 rounded-full border border-border text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
         >
           Cancel
         </button>
@@ -592,7 +641,10 @@ export function TerminalRelay({
         style={{
           visibility: overlay ? 'hidden' : 'visible',
           padding: '4px 8px',
-        }}
+          backgroundColor: xtermTheme.background,
+          '--hud-terminal-bg': xtermTheme.background,
+          '--hud-terminal-fg': xtermTheme.foreground,
+        } as CSSProperties}
       />
     </div>
   );

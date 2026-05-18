@@ -41,20 +41,20 @@
   --hud-font-mono: var(--font-jetbrains-mono), ui-monospace, monospace;
 }
 
-/* hudson light — warm off-white canvas, cool ink, pushed emerald. */
+/* hudson light — cool porcelain canvas, dark ink, cyan-teal accent. */
 .embed-theme-hudson-light {
-  --hud-bg: oklch(0.975 0.008 90);
-  --hud-bg-2: oklch(1 0 0);
-  --hud-bg-3: oklch(0.945 0.012 85);
-  --hud-ink: oklch(0.21 0.02 260);
-  --hud-ink-1: oklch(0.32 0.02 260);
-  --hud-ink-2: oklch(0.50 0.02 260);
-  --hud-ink-3: oklch(0.66 0.015 260);
-  --hud-line: oklch(0.88 0.012 85);
-  --hud-line-strong: oklch(0.74 0.014 85);
-  --hud-accent: oklch(0.58 0.19 162);
-  --hud-accent-soft: oklch(0.58 0.19 162 / 0.08);
-  --hud-accent-line: oklch(0.58 0.19 162 / 0.40);
+  --hud-bg: oklch(0.982 0.006 205);
+  --hud-bg-2: oklch(0.998 0.002 205);
+  --hud-bg-3: oklch(0.955 0.010 205);
+  --hud-ink: oklch(0.18 0.018 245);
+  --hud-ink-1: oklch(0.32 0.018 245);
+  --hud-ink-2: oklch(0.43 0.020 245);
+  --hud-ink-3: oklch(0.62 0.016 245);
+  --hud-line: oklch(0.865 0.012 215);
+  --hud-line-strong: oklch(0.82 0.012 215);
+  --hud-accent: oklch(0.54 0.16 178);
+  --hud-accent-soft: oklch(0.54 0.16 178 / 0.08);
+  --hud-accent-line: oklch(0.54 0.16 178 / 0.40);
   --hud-border-width: 1px;
   --hud-font-display: var(--font-newsreader), 'Times New Roman', serif;
   --hud-font-body: var(--font-space-grotesk), system-ui, sans-serif;
@@ -83,18 +83,18 @@
 
 /* editorial light — paper-warm canvas + dusty orange. */
 .embed-theme-editorial-light {
-  --hud-bg: oklch(0.98 0.01 80);
-  --hud-bg-2: oklch(1 0 0);
-  --hud-bg-3: oklch(0.94 0.02 80);
-  --hud-ink: oklch(0.20 0.02 60);
+  --hud-bg: oklch(0.976 0.009 78);
+  --hud-bg-2: oklch(0.998 0.002 78);
+  --hud-bg-3: oklch(0.932 0.018 80);
+  --hud-ink: oklch(0.18 0.02 60);
   --hud-ink-1: oklch(0.32 0.02 60);
-  --hud-ink-2: oklch(0.48 0.03 60);
-  --hud-ink-3: oklch(0.66 0.022 60);
-  --hud-line: oklch(0.88 0.015 80);
-  --hud-line-strong: oklch(0.74 0.018 80);
-  --hud-accent: oklch(0.60 0.18 40);
-  --hud-accent-soft: oklch(0.60 0.18 40 / 0.08);
-  --hud-accent-line: oklch(0.60 0.18 40 / 0.40);
+  --hud-ink-2: oklch(0.42 0.025 60);
+  --hud-ink-3: oklch(0.62 0.020 60);
+  --hud-line: oklch(0.82 0.014 80);
+  --hud-line-strong: oklch(0.78 0.014 80);
+  --hud-accent: oklch(0.56 0.16 42);
+  --hud-accent-soft: oklch(0.56 0.16 42 / 0.08);
+  --hud-accent-line: oklch(0.56 0.16 42 / 0.40);
   --hud-border-width: 1px;
   --hud-font-display: var(--font-bodoni-moda), 'Times New Roman', serif;
   --hud-font-body: var(--font-spectral), Georgia, serif;

@@ -139,3 +139,6 @@ native/bunsen/artifacts/
 .openscout/
 # OpenScout local state
 .openscout/project.json
+
+# Local build artifacts (icon generation, talkie textures, etc.)
+output/

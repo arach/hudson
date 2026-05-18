@@ -7,6 +7,9 @@ import { builtinRenderBodies } from '../../../apps/logo-designer/builtinRenderBo
 const BUILTIN_IDS = new Set([
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
   'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic',
+  't-texture-phosphor', 't-texture-dot-matrix', 't-texture-pixel',
+  't-texture-halftone', 't-texture-letterpress', 't-texture-etched',
+  't-texture-chrome', 't-texture-particle',
 ]);
 
 // ---------------------------------------------------------------------------

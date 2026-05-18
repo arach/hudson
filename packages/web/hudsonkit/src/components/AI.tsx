@@ -131,6 +131,11 @@ export function AI({
 
       {/* Input bar */}
       <div className="px-3 py-2.5 border-t border-border/50 bg-background/60">
+        {inputStatus && (
+          <div className="mb-2">
+            {inputStatus}
+          </div>
+        )}
         {/* Attachment toggles */}
         {hasAttachments && (
           <div className="flex items-center gap-1.5 mb-2">
@@ -145,7 +150,7 @@ export function AI({
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     isActive
                       ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
-                      : 'text-muted-foreground/80 border-border hover:text-foreground hover:border-neutral-600'
+                      : 'text-muted-foreground/80 border-border hover:text-foreground hover:border-foreground/30'
                   }`}
                 >
                   {att.label}
@@ -158,6 +163,7 @@ export function AI({
           </div>
         )}
         <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 focus-within:border-accent/40 transition-colors">
+          {inputExtras}
           {messages.length > 0 && (
             <button
               type="button"
