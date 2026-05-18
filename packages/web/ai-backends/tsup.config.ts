@@ -3,6 +3,7 @@ import { defineConfig } from 'tsup';
 export default defineConfig({
   entry: {
     index: 'src/index.ts',
+    'vercel-ai': 'src/adapters/vercel-ai.ts',
     toolsets: 'src/toolsets/index.ts',
   },
   format: ['esm'],

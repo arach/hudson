@@ -102,6 +102,16 @@
       "import": "./dist/player.js",
       "default": "./dist/player.js"
     },
+    "./primitives": {
+      "types": "./dist/primitives.d.ts",
+      "import": "./dist/primitives.js",
+      "default": "./dist/primitives.js"
+    },
+    "./patterns": {
+      "types": "./dist/patterns.d.ts",
+      "import": "./dist/patterns.js",
+      "default": "./dist/patterns.js"
+    },
     "./styles": "./dist/styles.css"
   },
   "files": [

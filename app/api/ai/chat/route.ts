@@ -1,11 +1,7 @@
-import { convertToModelMessages } from 'ai';
-import { createVercelAiBackend } from '@hudson/ai-backends';
-import type { VercelAiUIFinishEvent } from '@hudson/ai-backends';
-import { loadToolset } from '../toolsets';
-import { resolveModel } from '../providers';
+import { createPiAiBackend } from '@hudsonkit/ai';
 import { streamFromCLI } from './cli';
-
-const backend = createVercelAiBackend();
+import { DEFAULT_MODELS, loadCredentials } from '../providers';
+import { loadToolset } from '../toolsets';
 
 function log(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -15,6 +11,8 @@ function log(msg: string) {
 // CLI mode only works for providers that have a local CLI binary speaking
 // stream-json. Everything else (copilot, openai, minimax, …) must go API.
 const CLI_CAPABLE_PROVIDERS = new Set(['anthropic', 'claude']);
+
+const piBackend = createPiAiBackend();
 
 export async function POST(req: Request) {
   const { messages, toolset, context = {}, mode: requestedMode, sessionId, provider, model } = await req.json();
@@ -36,26 +34,18 @@ export async function POST(req: Request) {
   }
 
   try {
-    const { tools, system } = loadToolset(toolset, context);
-    const toolNames = Object.keys(tools);
-    log(`tools: [${toolNames.join(', ')}] | system: ${system?.length ?? 0} chars`);
-
-    const modelMessages = await convertToModelMessages(messages);
-    log(`converted ${messages.length} UI messages → ${modelMessages.length} model messages`);
-
-    // Probe resolveModel synchronously so we can log + 500 on credential
-    // errors before opening the stream.
-    const resolvedModel = resolveModel(provider, model) as { modelId?: string };
-    log(`model resolved: ${resolvedModel.modelId ?? 'unknown'}`);
-
-    return backend.streamUI({
-      messages: modelMessages,
-      system,
-      tools,
-      config: { provider, model, resolveModel },
-      onFinish: ({ text, finishReason, totalTokens }: VercelAiUIFinishEvent) => {
-        log(`finished: reason=${finishReason} | tokens=${totalTokens ?? '?'} | text=${text.length} chars`);
-      },
+    return piBackend.streamUI({
+      messages,
+      toolset,
+      context,
+      provider,
+      model,
+      // Hudson's loadToolset returns Zod-schema-bearing tools shaped like
+      // HudsonTool at runtime; the extra `toolPrompt` field is unused by
+      // streamUI. Cast through unknown to bridge the structural mismatch.
+      loadToolset: loadToolset as never,
+      loadCredentials: loadCredentials as () => Record<string, string | undefined>,
+      defaultModels: DEFAULT_MODELS,
     });
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);

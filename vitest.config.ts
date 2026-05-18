@@ -20,6 +20,14 @@ export default defineConfig({
         replacement: `${resolve(__dirname, 'packages/web/hudsonkit/src')}/$1.ts`,
       },
       { find: 'hudsonkit', replacement: resolve(__dirname, 'packages/web/hudsonkit/src/index.ts') },
+      {
+        find: '@hudsonkit/ai/toolsets',
+        replacement: resolve(__dirname, 'packages/web/ai-backends/src/toolsets/index.ts'),
+      },
+      {
+        find: '@hudsonkit/ai',
+        replacement: resolve(__dirname, 'packages/web/ai-backends/src/index.ts'),
+      },
     ],
   },
 });

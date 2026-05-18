@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @hudson/ai-backends — public API
+// @hudsonkit/ai — public API
 // ---------------------------------------------------------------------------
 
 // Core types
@@ -32,7 +32,18 @@ export { hudVaultResolver } from './credentials';
 export { aggregateStream } from './dispatch';
 
 // Adapters
-export { createPiAiBackend, type PiAiConfig, type PiAiMeta, type PiAiBackendOptions } from './adapters/pi-ai';
+export {
+  createPiAiBackend,
+  type PiAiConfig,
+  type PiAiMeta,
+  type PiAiBackendOptions,
+  type PiAiBackend,
+  type PiAiUIRequest,
+  type PiAiUIMessage,
+  type PiAiUIMessagePart,
+  type PiAiCompiledToolset,
+  type HudsonTool,
+} from './adapters/pi-ai';
 export {
   createVercelAiBackend,
   type VercelAiConfig,
@@ -43,7 +54,7 @@ export {
   type VercelAiUIRequest,
 } from './adapters/vercel-ai';
 
-// Toolset types + registry (also available via '@hudson/ai-backends/toolsets')
+// Toolset types + registry (also available via '@hudsonkit/ai/toolsets')
 export type { ToolsetDefinition } from './toolsets/types';
 export type { ToolsetRegistry } from './toolsets/registry';
 export { createToolsetRegistry, buildIntentsToolset, defaultRegistry, INTENTS_SYSTEM_PROMPT } from './toolsets/registry';

@@ -11,6 +11,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 ## Web
 
 - **[Building apps](./building-apps.md)** — the `HudsonApp` contract with walkthrough
+- **[Building app AI](./building-app-ai.md)** — adding an AI surface to a Hudson app (toolset + hook pattern)
 - **[API reference](./api.md)** — every `hudsonkit` export, organized by subpath
 - **[Settings](./settings.md)** — declarative app-level settings schema with persisted values
 - **[Multi-instance](./multi-instance.md)** — per-instance state scoping
@@ -39,6 +40,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Voice](./voice.md)** — voice input/output (web `hudsonkit/voice` + Apple `HudsonVoice`)
 - **[Observability](./observability.md)** — logs, metrics, traces (web `hudsonkit/observability` + Apple `HudsonObservability`)
 - **[Table](./table.md)** — tabular data primitive on both surfaces
+- **[Patterns](./patterns.md)** — optional app-interior rails, trees, grouped lists, cards, and context panels
 
 ## Design system
 

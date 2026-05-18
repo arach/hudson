@@ -1,16 +1,34 @@
 {
-  "name": "@hudson/ai-backends",
+  "name": "@hudsonkit/ai",
   "version": "0.1.0",
-  "description": "Backend interface + portable toolset registry for Hudson AI surfaces.",
+  "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai and vercel-ai adapters.",
+  "keywords": [
+    "hudsonkit",
+    "ai",
+    "ai-sdk",
+    "llm",
+    "tools",
+    "agent",
+    "streaming"
+  ],
+  "homepage": "https://github.com/arach/hudson/tree/main/packages/web/ai-backends#readme",
   "license": "FSL-1.1-MIT",
   "type": "module",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./vercel-ai": {
+      "types": "./dist/vercel-ai.d.ts",
+      "import": "./dist/vercel-ai.js",
+      "default": "./dist/vercel-ai.js"
     },
     "./toolsets": {
       "types": "./dist/toolsets.d.ts",
@@ -19,8 +37,7 @@
     }
   },
   "files": [
-    "dist",
-    "src"
+    "dist"
   ],
   "repository": {
     "type": "git",

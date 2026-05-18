@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 const toolScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 
@@ -18,6 +18,7 @@ You must stay grounded in the live workspace context and the tools that are actu
 - Use multiple tool calls for compound tasks.
 - If a requested action is ambiguous or the target app/command is unclear, ask a short clarifying question.
 - When scope mode is \`peek\`, treat that workspace as a static preview. Do not claim live app commands, live app settings, or pipe state there.
+- When the target or focused app provides \`agentContext\`, treat it as the operating guide for that app's work. Apply app-specific tone and behavior only inside that app scope.
 
 ## Design taste
 - Clean, intentional, professional
@@ -26,7 +27,9 @@ You must stay grounded in the live workspace context and the tools that are actu
 - Optical corrections over mathematical perfection
 
 ## Response style
-- After tool calls, summarize what changed in 1-2 concise sentences.
+- After tool calls, summarize the exact change in 1-2 concise sentences. Mention the target app/item by name.
+- If the tool call was only a request to perform an action and the live effect is not observable from tool output, phrase the response as "I sent..." or "I queued..." instead of claiming visual confirmation.
+- Avoid generic filler when a specific result is available.
 - Do not claim capabilities that are not represented in the provided context or tools.`;
 
 function formatValue(value: unknown): string {
@@ -104,6 +107,7 @@ function context(ctx: Record<string, unknown>): string {
       id: string;
       name: string;
       description?: string;
+      agentContext?: string;
       mode: 'canvas' | 'panel';
       canvasMode?: 'native' | 'windowed';
       services?: Array<{ serviceId: string }>;
@@ -118,7 +122,10 @@ function context(ctx: Record<string, unknown>): string {
         `  description: ${candidate.description ?? 'n/a'}`,
         `  defaultFocusedAppId: ${candidate.defaultFocusedAppId ?? 'none'}`,
         ...candidate.apps.map(app =>
-          `  - app: ${app.name} (${app.id}) | ${app.mode}${app.canvasMode ? ` / ${app.canvasMode}` : ''}${app.services?.length ? ` | services: ${app.services.map(service => service.serviceId).join(', ')}` : ''}`,
+          [
+            `  - app: ${app.name} (${app.id}) | ${app.mode}${app.canvasMode ? ` / ${app.canvasMode}` : ''}${app.services?.length ? ` | services: ${app.services.map(service => service.serviceId).join(', ')}` : ''}`,
+            app.agentContext ? `    agentContext: ${app.agentContext}` : '',
+          ].filter(Boolean).join('\n'),
         ),
       ].join('\n')).join('\n'),
     ].join('\n'));
@@ -138,6 +145,7 @@ function context(ctx: Record<string, unknown>): string {
     status?: { label: string; color: string } | null;
     activeToolHint?: string | null;
     services?: Array<{ serviceId: string; optional?: boolean }>;
+    agentContext?: string;
   }> | undefined;
   if (apps && apps.length > 0) {
     sections.push([
@@ -152,6 +160,7 @@ function context(ctx: Record<string, unknown>): string {
           `  mode: ${app.mode}${app.canvasMode ? ` / ${app.canvasMode}` : ''}`,
           `  visible: ${Boolean(app.visible)} | disabled: ${Boolean(app.disabled)} | focused: ${Boolean(app.focused)}`,
           `  description: ${app.description ?? 'n/a'}`,
+          app.agentContext ? `  agentContext: ${app.agentContext}` : '',
           `  status: ${app.status ? `${app.status.label} (${app.status.color})` : 'n/a'}`,
           `  activeToolHint: ${app.activeToolHint ?? 'none'}`,
           `  tools: ${tools}`,
@@ -160,6 +169,23 @@ function context(ctx: Record<string, unknown>): string {
           `  services: ${services}`,
         ].join('\n');
       }).join('\n'),
+    ].join('\n'));
+  }
+
+  const portCatalog = ctx.portCatalog as Array<{
+    appId: string;
+    appName: string;
+    outputs: Array<{ id: string; name?: string; dataType?: string; description?: string }>;
+    inputs: Array<{ id: string; name?: string; dataType?: string; description?: string }>;
+  }> | undefined;
+  if (portCatalog && portCatalog.length > 0) {
+    sections.push([
+      '## Port Catalog',
+      portCatalog.map(entry => [
+        `- ${entry.appName} (${entry.appId})`,
+        `  outputs: ${entry.outputs.map(port => `${port.id}${port.description ? ` - ${port.description}` : ''}`).join('; ') || 'none'}`,
+        `  inputs: ${entry.inputs.map(port => `${port.id}${port.description ? ` - ${port.description}` : ''}`).join('; ') || 'none'}`,
+      ].join('\n')).join('\n'),
     ].join('\n'));
   }
 
