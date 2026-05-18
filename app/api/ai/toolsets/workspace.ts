@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 const toolScalarSchema = z.union([z.string(), z.number(), z.boolean()]);
 

@@ -1,4 +1,4 @@
-import { createPiAiBackend } from '@hudson/ai-backends';
+import { createPiAiBackend } from '@hudsonkit/ai';
 import { streamFromCLI } from './cli';
 import { DEFAULT_MODELS, loadCredentials } from '../providers';
 import { loadToolset } from '../toolsets';

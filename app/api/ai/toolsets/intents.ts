@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import { INTENTS_SYSTEM_PROMPT, type ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+import { INTENTS_SYSTEM_PROMPT, type ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 // ---------------------------------------------------------------------------
 // Generic intents toolset.

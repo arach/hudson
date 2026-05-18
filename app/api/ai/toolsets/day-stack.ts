@@ -1,6 +1,6 @@
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 import { DAY_STACK_AGENT_GUIDE } from '../../../apps/day-stack/agent-context';
 
 const system = `You are the AI planner embedded in Stacks, Hudson's daily focus planning app.

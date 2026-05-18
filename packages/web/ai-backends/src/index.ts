@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// @hudson/ai-backends — public API
+// @hudsonkit/ai — public API
 // ---------------------------------------------------------------------------
 
 // Core types
@@ -54,7 +54,7 @@ export {
   type VercelAiUIRequest,
 } from './adapters/vercel-ai';
 
-// Toolset types + registry (also available via '@hudson/ai-backends/toolsets')
+// Toolset types + registry (also available via '@hudsonkit/ai/toolsets')
 export type { ToolsetDefinition } from './toolsets/types';
 export type { ToolsetRegistry } from './toolsets/registry';
 export { createToolsetRegistry, buildIntentsToolset, defaultRegistry, INTENTS_SYSTEM_PROMPT } from './toolsets/registry';

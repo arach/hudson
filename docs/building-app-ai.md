@@ -56,13 +56,13 @@ Naming conventions:
 
 ## Server side — the toolset
 
-A `ToolsetDefinition` has three parts: `system`, `context(ctx)`, `tools(ctx)`. The shape is enforced by `import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets'`.
+A `ToolsetDefinition` has three parts: `system`, `context(ctx)`, `tools(ctx)`. The shape is enforced by `import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets'`.
 
 ```ts
 // app/api/ai/toolsets/foo.ts
 import { tool } from 'ai';
 import { z } from 'zod';
-import type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 // ─── System prompt ──────────────────────────────────────────────────────────
 // Static. Personality, taste, capability docs. Doesn't change per request.

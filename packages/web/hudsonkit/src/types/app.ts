@@ -103,6 +103,8 @@ export interface HudsonApp {
   name: string;
   /** Short description for tooltips / palette */
   description?: string;
+  /** Optional planner/operator guide that workspace AI surfaces include in the system prompt when this app is the focused target. */
+  agentContext?: string;
   /** Frame mode: 'canvas' enables pan/zoom, 'panel' renders scrollable content */
   mode: 'canvas' | 'panel';
   /** Icon shown next to the app name in the navigation bar */

@@ -1,5 +1,5 @@
 {
-  "name": "@hudson/ai-backends",
+  "name": "@hudsonkit/ai",
   "version": "0.1.0",
   "description": "Backend interface + portable toolset registry for Hudson AI surfaces.",
   "license": "FSL-1.1-MIT",

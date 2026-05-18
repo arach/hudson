@@ -21,11 +21,11 @@ export default defineConfig({
       },
       { find: 'hudsonkit', replacement: resolve(__dirname, 'packages/web/hudsonkit/src/index.ts') },
       {
-        find: '@hudson/ai-backends/toolsets',
+        find: '@hudsonkit/ai/toolsets',
         replacement: resolve(__dirname, 'packages/web/ai-backends/src/toolsets/index.ts'),
       },
       {
-        find: '@hudson/ai-backends',
+        find: '@hudsonkit/ai',
         replacement: resolve(__dirname, 'packages/web/ai-backends/src/index.ts'),
       },
     ],

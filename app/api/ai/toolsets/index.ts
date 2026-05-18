@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { defaultRegistry } from '@hudson/ai-backends/toolsets';
+import { defaultRegistry } from '@hudsonkit/ai/toolsets';
 import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
 import { intentsToolset } from './intents';
@@ -8,7 +8,7 @@ import { dayStackToolset } from './day-stack';
 
 // Re-export the canonical ToolsetDefinition type from the package so any
 // remaining internal imports of `ToolsetDefinition from './index'` still work.
-export type { ToolsetDefinition } from '@hudson/ai-backends/toolsets';
+export type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 // Register the app's toolsets on the package's default registry at module init.
 defaultRegistry.register('logo', logoToolset);
