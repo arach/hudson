@@ -360,6 +360,7 @@ export function WorkspaceAI({
         id: app.id,
         name: app.name,
         description: app.description,
+        agentContext: app.agentContext,
         mode: app.mode,
         canvasMode: canvasMode ?? 'native',
         services: app.services ?? [],
@@ -413,6 +414,7 @@ export function WorkspaceAI({
         id: app.id,
         name: app.name,
         description: app.description,
+        agentContext: app.agentContext,
         mode: app.mode,
         canvasMode: app.canvasMode,
         visible: false,
@@ -1022,15 +1024,15 @@ export function WorkspaceAI({
 
   return (
     <div
-      className="flex flex-col h-full bg-neutral-950"
+      className="flex flex-col h-full bg-background text-foreground"
       onDragOver={handleDragOver}
       onDragLeave={handleDragLeave}
       onDrop={handleDrop}
     >
       {/* Header */}
-      <div className="flex items-center gap-2 px-3 py-2 border-b border-white/[0.06]">
-        <Bot size={13} className={chat.status === 'submitted' || chat.status === 'streaming' ? 'text-cyan-400 animate-pulse' : 'text-cyan-600'} />
-        <span className="text-[11px] font-mono text-zinc-500">Hudson AI</span>
+      <div className="flex items-center gap-2 px-3 py-2 border-b border-border/60 bg-card/60">
+        <Bot size={13} className={chat.status === 'submitted' || chat.status === 'streaming' ? 'text-cyan-600 animate-pulse dark:text-cyan-300' : 'text-cyan-700/75 dark:text-cyan-300/75'} />
+        <span className="text-[11px] font-mono text-muted-foreground">Hudson AI</span>
         {(chat.status === 'submitted' || chat.status === 'streaming') && (
           <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
         )}
@@ -1041,8 +1043,8 @@ export function WorkspaceAI({
         )}
         <div className="ml-auto flex items-center gap-2">
           {workspaceCatalog.length > 1 && (
-            <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
-              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-zinc-700">
+            <label className="flex items-center gap-1 rounded border border-border bg-background/70 px-1.5 py-1">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
                 scope
               </span>
               <select
@@ -1050,11 +1052,11 @@ export function WorkspaceAI({
                 value={scopedWorkspace?.id ?? workspace.id}
                 disabled={isChatBusy}
                 onChange={event => setScopeWorkspaceId(event.target.value)}
-                className="max-w-[180px] bg-transparent text-[10px] font-mono text-zinc-500 outline-none disabled:cursor-not-allowed disabled:text-zinc-700"
+                className="max-w-[180px] bg-transparent text-[10px] font-mono text-muted-foreground outline-none disabled:cursor-not-allowed disabled:opacity-45"
                 title={scopeLabel}
               >
                 {workspaceCatalog.map(candidate => (
-                  <option key={candidate.id} value={candidate.id} className="bg-neutral-950 text-white">
+                  <option key={candidate.id} value={candidate.id}>
                     {candidate.name}
                   </option>
                 ))}
@@ -1073,14 +1075,14 @@ export function WorkspaceAI({
               type="button"
               onClick={() => void onToolCall('load_workspace', { workspaceId: scopedWorkspace.id })}
               disabled={isChatBusy}
-              className="rounded border border-cyan-500/20 bg-cyan-500/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300 transition-colors hover:border-cyan-400/30 hover:bg-cyan-500/15 disabled:cursor-not-allowed disabled:border-white/[0.06] disabled:bg-white/[0.03] disabled:text-zinc-700"
+              className="rounded border border-cyan-700/20 bg-cyan-700/10 px-2 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-700 transition-colors hover:border-cyan-700/30 hover:bg-cyan-700/15 disabled:cursor-not-allowed disabled:border-border disabled:bg-muted disabled:text-muted-foreground dark:border-cyan-400/20 dark:bg-cyan-400/10 dark:text-cyan-300 dark:hover:border-cyan-400/30"
             >
               load
             </button>
           )}
           {canUseDevModelPicker && (
-            <label className="flex items-center gap-1 rounded border border-white/[0.06] bg-white/[0.03] px-1.5 py-1">
-              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-zinc-700">
+            <label className="flex items-center gap-1 rounded border border-border bg-background/70 px-1.5 py-1">
+              <span className="text-[8px] font-mono uppercase tracking-[0.16em] text-muted-foreground">
                 dev
               </span>
               <select
@@ -1088,24 +1090,24 @@ export function WorkspaceAI({
                 value={devModelPreset.value}
                 disabled={isChatBusy}
                 onChange={event => setDevModelPresetId(event.target.value)}
-                className="max-w-[190px] bg-transparent text-[10px] font-mono text-zinc-500 outline-none disabled:cursor-not-allowed disabled:text-zinc-700"
+                className="max-w-[190px] bg-transparent text-[10px] font-mono text-muted-foreground outline-none disabled:cursor-not-allowed disabled:opacity-45"
                 title={`${devModelPreset.provider}/${devModelPreset.model}`}
               >
                 {HUDSON_AI_DEV_MODEL_PRESETS.map(preset => (
-                  <option key={preset.value} value={preset.value} className="bg-neutral-950 text-white">
+                  <option key={preset.value} value={preset.value}>
                     {preset.label}
                   </option>
                 ))}
               </select>
             </label>
           )}
-          <span className="max-w-[90px] truncate text-[9px] font-mono uppercase text-zinc-700" title={activeProvider}>
+          <span className="max-w-[90px] truncate text-[9px] font-mono uppercase text-muted-foreground" title={activeProvider}>
             {activeProvider}
           </span>
-          <span className="max-w-[160px] truncate text-[9px] font-mono text-zinc-800" title={activeModel}>
+          <span className="max-w-[160px] truncate text-[9px] font-mono text-muted-foreground" title={activeModel}>
             {activeModel}
           </span>
-          <span className="max-w-[120px] truncate text-[9px] font-mono text-zinc-700" title={scopeLabel}>
+          <span className="max-w-[120px] truncate text-[9px] font-mono text-muted-foreground" title={scopeLabel}>
             {scopeLabel}
           </span>
         </div>
@@ -1119,7 +1121,7 @@ export function WorkspaceAI({
               <div className={`text-[10px] font-mono uppercase tracking-wider ${voiceStatus === 'unavailable' ? 'text-amber-300/80' : 'text-red-300/80'}`}>
                 {voiceStatus === 'unavailable' ? 'Voice unavailable' : 'Voice error'}
               </div>
-              <div className="text-[11px] leading-relaxed text-zinc-400">
+              <div className="text-[11px] leading-relaxed text-muted-foreground">
                 {voiceError}
               </div>
             </div>
@@ -1129,7 +1131,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={() => void startVoiceCapture()}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-white/60 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
                   >
                     Retry
                   </button>
@@ -1138,7 +1140,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleInstallVox}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
                   >
                     Install Vox
                   </button>
@@ -1147,7 +1149,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleLaunchVox}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
                   >
                     Launch Vox
                   </button>
@@ -1156,7 +1158,7 @@ export function WorkspaceAI({
                   <button
                     type="button"
                     onClick={handleOpenVoxSettings}
-                    className="rounded border border-white/10 px-2 py-1 text-[10px] font-mono text-zinc-400 hover:text-white hover:border-white/20 transition-colors"
+                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
                   >
                     Settings
                   </button>
@@ -1170,7 +1172,7 @@ export function WorkspaceAI({
       {/* Messages */}
       <div ref={scrollRef} className="flex-1 overflow-y-auto frame-scrollbar px-3 py-2 space-y-3">
         {messages.length === 0 && (
-          <div className="text-[11px] text-zinc-800 text-center mt-8">
+          <div className="text-[11px] text-muted-foreground text-center mt-8">
             Ask me anything about the workspace. I can act live in the current workspace, peek into another workspace, or load that workspace when you want to switch over.
           </div>
         )}
@@ -1186,8 +1188,8 @@ export function WorkspaceAI({
             <div key={i} className={`flex ${isUser ? 'justify-end' : 'justify-start'}`}>
               <div className={`max-w-[85%] rounded-lg px-3 py-2 text-[12px] leading-relaxed ${
                 isUser
-                  ? 'bg-cyan-500/10 text-zinc-300 border border-cyan-500/15'
-                  : 'bg-white/[0.03] text-zinc-400 border border-white/[0.05]'
+                  ? 'bg-cyan-700/10 text-foreground border border-cyan-700/15 dark:bg-cyan-400/10 dark:border-cyan-400/15'
+                  : 'hudson-ai-message bg-card/70 text-foreground border border-border/60'
               }`}>
                 {fileParts.length > 0 && (
                   <div className="flex flex-wrap gap-1.5 mb-2">
@@ -1197,7 +1199,7 @@ export function WorkspaceAI({
                         key={j}
                         src={part.url as string}
                         alt={(part.filename as string) ?? 'attachment'}
-                        className="max-w-[120px] max-h-[80px] rounded border border-white/[0.08] object-contain"
+                        className="max-w-[120px] max-h-[80px] rounded border border-border object-contain"
                       />
                     ))}
                   </div>
@@ -1213,14 +1215,14 @@ export function WorkspaceAI({
 
         {generatedImages.map((image, idx) => (
           <div key={`gen-${idx}`} className="flex justify-start">
-            <div className="max-w-[85%] rounded-lg px-3 py-2 bg-white/[0.03] border border-white/[0.05]">
+            <div className="max-w-[85%] rounded-lg px-3 py-2 bg-card/70 border border-border/60">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={image.dataUrl}
                 alt={image.prompt}
-                className="max-w-full rounded border border-white/[0.08]"
+                className="max-w-full rounded border border-border"
               />
-              <div className="text-[9px] text-zinc-700 mt-1.5 truncate font-mono">{image.prompt}</div>
+              <div className="text-[9px] text-muted-foreground mt-1.5 truncate font-mono">{image.prompt}</div>
             </div>
           </div>
         ))}
@@ -1237,7 +1239,7 @@ export function WorkspaceAI({
                   <span className="w-1 h-1 rounded-full bg-cyan-400/40 animate-[bounce_1.4s_ease-in-out_0.2s_infinite]" />
                   <span className="w-1 h-1 rounded-full bg-cyan-400/20 animate-[bounce_1.4s_ease-in-out_0.4s_infinite]" />
                 </div>
-                <span className="text-[10px] text-cyan-700 font-mono">
+                <span className="text-[10px] text-cyan-700 font-mono dark:text-cyan-300">
                   {chat.status === 'submitted' ? 'Thinking' : 'Writing'}
                 </span>
               </div>
@@ -1248,23 +1250,23 @@ export function WorkspaceAI({
 
       {/* Attachment preview strip */}
       {attachments.length > 0 && (
-        <div className="px-3 py-2 border-t border-white/[0.04] flex items-center gap-2 overflow-x-auto">
+        <div className="px-3 py-2 border-t border-border/50 flex items-center gap-2 overflow-x-auto">
           {attachments.map(attachment => (
             <div key={attachment.id} className="relative group shrink-0">
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img
                 src={attachment.previewUrl}
                 alt={attachment.name}
-                className="h-12 rounded border border-white/[0.08] object-contain"
+                className="h-12 rounded border border-border object-contain"
               />
               <button
                 type="button"
                 onClick={() => removeAttachment(attachment.id)}
-                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-neutral-800 border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-card border border-border flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
               >
-                <X size={8} className="text-zinc-400" />
+                <X size={8} className="text-muted-foreground" />
               </button>
-              <div className="absolute bottom-0 inset-x-0 bg-black/60 text-[7px] text-zinc-600 px-1 truncate rounded-b">
+              <div className="absolute bottom-0 inset-x-0 bg-background/75 text-[7px] text-muted-foreground px-1 truncate rounded-b">
                 {attachment.name}
               </div>
             </div>
@@ -1273,13 +1275,13 @@ export function WorkspaceAI({
       )}
 
       {/* Input */}
-      <form onSubmit={handleSubmit} className="px-3 py-2 border-t border-white/[0.06]">
+      <form onSubmit={handleSubmit} className="px-3 py-2 border-t border-border/60 bg-card/40">
         <div className="flex gap-2 items-center">
           <button
             type="button"
             onClick={handleSnapshot}
             disabled={snapping}
-            className="p-2 rounded-lg text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04] disabled:opacity-30 transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-cyan-700 hover:bg-muted disabled:opacity-30 transition-colors dark:hover:text-cyan-300"
             title="Capture workspace screenshot"
           >
             {snapping ? <Loader2 size={14} className="animate-spin" /> : <Camera size={14} />}
@@ -1287,7 +1289,7 @@ export function WorkspaceAI({
           <button
             type="button"
             onClick={() => fileInputRef.current?.click()}
-            className="p-2 rounded-lg text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04] transition-colors"
+            className="p-2 rounded-lg text-muted-foreground hover:text-cyan-700 hover:bg-muted transition-colors dark:hover:text-cyan-300"
             title="Attach image"
           >
             <ImageIcon size={14} />
@@ -1305,7 +1307,7 @@ export function WorkspaceAI({
             className={`p-2 rounded-lg transition-colors disabled:opacity-30 ${
               voiceStatus === 'recording'
                 ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
-                : 'text-zinc-700 hover:text-cyan-500 hover:bg-white/[0.04]'
+                : 'text-muted-foreground hover:text-cyan-700 hover:bg-muted dark:hover:text-cyan-300'
             }`}
             title={voiceStatus === 'recording' ? 'Stop recording' : 'Record voice prompt'}
           >
@@ -1343,12 +1345,12 @@ export function WorkspaceAI({
             }}
             onPaste={handlePaste}
             placeholder="Ask Hudson anything..."
-            className="flex-1 px-3 py-2 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[12px] text-zinc-200 placeholder:text-zinc-700 outline-none focus:border-cyan-500/30 transition-colors"
+            className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[12px] text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-cyan-700/35 transition-colors dark:focus:border-cyan-300/35"
           />
           <button
             type="submit"
             disabled={(!input.trim() && attachments.length === 0) || chat.status === 'streaming'}
-            className="px-3 py-2 rounded-lg bg-cyan-500/15 text-cyan-400 hover:bg-cyan-500/25 disabled:opacity-30 disabled:pointer-events-none transition-colors"
+            className="px-3 py-2 rounded-lg bg-cyan-700/12 text-cyan-700 hover:bg-cyan-700/18 disabled:opacity-30 disabled:pointer-events-none transition-colors dark:bg-cyan-400/15 dark:text-cyan-300 dark:hover:bg-cyan-400/25"
           >
             {chat.status === 'streaming' ? <Loader2 size={13} className="animate-spin" /> : <Send size={13} />}
           </button>

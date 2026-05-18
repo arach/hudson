@@ -64,6 +64,7 @@ export function useEventSourceInvalidation({
     source.addEventListener('invalidate', handleInvalidate);
     source.onopen = () => {
       stopFallback();
+      void onInvalidateRef.current();
     };
     source.onerror = () => {
       if (!closed) startFallback();
