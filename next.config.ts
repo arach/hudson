@@ -49,7 +49,7 @@ if (!existsSync(localWorkspacesFile)) {
 
 const nextConfig: NextConfig = {
   transpilePackages: ["hudsonkit", "@voxd/client"],
-  serverExternalPackages: ["esbuild"],
+  serverExternalPackages: ["@earendil-works/pi-ai", "esbuild"],
   turbopack: {
     root: join(__dirname, ".."),
     resolveAlias: {
