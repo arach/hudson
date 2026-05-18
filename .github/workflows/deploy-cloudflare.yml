@@ -40,7 +40,7 @@ jobs:
         run: bun run test
 
       - name: Build AI backends package
-        run: bun run --filter @hudson/ai-backends build
+        run: bun run --filter @hudsonkit/ai build
 
       - name: Build HudsonKit package
         run: bun run --cwd packages/web/hudsonkit build:js
