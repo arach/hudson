@@ -76,6 +76,32 @@ export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from '.
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
+export {
+  HudWorkflowGraph,
+  brainDumpProcessorWorkflow,
+  heyTalkieWorkflow,
+  hudWorkflowBasicSchema,
+  hudWorkflowFixtures,
+  quickSummaryWorkflow,
+  transcribeWorkflow,
+} from './workflow';
+export type {
+  HudWorkflowConnection,
+  HudWorkflowDocument,
+  HudWorkflowDocumentMetadata,
+  HudWorkflowFieldSchema,
+  HudWorkflowFieldType,
+  HudWorkflowFixture,
+  HudWorkflowNode,
+  HudWorkflowNodeTypeSchema,
+  HudWorkflowPickerOption,
+  HudWorkflowPort,
+  HudWorkflowPortRole,
+  HudWorkflowSchema,
+  HudWorkflowTint,
+  HudWorkflowValue,
+  HudWorkflowViewport,
+} from './workflow';
 
 export {
   CodeEditor,

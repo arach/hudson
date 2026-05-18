@@ -43,6 +43,7 @@ import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { dayStackApp } from './day-stack';
+import { workflowLabApp } from './workflow-lab';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -91,6 +92,7 @@ function getAppById(id: string): HudsonApp | null {
     'theme-designer': themeDesignerApp,
     'stage-design': stageDesignApp,
     'day-stack': dayStackApp,
+    'workflow-lab': workflowLabApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -289,6 +291,21 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
   ];
 }
 
+function getWorkflowLabApps(): WorkspaceAppConfig[] {
+  return [
+    {
+      app: workflowLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -520, y: -300, w: 1040, h: 700 },
+    },
+    {
+      app: documentLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 600, y: -260, w: 720, h: 560 },
+    },
+  ];
+}
+
 // --- Exports ------------------------------------------------------------------
 
 /** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
@@ -385,6 +402,22 @@ export function getDocumentLabWorkspace(): HudsonWorkspace {
   };
 }
 
+/** Workflow Lab — read-only fixture harness for the shared workflow graph primitive. */
+export function getWorkflowLabWorkspace(): HudsonWorkspace {
+  return {
+    id: 'workflow-lab',
+    name: 'Workflow Lab',
+    description: 'Read-only workflow graph fixture lab',
+    mode: 'canvas',
+    apps: getWorkflowLabApps(),
+    defaultFocusedAppId: 'workflow-lab',
+    defaultActivatedAppIds: ['workflow-lab'],
+    defaultScale: 0.72,
+    defaultPan: { x: -160, y: -80 },
+    leftNavigation: 'on',
+  };
+}
+
 
 // Backwards-compat: callers that import `hudsonOSWorkspace` as a const get
 // a cached snapshot created on first access.
@@ -412,6 +445,7 @@ export function getCoreWorkspaces(): HudsonWorkspace[] {
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
     { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
     { workspace: getDocumentLabWorkspace(), source: 'core:document-lab' },
+    { workspace: getWorkflowLabWorkspace(), source: 'core:workflow-lab' },
     { workspace: getPersonalWorkspace(), source: 'core:personal' },
   ]);
 }
