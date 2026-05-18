@@ -82,8 +82,9 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   return (
     <div
       ref={drawerRef}
+      data-hudson-template="hudson"
       className={`
-        fixed left-0 right-0 shadow-[0_-2px_12px_rgba(0,0,0,0.16)] flex flex-col border-t
+        fixed left-0 right-0 shadow-[0_-2px_12px_rgba(0,0,0,0.16)] flex flex-col border-t text-card-foreground
         bg-card
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
         transition-all duration-300 ease-in-out
