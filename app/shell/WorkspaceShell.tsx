@@ -1309,10 +1309,10 @@ function WorkspaceInner({
   // `setActiveTerminalAppId(HUDSON_AI_ID)` etc; we mirror that into the kind.
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
-  const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
   const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
   const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
-  const [activeTerminalAppId, setActiveTerminalAppIdRaw] = useState(() => {
+  const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>('workspace');
+  const [, setActiveTerminalAppIdRaw] = useState(() => {
     const pendingTerminalAppId = consumePendingTerminalAppId(workspace.id);
     if (pendingTerminalAppId) return pendingTerminalAppId;
     return HUDSON_AI_ID;
@@ -1326,20 +1326,17 @@ function WorkspaceInner({
   const [voiceTriggerNonce, setVoiceTriggerNonce] = useState(0);
 
   const focusedConsoleApp = appsWithConsoleSurface.find(c => c.app.id === focusedAppId)?.app ?? null;
-  const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
-    ?? null;
+  const focusedChatApp = focusedConsoleApp?.slots.Chat ? focusedConsoleApp : null;
   const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
     setConsoleWorkspaceKind(kind);
     setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
   }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID]);
 
-  // Sort terminal tabs: active (visible) apps first, inactive at the end.
-  // Retained for back-compat with anything that still inspects this list.
-  const sortedTerminalApps = useMemo(() => {
-    const active = appsWithTerminal.filter(c => activatedAppIds.has(c.app.id));
-    const inactive = appsWithTerminal.filter(c => !activatedAppIds.has(c.app.id));
-    return [...active, ...inactive];
-  }, [appsWithTerminal, activatedAppIds]);
+  useEffect(() => {
+    if (!focusedChatApp && consoleAIKind === 'app') {
+      setConsoleAIKind('workspace');
+    }
+  }, [consoleAIKind, focusedChatApp]);
 
   // --- Settings ---
   const initialShellSettings = useMemo(
@@ -1545,6 +1542,16 @@ function WorkspaceInner({
     setWorkspaceEditorTab('overview');
     setShowWorkspaceManager(true);
   }, []);
+
+  const setPanelCollapsed = useCallback((side: 'left' | 'right', collapsed: boolean | 'toggle') => {
+    const apply = (current: boolean) => collapsed === 'toggle' ? !current : collapsed;
+    if (side === 'left') {
+      setLeftCollapsed(current => apply(current));
+    } else {
+      setRightCollapsed(current => apply(current));
+    }
+    playSound('thock');
+  }, [playSound, setLeftCollapsed, setRightCollapsed]);
 
   // --- Shell commands ---
   const shellCommands: CommandOption[] = useMemo(
@@ -2018,6 +2025,7 @@ function WorkspaceInner({
           id: app.id,
           name: app.name,
           description: app.description,
+          agentContext: app.agentContext,
           mode: app.mode,
           canvasMode: canvasMode ?? 'native',
           services: app.services ?? [],
@@ -2030,6 +2038,7 @@ function WorkspaceInner({
           id: app.id,
           name: app.name,
           description: app.description,
+          agentContext: app.agentContext,
           mode: app.mode,
           canvasMode: config.canvasMode ?? 'native',
           visible: activatedAppIds.has(app.id),
@@ -2171,6 +2180,18 @@ function WorkspaceInner({
     window.addEventListener('hudson:open-settings', onOpen);
     return () => window.removeEventListener('hudson:open-settings', onOpen);
   }, [openSettings]);
+
+  // Apps can expose in-page panel affordances while the shell still owns the
+  // actual SidePanel state, persistence, resize handles, and collapse chrome.
+  useEffect(() => {
+    const onPanelRequest = (e: Event) => {
+      const detail = (e as CustomEvent<{ side?: 'left' | 'right'; collapsed?: boolean | 'toggle' } | undefined>).detail;
+      if (detail?.side !== 'left' && detail?.side !== 'right') return;
+      setPanelCollapsed(detail.side, detail.collapsed ?? 'toggle');
+    };
+    window.addEventListener('hudson:set-panel-collapsed', onPanelRequest);
+    return () => window.removeEventListener('hudson:set-panel-collapsed', onPanelRequest);
+  }, [setPanelCollapsed]);
 
   // --- Workspace AI tool call handler ---
   const handleWorkspaceToolCall = useCallback(async (name: string, args: Record<string, unknown>) => {
@@ -2490,21 +2511,60 @@ function WorkspaceInner({
     />
   );
 
+  const appAINode = focusedChatApp?.slots.Chat ? (() => {
+    const ChatSlot = focusedChatApp.slots.Chat;
+    return (
+      <AppSlotErrorBoundary appName={focusedChatApp.name} slotName="Chat">
+        <ChatSlot />
+      </AppSlotErrorBoundary>
+    );
+  })() : null;
+  const focusedChatAppName = focusedChatApp?.name ?? 'App';
+
+  const aiConsoleNode = (
+    <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+      {appAINode && (
+        <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border/60 bg-card/70 px-2">
+          <button
+            type="button"
+            onClick={() => setConsoleAIKind('workspace')}
+            className={`rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
+              consoleAIKind === 'workspace'
+                ? 'border border-emerald-600/25 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200'
+                : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            Hudson
+          </button>
+          <button
+            type="button"
+            onClick={() => setConsoleAIKind('app')}
+            className={`min-w-0 rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
+              consoleAIKind === 'app'
+                ? 'border border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-400/10 dark:text-cyan-200'
+                : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+            title={`${focusedChatAppName} AI`}
+          >
+            <span className="block max-w-[160px] truncate">{focusedChatAppName}</span>
+          </button>
+          <div className="ml-auto truncate text-[10px] font-mono text-muted-foreground/70">
+            {consoleAIKind === 'workspace' ? 'workspace scope' : 'app scope'}
+          </div>
+        </div>
+      )}
+      <div className="min-h-0 flex-1">
+        {consoleAIKind === 'app' && appAINode ? appAINode : workspaceAINode}
+      </div>
+    </div>
+  );
+
   // Console body: routed by the AI / Terminal toggle in the drawer header.
-  // - AI mode    → focused app's Chat slot if present, else workspace AI
+  // - AI mode    → workspace AI plus focused app AI when the app provides Chat
   // - Terminal   → focused app's Terminal slot if present, else system terminal
-  // No tab strip — the existing TerminalDrawer header chrome owns the toggle.
   const terminalContent = (() => {
     if (consoleWorkspaceKind === 'ai') {
-      if (focusedConsoleApp?.slots.Chat) {
-        const ChatSlot = focusedConsoleApp.slots.Chat;
-        return (
-          <AppSlotErrorBoundary appName={focusedConsoleApp.name} slotName="Chat">
-            <ChatSlot />
-          </AppSlotErrorBoundary>
-        );
-      }
-      return workspaceAINode;
+      return aiConsoleNode;
     }
     // Terminal kind
     if (focusedConsoleApp?.slots.Terminal) {
