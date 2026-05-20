@@ -9,6 +9,8 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const COMMANDS = {
   preflight: 'commands/preflight.mjs',
+  status: 'commands/status.mjs',
+  panic: 'commands/panic.mjs',
 };
 
 const USAGE = `hudsonkit — toolkit CLI
@@ -19,6 +21,8 @@ USAGE
 COMMANDS
   preflight    Scan the current project for known-dangerous consumer config.
                Use --fail-on-risk in predev / prebuild hooks to fail fast.
+  status       List Hudson-related processes on this host.
+  panic        Terminate Hudson-related processes (dry-run unless --yes).
 
   Run \`hudsonkit <command> --help\` for command-specific options.
 `;
