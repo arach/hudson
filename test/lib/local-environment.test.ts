@@ -1,4 +1,7 @@
-import { describe, expect, it } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import { existsSync, mkdtempSync, readFileSync, rmSync } from 'fs';
+import { tmpdir } from 'os';
+import { join } from 'path';
 import {
   isValidHudsonEnvKey,
   maskHudsonEnvValue,
@@ -6,6 +9,14 @@ import {
   serializeHudsonEnvValue,
   updateHudsonEnvFile,
 } from '@/app/lib/localEnvironment';
+import {
+  clearHudsonLocalSecretVaultCacheForTests,
+  deleteHudsonLocalSecret,
+  getHudsonLocalSecretVaultInfo,
+  isHudsonSecretEnvKey,
+  loadHudsonLocalSecrets,
+  setHudsonLocalSecret,
+} from '@/app/lib/localSecretVault';
 
 describe('Hudson local environment helpers', () => {
   it('validates environment variable names', () => {
@@ -64,5 +75,54 @@ describe('Hudson local environment helpers', () => {
     expect(maskHudsonEnvValue('')).toBe('');
     expect(maskHudsonEnvValue('abcd1234')).toBe('ab••••34');
     expect(maskHudsonEnvValue('sk-proj-1234567890')).toBe('sk-p••••7890');
+  });
+
+  it('classifies provider credentials as vault-backed secrets', () => {
+    expect(isHudsonSecretEnvKey('MINIMAX_API_KEY')).toBe(true);
+    expect(isHudsonSecretEnvKey('OPENAI_API_KEY')).toBe(true);
+    expect(isHudsonSecretEnvKey('AI_DEFAULT_MODE')).toBe(false);
+  });
+});
+
+describe('Hudson local secret vault', () => {
+  let tempDir: string;
+  let originalVaultPath: string | undefined;
+  let originalVaultKey: string | undefined;
+  let originalVaultAccount: string | undefined;
+
+  beforeEach(() => {
+    tempDir = mkdtempSync(join(tmpdir(), 'hudson-vault-test-'));
+    originalVaultPath = process.env.HUDSON_LOCAL_VAULT_PATH;
+    originalVaultKey = process.env.HUDSON_LOCAL_VAULT_KEY;
+    originalVaultAccount = process.env.HUDSON_LOCAL_VAULT_ACCOUNT;
+    process.env.HUDSON_LOCAL_VAULT_PATH = join(tempDir, 'vault.json');
+    process.env.HUDSON_LOCAL_VAULT_KEY = 'test-local-vault-key';
+    process.env.HUDSON_LOCAL_VAULT_ACCOUNT = 'test-account';
+    clearHudsonLocalSecretVaultCacheForTests();
+  });
+
+  afterEach(() => {
+    if (originalVaultPath === undefined) delete process.env.HUDSON_LOCAL_VAULT_PATH;
+    else process.env.HUDSON_LOCAL_VAULT_PATH = originalVaultPath;
+    if (originalVaultKey === undefined) delete process.env.HUDSON_LOCAL_VAULT_KEY;
+    else process.env.HUDSON_LOCAL_VAULT_KEY = originalVaultKey;
+    if (originalVaultAccount === undefined) delete process.env.HUDSON_LOCAL_VAULT_ACCOUNT;
+    else process.env.HUDSON_LOCAL_VAULT_ACCOUNT = originalVaultAccount;
+    clearHudsonLocalSecretVaultCacheForTests();
+    rmSync(tempDir, { recursive: true, force: true });
+  });
+
+  it('roundtrips encrypted secrets without writing plaintext to disk', () => {
+    setHudsonLocalSecret('MINIMAX_API_KEY', 'minimax-secret-token');
+
+    expect(loadHudsonLocalSecrets().MINIMAX_API_KEY).toBe('minimax-secret-token');
+    expect(getHudsonLocalSecretVaultInfo().keyStorage).toBe('env');
+
+    const vaultPath = process.env.HUDSON_LOCAL_VAULT_PATH!;
+    expect(existsSync(vaultPath)).toBe(true);
+    expect(readFileSync(vaultPath, 'utf-8')).not.toContain('minimax-secret-token');
+
+    deleteHudsonLocalSecret('MINIMAX_API_KEY');
+    expect(loadHudsonLocalSecrets().MINIMAX_API_KEY).toBeUndefined();
   });
 });

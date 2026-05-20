@@ -1,20 +1,38 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Eye, EyeOff } from 'lucide-react';
+import { Eye, EyeOff, FileText, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ServiceActionButton } from '../apps/hudson-docs/components';
 
 type LocalEnvironmentEntry = {
   key: string;
   value: string;
   maskedValue: string;
+  source: 'vault' | 'env';
+  sensitive: boolean;
+  hasValue: boolean;
 };
 
 type LocalEnvironmentStore = {
   path: string;
+  vaultPath: string;
+  vaultKeyStorage: 'env' | 'macos-keychain' | 'file';
   entries: LocalEnvironmentEntry[];
   suggestedKeys: string[];
 };
+
+function describeVaultKeyStorage(storage: LocalEnvironmentStore['vaultKeyStorage'] | undefined) {
+  switch (storage) {
+    case 'macos-keychain':
+      return 'macOS Keychain';
+    case 'env':
+      return 'HUDSON_LOCAL_VAULT_KEY';
+    case 'file':
+      return 'local 0600 key file';
+    default:
+      return 'local key store';
+  }
+}
 
 export function HudsonEnvironmentEditor({
   intro,
@@ -33,7 +51,7 @@ export function HudsonEnvironmentEditor({
   const syncEnvironmentStore = useCallback((store: LocalEnvironmentStore) => {
     setEnvironmentStore(store);
     setEnvironmentDrafts(Object.fromEntries(
-      store.entries.map(entry => [entry.key, entry.value]),
+      store.entries.map(entry => [entry.key, entry.source === 'vault' ? '' : entry.value]),
     ));
   }, []);
 
@@ -64,6 +82,12 @@ export function HudsonEnvironmentEditor({
   }, [loadEnvironment]);
 
   const handleSaveEnvironmentValue = useCallback(async (key: string, value: string) => {
+    const entry = environmentStore?.entries.find(item => item.key === key);
+    if (entry?.source === 'vault' && value.length === 0) {
+      setEnvironmentError(`Enter a replacement value for ${key}; vaulted secrets are not revealed back into the editor.`);
+      return false;
+    }
+
     setActiveEnvironmentKey(key);
     setEnvironmentStatus('saving');
 
@@ -92,7 +116,7 @@ export function HudsonEnvironmentEditor({
       setActiveEnvironmentKey(null);
       setEnvironmentStatus('idle');
     }
-  }, [syncEnvironmentStore]);
+  }, [environmentStore?.entries, syncEnvironmentStore]);
 
   const handleDeleteEnvironmentValue = useCallback(async (key: string) => {
     setActiveEnvironmentKey(key);
@@ -150,14 +174,17 @@ export function HudsonEnvironmentEditor({
         </div>
       )}
       <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
-        Hudson manages local project variables in <span className="text-foreground/80">{environmentStore?.path ?? '.env.local'}</span>.
-        Saving here updates Hudson&apos;s live server environment immediately for code paths that read <span className="text-foreground/80">process.env</span>.
-        Tools that only read environment on boot may still need a refresh or restart.
+        Hudson stores API keys and tokens in the encrypted local vault at <span className="text-foreground/80">{environmentStore?.vaultPath ?? '.data/hudson-local-vault.json'}</span>.
+        The vault key is held by <span className="text-foreground/80">{describeVaultKeyStorage(environmentStore?.vaultKeyStorage)}</span>.
+        Non-secret runtime variables stay in <span className="text-foreground/80">{environmentStore?.path ?? '.env.local'}</span>.
       </div>
 
       <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 space-y-3">
         <div className="text-[10px] font-mono uppercase tracking-[0.14em] text-muted-foreground">
           Add Variable
+        </div>
+        <div className="text-[10px] font-mono text-muted-foreground leading-relaxed">
+          Suggested API keys are saved to the vault. Values like <span className="text-foreground/75">AI_DEFAULT_MODE</span> remain in .env.local.
         </div>
         <div className="flex flex-col gap-3 xl:flex-row xl:items-center">
           <input
@@ -226,6 +253,12 @@ export function HudsonEnvironmentEditor({
         {entries.map(entry => {
           const isActive = activeEnvironmentKey === entry.key;
           const isVisible = visibleKeys[entry.key] ?? false;
+          const isVaulted = entry.source === 'vault';
+          const saveLabel = isVaulted
+            ? 'Replace'
+            : entry.sensitive
+              ? 'Move to Vault'
+              : 'Save';
 
           return (
             <div
@@ -234,7 +267,19 @@ export function HudsonEnvironmentEditor({
             >
               <div className="flex flex-col gap-3 xl:flex-row xl:items-start">
                 <div className="xl:w-[220px] xl:shrink-0">
-                  <div className="text-[12px] font-mono text-foreground">{entry.key}</div>
+                  <div className="flex items-center gap-2">
+                    <div className="text-[12px] font-mono text-foreground">{entry.key}</div>
+                    <div className={`inline-flex items-center gap-1 rounded-full border px-1.5 py-0.5 text-[9px] font-mono ${
+                      isVaulted
+                        ? 'border-emerald-500/25 bg-emerald-500/10 text-emerald-400'
+                        : entry.sensitive
+                          ? 'border-amber-500/25 bg-amber-500/10 text-amber-500'
+                          : 'border-border bg-muted text-muted-foreground'
+                    }`}>
+                      {isVaulted ? <ShieldCheck size={9} /> : <FileText size={9} />}
+                      {isVaulted ? 'vault' : '.env'}
+                    </div>
+                  </div>
                   <div className="mt-1 text-[10px] font-mono text-muted-foreground">
                     {entry.maskedValue || '(empty value)'}
                   </div>
@@ -242,30 +287,40 @@ export function HudsonEnvironmentEditor({
                 <div className="flex-1 min-w-0 space-y-2">
                   <div className="flex flex-col gap-2 xl:flex-row xl:items-center">
                     <input
-                      type={isVisible ? 'text' : 'password'}
+                      type={isVaulted ? 'password' : isVisible ? 'text' : 'password'}
                       value={environmentDrafts[entry.key] ?? ''}
                       onChange={event => setEnvironmentDrafts(current => ({
                         ...current,
                         [entry.key]: event.target.value,
                       }))}
+                      placeholder={isVaulted ? 'Enter replacement value' : undefined}
                       className="flex-1 bg-background border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/70 focus:border-accent/50 focus:outline-none transition-colors"
                       spellCheck={false}
                       autoComplete="off"
                     />
                     <div className="flex items-center gap-2">
-                      <button
-                        type="button"
-                        onClick={() => setVisibleKeys(current => ({
-                          ...current,
-                          [entry.key]: !isVisible,
-                        }))}
-                        className="p-2 rounded border border-border bg-background text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
-                        title={isVisible ? 'Hide value' : 'Reveal value'}
-                      >
-                        {isVisible ? <EyeOff size={12} /> : <Eye size={12} />}
-                      </button>
+                      {isVaulted ? (
+                        <div
+                          className="p-2 rounded border border-emerald-500/20 bg-emerald-500/10 text-emerald-400"
+                          title="Vaulted secrets are not revealed back into the browser"
+                        >
+                          <LockKeyhole size={12} />
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => setVisibleKeys(current => ({
+                            ...current,
+                            [entry.key]: !isVisible,
+                          }))}
+                          className="p-2 rounded border border-border bg-background text-muted-foreground hover:text-foreground hover:border-border/80 transition-colors"
+                          title={isVisible ? 'Hide value' : 'Reveal value'}
+                        >
+                          {isVisible ? <EyeOff size={12} /> : <Eye size={12} />}
+                        </button>
+                      )}
                       <ServiceActionButton
-                        label="Save"
+                        label={saveLabel}
                         loading={environmentStatus === 'saving' && isActive}
                         onClick={() => {
                           void handleSaveEnvironmentValue(entry.key, environmentDrafts[entry.key] ?? '');
@@ -292,7 +347,7 @@ export function HudsonEnvironmentEditor({
           </div>
         )}
         <div className="text-[10px] font-mono text-muted-foreground">
-          This editor manages <span className="text-foreground/80">.env.local</span> for the current Hudson repo.
+          This editor manages Hudson&apos;s local vault plus <span className="text-foreground/80">.env.local</span> for the current repo.
         </div>
       </div>
     </div>

@@ -10,6 +10,8 @@ import { createAnthropic } from '@ai-sdk/anthropic';
 import { readFileSync, existsSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
+import { readCachedCopilotChatToken } from './copilot-auth';
+import { loadHudsonLocalSecrets } from '@/app/lib/localSecretVault';
 
 export type ProviderName = 'minimax' | 'anthropic' | 'openai' | 'groq' | 'xai' | 'github' | 'google' | 'copilot';
 
@@ -21,7 +23,7 @@ export const DEFAULT_MODELS: Record<ProviderName, string> = {
   xai: 'grok-4-1-fast',
   github: 'gpt-4o',
   google: 'gemini-2.0-flash',
-  copilot: 'gemini-3-flash-preview',  // also: gemini-3-pro-preview, claude-sonnet-4.6, gpt-5.4, gpt-4o
+  copilot: 'gemini-3-flash-preview',
 };
 
 interface CredentialStore {
@@ -39,19 +41,38 @@ interface CredentialStore {
 let _cachedCreds: CredentialStore | null = null;
 
 export function loadCredentials(): CredentialStore {
-  if (_cachedCreds) return _cachedCreds;
+  if (_cachedCreds) {
+    const cachedCopilotToken = readCachedCopilotChatToken();
+    if (cachedCopilotToken && _cachedCreds.copilot !== cachedCopilotToken.token) {
+      _cachedCreds = { ..._cachedCreds, copilot: cachedCopilotToken.token };
+    }
+    return _cachedCreds;
+  }
   const creds: CredentialStore = {};
+  const vault = (() => {
+    try {
+      return loadHudsonLocalSecrets();
+    } catch {
+      return {};
+    }
+  })();
+  const getSecret = (key: string) => vault[key] || process.env[key];
 
-  if (process.env.MINIMAX_API_KEY) creds.minimax = process.env.MINIMAX_API_KEY;
-  if (process.env.ANTHROPIC_API_KEY) creds.anthropic = process.env.ANTHROPIC_API_KEY;
-  if (process.env.OPENAI_API_KEY) creds.openai = process.env.OPENAI_API_KEY;
-  if (process.env.GROQ_API_KEY) creds.groq = process.env.GROQ_API_KEY;
-  if (process.env.ELEVENLABS_API_KEY) creds.elevenlabs = process.env.ELEVENLABS_API_KEY;
-  if (process.env.XAI_API_KEY) creds.xai = process.env.XAI_API_KEY;
-  if (process.env.GITHUB_TOKEN) creds.github = process.env.GITHUB_TOKEN;
-  if (process.env.GOOGLE_GENERATIVE_AI_API_KEY) creds.google = process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  if (getSecret('MINIMAX_API_KEY')) creds.minimax = getSecret('MINIMAX_API_KEY');
+  if (getSecret('ANTHROPIC_API_KEY')) creds.anthropic = getSecret('ANTHROPIC_API_KEY');
+  if (getSecret('OPENAI_API_KEY')) creds.openai = getSecret('OPENAI_API_KEY');
+  if (getSecret('GROQ_API_KEY')) creds.groq = getSecret('GROQ_API_KEY');
+  if (getSecret('ELEVENLABS_API_KEY')) creds.elevenlabs = getSecret('ELEVENLABS_API_KEY');
+  if (getSecret('XAI_API_KEY')) creds.xai = getSecret('XAI_API_KEY');
+  if (getSecret('GITHUB_TOKEN')) creds.github = getSecret('GITHUB_TOKEN');
+  if (getSecret('GOOGLE_GENERATIVE_AI_API_KEY')) creds.google = getSecret('GOOGLE_GENERATIVE_AI_API_KEY');
 
-  // Copilot OAuth token — from OpenCode's auth store
+  // Copilot chat token. The model catalog route refreshes this cache from the
+  // GitHub OAuth token, so chat requests should prefer it over raw OAuth.
+  const copilotChatToken = readCachedCopilotChatToken();
+  if (copilotChatToken) creds.copilot = copilotChatToken.token;
+
+  // Copilot OAuth token — fallback from OpenCode's auth store
   if (!creds.copilot) {
     const authPath = join(homedir(), '.local', 'share', 'opencode', 'auth.json');
     if (existsSync(authPath)) {
@@ -127,8 +148,10 @@ function getModel(provider: ProviderName, modelId: string) {
       return google.chat(modelId);
     }
     case 'copilot': {
-      // GitHub Copilot API — uses OpenCode's OAuth token
-      // Available models: gpt-4o, gpt-4.1, gpt-4o-mini, claude-sonnet-4
+      // GitHub Copilot API — uses the short-lived Copilot chat token when the
+      // local cache has been refreshed, with the older OpenCode token fallback.
+      // The visible model picker is kept in app/lib/ai-models.ts and refreshed
+      // at runtime from /api/ai/models.
       const copilot = createOpenAI({
         baseURL: 'https://api.githubcopilot.com',
         apiKey: creds.copilot,

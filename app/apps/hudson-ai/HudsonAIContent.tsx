@@ -620,7 +620,7 @@ export function HudsonAIContent() {
                 Provider credentials also live at the Hudson level. Edit them here when you want this workspace to access OpenAI, ElevenLabs, Groq, or other local integrations.
               </div>
               <HudsonEnvironmentEditor
-                intro="These values are stored in Hudson’s local environment file for this repo. They stay out of git and back the shell-wide AI and voice integrations."
+                intro="API keys and tokens are stored in Hudson’s encrypted local vault. Non-secret runtime values stay in .env.local, and both back shell-wide AI and voice integrations."
               />
               <div className="flex flex-wrap gap-2">
                 <ActionButton

@@ -259,8 +259,11 @@ const Frame: React.FC<FrameProps> = ({
           when the shell's right inspector is open so they don't get hidden
           behind it. */}
       <div
-        className="absolute bottom-[44px] z-30"
-        style={{ right: 16 + (zoomControlsRightOffset ?? 0) }}
+        className="absolute z-30 transition-[bottom,right] duration-200"
+        style={{
+          bottom: 'calc(44px + var(--hud-player-panel-offset, 0px))',
+          right: 16 + (zoomControlsRightOffset ?? 0),
+        }}
       >
         <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
       </div>

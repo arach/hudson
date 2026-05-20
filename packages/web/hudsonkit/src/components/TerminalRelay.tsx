@@ -178,6 +178,9 @@ function injectXtermCss() {
 // Helpers
 // ---------------------------------------------------------------------------
 
+// CSI-u modified Enter: key code 13 with Shift modifier 2.
+const SHIFT_ENTER_INPUT = '\x1b[13;2u';
+
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
@@ -374,6 +377,23 @@ export function TerminalRelay({
 
       // Send initial dimensions to relay
       resize(terminal.cols, terminal.rows);
+
+      terminal.attachCustomKeyEventHandler((event) => {
+        if (
+          event.type === 'keydown' &&
+          event.key === 'Enter' &&
+          event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          sendInput(SHIFT_ENTER_INPUT);
+          return false;
+        }
+        return true;
+      });
 
       // Forward keystrokes from xterm → relay
       terminal.onData((data) => {

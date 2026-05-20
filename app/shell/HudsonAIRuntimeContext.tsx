@@ -136,6 +136,7 @@ export interface HudsonAIToolContext {
   environment: {
     manageable: boolean;
     path: string;
+    vaultPath?: string;
   };
 }
 

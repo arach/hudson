@@ -28,6 +28,8 @@ interface TemplateMeta {
   name?: string;
   description?: string;
   builtin?: boolean;
+  /** Classification: 'style' = abstract style templates, 'brand' = brand-specific marks. */
+  kind?: 'style' | 'brand';
   /** Id of the template this was spawned from — drives family-tree nesting. */
   parentId?: string;
   params?: Record<string, {
@@ -47,6 +49,7 @@ interface ParsedTemplate {
   description: string;
   renderBody: string;
   builtin: boolean;
+  kind?: 'style' | 'brand';
   parentId?: string;
   params: {
     key: string;
@@ -94,6 +97,7 @@ function parseTemplate(id: string, source: string, mtime: number): ParsedTemplat
     description: meta.description || '',
     renderBody: source.trim(),
     builtin: meta.builtin || false,
+    kind: meta.kind,
     parentId: meta.parentId,
     params,
     createdAt: mtime,

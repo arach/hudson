@@ -289,9 +289,10 @@ function context(ctx: Record<string, unknown>): string {
   const environment = ctx.environment as {
     manageable?: boolean;
     path?: string;
+    vaultPath?: string;
   } | undefined;
   if (environment?.manageable) {
-    sections.push(`## Environment\n- Local environment management is available via ${environment.path ?? '.env.local'}. Use env tools only when the user explicitly wants credentials or local variables changed.`);
+    sections.push(`## Environment\n- Local environment management is available via ${environment.path ?? '.env.local'} plus the encrypted local vault at ${environment.vaultPath ?? '.data/hudson-local-vault.json'}. Use env tools only when the user explicitly wants credentials or local variables changed.`);
   }
 
   if (ctx.logoParams) {

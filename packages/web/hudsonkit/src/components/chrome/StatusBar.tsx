@@ -113,7 +113,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
       {/* CENTER: Viewport data (clickable to copy) */}
       {viewport && (
-        <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
+        <div
+          className="hidden lg:flex absolute -translate-x-1/2 items-center gap-3 opacity-70 hover:opacity-100 transition-[left,opacity] duration-200"
+          style={{ left: 'calc(50% - var(--hud-player-status-inline-offset, 0px))' }}
+        >
           <button
             onClick={handleCopyViewport}
             className="flex items-center gap-3 hover:text-foreground transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"

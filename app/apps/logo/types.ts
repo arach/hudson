@@ -128,6 +128,10 @@ export interface LogoTemplate {
   /** Original TypeScript source (what the AI reads/edits). */
   sourceCode?: string;
   params: TemplateParam[];
+  /** Classification: 'style' = abstract style templates, 'brand' = brand-specific marks.
+   *  Drives the two-section sidebar tree. Optional; templates without `kind` fall back
+   *  to 'style' for grouping purposes. */
+  kind?: 'style' | 'brand';
   /** Optional: id of the template this was spawned from (AI iteration on picks).
    *  Builds a family-tree relationship — children render nested under their parent
    *  in the variant nav. Roots (built-ins, hand-authored, promoted variants) have

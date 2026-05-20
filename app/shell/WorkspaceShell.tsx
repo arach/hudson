@@ -56,7 +56,8 @@ import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
 import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
 import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
-import { hudsonAISettings } from '../apps/hudson-ai/settings';
+import { createHudsonAISettings } from '../apps/hudson-ai/settings';
+import { useAIModelOptions } from '../lib/useAIModelOptions';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -756,12 +757,16 @@ function useHudsonAISettingsBridge(
   config: WorkspaceAppConfig | null,
   workspaceId: string,
 ): AppSettingsEntry | null {
-  const scoped = useHudsonAISettings(workspaceId, hudsonAISettings);
-  if (!config) return null;
+  const { modelOptions } = useAIModelOptions();
+  const settingsConfig = useMemo(
+    () => createHudsonAISettings(modelOptions),
+    [modelOptions],
+  );
+  const scoped = useHudsonAISettings(workspaceId, settingsConfig);
   return {
-    appId: config.app.id,
-    appName: config.app.name,
-    config: hudsonAISettings,
+    appId: config?.app.id ?? 'hudson-ai',
+    appName: config?.app.name ?? 'Hudson AI',
+    config: settingsConfig,
     values: scoped.resolvedSettings,
     onUpdate: scoped.updateWorkspaceOverride,
   };
@@ -835,13 +840,14 @@ function WorkspaceInner({
     .map(config => useAppSettingsBridge(config))
     .filter((e): e is AppSettingsEntry => e !== null);
   const genericAppSettingsMap = new Map(genericAppSettings.map(entry => [entry.appId, entry]));
-  const appSettings = fullWorkspace.apps.flatMap(config => {
-    if (config.app.id === 'hudson-ai') {
-      return hudsonAISettingsEntry ? [hudsonAISettingsEntry] : [];
-    }
+  const workspaceAppSettings = fullWorkspace.apps.flatMap(config => {
+    if (config.app.id === 'hudson-ai') return hudsonAISettingsEntry ? [hudsonAISettingsEntry] : [];
     const entry = genericAppSettingsMap.get(config.app.id);
     return entry ? [entry] : [];
   });
+  const appSettings = hudsonAIConfig || !hudsonAISettingsEntry
+    ? workspaceAppSettings
+    : [hudsonAISettingsEntry, ...workspaceAppSettings];
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
@@ -1311,7 +1317,11 @@ function WorkspaceInner({
   const HUDSON_AI_ID = '__hudson-ai__';
   const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
   const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
-  const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>('workspace');
+  const initialFocusedChatApp = workspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
+  const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>(
+    initialFocusedChatApp ? 'app' : 'workspace',
+  );
+  const consoleAIKindUserSelected = useRef(false);
   const [, setActiveTerminalAppIdRaw] = useState(() => {
     const pendingTerminalAppId = consumePendingTerminalAppId(workspace.id);
     if (pendingTerminalAppId) return pendingTerminalAppId;
@@ -1330,13 +1340,25 @@ function WorkspaceInner({
   const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
     setConsoleWorkspaceKind(kind);
     setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
-  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID]);
+    if (kind === 'ai' && focusedChatApp && !consoleAIKindUserSelected.current) {
+      setConsoleAIKind('app');
+    }
+  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID, focusedChatApp]);
+
+  const selectConsoleAIKind = useCallback((kind: 'workspace' | 'app') => {
+    consoleAIKindUserSelected.current = true;
+    setConsoleAIKind(kind);
+  }, []);
 
   useEffect(() => {
-    if (!focusedChatApp && consoleAIKind === 'app') {
+    if (!focusedChatApp) {
       setConsoleAIKind('workspace');
+      return;
     }
-  }, [consoleAIKind, focusedChatApp]);
+    if (!consoleAIKindUserSelected.current) {
+      setConsoleAIKind('app');
+    }
+  }, [focusedChatApp]);
 
   // --- Settings ---
   const initialShellSettings = useMemo(
@@ -2119,6 +2141,7 @@ function WorkspaceInner({
       environment: {
         manageable: true,
         path: '.env.local',
+        vaultPath: '.data/hudson-local-vault.json',
       },
     } as HudsonAIToolContext;
   }, [
@@ -2153,6 +2176,7 @@ function WorkspaceInner({
     const trimmed = text.trim();
     if (!trimmed) return;
     setActiveTerminalAppId(HUDSON_AI_ID);
+    setConsoleAIKind('workspace');
     setShowTerminal(true);
     setHudsonAIComposerRequest({
       id: Date.now() + Math.floor(Math.random() * 1000),
@@ -2527,7 +2551,7 @@ function WorkspaceInner({
         <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border/60 bg-card/70 px-2">
           <button
             type="button"
-            onClick={() => setConsoleAIKind('workspace')}
+            onClick={() => selectConsoleAIKind('workspace')}
             className={`rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
               consoleAIKind === 'workspace'
                 ? 'border border-emerald-600/25 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200'
@@ -2538,7 +2562,7 @@ function WorkspaceInner({
           </button>
           <button
             type="button"
-            onClick={() => setConsoleAIKind('app')}
+            onClick={() => selectConsoleAIKind('app')}
             className={`min-w-0 rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
               consoleAIKind === 'app'
                 ? 'border border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-400/10 dark:text-cyan-200'

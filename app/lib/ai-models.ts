@@ -1,6 +1,8 @@
 export interface AISelectOption {
   value: string;
   label: string;
+  provider?: string;
+  contextWindow?: number;
 }
 
 export interface AIModelPreset extends AISelectOption {
@@ -19,26 +21,64 @@ export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
   { label: 'Google AI', value: 'google' },
 ];
 
-export const AI_MODEL_OPTIONS: AISelectOption[] = [
-  { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview' },
-  { label: 'Gemini 3 Pro', value: 'gemini-3-pro-preview' },
-  { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview' },
-  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro' },
-  { label: 'Claude Opus 4.6', value: 'claude-opus-4.6' },
-  { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6' },
-  { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5' },
-  { label: 'Claude Sonnet 4', value: 'claude-sonnet-4' },
-  { label: 'Claude Haiku 4.5', value: 'claude-haiku-4.5' },
-  { label: 'GPT-5.4', value: 'gpt-5.4' },
-  { label: 'GPT-5.4 Mini', value: 'gpt-5.4-mini' },
-  { label: 'GPT-4o', value: 'gpt-4o' },
-  { label: 'GPT-4.1', value: 'gpt-4.1' },
-  { label: 'GPT-4o Mini', value: 'gpt-4o-mini' },
-  { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
-  { label: 'Grok 4.1 Fast', value: 'grok-4-1-fast' },
-  { label: 'Grok Code Fast', value: 'grok-code-fast-1' },
-  { label: 'Llama 3.1 405B', value: 'Meta-Llama-3.1-405B-Instruct' },
+/**
+ * Copilot chat models offered by Hudson.
+ *
+ * Refreshed from `copilot-ask --list-models` on 2026-05-20 and filtered to
+ * models currently registered by Hudson's pi-ai backend. Account-visible
+ * entries such as Search Agent routers, Lark, Raptor mini, GPT-4o mini, and
+ * Gemini 3.5 Flash are intentionally not exposed until the runtime can route
+ * them by exact model id.
+ */
+export const COPILOT_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'GPT-5.5', value: 'gpt-5.5', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.4', value: 'gpt-5.4', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.4 Mini', value: 'gpt-5.4-mini', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.3 Codex', value: 'gpt-5.3-codex', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.2 Codex', value: 'gpt-5.2-codex', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.2', value: 'gpt-5.2', provider: 'copilot', contextWindow: 264_000 },
+  { label: 'GPT-5 Mini', value: 'gpt-5-mini', provider: 'copilot', contextWindow: 264_000 },
+  { label: 'Claude Opus 4.7', value: 'claude-opus-4.7', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Opus 4.5', value: 'claude-opus-4.5', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Haiku 4.5', value: 'claude-haiku-4.5', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'GPT-4.1', value: 'gpt-4.1', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'GPT-4o', value: 'gpt-4o', provider: 'copilot', contextWindow: 128_000 },
 ];
+
+const GENERAL_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax M2.7', value: 'MiniMax-M2.7', provider: 'minimax' },
+  { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed', provider: 'minimax' },
+  { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash', provider: 'google' },
+  { label: 'Grok 4.1 Fast', value: 'grok-4-1-fast', provider: 'xai' },
+  { label: 'Llama 3.3 70B Versatile', value: 'llama-3.3-70b-versatile', provider: 'groq' },
+];
+
+function dedupeOptions(options: AISelectOption[]) {
+  const seen = new Set<string>();
+  return options.filter(option => {
+    if (seen.has(option.value)) return false;
+    seen.add(option.value);
+    return true;
+  });
+}
+
+export const AI_MODEL_OPTIONS: AISelectOption[] = dedupeOptions([
+  ...COPILOT_MODEL_OPTIONS,
+  ...GENERAL_MODEL_OPTIONS,
+]);
+
+export function mergeCopilotModelOptions(liveCopilotOptions: AISelectOption[] | null | undefined) {
+  if (!liveCopilotOptions?.length) return AI_MODEL_OPTIONS;
+  return dedupeOptions([
+    ...liveCopilotOptions.map(option => ({ ...option, provider: 'copilot' })),
+    ...AI_MODEL_OPTIONS.filter(option => option.provider !== 'copilot'),
+  ]);
+}
 
 export const PI_CLI_PROVIDER_OPTIONS: AISelectOption[] = [
   { label: 'MiniMax', value: 'minimax' },
@@ -48,9 +88,11 @@ export const PI_CLI_PROVIDER_OPTIONS: AISelectOption[] = [
 export const PI_CLI_MODEL_OPTIONS: AISelectOption[] = [
   { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
   { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed' },
-  { label: 'Copilot / Gemini 3 Flash', value: 'gemini-3-flash-preview' },
-  { label: 'Copilot / Claude Sonnet 4.6', value: 'claude-sonnet-4.6' },
-  { label: 'Copilot / GPT-5.4', value: 'gpt-5.4' },
+  ...COPILOT_MODEL_OPTIONS.map(option => ({
+    ...option,
+    label: `Copilot / ${option.label}`,
+    provider: 'github-copilot',
+  })),
 ];
 
 export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
@@ -61,10 +103,16 @@ export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
     model: 'gemini-3-flash-preview',
   },
   {
-    label: 'Copilot / Gemini 3 Pro',
-    value: 'copilot:gemini-3-pro-preview',
+    label: 'Copilot / Gemini 3.1 Pro',
+    value: 'copilot:gemini-3.1-pro-preview',
     provider: 'copilot',
-    model: 'gemini-3-pro-preview',
+    model: 'gemini-3.1-pro-preview',
+  },
+  {
+    label: 'Copilot / GPT-5.5',
+    value: 'copilot:gpt-5.5',
+    provider: 'copilot',
+    model: 'gpt-5.5',
   },
   {
     label: 'Copilot / Claude Sonnet 4.6',
@@ -77,6 +125,12 @@ export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
     value: 'copilot:gpt-5.4',
     provider: 'copilot',
     model: 'gpt-5.4',
+  },
+  {
+    label: 'Copilot / GPT-5.3 Codex',
+    value: 'copilot:gpt-5.3-codex',
+    provider: 'copilot',
+    model: 'gpt-5.3-codex',
   },
   {
     label: 'Copilot / GPT-4o',
