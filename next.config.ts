@@ -47,11 +47,30 @@ if (!existsSync(localWorkspacesFile)) {
 
 // ─────────────────────────────────────────────────────────────────────────────
 
+// ─────────────────────────────────────────────────────────────────────────────
+// turbopack.root
+// ─────────────────────────────────────────────────────────────────────────────
+// Default: the Hudson repo root (__dirname).
+//
+// The previous default — `join(__dirname, "..")` — pulled every sibling repo
+// under ../ into Turbopack's watch graph. That dramatically expanded the
+// FSEvents queue, multiplied watcher counts when consumers added their own
+// dev servers, and contributed to the May runaway-watcher incident.
+//
+// If you genuinely need the broader root (e.g. you're integrating a sibling
+// sandbox app from ../some-app while iterating in-tree), set
+// HUDSON_TURBOPACK_PARENT=1 in your shell. The opt-in keeps the dangerous
+// scope explicit per-shell instead of baked into the repo for everyone.
+// ─────────────────────────────────────────────────────────────────────────────
+const turbopackRoot = process.env.HUDSON_TURBOPACK_PARENT === "1"
+  ? join(__dirname, "..")
+  : __dirname;
+
 const nextConfig: NextConfig = {
   transpilePackages: ["hudsonkit", "@voxd/client"],
   serverExternalPackages: ["esbuild"],
   turbopack: {
-    root: join(__dirname, ".."),
+    root: turbopackRoot,
     resolveAlias: {
       tailwindcss: join(__dirname, "node_modules", "tailwindcss"),
     },
