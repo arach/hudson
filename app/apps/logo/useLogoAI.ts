@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useMemo, useState, useEffect } from 'react';
+import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
 import { createHudsonId, useHudsonAI, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues, AIAttachment } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
@@ -14,9 +14,9 @@ interface UseLogoAIOptions {
   resetDefaults: () => void;
   presets: { label: string; params: Partial<LogoParams> }[];
   templates: LogoTemplate[];
-  addTemplate: (template: LogoTemplate) => void;
-  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => void;
-  deleteTemplate: (id: string) => void;
+  addTemplate: (template: LogoTemplate) => Promise<void> | void;
+  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => Promise<void> | void;
+  deleteTemplate: (id: string) => Promise<void> | void;
   customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
   setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
   refreshTemplates: () => void;
@@ -56,6 +56,18 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   const { apiBaseUrl } = usePlatform();
   const compileEndpoint = `${apiBaseUrl}/api/logo/compile`;
 
+  const templateById = useMemo(() => new Map(templates.map(template => [template.id, template])), [templates]);
+  const templateByIdRef = useRef(templateById);
+  const activeVariantRef = useRef(params.variant);
+
+  useEffect(() => {
+    templateByIdRef.current = templateById;
+  }, [templateById]);
+
+  useEffect(() => {
+    activeVariantRef.current = params.variant;
+  }, [params.variant]);
+
   // Activity log — tracks what the AI is doing
   const [activity, setActivity] = useState<AiActivityEntry[]>([]);
   const logActivity = useCallback((tool: string, summary: string) => {
@@ -94,25 +106,31 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     model: String(appSettings.aiModel || 'MiniMax-M2.7'),
     onToolCall: async (name, args) => {
       try {
-      console.log('[useLogoAI] tool call:', name, JSON.stringify(args).slice(0, 200));
       switch (name) {
         case 'set_param': {
           const key = args.key as string;
+          if (typeof key !== 'string' || !key) throw new Error('set_param requires key');
           const value = coerceParamValue(key, args.value);
           setParam(key as keyof LogoParams, value as never);
           logActivity('set_param', `${key} → ${JSON.stringify(value ?? null).slice(0, 30)}`);
           break;
         }
         case 'set_variant':
-          setVariant(args.variant as string);
-          logActivity('set_variant', String(args.variant));
+          if (typeof args.variant !== 'string' || !args.variant) throw new Error('set_variant requires variant');
+          if (!isBuiltinVariant(args.variant) && !templateByIdRef.current.has(args.variant)) throw new Error(`Unknown template "${args.variant}"`);
+          activeVariantRef.current = args.variant;
+          setVariant(args.variant);
+          logActivity('set_variant', args.variant);
           break;
         case 'apply_preset': {
+          if (typeof args.preset_label !== 'string') throw new Error('apply_preset requires preset_label');
+          const presetLabel = args.preset_label;
           const p = presets.find(
-            pr => pr.label.toLowerCase() === (args.preset_label as string).toLowerCase(),
+            pr => pr.label.toLowerCase() === presetLabel.toLowerCase(),
           );
+          if (!p) throw new Error(`Unknown preset "${presetLabel}"`);
           if (p) Object.entries(p.params).forEach(([k, v]) => setParam(k as keyof LogoParams, v as never));
-          logActivity('apply_preset', String(args.preset_label));
+          logActivity('apply_preset', presetLabel);
           break;
         }
         case 'reset_defaults':
@@ -121,6 +139,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           break;
         case 'create_template': {
           const source = args.renderBody as string;
+          if (typeof source !== 'string' || !source.trim()) throw new Error('create_template requires renderBody');
+          if (typeof args.name !== 'string' || !args.name.trim()) throw new Error('create_template requires name');
           const customParams = (args.params as TemplateParam[]) ?? [];
           const result = await compileTemplate(source, compileEndpoint);
           if ('error' in result) {
@@ -128,7 +148,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
             // variant nav with broken entries. Surface the error so the AI
             // sees it and (in a future iteration) can retry with a fix.
             logActivity('error', `create_template "${args.name}" failed to compile: ${result.error.slice(0, 80)}`);
-            break;
+            throw new Error(`create_template failed to compile: ${result.error}`);
           }
           const id = createHudsonId('', 8);
           const template: LogoTemplate = {
@@ -142,7 +162,9 @@ export function useLogoAI(opts: UseLogoAIOptions) {
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
-          addTemplate(template);
+          await addTemplate(template);
+          templateByIdRef.current = new Map(templateByIdRef.current).set(id, template);
+          activeVariantRef.current = id;
           setVariant(id);
           logActivity('create_template', `Created "${args.name}"`);
           setTimeout(refreshTemplates, 500);
@@ -150,6 +172,10 @@ export function useLogoAI(opts: UseLogoAIOptions) {
         }
         case 'update_template': {
           const templateId = args.templateId as string;
+          if (typeof templateId !== 'string' || !templateId) throw new Error('update_template requires templateId');
+          if (isBuiltinVariant(templateId)) throw new Error(`Cannot modify built-in template "${templateId}". Use create_template to clone it.`);
+          const currentTemplate = templateByIdRef.current.get(templateId);
+          if (!currentTemplate) throw new Error(`Unknown template "${templateId}"`);
           const updates: Partial<Omit<LogoTemplate, 'id'>> = {};
           if (args.name) updates.name = args.name as string;
           if (args.description) updates.description = args.description as string;
@@ -158,31 +184,51 @@ export function useLogoAI(opts: UseLogoAIOptions) {
             const result = await compileTemplate(source, compileEndpoint);
             if ('error' in result) {
               logActivity('error', `update_template "${args.name ?? templateId}" failed to compile: ${result.error.slice(0, 80)}`);
-              break;
+              throw new Error(`update_template failed to compile: ${result.error}`);
             }
             updates.sourceCode = source;
             updates.renderBody = result.js;
           }
           if (args.params) updates.params = args.params as TemplateParam[];
-          updateTemplate(templateId, updates);
+          if (Object.keys(updates).length === 0) throw new Error('update_template requires at least one field to update');
+          await updateTemplate(templateId, updates);
+          templateByIdRef.current = new Map(templateByIdRef.current).set(templateId, {
+            ...currentTemplate,
+            ...updates,
+            updatedAt: Date.now(),
+          });
           logActivity('update_template', `Updated "${args.name ?? templateId}"`);
           setTimeout(refreshTemplates, 500);
           break;
         }
         case 'delete_template': {
           const id = args.templateId as string;
+          if (typeof id !== 'string' || !id) throw new Error('delete_template requires templateId');
           if (isBuiltinVariant(id)) break;
-          if (params.variant === id) setVariant('negative-space');
-          deleteTemplate(id);
+          if (!templateByIdRef.current.has(id)) throw new Error(`Unknown template "${id}"`);
+          if (activeVariantRef.current === id) {
+            activeVariantRef.current = 'negative-space';
+            setVariant('negative-space');
+          }
+          await deleteTemplate(id);
+          const nextTemplates = new Map(templateByIdRef.current);
+          nextTemplates.delete(id);
+          templateByIdRef.current = nextTemplates;
           logActivity('delete_template', `Deleted "${id}"`);
           break;
         }
         case 'set_custom_param': {
           const key = args.key as string;
+          if (typeof key !== 'string' || !key) throw new Error('set_custom_param requires key');
+          const activeVariant = activeVariantRef.current;
+          const activeTemplate = templateByIdRef.current.get(activeVariant);
+          if (activeTemplate && !activeTemplate.params.some(param => param.key === key)) {
+            throw new Error(`Template "${activeTemplate.name}" has no custom param "${key}"`);
+          }
           let val = args.value as number | string;
           // Coerce string numbers (AI often sends "3" instead of 3)
           if (typeof val === 'string' && val !== '' && !isNaN(Number(val))) val = Number(val);
-          setCustomParam(params.variant, key, val);
+          setCustomParam(activeVariant, key, val);
           logActivity('set_custom_param', `${key} → ${JSON.stringify(val ?? null).slice(0, 30)}`);
           break;
         }
@@ -190,6 +236,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
       } catch (err) {
         console.error('[useLogoAI] tool call error:', name, err);
         logActivity('error', `${name}: ${err instanceof Error ? err.message : String(err)}`);
+        throw err;
       }
     },
   });

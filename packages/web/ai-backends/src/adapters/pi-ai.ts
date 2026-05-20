@@ -28,9 +28,11 @@ import {
   type ToolCall,
 } from '@earendil-works/pi-ai';
 import {
+  asSchema,
   createUIMessageStream,
   createUIMessageStreamResponse,
   generateId,
+  type FlexibleSchema,
 } from 'ai';
 
 import type {
@@ -207,9 +209,7 @@ function* translateEvent(event: AssistantMessageEvent): Iterable<StreamEvent<PiA
 /** Tool shape the route passes in (Hudson tools, Zod inputSchema + execute). */
 export interface HudsonTool {
   description?: string;
-  inputSchema?: {
-    toJSONSchema?: () => unknown;
-  };
+  inputSchema?: FlexibleSchema<unknown> | { toJSONSchema?: () => unknown };
   execute?: (args: Record<string, unknown>) => Promise<unknown> | unknown;
 }
 
@@ -307,7 +307,9 @@ function stripJsonSchemaMetadata(schema: unknown): unknown {
 }
 
 function schemaForTool(tool: HudsonTool): Record<string, unknown> {
-  const jsonSchema = tool.inputSchema?.toJSONSchema?.();
+  const jsonSchema = typeof tool.inputSchema === 'object' && tool.inputSchema !== null && 'toJSONSchema' in tool.inputSchema
+    ? tool.inputSchema.toJSONSchema?.()
+    : undefined;
   const schema = stripJsonSchemaMetadata(jsonSchema);
   if (schema && typeof schema === 'object') return schema as Record<string, unknown>;
   return { type: 'object', properties: {}, additionalProperties: true };
@@ -379,20 +381,75 @@ function toPiUIMessages(messages: PiAiUIMessage[]): PiAiMessage[] {
   return converted;
 }
 
+function normalizedToolArgs(args: unknown): Record<string, unknown> {
+  if (args && typeof args === 'object' && !Array.isArray(args)) {
+    return args as Record<string, unknown>;
+  }
+  return {};
+}
+
+function canValidateSchema(schema: HudsonTool['inputSchema']): schema is FlexibleSchema<unknown> {
+  if (!schema) return false;
+  if (typeof schema === 'function') return true;
+  if (typeof schema !== 'object') return false;
+  return '~standard' in schema || ('validate' in schema && 'jsonSchema' in schema);
+}
+
+function validationErrorText(error: unknown): string {
+  if (error && typeof error === 'object' && 'issues' in error && Array.isArray((error as { issues?: unknown[] }).issues)) {
+    return (error as { issues: Array<{ path?: Array<string | number>; message?: string }> }).issues
+      .map(issue => {
+        const path = issue.path?.length ? `${issue.path.join('.')}: ` : '';
+        return `${path}${issue.message ?? 'invalid value'}`;
+      })
+      .join('; ');
+  }
+  if (error instanceof Error) return error.message;
+  return String(error);
+}
+
+async function validateHudsonToolInput(
+  toolName: string,
+  tool: HudsonTool,
+  rawArgs: unknown,
+): Promise<{ ok: true; input: Record<string, unknown> } | { ok: false; input: Record<string, unknown>; errorText: string }> {
+  const input = normalizedToolArgs(rawArgs);
+  const schema = tool.inputSchema;
+  if (!canValidateSchema(schema)) return { ok: true, input };
+
+  const validator = asSchema(schema).validate;
+  if (!validator) return { ok: true, input };
+
+  try {
+    const result = await validator(input);
+    if (result.success) return { ok: true, input: normalizedToolArgs(result.value) };
+    return {
+      ok: false,
+      input,
+      errorText: `Invalid arguments for ${toolName}: ${validationErrorText(result.error)}`,
+    };
+  } catch (err) {
+    return {
+      ok: false,
+      input,
+      errorText: `Invalid arguments for ${toolName}: ${validationErrorText(err)}`,
+    };
+  }
+}
+
 async function executeHudsonTool(
-  tools: Record<string, HudsonTool>,
-  toolCall: ToolCall,
-): Promise<{ result: unknown; isError: boolean }> {
-  const tool = tools[toolCall.name];
-  if (!tool?.execute) {
-    return { result: { error: `Unknown tool: ${toolCall.name}` }, isError: true };
+  tool: HudsonTool,
+  input: Record<string, unknown>,
+): Promise<{ result: unknown; isError: boolean; errorText?: string }> {
+  if (!tool.execute) {
+    return { result: { error: 'Tool is not executable on the server.' }, isError: true, errorText: 'Tool is not executable on the server.' };
   }
 
   try {
-    return { result: await tool.execute(toolCall.arguments), isError: false };
+    return { result: await tool.execute(input), isError: false };
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    return { result: { error: message }, isError: true };
+    return { result: { error: message }, isError: true, errorText: message };
   }
 }
 
@@ -503,22 +560,62 @@ function streamUI(req: PiAiUIRequest): Response {
             const toolCall = event.toolCall;
             const toolCallId = toolCall.id || generateId();
             uiLog(`tool_call: ${toolCall.name}`);
+            const tool = tools[toolCall.name];
+            if (!tool?.execute) {
+              const errorText = `Unknown tool: ${toolCall.name}`;
+              writer.write({
+                type: 'tool-input-error',
+                toolCallId,
+                toolName: toolCall.name,
+                input: toolCall.arguments,
+                errorText,
+                dynamic: true,
+              });
+              const result = { error: errorText };
+              pendingToolResults.push({ toolCall: { ...toolCall, id: toolCallId }, result, isError: true });
+              continue;
+            }
+
+            const validation = await validateHudsonToolInput(toolCall.name, tool, toolCall.arguments);
+            if (!validation.ok) {
+              writer.write({
+                type: 'tool-input-error',
+                toolCallId,
+                toolName: toolCall.name,
+                input: validation.input,
+                errorText: validation.errorText,
+                dynamic: true,
+              });
+              const result = { error: validation.errorText };
+              pendingToolResults.push({ toolCall: { ...toolCall, id: toolCallId, arguments: validation.input }, result, isError: true });
+              continue;
+            }
+
             writer.write({
               type: 'tool-input-available',
               toolCallId,
               toolName: toolCall.name,
-              input: toolCall.arguments,
+              input: validation.input,
               dynamic: true,
             });
 
-            const { result, isError } = await executeHudsonTool(tools, toolCall);
-            writer.write({
-              type: 'tool-output-available',
-              toolCallId,
-              output: result,
-              dynamic: true,
-            });
-            pendingToolResults.push({ toolCall: { ...toolCall, id: toolCallId }, result, isError });
+            const { result, isError, errorText } = await executeHudsonTool(tool, validation.input);
+            if (isError) {
+              writer.write({
+                type: 'tool-output-error',
+                toolCallId,
+                errorText: errorText ?? resultText(result),
+                dynamic: true,
+              });
+            } else {
+              writer.write({
+                type: 'tool-output-available',
+                toolCallId,
+                output: result,
+                dynamic: true,
+              });
+            }
+            pendingToolResults.push({ toolCall: { ...toolCall, id: toolCallId, arguments: validation.input }, result, isError });
           } else if (event.type === 'done') {
             finalMessage = event.message;
           } else if (event.type === 'error') {

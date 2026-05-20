@@ -1,7 +1,7 @@
 'use client';
 
 import { useChat } from '@ai-sdk/react';
-import { DefaultChatTransport, isToolUIPart, getToolName } from 'ai';
+import { DefaultChatTransport } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
 import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
@@ -82,21 +82,6 @@ function invokeHudsonAIError(
   error: Parameters<ChatOnErrorCallback>[0],
 ) {
   ref.current?.(error);
-}
-
-function collectProcessedToolCallIds(messages: UIMessage[] | undefined): Set<string> {
-  const processed = new Set<string>();
-
-  for (const message of messages ?? []) {
-    if (message.role !== 'assistant') continue;
-    for (const part of message.parts ?? []) {
-      if (part && isToolUIPart(part)) {
-        processed.add(part.toolCallId);
-      }
-    }
-  }
-
-  return processed;
 }
 
 export function useHudsonAI({
@@ -199,45 +184,35 @@ export function useHudsonAI({
   );
   /* eslint-enable react-hooks/refs */
 
+  const handleToolCall = useCallback(async ({ toolCall }: { toolCall: { toolName: string; input: unknown } }) => {
+    if (!onToolCallRef.current) return;
+    const args = toolCall.input && typeof toolCall.input === 'object' && !Array.isArray(toolCall.input)
+      ? toolCall.input as Record<string, unknown>
+      : {};
+
+    try {
+      await onToolCallRef.current(toolCall.toolName, args);
+    } catch (err) {
+      const error = err instanceof Error ? err : new Error(String(err));
+      invokeHudsonAIError(onErrorRef, error);
+      throw error;
+    }
+  }, []);
+
   const chat = useChat({
     id: chatId,
     messages: initialMessages,
     transport,
+    onToolCall: handleToolCall,
     onFinish: event => invokeHudsonAIFinish(onFinishRef, event),
     onError: error => invokeHudsonAIError(onErrorRef, error),
   });
 
-  const processedRef = useRef(collectProcessedToolCallIds(initialMessages));
-
   const clearChat = useCallback(() => {
-    processedRef.current.clear();
     chat.setMessages([]);
   }, [chat]);
 
-  // Watch for tool parts in messages and fire the callback
   const { messages } = chat;
-
-  useEffect(() => {
-    if (!onToolCallRef.current) return;
-
-    for (const msg of messages) {
-      if (msg.role !== 'assistant') continue;
-      for (const part of msg.parts ?? []) {
-        if (!part) continue;
-        if (isToolUIPart(part)) {
-          // Wait until input is fully available — during 'input-streaming'
-          // the input may be undefined or partial
-          if ('state' in part && part.state === 'input-streaming') continue;
-          const key = part.toolCallId;
-          if (!processedRef.current.has(key)) {
-            processedRef.current.add(key);
-            const name = getToolName(part);
-            onToolCallRef.current?.(name, (part.input ?? {}) as Record<string, unknown>);
-          }
-        }
-      }
-    }
-  }, [messages]);
 
   return {
     messages,

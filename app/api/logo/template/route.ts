@@ -32,15 +32,21 @@ interface TemplateMeta {
   kind?: 'style' | 'brand';
   /** Id of the template this was spawned from — drives family-tree nesting. */
   parentId?: string;
-  params?: Record<string, {
-    type: 'number' | 'color' | 'toggle' | 'enum';
-    label: string;
-    default: number | string | boolean;
-    min?: number;
-    max?: number;
-    step?: number;
-    options?: string[];
-  }>;
+  params?: Record<string, TemplateParamMeta>;
+}
+
+interface TemplateParamMeta {
+  type: 'number' | 'color' | 'toggle' | 'enum' | 'text' | 'repeatable';
+  label: string;
+  default: number | string | boolean | Record<string, unknown>[];
+  min?: number;
+  max?: number;
+  step?: number;
+  options?: string[];
+  placeholder?: string;
+  itemTemplate?: Record<string, unknown>;
+  itemFields?: TemplateParamMeta[];
+  group?: string;
 }
 
 interface ParsedTemplate {
@@ -54,11 +60,16 @@ interface ParsedTemplate {
   params: {
     key: string;
     label: string;
-    type: 'number' | 'color';
-    default: number | string;
+    type: 'number' | 'color' | 'toggle' | 'enum' | 'text' | 'repeatable';
+    default: number | string | boolean | Record<string, unknown>[];
     min?: number;
     max?: number;
     step?: number;
+    options?: string[];
+    placeholder?: string;
+    itemTemplate?: Record<string, unknown>;
+    itemFields?: ParsedTemplate['params'];
+    group?: string;
   }[];
   createdAt: number;
   updatedAt: number;
@@ -184,12 +195,16 @@ export async function POST(request: Request) {
       params?: NonNullable<TemplateMeta['params']> | Array<{
         key: string;
         label?: string;
-        type?: 'number' | 'color' | 'toggle' | 'enum';
-        default?: number | string | boolean;
+        type?: 'number' | 'color' | 'toggle' | 'enum' | 'text' | 'repeatable';
+        default?: number | string | boolean | Record<string, unknown>[];
         min?: number;
         max?: number;
         step?: number;
         options?: string[];
+        placeholder?: string;
+        itemTemplate?: Record<string, unknown>;
+        itemFields?: TemplateParamMeta[];
+        group?: string;
       }>;
       action?: 'delete';
     };
@@ -254,7 +269,7 @@ export async function POST(request: Request) {
         fileContent = metaStr + trimmed + '\n';
       }
       await writeFile(filePath, fileContent, 'utf-8');
-    } else if (name || description) {
+    } else if (name || description || parentId || paramsRecord) {
       // Partial update — read existing, update meta
       let existingSource: string;
       try {
@@ -267,9 +282,12 @@ export async function POST(request: Request) {
       if (name) existingMeta.name = name;
       if (description) existingMeta.description = description;
       if (parentId) existingMeta.parentId = parentId;
+      if (paramsRecord) existingMeta.params = paramsRecord;
       // Rebuild meta line and replace in source
       const metaStr = `const meta = ${JSON.stringify(existingMeta, null, 2)};`;
-      const updated = existingSource.replace(/const meta\s*=\s*\{[\s\S]*?\};/, metaStr);
+      const updated = /const\s+meta\s*=/.test(existingSource)
+        ? existingSource.replace(/const meta\s*=\s*\{[\s\S]*?\};/, metaStr)
+        : `${metaStr}\n\n${existingSource}`;
       await writeFile(filePath, updated, 'utf-8');
     } else {
       return NextResponse.json({ error: 'renderBody is required for new templates' }, { status: 400 });

@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
-import type { LogoTemplate, ColorSet, WordmarkConfig, LightingConfig } from './types';
+import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant } from './types';
 import { useLogoAI } from './useLogoAI';
@@ -101,6 +101,44 @@ export const defaults: LogoParams = {
 const TEMPLATE_FOCUSED_FALLBACK_POLL_MS = 120_000;
 const TEMPLATE_VISIBLE_FALLBACK_POLL_MS = 300_000;
 
+type CustomParamValue = number | string | Record<string, unknown>[];
+type CustomParamValues = Record<string, Record<string, CustomParamValue>>;
+
+export function templateParamDefaultValue(param: Pick<TemplateParam, 'default'>): CustomParamValue {
+  return typeof param.default === 'boolean' ? (param.default ? 1 : 0) : param.default;
+}
+
+export function withTemplateParamDefaults(
+  values: CustomParamValues,
+  templateId: string,
+  templateParams: Pick<TemplateParam, 'key' | 'default'>[] | undefined,
+): CustomParamValues {
+  if (!templateParams || templateParams.length === 0) return values;
+
+  const existing = values[templateId] ?? {};
+  let filled = existing;
+  for (const param of templateParams) {
+    if (param.key in filled) continue;
+    if (filled === existing) filled = { ...existing };
+    filled[param.key] = templateParamDefaultValue(param);
+  }
+
+  if (filled === existing) return values;
+  return { ...values, [templateId]: filled };
+}
+
+async function assertOkResponse(res: Response, fallback: string) {
+  if (res.ok) return;
+  let detail = '';
+  try {
+    const data = await res.json();
+    detail = typeof data?.error === 'string' ? data.error : '';
+  } catch {
+    detail = await res.text().catch(() => '');
+  }
+  throw new Error(detail || fallback);
+}
+
 interface LogoState {
   params: LogoParams;
   setParam: <K extends keyof LogoParams>(key: K, value: LogoParams[K]) => void;
@@ -109,17 +147,17 @@ interface LogoState {
   presets: { label: string; params: Partial<LogoParams> }[];
   // Template management (all templates — built-in + custom)
   templates: LogoTemplate[];
-  addTemplate: (template: LogoTemplate) => void;
-  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => void;
-  deleteTemplate: (id: string) => void;
+  addTemplate: (template: LogoTemplate) => Promise<void>;
+  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => Promise<void>;
+  deleteTemplate: (id: string) => Promise<void>;
   /** Soft-delete: move to discarded (recoverable for 7 days) */
   discardTemplate: (id: string) => void;
   /** Restore a discarded template */
   restoreTemplate: (id: string) => void;
   /** Currently discarded template IDs */
   discardedIds: Set<string>;
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
-  setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
+  customParamValues: CustomParamValues;
+  setCustomParam: (templateId: string, key: string, value: CustomParamValue) => void;
   // App settings (relay URL, compile endpoint, etc.)
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
@@ -520,7 +558,7 @@ export function LogoProvider({
 
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
-  const [customParamValues, setCustomParamValues] = usePersistentState<Record<string, Record<string, number | string | Record<string, unknown>[]>>>('logo.customParamValues', {});
+  const [customParamValues, setCustomParamValues] = usePersistentState<CustomParamValues>('logo.customParamValues', {});
 
   // Reconcile template files created outside the UI (relay/terminal edits).
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
@@ -538,22 +576,11 @@ export function LogoProvider({
         if (activeRef.current) {
           setTemplates(data.templates);
           setCustomParamValues(cpv => {
-            let changed = false;
-            const next = { ...cpv };
-            for (const t of data.templates as { id: string; params: { key: string; default: number | string | Record<string, unknown>[] | boolean }[] }[]) {
-              if (!t.params || t.params.length === 0) continue;
-              const existing = next[t.id] ?? {};
-              let filled = existing;
-              for (const p of t.params) {
-                if (!(p.key in filled)) {
-                  if (filled === existing) filled = { ...existing };
-                  filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
-                  changed = true;
-                }
-              }
-              if (filled !== existing) next[t.id] = filled;
+            let next = cpv;
+            for (const t of data.templates as { id: string; params: Pick<TemplateParam, 'key' | 'default'>[] }[]) {
+              next = withTemplateParamDefaults(next, t.id, t.params);
             }
-            return changed ? next : cpv;
+            return next;
           });
         }
       }
@@ -598,14 +625,7 @@ export function LogoProvider({
     // Initialize custom param defaults when switching to a template with custom params
     const tmpl = templates.find(t => t.id === v);
     if (tmpl && tmpl.params.length > 0) {
-      setCustomParamValues(cpv => {
-        const existing = cpv[v] ?? {};
-        const filled = { ...existing };
-        for (const p of tmpl.params) {
-          if (!(p.key in filled)) filled[p.key] = typeof p.default === 'boolean' ? (p.default ? 1 : 0) : p.default;
-        }
-        return { ...cpv, [v]: filled };
-      });
+      setCustomParamValues(cpv => withTemplateParamDefaults(cpv, v, tmpl.params));
     }
 
     // Restore tool config for the new variant (or use defaults)
@@ -652,6 +672,7 @@ export function LogoProvider({
   const addTemplate = useCallback(async (template: LogoTemplate) => {
     // Optimistically add to local state
     setTemplates(prev => [...prev, template]);
+    setCustomParamValues(prev => withTemplateParamDefaults(prev, template.id, template.params));
     // Bucket into the targeted session (set by beginAiSession). If no target
     // (e.g. addTemplate fired outside an AI round), skip session bucketing.
     setSessions(prev => {
@@ -666,42 +687,43 @@ export function LogoProvider({
       return next;
     });
     // Persist to server
-    try {
-      await fetch(templateEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id: template.id,
-          name: template.name,
-          description: template.description,
-          parentId: template.parentId,
-          renderBody: template.sourceCode || template.renderBody,
-          params: template.params,
-        }),
-      });
-    } catch { /* next poll will reconcile */ }
-  }, [templateEndpoint]);
+    const res = await fetch(templateEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id: template.id,
+        name: template.name,
+        description: template.description,
+        parentId: template.parentId,
+        renderBody: template.sourceCode || template.renderBody,
+        params: template.params,
+      }),
+    });
+    await assertOkResponse(res, `Failed to save template "${template.name}"`);
+  }, [templateEndpoint, setCustomParamValues]);
 
   const updateTemplate = useCallback(async (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => {
     // Optimistically update local state
     setTemplates(prev => prev.map(t =>
       t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t
     ));
+    if (updates.params) {
+      setCustomParamValues(prev => withTemplateParamDefaults(prev, id, updates.params));
+    }
     // Persist to server
-    try {
-      await fetch(templateEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          id,
-          name: updates.name,
-          description: updates.description,
-          renderBody: updates.sourceCode || updates.renderBody,
-          params: updates.params,
-        }),
-      });
-    } catch { /* next poll will reconcile */ }
-  }, [templateEndpoint]);
+    const res = await fetch(templateEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id,
+        name: updates.name,
+        description: updates.description,
+        renderBody: updates.sourceCode || updates.renderBody,
+        params: updates.params,
+      }),
+    });
+    await assertOkResponse(res, `Failed to update template "${id}"`);
+  }, [templateEndpoint, setCustomParamValues]);
 
   // --- Soft delete: discard with 7-day recovery ---
   const DISCARD_TTL_MS = 7 * 24 * 60 * 60 * 1000; // 7 days
@@ -714,7 +736,7 @@ export function LogoProvider({
     if (expired.length > 0) {
       // Hard delete expired templates
       for (const [id] of expired) {
-        fetch(templateEndpoint, {
+        void fetch(templateEndpoint, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ id, action: 'delete' }),
@@ -755,16 +777,15 @@ export function LogoProvider({
       delete next[id];
       return next;
     });
-    try {
-      await fetch(templateEndpoint, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id, action: 'delete' }),
-      });
-    } catch { /* next poll will reconcile */ }
+    const res = await fetch(templateEndpoint, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ id, action: 'delete' }),
+    });
+    await assertOkResponse(res, `Failed to delete template "${id}"`);
   }, [templateEndpoint, setCustomParamValues, setDiscardedMap]);
 
-  const setCustomParam = useCallback((templateId: string, key: string, value: number | string | Record<string, unknown>[]) => {
+  const setCustomParam = useCallback((templateId: string, key: string, value: CustomParamValue) => {
     setCustomParamValues(prev => ({
       ...prev,
       [templateId]: { ...(prev[templateId] ?? {}), [key]: value },

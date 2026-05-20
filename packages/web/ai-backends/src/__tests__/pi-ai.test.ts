@@ -1,4 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { tool } from 'ai';
+import { z } from 'zod';
 import type { StreamEvent } from '../types';
 
 // ---------------------------------------------------------------------------
@@ -365,5 +367,43 @@ describe('stream() — toolset compilation', () => {
     const [, context] = mockStream.mock.calls[0];
     expect(context.tools).toHaveLength(1);
     expect(context.tools[0].name).toBe('myTool');
+  });
+});
+
+describe('streamUI() — tool validation', () => {
+  it('emits tool-input-error instead of success for invalid tool arguments', async () => {
+    const toolCall = { type: 'toolCall', id: 'tc-invalid', name: 'update_template', arguments: { description: 'missing id' } };
+    mockStream.mockReturnValue(fakeEventStream([
+      { type: 'toolcall_end', contentIndex: 0, toolCall, partial: {} },
+      { type: 'done', reason: 'toolUse', message: makeAssistantMessage('') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'update it' }] }],
+      toolset: 'logo-test',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({
+        system: 'test',
+        tools: {
+          update_template: tool({
+            description: 'update template',
+            inputSchema: z.object({
+              templateId: z.string(),
+              description: z.string().optional(),
+            }),
+            execute: vi.fn(async args => ({ applied: true, ...args })),
+          }),
+        },
+      }),
+    });
+
+    const body = await response.text();
+    expect(body).toContain('tool-input-error');
+    expect(body).toContain('templateId');
+    expect(body).not.toContain('tool-output-available');
   });
 });

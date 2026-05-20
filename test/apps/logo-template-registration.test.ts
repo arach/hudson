@@ -1,6 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import { bucketTemplatesForSidebar } from '@/app/apps/logo/LogoLeftPanel';
-import { buildPersistedMatrixSession, type MatrixSession } from '@/app/apps/logo/LogoProvider';
+import {
+  buildPersistedMatrixSession,
+  withTemplateParamDefaults,
+  type MatrixSession,
+} from '@/app/apps/logo/LogoProvider';
 import type { LogoTemplate } from '@/app/apps/logo/types';
 
 function template(
@@ -94,6 +98,20 @@ describe('Logo template registration', () => {
       kind: 'ai',
       sourceTemplateId: 'talkie-instrument-viewer',
       templateIds: ['talkie-instrument-viewer-v2'],
+    });
+  });
+
+  it('backfills defaults for new AI-authored template params immediately', () => {
+    const values = withTemplateParamDefaults({}, 'custom-template', [
+      { key: 'depth', default: true },
+      { key: 'ink', default: '#f7f3eb' },
+    ]);
+
+    expect(values).toEqual({
+      'custom-template': {
+        depth: 1,
+        ink: '#f7f3eb',
+      },
     });
   });
 });
