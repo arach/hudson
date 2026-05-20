@@ -74,7 +74,7 @@ function LogoChatSurface({
     isSupported: isVoiceSupported,
   } = useVoiceInput({
     surface: 'logo-chat',
-    metadata: { appId: 'logo-designer', sessionId: LOGO_CHAT_SESSION_ID },
+    metadata: { appId: 'logo', sessionId: LOGO_CHAT_SESSION_ID },
     onTranscript: applyVoiceTranscript,
   });
 

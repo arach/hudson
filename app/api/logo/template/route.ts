@@ -1,8 +1,8 @@
 import { NextResponse } from 'next/server';
-import { readFile, writeFile, readdir, unlink, mkdir, stat, copyFile } from 'fs/promises';
-import { existsSync } from 'fs';
+import { readFile, writeFile, readdir, unlink, stat } from 'fs/promises';
 import { join } from 'path';
-import { builtinRenderBodies } from '../../../apps/logo-designer/builtinRenderBodies';
+import { appStorage } from 'hudsonkit/server';
+import { builtinRenderBodies } from '../../../apps/logo/builtinRenderBodies';
 
 const BUILTIN_IDS = new Set([
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
@@ -14,12 +14,15 @@ const BUILTIN_IDS = new Set([
 
 // ---------------------------------------------------------------------------
 // Template directory — one .js file per template
-// User templates live in ~/hudson/logos/.data/logo-templates/
-// Bundled seed templates live in {project}/.data/logo-templates/
+// User: ~/hudson/logo/.data/logo-templates/  (was ~/hudson/logos/...)
+// Seed: {project}/.data/logo/logo-templates/  (was {project}/.data/logo-templates/)
+// `migrateFromDataDir: 'logos'` renames the legacy user dir on first ensure().
 // ---------------------------------------------------------------------------
-const HOME = process.env.HOME || '';
-const TEMPLATES_DIR = join(HOME, 'hudson', 'logos', '.data', 'logo-templates');
-const SEED_DIR = join(process.cwd(), '.data', 'logo-templates');
+const storage = appStorage('logo', { migrateFromDataDir: 'logos' });
+const TEMPLATE_REL = 'logo-templates';
+const isTemplateFile = (name: string) => name.endsWith('.js');
+const templatePaths = storage.paths(TEMPLATE_REL);
+const TEMPLATES_DIR = templatePaths.user;
 
 interface TemplateMeta {
   name?: string;
@@ -108,37 +111,24 @@ function builtInAsFile(id: string, def: typeof builtinRenderBodies[string]): str
   return `const meta = ${JSON.stringify(meta, null, 2)};\n\n${def.renderBody}\n`;
 }
 
-let seeded = false;
 async function ensureDir() {
-  await mkdir(TEMPLATES_DIR, { recursive: true });
-
-  if (!seeded) {
-    seeded = true;
-
-    // Primary path: copy any bundled templates that are missing from the user's dir.
-    // Installer-flow friendly — lets ops teams ship pre-baked overrides via SEED_DIR.
-    if (existsSync(SEED_DIR)) {
-      const existing = new Set((await readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.js')));
-      const seeds = (await readdir(SEED_DIR)).filter(f => f.endsWith('.js'));
-      const missing = seeds.filter(f => !existing.has(f));
-      if (missing.length > 0) {
-        await Promise.all(missing.map(f => copyFile(join(SEED_DIR, f), join(TEMPLATES_DIR, f))));
-      }
-    }
-
-    // Fallback: user dir is still empty because neither SEED_DIR nor previous runs
-    // left anything behind. Synthesize the built-ins from `builtinRenderBodies.ts`
-    // (which ships with the repo). Self-healing — works on a fresh clone with no
-    // setup step, and keeps the filesystem as the single source of truth thereafter.
-    const existing = (await readdir(TEMPLATES_DIR)).filter(f => f.endsWith('.js'));
-    if (existing.length === 0) {
+  await storage.seedIfEmpty({
+    rel: TEMPLATE_REL,
+    match: isTemplateFile,
+    // Installer-flow friendly: copy any bundled templates missing from the user
+    // dir (none ship today, but the path is preserved for ops overrides).
+    copyMissing: true,
+    // Self-healing fallback: if neither seeds nor prior runs left anything
+    // behind, synthesize the built-ins from `builtinRenderBodies.ts`. Keeps
+    // the filesystem as the single source of truth thereafter.
+    fallback: async ({ userDir }) => {
       await Promise.all(
         Object.entries(builtinRenderBodies).map(([id, def]) =>
-          writeFile(join(TEMPLATES_DIR, `${id}.js`), builtInAsFile(id, def), 'utf-8'),
+          writeFile(join(userDir, `${id}.js`), builtInAsFile(id, def), 'utf-8'),
         ),
       );
-    }
-  }
+    },
+  });
 }
 
 async function readAllTemplates(): Promise<ParsedTemplate[]> {

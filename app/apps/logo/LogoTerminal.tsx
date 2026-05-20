@@ -60,7 +60,7 @@ export function LogoTerminal() {
     systemPrompt: relaySystemPrompt,
     cwd: homeFolder,
     workspaceFiles,
-    sessionKey: 'logo-designer',
+    sessionKey: 'logo',
     backend: relayBackend,
     tmuxSession: relayBackend === 'tmux' ? 'hudson-logos' : undefined,
     agent: relayAgent,

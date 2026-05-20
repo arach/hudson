@@ -64,7 +64,7 @@ const APP_INFO: Record<string, AppInfo> = {
       'Debug cross-app communication in real time',
     ],
   },
-  'logo-designer': {
+  'logo': {
     summary: 'Design and export lattice-based logos with live preview and AI-powered template generation.',
     bullets: [
       'Multiple built-in variants: lattice grid, dot matrix, mosaic',

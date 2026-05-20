@@ -777,7 +777,7 @@ export function LogoContent() {
       console.warn('[logo] Select at least one matrix variant before animating.');
       return;
     }
-    const pushed = dataBus?.pushDirect('logo-designer', 'animation-job', 'preframe-catalog', 'logo-animation-job');
+    const pushed = dataBus?.pushDirect('logo', 'animation-job', 'preframe-catalog', 'logo-animation-job');
     if (!pushed) {
       console.warn('[logo] Preframe animation port is not available. Start/register Preframe and try again.');
     }

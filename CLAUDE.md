@@ -49,8 +49,8 @@ If you add a new top-level static page, append its route to `staticRoutes` in `s
 | `app/page.tsx` | Client-side redirect to `/app`; dev-only choice surface |
 | `app/landing/page.tsx` | Marketing deck (mounts `<SiteRoot>`). Served at `hudsonkit.com/` via Worker rewrite |
 | `app/app/page.tsx` | Mounts `<WorkspaceShell>` with `allWorkspaces` from the registry. Served at `app.hudsonkit.com/` via Worker rewrite |
-| `app/apps/logo-designer/LogoComparisonSheet.tsx` | Matrix-view primitive (NxM grid renders any built-in template's renderBody). Used by Logo Designer's matrix view |
-| `app/apps/logo-designer/LogoMatrixPresets.ts` | Per-template default families (rows × values) for the matrix view |
+| `app/apps/logo/LogoComparisonSheet.tsx` | Matrix-view primitive (NxM grid renders any built-in template's renderBody). Used by Logo Designer's matrix view |
+| `app/apps/logo/LogoMatrixPresets.ts` | Per-template default families (rows × values) for the matrix view |
 | `app/shell/WorkspaceShell.tsx` | Main shell orchestrator |
 | `app/apps/registry.ts` | Canonical app list (built-in + local) |
 | `app/apps/` | App implementations |
