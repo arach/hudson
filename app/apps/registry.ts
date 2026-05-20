@@ -28,7 +28,7 @@ import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils'
 import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
-import { logoDesignerApp } from './logo-designer';
+import { logoApp } from './logo';
 import { imageProcessLabApp } from './image-process-lab';
 import { shaperApp } from './shaper';
 import { traceViewerApp } from './trace-viewer';
@@ -79,7 +79,7 @@ function getAppById(id: string): HudsonApp | null {
     'hudson-docs': hudsonDocsApp,
     'hudson-ai': hudsonAIApp,
     'intent-explorer': intentExplorerApp,
-    'logo-designer': logoDesignerApp,
+    'logo': logoApp,
     'image-process-lab': imageProcessLabApp,
     'shaper': shaperApp,
     'trace-viewer': traceViewerApp,
@@ -211,7 +211,7 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
 
   return [
     {
-      app: logoDesignerApp,
+      app: logoApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -540, y: -300, w: 1080, h: 720 },
     },
@@ -221,7 +221,7 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       defaultWindowBounds: { x: 580, y: -260, w: 540, h: 360 },
     },
     // Shaper bridges raster Assets → vector Logo by tracing/bezier-editing the silhouette.
-    // Pipeline: assets.image → shaper.image, then shaper.svg → logo-designer.background-svg
+    // Pipeline: assets.image → shaper.image, then shaper.svg → logo.background-svg
     {
       app: shaperApp,
       canvasMode: 'windowed',
@@ -374,7 +374,7 @@ export function getLogoStudioWorkspace(): HudsonWorkspace {
     description: 'Logo design + asset export workflow',
     mode: 'canvas',
     apps: getLogoStudioApps(),
-    defaultFocusedAppId: 'logo-designer',
+    defaultFocusedAppId: 'logo',
     defaultScale: 0.5,
     leftNavigation: 'on',
   };

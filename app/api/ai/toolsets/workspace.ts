@@ -395,7 +395,7 @@ function tools() {
         key: z.string().describe('Parameter key such as bgColor, borderRadius, gapWidth, splitX, splitY, or padding.'),
         value: z.union([z.string(), z.number()]).describe('New value.'),
       }),
-      execute: async (args) => ({ applied: true, app: 'logo-designer', ...args }),
+      execute: async (args) => ({ applied: true, app: 'logo', ...args }),
     }),
 
     set_logo_custom_param: tool({
@@ -404,7 +404,7 @@ function tools() {
         key: z.string().describe('Custom parameter key.'),
         value: z.union([z.string(), z.number()]).describe('New value.'),
       }),
-      execute: async (args) => ({ applied: true, app: 'logo-designer', action: 'set_custom_param', ...args }),
+      execute: async (args) => ({ applied: true, app: 'logo', action: 'set_custom_param', ...args }),
     }),
 
     set_logo_variant: tool({
@@ -412,7 +412,7 @@ function tools() {
       inputSchema: z.object({
         variant: z.string().describe('Template ID.'),
       }),
-      execute: async (args) => ({ applied: true, app: 'logo-designer', ...args }),
+      execute: async (args) => ({ applied: true, app: 'logo', ...args }),
     }),
 
     push_pipe: tool({

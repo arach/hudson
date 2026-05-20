@@ -382,7 +382,7 @@ export function LogoProvider({
   visible?: boolean;
   focused?: boolean;
 }) {
-  const [appSettings] = useAppSettings('logo-designer', logoSettings);
+  const [appSettings] = useAppSettings('logo', logoSettings);
   const { apiBaseUrl } = usePlatform();
   const templateStreamEndpoint = `${apiBaseUrl}/api/logo/template/stream`;
   // Merge persisted params with defaults so new fields are backfilled

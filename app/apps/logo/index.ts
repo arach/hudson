@@ -14,8 +14,8 @@ import { logoIntents } from './intents';
 
 const IS_DEV_ENV = process.env.NODE_ENV === 'development';
 
-export const logoDesignerApp: HudsonApp = {
-  id: 'logo-designer',
+export const logoApp: HudsonApp = {
+  id: 'logo',
   name: 'Logo',
   description: 'Lattice logo designer and previewer',
   mode: 'panel',
@@ -45,6 +45,9 @@ export const logoDesignerApp: HudsonApp = {
       ? [{ serviceId: 'preframe', optional: true, reason: 'Required for Logo animation render jobs' }]
       : []),
   ],
+
+  // HUD-008: same-origin `/api/logo/...` defaults, `~/hudson/logo/.data` storage.
+  backend: {},
 
   slots: {
     Content: LogoContent,

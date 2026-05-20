@@ -49,8 +49,8 @@ function LogoChatSurface({
     messages, sendMessage, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
   } = aiChat;
-  const provider = String(appSettings.aiProvider || 'copilot');
-  const model = String(appSettings.aiModel || 'gemini-3-flash-preview');
+  const provider = String(appSettings.aiProvider || 'minimax');
+  const model = String(appSettings.aiModel || 'MiniMax-M2.7');
   const cwd = String(appSettings.homeFolder || '~/hudson/logos');
   const harness = 'api'; // chat surface always goes through /api/ai/chat (not CLI)
   const isStreaming = status === 'streaming' || status === 'submitted';
@@ -74,7 +74,7 @@ function LogoChatSurface({
     isSupported: isVoiceSupported,
   } = useVoiceInput({
     surface: 'logo-chat',
-    metadata: { appId: 'logo-designer', sessionId: LOGO_CHAT_SESSION_ID },
+    metadata: { appId: 'logo', sessionId: LOGO_CHAT_SESSION_ID },
     onTranscript: applyVoiceTranscript,
   });
 

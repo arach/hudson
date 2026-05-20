@@ -20,7 +20,7 @@ hudson/
       shaper/                       # Reference app (bezier editor)
       hudson-docs/
       intent-explorer/
-      logo-designer/
+      logo/
       trace-viewer/
       openscout/
       notepad/

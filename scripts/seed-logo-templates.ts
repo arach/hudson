@@ -4,7 +4,7 @@
  */
 import { writeFileSync, mkdirSync } from 'fs';
 import { join } from 'path';
-import { builtinRenderBodies } from '../app/apps/logo-designer/builtinRenderBodies';
+import { builtinRenderBodies } from '../app/apps/logo/builtinRenderBodies';
 
 const DIR = join(import.meta.dirname, '..', '.data', 'logo-templates');
 mkdirSync(DIR, { recursive: true });

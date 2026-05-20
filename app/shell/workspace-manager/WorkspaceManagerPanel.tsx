@@ -68,21 +68,37 @@ function AppSettingsInline({ entry }: { entry: AppSettingsEntry }) {
           <div className="space-y-3">
             {section.fields.map(field => {
               const value = entry.values[field.key] ?? field.default;
+              let control = null;
               switch (field.type) {
                 case 'text':
-                  return <SettingsText key={field.key} label={field.label} value={String(value)} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  control = <SettingsText label={field.label} value={String(value)} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  break;
                 case 'number':
                 case 'slider':
-                  return <SettingsSlider key={field.key} label={field.label} value={Number(value)} min={field.min ?? 0} max={field.max ?? 100} step={field.step ?? 1} format={field.format ?? (v => String(v))} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  control = <SettingsSlider label={field.label} value={Number(value)} min={field.min ?? 0} max={field.max ?? 100} step={field.step ?? 1} format={field.format ?? (v => String(v))} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  break;
                 case 'toggle':
-                  return <SettingsToggle key={field.key} label={field.label} checked={Boolean(value)} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  control = <SettingsToggle label={field.label} checked={Boolean(value)} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  break;
                 case 'segment':
-                  return <SettingsSegment key={field.key} label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  control = <SettingsSegment label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  break;
                 case 'select':
-                  return <SettingsSelect key={field.key} label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  control = <SettingsSelect label={field.label} value={String(value)} options={field.options ?? []} onChange={v => entry.onUpdate({ [field.key]: v })} />;
+                  break;
                 default:
                   return null;
               }
+              return (
+                <div key={field.key} className="space-y-1.5">
+                  {control}
+                  {field.description && (
+                    <div className="pl-[156px] font-mono text-[10px] leading-relaxed text-muted-foreground/72">
+                      {field.description}
+                    </div>
+                  )}
+                </div>
+              );
             })}
           </div>
         </div>
