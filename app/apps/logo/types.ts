@@ -122,6 +122,8 @@ export interface LogoTemplate {
   id: string;
   name: string;
   description: string;
+  /** True for shipped/read-only template files. */
+  builtin?: boolean;
   /** Compiled JS function body: receives (p, vb) where p = merged params, vb = 512.
    *  Must return an SVG inner content string. */
   renderBody: string;

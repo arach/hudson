@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useCallback, useState } from 'react';
+import { useMemo, useCallback, useEffect, useRef, useState } from 'react';
 import { useTerminalRelay, TerminalRelay, usePlatform } from 'hudsonkit';
 import type { HudsonWorkspace, IntentCatalog } from 'hudsonkit';
 import { useDataBus } from './DataBusContext';
@@ -116,6 +116,13 @@ export interface HudsonTerminalProps {
   catalog: IntentCatalog;
 }
 
+export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
+
+export interface HudsonTerminalVoiceTranscriptDetail {
+  transcript: string;
+  submit?: boolean;
+}
+
 export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
   const { serviceApiUrl } = usePlatform();
   const { getPortCatalog, pipes } = useDataBus();
@@ -139,6 +146,8 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
     workspaceFiles,
     sessionKey: 'hudson-terminal',
   });
+  const { connect, sendInput, status: relayStatus } = relay;
+  const pendingVoiceInputRef = useRef<HudsonTerminalVoiceTranscriptDetail | null>(null);
 
   const configItems = useMemo(() => [
     { label: 'Relay', value: 'ws://localhost:3600' },
@@ -167,6 +176,39 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
       bubbles: true,
     }));
   }, []);
+
+  const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
+    const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
+    if (!transcript) return;
+    sendInput(detail.submit ? `${transcript}\r` : transcript);
+  }, [sendInput]);
+
+  useEffect(() => {
+    const handleVoiceTranscript = (event: Event) => {
+      const detail = (event as CustomEvent<HudsonTerminalVoiceTranscriptDetail>).detail;
+      if (!detail || typeof detail.transcript !== 'string') return;
+
+      if (relayStatus === 'connected') {
+        sendVoiceTranscript(detail);
+        return;
+      }
+
+      pendingVoiceInputRef.current = detail;
+      if (relayStatus !== 'connecting') {
+        connect();
+      }
+    };
+
+    window.addEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+    return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+  }, [connect, relayStatus, sendVoiceTranscript]);
+
+  useEffect(() => {
+    if (relayStatus !== 'connected' || !pendingVoiceInputRef.current) return;
+    const detail = pendingVoiceInputRef.current;
+    pendingVoiceInputRef.current = null;
+    sendVoiceTranscript(detail);
+  }, [relayStatus, sendVoiceTranscript]);
 
   if (hostedDemo) {
     return <HostedTerminalNotice />;

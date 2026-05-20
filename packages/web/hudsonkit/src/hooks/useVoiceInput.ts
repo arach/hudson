@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
 import { probeVoxAvailability, type VoxAvailability } from '../lib/voxProbe';
 import { HObservabilityDefault } from '../observability';
@@ -87,6 +87,12 @@ function sumChunkBytes(chunks: Blob[]) {
   return chunks.reduce((total, chunk) => total + chunk.size, 0);
 }
 
+function canCaptureMicrophoneAudio(): boolean {
+  return typeof MediaRecorder !== 'undefined'
+    && typeof navigator !== 'undefined'
+    && !!navigator.mediaDevices?.getUserMedia;
+}
+
 interface NormalizedError {
   status: 'unavailable' | 'error';
   message: string;
@@ -168,12 +174,11 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   metadataRef.current = metadata;
 
   const clientRef = useRef<ClientHandle | null>(null);
-  const isSupported = useMemo(
-    () => typeof MediaRecorder !== 'undefined'
-      && typeof navigator !== 'undefined'
-      && !!navigator.mediaDevices?.getUserMedia,
-    [],
-  );
+  const [isSupported, setIsSupported] = useState(false);
+
+  useEffect(() => {
+    setIsSupported(canCaptureMicrophoneAudio());
+  }, []);
 
   const getClient = useCallback(async () => {
     if (transcribe) {

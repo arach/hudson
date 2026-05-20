@@ -24,8 +24,9 @@ import {
   useAppSettings,
   captureWorkspace,
 } from 'hudsonkit';
+import { useVoiceInput } from 'hudsonkit/voice';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -37,7 +38,7 @@ import { useIntentCatalog } from '../hooks/useIntentCatalog';
 import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
-import { HudsonTerminal } from './HudsonTerminal';
+import { HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, HudsonTerminal } from './HudsonTerminal';
 import { WorkspaceAI, type WorkspaceAIComposerRequest } from './WorkspaceAI';
 import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
 import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
@@ -58,6 +59,7 @@ import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
+import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -2471,6 +2473,65 @@ function WorkspaceInner({
     }
   }, [termSnapping]);
 
+  // --- Terminal voice capture ---
+  const terminalVoiceMetadata = useMemo(
+    () => ({ workspaceId: workspace.id }),
+    [workspace.id],
+  );
+  const handleTerminalVoiceTranscript = useCallback((transcript: string) => {
+    window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
+      detail: {
+        transcript,
+        submit: shellSettings.voice.autoSend,
+      },
+    }));
+    playSound(shellSettings.voice.autoSend ? 'blipUp' : 'click');
+  }, [playSound, shellSettings.voice.autoSend]);
+  const terminalVoiceInput = useVoiceInput({
+    surface: 'hudson-terminal',
+    metadata: terminalVoiceMetadata,
+    onTranscript: handleTerminalVoiceTranscript,
+  });
+  const {
+    status: terminalVoiceStatus,
+    error: terminalVoiceError,
+    isSupported: terminalVoiceSupported,
+    start: startTerminalVoice,
+    stop: stopTerminalVoice,
+  } = terminalVoiceInput;
+  const terminalVoiceRecording = terminalVoiceStatus === 'recording';
+  const terminalVoiceTranscribing = terminalVoiceStatus === 'transcribing';
+  const terminalVoiceAvailable = !focusedConsoleApp?.slots.Terminal;
+  const handleTerminalVoiceClick = useCallback(() => {
+    if (!terminalVoiceAvailable) return;
+
+    setShowTerminal(true);
+    openWorkspaceConsole('terminal');
+
+    if (terminalVoiceRecording) {
+      stopTerminalVoice();
+      return;
+    }
+
+    void registerHudsonVoxIntegration()
+      .catch(error => {
+        console.warn('[WorkspaceShell] Vox integration registration failed:', error);
+      })
+      .finally(() => {
+        void startTerminalVoice();
+      });
+  }, [openWorkspaceConsole, setShowTerminal, startTerminalVoice, stopTerminalVoice, terminalVoiceAvailable, terminalVoiceRecording]);
+  const terminalVoiceTitle = (() => {
+    if (!terminalVoiceAvailable) return 'Voice capture is available in the Hudson terminal';
+    if (!terminalVoiceSupported) return 'Voice input is not supported in this browser';
+    if (terminalVoiceError) return terminalVoiceError;
+    if (terminalVoiceRecording) return 'Stop recording';
+    if (terminalVoiceTranscribing) return 'Transcribing voice prompt';
+    return shellSettings.voice.autoSend
+      ? 'Record and send voice prompt'
+      : 'Record voice prompt';
+  })();
+
   // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
   // Active tab in bright emerald with an underline + subtle bg tint for contrast;
   // inactive in muted gray and clickable.
@@ -2506,15 +2567,39 @@ function WorkspaceInner({
   );
 
   const terminalHeaderActions = (
-    <button
-      type="button"
-      onClick={handleTermScreenshot}
-      disabled={termSnapping}
-      className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
-      title="Capture screenshot — copies file path to clipboard"
-    >
-      {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-    </button>
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={handleTermScreenshot}
+        disabled={termSnapping}
+        className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
+        title="Capture screenshot — copies file path to clipboard"
+      >
+        {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+      </button>
+      <button
+        type="button"
+        onClick={handleTerminalVoiceClick}
+        disabled={!terminalVoiceAvailable || !terminalVoiceSupported || terminalVoiceTranscribing}
+        className={`p-1 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+          terminalVoiceRecording
+            ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
+            : terminalVoiceError
+              ? 'text-red-400 hover:bg-red-500/10'
+              : terminalVoiceStatus === 'unavailable'
+                ? 'text-amber-400 hover:bg-amber-500/10'
+                : 'text-muted-foreground hover:text-accent'
+        }`}
+        title={terminalVoiceTitle}
+        aria-label={terminalVoiceTitle}
+      >
+        {terminalVoiceTranscribing
+          ? <Loader2 size={12} className="animate-spin" />
+          : terminalVoiceRecording
+            ? <Square size={11} />
+            : <Mic size={12} />}
+      </button>
+    </div>
   );
 
   // --- Terminal content ---

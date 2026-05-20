@@ -187,6 +187,40 @@ export interface MatrixSession {
   createdAt: number;
 }
 
+export function buildPersistedMatrixSession(
+  templates: LogoTemplate[],
+  sourceTemplateId: string,
+  sessions: MatrixSession[],
+): MatrixSession | null {
+  const sessionTemplateIds = new Set(sessions.flatMap(session => session.templateIds));
+  const children = templates
+    .filter(template =>
+      template.parentId === sourceTemplateId &&
+      !template.builtin &&
+      !sessionTemplateIds.has(template.id)
+    )
+    .sort((a, b) => {
+      const byTime = a.createdAt - b.createdAt;
+      if (byTime !== 0) return byTime;
+      return a.name.localeCompare(b.name);
+    });
+
+  if (children.length === 0) return null;
+
+  const usedVersions = new Set([1, ...sessions.map(session => session.version)]);
+  let version = 2;
+  while (usedVersions.has(version)) version += 1;
+
+  return {
+    version,
+    label: `v${version} · saved`,
+    kind: 'ai',
+    templateIds: children.map(template => template.id),
+    sourceTemplateId,
+    createdAt: Math.min(...children.map(template => template.createdAt)),
+  };
+}
+
 export interface MatrixPick {
   key: string;
   family: string;

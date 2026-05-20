@@ -2,7 +2,7 @@
 
 import { useRef, useCallback, useState, useMemo, useEffect, type CSSProperties } from 'react';
 import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb, ScrollText, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, Film } from 'lucide-react';
-import { useLogo } from './LogoProvider';
+import { buildPersistedMatrixSession, useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
 import type { WordmarkConfig } from './types';
 import { LogoSvg } from './LogoSvg';
@@ -434,9 +434,14 @@ function LogoMatrixView({
   }, [sessions.length]);
 
   // The displayed session — v1 falls back to a synthesized preset session.
+  const persistedSession = useMemo(
+    () => buildPersistedMatrixSession(templates, templateId, sessions),
+    [templates, templateId, sessions],
+  );
   const activeSessionObj = useMemo(() => {
     const real = sessions.find(s => s.version === activeSession);
     if (real) return real;
+    if (persistedSession && activeSession === persistedSession.version) return persistedSession;
     // Synthetic v1 if sessions is empty
     return {
       version: 1,
@@ -446,7 +451,7 @@ function LogoMatrixView({
       sourceTemplateId: templateId,
       createdAt: 0,
     };
-  }, [sessions, activeSession, templateId]);
+  }, [sessions, activeSession, persistedSession, templateId]);
   const isPresetView = activeSessionObj.kind === 'preset';
   // Templates for v2+ sessions, resolved against the current templates list.
   const sessionTemplates = useMemo(() => {
@@ -458,15 +463,24 @@ function LogoMatrixView({
 
   // Tabs to render: always include v1, then any AI sessions.
   const tabs = useMemo(() => {
-    const out: { version: number; label: string; kind: 'preset' | 'ai'; count: number }[] = [
+    const out: { version: number; label: string; kind: 'preset' | 'ai'; count: number; persisted?: boolean }[] = [
       { version: 1, label: 'v1 · base', kind: 'preset', count: 0 },
     ];
     for (const s of sessions) {
       if (s.version === 1) continue;
       out.push({ version: s.version, label: s.label, kind: s.kind, count: s.templateIds.length });
     }
+    if (persistedSession) {
+      out.push({
+        version: persistedSession.version,
+        label: persistedSession.label,
+        kind: persistedSession.kind,
+        count: persistedSession.templateIds.length,
+        persisted: true,
+      });
+    }
     return out;
-  }, [sessions]);
+  }, [sessions, persistedSession]);
 
   // Detect new templates that landed after this matrix view mounted.
   // The IDs we knew about at mount-time become the baseline; anything new
@@ -521,7 +535,7 @@ function LogoMatrixView({
             <div className="logo-matrix-tabs" role="tablist" aria-label="Matrix versions">
               {tabs.map(tab => {
                 const active = tab.version === activeSession;
-                const closable = tab.version !== 1;
+                const closable = tab.version !== 1 && !tab.persisted;
                 return (
                   <div
                     key={tab.version}

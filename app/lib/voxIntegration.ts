@@ -90,3 +90,16 @@ export function createHudsonVoxLaunchUrl(origin: string): string {
 
   return `vox://launch?${params.toString()}`;
 }
+
+export async function registerHudsonVoxIntegration(origin?: string): Promise<boolean> {
+  const resolvedOrigin = origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
+  if (!resolvedOrigin) return false;
+
+  const response = await fetch(HUDSON_VOX_INTEGRATION_API_PATH, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ origin: resolvedOrigin }),
+  });
+
+  return response.ok;
+}

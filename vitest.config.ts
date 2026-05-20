@@ -16,6 +16,10 @@ export default defineConfig({
     alias: [
       { find: '@', replacement: resolve(__dirname, '.') },
       {
+        find: 'hudsonkit/workflow',
+        replacement: resolve(__dirname, 'packages/web/hudsonkit/src/workflow/index.ts'),
+      },
+      {
         find: /^hudsonkit\/(.+)$/,
         replacement: `${resolve(__dirname, 'packages/web/hudsonkit/src')}/$1.ts`,
       },

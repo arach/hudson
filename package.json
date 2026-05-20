@@ -3,7 +3,7 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3500",
+    "dev": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next dev --port 3500",
     "build": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next build",
     "build:site": "bun run build && bun run embed:bundle && bun site/export-pages.mjs",
     "deploy:hudsonkit": "bun run build:site && bunx wrangler deploy",

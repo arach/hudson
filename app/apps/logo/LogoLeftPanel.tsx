@@ -6,7 +6,7 @@ import { isBuiltinVariant, type LogoTemplate } from './types';
 
 // ---------------------------------------------------------------------------
 // Left panel — variant selection (navigation only).
-// Two-section tree: STYLES (flat) and BRANDS (collapsible parents with children).
+// Two-section tree: template roots and brand roots, both with recursive children.
 // ---------------------------------------------------------------------------
 
 // Persisted set holds IDs of *expanded* brand parents. Default (empty) =
@@ -32,35 +32,30 @@ function persistExpandedBrands(set: Set<string>) {
   } catch { /* quota/full — fine to drop */ }
 }
 
-interface BrandGroup {
-  parent: LogoTemplate;
-  children: LogoTemplate[];
+interface TemplateTreeNode {
+  template: LogoTemplate;
+  children: TemplateTreeNode[];
 }
 
 interface SidebarSections {
-  styles: LogoTemplate[];
-  brands: BrandGroup[];
-  orphans: LogoTemplate[]; // brand children whose parent isn't in the active set
+  styles: TemplateTreeNode[];
+  brands: TemplateTreeNode[];
+  orphans: TemplateTreeNode[]; // children whose parent isn't in the active set
 }
 
 /**
  * Bucket templates into the two sidebar sections.
  *
- * - Styles: kind === 'style' (or no kind on a non-brand root) — flat alpha list.
- * - Brands: kind === 'brand' && !parentId — parents, alpha-sorted, with their
- *   alpha-sorted children (kind === 'brand' && parentId === parent.id).
- * - Orphans: brand children whose parent is missing — rendered as roots in the
- *   brands section so they remain reachable.
+ * - Styles: root templates whose kind is not `brand`.
+ * - Brands: root templates whose kind is `brand`.
+ * - Children: nested recursively under their real parent, regardless of depth.
+ * - Orphans: children whose parent is missing; rendered as roots so they remain reachable.
  *
- * Templates without explicit `kind` default to 'style' grouping. A brand child
- * (has parentId) always lives in the brands section regardless of kind.
+ * Templates without explicit `kind` default to the style section at the root.
  */
-function bucket(templates: LogoTemplate[]): SidebarSections {
+export function bucketTemplatesForSidebar(templates: LogoTemplate[]): SidebarSections {
   const byId = new Map(templates.map(t => [t.id, t]));
-  const styles: LogoTemplate[] = [];
-  const brandParents: LogoTemplate[] = [];
   const childrenByParent = new Map<string, LogoTemplate[]>();
-  const orphans: LogoTemplate[] = [];
 
   for (const t of templates) {
     if (t.parentId) {
@@ -68,30 +63,33 @@ function bucket(templates: LogoTemplate[]): SidebarSections {
         const list = childrenByParent.get(t.parentId) ?? [];
         list.push(t);
         childrenByParent.set(t.parentId, list);
-      } else {
-        orphans.push(t);
       }
-      continue;
-    }
-    if (t.kind === 'brand') {
-      brandParents.push(t);
-    } else {
-      // No parent, not brand → style. Covers explicit 'style' and untagged.
-      styles.push(t);
     }
   }
 
   const byName = (a: LogoTemplate, b: LogoTemplate) => a.name.localeCompare(b.name);
-  styles.sort(byName);
-  brandParents.sort(byName);
-  orphans.sort(byName);
+  const makeNode = (template: LogoTemplate): TemplateTreeNode => ({
+    template,
+    children: (childrenByParent.get(template.id) ?? [])
+      .slice()
+      .sort(byName)
+      .map(makeNode),
+  });
 
-  const brands: BrandGroup[] = brandParents.map(parent => ({
-    parent,
-    children: (childrenByParent.get(parent.id) ?? []).slice().sort(byName),
-  }));
+  const roots = templates.filter(t => !t.parentId).slice().sort(byName);
+  const styles = roots.filter(t => t.kind !== 'brand').map(makeNode);
+  const brands = roots.filter(t => t.kind === 'brand').map(makeNode);
+  const orphans = templates
+    .filter(t => t.parentId && !byId.has(t.parentId))
+    .slice()
+    .sort(byName)
+    .map(makeNode);
 
   return { styles, brands, orphans };
+}
+
+function treeContainsTemplate(node: TemplateTreeNode, id: string): boolean {
+  return node.template.id === id || node.children.some(child => treeContainsTemplate(child, id));
 }
 
 export function LogoLeftPanel() {
@@ -113,20 +111,41 @@ export function LogoLeftPanel() {
     () => templates.filter(t => !discardedIds.has(t.id)),
     [templates, discardedIds],
   );
-  const sections = useMemo(() => bucket(activeTemplates), [activeTemplates]);
+  const sections = useMemo(() => bucketTemplatesForSidebar(activeTemplates), [activeTemplates]);
   const discardedTemplates = templates.filter(t => discardedIds.has(t.id));
 
   // Default: brand families collapsed. Set tracks the IDs that the user has
   // explicitly opened — anything not in the set renders collapsed.
-  const isExpanded = (parentId: string) => expandedBrands.has(parentId);
+  const isExpanded = (node: TemplateTreeNode) =>
+    expandedBrands.has(node.template.id) || node.children.some(child => treeContainsTemplate(child, params.variant));
 
-  const toggleBrand = (parentId: string) => {
+  const toggleBranch = (parentId: string) => {
     setExpandedBrands(prev => {
       const next = new Set(prev);
       if (next.has(parentId)) next.delete(parentId);
       else next.add(parentId);
       return next;
     });
+  };
+
+  const renderTreeNode = (node: TemplateTreeNode, depth: number) => {
+    const expanded = isExpanded(node);
+    const hasChildren = node.children.length > 0;
+    return (
+      <div key={node.template.id} className="flex flex-col">
+        <SidebarRow
+          template={node.template}
+          active={params.variant === node.template.id}
+          depth={depth}
+          expandable={hasChildren}
+          expanded={expanded}
+          onToggleExpand={hasChildren ? () => toggleBranch(node.template.id) : undefined}
+          onSelect={() => setVariant(node.template.id)}
+          onDiscard={() => discardTemplate(node.template.id)}
+        />
+        {hasChildren && expanded && node.children.map(child => renderTreeNode(child, depth + 1))}
+      </div>
+    );
   };
 
   return (
@@ -141,16 +160,7 @@ export function LogoLeftPanel() {
       {sections.styles.length > 0 && (
         <div className="flex flex-col">
           <SectionHeader label="Templates" />
-          {sections.styles.map(t => (
-            <SidebarRow
-              key={t.id}
-              template={t}
-              active={params.variant === t.id}
-              depth={0}
-              onSelect={() => setVariant(t.id)}
-              onDiscard={() => discardTemplate(t.id)}
-            />
-          ))}
+          {sections.styles.map(node => renderTreeNode(node, 0))}
         </div>
       )}
 
@@ -158,44 +168,8 @@ export function LogoLeftPanel() {
       {(sections.brands.length > 0 || sections.orphans.length > 0) && (
         <div className="flex flex-col">
           <SectionHeader label="Brands" />
-          {sections.brands.map(group => {
-            const expanded = isExpanded(group.parent.id);
-            const hasChildren = group.children.length > 0;
-            return (
-              <div key={group.parent.id} className="flex flex-col">
-                <SidebarRow
-                  template={group.parent}
-                  active={params.variant === group.parent.id}
-                  depth={0}
-                  expandable={hasChildren}
-                  expanded={expanded}
-                  onToggleExpand={hasChildren ? () => toggleBrand(group.parent.id) : undefined}
-                  onSelect={() => setVariant(group.parent.id)}
-                  onDiscard={() => discardTemplate(group.parent.id)}
-                />
-                {hasChildren && expanded && group.children.map(child => (
-                  <SidebarRow
-                    key={child.id}
-                    template={child}
-                    active={params.variant === child.id}
-                    depth={1}
-                    onSelect={() => setVariant(child.id)}
-                    onDiscard={() => discardTemplate(child.id)}
-                  />
-                ))}
-              </div>
-            );
-          })}
-          {sections.orphans.map(t => (
-            <SidebarRow
-              key={t.id}
-              template={t}
-              active={params.variant === t.id}
-              depth={0}
-              onSelect={() => setVariant(t.id)}
-              onDiscard={() => discardTemplate(t.id)}
-            />
-          ))}
+          {sections.brands.map(node => renderTreeNode(node, 0))}
+          {sections.orphans.map(node => renderTreeNode(node, 0))}
         </div>
       )}
 
@@ -258,7 +232,7 @@ function SectionHeader({ label }: { label: string }) {
 interface SidebarRowProps {
   template: LogoTemplate;
   active: boolean;
-  depth: 0 | 1;
+  depth: number;
   expandable?: boolean;
   expanded?: boolean;
   onToggleExpand?: () => void;
@@ -269,10 +243,11 @@ interface SidebarRowProps {
 function SidebarRow({
   template, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard,
 }: SidebarRowProps) {
-  const isBuiltin = isBuiltinVariant(template.id);
+  const isBuiltin = template.builtin === true || isBuiltinVariant(template.id);
   // Indent: parents have 8px hang for the caret; children indent 14-16px under
   // the parent text. Without an expand caret, parents align with the section.
-  const padLeft = depth === 1 ? 'pl-[22px]' : expandable ? 'pl-1' : 'pl-2';
+  const padLeft = expandable ? 'pl-1' : depth === 0 ? 'pl-2' : '';
+  const depthStyle = depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined;
 
   return (
     <div className="group/row relative flex items-stretch">
@@ -300,6 +275,7 @@ function SidebarRow({
         type="button"
         onClick={onSelect}
         title={template.name}
+        style={depthStyle}
         className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
           active
             ? 'text-foreground'
