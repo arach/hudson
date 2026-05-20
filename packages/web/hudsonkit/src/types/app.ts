@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
+import type { HudsonAppBackend } from './backend';
 import type { AppExports } from './embed';
 import type { AppIntent } from './intent';
 import type { AppPorts } from './port';
@@ -171,6 +172,10 @@ export interface HudsonApp {
 
   /** Services this app depends on */
   services?: ServiceDependency[];
+
+  /** App-local backend declaration (HUD-008). Same-origin `/api/{app.id}` and
+   *  `~/hudson/{app.id}/.data` defaults derive from `app.id` when absent. */
+  backend?: HudsonAppBackend;
 
   /** Hooks called inside Provider via Bridge component */
   hooks: {

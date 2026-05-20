@@ -63,3 +63,9 @@ export default defineConfig([
     external: sharedExternal,
   },
 ]);
+
+// Note: the Node-only `hudsonkit/server` entry (HUD-008) is built by a separate
+// tsup invocation against `tsup.server.config.ts`. Running it together with the
+// client-bannered configs causes tsup's DTS bundler to clobber outputs across
+// configs, so the server build is sequenced after the main build via the
+// `build:js` script.

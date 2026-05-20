@@ -3,6 +3,7 @@
 
 // Types
 export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
+export type { HudsonAppBackend } from './types/backend';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
@@ -67,6 +68,19 @@ export { createHudsonId } from './lib/id';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
+
+// App backend (HUD-008)
+export { createAppApiClient } from './lib/api/createAppApiClient';
+export type {
+  AppApiClient,
+  AppApiClientAppLike,
+  AppApiServiceStatus,
+  AppApiStatusStore,
+  AppApiStream,
+  AppApiStreamEvent,
+} from './lib/api/createAppApiClient';
+export { useAppApiStatus } from './hooks/useAppApiStatus';
+export type { UseAppApiStatusResult } from './hooks/useAppApiStatus';
 
 // Platform adapter
 export type { PlatformAdapter, PlatformLayout } from './platform';

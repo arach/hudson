@@ -57,6 +57,11 @@
       "import": "./dist/theme-script.js",
       "default": "./dist/theme-script.js"
     },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
     "./controls": {
       "types": "./dist/controls.d.ts",
       "import": "./dist/controls.js",
@@ -123,6 +128,9 @@
     "dist",
     "src"
   ],
+  "sideEffects": [
+    "*.css"
+  ],
   "homepage": "https://hudsonkit.com",
   "repository": {
     "type": "git",
@@ -130,8 +138,8 @@
     "directory": "packages/web/hudsonkit"
   },
   "scripts": {
-    "build": "tsup && bun run build:css",
-    "build:js": "tsup",
+    "build": "bun run build:js && bun run build:css",
+    "build:js": "tsup && tsup --config tsup.server.config.ts",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify"
   },
   "dependencies": {
