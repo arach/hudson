@@ -21,5 +21,9 @@ export default defineConfig({
     'node:fs/promises',
     'node:path',
     'node:os',
+    // Must remain an external import — the build-time guard relies on the
+    // consumer's bundler resolving `server-only` against its client/server
+    // condition, not on tsup inlining the no-op server stub.
+    'server-only',
   ],
 });

@@ -83,7 +83,10 @@ function resolveHealthUrl(baseUrl: string, healthPath: string): string {
 }
 
 function offlineResponse(): Response {
-  return new Response(null, { status: 0, statusText: 'Network unavailable' });
+  // `Response.error()` is the standards-compliant way to produce a status-0
+  // network-error Response. `new Response(null, { status: 0 })` throws
+  // RangeError because the Fetch constructor validates status to 200–599.
+  return Response.error();
 }
 
 function createStatusStore(initial: AppApiServiceStatus): {
