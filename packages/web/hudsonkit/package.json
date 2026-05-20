@@ -109,7 +109,7 @@
   },
   "files": [
     "dist",
-    "src"
+    "bin"
   ],
   "homepage": "https://hudsonkit.com",
   "repository": {
@@ -120,7 +120,8 @@
   "scripts": {
     "build": "tsup && bun run build:css",
     "build:js": "tsup",
-    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify"
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify",
+    "pack": "bun run build && bun pm pack"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.0",
