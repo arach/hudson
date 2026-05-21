@@ -3,6 +3,8 @@ import { readFile, writeFile, readdir, unlink, stat } from 'fs/promises';
 import { join } from 'path';
 import { appStorage } from 'hudsonkit/server';
 import { builtinRenderBodies } from '../../../apps/logo/builtinRenderBodies';
+import { compileLogoRenderBodySync, stripTemplateMetaBlock } from '../renderCompiler';
+import { mergeLogoTemplateMeta } from '../templateMeta';
 
 const BUILTIN_IDS = new Set([
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
@@ -54,6 +56,7 @@ interface ParsedTemplate {
   name: string;
   description: string;
   renderBody: string;
+  sourceCode?: string;
   builtin: boolean;
   kind?: 'style' | 'brand';
   parentId?: string;
@@ -94,6 +97,13 @@ function extractMeta(source: string): TemplateMeta {
 
 function parseTemplate(id: string, source: string, mtime: number): ParsedTemplate {
   const meta = extractMeta(source);
+  const sourceBody = stripTemplateMetaBlock(source).trim();
+  let renderBody = sourceBody;
+  try {
+    renderBody = compileLogoRenderBodySync(sourceBody);
+  } catch (err) {
+    log(`WARN: failed to compile template "${id}": ${err instanceof Error ? err.message : String(err)}`);
+  }
 
   const params: ParsedTemplate['params'] = [];
   if (meta.params) {
@@ -106,7 +116,8 @@ function parseTemplate(id: string, source: string, mtime: number): ParsedTemplat
     id,
     name: meta.name || id,
     description: meta.description || '',
-    renderBody: source.trim(),
+    renderBody,
+    sourceCode: sourceBody,
     builtin: meta.builtin || false,
     kind: meta.kind,
     parentId: meta.parentId,
@@ -258,18 +269,21 @@ export async function POST(request: Request) {
       if (hasMetaHeader) {
         fileContent = trimmed + '\n';
       } else {
-        const meta: Record<string, unknown> = {};
-        if (name) meta.name = name;
-        if (description) meta.description = description;
-        if (parentId) meta.parentId = parentId;
-        if (paramsRecord && Object.keys(paramsRecord).length > 0) meta.params = paramsRecord;
+        const existingSource = id ? await readFile(filePath, 'utf-8').catch(() => '') : '';
+        const existingMeta = existingSource ? extractMeta(existingSource) : {};
+        const meta = mergeLogoTemplateMeta(existingMeta, {
+          name,
+          description,
+          parentId,
+          params: paramsRecord,
+        });
         const metaStr = Object.keys(meta).length > 0
           ? `const meta = ${JSON.stringify(meta, null, 2)};\n\n`
           : '';
         fileContent = metaStr + trimmed + '\n';
       }
       await writeFile(filePath, fileContent, 'utf-8');
-    } else if (name || description || parentId || paramsRecord) {
+    } else if (name !== undefined || description !== undefined || parentId !== undefined || paramsRecord !== undefined) {
       // Partial update — read existing, update meta
       let existingSource: string;
       try {
@@ -279,12 +293,14 @@ export async function POST(request: Request) {
       }
       // Replace meta object in source
       const existingMeta = extractMeta(existingSource);
-      if (name) existingMeta.name = name;
-      if (description) existingMeta.description = description;
-      if (parentId) existingMeta.parentId = parentId;
-      if (paramsRecord) existingMeta.params = paramsRecord;
+      const nextMeta = mergeLogoTemplateMeta(existingMeta, {
+        name,
+        description,
+        parentId,
+        params: paramsRecord,
+      });
       // Rebuild meta line and replace in source
-      const metaStr = `const meta = ${JSON.stringify(existingMeta, null, 2)};`;
+      const metaStr = `const meta = ${JSON.stringify(nextMeta, null, 2)};`;
       const updated = /const\s+meta\s*=/.test(existingSource)
         ? existingSource.replace(/const meta\s*=\s*\{[\s\S]*?\};/, metaStr)
         : `${metaStr}\n\n${existingSource}`;

@@ -213,6 +213,8 @@ function templateGuideShort(): string {
   return `# Templates
 Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. NEVER redeclare these — no \`const vb = 512\` or \`const p = ...\`. Edit the file, the app picks up changes.
 
+Keep the \`const meta = {...}\` header aligned with the design. Preserve readable \`name\`, \`kind\`, and \`parentId\` fields so variants stay nested in the sidebar; do not replace a name with a raw id. If you remove visual features, remove their custom params too.
+
 Param types: number (slider), color, toggle (boolean), enum (dropdown), text (freeform), repeatable (array of items with nested fields).
 
 Optional \`group\` field on any param groups it into a collapsible section in the inspector. Params with the same group string render together under that heading.`;
@@ -270,6 +272,8 @@ return \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgC
 - **NEVER redeclare \`p\` or \`vb\`** — they are function parameters, not constants. Do NOT write \`const vb = 512\` or \`const p = ...\`. Use them directly.
 - **Always save templates to \`.data/logo-templates/\`** — this is the only directory the app reads from. Files saved to the workspace root will NOT appear in the app.
 - Edit the existing file when modifying a template — don't create duplicates
+- Preserve readable metadata. Keep \`name\`, \`description\`, \`kind\`, and \`parentId\` truthful so AI-created variants stay in the correct family tree instead of becoming top-level raw-id entries.
+- If you remove a feature from the render body, remove its custom param from \`meta.params\` too.
 - Keep \`dimPaneColor\` consistent with \`paneColor\` (same hue, lower opacity)
 - Start with a background rect: \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`
 - Be concise. Say what you changed in 1–2 sentences.`;
@@ -370,6 +374,7 @@ Templates in \`.data/logo-templates/\` render live in the app when the window re
 - Canvas: 512×512 SVG
 - Render: \`(p, vb) => SVG string\`
 - Background: \`<rect width="\${vb}" height="\${vb}" rx="\${p.borderRadius}" fill="\${p.bgColor}"/>\`
+- Do not redeclare \`p\` or \`vb\`; preserve template \`name\`, \`kind\`, and \`parentId\` metadata when editing.
 
 ## Session
 - Active: **${active?.name ?? activeId}** (\`${activeId}\`)

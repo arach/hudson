@@ -70,7 +70,9 @@ Write **TypeScript** for your render functions. The backend compiles TS → JS v
 
 ### How renderBody works
 - Receives \`p\` (object with ALL standard params + your custom params) and \`vb\` (viewBox size, always 512)
+- \`p\` and \`vb\` are already function parameters. Never redeclare them — do not write \`const vb = 512\`, \`let vb = ...\`, or \`const p = ...\`.
 - Must **return a string** of SVG elements (the inner content — no outer \`<svg>\` tag)
+- Must be only the render function body. Do not include a \`const meta = {...}\` header and do not wrap it in an outer function.
 - Use template literals for SVG markup
 - Full TypeScript: loops, conditionals, Math functions, type annotations, variables
 
@@ -98,6 +100,7 @@ Declare template-specific params that appear as sliders/pickers in the inspector
 - Always start with a background rect: \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgColor}"/>\`
 - Use the 512×512 coordinate space. Center = (256, 256).
 - Reference \`p.bgColor\`, \`p.paneColor\`, etc. for consistency with standard controls
+- Do not redeclare \`p\` or \`vb\`; the app injects them when rendering.
 - After creating a template, it auto-activates. Use set_param/set_custom_param to refine.
 - If a template errors, you'll see the error in context — fix it with update_template.
 
@@ -113,6 +116,8 @@ Workflow for iterating on a design:
 1. Call \`get_template_source(activeVariantId)\` to read the current source
 2. Modify the renderBody and/or params, then call \`update_template\` with the existing templateId and the changes
 3. The 8 read-only built-ins (see below) cannot be modified — clone them with \`create_template\` instead
+
+Keep metadata honest while editing. If you simplify a design, update the description so it matches the new design. If you remove controls or features from renderBody, pass a replacement \`params\` array with only the controls still used; pass \`[]\` when no custom controls remain. Do not rename a template to its raw id, and do not remove its family placement. Omitted metadata is preserved by the app, but changed metadata should stay human-readable.
 
 ## Built-in Variants
 
@@ -163,6 +168,11 @@ function context(ctx: Record<string, unknown>): string {
   if (typeof svg === 'string') {
     sections.push(`## Current SVG\n\`\`\`svg\n${svg}\n\`\`\``);
   }
+
+  sections.push(`## Template editing guardrails
+- Tool output means the call was accepted; the rendered preview is the truth. If a preview reports a render error, fix the template source with \`update_template\`.
+- \`renderBody\` is only the function body that returns SVG inner content. Do not include \`const meta = {...}\`, an outer function, an outer \`<svg>\`, or redeclarations of \`p\` / \`vb\`.
+- Keep readable names, descriptions, params, and family placement aligned with the actual design. Do not turn names into raw ids like \`16857149\`.`);
 
   // Templates — only the registry (name, id, description, param count). Source
   // is NOT injected by default: the AI fetches what it needs via
@@ -254,25 +264,25 @@ function tools(ctx: Record<string, unknown>) {
     }),
 
     create_template: tool({
-      description: 'Create a new logo template. Write the renderBody in TypeScript — the backend compiles it. The template auto-activates after creation. When iterating on picks from a variation matrix, pass `parentId` so the new template nests under the source in the variant tree.',
+      description: 'Create a new logo template. Write renderBody as a TypeScript function body only — no meta header, no outer function, no p/vb redeclarations. The template auto-activates after creation. When iterating on picks from a variation matrix, pass `parentId` so the new template nests under the source in the variant tree.',
       inputSchema: z.object({
         name: z.string().describe('Human-readable template name'),
         description: z.string().describe('Short description of the design'),
-        renderBody: z.string().describe('TypeScript function body: receives (p, vb), must return SVG inner string'),
-        params: z.array(templateParamSchema).describe('Custom parameter declarations for this template'),
+        renderBody: z.string().describe('TypeScript function body: receives (p, vb), must return SVG inner string. Do not redeclare p/vb, include const meta, wrap in a function, or include an outer <svg>.'),
+        params: z.array(templateParamSchema).describe('Custom parameter declarations for this template. Include only controls used by renderBody.'),
         parentId: z.string().optional().describe('Id of the template this was spawned from (for AI-iterated variants). Renders nested under the parent in the variant nav.'),
       }),
       execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
     }),
 
     update_template: tool({
-      description: 'Modify a custom template (NOT built-ins — they are read-only). Only include fields you want to change. Write renderBody in TypeScript.',
+      description: 'Modify a custom template (NOT built-ins — they are read-only). Only include fields you want to change. Write renderBody as a TypeScript function body only. Omitted metadata is preserved; update description/params when the visual behavior changes.',
       inputSchema: z.object({
         templateId: z.string().describe('The template ID to update'),
         name: z.string().optional().describe('New name'),
         description: z.string().optional().describe('New description'),
-        renderBody: z.string().optional().describe('New render function body (TypeScript)'),
-        params: z.array(templateParamSchema).optional().describe('New param declarations (replaces all)'),
+        renderBody: z.string().optional().describe('New render function body (TypeScript). Do not redeclare p/vb, include const meta, wrap in a function, or include an outer <svg>.'),
+        params: z.array(templateParamSchema).optional().describe('New param declarations, replacing all existing controls. Include [] when removing every custom control.'),
       }),
       execute: async (args) => ({ applied: true, action: 'update_template', ...args }),
     }),

@@ -1,26 +1,9 @@
 import { NextResponse } from 'next/server';
-import { transform } from 'esbuild';
+import { compileLogoRenderBody, normalizeLogoRenderSource, stripTemplateMetaBlock } from '../renderCompiler';
 
 function log(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
   console.log(`[${ts}] logo/compile: ${msg}`);
-}
-
-/**
- * LLMs writing JS-inside-JSON often over-escape template literals — they emit
- * `\`` (backslash-backtick) and `\${` instead of bare backtick / `${`. JSON
- * doesn't require escaping these, and the surplus backslashes survive into
- * the renderBody, where the JS parser then hits `\`` outside a template
- * literal context and bails with "Invalid or unexpected token".
- *
- * We normalize before compile. The legitimate use of `\${` (escaping `${`
- * inside a template literal to keep it literal) is exceedingly rare for SVG
- * render bodies and not worth preserving over the common LLM-output bug.
- */
-function normalizeLLMEscapes(source: string): string {
-  return source
-    .replace(/\\`/g, '`')
-    .replace(/\\\$\{/g, '${');
 }
 
 export async function POST(request: Request) {
@@ -32,24 +15,14 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'source is required' }, { status: 400 });
     }
 
-    const source = normalizeLLMEscapes(rawSource);
-    if (source !== rawSource) {
-      log(`normalized LLM over-escapes (${rawSource.length} → ${source.length} chars)`);
+    const strippedSource = stripTemplateMetaBlock(rawSource).trim();
+    const source = normalizeLogoRenderSource(strippedSource);
+    if (source !== strippedSource) {
+      log(`normalized LLM over-escapes (${strippedSource.length} → ${source.length} chars)`);
     }
     log(`compiling ${source.length} chars`);
 
-    // Compile TypeScript → JavaScript (strip types only)
-    const result = await transform(source, {
-      loader: 'ts',
-      target: 'es2020',
-    });
-
-    let js = result.code;
-
-    // Strip redeclarations of function parameters (p, vb) — AI agents
-    // sometimes emit `const vb = 512;` which clashes with the function signature.
-    js = js.replace(/^(const|let|var)\s+vb\s*=\s*[^;]+;\n?/gm, '');
-    js = js.replace(/^(const|let|var)\s+p\s*=\s*[^;]+;\n?/gm, '');
+    const js = await compileLogoRenderBody(source);
 
     // Validate: the compiled JS must be executable as a function body (p, vb) => string
     try {
