@@ -441,11 +441,13 @@ function tools() {
     }),
 
     create_template: tool({
-      description: 'Create a new logo template. Write renderBody in TypeScript; it receives (p, vb) and must return the SVG inner string.',
+      description: 'Create a new logo template. Write renderBody in TypeScript; it receives (p, vb) and must return the SVG inner string. Include parentId when iterating from an existing logo so the new branch stays nested in the Logo app tree.',
       inputSchema: z.object({
         name: z.string().describe('Template name.'),
         description: z.string().describe('Short description.'),
         renderBody: z.string().describe('TypeScript function body.'),
+        parentId: z.string().optional().describe('Source template id for nested Logo app variants.'),
+        kind: z.enum(['style', 'brand']).optional().describe('Use brand for brand-specific explorations and style for reusable abstract styles.'),
         params: z.array(z.object({
           key: z.string(),
           label: z.string(),

@@ -24,10 +24,11 @@ import {
   useAppSettings,
   captureWorkspace,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
+  HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -88,6 +89,8 @@ const DEFAULTS = {
   pan: { x: 0, y: 0 } as { x: number; y: number },
   zoom: 1 as number,
 };
+
+const TERMINAL_VOICE_SHORTCUT_LABEL = 'Cmd+Shift+M';
 
 /** Window sizes used by the smart-tiler on first launch. */
 const TILE = {
@@ -2479,7 +2482,9 @@ function WorkspaceInner({
     () => ({ workspaceId: workspace.id }),
     [workspace.id],
   );
+  const [terminalVoiceDraftSubmitted, setTerminalVoiceDraftSubmitted] = useState(false);
   const handleTerminalVoiceTranscript = useCallback((transcript: string) => {
+    setTerminalVoiceDraftSubmitted(shellSettings.voice.autoSend);
     window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
       detail: {
         transcript,
@@ -2496,6 +2501,7 @@ function WorkspaceInner({
   const {
     status: terminalVoiceStatus,
     error: terminalVoiceError,
+    lastTranscript: terminalVoiceLastTranscript,
     isSupported: terminalVoiceSupported,
     start: startTerminalVoice,
     stop: stopTerminalVoice,
@@ -2503,8 +2509,14 @@ function WorkspaceInner({
   const terminalVoiceRecording = terminalVoiceStatus === 'recording';
   const terminalVoiceTranscribing = terminalVoiceStatus === 'transcribing';
   const terminalVoiceAvailable = consoleWorkspaceKind === 'terminal';
+  const terminalVoiceCanQuickSubmit =
+    terminalVoiceAvailable
+    && terminalVoiceStatus === 'ready'
+    && Boolean(terminalVoiceLastTranscript)
+    && !shellSettings.voice.autoSend
+    && !terminalVoiceDraftSubmitted;
   const handleTerminalVoiceClick = useCallback(() => {
-    if (!terminalVoiceAvailable) return;
+    if (!terminalVoiceSupported || terminalVoiceTranscribing) return;
 
     setShowTerminal(true);
     openWorkspaceConsole('terminal');
@@ -2514,6 +2526,7 @@ function WorkspaceInner({
       return;
     }
 
+    setTerminalVoiceDraftSubmitted(false);
     void registerHudsonVoxIntegration()
       .catch(error => {
         console.warn('[WorkspaceShell] Vox integration registration failed:', error);
@@ -2521,16 +2534,42 @@ function WorkspaceInner({
       .finally(() => {
         void startTerminalVoice();
       });
-  }, [openWorkspaceConsole, setShowTerminal, startTerminalVoice, stopTerminalVoice, terminalVoiceAvailable, terminalVoiceRecording]);
+  }, [
+    openWorkspaceConsole,
+    setShowTerminal,
+    startTerminalVoice,
+    stopTerminalVoice,
+    terminalVoiceRecording,
+    terminalVoiceSupported,
+    terminalVoiceTranscribing,
+  ]);
+  const handleTerminalVoiceSubmit = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT));
+    setTerminalVoiceDraftSubmitted(true);
+    playSound('blipUp');
+  }, [playSound]);
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.key.toLowerCase() !== 'm') return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleTerminalVoiceClick();
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleTerminalVoiceClick]);
   const terminalVoiceTitle = (() => {
-    if (!terminalVoiceAvailable) return 'Switch to Terminal to record voice';
+    if (!terminalVoiceAvailable) return `Switch to Terminal and record voice (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
     if (!terminalVoiceSupported) return 'Voice input is not supported in this browser';
     if (terminalVoiceError) return terminalVoiceError;
-    if (terminalVoiceRecording) return 'Stop recording';
+    if (terminalVoiceRecording) return `Stop recording (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
     if (terminalVoiceTranscribing) return 'Transcribing voice prompt';
+    if (terminalVoiceCanQuickSubmit) return 'Voice draft ready';
     return shellSettings.voice.autoSend
-      ? 'Record and send voice prompt'
-      : 'Record voice prompt';
+      ? `Record and send voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`
+      : `Record voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
   })();
 
   // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
@@ -2611,6 +2650,7 @@ function WorkspaceInner({
         }`}
         title={terminalVoiceTitle}
         aria-label={terminalVoiceTitle}
+        aria-keyshortcuts="Meta+Shift+M Control+Shift+M"
       >
         {terminalVoiceTranscribing
           ? <Loader2 size={14} className="animate-spin" />
@@ -2618,13 +2658,26 @@ function WorkspaceInner({
             ? <Square size={13} />
             : <Mic size={15} />}
       </button>
-      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable') && (
+      {terminalVoiceCanQuickSubmit && (
+        <button
+          type="button"
+          onClick={handleTerminalVoiceSubmit}
+          className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/25 bg-emerald-600/10 text-emerald-700 transition-colors hover:border-emerald-600/35 hover:bg-emerald-600/15 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:border-emerald-300/40"
+          title="Submit pasted voice prompt"
+          aria-label="Submit pasted voice prompt"
+        >
+          <CornerDownLeft size={14} />
+        </button>
+      )}
+      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable' || terminalVoiceCanQuickSubmit) && (
         <div className="max-w-[220px] pr-2 text-[10px] font-mono uppercase tracking-[0.12em]">
           {terminalVoiceRecording
             ? 'Recording'
             : terminalVoiceTranscribing
               ? 'Transcribing'
-              : terminalVoiceError || 'Unavailable'}
+              : terminalVoiceCanQuickSubmit
+                ? 'Ready'
+                : terminalVoiceError || 'Unavailable'}
         </div>
       )}
     </div>

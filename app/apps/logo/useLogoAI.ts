@@ -5,7 +5,7 @@ import { createHudsonId, useHudsonAI, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues, AIAttachment } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
-import { isBuiltinVariant } from './types';
+import { isBuiltinVariant, normalizeLogoTemplateLineage, resolveLogoTemplatePlacement } from './types';
 
 interface UseLogoAIOptions {
   params: LogoParams;
@@ -56,7 +56,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   const { apiBaseUrl } = usePlatform();
   const compileEndpoint = `${apiBaseUrl}/api/logo/compile`;
 
-  const templateById = useMemo(() => new Map(templates.map(template => [template.id, template])), [templates]);
+  const normalizedTemplates = useMemo(() => normalizeLogoTemplateLineage(templates), [templates]);
+  const templateById = useMemo(() => new Map(normalizedTemplates.map(template => [template.id, template])), [normalizedTemplates]);
   const templateByIdRef = useRef(templateById);
   const activeVariantRef = useRef(params.variant);
 
@@ -75,8 +76,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   }, []);
 
   const context = useMemo(() => ({
-    params, presets, templates, customParamValues,
-  }), [params, presets, templates, customParamValues]);
+    params, presets, templates: normalizedTemplates, customParamValues,
+  }), [params, presets, normalizedTemplates, customParamValues]);
 
   // Coerce string-encoded numbers from AI (MiniMax sends "20" not 20)
   const NUMERIC_PARAMS = new Set(['borderRadius', 'paneRadius', 'gapWidth', 'splitX', 'splitY', 'padding']);
@@ -151,6 +152,11 @@ export function useLogoAI(opts: UseLogoAIOptions) {
             throw new Error(`create_template failed to compile: ${result.error}`);
           }
           const id = createHudsonId('', 8);
+          const placement = resolveLogoTemplatePlacement(Array.from(templateByIdRef.current.values()), activeVariantRef.current, {
+            parentId: args.parentId,
+            kind: args.kind,
+            name: args.name,
+          });
           const template: LogoTemplate = {
             id,
             name: args.name as string,
@@ -158,7 +164,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
             renderBody: result.js,
             sourceCode: source,
             params: customParams,
-            parentId: typeof args.parentId === 'string' && args.parentId.length > 0 ? args.parentId : undefined,
+            kind: placement.kind,
+            parentId: placement.parentId,
             createdAt: Date.now(),
             updatedAt: Date.now(),
           };
@@ -179,6 +186,10 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           const updates: Partial<Omit<LogoTemplate, 'id'>> = {};
           if (args.name) updates.name = args.name as string;
           if (args.description) updates.description = args.description as string;
+          if (args.kind === 'brand' || args.kind === 'style') updates.kind = args.kind;
+          if (typeof args.parentId === 'string') {
+            updates.parentId = templateByIdRef.current.has(args.parentId) ? args.parentId : currentTemplate.parentId;
+          }
           if (args.renderBody) {
             const source = args.renderBody as string;
             const result = await compileTemplate(source, compileEndpoint);

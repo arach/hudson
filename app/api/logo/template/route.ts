@@ -8,7 +8,7 @@ import { mergeLogoTemplateMeta } from '../templateMeta';
 
 const BUILTIN_IDS = new Set([
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
-  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic',
+  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic', 't-decoration',
   't-texture-phosphor', 't-texture-dot-matrix', 't-texture-pixel',
   't-texture-halftone', 't-texture-letterpress', 't-texture-etched',
   't-texture-chrome', 't-texture-particle',
@@ -87,7 +87,6 @@ function extractMeta(source: string): TemplateMeta {
   try {
     const match = source.match(/const\s+meta\s*=\s*(\{[\s\S]*?\});/);
     if (!match) return {};
-    // eslint-disable-next-line no-new-func
     const fn = new Function(`return ${match[1]};`);
     return fn() || {};
   } catch {
@@ -132,6 +131,7 @@ function builtInAsFile(id: string, def: typeof builtinRenderBodies[string]): str
     name: def.name,
     description: def.description,
     builtin: true,
+    kind: id === 't-decoration' ? 'brand' : 'style',
   };
   if (def.params) meta.params = def.params;
   return `const meta = ${JSON.stringify(meta, null, 2)};\n\n${def.renderBody}\n`;
@@ -196,10 +196,11 @@ export async function POST(request: Request) {
   try {
     const body = await request.json();
     log(`POST: id=${body.id ?? 'none'} name=${body.name ?? 'none'} action=${body.action ?? 'save'} renderBody=${body.renderBody ? `${body.renderBody.length} chars` : 'none'}`);
-    const { id, name, description, parentId, renderBody, params, action } = body as {
+    const { id, name, description, kind, parentId, renderBody, params, action } = body as {
       id?: string;
       name?: string;
       description?: string;
+      kind?: 'style' | 'brand';
       parentId?: string;
       renderBody?: string;
       /** Client may send params as an array (LogoTemplate.params) or a Record. */
@@ -274,6 +275,7 @@ export async function POST(request: Request) {
         const meta = mergeLogoTemplateMeta(existingMeta, {
           name,
           description,
+          kind,
           parentId,
           params: paramsRecord,
         });
@@ -283,7 +285,13 @@ export async function POST(request: Request) {
         fileContent = metaStr + trimmed + '\n';
       }
       await writeFile(filePath, fileContent, 'utf-8');
-    } else if (name !== undefined || description !== undefined || parentId !== undefined || paramsRecord !== undefined) {
+    } else if (
+      name !== undefined ||
+      description !== undefined ||
+      kind !== undefined ||
+      parentId !== undefined ||
+      paramsRecord !== undefined
+    ) {
       // Partial update — read existing, update meta
       let existingSource: string;
       try {
@@ -296,6 +304,7 @@ export async function POST(request: Request) {
       const nextMeta = mergeLogoTemplateMeta(existingMeta, {
         name,
         description,
+        kind,
         parentId,
         params: paramsRecord,
       });

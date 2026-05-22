@@ -143,6 +143,126 @@ export interface LogoTemplate {
   updatedAt: number;
 }
 
+export type LogoTemplateKind = NonNullable<LogoTemplate['kind']>;
+
+function normalizeTemplateNameForLineage(value: string): string {
+  return value
+    .toLowerCase()
+    .replace(/[·—–:]+/g, ' ')
+    .replace(/[^a-z0-9]+/g, ' ')
+    .trim()
+    .replace(/\s+/g, ' ');
+}
+
+function hasTemplateNamePrefix(parentName: string, childName: string): boolean {
+  const parent = normalizeTemplateNameForLineage(parentName);
+  const child = normalizeTemplateNameForLineage(childName);
+  return parent.length > 0 && child !== parent && child.startsWith(`${parent} `);
+}
+
+function findInferredParentId(template: LogoTemplate, templates: LogoTemplate[]): string | undefined {
+  return templates
+    .filter(candidate => candidate.id !== template.id && hasTemplateNamePrefix(candidate.name, template.name))
+    .sort((a, b) => {
+      const byLength = normalizeTemplateNameForLineage(b.name).length - normalizeTemplateNameForLineage(a.name).length;
+      if (byLength !== 0) return byLength;
+      return b.createdAt - a.createdAt;
+    })[0]?.id;
+}
+
+/**
+ * Heal template lineage for older AI-created files that omitted metadata.
+ * Explicit parent/kind always win. Missing parentId is inferred from the
+ * longest matching brand/name prefix, and missing kind inherits from parent.
+ */
+export function normalizeLogoTemplateLineage(templates: LogoTemplate[]): LogoTemplate[] {
+  const byId = new Map(templates.map(template => [template.id, template]));
+  const parentById = new Map<string, string | undefined>();
+
+  for (const template of templates) {
+    const explicitParentId = template.parentId && byId.has(template.parentId)
+      ? template.parentId
+      : undefined;
+    parentById.set(template.id, explicitParentId ?? findInferredParentId(template, templates) ?? template.parentId);
+  }
+
+  const kindById = new Map<string, LogoTemplateKind | undefined>();
+  const resolveKind = (templateId: string, seen = new Set<string>()): LogoTemplateKind | undefined => {
+    if (kindById.has(templateId)) return kindById.get(templateId);
+    if (seen.has(templateId)) return undefined;
+    const template = byId.get(templateId);
+    if (!template) return undefined;
+
+    let kind = template.kind;
+    const parentId = parentById.get(templateId);
+    if (!kind && parentId && byId.has(parentId)) {
+      kind = resolveKind(parentId, new Set(seen).add(templateId));
+    }
+    if (!kind && templates.some(candidate => candidate.kind === 'brand' && hasTemplateNamePrefix(candidate.name, template.name))) {
+      kind = 'brand';
+    }
+
+    kindById.set(templateId, kind);
+    return kind;
+  };
+
+  return templates.map(template => {
+    const parentId = parentById.get(template.id);
+    const kind = resolveKind(template.id);
+    if (parentId === template.parentId && kind === template.kind) return template;
+    return { ...template, parentId, kind };
+  });
+}
+
+export function resolveLogoTemplatePlacement(
+  templates: LogoTemplate[],
+  activeTemplateId: string,
+  requested?: {
+    parentId?: unknown;
+    kind?: unknown;
+    name?: unknown;
+  },
+): { parentId?: string; kind: LogoTemplateKind } {
+  const normalized = normalizeLogoTemplateLineage(templates);
+  const byId = new Map(normalized.map(template => [template.id, template]));
+  const requestedParentId = typeof requested?.parentId === 'string' && byId.has(requested.parentId)
+    ? requested.parentId
+    : undefined;
+  const activeParentId = byId.has(activeTemplateId) ? activeTemplateId : undefined;
+  const parentId = requestedParentId ?? activeParentId;
+  const requestedKind = requested?.kind === 'brand' || requested?.kind === 'style'
+    ? requested.kind
+    : undefined;
+  const parentKind = parentId ? byId.get(parentId)?.kind : undefined;
+  const inferredKind = typeof requested?.name === 'string'
+    ? normalized.find(candidate => candidate.kind === 'brand' && hasTemplateNamePrefix(candidate.name, requested.name as string))?.kind
+    : undefined;
+
+  return {
+    parentId,
+    kind: requestedKind ?? parentKind ?? inferredKind ?? 'style',
+  };
+}
+
+export function compactLogoTemplateLabel(template: LogoTemplate, ancestors: LogoTemplate[]): string {
+  if (ancestors.length === 0) return template.name;
+
+  const names = ancestors
+    .map(ancestor => ancestor.name.trim())
+    .filter(Boolean)
+    .sort((a, b) => b.length - a.length);
+
+  for (const name of names) {
+    const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const compacted = template.name
+      .replace(new RegExp(`^${escaped}(?:\\s*[·:—–-]\\s*|\\s+)`, 'i'), '')
+      .trim();
+    if (compacted && compacted !== template.name) return compacted;
+  }
+
+  return template.name;
+}
+
 // ---------------------------------------------------------------------------
 // Built-in template IDs
 // ---------------------------------------------------------------------------

@@ -33,6 +33,7 @@ interface TerminalRelayProps {
 }
 
 export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
+export const HUDSON_TERMINAL_VOICE_SUBMIT_EVENT = 'hudson:terminal:voice-submit';
 
 export interface HudsonTerminalVoiceTranscriptDetail {
   transcript: string;
@@ -196,6 +197,7 @@ function isElementVisible(el: HTMLElement | null): boolean {
 
 // CSI-u modified Enter: key code 13 with Shift modifier 2.
 const SHIFT_ENTER_INPUT = '\x1b[13;2u';
+const ENTER_INPUT = '\x0d';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -240,6 +242,7 @@ export function TerminalRelay({
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
   const pendingVoiceInputRef = useRef<HudsonTerminalVoiceTranscriptDetail | null>(null);
+  const pendingVoiceSubmitRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -265,7 +268,11 @@ export function TerminalRelay({
   const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
     const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
     if (!transcript) return;
-    sendInput(detail.submit ? `${transcript}\r` : transcript);
+    sendInput(detail.submit ? `${transcript}${ENTER_INPUT}` : transcript);
+  }, [sendInput]);
+
+  const sendVoiceSubmit = useCallback(() => {
+    sendInput(ENTER_INPUT);
   }, [sendInput]);
 
   useEffect(() => {
@@ -296,6 +303,31 @@ export function TerminalRelay({
     pendingVoiceInputRef.current = null;
     sendVoiceTranscript(detail);
   }, [sendVoiceTranscript, status]);
+
+  useEffect(() => {
+    const handleVoiceSubmit = () => {
+      if (!isElementVisible(wrapperRef.current)) return;
+
+      if (status === 'connected') {
+        sendVoiceSubmit();
+        return;
+      }
+
+      pendingVoiceSubmitRef.current = true;
+      if (status !== 'connecting') {
+        connect();
+      }
+    };
+
+    window.addEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
+    return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
+  }, [connect, sendVoiceSubmit, status]);
+
+  useEffect(() => {
+    if (status !== 'connected' || !pendingVoiceSubmitRef.current) return;
+    pendingVoiceSubmitRef.current = false;
+    sendVoiceSubmit();
+  }, [sendVoiceSubmit, status]);
 
   const uploadFile = useCallback(async (file: File): Promise<string | null> => {
     try {

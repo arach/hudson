@@ -3,6 +3,7 @@ export type LogoTemplateMeta = Record<string, unknown>;
 export interface LogoTemplateMetaUpdates {
   name?: string;
   description?: string;
+  kind?: 'style' | 'brand';
   parentId?: string;
   params?: unknown;
 }
@@ -15,6 +16,7 @@ export function mergeLogoTemplateMeta(
 
   if (updates.name !== undefined) meta.name = updates.name;
   if (updates.description !== undefined) meta.description = updates.description;
+  if (updates.kind !== undefined) meta.kind = updates.kind;
   if (updates.parentId !== undefined) meta.parentId = updates.parentId;
   if (updates.params !== undefined) meta.params = updates.params;
 
