@@ -64,6 +64,8 @@ All variants are templates. The 6 built-in variants (negative-space, green-chann
 
 To switch between templates, use set_variant with the template ID.
 
+Brand explorations live in a hierarchy. When creating a variation of the active template, set \`parentId\` to the source template id and keep \`kind: "brand"\` for brand-specific families. The sidebar hierarchy carries the repeated brand prefix, so names should describe the branch/direction instead of becoming raw ids.
+
 ## Creating & Editing Templates
 
 Write **TypeScript** for your render functions. The backend compiles TS → JS via esbuild. If there's a type error or syntax error, you'll get a clear error message — fix it and retry.
@@ -148,7 +150,7 @@ function context(ctx: Record<string, unknown>): string {
   const params = ctx.params ?? {};
   const presets = ctx.presets ?? ctx.presetNames ?? [];
   const svg = ctx.svg;
-  const templates = ctx.templates as { id: string; name: string; description: string; renderBody: string; sourceCode?: string; params: unknown[] }[] | undefined;
+  const templates = ctx.templates as { id: string; name: string; description: string; kind?: 'style' | 'brand'; parentId?: string; renderBody: string; sourceCode?: string; params: unknown[] }[] | undefined;
   const customParamValues = ctx.customParamValues as Record<string, Record<string, unknown>> | undefined;
 
   const sections: string[] = [];
@@ -184,7 +186,11 @@ function context(ctx: Record<string, unknown>): string {
 
     const lines = templates.map(t => {
       const active = t.id === activeVariant ? ' **(active)**' : '';
-      return `- **${t.name}** (id: \`${t.id}\`)${active}: ${t.description} — ${t.params.length} custom params`;
+      const placement = [
+        t.kind ? `kind: ${t.kind}` : null,
+        t.parentId ? `parent: ${t.parentId}` : null,
+      ].filter(Boolean).join(', ');
+      return `- **${t.name}** (id: \`${t.id}\`)${active}: ${t.description} — ${t.params.length} custom params${placement ? ` (${placement})` : ''}`;
     });
     sections.push(
       `## Templates\n${lines.join('\n')}\n\n` +
@@ -218,6 +224,8 @@ function tools(ctx: Record<string, unknown>) {
           renderBody?: string;
           sourceCode?: string;
           params?: unknown[];
+          kind?: 'style' | 'brand';
+          parentId?: string;
         }>;
         const t = templates.find(tt => tt.id === id);
         if (!t) return { found: false, id, error: `No template with id "${id}". Use the Templates list to find a valid id.` };
@@ -228,6 +236,8 @@ function tools(ctx: Record<string, unknown>) {
           description: t.description ?? '',
           renderBody: t.sourceCode || t.renderBody || '',
           params: t.params ?? [],
+          kind: t.kind,
+          parentId: t.parentId,
         };
       },
     }),
@@ -264,13 +274,14 @@ function tools(ctx: Record<string, unknown>) {
     }),
 
     create_template: tool({
-      description: 'Create a new logo template. Write renderBody as a TypeScript function body only — no meta header, no outer function, no p/vb redeclarations. The template auto-activates after creation. When iterating on picks from a variation matrix, pass `parentId` so the new template nests under the source in the variant tree.',
+      description: 'Create a new logo template. Write renderBody as a TypeScript function body only — no meta header, no outer function, no p/vb redeclarations. The template auto-activates after creation. When iterating or exploring from the active template, pass parentId so the new template nests under the source in the variant tree; omit parentId only for a new top-level family.',
       inputSchema: z.object({
         name: z.string().describe('Human-readable template name'),
         description: z.string().describe('Short description of the design'),
         renderBody: z.string().describe('TypeScript function body: receives (p, vb), must return SVG inner string. Do not redeclare p/vb, include const meta, wrap in a function, or include an outer <svg>.'),
         params: z.array(templateParamSchema).describe('Custom parameter declarations for this template. Include only controls used by renderBody.'),
         parentId: z.string().optional().describe('Id of the template this was spawned from (for AI-iterated variants). Renders nested under the parent in the variant nav.'),
+        kind: z.enum(['style', 'brand']).optional().describe('Use brand for project/brand-specific explorations and style for abstract reusable template styles. Children usually inherit this from their parent.'),
       }),
       execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
     }),
@@ -281,6 +292,8 @@ function tools(ctx: Record<string, unknown>) {
         templateId: z.string().describe('The template ID to update'),
         name: z.string().optional().describe('New name'),
         description: z.string().optional().describe('New description'),
+        parentId: z.string().optional().describe('New parent template id for variant-tree placement.'),
+        kind: z.enum(['style', 'brand']).optional().describe('Template classification for sidebar grouping.'),
         renderBody: z.string().optional().describe('New render function body (TypeScript). Do not redeclare p/vb, include const meta, wrap in a function, or include an outer <svg>.'),
         params: z.array(templateParamSchema).optional().describe('New param declarations, replacing all existing controls. Include [] when removing every custom control.'),
       }),

@@ -57,6 +57,7 @@ export {
   TerminalRelay,
   captureWorkspace,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
+  HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from './components/TerminalRelay';
 export type { HudsonTerminalVoiceTranscriptDetail } from './components/TerminalRelay';
 

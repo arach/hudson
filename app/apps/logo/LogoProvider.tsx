@@ -4,7 +4,7 @@ import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
 import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig } from './types';
 import { logoSettings } from './settings';
-import { isBuiltinVariant } from './types';
+import { isBuiltinVariant, normalizeLogoTemplateLineage } from './types';
 import { useLogoAI } from './useLogoAI';
 import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
 
@@ -230,8 +230,9 @@ export function buildPersistedMatrixSession(
   sourceTemplateId: string,
   sessions: MatrixSession[],
 ): MatrixSession | null {
+  const normalizedTemplates = normalizeLogoTemplateLineage(templates);
   const sessionTemplateIds = new Set(sessions.flatMap(session => session.templateIds));
-  const children = templates
+  const children = normalizedTemplates
     .filter(template =>
       template.parentId === sourceTemplateId &&
       !template.builtin &&
@@ -574,7 +575,7 @@ export function LogoProvider({
       if (json !== lastFetchRef.current) {
         lastFetchRef.current = json;
         if (activeRef.current) {
-          setTemplates(data.templates);
+          setTemplates(normalizeLogoTemplateLineage(data.templates));
           setCustomParamValues(cpv => {
             let next = cpv;
             for (const t of data.templates as { id: string; params: Pick<TemplateParam, 'key' | 'default'>[] }[]) {
@@ -607,7 +608,7 @@ export function LogoProvider({
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));
-  }, []);
+  }, [setParams]);
 
   const setVariant = useCallback((v: string) => {
     // Save current template's tool config before switching
@@ -664,14 +665,14 @@ export function LogoProvider({
         wordmark: toolConfig.wordmark,
       }));
     }
-  }, [templates, setCustomParamValues]);
+  }, [templates, setCustomParamValues, setParams]);
 
-  const resetDefaults = useCallback(() => setParams(defaults), []);
+  const resetDefaults = useCallback(() => setParams(defaults), [setParams]);
 
   // Template CRUD — writes go through the API, polling picks up changes
   const addTemplate = useCallback(async (template: LogoTemplate) => {
     // Optimistically add to local state
-    setTemplates(prev => [...prev, template]);
+    setTemplates(prev => normalizeLogoTemplateLineage([...prev, template]));
     setCustomParamValues(prev => withTemplateParamDefaults(prev, template.id, template.params));
     // Bucket into the targeted session (set by beginAiSession). If no target
     // (e.g. addTemplate fired outside an AI round), skip session bucketing.
@@ -694,6 +695,7 @@ export function LogoProvider({
         id: template.id,
         name: template.name,
         description: template.description,
+        kind: template.kind,
         parentId: template.parentId,
         renderBody: template.sourceCode || template.renderBody,
         params: template.params,
@@ -704,9 +706,9 @@ export function LogoProvider({
 
   const updateTemplate = useCallback(async (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => {
     // Optimistically update local state
-    setTemplates(prev => prev.map(t =>
+    setTemplates(prev => normalizeLogoTemplateLineage(prev.map(t =>
       t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t
-    ));
+    )));
     if (updates.params) {
       setCustomParamValues(prev => withTemplateParamDefaults(prev, id, updates.params));
     }
@@ -718,6 +720,8 @@ export function LogoProvider({
         id,
         name: updates.name,
         description: updates.description,
+        kind: updates.kind,
+        parentId: updates.parentId,
         renderBody: updates.sourceCode || updates.renderBody,
         params: updates.params,
       }),
@@ -748,7 +752,7 @@ export function LogoProvider({
         return next;
       });
     }
-  }, [discardedMap, templateEndpoint]);
+  }, [discardedMap, templateEndpoint, setDiscardedMap, DISCARD_TTL_MS]);
 
   const discardedIds = useMemo(() => new Set(Object.keys(discardedMap)), [discardedMap]);
 
