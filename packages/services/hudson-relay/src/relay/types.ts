@@ -21,7 +21,7 @@ export interface SessionInitMessage {
   tmuxSession?: string;
   /** CLI agent to spawn. 'claude' (default) or 'pi'. */
   agent?: 'claude' | 'pi';
-  /** For pi agent: provider name (e.g. 'minimax', 'openai'). */
+  /** For pi agent: provider name (e.g. 'minimax', 'github-copilot'). */
   provider?: string;
   /** For pi agent: model ID (e.g. 'MiniMax-M1'). */
   model?: string;

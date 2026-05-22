@@ -28,7 +28,7 @@ import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils'
 import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
-import { logoDesignerApp } from './logo-designer';
+import { logoApp } from './logo';
 import { imageProcessLabApp } from './image-process-lab';
 import { shaperApp } from './shaper';
 import { traceViewerApp } from './trace-viewer';
@@ -41,6 +41,9 @@ import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
 import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
+import { stageDesignApp } from './stage-design';
+import { dayStackApp } from './day-stack';
+import { workflowLabApp } from './workflow-lab';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -59,7 +62,11 @@ function getLocalRegistry(): {
 
   try {
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    return require('../local/apps.local');
+    const mod = require('../local/apps.local');
+    return {
+      localApps: mod.localApps ?? [],
+      localWorkspaces: mod.localWorkspaces ?? [],
+    };
   } catch {
     return { localApps: [], localWorkspaces: [] };
   }
@@ -72,7 +79,7 @@ function getAppById(id: string): HudsonApp | null {
     'hudson-docs': hudsonDocsApp,
     'hudson-ai': hudsonAIApp,
     'intent-explorer': intentExplorerApp,
-    'logo-designer': logoDesignerApp,
+    'logo': logoApp,
     'image-process-lab': imageProcessLabApp,
     'shaper': shaperApp,
     'trace-viewer': traceViewerApp,
@@ -83,6 +90,9 @@ function getAppById(id: string): HudsonApp | null {
     'notepad': notepadApp,
     'document-lab': documentLabApp,
     'theme-designer': themeDesignerApp,
+    'stage-design': stageDesignApp,
+    'day-stack': dayStackApp,
+    'workflow-lab': workflowLabApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -99,6 +109,7 @@ interface WorkspaceJson {
   description?: string;
   mode?: 'canvas' | 'panel';
   defaultFocusedAppId?: string;
+  defaultActivatedAppIds?: string[];
   apps: {
     appId: string;
     canvasMode?: CanvasParticipation;
@@ -138,6 +149,7 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
           mode: ws.mode ?? 'canvas',
           apps,
           defaultFocusedAppId: ws.defaultFocusedAppId,
+          defaultActivatedAppIds: ws.defaultActivatedAppIds,
         } as HudsonWorkspace;
       })
       .filter((ws): ws is HudsonWorkspace => ws !== null);
@@ -147,8 +159,40 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
   }
 }
 
+function getPreframeAppConfig(): WorkspaceAppConfig | null {
+  if (!IS_DEV_ENV) return null;
+
+  try {
+    // Optional sibling app: ~/dev/preframe. Kept out of production bundles.
+    // eslint-disable-next-line @typescript-eslint/no-require-imports
+    const mod = require('../../../preframe/catalog');
+    const app = mod.catalogApp ?? mod.preframeApp ?? mod.default;
+    if (!app) return null;
+    return {
+      app,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1160, y: -300, w: 900, h: 720 },
+    } as WorkspaceAppConfig;
+  } catch (error) {
+    if (IS_DEV_ENV) {
+      console.warn('[registry] preframe sibling app not available; skipping', error);
+    }
+    return null;
+  }
+}
+
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
+    {
+      app: stageDesignApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 300, y: -320, w: 430, h: 560 },
+    },
+    {
+      app: themeDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
+    },
     {
       app: hudsonDocsApp,
       canvasMode: 'windowed',
@@ -159,33 +203,15 @@ function getCoreApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
     },
-    {
-      app: apiInspectorApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -420, y: 420, w: 760, h: 560 },
-    },
-    {
-      app: jsonExplorerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 420, y: 380, w: 620, h: 500 },
-    },
-    {
-      app: documentLabApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -120, y: 1020, w: 880, h: 620 },
-    },
-    {
-      app: themeDesignerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
-    },
   ];
 }
 
 function getLogoStudioApps(): WorkspaceAppConfig[] {
+  const preframeAppConfig = getPreframeAppConfig();
+
   return [
     {
-      app: logoDesignerApp,
+      app: logoApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -540, y: -300, w: 1080, h: 720 },
     },
@@ -195,7 +221,7 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       defaultWindowBounds: { x: 580, y: -260, w: 540, h: 360 },
     },
     // Shaper bridges raster Assets → vector Logo by tracing/bezier-editing the silhouette.
-    // Pipeline: assets.image → shaper.image, then shaper.svg → logo-designer.background-svg
+    // Pipeline: assets.image → shaper.image, then shaper.svg → logo.background-svg
     {
       app: shaperApp,
       canvasMode: 'windowed',
@@ -206,6 +232,7 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 580, y: 600, w: 540, h: 460 },
     },
+    ...(preframeAppConfig ? [preframeAppConfig] : []),
   ];
 }
 
@@ -264,18 +291,49 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
   ];
 }
 
+function getWorkflowLabApps(): WorkspaceAppConfig[] {
+  return [
+    {
+      app: workflowLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -520, y: -300, w: 1040, h: 700 },
+    },
+    {
+      app: documentLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 600, y: -260, w: 720, h: 560 },
+    },
+  ];
+}
+
 // --- Exports ------------------------------------------------------------------
 
 /** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
 export function getHudsonKitWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
-    name: 'HudsonKit',
+    name: 'Hudson Kit workspace',
     description: 'Clean docs, AI, and API workspace',
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
-    defaultScale: 0.5,
+    defaultActivatedAppIds: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultScale: 0.45,
+    defaultPan: { x: -331, y: -222 },
+    leftNavigation: 'on',
+  };
+}
+
+/** Personal — lightweight daily planning and focus workspace. */
+export function getPersonalWorkspace(): HudsonWorkspace {
+  return {
+    id: 'personal',
+    name: 'Personal',
+    description: 'Daily focus stack, intentions, and lightweight planning',
+    mode: 'panel',
+    apps: [{ app: dayStackApp }],
+    defaultFocusedAppId: 'day-stack',
+    defaultActivatedAppIds: ['day-stack'],
     leftNavigation: 'on',
   };
 }
@@ -316,7 +374,7 @@ export function getLogoStudioWorkspace(): HudsonWorkspace {
     description: 'Logo design + asset export workflow',
     mode: 'canvas',
     apps: getLogoStudioApps(),
-    defaultFocusedAppId: 'logo-designer',
+    defaultFocusedAppId: 'logo',
     defaultScale: 0.5,
     leftNavigation: 'on',
   };
@@ -340,6 +398,22 @@ export function getDocumentLabWorkspace(): HudsonWorkspace {
     }],
     defaultFocusedAppId: 'document-lab',
     defaultScale: 0.8,
+    leftNavigation: 'on',
+  };
+}
+
+/** Workflow Lab — read-only fixture harness for the shared workflow graph primitive. */
+export function getWorkflowLabWorkspace(): HudsonWorkspace {
+  return {
+    id: 'workflow-lab',
+    name: 'Workflow Lab',
+    description: 'Read-only workflow graph fixture lab',
+    mode: 'canvas',
+    apps: getWorkflowLabApps(),
+    defaultFocusedAppId: 'workflow-lab',
+    defaultActivatedAppIds: ['workflow-lab'],
+    defaultScale: 0.72,
+    defaultPan: { x: -160, y: -80 },
     leftNavigation: 'on',
   };
 }
@@ -371,6 +445,8 @@ export function getCoreWorkspaces(): HudsonWorkspace[] {
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
     { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
     { workspace: getDocumentLabWorkspace(), source: 'core:document-lab' },
+    { workspace: getWorkflowLabWorkspace(), source: 'core:workflow-lab' },
+    { workspace: getPersonalWorkspace(), source: 'core:personal' },
   ]);
 }
 

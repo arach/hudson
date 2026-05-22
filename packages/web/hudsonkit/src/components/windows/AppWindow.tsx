@@ -33,6 +33,11 @@ interface AppWindowProps {
   onToggleMaximize?: () => void;
   /** Context menu items shown on right-click */
   contextMenuItems?: ContextMenuEntry[];
+  /** Optional decorations rendered inside the window's positioned root,
+   *  on top of the chrome — used by the shell for port dots, status pills,
+   *  etc. The container has `pointer-events: none` so individual decorations
+   *  must opt in to interaction. */
+  decorations?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -65,6 +70,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isMaximized: isMaximizedProp,
   onToggleMaximize: onToggleMaximizeProp,
   contextMenuItems,
+  decorations,
   children,
 }) => {
   const windowRef = useRef<HTMLDivElement>(null);
@@ -260,12 +266,12 @@ const AppWindow: React.FC<AppWindowProps> = ({
     >
       {/* Window chrome */}
       <div
-        className={`w-full h-full flex flex-col rounded-lg overflow-hidden border transition-shadow duration-200 ${
+        className={`w-full h-full flex flex-col rounded-lg overflow-hidden border transition-colors duration-200 ${
           isFocused
-            ? 'border-accent/45 shadow-[0_24px_70px_color-mix(in_srgb,oklch(var(--accent))_18%,transparent)]'
-            : 'border-border/80 shadow-[0_20px_60px_rgba(0,0,0,0.22)]'
+            ? 'border-accent/60'
+            : 'border-border/80 shadow-[0_4px_18px_rgba(0,0,0,0.10)]'
         }`}
-        style={{ background: 'color-mix(in srgb, oklch(var(--card)) 92%, transparent)', backdropFilter: 'blur(20px)' }}
+        style={{ background: 'oklch(var(--card))' }}
       >
         {/* Title bar */}
         <div
@@ -342,6 +348,16 @@ const AppWindow: React.FC<AppWindowProps> = ({
 
         return <div key={edge} style={style} onMouseDown={handleResizeStart(edge)} />;
       })}
+
+      {decorations && (
+        <div
+          className="absolute inset-0"
+          style={{ pointerEvents: 'none', zIndex: 20 }}
+          aria-hidden="false"
+        >
+          {decorations}
+        </div>
+      )}
     </div>
   );
 

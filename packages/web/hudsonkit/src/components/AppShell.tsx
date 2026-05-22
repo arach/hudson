@@ -257,13 +257,13 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
               <div key={tool.id}>
                 <button
                   onClick={() => toggleTool(tool.id)}
-                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-[11px] font-mono tracking-wider uppercase transition-colors hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none ${
-                    activeToolHint === tool.id ? 'text-accent' : 'text-foreground'
+                  className={`w-full flex items-center gap-2 px-4 py-2.5 text-[10px] font-mono tracking-[0.18em] uppercase transition-colors hover:bg-accent/10 focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-inset focus-visible:outline-none ${
+                    activeToolHint === tool.id ? 'text-accent' : 'text-muted-foreground'
                   }`}
                 >
                   {isOpen ? <ChevronDown size={10} /> : <ChevronRight size={10} />}
-                  <span className="text-muted-foreground">{tool.icon}</span>
-                  <span className="font-bold">{tool.name}</span>
+                  <span className="text-muted-foreground/70">{tool.icon}</span>
+                  <span className={activeToolHint === tool.id ? '' : ''}>{tool.name}</span>
                 </button>
                 {isOpen && (
                   <div className="px-4 pb-3">
@@ -509,13 +509,13 @@ function DrawerTabs({
             key={tab}
             type="button"
             onClick={() => onSelect(tab)}
-            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-xs font-bold tracking-widest font-mono transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+            className={`flex items-center gap-1.5 px-2.5 py-1 rounded text-[10px] tracking-[0.18em] uppercase font-mono transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
               isActive
                 ? activeClasses
-                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 font-normal'
             }`}
           >
-            <Icon size={13} />
+            <Icon size={12} />
             <span>{label}</span>
           </button>
         );

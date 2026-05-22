@@ -6,12 +6,15 @@
 // instead of the static default-only page that Pages serves.
 //
 // Web Standards only — no CF bindings, no HTMLRewriter, no caches.default.
-// Same handler runs on Deno Deploy, Vercel Edge, or self-hosted workerd.
+// Same handler can run on Deno Deploy or self-hosted workerd.
 // CF-specific config lives exclusively in wrangler.toml.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { consumers, resolveConsumer, type ConsumerConfig } from './registry.ts';
 import { buildHtml } from './buildHtml.ts';
+
+const STATIC_ASSET_ORIGIN = 'https://app.hudsonkit.com';
+const STATIC_EMBED_ASSET_PATHS = new Set(['/embed/client.js', '/embed/client.css']);
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -117,6 +120,21 @@ function parseEmbedPath(pathname: string): { appId: string; surface: string } | 
   return { appId: m[1], surface: m[2] };
 }
 
+async function fetchStaticEmbedAsset(request: Request): Promise<Response> {
+  const url = new URL(request.url);
+  const assetUrl = new URL(`${url.pathname}${url.search}`, STATIC_ASSET_ORIGIN);
+  const response = await fetch(new Request(assetUrl, request));
+  const headers = new Headers(response.headers);
+  headers.set('Access-Control-Allow-Origin', '*');
+  headers.set('X-Hudson-Asset-Proxy', '1');
+
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers,
+  });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 
 export default {
@@ -133,6 +151,10 @@ export default {
       });
     }
 
+    if (STATIC_EMBED_ASSET_PATHS.has(url.pathname)) {
+      return fetchStaticEmbedAsset(request);
+    }
+
     // Only handle GET requests to /embed/<appId>/<surface>
     if (request.method !== 'GET') {
       return new Response('Method Not Allowed', { status: 405 });
@@ -140,7 +162,12 @@ export default {
 
     const route = parseEmbedPath(url.pathname);
     if (!route) {
-      return new Response('Not Found', { status: 404 });
+      // Some /embed/* paths are static assets shipped with Pages — most
+      // importantly /embed/client.js (the standalone embed mount bundle).
+      // The CF route pattern (`hudsonkit.com/embed/*`) sends those requests
+      // to this worker, so we must hand them back to origin or the worker's
+      // 404 wins over Pages' static asset and the embed never mounts.
+      return fetch(request);
     }
 
     const { appId, surface } = route;
@@ -153,11 +180,24 @@ export default {
           'Content-Type': 'text/html; charset=utf-8',
           // Embed pages are not indexed
           'X-Robots-Tag': 'noindex, nofollow',
-          // Allow framing from any origin (embed use-case)
-          'X-Frame-Options': 'ALLOWALL',
-          // Short CDN cache — the Worker itself caches nothing; let CF edge
-          // cache for a short window. Personalised params bust the cache.
-          'Cache-Control': 'public, max-age=60, stale-while-revalidate=300',
+          // Allow framing from any origin (embed use-case). `X-Frame-Options:
+          // ALLOWALL` is non-standard and ignored by every modern browser, so
+          // we use `frame-ancestors` from CSP — the actual standard — instead.
+          // Future-proof: tighten to a host allow-list when consumer registry
+          // grows host metadata (e.g. `frame-ancestors *.hudsonkit.com …`).
+          'Content-Security-Policy': 'frame-ancestors *;',
+          // Edge cache strategy:
+          //   max-age=60        — browsers reuse for a minute (fast back/forward)
+          //   s-maxage=300      — CF edge serves cached HTML for 5 minutes
+          //   swr=86400         — for 24h after expiry, CF returns stale and
+          //                       refreshes in the background, so visitors
+          //                       almost never wait for a full revalidate
+          //   sie=86400         — if the worker errors during revalidate, CF
+          //                       keeps serving the stale copy for a day
+          // Cache key is the full URL — `?ref=`, `?template=`, `?theme=` all
+          // produce distinct cached variants automatically.
+          'Cache-Control':
+            'public, max-age=60, s-maxage=300, stale-while-revalidate=86400, stale-if-error=86400',
           // Worker attribution
           'X-Hudson-Worker': '1',
           'X-Hudson-Ref': state.ref ?? '',

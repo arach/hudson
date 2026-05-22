@@ -1,0 +1,281 @@
+/* ─────────────────────────────────────────────────────────────────────────
+   Workspace decoration layer
+   Read-only, drag-able placards on the workspace canvas.
+   ───────────────────────────────────────────────────────────────────────── */
+
+.hudson-decor-layer {
+  position: absolute;
+  inset: 0;
+  /* Layer is non-interactive; items inherit pointer-events: none. */
+  pointer-events: none;
+  /* Sits underneath app windows but above the canvas grid. */
+  z-index: 0;
+}
+
+.hudson-decor-item {
+  position: absolute;
+  top: 0;
+  left: 0;
+  pointer-events: none;
+  user-select: none;
+  border-radius: 4px;
+}
+
+.hudson-decor-item.is-selected {
+  outline: 1px solid var(--hud-accent, #f59e0b);
+  outline-offset: 6px;
+}
+
+/* ── Text treatments ──────────────────────────────────────────────────── */
+
+.hudson-decor-eyebrow {
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-ink-2, oklch(0.7 0.01 240));
+}
+
+.hudson-decor-title {
+  margin: 0;
+  font-family: var(--hud-font-display, "Newsreader", "Times New Roman", serif);
+  font-size: 44px;
+  line-height: 1.05;
+  font-weight: 400;
+  letter-spacing: -0.01em;
+  color: var(--hud-ink, #f3f4f6);
+}
+
+.hudson-decor-title em.accent {
+  font-style: italic;
+  color: var(--hud-accent, #f59e0b);
+}
+
+.hudson-decor-body {
+  margin: 0;
+  font-family: var(--hud-font-body, system-ui, sans-serif);
+  font-size: 14px;
+  line-height: 1.55;
+  color: var(--hud-ink-1, oklch(0.85 0.005 240));
+  max-width: 64ch;
+}
+
+.hudson-decor-divider {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.2em;
+  text-transform: uppercase;
+  color: var(--hud-ink-3, oklch(0.55 0.01 240));
+}
+
+.hudson-decor-divider .rule {
+  flex: 1;
+  height: 1px;
+  background: var(--hud-line, oklch(0.4 0.012 240));
+}
+
+.hudson-decor-divider .label {
+  white-space: nowrap;
+}
+
+/* ── Image ────────────────────────────────────────────────────────────── */
+
+.hudson-decor-image {
+  margin: 0;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+  background: var(--hud-bg-2, oklch(0.24 0.02 240));
+  overflow: hidden;
+  border-radius: 3px;
+}
+
+.hudson-decor-image img {
+  width: 100%;
+  flex: 1;
+  object-fit: cover;
+  display: block;
+  pointer-events: none;
+}
+
+.hudson-decor-image figcaption {
+  padding: 6px 10px;
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  color: var(--hud-ink-2, oklch(0.7 0.01 240));
+  border-top: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+}
+
+.hudson-decor-placeholder {
+  flex: 1;
+  display: grid;
+  place-items: center;
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  color: var(--hud-ink-3, oklch(0.55 0.01 240));
+}
+
+/* ── Web embed ────────────────────────────────────────────────────────── */
+
+.hudson-decor-web {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  border: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+  background: var(--hud-bg-2, oklch(0.24 0.02 240));
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.hudson-decor-web-chrome {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-bottom: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+  background: var(--hud-bg-3, oklch(0.28 0.02 240));
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+}
+
+.hudson-decor-web-chrome .dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--hud-line-strong, oklch(0.62 0.012 240));
+}
+
+.hudson-decor-web-url {
+  flex: 1;
+  margin-left: 8px;
+  color: var(--hud-ink-2, oklch(0.7 0.01 240));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.hudson-decor-web-open {
+  color: var(--hud-ink-2, oklch(0.7 0.01 240));
+  text-decoration: none;
+  font-size: 13px;
+}
+
+.hudson-decor-web-open:hover {
+  color: var(--hud-accent, #f59e0b);
+}
+
+.hudson-decor-web-frame {
+  flex: 1;
+  border: 0;
+  width: 100%;
+  background: var(--hud-bg, oklch(0.2 0.02 240));
+}
+
+.hudson-decor-web-fallback {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  padding: 24px;
+  gap: 8px;
+  text-decoration: none;
+  color: inherit;
+}
+
+.hudson-decor-web-fallback-host {
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-ink-3, oklch(0.55 0.01 240));
+}
+
+.hudson-decor-web-fallback-title {
+  font-family: var(--hud-font-display, serif);
+  font-size: 22px;
+  font-style: italic;
+  color: var(--hud-ink, #f3f4f6);
+}
+
+.hudson-decor-web-fallback-hint {
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  color: var(--hud-accent, #f59e0b);
+}
+
+/* ── Step card ────────────────────────────────────────────────────────── */
+
+.hudson-decor-step {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 16px 18px;
+  height: 100%;
+  border: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+  background: var(--hud-bg-2, oklch(0.24 0.02 240));
+  border-radius: 3px;
+}
+
+.hudson-decor-step-head {
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 9px;
+  letter-spacing: 0.22em;
+  text-transform: uppercase;
+  color: var(--hud-ink-3, oklch(0.55 0.01 240));
+}
+
+.hudson-decor-step-action {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 13px;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--hud-ink, #f3f4f6);
+}
+
+.hudson-decor-step-action .num {
+  display: inline-grid;
+  place-items: center;
+  width: 20px;
+  height: 20px;
+  font-size: 11px;
+  font-weight: 600;
+  letter-spacing: 0;
+  color: var(--hud-accent, #f59e0b);
+  border: 1px solid var(--hud-accent-line, color-mix(in oklch, var(--hud-accent, #f59e0b) 45%, transparent));
+  border-radius: 3px;
+}
+
+.hudson-decor-step-body {
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 10px;
+  letter-spacing: 0.18em;
+  text-transform: uppercase;
+  color: var(--hud-ink-2, oklch(0.7 0.01 240));
+}
+
+.hudson-decor-step-code {
+  margin: 0;
+  padding: 8px 10px;
+  border: 1px solid var(--hud-line, oklch(0.4 0.012 240));
+  background: var(--hud-bg, oklch(0.2 0.02 240));
+  font-family: var(--hud-font-mono, ui-monospace, monospace);
+  font-size: 11px;
+  line-height: 1.45;
+  color: var(--hud-ink-1, oklch(0.85 0.005 240));
+  white-space: pre;
+  border-radius: 3px;
+  overflow: auto;
+}

@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
+import type { HudsonAppBackend } from './backend';
 import type { AppExports } from './embed';
 import type { AppIntent } from './intent';
 import type { AppPorts } from './port';
@@ -12,6 +13,7 @@ import type { ServiceDependency } from './service';
 export interface AppSettingField {
   key: string;
   label: string;
+  description?: string;
   type: 'text' | 'number' | 'toggle' | 'slider' | 'segment' | 'select';
   default: string | number | boolean;
   /** For segment/select type */
@@ -103,6 +105,8 @@ export interface HudsonApp {
   name: string;
   /** Short description for tooltips / palette */
   description?: string;
+  /** Optional agent-facing operating guide included in Hudson AI context. */
+  agentContext?: string;
   /** Frame mode: 'canvas' enables pan/zoom, 'panel' renders scrollable content */
   mode: 'canvas' | 'panel';
   /** Icon shown next to the app name in the navigation bar */
@@ -135,6 +139,12 @@ export interface HudsonApp {
     RightPanel?: React.FC;
     Inspector?: React.FC;
     LeftFooter?: React.FC;
+    /** App-level Chat surface — the "designed UI" AI lens. Should consume the
+     *  app's Provider state (same conversation as the rest of the app), not
+     *  spawn its own chat hook. */
+    Chat?: React.FC;
+    /** App-level Terminal surface — usually a PTY/relay session for long-form
+     *  coding work, distinct from the Chat surface. */
     Terminal?: React.FC;
     /** Full-viewport component rendered above the shell when useTakeover
      *  returns active. When present, the rest of the shell is marked
@@ -162,6 +172,10 @@ export interface HudsonApp {
 
   /** Services this app depends on */
   services?: ServiceDependency[];
+
+  /** App-local backend declaration (HUD-008). Same-origin `/api/{app.id}` and
+   *  `~/hudson/{app.id}/.data` defaults derive from `app.id` when absent. */
+  backend?: HudsonAppBackend;
 
   /** Hooks called inside Provider via Bridge component */
   hooks: {

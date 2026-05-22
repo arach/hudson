@@ -19,7 +19,10 @@
       }
     ],
     "paths": {
-      "@/*": ["./*"]
+      "@/*": ["./*"],
+      "hudsonkit": ["./packages/web/hudsonkit/src/index.ts"],
+      "hudsonkit/workflow": ["./packages/web/hudsonkit/src/workflow/index.ts"],
+      "hudsonkit/*": ["./packages/web/hudsonkit/src/*.ts"]
     }
   },
   "include": [

@@ -3,18 +3,18 @@
  * Tactile UI sounds generated with Web Audio API. No audio files.
  */
 
+import { safeLocalStorage } from './safe-storage';
+
 let audioCtx: AudioContext | null = null;
-let _muted = typeof window !== 'undefined'
-  ? localStorage.getItem('frame_sounds') !== 'on'
-  : true;
+// Default to muted; storage may be unreachable (SSR, cross-origin iframe,
+// private mode), in which case `safeLocalStorage.getItem` returns null.
+let _muted = safeLocalStorage.getItem('frame_sounds') !== 'on';
 
 export function isMuted(): boolean { return _muted; }
 
 export function setMuted(muted: boolean) {
   _muted = muted;
-  if (typeof window !== 'undefined') {
-    localStorage.setItem('frame_sounds', muted ? 'off' : 'on');
-  }
+  safeLocalStorage.setItem('frame_sounds', muted ? 'off' : 'on');
 }
 
 export function toggleMute(): boolean {

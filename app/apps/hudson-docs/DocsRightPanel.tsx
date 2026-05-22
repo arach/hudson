@@ -19,35 +19,35 @@ export function DocsRightPanel() {
       {selectedEntry ? (
         <>
           <div className="space-y-2">
-            <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">Selected</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Selected</div>
             <div className="flex items-center gap-2.5">
-              {(() => { const I = selectedEntry.icon; return <I size={16} className="text-emerald-400" />; })()}
+              {(() => { const I = selectedEntry.icon; return <I size={16} className="text-accent" />; })()}
               <div>
-                <div className="text-[13px] font-mono font-bold text-white tracking-wider">{selectedEntry.label}</div>
-                <div className="text-[10px] font-mono text-emerald-400/80">{selectedEntry.ns}</div>
+                <div className="text-[13px] font-mono font-bold text-foreground tracking-wider">{selectedEntry.label}</div>
+                <div className="text-[10px] font-mono text-accent/80">{selectedEntry.ns}</div>
               </div>
             </div>
           </div>
-          <div className="h-px bg-neutral-600/50" />
+          <div className="h-px bg-border" />
           <div className="space-y-2">
-            <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">Attributes</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Attributes</div>
             <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] font-mono">
-              <div className="text-neutral-200">namespace</div>
-              <div className="text-emerald-400 truncate">{selectedEntry.ns}</div>
-              <div className="text-neutral-200">props</div>
-              <div className="text-white">{selectedEntry.props.length}</div>
-              <div className="text-neutral-200">has_notes</div>
-              <div className="text-white">{selectedEntry.notes && selectedEntry.notes.length > 0 ? 'true' : 'false'}</div>
+              <div className="text-muted-foreground">namespace</div>
+              <div className="text-accent truncate">{selectedEntry.ns}</div>
+              <div className="text-muted-foreground">props</div>
+              <div className="text-foreground">{selectedEntry.props.length}</div>
+              <div className="text-muted-foreground">has_notes</div>
+              <div className="text-foreground">{selectedEntry.notes && selectedEntry.notes.length > 0 ? 'true' : 'false'}</div>
             </div>
           </div>
-          <div className="h-px bg-neutral-600/50" />
+          <div className="h-px bg-border" />
           <div className="space-y-2">
-            <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">Props</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Props</div>
             <div className="space-y-1.5">
               {selectedEntry.props.map(p => (
                 <div key={p.name} className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
-                  <span className="text-[10px] font-mono text-neutral-200 truncate">{p.type}</span>
+                  <span className="text-[11px] font-mono text-accent">{p.name}</span>
+                  <span className="text-[10px] font-mono text-muted-foreground truncate">{p.type}</span>
                 </div>
               ))}
             </div>
@@ -55,19 +55,19 @@ export function DocsRightPanel() {
         </>
       ) : (
         <div className="space-y-2">
-          <div className="text-[10px] font-mono text-neutral-200 tracking-widest uppercase">Selected</div>
-          <div className="text-[11px] font-mono text-neutral-300">Click a component to inspect</div>
+          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Selected</div>
+          <div className="text-[11px] font-mono text-muted-foreground/80">Click a component to inspect</div>
         </div>
       )}
-      <div className="h-px bg-neutral-600/50" />
+      <div className="h-px bg-border" />
       {/* Context info — shell will inject panel/canvas state via DocsContextInfo */}
       <DocsContextInfo />
       {openCount > 0 && (
         <>
-          <div className="h-px bg-neutral-600/50" />
+          <div className="h-px bg-border" />
           <button
             onClick={closeAllSheets}
-            className="text-[10px] font-mono text-neutral-300 hover:text-white transition-colors"
+            className="text-[10px] font-mono text-muted-foreground/80 hover:text-foreground transition-colors"
           >
             Close all sheets
           </button>
@@ -84,12 +84,12 @@ function DocsContextInfo() {
 
   return (
     <div className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-1.5 text-[11px] font-mono">
-      <div className="text-neutral-200">hudson.view.mode</div>
-      <div className="text-emerald-400">{viewMode}</div>
-      <div className="text-neutral-200">hudson.view.nav</div>
-      <div className="text-white">{activeNav}</div>
-      <div className="text-neutral-200">hudson.sheets.open</div>
-      <div className="text-white">{openCount}</div>
+      <div className="text-muted-foreground">hudson.view.mode</div>
+      <div className="text-accent">{viewMode}</div>
+      <div className="text-muted-foreground">hudson.view.nav</div>
+      <div className="text-foreground">{activeNav}</div>
+      <div className="text-muted-foreground">hudson.sheets.open</div>
+      <div className="text-foreground">{openCount}</div>
     </div>
   );
 }

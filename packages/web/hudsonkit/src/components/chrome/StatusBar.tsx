@@ -77,7 +77,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[11px] md:text-[12px] text-foreground pointer-events-auto overflow-hidden`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[9px] md:text-[10px] text-foreground pointer-events-auto overflow-hidden`}
       style={chromeBorderStyle}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
@@ -87,30 +87,25 @@ const StatusBar: React.FC<StatusBarProps> = ({
           <>
             <button
               onClick={onExpandMinimap}
-              className="flex items-center gap-1.5 px-2 py-0.5 rounded bg-muted/60 border hover:bg-muted transition-colors text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
-              style={chromeBorderStyle}
+              className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
               title="Expand minimap"
             >
               <Map size={10} />
-              <span className="text-[11px] font-bold">MAP</span>
-              <Maximize2 size={8} className="opacity-60" />
+              <span className="text-[9px] font-light tracking-[0.18em] uppercase">Map</span>
             </button>
-            <div className="h-3 w-px" style={chromeDividerStyle} />
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
           </>
         )}
 
         {/* System status indicator */}
         <div className={`shrink-0 flex items-center gap-2 ${colors.text}`}>
-          <div className="relative flex h-2 w-2">
-            <span className={`animate-ping absolute inline-flex h-full w-full rounded-full ${colors.ping} opacity-75`} />
-            <span className={`relative inline-flex rounded-full h-2 w-2 ${colors.dot}`} />
-          </div>
-          <span className="font-bold tracking-wider">{status.label}</span>
+          <span className={`inline-block h-1.5 w-1.5 rounded-full ${colors.dot}`} />
+          <span className="font-light tracking-[0.18em] uppercase text-[9px]">{status.label}</span>
         </div>
 
         {left && (
           <>
-            <div className="h-3 w-px" style={chromeDividerStyle} />
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
             {left}
           </>
         )}
@@ -118,28 +113,31 @@ const StatusBar: React.FC<StatusBarProps> = ({
 
       {/* CENTER: Viewport data (clickable to copy) */}
       {viewport && (
-        <div className="hidden lg:flex absolute left-1/2 -translate-x-1/2 items-center gap-3 opacity-70 hover:opacity-100 transition-opacity">
+        <div
+          className="hidden lg:flex absolute -translate-x-1/2 items-center gap-3 opacity-70 hover:opacity-100 transition-[left,opacity] duration-200"
+          style={{ left: 'calc(50% - var(--hud-player-status-inline-offset, 0px))' }}
+        >
           <button
             onClick={handleCopyViewport}
             className="flex items-center gap-3 hover:text-foreground transition-colors cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded"
             title="Copy viewport data"
           >
             <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">PAN:</span>
+              <span className="text-muted-foreground tracking-[0.18em] text-[9px] uppercase">Pan</span>
               <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {viewport.pan.x.toFixed(0)},{viewport.pan.y.toFixed(0)}
               </span>
             </div>
-            <div className="h-3 w-px" style={chromeDividerStyle} />
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
             <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">SIZE:</span>
+              <span className="text-muted-foreground tracking-[0.18em] text-[9px] uppercase">Size</span>
               <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {viewport.canvasSize?.w ?? 1024}x{viewport.canvasSize?.h ?? 1024}
               </span>
             </div>
-            <div className="h-3 w-px" style={chromeDividerStyle} />
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
             <div className="flex items-center gap-1">
-              <span className="text-muted-foreground">ZOOM:</span>
+              <span className="text-muted-foreground tracking-[0.18em] text-[9px] uppercase">Zoom</span>
               <span className={`tabular-nums ${vpCopied ? 'text-accent' : ''}`}>
                 {(viewport.zoom * 100).toFixed(0)}%
               </span>
@@ -152,23 +150,23 @@ const StatusBar: React.FC<StatusBarProps> = ({
       <div className="shrink-0 flex items-center gap-3 md:gap-4">
         {right}
 
-        {right && <div className="h-3 w-px" style={chromeDividerStyle} />}
+        {right && <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>}
 
         {onToggleTerminal && (
           <>
             <button
               onClick={onToggleTerminal}
-              className={`flex items-center gap-1.5 px-2 py-1 rounded transition-all focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none ${
+              className={`flex items-center gap-1.5 transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded ${
                 isTerminalOpen
-                  ? 'bg-accent/10 text-accent border border-accent/30'
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted/70 border border-transparent'
+                  ? 'text-accent'
+                  : 'text-muted-foreground hover:text-foreground'
               }`}
               title="Toggle Terminal (Ctrl+`)"
             >
-              <span className="text-[12px]">{'>'}_</span>
-              <span className="uppercase text-[11px] font-semibold tracking-wider">Console</span>
+              <span className="text-[10px]">{'>'}_</span>
+              <span className="uppercase text-[9px] font-light tracking-[0.18em]">Console</span>
             </button>
-            <div className="h-3 w-px" style={chromeDividerStyle} />
+            <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
           </>
         )}
 

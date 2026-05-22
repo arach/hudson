@@ -38,7 +38,7 @@ export interface ConsumerConfig {
 }
 
 export const consumers: Record<string, ConsumerConfig> = {
-  // hudsonos.com — engineering-drawing marketing site.
+  // Drafting marketing preset for the HudsonKit site.
   // Theming is driven by the `drafting` template (slate paper + amber accent),
   // applied via [data-hudson-template="drafting"] on <html>. The palette/fonts
   // below remain as `--hud-*` semantic-token complements; shadcn vars come
@@ -49,6 +49,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
     palette: {
       '--hud-bg':           'oklch(0.20 0.02 240)',
       '--hud-bg-2':         'oklch(0.24 0.02 240)',
@@ -71,6 +72,41 @@ export const consumers: Record<string, ConsumerConfig> = {
     },
   },
 
+  // hudson-linen — cream-paper light showcase.
+  // Proves Hudson can shed the default emerald-on-black skin: warm linen
+  // canvas, brown ink, amber accent. Uses the `drafting` template so chrome
+  // styles cascade from [data-hudson-template="drafting"][data-hudson-theme="light"]
+  // in tokens.css; the registry palette below overrides those tokens with the
+  // linen-specific values for this consumer.
+  'hudson-linen': {
+    ref: 'hudson-linen',
+    theme: 'light',
+    template: 'drafting',
+    defaultWorkspace: 'hudson-os',
+    defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
+    palette: {
+      '--hud-bg':           'oklch(0.95 0.012 70)',
+      '--hud-bg-2':         'oklch(0.97 0.010 70)',
+      '--hud-bg-3':         'oklch(0.93 0.014 70)',
+      '--hud-ink':          'oklch(0.22 0.014 60)',
+      '--hud-ink-1':        'oklch(0.32 0.014 60)',
+      '--hud-ink-2':        'oklch(0.52 0.010 60)',
+      '--hud-ink-3':        'oklch(0.70 0.010 60)',
+      '--hud-line':         'oklch(0.88 0.010 70)',
+      '--hud-line-strong':  'oklch(0.75 0.012 70)',
+      '--hud-accent':       'oklch(0.62 0.18 50)',
+      '--hud-accent-soft':  'oklch(0.62 0.18 50 / 0.08)',
+      '--hud-accent-line':  'oklch(0.62 0.18 50 / 0.40)',
+      '--hud-border-width': '1.5px',
+    },
+    fonts: {
+      '--hud-font-display': 'var(--font-newsreader), "Times New Roman", serif',
+      '--hud-font-body':    'var(--font-space-grotesk), system-ui, sans-serif',
+      '--hud-font-mono':    'var(--font-jetbrains-mono), ui-monospace, monospace',
+    },
+  },
+
   // Reference / unstyled embed — accessor for the embed's "native" defaults
   // (dark + emerald). Useful when an iframe is hosted standalone and wants to
   // display Hudson's own brand palette rather than a consumer's.
@@ -80,6 +116,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'hudson',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
+    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
     palette: {
       '--hud-bg':           'oklch(0.16 0.005 240)',
       '--hud-bg-2':         'oklch(0.20 0.005 240)',
@@ -90,9 +127,9 @@ export const consumers: Record<string, ConsumerConfig> = {
       '--hud-ink-3':        'oklch(0.50 0.01 240)',
       '--hud-line':         'oklch(0.32 0.012 240)',
       '--hud-line-strong':  'oklch(0.48 0.012 240)',
-      '--hud-accent':       'oklch(0.72 0.18 162)',
-      '--hud-accent-soft':  'oklch(0.72 0.18 162 / 0.10)',
-      '--hud-accent-line':  'oklch(0.72 0.18 162 / 0.45)',
+      '--hud-accent':       'oklch(0.68 0.16 50)',
+      '--hud-accent-soft':  'oklch(0.68 0.16 50 / 0.10)',
+      '--hud-accent-line':  'oklch(0.68 0.16 50 / 0.45)',
       '--hud-border-width': '1px',
     },
     fonts: {

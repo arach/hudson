@@ -38,4 +38,6 @@ const mockLocalStorage = {
   key: (i: number) => Object.keys(store)[i] ?? null,
 };
 
-Object.defineProperty(globalThis, 'localStorage', { value: mockLocalStorage });
+// `configurable: true` lets individual tests swap the mock to simulate
+// SecurityError-throwing storage (cross-origin iframes, locked-down browsers).
+Object.defineProperty(globalThis, 'localStorage', { value: mockLocalStorage, configurable: true });

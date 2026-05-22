@@ -60,10 +60,20 @@
       "import": "./dist/theme-script.js",
       "default": "./dist/theme-script.js"
     },
+    "./server": {
+      "types": "./dist/server.d.ts",
+      "import": "./dist/server.js",
+      "default": "./dist/server.js"
+    },
     "./controls": {
       "types": "./dist/controls.d.ts",
       "import": "./dist/controls.js",
       "default": "./dist/controls.js"
+    },
+    "./workflow": {
+      "types": "./dist/workflow.d.ts",
+      "import": "./dist/workflow.js",
+      "default": "./dist/workflow.js"
     },
     "./observability": {
       "types": "./dist/observability.d.ts",
@@ -105,11 +115,24 @@
       "import": "./dist/player.js",
       "default": "./dist/player.js"
     },
+    "./primitives": {
+      "types": "./dist/primitives.d.ts",
+      "import": "./dist/primitives.js",
+      "default": "./dist/primitives.js"
+    },
+    "./patterns": {
+      "types": "./dist/patterns.d.ts",
+      "import": "./dist/patterns.js",
+      "default": "./dist/patterns.js"
+    },
     "./styles": "./dist/styles.css"
   },
   "files": [
     "dist",
     "bin"
+  ],
+  "sideEffects": [
+    "*.css"
   ],
   "homepage": "https://hudsonkit.com",
   "repository": {
@@ -118,8 +141,8 @@
     "directory": "packages/web/hudsonkit"
   },
   "scripts": {
-    "build": "tsup && bun run build:css",
-    "build:js": "tsup",
+    "build": "bun run build:js && bun run build:css",
+    "build:js": "tsup && tsup --config tsup.server.config.ts",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify",
     "pack": "bun run build && bun pm pack",
     "prepare": "node bin/prepare-check.mjs"
@@ -142,7 +165,8 @@
     "codemirror": "^6.0.2",
     "motion": "^12.0.0",
     "react-markdown": "^10.1.0",
-    "remark-gfm": "^4.0.1"
+    "remark-gfm": "^4.0.1",
+    "server-only": "^0.0.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",

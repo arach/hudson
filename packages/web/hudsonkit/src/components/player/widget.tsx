@@ -32,6 +32,9 @@ import { usePlayer } from './PlayerProvider';
 const STATUS_H = SHELL_THEME.layout.statusBarHeight;
 const PANEL_BOTTOM = STATUS_H;
 const MIN_H = 120;
+const PLAYER_PANEL_OFFSET_VAR = '--hud-player-panel-offset';
+const PLAYER_STATUS_OFFSET_VAR = '--hud-player-status-inline-offset';
+const PLAYER_STATUS_OFFSET = '118px';
 
 function formatDuration(s: number | null | undefined): string {
   if (s == null || !Number.isFinite(s)) return '--:--';
@@ -233,12 +236,22 @@ export function PlayerStatusBarPill({ pipActive = false }: { pipActive?: boolean
   const hasMedia = media != null;
   const isVideo = media?.kind === 'video';
   const open = pipActive || isPlayerOpen;
+
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+    const root = document.documentElement;
+    root.style.setProperty(PLAYER_STATUS_OFFSET_VAR, PLAYER_STATUS_OFFSET);
+    return () => {
+      root.style.removeProperty(PLAYER_STATUS_OFFSET_VAR);
+    };
+  }, []);
+
   return (
     <div
       className="fixed -translate-x-1/2 flex items-center rounded transition-all"
       style={{
         bottom: 0,
-        left: '50%',
+        left: `calc(50% + var(${PLAYER_STATUS_OFFSET_VAR}, 0px))`,
         height: STATUS_H,
         zIndex: SHELL_THEME.zIndex.statusBar + 5,
         color: open ? 'var(--hud-accent)' : 'var(--hud-muted)',
@@ -366,6 +379,19 @@ export function PlayerPanel({
     : maximized
       ? (typeof window !== 'undefined' ? `${window.innerHeight - STATUS_H}px` : '500px')
       : `${height}px`;
+
+  useEffect(() => {
+    if (pipMode || typeof document === 'undefined') return;
+    const root = document.documentElement;
+    if (isPlayerOpen) {
+      root.style.setProperty(PLAYER_PANEL_OFFSET_VAR, panelH);
+    } else {
+      root.style.removeProperty(PLAYER_PANEL_OFFSET_VAR);
+    }
+    return () => {
+      root.style.removeProperty(PLAYER_PANEL_OFFSET_VAR);
+    };
+  }, [isPlayerOpen, panelH, pipMode]);
 
   const onGripMouseDown = (e: React.MouseEvent) => {
     if (pipMode || maximized || typeof window === 'undefined') return;

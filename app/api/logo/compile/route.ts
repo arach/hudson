@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { transform } from 'esbuild';
+import { compileLogoRenderBody, normalizeLogoRenderSource, stripTemplateMetaBlock } from '../renderCompiler';
 
 function log(msg: string) {
   const ts = new Date().toISOString().slice(11, 23);
@@ -8,27 +8,21 @@ function log(msg: string) {
 
 export async function POST(request: Request) {
   try {
-    const { source } = (await request.json()) as { source: string };
+    const { source: rawSource } = (await request.json()) as { source: string };
 
-    if (typeof source !== 'string' || !source.trim()) {
+    if (typeof rawSource !== 'string' || !rawSource.trim()) {
       log('ERROR: empty source');
       return NextResponse.json({ error: 'source is required' }, { status: 400 });
     }
 
+    const strippedSource = stripTemplateMetaBlock(rawSource).trim();
+    const source = normalizeLogoRenderSource(strippedSource);
+    if (source !== strippedSource) {
+      log(`normalized LLM over-escapes (${strippedSource.length} → ${source.length} chars)`);
+    }
     log(`compiling ${source.length} chars`);
 
-    // Compile TypeScript → JavaScript (strip types only)
-    const result = await transform(source, {
-      loader: 'ts',
-      target: 'es2020',
-    });
-
-    let js = result.code;
-
-    // Strip redeclarations of function parameters (p, vb) — AI agents
-    // sometimes emit `const vb = 512;` which clashes with the function signature.
-    js = js.replace(/^(const|let|var)\s+vb\s*=\s*[^;]+;\n?/gm, '');
-    js = js.replace(/^(const|let|var)\s+p\s*=\s*[^;]+;\n?/gm, '');
+    const js = await compileLogoRenderBody(source);
 
     // Validate: the compiled JS must be executable as a function body (p, vb) => string
     try {

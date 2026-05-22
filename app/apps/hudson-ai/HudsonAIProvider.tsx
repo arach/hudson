@@ -6,11 +6,12 @@ import {
   useMemo,
   type ReactNode,
 } from 'react';
-import type { AppSettingsValues } from 'hudsonkit';
+import type { AppSettingsConfig, AppSettingsValues } from 'hudsonkit';
 import { HUDSON_AI_PROMPT_PRESETS, type HudsonAIPromptPreset } from './catalog';
-import { hudsonAISettings } from './settings';
+import { createHudsonAISettings } from './settings';
 import { useActiveWorkspace } from '../../shell/ActiveWorkspaceContext';
 import { useHudsonAISettings } from './useHudsonAISettings';
+import { useAIModelOptions } from '../../lib/useAIModelOptions';
 
 interface HudsonAIContextValue {
   resolvedSettings: AppSettingsValues;
@@ -22,7 +23,7 @@ interface HudsonAIContextValue {
   enableWorkspaceOverride: () => void;
   updateWorkspaceOverride: (patch: Partial<AppSettingsValues>) => void;
   clearWorkspaceOverride: () => void;
-  settingsConfig: typeof hudsonAISettings;
+  settingsConfig: AppSettingsConfig;
   promptPresets: HudsonAIPromptPreset[];
   resolvedProvider: string;
   resolvedModel: string;
@@ -39,6 +40,11 @@ export function useHudsonAIApp() {
 
 export function HudsonAIProvider({ children }: { children: ReactNode }) {
   const { workspaceId } = useActiveWorkspace();
+  const { modelOptions } = useAIModelOptions();
+  const settingsConfig = useMemo(
+    () => createHudsonAISettings(modelOptions),
+    [modelOptions],
+  );
   const {
     resolvedSettings,
     globalSettings,
@@ -49,7 +55,7 @@ export function HudsonAIProvider({ children }: { children: ReactNode }) {
     enableWorkspaceOverride,
     updateWorkspaceOverride,
     clearWorkspaceOverride,
-  } = useHudsonAISettings(workspaceId, hudsonAISettings);
+  } = useHudsonAISettings(workspaceId, settingsConfig);
 
   const value = useMemo<HudsonAIContextValue>(() => ({
     resolvedSettings,
@@ -61,7 +67,7 @@ export function HudsonAIProvider({ children }: { children: ReactNode }) {
     enableWorkspaceOverride,
     updateWorkspaceOverride,
     clearWorkspaceOverride,
-    settingsConfig: hudsonAISettings,
+    settingsConfig,
     promptPresets: HUDSON_AI_PROMPT_PRESETS,
     resolvedProvider: String(resolvedSettings.provider || 'copilot'),
     resolvedModel: String(resolvedSettings.model || 'gemini-3-flash-preview'),
@@ -73,6 +79,7 @@ export function HudsonAIProvider({ children }: { children: ReactNode }) {
     hasWorkspaceOverride,
     resetGlobalSettings,
     resolvedSettings,
+    settingsConfig,
     updateGlobalSettings,
     updateWorkspaceOverride,
     workspaceOverrideSettings,

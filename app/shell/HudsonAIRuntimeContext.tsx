@@ -26,6 +26,7 @@ export interface HudsonAIWorkspaceCatalogEntry {
     id: string;
     name: string;
     description?: string;
+    agentContext?: string;
     mode: 'canvas' | 'panel';
     canvasMode: 'native' | 'windowed';
     services: Array<{ serviceId: string; optional?: boolean; reason?: string }>;
@@ -80,6 +81,7 @@ export interface HudsonAIAppCapability {
   id: string;
   name: string;
   description?: string;
+  agentContext?: string;
   mode: 'canvas' | 'panel';
   canvasMode: 'native' | 'windowed';
   visible: boolean;
@@ -134,6 +136,7 @@ export interface HudsonAIToolContext {
   environment: {
     manageable: boolean;
     path: string;
+    vaultPath?: string;
   };
 }
 

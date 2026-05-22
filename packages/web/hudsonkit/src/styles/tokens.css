@@ -1,19 +1,39 @@
 [data-hudson-template="hudson"] {
   --hud-bg: oklch(var(--background));
+  --hud-bg-2: oklch(var(--card));
+  --hud-bg-3: oklch(var(--secondary));
   --hud-surface: oklch(var(--card));
   --hud-ink: oklch(var(--foreground));
+  --hud-ink-1: oklch(var(--foreground) / 0.86);
+  --hud-ink-2: oklch(var(--muted-foreground));
+  --hud-ink-3: oklch(var(--muted-foreground) / 0.72);
   --hud-muted: oklch(var(--muted-foreground));
   --hud-dim: oklch(var(--muted-foreground) / 0.78);
   --hud-border: oklch(var(--border) / 0.82);
+  --hud-chrome-border: oklch(var(--border));
   --hud-chrome-border-subtle: oklch(var(--border) / 0.4);
+  --hud-line: oklch(var(--border));
+  --hud-line-strong: oklch(var(--input));
   --hud-radius: var(--radius);
   --hud-shadow-soft: oklch(var(--foreground) / 0.14);
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-accent-line: oklch(var(--accent) / 0.42);
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
   --hud-status-info: oklch(var(--info));
+}
+
+/* Diff surface bg — flips on the data-hudson-theme attribute set by
+   HudsonThemeScript pre-paint, so SSR HTML and the first client render
+   agree without reading resolvedTheme (which is undefined during SSR by
+   design). See TextDiff.tsx. */
+[data-hudson-theme="dark"] {
+  --hud-diff-surface-bg: #0a0f12;
+}
+[data-hudson-theme="light"] {
+  --hud-diff-surface-bg: #fafaf7;
 }
 
 /* ───────────────────────────────────────────────────────────────────────────
@@ -38,17 +58,14 @@
 }
 
 [data-hudson-template="hudson"][data-hudson-theme="light"] {
-  /* Paper-on-canvas elevation — short, low-opacity drop; no white inset */
-  --hud-shadow-panel: 0 1px 2px rgba(17, 24, 39, 0.04), 0 8px 24px -12px rgba(17, 24, 39, 0.10);
-  --hud-shadow-bar: 0 -1px 2px rgba(17, 24, 39, 0.04), 0 -8px 24px -16px rgba(17, 24, 39, 0.08);
-  --hud-shadow-nav: 0 1px 2px rgba(17, 24, 39, 0.04), 0 6px 16px -12px rgba(17, 24, 39, 0.08);
-  --hud-shadow-minimap: 0 1px 2px rgba(17, 24, 39, 0.04), 0 6px 16px -8px rgba(17, 24, 39, 0.08);
-  --hud-edge-fade-dark: rgba(17, 24, 39, 0.04);
-  --hud-edge-fade-bottom: rgba(17, 24, 39, 0.06);
-  /* Canvas dot grid — cool slate against the warm off-white canvas. The
-     warm/cool opposition keeps dots legible without reading as muddy. */
-  --hud-canvas-dot-minor: rgba(17, 24, 39, 0.08);
-  --hud-canvas-dot-major: rgba(17, 24, 39, 0.14);
+  --hud-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 26px -14px rgba(15, 23, 42, 0.13);
+  --hud-shadow-bar: 0 -1px 2px rgba(15, 23, 42, 0.05), 0 -10px 26px -18px rgba(15, 23, 42, 0.10);
+  --hud-shadow-nav: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px -14px rgba(15, 23, 42, 0.11);
+  --hud-shadow-minimap: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px -10px rgba(15, 23, 42, 0.10);
+  --hud-edge-fade-dark: rgba(15, 23, 42, 0.05);
+  --hud-edge-fade-bottom: rgba(15, 23, 42, 0.07);
+  --hud-canvas-dot-minor: rgba(15, 23, 42, 0.09);
+  --hud-canvas-dot-major: rgba(15, 23, 42, 0.16);
 }
 
 [data-hudson-template="hudson"][data-hudson-theme="dark"] {
@@ -80,60 +97,52 @@
 
 [data-hudson-template="hudson"][data-hudson-theme="light"] {
   color-scheme: light;
-  /* Canvas — warm off-white (Rhino-paper / Linear-light territory). A touch
-     of warmth (hue 85) + a hair of chroma (0.01) gives the plane character
-     that pure-cool near-whites lack. */
-  --background: 0.975 0.008 90;
-  /* Body text — cool ink. The warm/cool opposition is what makes the page
-     feel composed instead of washed. */
-  --foreground: 0.21 0.02 260;
-  /* Paper — pure white stays as the sharp lifted surface on top of the
-     warm canvas. The tonal delta is now ~2.5 L points + a chroma jump,
-     which reads clearly as "lifted paper". */
-  --card: 1 0 0;
-  --card-foreground: 0.19 0.02 260;
-  --popover: 1 0 0;
-  --popover-foreground: 0.19 0.02 260;
-  /* Primary = decisive near-black (shadcn). Accent = punchier emerald —
-     raise chroma from 0.16 → 0.19 so the brand actually registers in light
-     mode instead of reading as dusty teal. */
-  --primary: 0.22 0.02 260;
-  --primary-foreground: 0.99 0.003 90;
-  /* Sidebars / tinted surface — now meaningfully different from card. Was
-     0.955 cool, now 0.945 warm with a hint of chroma so panel chrome reads
-     as a distinct band, not "slightly off-white card". */
-  --secondary: 0.945 0.012 85;
-  --secondary-foreground: 0.23 0.02 260;
-  --muted: 0.945 0.012 85;
-  --muted-foreground: 0.5 0.02 260;
-  /* Accent — emerald, pushed. 0.19 chroma is roughly emerald-500 saturation
-     range, properly readable on white and punchy on tinted surfaces. */
-  --accent: 0.58 0.19 162;
+  --background: 0.982 0.006 205;
+  --foreground: 0.18 0.018 245;
+  --card: 0.998 0.002 205;
+  --card-foreground: 0.17 0.018 245;
+  --popover: 0.998 0.002 205;
+  --popover-foreground: 0.17 0.018 245;
+  --primary: 0.2 0.02 245;
+  --primary-foreground: 0.99 0.002 205;
+  --secondary: 0.955 0.01 205;
+  --secondary-foreground: 0.22 0.02 245;
+  --muted: 0.948 0.008 205;
+  --muted-foreground: 0.43 0.02 245;
+  --accent: 0.54 0.16 178;
   --accent-foreground: 0.99 0 0;
-  /* Destructive — slightly muted so status-bar pills aren't screamingly loud. */
-  --destructive: 0.56 0.19 25;
+  --destructive: 0.54 0.19 25;
   --destructive-foreground: 0.99 0 0;
-  --warning: 0.72 0.16 75;
-  --success: 0.6 0.17 150;
-  --info: 0.55 0.19 250;
-  /* Borders — warm hairlines that sit beneath surface tonality. */
-  --border: 0.92 0.014 80;
-  --input: 0.9 0.014 80;
-  --ring: 0.58 0.19 162;
+  --warning: 0.7 0.15 75;
+  --success: 0.56 0.15 150;
+  --info: 0.52 0.16 225;
+  --border: 0.865 0.012 215;
+  --input: 0.82 0.012 215;
+  --ring: 0.54 0.16 178;
   --radius: 8px;
 }
 
 [data-hudson-template="editorial"] {
   --hud-bg: oklch(var(--background));
+  --hud-bg-2: oklch(var(--card));
+  --hud-bg-3: oklch(var(--secondary));
   --hud-surface: oklch(var(--card));
   --hud-ink: oklch(var(--foreground));
+  --hud-ink-1: oklch(var(--foreground) / 0.86);
+  --hud-ink-2: oklch(var(--muted-foreground));
+  --hud-ink-3: oklch(var(--muted-foreground) / 0.72);
   --hud-muted: oklch(var(--muted-foreground));
   --hud-dim: oklch(var(--muted-foreground) / 0.78);
   --hud-border: oklch(var(--border) / 0.82);
+  --hud-chrome-border: oklch(var(--border));
+  --hud-chrome-border-subtle: oklch(var(--border) / 0.62);
+  --hud-line: oklch(var(--border));
+  --hud-line-strong: oklch(var(--input));
   --hud-radius: var(--radius);
   --hud-shadow-soft: oklch(var(--foreground) / 0.14);
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-accent-line: oklch(var(--accent) / 0.42);
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
@@ -143,31 +152,28 @@
 
 [data-hudson-template="editorial"][data-hudson-theme="light"] {
   color-scheme: light;
-  --background: 0.98 0.01 80;
-  --foreground: 0.2 0.02 60;
-  --card: 1 0 0;
-  --card-foreground: 0.2 0.02 60;
-  --popover: 1 0 0;
-  --popover-foreground: 0.2 0.02 60;
-  --primary: 0.3 0.05 60;
+  --background: 0.976 0.009 78;
+  --foreground: 0.18 0.02 60;
+  --card: 0.998 0.002 78;
+  --card-foreground: 0.18 0.02 60;
+  --popover: 0.998 0.002 78;
+  --popover-foreground: 0.18 0.02 60;
+  --primary: 0.24 0.04 60;
   --primary-foreground: 0.98 0.01 80;
-  --secondary: 0.94 0.02 80;
+  --secondary: 0.932 0.018 80;
   --secondary-foreground: 0.2 0.02 60;
-  --muted: 0.93 0.015 80;
-  --muted-foreground: 0.48 0.03 60;
-  --accent: 0.6 0.18 40;
+  --muted: 0.925 0.014 80;
+  --muted-foreground: 0.42 0.025 60;
+  --accent: 0.56 0.16 42;
   --accent-foreground: 0.99 0 0;
-  --destructive: 0.55 0.22 25;
+  --destructive: 0.53 0.20 25;
   --destructive-foreground: 0.99 0 0;
-  --warning: 0.72 0.16 75;
-  --success: 0.52 0.14 145;
-  /* Info in editorial = quiet slate-blue. Chroma dropped from 0.15 → 0.05 and
-     hue shifted 250 → 225 so the "info" tone reads as a considered cool
-     counterpoint to the warm palette instead of a stray saturated blue. */
-  --info: 0.52 0.05 225;
-  --border: 0.88 0.015 80;
-  --input: 0.88 0.015 80;
-  --ring: 0.6 0.18 40;
+  --warning: 0.7 0.15 75;
+  --success: 0.5 0.13 145;
+  --info: 0.48 0.06 220;
+  --border: 0.82 0.014 80;
+  --input: 0.78 0.014 80;
+  --ring: 0.56 0.16 42;
   --radius: 4px;
 }
 
@@ -208,15 +214,25 @@
    serif + mono metadata, matching the technical-document register. */
 [data-hudson-template="drafting"] {
   --hud-bg: oklch(var(--background));
+  --hud-bg-2: oklch(var(--card));
+  --hud-bg-3: oklch(var(--secondary));
   --hud-surface: oklch(var(--card));
   --hud-ink: oklch(var(--foreground));
+  --hud-ink-1: oklch(var(--foreground) / 0.86);
+  --hud-ink-2: oklch(var(--muted-foreground));
+  --hud-ink-3: oklch(var(--muted-foreground) / 0.72);
   --hud-muted: oklch(var(--muted-foreground));
   --hud-dim: oklch(var(--muted-foreground) / 0.78);
   --hud-border: oklch(var(--border) / 0.82);
+  --hud-chrome-border: oklch(var(--border));
+  --hud-chrome-border-subtle: oklch(var(--border) / 0.62);
+  --hud-line: oklch(var(--border));
+  --hud-line-strong: oklch(var(--input));
   --hud-radius: var(--radius);
   --hud-shadow-soft: oklch(var(--foreground) / 0.14);
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-accent-line: oklch(var(--accent) / 0.42);
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
@@ -283,28 +299,145 @@
 
 [data-hudson-template="drafting"][data-hudson-theme="light"] {
   color-scheme: light;
-  /* Canvas: warm linen — the off-white of drafting paper, slight ochre. */
-  --background: 0.95 0.012 70;
-  --foreground: 0.22 0.014 60;
-  --card: 1 0 0;
-  --card-foreground: 0.22 0.014 60;
-  --popover: 1 0 0;
-  --popover-foreground: 0.22 0.014 60;
-  --primary: 0.22 0.014 60;
+  --background: 0.955 0.01 72;
+  --foreground: 0.18 0.014 60;
+  --card: 0.998 0.002 72;
+  --card-foreground: 0.18 0.014 60;
+  --popover: 0.998 0.002 72;
+  --popover-foreground: 0.18 0.014 60;
+  --primary: 0.2 0.014 60;
   --primary-foreground: 0.97 0.012 85;
-  --secondary: 0.92 0.014 70;
-  --secondary-foreground: 0.22 0.014 60;
-  --muted: 0.92 0.014 70;
-  --muted-foreground: 0.52 0.010 60;
-  --accent: 0.62 0.18 50;
+  --secondary: 0.905 0.014 70;
+  --secondary-foreground: 0.2 0.014 60;
+  --muted: 0.905 0.014 70;
+  --muted-foreground: 0.42 0.01 60;
+  --accent: 0.58 0.16 50;
   --accent-foreground: 0.99 0 0;
-  --destructive: 0.55 0.22 25;
+  --destructive: 0.53 0.20 25;
   --destructive-foreground: 0.99 0 0;
-  --warning: 0.72 0.16 75;
-  --success: 0.58 0.14 150;
-  --info: 0.55 0.08 220;
-  --border: 0.78 0.010 60;
-  --input: 0.78 0.010 60;
-  --ring: 0.62 0.18 50;
+  --warning: 0.7 0.15 75;
+  --success: 0.54 0.13 150;
+  --info: 0.5 0.08 220;
+  --border: 0.74 0.01 60;
+  --input: 0.7 0.01 60;
+  --ring: 0.58 0.16 50;
   --radius: 0px;
+}
+
+[data-hudson-template="hudson-custom"][data-hudson-theme="dark"] {
+  color-scheme: dark;
+  --background: 0.145 0 0;
+  --hud-bg: oklch(var(--background));
+  --hud-bg-2: oklch(var(--card));
+  --hud-bg-3: oklch(var(--secondary));
+  --hud-canvas-dot-minor: rgba(255, 255, 255, 0.06);
+  --hud-canvas-dot-major: rgba(255, 255, 255, 0.10);
+  --card: 0.18 0 0;
+  --card-foreground: 0.95 0 0;
+  --popover: 0.16 0 0;
+  --popover-foreground: 0.95 0 0;
+  --secondary: 0.24 0 0;
+  --secondary-foreground: 0.95 0 0;
+  --muted: 0.22 0 0;
+  --border: 0.28 0 0;
+  --input: 0.28 0 0;
+  --hud-surface: oklch(var(--card));
+  --hud-border: oklch(var(--border) / 0.82);
+  --hud-chrome-border: oklch(var(--border));
+  --hud-chrome-border-subtle: oklch(var(--border) / 0.62);
+  --hud-shadow-soft: oklch(var(--foreground) / 0.14);
+  --hud-shadow-panel: 0 0 30px rgba(0, 0, 0, 0.8), inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  --hud-shadow-bar: 0 -5px 30px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(255, 255, 255, 0.06);
+  --hud-shadow-nav: 0 4px 30px rgba(0, 0, 0, 0.5);
+  --hud-shadow-minimap: 0 0 20px rgba(0, 0, 0, 0.7);
+  --hud-edge-fade-dark: rgba(0, 0, 0, 0.2);
+  --hud-edge-fade-bottom: rgba(0, 0, 0, 0.3);
+  --foreground: 0.95 0 0;
+  --muted-foreground: 0.64 0 0;
+  --hud-ink: oklch(var(--foreground));
+  --hud-ink-1: oklch(var(--foreground) / 0.86);
+  --hud-ink-2: oklch(var(--muted-foreground));
+  --hud-ink-3: oklch(var(--muted-foreground) / 0.72);
+  --hud-muted: oklch(var(--muted-foreground));
+  --hud-dim: oklch(var(--muted-foreground) / 0.78);
+  --hud-line: oklch(var(--border));
+  --hud-line-strong: oklch(var(--input));
+  --primary: 0.75 0.17 162;
+  --primary-foreground: 0.145 0 0;
+  --accent: 0.72 0.18 162;
+  --accent-foreground: 0.145 0 0;
+  --ring: 0.72 0.18 162;
+  --hud-accent: oklch(var(--accent));
+  --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-accent-line: oklch(var(--accent) / 0.42);
+  --destructive: 0.62 0.24 25;
+  --destructive-foreground: 0.98 0 0;
+  --warning: 0.8 0.17 75;
+  --success: 0.7 0.17 145;
+  --info: 0.62 0.2 250;
+  --hud-status-ok: oklch(var(--success));
+  --hud-status-warn: oklch(var(--warning));
+  --hud-status-error: oklch(var(--destructive));
+  --hud-status-info: oklch(var(--info));
+  --radius: 8px;
+  --hud-radius: var(--radius);
+}
+
+[data-hudson-template="hudson-custom"][data-hudson-theme="light"] {
+  color-scheme: light;
+  --background: 0.982 0.006 205;
+  --hud-bg: oklch(var(--background));
+  --hud-bg-2: oklch(var(--card));
+  --hud-bg-3: oklch(var(--secondary));
+  --hud-canvas-dot-minor: rgba(15, 23, 42, 0.09);
+  --hud-canvas-dot-major: rgba(15, 23, 42, 0.16);
+  --card: 0.998 0.002 205;
+  --card-foreground: 0.17 0.018 245;
+  --popover: 0.998 0.002 205;
+  --popover-foreground: 0.17 0.018 245;
+  --secondary: 0.955 0.01 205;
+  --secondary-foreground: 0.22 0.02 245;
+  --muted: 0.948 0.008 205;
+  --border: 0.865 0.012 215;
+  --input: 0.82 0.012 215;
+  --hud-surface: oklch(var(--card));
+  --hud-border: oklch(var(--border) / 0.82);
+  --hud-chrome-border: oklch(var(--border));
+  --hud-chrome-border-subtle: oklch(var(--border) / 0.62);
+  --hud-shadow-soft: oklch(var(--foreground) / 0.14);
+  --hud-shadow-panel: 0 1px 2px rgba(15, 23, 42, 0.05), 0 10px 26px -14px rgba(15, 23, 42, 0.13);
+  --hud-shadow-bar: 0 -1px 2px rgba(15, 23, 42, 0.05), 0 -10px 26px -18px rgba(15, 23, 42, 0.10);
+  --hud-shadow-nav: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px -14px rgba(15, 23, 42, 0.11);
+  --hud-shadow-minimap: 0 1px 2px rgba(15, 23, 42, 0.05), 0 8px 18px -10px rgba(15, 23, 42, 0.10);
+  --hud-edge-fade-dark: rgba(15, 23, 42, 0.05);
+  --hud-edge-fade-bottom: rgba(15, 23, 42, 0.07);
+  --foreground: 0.18 0.018 245;
+  --muted-foreground: 0.43 0.02 245;
+  --hud-ink: oklch(var(--foreground));
+  --hud-ink-1: oklch(var(--foreground) / 0.86);
+  --hud-ink-2: oklch(var(--muted-foreground));
+  --hud-ink-3: oklch(var(--muted-foreground) / 0.72);
+  --hud-muted: oklch(var(--muted-foreground));
+  --hud-dim: oklch(var(--muted-foreground) / 0.78);
+  --hud-line: oklch(var(--border));
+  --hud-line-strong: oklch(var(--input));
+  --primary: 0.2 0.02 245;
+  --primary-foreground: 0.99 0.002 205;
+  --accent: 0.54 0.16 178;
+  --accent-foreground: 0.99 0 0;
+  --ring: 0.54 0.16 178;
+  --hud-accent: oklch(var(--accent));
+  --hud-accent-soft: oklch(var(--accent) / 0.12);
+  --hud-accent-line: oklch(var(--accent) / 0.42);
+  --destructive: 0.54 0.19 25;
+  --destructive-foreground: 0.99 0 0;
+  --warning: 0.7 0.15 75;
+  --success: 0.56 0.15 150;
+  --info: 0.52 0.16 225;
+  --hud-status-ok: oklch(var(--success));
+  --hud-status-warn: oklch(var(--warning));
+  --hud-status-error: oklch(var(--destructive));
+  --hud-status-info: oklch(var(--info));
+  --radius: 8px;
+  --hud-radius: var(--radius);
 }

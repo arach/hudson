@@ -28,8 +28,8 @@ describe('workspace toolset', () => {
         id: 'hudson-os',
         name: 'HudsonKit',
         mode: 'canvas',
-        focusedAppId: 'logo-designer',
-        visibleAppIds: ['logo-designer'],
+        focusedAppId: 'logo',
+        visibleAppIds: ['logo'],
         disabledAppIds: ['intent-explorer'],
         availableWorkspaces: [
           { id: 'hudson-os', name: 'HudsonKit', current: true },
@@ -38,7 +38,7 @@ describe('workspace toolset', () => {
       },
       apps: [
         {
-          id: 'logo-designer',
+          id: 'logo',
           name: 'Logo Designer',
           mode: 'panel',
           canvasMode: 'windowed',
@@ -65,14 +65,14 @@ describe('workspace toolset', () => {
           id: 'logo:variant',
           label: 'Switch Variant',
           scope: 'app',
-          appId: 'logo-designer',
+          appId: 'logo',
           appName: 'Logo Designer',
           description: 'Switch the active logo variant.',
         },
       ],
       appSettings: [
         {
-          appId: 'logo-designer',
+          appId: 'logo',
           appName: 'Logo Designer',
           sections: [
             {
@@ -113,7 +113,7 @@ describe('workspace toolset', () => {
           name: 'Fetch -> Logo',
           enabled: true,
           source: { appId: 'fetch', portId: 'image' },
-          sink: { appId: 'logo-designer', portId: 'template' },
+          sink: { appId: 'logo', portId: 'template' },
         },
       ],
       environment: {

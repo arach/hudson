@@ -8,13 +8,13 @@
   --card-foreground: 0.95 0 0;
   --popover: 0.16 0 0;
   --popover-foreground: 0.95 0 0;
-  --primary: 0.75 0.17 162;
+  --primary: 0.70 0.16 50;
   --primary-foreground: 0.145 0 0;
   --secondary: 0.24 0 0;
   --secondary-foreground: 0.95 0 0;
   --muted: 0.22 0 0;
   --muted-foreground: 0.64 0 0;
-  --accent: 0.72 0.18 162;
+  --accent: 0.68 0.16 50;
   --accent-foreground: 0.145 0 0;
   --destructive: 0.62 0.24 25;
   --destructive-foreground: 0.98 0 0;
@@ -23,7 +23,7 @@
   --info: 0.62 0.2 250;
   --border: 0.28 0 0;
   --input: 0.28 0 0;
-  --ring: 0.72 0.18 162;
+  --ring: 0.68 0.16 50;
   --radius: 8px;
   --hudson-font-size: 13px;
   --hudson-font-family: system-ui;
@@ -121,28 +121,28 @@ body {
   scrollbar-color: color-mix(in srgb, oklch(var(--foreground)) 14%, transparent) transparent;
 }
 
-/* Hudson AI markdown — compact, token-driven */
+/* Hudson AI markdown — compact, fixed for the always-dark AI shell */
 .hudson-ai-md {
   line-height: 1.55;
-  color: oklch(var(--foreground) / 0.76);
+  color: rgb(212 212 216 / 0.86);
 }
 .hudson-ai-md p { margin: 0.3em 0; }
 .hudson-ai-md p:first-child { margin-top: 0; }
 .hudson-ai-md p:last-child { margin-bottom: 0; }
-.hudson-ai-md strong { color: oklch(var(--foreground) / 0.92); font-weight: 600; }
-.hudson-ai-md em { color: oklch(var(--muted-foreground)); font-style: italic; }
+.hudson-ai-md strong { color: rgb(244 244 245 / 0.96); font-weight: 600; }
+.hudson-ai-md em { color: rgb(161 161 170 / 0.95); font-style: italic; }
 .hudson-ai-md code {
   font-family: var(--font-mono);
   font-size: 0.9em;
-  background: oklch(var(--secondary) / 0.95);
-  border: 1px solid oklch(var(--border));
+  background: rgb(255 255 255 / 0.07);
+  border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 4px;
   padding: 0.1em 0.35em;
-  color: oklch(var(--foreground) / 0.82);
+  color: rgb(226 232 240 / 0.94);
 }
 .hudson-ai-md pre {
-  background: oklch(var(--secondary) / 0.82);
-  border: 1px solid oklch(var(--border));
+  background: rgb(255 255 255 / 0.055);
+  border: 1px solid rgb(255 255 255 / 0.1);
   border-radius: 6px;
   padding: 0.6em 0.8em;
   margin: 0.5em 0;
@@ -160,28 +160,36 @@ body {
   padding-left: 1.4em;
 }
 .hudson-ai-md li { margin: 0.15em 0; }
-.hudson-ai-md li::marker { color: oklch(var(--muted-foreground) / 0.45); }
+.hudson-ai-md li::marker { color: rgb(34 211 238 / 0.55); }
 .hudson-ai-md h1, .hudson-ai-md h2, .hudson-ai-md h3 {
-  color: oklch(var(--foreground) / 0.9);
+  color: rgb(244 244 245 / 0.94);
   font-weight: 600;
   margin: 0.5em 0 0.25em;
   font-size: 1em;
 }
 .hudson-ai-md a {
-  color: oklch(var(--accent));
+  color: rgb(103 232 249);
   text-decoration: none;
 }
 .hudson-ai-md a:hover { text-decoration: underline; }
 .hudson-ai-md hr {
   border: none;
-  border-top: 1px solid oklch(var(--border));
+  border-top: 1px solid rgb(255 255 255 / 0.1);
   margin: 0.5em 0;
 }
 .hudson-ai-md blockquote {
-  border-left: 2px solid oklch(var(--border));
+  border-left: 2px solid rgb(255 255 255 / 0.14);
   padding-left: 0.8em;
   margin: 0.3em 0;
-  color: oklch(var(--muted-foreground));
+  color: rgb(161 161 170 / 0.95);
+}
+.hudson-ai-message .hudson-ai-md,
+.hudson-ai-message .hudson-ai-md p,
+.hudson-ai-message .hudson-ai-md li {
+  color: rgb(212 212 216 / 0.9) !important;
+}
+.hudson-ai-message .hudson-ai-md strong {
+  color: rgb(250 250 250 / 0.98) !important;
 }
 
 /* Breathing bar — GPU-composited scale + opacity */

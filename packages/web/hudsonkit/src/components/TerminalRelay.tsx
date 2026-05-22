@@ -1,8 +1,9 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback } from 'react';
+import { useRef, useEffect, useState, useCallback, type CSSProperties } from 'react';
 import type { TerminalRelayHandle } from '../hooks/useTerminalRelay';
 import { usePlatform } from '../platform/PlatformContext';
+import { useOptionalTheme } from '../theme/ThemeProvider';
 
 // ---------------------------------------------------------------------------
 // Props
@@ -13,10 +14,14 @@ interface TerminalRelayConfigItem {
   value: string;
 }
 
+type TerminalColorScheme = 'dark' | 'light' | 'auto';
+
 interface TerminalRelayProps {
   relay: TerminalRelayHandle;
   fontSize?: number;
   fontFamily?: string;
+  /** Follow the Hudson theme by default, using terminal-specific ANSI palettes. */
+  colorScheme?: TerminalColorScheme;
   /** Key/value pairs shown in the disconnected state so users can see current config at a glance */
   configItems?: TerminalRelayConfigItem[];
   /** Called when the user clicks "Settings" in the disconnected overlay */
@@ -25,6 +30,13 @@ interface TerminalRelayProps {
   onStartService?: () => Promise<boolean>;
   /** Suppress disconnected/connecting overlays — just show the terminal canvas immediately. Error overlays are still shown. */
   quiet?: boolean;
+}
+
+export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
+
+export interface HudsonTerminalVoiceTranscriptDetail {
+  transcript: string;
+  submit?: boolean;
 }
 
 // ---------------------------------------------------------------------------
@@ -55,31 +67,57 @@ export async function captureWorkspace(): Promise<Blob | null> {
 }
 
 // ---------------------------------------------------------------------------
-// One Dark theme for xterm.js
+// Terminal-specific xterm palettes. These intentionally do not mirror the
+// workspace card theme: CLI ANSI output needs a stable contrast context.
 // ---------------------------------------------------------------------------
 
-const XTERM_THEME = {
-  background: '#1a1a1a',
-  foreground: '#abb2bf',
-  cursor: '#528bff',
-  cursorAccent: '#1a1a1a',
-  selectionBackground: '#3e4451',
-  selectionForeground: '#abb2bf',
-  black: '#1a1a1a',
-  red: '#e06c75',
-  green: '#98c379',
-  yellow: '#e5c07b',
-  blue: '#61afef',
-  magenta: '#c678dd',
-  cyan: '#56b6c2',
-  white: '#abb2bf',
-  brightBlack: '#5c6370',
-  brightRed: '#e06c75',
-  brightGreen: '#98c379',
-  brightYellow: '#e5c07b',
-  brightBlue: '#61afef',
-  brightMagenta: '#c678dd',
-  brightCyan: '#56b6c2',
+const XTERM_CONSOLE_DARK_THEME = {
+  background: '#091112',
+  foreground: '#d7e5e2',
+  cursor: '#35d7d0',
+  cursorAccent: '#091112',
+  selectionBackground: '#173739',
+  selectionForeground: '#f3fbf9',
+  black: '#091112',
+  red: '#ff6b6b',
+  green: '#35d07f',
+  yellow: '#f5c451',
+  blue: '#62b4ff',
+  magenta: '#ff7ab6',
+  cyan: '#32d5ca',
+  white: '#d7e5e2',
+  brightBlack: '#667777',
+  brightRed: '#ff8f8f',
+  brightGreen: '#5ee79f',
+  brightYellow: '#ffd36e',
+  brightBlue: '#8dccff',
+  brightMagenta: '#ff9fca',
+  brightCyan: '#67eee3',
+  brightWhite: '#ffffff',
+};
+
+const XTERM_CONSOLE_LIGHT_THEME = {
+  background: '#f7faf9',
+  foreground: '#111a19',
+  cursor: '#006f6a',
+  cursorAccent: '#f7faf9',
+  selectionBackground: '#c0e7e2',
+  selectionForeground: '#0d1716',
+  black: '#111a19',
+  red: '#9f1f18',
+  green: '#006c46',
+  yellow: '#704600',
+  blue: '#075985',
+  magenta: '#9d174d',
+  cyan: '#006f6a',
+  white: '#dbe5e2',
+  brightBlack: '#52635f',
+  brightRed: '#c2271f',
+  brightGreen: '#007f55',
+  brightYellow: '#865b00',
+  brightBlue: '#0369a1',
+  brightMagenta: '#be185d',
+  brightCyan: '#007f89',
   brightWhite: '#ffffff',
 };
 
@@ -93,9 +131,9 @@ const XTERM_CSS = `
 .xterm.focus, .xterm:focus { outline: none; }
 .xterm .xterm-helpers { position: absolute; top: 0; z-index: 5; }
 .xterm .xterm-helper-textarea { padding: 0; border: 0; margin: 0; position: absolute; opacity: 0; left: -9999em; top: 0; width: 0; height: 0; z-index: -5; white-space: nowrap; overflow: hidden; resize: none; }
-.xterm .composition-view { background: #000; color: #FFF; display: none; position: absolute; white-space: nowrap; z-index: 1; }
+.xterm .composition-view { background: var(--hud-terminal-bg, #091112); color: var(--hud-terminal-fg, #d7e5e2); display: none; position: absolute; white-space: nowrap; z-index: 1; }
 .xterm .composition-view.active { display: block; }
-.xterm .xterm-viewport { background-color: #000; overflow-y: scroll; cursor: default; position: absolute; right: 0; left: 0; top: 0; bottom: 0; }
+.xterm .xterm-viewport { background-color: var(--hud-terminal-bg, transparent); overflow-y: scroll; cursor: default; position: absolute; right: 0; left: 0; top: 0; bottom: 0; }
 .xterm .xterm-screen { position: relative; }
 .xterm .xterm-screen canvas { position: absolute; left: 0; top: 0; }
 .xterm-char-measure-element { display: inline-block; visibility: hidden; position: absolute; top: 0; left: -9999em; line-height: normal; }
@@ -143,9 +181,21 @@ function injectXtermCss() {
   document.head.appendChild(style);
 }
 
+function isElementVisible(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  if (!el.closest('[data-hudson-terminal-drawer-content="true"]')) return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const style = window.getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+// CSI-u modified Enter: key code 13 with Shift modifier 2.
+const SHIFT_ENTER_INPUT = '\x1b[13;2u';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -168,6 +218,7 @@ export function TerminalRelay({
   relay,
   fontSize = 12,
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
+  colorScheme = 'auto',
   configItems,
   onOpenSettings,
   onStartService,
@@ -176,10 +227,19 @@ export function TerminalRelay({
   const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect, disconnect } = relay;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
+  const themeContext = useOptionalTheme();
+  const resolvedColorScheme = colorScheme === 'auto'
+    ? (themeContext?.resolvedTheme === 'light' ? 'light' : 'dark')
+    : colorScheme;
+  const xtermTheme = resolvedColorScheme === 'light'
+    ? XTERM_CONSOLE_LIGHT_THEME
+    : XTERM_CONSOLE_DARK_THEME;
+  const minimumContrastRatio = resolvedColorScheme === 'light' ? 4.5 : 3;
   const wrapperRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
+  const pendingVoiceInputRef = useRef<HudsonTerminalVoiceTranscriptDetail | null>(null);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -201,6 +261,41 @@ export function TerminalRelay({
 
   // ---- Upload helper ----
   const uploadUrl = `${apiBaseUrl}/api/relay/upload`;
+
+  const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
+    const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
+    if (!transcript) return;
+    sendInput(detail.submit ? `${transcript}\r` : transcript);
+  }, [sendInput]);
+
+  useEffect(() => {
+    const handleVoiceTranscript = (event: Event) => {
+      if (!isElementVisible(wrapperRef.current)) return;
+
+      const detail = (event as CustomEvent<HudsonTerminalVoiceTranscriptDetail>).detail;
+      if (!detail || typeof detail.transcript !== 'string') return;
+
+      if (status === 'connected') {
+        sendVoiceTranscript(detail);
+        return;
+      }
+
+      pendingVoiceInputRef.current = detail;
+      if (status !== 'connecting') {
+        connect();
+      }
+    };
+
+    window.addEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+    return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+  }, [connect, sendVoiceTranscript, status]);
+
+  useEffect(() => {
+    if (status !== 'connected' || !pendingVoiceInputRef.current) return;
+    const detail = pendingVoiceInputRef.current;
+    pendingVoiceInputRef.current = null;
+    sendVoiceTranscript(detail);
+  }, [sendVoiceTranscript, status]);
 
   const uploadFile = useCallback(async (file: File): Promise<string | null> => {
     try {
@@ -303,7 +398,8 @@ export function TerminalRelay({
       terminal = new Terminal({
         fontSize,
         fontFamily,
-        theme: XTERM_THEME,
+        theme: xtermTheme,
+        minimumContrastRatio,
         cursorBlink: true,
         cursorStyle: 'bar',
         allowTransparency: true,
@@ -334,6 +430,23 @@ export function TerminalRelay({
       // Send initial dimensions to relay
       resize(terminal.cols, terminal.rows);
 
+      terminal.attachCustomKeyEventHandler((event) => {
+        if (
+          event.type === 'keydown' &&
+          event.key === 'Enter' &&
+          event.shiftKey &&
+          !event.ctrlKey &&
+          !event.altKey &&
+          !event.metaKey
+        ) {
+          event.preventDefault();
+          event.stopPropagation();
+          sendInput(SHIFT_ENTER_INPUT);
+          return false;
+        }
+        return true;
+      });
+
       // Forward keystrokes from xterm → relay
       terminal.onData((data) => {
         sendInput(data);
@@ -363,6 +476,14 @@ export function TerminalRelay({
     term.options.fontFamily = fontFamily;
     try { fitRef.current?.fit(); } catch {}
   }, [fontSize, fontFamily]);
+
+  // ---- Keep xterm colors aligned with the terminal color scheme ----
+  useEffect(() => {
+    const term = termRef.current;
+    if (!term) return;
+    term.options.theme = xtermTheme;
+    term.options.minimumContrastRatio = minimumContrastRatio;
+  }, [minimumContrastRatio, xtermTheme]);
 
   // ---- Wire relay.onData → terminal.write ----
   useEffect(() => {
@@ -436,8 +557,8 @@ export function TerminalRelay({
           <span className="text-amber-400 text-[14px]">!</span>
         </div>
         <div>
-          <div className="text-[12px] text-neutral-300 font-medium mb-1">Relay service not running</div>
-          <div className="text-[11px] text-neutral-500 leading-relaxed">
+          <div className="text-[12px] text-foreground font-medium mb-1">Relay service not running</div>
+          <div className="text-[11px] text-muted-foreground/80 leading-relaxed">
             {onStartService
               ? 'Start the relay service to open a terminal session.'
               : 'Start the relay service from the Workspace Manager.'}
@@ -449,7 +570,7 @@ export function TerminalRelay({
               type="button"
               onClick={handleStartAndConnect}
               disabled={starting}
-              className="text-[11px] px-4 py-1.5 rounded-full border border-emerald-500/30 text-emerald-400 hover:bg-emerald-500/10 transition-colors font-medium disabled:opacity-50"
+              className="text-[11px] px-4 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-medium disabled:opacity-50"
             >
               {starting ? 'Starting...' : 'Start Service'}
             </button>
@@ -457,7 +578,7 @@ export function TerminalRelay({
           <button
             type="button"
             onClick={() => connect()}
-            className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+            className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
           >
             Retry
           </button>
@@ -465,7 +586,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               Settings
             </button>
@@ -480,11 +601,11 @@ export function TerminalRelay({
           <span className="text-red-400 text-sm">!</span>
         </div>
         <span className="text-red-400 text-[12px] font-medium">Session failed</span>
-        <code className="text-[11px] text-neutral-400 bg-neutral-800/80 px-3 py-2 rounded-md whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto w-full text-left">
+        <code className="text-[11px] text-muted-foreground bg-muted/80 px-3 py-2 rounded-md whitespace-pre-wrap leading-relaxed max-h-32 overflow-y-auto w-full text-left">
           {error}
         </code>
         {exitCode !== null && exitCode !== 0 && (
-          <span className="text-[10px] text-neutral-600">Exit code {exitCode}</span>
+          <span className="text-[10px] text-muted-foreground/60">Exit code {exitCode}</span>
         )}
         <button
           type="button"
@@ -498,16 +619,16 @@ export function TerminalRelay({
   } else if (status === 'disconnected' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-4 max-w-xs text-center px-4">
-        <div className="w-8 h-8 rounded-full bg-neutral-800 border border-neutral-700 flex items-center justify-center">
-          <span className="text-neutral-500 text-[14px]">&#9655;</span>
+        <div className="w-8 h-8 rounded-full bg-muted border border-border flex items-center justify-center">
+          <span className="text-muted-foreground/80 text-[14px]">&#9655;</span>
         </div>
         <div>
-          <div className="text-[12px] text-neutral-300 font-medium mb-1">Terminal relay disconnected</div>
-          <div className="text-[11px] text-neutral-500 leading-relaxed">Set working directory and connect.</div>
+          <div className="text-[12px] text-foreground font-medium mb-1">Terminal relay disconnected</div>
+          <div className="text-[11px] text-muted-foreground/80 leading-relaxed">Set working directory and connect.</div>
         </div>
         {/* Editable CWD */}
         <form className="w-full" onSubmit={(e) => { e.preventDefault(); connect(); }}>
-          <label className="text-[10px] font-mono text-neutral-500 uppercase tracking-wider mb-1 block text-left">
+          <label className="text-[10px] font-mono text-muted-foreground/80 uppercase tracking-wider mb-1 block text-left">
             Working Directory
           </label>
           <input
@@ -515,17 +636,17 @@ export function TerminalRelay({
             value={cwd}
             onChange={(e) => setCwd(e.target.value)}
             placeholder="~/dev/my-project"
-            className="w-full bg-neutral-800/80 border border-neutral-700/50 rounded px-3 py-1.5 text-[11px] font-mono text-neutral-200 placeholder:text-neutral-600 outline-none focus:border-cyan-500/40 transition-colors"
+            className="w-full bg-muted/80 border border-border/50 rounded px-3 py-1.5 text-[11px] font-mono text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-accent/40 transition-colors"
             spellCheck={false}
             autoComplete="off"
           />
         </form>
         {configItems && configItems.length > 0 && (
-          <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-neutral-800/60 border border-neutral-700/40 rounded-md px-3 py-2">
+          <div className="w-full grid grid-cols-[auto_1fr] gap-x-3 gap-y-1 text-[10px] font-mono bg-muted/60 border border-border/40 rounded-md px-3 py-2">
             {configItems.map(item => (
               <div key={item.label} className="contents">
-                <span className="text-neutral-500">{item.label}</span>
-                <span className="text-neutral-400 truncate text-left">{item.value}</span>
+                <span className="text-muted-foreground/80">{item.label}</span>
+                <span className="text-muted-foreground truncate text-left">{item.value}</span>
               </div>
             ))}
           </div>
@@ -542,7 +663,7 @@ export function TerminalRelay({
             <button
               type="button"
               onClick={onOpenSettings}
-              className="text-[11px] px-3 py-1.5 rounded-full border border-neutral-700 text-neutral-400 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+              className="text-[11px] px-3 py-1.5 rounded-full border border-border text-muted-foreground hover:text-foreground hover:bg-muted transition-colors"
             >
               Settings
             </button>
@@ -553,12 +674,12 @@ export function TerminalRelay({
   } else if (status === 'connecting' && !quiet) {
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
-        <div className="w-6 h-6 border-2 border-neutral-600 border-t-cyan-400 rounded-full animate-spin" />
-        <span className="text-[12px] text-neutral-400">Connecting to relay...</span>
+        <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-cyan-500 rounded-full animate-spin" />
+        <span className="text-[12px] text-muted-foreground">Connecting to relay...</span>
         <button
           type="button"
           onClick={() => { disconnect(); }}
-          className="text-[10px] px-3 py-1 rounded-full border border-neutral-700 text-neutral-500 hover:text-neutral-300 hover:bg-white/5 transition-colors"
+          className="text-[10px] px-3 py-1 rounded-full border border-border text-muted-foreground/80 hover:text-foreground hover:bg-muted transition-colors"
         >
           Cancel
         </button>
@@ -577,7 +698,7 @@ export function TerminalRelay({
       onDrop={handleDrop}
     >
       {overlay && (
-        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10 bg-neutral-900/90">
+        <div className="flex items-center justify-center h-full font-mono text-[12px] absolute inset-0 z-10 bg-background/95">
           {overlay}
         </div>
       )}
@@ -592,7 +713,10 @@ export function TerminalRelay({
         style={{
           visibility: overlay ? 'hidden' : 'visible',
           padding: '4px 8px',
-        }}
+          backgroundColor: xtermTheme.background,
+          '--hud-terminal-bg': xtermTheme.background,
+          '--hud-terminal-fg': xtermTheme.foreground,
+        } as CSSProperties}
       />
     </div>
   );

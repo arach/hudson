@@ -19,6 +19,8 @@ interface TerminalDrawerProps {
   title?: React.ReactNode;
   /** Extra actions rendered in the header bar (right of title, left of grip) */
   headerActions?: React.ReactNode;
+  /** Floating controls rendered over the drawer content, outside terminal layout. */
+  contentOverlay?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -33,7 +35,7 @@ const chromeGripStyle = {
 const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   isOpen, onClose, onToggleMaximize, isMaximized = false,
   height = 320, onHeightChange,
-  title, headerActions, children
+  title, headerActions, contentOverlay, children
 }) => {
   const draggingRef = useRef(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -82,9 +84,10 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   return (
     <div
       ref={drawerRef}
+      data-hudson-template="hudson"
       className={`
-        fixed left-0 right-0 shadow-[0_-10px_40px_rgba(0,0,0,0.8)] flex flex-col border-t
-        bg-card/95 backdrop-blur-xl
+        fixed left-0 right-0 shadow-[0_-2px_12px_rgba(0,0,0,0.16)] flex flex-col border-t text-card-foreground
+        bg-card
         ${isOpen ? 'translate-y-0 opacity-100 pointer-events-auto' : 'translate-y-full opacity-0 pointer-events-none'}
         transition-all duration-300 ease-in-out
       `}
@@ -101,7 +104,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
           {title || (
             <div className="flex items-center gap-2 text-accent">
               <Terminal size={14} />
-              <span className="text-xs font-bold tracking-widest font-mono">TERMINAL</span>
+              <span className="text-[10px] font-light tracking-[0.18em] font-mono uppercase">TERMINAL</span>
             </div>
           )}
           {headerActions}
@@ -128,8 +131,18 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 relative overflow-hidden flex flex-col bg-transparent">
+      <div
+        data-hudson-terminal-drawer-content="true"
+        className="flex-1 relative overflow-hidden flex flex-col bg-transparent"
+      >
         {children}
+        {contentOverlay && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center px-4">
+            <div className="pointer-events-auto">
+              {contentOverlay}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

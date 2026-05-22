@@ -35,7 +35,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
         onClick={onToggleCollapse}
         className={`fixed top-1/2 -translate-y-1/2 z-40 ${
           side === 'left' ? 'left-3' : 'right-3'
-        } p-2.5 rounded bg-card/95 border hover:border-accent/60 backdrop-blur-xl shadow-[var(--hud-shadow-panel)] hover:shadow-[var(--hud-shadow-panel-hover,var(--hud-shadow-panel))] transition-all duration-200 group pointer-events-auto focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:outline-none`}
+        } p-2.5 rounded bg-card/95 border hover:border-accent/60 shadow-[var(--hud-shadow-panel)] hover:shadow-[var(--hud-shadow-panel-hover,var(--hud-shadow-panel))] transition-all duration-200 group pointer-events-auto focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-1 focus-visible:ring-offset-background focus-visible:outline-none`}
         style={{ borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
         title={`Expand ${title || 'panel'}`}
       >
@@ -49,7 +49,7 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
-  const baseClasses = 'bg-card/95 backdrop-blur-xl border shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-card/95 border shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
@@ -102,11 +102,14 @@ const SidePanel: React.FC<SidePanelProps> = ({
       <div className="pointer-events-auto flex-1 flex flex-col overflow-hidden">
         {/* Header */}
         {title && (
-          <div className="shrink-0 p-4 border-b" style={{ borderColor: chromeBorder }}>
-            <div className="flex items-center justify-between text-foreground text-[12px]">
+          <div
+            className="shrink-0 p-4"
+            style={{ borderBottom: `1px dashed ${chromeBorder}` }}
+          >
+            <div className="flex items-center justify-between text-foreground text-[10px]">
               <div className="flex items-center gap-1.5">
                 {icon && <span className="text-muted-foreground">{icon}</span>}
-                <span className="tracking-widest font-bold uppercase">{title}</span>
+                <span className="tracking-[0.18em] font-normal uppercase text-muted-foreground">{title}</span>
               </div>
               <div className="flex items-center gap-2">
                 {headerActions}

@@ -1,6 +1,8 @@
 import { loadToolset } from './app/api/ai/toolsets';
 
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
+const APP_HOST = 'app.hudsonkit.com';
+const MARKETING_HOSTS = new Set(['hudsonkit.com', 'www.hudsonkit.com']);
 
 interface Env {
   ASSETS: {
@@ -44,7 +46,17 @@ type UIMessageChunk =
   | { type: 'error'; errorText: string };
 
 function createId(prefix: string) {
-  return `${prefix}-${crypto.randomUUID().slice(0, 8)}`;
+  const globalCrypto = globalThis.crypto;
+  if (globalCrypto && typeof globalCrypto.randomUUID === 'function') {
+    return `${prefix}-${globalCrypto.randomUUID().slice(0, 8)}`;
+  }
+  if (globalCrypto && typeof globalCrypto.getRandomValues === 'function') {
+    const bytes = new Uint8Array(4);
+    globalCrypto.getRandomValues(bytes);
+    const id = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${prefix}-${id}`;
+  }
+  return `${prefix}-${Math.random().toString(36).slice(2, 10)}`;
 }
 
 function extractMessageText(message: ChatMessage): string {
@@ -154,6 +166,28 @@ function removeToolMarkup(text: string) {
     .trim();
 }
 
+function serveAppRoot(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+  if (host !== APP_HOST || url.pathname !== '/') {
+    return null;
+  }
+
+  url.pathname = '/app/';
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
+function serveMarketingRoot(request: Request, env: Env) {
+  const url = new URL(request.url);
+  const host = url.hostname.toLowerCase();
+  if (!MARKETING_HOSTS.has(host) || url.pathname !== '/') {
+    return null;
+  }
+
+  url.pathname = '/landing/';
+  return env.ASSETS.fetch(new Request(url, request));
+}
+
 function writeAssistantResponse(
   write: (chunk: UIMessageChunk) => void,
   text: string,
@@ -233,6 +267,12 @@ export default {
     if (url.pathname === '/api/ai/chat' && request.method === 'POST') {
       return handleAIChat(request, env);
     }
+
+    const appRootResponse = serveAppRoot(request, env);
+    if (appRootResponse) return appRootResponse;
+
+    const marketingRootResponse = serveMarketingRoot(request, env);
+    if (marketingRootResponse) return marketingRootResponse;
 
     return env.ASSETS.fetch(request);
   },

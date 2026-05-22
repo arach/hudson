@@ -1,40 +1,24 @@
-import { existsSync } from 'fs';
-import { copyFile } from 'fs/promises';
-import { mkdir, readdir } from 'fs/promises';
-import { join } from 'path';
-import { createFsWatchEventStream } from '../../../../lib/server/createFsWatchEventStream';
+import { appStorage, createFsWatchEventStream } from 'hudsonkit/server';
 
 export const runtime = 'nodejs';
 export const dynamic = 'force-dynamic';
 
-const HOME = process.env.HOME || '';
-const TEMPLATES_DIR = join(HOME, 'hudson', 'logos', '.data', 'logo-templates');
-const SEED_DIR = join(process.cwd(), '.data', 'logo-templates');
+const storage = appStorage('logo', { migrateFromDataDir: 'logos' });
+const TEMPLATE_REL = 'logo-templates';
+const templatePaths = storage.paths(TEMPLATE_REL);
 
-let seeded = false;
-
-async function ensureDir() {
-  await mkdir(TEMPLATES_DIR, { recursive: true });
-
-  if (!seeded) {
-    seeded = true;
-    if (existsSync(SEED_DIR)) {
-      const existing = new Set((await readdir(TEMPLATES_DIR)).filter((file) => file.endsWith('.js')));
-      const seeds = (await readdir(SEED_DIR)).filter((file) => file.endsWith('.js'));
-      const missing = seeds.filter((file) => !existing.has(file));
-      if (missing.length > 0) {
-        await Promise.all(
-          missing.map((file) => copyFile(join(SEED_DIR, file), join(TEMPLATES_DIR, file))),
-        );
-      }
-    }
-  }
+async function ensureTemplates() {
+  await storage.seedIfEmpty({
+    rel: TEMPLATE_REL,
+    match: (file) => file.endsWith('.js'),
+    copyMissing: true,
+  });
 }
 
 export async function GET(request: Request) {
   return createFsWatchEventStream({
     request,
-    watchPaths: [TEMPLATES_DIR],
-    ensure: ensureDir,
+    watchPaths: [templatePaths.user],
+    ensure: ensureTemplates,
   });
 }

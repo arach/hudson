@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
-import { sounds } from 'hudsonkit';
+import { createHudsonId, sounds } from 'hudsonkit';
 import { useShaperAI, type AiActivityEntry } from './useShaperAI';
 import type {
   BezierData,
@@ -241,7 +241,29 @@ export function useShaper() {
 // ---------------------------------------------------------------------------
 // Provider
 // ---------------------------------------------------------------------------
-export function ShaperProvider({ children }: { children: ReactNode }) {
+function isEditableKeyboardTarget(target: EventTarget | null) {
+  const el = target as HTMLElement | null;
+  if (!el) return false;
+  return Boolean(el.closest('input, textarea, select, [contenteditable="true"], [contenteditable=""], [role="textbox"]'));
+}
+
+export function ShaperProvider({
+  children,
+  visible = true,
+  focused = true,
+}: {
+  children: ReactNode;
+  visible?: boolean;
+  focused?: boolean;
+}) {
+  const visibleRef = useRef(visible);
+  const focusedRef = useRef(focused);
+
+  useEffect(() => {
+    visibleRef.current = visible;
+    focusedRef.current = focused;
+  }, [visible, focused]);
+
   // ── Tools ──
   const [tool, setTool] = useState<Tool>('select');
   // ── Canvas/Viewport ──
@@ -409,7 +431,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const clearSession = useCallback(() => {
-    localStorage.removeItem('shaper-session');
+    try { localStorage.removeItem('shaper-session'); } catch { /* storage unavailable */ }
   }, []);
 
   const startProjectFromImage = useCallback(async (image: ProjectImage) => {
@@ -457,7 +479,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   const newProject = useCallback(() => {
     if (projectImage?.url.startsWith('blob:')) URL.revokeObjectURL(projectImage.url);
     clearSession();
-    const id = crypto.randomUUID();
+    const id = createHudsonId('project', 24);
     setProjectId(id);
     setProjectMeta({ id, name: 'Untitled', createdAt: Date.now() });
     setProjectImage(null);
@@ -917,6 +939,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
   // ── Keyboard shortcuts ──
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (!visibleRef.current || !focusedRef.current || isEditableKeyboardTarget(e.target)) return;
       const isMod = e.metaKey || e.ctrlKey;
       if (isMod && e.key === 'z' && !e.shiftKey) { e.preventDefault(); undo(); }
       if (isMod && e.key === 'z' && e.shiftKey) { e.preventDefault(); redo(); }
@@ -939,8 +962,6 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       }
       if (e.key === ' ') { e.preventDefault(); switchTool('hand'); }
       if (['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key) && selectedPoint) {
-        const active = document.activeElement;
-        if (active && (active.tagName === 'INPUT' || active.tagName === 'TEXTAREA')) return;
         e.preventDefault();
         const ddx = e.key === 'ArrowRight' ? 1 : e.key === 'ArrowLeft' ? -1 : 0;
         const ddy = e.key === 'ArrowDown' ? 1 : e.key === 'ArrowUp' ? -1 : 0;
@@ -948,6 +969,7 @@ export function ShaperProvider({ children }: { children: ReactNode }) {
       }
     };
     const keyup = (e: KeyboardEvent) => {
+      if (!visibleRef.current || !focusedRef.current || isEditableKeyboardTarget(e.target)) return;
       if (e.key === ' ' && !animationModeEnabled) switchTool('select');
     };
     window.addEventListener('keydown', handler);

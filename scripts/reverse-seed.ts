@@ -6,11 +6,11 @@ import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 const SEED_DIR = join(import.meta.dirname, '..', '.data', 'logo-templates');
-const OUT = join(import.meta.dirname, '..', 'app', 'apps', 'logo-designer', 'builtinRenderBodies.ts');
+const OUT = join(import.meta.dirname, '..', 'app', 'apps', 'logo', 'builtinRenderBodies.ts');
 
 const builtins = [
   'negative-space', 'green-channel', 'grid-color', 'interlocking',
-  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic',
+  'lattice-grid', 'app-windows', 'dot-matrix', 'mosaic', 't-decoration',
 ];
 
 let ts = `/**

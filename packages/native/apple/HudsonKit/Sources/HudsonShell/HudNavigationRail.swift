@@ -35,9 +35,11 @@ public struct HudNavigationRail<Footer: View>: View {
     public let items: [HudRailItem]
     @Binding public var isExpanded: Bool
     public let showHeaderToggle: Bool
+    public let showsHeaderStatusDot: Bool
     public let footer: Footer
 
     @Environment(\.hudsonAppManifest) private var manifest
+    @Environment(\.hudTheme) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     public init(
@@ -45,32 +47,45 @@ public struct HudNavigationRail<Footer: View>: View {
         items: [HudRailItem],
         isExpanded: Binding<Bool>,
         showHeaderToggle: Bool = true,
+        showsHeaderStatusDot: Bool = true,
         @ViewBuilder footer: () -> Footer
     ) {
         self._selection = selection
         self.items = items
         self._isExpanded = isExpanded
         self.showHeaderToggle = showHeaderToggle
+        self.showsHeaderStatusDot = showsHeaderStatusDot
         self.footer = footer()
     }
 
     public var body: some View {
         VStack(spacing: 0) {
             header
-            HudDivider(color: HudHairline.standard)
+            HudDivider(color: theme.hairline.standard)
 
             if isExpanded {
-                List(selection: expandedSelection) {
-                    ForEach(items) { item in
-                        Label(item.label, systemImage: item.icon)
-                            .font(HudFont.ui(13, weight: selection == item.id ? .semibold : .regular))
-                            .foregroundStyle(selection == item.id ? HudPalette.ink : HudPalette.muted)
-                            .tag(item.id)
+                ScrollView {
+                    VStack(spacing: HudSpacing.xs) {
+                        ForEach(items) { item in
+                            HudRailLabelButton(
+                                item: item,
+                                isSelected: selection == item.id,
+                                accent: manifest.accent,
+                                onTap: {
+                                    let metadata = selectionMetadata(for: item)
+                                    HudInstrumentation.ui.event("NavigationRail.select", metadata: metadata)
+                                    HudInstrumentation.ui.span("NavigationRail.select.apply", metadata: metadata) {
+                                        selection = item.id
+                                    }
+                                }
+                            )
+                        }
                     }
+                    .padding(.horizontal, HudSpacing.md)
+                    .padding(.vertical, HudSpacing.md)
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
                 }
-                .listStyle(.sidebar)
                 .scrollContentBackground(.hidden)
-                .tint(manifest.accent)
             } else {
                 VStack(spacing: HudSpacing.xs) {
                     ForEach(items) { item in
@@ -95,7 +110,7 @@ public struct HudNavigationRail<Footer: View>: View {
             }
 
             if isExpanded && Footer.self != EmptyView.self {
-                HudDivider(color: HudHairline.subtle)
+                HudDivider(color: theme.hairline.subtle)
                 footer
                     .padding(HudSpacing.xl)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -103,21 +118,7 @@ public struct HudNavigationRail<Footer: View>: View {
         }
         .frame(width: isExpanded ? 220 : 64)
         .frame(maxHeight: .infinity)
-        .background(HudPalette.chrome)
-    }
-
-    private var expandedSelection: Binding<String?> {
-        Binding(
-            get: { selection },
-            set: { next in
-                guard let next, next != selection else { return }
-                let metadata = selectionMetadata(forID: next)
-                HudInstrumentation.ui.event("NavigationRail.select", metadata: metadata)
-                HudInstrumentation.ui.span("NavigationRail.select.apply", metadata: metadata) {
-                    selection = next
-                }
-            }
-        )
+        .background(theme.palette.chrome)
     }
 
     private var header: some View {
@@ -126,7 +127,7 @@ public struct HudNavigationRail<Footer: View>: View {
                 Button(action: toggleExpanded) {
                     Image(systemName: isExpanded ? "sidebar.left" : "line.3.horizontal")
                         .font(HudFont.ui(HudTextSize.md, weight: .semibold))
-                        .foregroundStyle(HudPalette.muted)
+                        .foregroundStyle(theme.palette.muted)
                         .frame(width: HudIconSize.large, height: HudIconSize.large)
                         .contentShape(Rectangle())
                 }
@@ -140,10 +141,12 @@ public struct HudNavigationRail<Footer: View>: View {
                 // hamburger is hidden.
                 Button(action: toggleExpanded) {
                     HStack(spacing: HudSpacing.lg) {
-                        HudStatusDot(color: manifest.accent)
+                        if showsHeaderStatusDot {
+                            HudStatusDot(color: manifest.accent)
+                        }
                         Text(manifest.name)
-                            .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                            .foregroundStyle(HudPalette.ink)
+                            .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
+                            .foregroundStyle(theme.palette.ink)
                             .lineLimit(1)
                     }
                     .contentShape(Rectangle())
@@ -214,13 +217,15 @@ extension HudNavigationRail where Footer == EmptyView {
         selection: Binding<String>,
         items: [HudRailItem],
         isExpanded: Binding<Bool>,
-        showHeaderToggle: Bool = true
+        showHeaderToggle: Bool = true,
+        showsHeaderStatusDot: Bool = true
     ) {
         self.init(
             selection: selection,
             items: items,
             isExpanded: isExpanded,
             showHeaderToggle: showHeaderToggle,
+            showsHeaderStatusDot: showsHeaderStatusDot,
             footer: { EmptyView() }
         )
     }
@@ -228,28 +233,41 @@ extension HudNavigationRail where Footer == EmptyView {
 
 // MARK: - Row
 
-private struct HudRailIconButton: View {
+private struct HudRailLabelButton: View {
     let item: HudRailItem
     let isSelected: Bool
     let accent: Color
     let onTap: () -> Void
+
+    @Environment(\.hudTheme) private var theme
     @FocusState private var isFocused: Bool
     @State private var isHovering = false
 
     var body: some View {
         Button(action: onTap) {
-            Image(systemName: item.icon)
-                .font(HudFont.ui(HudTextSize.lgm, weight: .medium))
-                .foregroundStyle(isSelected ? accent : HudPalette.muted)
-                .frame(maxWidth: .infinity, alignment: .center)
-                .frame(height: HudIconSize.xLarge)
+            HStack(spacing: HudSpacing.md) {
+                Image(systemName: item.icon)
+                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                    .foregroundStyle(isSelected ? accent : theme.palette.muted)
+                    .frame(width: HudIconSize.small, height: HudIconSize.small)
+
+                Text(item.label)
+                    .font(HudFont.ui(HudTextSize.sm, weight: isSelected ? .semibold : .regular))
+                    .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
+                    .lineLimit(1)
+
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(height: 32)
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
                     .fill(background)
             )
             .overlay(
-                RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(border, lineWidth: isFocused ? 1.5 : 1)
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(border, lineWidth: isFocused ? theme.focus.ringWidth : 1)
             )
             .contentShape(Rectangle())
         }
@@ -274,13 +292,73 @@ private struct HudRailIconButton: View {
 
     private var border: Color {
         if isFocused {
-            return HudFocus.ring
+            return theme.focus.ring
         }
         if isSelected {
             return HudSurface.tintBorder(accent)
         }
         if isHovering {
-            return HudHairline.subtle
+            return theme.hairline.subtle
+        }
+        return .clear
+    }
+}
+
+private struct HudRailIconButton: View {
+    let item: HudRailItem
+    let isSelected: Bool
+    let accent: Color
+    let onTap: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+    @FocusState private var isFocused: Bool
+    @State private var isHovering = false
+
+    var body: some View {
+        Button(action: onTap) {
+            Image(systemName: item.icon)
+                .font(HudFont.ui(HudTextSize.md, weight: .medium))
+                .foregroundStyle(isSelected ? accent : theme.palette.muted)
+                .frame(maxWidth: .infinity, alignment: .center)
+                .frame(height: HudIconSize.xLarge)
+            .background(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .fill(background)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: theme.radius.standard)
+                    .stroke(border, lineWidth: isFocused ? theme.focus.ringWidth : 1)
+            )
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .focusable(true)
+        .focused($isFocused)
+        .onHover { isHovering = $0 }
+        .accessibilityLabel(item.label)
+        .accessibilityValue(isSelected ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isSelected ? .isSelected : [])
+    }
+
+    private var background: Color {
+        if isSelected {
+            return HudSurface.tintGhost(accent)
+        }
+        if isHovering {
+            return HudSurface.hover
+        }
+        return .clear
+    }
+
+    private var border: Color {
+        if isFocused {
+            return theme.focus.ring
+        }
+        if isSelected {
+            return HudSurface.tintBorder(accent)
+        }
+        if isHovering {
+            return theme.hairline.subtle
         }
         return .clear
     }

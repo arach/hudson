@@ -4,15 +4,28 @@ import { join } from 'path';
 import { parseEnv } from 'node:util';
 import { clearCredentialCache } from '@/app/api/ai/providers';
 import { clearHudsonVoxVoiceCache } from '@/app/lib/tts/voxBridge';
+import {
+  deleteHudsonLocalSecret,
+  getHudsonLocalSecretVaultInfo,
+  HUDSON_SECRET_ENV_KEYS,
+  isHudsonSecretEnvKey,
+  loadHudsonLocalSecrets,
+  setHudsonLocalSecret,
+} from './localSecretVault';
 
 export interface HudsonLocalEnvironmentEntry {
   key: string;
   value: string;
   maskedValue: string;
+  source: 'vault' | 'env';
+  sensitive: boolean;
+  hasValue: boolean;
 }
 
 export interface HudsonLocalEnvironmentStore {
   path: string;
+  vaultPath: string;
+  vaultKeyStorage: 'env' | 'macos-keychain' | 'file';
   entries: HudsonLocalEnvironmentEntry[];
   suggestedKeys: string[];
 }
@@ -21,25 +34,17 @@ export const HUDSON_ENV_LOCAL_PATH = join(process.cwd(), '.env.local');
 
 const HUDSON_ENV_KEY_PATTERN = /^[A-Za-z_][A-Za-z0-9_]*$/;
 const HUDSON_SUGGESTED_ENV_KEYS = [
-  'OPENAI_API_KEY',
-  'ELEVENLABS_API_KEY',
-  'GROQ_API_KEY',
-  'ANTHROPIC_API_KEY',
-  'GOOGLE_GENERATIVE_AI_API_KEY',
-  'GITHUB_TOKEN',
-  'XAI_API_KEY',
-  'MINIMAX_API_KEY',
-  'RESEND_API_KEY',
-  'NOTIFY_EMAIL',
+  ...HUDSON_SECRET_ENV_KEYS,
   'AI_DEFAULT_MODE',
   'AI_CLI_COMMAND',
 ] as const;
 
 const INITIAL_ENV_LOCAL = readHudsonEnvLocalSync();
+const INITIAL_VAULT_ENV = readHudsonVaultSecretsSync();
 const ORIGINAL_RUNTIME_ENV = Object.fromEntries(
-  Object.entries(process.env).filter(([key]) => !(key in INITIAL_ENV_LOCAL)),
+  Object.entries(process.env).filter(([key]) => !(key in INITIAL_ENV_LOCAL) && !(key in INITIAL_VAULT_ENV)),
 );
-let managedHudsonEnvKeys = new Set(Object.keys(INITIAL_ENV_LOCAL));
+let managedHudsonEnvKeys = new Set([...Object.keys(INITIAL_ENV_LOCAL), ...Object.keys(INITIAL_VAULT_ENV)]);
 
 export function isValidHudsonEnvKey(key: string): boolean {
   return HUDSON_ENV_KEY_PATTERN.test(key);
@@ -116,13 +121,46 @@ async function readHudsonEnvLocalMap(): Promise<Record<string, string>> {
   }
 }
 
-function applyHudsonLocalEnvironment(envLocal: Record<string, string>) {
-  const nextKeys = new Set(Object.keys(envLocal));
+async function migrateHudsonEnvSecretsToVault(envLocal: Record<string, string>): Promise<Record<string, string>> {
+  const secretKeys = Object.keys(envLocal).filter(isHudsonSecretEnvKey);
+  if (secretKeys.length === 0) return envLocal;
+
+  const existingText = existsSync(HUDSON_ENV_LOCAL_PATH)
+    ? await readFile(HUDSON_ENV_LOCAL_PATH, 'utf-8')
+    : '';
+  let nextText = existingText;
+
+  for (const key of secretKeys) {
+    setHudsonLocalSecret(key, envLocal[key]);
+    nextText = updateHudsonEnvFile(nextText, key, null);
+  }
+
+  if (nextText !== existingText) {
+    await writeFile(HUDSON_ENV_LOCAL_PATH, nextText, 'utf-8');
+  }
+
+  return parseHudsonEnvFile(nextText);
+}
+
+function readHudsonVaultSecretsSync(): Record<string, string> {
+  try {
+    return loadHudsonLocalSecrets();
+  } catch {
+    return {};
+  }
+}
+
+function applyHudsonLocalEnvironment(
+  envLocal: Record<string, string>,
+  vaultSecrets: Record<string, string>,
+) {
+  const effectiveEnv = { ...envLocal, ...vaultSecrets };
+  const nextKeys = new Set(Object.keys(effectiveEnv));
   const impactedKeys = new Set([...managedHudsonEnvKeys, ...nextKeys]);
 
   for (const key of impactedKeys) {
-    if (key in envLocal) {
-      process.env[key] = envLocal[key];
+    if (key in effectiveEnv) {
+      process.env[key] = effectiveEnv[key];
       continue;
     }
 
@@ -147,22 +185,42 @@ function refreshHudsonEnvironmentCaches() {
   clearHudsonVoxVoiceCache();
 }
 
-function toHudsonLocalEnvironmentStore(envLocal: Record<string, string>): HudsonLocalEnvironmentStore {
+function toHudsonLocalEnvironmentStore(
+  envLocal: Record<string, string>,
+  vaultSecrets: Record<string, string>,
+): HudsonLocalEnvironmentStore {
+  const vaultInfo = getHudsonLocalSecretVaultInfo();
+  const keys = [...new Set([...Object.keys(envLocal), ...Object.keys(vaultSecrets)])]
+    .sort((left, right) => left.localeCompare(right));
+
   return {
     path: HUDSON_ENV_LOCAL_PATH,
-    entries: Object.entries(envLocal)
-      .sort(([left], [right]) => left.localeCompare(right))
-      .map(([key, value]) => ({
-        key,
-        value,
-        maskedValue: maskHudsonEnvValue(value),
-      })),
-    suggestedKeys: HUDSON_SUGGESTED_ENV_KEYS.filter(key => !(key in envLocal)),
+    vaultPath: vaultInfo.path,
+    vaultKeyStorage: vaultInfo.keyStorage,
+    entries: keys
+      .map((key) => {
+        const sensitive = isHudsonSecretEnvKey(key);
+        const hasVaultValue = key in vaultSecrets;
+        const value = hasVaultValue ? vaultSecrets[key] : envLocal[key] ?? '';
+        return {
+          key,
+          value: hasVaultValue ? '' : value,
+          maskedValue: maskHudsonEnvValue(value),
+          source: hasVaultValue ? 'vault' as const : 'env' as const,
+          sensitive,
+          hasValue: value.length > 0,
+        };
+      }),
+    suggestedKeys: HUDSON_SUGGESTED_ENV_KEYS.filter(key => !(key in envLocal) && !(key in vaultSecrets)),
   };
 }
 
 export async function getHudsonLocalEnvironmentStore(): Promise<HudsonLocalEnvironmentStore> {
-  return toHudsonLocalEnvironmentStore(await readHudsonEnvLocalMap());
+  const envLocal = await migrateHudsonEnvSecretsToVault(await readHudsonEnvLocalMap());
+  const vaultSecrets = loadHudsonLocalSecrets();
+  applyHudsonLocalEnvironment(envLocal, vaultSecrets);
+  refreshHudsonEnvironmentCaches();
+  return toHudsonLocalEnvironmentStore(envLocal, vaultSecrets);
 }
 
 export async function setHudsonLocalEnvironmentValue(
@@ -177,15 +235,21 @@ export async function setHudsonLocalEnvironmentValue(
   const existingText = existsSync(HUDSON_ENV_LOCAL_PATH)
     ? await readFile(HUDSON_ENV_LOCAL_PATH, 'utf-8')
     : '';
-  const nextText = updateHudsonEnvFile(existingText, normalizedKey, value);
+  const nextText = isHudsonSecretEnvKey(normalizedKey)
+    ? updateHudsonEnvFile(existingText, normalizedKey, null)
+    : updateHudsonEnvFile(existingText, normalizedKey, value);
 
   await writeFile(HUDSON_ENV_LOCAL_PATH, nextText, 'utf-8');
+  if (isHudsonSecretEnvKey(normalizedKey)) {
+    setHudsonLocalSecret(normalizedKey, value);
+  }
 
   const envLocal = parseHudsonEnvFile(nextText);
-  applyHudsonLocalEnvironment(envLocal);
+  const vaultSecrets = loadHudsonLocalSecrets();
+  applyHudsonLocalEnvironment(envLocal, vaultSecrets);
   refreshHudsonEnvironmentCaches();
 
-  return toHudsonLocalEnvironmentStore(envLocal);
+  return toHudsonLocalEnvironmentStore(envLocal, vaultSecrets);
 }
 
 export async function deleteHudsonLocalEnvironmentValue(
@@ -202,10 +266,16 @@ export async function deleteHudsonLocalEnvironmentValue(
   const nextText = updateHudsonEnvFile(existingText, normalizedKey, null);
 
   await writeFile(HUDSON_ENV_LOCAL_PATH, nextText, 'utf-8');
+  if (isHudsonSecretEnvKey(normalizedKey)) {
+    deleteHudsonLocalSecret(normalizedKey);
+  }
 
   const envLocal = parseHudsonEnvFile(nextText);
-  applyHudsonLocalEnvironment(envLocal);
+  const vaultSecrets = loadHudsonLocalSecrets();
+  applyHudsonLocalEnvironment(envLocal, vaultSecrets);
   refreshHudsonEnvironmentCaches();
 
-  return toHudsonLocalEnvironmentStore(envLocal);
+  return toHudsonLocalEnvironmentStore(envLocal, vaultSecrets);
 }
+
+applyHudsonLocalEnvironment(INITIAL_ENV_LOCAL, INITIAL_VAULT_ENV);

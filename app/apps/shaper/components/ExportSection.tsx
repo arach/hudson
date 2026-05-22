@@ -5,6 +5,7 @@ import {
   Download, FileCode, FileImage, FileJson, Copy, Clipboard, Library, Check, AlertCircle,
 } from 'lucide-react';
 import { useShaper } from '../ShaperProvider';
+import { createHudsonId } from 'hudsonkit';
 import {
   buildSvgString, computeBezierBbox, rasterizeSvgToPng,
   downloadBlob, copyText, copyPng, blobToDataUrl, sanitizeFilename,
@@ -77,7 +78,7 @@ export function ExportSection() {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        id: crypto.randomUUID(),
+        id: createHudsonId('asset', 24),
         name: `${baseName}.png`,
         dataUrl,
         contentType: 'image/png',

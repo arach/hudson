@@ -25,6 +25,7 @@ export default defineConfig([
       windows: 'src/windows.ts',
       theme: 'src/theme.ts',
       controls: 'src/controls.ts',
+      workflow: 'src/workflow/index.ts',
       observability: 'src/observability.ts',
       voice: 'src/voice.ts',
       vault: 'src/vault.ts',
@@ -33,6 +34,8 @@ export default defineConfig([
       'push/sw': 'src/push/sw.ts',
       table: 'src/table.ts',
       player: 'src/player.ts',
+      primitives: 'src/primitives.ts',
+      patterns: 'src/patterns.ts',
     },
     format: ['esm'],
     dts: true,
@@ -60,3 +63,9 @@ export default defineConfig([
     external: sharedExternal,
   },
 ]);
+
+// Note: the Node-only `hudsonkit/server` entry (HUD-008) is built by a separate
+// tsup invocation against `tsup.server.config.ts`. Running it together with the
+// client-bannered configs causes tsup's DTS bundler to clobber outputs across
+// configs, so the server build is sequenced after the main build via the
+// `build:js` script.

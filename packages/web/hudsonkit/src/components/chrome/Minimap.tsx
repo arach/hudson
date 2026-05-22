@@ -63,7 +63,7 @@ const Minimap: React.FC<MinimapProps> = ({
     <div
       ref={containerRef}
       data-frame-panel="minimap"
-      className="select-none font-mono text-[12px] flex flex-col border-t"
+      className="select-none font-mono text-[11px] flex flex-col border-t"
       style={chromeBorderStyle}
     >
       {/* Header (always visible) */}
@@ -73,7 +73,7 @@ const Minimap: React.FC<MinimapProps> = ({
       >
         <div className="flex items-center gap-1.5 text-foreground">
           <Map size={12} className="text-muted-foreground" />
-          <span className="tracking-widest font-bold uppercase text-[12px]">Map</span>
+          <span className="tracking-[0.18em] font-normal uppercase text-[10px] text-muted-foreground">Map</span>
         </div>
         <div className="flex items-center gap-1">
           {!isCollapsed && onAutoLayout && (
@@ -191,12 +191,14 @@ const MinimapCanvas = React.forwardRef<HTMLDivElement, MinimapCanvasProps>(
 
         {/* Viewport rectangle */}
         <div
-          className="absolute border border-accent/50 bg-accent/10 rounded-[1px] transition-all duration-75 ease-out"
+          className="absolute border bg-transparent rounded-[1px] transition-all duration-75 ease-out"
+          data-frame-element="minimap-viewport"
           style={{
             left: `${vpX}px`,
             top: `${vpY}px`,
             width: `${Math.max(vpWidth, 4)}px`,
             height: `${Math.max(vpHeight, 4)}px`,
+            borderColor: 'var(--hud-line-strong, var(--hud-chrome-border, oklch(var(--border))))',
           }}
         >
           <div className="absolute -top-[1px] -left-[1px] w-[3px] h-[3px] bg-accent rounded-full" />

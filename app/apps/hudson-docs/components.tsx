@@ -96,14 +96,14 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
       style={{ boxShadow: isSelected ? selectedShadow : '0 24px 60px color-mix(in srgb, oklch(var(--foreground)) 14%, transparent)', width: size.w, height: size.h }}
       className={`relative border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
         isSelected
-          ? 'border-emerald-500/80'
+          ? 'border-accent/80'
           : 'border-border/70 hover:border-border'
       }`}
     >
       {/* Header */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 shrink-0 bg-card/92">
         <div className="flex items-center gap-2">
-          <Icon size={14} className="text-emerald-400" />
+          <Icon size={14} className="text-accent" />
           <div>
             <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">{entry.label}</span>
             <div className="text-[10px] font-mono text-muted-foreground">{entry.ns}</div>
@@ -131,7 +131,7 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
             {entry.props.map(p => (
               <div key={p.name}>
                 <div className="flex items-baseline gap-2">
-                  <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
+                  <span className="text-[11px] font-mono text-accent">{p.name}</span>
                   <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                 </div>
                 <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
@@ -153,7 +153,7 @@ export function ComponentSheet({ entry, onClose, isSelected, onSelect, onDragSta
             <ul className="space-y-1">
               {entry.notes.map((n, i) => (
                 <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
-                  <span className="text-emerald-500/60 mt-px">-</span>
+                  <span className="text-accent/60 mt-px">-</span>
                   <span>{n}</span>
                 </li>
               ))}
@@ -211,14 +211,14 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
       style={{ boxShadow: isSelected ? selectedShadow : '0 24px 60px color-mix(in srgb, oklch(var(--foreground)) 14%, transparent)', width: size.w, height: size.h }}
       className={`relative border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col pointer-events-auto cursor-grab active:cursor-grabbing ${
         isSelected
-          ? 'border-emerald-500/80'
+          ? 'border-accent/80'
           : 'border-border/70 hover:border-border'
       }`}
     >
       {/* Title bar */}
       <div className="flex items-center justify-between px-2.5 py-1.5 border-b border-border/70 shrink-0 bg-card/92">
         <div className="flex items-center gap-1.5 min-w-0">
-          <Bot size={9} className="text-emerald-400/50 shrink-0" />
+          <Bot size={9} className="text-accent/50 shrink-0" />
           <span className="text-[8px] font-mono text-muted-foreground tracking-widest uppercase truncate">{entry?.title ?? slug}</span>
         </div>
         <div className="flex items-center gap-0 shrink-0">
@@ -236,7 +236,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
           <button
             onClick={(e) => { e.stopPropagation(); handleCopy(); }}
             className={`p-0.5 rounded transition-colors ${
-              copied ? 'text-emerald-400' : 'text-muted-foreground/70 hover:bg-accent/10 hover:text-foreground/80'
+              copied ? 'text-accent' : 'text-muted-foreground/70 hover:bg-accent/10 hover:text-foreground/80'
             } pointer-events-auto`}
             title={copied ? 'Copied!' : 'Copy raw markdown'}
           >
@@ -280,7 +280,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
         {loading ? (
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-2 text-muted-foreground font-mono text-[9px]">
-              <div className="w-2.5 h-2.5 border border-emerald-500/30 border-t-emerald-500 rounded-full animate-spin" />
+              <div className="w-2.5 h-2.5 border border-accent/30 border-t-accent rounded-full animate-spin" />
               Loading...
             </div>
           </div>
@@ -364,18 +364,18 @@ export function ListView({ components, searchValue, selectedId, onSelect }: {
               onClick={() => onSelect(c.id)}
               className={`border rounded-lg transition-all cursor-pointer ${
                 isSelected
-                  ? 'border-emerald-500/60 bg-card/88 backdrop-blur-md ring-1 ring-emerald-500/20'
-                  : isExpanded ? 'border-emerald-500/30 bg-card/84 backdrop-blur-md' : 'border-border/60 bg-card/68 hover:border-border hover:bg-card/84'
+                  ? 'border-accent/60 bg-card/88 backdrop-blur-md ring-1 ring-accent/20'
+                  : isExpanded ? 'border-accent/30 bg-card/84 backdrop-blur-md' : 'border-border/60 bg-card/68 hover:border-border hover:bg-card/84'
               }`}
             >
               <button
                 onClick={(e) => { e.stopPropagation(); onSelect(c.id); setExpandedId(isExpanded ? null : c.id); }}
                 className="w-full flex items-center gap-3 px-4 py-3 text-left"
               >
-                <Icon size={14} className={isSelected || isExpanded ? 'text-emerald-400' : 'text-muted-foreground'} />
+                <Icon size={14} className={isSelected || isExpanded ? 'text-accent' : 'text-muted-foreground'} />
                 <div className="flex-1 min-w-0">
                   <div>
-                    <span className={`text-[13px] font-mono font-bold tracking-wider ${isSelected || isExpanded ? 'text-emerald-400' : 'text-foreground'}`}>{c.label}</span>
+                    <span className={`text-[13px] font-mono font-bold tracking-wider ${isSelected || isExpanded ? 'text-accent' : 'text-foreground'}`}>{c.label}</span>
                     <span className="text-[11px] font-mono text-foreground/70 ml-3">{c.desc}</span>
                   </div>
                   <div className="text-[10px] font-mono text-muted-foreground">{c.ns}</div>
@@ -393,7 +393,7 @@ export function ListView({ components, searchValue, selectedId, onSelect }: {
                       {c.props.map(p => (
                         <div key={p.name}>
                           <div className="flex items-baseline gap-2">
-                            <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
+                            <span className="text-[11px] font-mono text-accent">{p.name}</span>
                             <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                           </div>
                           <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
@@ -411,7 +411,7 @@ export function ListView({ components, searchValue, selectedId, onSelect }: {
                       <ul className="space-y-1">
                         {c.notes.map((n, i) => (
                           <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
-                            <span className="text-emerald-500/60 mt-px">-</span>
+                            <span className="text-accent/60 mt-px">-</span>
                             <span>{n}</span>
                           </li>
                         ))}
@@ -473,13 +473,13 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
               style={{ boxShadow: tileShadow }}
               className={`border rounded-lg bg-card/88 backdrop-blur-md overflow-hidden flex flex-col cursor-pointer transition-all ${
                 isSelected
-                  ? 'border-emerald-500/80 ring-1 ring-emerald-500/20'
+                  ? 'border-accent/80 ring-1 ring-accent/20'
                   : 'border-border/70'
               }`}
             >
               <div className="flex items-center justify-between px-4 py-3 border-b border-border/70 shrink-0">
                 <div className="flex items-center gap-2">
-                  <Icon size={14} className="text-emerald-400" />
+                  <Icon size={14} className="text-accent" />
                   <div>
                     <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">{c.label}</span>
                     <div className="text-[10px] font-mono text-muted-foreground">{c.ns}</div>
@@ -502,7 +502,7 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
                     {c.props.map(p => (
                       <div key={p.name}>
                         <div className="flex items-baseline gap-2">
-                          <span className="text-[11px] font-mono text-emerald-400">{p.name}</span>
+                          <span className="text-[11px] font-mono text-accent">{p.name}</span>
                           <span className="text-[10px] font-mono text-muted-foreground">{p.type}</span>
                         </div>
                         <div className="text-[10px] font-mono text-foreground/74 mt-0.5">{p.desc}</div>
@@ -520,7 +520,7 @@ export function TilesView({ components, openIds, onClose, glowIntensity, selecte
                     <ul className="space-y-1">
                       {c.notes.map((n, i) => (
                         <li key={i} className="text-[10px] font-mono text-foreground/74 flex items-start gap-1.5">
-                          <span className="text-emerald-500/60 mt-px">-</span>
+                          <span className="text-accent/60 mt-px">-</span>
                           <span>{n}</span>
                         </li>
                       ))}
@@ -646,7 +646,7 @@ export function SettingsText({ label, value, onChange }: {
         type="text"
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-card border border-border rounded px-2 py-1 text-[11px] font-mono text-foreground/84 focus:border-emerald-500/50 focus:outline-none transition-colors"
+        className="flex-1 bg-card border border-border rounded px-2 py-1 text-[11px] font-mono text-foreground/84 focus:border-accent/50 focus:outline-none transition-colors"
       />
     </div>
   );
@@ -664,7 +664,7 @@ export function SettingsSelect({ label, value, options, onChange }: {
       <select
         value={value}
         onChange={e => onChange(e.target.value)}
-        className="flex-1 bg-card border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground/84 focus:border-emerald-500/50 focus:outline-none transition-colors appearance-none cursor-pointer"
+        className="flex-1 bg-card border border-border rounded px-2 py-1.5 text-[11px] font-mono text-foreground/84 focus:border-accent/50 focus:outline-none transition-colors appearance-none cursor-pointer"
         style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%23666' stroke-width='2'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 8px center' }}
       >
         {options.map(opt => (
@@ -762,7 +762,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
       >
         <div className="flex items-center justify-between px-6 py-4 border-b border-border">
           <div className="flex items-center gap-2">
-            <Settings size={14} className="text-emerald-400" />
+            <Settings size={14} className="text-accent" />
             <span className="text-[13px] font-mono font-bold text-foreground tracking-wider">SETTINGS</span>
           </div>
           <button onClick={onClose} className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground">
@@ -845,7 +845,7 @@ export function SettingsPanel({ isOpen, onClose, settings, onUpdate, onReset }: 
                 ['Cmd + M', 'Toggle mute'],
               ].map(([key, desc]) => (
                   <div key={key} className="contents">
-                    <div className="text-emerald-400/80 whitespace-nowrap">{key}</div>
+                    <div className="text-accent/80 whitespace-nowrap">{key}</div>
                   <div className="text-foreground/76">{desc}</div>
                 </div>
               ))}

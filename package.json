@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev --port 3500",
-    "build": "bun run --filter hudsonkit build && next build",
-    "build:site": "bun run build && bun site/export-pages.mjs",
+    "dev": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next dev --port 3500",
+    "build": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next build",
+    "build:site": "bun run build && bun run embed:bundle && bun site/export-pages.mjs",
     "deploy:hudsonkit": "bun run build:site && bunx wrangler deploy",
     "upload:hudsonkit": "bun run build:site && bunx wrangler versions upload",
     "embed:snapshot": "node embed-worker/scripts/snapshot-chunks.mjs",
@@ -14,6 +14,7 @@
     "embed:deploy": "bun run embed:bundle && bun run embed:snapshot && cd embed-worker && bun run deploy",
     "start": "next start",
     "lint": "eslint",
+    "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:watch": "vitest",
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
@@ -55,7 +56,6 @@
     "remark-gfm": "^4.0.1",
     "remark-parse": "^11.0.0",
     "remark-rehype": "^11.1.2",
-    "resend": "^6.9.2",
     "sharp": "^0.34.5",
     "shiki": "^3.22.0",
     "unified": "^11.0.5",
@@ -66,6 +66,7 @@
   "workspaces": [
     "packages/tools/create-hudson-app",
     "packages/services/hudson-relay",
+    "packages/web/ai-backends",
     "packages/web/hudsonkit"
   ],
   "devDependencies": {
@@ -81,6 +82,7 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "@hudsonkit/ai": "workspace:*",
     "hudsonkit": "workspace:*",
     "jsdom": "^28.1.0",
     "tailwindcss": "^4",

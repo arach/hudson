@@ -6,7 +6,8 @@
   "compatibility_date": "2026-04-30",
   "assets": {
     "directory": "site/out",
-    "binding": "ASSETS"
+    "binding": "ASSETS",
+    "run_worker_first": true
   },
   "ai": {
     "binding": "AI"
@@ -16,11 +17,15 @@
   },
   "routes": [
     {
-      "pattern": "hudsonkit.com",
-      "custom_domain": true
+      "pattern": "hudsonkit.com/*",
+      "zone_name": "hudsonkit.com"
     },
     {
-      "pattern": "www.hudsonkit.com",
+      "pattern": "www.hudsonkit.com/*",
+      "zone_name": "hudsonkit.com"
+    },
+    {
+      "pattern": "app.hudsonkit.com",
       "custom_domain": true
     }
   ]

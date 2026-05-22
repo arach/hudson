@@ -1,0 +1,69 @@
+{
+  "name": "@hudsonkit/ai",
+  "version": "0.1.0",
+  "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai and vercel-ai adapters.",
+  "keywords": [
+    "hudsonkit",
+    "ai",
+    "ai-sdk",
+    "llm",
+    "tools",
+    "agent",
+    "streaming"
+  ],
+  "homepage": "https://github.com/arach/hudson/tree/main/packages/web/ai-backends#readme",
+  "license": "FSL-1.1-MIT",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "publishConfig": {
+    "access": "public"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "default": "./dist/index.js"
+    },
+    "./vercel-ai": {
+      "types": "./dist/vercel-ai.d.ts",
+      "import": "./dist/vercel-ai.js",
+      "default": "./dist/vercel-ai.js"
+    },
+    "./toolsets": {
+      "types": "./dist/toolsets.d.ts",
+      "import": "./dist/toolsets.js",
+      "default": "./dist/toolsets.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/arach/hudson.git",
+    "directory": "packages/web/ai-backends"
+  },
+  "scripts": {
+    "build": "tsup",
+    "test": "vitest run"
+  },
+  "peerDependencies": {
+    "@earendil-works/pi-ai": ">=0.74.0",
+    "ai": ">=6.0.0"
+  },
+  "peerDependenciesMeta": {
+    "@earendil-works/pi-ai": {
+      "optional": true
+    },
+    "ai": {
+      "optional": true
+    }
+  },
+  "devDependencies": {
+    "@earendil-works/pi-ai": "^0.74.0",
+    "ai": "^6.0.0",
+    "tsup": "^8.0.0",
+    "vitest": "^3.0.0"
+  }
+}

@@ -91,6 +91,9 @@ next-env.d.ts
 # vercel
 .vercel
 
+# wrangler / cloudflare local dev state
+.wrangler/
+
 # misc build artifacts
 .cache/
 .parcel-cache/
@@ -122,6 +125,9 @@ local.db-*
 # fonts (bundled locally, not committed)
 public/fonts/
 
+# embed bundle (built artifact, see embed-worker/scripts/bundle-client.mjs)
+public/embed/
+
 # resend config
 .resend
 
@@ -133,3 +139,6 @@ native/bunsen/artifacts/
 .openscout/
 # OpenScout local state
 .openscout/project.json
+
+# Local build artifacts (icon generation, talkie textures, etc.)
+output/

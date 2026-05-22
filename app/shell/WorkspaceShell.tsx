@@ -23,9 +23,11 @@ import {
   setMuted as setSoundMuted,
   useAppSettings,
   captureWorkspace,
+  HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
 } from 'hudsonkit';
+import { useVoiceInput } from 'hudsonkit/voice';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -44,6 +46,7 @@ import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
 import { PortInspector } from './PortInspector';
+import { WindowPorts } from './WindowPorts';
 import { useServiceRegistry } from '../services/useServiceRegistry';
 import { ServiceRegistryProvider } from '../services/ServiceRegistryContext';
 import { ServiceBanner } from './ServiceBanner';
@@ -52,8 +55,12 @@ import type { EditorTab } from './workspace-manager';
 import type { ServiceStatus } from 'hudsonkit';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';
 import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
+import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
+import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
-import { hudsonAISettings } from '../apps/hudson-ai/settings';
+import { createHudsonAISettings } from '../apps/hudson-ai/settings';
+import { useAIModelOptions } from '../lib/useAIModelOptions';
+import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -90,6 +97,40 @@ const TILE = {
   multiH: 600,
   gap: 40,
 } as const;
+
+// [perf] Mount tracer — logs first-mount of a labeled component, with delta
+// from the canvas:start mark set in WorkspaceInner. performance.mark() is
+// always emitted (cheap; shows up in DevTools Performance), but console
+// output is gated behind ?perf=1 or localStorage.hudsonPerf === '1' so we
+// don't spam consoles in prod.
+function isPerfLogEnabled(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    if (new URLSearchParams(window.location.search).get('perf') === '1') return true;
+    if (window.localStorage?.getItem('hudsonPerf') === '1') return true;
+  } catch {}
+  return false;
+}
+
+function useCanvasMountTrace(label: string) {
+  const fired = useRef(false);
+  useEffect(() => {
+    if (fired.current) return;
+    fired.current = true;
+    if (typeof performance === 'undefined') return;
+    const t = performance.now();
+    try { performance.mark(`canvas:mount:${label}`); } catch {}
+    if (!isPerfLogEnabled()) return;
+    const start = performance.getEntriesByName('canvas:start')[0];
+    const delta = start ? `  Δ=${(t - start.startTime).toFixed(1)}ms` : '';
+    console.log(`[perf] mount ${label}  @${t.toFixed(1)}ms${delta}`);
+  }, []);
+}
+
+function MountTrace({ label, children }: { label: string; children: ReactNode }) {
+  useCanvasMountTrace(label);
+  return <>{children}</>;
+}
 
 export type WindowBounds = { x: number; y: number; w: number; h: number };
 
@@ -474,6 +515,12 @@ function sameAppIdList(a: string[], b: string[]) {
   return a.length === b.length && a.every((id, idx) => id === b[idx]);
 }
 
+function defaultActivatedIdsForWorkspace(workspace: HudsonWorkspace): string[] {
+  const appIds = workspace.apps.map(config => config.app.id);
+  const defaults = workspace.defaultActivatedAppIds?.filter(id => appIds.includes(id)) ?? [];
+  return defaults.length > 0 ? defaults : appIds;
+}
+
 export function WorkspaceShell({
   workspaces,
   defaultWorkspaceId,
@@ -548,9 +595,8 @@ export function WorkspaceShell({
     () => {
       const initialIds = activeInitialState?.activatedAppIds;
       if (initialIds) return initialIds.filter(id => workspace.apps.some(config => config.app.id === id) && !disabledAppIds.has(id));
-      return initialShowLauncher ? [] : workspace.apps
-        .filter(config => !disabledAppIds.has(config.app.id))
-        .map(config => config.app.id);
+      return initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(workspace)
+        .filter(id => !disabledAppIds.has(id));
     },
     [activeInitialState, workspace, disabledAppIds, initialShowLauncher],
   );
@@ -633,10 +679,14 @@ export function WorkspaceShell({
     );
   }
 
-  // DataBusProvider wraps above all app Providers so port hooks can register
+  // DataBusProvider wraps above all app Providers so port hooks can register.
+  // WorkspaceDecorProvider sits at the same level so the stage-design app and
+  // the shell render layer share the same workspace-scoped state.
   tree = (
     <ActiveWorkspaceProvider workspaceId={workspace.id}>
-      <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+      <WorkspaceDecorProvider workspaceId={workspace.id}>
+        <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+      </WorkspaceDecorProvider>
     </ActiveWorkspaceProvider>
   );
 
@@ -710,12 +760,16 @@ function useHudsonAISettingsBridge(
   config: WorkspaceAppConfig | null,
   workspaceId: string,
 ): AppSettingsEntry | null {
-  const scoped = useHudsonAISettings(workspaceId, hudsonAISettings);
-  if (!config) return null;
+  const { modelOptions } = useAIModelOptions();
+  const settingsConfig = useMemo(
+    () => createHudsonAISettings(modelOptions),
+    [modelOptions],
+  );
+  const scoped = useHudsonAISettings(workspaceId, settingsConfig);
   return {
-    appId: config.app.id,
-    appName: config.app.name,
-    config: hudsonAISettings,
+    appId: config?.app.id ?? 'hudson-ai',
+    appName: config?.app.name ?? 'Hudson AI',
+    config: settingsConfig,
     values: scoped.resolvedSettings,
     onUpdate: scoped.updateWorkspaceOverride,
   };
@@ -760,6 +814,14 @@ function WorkspaceInner({
   const isSingleApp = workspace.apps.length === 1;
   const isMultiApp = !isSingleApp;
 
+  // [perf] Canvas timing — paired with `canvas:painted` in MultiAppCanvas.
+  // Mark is always emitted; log is gated by ?perf=1 / localStorage.hudsonPerf.
+  useEffect(() => {
+    if (typeof performance === 'undefined') return;
+    performance.mark('canvas:start');
+    if (isPerfLogEnabled()) console.log(`[perf] canvas:start @ ${performance.now().toFixed(1)}ms`);
+  }, []);
+
   // gridOpacity is computed below after shellSettings is declared
 
   // --- Hook merging ---
@@ -781,13 +843,14 @@ function WorkspaceInner({
     .map(config => useAppSettingsBridge(config))
     .filter((e): e is AppSettingsEntry => e !== null);
   const genericAppSettingsMap = new Map(genericAppSettings.map(entry => [entry.appId, entry]));
-  const appSettings = fullWorkspace.apps.flatMap(config => {
-    if (config.app.id === 'hudson-ai') {
-      return hudsonAISettingsEntry ? [hudsonAISettingsEntry] : [];
-    }
+  const workspaceAppSettings = fullWorkspace.apps.flatMap(config => {
+    if (config.app.id === 'hudson-ai') return hudsonAISettingsEntry ? [hudsonAISettingsEntry] : [];
     const entry = genericAppSettingsMap.get(config.app.id);
     return entry ? [entry] : [];
   });
+  const appSettings = hudsonAIConfig || !hudsonAISettingsEntry
+    ? workspaceAppSettings
+    : [hudsonAISettingsEntry, ...workspaceAppSettings];
 
   // --- Service registry (global, not tied to any app) ---
   const serviceRegistry = useServiceRegistry();
@@ -888,7 +951,7 @@ function WorkspaceInner({
   const isFullBoot = bootMode === 'full';
   const defaultVisible = initialState?.activatedAppIds
     ? initialState.activatedAppIds.filter(id => allAppIds.includes(id))
-    : isFullBoot && initialShowLauncher ? [] : allAppIds;
+    : isFullBoot && initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(workspace);
   const [activatedAppIdsArr, setActivatedAppIdsArr] = useState<string[]>(defaultVisible);
   const wsStateReady = useRef(false);
   const savePending = useRef(0);
@@ -908,8 +971,7 @@ function WorkspaceInner({
         if (gen !== savePending.current) return; // stale
         if (data.visibleApps && Array.isArray(data.visibleApps)) {
           const validIds = (data.visibleApps as string[]).filter(id => allAppIds.includes(id));
-          const missing = allAppIds.filter(id => !validIds.includes(id));
-          setActivatedAppIdsArr([...validIds, ...missing]);
+          setActivatedAppIdsArr(validIds.length > 0 ? validIds : defaultActivatedIdsForWorkspace(workspace));
         }
         wsStateReady.current = true;
       })
@@ -1112,7 +1174,7 @@ function WorkspaceInner({
 
   const handleDismissLauncher = useCallback(() => {
     const finalIds = activatedAppIds.size === 0
-      ? new Set(workspace.apps.map(c => c.app.id))
+      ? new Set(defaultActivatedIdsForWorkspace(workspace))
       : activatedAppIds;
 
     setActivatedAppIds(finalIds);
@@ -1125,7 +1187,7 @@ function WorkspaceInner({
     if (persistSession) {
       saveSession(activeWorkspaceId);
     }
-  }, [workspace.apps, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
+  }, [workspace, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
@@ -1160,7 +1222,7 @@ function WorkspaceInner({
   const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth, { enabled: persistSession });
   const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth, { enabled: persistSession });
 
-  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
+  const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, workspace.defaultPan ?? DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
@@ -1245,39 +1307,61 @@ function WorkspaceInner({
     }, BOUNDS_FLUSH_MS);
   }, []);
 
-  // --- Terminal tab state (Hudson global + per-app) ---
+  // --- Console drawer state — single AI / Terminal toggle in the drawer header.
+  //
+  // `consoleWorkspaceKind` is the universal "which mode am I in" — the body
+  // routes to the focused app's Chat or Terminal slot if present, else the
+  // workspace-level fallback (`workspaceAINode` / `hudsonTerminalNode`).
+  //
+  // `activeTerminalAppId` is preserved as a back-compat write-only handle.
+  // External callers (intents, voice, command-palette) keep calling
+  // `setActiveTerminalAppId(HUDSON_AI_ID)` etc; we mirror that into the kind.
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
-  const appsWithTerminal = workspace.apps.filter(c => c.app.slots.Terminal);
-  // Default to the focused app's terminal if it has one
-  const focusedHasTerminal = appsWithTerminal.some(c => c.app.id === focusedAppId);
-  const [activeTerminalAppId, setActiveTerminalAppId] = useState(() => {
+  const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
+  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
+  const initialFocusedChatApp = workspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
+  const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>(
+    initialFocusedChatApp ? 'app' : 'workspace',
+  );
+  const consoleAIKindUserSelected = useRef(false);
+  const [, setActiveTerminalAppIdRaw] = useState(() => {
     const pendingTerminalAppId = consumePendingTerminalAppId(workspace.id);
     if (pendingTerminalAppId) return pendingTerminalAppId;
-    return focusedHasTerminal ? focusedAppId : HUDSON_AI_ID;
+    return HUDSON_AI_ID;
   });
+  const setActiveTerminalAppId = useCallback((id: string) => {
+    setActiveTerminalAppIdRaw(id);
+    if (id === HUDSON_TERMINAL_ID) setConsoleWorkspaceKind('terminal');
+    else if (id === HUDSON_AI_ID) setConsoleWorkspaceKind('ai');
+  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID]);
   const [hudsonAIComposerRequest, setHudsonAIComposerRequest] = useState<WorkspaceAIComposerRequest | null>(null);
   const [voiceTriggerNonce, setVoiceTriggerNonce] = useState(0);
-  const activeTerminalApp = appsWithTerminal.find(c => c.app.id === activeTerminalAppId)?.app
-    ?? null;
 
-  // Follow focused app — switch terminal tab when focus changes to an app with a terminal,
-  // but only if the user is already on an app-specific terminal tab (not AI or Hudson Terminal).
-  const activeTermRef = useRef(activeTerminalAppId);
-  activeTermRef.current = activeTerminalAppId;
-  useEffect(() => {
-    if (activeTermRef.current === HUDSON_AI_ID || activeTermRef.current === HUDSON_TERMINAL_ID) return;
-    if (appsWithTerminal.some(c => c.app.id === focusedAppId)) {
-      setActiveTerminalAppId(focusedAppId);
+  const focusedConsoleApp = appsWithConsoleSurface.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const focusedChatApp = focusedConsoleApp?.slots.Chat ? focusedConsoleApp : null;
+  const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
+    setConsoleWorkspaceKind(kind);
+    setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
+    if (kind === 'ai' && focusedChatApp && !consoleAIKindUserSelected.current) {
+      setConsoleAIKind('app');
     }
-  }, [focusedAppId, appsWithTerminal]);
+  }, [HUDSON_AI_ID, HUDSON_TERMINAL_ID, focusedChatApp]);
 
-  // Sort terminal tabs: active (visible) apps first, inactive at the end
-  const sortedTerminalApps = useMemo(() => {
-    const active = appsWithTerminal.filter(c => activatedAppIds.has(c.app.id));
-    const inactive = appsWithTerminal.filter(c => !activatedAppIds.has(c.app.id));
-    return [...active, ...inactive];
-  }, [appsWithTerminal, activatedAppIds]);
+  const selectConsoleAIKind = useCallback((kind: 'workspace' | 'app') => {
+    consoleAIKindUserSelected.current = true;
+    setConsoleAIKind(kind);
+  }, []);
+
+  useEffect(() => {
+    if (!focusedChatApp) {
+      setConsoleAIKind('workspace');
+      return;
+    }
+    if (!consoleAIKindUserSelected.current) {
+      setConsoleAIKind('app');
+    }
+  }, [focusedChatApp]);
 
   // --- Settings ---
   const initialShellSettings = useMemo(
@@ -1483,6 +1567,16 @@ function WorkspaceInner({
     setWorkspaceEditorTab('overview');
     setShowWorkspaceManager(true);
   }, []);
+
+  const setPanelCollapsed = useCallback((side: 'left' | 'right', collapsed: boolean | 'toggle') => {
+    const apply = (current: boolean) => collapsed === 'toggle' ? !current : collapsed;
+    if (side === 'left') {
+      setLeftCollapsed(current => apply(current));
+    } else {
+      setRightCollapsed(current => apply(current));
+    }
+    playSound('thock');
+  }, [playSound, setLeftCollapsed, setRightCollapsed]);
 
   // --- Shell commands ---
   const shellCommands: CommandOption[] = useMemo(
@@ -1956,6 +2050,7 @@ function WorkspaceInner({
           id: app.id,
           name: app.name,
           description: app.description,
+          agentContext: app.agentContext,
           mode: app.mode,
           canvasMode: canvasMode ?? 'native',
           services: app.services ?? [],
@@ -1968,6 +2063,7 @@ function WorkspaceInner({
           id: app.id,
           name: app.name,
           description: app.description,
+          agentContext: app.agentContext,
           mode: app.mode,
           canvasMode: config.canvasMode ?? 'native',
           visible: activatedAppIds.has(app.id),
@@ -2048,6 +2144,7 @@ function WorkspaceInner({
       environment: {
         manageable: true,
         path: '.env.local',
+        vaultPath: '.data/hudson-local-vault.json',
       },
     } as HudsonAIToolContext;
   }, [
@@ -2082,6 +2179,7 @@ function WorkspaceInner({
     const trimmed = text.trim();
     if (!trimmed) return;
     setActiveTerminalAppId(HUDSON_AI_ID);
+    setConsoleAIKind('workspace');
     setShowTerminal(true);
     setHudsonAIComposerRequest({
       id: Date.now() + Math.floor(Math.random() * 1000),
@@ -2089,6 +2187,38 @@ function WorkspaceInner({
       submit: Boolean(options?.submit),
     });
   }, [setShowTerminal]);
+
+  // Apps can ask the shell to close the console drawer when they want to
+  // surface a result on the canvas (e.g., Logo's "Open" affordance after a
+  // create_template tool call).
+  useEffect(() => {
+    const onClose = () => { setShowTerminal(false); playSound('slideOut'); };
+    window.addEventListener('hudson:close-terminal', onClose);
+    return () => window.removeEventListener('hudson:close-terminal', onClose);
+  }, [setShowTerminal, playSound]);
+
+  // Apps can ask the shell to open settings (workspace editor, settings tab).
+  // Optional detail.tab targets a specific editor tab.
+  useEffect(() => {
+    const onOpen = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: EditorTab } | undefined>).detail;
+      openSettings(detail?.tab ?? 'settings');
+    };
+    window.addEventListener('hudson:open-settings', onOpen);
+    return () => window.removeEventListener('hudson:open-settings', onOpen);
+  }, [openSettings]);
+
+  // Apps can expose in-page panel affordances while the shell still owns the
+  // actual SidePanel state, persistence, resize handles, and collapse chrome.
+  useEffect(() => {
+    const onPanelRequest = (e: Event) => {
+      const detail = (e as CustomEvent<{ side?: 'left' | 'right'; collapsed?: boolean | 'toggle' } | undefined>).detail;
+      if (detail?.side !== 'left' && detail?.side !== 'right') return;
+      setPanelCollapsed(detail.side, detail.collapsed ?? 'toggle');
+    };
+    window.addEventListener('hudson:set-panel-collapsed', onPanelRequest);
+    return () => window.removeEventListener('hudson:set-panel-collapsed', onPanelRequest);
+  }, [setPanelCollapsed]);
 
   // --- Workspace AI tool call handler ---
   const handleWorkspaceToolCall = useCallback(async (name: string, args: Record<string, unknown>) => {
@@ -2344,17 +2474,161 @@ function WorkspaceInner({
     }
   }, [termSnapping]);
 
-  const terminalHeaderActions = (
-    <button
-      type="button"
-      onClick={handleTermScreenshot}
-      disabled={termSnapping}
-      className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
-      title="Capture screenshot — copies file path to clipboard"
-    >
-      {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
-    </button>
+  // --- Terminal voice capture ---
+  const terminalVoiceMetadata = useMemo(
+    () => ({ workspaceId: workspace.id }),
+    [workspace.id],
   );
+  const handleTerminalVoiceTranscript = useCallback((transcript: string) => {
+    window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
+      detail: {
+        transcript,
+        submit: shellSettings.voice.autoSend,
+      },
+    }));
+    playSound(shellSettings.voice.autoSend ? 'blipUp' : 'click');
+  }, [playSound, shellSettings.voice.autoSend]);
+  const terminalVoiceInput = useVoiceInput({
+    surface: 'hudson-terminal',
+    metadata: terminalVoiceMetadata,
+    onTranscript: handleTerminalVoiceTranscript,
+  });
+  const {
+    status: terminalVoiceStatus,
+    error: terminalVoiceError,
+    isSupported: terminalVoiceSupported,
+    start: startTerminalVoice,
+    stop: stopTerminalVoice,
+  } = terminalVoiceInput;
+  const terminalVoiceRecording = terminalVoiceStatus === 'recording';
+  const terminalVoiceTranscribing = terminalVoiceStatus === 'transcribing';
+  const terminalVoiceAvailable = consoleWorkspaceKind === 'terminal';
+  const handleTerminalVoiceClick = useCallback(() => {
+    if (!terminalVoiceAvailable) return;
+
+    setShowTerminal(true);
+    openWorkspaceConsole('terminal');
+
+    if (terminalVoiceRecording) {
+      stopTerminalVoice();
+      return;
+    }
+
+    void registerHudsonVoxIntegration()
+      .catch(error => {
+        console.warn('[WorkspaceShell] Vox integration registration failed:', error);
+      })
+      .finally(() => {
+        void startTerminalVoice();
+      });
+  }, [openWorkspaceConsole, setShowTerminal, startTerminalVoice, stopTerminalVoice, terminalVoiceAvailable, terminalVoiceRecording]);
+  const terminalVoiceTitle = (() => {
+    if (!terminalVoiceAvailable) return 'Switch to Terminal to record voice';
+    if (!terminalVoiceSupported) return 'Voice input is not supported in this browser';
+    if (terminalVoiceError) return terminalVoiceError;
+    if (terminalVoiceRecording) return 'Stop recording';
+    if (terminalVoiceTranscribing) return 'Transcribing voice prompt';
+    return shellSettings.voice.autoSend
+      ? 'Record and send voice prompt'
+      : 'Record voice prompt';
+  })();
+
+  // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
+  // Active tab in bright emerald with an underline + subtle bg tint for contrast;
+  // inactive in muted gray and clickable.
+  const consoleTitle = (
+    <div className="flex items-stretch -my-1.5 h-[34px]">
+      <button
+        type="button"
+        onClick={() => openWorkspaceConsole('terminal')}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+          consoleWorkspaceKind === 'terminal'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+        }`}
+        title="Terminal — app's Terminal slot if present, else system terminal"
+      >
+        <TerminalSquare size={13} />
+        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">TERMINAL</span>
+      </button>
+      <button
+        type="button"
+        onClick={() => openWorkspaceConsole('ai')}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+          consoleWorkspaceKind === 'ai'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+        }`}
+        title="AI — app's Chat slot if present, else workspace AI"
+      >
+        <Sparkles size={13} />
+        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">AI</span>
+      </button>
+    </div>
+  );
+
+  const terminalHeaderActions = (
+    <div className="flex items-center gap-1">
+      <button
+        type="button"
+        onClick={handleTermScreenshot}
+        disabled={termSnapping}
+        className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
+        title="Capture screenshot — copies file path to clipboard"
+      >
+        {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
+      </button>
+    </div>
+  );
+
+  const terminalVoiceOverlay = consoleWorkspaceKind === 'terminal' ? (
+    <div
+      data-hudson-terminal-voice-overlay="true"
+      className={`group flex items-center rounded-full border px-1.5 py-1 shadow-lg backdrop-blur-md transition-all duration-150 ${
+        terminalVoiceRecording
+          ? 'border-red-400/35 bg-red-500/15 text-red-300 opacity-100 shadow-red-950/20'
+          : terminalVoiceError
+            ? 'border-red-400/35 bg-card/90 text-red-400 opacity-85'
+            : terminalVoiceStatus === 'unavailable'
+              ? 'border-amber-400/35 bg-card/90 text-amber-400 opacity-85'
+              : 'border-border/70 bg-card/75 text-muted-foreground opacity-55 hover:opacity-100 hover:text-accent focus-within:opacity-100'
+      }`}
+      title={terminalVoiceTitle}
+    >
+      <button
+        data-hudson-terminal-voice-button="true"
+        type="button"
+        onClick={handleTerminalVoiceClick}
+        disabled={!terminalVoiceAvailable || !terminalVoiceSupported || terminalVoiceTranscribing}
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
+          terminalVoiceRecording
+            ? 'bg-red-500/20 text-red-200 hover:bg-red-500/25'
+            : terminalVoiceError
+              ? 'text-red-400 hover:bg-red-500/10'
+              : terminalVoiceStatus === 'unavailable'
+                ? 'text-amber-400 hover:bg-amber-500/10'
+                : 'text-muted-foreground hover:bg-accent/10 hover:text-accent'
+        }`}
+        title={terminalVoiceTitle}
+        aria-label={terminalVoiceTitle}
+      >
+        {terminalVoiceTranscribing
+          ? <Loader2 size={14} className="animate-spin" />
+          : terminalVoiceRecording
+            ? <Square size={13} />
+            : <Mic size={15} />}
+      </button>
+      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable') && (
+        <div className="max-w-[220px] pr-2 text-[10px] font-mono uppercase tracking-[0.12em]">
+          {terminalVoiceRecording
+            ? 'Recording'
+            : terminalVoiceTranscribing
+              ? 'Transcribing'
+              : terminalVoiceError || 'Unavailable'}
+        </div>
+      )}
+    </div>
+  ) : null;
 
   // --- Terminal content ---
   const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
@@ -2374,118 +2648,71 @@ function WorkspaceInner({
     />
   );
 
-  const terminalContent = (() => {
-    // No app terminals — show AI + Terminal tabs
-    if (appsWithTerminal.length === 0) {
-      return (
-        <div className="flex flex-col h-full overflow-hidden">
-          <div className="shrink-0 flex items-center border-b border-border min-w-0">
-            <button
-              onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
-                activeTerminalAppId === HUDSON_AI_ID
-                  ? 'text-info border-b border-info bg-info/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              <Sparkles size={10} />
-              AI
-            </button>
-            <button
-              onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                activeTerminalAppId === HUDSON_TERMINAL_ID
-                  ? 'text-info border-b border-info bg-info/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              Terminal
-            </button>
-          </div>
-          <div className="flex-1 overflow-hidden min-w-0">
-            {activeTerminalAppId === HUDSON_AI_ID ? workspaceAINode : hudsonTerminalNode}
+  const appAINode = focusedChatApp?.slots.Chat ? (() => {
+    const ChatSlot = focusedChatApp.slots.Chat;
+    return (
+      <AppSlotErrorBoundary appName={focusedChatApp.name} slotName="Chat">
+        <ChatSlot />
+      </AppSlotErrorBoundary>
+    );
+  })() : null;
+  const focusedChatAppName = focusedChatApp?.name ?? 'App';
+
+  const aiConsoleNode = (
+    <div className="flex h-full min-h-0 flex-col bg-background text-foreground">
+      {appAINode && (
+        <div className="flex h-9 shrink-0 items-center gap-1 border-b border-border/60 bg-card/70 px-2">
+          <button
+            type="button"
+            onClick={() => selectConsoleAIKind('workspace')}
+            className={`rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
+              consoleAIKind === 'workspace'
+                ? 'border border-emerald-600/25 bg-emerald-600/10 text-emerald-700 dark:border-emerald-400/25 dark:bg-emerald-400/10 dark:text-emerald-200'
+                : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+          >
+            Hudson
+          </button>
+          <button
+            type="button"
+            onClick={() => selectConsoleAIKind('app')}
+            className={`min-w-0 rounded-md px-2.5 py-1 text-[10px] font-mono uppercase tracking-[0.16em] transition-colors ${
+              consoleAIKind === 'app'
+                ? 'border border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-400/25 dark:bg-cyan-400/10 dark:text-cyan-200'
+                : 'border border-transparent text-muted-foreground hover:bg-muted hover:text-foreground'
+            }`}
+            title={`${focusedChatAppName} AI`}
+          >
+            <span className="block max-w-[160px] truncate">{focusedChatAppName}</span>
+          </button>
+          <div className="ml-auto truncate text-[10px] font-mono text-muted-foreground/70">
+            {consoleAIKind === 'workspace' ? 'workspace scope' : 'app scope'}
           </div>
         </div>
+      )}
+      <div className="min-h-0 flex-1">
+        {consoleAIKind === 'app' && appAINode ? appAINode : workspaceAINode}
+      </div>
+    </div>
+  );
+
+  // Console body: routed by the AI / Terminal toggle in the drawer header.
+  // - AI mode    → workspace AI plus focused app AI when the app provides Chat
+  // - Terminal   → focused app's Terminal slot if present, else system terminal
+  const terminalContent = (() => {
+    if (consoleWorkspaceKind === 'ai') {
+      return aiConsoleNode;
+    }
+    // Terminal kind
+    if (focusedConsoleApp?.slots.Terminal) {
+      const TerminalSlot = focusedConsoleApp.slots.Terminal;
+      return (
+        <AppSlotErrorBoundary appName={focusedConsoleApp.name} slotName="Terminal">
+          <TerminalSlot />
+        </AppSlotErrorBoundary>
       );
     }
-
-    // Has app terminals — AI first, then Hudson, then app terminals
-    const activeApps = sortedTerminalApps.filter(c => activatedAppIds.has(c.app.id));
-    const inactiveApps = sortedTerminalApps.filter(c => !activatedAppIds.has(c.app.id));
-
-    return (
-      <div className="flex flex-col h-full overflow-hidden">
-        <div className="shrink-0 flex items-center border-b border-border min-w-0">
-          {/* AI tab — primary */}
-          <button
-            onClick={() => setActiveTerminalAppId(HUDSON_AI_ID)}
-            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors flex items-center gap-1.5 ${
-              activeTerminalAppId === HUDSON_AI_ID
-                ? 'text-info border-b border-info bg-info/5'
-                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-            }`}
-          >
-            <Sparkles size={10} />
-            AI
-          </button>
-          {/* Hudson terminal tab */}
-          <button
-            onClick={() => setActiveTerminalAppId(HUDSON_TERMINAL_ID)}
-            className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-              activeTerminalAppId === HUDSON_TERMINAL_ID
-                ? 'text-info border-b border-info bg-info/5'
-                : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-            }`}
-          >
-            Terminal
-          </button>
-          {/* Separator between system and app tabs */}
-          <div className="h-3 w-px bg-border mx-1" />
-          {/* Active app tabs */}
-          {activeApps.map(config => (
-            <button
-              key={config.app.id}
-              onClick={() => setActiveTerminalAppId(config.app.id)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors ${
-                config.app.id === activeTerminalAppId
-                  ? 'text-accent border-b border-accent bg-accent/5'
-                  : 'text-foreground/80 hover:text-foreground hover:bg-foreground/[0.02]'
-              }`}
-            >
-              {config.app.name}
-            </button>
-          ))}
-          {/* Inactive app tabs */}
-          {inactiveApps.length > 0 && activeApps.length > 0 && (
-            <div className="h-3 w-px bg-border mx-1" />
-          )}
-          {inactiveApps.map(config => (
-            <button
-              key={config.app.id}
-              onClick={() => setActiveTerminalAppId(config.app.id)}
-              className={`px-3 py-1.5 text-[10px] font-mono uppercase tracking-wider transition-colors opacity-30 ${
-                config.app.id === activeTerminalAppId
-                  ? 'text-accent border-b border-accent bg-accent/5 opacity-100'
-                  : 'text-muted-foreground hover:text-foreground/80 hover:opacity-60'
-              }`}
-            >
-              {config.app.name}
-            </button>
-          ))}
-        </div>
-        <div className="flex-1 overflow-hidden min-w-0">
-          {activeTerminalAppId === HUDSON_AI_ID ? (
-            workspaceAINode
-          ) : activeTerminalAppId === HUDSON_TERMINAL_ID ? (
-            hudsonTerminalNode
-          ) : activeTerminalApp?.slots.Terminal ? (
-            <AppSlotErrorBoundary appName={activeTerminalApp.name} slotName="Terminal">
-              <activeTerminalApp.slots.Terminal />
-            </AppSlotErrorBoundary>
-          ) : null}
-        </div>
-      </div>
-    );
+    return hudsonTerminalNode;
   })();
 
   // --- World content (always rendered — launcher overlays on top) ---
@@ -2753,7 +2980,9 @@ function WorkspaceInner({
               isMaximized={isTerminalMaximized}
               height={terminalHeight}
               onHeightChange={setTerminalHeight}
+              title={consoleTitle}
               headerActions={terminalHeaderActions}
+              contentOverlay={terminalVoiceOverlay}
             >
               {terminalContent}
             </TerminalDrawer>
@@ -2937,6 +3166,9 @@ function WorkspaceInner({
                 isMaximized={isTerminalMaximized}
                 height={terminalHeight}
                 onHeightChange={setTerminalHeight}
+                title={consoleTitle}
+                headerActions={terminalHeaderActions}
+                contentOverlay={terminalVoiceOverlay}
               >
                 {terminalContent}
               </TerminalDrawer>
@@ -3047,13 +3279,40 @@ function MultiAppCanvas({
   const visibleNative = nativeApps.filter(c => activatedAppIds.has(c.app.id));
   const visibleWindowed = windowedApps.filter(c => activatedAppIds.has(c.app.id));
 
+  // [perf] Canvas timing — paired with `canvas:start` in WorkspaceInner.
+  // Fires once when first apps are placed; double-rAF so the browser has
+  // actually committed paint before we mark.
+  const canvasPaintedRef = useRef(false);
+  useEffect(() => {
+    if (canvasPaintedRef.current) return;
+    if (visibleWindowed.length === 0 && visibleNative.length === 0) return;
+    canvasPaintedRef.current = true;
+    if (typeof performance === 'undefined') return;
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => {
+        performance.mark('canvas:painted');
+        const log = isPerfLogEnabled();
+        try {
+          const m = performance.measure('canvas-ready', 'canvas:start', 'canvas:painted');
+          if (log) console.log(`[perf] canvas-ready: ${m.duration.toFixed(1)}ms (windowed=${visibleWindowed.length}, native=${visibleNative.length})`);
+        } catch {
+          if (log) console.log(`[perf] canvas:painted @ ${performance.now().toFixed(1)}ms`);
+        }
+      });
+    });
+  }, [visibleWindowed.length, visibleNative.length]);
+
   // Pipes from DataBus
   const { pipes } = useDataBus();
 
   return (
     <>
+      {/* Workspace decoration layer — read-only placards behind app windows. */}
+      <DecorationLayer worldScale={worldScale} />
       {/* Pipe connection arrows between apps */}
-      <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />
+      <MountTrace label="PipeConnectorLayer">
+        <PipeConnectorLayer pipes={pipes} windowBoundsMap={windowBoundsMap} />
+      </MountTrace>
       {/* Native apps render directly on canvas */}
       <AnimatePresence>
         {visibleNative.map(config => (
@@ -3066,11 +3325,15 @@ function MultiAppCanvas({
             exit={{ opacity: 0 }}
             transition={{ duration: 0.15 }}
           >
-            <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
-              <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-                <config.app.slots.Content />
-              </AppSlotErrorBoundary>
-            </ServiceBanner>
+            <MountTrace label={`Native:${config.app.id}`}>
+              <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
+                <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
+                  <MountTrace label={`Content:${config.app.id}`}>
+                    <config.app.slots.Content />
+                  </MountTrace>
+                </AppSlotErrorBoundary>
+              </ServiceBanner>
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3086,22 +3349,24 @@ function MultiAppCanvas({
             transition={{ duration: 0.15 }}
             style={{ zIndex: zOrderMap[config.app.id] ?? 1, position: 'relative' }}
           >
-            <WindowedApp
-              config={config}
-              workspaceId={workspace.id}
-              initialBounds={windowBoundsOverrides[config.app.id]}
-              persistWindowState={persistWindowState}
-              isFocused={config.app.id === focusedAppId}
-              onFocus={() => onFocusApp(config.app.id)}
-              onClose={() => onCloseApp(config.app.id)}
-              worldScale={worldScale}
-              onResetView={onResetView}
-              onReportBounds={onReportBounds}
-              onOpenServices={onOpenServices}
-              onOpenInspector={onOpenInspector}
-              navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
-              onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
-            />
+            <MountTrace label={`WindowedWrapper:${config.app.id}`}>
+              <WindowedApp
+                config={config}
+                workspaceId={workspace.id}
+                initialBounds={windowBoundsOverrides[config.app.id]}
+                persistWindowState={persistWindowState}
+                isFocused={config.app.id === focusedAppId}
+                onFocus={() => onFocusApp(config.app.id)}
+                onClose={() => onCloseApp(config.app.id)}
+                worldScale={worldScale}
+                onResetView={onResetView}
+                onReportBounds={onReportBounds}
+                onOpenServices={onOpenServices}
+                onOpenInspector={onOpenInspector}
+                navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
+                onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
+              />
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3117,13 +3382,15 @@ function MultiAppCanvas({
             transition={{ duration: 0.15 }}
             style={{ zIndex: zOrderMap[dw.id] ?? 1, position: 'relative' }}
           >
-            <DynamicWindowedApp
-              win={dw}
-              isFocused={dw.id === focusedAppId}
-              onFocus={() => onFocusApp(dw.id)}
-              onClose={() => onCloseDynamicWindow(dw.id)}
-              worldScale={worldScale}
-            />
+            <MountTrace label={`DynamicWrapper:${dw.id}`}>
+              <DynamicWindowedApp
+                win={dw}
+                isFocused={dw.id === focusedAppId}
+                onFocus={() => onFocusApp(dw.id)}
+                onClose={() => onCloseDynamicWindow(dw.id)}
+                worldScale={worldScale}
+              />
+            </MountTrace>
           </motion.div>
         ))}
       </AnimatePresence>
@@ -3147,6 +3414,7 @@ function DynamicWindowedApp({
   onClose: () => void;
   worldScale: number;
 }) {
+  useCanvasMountTrace(`DynamicWindowedApp:${win.id}`);
   const [bounds, setBounds] = useState(win.bounds);
 
   return (
@@ -3271,6 +3539,7 @@ function WindowedApp({
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
+  useCanvasMountTrace(`WindowedApp:${config.app.id}`);
   const defaults = useMemo(
     () => initialBounds ?? config.defaultWindowBounds ?? { x: 100, y: 100, w: 800, h: 600 },
     [config.defaultWindowBounds, initialBounds],
@@ -3411,10 +3680,19 @@ function WindowedApp({
         isMaximized={isMaximized}
         onToggleMaximize={handleToggleMaximize}
         contextMenuItems={contextMenuItems}
+        decorations={
+          <WindowPorts
+            appId={config.app.id}
+            inputs={config.app.ports?.inputs}
+            outputs={config.app.ports?.outputs}
+          />
+        }
       >
         <ServiceBanner appConfig={config} onOpenServices={onOpenServices}>
           <AppSlotErrorBoundary appName={config.app.name} slotName="Content">
-            <config.app.slots.Content />
+            <MountTrace label={`WindowedContent:${config.app.id}`}>
+              <config.app.slots.Content />
+            </MountTrace>
           </AppSlotErrorBoundary>
         </ServiceBanner>
       </AppWindow>

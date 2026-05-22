@@ -14,7 +14,7 @@ import type { AssistantVoiceKit } from '../types/voice-kit';
 
 // ---------------------------------------------------------------------------
 // Generic dual-mode Assistant.
-// - Default: PTY relay (leans on the user's existing CLI auth — claude/pi/codex)
+// - Default: PTY relay (leans on the user's existing Claude CLI auth)
 // - Toggle: API chat (native tool calls; dispatches via app.intents → useCommands)
 // ---------------------------------------------------------------------------
 
@@ -52,7 +52,7 @@ export function Assistant({
   state,
   relayUrl = 'ws://localhost:3600',
   cwd,
-  agent = 'pi',
+  agent = 'claude',
   provider,
   model,
   backend = 'pty',
@@ -160,12 +160,12 @@ export function Assistant({
   return (
     <div className="flex flex-col h-full">
       {/* Header */}
-      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-neutral-700/50 bg-neutral-900/50">
+      <div className="flex items-center gap-1.5 px-3 py-1.5 border-b border-border/50 bg-background/60">
         <Sparkles size={11} className="text-cyan-400/60" />
-        <span className="text-[10px] font-mono uppercase tracking-wider text-neutral-500">
+        <span className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground/80">
           Assistant
         </span>
-        <span className="text-[10px] font-mono text-neutral-600">
+        <span className="text-[10px] font-mono text-muted-foreground/60">
           · {app.name}
         </span>
         <div className="flex-1" />
@@ -181,7 +181,7 @@ export function Assistant({
             className={`p-1 rounded transition-colors ${
               speakerOn
                 ? 'text-cyan-300 hover:text-cyan-200'
-                : 'text-neutral-500 hover:text-neutral-300'
+                : 'text-muted-foreground/80 hover:text-foreground'
             }`}
             title={speakerOn ? 'Speaker on (click to mute)' : 'Speaker off (click to enable)'}
           >
@@ -194,7 +194,7 @@ export function Assistant({
         )}
 
         {/* Mode toggle */}
-        <div className="flex items-center gap-1 rounded-full border border-neutral-700 p-0.5">
+        <div className="flex items-center gap-1 rounded-full border border-border p-0.5">
           <ModeButton active={mode === 'relay'} onClick={() => setMode('relay')}>
             Relay
           </ModeButton>
@@ -227,7 +227,7 @@ export function Assistant({
           <button
             type="button"
             onClick={() => relay.connect()}
-            className="text-[10px] px-2 py-0.5 rounded-full border text-emerald-400 border-emerald-500/30 hover:bg-emerald-500/10 transition-colors"
+            className="text-[10px] px-2 py-0.5 rounded-full border text-accent border-accent/30 hover:bg-accent/10 transition-colors"
           >
             Connect
           </button>
@@ -264,7 +264,7 @@ export function Assistant({
                 className={`p-1 rounded transition-colors disabled:opacity-30 ${
                   micRecording
                     ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
-                    : 'text-neutral-500 hover:text-cyan-400'
+                    : 'text-muted-foreground/80 hover:text-cyan-400'
                 }`}
                 title={micRecording ? 'Stop recording' : 'Record voice prompt'}
               >
@@ -318,7 +318,7 @@ function VoiceStatusBadge({
         </span>
       )}
       {message && (
-        <span className="text-[10px] text-neutral-500 truncate flex-1" title={message}>
+        <span className="text-[10px] text-muted-foreground/80 truncate flex-1" title={message}>
           {message}
         </span>
       )}
@@ -332,7 +332,7 @@ function pickBadge(status: VoiceStatusValue) {
     case 'transcribing': return { label: 'transcribing', className: 'border-amber-500/20 bg-amber-500/10 text-amber-300' };
     case 'ready': return { label: 'draft ready', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300' };
     case 'synthesizing': return { label: 'voicing', className: 'border-cyan-500/20 bg-cyan-500/10 text-cyan-300' };
-    case 'speaking': return { label: 'speaking', className: 'border-emerald-500/20 bg-emerald-500/10 text-emerald-300' };
+    case 'speaking': return { label: 'speaking', className: 'border-accent/20 bg-accent/10 text-accent' };
     case 'unavailable': return { label: 'voice offline', className: 'border-amber-500/20 bg-amber-500/10 text-amber-300' };
     case 'error': return { label: 'voice error', className: 'border-red-500/20 bg-red-500/10 text-red-300' };
     default: return null;
@@ -355,7 +355,7 @@ function ModeButton({
       className={`text-[10px] px-2 py-0.5 rounded-full transition-colors ${
         active
           ? 'bg-cyan-500/15 text-cyan-300'
-          : 'text-neutral-500 hover:text-neutral-300'
+          : 'text-muted-foreground/80 hover:text-foreground'
       }`}
     >
       {children}

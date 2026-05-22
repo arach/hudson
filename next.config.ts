@@ -42,7 +42,7 @@ if (!existsSync(localAppsFile)) {
 
 const localWorkspacesFile = join(localDir, "workspaces.json");
 if (!existsSync(localWorkspacesFile)) {
-  writeFileSync(localWorkspacesFile, "[]\\n");
+  writeFileSync(localWorkspacesFile, "[]\n");
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -68,7 +68,7 @@ const turbopackRoot = process.env.HUDSON_TURBOPACK_PARENT === "1"
 
 const nextConfig: NextConfig = {
   transpilePackages: ["hudsonkit", "@voxd/client"],
-  serverExternalPackages: ["esbuild"],
+  serverExternalPackages: ["@earendil-works/pi-ai", "esbuild"],
   turbopack: {
     root: turbopackRoot,
     resolveAlias: {
