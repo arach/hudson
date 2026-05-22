@@ -1124,6 +1124,7 @@ function WorkspaceInner({
   const [dynamicWindows, setDynamicWindows] = useState<DynamicWindowEntry[]>([]);
   const dynamicCountRef = useRef(0);
   const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
+  const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
   const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
   const spawnTerminal = useCallback((cwd = '~') => {
@@ -1875,7 +1876,7 @@ function WorkspaceInner({
   const canvasContextMenuItems = useMemo(() => buildCanvasContextMenu({
     showGuides,
     minimapCollapsed,
-    onNewTerminal: () => spawnTerminal(),
+    onNewTerminal: () => setShowTerminalSpawn(true),
     onResetView: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
     onFitAll: handleFitAll,
     onResetAllWindows: handleResetAllWindows,
@@ -3299,6 +3300,12 @@ function WorkspaceInner({
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
       />
+      {showTerminalSpawn && (
+        <TerminalSpawnDialog
+          onSpawn={(cwd) => { spawnTerminal(cwd); setShowTerminalSpawn(false); }}
+          onClose={() => setShowTerminalSpawn(false)}
+        />
+      )}
       {showDevtoolsWelcome && (
         <DevtoolsIntegrationDialog
           info={devtoolsWelcomeInfo}
@@ -3579,6 +3586,79 @@ function DynamicWindowedApp({
     >
       {win.render()}
     </AppWindow>
+  );
+}
+
+// ---------------------------------------------------------------------------
+// TerminalSpawnDialog — lightweight popover to set CWD before spawning
+// ---------------------------------------------------------------------------
+function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => void; onClose: () => void }) {
+  const [cwd, setCwd] = useState('~');
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    inputRef.current?.focus();
+    inputRef.current?.select();
+  }, []);
+
+  useEffect(() => {
+    const handler = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    onSpawn(cwd.trim() || '~');
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
+      <div
+        className="rounded-lg border border-border shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <form onSubmit={handleSubmit}>
+          <div className="px-4 pt-4 pb-2">
+            <div className="flex items-center gap-2 mb-3">
+              <TerminalSquare size={14} className="text-foreground/80" />
+              <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+            </div>
+            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1.5 block">
+              Working Directory
+            </label>
+            <input
+              ref={inputRef}
+              type="text"
+              value={cwd}
+              onChange={(e) => setCwd(e.target.value)}
+              placeholder="~/dev/my-project"
+              className="w-full bg-muted/80 border border-border rounded px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40 transition-colors"
+              spellCheck={false}
+              autoComplete="off"
+            />
+          </div>
+          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
+            <button
+              type="button"
+              onClick={onClose}
+              className="text-[11px] px-3 py-1.5 rounded border border-border text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors font-mono"
+            >
+              Cancel
+            </button>
+            <button
+              type="submit"
+              className="text-[11px] px-4 py-1.5 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-mono"
+            >
+              Create
+            </button>
+          </div>
+        </form>
+      </div>
+    </div>
   );
 }
 

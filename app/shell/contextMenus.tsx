@@ -86,7 +86,7 @@ export function buildCanvasContextMenu({
   return [
     {
       id: 'canvas:new-terminal',
-      label: 'New Terminal',
+      label: 'New Terminal…',
       icon: <TerminalSquare size={12} />,
       action: onNewTerminal,
     },

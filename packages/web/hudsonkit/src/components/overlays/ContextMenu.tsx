@@ -149,6 +149,10 @@ export function HudsonContextMenu({
               const modifierActive = shouldBypassToNativeMenu(event, nativeMenuModifier);
               const shouldUseNativeMenu = activationMode === 'modifier' ? !modifierActive : modifierActive;
               if (shouldUseNativeMenu) {
+                // stopPropagation (not preventDefault) — React halts dispatch after
+                // a capture-phase stop, so base-ui's bubble-phase onContextMenu
+                // on this same trigger never fires and the browser's native
+                // context menu is allowed to open.
                 event.stopPropagation();
               }
             }}
