@@ -253,7 +253,7 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   });
 
   const sendAiMessage = useCallback((message: string) => {
-    logActivity('send', 'Sending to AI...');
+    logActivity('send', 'Sending to AI');
     try {
       chat.sendMessage({ text: message });
     } catch (err) {

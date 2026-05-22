@@ -18,7 +18,7 @@ export function DayStackChat() {
         </div>
       </div>
       <div className="min-h-0 flex-1">
-        <AI chat={aiChat} placeholder="Add blocks, rewrite the day, or move focus..." />
+        <AI chat={aiChat} placeholder="Add blocks, rewrite the day, or move focus" />
       </div>
     </div>
   );

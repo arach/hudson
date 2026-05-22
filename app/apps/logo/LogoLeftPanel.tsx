@@ -159,7 +159,7 @@ export function LogoLeftPanel() {
     <div className="flex flex-col gap-3 px-2 py-3 text-sm overflow-y-auto h-full">
       {templates.length === 0 && (
         <div className="text-[11px] text-muted-foreground px-2 py-3 text-center border border-dashed border-border/60 rounded-lg mx-1">
-          Loading templates...
+          Loading templates
         </div>
       )}
 

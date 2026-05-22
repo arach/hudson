@@ -23,7 +23,7 @@ export function useDocsStatus(): { label: string; color: StatusColor } {
 
 export function useDocsSearch(): SearchConfig {
   const { searchValue, setSearchValue } = useDocs();
-  return { value: searchValue, onChange: setSearchValue, placeholder: 'Filter...' };
+  return { value: searchValue, onChange: setSearchValue, placeholder: 'Filter' };
 }
 
 export function useDocsNavCenter(): ReactNode | null {

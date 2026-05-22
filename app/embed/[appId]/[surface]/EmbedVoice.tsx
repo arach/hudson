@@ -603,9 +603,9 @@ function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
   const buttonLabel = isRecording
     ? '■  Stop'
     : isStarting
-      ? '·  Warming up…'
+      ? '·  Warming up'
       : isProcessing
-        ? '·  Transcribing…'
+        ? '·  Transcribing'
         : hasFinal
           ? '↻  Try again'
           : '●  Press to speak';
@@ -784,7 +784,7 @@ function TranscriptPane({
             color: partial ? 'var(--hud-ink, oklch(0.94 0.005 240))' : 'var(--hud-ink-3, oklch(0.50 0.01 240))',
           }}
         >
-          {partial || '…'}
+          {partial || 'Listening'}
         </div>
         <style>{`
           @keyframes voxBlink {

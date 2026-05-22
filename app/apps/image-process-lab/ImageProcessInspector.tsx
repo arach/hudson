@@ -314,7 +314,7 @@ export function ImageProcessInspector() {
             className="flex items-center justify-center gap-2 rounded-lg border border-border/70 bg-card/86 px-3 py-2 text-[11px] text-muted-foreground transition-colors hover:bg-accent/8 disabled:pointer-events-none disabled:opacity-35"
           >
             <Download size={12} />
-            Export...
+            Export More
           </button>
           {exportMenuOpen ? (
             <div className="grid grid-cols-2 gap-1.5 rounded-lg border border-border/70 bg-background/35 p-1.5">

@@ -25,6 +25,7 @@ export default defineConfig([
       windows: 'src/windows.ts',
       theme: 'src/theme.ts',
       controls: 'src/controls.ts',
+      cache: 'src/cache.ts',
       workflow: 'src/workflow/index.ts',
       observability: 'src/observability.ts',
       voice: 'src/voice.ts',

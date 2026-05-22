@@ -74,7 +74,7 @@ export function useShaperSearch(): SearchConfig {
   return {
     value: searchQuery,
     onChange: setSearchQuery,
-    placeholder: 'stroke:left x>500 y<300 ...',
+    placeholder: 'stroke:left x>500 y<300',
   };
 }
 
@@ -101,7 +101,7 @@ export function useShaperNavActions() {
       className: `text-[10px] transition-colors ${
         saveStatus === 'saved' ? 'text-green-400' : saveStatus === 'saving' ? 'text-blue-400' : saveStatus === 'error' ? 'text-red-400' : 'text-neutral-600'
       }`,
-    }, saveStatus === 'saved' ? 'saved' : saveStatus === 'saving' ? 'saving...' : saveStatus === 'error' ? 'save error' : '')
+    }, saveStatus === 'saved' ? 'saved' : saveStatus === 'saving' ? 'saving' : saveStatus === 'error' ? 'save error' : '')
   );
 }
 

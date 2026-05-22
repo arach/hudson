@@ -655,7 +655,7 @@ function LogoMatrixView({
               templates={sessionTemplates}
               cellSize={120}
               emptyHint={aiStatus === 'streaming'
-                ? 'AI is generating variants for this round…'
+                ? 'AI is generating variants for this round'
                 : 'No variants in this round yet.'}
             />
           )}
@@ -943,7 +943,7 @@ export function LogoContent() {
               title="AI actions"
             >
               <Sparkles size={11} className={aiStatus === 'streaming' ? 'animate-spin' : ''} />
-              {aiStatus === 'streaming' ? 'Working...' : aiError ? 'Error' : 'AI'}
+              {aiStatus === 'streaming' ? 'Working' : aiError ? 'Error' : 'AI'}
             </button>
             {aiMenuOpen && (
               <div className="absolute top-full mt-2 right-0 w-[220px] rounded-xl border border-border/70 bg-popover/95 text-popover-foreground backdrop-blur-2xl shadow-2xl shadow-foreground/10 overflow-hidden z-50">
@@ -1015,7 +1015,7 @@ export function LogoContent() {
                   type="text"
                   value={editInput}
                   onChange={e => setEditInput(e.target.value)}
-                  placeholder="Make the gaps wider, soften the corners, try a warmer palette..."
+                  placeholder="Make the gaps wider, soften the corners, try a warmer palette"
                   autoFocus
                   className="w-full px-4 py-3 rounded-lg bg-muted/60 border border-border text-[13px] text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-emerald-500/40 transition-colors"
                 />

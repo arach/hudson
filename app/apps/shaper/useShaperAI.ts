@@ -123,7 +123,7 @@ export function useShaperAI(opts: UseShaperAIOptions) {
             break;
           }
           case 'retrace': {
-            logActivity('retrace', String(args.reason ?? 'retracing...'), 'change');
+            logActivity('retrace', String(args.reason ?? 'retracing'), 'change');
             await handleRetrace();
             break;
           }
@@ -172,7 +172,7 @@ export function useShaperAI(opts: UseShaperAIOptions) {
    */
   const sendAiMessage = useCallback((text: string, label?: string) => {
     if (!chat) return;
-    logActivity('start', label ?? 'Running…', 'info');
+    logActivity('start', label ?? 'Running', 'info');
     const canAttachImage = chat.mode === 'api' && !!projectImage?.url;
     try {
       if (canAttachImage && projectImage) {

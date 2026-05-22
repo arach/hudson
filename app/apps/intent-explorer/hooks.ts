@@ -14,7 +14,7 @@ export function useExplorerStatus(): { label: string; color: StatusColor } {
 
 export function useExplorerSearch(): SearchConfig {
   const { searchQuery, setSearchQuery } = useExplorer();
-  return { value: searchQuery, onChange: setSearchQuery, placeholder: 'Search intents...' };
+  return { value: searchQuery, onChange: setSearchQuery, placeholder: 'Search intents' };
 }
 
 export function useExplorerLayoutMode(): 'canvas' | 'panel' {

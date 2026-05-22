@@ -19,8 +19,8 @@ export interface SessionInitMessage {
   backend?: 'pty' | 'tmux';
   /** For tmux backend: the tmux session name. Required when backend is 'tmux'. */
   tmuxSession?: string;
-  /** CLI agent to spawn. 'claude' (default) or 'pi'. */
-  agent?: 'claude' | 'pi';
+  /** Process to spawn. 'claude' (default), 'pi', or 'shell' for a normal login shell. */
+  agent?: 'claude' | 'pi' | 'shell';
   /** For pi agent: provider name (e.g. 'minimax', 'github-copilot'). */
   provider?: string;
   /** For pi agent: model ID (e.g. 'MiniMax-M1'). */

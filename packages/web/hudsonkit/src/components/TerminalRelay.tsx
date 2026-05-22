@@ -604,7 +604,7 @@ export function TerminalRelay({
               disabled={starting}
               className="text-[11px] px-4 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-medium disabled:opacity-50"
             >
-              {starting ? 'Starting...' : 'Start Service'}
+              {starting ? 'Starting' : 'Start Service'}
             </button>
           )}
           <button
@@ -707,7 +707,7 @@ export function TerminalRelay({
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-cyan-500 rounded-full animate-spin" />
-        <span className="text-[12px] text-muted-foreground">Connecting to relay...</span>
+        <span className="text-[12px] text-muted-foreground">Connecting to relay</span>
         <button
           type="button"
           onClick={() => { disconnect(); }}
@@ -744,7 +744,6 @@ export function TerminalRelay({
         className="flex-1 min-h-0 min-w-0 overflow-hidden"
         style={{
           visibility: overlay ? 'hidden' : 'visible',
-          padding: '4px 8px',
           backgroundColor: xtermTheme.background,
           '--hud-terminal-bg': xtermTheme.background,
           '--hud-terminal-fg': xtermTheme.foreground,

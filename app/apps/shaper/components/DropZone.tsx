@@ -109,7 +109,7 @@ export function DropZone() {
                     isTracing ? 'bg-blue-600/20 text-blue-400 cursor-wait' : 'bg-blue-600 text-white hover:bg-blue-500'
                   }`}
                 >
-                  {isTracing ? 'Extracting...' : 'Extract Shapes'}
+                  {isTracing ? 'Extracting' : 'Extract Shapes'}
                 </button>
                 <button
                   onClick={() => {

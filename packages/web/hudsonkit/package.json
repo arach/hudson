@@ -67,6 +67,11 @@
       "import": "./dist/controls.js",
       "default": "./dist/controls.js"
     },
+    "./cache": {
+      "types": "./dist/cache.d.ts",
+      "import": "./dist/cache.js",
+      "default": "./dist/cache.js"
+    },
     "./workflow": {
       "types": "./dist/workflow.d.ts",
       "import": "./dist/workflow.js",

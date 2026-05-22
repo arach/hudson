@@ -281,7 +281,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
           <div className="flex items-center justify-center py-8">
             <div className="flex items-center gap-2 text-muted-foreground font-mono text-[9px]">
               <div className="w-2.5 h-2.5 border border-accent/30 border-t-accent rounded-full animate-spin" />
-              Loading...
+              Loading
             </div>
           </div>
         ) : html ? (

@@ -272,7 +272,7 @@ export function ApiInspectorContent() {
               <textarea
                 value={request.body}
                 onChange={e => setBody(e.target.value)}
-                placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body...'}
+                placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body'}
                 className="w-full h-[120px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-700/40 dark:focus:border-cyan-500/30 transition-colors resize-none"
                 spellCheck={false}
               />
@@ -310,7 +310,7 @@ export function ApiInspectorContent() {
             <div className="flex items-center justify-center h-full">
               <div className="flex items-center gap-3 text-muted-foreground">
                 <Loader2 size={18} className="animate-spin" />
-                <span className="text-[13px]">Sending request...</span>
+                <span className="text-[13px]">Sending request</span>
               </div>
             </div>
           )}
