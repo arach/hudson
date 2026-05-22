@@ -25,8 +25,8 @@ export const SHELL_THEME = {
     manifest: `${base} fixed top-[48px] left-0 bottom-[28px] w-[280px] z-40 rounded-none border-l-0 border-t-0 overflow-hidden`,
     inspector: `${base} fixed top-[48px] right-0 bottom-[28px] w-[280px] z-40 rounded-none border-r-0 border-t-0 overflow-hidden`,
     minimap: `bg-card/95 backdrop-blur-xl border border-[var(--hud-chrome-border)] shadow-[var(--hud-shadow-minimap)] fixed left-0 bottom-[28px] z-[45] rounded-none border-l-0 border-b-0 overflow-hidden`,
-    statusBar: `bg-card/95 backdrop-blur-xl border-t border-[var(--hud-chrome-border)] shadow-[var(--hud-shadow-bar)] fixed bottom-0 left-0 right-0 z-[60]`,
-    commandDock: `bg-card/95 backdrop-blur-xl border-t border-l border-[var(--hud-chrome-border)] fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
+    statusBar: `bg-card/95 backdrop-blur-xl border-t border-[var(--hud-chrome-border-subtle)] shadow-[var(--hud-shadow-bar)] fixed bottom-0 left-0 right-0 z-[60]`,
+    commandDock: `bg-card/95 backdrop-blur-xl border-t border-l border-[var(--hud-chrome-border-subtle)] fixed right-0 bottom-[28px] w-[280px] z-[45] rounded-none overflow-hidden`,
   },
 
   effects: {
