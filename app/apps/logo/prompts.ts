@@ -237,7 +237,7 @@ const meta = {
   description: "What it looks like",
   params: {
     myParam: { type: "number", label: "My Param", default: 5, min: 1, max: 20, group: "Geometry" },
-    label: { type: "text", label: "Label", default: "", placeholder: "Enter text...", group: "Typography" },
+    label: { type: "text", label: "Label", default: "", placeholder: "Enter text", group: "Typography" },
     showBorder: { type: "toggle", label: "Show Border", default: true, group: "Geometry" },
     dots: {
       type: "repeatable", label: "Dots",

@@ -20,6 +20,7 @@ import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
 export const DEFAULT_SETTINGS: HudsonSettings = {
   theme: 'system',
   template: 'hudson',
+  contextMenuMode: 'hudson-first',
   glowIntensity: 30,
   gridOpacity: 60,
   connectorStyle: 'dashed',

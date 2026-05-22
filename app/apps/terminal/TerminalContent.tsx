@@ -13,15 +13,14 @@ function TerminalSession({ id, cwd }: { id: string; cwd: string }) {
 
   const relay = useTerminalRelay({
     url: 'ws://localhost:3600',
-    systemPrompt: `You are a general-purpose terminal assistant running inside HudsonKit.
-Help the user with shell commands, file management, coding, and any other tasks.
-Be concise and action-oriented.`,
+    agent: 'shell',
     cwd,
-    sessionKey: `terminal-${id}`,
+    sessionKey: `shell-terminal-${id}`,
   });
 
   const configItems = useMemo(() => [
     { label: 'Relay', value: 'ws://localhost:3600' },
+    { label: 'Mode', value: 'shell' },
     { label: 'CWD', value: cwd },
   ], [cwd]);
 

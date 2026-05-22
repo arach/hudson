@@ -13,7 +13,7 @@ export interface UseTerminalRelayOptions {
   url?: string;
   /** Optional HTTP health URL used for the pre-flight relay probe. Defaults to `${url}/health` over http(s). */
   healthUrl?: string;
-  /** System prompt to pass to the Claude CLI session */
+  /** System prompt to pass to the CLI agent session. Ignored by shell sessions. */
   systemPrompt?: string;
   /** Working directory for the PTY session. Defaults to $HOME on the server. */
   cwd?: string;
@@ -30,8 +30,8 @@ export interface UseTerminalRelayOptions {
   backend?: 'pty' | 'tmux';
   /** For tmux backend: the named tmux session to create/attach to. */
   tmuxSession?: string;
-  /** CLI agent to spawn. 'claude' (default) or 'pi'. */
-  agent?: 'claude' | 'pi';
+  /** Process to spawn. 'claude' (default), 'pi', or 'shell' for a normal login shell. */
+  agent?: 'claude' | 'pi' | 'shell';
   /** For pi agent: provider name (e.g. 'minimax', 'github-copilot'). */
   provider?: string;
   /** For pi agent: model ID (e.g. 'MiniMax-M1'). */

@@ -106,7 +106,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
                 type="text"
                 value={search.value}
                 onChange={(e) => search.onChange(e.target.value)}
-                placeholder={search.placeholder ?? 'Search...'}
+                placeholder={search.placeholder ?? 'Search'}
                 className={`
                   w-full h-7 pl-5 pr-6 bg-transparent text-[11px] font-mono font-normal tracking-[0.02em]
                   placeholder:text-muted-foreground/80 placeholder:font-light text-foreground

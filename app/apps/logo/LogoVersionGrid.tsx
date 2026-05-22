@@ -65,7 +65,7 @@ export function LogoVersionGrid({
   if (cells.length === 0) {
     return (
       <div className="logo-comparison-sheet logo-comparison-sheet--missing">
-        {emptyHint ?? 'Waiting for the AI to create variants for this round…'}
+        {emptyHint ?? 'Waiting for the AI to create variants for this round'}
       </div>
     );
   }

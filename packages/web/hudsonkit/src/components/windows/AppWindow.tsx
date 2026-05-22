@@ -33,6 +33,9 @@ interface AppWindowProps {
   onToggleMaximize?: () => void;
   /** Context menu items shown on right-click */
   contextMenuItems?: ContextMenuEntry[];
+  /** Where shell-level context menus should attach. Defaults to the full window for compatibility. */
+  contextMenuScope?: 'window' | 'chrome';
+  contextMenuActivationMode?: 'default' | 'modifier';
   /** Optional decorations rendered inside the window's positioned root,
    *  on top of the chrome — used by the shell for port dots, status pills,
    *  etc. The container has `pointer-events: none` so individual decorations
@@ -70,6 +73,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
   isMaximized: isMaximizedProp,
   onToggleMaximize: onToggleMaximizeProp,
   contextMenuItems,
+  contextMenuScope = 'window',
+  contextMenuActivationMode,
   decorations,
   children,
 }) => {
@@ -248,6 +253,62 @@ const AppWindow: React.FC<AppWindowProps> = ({
   }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale, onToggleMaximizeProp]);
 
   const GRIP = 6;
+  const menuItems = contextMenuItems ?? [];
+  const hasContextMenu = menuItems.length > 0;
+  const withChromeContextMenu = (node: React.ReactNode) => {
+    if (!hasContextMenu || contextMenuScope !== 'chrome') return node;
+    return <HudsonContextMenu items={menuItems} activationMode={contextMenuActivationMode}>{node}</HudsonContextMenu>;
+  };
+
+  const titleBar = (
+    <div
+      className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-border/70 bg-gradient-to-r from-background/70 via-card/95 to-background/70 cursor-grab active:cursor-grabbing select-none"
+      onMouseDown={handleDragStart}
+    >
+      {/* Left controls: expand */}
+      <div className="flex items-center gap-1">
+        <button
+          onMouseDown={(e) => e.stopPropagation()}
+          onClick={handleToggleMaximize}
+          className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
+          title={isMaximized ? 'Restore' : 'Expand'}
+        >
+          {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
+        </button>
+        {onMinimize && (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={onMinimize}
+            className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
+            title="Minimize"
+          >
+            <Minus size={11} />
+          </button>
+        )}
+      </div>
+      <span className="flex-1 text-[12px] font-mono tracking-wider text-foreground truncate text-center">
+        {title}
+      </span>
+      {titleCenter && (
+        <div className="flex items-center shrink-0" onMouseDown={(e) => e.stopPropagation()}>
+          {titleCenter}
+        </div>
+      )}
+      {/* Right controls: close */}
+      <div className="flex items-center gap-1">
+        {onClose && (
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={onClose}
+            className="p-1 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
+            title="Close"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+    </div>
+  );
 
   const windowEl = (
     <div
@@ -274,53 +335,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
         style={{ background: 'oklch(var(--card))' }}
       >
         {/* Title bar */}
-        <div
-          className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-border/70 bg-gradient-to-r from-background/70 via-card/95 to-background/70 cursor-grab active:cursor-grabbing select-none"
-          onMouseDown={handleDragStart}
-        >
-          {/* Left controls: expand */}
-          <div className="flex items-center gap-1">
-            <button
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={handleToggleMaximize}
-              className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
-              title={isMaximized ? 'Restore' : 'Expand'}
-            >
-              {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
-            </button>
-            {onMinimize && (
-              <button
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={onMinimize}
-                className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
-                title="Minimize"
-              >
-                <Minus size={11} />
-              </button>
-            )}
-          </div>
-          <span className="flex-1 text-[12px] font-mono tracking-wider text-foreground truncate text-center">
-            {title}
-          </span>
-          {titleCenter && (
-            <div className="flex items-center shrink-0" onMouseDown={(e) => e.stopPropagation()}>
-              {titleCenter}
-            </div>
-          )}
-          {/* Right controls: close */}
-          <div className="flex items-center gap-1">
-            {onClose && (
-              <button
-                onMouseDown={(e) => e.stopPropagation()}
-                onClick={onClose}
-                className="p-1 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
-                title="Close"
-              >
-                <X size={11} />
-              </button>
-            )}
-          </div>
-        </div>
+        {withChromeContextMenu(titleBar)}
 
         {/* Content area */}
         <div className="flex-1 overflow-hidden relative bg-card/78 select-text">
@@ -361,8 +376,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
     </div>
   );
 
-  if (contextMenuItems && contextMenuItems.length > 0) {
-    return <HudsonContextMenu items={contextMenuItems}>{windowEl}</HudsonContextMenu>;
+  if (hasContextMenu && contextMenuScope === 'window') {
+    return <HudsonContextMenu items={menuItems} activationMode={contextMenuActivationMode}>{windowEl}</HudsonContextMenu>;
   }
 
   return windowEl;

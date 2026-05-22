@@ -7,7 +7,7 @@ import { TerminalContent } from './TerminalContent';
 export const terminalApp: HudsonApp = {
   id: 'terminal',
   name: 'Terminal',
-  description: 'Interactive terminal with Claude relay',
+  description: 'Interactive shell terminal',
   mode: 'panel',
 
   Provider: TerminalProvider,

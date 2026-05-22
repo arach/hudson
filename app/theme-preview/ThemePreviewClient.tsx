@@ -666,7 +666,7 @@ const themePreviewApp: HudsonApp = {
     },
     useSearch: () => {
       const { query, setQuery } = useThemePreview();
-      return { value: query, onChange: setQuery, placeholder: 'Filter preview notes...' };
+      return { value: query, onChange: setQuery, placeholder: 'Filter preview notes' };
     },
     useNavCenter: () => <ThemePreviewNavCenter />,
     useNavActions: () => <ThemeToolbar />,

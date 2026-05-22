@@ -13,6 +13,13 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
+export * from './lib/cache';
+export { useCachedResource } from './hooks/useCachedResource';
+export type {
+  CachedResourceStatus,
+  UseCachedResourceOptions,
+  UseCachedResourceResult,
+} from './hooks/useCachedResource';
 export { InstanceProvider, useInstance, useOptionalInstance } from './context/InstanceContext';
 export type { InstanceContextValue } from './context/InstanceContext';
 export { useAppSettings } from './hooks/useAppSettings';

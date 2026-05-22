@@ -1344,7 +1344,7 @@ export function WorkspaceAI({
               }
             }}
             onPaste={handlePaste}
-            placeholder="Ask Hudson anything..."
+            placeholder="Ask Hudson anything"
             className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[12px] text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-cyan-700/35 transition-colors dark:focus:border-cyan-300/35"
           />
           <button

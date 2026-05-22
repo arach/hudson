@@ -27,8 +27,8 @@ import {
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft } from 'lucide-react';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig } from 'hudsonkit';
+import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -62,6 +62,19 @@ import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
 import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
+import {
+  announceSettingChanged,
+  SettingChangedNotice,
+  useSettingChangedNotice,
+} from './SettingChangedNotice';
+import {
+  buildAppWindowContextMenu,
+  buildCanvasContextMenu,
+  buildDynamicWindowContextMenu,
+  hasInspectorSurface,
+  type ContextMenuMode,
+} from './contextMenus';
+import { installHudsonDevtoolsWelcome, showHudsonDevtoolsWelcome, type HudsonDevtoolsWelcomeInfo } from './devtoolsWelcome';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -426,6 +439,10 @@ function buildShellSettingsPatch(
     case 'template':
       return typeof value === 'string' && /^[a-z][a-z0-9-]{1,64}$/.test(value)
         ? { template: value }
+        : null;
+    case 'contextMenuMode':
+      return value === 'hudson-first' || value === 'chrome-first'
+        ? { contextMenuMode: value }
         : null;
     case 'masterMute':
     case 'uiClickSounds':
@@ -1106,7 +1123,8 @@ function WorkspaceInner({
   // --- Dynamic windows (e.g. spawned terminals, not tied to static workspace apps) ---
   const [dynamicWindows, setDynamicWindows] = useState<DynamicWindowEntry[]>([]);
   const dynamicCountRef = useRef(0);
-  const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
+  const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
+  const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
   const spawnTerminal = useCallback((cwd = '~') => {
     dynamicCountRef.current++;
@@ -1416,6 +1434,48 @@ function WorkspaceInner({
   const resetShellSettings = useCallback(() => {
     setShellSettings(DEFAULT_SHELL_SETTINGS);
   }, [setShellSettings]);
+
+  const contextMenuMode = shellSettings.contextMenuMode ?? DEFAULT_SHELL_SETTINGS.contextMenuMode;
+  const contextMenuActivationMode = contextMenuMode === 'chrome-first' ? 'modifier' : 'default';
+  const toggleContextMenuMode = useCallback(() => {
+    const nextMode = contextMenuMode === 'hudson-first' ? 'chrome-first' : 'hudson-first';
+    updateShellSettings({
+      contextMenuMode: nextMode,
+    });
+    announceSettingChanged({
+      id: 'context-menu-mode',
+      title: 'Right click updated',
+      valueLabel: nextMode === 'hudson-first' ? 'Hudson First' : 'Chrome First',
+      description: nextMode === 'hudson-first'
+        ? 'Right-click opens Hudson menus. Option-right-click opens Chrome Inspect Element.'
+        : 'Right-click opens Chrome Inspect Element. Option-right-click opens Hudson menus.',
+      locationLabel: 'Settings > Navigation > Right Click',
+    });
+  }, [contextMenuMode, updateShellSettings]);
+
+  const devtoolsWelcomeInfo = useMemo(() => ({
+    workspaceId: workspace.id,
+    workspaceName: workspace.name,
+    mode: frameMode,
+    contextMenuMode,
+    focusedAppId: focusedApp?.id ?? null,
+    focusedAppName: focusedApp?.name ?? null,
+    apps: workspace.apps.map(config => ({
+      id: config.app.id,
+      name: config.app.name,
+      mode: config.app.mode,
+      canvasMode: config.canvasMode ?? 'native',
+    })),
+  }), [workspace.id, workspace.name, workspace.apps, frameMode, contextMenuMode, focusedApp?.id, focusedApp?.name]);
+
+  useEffect(() => {
+    installHudsonDevtoolsWelcome(devtoolsWelcomeInfo);
+  }, [devtoolsWelcomeInfo]);
+
+  const openDevtoolsWelcome = useCallback(() => {
+    showHudsonDevtoolsWelcome(devtoolsWelcomeInfo);
+    setShowDevtoolsWelcome(true);
+  }, [devtoolsWelcomeInfo]);
 
   // --- Sound helper ---
   const playSound = useCallback(
@@ -1812,48 +1872,26 @@ function WorkspaceInner({
   }, [focusedAppId, fullscreenAppId]);
 
   // --- Canvas context menu ---
-  const canvasContextMenuItems: ContextMenuEntry[] = useMemo(() => [
-    {
-      id: 'canvas:new-terminal',
-      label: 'New Terminal...',
-      icon: <TerminalSquare size={12} />,
-      action: () => setShowTerminalSpawn(true),
-    },
-    { type: 'separator' },
-    {
-      id: 'canvas:reset-view',
-      label: 'Reset View',
-      shortcut: '⌘0',
-      icon: <RotateCcw size={12} />,
-      action: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
-    },
-    {
-      id: 'canvas:fit-all',
-      label: 'Fit All in View',
-      icon: <Maximize2 size={12} />,
-      action: handleFitAll,
-    },
-    {
-      id: 'canvas:reset-all-windows',
-      label: 'Reset All Windows',
-      icon: <RotateCcw size={12} />,
-      action: handleResetAllWindows,
-    },
-    { type: 'separator' },
-    {
-      id: 'canvas:toggle-guides',
-      label: showGuides ? 'Hide Guides' : 'Show Guides',
-      shortcut: '⌘\\',
-      icon: <Crosshair size={12} />,
-      action: () => setShowGuides(g => !g),
-    },
-    {
-      id: 'canvas:toggle-minimap',
-      label: minimapCollapsed ? 'Show Minimap' : 'Hide Minimap',
-      icon: <MapIcon size={12} />,
-      action: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
-    },
-  ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed, spawnTerminal]);
+  const canvasContextMenuItems = useMemo(() => buildCanvasContextMenu({
+    showGuides,
+    minimapCollapsed,
+    onNewTerminal: () => spawnTerminal(),
+    onResetView: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
+    onFitAll: handleFitAll,
+    onResetAllWindows: handleResetAllWindows,
+    onToggleGuides: () => setShowGuides(g => !g),
+    onToggleMinimap: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
+    onOpenDevtools: openDevtoolsWelcome,
+  }), [
+    showGuides,
+    minimapCollapsed,
+    playSound,
+    handleFitAll,
+    handleResetAllWindows,
+    spawnTerminal,
+    setMinimapCollapsed,
+    openDevtoolsWelcome,
+  ]);
 
   // --- Shell layout context ---
   const shellLayout = useMemo(
@@ -2793,6 +2831,10 @@ function WorkspaceInner({
           showLauncher={showLauncher}
           onOpenServices={openWorkspaceManager}
           onOpenInspector={() => setRightCollapsed(false)}
+          onCloseInspector={() => setRightCollapsed(true)}
+          isInspectorOpen={!rightCollapsed}
+          onOpenDevtools={openDevtoolsWelcome}
+          contextMenuActivationMode={contextMenuActivationMode}
           dynamicWindows={dynamicWindows}
           onCloseDynamicWindow={closeDynamicWindow}
           zOrderMap={zOrderMap}
@@ -3054,6 +3096,7 @@ function WorkspaceInner({
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
+          canvasContextMenuActivationMode: contextMenuActivationMode,
         } : {})}
         hud={
           <>
@@ -3234,14 +3277,6 @@ function WorkspaceInner({
               commands={allCommands}
             />
 
-            {/* Terminal spawn dialog */}
-            {showTerminalSpawn && (
-              <TerminalSpawnDialog
-                onSpawn={(cwd) => { spawnTerminal(cwd); setShowTerminalSpawn(false); }}
-                onClose={() => setShowTerminalSpawn(false)}
-              />
-            )}
-
             {/* App launcher overlay (rendered in HUD layer to escape canvas transform) */}
             {showLauncher && launcherReady && (
               <div className="fixed inset-0 z-[5] pointer-events-auto">
@@ -3263,6 +3298,28 @@ function WorkspaceInner({
         isOpen={showWorkspaceManager}
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
+      />
+      {showDevtoolsWelcome && (
+        <DevtoolsIntegrationDialog
+          info={devtoolsWelcomeInfo}
+          mode={contextMenuMode}
+          onClose={() => setShowDevtoolsWelcome(false)}
+          onToggleContextMenuMode={toggleContextMenuMode}
+          onOpenSettings={() => {
+            setShowDevtoolsWelcome(false);
+            openSettings('settings');
+          }}
+          onShowConsole={() => showHudsonDevtoolsWelcome(devtoolsWelcomeInfo)}
+        />
+      )}
+      <SettingChangedNotice
+        notice={settingChangedNotice}
+        onDismiss={() => setSettingChangedNotice(null)}
+        onOpenSettings={() => {
+          setSettingChangedNotice(null);
+          setShowDevtoolsWelcome(false);
+          openSettings('settings');
+        }}
       />
     </ShellLayoutProvider>
     </WorkspaceManagerProvider>
@@ -3294,6 +3351,10 @@ function MultiAppCanvas({
   showLauncher,
   onOpenServices,
   onOpenInspector,
+  onCloseInspector,
+  isInspectorOpen,
+  onOpenDevtools,
+  contextMenuActivationMode,
   dynamicWindows,
   onCloseDynamicWindow,
   zOrderMap,
@@ -3315,6 +3376,10 @@ function MultiAppCanvas({
   showLauncher: boolean;
   onOpenServices: () => void;
   onOpenInspector: () => void;
+  onCloseInspector: () => void;
+  isInspectorOpen: boolean;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
   dynamicWindows: DynamicWindowEntry[];
   onCloseDynamicWindow: (id: string) => void;
   zOrderMap: Record<string, number>;
@@ -3416,6 +3481,10 @@ function MultiAppCanvas({
                 onReportBounds={onReportBounds}
                 onOpenServices={onOpenServices}
                 onOpenInspector={onOpenInspector}
+                onCloseInspector={onCloseInspector}
+                isInspectorOpen={config.app.id === focusedAppId && isInspectorOpen}
+                onOpenDevtools={onOpenDevtools}
+                contextMenuActivationMode={contextMenuActivationMode}
                 navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
                 onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
               />
@@ -3442,6 +3511,8 @@ function MultiAppCanvas({
                 onFocus={() => onFocusApp(dw.id)}
                 onClose={() => onCloseDynamicWindow(dw.id)}
                 worldScale={worldScale}
+                onOpenDevtools={onOpenDevtools}
+                contextMenuActivationMode={contextMenuActivationMode}
               />
             </MountTrace>
           </motion.div>
@@ -3460,15 +3531,38 @@ function DynamicWindowedApp({
   onFocus,
   onClose,
   worldScale,
+  onOpenDevtools,
+  contextMenuActivationMode,
 }: {
   win: DynamicWindowEntry;
   isFocused: boolean;
   onFocus: () => void;
   onClose: () => void;
   worldScale: number;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
 }) {
   useCanvasMountTrace(`DynamicWindowedApp:${win.id}`);
   const [bounds, setBounds] = useState(win.bounds);
+  const initialBoundsRef = useRef(win.bounds);
+  const handleBringToCenter = useCallback(() => {
+    setBounds(prev => ({
+      ...prev,
+      x: -(prev.w / 2),
+      y: -(prev.h / 2),
+    }));
+  }, []);
+  const handleResetWindow = useCallback(() => {
+    setBounds(initialBoundsRef.current);
+  }, []);
+  const contextMenuItems = useMemo(() => buildDynamicWindowContextMenu({
+    windowId: win.id,
+    onFocus,
+    onBringToCenter: handleBringToCenter,
+    onResetWindow: handleResetWindow,
+    onClose,
+    onOpenDevtools,
+  }), [win.id, onFocus, handleBringToCenter, handleResetWindow, onClose, onOpenDevtools]);
 
   return (
     <AppWindow
@@ -3479,6 +3573,9 @@ function DynamicWindowedApp({
       onFocus={onFocus}
       onClose={onClose}
       worldScale={worldScale}
+      contextMenuItems={contextMenuItems}
+      contextMenuScope="chrome"
+      contextMenuActivationMode={contextMenuActivationMode}
     >
       {win.render()}
     </AppWindow>
@@ -3486,74 +3583,151 @@ function DynamicWindowedApp({
 }
 
 // ---------------------------------------------------------------------------
-// TerminalSpawnDialog — lightweight popover to set CWD before spawning
+// DevtoolsIntegrationDialog — explains the browser/Hudson context menu split
 // ---------------------------------------------------------------------------
-function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => void; onClose: () => void }) {
-  const [cwd, setCwd] = useState('~');
-  const inputRef = useRef<HTMLInputElement>(null);
-
+function DevtoolsIntegrationDialog({
+  info,
+  mode,
+  onClose,
+  onToggleContextMenuMode,
+  onOpenSettings,
+  onShowConsole,
+}: {
+  info: HudsonDevtoolsWelcomeInfo;
+  mode: ContextMenuMode;
+  onClose: () => void;
+  onToggleContextMenuMode: () => void;
+  onOpenSettings: () => void;
+  onShowConsole: () => void;
+}) {
   useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
-
-  useEffect(() => {
-    const handler = (e: KeyboardEvent) => {
-      if (e.key === 'Escape') onClose();
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSpawn(cwd.trim() || '~');
-  };
+  const hudsonGesture = mode === 'hudson-first' ? 'Right-click' : 'Option + right-click';
+  const chromeGesture = mode === 'hudson-first' ? 'Option + right-click' : 'Right-click';
+  const nextModeLabel = mode === 'hudson-first' ? 'Use Chrome First' : 'Use Hudson First';
+  const currentModeLabel = mode === 'hudson-first' ? 'Hudson right click first' : 'Chrome right click first';
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
-      <div
-        className="rounded-lg border border-border shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
-        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
-        onClick={(e) => e.stopPropagation()}
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center bg-background/55 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hudson-devtools-dialog-title"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ duration: 0.14, ease: 'easeOut' }}
+        className="w-full max-w-[560px] overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center gap-2 mb-3">
-              <TerminalSquare size={14} className="text-foreground/80" />
-              <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+        <div className="flex items-start gap-3 border-b border-border/70 px-4 py-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-500/25 bg-cyan-500/10 text-cyan-500">
+            <ScanSearch size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 id="hudson-devtools-dialog-title" className="text-[13px] font-mono font-semibold uppercase tracking-[0.18em] text-foreground">
+              Chrome DevTools
+            </h2>
+            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+              Chrome only exposes Inspect Element through the browser native menu or DevTools shortcut.
+              Hudson can choose which menu gets right-click first, but page JavaScript cannot open DevTools directly.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close DevTools help"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="space-y-4 px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+            <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-emerald-600 dark:text-emerald-300">
+              {currentModeLabel}
+            </span>
+            <span className="text-muted-foreground">
+              {info.workspaceName} / {info.focusedAppName ?? 'no focused app'}
+            </span>
+          </div>
+
+          <div className="grid border-y border-border/70 text-[12px]">
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 px-1 py-2">
+              <MousePointer2 size={14} className="text-cyan-500" />
+              <span className="font-mono text-foreground">{hudsonGesture}</span>
+              <span className="text-muted-foreground">Open the Hudson menu.</span>
             </div>
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1.5 block">
-              Working Directory
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={cwd}
-              onChange={(e) => setCwd(e.target.value)}
-              placeholder="~/dev/my-project"
-              className="w-full bg-muted/80 border border-border rounded px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40 transition-colors"
-              spellCheck={false}
-              autoComplete="off"
-            />
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 border-t border-border/70 px-1 py-2">
+              <ScanSearch size={14} className="text-emerald-500" />
+              <span className="font-mono text-foreground">{chromeGesture}</span>
+              <span className="text-muted-foreground">Open Chrome native menu for Inspect Element.</span>
+            </div>
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 border-t border-border/70 px-1 py-2">
+              <Keyboard size={14} className="text-teal-500" />
+              <span className="font-mono text-foreground">Cmd + Option + I</span>
+              <span className="text-muted-foreground">Open Chrome DevTools directly.</span>
+            </div>
           </div>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[11px] px-3 py-1.5 rounded border border-border text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors font-mono"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="text-[11px] px-4 py-1.5 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-mono"
-            >
-              Create
-            </button>
+
+          <div className="border-t border-border/70 pt-3">
+            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-foreground">
+              <Code2 size={13} className="text-cyan-500" />
+              Console helper
+            </div>
+            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+              The CDP welcome splash is available in the console as <code className="text-emerald-500">window.HudsonDevtools</code>.
+              Try <code className="text-emerald-500">help()</code>, <code className="text-emerald-500">shortcuts()</code>, <code className="text-emerald-500">apps()</code>, or <code className="text-emerald-500">resources()</code>.
+            </p>
           </div>
-        </form>
-      </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 px-4 py-3">
+          <button
+            type="button"
+            onClick={onShowConsole}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Code2 size={12} />
+            Print Console Help
+          </button>
+          <a
+            href="https://developer.chrome.com/docs/extensions/how-to/devtools/extend-devtools"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink size={12} />
+            Extension Docs
+          </a>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Settings size={12} />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={onToggleContextMenuMode}
+            className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-mono text-cyan-600 transition-colors hover:bg-cyan-500/15 dark:text-cyan-300"
+          >
+            <MousePointer2 size={12} />
+            {nextModeLabel}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -3574,6 +3748,10 @@ function WindowedApp({
   onReportBounds,
   onOpenServices,
   onOpenInspector,
+  onCloseInspector,
+  isInspectorOpen,
+  onOpenDevtools,
+  contextMenuActivationMode,
   navCenter,
   onEnterFullscreen,
 }: {
@@ -3589,6 +3767,10 @@ function WindowedApp({
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   onOpenServices: () => void;
   onOpenInspector: () => void;
+  onCloseInspector: () => void;
+  isInspectorOpen: boolean;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
@@ -3650,74 +3832,47 @@ function WindowedApp({
     setPreMaxBounds(null);
   }, [defaults, setBounds]);
 
-  const hasPorts = !!(config.app.ports?.outputs?.length || config.app.ports?.inputs?.length);
-  const hasInspectorSurface = !!(config.app.slots.Inspector || config.app.slots.RightPanel || config.app.tools?.length || hasPorts);
+  const hasPorts = appShowsPorts(config.app);
+  const hasInspector = hasInspectorSurface(config.app, hasPorts);
+  const handleBringToCenter = useCallback(() => {
+    setBounds(prev => ({
+      ...prev,
+      x: -(prev.w / 2),
+      y: -(prev.h / 2),
+    }));
+  }, [setBounds]);
 
-  const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
-    {
-      id: `${config.app.id}:focus-mode`,
-      label: 'Focus Mode',
-      shortcut: '⌘⇧F',
-      icon: <Maximize2 size={12} />,
-      action: onEnterFullscreen,
-    },
-    {
-      id: `${config.app.id}:bring-to-front`,
-      label: 'Bring to Front',
-      icon: <Layers size={12} />,
-      action: onFocus,
-    },
-    {
-      id: `${config.app.id}:bring-to-center`,
-      label: 'Bring to Center',
-      icon: <Crosshair size={12} />,
-      action: () => {
-        setBounds(prev => ({
-          ...prev,
-          x: -(prev.w / 2),
-          y: -(prev.h / 2),
-        }));
-      },
-    },
-    {
-      id: `${config.app.id}:maximize`,
-      label: isMaximized ? 'Restore' : 'Maximize',
-      icon: isMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />,
-      action: handleToggleMaximize,
-    },
-    {
-      id: `${config.app.id}:reset-window`,
-      label: 'Reset Window',
-      icon: <RotateCcw size={12} />,
-      action: handleResetWindow,
-    },
-    { type: 'separator' },
-    {
-      id: `${config.app.id}:reset-view`,
-      label: 'Reset View',
-      shortcut: '⌘0',
-      icon: <RotateCcw size={12} />,
-      action: onResetView,
-    },
-    {
-      id: `${config.app.id}:inspect`,
-      label: 'Inspect',
-      icon: <ScanSearch size={12} />,
-      disabled: !hasInspectorSurface,
-      action: () => {
-        onFocus();
-        onOpenInspector();
-      },
-    },
-    { type: 'separator' },
-    {
-      id: `${config.app.id}:close`,
-      label: 'Close',
-      shortcut: '⌘W',
-      icon: <X size={12} />,
-      action: onClose,
-    },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen, hasInspectorSurface, onOpenInspector]);
+  const contextMenuItems = useMemo(() => buildAppWindowContextMenu({
+    appId: config.app.id,
+    isMaximized,
+    hasInspector,
+    inspectorOpen: isInspectorOpen,
+    onEnterFullscreen,
+    onFocus,
+    onShowInspector: onOpenInspector,
+    onHideInspector: onCloseInspector,
+    onBringToCenter: handleBringToCenter,
+    onToggleMaximize: handleToggleMaximize,
+    onResetWindow: handleResetWindow,
+    onResetView,
+    onClose,
+    onOpenDevtools,
+  }), [
+    config.app.id,
+    isMaximized,
+    hasInspector,
+    isInspectorOpen,
+    onEnterFullscreen,
+    onFocus,
+    onOpenInspector,
+    onCloseInspector,
+    handleBringToCenter,
+    handleToggleMaximize,
+    handleResetWindow,
+    onResetView,
+    onClose,
+    onOpenDevtools,
+  ]);
 
   return (
     <>
@@ -3733,6 +3888,8 @@ function WindowedApp({
         isMaximized={isMaximized}
         onToggleMaximize={handleToggleMaximize}
         contextMenuItems={contextMenuItems}
+        contextMenuScope="chrome"
+        contextMenuActivationMode={contextMenuActivationMode}
         decorations={
           <WindowPorts
             appId={config.app.id}

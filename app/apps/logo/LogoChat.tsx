@@ -89,16 +89,16 @@ function LogoChatSurface({
   const voiceBusy = voiceStatus === 'recording' || voiceStatus === 'transcribing';
   const voiceDisabled = voiceStatus !== 'recording' && (isStreaming || voiceStatus === 'transcribing' || !isVoiceSupported);
   const voiceStatusText = voiceStatus === 'recording'
-    ? 'Listening...'
+    ? 'Listening'
     : voiceStatus === 'transcribing'
-      ? 'Transcribing...'
+      ? 'Transcribing'
       : voiceError;
   const voiceButtonTitle = !isVoiceSupported
     ? 'Voice input is not supported in this browser'
     : voiceStatus === 'recording'
       ? 'Stop voice input'
       : voiceStatus === 'transcribing'
-        ? 'Transcribing...'
+        ? 'Transcribing'
         : 'Dictate prompt';
 
   useEffect(() => {
@@ -232,7 +232,7 @@ function LogoChatSurface({
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Describe a logo direction, or ask me to iterate on the current variant…"
+            placeholder="Describe a logo direction, or ask me to iterate on the current variant"
             className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground/60 caret-accent"
             disabled={isStreaming}
           />

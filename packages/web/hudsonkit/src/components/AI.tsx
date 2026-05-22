@@ -19,7 +19,7 @@ interface AIProps {
 
 export function AI({
   chat,
-  placeholder = 'Ask AI...',
+  placeholder = 'Ask AI',
   inputExtras,
   inputStatus,
   inputValue,
@@ -115,7 +115,7 @@ export function AI({
         {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex justify-start">
             <div className="bg-muted/50 border border-border/50 rounded-lg px-3 py-2 text-muted-foreground">
-              <span className="animate-pulse">...</span>
+              <span className="animate-pulse">Thinking</span>
             </div>
           </div>
         )}

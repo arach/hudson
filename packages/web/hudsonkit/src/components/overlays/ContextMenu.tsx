@@ -36,6 +36,13 @@ export type ContextMenuEntry = ContextMenuAction | ContextMenuSeparator | Contex
 interface HudsonContextMenuProps {
   items: ContextMenuEntry[];
   children: React.ReactNode;
+  /** Modifier that bypasses Hudson's custom menu and lets the browser menu open. */
+  nativeMenuModifier?: 'shift' | 'alt' | 'meta' | 'ctrl';
+  /**
+   * default: normal right-click opens Hudson, modifier opens native browser menu.
+   * modifier: normal right-click opens native browser menu, modifier opens Hudson.
+   */
+  activationMode?: 'default' | 'modifier';
 }
 
 function isSeparator(entry: ContextMenuEntry): entry is ContextMenuSeparator {
@@ -107,12 +114,47 @@ const PopupContent = React.forwardRef<HTMLDivElement, { items: ContextMenuEntry[
 );
 PopupContent.displayName = 'PopupContent';
 
-export function HudsonContextMenu({ items, children }: HudsonContextMenuProps) {
+function shouldBypassToNativeMenu(
+  event: React.MouseEvent,
+  modifier: HudsonContextMenuProps['nativeMenuModifier'],
+) {
+  switch (modifier) {
+    case 'alt':
+      return event.altKey;
+    case 'meta':
+      return event.metaKey;
+    case 'ctrl':
+      return event.ctrlKey;
+    case 'shift':
+    default:
+      return event.shiftKey;
+  }
+}
+
+export function HudsonContextMenu({
+  items,
+  children,
+  nativeMenuModifier = 'alt',
+  activationMode = 'default',
+}: HudsonContextMenuProps) {
   if (items.length === 0) return <>{children}</>;
 
   return (
     <ContextMenu.Root>
-      <ContextMenu.Trigger render={<div style={{ display: 'contents' }} />}>
+      <ContextMenu.Trigger
+        render={(
+          <div
+            style={{ display: 'contents' }}
+            onContextMenuCapture={(event) => {
+              const modifierActive = shouldBypassToNativeMenu(event, nativeMenuModifier);
+              const shouldUseNativeMenu = activationMode === 'modifier' ? !modifierActive : modifierActive;
+              if (shouldUseNativeMenu) {
+                event.stopPropagation();
+              }
+            }}
+          />
+        )}
+      >
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Portal>

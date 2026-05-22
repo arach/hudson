@@ -36,6 +36,7 @@ interface FrameProps {
   zoomControlsRightOffset?: number;
   /** Context menu items shown on right-click on canvas background */
   canvasContextMenuItems?: ContextMenuEntry[];
+  canvasContextMenuActivationMode?: 'default' | 'modifier';
 }
 
 const noop = () => {};
@@ -54,6 +55,7 @@ const Frame: React.FC<FrameProps> = ({
   zoomSensitivity,
   zoomControlsRightOffset,
   canvasContextMenuItems,
+  canvasContextMenuActivationMode,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -219,7 +221,7 @@ const Frame: React.FC<FrameProps> = ({
   return (
     <div ref={frameRef} className="fixed inset-0 bg-background text-foreground overflow-hidden font-sans select-none z-0">
       {/* Layer 0: Canvas (pan/zoom background) */}
-      <HudsonContextMenu items={canvasContextMenuItems ?? []}>
+      <HudsonContextMenu items={canvasContextMenuItems ?? []} activationMode={canvasContextMenuActivationMode}>
         <Canvas
           panOffset={panOffset}
           scale={scale}

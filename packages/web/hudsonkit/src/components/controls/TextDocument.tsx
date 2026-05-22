@@ -356,7 +356,7 @@ function DocumentBody({ editable }: { editable: boolean }) {
         value={value}
         onChange={event => updateValue(event.target.value)}
         className="min-h-0 flex-1 resize-none bg-card/85 px-5 py-4 font-mono text-[12px] leading-relaxed text-foreground/82 outline-none placeholder:text-muted-foreground"
-        placeholder="Start typing..."
+        placeholder="Start typing"
         spellCheck={false}
       />
     );

@@ -103,11 +103,36 @@ function AdminApp() {
 
 ### Hooks
 - **usePersistentState** - localStorage-backed state
+- **useCachedResource** - async resource cache hook with TTL and revalidation
 
 ### Utilities
 - **sounds** - Web Audio synthesizer for UI feedback
 - **logger** - Event bus for Frame activity logging
+- **createHudsonCache** - typed cache with TTL, stale-while-revalidate, in-flight dedupe, tags, and optional local/session storage
 - **chrome** - Design tokens and styling constants
+
+### Cache
+
+```tsx
+import { createHudsonCache, useCachedResource } from 'hudsonkit/cache';
+
+const cache = createHudsonCache({
+  namespace: 'assets',
+  storage: 'session',
+  defaultTtlMs: 30_000,
+  defaultStaleWhileRevalidateMs: 120_000,
+});
+
+function AssetPreview({ id }: { id: string }) {
+  const { data, isLoading, refresh } = useCachedResource(
+    `asset:${id}`,
+    () => fetch(`/api/assets/${id}`).then(r => r.json()),
+    { cache, tags: ['assets'] },
+  );
+
+  return <button onClick={refresh}>{isLoading ? 'Loading' : data?.name}</button>;
+}
+```
 
 ## Requirements
 

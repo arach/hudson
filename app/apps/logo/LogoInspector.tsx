@@ -67,7 +67,7 @@ function FontPicker({ value, onChange }: { value: string; onChange: (v: string) 
             type="text"
             value={query}
             onChange={e => setQuery(e.target.value)}
-            placeholder="Search fonts..."
+            placeholder="Search fonts"
             autoFocus
             className="px-2 py-1.5 text-[11px] bg-transparent border-b border-border text-foreground/90 placeholder:text-muted-foreground/80 outline-none"
           />

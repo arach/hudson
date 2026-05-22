@@ -246,7 +246,7 @@ export function HudsonEnvironmentEditor({
         {entries.length === 0 && (
           <div className="rounded-lg border border-border/60 bg-background/60 px-3 py-3 text-[10px] font-mono text-muted-foreground">
             {environmentStatus === 'loading'
-              ? 'Loading local environment...'
+              ? 'Loading local environment'
               : 'No local environment variables are stored in Hudson yet.'}
           </div>
         )}
