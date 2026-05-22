@@ -17,6 +17,7 @@ Every `hudsonkit` export, organized by subpath. Types are authoritative in [`pac
 | `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
 | `hudsonkit/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
 | `hudsonkit/controls`            | `ParamSection`, `ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`, `CodeViewer`, `CodeEditor` — see controls.md |
+| `hudsonkit/cache`               | `createHudsonCache`, `hudsonCache`, `useCachedResource` — TTL/SWR cache with tag invalidation; see [Cache](./cache.md) |
 | `hudsonkit/voice`               | Opt-in voice plugin — see voice.md                                   |
 | `hudsonkit/observability`       | `HLogger`, `HMetrics`, `HObservability`, `HSpan`, `HTrace` — see observability.md |
 
@@ -52,6 +53,7 @@ Importable from `hudsonkit`:
 | `useAppSettings<T>(appId)`                        | Read/write current app's settings              |
 | `useHudsonAI(options)`                            | Chat transport for the workspace AI panel      |
 | `useAssistant(options)`                           | Wires app intents + commands to an AI chat; see Assistant section below |
+| `useCachedResource(key, loader, options?)`        | Subscribed async resource cache read; see Cache section below |
 | `useTerminalRelay(options)`                       | WebSocket bridge to the terminal relay server  |
 | `useTheme()`                                      | Read/set current theme and template; throws outside `ThemeProvider` |
 | `useOptionalTheme()`                              | Like `useTheme()` but returns `null` outside provider |
@@ -59,6 +61,22 @@ Importable from `hudsonkit`:
 | `useOptionalInstance()`                           | Like `useInstance()` but returns `null` outside provider |
 
 Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonAIOptions`, `AIAttachment`, `AssistantChat`, `UseAssistantOptions`, `TerminalRelayHandle`, `UseTerminalRelayOptions`, `RelayStatus`.
+
+## Cache (from `hudsonkit/cache`)
+
+`hudsonkit/cache` is the shared cache substrate for values that can be refetched or recomputed. It supports TTL, stale-while-revalidate windows, in-flight async dedupe, tag invalidation, optional local/session storage, hydrate/dehydrate, and subscribed React reads.
+
+| Export | Kind | Description |
+|---|---|---|
+| `createHudsonCache(options?)` | Factory | Create a scoped cache with namespace, default TTL/SWR, `maxEntries`, optional storage, and a custom clock. |
+| `hudsonCache` | Instance | Default memory cache with `namespace: 'hudson'`. |
+| `useCachedResource(key, loader, options?)` | Hook | Read/load a cache entry and subscribe to writes, deletes, and invalidations. |
+
+Cache instances expose `read`, `get`, `has`, `set`, `getOrLoad`, `revalidate`, `delete`, `clear`, `invalidateTag`, `keys`, `prune`, `dehydrate`, `hydrate`, and `subscribe`.
+
+Types: `HudsonCache`, `HudsonCacheEntry`, `HudsonCacheRead`, `HudsonCacheEvent`, `HudsonCacheStatus`, `HudsonCacheStorage`, `HudsonCacheLoadOptions`, `HudsonCacheSetOptions`, `HudsonCacheOptions`, `HudsonCacheLoader`, `CachedResourceStatus`, `UseCachedResourceOptions`, `UseCachedResourceResult`.
+
+See [Cache](./cache.md) for the policy guidance: when to use Hudson's primitive, when to keep data in Provider state, and when to reach for TanStack Query, IndexedDB, Cache API, or Next.js caching instead.
 
 ## Components
 
