@@ -23,6 +23,7 @@ import {
   setMuted as setSoundMuted,
   useAppSettings,
   captureWorkspace,
+  HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
@@ -38,7 +39,7 @@ import { useIntentCatalog } from '../hooks/useIntentCatalog';
 import { useIntentExecutor } from '../hooks/useIntentExecutor';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
-import { HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, HudsonTerminal } from './HudsonTerminal';
+import { HudsonTerminal } from './HudsonTerminal';
 import { WorkspaceAI, type WorkspaceAIComposerRequest } from './WorkspaceAI';
 import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
 import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
@@ -2501,7 +2502,7 @@ function WorkspaceInner({
   } = terminalVoiceInput;
   const terminalVoiceRecording = terminalVoiceStatus === 'recording';
   const terminalVoiceTranscribing = terminalVoiceStatus === 'transcribing';
-  const terminalVoiceAvailable = !focusedConsoleApp?.slots.Terminal;
+  const terminalVoiceAvailable = consoleWorkspaceKind === 'terminal';
   const handleTerminalVoiceClick = useCallback(() => {
     if (!terminalVoiceAvailable) return;
 
@@ -2522,7 +2523,7 @@ function WorkspaceInner({
       });
   }, [openWorkspaceConsole, setShowTerminal, startTerminalVoice, stopTerminalVoice, terminalVoiceAvailable, terminalVoiceRecording]);
   const terminalVoiceTitle = (() => {
-    if (!terminalVoiceAvailable) return 'Voice capture is available in the Hudson terminal';
+    if (!terminalVoiceAvailable) return 'Switch to Terminal to record voice';
     if (!terminalVoiceSupported) return 'Voice input is not supported in this browser';
     if (terminalVoiceError) return terminalVoiceError;
     if (terminalVoiceRecording) return 'Stop recording';
@@ -2577,30 +2578,57 @@ function WorkspaceInner({
       >
         {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
       </button>
+    </div>
+  );
+
+  const terminalVoiceOverlay = consoleWorkspaceKind === 'terminal' ? (
+    <div
+      data-hudson-terminal-voice-overlay="true"
+      className={`group flex items-center rounded-full border px-1.5 py-1 shadow-lg backdrop-blur-md transition-all duration-150 ${
+        terminalVoiceRecording
+          ? 'border-red-400/35 bg-red-500/15 text-red-300 opacity-100 shadow-red-950/20'
+          : terminalVoiceError
+            ? 'border-red-400/35 bg-card/90 text-red-400 opacity-85'
+            : terminalVoiceStatus === 'unavailable'
+              ? 'border-amber-400/35 bg-card/90 text-amber-400 opacity-85'
+              : 'border-border/70 bg-card/75 text-muted-foreground opacity-55 hover:opacity-100 hover:text-accent focus-within:opacity-100'
+      }`}
+      title={terminalVoiceTitle}
+    >
       <button
+        data-hudson-terminal-voice-button="true"
         type="button"
         onClick={handleTerminalVoiceClick}
         disabled={!terminalVoiceAvailable || !terminalVoiceSupported || terminalVoiceTranscribing}
-        className={`p-1 rounded transition-colors disabled:opacity-30 disabled:cursor-not-allowed ${
+        className={`flex h-8 w-8 items-center justify-center rounded-full transition-colors disabled:cursor-not-allowed disabled:opacity-40 ${
           terminalVoiceRecording
-            ? 'bg-red-500/15 text-red-300 hover:bg-red-500/20'
+            ? 'bg-red-500/20 text-red-200 hover:bg-red-500/25'
             : terminalVoiceError
               ? 'text-red-400 hover:bg-red-500/10'
               : terminalVoiceStatus === 'unavailable'
                 ? 'text-amber-400 hover:bg-amber-500/10'
-                : 'text-muted-foreground hover:text-accent'
+                : 'text-muted-foreground hover:bg-accent/10 hover:text-accent'
         }`}
         title={terminalVoiceTitle}
         aria-label={terminalVoiceTitle}
       >
         {terminalVoiceTranscribing
-          ? <Loader2 size={12} className="animate-spin" />
+          ? <Loader2 size={14} className="animate-spin" />
           : terminalVoiceRecording
-            ? <Square size={11} />
-            : <Mic size={12} />}
+            ? <Square size={13} />
+            : <Mic size={15} />}
       </button>
+      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable') && (
+        <div className="max-w-[220px] pr-2 text-[10px] font-mono uppercase tracking-[0.12em]">
+          {terminalVoiceRecording
+            ? 'Recording'
+            : terminalVoiceTranscribing
+              ? 'Transcribing'
+              : terminalVoiceError || 'Unavailable'}
+        </div>
+      )}
     </div>
-  );
+  ) : null;
 
   // --- Terminal content ---
   const hudsonTerminalNode = <HudsonTerminal workspace={workspace} catalog={catalog} />;
@@ -2954,6 +2982,7 @@ function WorkspaceInner({
               onHeightChange={setTerminalHeight}
               title={consoleTitle}
               headerActions={terminalHeaderActions}
+              contentOverlay={terminalVoiceOverlay}
             >
               {terminalContent}
             </TerminalDrawer>
@@ -3139,6 +3168,7 @@ function WorkspaceInner({
                 onHeightChange={setTerminalHeight}
                 title={consoleTitle}
                 headerActions={terminalHeaderActions}
+                contentOverlay={terminalVoiceOverlay}
               >
                 {terminalContent}
               </TerminalDrawer>

@@ -53,7 +53,12 @@ export type {
 // AI
 export { AI } from './components/AI';
 export { Assistant } from './components/Assistant';
-export { TerminalRelay, captureWorkspace } from './components/TerminalRelay';
+export {
+  TerminalRelay,
+  captureWorkspace,
+  HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
+} from './components/TerminalRelay';
+export type { HudsonTerminalVoiceTranscriptDetail } from './components/TerminalRelay';
 
 // Utilities
 export * from './lib/sounds';

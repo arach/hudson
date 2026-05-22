@@ -32,6 +32,13 @@ interface TerminalRelayProps {
   quiet?: boolean;
 }
 
+export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
+
+export interface HudsonTerminalVoiceTranscriptDetail {
+  transcript: string;
+  submit?: boolean;
+}
+
 // ---------------------------------------------------------------------------
 // Workspace screenshot capture (shared utility)
 // ---------------------------------------------------------------------------
@@ -174,6 +181,15 @@ function injectXtermCss() {
   document.head.appendChild(style);
 }
 
+function isElementVisible(el: HTMLElement | null): boolean {
+  if (!el) return false;
+  if (!el.closest('[data-hudson-terminal-drawer-content="true"]')) return false;
+  const rect = el.getBoundingClientRect();
+  if (rect.width <= 0 || rect.height <= 0) return false;
+  const style = window.getComputedStyle(el);
+  return style.display !== 'none' && style.visibility !== 'hidden';
+}
+
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
@@ -223,6 +239,7 @@ export function TerminalRelay({
   const containerRef = useRef<HTMLDivElement>(null);
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
+  const pendingVoiceInputRef = useRef<HudsonTerminalVoiceTranscriptDetail | null>(null);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -244,6 +261,41 @@ export function TerminalRelay({
 
   // ---- Upload helper ----
   const uploadUrl = `${apiBaseUrl}/api/relay/upload`;
+
+  const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
+    const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
+    if (!transcript) return;
+    sendInput(detail.submit ? `${transcript}\r` : transcript);
+  }, [sendInput]);
+
+  useEffect(() => {
+    const handleVoiceTranscript = (event: Event) => {
+      if (!isElementVisible(wrapperRef.current)) return;
+
+      const detail = (event as CustomEvent<HudsonTerminalVoiceTranscriptDetail>).detail;
+      if (!detail || typeof detail.transcript !== 'string') return;
+
+      if (status === 'connected') {
+        sendVoiceTranscript(detail);
+        return;
+      }
+
+      pendingVoiceInputRef.current = detail;
+      if (status !== 'connecting') {
+        connect();
+      }
+    };
+
+    window.addEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+    return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
+  }, [connect, sendVoiceTranscript, status]);
+
+  useEffect(() => {
+    if (status !== 'connected' || !pendingVoiceInputRef.current) return;
+    const detail = pendingVoiceInputRef.current;
+    pendingVoiceInputRef.current = null;
+    sendVoiceTranscript(detail);
+  }, [sendVoiceTranscript, status]);
 
   const uploadFile = useCallback(async (file: File): Promise<string | null> => {
     try {

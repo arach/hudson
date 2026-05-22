@@ -19,6 +19,8 @@ interface TerminalDrawerProps {
   title?: React.ReactNode;
   /** Extra actions rendered in the header bar (right of title, left of grip) */
   headerActions?: React.ReactNode;
+  /** Floating controls rendered over the drawer content, outside terminal layout. */
+  contentOverlay?: React.ReactNode;
   children: React.ReactNode;
 }
 
@@ -33,7 +35,7 @@ const chromeGripStyle = {
 const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
   isOpen, onClose, onToggleMaximize, isMaximized = false,
   height = 320, onHeightChange,
-  title, headerActions, children
+  title, headerActions, contentOverlay, children
 }) => {
   const draggingRef = useRef(false);
   const drawerRef = useRef<HTMLDivElement>(null);
@@ -129,8 +131,18 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
       </div>
 
       {/* Content */}
-      <div className="flex-1 relative overflow-hidden flex flex-col bg-transparent">
+      <div
+        data-hudson-terminal-drawer-content="true"
+        className="flex-1 relative overflow-hidden flex flex-col bg-transparent"
+      >
         {children}
+        {contentOverlay && (
+          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center px-4">
+            <div className="pointer-events-auto">
+              {contentOverlay}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );
