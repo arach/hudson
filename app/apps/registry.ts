@@ -44,6 +44,7 @@ import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { dayStackApp } from './day-stack';
 import { workflowLabApp } from './workflow-lab';
+import { vantageApp } from './vantage';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
@@ -93,6 +94,7 @@ function getAppById(id: string): HudsonApp | null {
     'stage-design': stageDesignApp,
     'day-stack': dayStackApp,
     'workflow-lab': workflowLabApp,
+    'vantage': vantageApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -287,6 +289,11 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
       app: jsonExplorerApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 560, y: 360, w: 620, h: 460 },
+    },
+    {
+      app: vantageApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -220, y: 360, w: 760, h: 560 },
     },
   ];
 }

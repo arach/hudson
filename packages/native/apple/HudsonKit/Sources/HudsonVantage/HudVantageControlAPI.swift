@@ -504,7 +504,7 @@ final class HudVantageControlAPI: ObservableObject {
         case decodeFailure(String)
     }
 
-    private let queue = DispatchQueue(label: "dev.arach.hudson.vantage.control-api")
+    private let queue = DispatchQueue(label: "com.hudsonkit.vantage.control-api")
     private var pollTimer: DispatchSourceTimer?
     private var readOffset: UInt64 = 0
     private let decoder = JSONDecoder()
