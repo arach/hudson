@@ -33,10 +33,21 @@ if (!existsSync(outDir)) {
 
 const sdkSrc = join(root, 'packages/web/hudsonkit/src');
 
+function resolveHudsonkitSource(subpath) {
+  const candidates = [
+    join(sdkSrc, `${subpath}.ts`),
+    join(sdkSrc, `${subpath}.tsx`),
+    join(sdkSrc, subpath, 'index.ts'),
+    join(sdkSrc, subpath, 'index.tsx'),
+  ];
+  return candidates.find((candidate) => existsSync(candidate));
+}
+
 // Resolve `hudsonkit` and `hudsonkit/<sub>` against the SDK source tree (top-
-// level barrel files like src/shell.ts, src/controls.ts). The package's
-// exports map points at dist/, but the embed client bundle is built from
-// source so local SDK edits flow through without a separate SDK build step.
+// level barrel files like src/shell.ts, nested barrels like
+// src/workflow/index.ts). The package's exports map points at dist/, but the
+// embed client bundle is built from source so local SDK edits flow through
+// without a separate SDK build step.
 const hudsonkitResolverPlugin = {
   name: 'hudsonkit-src-resolver',
   setup(build) {
@@ -45,7 +56,15 @@ const hudsonkitResolverPlugin = {
         return { path: join(sdkSrc, 'index.ts') };
       }
       const sub = args.path.slice('hudsonkit/'.length);
-      return { path: join(sdkSrc, `${sub}.ts`) };
+      const sourcePath = resolveHudsonkitSource(sub);
+      if (!sourcePath) {
+        return {
+          errors: [{
+            text: `Could not resolve ${args.path} against HudsonKit source entries`,
+          }],
+        };
+      }
+      return { path: sourcePath };
     });
   },
 };
