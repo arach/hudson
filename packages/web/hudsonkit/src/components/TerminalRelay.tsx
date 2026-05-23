@@ -417,11 +417,26 @@ export function TerminalRelay({
     let terminal: import('@xterm/xterm').Terminal | null = null;
 
     async function init() {
-      const [{ Terminal }, { FitAddon }, webglMod] = await Promise.all([
+      const [xtermMod, fitMod, webglMod] = await Promise.all([
         import('@xterm/xterm'),
         import('@xterm/addon-fit'),
         import('@xterm/addon-webgl').catch(() => null),
       ]);
+
+      // Some bundlers (notably Next 15+/Turbopack) wrap CJS-shaped packages
+      // into { default: { Terminal: … } } when consumed via dynamic ESM
+      // import, even though Node and Vite expose them as named exports.
+      // Read from either shape so we work across runtimes.
+      const Terminal = ((xtermMod as any).Terminal ?? (xtermMod as any).default?.Terminal) as typeof import('@xterm/xterm').Terminal | undefined;
+      const FitAddon = ((fitMod as any).FitAddon ?? (fitMod as any).default?.FitAddon) as typeof import('@xterm/addon-fit').FitAddon | undefined;
+      const WebglAddon = webglMod
+        ? ((webglMod as any).WebglAddon ?? (webglMod as any).default?.WebglAddon) as typeof import('@xterm/addon-webgl').WebglAddon | undefined
+        : undefined;
+
+      if (!Terminal || !FitAddon) {
+        console.error('[TerminalRelay] @xterm/xterm or @xterm/addon-fit missing constructors', { xtermMod, fitMod });
+        return;
+      }
 
       injectXtermCss();
 
@@ -445,9 +460,9 @@ export function TerminalRelay({
       terminal.open(containerRef.current);
 
       // GPU-accelerated rendering (graceful fallback to DOM renderer)
-      if (webglMod) {
+      if (WebglAddon) {
         try {
-          const webglAddon = new webglMod.WebglAddon();
+          const webglAddon = new WebglAddon();
           webglAddon.onContextLoss(() => { webglAddon.dispose(); });
           terminal.loadAddon(webglAddon);
         } catch {}
