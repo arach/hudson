@@ -78,6 +78,20 @@ export type { VoxAvailability } from './lib/voxProbe';
 export { safeLocalStorage, safeSessionStorage } from './lib/safe-storage';
 export type { SafeStorage } from './lib/safe-storage';
 export { createHudsonId } from './lib/id';
+export { agentCopy, agentCopyToClipboard } from './lib/agentCopy';
+export type { AgentCopyOptions, AgentCopyRenderer } from './lib/agentCopy';
+
+// Copy-context React surface (scope wrapper, themed button, context-menu hook)
+export {
+  CopyContextScope,
+  useCopyContextScope,
+  CopyContextButton,
+  useCopyContextInScope,
+} from './components/copy-context';
+export type {
+  CopyContextScopeProps,
+  CopyContextButtonProps,
+} from './components/copy-context';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
