@@ -25,18 +25,18 @@ function NodeCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors ${
+      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 ${
         selected
-          ? 'border-cyan-500/25 bg-cyan-500/8'
+          ? 'border-cyan-500/30 bg-cyan-500/10'
           : 'border-border/50 bg-muted/10 hover:border-border hover:bg-muted/20'
       }`}
     >
       <div className="flex items-center justify-between gap-2">
-        <span className="truncate text-[12px] font-medium text-foreground/85">
+        <span className="truncate text-[12px] font-medium text-foreground/90">
           {node.title ?? node.id.slice(0, 8)}
         </span>
         {node.selected && (
-          <span className="rounded bg-cyan-500/10 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300">
+          <span className="shrink-0 rounded bg-cyan-500/12 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300">
             selected
           </span>
         )}
@@ -52,7 +52,7 @@ function NodeCard({
             </span>
           )}
           {node.tag && (
-            <span className="rounded border border-teal-500/15 bg-teal-500/8 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-teal-300/90">
+            <span className="rounded border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-teal-300">
               {node.tag}
             </span>
           )}
@@ -76,9 +76,9 @@ export function VantageContent() {
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3 px-0.5">
-          <div>
+          <div className="min-w-0">
             <SectionLabel label="Workspace" />
-            <p className="px-2.5 text-sm text-foreground/80">
+            <p className="px-2.5 truncate text-sm text-foreground/85">
               {status?.workspaceID ?? 'No workspace'}
               {status?.nodeCount != null ? ` · ${status.nodeCount} nodes` : ''}
             </p>

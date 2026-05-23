@@ -21,9 +21,9 @@ export function VantageInspector() {
     <div className="flex h-full flex-col">
       <div className="border-b border-border/50 p-4">
         <SectionLabel label="Inspector" />
-        <h3 className="px-2.5 text-sm font-medium text-foreground/90">{selectedNode.title ?? 'Untitled node'}</h3>
+        <h3 className="px-2.5 text-sm font-medium text-foreground/90 truncate">{selectedNode.title ?? 'Untitled node'}</h3>
         {selectedNode.subtitle && (
-          <p className="mt-1 px-2.5 font-mono text-[10px] text-muted-foreground">{selectedNode.subtitle}</p>
+          <p className="mt-1 px-2.5 font-mono text-[10px] text-muted-foreground break-all">{selectedNode.subtitle}</p>
         )}
       </div>
 
