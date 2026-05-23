@@ -2,7 +2,7 @@
 import PackageDescription
 
 let package = Package(
-    name: "TerminiCanvas",
+    name: "VantageCanvas",
     platforms: [
         .macOS(.v14),
     ],
@@ -11,12 +11,11 @@ let package = Package(
     ],
     targets: [
         .executableTarget(
-            name: "TerminiCanvas",
+            name: "VantageCanvas",
             dependencies: [
-                .product(name: "HudsonUI", package: "Hudson"),
                 .product(name: "HudsonVantage", package: "Hudson"),
             ],
-            path: "Sources/TerminiCanvas"
+            path: "Sources/VantageCanvas"
         ),
     ]
 )

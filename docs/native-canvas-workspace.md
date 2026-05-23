@@ -10,7 +10,7 @@ Native Hudson apps should not be dead-end demos. An app should define its identi
 - `HudWorkspaceShell` as one app among many.
 - A canvas window/card host without rewriting the app body.
 
-The `examples/termini-canvas` app is the pressure test: many heavyweight Termini surfaces expose whether the native canvas primitives are stable enough for real work. The durable runtime identity direction is tracked separately in [tmux + Graphite workspaces](./tmux-graphite-workspaces.md).
+The `apps/vantage` app is the pressure test: many heavyweight Termini surfaces expose whether the native canvas primitives are stable enough for real work. The durable runtime identity direction is tracked separately in [tmux + Graphite workspaces](./tmux-graphite-workspaces.md).
 
 ## Proposed layers
 
@@ -162,7 +162,7 @@ Persistence should be debounced and explicit. Gesture frames are not persistence
 
 ## Extraction plan
 
-1. Keep improving `examples/termini-canvas` until 64 Termini nodes can pan, zoom, select, and move without beach-ball pauses.
+1. Keep improving `apps/vantage` until 64 Termini nodes can pan, zoom, select, and move without beach-ball pauses.
 2. Extract the viewport state, transform helpers, zoom HUD, hand/select tool model, and marquee hit testing into `HudsonShell`.
 3. Replace the sample's local viewport with `HudCanvasViewport`.
 4. Introduce `HudNativeApp` and a minimal `HudWorkspaceShell` that can host one app in standalone mode or many apps in canvas mode.

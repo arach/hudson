@@ -206,7 +206,7 @@ Hosts can seed a Vantage at launch with environment variables:
 HUDSON_VANTAGE_REATTACH_IDS="hudson.lab.termini.canvas.0042.shell" \
 HUDSON_VANTAGE_REATTACH_SESSIONS="hudson-lab" \
 HUDSON_VANTAGE_REATTACH_CREATE=1 \
-HUDSONKIT_WITH_TERMINAL=1 swift run --package-path examples/termini-canvas TerminiCanvas
+HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/vantage VantageCanvas
 ```
 
 Legacy `TERMINI_CANVAS_REATTACH_*` variables still work for the case-study app.
@@ -219,11 +219,11 @@ Hosts can also restore from a saved state file at launch:
 HUDSON_VANTAGE_STATE_FILE=/tmp/scout-vantage-state.json \
 HUDSON_VANTAGE_RESTORE_ON_LAUNCH=1 \
 HUDSON_VANTAGE_RESTORE_CREATE=1 \
-HUDSONKIT_WITH_TERMINAL=1 swift run --package-path examples/termini-canvas TerminiCanvas
+HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/vantage VantageCanvas
 ```
 
 `HudVantageConfiguration.terminiCanvasCaseStudy` opts into launch restore and
-uses `/tmp/termini-canvas-state.json`. If the state file is missing or contains
+uses `/tmp/hudson-vantage-state.json`. If the state file is missing or contains
 no durable tmux nodes, the sample falls back to its starter local PTY layout.
 
 ## Response Shape

@@ -13,11 +13,11 @@ Default Vantage paths:
 /tmp/hudson-vantage-control.responses.jsonl
 ```
 
-The Termini Canvas case study uses:
+The Vantage product (`apps/vantage`) uses:
 
 ```text
-/tmp/termini-canvas-control.jsonl
-/tmp/termini-canvas-control.responses.jsonl
+/tmp/hudson-vantage-control.jsonl
+/tmp/hudson-vantage-control.responses.jsonl
 ```
 
 Hosts can override these paths through `HudVantageConfiguration`. Shell wrappers also accept `--control-file`, `--response-file`, and `--state-file`.
@@ -447,7 +447,7 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote d
 Termini Canvas exposes the same commands through:
 
 ```bash
-examples/termini-canvas/scripts/canvasctl.sh --wait status
-examples/termini-canvas/scripts/canvasctl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
-examples/termini-canvas/scripts/canvasctl.sh --wait setup --manifest examples/termini-canvas/examples/scout-vantage.setup.json --create --fit
+apps/vantage/scripts/vantagectl.sh --wait status
+apps/vantage/scripts/vantagectl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+apps/vantage/scripts/vantagectl.sh --wait setup --manifest apps/vantage/fixtures/scout-vantage.setup.json --create --fit
 ```

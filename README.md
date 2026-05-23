@@ -29,27 +29,26 @@ The case study walks through the build *and* the real friction points we hit con
 
 ## Native Vantage
 
-Hudson now has an early Apple-native `HudsonVantage` module: an embeddable
-spatial surface for durable runtimes. Scout, Talkie, Fabric, or a standalone
-app can each host **a Vantage** and control it from outside through a JSONL
-control lane.
-
-The first case study is the Termini canvas app:
+Hudson ships **Vantage** — a native macOS spatial canvas for tmux sessions,
+terminals, and workspace artifacts. The surface is embeddable via `HudsonVantage`;
+Scout, Talkie, Fabric, or your own app can host one too.
 
 ```sh
-examples/termini-canvas/scripts/run-app.sh
+apps/vantage/scripts/run-app.sh
 ```
 
-See [Hudson Vantage](./docs/hudson-vantage.md) for the module boundary.
+See [Hudson Vantage](./docs/hudson-vantage.md) for the SDK boundary.
 
 ## Orientation
 
 ```
 app/                     # The Hudson workspace itself (Next.js 16)
+apps/vantage/            # Native Vantage macOS product (VantageCanvas host)
 packages/web/hudsonkit/     # Shell + primitives (workspace-internal package)
 packages/native/apple/HudsonKit/ # Apple-native Swift package
 packages/services/hudson-relay/  # Terminal relay service
 docs/                    # Architecture, case study, builder notes
+examples/                # SDK reference apps (hudsonkit-reference, …)
 ```
 
 Dev:
