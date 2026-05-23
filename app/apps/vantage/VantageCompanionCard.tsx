@@ -12,7 +12,7 @@ export function VantageCompanionCard() {
   return (
     <PanelShell className="p-4">
       <div className="flex items-start gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan-500/15 bg-cyan-500/8 text-cyan-300">
+        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
           <VantageIcon size={18} />
         </div>
 
@@ -29,14 +29,16 @@ export function VantageCompanionCard() {
           </p>
 
           {(status?.profileLabel || status?.latencyMs != null) && (
-            <p className="mt-2 font-mono text-[10px] text-muted-foreground/70">
+            <p className="mt-2 font-mono text-[10px] text-muted-foreground/75 tabular-nums">
               {status?.profileLabel}
               {status?.latencyMs != null ? ` · ${status.latencyMs}ms` : ''}
               {status?.nodeCount != null ? ` · ${status.nodeCount} nodes` : ''}
             </p>
           )}
 
-          {error && <p className="mt-2 text-[11px] text-red-400/90">{error}</p>}
+          {error && (
+            <p className="mt-2 text-[11px] leading-snug text-red-400 break-words">{error}</p>
+          )}
 
           <div className="mt-3 flex flex-wrap gap-2">
             {!online && (

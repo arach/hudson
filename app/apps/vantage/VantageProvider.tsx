@@ -146,7 +146,7 @@ export function VantageProvider({
     };
   }, [disabled, visible, focused, refresh]);
 
-  const nodes = status?.nodes ?? [];
+  const nodes = useMemo(() => status?.nodes ?? [], [status?.nodes]);
   const filteredNodes = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();
     if (!query) return nodes;

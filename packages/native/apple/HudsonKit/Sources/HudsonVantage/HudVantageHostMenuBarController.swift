@@ -152,19 +152,15 @@ public final class HudVantageHostMenuBarController: NSObject, NSPopoverDelegate 
         menu.addItem(item)
     }
 
-    @objc private func menuShowMain() { performHostAction { showMainWindow() } }
-    @objc private func menuCommandPalette() { performHostAction { model?.send(.showCommandPalette); showMainWindow() } }
-    @objc private func menuLens() { performHostAction { model?.send(.openLens); showMainWindow() } }
-    @objc private func menuSaveWorkspace() { performHostAction { model?.send(.saveWorkspace) } }
-    @objc private func menuRevealControl() { performHostAction { model?.revealControlFile() } }
-    @objc private func menuCopyPaths() { performHostAction { model?.copyControlPaths() } }
-    @objc private func menuAbout() { performHostAction { model?.showsAbout = true; showMainWindow() } }
-    @objc private func menuSettings() { performHostAction { openSettings() } }
+    @objc private func menuShowMain() { showMainWindow() }
+    @objc private func menuCommandPalette() { model?.send(.showCommandPalette); showMainWindow() }
+    @objc private func menuLens() { model?.send(.openLens); showMainWindow() }
+    @objc private func menuSaveWorkspace() { model?.send(.saveWorkspace) }
+    @objc private func menuRevealControl() { model?.revealControlFile() }
+    @objc private func menuCopyPaths() { model?.copyControlPaths() }
+    @objc private func menuAbout() { model?.showsAbout = true; showMainWindow() }
+    @objc private func menuSettings() { openSettings() }
     @objc private func menuQuit() { NSApp.terminate(nil) }
-
-    private func performHostAction(_ action: @MainActor () -> Void) {
-        Task { @MainActor in action() }
-    }
 
     private func showMainWindow() {
         dismissPopover()
