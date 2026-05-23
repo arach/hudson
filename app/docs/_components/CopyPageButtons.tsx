@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useCallback, useRef } from "react";
+import { agentCopy } from "hudsonkit";
 
 interface CopyPageButtonsProps {
   markdown: string;
@@ -33,16 +34,16 @@ function CopyButton({ label, getText }: { label: string; getText: () => string }
 }
 
 export function CopyPageButtons({ markdown }: CopyPageButtonsProps) {
-  const getPlainText = useCallback(() => {
+  const getAgentMarkdown = useCallback(() => {
     const article = document.querySelector(".docs-prose");
-    return article?.textContent ?? "";
+    return article ? agentCopy(article) : "";
   }, []);
 
   const getMarkdown = useCallback(() => markdown, [markdown]);
 
   return (
     <div className="flex items-center gap-2">
-      <CopyButton label="Copy for agent" getText={getPlainText} />
+      <CopyButton label="Copy for agent" getText={getAgentMarkdown} />
       <CopyButton label="Copy markdown" getText={getMarkdown} />
     </div>
   );
