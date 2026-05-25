@@ -10,6 +10,7 @@ import {
   CommandPalette,
   CommandDock,
   TerminalDrawer,
+  SHELL_THEME,
 } from 'hudsonkit/shell';
 import {
   usePersistentState,
@@ -224,6 +225,10 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
     terminalHeight,
     isTerminalMaximized,
   }), [leftWidth, rightWidth, leftCollapsed, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized]);
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const canvasHeightAboveTerminal = viewport.height - SHELL_THEME.layout.statusBarHeight - terminalCanvasBottomOffset;
+  const showCanvasZoomControls = !showTerminal
+    || (!isTerminalMaximized && (viewport.height === 0 || canvasHeightAboveTerminal >= 160));
 
   // Left panel footer: LeftFooter slot + CommandDock + Minimap (shell chrome)
   const leftFooter = (
@@ -261,6 +266,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
       onViewportChange={setViewport}
       zoomSensitivity={shellSettings.zoomSensitivity}
       zoomControlsRightOffset={rightCollapsed ? 0 : rightWidth}
+      zoomControlsBottomOffset={terminalCanvasBottomOffset}
+      showZoomControls={showCanvasZoomControls}
       {...(isCanvasMode ? { canvasProps: { showGuides, onGuidesChange: setShowGuides } } : {})}
       hud={
         <>

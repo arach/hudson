@@ -9,7 +9,9 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       '.claude/**',
+      '.build/**',
       'examples/**/.build/**',
+      'packages/native/**/.build/**',
     ],
   },
   resolve: {

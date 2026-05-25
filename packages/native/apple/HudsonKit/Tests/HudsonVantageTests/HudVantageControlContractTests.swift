@@ -206,6 +206,9 @@ final class HudVantageControlContractTests: XCTestCase {
             "kind": "hudson.vantage.setup",
             "schemaVersion": 1,
             "workspaceID": "scout-lab",
+            "handoffId": "handoff-1779250564641-425a5e93",
+            "handoffPath": "/tmp/openscout/vantage/handoff.json",
+            "setupPath": "/tmp/openscout/vantage/handoff.setup.json",
             "presentation": {
               "title": "Scout Vantage",
               "subtitle": "native operating surface",
@@ -251,6 +254,9 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.removeMissing, true)
         let manifest = try XCTUnwrap(command.setupManifest)
         XCTAssertEqual(manifest.workspaceID, "scout-lab")
+        XCTAssertEqual(manifest.handoffId, "handoff-1779250564641-425a5e93")
+        XCTAssertEqual(manifest.handoffPath, "/tmp/openscout/vantage/handoff.json")
+        XCTAssertEqual(manifest.setupPath, "/tmp/openscout/vantage/handoff.setup.json")
         XCTAssertEqual(manifest.presentation?.title, "Scout Vantage")
         XCTAssertEqual(manifest.presentation?.cobrand, "powered by Hudson")
         XCTAssertEqual(manifest.presentation?.theme, "jade")
@@ -546,6 +552,7 @@ final class HudVantageControlContractTests: XCTestCase {
             message: "1 terminals",
             errorCode: nil,
             workspaceID: "scout-lab",
+            handoffId: "handoff-1779250564641-425a5e93",
             nodeCount: 1,
             nodes: [
                 HudVantageControlNode(
@@ -656,6 +663,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
         XCTAssertEqual(object["ok"] as? Bool, true)
         XCTAssertEqual(object["workspaceID"] as? String, "scout-lab")
+        XCTAssertEqual(object["handoffId"] as? String, "handoff-1779250564641-425a5e93")
         XCTAssertEqual(object["nodeCount"] as? Int, 1)
         XCTAssertEqual(object["statePath"] as? String, "/tmp/scout-vantage-state.json")
         XCTAssertEqual(object["tmuxPath"] as? String, "/opt/homebrew/bin/tmux")
@@ -723,6 +731,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
         XCTAssertEqual(object["errorCode"] as? String, "node_not_found")
         XCTAssertFalse(object.keys.contains("nodes"))
+        XCTAssertFalse(object.keys.contains("handoffId"))
         XCTAssertFalse(object.keys.contains("viewport"))
         XCTAssertFalse(object.keys.contains("metrics"))
     }

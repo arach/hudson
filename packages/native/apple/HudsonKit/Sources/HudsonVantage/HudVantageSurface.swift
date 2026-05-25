@@ -121,6 +121,9 @@ private enum HudVantageMetrics {
     static let commandPaletteTopPadding = HudLayout.navHeight
         + HudSpacing.huge
         + HudSpacing.lg
+    static let announceOverlayMaxWidth = HudLayout.popoverWidth + HudSpacing.huge + HudSpacing.xl
+    static let announceOverlayShadowRadius = HudSpacing.xxxl - HudSpacing.xxs
+    static let sceneTabMaxWidth = HudLayout.panelWidth - HudSpacing.huge - HudSpacing.xxxl - HudSpacing.xl
 }
 
 private extension HudTheme {
@@ -717,6 +720,44 @@ private struct VantagePresentationState: Hashable {
     }
 }
 
+private struct VantageSceneTab: Identifiable, Equatable {
+    let manifestPath: String?
+    let title: String
+    let subtitle: String?
+    let badge: String?
+    let accent: String?
+    let appliedAt: Date
+
+    var id: String {
+        manifestPath ?? "inline-\(appliedAt.timeIntervalSince1970)"
+    }
+
+    static let recentsCap = 8
+
+    static func make(
+        manifestPath: String?,
+        presentation: HudVantageSetupPresentation?,
+        fallbackTitle: String
+    ) -> VantageSceneTab {
+        let title: String = {
+            if let value = presentation?.title, !value.isEmpty { return value }
+            if let value = presentation?.productName, !value.isEmpty { return value }
+            if let path = manifestPath, !path.isEmpty {
+                return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            }
+            return fallbackTitle
+        }()
+        return VantageSceneTab(
+            manifestPath: manifestPath,
+            title: title,
+            subtitle: presentation?.subtitle,
+            badge: presentation?.badge,
+            accent: presentation?.accent ?? presentation?.theme,
+            appliedAt: Date()
+        )
+    }
+}
+
 private enum HudVantageStateError: Error, LocalizedError {
     case stateFileMissing(String)
     case missingRuntimeTarget(UUID)
@@ -903,6 +944,13 @@ public struct HudVantageSurface: View {
     @State private var styleProfile: HudVantageStyleProfile = .adaptive
     @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
     @State private var presentationState = VantagePresentationState()
+    @State private var activeWorkspaceID: String?
+    @State private var activeHandoffID: String?
+    @State private var sceneTabs: [VantageSceneTab] = []
+    @State private var announceTab: VantageSceneTab?
+    @State private var announceDismissTask: Task<Void, Never>?
+    @State private var hoverPoint: CGPoint?
+    @State private var zoomGestureAnchor: CGPoint?
     @State private var appearanceSettingsPresented = false
     @State private var commandPalettePresented = false
     @State private var lensPresented = false
@@ -1085,6 +1133,53 @@ public struct HudVantageSurface: View {
     private var surfaceOverlay: some View {
         commandPaletteOverlay
         lensOverlay
+        announceOverlay
+    }
+
+    @ViewBuilder
+    private var announceOverlay: some View {
+        if let tab = announceTab {
+            VStack(spacing: HudSpacing.xs) {
+                if let badge = tab.badge, !badge.isEmpty {
+                    HudBadge(
+                        badge.uppercased(),
+                        tint: activeTheme.palette.statusInfo,
+                        dot: true
+                    )
+                }
+                Text(tab.title)
+                    .font(HudFont.mono(HudTextSize.base, weight: .bold))
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if let subtitle = tab.subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(HudFont.mono(HudTextSize.sm))
+                        .foregroundStyle(activeTheme.palette.muted)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+            }
+            .padding(.horizontal, HudSpacing.xl)
+            .padding(.vertical, HudSpacing.lg)
+            .frame(maxWidth: HudVantageMetrics.announceOverlayMaxWidth)
+            .background(
+                RoundedRectangle(cornerRadius: activeTheme.radius.card)
+                    .fill(activeTheme.palette.chrome)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: activeTheme.radius.card)
+                    .strokeBorder(activeTheme.hairline.standard, lineWidth: 0.5)
+            )
+            .shadow(color: activeTheme.vantageShadow, radius: HudVantageMetrics.announceOverlayShadowRadius, y: HudSpacing.sm)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .allowsHitTesting(false)
+            .transition(
+                .opacity.combined(
+                    with: .scale(scale: 0.96, anchor: .center)
+                )
+            )
+        }
     }
 
     @ViewBuilder
@@ -1459,6 +1554,22 @@ public struct HudVantageSurface: View {
         presentationState.subtitle ?? presentationState.cobrand ?? configuration.surfaceSubtitle
     }
 
+    private var vantageLinkLabel: String? {
+        let workspace = activeWorkspaceID ?? configuration.workspaceID
+        if let handoffID = compactHandoffID(activeHandoffID) {
+            return "\(workspace) · \(handoffID)"
+        }
+        return workspace
+    }
+
+    private func compactHandoffID(_ value: String?) -> String? {
+        guard var handoffID = trimmed(value) else { return nil }
+        if handoffID.hasPrefix("handoff-") {
+            handoffID.removeFirst("handoff-".count)
+        }
+        return String(handoffID.prefix(18))
+    }
+
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
             if let focusedNode {
@@ -1469,6 +1580,9 @@ public struct HudVantageSurface: View {
                     .foregroundStyle(activeTheme.palette.ink)
                 if let badge = presentationState.badge {
                     HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
+                if let linkLabel = vantageLinkLabel {
+                    vantageLinkText(linkLabel)
                 }
                 HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
                 Text(focusedNode.title)
@@ -1502,6 +1616,9 @@ public struct HudVantageSurface: View {
                 if let badge = presentationState.badge {
                     HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
                 }
+                if let linkLabel = vantageLinkLabel {
+                    vantageLinkText(linkLabel)
+                }
                 Text(presentationSubtitle)
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -1534,6 +1651,15 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func vantageLinkText(_ label: String) -> some View {
+        Text(label)
+            .font(HudFont.mono(9, weight: .semibold))
+            .foregroundStyle(activeTheme.palette.statusInfo.opacity(HudOpacity.emphatic))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .help("Scout/Vantage link identifier")
+    }
+
     private var terminalCanvasShell: some View {
         VStack(spacing: 0) {
             canvasHeader
@@ -1542,8 +1668,102 @@ public struct HudVantageSurface: View {
                 .frame(height: HudLayout.navHeight)
                 .background(activeTheme.palette.chrome)
             HudDivider(color: activeTheme.hairline.standard)
+            sceneTabBar
             canvasViewport
         }
+    }
+
+    private var sceneTabBar: some View {
+        VStack(spacing: 0) {
+            HStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: HudSpacing.xs) {
+                        ForEach(sceneTabs) { tab in
+                            sceneTabButton(tab)
+                        }
+                    }
+                    .padding(.leading, HudSpacing.xxl)
+                    .padding(.trailing, HudSpacing.sm)
+                    .padding(.vertical, HudSpacing.xs)
+                }
+                newWorkspaceButton
+                    .padding(.trailing, HudSpacing.xxl)
+            }
+            .frame(height: HudLayout.buttonHeight)
+            .background(activeTheme.palette.chrome)
+            HudDivider(color: activeTheme.hairline.standard)
+        }
+    }
+
+    private var newWorkspaceButton: some View {
+        Button {
+            createBlankWorkspace()
+        } label: {
+            Image(systemName: "plus")
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(activeTheme.palette.muted)
+                .frame(width: HudIconSize.small, height: HudIconSize.small)
+                .background(
+                    RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                        .fill(Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                        .strokeBorder(activeTheme.hairline.standard, lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .help("New workspace")
+    }
+
+    private func sceneTabButton(_ tab: VantageSceneTab) -> some View {
+        let isActive = tab.id == activeSceneTabID
+        let isClickable = tab.manifestPath != nil
+        return Button {
+            applySceneTab(tab)
+        } label: {
+            HStack(spacing: HudSpacing.xs) {
+                HudStatusDot(
+                    color: isActive
+                        ? activeTheme.palette.statusInfo
+                        : activeTheme.palette.muted,
+                    size: HudDotSize.tiny
+                )
+                Text(tab.title)
+                    .font(HudFont.mono(HudTextSize.xxs, weight: isActive ? .bold : .regular))
+                    .tracking(0.6)
+                    .foregroundStyle(
+                        isActive
+                            ? activeTheme.palette.ink
+                            : activeTheme.palette.muted
+                    )
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.horizontal, HudSpacing.sm)
+            .padding(.vertical, HudSpacing.xs)
+            .frame(maxWidth: HudVantageMetrics.sceneTabMaxWidth)
+            .background(
+                RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                    .fill(
+                        isActive
+                            ? HudSurface.tintFill(activeTheme.palette.statusInfo)
+                            : Color.clear
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                    .strokeBorder(
+                        isActive
+                            ? HudSurface.tintMuted(activeTheme.palette.statusInfo)
+                            : activeTheme.hairline.standard,
+                        lineWidth: 0.5
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!isClickable)
+        .help(tab.subtitle ?? tab.title)
     }
 
     private var canvasViewport: some View {
@@ -1589,6 +1809,7 @@ public struct HudVantageSurface: View {
                     },
                     onCommandPalette: openCommandPalette,
                     onShortcut: handleCanvasShortcut,
+                    onCursorMoved: { point in hoverPoint = point },
                     isLensPresented: lensPresented,
                     cursor: canvasCursor
                 )
@@ -1612,8 +1833,8 @@ public struct HudVantageSurface: View {
                 if !isTerminalFocusActive {
                     CanvasZoomTool(
                         scale: canvasState.scale,
-                        onZoomOut: { zoom(by: 0.5) },
-                        onZoomIn: { zoom(by: 2) },
+                        onZoomOut: { zoom(by: 0.8) },
+                        onZoomIn: { zoom(by: 1.25) },
                         onReset: {
                             resetCanvasViewport()
                             schedulePersistStateIfConfigured()
@@ -1687,12 +1908,17 @@ public struct HudVantageSurface: View {
         MagnificationGesture()
             .onChanged { value in
                 guard !isTerminalFocusActive else { return }
+                if zoomStart == nil {
+                    zoomStart = canvasState.scale
+                    zoomGestureAnchor = hoverPoint ?? canvasState.viewportCenter
+                }
                 let start = zoomStart ?? canvasState.scale
-                zoomStart = start
-                setCanvasScale(start * value, around: canvasState.viewportCenter)
+                let anchor = zoomGestureAnchor ?? canvasState.viewportCenter
+                setCanvasScale(start * value, around: anchor)
             }
             .onEnded { _ in
                 zoomStart = nil
+                zoomGestureAnchor = nil
             }
     }
 
@@ -3408,6 +3634,113 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func recordSceneTab(
+        manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) {
+        let path = trimmed(command.manifestPath ?? command.statePath)
+        let tab = VantageSceneTab.make(
+            manifestPath: path,
+            presentation: manifest.presentation,
+            fallbackTitle: configuration.surfaceTitle
+        )
+        if let path, !path.isEmpty {
+            sceneTabs.removeAll { $0.manifestPath == path }
+            sceneTabs.insert(tab, at: 0)
+            if sceneTabs.count > VantageSceneTab.recentsCap {
+                sceneTabs = Array(sceneTabs.prefix(VantageSceneTab.recentsCap))
+            }
+        }
+        triggerSceneAnnounce(tab)
+    }
+
+    private func triggerSceneAnnounce(_ tab: VantageSceneTab) {
+        announceDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.28)) {
+            announceTab = tab
+        }
+        announceDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_700_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.32)) {
+                announceTab = nil
+            }
+        }
+    }
+
+    private func applySceneTab(_ tab: VantageSceneTab) {
+        if let path = tab.manifestPath, !path.isEmpty {
+            let command = HudVantageControlCommand(
+                apiVersion: "v0",
+                kind: "hudson.vantage.command",
+                id: "scene-tab-\(UUID().uuidString)",
+                action: "setup",
+                manifestPath: path,
+                createIfMissing: true,
+                removeMissing: true
+            )
+            _ = applySetupCommand(command)
+        } else {
+            switchToBlankWorkspace(named: tab.title)
+        }
+    }
+
+    private func createBlankWorkspace() {
+        let existingBlanks = sceneTabs.filter { $0.manifestPath == nil }.count
+        let title = "Workspace \(existingBlanks + 1)"
+        switchToBlankWorkspace(named: title)
+    }
+
+    private func switchToBlankWorkspace(named title: String) {
+        stopAllNodes()
+        activeWorkspaceID = GraphitePath.slugify(title, fallback: configuration.workspaceID)
+        activeHandoffID = nil
+        presentationState = VantagePresentationState(
+            title: title,
+            subtitle: nil,
+            badge: nil,
+            cobrand: nil,
+            productName: nil,
+            hostName: nil,
+            icon: nil,
+            theme: nil,
+            accent: nil
+        )
+        let tab = VantageSceneTab(
+            manifestPath: nil,
+            title: title,
+            subtitle: nil,
+            badge: nil,
+            accent: nil,
+            appliedAt: Date()
+        )
+        sceneTabs.removeAll { $0.id == tab.id }
+        sceneTabs.insert(tab, at: 0)
+        if sceneTabs.count > VantageSceneTab.recentsCap {
+            sceneTabs = Array(sceneTabs.prefix(VantageSceneTab.recentsCap))
+        }
+        triggerSceneAnnounce(tab)
+        schedulePersistStateIfConfigured()
+    }
+
+    private var activeSceneTabID: String? {
+        sceneTabs.first?.id
+    }
+
+    private func setupHandoffID(
+        from manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) -> String? {
+        if let handoffID = trimmed(manifest.handoffId) {
+            return handoffID
+        }
+        guard let commandID = trimmed(command.id),
+              commandID.hasPrefix("openscout-handoff-") else {
+            return nil
+        }
+        return String(commandID.dropFirst("openscout-".count))
+    }
+
     private func setupSuccessMessage(_ report: HudVantageSetupReport) -> String {
         let created = report.createdNodeIDs.count
         let reused = report.reusedNodeIDs.count
@@ -3451,7 +3784,10 @@ public struct HudVantageSurface: View {
         )
         var touchedIDs = Set<UUID>()
 
+        activeWorkspaceID = report.workspaceID
+        activeHandoffID = setupHandoffID(from: manifest, command: command)
         presentationState.apply(manifest.presentation)
+        recordSceneTab(manifest: manifest, command: command)
         applySetupPresentationTheme(manifest.presentation)
         if let style = manifest.style {
             applySetupStyle(style)
@@ -3665,19 +4001,19 @@ public struct HudVantageSurface: View {
         from setupNode: HudVantageSetupNode
     ) throws -> Bool {
         var changed = false
-        if let x = setupNode.x {
+        if let x = setupNode.x ?? setupNode.layout?.x {
             node.origin.x = CGFloat(x)
             changed = true
         }
-        if let y = setupNode.y {
+        if let y = setupNode.y ?? setupNode.layout?.y {
             node.origin.y = CGFloat(y)
             changed = true
         }
-        if let width = setupNode.width {
+        if let width = setupNode.width ?? setupNode.layout?.width {
             node.size.width = max(300, CGFloat(width))
             changed = true
         }
-        if let height = setupNode.height {
+        if let height = setupNode.height ?? setupNode.layout?.height {
             node.size.height = max(200, CGFloat(height))
             changed = true
         }
@@ -3712,13 +4048,14 @@ public struct HudVantageSurface: View {
         let nodeID = setupNode.nodeID
             ?? setupNode.id.flatMap(UUID.init(uuidString:))
             ?? UUID()
+        let layout = setupNode.layout
         let origin = CGPoint(
-            x: CGFloat(setupNode.x ?? (72 + Double(offset * 38))),
-            y: CGFloat(setupNode.y ?? (76 + Double(offset * 38)))
+            x: CGFloat(setupNode.x ?? layout?.x ?? (72 + Double(offset * 38))),
+            y: CGFloat(setupNode.y ?? layout?.y ?? (76 + Double(offset * 38)))
         )
         let size = CGSize(
-            width: max(300, CGFloat(setupNode.width ?? 500)),
-            height: max(200, CGFloat(setupNode.height ?? 316))
+            width: max(300, CGFloat(setupNode.width ?? layout?.width ?? 500)),
+            height: max(200, CGFloat(setupNode.height ?? layout?.height ?? 316))
         )
         let tint = HudTint.from(token: setupNode.tint ?? tint(for: nextIndex).rawValue)
         let zIndex = setupNode.zIndex ?? nextZIndex
@@ -5473,7 +5810,8 @@ public struct HudVantageSurface: View {
             ok: ok,
             message: message,
             errorCode: errorCode,
-            workspaceID: command.workspaceID ?? configuration.workspaceID,
+            workspaceID: activeWorkspaceID ?? command.workspaceID ?? configuration.workspaceID,
+            handoffId: activeHandoffID,
             nodeCount: nodes.count,
             nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
             selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
@@ -6624,7 +6962,7 @@ private struct DiffArtifactCanvasPreview: View {
                 }
 
                 diffBody
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                 HStack(spacing: HudSpacing.sm) {
                     Text(footerLabel)
@@ -6741,9 +7079,8 @@ private struct DiffArtifactCanvasPreview: View {
                         .font(HudFont.mono(9, weight: .bold))
                         .foregroundStyle(color(for: row.kind))
                         .frame(width: HudSpacing.lg)
-                    Text(row.text.isEmpty ? " " : row.text)
-                        .font(HudFont.mono(9))
-                        .foregroundStyle(row.kind == .context ? theme.palette.muted : color(for: row.kind))
+                    Text(highlightedRowText(row))
+                        .font(HudFont.mono(9, weight: .light))
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -6762,7 +7099,7 @@ private struct DiffArtifactCanvasPreview: View {
             .hunks
             .first?
             .rows
-            .prefix(8)
+            .prefix(24)
             .map { $0 } ?? []
     }
 
@@ -6772,6 +7109,24 @@ private struct DiffArtifactCanvasPreview: View {
         case .deletion: theme.palette.statusError
         case .context: theme.palette.muted
         case .metadata: theme.palette.statusInfo
+        }
+    }
+
+    private func highlightedRowText(_ row: HudDiffRow) -> AttributedString {
+        let text = row.text.isEmpty ? " " : row.text
+        switch row.kind {
+        case .context:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.muted
+            return attributed
+        case .metadata:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.statusInfo
+            return attributed
+        case .addition, .deletion:
+            let file = document.files.first
+            let language = file?.newPath ?? file?.oldPath ?? file?.language
+            return HudCodeHighlighter.highlight(text, language: language)
         }
     }
 
@@ -6969,7 +7324,7 @@ private struct NativeDiffFileSection: View {
             .background(theme.palette.statusWarn.opacity(HudOpacity.ghost))
 
             ForEach(file.hunks) { hunk in
-                NativeDiffHunkSection(hunk: hunk)
+                NativeDiffHunkSection(hunk: hunk, language: file.newPath ?? file.oldPath ?? file.language)
             }
         }
     }
@@ -6977,6 +7332,7 @@ private struct NativeDiffFileSection: View {
 
 private struct NativeDiffHunkSection: View {
     let hunk: HudDiffHunk
+    let language: String?
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -6989,7 +7345,7 @@ private struct NativeDiffHunkSection: View {
                 .background(theme.palette.statusInfo.opacity(HudOpacity.ghost))
 
             ForEach(hunk.rows) { row in
-                NativeDiffRowView(row: row)
+                NativeDiffRowView(row: row, language: language)
             }
         }
     }
@@ -6997,6 +7353,7 @@ private struct NativeDiffHunkSection: View {
 
 private struct NativeDiffRowView: View {
     let row: HudDiffRow
+    let language: String?
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -7018,14 +7375,29 @@ private struct NativeDiffRowView: View {
                 .font(HudFont.mono(11, weight: .semibold))
                 .foregroundStyle(barColor)
                 .frame(width: HudIconSize.micro, alignment: .center)
-            Text(row.text.isEmpty ? " " : row.text)
-                .font(HudFont.mono(11))
-                .foregroundStyle(textColor)
+            Text(highlightedText)
+                .font(HudFont.mono(11, weight: .light))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: true, vertical: false)
         }
         .frame(minWidth: HudLayout.cliffWidth, minHeight: HudSpacing.xxxl, alignment: .leading)
         .background(backgroundColor)
+    }
+
+    private var highlightedText: AttributedString {
+        let text = row.text.isEmpty ? " " : row.text
+        switch row.kind {
+        case .context:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.muted
+            return attributed
+        case .metadata:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.statusInfo
+            return attributed
+        case .addition, .deletion:
+            return HudCodeHighlighter.highlight(text, language: language)
+        }
     }
 
     private var barColor: Color {
@@ -9504,6 +9876,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     let onSpacePanChanged: (Bool) -> Void
     let onCommandPalette: () -> Void
     let onShortcut: (CanvasKeyboardShortcut) -> Void
+    let onCursorMoved: (CGPoint?) -> Void
     let isLensPresented: Bool
     let cursor: CanvasCursor
 
@@ -9511,6 +9884,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         Coordinator(
             onScroll: onScroll,
             onMagnify: onMagnify,
+            onCursorMoved: onCursorMoved,
             canBeginSpacePan: canBeginSpacePan,
             onSpacePanChanged: onSpacePanChanged,
             onCommandPalette: onCommandPalette,
@@ -9530,6 +9904,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     func updateNSView(_ nsView: EventView, context: Context) {
         context.coordinator.onScroll = onScroll
         context.coordinator.onMagnify = onMagnify
+        context.coordinator.onCursorMoved = onCursorMoved
         context.coordinator.canBeginSpacePan = canBeginSpacePan
         context.coordinator.onSpacePanChanged = onSpacePanChanged
         context.coordinator.onCommandPalette = onCommandPalette
@@ -9564,6 +9939,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            window?.acceptsMouseMovedEvents = true
             setCursorIfPointerIsInside()
         }
 
@@ -9578,6 +9954,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     final class Coordinator {
         var onScroll: (CGSize, CGPoint) -> Void
         var onMagnify: (CGFloat, CGPoint) -> Void
+        var onCursorMoved: (CGPoint?) -> Void
         var canBeginSpacePan: (CGPoint) -> Bool
         var onSpacePanChanged: (Bool) -> Void
         var onCommandPalette: () -> Void
@@ -9586,10 +9963,12 @@ private struct CanvasInputBridge: NSViewRepresentable {
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
+        private var scrollAnchor: CGPoint?
 
         init(
             onScroll: @escaping (CGSize, CGPoint) -> Void,
             onMagnify: @escaping (CGFloat, CGPoint) -> Void,
+            onCursorMoved: @escaping (CGPoint?) -> Void,
             canBeginSpacePan: @escaping (CGPoint) -> Bool,
             onSpacePanChanged: @escaping (Bool) -> Void,
             onCommandPalette: @escaping () -> Void,
@@ -9597,6 +9976,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
+            self.onCursorMoved = onCursorMoved
             self.canBeginSpacePan = canBeginSpacePan
             self.onSpacePanChanged = onSpacePanChanged
             self.onCommandPalette = onCommandPalette
@@ -9606,7 +9986,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         func installMonitor() {
             guard monitor == nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(
-                matching: [.scrollWheel, .magnify, .keyDown, .keyUp]
+                matching: [.scrollWheel, .magnify, .keyDown, .keyUp, .mouseMoved, .leftMouseDragged]
             ) { [weak self] event in
                 guard let self,
                       let view,
@@ -9616,19 +9996,47 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     return event
                 }
 
+                // Track cursor on every relevant event so SwiftUI gesture can use
+                // an authoritative anchor at gesture start.
+                self.onCursorMoved(self.viewportLocation(for: event))
+
                 switch event.type {
+                case .mouseMoved, .leftMouseDragged:
+                    return event
                 case .scrollWheel:
                     guard let location = self.viewportLocation(for: event) else { return event }
+                    let phase = event.phase
+                    let momentum = event.momentumPhase
+                    let isTrackpadGesture = !phase.isEmpty || !momentum.isEmpty
                     let delta = CGSize(
                         width: event.scrollingDeltaX,
                         height: event.scrollingDeltaY
                     )
-                    self.onScroll(delta, location)
+
+                    if !isTrackpadGesture {
+                        // Discrete event (mouse wheel): each click anchors fresh.
+                        self.scrollAnchor = nil
+                        self.onScroll(delta, location)
+                        return nil
+                    }
+
+                    // Trackpad scroll: lock anchor at gesture start, hold through
+                    // momentum so cursor drift between events can't move the pivot.
+                    if phase.contains(.began) {
+                        self.scrollAnchor = location
+                    }
+                    let anchor = self.scrollAnchor ?? location
+                    self.onScroll(delta, anchor)
+                    if phase.contains(.cancelled) || momentum.contains(.ended) {
+                        self.scrollAnchor = nil
+                    }
                     return nil
                 case .magnify:
-                    guard let location = self.viewportLocation(for: event) else { return event }
-                    self.onMagnify(event.magnification, location)
-                    return nil
+                    // Pinch-zoom is handled by the SwiftUI MagnificationGesture
+                    // attached to the canvas (cursor-anchored, locked at gesture
+                    // start). Pass the event through (don't consume) so SwiftUI's
+                    // gesture system can pick it up.
+                    return event
                 case .keyDown:
                     if self.isLensPresented {
                         if let shortcut = self.lensShortcut(for: event) {

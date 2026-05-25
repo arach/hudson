@@ -6,6 +6,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
     public var kind: String
     public var schemaVersion: Int
     public var workspaceID: String?
+    public var handoffId: String?
+    public var handoffPath: String?
+    public var setupPath: String?
     public var surfaceTitle: String?
     public var createIfMissing: Bool?
     public var removeMissing: Bool?
@@ -23,6 +26,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
         kind: String = HudVantageSetupManifest.documentKind,
         schemaVersion: Int = 1,
         workspaceID: String? = nil,
+        handoffId: String? = nil,
+        handoffPath: String? = nil,
+        setupPath: String? = nil,
         surfaceTitle: String? = nil,
         createIfMissing: Bool? = nil,
         removeMissing: Bool? = nil,
@@ -39,6 +45,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
         self.kind = kind
         self.schemaVersion = schemaVersion
         self.workspaceID = workspaceID
+        self.handoffId = handoffId
+        self.handoffPath = handoffPath
+        self.setupPath = setupPath
         self.surfaceTitle = surfaceTitle
         self.createIfMissing = createIfMissing
         self.removeMissing = removeMissing
@@ -57,6 +66,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
         case kind
         case schemaVersion
         case workspaceID
+        case handoffId
+        case handoffPath
+        case setupPath
         case surfaceTitle
         case createIfMissing
         case removeMissing
@@ -80,6 +92,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
         schemaVersion = try container.decodeIfPresent(Int.self, forKey: .schemaVersion)
             ?? 1
         workspaceID = try container.decodeIfPresent(String.self, forKey: .workspaceID)
+        handoffId = try container.decodeIfPresent(String.self, forKey: .handoffId)
+        handoffPath = try container.decodeIfPresent(String.self, forKey: .handoffPath)
+        setupPath = try container.decodeIfPresent(String.self, forKey: .setupPath)
         surfaceTitle = try container.decodeIfPresent(String.self, forKey: .surfaceTitle)
         createIfMissing = try container.decodeIfPresent(Bool.self, forKey: .createIfMissing)
         removeMissing = try container.decodeIfPresent(Bool.self, forKey: .removeMissing)
@@ -104,6 +119,9 @@ public struct HudVantageSetupManifest: Codable, Hashable, Sendable {
         try container.encode(kind, forKey: .kind)
         try container.encode(schemaVersion, forKey: .schemaVersion)
         try container.encodeIfPresent(workspaceID, forKey: .workspaceID)
+        try container.encodeIfPresent(handoffId, forKey: .handoffId)
+        try container.encodeIfPresent(handoffPath, forKey: .handoffPath)
+        try container.encodeIfPresent(setupPath, forKey: .setupPath)
         try container.encodeIfPresent(surfaceTitle, forKey: .surfaceTitle)
         try container.encodeIfPresent(createIfMissing, forKey: .createIfMissing)
         try container.encodeIfPresent(removeMissing, forKey: .removeMissing)
@@ -252,6 +270,25 @@ public struct HudVantageSetupLayout: Codable, Hashable, Sendable {
     }
 }
 
+public struct HudVantageSetupNodeLayout: Codable, Hashable, Sendable {
+    public var x: Double?
+    public var y: Double?
+    public var width: Double?
+    public var height: Double?
+
+    public init(
+        x: Double? = nil,
+        y: Double? = nil,
+        width: Double? = nil,
+        height: Double? = nil
+    ) {
+        self.x = x
+        self.y = y
+        self.width = width
+        self.height = height
+    }
+}
+
 public struct HudVantageSetupNode: Codable, Hashable, Sendable {
     public var id: String?
     public var nodeID: UUID?
@@ -266,6 +303,7 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
     public var language: String?
     public var content: String?
     public var role: String?
+    public var layout: HudVantageSetupNodeLayout?
     public var x: Double?
     public var y: Double?
     public var width: Double?
@@ -294,6 +332,7 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
         language: String? = nil,
         content: String? = nil,
         role: String? = nil,
+        layout: HudVantageSetupNodeLayout? = nil,
         x: Double? = nil,
         y: Double? = nil,
         width: Double? = nil,
@@ -321,6 +360,7 @@ public struct HudVantageSetupNode: Codable, Hashable, Sendable {
         self.language = language
         self.content = content
         self.role = role
+        self.layout = layout
         self.x = x
         self.y = y
         self.width = width

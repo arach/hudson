@@ -108,6 +108,7 @@ pnpm-lock.yaml
 # test artifacts
 *.lcov
 .nyc_output/
+/output/playwright/
 
 # sentry
 .sentryclirc
