@@ -414,6 +414,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
     public var message: String
     public var errorCode: String?
     public var workspaceID: String?
+    public var handoffId: String?
     public var nodeCount: Int
     public var nodes: [HudVantageControlNode]?
     public var selectedNodeIDs: [UUID]?
@@ -444,6 +445,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         message: String,
         errorCode: String? = nil,
         workspaceID: String? = nil,
+        handoffId: String? = nil,
         nodeCount: Int,
         nodes: [HudVantageControlNode]? = nil,
         selectedNodeIDs: [UUID]? = nil,
@@ -472,6 +474,7 @@ public struct HudVantageControlResponse: Encodable, Sendable {
         self.message = message
         self.errorCode = errorCode
         self.workspaceID = workspaceID
+        self.handoffId = handoffId
         self.nodeCount = nodeCount
         self.nodes = nodes
         self.selectedNodeIDs = selectedNodeIDs

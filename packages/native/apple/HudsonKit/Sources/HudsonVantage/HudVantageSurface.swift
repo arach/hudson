@@ -944,6 +944,8 @@ public struct HudVantageSurface: View {
     @State private var styleProfile: HudVantageStyleProfile = .adaptive
     @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
     @State private var presentationState = VantagePresentationState()
+    @State private var activeWorkspaceID: String?
+    @State private var activeHandoffID: String?
     @State private var sceneTabs: [VantageSceneTab] = []
     @State private var announceTab: VantageSceneTab?
     @State private var announceDismissTask: Task<Void, Never>?
@@ -1552,6 +1554,22 @@ public struct HudVantageSurface: View {
         presentationState.subtitle ?? presentationState.cobrand ?? configuration.surfaceSubtitle
     }
 
+    private var vantageLinkLabel: String? {
+        let workspace = activeWorkspaceID ?? configuration.workspaceID
+        if let handoffID = compactHandoffID(activeHandoffID) {
+            return "\(workspace) · \(handoffID)"
+        }
+        return workspace
+    }
+
+    private func compactHandoffID(_ value: String?) -> String? {
+        guard var handoffID = trimmed(value) else { return nil }
+        if handoffID.hasPrefix("handoff-") {
+            handoffID.removeFirst("handoff-".count)
+        }
+        return String(handoffID.prefix(18))
+    }
+
     private var canvasHeader: some View {
         HStack(spacing: HudSpacing.lg) {
             if let focusedNode {
@@ -1562,6 +1580,9 @@ public struct HudVantageSurface: View {
                     .foregroundStyle(activeTheme.palette.ink)
                 if let badge = presentationState.badge {
                     HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
+                }
+                if let linkLabel = vantageLinkLabel {
+                    vantageLinkText(linkLabel)
                 }
                 HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
                 Text(focusedNode.title)
@@ -1595,6 +1616,9 @@ public struct HudVantageSurface: View {
                 if let badge = presentationState.badge {
                     HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
                 }
+                if let linkLabel = vantageLinkLabel {
+                    vantageLinkText(linkLabel)
+                }
                 Text(presentationSubtitle)
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -1625,6 +1649,15 @@ public struct HudVantageSurface: View {
                 }
             }
         }
+    }
+
+    private func vantageLinkText(_ label: String) -> some View {
+        Text(label)
+            .font(HudFont.mono(9, weight: .semibold))
+            .foregroundStyle(activeTheme.palette.statusInfo.opacity(HudOpacity.emphatic))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .help("Scout/Vantage link identifier")
     }
 
     private var terminalCanvasShell: some View {
@@ -3660,6 +3693,8 @@ public struct HudVantageSurface: View {
 
     private func switchToBlankWorkspace(named title: String) {
         stopAllNodes()
+        activeWorkspaceID = GraphitePath.slugify(title, fallback: configuration.workspaceID)
+        activeHandoffID = nil
         presentationState = VantagePresentationState(
             title: title,
             subtitle: nil,
@@ -3690,6 +3725,20 @@ public struct HudVantageSurface: View {
 
     private var activeSceneTabID: String? {
         sceneTabs.first?.id
+    }
+
+    private func setupHandoffID(
+        from manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) -> String? {
+        if let handoffID = trimmed(manifest.handoffId) {
+            return handoffID
+        }
+        guard let commandID = trimmed(command.id),
+              commandID.hasPrefix("openscout-handoff-") else {
+            return nil
+        }
+        return String(commandID.dropFirst("openscout-".count))
     }
 
     private func setupSuccessMessage(_ report: HudVantageSetupReport) -> String {
@@ -3735,6 +3784,8 @@ public struct HudVantageSurface: View {
         )
         var touchedIDs = Set<UUID>()
 
+        activeWorkspaceID = report.workspaceID
+        activeHandoffID = setupHandoffID(from: manifest, command: command)
         presentationState.apply(manifest.presentation)
         recordSceneTab(manifest: manifest, command: command)
         applySetupPresentationTheme(manifest.presentation)
@@ -3950,19 +4001,19 @@ public struct HudVantageSurface: View {
         from setupNode: HudVantageSetupNode
     ) throws -> Bool {
         var changed = false
-        if let x = setupNode.x {
+        if let x = setupNode.x ?? setupNode.layout?.x {
             node.origin.x = CGFloat(x)
             changed = true
         }
-        if let y = setupNode.y {
+        if let y = setupNode.y ?? setupNode.layout?.y {
             node.origin.y = CGFloat(y)
             changed = true
         }
-        if let width = setupNode.width {
+        if let width = setupNode.width ?? setupNode.layout?.width {
             node.size.width = max(300, CGFloat(width))
             changed = true
         }
-        if let height = setupNode.height {
+        if let height = setupNode.height ?? setupNode.layout?.height {
             node.size.height = max(200, CGFloat(height))
             changed = true
         }
@@ -3997,13 +4048,14 @@ public struct HudVantageSurface: View {
         let nodeID = setupNode.nodeID
             ?? setupNode.id.flatMap(UUID.init(uuidString:))
             ?? UUID()
+        let layout = setupNode.layout
         let origin = CGPoint(
-            x: CGFloat(setupNode.x ?? (72 + Double(offset * 38))),
-            y: CGFloat(setupNode.y ?? (76 + Double(offset * 38)))
+            x: CGFloat(setupNode.x ?? layout?.x ?? (72 + Double(offset * 38))),
+            y: CGFloat(setupNode.y ?? layout?.y ?? (76 + Double(offset * 38)))
         )
         let size = CGSize(
-            width: max(300, CGFloat(setupNode.width ?? 500)),
-            height: max(200, CGFloat(setupNode.height ?? 316))
+            width: max(300, CGFloat(setupNode.width ?? layout?.width ?? 500)),
+            height: max(200, CGFloat(setupNode.height ?? layout?.height ?? 316))
         )
         let tint = HudTint.from(token: setupNode.tint ?? tint(for: nextIndex).rawValue)
         let zIndex = setupNode.zIndex ?? nextZIndex
@@ -5758,7 +5810,8 @@ public struct HudVantageSurface: View {
             ok: ok,
             message: message,
             errorCode: errorCode,
-            workspaceID: command.workspaceID ?? configuration.workspaceID,
+            workspaceID: activeWorkspaceID ?? command.workspaceID ?? configuration.workspaceID,
+            handoffId: activeHandoffID,
             nodeCount: nodes.count,
             nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
             selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
