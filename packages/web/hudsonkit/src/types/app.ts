@@ -181,6 +181,8 @@ export interface HudsonApp {
   hooks: {
     useCommands: () => CommandOption[];
     useStatus: () => { label: string; color: StatusColor };
+    useStatusLeft?: () => ReactNode | null;
+    useStatusRight?: () => ReactNode | null;
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
