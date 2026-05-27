@@ -1,6 +1,11 @@
-import { HObservability } from './observability/core';
-
-export { HLogger, HMetrics, HObservability, HSpan, HTrace } from './observability/core';
+export {
+  HLogger,
+  HMetrics,
+  HObservability,
+  HObservabilityDefault,
+  HSpan,
+  HTrace,
+} from './observability/core';
 export type {
   HLogEvent,
   HLogInput,
@@ -21,5 +26,16 @@ export type {
   HTraceStatus,
   HUnsubscribe,
 } from './types/observability';
-
-export const HObservabilityDefault = HObservability.global();
+export {
+  HudLogger,
+  HudLoggerStatusItem,
+  summarizeHudLoggerEvents,
+  useHudLoggerEvents,
+  useHudLoggerSummary,
+} from './components/observability/HudLogger';
+export type {
+  HudLoggerProps,
+  HudLoggerStatusItemProps,
+  HudLoggerSummary,
+  HudLoggerUseEventsOptions,
+} from './components/observability/HudLogger';

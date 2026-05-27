@@ -69,6 +69,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   // Call app hooks directly — we're inside Provider
   const appCommands = app.hooks.useCommands();
   const appStatus = app.hooks.useStatus();
+  const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
+  const appStatusRight = app.hooks.useStatusRight?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
@@ -328,6 +330,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
 
           <StatusBar
             status={appStatus}
+            left={appStatusLeft}
+            right={appStatusRight}
             viewport={{
               pan: panOffset,
               zoom: scale,

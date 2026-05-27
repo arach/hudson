@@ -28,6 +28,7 @@ import {
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
+import { HudLoggerStatusItem } from 'hudsonkit/observability';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
@@ -105,6 +106,8 @@ const DEFAULTS = {
 };
 
 const TERMINAL_VOICE_SHORTCUT_LABEL = 'Cmd+Shift+M';
+const HUD_LOGGER_APP_ID = 'hud-logger';
+const HUD_LOGGER_MAX_EVENTS = 240;
 
 /** Window sizes used by the smart-tiler on first launch. */
 const TILE = {
@@ -312,6 +315,33 @@ function ServiceStatusIndicator({ registry, onOpenSettings, serviceIds }: {
         Services {running}/{total}
       </span>
     </button>
+  );
+}
+
+function HudLoggerStatusButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="flex min-w-0 items-center rounded px-1 py-0.5 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title="Open Logs"
+      aria-label="Open Logs"
+    >
+      <HudLoggerStatusItem maxEvents={HUD_LOGGER_MAX_EVENTS} />
+    </button>
+  );
+}
+
+function renderStatusRightItems(appRight: ReactNode | null, loggerButton: ReactNode | null) {
+  if (!appRight && !loggerButton) return null;
+
+  return (
+    <div className="flex min-w-0 items-center gap-3 md:gap-4">
+      {appRight}
+      {appRight && loggerButton && (
+        <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
+      )}
+      {loggerButton}
+    </div>
   );
 }
 
@@ -740,6 +770,8 @@ interface AppHookData {
   appName: string;
   commands: CommandOption[];
   status: { label: string; color: StatusColor };
+  statusLeft: ReactNode | null;
+  statusRight: ReactNode | null;
   search: SearchConfig | null;
   navCenter: ReactNode | null;
   navActions: ReactNode | null;
@@ -757,6 +789,8 @@ function useAppHooks(config: WorkspaceAppConfig): AppHookData {
     appName: app.name,
     commands: app.hooks.useCommands(),
     status: app.hooks.useStatus(),
+    statusLeft: app.hooks.useStatusLeft?.() ?? null,
+    statusRight: app.hooks.useStatusRight?.() ?? null,
     search: app.hooks.useSearch?.() ?? null,
     navCenter: app.hooks.useNavCenter?.() ?? null,
     navActions: app.hooks.useNavActions?.() ?? null,
@@ -1505,6 +1539,18 @@ function WorkspaceInner({
     },
     [shellSettings.masterMute, shellSettings.uiClickSounds, shellSettings.uiTransitionSounds],
   );
+
+  const canOpenHudLogger = allAppIds.includes(HUD_LOGGER_APP_ID);
+  const openHudLogger = useCallback(() => {
+    if (!canOpenHudLogger) return;
+    handleActivateApp(HUD_LOGGER_APP_ID);
+    setFullscreenAppId(HUD_LOGGER_APP_ID);
+    setShowLauncher(false);
+    playSound('thock');
+  }, [canOpenHudLogger, handleActivateApp, playSound]);
+  const hudLoggerStatusButton = canOpenHudLogger
+    ? <HudLoggerStatusButton onOpen={openHudLogger} />
+    : null;
 
   const startVoicePrompt = useCallback(() => {
     setShowTerminal(true);
@@ -3057,8 +3103,16 @@ function WorkspaceInner({
             status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
             onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
             isTerminalOpen={showTerminal}
+            right={renderStatusRightItems(
+              allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusRight ?? null,
+              hudLoggerStatusButton,
+            )}
             left={
               <div className="flex items-center gap-4">
+                {allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusLeft}
+                {allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusLeft && (
+                  <div className="h-3 w-px bg-border" />
+                )}
                 {workspaceServiceIds.length > 0 && (
                   <>
                     <ServiceStatusIndicator
@@ -3247,8 +3301,13 @@ function WorkspaceInner({
                 }}
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
+                right={renderStatusRightItems(focused.statusRight, hudLoggerStatusButton)}
                 left={
                 <div className="flex items-center gap-4">
+                  {focused.statusLeft}
+                  {focused.statusLeft && (
+                    <div className="h-3 w-px bg-border" />
+                  )}
                   {workspaceServiceIds.length > 0 && (
                     <>
                       <ServiceStatusIndicator
