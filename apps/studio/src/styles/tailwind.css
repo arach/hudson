@@ -1,0 +1,59 @@
+@import "tailwindcss";
+
+/* Hudson tokens — defines --hud-* variables and the underlying
+   --background / --foreground / etc. values, gated on
+   [data-hudson-template] + [data-hudson-theme] attributes set pre-paint
+   by the inline script in index.html. */
+@import "../../../../packages/web/hudsonkit/src/styles/tokens.css";
+
+/* Studio token aliases — maps --studio-*, --scout-*, --status-*, --code-*
+   onto hudsonkit's --hud-* contract. Studio components reference the
+   --studio-* family; this file is the translation layer. */
+@import "studio/theme.css";
+
+/* Studio editorial typography + code-block styles for EngMarkdown. */
+@import "studio/doc.css";
+
+/* Scan hudsonkit + studio source so Tailwind v4 generates every utility
+   class their components reference. Skip these and classes work in dev
+   but disappear in prod — every consumer hits this once. */
+@source "../../../../packages/web/hudsonkit/src/**/*.{ts,tsx}";
+@source "../../../../../studio/src/**/*.{ts,tsx}";
+
+/* Register studio's CSS vars as Tailwind v4 color tokens so utility
+   classes like bg-studio-canvas / text-studio-ink work natively. */
+@theme inline {
+  --color-studio-canvas: var(--studio-canvas);
+  --color-studio-canvas-alt: var(--studio-canvas-alt);
+  --color-studio-surface: var(--studio-surface);
+  --color-studio-ink: var(--studio-ink);
+  --color-studio-ink-strong: var(--studio-ink-strong);
+  --color-studio-ink-faint: var(--studio-ink-faint);
+  --color-studio-edge: var(--studio-edge);
+  --color-studio-rule: var(--studio-rule);
+  --color-studio-rule-strong: var(--studio-rule-strong);
+  --color-studio-chip-bg: var(--studio-chip-bg);
+  --color-studio-chip-border: var(--studio-chip-border);
+  --color-scout-accent: var(--scout-accent);
+  --color-scout-accent-soft: var(--scout-accent-soft);
+}
+
+/* Override studio's default mono — Geist Mono reads noticeably narrower
+   than JetBrains Mono at the same point size, which is what gives the
+   chrome that tight, refined feel. JetBrains stays as the fallback. */
+:root {
+  --studio-font-mono: "Geist Mono", "JetBrains Mono", ui-monospace,
+    "SF Mono", monospace;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+body {
+  background-color: var(--studio-canvas);
+  color: var(--studio-ink);
+  font-family: var(--studio-font-sans);
+}
