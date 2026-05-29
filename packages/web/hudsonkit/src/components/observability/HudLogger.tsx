@@ -10,6 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { HObservability, HObservabilityDefault } from '../../observability/core';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import type {
@@ -22,6 +23,13 @@ type LevelFilter = HLogLevel | 'all';
 type KindFilter = HObservationKind | 'all';
 export type HudLoggerScopeFilter = 'all' | 'agent-actions';
 type InspectorTone = 'neutral' | 'cyan' | 'emerald' | 'amber' | 'red';
+type EventSortKey = 'time' | 'kind' | 'level' | 'category' | 'target' | 'message' | 'id';
+type EventSortDirection = 'asc' | 'desc';
+
+type EventSort = {
+  key: EventSortKey;
+  direction: EventSortDirection;
+};
 
 type InspectorRowData = {
   label: string;
@@ -80,6 +88,9 @@ const INSPECTOR_DEFAULT_WIDTH = 380;
 const INSPECTOR_MAX_WIDTH = 900;
 const MAIN_MIN_WIDTH = 420;
 const INSPECTOR_WIDTH_STORAGE_KEY = 'hudson.hud-logger.inspector-width';
+const DEFAULT_EVENT_SORT: EventSort = { key: 'time', direction: 'desc' };
+const EVENT_TABLE_GRID =
+  'grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px]';
 
 export function useHudLoggerEvents(
   observability: HObservability = HObservabilityDefault,
@@ -177,6 +188,7 @@ export function HudLogger({
   const [scopeFilter, setScopeFilter] = useState<HudLoggerScopeFilter>(initialScope);
   const [query, setQuery] = useState('');
   const [tail, setTail] = useState(initialTail);
+  const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [inspectorWidth, setInspectorWidth] = usePersistentState<number>(
     INSPECTOR_WIDTH_STORAGE_KEY,
@@ -199,10 +211,12 @@ export function HudLogger({
     [events, kindFilter, levelFilter, query, scopeFilter],
   );
 
-  const effectiveSelectedId = tail ? filteredEvents[0]?.id ?? null : selectedId;
+  const sortedEvents = useMemo(() => sortEvents(filteredEvents, sort), [filteredEvents, sort]);
+  const effectiveTail = tail && sort.key === 'time' && sort.direction === 'desc';
+  const effectiveSelectedId = effectiveTail ? sortedEvents[0]?.id ?? null : selectedId;
   const selectedEvent =
-    filteredEvents.find((event) => event.id === effectiveSelectedId) ??
-    filteredEvents[0] ??
+    sortedEvents.find((event) => event.id === effectiveSelectedId) ??
+    sortedEvents[0] ??
     null;
   const summary = useMemo(() => summarizeHudLoggerEvents(events), [events]);
 
@@ -219,6 +233,21 @@ export function HudLogger({
     setTail(false);
     setSelectedId(event.id);
   }, []);
+
+  const setTableSort = useCallback((key: EventSortKey) => {
+    setTail(false);
+    setSort((current) => {
+      if (current.key !== key) {
+        return { key, direction: defaultSortDirection(key) };
+      }
+      return { key, direction: current.direction === 'asc' ? 'desc' : 'asc' };
+    });
+  }, []);
+
+  const toggleTail = useCallback(() => {
+    if (!tail) setSort(DEFAULT_EVENT_SORT);
+    setTail((current) => !current);
+  }, [tail]);
 
   const openEventTarget = useCallback((event: HObservation) => {
     const appId = eventTargetAppId(event);
@@ -308,13 +337,13 @@ export function HudLogger({
               <CopyButton
                 ariaLabel="copy filtered table"
                 copied={copiedKey === 'table'}
-                disabled={filteredEvents.length === 0}
+                disabled={sortedEvents.length === 0}
                 label="copy all"
-                onClick={() => void copyText(eventsToCopyTable(filteredEvents), 'table')}
+                onClick={() => void copyText(eventsToCopyTable(sortedEvents), 'table')}
               />
               <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] font-light uppercase tracking-[0.16em] text-muted-foreground">
                 <span>{title}</span>
-                <span className="text-accent">{filteredEvents.length} shown</span>
+                <span className="text-accent">{sortedEvents.length} shown</span>
                 <span>{summary.total} buffered</span>
                 <span>{summary.agentActions} agent</span>
                 <span>{summary.errors} errors</span>
@@ -366,7 +395,7 @@ export function HudLogger({
                 <div className="flex flex-wrap items-end gap-2">
                   <button
                     type="button"
-                    onClick={() => setTail((value) => !value)}
+                    onClick={toggleTail}
                     className={`border px-2.5 py-1.5 font-mono text-[10px] font-light uppercase tracking-[0.14em] ${
                       tail
                         ? 'border-accent/30 bg-accent/10 text-accent'
@@ -383,18 +412,18 @@ export function HudLogger({
 
         <div className="max-h-[650px] overflow-auto lg:max-h-none lg:flex-1 lg:min-h-0">
           <div className="min-w-[980px] font-mono text-[10px] font-light">
-            <div className="sticky top-0 z-10 grid grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px] border-b border-border bg-card px-3 py-1.5 font-light uppercase tracking-[0.14em] text-muted-foreground">
+            <div className={`sticky top-0 z-10 grid ${EVENT_TABLE_GRID} border-b border-border bg-card px-3 py-1.5 font-light uppercase tracking-[0.14em] text-muted-foreground`}>
               <span className="sticky left-0 bg-card pr-2">Copy</span>
               <span>Open</span>
-              <span>Time</span>
-              <span>Kind</span>
-              <span>Level</span>
-              <span>Category</span>
-              <span>Target</span>
-              <span>Message</span>
-              <span>Id</span>
+              <SortableHeader column="time" label="Time" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="kind" label="Kind" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="level" label="Level" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="category" label="Category" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="target" label="Target" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="message" label="Message" sort={sort} onSort={setTableSort} />
+              <SortableHeader column="id" label="Id" sort={sort} onSort={setTableSort} />
             </div>
-            {filteredEvents.map((event) => {
+            {sortedEvents.map((event) => {
               const targetAppId = eventTargetAppId(event);
               return (
                 <div
@@ -408,7 +437,7 @@ export function HudLogger({
                       selectEvent(event);
                     }
                   }}
-                  className={`grid w-full grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px] items-center border-b px-3 py-1 text-left transition ${
+                  className={`grid w-full ${EVENT_TABLE_GRID} items-center border-b px-3 py-1 text-left transition ${
                     selectedEvent?.id === event.id
                       ? 'border-accent/30 bg-accent/10'
                       : 'border-border hover:bg-muted/35'
@@ -453,7 +482,7 @@ export function HudLogger({
               );
             })}
 
-            {filteredEvents.length === 0 && (
+            {sortedEvents.length === 0 && (
               <div className="border-b border-border px-3 py-5 font-sans text-[13px] text-muted-foreground">
                 {emptyMessage}
               </div>
@@ -618,6 +647,37 @@ function FilterButton({
       }`}
     >
       {children}
+    </button>
+  );
+}
+
+function SortableHeader({
+  column,
+  label,
+  sort,
+  onSort,
+}: {
+  column: EventSortKey;
+  label: string;
+  sort: EventSort;
+  onSort: (column: EventSortKey) => void;
+}) {
+  const active = sort.key === column;
+  const Icon = !active ? ArrowUpDown : sort.direction === 'asc' ? ArrowUp : ArrowDown;
+  const directionLabel = sort.direction === 'asc' ? 'ascending' : 'descending';
+
+  return (
+    <button
+      type="button"
+      aria-label={`Sort by ${label}${active ? `, currently ${directionLabel}` : ''}`}
+      aria-pressed={active}
+      onClick={() => onSort(column)}
+      className={`flex min-w-0 items-center gap-1.5 text-left uppercase tracking-[0.14em] transition ${
+        active ? 'text-accent' : 'text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      <span className="min-w-0 truncate">{label}</span>
+      <Icon size={10} strokeWidth={1.75} aria-hidden="true" className="shrink-0" />
     </button>
   );
 }
@@ -932,6 +992,51 @@ function eventsToCopyTable(events: readonly HObservation[]) {
 
 function copyCell(value: string) {
   return value.replace(/\s+/g, ' ').trim();
+}
+
+function defaultSortDirection(key: EventSortKey): EventSortDirection {
+  return key === 'time' ? 'desc' : 'asc';
+}
+
+function sortEvents(events: readonly HObservation[], sort: EventSort): HObservation[] {
+  const direction = sort.direction === 'asc' ? 1 : -1;
+  return events
+    .map((event, index) => ({ event, index }))
+    .sort((left, right) => {
+      const compared = compareSortValues(
+        eventSortValue(left.event, sort.key),
+        eventSortValue(right.event, sort.key),
+      );
+      return compared === 0 ? left.index - right.index : compared * direction;
+    })
+    .map(({ event }) => event);
+}
+
+function eventSortValue(event: HObservation, key: EventSortKey): string | number {
+  switch (key) {
+    case 'time':
+      return event.timestamp;
+    case 'kind':
+      return event.kind;
+    case 'level':
+      return eventSignalLabel(event);
+    case 'category':
+      return event.category ?? '';
+    case 'target':
+      return eventTargetLabel(event);
+    case 'message':
+      return eventLabel(event);
+    case 'id':
+      return shortEventId(event.id);
+  }
+}
+
+function compareSortValues(left: string | number, right: string | number) {
+  if (typeof left === 'number' && typeof right === 'number') return left - right;
+  return String(left).localeCompare(String(right), undefined, {
+    numeric: true,
+    sensitivity: 'base',
+  });
 }
 
 async function writeClipboardText(text: string) {

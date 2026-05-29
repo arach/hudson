@@ -5,6 +5,7 @@ import { DefaultChatTransport } from 'ai';
 import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
 import { logHudsonAgentAction } from '../observability/agent-actions';
+import { createHudsonId } from '../lib/id';
 import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
 import type { MutableRefObject } from 'react';
 
@@ -132,6 +133,7 @@ function emitAgentActionEvent(input: {
   context: Record<string, unknown> | undefined;
   trace: HudsonAIAgentTrace | undefined;
   status: 'started' | 'completed' | 'failed';
+  traceId?: string;
   error?: Error;
 }) {
   const command = findCommandContext(input.context, stringValue(input.args.commandId));
@@ -165,6 +167,7 @@ function emitAgentActionEvent(input: {
     appName,
     workspaceId,
     workspaceName,
+    traceId: input.traceId,
     args: input.args,
     error: input.error,
   });
@@ -281,6 +284,7 @@ export function useHudsonAI({
     const args = toolCall.input && typeof toolCall.input === 'object' && !Array.isArray(toolCall.input)
       ? toolCall.input as Record<string, unknown>
       : {};
+    const traceId = createHudsonId('tr');
 
     try {
       emitAgentActionEvent({
@@ -291,6 +295,7 @@ export function useHudsonAI({
         context: contextRef.current,
         trace: agentTraceRef.current,
         status: 'started',
+        traceId,
       });
       await onToolCallRef.current(toolCall.toolName, args);
       emitAgentActionEvent({
@@ -301,6 +306,7 @@ export function useHudsonAI({
         context: contextRef.current,
         trace: agentTraceRef.current,
         status: 'completed',
+        traceId,
       });
     } catch (err) {
       const error = err instanceof Error ? err : new Error(String(err));
@@ -312,6 +318,7 @@ export function useHudsonAI({
         context: contextRef.current,
         trace: agentTraceRef.current,
         status: 'failed',
+        traceId,
         error,
       });
       invokeHudsonAIError(onErrorRef, error);

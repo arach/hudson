@@ -275,8 +275,9 @@ This HUD proposes `app/api/<area>/intents.ts` (next to the API routes that use t
 - `app/lib/intent-catalog.ts` — `buildIntentCatalog(workspace, { serverIntents? })`. Pure / client-safe; server intents land on a separate `IntentCatalog.serverIntents` field, never in `index` or `apps[].intents`.
 - `app/api/intents/route.ts` — `export const runtime = 'nodejs'`; imports `app/intents-registry` for side effects; passes `serverIntents` to the catalog builder.
 - `packages/web/hudsonkit/src/types/intent.ts` — new `ServerIntent` type; `IntentCatalog.serverIntents?: ServerIntent[]`. `AppIntent` unchanged.
+- `scripts/agent-action.ts` — CLI task envelope. `run -- <command>` emits paired `started` + `completed`/`failed` events automatically; manual `start` is for multi-step work and must be closed with `complete` or `fail`.
 - `CLAUDE.md` — `@hudson` paragraph linking to this HUD.
-- `test/lib/agent-intent.test.ts` — 12 tests covering redaction, size cap, awaitable returns, scope precedence, span writers, intent start/end + error, duplicate-id detection, HMR replacement, catalog split, registry projection.
+- `test/lib/agent-intent.test.ts` — tests covering redaction, size cap, awaitable returns, scope precedence, task terminal events, span writers, intent start/end + error, duplicate-id detection, HMR replacement, catalog split, registry projection.
 - No deletes in phase 1 (`/api/openscout` cleanup is a separate HUD).
 
 ## 7. Codex review notes (applied)
