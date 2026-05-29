@@ -85,3 +85,51 @@ See `app/apps/shaper/` as the reference implementation.
 - Window bounds, pan/zoom offsets tracked in refs (not state) during drag; flushed via `BOUNDS_FLUSH_MS = 500` debounce (see `WorkspaceShell.tsx`)
 - All persistent state uses `usePersistentState()` backed by localStorage
 - SDK's precompiled CSS bundle is built via `cd packages/web/hudsonkit && bun run build:css`; output lands at `packages/web/hudsonkit/dist/styles.css` (gitignored)
+
+## Fulfilling agentic Hudson work
+
+When a Scout message, CLI prompt, Codex task, Claude Code task, or direct
+operator request asks Hudson to create/change/deliver something:
+
+1. Check `docs/hudson-playbooks/` — if a playbook matches the shape of the
+   ask, follow it (with autonomy; playbooks are recipes, not rails).
+2. Otherwise, enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
+   the dev server is up, or read `app/apps/<id>/intents.ts` + grep for `intent(`
+   in `app/api/**`.
+3. Start a task envelope before making changes:
+
+   ```bash
+   TRACE=$(bun scripts/agent-action.ts start \
+     --prompt "Create a logo template" \
+     --action logo.create \
+     --actor "${USER:-agent}" | jq -r .traceId)
+   ```
+
+   Use `--source scout`, `--source codex`, or `--source claude-code` when known.
+   This writes to `.data/agent-actions.jsonl`, which HudLogger renders.
+4. **Server intents** (those wrapped with `intent({...}, fn)`) are directly callable —
+   import them from a script or a Bun one-liner. Each call auto-emits started/completed
+   spans to `.data/agent-actions.jsonl`, which HudLogger renders.
+5. **Sub-actions outside an intent call** — use the CLI logger for milestones:
+
+   ```bash
+   bun scripts/agent-action.ts log --trace "$TRACE" --action logo.create \
+     --message "Picked the mono-stamp template family"
+   ```
+
+   Log the milestones a human would want to see in HudLogger (picked a template,
+   wrote a file, finished a build) — not every keystroke. For direct server code,
+   import from `@/app/lib/agent-log-core`; `@/app/lib/agent-log` is Next
+   server-only and is not CLI-safe.
+6. Complete or fail the envelope:
+
+   ```bash
+   bun scripts/agent-action.ts complete --trace "$TRACE" --action logo.create \
+     --message "Delivered logo template and preview"
+   ```
+
+   On failure, use `fail --error "..."`.
+7. Reply to Scout/operator with the result. The HudLogger trail is the durable
+   record; the reply doesn't need to re-narrate every step.
+
+See `docs/HUD-007-agent-intent-instrumentation.md` for the design rationale.

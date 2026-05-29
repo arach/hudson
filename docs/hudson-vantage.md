@@ -85,8 +85,8 @@ struct ScoutRuntimeView: View {
 }
 ```
 
-The Termini case-study app now uses this exact pattern via
-`HudVantageConfiguration.terminiCanvasCaseStudy`.
+The Vantage host app uses this exact pattern via
+`HudVantageConfiguration.hostApplication(...)`.
 
 ## Control Plane
 
@@ -222,8 +222,8 @@ HUDSON_VANTAGE_RESTORE_CREATE=1 \
 HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/vantage VantageCanvas
 ```
 
-`HudVantageConfiguration.terminiCanvasCaseStudy` opts into launch restore and
-uses `/tmp/hudson-vantage-state.json`. If the state file is missing or contains
+`HudVantageConfiguration.hostApplication(...)` opts into launch restore and
+uses Application Support state paths by default. If the state file is missing or contains
 no durable tmux nodes, the sample falls back to its starter local PTY layout.
 
 ## Response Shape

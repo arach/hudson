@@ -21,6 +21,20 @@ export interface TemplateParam {
 }
 
 // ---------------------------------------------------------------------------
+// Per-element drag offsets. Layer above template params: the template still
+// computes each element's natural position, and the offset map is applied as
+// a transform on top. Keyed by stable shape ID (the `data-element-id` on the
+// rendered SVG node), then templateId → shapeId at the provider level.
+// ---------------------------------------------------------------------------
+export interface ShapeOffset {
+  dx?: number;
+  dy?: number;
+  rotate?: number;
+}
+
+export type LogoElementOffsets = Record<string, ShapeOffset>;
+
+// ---------------------------------------------------------------------------
 // Color-only subset that varies between light and dark modes
 // ---------------------------------------------------------------------------
 export interface ColorSet {

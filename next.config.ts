@@ -1,6 +1,6 @@
 import type { NextConfig } from "next";
 import { existsSync, mkdirSync, writeFileSync } from "fs";
-import { join } from "path";
+import { join, relative, sep } from "path";
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Auto-create app/local/apps.local.ts if missing
@@ -65,6 +65,24 @@ if (!existsSync(localWorkspacesFile)) {
 const turbopackRoot = process.env.HUDSON_TURBOPACK_PARENT === "1"
   ? join(__dirname, "..")
   : __dirname;
+const rootNodeModules = join(__dirname, "node_modules");
+const singletonAliases = {
+  "react": join(rootNodeModules, "react"),
+  "react/jsx-runtime": join(rootNodeModules, "react", "jsx-runtime.js"),
+  "react/jsx-dev-runtime": join(rootNodeModules, "react", "jsx-dev-runtime.js"),
+  "react-dom": join(rootNodeModules, "react-dom"),
+  "react-dom/client": join(rootNodeModules, "react-dom", "client.js"),
+  "ai": join(rootNodeModules, "ai"),
+  "@ai-sdk/react": join(rootNodeModules, "@ai-sdk", "react"),
+  "lucide-react": join(rootNodeModules, "lucide-react"),
+};
+const toTurbopackAliasPath = (target: string) => {
+  const rel = relative(turbopackRoot, target).split(sep).join("/");
+  return rel.startsWith(".") ? rel : `./${rel}`;
+};
+const turbopackSingletonAliases = Object.fromEntries(
+  Object.entries(singletonAliases).map(([key, target]) => [key, toTurbopackAliasPath(target)]),
+);
 
 const nextConfig: NextConfig = {
   transpilePackages: ["hudsonkit", "@voxd/client"],
@@ -72,8 +90,17 @@ const nextConfig: NextConfig = {
   turbopack: {
     root: turbopackRoot,
     resolveAlias: {
-      tailwindcss: join(__dirname, "node_modules", "tailwindcss"),
+      ...turbopackSingletonAliases,
+      tailwindcss: toTurbopackAliasPath(join(rootNodeModules, "tailwindcss")),
     },
+  },
+  webpack(config) {
+    config.resolve ??= {};
+    config.resolve.alias = {
+      ...(config.resolve.alias ?? {}),
+      ...singletonAliases,
+    };
+    return config;
   },
   async rewrites() {
     return [

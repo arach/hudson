@@ -1,14 +1,7 @@
 'use client';
 
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { Suspense, useEffect, useMemo, useState } from 'react';
 import { Columns2, FileDiff, Rows3 } from 'lucide-react';
-import {
-  MultiFileDiff,
-  PatchDiff,
-  type FileContents,
-  type MultiFileDiffProps,
-  type PatchDiffProps,
-} from '@pierre/diffs/react';
 import type { DocumentLanguage } from './CodeEditor';
 import type { HudsonTextDocument, TextDocumentDetectionInput } from './TextDocument';
 import { createHudsonTextDocument } from './TextDocument';
@@ -16,7 +9,52 @@ import { useOptionalTheme } from '../../theme/ThemeProvider';
 
 export type TextDiffLayout = 'split' | 'unified';
 
-type PierreDiffOptions = MultiFileDiffProps<unknown>['options'];
+type PierreDiffOptions = Record<string, unknown>;
+
+interface FileContents {
+  name: string;
+  contents: string;
+  lang?: string;
+  header?: string;
+  cacheKey?: string;
+}
+
+interface MultiFileDiffRuntimeProps {
+  oldFile: FileContents;
+  newFile: FileContents;
+  options?: PierreDiffOptions;
+  disableWorkerPool?: boolean;
+}
+
+interface PatchDiffRuntimeProps {
+  patch: string;
+  options?: PierreDiffOptions;
+  disableWorkerPool?: boolean;
+}
+
+const OptionalDiffPeerMissing: React.FC = () => (
+  <div className="flex h-full min-h-[180px] items-center justify-center p-6 text-center font-mono text-[11px] text-muted-foreground">
+    Text diff rendering requires the optional peer dependency @pierre/diffs.
+  </div>
+);
+
+const MultiFileDiffLazy = React.lazy(async () => {
+  try {
+    const mod = await import('@pierre/diffs/react');
+    return { default: mod.MultiFileDiff as React.ComponentType<MultiFileDiffRuntimeProps> };
+  } catch {
+    return { default: OptionalDiffPeerMissing as React.ComponentType<MultiFileDiffRuntimeProps> };
+  }
+});
+
+const PatchDiffLazy = React.lazy(async () => {
+  try {
+    const mod = await import('@pierre/diffs/react');
+    return { default: mod.PatchDiff as React.ComponentType<PatchDiffRuntimeProps> };
+  } catch {
+    return { default: OptionalDiffPeerMissing as React.ComponentType<PatchDiffRuntimeProps> };
+  }
+});
 
 export interface HudsonTextDiffSnapshot {
   title?: string;
@@ -43,7 +81,7 @@ export interface HudsonTextPatchDiff {
   kind: 'patch';
   patch: string;
   layout?: TextDiffLayout;
-  options?: PatchDiffProps<unknown>['options'];
+  options?: PierreDiffOptions;
 }
 
 export type HudsonTextDiff = HudsonTextDocumentDiff | HudsonTextPatchDiff;
@@ -238,21 +276,31 @@ export function TextDiffSurface({
         className="min-h-0 flex-1 overflow-auto"
         style={{ backgroundColor: 'var(--hud-diff-surface-bg, #0a0f12)' }}
       >
-        {diff.kind === 'patch' ? (
-          <PatchDiff
-            patch={diff.patch}
-            options={options}
-            disableWorkerPool={disableWorkerPool}
-          />
-        ) : (
-          <MultiFileDiff
-            oldFile={documentFiles?.oldFile ?? toPierreFile(diff.oldDocument, 'previous')}
-            newFile={documentFiles?.newFile ?? toPierreFile(diff.newDocument, 'current')}
-            options={options}
-            disableWorkerPool={disableWorkerPool}
-          />
-        )}
+        <Suspense fallback={<DiffLoading />}>
+          {diff.kind === 'patch' ? (
+            <PatchDiffLazy
+              patch={diff.patch}
+              options={options}
+              disableWorkerPool={disableWorkerPool}
+            />
+          ) : (
+            <MultiFileDiffLazy
+              oldFile={documentFiles?.oldFile ?? toPierreFile(diff.oldDocument, 'previous')}
+              newFile={documentFiles?.newFile ?? toPierreFile(diff.newDocument, 'current')}
+              options={options}
+              disableWorkerPool={disableWorkerPool}
+            />
+          )}
+        </Suspense>
       </div>
+    </div>
+  );
+}
+
+function DiffLoading() {
+  return (
+    <div className="flex h-full min-h-[180px] items-center justify-center font-mono text-[11px] text-muted-foreground">
+      Loading diff viewer…
     </div>
   );
 }

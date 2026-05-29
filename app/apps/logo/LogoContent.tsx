@@ -1123,7 +1123,7 @@ export function LogoContent() {
                 {/* Dark icon with geometry overlay */}
                 <div className="flex flex-col items-center gap-2">
                   <div className={`${LOGO_DARK_PREVIEW_STAGE_CLASS} relative`}>
-                    <LogoSvg params={params} size={512} />
+                    <LogoSvg params={params} size={512} interactive />
                     {inspectMode && <GeometryOverlay params={params} size={512} />}
                   </div>
                   <span className={LOGO_PREVIEW_LABEL_CLASS}>

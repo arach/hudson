@@ -28,7 +28,15 @@ import {
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
-import { HudLoggerStatusItem } from 'hudsonkit/observability';
+import {
+  HObservabilityDefault,
+  HUDSON_AGENT_ACTION_EVENT,
+  HudLogger,
+  HudLoggerStatusItem,
+  logHudsonAgentAction,
+  type HudsonAgentActionInput,
+  type HObservation,
+} from 'hudsonkit/observability';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
@@ -45,6 +53,7 @@ import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 import { HudsonTerminal } from './HudsonTerminal';
 import { WorkspaceAI, type WorkspaceAIComposerRequest } from './WorkspaceAI';
 import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
+import { useAgentActionLog } from './useAgentActionLog';
 import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
@@ -106,8 +115,8 @@ const DEFAULTS = {
 };
 
 const TERMINAL_VOICE_SHORTCUT_LABEL = 'Cmd+Shift+M';
-const HUD_LOGGER_APP_ID = 'hud-logger';
 const HUD_LOGGER_MAX_EVENTS = 240;
+const AGENT_ACTION_PERSIST_SEEN_LIMIT = 500;
 
 /** Window sizes used by the smart-tiler on first launch. */
 const TILE = {
@@ -145,6 +154,37 @@ function useCanvasMountTrace(label: string) {
     const delta = start ? `  Δ=${(t - start.startTime).toFixed(1)}ms` : '';
     console.log(`[perf] mount ${label}  @${t.toFixed(1)}ms${delta}`);
   }, []);
+}
+
+function observationData(event: HObservation): Record<string, unknown> {
+  return event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+    ? event.data
+    : {};
+}
+
+function isPersistableAgentActionObservation(event: HObservation) {
+  const data = observationData(event);
+  return (
+    event.category === 'agent-action' ||
+    data.triggeredBy === 'agent' ||
+    data.source === 'workspace-ai' ||
+    data.source === 'logo-ai' ||
+    data.source === 'shaper-ai' ||
+    data.source === 'day-stack-ai' ||
+    data.source === 'openscout'
+  );
+}
+
+async function persistAgentActionObservation(event: HObservation) {
+  try {
+    await fetch('/api/agent-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event }),
+    });
+  } catch {
+    // The live in-memory log still works if the durable dev-local feed is unavailable.
+  }
 }
 
 function MountTrace({ label, children }: { label: string; children: ReactNode }) {
@@ -323,11 +363,73 @@ function HudLoggerStatusButton({ onOpen }: { onOpen: () => void }) {
     <button
       onClick={onOpen}
       className="flex min-w-0 items-center rounded px-1 py-0.5 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-      title="Open Logs"
-      aria-label="Open Logs"
+      title="Open Agent Actions"
+      aria-label="Open Agent Actions"
     >
       <HudLoggerStatusItem maxEvents={HUD_LOGGER_MAX_EVENTS} />
     </button>
+  );
+}
+
+function HudLoggerOverlay({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  const replayEvents = useAgentActionLog({
+    limit: HUD_LOGGER_MAX_EVENTS,
+    refreshMs: 5000,
+    enabled: open,
+  });
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex bg-background/88 p-3 text-foreground backdrop-blur-md md:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Agent Actions"
+    >
+      <div className="flex min-h-0 w-full flex-col">
+        <div className="flex h-10 shrink-0 items-center justify-between border border-border border-b-0 bg-card/95 px-3 shadow-[var(--hud-shadow-nav)]">
+          <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
+            Agent Actions
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Close Agent Actions"
+            aria-label="Close Agent Actions"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <HudLogger
+          observability={HObservabilityDefault}
+          replayEvents={replayEvents}
+          maxEvents={HUD_LOGGER_MAX_EVENTS}
+          title="agent actions"
+          className="min-h-0 flex-1 rounded-t-none"
+          emptyMessage="No agent actions yet."
+          initialScope="agent-actions"
+        />
+      </div>
+    </div>
   );
 }
 
@@ -587,6 +689,28 @@ export function WorkspaceShell({
   const [hasSession, setHasSession] = useState(false);
   const [bootPhase, setBootPhase] = useState<BootPhase>(bootMode === 'none' ? 'done' : 'brand');
   const [booted, setBooted] = useState(bootMode === 'none');
+
+  useEffect(() => {
+    HObservabilityDefault.setEnabled(true);
+
+    const seen = new Set<string>();
+    const order: string[] = [];
+    const unsubscribe = HObservabilityDefault.subscribe((event) => {
+      if (!isPersistableAgentActionObservation(event)) return;
+      if (seen.has(event.id)) return;
+
+      seen.add(event.id);
+      order.push(event.id);
+      while (order.length > AGENT_ACTION_PERSIST_SEEN_LIMIT) {
+        const oldest = order.shift();
+        if (oldest) seen.delete(oldest);
+      }
+
+      void persistAgentActionObservation(event);
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Read session from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -1160,17 +1284,33 @@ function WorkspaceInner({
   const dynamicCountRef = useRef(0);
   const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
   const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
+  const [showHudLogger, setShowHudLogger] = useState(false);
   const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
-  const spawnTerminal = useCallback((cwd = '~') => {
+  const spawnTerminal = useCallback((
+    cwd = '~',
+    opts?: { backend?: 'pty' | 'tmux'; title?: string },
+  ) => {
     dynamicCountRef.current++;
     const n = dynamicCountRef.current;
     const offset = (n - 1) * 30;
     const shortCwd = cwd.replace(/^\/Users\/[^/]+/, '~');
+    const backend = opts?.backend ?? 'pty';
+    const id = `dyn-terminal-${n}`;
+    const tmuxSession = backend === 'tmux' ? `hudson-${id}` : undefined;
+    const title = opts?.title?.trim()
+      ? opts.title.trim()
+      : `Terminal ${n} — ${shortCwd}${backend === 'tmux' ? ' · tmux' : ''}`;
     const win: DynamicWindowEntry = {
-      id: `dyn-terminal-${n}`,
-      title: `Terminal ${n} — ${shortCwd}`,
-      render: () => <TerminalContent initialCwd={cwd} />,
+      id,
+      title,
+      render: () => (
+        <TerminalContent
+          initialCwd={cwd}
+          backend={backend}
+          tmuxSession={tmuxSession}
+        />
+      ),
       bounds: { x: -350 + offset, y: -250 + offset, w: 700, h: 500 },
     };
     setDynamicWindows(prev => [...prev, win]);
@@ -1540,17 +1680,69 @@ function WorkspaceInner({
     [shellSettings.masterMute, shellSettings.uiClickSounds, shellSettings.uiTransitionSounds],
   );
 
-  const canOpenHudLogger = allAppIds.includes(HUD_LOGGER_APP_ID);
+  useEffect(() => {
+    const onAgentAction = (event: Event) => {
+      const detail = (event as CustomEvent<HudsonAgentActionInput>).detail;
+      if (!detail || typeof detail !== 'object') return;
+      logHudsonAgentAction(detail);
+    };
+
+    window.addEventListener(HUDSON_AGENT_ACTION_EVENT, onAgentAction);
+    return () => window.removeEventListener(HUDSON_AGENT_ACTION_EVENT, onAgentAction);
+  }, []);
+
+  useEffect(() => {
+    const onOpenApp = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        appId?: string;
+        workspaceId?: string | null;
+        fullscreen?: boolean;
+      }>).detail;
+      const appId = typeof detail?.appId === 'string' ? detail.appId : '';
+      if (!appId) return;
+
+      if (allAppIds.includes(appId)) {
+        handleActivateApp(appId);
+        setFullscreenAppId(detail?.fullscreen ? appId : null);
+        setShowHudLogger(false);
+        setShowLauncher(false);
+        playSound('thock');
+        return;
+      }
+
+      const requestedWorkspaceId =
+        typeof detail?.workspaceId === 'string' ? detail.workspaceId : null;
+      const targetWorkspace = workspaces.find(candidate =>
+        (requestedWorkspaceId ? candidate.id === requestedWorkspaceId : true) &&
+        candidate.apps.some(config => config.app.id === appId),
+      ) ?? workspaces.find(candidate =>
+        candidate.apps.some(config => config.app.id === appId),
+      );
+
+      if (!targetWorkspace) return;
+      if (typeof window !== 'undefined') {
+        const hash = detail?.fullscreen
+          ? `focus=${encodeURIComponent(appId)}&fullscreen=${encodeURIComponent(appId)}`
+          : `focus=${encodeURIComponent(appId)}`;
+        window.location.hash = hash;
+      }
+      onSwitchWorkspace(targetWorkspace.id);
+      setShowHudLogger(false);
+      setShowLauncher(false);
+      playSound('thock');
+    };
+
+    window.addEventListener('hudson:open-app', onOpenApp);
+    return () => window.removeEventListener('hudson:open-app', onOpenApp);
+  }, [allAppIds, handleActivateApp, onSwitchWorkspace, playSound, workspaces]);
+
   const openHudLogger = useCallback(() => {
-    if (!canOpenHudLogger) return;
-    handleActivateApp(HUD_LOGGER_APP_ID);
-    setFullscreenAppId(HUD_LOGGER_APP_ID);
+    setShowHudLogger(true);
     setShowLauncher(false);
     playSound('thock');
-  }, [canOpenHudLogger, handleActivateApp, playSound]);
-  const hudLoggerStatusButton = canOpenHudLogger
-    ? <HudLoggerStatusButton onOpen={openHudLogger} />
-    : null;
+  }, [playSound]);
+  const closeHudLogger = useCallback(() => setShowHudLogger(false), []);
+  const hudLoggerStatusButton = <HudLoggerStatusButton onOpen={openHudLogger} />;
 
   const startVoicePrompt = useCallback(() => {
     setShowTerminal(true);
@@ -3406,9 +3598,16 @@ function WorkspaceInner({
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
       />
+      <HudLoggerOverlay
+        open={showHudLogger}
+        onClose={closeHudLogger}
+      />
       {showTerminalSpawn && (
         <TerminalSpawnDialog
-          onSpawn={(cwd) => { spawnTerminal(cwd); setShowTerminalSpawn(false); }}
+          onSpawn={(cwd, opts) => {
+            spawnTerminal(cwd, opts);
+            setShowTerminalSpawn(false);
+          }}
           onClose={() => setShowTerminalSpawn(false)}
         />
       )}
@@ -3696,16 +3895,37 @@ function DynamicWindowedApp({
 }
 
 // ---------------------------------------------------------------------------
-// TerminalSpawnDialog — lightweight popover to set CWD before spawning
+// TerminalSpawnDialog — 2-step wizard: directory presets → identity + backend.
+// Same shape as the canvas-terminals studio exhibit; eventually both surfaces
+// should share the wizard primitive.
 // ---------------------------------------------------------------------------
-function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => void; onClose: () => void }) {
-  const [cwd, setCwd] = useState('~');
-  const inputRef = useRef<HTMLInputElement>(null);
+type SpawnBackend = 'pty' | 'tmux';
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
+interface CwdPreset {
+  label: string;
+  cwd: string;
+}
+
+const SPAWN_PRESETS: CwdPreset[] = [
+  { label: '~/dev/hudson', cwd: '/Users/arach/dev/hudson' },
+  { label: '~/dev/studio', cwd: '/Users/arach/dev/studio' },
+  { label: '~', cwd: '~' },
+];
+
+function TerminalSpawnDialog({
+  onSpawn,
+  onClose,
+}: {
+  onSpawn: (cwd: string, opts: { backend: SpawnBackend; title: string }) => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [cwd, setCwd] = useState('');
+  const [customCwd, setCustomCwd] = useState('');
+  const [title, setTitle] = useState('');
+  const [backend, setBackend] = useState<SpawnBackend>('pty');
+  const customInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -3715,9 +3935,25 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSpawn(cwd.trim() || '~');
+  useEffect(() => {
+    if (step === 1 && cwd === '__custom__') customInputRef.current?.focus();
+    if (step === 2) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [step, cwd]);
+
+  const resolvedCwd = cwd === '__custom__' ? customCwd.trim() || '~' : cwd;
+
+  const advance = (nextCwd: string) => {
+    setCwd(nextCwd);
+    setTitle(prettyCwdShort(nextCwd));
+    setStep(2);
+  };
+
+  const commit = () => {
+    if (!resolvedCwd) return;
+    onSpawn(resolvedCwd, { backend, title });
   };
 
   return (
@@ -3727,45 +3963,163 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
         style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center gap-2 mb-3">
-              <TerminalSquare size={14} className="text-foreground/80" />
-              <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <TerminalSquare size={14} className="text-foreground/80" />
+            <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              · {step === 1 ? '1 / 2 directory' : '2 / 2 identity'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {step === 1 ? (
+          <div className="p-3 space-y-1.5">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider px-1 pb-1">
+              starting directory
             </div>
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1.5 block">
-              Working Directory
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={cwd}
-              onChange={(e) => setCwd(e.target.value)}
-              placeholder="~/dev/my-project"
-              className="w-full bg-muted/80 border border-border rounded px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40 transition-colors"
-              spellCheck={false}
-              autoComplete="off"
-            />
+            {SPAWN_PRESETS.map((preset) => (
+              <button
+                key={preset.cwd}
+                type="button"
+                onClick={() => advance(preset.cwd)}
+                className="flex w-full items-center gap-2.5 rounded border border-border bg-muted/40 px-3 py-2 text-left hover:border-foreground/30 hover:bg-muted/70 transition-colors"
+              >
+                <span className="font-mono text-[12px] text-foreground">{preset.label}</span>
+                <span className="ml-auto text-[9.5px] font-mono uppercase tracking-wider text-muted-foreground">
+                  shell
+                </span>
+              </button>
+            ))}
+            {cwd === '__custom__' ? (
+              <div className="rounded border border-border bg-muted/40 p-2">
+                <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
+                  custom path
+                </div>
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  value={customCwd}
+                  onChange={(e) => setCustomCwd(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') advance('__custom__');
+                  }}
+                  placeholder="/path/to/dir or ~/shortcut"
+                  className="w-full bg-background/60 border border-border rounded px-2 py-1 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => advance('__custom__')}
+                    className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border border-border text-foreground hover:border-foreground/40"
+                  >
+                    next →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCwd('__custom__')}
+                className="flex w-full items-center gap-2.5 rounded border border-dashed border-border bg-muted/20 px-3 py-2 text-left hover:border-foreground/30 hover:bg-muted/50 transition-colors"
+              >
+                <span className="font-mono text-[12px] text-foreground/80">custom path…</span>
+              </button>
+            )}
           </div>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[11px] px-3 py-1.5 rounded border border-border text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors font-mono"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="text-[11px] px-4 py-1.5 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-mono"
-            >
-              Create
-            </button>
+        ) : (
+          <div className="p-3 space-y-3">
+            <div className="rounded border border-border bg-muted/40 px-3 py-2">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">cwd</div>
+              <div className="mt-0.5 font-mono text-[12px] text-foreground truncate">
+                {prettyCwdShort(resolvedCwd)}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground block">
+                title
+              </label>
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commit();
+                }}
+                className="mt-1 w-full bg-background/60 border border-border rounded px-2 py-1 text-[12px] font-mono text-foreground outline-none focus:border-accent/40"
+                placeholder={prettyCwdShort(resolvedCwd)}
+                spellCheck={false}
+              />
+            </div>
+
+            <div>
+              <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                backend
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                {(['pty', 'tmux'] as const).map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setBackend(b)}
+                    aria-pressed={backend === b}
+                    className={`flex-1 rounded border px-2 py-1.5 text-left transition-colors ${
+                      backend === b
+                        ? 'border-accent/60 bg-accent/10'
+                        : 'border-border bg-muted/40 hover:border-foreground/30'
+                    }`}
+                  >
+                    <div className={`text-[11px] font-mono uppercase tracking-wider ${
+                      backend === b ? 'text-accent' : 'text-foreground'
+                    }`}>
+                      {b}
+                    </div>
+                    <div className="text-[9px] font-mono text-muted-foreground">
+                      {b === 'pty' ? 'orphan-ttl persistence' : 'survives reload'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              >
+                ← back
+              </button>
+              <button
+                type="button"
+                onClick={commit}
+                className="text-[11px] px-3 py-1 rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 font-mono uppercase tracking-wider"
+              >
+                create terminal
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </div>
     </div>
   );
+}
+
+function prettyCwdShort(cwd: string): string {
+  if (!cwd) return '~';
+  return cwd.replace(/^\/Users\/[^/]+/, '~');
 }
 
 // ---------------------------------------------------------------------------

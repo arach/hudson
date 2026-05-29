@@ -3,11 +3,21 @@
 import { VantageIcon } from './VantageIcon';
 import { useVantage } from './VantageProvider';
 import { ActionButton, PanelShell, StatusPill } from './components';
+import { resolveVantageProfile } from '@/app/lib/vantage/paths';
+
+function controlLaneBasename(path: string): string {
+  const parts = path.split('/');
+  return parts[parts.length - 1] || path;
+}
 
 export function VantageCompanionCard() {
-  const { phase, status, error, launchCompanion, launching, refresh } = useVantage();
+  const { phase, status, error, launchCompanion, launching, refresh, profileId } = useVantage();
   const online = phase === 'online' && status?.online;
   const tone = online ? 'online' : phase === 'checking' ? 'checking' : 'offline';
+  const profile = resolveVantageProfile(profileId);
+  const commandLane = controlLaneBasename(status?.commandPath ?? profile.commandPath);
+  const workspaceID = status?.workspaceID ?? '—';
+  const environmentLabel = `LOCAL DEV · ${workspaceID} · ${commandLane}`;
 
   return (
     <PanelShell className="p-4">
@@ -21,6 +31,10 @@ export function VantageCompanionCard() {
             <h2 className="text-sm font-medium text-foreground/90">Native companion</h2>
             <StatusPill tone={tone} label={online ? 'online' : phase === 'checking' ? 'checking' : 'offline'} />
           </div>
+
+          <p className="mt-1 font-mono text-[9px] uppercase tracking-wider text-muted-foreground/70">
+            {environmentLabel}
+          </p>
 
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             {online

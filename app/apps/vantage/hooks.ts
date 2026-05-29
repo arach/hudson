@@ -71,11 +71,11 @@ export function useVantageCommands(): CommandOption[] {
 export function useVantageStatus(): { label: string; color: StatusColor } {
   const { phase, status, error, nodes } = useVantage();
 
-  if (phase === 'checking') return { label: 'PROBE', color: 'amber' };
+  if (phase === 'checking') return { label: 'PROBE', color: 'neutral' };
   if (error && !status?.online) return { label: 'ERROR', color: 'red' };
   if (!status?.online) return { label: 'OFFLINE', color: 'neutral' };
-  if (nodes.length === 0) return { label: 'READY', color: 'emerald' };
-  return { label: `${nodes.length} NODES`, color: 'emerald' };
+  if (nodes.length === 0) return { label: 'READY', color: 'neutral' };
+  return { label: `${nodes.length} NODES`, color: 'neutral' };
 }
 
 export function useVantageSearch(): SearchConfig {

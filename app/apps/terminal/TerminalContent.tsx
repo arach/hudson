@@ -8,7 +8,19 @@ import { Plus, X } from 'lucide-react';
 // Single session — one relay + one TerminalRelay component
 // ---------------------------------------------------------------------------
 
-function TerminalSession({ id, cwd }: { id: string; cwd: string }) {
+type TerminalBackend = 'pty' | 'tmux';
+
+function TerminalSession({
+  id,
+  cwd,
+  backend = 'pty',
+  tmuxSession,
+}: {
+  id: string;
+  cwd: string;
+  backend?: TerminalBackend;
+  tmuxSession?: string;
+}) {
   const { serviceApiUrl } = usePlatform();
 
   const relay = useTerminalRelay({
@@ -16,13 +28,18 @@ function TerminalSession({ id, cwd }: { id: string; cwd: string }) {
     agent: 'shell',
     cwd,
     sessionKey: `shell-terminal-${id}`,
+    backend,
+    ...(backend === 'tmux'
+      ? { tmuxSession: tmuxSession ?? `hudson-${id}` }
+      : {}),
   });
 
   const configItems = useMemo(() => [
     { label: 'Relay', value: 'ws://localhost:3600' },
-    { label: 'Mode', value: 'shell' },
+    { label: 'Backend', value: backend },
     { label: 'CWD', value: cwd },
-  ], [cwd]);
+    ...(backend === 'tmux' ? [{ label: 'tmux session', value: tmuxSession ?? `hudson-${id}` }] : []),
+  ], [backend, cwd, id, tmuxSession]);
 
   const handleStartRelay = useCallback(async (): Promise<boolean> => {
     try {
@@ -55,16 +72,36 @@ interface TabState {
   id: string;
   label: string;
   cwd: string;
+  backend: TerminalBackend;
+  tmuxSession?: string;
 }
 
 let nextTabId = 1;
-function makeTab(cwd = '~'): TabState {
+function makeTab(
+  cwd = '~',
+  backend: TerminalBackend = 'pty',
+  tmuxSession?: string,
+): TabState {
   const id = `term-${nextTabId++}`;
-  return { id, label: `Terminal ${nextTabId - 1}`, cwd };
+  return { id, label: `Terminal ${nextTabId - 1}`, cwd, backend, tmuxSession };
 }
 
-export function TerminalContent({ initialCwd = '~' }: { initialCwd?: string } = {}) {
-  const [tabs, setTabs] = useState<TabState[]>(() => [makeTab(initialCwd)]);
+export interface TerminalContentProps {
+  initialCwd?: string;
+  /** PTY (default) vs tmux. Tmux sessions persist across reloads. */
+  backend?: TerminalBackend;
+  /** Override the auto-generated tmux session name. Only used when backend='tmux'. */
+  tmuxSession?: string;
+}
+
+export function TerminalContent({
+  initialCwd = '~',
+  backend = 'pty',
+  tmuxSession,
+}: TerminalContentProps = {}) {
+  const [tabs, setTabs] = useState<TabState[]>(() => [
+    makeTab(initialCwd, backend, tmuxSession),
+  ]);
   const [activeTabId, setActiveTabId] = useState(() => tabs[0].id);
 
   const addTab = useCallback(() => {
@@ -134,7 +171,12 @@ export function TerminalContent({ initialCwd = '~' }: { initialCwd?: string } = 
             className="absolute inset-0"
             style={{ display: tab.id === activeTabId ? 'block' : 'none' }}
           >
-            <TerminalSession id={tab.id} cwd={tab.cwd} />
+            <TerminalSession
+              id={tab.id}
+              cwd={tab.cwd}
+              backend={tab.backend}
+              tmuxSession={tab.tmuxSession}
+            />
           </div>
         ))}
       </div>

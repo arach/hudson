@@ -13,6 +13,7 @@
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 - State is owned by each app Provider via React context
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald color ranges
+- Agentic Hudson work from Scout, Codex, Claude Code, or a shell prompt must log a task envelope with `bun scripts/agent-action.ts start`, milestone `log` entries, and `complete`/`fail`
 
 ## Project Structure
 

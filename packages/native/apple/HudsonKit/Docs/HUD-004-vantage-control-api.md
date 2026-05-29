@@ -444,7 +444,7 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait tmux-health --remot
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote devbox --session hudson-lab
 ```
 
-Termini Canvas exposes the same commands through:
+Vantage exposes the same commands through:
 
 ```bash
 apps/vantage/scripts/vantagectl.sh --wait status

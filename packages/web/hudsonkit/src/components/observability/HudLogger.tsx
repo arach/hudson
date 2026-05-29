@@ -4,10 +4,14 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
+  type CSSProperties,
+  type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
 import { HObservability, HObservabilityDefault } from '../../observability/core';
+import { usePersistentState } from '../../hooks/usePersistentState';
 import type {
   HLogLevel,
   HObservation,
@@ -16,6 +20,7 @@ import type {
 
 type LevelFilter = HLogLevel | 'all';
 type KindFilter = HObservationKind | 'all';
+export type HudLoggerScopeFilter = 'all' | 'agent-actions';
 type InspectorTone = 'neutral' | 'cyan' | 'emerald' | 'amber' | 'red';
 
 type InspectorRowData = {
@@ -38,6 +43,7 @@ export interface HudLoggerSummary {
   total: number;
   errors: number;
   warnings: number;
+  agentActions: number;
   activeSpans: number;
   lastEvent: HObservation | null;
 }
@@ -45,6 +51,9 @@ export interface HudLoggerSummary {
 export interface HudLoggerProps {
   observability?: HObservability;
   events?: readonly HObservation[];
+  /** Historical events merged with the live in-memory buffer.
+   *  Use this to seed the table from a server-side log (e.g. .jsonl file). */
+  replayEvents?: readonly HObservation[];
   maxEvents?: number;
   title?: string;
   className?: string;
@@ -52,6 +61,7 @@ export interface HudLoggerProps {
   showHeader?: boolean;
   showInspector?: boolean;
   initialTail?: boolean;
+  initialScope?: HudLoggerScopeFilter;
 }
 
 export interface HudLoggerStatusItemProps {
@@ -64,6 +74,12 @@ export interface HudLoggerStatusItemProps {
 
 const LEVELS: HLogLevel[] = ['debug', 'info', 'warn', 'error'];
 const KINDS: HObservationKind[] = ['log', 'metric', 'span'];
+const HUDSON_OPEN_APP_EVENT = 'hudson:open-app';
+const INSPECTOR_MIN_WIDTH = 280;
+const INSPECTOR_DEFAULT_WIDTH = 380;
+const INSPECTOR_MAX_WIDTH = 900;
+const MAIN_MIN_WIDTH = 420;
+const INSPECTOR_WIDTH_STORAGE_KEY = 'hudson.hud-logger.inspector-width';
 
 export function useHudLoggerEvents(
   observability: HObservability = HObservabilityDefault,
@@ -91,6 +107,7 @@ export function summarizeHudLoggerEvents(events: readonly HObservation[]): HudLo
     total: events.length,
     errors: events.filter((event) => event.kind === 'log' && event.level === 'error').length,
     warnings: events.filter((event) => event.kind === 'log' && event.level === 'warn').length,
+    agentActions: events.filter(isAgentActionEvent).length,
     activeSpans: events.filter((event) => event.kind === 'span' && event.status === 'active').length,
     lastEvent: events[0] ?? null,
   };
@@ -138,6 +155,7 @@ export function HudLoggerStatusItem({
 export function HudLogger({
   observability = HObservabilityDefault,
   events: controlledEvents,
+  replayEvents,
   maxEvents = 200,
   title = 'HudLogger',
   className = '',
@@ -145,37 +163,45 @@ export function HudLogger({
   showHeader = true,
   showInspector = true,
   initialTail = true,
+  initialScope = 'all',
 }: HudLoggerProps) {
   const liveEvents = useHudLoggerEvents(observability, { maxEvents });
-  const events = useMemo(
-    () => controlledEvents ? controlledEvents.slice(0, maxEvents) : liveEvents,
-    [controlledEvents, liveEvents, maxEvents],
-  );
+  const events = useMemo(() => {
+    if (controlledEvents) return controlledEvents.slice(0, maxEvents);
+    if (!replayEvents || replayEvents.length === 0) return liveEvents;
+    return mergeReplayWithLive(replayEvents, liveEvents, maxEvents);
+  }, [controlledEvents, replayEvents, liveEvents, maxEvents]);
   const [selectedId, setSelectedId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
+  const [scopeFilter, setScopeFilter] = useState<HudLoggerScopeFilter>(initialScope);
   const [query, setQuery] = useState('');
   const [tail, setTail] = useState(initialTail);
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
+  const [inspectorWidth, setInspectorWidth] = usePersistentState<number>(
+    INSPECTOR_WIDTH_STORAGE_KEY,
+    INSPECTOR_DEFAULT_WIDTH,
+  );
+  const sectionRef = useRef<HTMLElement>(null);
+  const asideRef = useRef<HTMLElement>(null);
+  const [isResizing, setIsResizing] = useState(false);
 
   const filteredEvents = useMemo(
     () =>
       events.filter((event) => {
+        if (scopeFilter === 'agent-actions' && !isAgentActionEvent(event)) return false;
         if (kindFilter !== 'all' && event.kind !== kindFilter) return false;
         if (levelFilter !== 'all' && (event.kind !== 'log' || event.level !== levelFilter)) return false;
         if (!query.trim()) return true;
         const haystack = `${eventLabel(event)} ${event.category ?? ''} ${JSON.stringify(event.data ?? {})}`.toLowerCase();
         return haystack.includes(query.trim().toLowerCase());
       }),
-    [events, kindFilter, levelFilter, query],
+    [events, kindFilter, levelFilter, query, scopeFilter],
   );
 
-  useEffect(() => {
-    if (tail) setSelectedId(filteredEvents[0]?.id ?? null);
-  }, [filteredEvents, tail]);
-
+  const effectiveSelectedId = tail ? filteredEvents[0]?.id ?? null : selectedId;
   const selectedEvent =
-    filteredEvents.find((event) => event.id === selectedId) ??
+    filteredEvents.find((event) => event.id === effectiveSelectedId) ??
     filteredEvents[0] ??
     null;
   const summary = useMemo(() => summarizeHudLoggerEvents(events), [events]);
@@ -194,11 +220,90 @@ export function HudLogger({
     setSelectedId(event.id);
   }, []);
 
+  const openEventTarget = useCallback((event: HObservation) => {
+    const appId = eventTargetAppId(event);
+    if (!appId || typeof window === 'undefined') return;
+    window.dispatchEvent(new CustomEvent(HUDSON_OPEN_APP_EVENT, {
+      detail: {
+        appId,
+        workspaceId: eventTargetWorkspaceId(event),
+        source: 'hud-logger',
+      },
+    }));
+  }, []);
+
+  const clampInspectorWidth = useCallback((desired: number, sectionWidth: number) => {
+    const ceiling = Math.min(INSPECTOR_MAX_WIDTH, Math.max(INSPECTOR_MIN_WIDTH, sectionWidth - MAIN_MIN_WIDTH));
+    return Math.max(INSPECTOR_MIN_WIDTH, Math.min(ceiling, desired));
+  }, []);
+
+  const handleSplitterDown = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
+    if (event.button !== 0) return;
+    const section = sectionRef.current;
+    const aside = asideRef.current;
+    if (!section || !aside) return;
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = aside.getBoundingClientRect().width;
+    setIsResizing(true);
+    document.body.style.cursor = 'col-resize';
+    document.body.style.userSelect = 'none';
+
+    const onMove = (move: PointerEvent) => {
+      const sectionWidth = section.getBoundingClientRect().width;
+      const next = clampInspectorWidth(startWidth + (startX - move.clientX), sectionWidth);
+      aside.style.setProperty('--inspector-width', `${next}px`);
+    };
+
+    const finalize = (final: PointerEvent) => {
+      const sectionWidth = section.getBoundingClientRect().width;
+      const next = clampInspectorWidth(startWidth + (startX - final.clientX), sectionWidth);
+      setInspectorWidth(next);
+      setIsResizing(false);
+      document.body.style.cursor = '';
+      document.body.style.userSelect = '';
+      window.removeEventListener('pointermove', onMove);
+      window.removeEventListener('pointerup', finalize);
+      window.removeEventListener('pointercancel', finalize);
+    };
+
+    window.addEventListener('pointermove', onMove);
+    window.addEventListener('pointerup', finalize);
+    window.addEventListener('pointercancel', finalize);
+  }, [clampInspectorWidth, setInspectorWidth]);
+
+  const handleSplitterDoubleClick = useCallback(() => {
+    setInspectorWidth(INSPECTOR_DEFAULT_WIDTH);
+  }, [setInspectorWidth]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const section = sectionRef.current;
+    if (!section) return;
+    const observer = new ResizeObserver(() => {
+      const sectionWidth = section.getBoundingClientRect().width;
+      setInspectorWidth((current) => {
+        const next = clampInspectorWidth(current, sectionWidth);
+        return next === current ? current : next;
+      });
+    });
+    observer.observe(section);
+    return () => observer.disconnect();
+  }, [clampInspectorWidth, setInspectorWidth]);
+
+  const inspectorStyle = useMemo<CSSProperties>(
+    () => ({ ['--inspector-width' as string]: `${inspectorWidth}px` }) as CSSProperties,
+    [inspectorWidth],
+  );
+
   return (
-    <section className={`grid min-h-[520px] overflow-hidden rounded-md border border-border bg-background text-foreground lg:grid-cols-[minmax(0,1fr)_330px] ${!showInspector ? 'lg:grid-cols-1' : ''} ${className}`}>
-      <main className="min-w-0 border-b border-border lg:border-b-0 lg:border-r">
+    <section
+      ref={sectionRef}
+      className={`flex min-h-[520px] flex-col overflow-hidden rounded-md border border-border bg-background text-foreground lg:flex-row ${className}`}
+    >
+      <main className="flex min-h-0 min-w-0 flex-col border-b border-border lg:flex-1 lg:border-b-0">
         {showHeader && (
-          <div className="border-b border-border bg-card/80 px-3 py-2.5">
+          <div className="shrink-0 border-b border-border bg-card/80 px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton
                 ariaLabel="copy filtered table"
@@ -211,6 +316,7 @@ export function HudLogger({
                 <span>{title}</span>
                 <span className="text-accent">{filteredEvents.length} shown</span>
                 <span>{summary.total} buffered</span>
+                <span>{summary.agentActions} agent</span>
                 <span>{summary.errors} errors</span>
                 {summary.activeSpans > 0 && <span className="text-warning">{summary.activeSpans} active</span>}
               </div>
@@ -228,7 +334,15 @@ export function HudLogger({
               <summary className="cursor-pointer font-mono text-[10px] font-light uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground">
                 filters / controls
               </summary>
-              <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_1fr_auto]">
+              <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+                <FilterGroup label="Scope">
+                  <FilterButton active={scopeFilter === 'all'} onClick={() => setScopeFilter('all')}>
+                    all
+                  </FilterButton>
+                  <FilterButton active={scopeFilter === 'agent-actions'} onClick={() => setScopeFilter('agent-actions')}>
+                    agent actions
+                  </FilterButton>
+                </FilterGroup>
                 <FilterGroup label="Kind">
                   <FilterButton active={kindFilter === 'all'} onClick={() => setKindFilter('all')}>
                     all
@@ -267,35 +381,39 @@ export function HudLogger({
           </div>
         )}
 
-        <div className="max-h-[650px] overflow-auto">
-          <div className="min-w-[760px] font-mono text-[10px] font-light">
-            <div className="sticky top-0 z-10 grid grid-cols-[62px_76px_58px_72px_112px_minmax(260px,1fr)_92px] border-b border-border bg-card px-3 py-1.5 font-light uppercase tracking-[0.14em] text-muted-foreground">
+        <div className="max-h-[650px] overflow-auto lg:max-h-none lg:flex-1 lg:min-h-0">
+          <div className="min-w-[980px] font-mono text-[10px] font-light">
+            <div className="sticky top-0 z-10 grid grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px] border-b border-border bg-card px-3 py-1.5 font-light uppercase tracking-[0.14em] text-muted-foreground">
               <span className="sticky left-0 bg-card pr-2">Copy</span>
+              <span>Open</span>
               <span>Time</span>
               <span>Kind</span>
               <span>Level</span>
               <span>Category</span>
+              <span>Target</span>
               <span>Message</span>
               <span>Id</span>
             </div>
-            {filteredEvents.map((event) => (
-              <div
-                key={`${event.id}-${eventTimestampLabel(event)}`}
-                role="button"
-                tabIndex={0}
-                onClick={() => selectEvent(event)}
-                onKeyDown={(keyboardEvent) => {
-                  if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
-                    keyboardEvent.preventDefault();
-                    selectEvent(event);
-                  }
-                }}
-                className={`grid w-full grid-cols-[62px_76px_58px_72px_112px_minmax(260px,1fr)_92px] items-center border-b px-3 py-1 text-left transition ${
-                  selectedEvent?.id === event.id
-                    ? 'border-accent/30 bg-accent/10'
-                    : 'border-border hover:bg-muted/35'
-                }`}
-              >
+            {filteredEvents.map((event) => {
+              const targetAppId = eventTargetAppId(event);
+              return (
+                <div
+                  key={`${event.id}-${eventTimestampLabel(event)}`}
+                  role="button"
+                  tabIndex={0}
+                  onClick={() => selectEvent(event)}
+                  onKeyDown={(keyboardEvent) => {
+                    if (keyboardEvent.key === 'Enter' || keyboardEvent.key === ' ') {
+                      keyboardEvent.preventDefault();
+                      selectEvent(event);
+                    }
+                  }}
+                  className={`grid w-full grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px] items-center border-b px-3 py-1 text-left transition ${
+                    selectedEvent?.id === event.id
+                      ? 'border-accent/30 bg-accent/10'
+                      : 'border-border hover:bg-muted/35'
+                  }`}
+                >
                 <button
                   type="button"
                   aria-label={`copy row ${shortEventId(event.id)}`}
@@ -309,14 +427,31 @@ export function HudLogger({
                 >
                   {copiedKey === event.id ? 'copied' : 'copy'}
                 </button>
+                {targetAppId ? (
+                  <button
+                    type="button"
+                    aria-label={`open ${eventTargetLabel(event)}`}
+                    onClick={(clickEvent) => {
+                      clickEvent.stopPropagation();
+                      openEventTarget(event);
+                    }}
+                    className="justify-self-start border border-border bg-muted/20 px-1.5 py-0.5 font-mono text-[9px] font-light uppercase tracking-[0.12em] text-muted-foreground hover:border-accent/30 hover:text-accent"
+                  >
+                    open
+                  </button>
+                ) : (
+                  <span className="text-muted-foreground/45">-</span>
+                )}
                 <span className="tabular-nums text-muted-foreground">{eventTimestampLabel(event)}</span>
                 <span className="uppercase tracking-[0.13em] text-muted-foreground">{event.kind}</span>
                 <span className={`uppercase tracking-[0.13em] ${eventSignalClass(event)}`}>{eventSignalLabel(event)}</span>
                 <span className="truncate uppercase tracking-[0.13em] text-muted-foreground">{event.category ?? '-'}</span>
+                <span className="truncate font-sans text-[12px] font-normal normal-case tracking-normal text-muted-foreground">{eventTargetLabel(event)}</span>
                 <span className="truncate font-sans text-[12px] font-normal normal-case tracking-normal text-foreground">{eventLabel(event)}</span>
                 <span className="truncate text-muted-foreground">{shortEventId(event.id)}</span>
-              </div>
-            ))}
+                </div>
+              );
+            })}
 
             {filteredEvents.length === 0 && (
               <div className="border-b border-border px-3 py-5 font-sans text-[13px] text-muted-foreground">
@@ -328,11 +463,40 @@ export function HudLogger({
       </main>
 
       {showInspector && (
-        <PayloadInspector
-          copied={selectedEvent ? copiedKey === `inspector:${selectedEvent.id}` : false}
-          event={selectedEvent}
-          onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${event.id}`)}
-        />
+        <>
+          <div
+            role="separator"
+            aria-orientation="vertical"
+            aria-label="Resize payload inspector"
+            aria-valuenow={inspectorWidth}
+            aria-valuemin={INSPECTOR_MIN_WIDTH}
+            aria-valuemax={INSPECTOR_MAX_WIDTH}
+            title="Drag to resize · Double-click to reset"
+            onPointerDown={handleSplitterDown}
+            onDoubleClick={handleSplitterDoubleClick}
+            className={`group hidden shrink-0 cursor-col-resize items-stretch justify-center transition-colors lg:flex lg:w-[5px] ${
+              isResizing ? 'bg-accent/15' : 'hover:bg-accent/10'
+            }`}
+          >
+            <div
+              className={`w-px transition-colors ${
+                isResizing ? 'bg-accent/80' : 'bg-border group-hover:bg-accent/60'
+              }`}
+            />
+          </div>
+          <aside
+            ref={asideRef}
+            style={inspectorStyle}
+            className="flex w-full shrink-0 flex-col bg-background lg:w-[var(--inspector-width)]"
+          >
+            <PayloadInspector
+              copied={selectedEvent ? copiedKey === `inspector:${selectedEvent.id}` : false}
+              event={selectedEvent}
+              onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${event.id}`)}
+              onOpenTarget={openEventTarget}
+            />
+          </aside>
+        </>
       )}
     </section>
   );
@@ -342,19 +506,32 @@ function PayloadInspector({
   copied,
   event,
   onCopyRow,
+  onOpenTarget,
 }: {
   copied: boolean;
   event: HObservation | null;
   onCopyRow: (event: HObservation) => void;
+  onOpenTarget: (event: HObservation) => void;
 }) {
+  const targetAppId = event ? eventTargetAppId(event) : null;
+
   return (
-    <aside className="bg-background p-3 lg:p-4">
-      <div className="flex items-center justify-between border-b border-border pb-2">
+    <div className="flex min-h-0 flex-1 flex-col">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 py-2.5 lg:px-4">
         <div className="font-mono text-[10px] font-light uppercase tracking-[0.18em] text-muted-foreground">
           Payload inspector
         </div>
         {event ? (
           <div className="flex items-center gap-2">
+            {targetAppId ? (
+              <button
+                type="button"
+                onClick={() => onOpenTarget(event)}
+                className="border border-border bg-muted/20 px-2 py-1 font-mono text-[9px] font-light uppercase tracking-[0.14em] text-muted-foreground transition hover:border-accent/30 hover:text-accent"
+              >
+                open app
+              </button>
+            ) : null}
             <button
               type="button"
               onClick={() => onCopyRow(event)}
@@ -368,43 +545,45 @@ function PayloadInspector({
           </div>
         ) : null}
       </div>
-      {event ? (
-        <div className="mt-3 grid gap-3">
-          <div className="border border-accent/30 bg-accent/10">
-            <div className="flex flex-wrap items-center gap-2 border-b border-accent/20 px-3 py-2">
-              <EventPill event={event} />
-              <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
-                {event.kind}
-              </span>
-            </div>
-            <div className="px-3 py-2">
-              <div className="font-mono text-[10px] font-light uppercase tracking-[0.16em] text-accent">
-                selected event
+      <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 lg:px-4 lg:py-4">
+        {event ? (
+          <div className="grid gap-3">
+            <div className="border border-accent/30 bg-accent/10">
+              <div className="flex flex-wrap items-center gap-2 border-b border-accent/20 px-3 py-2">
+                <EventPill event={event} />
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
+                  {event.kind}
+                </span>
               </div>
-              <div className="mt-1 break-words text-[14px] font-normal leading-5 text-foreground">
-                {eventLabel(event)}
+              <div className="px-3 py-2">
+                <div className="font-mono text-[10px] font-light uppercase tracking-[0.16em] text-accent">
+                  selected event
+                </div>
+                <div className="mt-1 break-words text-[14px] font-normal leading-5 text-foreground">
+                  {eventLabel(event)}
+                </div>
               </div>
             </div>
+
+            {inspectorSections(event).map((section) => (
+              <InspectorSection key={section.title} section={section} />
+            ))}
+
+            <JsonBlock label="payload.data" value={event.data ?? {}} />
+            {event.kind === 'metric' && event.tags ? (
+              <JsonBlock label="metric.tags" value={event.tags} />
+            ) : null}
+            {event.kind === 'span' && event.error ? (
+              <JsonBlock label="span.error" value={event.error} />
+            ) : null}
           </div>
-
-          {inspectorSections(event).map((section) => (
-            <InspectorSection key={section.title} section={section} />
-          ))}
-
-          <JsonBlock label="payload.data" value={event.data ?? {}} />
-          {event.kind === 'metric' && event.tags ? (
-            <JsonBlock label="metric.tags" value={event.tags} />
-          ) : null}
-          {event.kind === 'span' && event.error ? (
-            <JsonBlock label="span.error" value={event.error} />
-          ) : null}
-        </div>
-      ) : (
-        <div className="mt-4 border border-border bg-muted/20 p-4 text-[13px] leading-6 text-muted-foreground">
-          No event selected.
-        </div>
-      )}
-    </aside>
+        ) : (
+          <div className="border border-border bg-muted/20 p-4 text-[13px] leading-6 text-muted-foreground">
+            No event selected.
+          </div>
+        )}
+      </div>
+    </div>
   );
 }
 
@@ -522,10 +701,56 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
       <div className="border-b border-border bg-muted/30 px-3 py-1.5 font-mono text-[9px] font-light uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </div>
-      <pre className="max-h-[260px] overflow-auto whitespace-pre-wrap p-3 font-mono text-[11px] font-light leading-5 text-foreground/75">
+      <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] font-light leading-5 text-foreground/75 lg:max-h-none lg:overflow-x-auto">
         {JSON.stringify(value, null, 2)}
       </pre>
     </div>
+  );
+}
+
+function eventData(event: HObservation): Record<string, unknown> {
+  return event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+    ? event.data
+    : {};
+}
+
+function isAgentActionEvent(event: HObservation) {
+  const data = eventData(event);
+  return (
+    event.category === 'agent-action' ||
+    data.triggeredBy === 'agent' ||
+    data.source === 'workspace-ai' ||
+    data.source === 'logo-ai' ||
+    data.source === 'shaper-ai' ||
+    data.source === 'day-stack-ai'
+  );
+}
+
+function dataString(data: Record<string, unknown>, key: string): string | null {
+  const value = data[key];
+  return typeof value === 'string' && value.trim() ? value : null;
+}
+
+function eventTargetAppId(event: HObservation): string | null {
+  const data = eventData(event);
+  return dataString(data, 'appId') ?? dataString(data, 'targetAppId');
+}
+
+function eventTargetWorkspaceId(event: HObservation): string | null {
+  const data = eventData(event);
+  return dataString(data, 'workspaceId') ?? dataString(data, 'targetWorkspaceId');
+}
+
+function eventTargetLabel(event: HObservation) {
+  const data = eventData(event);
+  return (
+    dataString(data, 'appName') ??
+    dataString(data, 'appId') ??
+    dataString(data, 'workspaceName') ??
+    dataString(data, 'workspaceId') ??
+    dataString(data, 'serviceId') ??
+    dataString(data, 'target') ??
+    '-'
   );
 }
 
@@ -547,6 +772,20 @@ function inspectorSections(event: HObservation): InspectorSectionData[] {
       ],
     },
   ];
+
+  if (isAgentActionEvent(event)) {
+    const data = eventData(event);
+    sections.push({
+      title: 'Agent Action',
+      rows: [
+        { label: 'source', value: dataString(data, 'source') ?? 'agent', mono: true },
+        { label: 'status', value: dataString(data, 'status') ?? eventSignalLabel(event), tone: eventSignalTone(event), mono: true },
+        { label: 'action', value: dataString(data, 'action') ?? eventLabel(event), mono: true },
+        { label: 'target', value: eventTargetLabel(event), mono: true },
+        { label: 'workspace', value: dataString(data, 'workspaceName') ?? dataString(data, 'workspaceId') ?? 'unknown', mono: true },
+      ],
+    });
+  }
 
   if (event.kind === 'log') {
     sections.push({
@@ -589,29 +828,45 @@ function inspectorSections(event: HObservation): InspectorSectionData[] {
 }
 
 function eventLabel(event: HObservation) {
-  if (event.kind === 'log') return event.message;
+  if (event.kind === 'log') {
+    if (isAgentActionEvent(event)) {
+      const data = eventData(event);
+      const action =
+        dataString(data, 'action') ??
+        dataString(data, 'commandId') ??
+        event.message;
+      const status = dataString(data, 'status');
+      return status ? `${action} ${status}` : action;
+    }
+    return event.message;
+  }
   return event.name;
 }
 
 function eventSignalLabel(event: HObservation) {
-  if (event.kind === 'log') return event.level;
+  if (event.kind === 'log') {
+    if (isAgentActionEvent(event)) {
+      return dataString(eventData(event), 'status') ?? event.level;
+    }
+    return event.level;
+  }
   if (event.kind === 'metric') return event.metricType;
   return event.status;
 }
 
 function eventSignalClass(event: HObservation) {
   const label = eventSignalLabel(event);
-  if (label === 'error') return 'text-destructive';
-  if (label === 'warn' || label === 'active') return 'text-warning';
-  if (event.kind === 'metric' || label === 'ok') return 'text-success';
+  if (label === 'error' || label === 'failed') return 'text-destructive';
+  if (label === 'warn' || label === 'active' || label === 'started') return 'text-warning';
+  if (event.kind === 'metric' || label === 'ok' || label === 'completed') return 'text-success';
   return 'text-accent';
 }
 
 function eventSignalTone(event: HObservation): InspectorTone {
   const label = eventSignalLabel(event);
-  if (label === 'error') return 'red';
-  if (label === 'warn' || label === 'active') return 'amber';
-  if (event.kind === 'metric' || label === 'ok') return 'emerald';
+  if (label === 'error' || label === 'failed') return 'red';
+  if (label === 'warn' || label === 'active' || label === 'started') return 'amber';
+  if (event.kind === 'metric' || label === 'ok' || label === 'completed') return 'emerald';
   return 'cyan';
 }
 
@@ -661,6 +916,7 @@ function eventToCopyRow(event: HObservation) {
     event.kind,
     eventSignalLabel(event),
     event.category ?? '',
+    eventTargetLabel(event),
     eventLabel(event),
     event.id,
     JSON.stringify(event.data ?? {}),
@@ -669,7 +925,7 @@ function eventToCopyRow(event: HObservation) {
 
 function eventsToCopyTable(events: readonly HObservation[]) {
   return [
-    ['time', 'kind', 'signal', 'category', 'message', 'id', 'payload'].join('\t'),
+    ['time', 'kind', 'signal', 'category', 'target', 'message', 'id', 'payload'].join('\t'),
     ...events.map((event) => eventToCopyRow(event).join('\t')),
   ].join('\n');
 }
@@ -702,6 +958,31 @@ async function writeClipboardText(text: string) {
   } finally {
     document.body.removeChild(textarea);
   }
+}
+
+/** Merge file-replayed events with in-memory live events, deduping by id and
+ *  returning the newest-first slice. `liveEvents` is already newest-first;
+ *  `replayEvents` may be in either order (we resort by timestamp). */
+function mergeReplayWithLive(
+  replayEvents: readonly HObservation[],
+  liveEvents: readonly HObservation[],
+  maxEvents: number,
+): HObservation[] {
+  const seen = new Set<string>();
+  const merged: HObservation[] = [];
+  for (const event of liveEvents) {
+    if (seen.has(event.id)) continue;
+    seen.add(event.id);
+    merged.push(event);
+  }
+  for (let i = replayEvents.length - 1; i >= 0; i--) {
+    const event = replayEvents[i];
+    if (seen.has(event.id)) continue;
+    seen.add(event.id);
+    merged.push(event);
+  }
+  merged.sort((a, b) => b.timestamp - a.timestamp);
+  return merged.slice(0, maxEvents);
 }
 
 function statusItemToneClass(tone: InspectorTone) {

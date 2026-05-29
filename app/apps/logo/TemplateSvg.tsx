@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { LogoTemplate, LightingConfig } from './types';
+import type { LogoTemplate, LightingConfig, LogoElementOffsets } from './types';
 import type { LogoParams } from './LogoProvider';
 
 // ---------------------------------------------------------------------------
@@ -242,6 +242,9 @@ interface Props {
   customParamValues: Record<string, number | string | Record<string, unknown>[]>;
   backgroundSvg?: string | null;
   size: number;
+  /** Per-shape drag offsets to apply on top of the template's natural positions.
+   *  Keys are stable shape IDs marked as `data-element-id` in the render body. */
+  elementOffsets?: LogoElementOffsets;
 }
 
 function extractPaths(svg: string): string[] {
@@ -375,6 +378,72 @@ function attachShapeHelpers(p: Record<string, unknown>) {
     const iy = Math.max(0, Math.min(size - 1, Math.floor(yN * size)));
     return sdf[iy * size + ix];
   };
+}
+
+// ---------------------------------------------------------------------------
+// Per-element offset overlay — wraps any node marked `data-element-id="<id>"`
+// in a `<g transform>` built from the matching `ShapeOffset`. The data layer
+// is render-agnostic; this is the SVG-specific applier.
+//
+// Rotation pivot: if the marked node carries `data-rotate-origin="cx,cy"` we
+// rotate around that point (template-author override). Otherwise we rotate
+// around the SVG origin — for now this means the selection overlay should
+// keep the rotate handle hidden unless the author opted into a pivot.
+// ---------------------------------------------------------------------------
+export function applyElementOffsets(svg: string, offsets: LogoElementOffsets | undefined): string {
+  if (!offsets || Object.keys(offsets).length === 0) return svg;
+  if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return svg;
+  try {
+    const wrapped = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${VB} ${VB}">${svg}</svg>`;
+    const doc = new DOMParser().parseFromString(wrapped, 'image/svg+xml');
+    const svgEl = doc.querySelector('svg');
+    if (!svgEl) return svg;
+    if (doc.querySelector('parsererror')) return svg;
+
+    let changed = false;
+    const marked = svgEl.querySelectorAll('[data-element-id]');
+    marked.forEach((node) => {
+      const id = node.getAttribute('data-element-id');
+      if (!id) return;
+      const offset = offsets[id];
+      if (!offset) return;
+      const dx = offset.dx ?? 0;
+      const dy = offset.dy ?? 0;
+      const rot = offset.rotate ?? 0;
+      if (dx === 0 && dy === 0 && rot === 0) return;
+
+      const parts: string[] = [];
+      if (dx !== 0 || dy !== 0) parts.push(`translate(${dx} ${dy})`);
+      if (rot !== 0) {
+        const origin = node.getAttribute('data-rotate-origin');
+        if (origin) {
+          const [cxRaw, cyRaw] = origin.split(',');
+          const cx = Number((cxRaw ?? '').trim());
+          const cy = Number((cyRaw ?? '').trim());
+          if (Number.isFinite(cx) && Number.isFinite(cy)) parts.push(`rotate(${rot} ${cx} ${cy})`);
+          else parts.push(`rotate(${rot})`);
+        } else {
+          parts.push(`rotate(${rot})`);
+        }
+      }
+      if (parts.length === 0) return;
+
+      const g = doc.createElementNS('http://www.w3.org/2000/svg', 'g');
+      g.setAttribute('transform', parts.join(' '));
+      g.setAttribute('data-element-offset-wrapper', id);
+      node.parentNode?.insertBefore(g, node);
+      g.appendChild(node);
+      changed = true;
+    });
+
+    if (!changed) return svg;
+    const serializer = new XMLSerializer();
+    return Array.from(svgEl.childNodes)
+      .map((n) => serializer.serializeToString(n))
+      .join('');
+  } catch {
+    return svg;
+  }
 }
 
 let __clipIdCounter = 0;
@@ -524,14 +593,22 @@ function buildLightingFilter(l: LightingConfig): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function TemplateSvg({ template, params, customParamValues, backgroundSvg, size }: Props) {
+export function TemplateSvg({ template, params, customParamValues, backgroundSvg, size, elementOffsets }: Props) {
   const { svg } = useTemplateRender(template, params, customParamValues, backgroundSvg);
 
+  // Apply per-element drag offsets before lighting, so the lighting filter sees
+  // the post-transform geometry. Memoized separately so render doesn't re-run
+  // when only offsets change.
+  const offsetSvg = useMemo(
+    () => applyElementOffsets(svg, elementOffsets),
+    [svg, elementOffsets],
+  );
+
   const finalSvg = useMemo(() => {
-    if (!params.lightingEnabled) return svg;
+    if (!params.lightingEnabled) return offsetSvg;
     const filterDef = buildLightingFilter(params.lighting);
-    return `${filterDef}<g filter="url(#__lighting)">${svg}</g>`;
-  }, [svg, params.lightingEnabled, params.lighting]);
+    return `${filterDef}<g filter="url(#__lighting)">${offsetSvg}</g>`;
+  }, [offsetSvg, params.lightingEnabled, params.lighting]);
 
   return (
     <svg

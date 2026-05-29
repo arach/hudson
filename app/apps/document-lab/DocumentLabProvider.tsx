@@ -8,7 +8,7 @@ import {
   useState,
   type ReactNode,
 } from 'react';
-import type { HudsonTextDiff, HudsonTextDocument, TextDocumentMode } from 'hudsonkit';
+import type { HudsonTextDiff, HudsonTextDocument, TextDocumentMode } from 'hudsonkit/controls';
 
 const initialDocuments: HudsonTextDocument[] = [
   {
@@ -61,7 +61,7 @@ const initialDocuments: HudsonTextDocument[] = [
     kind: 'code',
     language: 'typescript',
     value: [
-      "import { TextDocumentSurface } from 'hudsonkit';",
+      "import { TextDocumentSurface } from 'hudsonkit/controls';",
       '',
       'export function CanvasDocumentWindow() {',
       '  return (',
@@ -87,7 +87,7 @@ const initialDiffs: HudsonTextDiff[] = [
       uri: 'hudson://workspace/HudsonDocumentSurface.tsx',
       language: 'typescript',
       value: [
-        "import { TextDocumentSurface } from 'hudsonkit';",
+        "import { TextDocumentSurface } from 'hudsonkit/controls';",
         '',
         'export function CanvasDocumentWindow() {',
         '  return (',
@@ -104,7 +104,7 @@ const initialDiffs: HudsonTextDiff[] = [
       uri: 'hudson://workspace/HudsonDocumentSurface.tsx',
       language: 'typescript',
       value: [
-        "import { TextDiffSurface, TextDocumentSurface } from 'hudsonkit';",
+        "import { TextDiffSurface, TextDocumentSurface } from 'hudsonkit/controls';",
         '',
         'export function CanvasDocumentWindow({ compare }) {',
         '  if (compare) {',

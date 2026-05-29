@@ -1,6 +1,6 @@
 'use client';
 
-import { TextDiffSurface, TextDocumentSurface } from 'hudsonkit';
+import { TextDiffSurface, TextDocumentSurface } from 'hudsonkit/controls';
 import { useDocumentLab } from './DocumentLabProvider';
 
 export function DocumentLabContent() {
