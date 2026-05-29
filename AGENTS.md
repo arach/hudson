@@ -795,6 +795,134 @@ The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if yo
 - [Quickstart](./quickstart.md) — Get running and create a minimal app
 - [API Reference](./api.md) — Complete reference for all hudsonkit exports
 
+## Consuming hudsonkit externally
+
+> How to safely use hudsonkit from a downstream project (Next.js, Vite, etc.)
+> outside this monorepo. These rules exist because we hit a real
+> runaway-watcher incident; treat them as load-bearing, not stylistic.
+
+Hudson ships hudsonkit as a sealed npm tarball (`dist/` + `bin/` only — no
+`src/`). Consumers should depend on the published version, a sealed tgz, or a
+git URL — **never** a `file:` path to a hudsonkit source folder.
+
+### The four rules
+
+1. **Install from a sealed artifact, never a source folder.**
+   ```jsonc
+   // package.json — consumer
+   "dependencies": {
+     // Good: published or local tgz
+     "hudsonkit": "^0.3.0",
+     // …or…
+     "hudsonkit": "file:/path/to/hudsonkit-0.3.0.tgz"
+
+     // Bad: never point at a folder. Compiles our source live + multiplies watchers.
+     // "hudsonkit": "file:../hudson/packages/web/hudsonkit"
+   }
+   ```
+   Generate a local tgz with `bun run pack` from inside
+   `packages/web/hudsonkit/`.
+
+2. **Do not put `hudsonkit` in `transpilePackages`.** The package already
+   ships ESM + `.d.ts` from `dist/`. Adding it forces Next.js / Turbopack to
+   recompile Hudson source on every change.
+   ```ts
+   // next.config.ts — consumer
+   // transpilePackages: ['hudsonkit'],  // ← delete this line
+   ```
+
+3. **Do not point Tailwind at the hudsonkit tree.** Import the prebuilt
+   bundle instead:
+   ```ts
+   // app/layout.tsx — consumer
+   import 'hudsonkit/styles';
+   ```
+   ```css
+   /* DO NOT do this in globals.css */
+   /* @source "../node_modules/hudsonkit/dist/**"; */
+   ```
+
+4. **Keep `turbopack.root` inside your project.** A root above the project
+   pulls every sibling repo into the watch graph.
+   ```ts
+   // next.config.ts — consumer
+   turbopack: { root: __dirname }, // not join(__dirname, '..')
+   ```
+
+### Wire `hudsonkit preflight` into `predev`
+
+The package ships a fail-fast scanner for all four rules above plus a few
+related hazards (missing `dist/styles.css`, a hudson `next dev` already
+running). Wire it so the dev server refuses to start when the config is
+hostile:
+
+```jsonc
+// package.json — consumer
+"scripts": {
+  "predev":   "hudsonkit preflight --fail-on-risk",
+  "prebuild": "hudsonkit preflight --fail-on-risk",
+  "dev":      "next dev",
+  "build":    "next build"
+}
+```
+
+`--fail-on-risk` exits 1 on any HIGH finding. `--json` is available for CI.
+Run `hudsonkit preflight --help` for full flags.
+
+### If the watchers do escape
+
+```sh
+# Show every Hudson-related process on this host
+hudsonkit status
+
+# Dry-run: print what would be killed without signaling anything
+hudsonkit panic
+
+# Actually terminate them (SIGTERM → 3s grace → SIGKILL)
+hudsonkit panic --yes
+
+# Only target one role
+hudsonkit panic --yes --filter next-dev
+```
+
+Detection uses, in order of confidence: `HUDSONKIT_RUN_ID` /
+`HUDSONKIT_ROLE` / `HUDSONKIT_ROOT` env vars, a run registry at
+`~/Library/Application Support/HudsonKit/runs/*.json`, and command-line
+heuristics (`next dev` / `tsup --watch` / `vitest watch` inside a hudson
+checkout). The env-var / registry path is forward-compatible — Hudson dev
+wrappers don't write them yet.
+
+### Embedding a plain React component
+
+For passive embeds (think mockups, journey-map nodes) you don't need to
+implement the full `HudsonApp` contract:
+
+```tsx
+import { createEmbedApp, WorkspaceShell } from 'hudsonkit/app-shell';
+import { Home, Library } from './surfaces';
+
+const apps = [
+  createEmbedApp({
+    id: 'home', title: 'Home', component: Home,
+    initialPosition: { x: -190, y: -380 },
+    initialSize:     { w: 380,  h: 760 },
+  }),
+  createEmbedApp({
+    id: 'library', title: 'Library', component: Library,
+    initialPosition: { x: 220, y: -380 },
+    initialSize:     { w: 380, h: 760 },
+  }),
+];
+
+export default function Map() {
+  return <WorkspaceShell apps={apps} storageKey="my.app.windows" />;
+}
+```
+
+This is the v1 explicit-placement API. A declarative variant
+(`apps={...}` + `edges={...}` + `layout="auto"`) is in design — it will be
+additive, not a replacement.
+
 ## API Reference
 
 > Complete API reference for the hudsonkit package

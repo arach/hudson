@@ -1,5 +1,5 @@
 import { createRequire } from 'module';
-import { execSync } from 'child_process';
+import { execFileSync, execSync } from 'child_process';
 import { existsSync, mkdirSync, writeFileSync } from 'fs';
 import { join, dirname as pathDirname } from 'path';
 import type { IPty } from 'node-pty';
@@ -92,6 +92,9 @@ export function resizeSession(session: Session, cols: number, rows: number): boo
   if (session.exited) return false;
   try {
     session.pty.resize(cols, rows);
+    if (session.backend === 'tmux' && session.tmuxSession) {
+      resizeTmuxWindow(session.tmuxSession, cols, rows);
+    }
     session.cols = cols;
     session.rows = rows;
     return true;
@@ -171,6 +174,24 @@ function tmuxSessionExists(name: string): boolean {
   }
 }
 
+/** Resize the tmux window behind an attached bridge PTY. */
+function resizeTmuxWindow(name: string, cols: number, rows: number): boolean {
+  try {
+    execFileSync('tmux', [
+      'resize-window',
+      '-t',
+      name,
+      '-x',
+      String(cols),
+      '-y',
+      String(rows),
+    ], { stdio: 'ignore' });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 /** Bootstrap workspace files into a directory (only creates if missing). */
 function bootstrapFiles(cwd: string, files: Record<string, string>, sessionId: string) {
   for (const [relPath, content] of Object.entries(files)) {
@@ -210,7 +231,7 @@ function spawnTmuxSession(
     console.log(`[relay] Created tmux session: ${tmuxName}`);
   } else {
     // Resize existing session to match client
-    try { execSync(`tmux resize-window -t ${tmuxName} -x ${cols} -y ${rows} 2>/dev/null`); } catch {}
+    resizeTmuxWindow(tmuxName, cols, rows);
     console.log(`[relay] Attaching to existing tmux session: ${tmuxName}`);
   }
 
