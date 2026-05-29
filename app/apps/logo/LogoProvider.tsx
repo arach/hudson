@@ -2,7 +2,7 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
-import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig } from './types';
+import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig, LogoElementOffsets, ShapeOffset } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant, normalizeLogoTemplateLineage } from './types';
 import { useLogoAI } from './useLogoAI';
@@ -158,6 +158,16 @@ interface LogoState {
   discardedIds: Set<string>;
   customParamValues: CustomParamValues;
   setCustomParam: (templateId: string, key: string, value: CustomParamValue) => void;
+  /** Per-template, per-shape drag offsets applied on top of the template-computed
+   *  positions. Templates mark draggable shapes with `data-element-id="<id>"`;
+   *  the render layer wraps each marked node in a transform built from the
+   *  matching `ShapeOffset`. Persists separately from `customParamValues`. */
+  elementOffsets: Record<string, LogoElementOffsets>;
+  /** Merge a partial offset into the (templateId, shapeId) entry. Pass `null`
+   *  for `offset` to clear the entry entirely. */
+  setElementOffset: (templateId: string, shapeId: string, offset: ShapeOffset | null) => void;
+  /** Drop every offset for a template — used when resetting a template. */
+  resetElementOffsets: (templateId: string) => void;
   // App settings (relay URL, compile endpoint, etc.)
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
@@ -560,6 +570,7 @@ export function LogoProvider({
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
   const [customParamValues, setCustomParamValues] = usePersistentState<CustomParamValues>('logo.customParamValues', {});
+  const [elementOffsets, setElementOffsets] = usePersistentState<Record<string, LogoElementOffsets>>('logo.elementOffsets', {});
 
   // Reconcile template files created outside the UI (relay/terminal edits).
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
@@ -781,13 +792,19 @@ export function LogoProvider({
       delete next[id];
       return next;
     });
+    setElementOffsets(prev => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     const res = await fetch(templateEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),
     });
     await assertOkResponse(res, `Failed to delete template "${id}"`);
-  }, [templateEndpoint, setCustomParamValues, setDiscardedMap]);
+  }, [templateEndpoint, setCustomParamValues, setDiscardedMap, setElementOffsets]);
 
   const setCustomParam = useCallback((templateId: string, key: string, value: CustomParamValue) => {
     setCustomParamValues(prev => ({
@@ -795,6 +812,45 @@ export function LogoProvider({
       [templateId]: { ...(prev[templateId] ?? {}), [key]: value },
     }));
   }, [setCustomParamValues]);
+
+  const setElementOffset = useCallback((templateId: string, shapeId: string, offset: ShapeOffset | null) => {
+    setElementOffsets(prev => {
+      const templateMap = prev[templateId] ?? {};
+      if (offset === null) {
+        // Clear the entry. If the template map is now empty, drop the template too.
+        if (!(shapeId in templateMap)) return prev;
+        const { [shapeId]: _drop, ...rest } = templateMap;
+        if (Object.keys(rest).length === 0) {
+          const { [templateId]: _t, ...others } = prev;
+          return others;
+        }
+        return { ...prev, [templateId]: rest };
+      }
+      // Merge: existing fields are preserved, supplied fields overwrite.
+      const next: ShapeOffset = { ...(templateMap[shapeId] ?? {}), ...offset };
+      // If every field is 0/undefined, treat the entry as cleared.
+      const hasContent = (typeof next.dx === 'number' && next.dx !== 0)
+        || (typeof next.dy === 'number' && next.dy !== 0)
+        || (typeof next.rotate === 'number' && next.rotate !== 0);
+      if (!hasContent) {
+        const { [shapeId]: _drop, ...rest } = templateMap;
+        if (Object.keys(rest).length === 0) {
+          const { [templateId]: _t, ...others } = prev;
+          return others;
+        }
+        return { ...prev, [templateId]: rest };
+      }
+      return { ...prev, [templateId]: { ...templateMap, [shapeId]: next } };
+    });
+  }, [setElementOffsets]);
+
+  const resetElementOffsets = useCallback((templateId: string) => {
+    setElementOffsets(prev => {
+      if (!(templateId in prev)) return prev;
+      const { [templateId]: _drop, ...rest } = prev;
+      return rest;
+    });
+  }, [setElementOffsets]);
 
   // Background AI (works without terminal)
   const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat } = useLogoAI({
@@ -808,6 +864,7 @@ export function LogoProvider({
     templates, addTemplate, updateTemplate, deleteTemplate,
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
+    elementOffsets, setElementOffset, resetElementOffsets,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,
@@ -822,6 +879,7 @@ export function LogoProvider({
     templates, addTemplate, updateTemplate, deleteTemplate,
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
+    elementOffsets, setElementOffset, resetElementOffsets,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,

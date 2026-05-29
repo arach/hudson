@@ -105,6 +105,11 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     attachments,
     provider: String(appSettings.aiProvider || 'minimax'),
     model: String(appSettings.aiModel || 'MiniMax-M2.7'),
+    agentTrace: {
+      source: 'logo-ai',
+      appId: 'logo',
+      appName: 'Logo',
+    },
     onToolCall: async (name, args) => {
       try {
       switch (name) {

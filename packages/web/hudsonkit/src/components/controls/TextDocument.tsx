@@ -11,8 +11,6 @@ import React, {
   type ReactNode,
 } from 'react';
 import { Eye, FileText, Pencil, Save } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
 import { CodeEditor, type DocumentLanguage } from './CodeEditor';
 import { CodeViewer, type CodeLanguage } from './CodeViewer';
 
@@ -41,6 +39,46 @@ export interface TextDocumentDetectionInput {
   value: string;
   readOnly?: boolean;
 }
+
+type MarkdownComponents = Record<string, unknown>;
+
+interface MarkdownRuntimeProps {
+  markdown: string;
+  components: MarkdownComponents;
+}
+
+interface ReactMarkdownRuntimeProps {
+  remarkPlugins?: unknown[];
+  components?: MarkdownComponents;
+  children: string;
+}
+
+const MissingMarkdownPeer: React.FC<MarkdownRuntimeProps> = () => (
+  <div className="flex min-h-[180px] items-center justify-center p-6 text-center font-mono text-[11px] text-muted-foreground">
+    Markdown preview requires the optional peer dependencies react-markdown and remark-gfm.
+  </div>
+);
+
+const MarkdownRuntime = React.lazy(async () => {
+  try {
+    const [markdownModule, gfmModule] = await Promise.all([
+      import('react-markdown'),
+      import('remark-gfm'),
+    ]);
+    const ReactMarkdownRuntime = markdownModule.default as React.ComponentType<ReactMarkdownRuntimeProps>;
+    const remarkGfmRuntime = gfmModule.default as unknown;
+
+    const Runtime: React.FC<MarkdownRuntimeProps> = ({ markdown, components }) => (
+      <ReactMarkdownRuntime remarkPlugins={[remarkGfmRuntime]} components={components}>
+        {markdown}
+      </ReactMarkdownRuntime>
+    );
+
+    return { default: Runtime };
+  } catch {
+    return { default: MissingMarkdownPeer };
+  }
+});
 
 const EXTENSION_LANGUAGE: Record<string, DocumentLanguage> = {
   cjs: 'javascript',
@@ -370,47 +408,54 @@ function DocumentBody({ editable }: { editable: boolean }) {
 }
 
 function MarkdownPreview({ markdown, className }: { markdown: string; className?: string }) {
+  const components = useMemo<MarkdownComponents>(() => ({
+    h1: (props: React.ComponentPropsWithoutRef<'h1'>) => <h1 className="mb-3 mt-1 text-[18px] font-semibold text-foreground/92" {...props} />,
+    h2: (props: React.ComponentPropsWithoutRef<'h2'>) => <h2 className="mb-2 mt-5 text-[15px] font-semibold text-foreground/88" {...props} />,
+    h3: (props: React.ComponentPropsWithoutRef<'h3'>) => <h3 className="mb-2 mt-4 text-[13px] font-semibold text-foreground/84" {...props} />,
+    p: (props: React.ComponentPropsWithoutRef<'p'>) => <p className="my-3" {...props} />,
+    ul: (props: React.ComponentPropsWithoutRef<'ul'>) => <ul className="my-3 list-disc space-y-1 pl-5 text-foreground/72" {...props} />,
+    ol: (props: React.ComponentPropsWithoutRef<'ol'>) => <ol className="my-3 list-decimal space-y-1 pl-5 text-foreground/72" {...props} />,
+    blockquote: (props: React.ComponentPropsWithoutRef<'blockquote'>) => <blockquote className="my-3 border-l-2 border-cyan-700/40 dark:border-cyan-300/35 pl-3 text-muted-foreground italic" {...props} />,
+    a: (props: React.ComponentPropsWithoutRef<'a'>) => <a className="text-cyan-700 dark:text-cyan-300/78 underline underline-offset-2 hover:text-cyan-700/80 dark:hover:text-cyan-200" target="_blank" rel="noreferrer" {...props} />,
+    hr: (props: React.ComponentPropsWithoutRef<'hr'>) => <hr className="my-5 border-border/60" {...props} />,
+    table: (props: React.ComponentPropsWithoutRef<'table'>) => <div className="my-4 overflow-auto"><table className="w-full border-collapse text-left" {...props} /></div>,
+    th: (props: React.ComponentPropsWithoutRef<'th'>) => <th className="border border-border/60 bg-muted/40 px-2 py-1 text-foreground/82" {...props} />,
+    td: (props: React.ComponentPropsWithoutRef<'td'>) => <td className="border border-border/60 px-2 py-1 text-foreground/72" {...props} />,
+    code: ({ children, className: codeClassName, ...props }: React.ComponentPropsWithoutRef<'code'>) => {
+      const match = /language-(\w+)/.exec(codeClassName ?? '');
+      const code = String(children).replace(/\n$/, '');
+      if (match) {
+        return (
+          <CodeViewer
+            code={code}
+            language={toCodeLanguage(match[1])}
+            showCopy
+            showLineNumbers
+            className="my-3"
+          />
+        );
+      }
+      return (
+        <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[12px] text-cyan-700 dark:text-cyan-200/80" {...props}>
+          {children}
+        </code>
+      );
+    },
+  }), []);
+
   return (
     <div className={`text-[13px] leading-relaxed text-foreground/76 ${className ?? ''}`}>
-      <ReactMarkdown
-        remarkPlugins={[remarkGfm]}
-        components={{
-          h1: props => <h1 className="mb-3 mt-1 text-[18px] font-semibold text-foreground/92" {...props} />,
-          h2: props => <h2 className="mb-2 mt-5 text-[15px] font-semibold text-foreground/88" {...props} />,
-          h3: props => <h3 className="mb-2 mt-4 text-[13px] font-semibold text-foreground/84" {...props} />,
-          p: props => <p className="my-3" {...props} />,
-          ul: props => <ul className="my-3 list-disc space-y-1 pl-5 text-foreground/72" {...props} />,
-          ol: props => <ol className="my-3 list-decimal space-y-1 pl-5 text-foreground/72" {...props} />,
-          blockquote: props => <blockquote className="my-3 border-l-2 border-cyan-700/40 dark:border-cyan-300/35 pl-3 text-muted-foreground italic" {...props} />,
-          a: props => <a className="text-cyan-700 dark:text-cyan-300/78 underline underline-offset-2 hover:text-cyan-700/80 dark:hover:text-cyan-200" target="_blank" rel="noreferrer" {...props} />,
-          hr: props => <hr className="my-5 border-border/60" {...props} />,
-          table: props => <div className="my-4 overflow-auto"><table className="w-full border-collapse text-left" {...props} /></div>,
-          th: props => <th className="border border-border/60 bg-muted/40 px-2 py-1 text-foreground/82" {...props} />,
-          td: props => <td className="border border-border/60 px-2 py-1 text-foreground/72" {...props} />,
-          code: ({ children, className: codeClassName, ...props }) => {
-            const match = /language-(\w+)/.exec(codeClassName ?? '');
-            const code = String(children).replace(/\n$/, '');
-            if (match) {
-              return (
-                <CodeViewer
-                  code={code}
-                  language={toCodeLanguage(match[1])}
-                  showCopy
-                  showLineNumbers
-                  className="my-3"
-                />
-              );
-            }
-            return (
-              <code className="rounded bg-muted/60 px-1 py-0.5 font-mono text-[12px] text-cyan-700 dark:text-cyan-200/80" {...props}>
-                {children}
-              </code>
-            );
-          },
-        }}
-      >
-        {markdown}
-      </ReactMarkdown>
+      <React.Suspense fallback={<MarkdownPreviewLoading />}>
+        <MarkdownRuntime markdown={markdown} components={components} />
+      </React.Suspense>
+    </div>
+  );
+}
+
+function MarkdownPreviewLoading() {
+  return (
+    <div className="flex min-h-[180px] items-center justify-center font-mono text-[11px] text-muted-foreground">
+      Loading markdown preview…
     </div>
   );
 }

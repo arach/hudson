@@ -33,8 +33,19 @@ export {
   useHudLoggerEvents,
   useHudLoggerSummary,
 } from './components/observability/HudLogger';
+export {
+  dispatchHudsonAgentAction,
+  HUDSON_AGENT_ACTION_EVENT,
+  logHudsonAgentAction,
+  redactAgentActionValue,
+} from './observability/agent-actions';
+export type {
+  HudsonAgentActionInput,
+  HudsonAgentActionStatus,
+} from './observability/agent-actions';
 export type {
   HudLoggerProps,
+  HudLoggerScopeFilter,
   HudLoggerStatusItemProps,
   HudLoggerSummary,
   HudLoggerUseEventsOptions,

@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "preserveSymlinks": true,
     "plugins": [
       {
         "name": "next"
@@ -20,9 +21,15 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "hudsonkit": ["./packages/web/hudsonkit/src/index.ts"],
-      "hudsonkit/workflow": ["./packages/web/hudsonkit/src/workflow/index.ts"],
-      "hudsonkit/*": ["./packages/web/hudsonkit/src/*.ts"]
+      "ai": ["./node_modules/ai"],
+      "ai/*": ["./node_modules/ai/*"],
+      "@ai-sdk/react": ["./node_modules/@ai-sdk/react"],
+      "@ai-sdk/react/*": ["./node_modules/@ai-sdk/react/*"],
+      "lucide-react": ["./node_modules/lucide-react"],
+      "lucide-react/*": ["./node_modules/lucide-react/*"],
+      "hudsonkit": ["./node_modules/hudsonkit/src/index.ts"],
+      "hudsonkit/workflow": ["./node_modules/hudsonkit/src/workflow/index.ts"],
+      "hudsonkit/*": ["./node_modules/hudsonkit/src/*.ts"]
     }
   },
   "include": [

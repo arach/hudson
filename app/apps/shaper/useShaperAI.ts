@@ -79,6 +79,11 @@ export function useShaperAI(opts: UseShaperAIOptions) {
     // added conditionally in sendAiMessage based on resolved mode.
     provider: provider ?? 'minimax',
     model: model ?? 'MiniMax-M2.7',
+    agentTrace: {
+      source: 'shaper-ai',
+      appId: 'shaper',
+      appName: 'Shaper',
+    },
     onFinish: (event) => {
       const { finishReason, message } = event as { finishReason?: string; message?: { parts?: Array<{ type: string; text?: string }> } };
       console.log('[shaper-ai] stream finished:', finishReason, message);

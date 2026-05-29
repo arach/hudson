@@ -16,7 +16,7 @@ Every `hudsonkit` export, organized by subpath. Types are authoritative in [`pac
 | `hudsonkit/windows`             | `AppWindow` (draggable/resizable window frame)                       |
 | `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
 | `hudsonkit/styles`              | **Pre-compiled CSS bundle** — import once to get every utility class used by SDK chrome |
-| `hudsonkit/controls`            | `ParamSection`, `ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`, `CodeViewer`, `CodeEditor` — see controls.md |
+| `hudsonkit/controls`            | Client controls: params, `CodeViewer`, `CodeEditor`, `TextDocumentSurface`, `TextDiffSurface`; editor/markdown/diff runtimes are optional peers loaded per component — see controls.md |
 | `hudsonkit/cache`               | `createHudsonCache`, `hudsonCache`, `useCachedResource` — TTL/SWR cache with tag invalidation; see [Cache](./cache.md) |
 | `hudsonkit/voice`               | Opt-in voice plugin — see voice.md                                   |
 | `hudsonkit/observability`       | `HLogger`, `HMetrics`, `HObservability`, `HSpan`, `HTrace` — see observability.md |

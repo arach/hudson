@@ -468,6 +468,11 @@ export function WorkspaceAI({
     context: scopedContext,
     provider: activeProvider,
     model: activeModel,
+    agentTrace: {
+      source: 'workspace-ai',
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+    },
     onToolCall: async (name, args) => {
       if (name === 'change_workspace_scope') {
         const targetWorkspaceId = typeof args.workspaceId === 'string' ? args.workspaceId : workspace.id;
