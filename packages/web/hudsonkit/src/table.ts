@@ -6,6 +6,9 @@ export {
   type HudTableColumn,
   type HudTableAlignment,
   type HudTableDensity,
+  type HudTableSortDescriptor,
+  type HudTableSortDirection,
+  type HudTableSortValue,
 } from './components/HudTable';
 
 export {

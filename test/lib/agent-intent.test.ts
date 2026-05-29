@@ -180,6 +180,55 @@ describe('agent task logging', () => {
       args: { prompt: 'Create a logo' },
     });
   });
+
+  it('writes terminal task envelopes with the same trace id', async () => {
+    await appendAgentTaskLog({
+      status: 'started',
+      source: 'codex',
+      action: 'test.run',
+      traceId: 'tr_run',
+      prompt: 'Run checks',
+    });
+    await appendAgentTaskLog({
+      status: 'completed',
+      source: 'codex',
+      action: 'test.run',
+      traceId: 'tr_run',
+      message: 'Checks passed',
+    });
+    await appendAgentTaskLog({
+      status: 'failed',
+      source: 'codex',
+      action: 'test.fail',
+      traceId: 'tr_fail',
+      error: 'Checks failed',
+    });
+
+    const lines = readAllLines();
+    expect(lines).toHaveLength(3);
+    expect(lines[1]).toMatchObject({
+      kind: 'log',
+      level: 'info',
+      message: 'Checks passed',
+      data: {
+        triggeredBy: 'agent',
+        source: 'codex',
+        status: 'completed',
+        action: 'test.run',
+        traceId: 'tr_run',
+      },
+    });
+    expect(lines[2]).toMatchObject({
+      kind: 'log',
+      level: 'error',
+      data: {
+        status: 'failed',
+        action: 'test.fail',
+        traceId: 'tr_fail',
+        error: { message: 'Checks failed' },
+      },
+    });
+  });
 });
 
 describe('intent() wrapper', () => {

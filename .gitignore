@@ -142,3 +142,7 @@ native/bunsen/artifacts/
 
 # Local build artifacts (icon generation, talkie textures, etc.)
 output/
+
+# Local generated logo template helpers
+scripts/_beacon-render-body.mjs
+scripts/install-beacon-templates.mjs

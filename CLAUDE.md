@@ -96,7 +96,19 @@ operator request asks Hudson to create/change/deliver something:
 2. Otherwise, enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
    the dev server is up, or read `app/apps/<id>/intents.ts` + grep for `intent(`
    in `app/api/**`.
-3. Start a task envelope before making changes:
+3. Start a task envelope before making changes. Prefer `run` when the work can
+   be represented as one command; it writes both the started event and the
+   terminal completed/failed event with the same trace id:
+
+   ```bash
+   bun scripts/agent-action.ts run \
+     --prompt "Run logo tests" \
+     --action logo.test \
+     --actor "${USER:-agent}" \
+     -- bun run test test/lib/agent-intent.test.ts
+   ```
+
+   For interactive or multi-step work, use `start` and keep the trace id:
 
    ```bash
    TRACE=$(bun scripts/agent-action.ts start \
@@ -121,14 +133,15 @@ operator request asks Hudson to create/change/deliver something:
    wrote a file, finished a build) — not every keystroke. For direct server code,
    import from `@/app/lib/agent-log-core`; `@/app/lib/agent-log` is Next
    server-only and is not CLI-safe.
-6. Complete or fail the envelope:
+6. Complete or fail every manually started envelope:
 
    ```bash
    bun scripts/agent-action.ts complete --trace "$TRACE" --action logo.create \
      --message "Delivered logo template and preview"
    ```
 
-   On failure, use `fail --error "..."`.
+   On failure, use `fail --error "..."`. Do not leave a `started` task without
+   a matching terminal event.
 7. Reply to Scout/operator with the result. The HudLogger trail is the durable
    record; the reply doesn't need to re-narrate every step.
 
