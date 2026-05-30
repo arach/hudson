@@ -24,6 +24,7 @@ export interface HudsonAIAgentTrace {
   workspaceId?: string;
   workspaceName?: string;
   source?: string;
+  parentTraceId?: string | (() => string | undefined);
 }
 
 export interface UseHudsonAIOptions {
@@ -125,6 +126,12 @@ function getWorkspaceContext(context: Record<string, unknown> | undefined) {
   };
 }
 
+function resolveParentTraceId(trace: HudsonAIAgentTrace | undefined) {
+  const value = trace?.parentTraceId;
+  if (typeof value === 'function') return stringValue(value());
+  return stringValue(value);
+}
+
 function emitAgentActionEvent(input: {
   toolset: string;
   chatId?: string;
@@ -168,6 +175,7 @@ function emitAgentActionEvent(input: {
     workspaceId,
     workspaceName,
     traceId: input.traceId,
+    parentTraceId: resolveParentTraceId(input.trace),
     args: input.args,
     error: input.error,
   });

@@ -352,7 +352,11 @@ export function LogoInspector() {
     // 'new': stamp a v(N+1) session so AI-created templates land there.
     // 'append': route AI-created templates into the currently active session.
     beginAiSession(picks, params.variant, mode);
-    sendAiMessage(prompt);
+    sendAiMessage(prompt, {
+      action: 'logo.iterate-picks',
+      label: `Iterate ${count} logo pick${count === 1 ? '' : 's'}`,
+      surface: 'logo-inspector',
+    });
     setSentInfo({ count, startedAt: Date.now() });
     clearPicks();
   }, [buildPicksPrompt, picks, params.variant, sendAiMessage, clearPicks, beginAiSession]);

@@ -12,6 +12,20 @@ import {
 } from 'react';
 import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { HObservability, HObservabilityDefault } from '../../observability/core';
+import {
+  agentActionCommand,
+  agentActionParentTraceId,
+  agentActionTraceId,
+  agentActionTraceSummary,
+  dataString,
+  eventData,
+  formatAgentActionName,
+  inferAgentActionAppId,
+  isAgentActionEvent,
+  prepareHudAgentActionEvents,
+  summarizeAgentActionCommand,
+  type HudAgentActionViewMode,
+} from '../../observability/agent-action-view';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import type {
   HLogLevel,
@@ -186,6 +200,9 @@ export function HudLogger({
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [scopeFilter, setScopeFilter] = useState<HudLoggerScopeFilter>(initialScope);
+  const [agentActionView, setAgentActionView] = useState<HudAgentActionViewMode>(
+    initialScope === 'agent-actions' ? 'actions' : 'raw',
+  );
   const [query, setQuery] = useState('');
   const [tail, setTail] = useState(initialTail);
   const [sort, setSort] = useState<EventSort>(DEFAULT_EVENT_SORT);
@@ -198,17 +215,24 @@ export function HudLogger({
   const asideRef = useRef<HTMLElement>(null);
   const [isResizing, setIsResizing] = useState(false);
 
+  const agentActionRows = useMemo(
+    () => prepareHudAgentActionEvents(events, scopeFilter === 'agent-actions' ? agentActionView : 'raw'),
+    [agentActionView, events, scopeFilter],
+  );
+  const scopedEvents = scopeFilter === 'agent-actions' ? agentActionRows.events : events;
+
   const filteredEvents = useMemo(
     () =>
-      events.filter((event) => {
-        if (scopeFilter === 'agent-actions' && !isAgentActionEvent(event)) return false;
+      scopedEvents.filter((event) => {
         if (kindFilter !== 'all' && event.kind !== kindFilter) return false;
         if (levelFilter !== 'all' && (event.kind !== 'log' || event.level !== levelFilter)) return false;
         if (!query.trim()) return true;
-        const haystack = `${eventLabel(event)} ${event.category ?? ''} ${JSON.stringify(event.data ?? {})}`.toLowerCase();
+        const traceId = agentActionTraceId(event) ?? event.id;
+        const relatedEvents = agentActionRows.relatedEventsByTrace.get(traceId) ?? [];
+        const haystack = eventSearchHaystack(event, relatedEvents);
         return haystack.includes(query.trim().toLowerCase());
       }),
-    [events, kindFilter, levelFilter, query, scopeFilter],
+    [agentActionRows.relatedEventsByTrace, kindFilter, levelFilter, query, scopedEvents],
   );
 
   const sortedEvents = useMemo(() => sortEvents(filteredEvents, sort), [filteredEvents, sort]);
@@ -218,6 +242,10 @@ export function HudLogger({
     sortedEvents.find((event) => event.id === effectiveSelectedId) ??
     sortedEvents[0] ??
     null;
+  const selectedTraceId = selectedEvent ? agentActionTraceId(selectedEvent) ?? selectedEvent.id : null;
+  const selectedRelatedEvents = selectedTraceId
+    ? agentActionRows.relatedEventsByTrace.get(selectedTraceId) ?? []
+    : [];
   const summary = useMemo(() => summarizeHudLoggerEvents(events), [events]);
 
   const copyText = useCallback(async (text: string, key: string) => {
@@ -348,6 +376,12 @@ export function HudLogger({
                 <span>{summary.agentActions} agent</span>
                 <span>{summary.errors} errors</span>
                 {summary.activeSpans > 0 && <span className="text-warning">{summary.activeSpans} active</span>}
+                {scopeFilter === 'agent-actions' && agentActionView !== 'raw' && agentActionRows.hiddenDetailEvents > 0 && (
+                  <span>{agentActionRows.hiddenDetailEvents} detail hidden</span>
+                )}
+                {scopeFilter === 'agent-actions' && agentActionRows.collapsedEvents > 0 && (
+                  <span>{agentActionRows.collapsedEvents} collapsed</span>
+                )}
               </div>
             </div>
             <label className="mt-2 flex min-w-0 items-center gap-2 border border-border bg-muted/20 px-2 py-1.5 font-mono text-[12px] font-light text-accent">
@@ -363,7 +397,7 @@ export function HudLogger({
               <summary className="cursor-pointer font-mono text-[10px] font-light uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground">
                 filters / controls
               </summary>
-              <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_1fr_1fr_auto]">
+              <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
                 <FilterGroup label="Scope">
                   <FilterButton active={scopeFilter === 'all'} onClick={() => setScopeFilter('all')}>
                     all
@@ -372,6 +406,21 @@ export function HudLogger({
                     agent actions
                   </FilterButton>
                 </FilterGroup>
+                {scopeFilter === 'agent-actions' ? (
+                  <FilterGroup label="Rows">
+                    <FilterButton active={agentActionView === 'actions'} onClick={() => setAgentActionView('actions')}>
+                      actions
+                    </FilterButton>
+                    <FilterButton active={agentActionView === 'details'} onClick={() => setAgentActionView('details')}>
+                      details
+                    </FilterButton>
+                    <FilterButton active={agentActionView === 'raw'} onClick={() => setAgentActionView('raw')}>
+                      raw
+                    </FilterButton>
+                  </FilterGroup>
+                ) : (
+                  <div />
+                )}
                 <FilterGroup label="Kind">
                   <FilterButton active={kindFilter === 'all'} onClick={() => setKindFilter('all')}>
                     all
@@ -521,6 +570,7 @@ export function HudLogger({
             <PayloadInspector
               copied={selectedEvent ? copiedKey === `inspector:${selectedEvent.id}` : false}
               event={selectedEvent}
+              relatedEvents={selectedRelatedEvents}
               onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${event.id}`)}
               onOpenTarget={openEventTarget}
             />
@@ -534,11 +584,13 @@ export function HudLogger({
 function PayloadInspector({
   copied,
   event,
+  relatedEvents,
   onCopyRow,
   onOpenTarget,
 }: {
   copied: boolean;
   event: HObservation | null;
+  relatedEvents: readonly HObservation[];
   onCopyRow: (event: HObservation) => void;
   onOpenTarget: (event: HObservation) => void;
 }) {
@@ -597,6 +649,8 @@ function PayloadInspector({
             {inspectorSections(event).map((section) => (
               <InspectorSection key={section.title} section={section} />
             ))}
+
+            <TraceTimeline events={relatedEvents} selectedId={event.id} />
 
             <JsonBlock label="payload.data" value={event.data ?? {}} />
             {event.kind === 'metric' && event.tags ? (
@@ -742,6 +796,52 @@ function InspectorSection({ section }: { section: InspectorSectionData }) {
   );
 }
 
+function TraceTimeline({
+  events,
+  selectedId,
+}: {
+  events: readonly HObservation[];
+  selectedId: string;
+}) {
+  if (events.length <= 1) return null;
+
+  return (
+    <section className="border border-border bg-muted/20">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-1.5">
+        <div className="font-mono text-[9px] font-light uppercase tracking-[0.16em] text-muted-foreground">
+          Trace lines
+        </div>
+        <div className="font-mono text-[9px] font-light uppercase tracking-[0.14em] text-muted-foreground">
+          {events.length}
+        </div>
+      </div>
+      <div className="divide-y divide-border/80">
+        {events.map((traceEvent) => {
+          const commandLabel = summarizeAgentActionCommand(agentActionCommand(traceEvent));
+          return (
+            <div
+              key={`${traceEvent.id}-${traceEvent.timestamp}`}
+              className={`grid grid-cols-[74px_82px_minmax(0,1fr)] gap-2 px-3 py-1.5 ${
+                traceEvent.id === selectedId ? 'bg-accent/10' : ''
+              }`}
+            >
+              <span className="font-mono text-[9.5px] tabular-nums text-muted-foreground">
+                {eventTimestampLabel(traceEvent)}
+              </span>
+              <span className={`font-mono text-[9.5px] uppercase tracking-[0.13em] ${eventSignalClass(traceEvent)}`}>
+                {eventSignalLabel(traceEvent)}
+              </span>
+              <span className="min-w-0 truncate text-[12px] text-foreground/80">
+                {commandLabel ?? eventLabel(traceEvent)}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 function InspectorRow({ row }: { row: InspectorRowData }) {
   return (
     <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 px-3 py-1.5">
@@ -768,32 +868,8 @@ function JsonBlock({ label, value }: { label: string; value: unknown }) {
   );
 }
 
-function eventData(event: HObservation): Record<string, unknown> {
-  return event.data && typeof event.data === 'object' && !Array.isArray(event.data)
-    ? event.data
-    : {};
-}
-
-function isAgentActionEvent(event: HObservation) {
-  const data = eventData(event);
-  return (
-    event.category === 'agent-action' ||
-    data.triggeredBy === 'agent' ||
-    data.source === 'workspace-ai' ||
-    data.source === 'logo-ai' ||
-    data.source === 'shaper-ai' ||
-    data.source === 'day-stack-ai'
-  );
-}
-
-function dataString(data: Record<string, unknown>, key: string): string | null {
-  const value = data[key];
-  return typeof value === 'string' && value.trim() ? value : null;
-}
-
 function eventTargetAppId(event: HObservation): string | null {
-  const data = eventData(event);
-  return dataString(data, 'appId') ?? dataString(data, 'targetAppId');
+  return inferAgentActionAppId(event);
 }
 
 function eventTargetWorkspaceId(event: HObservation): string | null {
@@ -803,9 +879,11 @@ function eventTargetWorkspaceId(event: HObservation): string | null {
 
 function eventTargetLabel(event: HObservation) {
   const data = eventData(event);
+  const inferredAppId = inferAgentActionAppId(event);
   return (
     dataString(data, 'appName') ??
     dataString(data, 'appId') ??
+    inferredAppId ??
     dataString(data, 'workspaceName') ??
     dataString(data, 'workspaceId') ??
     dataString(data, 'serviceId') ??
@@ -835,6 +913,8 @@ function inspectorSections(event: HObservation): InspectorSectionData[] {
 
   if (isAgentActionEvent(event)) {
     const data = eventData(event);
+    const traceId = agentActionTraceId(event);
+    const parentTraceId = agentActionParentTraceId(event);
     sections.push({
       title: 'Agent Action',
       rows: [
@@ -843,8 +923,25 @@ function inspectorSections(event: HObservation): InspectorSectionData[] {
         { label: 'action', value: dataString(data, 'action') ?? eventLabel(event), mono: true },
         { label: 'target', value: eventTargetLabel(event), mono: true },
         { label: 'workspace', value: dataString(data, 'workspaceName') ?? dataString(data, 'workspaceId') ?? 'unknown', mono: true },
+        ...(traceId ? [{ label: 'trace', value: traceId, mono: true }] : []),
+        ...(parentTraceId ? [{ label: 'parent', value: parentTraceId, mono: true }] : []),
       ],
     });
+
+    const prompt = promptPreview(event);
+    const traceSummary = agentActionTraceSummary(event);
+    if (prompt || traceSummary) {
+      sections.push({
+        title: 'Request',
+        rows: [
+          ...(prompt ? [{ label: 'prompt', value: prompt }] : []),
+          ...(traceSummary ? [
+            { label: 'lines', value: String(traceSummary.eventCount), mono: true },
+            { label: 'duration', value: `${traceSummary.durationMs}ms`, mono: true },
+          ] : []),
+        ],
+      });
+    }
   }
 
   if (event.kind === 'log') {
@@ -891,15 +988,22 @@ function eventLabel(event: HObservation) {
   if (event.kind === 'log') {
     if (isAgentActionEvent(event)) {
       const data = eventData(event);
+      const commandLabel = summarizeAgentActionCommand(agentActionCommand(event));
+      if (commandLabel) {
+        const status = dataString(data, 'status');
+        return status ? `${commandLabel} ${status}` : commandLabel;
+      }
       const action =
         dataString(data, 'action') ??
         dataString(data, 'commandId') ??
         event.message;
       const status = dataString(data, 'status');
-      return status ? `${action} ${status}` : action;
+      const label = formatAgentActionName(action);
+      return status ? `${label} ${status}` : label;
     }
     return event.message;
   }
+  if (isAgentActionEvent(event)) return formatAgentActionName(event.name);
   return event.name;
 }
 
@@ -981,6 +1085,26 @@ function eventToCopyRow(event: HObservation) {
     event.id,
     JSON.stringify(event.data ?? {}),
   ].map(copyCell);
+}
+
+function eventSearchHaystack(event: HObservation, relatedEvents: readonly HObservation[]) {
+  const parts = [
+    eventLabel(event),
+    event.category ?? '',
+    JSON.stringify(event.data ?? {}),
+    ...relatedEvents.map((related) => `${eventLabel(related)} ${JSON.stringify(related.data ?? {})}`),
+  ];
+  return parts.join(' ').toLowerCase();
+}
+
+function promptPreview(event: HObservation) {
+  const data = eventData(event);
+  const args = data.args;
+  const prompt = args && typeof args === 'object' && !Array.isArray(args)
+    ? (args as Record<string, unknown>).prompt
+    : undefined;
+  if (typeof prompt !== 'string' || !prompt.trim()) return null;
+  return prompt.replace(/\s+/g, ' ').trim().slice(0, 360);
 }
 
 function eventsToCopyTable(events: readonly HObservation[]) {
