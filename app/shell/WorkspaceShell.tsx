@@ -1528,6 +1528,19 @@ function WorkspaceInner({
     previousFocusedCodeWorkbenchOpenRef.current = focusedCodeWorkbenchOpen;
   }, [focusedCodeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
 
+  // Parallax nudge: the workbench slides out from the nav bar anchored to the
+  // left of the available area. Gently drift the canvas a touch to the right
+  // so it feels like the workbench is layering over a world that recedes,
+  // rather than just slapping a panel on top. ~15% of the workbench width is
+  // enough to read as motion without re-centering the scene.
+  const codeWorkbenchViewportShiftX = useMemo(() => {
+    if (!focusedCodeWorkbenchOpen || codeWorkbenchSize === 'full' || viewport.width === 0) return 0;
+    const workbenchWidth = codeWorkbenchSize === 'compact'
+      ? Math.min(viewport.width * 0.44, 720)
+      : Math.min(viewport.width * 0.56, 920);
+    return workbenchWidth * 0.24;
+  }, [focusedCodeWorkbenchOpen, codeWorkbenchSize, viewport.width]);
+
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
   // handleFitAll reads from the ref (it's event-driven, doesn't need reactivity).
@@ -3448,6 +3461,7 @@ function WorkspaceInner({
         zoomControlsRightOffset={effectiveRightWidth}
         zoomControlsBottomOffset={terminalCanvasBottomOffset}
         showZoomControls={showCanvasZoomControls}
+        viewportShiftX={codeWorkbenchViewportShiftX}
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
