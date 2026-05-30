@@ -147,7 +147,7 @@
   },
   "scripts": {
     "build": "bun run build:js && bun run build:css",
-    "build:js": "tsup && tsup --config tsup.server.config.ts",
+    "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify",
     "pack": "bun run build && bun pm pack",
     "prepare": "node bin/prepare-check.mjs"
