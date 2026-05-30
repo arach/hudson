@@ -77,12 +77,10 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "apps/studio",
     "packages/tools/create-hudson-app",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
-    "packages/web/hudsonkit",
-    "../studio"
+    "packages/web/hudsonkit"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

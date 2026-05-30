@@ -8,6 +8,7 @@ const hudsonRoot = fileURLToPath(new URL("../..", import.meta.url));
 const studioRoot = fileURLToPath(new URL("../../../studio", import.meta.url));
 const hudsonNodeModules = path.join(hudsonRoot, "node_modules");
 const singletonAliases = {
+  "studio": path.join(studioRoot, "src", "index.ts"),
   "react": path.join(hudsonNodeModules, "react"),
   "react/jsx-runtime": path.join(hudsonNodeModules, "react", "jsx-runtime.js"),
   "react/jsx-dev-runtime": path.join(hudsonNodeModules, "react", "jsx-dev-runtime.js"),
