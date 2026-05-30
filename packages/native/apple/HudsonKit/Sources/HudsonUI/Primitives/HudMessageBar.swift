@@ -110,6 +110,50 @@ public struct HudMessageBarVoiceConfiguration {
     }
 }
 
+struct HudMessageBarSuggestionSelectionState: Equatable, Sendable {
+    private(set) var index: Int = 0
+    private(set) var isActive: Bool = false
+
+    var displayedIndex: Int {
+        isActive ? index : -1
+    }
+
+    mutating func reset() {
+        index = 0
+        isActive = false
+    }
+
+    @discardableResult
+    mutating func activate(at nextIndex: Int, count: Int) -> Bool {
+        guard nextIndex >= 0, nextIndex < count else { return false }
+        index = nextIndex
+        isActive = true
+        return true
+    }
+
+    @discardableResult
+    mutating func move(_ delta: Int, count: Int) -> Bool {
+        guard count > 0 else {
+            reset()
+            return false
+        }
+
+        if isActive {
+            index = (index + delta + count) % count
+        } else {
+            index = delta < 0 ? count - 1 : 0
+            isActive = true
+        }
+
+        return true
+    }
+
+    func acceptedIndex(count: Int) -> Int? {
+        guard isActive, count > 0 else { return nil }
+        return min(max(index, 0), count - 1)
+    }
+}
+
 public struct HudMessageBar: View {
     @Binding private var text: String
     public var target: HudMessageBarTarget?
@@ -128,7 +172,7 @@ public struct HudMessageBar: View {
 
     @FocusState private var focused: Bool
     @State private var width: CGFloat = 0
-    @State private var selectedSuggestionIndex: Int = 0
+    @State private var suggestionSelection = HudMessageBarSuggestionSelectionState()
 
     public init(
         text: Binding<String>,
@@ -180,7 +224,7 @@ public struct HudMessageBar: View {
                     escapeHint: escapeHint,
                     hotkeyHint: hotkeyHint,
                     suggestions: visibleSuggestions,
-                    selectedSuggestionIndex: selectedSuggestionIndex,
+                    selectedSuggestionIndex: suggestionSelection.displayedIndex,
                     onSuggestionHover: setSuggestionSelection,
                     onSuggestionSelect: accept,
                     onMoveSuggestion: moveSuggestion,
@@ -201,7 +245,7 @@ public struct HudMessageBar: View {
                     escapeHint: escapeHint,
                     hotkeyHint: hotkeyHint,
                     suggestions: visibleSuggestions,
-                    selectedSuggestionIndex: selectedSuggestionIndex,
+                    selectedSuggestionIndex: suggestionSelection.displayedIndex,
                     onSuggestionHover: setSuggestionSelection,
                     onSuggestionSelect: accept,
                     onMoveSuggestion: moveSuggestion,
@@ -223,10 +267,10 @@ public struct HudMessageBar: View {
             HudMessageBarFieldSelection.moveCaretToEndSoon()
         }
         .onChange(of: blurSignal) { _, _ in focused = false }
-        .onChange(of: text) { _, _ in selectedSuggestionIndex = 0 }
-        .onChange(of: suggestions.map(\.id)) { _, _ in selectedSuggestionIndex = 0 }
+        .onChange(of: text) { _, _ in suggestionSelection.reset() }
+        .onChange(of: suggestions.map(\.id)) { _, _ in suggestionSelection.reset() }
         .onChange(of: focused) { _, isFocused in
-            if !isFocused { selectedSuggestionIndex = 0 }
+            if !isFocused { suggestionSelection.reset() }
         }
     }
 
@@ -236,25 +280,21 @@ public struct HudMessageBar: View {
     }
 
     private func setSuggestionSelection(_ index: Int) {
-        guard visibleSuggestions.indices.contains(index) else { return }
-        selectedSuggestionIndex = index
+        suggestionSelection.activate(at: index, count: visibleSuggestions.count)
     }
 
     @discardableResult
     private func moveSuggestion(_ delta: Int) -> Bool {
-        let visible = visibleSuggestions
-        guard !visible.isEmpty else { return false }
-        selectedSuggestionIndex = (selectedSuggestionIndex + delta + visible.count) % visible.count
-        return true
+        suggestionSelection.move(delta, count: visibleSuggestions.count)
     }
 
     @discardableResult
     private func acceptSelectedSuggestion() -> Bool {
         let visible = visibleSuggestions
-        guard let suggestion = visible[safe: selectedSuggestionIndex] ?? visible.first else {
+        guard let index = suggestionSelection.acceptedIndex(count: visible.count) else {
             return false
         }
-        accept(suggestion)
+        accept(visible[index])
         return true
     }
 
@@ -265,7 +305,7 @@ public struct HudMessageBar: View {
             text = completion
         }
         focused = true
-        selectedSuggestionIndex = 0
+        suggestionSelection.reset()
         HudMessageBarFieldSelection.moveCaretToEndSoon()
     }
 
@@ -610,15 +650,6 @@ private extension View {
             .onKeyPress(.tab) {
                 acceptSelection() ? .handled : .ignored
             }
-            .onKeyPress(.return) {
-                acceptSelection() ? .handled : .ignored
-            }
-    }
-}
-
-private extension Collection {
-    subscript(safe index: Index) -> Element? {
-        indices.contains(index) ? self[index] : nil
     }
 }
 

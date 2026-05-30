@@ -9,7 +9,7 @@ import SwiftUI
 @MainActor
 public final class HudOverlayPanel: NSPanel {
     public var activatesOnMouseDown = false
-    public var onKeyDown: ((NSEvent) -> Void)?
+    public var onKeyDown: ((NSEvent) -> Bool)?
     public var onFlagsChanged: ((NSEvent) -> Void)?
 
     public override var canBecomeKey: Bool { true }
@@ -29,17 +29,16 @@ public final class HudOverlayPanel: NSPanel {
     }
 
     public override func keyDown(with event: NSEvent) {
-        let isEscape = event.keyCode == 53
-        let hasCommand = event.modifierFlags.contains(.command)
-        if firstResponderIsTextEditing && !isEscape && !hasCommand {
+        if textEditingResponderShouldHandle(event) {
             super.keyDown(with: event)
             return
         }
-        if let onKeyDown {
-            onKeyDown(event)
-        } else {
-            super.keyDown(with: event)
+
+        if onKeyDown?(event) == true {
+            return
         }
+
+        super.keyDown(with: event)
     }
 
     public override func flagsChanged(with event: NSEvent) {
@@ -54,10 +53,39 @@ public final class HudOverlayPanel: NSPanel {
         if let responder = firstResponder as? NSText, responder.isEditable {
             return true
         }
-        if firstResponder is NSTextView {
-            return true
+        if let responder = firstResponder as? NSTextView {
+            return responder.isEditable
         }
         return false
+    }
+
+    private func textEditingResponderShouldHandle(_ event: NSEvent) -> Bool {
+        guard firstResponderIsTextEditing else { return false }
+        guard event.keyCode != HudOverlayKeyCode.escape else { return false }
+        guard event.modifierFlags.contains(.command) else { return true }
+        return isStandardTextEditingCommand(event)
+    }
+
+    private func isStandardTextEditingCommand(_ event: NSEvent) -> Bool {
+        let modifiers = event.modifierFlags.intersection([.command, .option, .control, .shift])
+        guard modifiers.contains(.command) else { return false }
+
+        switch event.charactersIgnoringModifiers?.lowercased() {
+        case "a", "c", "v", "x", "z":
+            return true
+        default:
+            break
+        }
+
+        switch event.keyCode {
+        case HudOverlayKeyCode.leftArrow,
+             HudOverlayKeyCode.rightArrow,
+             HudOverlayKeyCode.downArrow,
+             HudOverlayKeyCode.upArrow:
+            return true
+        default:
+            return false
+        }
     }
 }
 
@@ -110,7 +138,7 @@ public enum HudOverlayPanelShell {
         public var isMovableByWindowBackground: Bool
         public var collectionBehavior: NSWindow.CollectionBehavior
         public var activatesOnMouseDown: Bool
-        public var onKeyDown: ((NSEvent) -> Void)?
+        public var onKeyDown: ((NSEvent) -> Bool)?
         public var onFlagsChanged: ((NSEvent) -> Void)?
         public var appearance: NSAppearance?
         public var resizable: Bool
@@ -128,7 +156,7 @@ public enum HudOverlayPanelShell {
             isMovableByWindowBackground: Bool = false,
             collectionBehavior: NSWindow.CollectionBehavior = [.canJoinAllSpaces, .fullScreenAuxiliary],
             activatesOnMouseDown: Bool = false,
-            onKeyDown: ((NSEvent) -> Void)? = nil,
+            onKeyDown: ((NSEvent) -> Bool)? = nil,
             onFlagsChanged: ((NSEvent) -> Void)? = nil,
             appearance: NSAppearance? = NSAppearance(named: .darkAqua),
             resizable: Bool = false,
