@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="robots" content="noindex, nofollow" />
+    <title>hudson · studio</title>
+    <meta
+      name="description"
+      content="Internal exploration lab for Hudson — hudsonkit primitives, design tokens, and engineering docs."
+    />
+
+    <!-- Studio editorial stack — Inter (sans/display), Newsreader (serif body),
+         JetBrains Mono (chrome). Studio's theme.css references these by name;
+         without them we fall back to system-ui and the whole thing reads flat. -->
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,400;6..72,500;6..72,600&family=Geist+Mono:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"
+      rel="stylesheet"
+    />
+
+    <!-- No-FOUC theme bootstrap. Sets data-hudson-theme + data-hudson-template
+         on <html> from localStorage before any CSS evaluates. Mirrors
+         HudsonThemeScript's output for Vite (no React component runs in <head>).
+         Keep in sync with packages/web/hudsonkit/src/theme/script.ts. -->
+    <script>
+      !(function (k, t, p) {
+        try {
+          var d = document.documentElement,
+            q = new URLSearchParams(location.search),
+            s = JSON.parse(localStorage.getItem(k) || "{}"),
+            x = q.get("theme") || s.theme || t,
+            y = q.get("template") || s.template || p,
+            m =
+              "system" === x &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "system" === x
+                  ? "light"
+                  : x;
+          d.dataset.hudsonTheme = m;
+          d.dataset.hudsonTemplate = y;
+        } catch (e) {
+          var d = document.documentElement,
+            m =
+              "system" === t &&
+              window.matchMedia("(prefers-color-scheme: dark)").matches
+                ? "dark"
+                : "system" === t
+                  ? "light"
+                  : t;
+          d.dataset.hudsonTheme = m;
+          d.dataset.hudsonTemplate = p;
+        }
+      })("hudson.theme", "system", "hudson");
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
