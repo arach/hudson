@@ -211,7 +211,7 @@ final class HudVantageControlScriptTests: XCTestCase {
     private var controlScriptPaths: [String] {
         [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "examples/termini-canvas/scripts/canvasctl.sh",
+            "apps/vantage/scripts/vantagectl.sh",
         ]
     }
 

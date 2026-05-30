@@ -1,48 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-CONTROL_FILE="${TERMINI_CANVAS_CONTROL_FILE:-/tmp/termini-canvas-control.jsonl}"
-RESPONSE_FILE="${TERMINI_CANVAS_RESPONSE_FILE:-/tmp/termini-canvas-control.responses.jsonl}"
-STATE_FILE="${TERMINI_CANVAS_STATE_FILE:-/tmp/termini-canvas-state.json}"
-REQUEST_ID="canvasctl-$(date +%s)-$$"
+CONTROL_FILE="${VANTAGE_CONTROL_FILE:-/tmp/hudson-vantage-control.jsonl}"
+RESPONSE_FILE="${VANTAGE_RESPONSE_FILE:-/tmp/hudson-vantage-control.responses.jsonl}"
+STATE_FILE="${VANTAGE_STATE_FILE:-/tmp/hudson-vantage-state.json}"
+REQUEST_ID="vantagectl-$(date +%s)-$$"
 WAIT_FOR_RESPONSE=false
 WAIT_TIMEOUT=5
 
 usage() {
   cat <<'EOF'
 Usage:
-  canvasctl.sh [--wait] status
-  canvasctl.sh [--wait] reset
-  canvasctl.sh [--wait] clear
-  canvasctl.sh [--wait] tile COLUMNS ROWS [--width PX] [--height PX] [--gap PX] [--no-reset] [--allow-large]
-  canvasctl.sh [--wait] spawn COUNT [--width PX] [--height PX] [--gap PX]
-  canvasctl.sh [--wait] reattach [--remote HOST] [--id GRAPHITE_ID] [--session NAME] [--target TARGET] [--create] [--no-reset]
-  canvasctl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
-  canvasctl.sh [--wait] inspect [NODE...]
-  canvasctl.sh [--wait] reload-documents [NODE...]
-  canvasctl.sh [--wait] focus [NODE...]
-  canvasctl.sh [--wait] focus-mode [NODE]
-  canvasctl.sh [--wait] exit-focus
-  canvasctl.sh [--wait] popout [NODE...]
-  canvasctl.sh [--wait] close [NODE...]
-  canvasctl.sh [--wait] metrics [--reset]
-  canvasctl.sh [--wait] style [--scope workspace|tag|terminal] [--tag TAG] [--preset PRESET] [--chrome STYLE] [--terminal-theme THEME] [--font-family FAMILY] [--font-size N] [--grid-mode lines|dots|none] [--grid-step N] [--focus-padding N] [--node NODE...]
-  canvasctl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST] [--probe-remote] [--timeout-ms N]
-  canvasctl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
-  canvasctl.sh [--wait] perf-cleanup [--prefix PREFIX]
-  canvasctl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
-  canvasctl.sh [--wait] ensure-tmux [--confirm]
-  canvasctl.sh [--wait] save [--state-file PATH]
-  canvasctl.sh [--wait] save-workspace [--state-file PATH]
-  canvasctl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
-  canvasctl.sh [--wait] restore-workspace [--state-file PATH] [--create] [--no-reset]
-  canvasctl.sh [--wait] setup --manifest PATH [--create] [--remove-missing] [--fit]
-  canvasctl.sh raw '{"action":"status"}'
+  vantagectl.sh [--wait] status
+  vantagectl.sh [--wait] reset
+  vantagectl.sh [--wait] clear
+  vantagectl.sh [--wait] tile COLUMNS ROWS [--width PX] [--height PX] [--gap PX] [--no-reset] [--allow-large]
+  vantagectl.sh [--wait] spawn COUNT [--width PX] [--height PX] [--gap PX]
+  vantagectl.sh [--wait] reattach [--remote HOST] [--id GRAPHITE_ID] [--session NAME] [--target TARGET] [--create] [--no-reset]
+  vantagectl.sh [--wait] select NODE... [--add|--remove|--toggle|--clear]
+  vantagectl.sh [--wait] inspect [NODE...]
+  vantagectl.sh [--wait] reload-documents [NODE...]
+  vantagectl.sh [--wait] focus [NODE...]
+  vantagectl.sh [--wait] focus-mode [NODE]
+  vantagectl.sh [--wait] exit-focus
+  vantagectl.sh [--wait] popout [NODE...]
+  vantagectl.sh [--wait] close [NODE...]
+  vantagectl.sh [--wait] metrics [--reset]
+  vantagectl.sh [--wait] style [--scope workspace|tag|terminal] [--tag TAG] [--preset PRESET] [--chrome STYLE] [--terminal-theme THEME] [--font-family FAMILY] [--font-size N] [--grid-mode lines|dots|none] [--grid-step N] [--focus-padding N] [--node NODE...]
+  vantagectl.sh [--wait] tmux-health [NODE...] [--session NAME] [--target TARGET] [--remote HOST] [--probe-remote] [--timeout-ms N]
+  vantagectl.sh [--wait] perf-harness [--prefix PREFIX] [--sessions N] [--active N] [--mode tail|idle] [--rate-ms N] [--columns N] [--width PX] [--height PX] [--gap PX] [--no-reset]
+  vantagectl.sh [--wait] perf-cleanup [--prefix PREFIX]
+  vantagectl.sh [--wait] viewport [--reset|--fit] [--pan-x PX --pan-y PX --scale N]
+  vantagectl.sh [--wait] ensure-tmux [--confirm]
+  vantagectl.sh [--wait] save [--state-file PATH]
+  vantagectl.sh [--wait] save-workspace [--state-file PATH]
+  vantagectl.sh [--wait] restore [--state-file PATH] [--create] [--no-reset]
+  vantagectl.sh [--wait] restore-workspace [--state-file PATH] [--create] [--no-reset]
+  vantagectl.sh [--wait] setup --manifest PATH [--create] [--remove-missing] [--fit]
+  vantagectl.sh raw '{"action":"status"}'
 
 Environment:
-  TERMINI_CANVAS_CONTROL_FILE   default /tmp/termini-canvas-control.jsonl
-  TERMINI_CANVAS_RESPONSE_FILE  default /tmp/termini-canvas-control.responses.jsonl
-  TERMINI_CANVAS_STATE_FILE     default /tmp/termini-canvas-state.json
+  VANTAGE_CONTROL_FILE   default /tmp/hudson-vantage-control.jsonl
+  VANTAGE_RESPONSE_FILE  default /tmp/hudson-vantage-control.responses.jsonl
+  VANTAGE_STATE_FILE     default /tmp/hudson-vantage-state.json
 EOF
 }
 

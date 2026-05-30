@@ -25,17 +25,17 @@ tool before freezing public API.
 
 | Capability | Lives now | Rightful home |
 |---|---|---|
-| Native app host and launcher | `examples/termini-canvas` | Sample stays here as a case study |
-| Pan/zoom viewport math | `TerminiCanvasRootView` | `HudsonShell` as `HudCanvasTransform` + `HudCanvasViewportState` |
-| Trackpad scroll/magnify bridge | `TerminiCanvasRootView` | `HudsonShell`, possibly via an AppKit-backed viewport adapter |
-| Infinite grid background | `TerminiCanvasRootView` | `HudsonShell` canvas viewport, reusing `HudGridBackground` ideas |
-| Zoom HUD and viewport readout | `TerminiCanvasRootView` | `HudsonShell` chrome primitives |
-| Left navigator, minimap, right inspector | `TerminiCanvasRootView` | `HudsonShell` workspace chrome primitives |
-| Terminal card drag/resize/z-order | `TerminiCanvasRootView` | `HudsonShell` as `HudCanvasCard` + node store |
-| Preview/live renderer policy | `TerminiCanvasRootView` | `HudsonShell` as generic virtualization policy |
-| Local JSONL control API | `examples/termini-canvas` | Sample/dev harness only |
-| Graphite path and registry models | `examples/termini-canvas` | Shared terminal/workspace runtime layer after API proves out |
-| tmux command boundary | `examples/termini-canvas` | `HudsonTerminal` or a terminal runtime backend module |
+| Native app host and launcher | `apps/vantage` | First-party Vantage product |
+| Pan/zoom viewport math | `HudVantageSurface` | `HudsonShell` as `HudCanvasTransform` + `HudCanvasViewportState` |
+| Trackpad scroll/magnify bridge | `HudVantageSurface` | `HudsonShell`, possibly via an AppKit-backed viewport adapter |
+| Infinite grid background | `HudVantageSurface` | `HudsonShell` canvas viewport, reusing `HudGridBackground` ideas |
+| Zoom HUD and viewport readout | `HudVantageSurface` | `HudsonShell` chrome primitives |
+| Left navigator, minimap, right inspector | `HudVantageSurface` | `HudsonShell` workspace chrome primitives |
+| Terminal card drag/resize/z-order | `HudVantageSurface` | `HudsonShell` as `HudCanvasCard` + node store |
+| Preview/live renderer policy | `HudVantageSurface` | `HudsonShell` as generic virtualization policy |
+| Local JSONL control API | `apps/vantage` | Sample/dev harness only |
+| Graphite path and registry models | `apps/vantage` | Shared terminal/workspace runtime layer after API proves out |
+| tmux command boundary | `apps/vantage` | `HudsonTerminal` or a terminal runtime backend module |
 | PTY child cleanup | `Termini` repo | Termini local PTY process layer |
 
 The extraction rule is simple: if it knows about Termini, tmux, shells, or the
@@ -47,7 +47,7 @@ it is a HudsonShell candidate.
 
 | Lane | Owns | Avoids |
 |---|---|---|
-| Sample lane | `examples/termini-canvas`, scenario README, profiling notes | Public HudsonShell API churn |
+| Sample lane | `apps/vantage` fixtures, product README, profiling notes | Public HudsonShell API churn |
 | Canvas lane | Generic viewport, transforms, cards, selection, persistence in HudsonShell | Terminal process orchestration |
 | Terminal lane | tmux backend, Graphite registry, attach/detach/reattach control plane | Canvas gesture and layout internals |
 | Product lane | Commands, group actions, offshoot workspace flows, docs | Low-level renderer/process code |

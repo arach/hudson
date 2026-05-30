@@ -54,14 +54,9 @@ public struct HudVantageConfiguration: Sendable {
         self.restoresStateOnLaunch = restoresStateOnLaunch
     }
 
-    public static let terminiCanvasCaseStudy = HudVantageConfiguration(
-        workspaceID: "termini-canvas",
-        surfaceTitle: "Termini Canvas",
-        surfaceSubtitle: "native macOS Hudson Vantage case study",
-        commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
-        responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl"),
-        stateURL: URL(fileURLWithPath: "/tmp/termini-canvas-state.json"),
-        restoresStateOnLaunch: true
+    @available(*, deprecated, renamed: "hostApplication()")
+    public static let terminiCanvasCaseStudy = hostApplication(
+        workspaceID: "hudson-vantage"
     )
 }
 
@@ -1009,6 +1004,21 @@ public struct HudVantageSurface: View {
         .onChange(of: lensQuery) { _, _ in
             lensSelectedIndex = 0
         }
+        .onReceive(NotificationCenter.default.publisher(for: .vantageHostCommand)) { notification in
+            handleHostCommand(notification)
+        }
+        .onAppear {
+            publishHostStatus()
+        }
+        .onChange(of: nodes.count) { _, _ in
+            publishHostStatus()
+        }
+        .onChange(of: selectedIDs) { _, _ in
+            publishHostStatus()
+        }
+        .onChange(of: controlStatus) { _, _ in
+            publishHostStatus()
+        }
         .confirmationDialog(
             "Install tmux with Homebrew?",
             isPresented: $tmuxInstallConfirmationPresented
@@ -1367,6 +1377,45 @@ public struct HudVantageSurface: View {
         lensPresented = true
         lensSelectedIndex = 0
         controlStatus = "Lens"
+    }
+
+    private func handleHostCommand(_ notification: Notification) {
+        guard let raw = notification.userInfo?["command"] as? String,
+              let command = VantageHostCommand(rawValue: raw) else {
+            return
+        }
+
+        switch command {
+        case .showCommandPalette:
+            openCommandPalette()
+        case .showAppearanceSettings:
+            openAppearanceSettings()
+        case .openLens:
+            openLens()
+        case .fitViewport:
+            handleCanvasShortcut(.fitViewport)
+        case .resetViewport:
+            handleCanvasShortcut(.resetViewport)
+        case .layoutByTag:
+            handleCanvasShortcut(.layoutByTag)
+        case .saveWorkspace:
+            persistStateIfConfigured()
+            controlStatus = "Workspace saved"
+        case .clearSelection:
+            selectedIDs.removeAll()
+            controlStatus = "Selection cleared"
+        }
+    }
+
+    private func publishHostStatus() {
+        HudVantageHostStatusCenter.post(
+            HudVantageHostStatus(
+                workspaceID: configuration.workspaceID,
+                nodeCount: nodes.count,
+                selectedCount: selectedIDs.count,
+                controlStatus: controlStatus
+            )
+        )
     }
 
     private func closeLens() {
@@ -2153,7 +2202,7 @@ public struct HudVantageSurface: View {
                 }
             }
         }
-        .coordinateSpace(name: "termini-canvas")
+        .coordinateSpace(name: "vantage-canvas")
         .contentShape(Rectangle())
         .onTapGesture {
             guard !isTerminalFocusActive else { return }
@@ -6312,7 +6361,7 @@ private struct TerminalNodeView: View {
     }
 
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("vantage-canvas"))
             .onChanged { value in
                 if !isDragging {
                     isDragging = true
@@ -6344,7 +6393,7 @@ private struct TerminalNodeView: View {
             .help("Resize")
             .accessibilityLabel("Resize node")
             .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
+                DragGesture(minimumDistance: 0, coordinateSpace: .named("vantage-canvas"))
                     .onChanged { value in
                         if !isResizing {
                             isResizing = true

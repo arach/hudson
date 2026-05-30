@@ -36,7 +36,7 @@
     {
       "id": "hudson.diff.gallery.surface",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-vantage-surface.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-vantage-surface.diff",
       "title": "Hudson · Vantage Surface",
       "subtitle": "HudVantageSurface.swift · live branch · 2,045 lines",
       "language": "diff",
@@ -51,7 +51,7 @@
     {
       "id": "hudson.diff.gallery.contract",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-vantage-contract.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-vantage-contract.diff",
       "title": "Hudson · Control Contract",
       "subtitle": "control API + manifest + snapshot tests · 267 lines",
       "language": "diff",
@@ -66,7 +66,7 @@
     {
       "id": "hudson.diff.gallery.newdiff",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-diff-presentation-new-files.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-diff-presentation-new-files.diff",
       "title": "Hudson · Diff Presentation",
       "subtitle": "new parser/model/doc package · 604 lines",
       "language": "diff",
@@ -81,7 +81,7 @@
     {
       "id": "hudson.diff.gallery.docs",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-docs.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-docs.diff",
       "title": "Hudson · Docs",
       "subtitle": "Vantage control docs + sample README · 195 lines",
       "language": "diff",
@@ -96,7 +96,7 @@
     {
       "id": "hudson.diff.gallery.canvas",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-termini-canvas.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-termini-canvas.diff",
       "title": "Hudson · Termini Canvas",
       "subtitle": "example app surface wiring · 48 lines",
       "language": "diff",
@@ -111,7 +111,7 @@
     {
       "id": "hudson.diff.gallery.packaging",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/hudson-packaging.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-packaging.diff",
       "title": "Hudson · Packaging",
       "subtitle": "SPM targets and package edges · 148 lines",
       "language": "diff",
@@ -126,7 +126,7 @@
     {
       "id": "openscout.diff.gallery.install",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/openscout-install.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/openscout-install.diff",
       "title": "OpenScout · Install",
       "subtitle": "install docs + well-known manifest · 104 lines",
       "language": "diff",
@@ -141,7 +141,7 @@
     {
       "id": "openscout.diff.gallery.llms",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/openscout-llms.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/openscout-llms.diff",
       "title": "OpenScout · LLM Docs",
       "subtitle": "generated llms-full updates · 418 lines",
       "language": "diff",
@@ -156,7 +156,7 @@
     {
       "id": "openscout.diff.gallery.generator",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/openscout-generator.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/openscout-generator.diff",
       "title": "OpenScout · Generator",
       "subtitle": "agent docs generator + lockfile · 25 lines",
       "language": "diff",
@@ -171,7 +171,7 @@
     {
       "id": "talkie.diff.gallery.sidebar",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/talkie-sidebar-style.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/talkie-sidebar-style.diff",
       "title": "Talkie · Sidebar Style",
       "subtitle": "recent sidebar style lab commit · 622 lines",
       "language": "diff",
@@ -186,7 +186,7 @@
     {
       "id": "talkie.diff.gallery.overlay",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/talkie-design-overlay.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/talkie-design-overlay.diff",
       "title": "Talkie · Design Overlay",
       "subtitle": "recent design-mode overlay diff · 692 lines",
       "language": "diff",
@@ -201,7 +201,7 @@
     {
       "id": "talkie.diff.gallery.navigation",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/talkie-navigation.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/talkie-navigation.diff",
       "title": "Talkie · Navigation",
       "subtitle": "recent app navigation diff · 337 lines",
       "language": "diff",
@@ -216,7 +216,7 @@
     {
       "id": "codexscout.diff.gallery.docs",
       "runtimeKind": "diff",
-      "path": "/Users/arach/dev/hudson/examples/termini-canvas/examples/vantage-diff-gallery/diffs/codex-scout-docs.diff",
+      "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/codex-scout-docs.diff",
       "title": "Codex Scout · Docs",
       "subtitle": "latest install-docs commit · 65 lines",
       "language": "diff",
