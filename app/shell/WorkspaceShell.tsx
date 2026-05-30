@@ -17,6 +17,7 @@ import {
   AppWindow,
   SHELL_THEME,
 } from 'hudsonkit/shell';
+import { ObjectCodeSurface, ObjectCodeWorkbench } from 'hudsonkit/controls';
 import {
   useSaveIndicator,
   usePlatformLayout,
@@ -37,7 +38,7 @@ import {
   type HudsonAgentActionInput,
   type HObservation,
 } from 'hudsonkit/observability';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig } from 'hudsonkit';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
@@ -901,6 +902,7 @@ interface AppHookData {
   navActions: ReactNode | null;
   layoutMode: 'canvas' | 'panel' | 'focus';
   activeToolHint: string | null;
+  codeSurface: HudsonCodeSurfaceState | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -920,6 +922,7 @@ function useAppHooks(config: WorkspaceAppConfig): AppHookData {
     navActions: app.hooks.useNavActions?.() ?? null,
     layoutMode: app.hooks.useLayoutMode?.() ?? app.mode,
     activeToolHint: app.hooks.useActiveToolHint?.() ?? null,
+    codeSurface: app.hooks.useCodeSurface?.() ?? null,
   };
 }
 
@@ -1487,15 +1490,43 @@ function WorkspaceInner({
 
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed, { enabled: persistSession });
   const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides, { enabled: persistSession });
+  const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(
+    `hudson.ws.${workspace.id}.codeWorkbenchSize`,
+    'half',
+    { enabled: persistSession },
+  );
+  const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeWorkbenchEditorWidth`,
+    420,
+    { enabled: persistSession },
+  );
+  const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeWorkbenchChatWidth`,
+    320,
+    { enabled: persistSession },
+  );
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const focusedCodeSurface = focused.codeSurface;
+  const focusedCodePlacement = focusedCodeSurface?.placement ?? focusedApp?.code?.placement ?? 'workbench';
+  const focusedCodeAvailable = Boolean(focusedCodeSurface?.object);
+  const focusedCodeInInspector = focusedCodeAvailable && focusedCodeSurface?.open === true && focusedCodePlacement === 'inspector';
+  const focusedCodeWorkbenchOpen = focusedCodeAvailable && focusedCodeSurface?.open === true && focusedCodePlacement === 'workbench';
+  const previousFocusedCodeWorkbenchOpenRef = useRef(false);
   const focusedHasPorts = appShowsPorts(focusedApp);
   const hasInspectorOrTools = !!(focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length));
   const hasRightPanelSlot = !!focusedApp?.slots.RightPanel;
-  const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts);
+  const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts || focusedCodeAvailable);
   const showRightRail = showPanels || (isCanvasMode && hasRightRailContent);
   const effectiveRightWidth = showRightRail && !rightCollapsed ? rightWidth : 0;
+
+  useEffect(() => {
+    if (focusedCodeWorkbenchOpen && !previousFocusedCodeWorkbenchOpenRef.current && !rightCollapsed) {
+      setRightCollapsed(true);
+    }
+    previousFocusedCodeWorkbenchOpenRef.current = focusedCodeWorkbenchOpen;
+  }, [focusedCodeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
 
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
@@ -1932,6 +1963,14 @@ function WorkspaceInner({
           }
         },
       },
+      ...(focusedCodeSurface?.object ? [{
+        id: `shell:code-surface:${focused.appId}`,
+        label: focusedCodeSurface.open
+          ? `Hide ${focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Code'}`
+          : (focusedApp?.code?.commandLabel ?? focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View Code'),
+        icon: <Code2 size={14} />,
+        action: () => focusedCodeSurface.setOpen(!focusedCodeSurface.open),
+      }] : []),
       {
         id: 'shell:toggle-left',
         label: 'Toggle Left Panel',
@@ -2054,6 +2093,10 @@ function WorkspaceInner({
       openSettings,
       openWorkspaceManager,
       startVoicePrompt,
+      focused.appId,
+      focusedApp?.code?.commandLabel,
+      focusedApp?.code?.label,
+      focusedCodeSurface,
     ],
   );
 
@@ -2258,6 +2301,14 @@ function WorkspaceInner({
   // --- Right panel content: app inspector, tools, and ports ---
   const rightPanelContent = focusedApp ? (
     <>
+      {focusedCodeInInspector && focusedCodeSurface?.object && (
+        <ObjectCodeSurface
+          object={focusedCodeSurface.object}
+          placement="inspector"
+          onClose={() => focusedCodeSurface.setOpen(false)}
+          className="min-h-[420px]"
+        />
+      )}
       {focusedHasPorts && (
         <PortInspector appId={focusedApp.id} />
       )}
@@ -2293,12 +2344,32 @@ function WorkspaceInner({
   const leftPanelIcon = isCanvasFocusMode && fullscreenConfig
     ? fullscreenConfig.app.leftPanel?.icon
     : isSingleApp ? singleApp?.leftPanel?.icon : undefined;
-  const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedHasPorts ? <Activity size={12} /> : undefined);
+  const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedCodeAvailable ? <Code2 size={12} /> : focusedHasPorts ? <Activity size={12} /> : undefined);
   const leftHeaderActions = isSingleApp && singleApp?.leftPanel?.headerActions
     ? <singleApp.leftPanel.headerActions />
     : undefined;
-  const rightHeaderActions = focusedApp?.rightPanel?.headerActions
-    ? <focusedApp.rightPanel.headerActions />
+  const codeSurfaceHeaderAction = focusedCodeSurface?.object ? (
+    <button
+      type="button"
+      onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
+      className={`rounded p-1 transition-colors ${
+        focusedCodeSurface.open
+          ? 'bg-cyan-700/10 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200'
+          : 'text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground'
+      }`}
+      title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+      aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+    >
+      <Code2 size={12} />
+    </button>
+  ) : null;
+  const rightHeaderActions = codeSurfaceHeaderAction || focusedApp?.rightPanel?.headerActions
+    ? (
+      <div className="flex items-center gap-1">
+        {codeSurfaceHeaderAction}
+        {focusedApp?.rightPanel?.headerActions && <focusedApp.rightPanel.headerActions />}
+      </div>
+    )
     : undefined;
 
   const { pushPipe, createPipe, deletePipe, getPortCatalog, pipes } = useDataBus();
@@ -3403,6 +3474,21 @@ function WorkspaceInner({
                 actions={
                   <>
                     {focused.navActions}
+                    {focusedCodeSurface?.object && focusedApp?.code?.navAction === true && (
+                      <button
+                        type="button"
+                        onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
+                        className={`p-1.5 rounded border transition-colors ${
+                          focusedCodeSurface.open
+                            ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                            : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
+                        }`}
+                        title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                        aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                      >
+                        <Code2 size={14} />
+                      </button>
+                    )}
                     {isCanvasFocusMode && (
                       <button
                         onClick={exitFullscreen}
@@ -3568,6 +3654,46 @@ function WorkspaceInner({
                 {terminalContent}
               </TerminalDrawer>
             </div>
+
+            {focusedCodeSurface?.open && focusedCodeSurface.object && focusedCodePlacement === 'sheet' && (
+              <div
+                className="pointer-events-auto fixed bottom-7 right-0 top-12 z-[44]"
+                aria-label={focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Object code'}
+              >
+                <ObjectCodeSurface
+                  object={focusedCodeSurface.object}
+                  placement="sheet"
+                  onClose={() => focusedCodeSurface.setOpen(false)}
+                />
+              </div>
+            )}
+
+            {focusedCodeSurface?.open && focusedCodeSurface.object && focusedCodePlacement === 'workbench' && (
+              <div
+                className="pointer-events-none fixed bottom-7 top-12 z-[44]"
+                style={{
+                  left: codeWorkbenchSize === 'full'
+                    ? 0
+                    : showLeftNavigation && !leftCollapsed
+                      ? leftWidth
+                      : 0,
+                  right: codeWorkbenchSize === 'full' ? 0 : effectiveRightWidth,
+                }}
+                aria-label={focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Object code'}
+              >
+                <ObjectCodeWorkbench
+                  object={focusedCodeSurface.object}
+                  size={codeWorkbenchSize}
+                  onSizeChange={setCodeWorkbenchSize}
+                  onClose={() => focusedCodeSurface.setOpen(false)}
+                  chat={focusedCodeSurface.chat}
+                  editorWidth={codeWorkbenchEditorWidth}
+                  chatWidth={codeWorkbenchChatWidth}
+                  onEditorWidthChange={setCodeWorkbenchEditorWidth}
+                  onChatWidthChange={setCodeWorkbenchChatWidth}
+                />
+              </div>
+            )}
 
             {/* Command palette */}
             <CommandPalette
@@ -3959,8 +4085,8 @@ function TerminalSpawnDialog({
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="rounded-lg border border-border shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
-        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
+        className="rounded-lg border border-border bg-popover/95 text-popover-foreground shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        style={{ backdropFilter: 'blur(20px)' }}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between border-b border-border px-4 py-2.5">

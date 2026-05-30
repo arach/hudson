@@ -9,6 +9,7 @@ import CommandDock from './chrome/CommandDock';
 import CommandPalette from './overlays/CommandPalette';
 import TerminalDrawer from './overlays/TerminalDrawer';
 import { Assistant } from './Assistant';
+import { ObjectCodeSurface, ObjectCodeWorkbench } from './controls/ObjectCodeSurface';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { InstanceProvider } from '../context/InstanceContext';
 import {
@@ -21,8 +22,9 @@ import {
 } from '../context/AppShellControlsContext';
 import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { HudsonApp } from '../types/app';
+import type { HudsonCodeWorkbenchSize } from '../types/code';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 import {
   HudsonThemeScript,
   ThemeProvider,
@@ -143,6 +145,11 @@ function AppShellInner({
   const layoutMode = app.hooks.useLayoutMode?.() ?? app.mode;
   const activeToolHint = app.hooks.useActiveToolHint?.() ?? null;
   const takeover = app.hooks.useTakeover?.() ?? null;
+  const codeSurface = app.hooks.useCodeSurface?.() ?? null;
+  const codePlacement = codeSurface?.placement ?? app.code?.placement ?? 'workbench';
+  const codeInInspector = codeSurface?.open === true && Boolean(codeSurface.object) && codePlacement === 'inspector';
+  const codeWorkbenchOpen = codeSurface?.open === true && Boolean(codeSurface.object) && codePlacement === 'workbench';
+  const previousCodeWorkbenchOpenRef = useRef(false);
   const takeoverActive = takeover?.active === true;
   const takeoverDismissible = takeoverActive && takeover?.dismissible === true;
   const takeoverOnDismiss = takeover?.onDismiss;
@@ -153,6 +160,16 @@ function AppShellInner({
   const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
   const [leftWidth, setLeftWidth] = usePersistentState(`appshell.${app.id}.leftW`, 260);
   const [rightWidth, setRightWidth] = usePersistentState(`appshell.${app.id}.rightW`, 280);
+  const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
+  const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
+  const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
+
+  useEffect(() => {
+    if (codeWorkbenchOpen && !previousCodeWorkbenchOpenRef.current && !rightCollapsed) {
+      setRightCollapsed(true);
+    }
+    previousCodeWorkbenchOpenRef.current = codeWorkbenchOpen;
+  }, [codeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
 
   // Canvas pan/zoom state
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -247,6 +264,16 @@ function AppShellInner({
         },
       });
     }
+    if (codeSurface?.object) {
+      cmds.push({
+        id: `shell:code-surface:${app.id}`,
+        label: codeSurface.open
+          ? `Hide ${app.code?.label ?? codeSurface.label ?? 'Code'}`
+          : (app.code?.commandLabel ?? app.code?.label ?? codeSurface.label ?? 'View Code'),
+        icon: <Code2 size={14} />,
+        action: () => codeSurface.setOpen(!codeSurface.open),
+      });
+    }
     if (theme) {
       cmds.push(
         { id: 'shell:theme:light', label: 'Theme: Light', action: () => theme.setTheme('light') },
@@ -258,7 +285,7 @@ function AppShellInner({
       );
     }
     return cmds;
-  }, [activeTab, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
+  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -300,9 +327,40 @@ function AppShellInner({
   const InspectorSlot = app.slots.Inspector;
   const RightPanelSlot = app.slots.RightPanel;
   const hasTools = app.tools && app.tools.length > 0;
+  const codeSurfaceHeaderAction = codeSurface?.object ? (
+    <button
+      type="button"
+      onClick={() => codeSurface.setOpen(!codeSurface.open)}
+      className={`rounded p-1 transition-colors ${
+        codeSurface.open
+          ? 'bg-cyan-700/10 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200'
+          : 'text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground'
+      }`}
+      title={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+      aria-label={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+    >
+      <Code2 size={12} />
+    </button>
+  ) : null;
+  const rightHeaderActions = codeSurfaceHeaderAction || app.rightPanel?.headerActions
+    ? (
+      <div className="flex items-center gap-1">
+        {codeSurfaceHeaderAction}
+        {app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
+      </div>
+    )
+    : undefined;
 
   const rightContent = (
     <>
+      {codeInInspector && codeSurface?.object && (
+        <ObjectCodeSurface
+          object={codeSurface.object}
+          placement="inspector"
+          onClose={() => codeSurface.setOpen(false)}
+          className="min-h-[420px]"
+        />
+      )}
       {InspectorSlot && <InspectorSlot />}
       {!InspectorSlot && RightPanelSlot && <RightPanelSlot />}
       {hasTools && (
@@ -499,7 +557,26 @@ function AppShellInner({
               subtitle={app.icon}
               search={appSearch ?? undefined}
               center={appNavCenter}
-              actions={appNavActions}
+              actions={
+                <>
+                  {appNavActions}
+                  {codeSurface?.object && app.code?.navAction === true && (
+                    <button
+                      type="button"
+                      onClick={() => codeSurface.setOpen(!codeSurface.open)}
+                      className={`p-1.5 rounded border transition-colors ${
+                        codeSurface.open
+                          ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                          : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
+                      }`}
+                      title={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+                      aria-label={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+                    >
+                      <Code2 size={14} />
+                    </button>
+                  )}
+                </>
+              }
             />
           )}
 
@@ -530,7 +607,7 @@ function AppShellInner({
               width={rightWidth}
               onResizeStart={handleResizeStart('right')}
               footer={rightFooter}
-              headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
+              headerActions={rightHeaderActions}
               style={{ top: topInset, bottom: bottomInset }}
             >
               {rightContent}
@@ -590,6 +667,42 @@ function AppShellInner({
                   <Assistant app={app} commands={appCommands} />
                 )}
               </TerminalDrawer>
+            </div>
+          )}
+
+          {codeSurface?.open && codeSurface.object && codePlacement === 'sheet' && (
+            <div
+              className="pointer-events-auto fixed bottom-7 right-0 top-12 z-[44]"
+              aria-label={app.code?.label ?? codeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeSurface
+                object={codeSurface.object}
+                placement="sheet"
+                onClose={() => codeSurface.setOpen(false)}
+              />
+            </div>
+          )}
+
+          {codeSurface?.open && codeSurface.object && codePlacement === 'workbench' && (
+            <div
+              className="pointer-events-none fixed bottom-7 top-12 z-[44]"
+              style={{
+                left: codeWorkbenchSize === 'full' ? 0 : leftInset,
+                right: codeWorkbenchSize === 'full' ? 0 : rightInset,
+              }}
+              aria-label={app.code?.label ?? codeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeWorkbench
+                object={codeSurface.object}
+                size={codeWorkbenchSize}
+                onSizeChange={setCodeWorkbenchSize}
+                onClose={() => codeSurface.setOpen(false)}
+                chat={codeSurface.chat}
+                editorWidth={codeWorkbenchEditorWidth}
+                chatWidth={codeWorkbenchChatWidth}
+                onEditorWidthChange={setCodeWorkbenchEditorWidth}
+                onChatWidthChange={setCodeWorkbenchChatWidth}
+              />
             </div>
           )}
 

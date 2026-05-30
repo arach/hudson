@@ -1,6 +1,7 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { X, RotateCcw, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { X, RotateCcw, ChevronRight, Code2 } from 'lucide-react';
+import { HudsonContextMenu, type ContextMenuEntry } from 'hudsonkit/context-menu';
 import { useLogo } from './LogoProvider';
 import {
   compactLogoTemplateLabel,
@@ -102,7 +103,13 @@ export function LogoLeftPanel() {
   const {
     setVariant, params,
     templates, discardTemplate, restoreTemplate, discardedIds,
+    setCodeOpen,
   } = useLogo();
+
+  const openCodeMode = useCallback((templateId: string) => {
+    setVariant(templateId);
+    setCodeOpen(true);
+  }, [setVariant, setCodeOpen]);
 
   const [showDiscarded, setShowDiscarded] = useState(false);
   // Lazy init from localStorage. Component is 'use client' so this runs on the
@@ -149,6 +156,7 @@ export function LogoLeftPanel() {
           onToggleExpand={hasChildren ? () => toggleBranch(node.template.id) : undefined}
           onSelect={() => setVariant(node.template.id)}
           onDiscard={() => discardTemplate(node.template.id)}
+          onOpenInCode={() => openCodeMode(node.template.id)}
         />
         {hasChildren && expanded && node.children.map(child => renderTreeNode(child, depth + 1, [...ancestors, node.template]))}
       </div>
@@ -246,10 +254,11 @@ interface SidebarRowProps {
   onToggleExpand?: () => void;
   onSelect: () => void;
   onDiscard: () => void;
+  onOpenInCode: () => void;
 }
 
 function SidebarRow({
-  template, label, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard,
+  template, label, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard, onOpenInCode,
 }: SidebarRowProps) {
   const isBuiltin = template.builtin === true || isBuiltinVariant(template.id);
   // Indent: parents have 8px hang for the caret; children indent 14-16px under
@@ -257,53 +266,85 @@ function SidebarRow({
   const padLeft = expandable ? 'pl-0' : depth === 0 ? 'pl-2' : '';
   const depthStyle = depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined;
 
+  const menuItems = useMemo<ContextMenuEntry[]>(() => {
+    const items: ContextMenuEntry[] = [
+      {
+        id: 'open-in-code',
+        label: isBuiltin ? 'View code…' : 'Open in code…',
+        action: onOpenInCode,
+        icon: <Code2 size={12} />,
+      },
+    ];
+    if (!isBuiltin) {
+      items.push({ type: 'separator' });
+      items.push({
+        id: 'discard',
+        label: 'Discard template',
+        action: onDiscard,
+        icon: <X size={12} />,
+      });
+    }
+    return items;
+  }, [isBuiltin, onOpenInCode, onDiscard]);
+
   return (
-    <div className="group/row relative flex items-stretch">
-      {active && (
-        <span
-          aria-hidden="true"
-          className="absolute left-0 top-[3px] bottom-[3px] w-[2px] bg-accent rounded-sm"
-        />
-      )}
-      {expandable && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
-          className="flex h-[28px] w-4 shrink-0 items-center justify-center text-foreground/70 hover:text-foreground/95 transition-colors"
-          title={expanded ? 'Collapse' : 'Expand'}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          <ChevronRight
-            size={10}
-            strokeWidth={2.25}
-            className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+    <HudsonContextMenu items={menuItems}>
+      <div className="group/row relative flex items-stretch">
+        {active && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-[3px] bottom-[3px] w-[2px] bg-accent rounded-sm"
           />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onSelect}
-        title={template.name}
-        style={depthStyle}
-        className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
-          active
-            ? 'text-foreground'
-            : 'text-foreground/70 hover:text-foreground/90 hover:bg-foreground/[0.06] dark:hover:bg-white/[0.06]'
-        }`}
-      >
-        <span className="truncate">{label}</span>
-      </button>
-      {!isBuiltin && (
+        )}
+        {expandable && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
+            className="flex h-[28px] w-4 shrink-0 items-center justify-center text-foreground/70 hover:text-foreground/95 transition-colors"
+            title={expanded ? 'Collapse' : 'Expand'}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            <ChevronRight
+              size={10}
+              strokeWidth={2.25}
+              className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+        )}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onDiscard(); }}
-          className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-warning transition-opacity"
-          title="Discard template (recoverable for 7 days)"
-          aria-label="Discard template"
+          onClick={onSelect}
+          title={template.name}
+          style={depthStyle}
+          className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
+            active
+              ? 'text-foreground'
+              : 'text-foreground/70 hover:text-foreground/90 hover:bg-foreground/[0.06] dark:hover:bg-white/[0.06]'
+          }`}
         >
-          <X size={11} />
+          <span className="truncate">{label}</span>
         </button>
-      )}
-    </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenInCode(); }}
+          className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-foreground transition-opacity"
+          title={isBuiltin ? 'View template code' : 'Open template in code mode'}
+          aria-label="Open in code mode"
+        >
+          <Code2 size={11} />
+        </button>
+        {!isBuiltin && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDiscard(); }}
+            className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-warning transition-opacity"
+            title="Discard template (recoverable for 7 days)"
+            aria-label="Discard template"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+    </HudsonContextMenu>
   );
 }
