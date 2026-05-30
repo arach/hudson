@@ -32,7 +32,7 @@ Commands:
   run        Execute a command and automatically emit started + completed/failed.
 
 Common flags:
-  --prompt, --message, --trace, --source, --origin, --actor, --action
+  --prompt, --message, --trace, --parent-trace, --source, --origin, --actor, --action
   --app, --app-name, --workspace, --workspace-name, --target, --chat
   --arg key=value       Add an args field. Repeatable.
   --meta key=value      Add a metadata field. Repeatable.
@@ -166,6 +166,7 @@ const common = {
   actor,
   action,
   traceId,
+  parentTraceId: stringFlag(parsed.flags, 'parent-trace', 'parent-trace-id', 'parent'),
   appId: stringFlag(parsed.flags, 'app', 'app-id'),
   appName: stringFlag(parsed.flags, 'app-name'),
   workspaceId: stringFlag(parsed.flags, 'workspace', 'workspace-id'),

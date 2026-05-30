@@ -765,14 +765,18 @@ export function LogoContent() {
     const ctx = `Template: "${tmplName}"\nParams: ${paramSummary}\nCurrent SVG:\n\`\`\`svg\n${svgMarkup}\n\`\`\``;
 
     let prompt: string;
+    let actionLabel = 'Edit logo';
+    let actionId = 'logo.edit';
     if (action === 'edit') {
       prompt = `${editText}\n\n${ctx}`;
     } else {
       const actionDef = AI_ACTIONS.find(a => a.id === action)!;
+      actionLabel = `${actionDef.label} logo`;
+      actionId = `logo.${action}`;
       prompt = actionDef.prompt(ctx, tmplName);
     }
 
-    sendAiMessage(prompt);
+    sendAiMessage(prompt, { action: actionId, label: actionLabel, surface: 'logo-workspace' });
     setAiMenuOpen(false);
     setEditOpen(false);
     setEditInput('');
