@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
 import type { HudsonAppBackend } from './backend';
+import type { HudsonCodeSurfaceConfig, HudsonCodeSurfaceState } from './code';
 import type { AppExports } from './embed';
 import type { AppIntent } from './intent';
 import type { AppPorts } from './port';
@@ -167,6 +168,11 @@ export interface HudsonApp {
   /** Controls how prominently static ports appear in the shell inspector */
   portInspector?: PortInspectorMode;
 
+  /** App-level code surface convention. Apps that set this and implement
+   *  `hooks.useCodeSurface` let Hudson expose object source as a native sheet,
+   *  inspector panel, console view, or in-place editor. */
+  code?: HudsonCodeSurfaceConfig;
+
   /** Embeddable surfaces and other export declarations */
   exports?: AppExports;
 
@@ -197,5 +203,8 @@ export interface HudsonApp {
      *  above chrome. AppShell is stateless about dismissal — the hook's own
      *  state is what persists or clears the takeover. */
     useTakeover?: () => TakeoverState | null;
+    /** Returns the current object-code surface for this app. The shell renders
+     *  the configured placement and controls open/close through this state. */
+    useCodeSurface?: () => HudsonCodeSurfaceState | null;
   };
 }
