@@ -39,6 +39,7 @@ import { assetsApp } from './assets';
 import { apiInspectorApp } from './api-inspector';
 import { jsonExplorerApp } from './json-explorer';
 import { notepadApp } from './notepad';
+import { codeEditorApp } from './code-editor';
 import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
@@ -90,6 +91,7 @@ function getAppById(id: string): HudsonApp | null {
     'api-inspector': apiInspectorApp,
     'json-explorer': jsonExplorerApp,
     'notepad': notepadApp,
+    'code-editor': codeEditorApp,
     'document-lab': documentLabApp,
     'theme-designer': themeDesignerApp,
     'stage-design': stageDesignApp,
@@ -207,6 +209,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
     },
+    {
+      app: codeEditorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1240, y: -260, w: 760, h: 560 },
+    },
   ];
 }
 
@@ -235,6 +242,11 @@ function getLogoStudioApps(): WorkspaceAppConfig[] {
       app: imageProcessLabApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 580, y: 600, w: 540, h: 460 },
+    },
+    {
+      app: codeEditorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -540, y: 460, w: 1080, h: 560 },
     },
     ...(preframeAppConfig ? [preframeAppConfig] : []),
   ];
@@ -296,6 +308,11 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
       app: vantageApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -220, y: 360, w: 760, h: 560 },
+    },
+    {
+      app: codeEditorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 560, y: 880, w: 760, h: 560 },
     },
   ];
 }
@@ -404,6 +421,10 @@ export function getDocumentLabWorkspace(): HudsonWorkspace {
       app: notepadApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 500, y: -260, w: 620, h: 560 },
+    }, {
+      app: codeEditorApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 500, y: 360, w: 760, h: 560 },
     }],
     defaultFocusedAppId: 'document-lab',
     defaultScale: 0.8,

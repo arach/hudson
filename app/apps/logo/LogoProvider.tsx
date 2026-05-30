@@ -229,6 +229,9 @@ interface LogoState {
   /** Content view — single-template preview vs comparison matrix */
   view: 'preview' | 'matrix';
   setView: (v: 'preview' | 'matrix') => void;
+  /** Whether the Code Mode workbench (template source editor) is open. */
+  codeOpen: boolean;
+  setCodeOpen: (open: boolean) => void;
   /** Picked cell meta from the matrix view (winners). */
   picks: MatrixPick[];
   togglePick: (pick: MatrixPick) => void;
@@ -506,6 +509,7 @@ export function LogoProvider({
   const [inspectMode, setInspectMode] = useState(false);
   const toggleInspectMode = useCallback(() => setInspectMode(v => !v), []);
   const [view, setView] = usePersistentState<'preview' | 'matrix'>('logo.view', 'preview');
+  const [codeOpen, setCodeOpen] = useState(false);
   const [picks, setPicks] = useState<MatrixPick[]>([]);
   const togglePick = useCallback((pick: MatrixPick) => {
     setPicks(prev => {
@@ -943,6 +947,7 @@ export function LogoProvider({
     sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
     view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    codeOpen, setCodeOpen,
     sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   }), [
     params, setParam, setVariant, resetDefaults,
@@ -960,6 +965,7 @@ export function LogoProvider({
     sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
     view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    codeOpen,
     sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   ]);
 

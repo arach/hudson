@@ -4,6 +4,7 @@
 // Types
 export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
 export type { HudsonAppBackend } from './types/backend';
+export type { HudsonCodeChatMessage, HudsonCodeChatSurface, HudsonCodeObject, HudsonCodeSurfaceConfig, HudsonCodeSurfacePlacement, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from './types/code';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
 export type { AppIntent, IntentCategory, IntentParameter, ServerIntent, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
@@ -170,6 +171,8 @@ export type {
 export {
   CodeEditor,
   CodeViewer,
+  ObjectCodeSurface,
+  ObjectCodeWorkbench,
   TextDocumentProvider,
   TextDocumentSurface,
   TextDocumentSurfaceInner,
@@ -184,6 +187,8 @@ export type {
   CodeViewerProps,
   DocumentLanguage,
   HudsonTextDocument,
+  ObjectCodeSurfaceProps,
+  ObjectCodeWorkbenchProps,
   TextDocumentDetectionInput,
   TextDocumentContextValue,
   TextDocumentKind,
