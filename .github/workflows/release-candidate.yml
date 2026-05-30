@@ -1,0 +1,32 @@
+name: Release Candidate
+
+on:
+  push:
+    tags:
+      - 'candidate-v*'
+  workflow_dispatch:
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  all:
+    name: All validation
+    uses: ./.github/workflows/ci.yml
+
+  site:
+    name: Site build
+    needs: all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+        with:
+          bun-version: latest
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      - name: Site build
+        run: bun run build:site

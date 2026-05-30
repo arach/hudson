@@ -1,8 +1,28 @@
-name: Deploy Cloudflare
+name: Deploy Site
 
 on:
   push:
     branches: [main]
+    paths:
+      - '.github/workflows/deploy-cloudflare.yml'
+      - 'app/**'
+      - 'bun.lock'
+      - 'cloudflare-static-worker.ts'
+      - 'docs/**'
+      - 'docs.json'
+      - 'drizzle/**'
+      - 'embed-worker/**'
+      - 'lib/**'
+      - 'marketing/**'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'packages/cloud/hudson-relay-worker/**'
+      - 'packages/web/ai-backends/**'
+      - 'packages/web/hudsonkit/**'
+      - 'public/**'
+      - 'site/**'
+      - 'tsconfig.json'
+      - 'wrangler.jsonc'
   workflow_dispatch:
 
 concurrency:
@@ -35,18 +55,6 @@ jobs:
 
       - name: Install embed worker dependencies
         run: bun install --cwd embed-worker --frozen-lockfile
-
-      - name: Test
-        run: bun run test
-
-      - name: Build AI backends package
-        run: bun run --filter @hudsonkit/ai build
-
-      - name: Build HudsonKit package
-        run: bun run --cwd packages/web/hudsonkit build:js
-
-      - name: Typecheck
-        run: bunx tsc --noEmit
 
       - name: Build static site
         run: bun run build:site

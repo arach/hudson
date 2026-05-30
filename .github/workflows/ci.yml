@@ -2,8 +2,31 @@ name: CI
 
 on:
   pull_request:
-  push:
-    branches: [main]
+    paths:
+      - '.github/workflows/ci.yml'
+      - 'app/**'
+      - 'bun.lock'
+      - 'cloudflare-static-worker.ts'
+      - 'docs/**'
+      - 'docs.json'
+      - 'drizzle/**'
+      - 'drizzle.config.ts'
+      - 'embed-worker/**'
+      - 'eslint.config.mjs'
+      - 'lib/**'
+      - 'marketing/**'
+      - 'next.config.ts'
+      - 'package.json'
+      - 'packages/**'
+      - 'postcss.config.mjs'
+      - 'public/**'
+      - 'scripts/**'
+      - 'site/**'
+      - 'specs/**'
+      - 'tsconfig.json'
+      - 'types/**'
+      - 'vitest.config.ts'
+      - 'wrangler.jsonc'
   workflow_call:
 
 concurrency:
@@ -43,6 +66,7 @@ jobs:
 
   apple:
     name: Apple
+    if: ${{ github.event_name == 'workflow_call' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
