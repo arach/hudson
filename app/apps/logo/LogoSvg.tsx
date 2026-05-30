@@ -4,7 +4,7 @@ import type { LogoParams } from './LogoProvider';
 import { useLogo } from './LogoProvider';
 import { TemplateSvg, useTemplateRender } from './TemplateSvg';
 import { LogoInteractiveSurface } from './LogoInteractiveSurface';
-import type { LogoElementOffsets } from './types';
+import type { LogoDrawingShape, LogoElementOffsets } from './types';
 
 interface Props {
   params: LogoParams;
@@ -16,7 +16,7 @@ interface Props {
 }
 
 export function LogoSvg({ params, size, interactive = false }: Props) {
-  const { templates, customParamValues, backgroundSvg, setVariant, refreshTemplates, elementOffsets } = useLogo();
+  const { templates, customParamValues, backgroundSvg, setVariant, refreshTemplates, elementOffsets, drawingShapes } = useLogo();
   const template = templates.find(t => t.id === params.variant);
 
   if (templates.length === 0) {
@@ -77,6 +77,7 @@ export function LogoSvg({ params, size, interactive = false }: Props) {
       setVariant={setVariant}
       refreshTemplates={refreshTemplates}
       elementOffsets={elementOffsets[template.id]}
+      drawingShapes={drawingShapes[template.id]}
       interactive={interactive}
     />
   );
@@ -93,6 +94,7 @@ function LogoSvgInner({
   setVariant,
   refreshTemplates,
   elementOffsets,
+  drawingShapes,
   interactive,
 }: {
   template: Parameters<typeof TemplateSvg>[0]['template'];
@@ -104,6 +106,7 @@ function LogoSvgInner({
   setVariant: (v: string) => void;
   refreshTemplates: () => void;
   elementOffsets?: LogoElementOffsets;
+  drawingShapes?: LogoDrawingShape[];
   interactive?: boolean;
 }) {
   const { error } = useTemplateRender(template, params, customParamValues, backgroundSvg);
@@ -121,6 +124,7 @@ function LogoSvgInner({
       backgroundSvg={backgroundSvg}
       size={size}
       elementOffsets={elementOffsets}
+      drawingShapes={drawingShapes}
     />
   );
 
