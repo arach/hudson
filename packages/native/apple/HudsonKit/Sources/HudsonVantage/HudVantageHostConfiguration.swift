@@ -16,7 +16,7 @@ public extension HudVantageConfiguration {
         launchSetupURL: URL? = nil,
         workingDirectoryURL: URL? = nil,
         restoresStateOnLaunch: Bool = true,
-        followsSystemColorScheme: Bool = true
+        followsSystemColorScheme: Bool = false
     ) -> HudVantageConfiguration {
         let title = surfaceTitle ?? "Vantage"
         let supportRoot = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)

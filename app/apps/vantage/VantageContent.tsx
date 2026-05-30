@@ -52,7 +52,7 @@ function NodeCard({
             </span>
           )}
           {node.tag && (
-            <span className="rounded border border-teal-500/20 bg-teal-500/10 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-teal-300">
+            <span className="rounded border border-border/60 bg-muted/20 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
               {node.tag}
             </span>
           )}

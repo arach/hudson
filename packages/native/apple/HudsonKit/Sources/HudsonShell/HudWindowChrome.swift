@@ -32,11 +32,15 @@ public struct HudWindowChrome: NSViewRepresentable {
     private func apply(to window: NSWindow?) {
         guard let window else { return }
 
-        window.appearance = NSAppearance(
-            named: colorScheme == .dark ? .darkAqua : .aqua
-        )
-        window.backgroundColor = colorScheme == .dark ? .black : .white
-        window.titlebarAppearsTransparent = false
+        window.appearance = NSAppearance(named: .darkAqua)
+        window.backgroundColor = .black
+        window.titlebarAppearsTransparent = true
+        window.styleMask.insert(.fullSizeContentView)
+        window.titleVisibility = .hidden
+        window.titlebarSeparatorStyle = .none
+        window.isMovableByWindowBackground = true
+        window.isOpaque = true
+        window.toolbar?.isVisible = false
     }
 }
 

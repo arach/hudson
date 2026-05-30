@@ -83,6 +83,11 @@ export function useDayStackAI({
     context,
     provider: String(appSettings.aiProvider || 'copilot'),
     model: String(appSettings.aiModel || 'gemini-3-flash-preview'),
+    agentTrace: {
+      source: 'day-stack-ai',
+      appId: 'day-stack',
+      appName: 'Stacks',
+    },
     onToolCall: async (name, args) => {
       switch (name) {
         case 'append_block': {

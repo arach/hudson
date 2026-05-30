@@ -207,11 +207,6 @@ function getCoreApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
     },
-    {
-      app: hudLoggerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 1220, y: -300, w: 900, h: 640 },
-    },
   ];
 }
 

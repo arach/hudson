@@ -1,3 +1,5 @@
+'use client';
+
 // hudsonkit/controls — reusable parameter control components for app inspectors.
 
 export {

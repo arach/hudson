@@ -8,7 +8,19 @@ order: 8
 
 ## Overview
 
-`hudsonkit/controls` provides two categories of components for building inspector and settings panels: a suite of typed parameter controls (`ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`) and two code components (`CodeViewer`, `CodeEditor`). All components are styled to match the active Hudson theme and template via the shared token surface.
+`hudsonkit/controls` provides two categories of components for building inspector and settings panels: a suite of typed parameter controls (`ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`) and text/code surfaces (`CodeViewer`, `CodeEditor`, `TextDocumentSurface`, `TextDiffSurface`). All components are styled to match the active Hudson theme and template via the shared token surface.
+
+`hudsonkit/controls` is a client entry. In React Server Component apps, import these controls from a Client Component boundary.
+
+### Optional editor peers
+
+The heavier editor/markdown/diff runtimes are BYO optional peers and are loaded dynamically only by the components that need them:
+
+- `CodeEditor`: `@codemirror/*`, `@lezer/highlight`
+- `TextDocumentSurface` markdown preview: `react-markdown`, `remark-gfm`
+- `TextDiffSurface`: `@pierre/diffs`
+
+Install those packages in the consuming app when you use the corresponding control. Param controls and `CodeViewer` do not need them.
 
 ## Param controls
 
@@ -340,9 +352,9 @@ export function SnippetPanel() {
 
 ## CodeEditor
 
-Editable code input with the same syntax highlighting as `CodeViewer`. The `<textarea>` is transparent and layered over a highlight overlay so the caret and selection remain native.
+Editable CodeMirror-backed code input.
 
-- `Tab` inserts two spaces.
+- `Tab` uses the CodeMirror indent binding.
 - `Cmd+S` / `Ctrl+S` calls `onSave` and clears the dirty indicator.
 
 ### CodeEditorProps
@@ -355,6 +367,7 @@ Editable code input with the same syntax highlighting as `CodeViewer`. The `<tex
 | `onSave` | `(content: string) => void` | no | Called on `Cmd+S` / `Ctrl+S` |
 | `onChange` | `(content: string) => void` | no | Called on every keystroke |
 | `showLineNumbers` | `boolean` | no | Render the line number gutter |
+| `readOnly` | `boolean` | no | Disable editing while keeping the editor surface |
 | `className` | `string` | no | Extra classes on the root element |
 
 ```tsx

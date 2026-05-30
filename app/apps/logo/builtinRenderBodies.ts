@@ -683,7 +683,7 @@ switch (decoration) {
     const w = stemW * 0.4 * decorationScale;
     const x = stemCx - stemW * 0.8;
     const y = stemBaseline - stemW * 0.2;
-    afterParts.push(\`<rect x="\${x}" y="\${y}" width="\${w}" height="\${w}" rx="\${w * 0.15}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
+    afterParts.push(\`<rect data-element-id="descender-hook" x="\${x}" y="\${y}" width="\${w}" height="\${w}" rx="\${w * 0.15}" fill="\${decorationColor}" opacity="\${decorationOpacity}"/>\`);
     break;
   }
 
@@ -735,7 +735,7 @@ if (showCanvas) {
 }
 if (defsBlock) svg += \`<defs>\${defsBlock}</defs>\`;
 svg += beforeParts.join('');
-svg += \`<text x="\${anchorX}" y="\${baseline}" text-anchor="middle" font-family="\${glyphFontFamily}" font-weight="\${glyphFontWeight}" font-size="\${fontSize}" fill="\${glyphFill}"\${glyphMaskAttr}\${glyphStyle}>t</text>\`;
+svg += \`<text data-element-id="glyph" x="\${anchorX}" y="\${baseline}" text-anchor="middle" font-family="\${glyphFontFamily}" font-weight="\${glyphFontWeight}" font-size="\${fontSize}" fill="\${glyphFill}"\${glyphMaskAttr}\${glyphStyle}>t</text>\`;
 svg += afterParts.join('');
 
 return svg;`,

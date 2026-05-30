@@ -13,7 +13,7 @@ export const vantageIntents: AppIntent[] = [
     title: 'Launch Vantage Companion',
     description: 'Start the native macOS Vantage menubar companion from Hudson.',
     category: 'workspace',
-    keywords: ['vantage', 'launch', 'companion', 'menubar', 'native', 'termini'],
+    keywords: ['vantage', 'launch', 'companion', 'menubar', 'native'],
   },
   {
     commandId: 'vantage:metrics',

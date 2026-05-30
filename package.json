@@ -18,7 +18,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
-    "relay:legacy": "node --no-warnings scripts/ai-relay.ts"
+    "relay:legacy": "node --no-warnings scripts/ai-relay.ts",
+    "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",
@@ -26,8 +27,19 @@
     "@ai-sdk/openai": "^3.0.48",
     "@ai-sdk/react": "^3.0.107",
     "@base-ui-components/react": "^1.0.0-rc.0",
+    "@codemirror/commands": "^6.10.3",
+    "@codemirror/lang-css": "^6.3.1",
+    "@codemirror/lang-html": "^6.4.11",
+    "@codemirror/lang-javascript": "^6.2.5",
+    "@codemirror/lang-json": "^6.0.2",
+    "@codemirror/lang-markdown": "^6.5.0",
+    "@codemirror/language": "^6.12.3",
+    "@codemirror/state": "^6.6.0",
+    "@codemirror/view": "^6.42.0",
     "@google/genai": "^1.42.0",
+    "@lezer/highlight": "^1.2.3",
     "@libsql/client": "^0.17.0",
+    "@pierre/diffs": "^1.1.20",
     "@shikijs/rehype": "^3.22.0",
     "@types/archiver": "^7.0.0",
     "@voxd/client": "^0.2.1",
@@ -36,6 +48,7 @@
     "@xterm/xterm": "^6.0.0",
     "ai": "^6.0.105",
     "archiver": "^7.0.1",
+    "codemirror": "^6.0.2",
     "drizzle-orm": "^0.45.1",
     "esbuild": "^0.27.3",
     "fonteditor-core": "^2.6.3",
@@ -64,10 +77,12 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
+    "apps/studio",
     "packages/tools/create-hudson-app",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
-    "packages/web/hudsonkit"
+    "packages/web/hudsonkit",
+    "../studio"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

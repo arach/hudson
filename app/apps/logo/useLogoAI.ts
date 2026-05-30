@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useMemo, useState, useEffect, useRef } from 'react';
-import { createHudsonId, useHudsonAI, usePlatform } from 'hudsonkit';
+import { createHudsonId, logHudsonAgentAction, useHudsonAI, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues, AIAttachment } from 'hudsonkit';
 import type { LogoParams } from './LogoProvider';
 import type { LogoTemplate, TemplateParam } from './types';
@@ -47,6 +47,55 @@ export interface AiActivityEntry {
   timestamp: number;
 }
 
+export interface SendLogoAIMessageOptions {
+  action?: string;
+  label?: string;
+  surface?: string;
+}
+
+interface ActiveLogoAIAction {
+  traceId: string;
+  action: string;
+  label: string;
+  prompt: string;
+  variant: string;
+  surface: string;
+}
+
+function compactPrompt(message: string) {
+  return message.replace(/\s+/g, ' ').trim().slice(0, 420);
+}
+
+function inferLogoAIAction(message: string) {
+  const firstLine = message.trim().split('\n')[0]?.toLowerCase() ?? '';
+  if (firstLine.startsWith('polish this logo')) return 'logo.polish';
+  if (firstLine.startsWith('create 3 distinct variations')) return 'logo.explore';
+  if (firstLine.startsWith('simplify this logo')) return 'logo.simplify';
+  if (firstLine.startsWith('elevate this logo')) return 'logo.elevate';
+  if (firstLine.startsWith('remix this logo')) return 'logo.remix';
+  if (firstLine.startsWith('# iterate on')) return 'logo.iterate-picks';
+  return 'logo.ai.edit';
+}
+
+function labelLogoAIAction(action: string) {
+  switch (action) {
+    case 'logo.polish':
+      return 'Polish logo';
+    case 'logo.explore':
+      return 'Explore logo variants';
+    case 'logo.simplify':
+      return 'Simplify logo';
+    case 'logo.elevate':
+      return 'Elevate logo';
+    case 'logo.remix':
+      return 'Remix logo';
+    case 'logo.iterate-picks':
+      return 'Iterate logo picks';
+    default:
+      return 'Edit logo';
+  }
+}
+
 export function useLogoAI(opts: UseLogoAIOptions) {
   const {
     params, setParam, setVariant, resetDefaults, presets,
@@ -60,6 +109,8 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   const templateById = useMemo(() => new Map(normalizedTemplates.map(template => [template.id, template])), [normalizedTemplates]);
   const templateByIdRef = useRef(templateById);
   const activeVariantRef = useRef(params.variant);
+  const activePromptTraceIdRef = useRef<string | null>(null);
+  const activeActionRef = useRef<ActiveLogoAIAction | null>(null);
 
   useEffect(() => {
     templateByIdRef.current = templateById;
@@ -98,6 +149,58 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     },
   ], []);
 
+  const startLogoAIAction = useCallback((message: string, options: SendLogoAIMessageOptions = {}) => {
+    const action = options.action ?? inferLogoAIAction(message);
+    const label = options.label ?? labelLogoAIAction(action);
+    const traceId = createHudsonId('tr');
+    const variant = activeVariantRef.current;
+    const surface = options.surface ?? 'logo-ai';
+    activePromptTraceIdRef.current = traceId;
+    activeActionRef.current = { traceId, action, label, prompt: message, variant, surface };
+    logHudsonAgentAction({
+      source: 'logo-ai',
+      status: 'started',
+      action,
+      appId: 'logo',
+      appName: 'Logo',
+      traceId,
+      args: {
+        prompt: compactPrompt(message),
+        variant,
+      },
+      metadata: {
+        label,
+        surface,
+        promptLength: message.length,
+      },
+    });
+  }, []);
+
+  const finishLogoAIAction = useCallback((status: 'completed' | 'failed', error?: unknown) => {
+    const active = activeActionRef.current;
+    if (!active) return;
+    activeActionRef.current = null;
+    activePromptTraceIdRef.current = null;
+    logHudsonAgentAction({
+      source: 'logo-ai',
+      status,
+      action: active.action,
+      appId: 'logo',
+      appName: 'Logo',
+      traceId: active.traceId,
+      args: {
+        prompt: compactPrompt(active.prompt),
+        variant: active.variant,
+      },
+      metadata: {
+        label: active.label,
+        surface: active.surface,
+        promptLength: active.prompt.length,
+      },
+      error,
+    });
+  }, []);
+
   const chat = useHudsonAI({
     toolset: 'logo',
     chatId: 'logo-app-chat',
@@ -105,6 +208,18 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     attachments,
     provider: String(appSettings.aiProvider || 'minimax'),
     model: String(appSettings.aiModel || 'MiniMax-M2.7'),
+    agentTrace: {
+      source: 'logo-ai',
+      appId: 'logo',
+      appName: 'Logo',
+      parentTraceId: () => activePromptTraceIdRef.current ?? undefined,
+    },
+    onFinish: () => {
+      finishLogoAIAction('completed');
+    },
+    onError: (error) => {
+      finishLogoAIAction('failed', error);
+    },
     onToolCall: async (name, args) => {
       try {
       switch (name) {
@@ -252,14 +367,16 @@ export function useLogoAI(opts: UseLogoAIOptions) {
     },
   });
 
-  const sendAiMessage = useCallback((message: string) => {
+  const sendAiMessage = useCallback((message: string, options: SendLogoAIMessageOptions = {}) => {
     logActivity('send', 'Sending to AI');
+    startLogoAIAction(message, options);
     try {
       chat.sendMessage({ text: message });
     } catch (err) {
+      finishLogoAIAction('failed', err);
       logActivity('error', err instanceof Error ? err.message : String(err));
     }
-  }, [chat, logActivity]);
+  }, [chat, finishLogoAIAction, logActivity, startLogoAIAction]);
 
   // Surface errors in the activity log
   const chatError = chat?.error;

@@ -97,7 +97,7 @@
       "id": "hudson.diff.gallery.canvas",
       "runtimeKind": "diff",
       "path": "/Users/arach/dev/hudson/apps/vantage/fixtures/vantage-diff-gallery/diffs/hudson-termini-canvas.diff",
-      "title": "Hudson · Termini Canvas",
+      "title": "Hudson · Vantage",
       "subtitle": "example app surface wiring · 48 lines",
       "language": "diff",
       "role": "hudson",

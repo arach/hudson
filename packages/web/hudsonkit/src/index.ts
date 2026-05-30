@@ -5,7 +5,7 @@
 export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
 export type { HudsonAppBackend } from './types/backend';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
-export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
+export type { AppIntent, IntentCategory, IntentParameter, ServerIntent, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
 export type { EmbedSurface, EmbedSizing, AppExports } from './types/embed';
@@ -25,7 +25,7 @@ export type { InstanceContextValue } from './context/InstanceContext';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';
-export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/useHudsonAI';
+export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment, HudsonAIAgentTrace } from './hooks/useHudsonAI';
 export { useAssistant } from './hooks/useAssistant';
 export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 // Voice kit interface (types only — no runtime voice code).
@@ -42,17 +42,24 @@ export {
   HObservabilityDefault,
   HSpan,
   HTrace,
+  dispatchHudsonAgentAction,
+  HUDSON_AGENT_ACTION_EVENT,
   HudLogger,
   HudLoggerStatusItem,
+  logHudsonAgentAction,
+  redactAgentActionValue,
   summarizeHudLoggerEvents,
   useHudLoggerEvents,
   useHudLoggerSummary,
 } from './observability';
 export type {
   HudLoggerProps,
+  HudLoggerScopeFilter,
   HudLoggerStatusItemProps,
   HudLoggerSummary,
   HudLoggerUseEventsOptions,
+  HudsonAgentActionInput,
+  HudsonAgentActionStatus,
   HLogEvent,
   HLogInput,
   HLogLevel,
@@ -166,9 +173,7 @@ export {
   TextDocumentProvider,
   TextDocumentSurface,
   TextDocumentSurfaceInner,
-  TextDiffSurface,
   createHudsonTextDocument,
-  createHudsonTextDiff,
   detectTextDocumentKind,
   inferDocumentLanguage,
   useTextDocument,
@@ -185,11 +190,4 @@ export type {
   TextDocumentMode,
   TextDocumentProviderProps,
   TextDocumentSurfaceProps,
-  HudsonTextDiff,
-  HudsonTextDiffSnapshot,
-  HudsonTextDocumentDiff,
-  HudsonTextPatchDiff,
-  TextDiffDetectionInput,
-  TextDiffLayout,
-  TextDiffSurfaceProps,
 } from './controls';
