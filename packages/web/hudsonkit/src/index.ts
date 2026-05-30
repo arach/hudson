@@ -35,8 +35,24 @@ export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
 export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
-export { HLogger, HMetrics, HObservability, HObservabilityDefault, HSpan, HTrace } from './observability';
+export {
+  HLogger,
+  HMetrics,
+  HObservability,
+  HObservabilityDefault,
+  HSpan,
+  HTrace,
+  HudLogger,
+  HudLoggerStatusItem,
+  summarizeHudLoggerEvents,
+  useHudLoggerEvents,
+  useHudLoggerSummary,
+} from './observability';
 export type {
+  HudLoggerProps,
+  HudLoggerStatusItemProps,
+  HudLoggerSummary,
+  HudLoggerUseEventsOptions,
   HLogEvent,
   HLogInput,
   HLogLevel,

@@ -280,3 +280,5 @@ export class HObservability {
     }
   }
 }
+
+export const HObservabilityDefault = HObservability.global();
