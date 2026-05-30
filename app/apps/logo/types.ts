@@ -1,3 +1,10 @@
+import type {
+  DrawingNode,
+  DrawingNodeMap,
+  DrawingTool,
+  ElementTransformOffset,
+} from '../../lib/drawing';
+
 // ---------------------------------------------------------------------------
 // Custom template parameter declaration
 // ---------------------------------------------------------------------------
@@ -26,13 +33,17 @@ export interface TemplateParam {
 // a transform on top. Keyed by stable shape ID (the `data-element-id` on the
 // rendered SVG node), then templateId → shapeId at the provider level.
 // ---------------------------------------------------------------------------
-export interface ShapeOffset {
-  dx?: number;
-  dy?: number;
-  rotate?: number;
-}
-
+export type ShapeOffset = ElementTransformOffset;
 export type LogoElementOffsets = Record<string, ShapeOffset>;
+
+// ---------------------------------------------------------------------------
+// Structured drawing components. These are document-level logo components,
+// not template internals: they render into the final SVG and expose generic
+// geometry/style controls regardless of the active template.
+// ---------------------------------------------------------------------------
+export type LogoEditorTool = DrawingTool;
+export type LogoDrawingShape = DrawingNode;
+export type LogoDrawingShapeMap = DrawingNodeMap;
 
 // ---------------------------------------------------------------------------
 // Color-only subset that varies between light and dark modes

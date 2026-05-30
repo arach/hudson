@@ -1,10 +1,10 @@
 'use client';
 
 import { useRef, useCallback, useState, useMemo, useEffect, type CSSProperties } from 'react';
-import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb, ScrollText, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, Film } from 'lucide-react';
+import { RotateCcw, Sun, Moon, Type, Grid3X3, Sparkles, Shuffle, Pencil, Wand2, X, Minimize2, Maximize2, Zap, Send, Lightbulb, ScrollText, ChevronDown, ChevronRight, ChevronLeft, LayoutGrid, Film, MousePointer2, Square, Circle, Minus, Trash2 } from 'lucide-react';
 import { buildPersistedMatrixSession, useLogo } from './LogoProvider';
 import type { LogoParams } from './LogoProvider';
-import type { WordmarkConfig } from './types';
+import type { LogoEditorTool, WordmarkConfig } from './types';
 import { LogoSvg } from './LogoSvg';
 import { WordmarkSvg } from './WordmarkSvg';
 import { LogoComparisonSheet, type LogoComparisonCellMeta } from './LogoComparisonSheet';
@@ -32,6 +32,14 @@ const LOGO_TOOLBAR_DIVIDER_CLASS = 'w-px h-4 bg-border/70';
 const LOGO_DARK_PREVIEW_STAGE_CLASS = 'rounded-[48px] bg-neutral-950 shadow-lg ring-1 ring-border/70';
 
 type AiAction = 'polish' | 'explore' | 'simplify' | 'elevate' | 'remix' | 'edit';
+
+const COMPONENT_TOOLS: { id: LogoEditorTool; icon: typeof MousePointer2; label: string; title: string }[] = [
+  { id: 'select', icon: MousePointer2, label: 'Select', title: 'Select and move components' },
+  { id: 'rect', icon: Square, label: 'Rect', title: 'Draw rectangle' },
+  { id: 'ellipse', icon: Circle, label: 'Oval', title: 'Draw circle or ellipse' },
+  { id: 'line', icon: Minus, label: 'Line', title: 'Draw line' },
+  { id: 'text', icon: Type, label: 'Text', title: 'Place text' },
+];
 
 const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string) => string }[] = [
   {
@@ -705,9 +713,33 @@ function LogoMatrixView({
 // Main content
 // ---------------------------------------------------------------------------
 export function LogoContent() {
-  const { params, setParam, lightParams, showPreviews, togglePreviews, sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, templates, inspectMode, view, picks, togglePick, setView } = useLogo();
+  const {
+    params,
+    setParam,
+    lightParams,
+    showPreviews,
+    togglePreviews,
+    sendAiMessage,
+    aiStatus,
+    aiActivity,
+    aiError,
+    aiMessages,
+    templates,
+    inspectMode,
+    view,
+    picks,
+    togglePick,
+    setView,
+    editorTool,
+    setEditorTool,
+    drawingShapes,
+    selectedDrawingId,
+    deleteDrawingShape,
+  } = useLogo();
   const dataBus = useOptionalDataBus();
   const hasMatrixPreset = Boolean(MATRIX_PRESETS[params.variant]);
+  const activeDrawingShapes = drawingShapes[params.variant] ?? [];
+  const selectedDrawing = activeDrawingShapes.find(shape => shape.id === selectedDrawingId) ?? null;
 
   const [spaceHeld, setSpaceHeld] = useState(false);
   const [spotlight, setSpotlight] = useState(false);
@@ -848,7 +880,7 @@ export function LogoContent() {
         </div>
         )}
 
-        {/* Floating toolbar */}
+        {/* Logo toolbar */}
         <div className="absolute top-2.5 left-1/2 -translate-x-1/2 z-10 flex items-center gap-px rounded-lg border border-border/70 bg-card/85 text-muted-foreground shadow-lg backdrop-blur-xl p-0.5">
           <button
             onClick={() => setParam('lightEnabled', !params.lightEnabled)}
@@ -996,7 +1028,42 @@ export function LogoContent() {
           >
             <RotateCcw size={11} />
           </button>
+        </div>
 
+        {/* Drawing toolbar */}
+        <div className="absolute top-12 left-1/2 -translate-x-1/2 z-10 flex items-center gap-px rounded-lg border border-cyan-500/25 bg-card/85 text-muted-foreground shadow-lg shadow-cyan-950/10 backdrop-blur-xl p-0.5">
+          {COMPONENT_TOOLS.map((tool) => {
+            const Icon = tool.icon;
+            const active = editorTool === tool.id;
+            return (
+              <button
+                key={tool.id}
+                type="button"
+                onClick={() => setEditorTool(tool.id)}
+                className={`${LOGO_TOOLBAR_BUTTON_BASE} ${
+                  active ? 'bg-cyan-500/15 text-cyan-600' : LOGO_TOOLBAR_BUTTON_IDLE
+                }`}
+                title={tool.title}
+              >
+                <Icon size={11} />
+                {tool.label}
+              </button>
+            );
+          })}
+
+          {selectedDrawing && (
+            <>
+              <div className={LOGO_TOOLBAR_DIVIDER_CLASS} />
+              <button
+                type="button"
+                onClick={() => deleteDrawingShape(params.variant, selectedDrawing.id)}
+                className="flex items-center justify-center rounded-md px-2 py-1.5 text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                title={`Delete ${selectedDrawing.name}`}
+              >
+                <Trash2 size={11} />
+              </button>
+            </>
+          )}
         </div>
 
         {/* Edit modal */}
