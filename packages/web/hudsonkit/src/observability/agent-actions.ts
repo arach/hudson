@@ -21,6 +21,7 @@ export interface HudsonAgentActionInput {
   metadata?: Record<string, unknown>;
   error?: unknown;
   traceId?: string;
+  parentTraceId?: string;
 }
 
 function isRecord(value: unknown): value is Record<string, unknown> {
@@ -90,6 +91,7 @@ export function logHudsonAgentAction(
       workspaceId: input.workspaceId,
       workspaceName: input.workspaceName,
       traceId: input.traceId,
+      parentTraceId: input.parentTraceId,
       args: input.args ? redactAgentActionValue(input.args, [input.action ?? '']) : undefined,
       metadata: input.metadata ? redactAgentActionValue(input.metadata) : undefined,
       error: serializeAgentActionError(input.error),

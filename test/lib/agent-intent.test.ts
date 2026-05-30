@@ -6,12 +6,18 @@ vi.mock('server-only', () => ({}));
 
 // Redirect the log file to a fresh temp path so tests don't touch the real
 // `.data/agent-actions.jsonl`. Set before any agent-log import resolves.
-import { mkdtempSync, readFileSync, existsSync, rmSync } from 'fs';
-import { tmpdir } from 'os';
-import { join } from 'path';
+const { TMP_DIR } = vi.hoisted(() => {
+  /* eslint-disable @typescript-eslint/no-require-imports */
+  const { mkdtempSync } = require('fs') as typeof import('fs');
+  const { tmpdir } = require('os') as typeof import('os');
+  const { join } = require('path') as typeof import('path');
+  /* eslint-enable @typescript-eslint/no-require-imports */
+  const dir = mkdtempSync(join(tmpdir(), 'hudson-agent-log-'));
+  process.env.HUDSON_AGENT_LOG_FILE_OVERRIDE = join(dir, 'agent-actions.jsonl');
+  return { TMP_DIR: dir };
+});
 
-const TMP_DIR = mkdtempSync(join(tmpdir(), 'hudson-agent-log-'));
-process.env.HUDSON_AGENT_LOG_FILE_OVERRIDE = join(TMP_DIR, 'agent-actions.jsonl');
+import { readFileSync, existsSync, rmSync } from 'fs';
 
 import {
   appendAgentLog,

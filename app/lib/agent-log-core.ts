@@ -217,6 +217,7 @@ export interface AgentLogInput {
   metadata?: Record<string, unknown>;
   data?: Record<string, unknown>;
   error?: unknown;
+  parentTraceId?: string;
 }
 
 export async function appendAgentLog(input: AgentLogInput): Promise<void> {
@@ -236,6 +237,7 @@ export async function appendAgentLog(input: AgentLogInput): Promise<void> {
       playbook: input.playbook,
       action: input.action ?? input.playbook,
       traceId: input.traceId,
+      parentTraceId: input.parentTraceId,
       target: input.target,
       appId: input.appId,
       appName: input.appName,
@@ -269,6 +271,7 @@ export interface AgentTaskLogInput {
   args?: Record<string, unknown>;
   metadata?: Record<string, unknown>;
   error?: unknown;
+  parentTraceId?: string;
 }
 
 export async function appendAgentTaskLog(input: AgentTaskLogInput): Promise<void> {
@@ -284,6 +287,7 @@ export async function appendAgentTaskLog(input: AgentTaskLogInput): Promise<void
     action,
     playbook: action,
     traceId: input.traceId,
+    parentTraceId: input.parentTraceId,
     appId: input.appId,
     appName: input.appName,
     workspaceId: input.workspaceId,
