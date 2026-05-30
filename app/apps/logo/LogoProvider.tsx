@@ -2,11 +2,23 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
-import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig, LogoElementOffsets, ShapeOffset } from './types';
+import type {
+  LogoTemplate,
+  TemplateParam,
+  ColorSet,
+  WordmarkConfig,
+  LightingConfig,
+  LogoElementOffsets,
+  ShapeOffset,
+  LogoEditorTool,
+  LogoDrawingShape,
+  LogoDrawingShapeMap,
+} from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant, normalizeLogoTemplateLineage } from './types';
 import { useLogoAI, type SendLogoAIMessageOptions } from './useLogoAI';
 import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
+import { drawingNodeMapReducer } from '../../lib/drawing';
 
 export type { ColorSet, WordmarkConfig, LightingConfig };
 
@@ -168,6 +180,17 @@ interface LogoState {
   setElementOffset: (templateId: string, shapeId: string, offset: ShapeOffset | null) => void;
   /** Drop every offset for a template — used when resetting a template. */
   resetElementOffsets: (templateId: string) => void;
+  /** Primary drawing tool for structured logo components. */
+  editorTool: LogoEditorTool;
+  setEditorTool: (tool: LogoEditorTool) => void;
+  /** Structured component layer, keyed by template id. */
+  drawingShapes: LogoDrawingShapeMap;
+  selectedDrawingId: string | null;
+  setSelectedDrawingId: (id: string | null) => void;
+  addDrawingShape: (templateId: string, shape: LogoDrawingShape) => void;
+  updateDrawingShape: (templateId: string, shapeId: string, updates: Partial<LogoDrawingShape>) => void;
+  deleteDrawingShape: (templateId: string, shapeId: string) => void;
+  resetDrawingShapes: (templateId: string) => void;
   // App settings (relay URL, compile endpoint, etc.)
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
@@ -571,6 +594,9 @@ export function LogoProvider({
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
   const [customParamValues, setCustomParamValues] = usePersistentState<CustomParamValues>('logo.customParamValues', {});
   const [elementOffsets, setElementOffsets] = usePersistentState<Record<string, LogoElementOffsets>>('logo.elementOffsets', {});
+  const [editorTool, setEditorTool] = useState<LogoEditorTool>('select');
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [drawingShapes, setDrawingShapes] = usePersistentState<LogoDrawingShapeMap>('logo.drawingShapes', {});
 
   // Reconcile template files created outside the UI (relay/terminal edits).
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
@@ -622,6 +648,7 @@ export function LogoProvider({
   }, [setParams]);
 
   const setVariant = useCallback((v: string) => {
+    setSelectedDrawingId(null);
     // Save current template's tool config before switching
     setParams(prev => {
       templateToolsRef.current[prev.variant] = {
@@ -798,13 +825,19 @@ export function LogoProvider({
       delete next[id];
       return next;
     });
+    setDrawingShapes(prev => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     const res = await fetch(templateEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),
     });
     await assertOkResponse(res, `Failed to delete template "${id}"`);
-  }, [templateEndpoint, setCustomParamValues, setDiscardedMap, setElementOffsets]);
+  }, [templateEndpoint, setCustomParamValues, setDiscardedMap, setDrawingShapes, setElementOffsets]);
 
   const setCustomParam = useCallback((templateId: string, key: string, value: CustomParamValue) => {
     setCustomParamValues(prev => ({
@@ -819,9 +852,11 @@ export function LogoProvider({
       if (offset === null) {
         // Clear the entry. If the template map is now empty, drop the template too.
         if (!(shapeId in templateMap)) return prev;
-        const { [shapeId]: _drop, ...rest } = templateMap;
+        const rest = { ...templateMap };
+        delete rest[shapeId];
         if (Object.keys(rest).length === 0) {
-          const { [templateId]: _t, ...others } = prev;
+          const others = { ...prev };
+          delete others[templateId];
           return others;
         }
         return { ...prev, [templateId]: rest };
@@ -829,13 +864,17 @@ export function LogoProvider({
       // Merge: existing fields are preserved, supplied fields overwrite.
       const next: ShapeOffset = { ...(templateMap[shapeId] ?? {}), ...offset };
       // If every field is 0/undefined, treat the entry as cleared.
+      const scale = typeof next.scale === 'number' ? next.scale : 1;
       const hasContent = (typeof next.dx === 'number' && next.dx !== 0)
         || (typeof next.dy === 'number' && next.dy !== 0)
-        || (typeof next.rotate === 'number' && next.rotate !== 0);
+        || (typeof next.rotate === 'number' && next.rotate !== 0)
+        || scale !== 1;
       if (!hasContent) {
-        const { [shapeId]: _drop, ...rest } = templateMap;
+        const rest = { ...templateMap };
+        delete rest[shapeId];
         if (Object.keys(rest).length === 0) {
-          const { [templateId]: _t, ...others } = prev;
+          const others = { ...prev };
+          delete others[templateId];
           return others;
         }
         return { ...prev, [templateId]: rest };
@@ -847,10 +886,38 @@ export function LogoProvider({
   const resetElementOffsets = useCallback((templateId: string) => {
     setElementOffsets(prev => {
       if (!(templateId in prev)) return prev;
-      const { [templateId]: _drop, ...rest } = prev;
+      const rest = { ...prev };
+      delete rest[templateId];
       return rest;
     });
   }, [setElementOffsets]);
+
+  const addDrawingShape = useCallback((templateId: string, shape: LogoDrawingShape) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, { type: 'node/add', node: shape }));
+    setSelectedDrawingId(shape.id);
+    setEditorTool('select');
+  }, [setDrawingShapes]);
+
+  const updateDrawingShape = useCallback((templateId: string, shapeId: string, updates: Partial<LogoDrawingShape>) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, {
+      type: 'node/update',
+      id: shapeId,
+      patch: updates,
+    }));
+  }, [setDrawingShapes]);
+
+  const deleteDrawingShape = useCallback((templateId: string, shapeId: string) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, {
+      type: 'node/delete',
+      ids: [shapeId],
+    }));
+    setSelectedDrawingId(prev => prev === shapeId ? null : prev);
+  }, [setDrawingShapes]);
+
+  const resetDrawingShapes = useCallback((templateId: string) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, { type: 'document/reset' }));
+    setSelectedDrawingId(null);
+  }, [setDrawingShapes]);
 
   // Background AI (works without terminal)
   const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat } = useLogoAI({
@@ -865,6 +932,9 @@ export function LogoProvider({
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
     elementOffsets, setElementOffset, resetElementOffsets,
+    editorTool, setEditorTool,
+    drawingShapes, selectedDrawingId, setSelectedDrawingId,
+    addDrawingShape, updateDrawingShape, deleteDrawingShape, resetDrawingShapes,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,
@@ -880,6 +950,8 @@ export function LogoProvider({
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
     elementOffsets, setElementOffset, resetElementOffsets,
+    editorTool, drawingShapes, selectedDrawingId,
+    addDrawingShape, updateDrawingShape, deleteDrawingShape, resetDrawingShapes,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,

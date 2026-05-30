@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useRef, useMemo } from 'react';
 import { useEffect } from 'react';
-import { Download, Copy, Check, Image, Apple, Smartphone, Loader2, Search, Crosshair, Globe, Monitor, Package, ExternalLink, Sparkles, Trash2, Send, ClipboardCopy, Plus } from 'lucide-react';
+import { Download, Check, Apple, Smartphone, Loader2, Search, Crosshair, Globe, Monitor, Package, ExternalLink, Trash2, Send, ClipboardCopy, Plus, RotateCcw, RotateCw, Maximize2, Minimize2, Undo2, Eye, EyeOff, Lock, Unlock, Square, Circle, Minus, Type } from 'lucide-react';
 import { useLogo } from './LogoProvider';
 import { LogoSvg } from './LogoSvg';
 import { builtinRenderBodies, type BuiltinDef } from './builtinRenderBodies';
@@ -11,9 +11,48 @@ import {
 } from 'hudsonkit/controls';
 import type { ParamDefinition } from 'hudsonkit/controls';
 import { GOOGLE_FONTS, loadGoogleFont } from './types';
-import type { WordmarkConfig } from './types';
+import type { LogoDrawingShape, ShapeOffset, WordmarkConfig } from './types';
 
 const EXPORT_SIZES = [512, 256, 128, 64, 32, 16] as const;
+const LOGO_VIEWBOX_SIZE = 512;
+
+function roundTo(value: number, decimals: number): number {
+  const f = 10 ** decimals;
+  return Math.round(value * f) / f;
+}
+
+function normalizeDegrees(value: number): number {
+  let next = value % 360;
+  if (next > 180) next -= 360;
+  if (next < -180) next += 360;
+  return roundTo(next, 1);
+}
+
+function componentTypeLabel(type: LogoDrawingShape['type']): string {
+  switch (type) {
+    case 'rect':
+      return 'Rectangle';
+    case 'ellipse':
+      return 'Ellipse';
+    case 'line':
+      return 'Line';
+    case 'text':
+      return 'Text';
+  }
+}
+
+function componentIcon(type: LogoDrawingShape['type']) {
+  switch (type) {
+    case 'rect':
+      return Square;
+    case 'ellipse':
+      return Circle;
+    case 'line':
+      return Minus;
+    case 'text':
+      return Type;
+  }
+}
 
 // ---------------------------------------------------------------------------
 // Inspector header actions — target/inspect button
@@ -242,7 +281,33 @@ function formatParamSchema(paramsObj: Record<string, unknown> | undefined): stri
 // ---------------------------------------------------------------------------
 
 export function LogoInspector() {
-  const { params, setParam, templates, customParamValues, setCustomParam, apiBaseUrl, showPreviews, togglePreviews, view, picks, clearPicks, updatePickInstruction, sendAiMessage, aiStatus, beginAiSession, activeSession } = useLogo();
+  const {
+    params,
+    setParam,
+    templates,
+    customParamValues,
+    setCustomParam,
+    elementOffsets,
+    setElementOffset,
+    resetElementOffsets,
+    drawingShapes,
+    selectedDrawingId,
+    setSelectedDrawingId,
+    updateDrawingShape,
+    deleteDrawingShape,
+    resetDrawingShapes,
+    apiBaseUrl,
+    showPreviews,
+    togglePreviews,
+    view,
+    picks,
+    clearPicks,
+    updatePickInstruction,
+    sendAiMessage,
+    aiStatus,
+    beginAiSession,
+    activeSession,
+  } = useLogo();
   const previewRef = useRef<HTMLDivElement>(null);
 
   const buildPicksPrompt = useCallback(() => {
@@ -326,6 +391,59 @@ export function LogoInspector() {
   }, [buildPicksPrompt]);
 
   const activeTemplate = templates.find(t => t.id === params.variant);
+  const activeElementOffsets = activeTemplate ? (elementOffsets[activeTemplate.id] ?? {}) : {};
+  const activeElementEntries = Object.entries(activeElementOffsets);
+  const activeDrawingShapes = activeTemplate ? (drawingShapes[activeTemplate.id] ?? []) : [];
+  const selectedDrawing = activeDrawingShapes.find(shape => shape.id === selectedDrawingId) ?? null;
+
+  const updateActiveDrawing = useCallback((shapeId: string, patch: Partial<LogoDrawingShape>) => {
+    if (!activeTemplate) return;
+    updateDrawingShape(activeTemplate.id, shapeId, patch);
+  }, [activeTemplate, updateDrawingShape]);
+
+  const deleteActiveDrawing = useCallback((shapeId: string) => {
+    if (!activeTemplate) return;
+    deleteDrawingShape(activeTemplate.id, shapeId);
+  }, [activeTemplate, deleteDrawingShape]);
+
+  const resetActiveDrawingShapes = useCallback(() => {
+    if (!activeTemplate) return;
+    resetDrawingShapes(activeTemplate.id);
+  }, [activeTemplate, resetDrawingShapes]);
+
+  const readElementOrigin = useCallback((shapeId: string): Pick<ShapeOffset, 'originX' | 'originY'> | null => {
+    const root = previewRef.current;
+    if (!root) return null;
+    const escapedId = shapeId.replace(/\\/g, '\\\\').replace(/"/g, '\\"');
+    const node = root.querySelector(`[data-element-id="${escapedId}"]`) as SVGGraphicsElement | null;
+    const svg = root.querySelector('svg') as SVGSVGElement | null;
+    if (!node || !svg) return null;
+
+    const nodeRect = node.getBoundingClientRect();
+    const svgRect = svg.getBoundingClientRect();
+    if (nodeRect.width <= 0 || nodeRect.height <= 0 || svgRect.width <= 0 || svgRect.height <= 0) return null;
+
+    return {
+      originX: roundTo(((nodeRect.left + nodeRect.width / 2) - svgRect.left) / svgRect.width * LOGO_VIEWBOX_SIZE, 1),
+      originY: roundTo(((nodeRect.top + nodeRect.height / 2) - svgRect.top) / svgRect.height * LOGO_VIEWBOX_SIZE, 1),
+    };
+  }, []);
+
+  const updateElementOffset = useCallback((shapeId: string, patch: ShapeOffset, needsOrigin = false) => {
+    if (!activeTemplate) return;
+    const origin = needsOrigin ? readElementOrigin(shapeId) : null;
+    setElementOffset(activeTemplate.id, shapeId, origin ? { ...patch, ...origin } : patch);
+  }, [activeTemplate, readElementOrigin, setElementOffset]);
+
+  const resetElementOffset = useCallback((shapeId: string) => {
+    if (!activeTemplate) return;
+    setElementOffset(activeTemplate.id, shapeId, null);
+  }, [activeTemplate, setElementOffset]);
+
+  const resetActiveElementOffsets = useCallback(() => {
+    if (!activeTemplate) return;
+    resetElementOffsets(activeTemplate.id);
+  }, [activeTemplate, resetElementOffsets]);
 
   const handleDownloadSvg = useCallback(() => {
     const markup = cloneSvgAtSize(previewRef, 512);
@@ -582,6 +700,391 @@ export function LogoInspector() {
             onChange={(key, value) => setCustomParam(activeTemplate!.id, key, value as number | string | Record<string, unknown>[])}
             defaultExpanded={true}
           />
+        </ParamSection>
+      )}
+
+      {/* ── Structured components ── */}
+      {activeTemplate && activeDrawingShapes.length > 0 && (
+        <ParamSection label={`Components · ${activeDrawingShapes.length}`} defaultExpanded={true}>
+          <div className="flex flex-col gap-2">
+            <div className="space-y-1.5">
+              {activeDrawingShapes.map((shape) => {
+                const Icon = componentIcon(shape.type);
+                const active = shape.id === selectedDrawingId;
+                return (
+                  <div
+                    key={shape.id}
+                    className={`flex items-center gap-1.5 rounded-lg border px-2 py-1.5 transition-colors ${
+                      active ? 'border-cyan-500/45 bg-cyan-500/10' : 'border-border/55 bg-muted/15'
+                    }`}
+                  >
+                    <button
+                      type="button"
+                      onClick={() => setSelectedDrawingId(shape.id)}
+                      className="flex min-w-0 flex-1 items-center gap-2 text-left"
+                      title={shape.name}
+                    >
+                      <Icon size={13} className={active ? 'text-cyan-500' : 'text-muted-foreground'} />
+                      <span className="min-w-0 flex-1 truncate text-[11px] font-medium text-foreground/85">
+                        {shape.name}
+                      </span>
+                      <span className="shrink-0 text-[9px] font-mono uppercase tracking-[0.12em] text-muted-foreground/65">
+                        {componentTypeLabel(shape.type)}
+                      </span>
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateActiveDrawing(shape.id, { visible: !shape.visible })}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title={shape.visible ? 'Hide component' : 'Show component'}
+                    >
+                      {shape.visible ? <Eye size={12} /> : <EyeOff size={12} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateActiveDrawing(shape.id, { locked: !shape.locked })}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title={shape.locked ? 'Unlock component' : 'Lock component'}
+                    >
+                      {shape.locked ? <Lock size={12} /> : <Unlock size={12} />}
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => deleteActiveDrawing(shape.id)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                      title="Delete component"
+                    >
+                      <Trash2 size={12} />
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {selectedDrawing && (
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                <div className="mb-2 flex items-center justify-between gap-2">
+                  <div className="min-w-0">
+                    <div className="truncate text-[11px] font-medium text-foreground/85">
+                      {selectedDrawing.name}
+                    </div>
+                    <div className="font-mono text-[9px] text-muted-foreground/70">
+                      {componentTypeLabel(selectedDrawing.type)} · x {roundTo(selectedDrawing.x, 1)} · y {roundTo(selectedDrawing.y, 1)}
+                    </div>
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => deleteActiveDrawing(selectedDrawing.id)}
+                    className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-red-500/10 hover:text-red-500"
+                    title="Delete selected component"
+                  >
+                    <Trash2 size={13} />
+                  </button>
+                </div>
+
+                <div className="space-y-2">
+                  <ParamText
+                    label="Name"
+                    value={selectedDrawing.name}
+                    onChange={v => updateActiveDrawing(selectedDrawing.id, { name: v })}
+                  />
+                  <div className="grid grid-cols-2 gap-2">
+                    <ParamToggle
+                      label="Visible"
+                      value={selectedDrawing.visible}
+                      onChange={v => updateActiveDrawing(selectedDrawing.id, { visible: v })}
+                    />
+                    <ParamToggle
+                      label="Locked"
+                      value={selectedDrawing.locked}
+                      onChange={v => updateActiveDrawing(selectedDrawing.id, { locked: v })}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ParamSlider
+                      label="X"
+                      value={selectedDrawing.x}
+                      min={-128}
+                      max={640}
+                      step={1}
+                      onChange={v => updateActiveDrawing(selectedDrawing.id, { x: v })}
+                    />
+                    <ParamSlider
+                      label="Y"
+                      value={selectedDrawing.y}
+                      min={-128}
+                      max={640}
+                      step={1}
+                      onChange={v => updateActiveDrawing(selectedDrawing.id, { y: v })}
+                    />
+                  </div>
+                  {selectedDrawing.type !== 'line' && (
+                    <ParamSlider
+                      label="Rotate"
+                      value={selectedDrawing.rotate ?? 0}
+                      min={-180}
+                      max={180}
+                      step={1}
+                      format={v => `${v}°`}
+                      onChange={v => updateActiveDrawing(selectedDrawing.id, { rotate: normalizeDegrees(v) })}
+                    />
+                  )}
+                  {selectedDrawing.type === 'rect' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ParamSlider
+                          label="Width"
+                          value={selectedDrawing.w}
+                          min={4}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { w: v })}
+                        />
+                        <ParamSlider
+                          label="Height"
+                          value={selectedDrawing.h}
+                          min={4}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { h: v })}
+                        />
+                      </div>
+                      <ParamSlider
+                        label="Radius"
+                        value={selectedDrawing.radius}
+                        min={0}
+                        max={160}
+                        step={1}
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { radius: v })}
+                      />
+                      <ParamColor label="Fill" value={selectedDrawing.fill} onChange={v => updateActiveDrawing(selectedDrawing.id, { fill: v })} />
+                      <ParamColor label="Stroke" value={selectedDrawing.stroke} onChange={v => updateActiveDrawing(selectedDrawing.id, { stroke: v })} />
+                      <ParamSlider label="Stroke width" value={selectedDrawing.strokeWidth} min={0} max={40} step={1} onChange={v => updateActiveDrawing(selectedDrawing.id, { strokeWidth: v })} />
+                    </>
+                  )}
+                  {selectedDrawing.type === 'ellipse' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ParamSlider
+                          label="Width"
+                          value={selectedDrawing.w}
+                          min={4}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { w: v })}
+                        />
+                        <ParamSlider
+                          label="Height"
+                          value={selectedDrawing.h}
+                          min={4}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { h: v })}
+                        />
+                      </div>
+                      <ParamColor label="Fill" value={selectedDrawing.fill} onChange={v => updateActiveDrawing(selectedDrawing.id, { fill: v })} />
+                      <ParamColor label="Stroke" value={selectedDrawing.stroke} onChange={v => updateActiveDrawing(selectedDrawing.id, { stroke: v })} />
+                      <ParamSlider label="Stroke width" value={selectedDrawing.strokeWidth} min={0} max={40} step={1} onChange={v => updateActiveDrawing(selectedDrawing.id, { strokeWidth: v })} />
+                    </>
+                  )}
+                  {selectedDrawing.type === 'line' && (
+                    <>
+                      <div className="grid grid-cols-2 gap-2">
+                        <ParamSlider
+                          label="X2"
+                          value={selectedDrawing.x2}
+                          min={-128}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { x2: v })}
+                        />
+                        <ParamSlider
+                          label="Y2"
+                          value={selectedDrawing.y2}
+                          min={-128}
+                          max={640}
+                          step={1}
+                          onChange={v => updateActiveDrawing(selectedDrawing.id, { y2: v })}
+                        />
+                      </div>
+                      <ParamColor label="Stroke" value={selectedDrawing.stroke} onChange={v => updateActiveDrawing(selectedDrawing.id, { stroke: v })} />
+                      <ParamSlider label="Stroke width" value={selectedDrawing.strokeWidth} min={1} max={48} step={1} onChange={v => updateActiveDrawing(selectedDrawing.id, { strokeWidth: v })} />
+                    </>
+                  )}
+                  {selectedDrawing.type === 'text' && (
+                    <>
+                      <ParamText
+                        label="Text"
+                        value={selectedDrawing.text}
+                        placeholder="Brand"
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { text: v })}
+                      />
+                      <FontPicker
+                        value={selectedDrawing.fontFamily}
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { fontFamily: v })}
+                      />
+                      <ParamEnum
+                        label="Weight"
+                        value={String(selectedDrawing.fontWeight)}
+                        options={['400', '500', '600', '700', '800', '900']}
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { fontWeight: Number(v) })}
+                      />
+                      <ParamSlider
+                        label="Font size"
+                        value={selectedDrawing.fontSize}
+                        min={8}
+                        max={180}
+                        step={1}
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { fontSize: v })}
+                      />
+                      <ParamSlider
+                        label="Letter spacing"
+                        value={selectedDrawing.letterSpacing}
+                        min={-0.08}
+                        max={0.4}
+                        step={0.01}
+                        format={v => `${v.toFixed(2)}em`}
+                        onChange={v => updateActiveDrawing(selectedDrawing.id, { letterSpacing: v })}
+                      />
+                      <ParamColor label="Fill" value={selectedDrawing.fill} onChange={v => updateActiveDrawing(selectedDrawing.id, { fill: v })} />
+                    </>
+                  )}
+                  <ParamSlider
+                    label="Opacity"
+                    value={selectedDrawing.opacity ?? 1}
+                    min={0}
+                    max={1}
+                    step={0.05}
+                    format={v => `${Math.round(v * 100)}%`}
+                    onChange={v => updateActiveDrawing(selectedDrawing.id, { opacity: v })}
+                  />
+                </div>
+              </div>
+            )}
+
+            <button
+              type="button"
+              onClick={resetActiveDrawingShapes}
+              className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+              <Undo2 size={12} />
+              Reset components
+            </button>
+          </div>
+        </ParamSection>
+      )}
+
+      {/* ── Direct element edits ── */}
+      {activeTemplate && activeElementEntries.length > 0 && (
+        <ParamSection label={`Element Edits · ${activeElementEntries.length}`} defaultExpanded={true}>
+          <div className="flex flex-col gap-2">
+            {activeElementEntries.map(([shapeId, offset]) => {
+              const dx = offset.dx ?? 0;
+              const dy = offset.dy ?? 0;
+              const rotate = offset.rotate ?? 0;
+              const scale = offset.scale ?? 1;
+              return (
+                <div key={shapeId} className="rounded-lg border border-border/60 bg-muted/20 p-2.5">
+                  <div className="mb-2 flex items-center justify-between gap-2">
+                    <div className="min-w-0">
+                      <div className="truncate text-[11px] font-medium text-foreground/85" title={shapeId}>{shapeId}</div>
+                      <div className="font-mono text-[9px] text-muted-foreground/70">
+                        x {roundTo(dx, 1)} · y {roundTo(dy, 1)} · r {roundTo(rotate, 1)}° · {Math.round(scale * 100)}%
+                      </div>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => resetElementOffset(shapeId)}
+                      className="flex h-7 w-7 shrink-0 items-center justify-center rounded text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground"
+                      title="Reset this element"
+                    >
+                      <Undo2 size={13} />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-2 gap-2">
+                    <ParamSlider
+                      label="X"
+                      value={dx}
+                      min={-220}
+                      max={220}
+                      step={1}
+                      onChange={v => updateElementOffset(shapeId, { dx: v })}
+                    />
+                    <ParamSlider
+                      label="Y"
+                      value={dy}
+                      min={-220}
+                      max={220}
+                      step={1}
+                      onChange={v => updateElementOffset(shapeId, { dy: v })}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateElementOffset(shapeId, { rotate: normalizeDegrees(rotate - 5) }, true)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title="Rotate left"
+                    >
+                      <RotateCcw size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateElementOffset(shapeId, { rotate: normalizeDegrees(rotate + 5) }, true)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title="Rotate right"
+                    >
+                      <RotateCw size={13} />
+                    </button>
+                    <ParamSlider
+                      label="Rotate"
+                      value={rotate}
+                      min={-180}
+                      max={180}
+                      step={1}
+                      format={v => `${v}°`}
+                      onChange={v => updateElementOffset(shapeId, { rotate: normalizeDegrees(v) }, true)}
+                    />
+                  </div>
+                  <div className="mt-2 flex items-center gap-1.5">
+                    <button
+                      type="button"
+                      onClick={() => updateElementOffset(shapeId, { scale: roundTo(Math.max(0.25, scale - 0.05), 2) }, true)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title="Scale down"
+                    >
+                      <Minimize2 size={13} />
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => updateElementOffset(shapeId, { scale: roundTo(Math.min(3, scale + 0.05), 2) }, true)}
+                      className="flex h-7 w-7 items-center justify-center rounded border border-border/60 bg-muted/30 text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+                      title="Scale up"
+                    >
+                      <Maximize2 size={13} />
+                    </button>
+                    <ParamSlider
+                      label="Scale"
+                      value={scale}
+                      min={0.25}
+                      max={3}
+                      step={0.05}
+                      format={v => `${Math.round(v * 100)}%`}
+                      onChange={v => updateElementOffset(shapeId, { scale: roundTo(v, 2) }, true)}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+            <button
+              type="button"
+              onClick={resetActiveElementOffsets}
+              className="flex items-center justify-center gap-1.5 rounded-md border border-border/60 bg-muted/20 px-2.5 py-1.5 text-[11px] font-medium text-muted-foreground transition-colors hover:bg-muted/50 hover:text-foreground"
+            >
+              <Undo2 size={12} />
+              Reset all element edits
+            </button>
+          </div>
         </ParamSection>
       )}
 

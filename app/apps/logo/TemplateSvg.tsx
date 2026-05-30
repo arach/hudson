@@ -1,8 +1,9 @@
 'use client';
 
 import { useMemo } from 'react';
-import type { LogoTemplate, LightingConfig, LogoElementOffsets } from './types';
+import type { LogoTemplate, LightingConfig, LogoElementOffsets, LogoDrawingShape } from './types';
 import type { LogoParams } from './LogoProvider';
+import { appendDrawingSvgLayer } from '../../lib/drawing';
 
 // ---------------------------------------------------------------------------
 // Bitmap mask rasterizer — renders any shape to a pixel grid for O(1) sampling
@@ -245,6 +246,8 @@ interface Props {
   /** Per-shape drag offsets to apply on top of the template's natural positions.
    *  Keys are stable shape IDs marked as `data-element-id` in the render body. */
   elementOffsets?: LogoElementOffsets;
+  /** Structured component layer drawn above the active template. */
+  drawingShapes?: LogoDrawingShape[];
 }
 
 function extractPaths(svg: string): string[] {
@@ -385,11 +388,31 @@ function attachShapeHelpers(p: Record<string, unknown>) {
 // in a `<g transform>` built from the matching `ShapeOffset`. The data layer
 // is render-agnostic; this is the SVG-specific applier.
 //
-// Rotation pivot: if the marked node carries `data-rotate-origin="cx,cy"` we
-// rotate around that point (template-author override). Otherwise we rotate
-// around the SVG origin — for now this means the selection overlay should
-// keep the rotate handle hidden unless the author opted into a pivot.
+// Transform pivot: the interactive editor stores `originX/Y` when the user
+// rotates or scales an element. Template authors can also provide
+// `data-rotate-origin="cx,cy"` as a default pivot.
 // ---------------------------------------------------------------------------
+function readTransformOrigin(node: Element, offset: LogoElementOffsets[string]): { x: number; y: number } | null {
+  const offsetOriginX = offset.originX;
+  const offsetOriginY = offset.originY;
+  if (
+    typeof offsetOriginX === 'number' &&
+    typeof offsetOriginY === 'number' &&
+    Number.isFinite(offsetOriginX) &&
+    Number.isFinite(offsetOriginY)
+  ) {
+    return { x: offsetOriginX, y: offsetOriginY };
+  }
+
+  const origin = node.getAttribute('data-rotate-origin');
+  if (!origin) return null;
+  const [cxRaw, cyRaw] = origin.split(',');
+  const cx = Number((cxRaw ?? '').trim());
+  const cy = Number((cyRaw ?? '').trim());
+  if (!Number.isFinite(cx) || !Number.isFinite(cy)) return null;
+  return { x: cx, y: cy };
+}
+
 export function applyElementOffsets(svg: string, offsets: LogoElementOffsets | undefined): string {
   if (!offsets || Object.keys(offsets).length === 0) return svg;
   if (typeof window === 'undefined' || typeof DOMParser === 'undefined') return svg;
@@ -410,20 +433,23 @@ export function applyElementOffsets(svg: string, offsets: LogoElementOffsets | u
       const dx = offset.dx ?? 0;
       const dy = offset.dy ?? 0;
       const rot = offset.rotate ?? 0;
-      if (dx === 0 && dy === 0 && rot === 0) return;
+      const scale = offset.scale ?? 1;
+      if (dx === 0 && dy === 0 && rot === 0 && scale === 1) return;
+      const origin = readTransformOrigin(node, offset);
 
       const parts: string[] = [];
       if (dx !== 0 || dy !== 0) parts.push(`translate(${dx} ${dy})`);
       if (rot !== 0) {
-        const origin = node.getAttribute('data-rotate-origin');
+        if (origin) parts.push(`rotate(${rot} ${origin.x} ${origin.y})`);
+        else parts.push(`rotate(${rot})`);
+      }
+      if (scale !== 1) {
         if (origin) {
-          const [cxRaw, cyRaw] = origin.split(',');
-          const cx = Number((cxRaw ?? '').trim());
-          const cy = Number((cyRaw ?? '').trim());
-          if (Number.isFinite(cx) && Number.isFinite(cy)) parts.push(`rotate(${rot} ${cx} ${cy})`);
-          else parts.push(`rotate(${rot})`);
+          parts.push(`translate(${origin.x} ${origin.y})`);
+          parts.push(`scale(${scale})`);
+          parts.push(`translate(${-origin.x} ${-origin.y})`);
         } else {
-          parts.push(`rotate(${rot})`);
+          parts.push(`scale(${scale})`);
         }
       }
       if (parts.length === 0) return;
@@ -593,7 +619,7 @@ function buildLightingFilter(l: LightingConfig): string {
 // Component
 // ---------------------------------------------------------------------------
 
-export function TemplateSvg({ template, params, customParamValues, backgroundSvg, size, elementOffsets }: Props) {
+export function TemplateSvg({ template, params, customParamValues, backgroundSvg, size, elementOffsets, drawingShapes }: Props) {
   const { svg } = useTemplateRender(template, params, customParamValues, backgroundSvg);
 
   // Apply per-element drag offsets before lighting, so the lighting filter sees
@@ -604,11 +630,16 @@ export function TemplateSvg({ template, params, customParamValues, backgroundSvg
     [svg, elementOffsets],
   );
 
+  const componentSvg = useMemo(
+    () => appendDrawingSvgLayer(offsetSvg, drawingShapes),
+    [offsetSvg, drawingShapes],
+  );
+
   const finalSvg = useMemo(() => {
-    if (!params.lightingEnabled) return offsetSvg;
+    if (!params.lightingEnabled) return componentSvg;
     const filterDef = buildLightingFilter(params.lighting);
-    return `${filterDef}<g filter="url(#__lighting)">${offsetSvg}</g>`;
-  }, [offsetSvg, params.lightingEnabled, params.lighting]);
+    return `${filterDef}<g filter="url(#__lighting)">${componentSvg}</g>`;
+  }, [componentSvg, params.lightingEnabled, params.lighting]);
 
   return (
     <svg
