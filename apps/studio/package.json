@@ -11,10 +11,10 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hudsonkit": "workspace:*",
+    "hudsonkit": "link:../../packages/web/hudsonkit",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "studio": "workspace:*"
+    "studio": "link:../../../studio"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",
