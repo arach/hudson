@@ -1,6 +1,7 @@
 'use client';
 
 import {
+  default as React,
   createContext,
   useCallback,
   useContext,
@@ -191,7 +192,6 @@ export function PlayerProvider({
   resolveItem,
   shouldCaptureKeys,
   enableGlobalShortcuts = true,
-  enableDocumentPiP: _enableDocumentPiP = true,
   appName = 'Hudson',
   persistenceKey = DEFAULT_PERSISTENCE_KEY,
 }: PlayerProviderProps) {
