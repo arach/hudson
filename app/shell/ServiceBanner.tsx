@@ -21,6 +21,7 @@ export function ServiceBanner({
   if (!deps || deps.length === 0) return <>{children}</>;
 
   const missing = deps.filter(dep => {
+    if (dep.optional === true) return false;
     if (dismissed.has(dep.serviceId)) return false;
     const status = registry.records[dep.serviceId]?.status;
     return status !== 'running';
