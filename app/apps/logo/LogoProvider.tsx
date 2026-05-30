@@ -16,7 +16,7 @@ import type {
 } from './types';
 import { logoSettings } from './settings';
 import { isBuiltinVariant, normalizeLogoTemplateLineage } from './types';
-import { useLogoAI } from './useLogoAI';
+import { useLogoAI, type SendLogoAIMessageOptions } from './useLogoAI';
 import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
 import { drawingNodeMapReducer } from '../../lib/drawing';
 
@@ -208,7 +208,7 @@ interface LogoState {
   /** Read and clear the pending command (consumed by LogoTerminal) */
   consumeTerminalCommand: () => string | null;
   /** Send a message to the background AI (no terminal needed) */
-  sendAiMessage: (message: string) => void;
+  sendAiMessage: (message: string, options?: SendLogoAIMessageOptions) => void;
   /** Background AI status */
   aiStatus: string;
   /** Recent AI tool call activity log */
