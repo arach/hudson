@@ -1,7 +1,9 @@
-name: Deploy Cloudflare
+name: Deploy Site
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
   workflow_dispatch:
 
@@ -13,14 +15,46 @@ permissions:
   contents: read
 
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      workflows: ${{ steps.classify.outputs.workflows }}
+      web: ${{ steps.classify.outputs.web }}
+      cloud: ${{ steps.classify.outputs.cloud }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Classify changed surfaces
+        id: classify
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            {
+              echo "workflows=true"
+              echo "web=true"
+              echo "cloud=true"
+            } >> "$GITHUB_OUTPUT"
+          else
+            node scripts/ci/classify-changes.mjs \
+              --base "${{ github.event.workflow_run.head_sha }}^" \
+              --head "${{ github.event.workflow_run.head_sha }}"
+          fi
+
   deploy:
     name: Deploy HudsonKit site and embed worker
+    needs: changes
+    if: ${{ github.event_name == 'workflow_dispatch' || (github.event.workflow_run.conclusion == 'success' && (needs.changes.outputs.workflows == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true')) }}
     runs-on: ubuntu-latest
     environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
@@ -35,18 +69,6 @@ jobs:
 
       - name: Install embed worker dependencies
         run: bun install --cwd embed-worker --frozen-lockfile
-
-      - name: Test
-        run: bun run test
-
-      - name: Build AI backends package
-        run: bun run --filter @hudsonkit/ai build
-
-      - name: Build HudsonKit package
-        run: bun run --cwd packages/web/hudsonkit build:js
-
-      - name: Typecheck
-        run: bunx tsc --noEmit
 
       - name: Build static site
         run: bun run build:site
