@@ -1,0 +1,14 @@
+{
+  "name": "@hudsonkit/hkit",
+  "version": "0.1.0",
+  "private": true,
+  "description": "H Kit CLI for Hudson design, diagnostics, and agent helpers.",
+  "license": "SEE LICENSE IN ../../../LICENSE.md",
+  "type": "module",
+  "bin": {
+    "hkit": "./bin/hkit.mjs"
+  },
+  "scripts": {
+    "hkit": "node ./bin/hkit.mjs"
+  }
+}

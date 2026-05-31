@@ -79,6 +79,7 @@
   "workspaces": [
     "apps/studio",
     "packages/tools/create-hudson-app",
+    "packages/tools/hkit",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
     "packages/web/hudsonkit",
