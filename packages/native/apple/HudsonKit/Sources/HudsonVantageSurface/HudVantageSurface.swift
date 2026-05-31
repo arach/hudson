@@ -178,6 +178,17 @@ private struct VantageDocumentArtifact {
     }
 }
 
+private enum VantageArtifactSaveError: LocalizedError {
+    case missingArtifact
+
+    var errorDescription: String? {
+        switch self {
+        case .missingArtifact:
+            "No document artifact is available to save."
+        }
+    }
+}
+
 private let hudVantageLegacyDocumentPaths: [String: String] = [
     "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift":
         "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSurface.swift",
@@ -6887,12 +6898,17 @@ private struct DocumentArtifactPreview: View {
         node.runtimeIdentity = .document(artifact)
     }
 
-    private func saveNodeArtifactContent(_ next: String) {
-        let path = artifact?.path
+    private func saveNodeArtifactContent(_ next: String) throws {
+        guard let artifact else {
+            throw VantageArtifactSaveError.missingArtifact
+        }
+
+        if let path = artifact.path, !path.isEmpty {
+            let url = documentURL(for: path)
+            try next.write(to: url, atomically: true, encoding: .utf8)
+        }
+
         updateNodeArtifactContent(next)
-        guard let path, !path.isEmpty else { return }
-        let url = documentURL(for: path)
-        try? next.write(to: url, atomically: true, encoding: .utf8)
     }
 
     private func documentURL(for path: String) -> URL {
@@ -7244,7 +7260,7 @@ private struct CodeArtifactFullPreview: View {
     let readOnly: Bool
     let tint: Color
     let onChange: (String) -> Void
-    let onSave: (String) -> Void
+    let onSave: (String) throws -> Void
     @Environment(\.hudTheme) private var theme
 
     private var lines: [String] {
@@ -7626,10 +7642,17 @@ private struct HudsonCodeEditorWebPayload: Codable, Equatable {
     var tintHex: String
 }
 
+private struct HudsonCodeEditorSaveResult: Codable {
+    var id: String?
+    var success: Bool
+    var text: String?
+    var error: String?
+}
+
 private struct HudsonCodeEditorWebView: NSViewRepresentable {
     let payload: HudsonCodeEditorWebPayload
     let onChange: (String) -> Void
-    let onSave: (String) -> Void
+    let onSave: (String) throws -> Void
 
     func makeNSView(context: Context) -> WKWebView {
         let webView = WKWebView(
@@ -7671,7 +7694,7 @@ private struct HudsonCodeEditorWebView: NSViewRepresentable {
     final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
         var payload: HudsonCodeEditorWebPayload
         var onChange: (String) -> Void
-        var onSave: (String) -> Void
+        var onSave: (String) throws -> Void
         private var isReady = false
         private var renderedPayload: HudsonCodeEditorWebPayload?
         private var isTornDown = false
@@ -7680,7 +7703,7 @@ private struct HudsonCodeEditorWebView: NSViewRepresentable {
         init(
             payload: HudsonCodeEditorWebPayload,
             onChange: @escaping (String) -> Void,
-            onSave: @escaping (String) -> Void
+            onSave: @escaping (String) throws -> Void
         ) {
             self.payload = payload
             self.onChange = onChange
@@ -7714,7 +7737,33 @@ private struct HudsonCodeEditorWebView: NSViewRepresentable {
                 onChange(text)
             case "save":
                 guard let text = body["text"] as? String else { return }
-                onSave(text)
+                let id = body["id"] as? String
+                do {
+                    try onSave(text)
+                    if let webView = message.webView {
+                        renderSaveResult(
+                            HudsonCodeEditorSaveResult(
+                                id: id,
+                                success: true,
+                                text: text,
+                                error: nil
+                            ),
+                            in: webView
+                        )
+                    }
+                } catch {
+                    if let webView = message.webView {
+                        renderSaveResult(
+                            HudsonCodeEditorSaveResult(
+                                id: id,
+                                success: false,
+                                text: nil,
+                                error: error.localizedDescription
+                            ),
+                            in: webView
+                        )
+                    }
+                }
             default:
                 break
             }
@@ -7731,6 +7780,18 @@ private struct HudsonCodeEditorWebView: NSViewRepresentable {
             renderedPayload = payload
             webView.evaluateJavaScript(
                 "window.__hudsonCodeEditor?.setDocument(\(json));",
+                completionHandler: nil
+            )
+        }
+
+        private func renderSaveResult(_ result: HudsonCodeEditorSaveResult, in webView: WKWebView) {
+            guard !isTornDown else { return }
+            guard let data = try? encoder.encode(result),
+                  let json = String(data: data, encoding: .utf8)
+            else { return }
+
+            webView.evaluateJavaScript(
+                "window.__hudsonCodeEditor?.saveResult(\(json));",
                 completionHandler: nil
             )
         }

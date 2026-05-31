@@ -50,6 +50,7 @@ declare global {
   interface Window {
     __hudsonCodeEditor?: {
       setDocument: (payload: HudsonCodeEditorPayload) => void;
+      saveResult: (result: { id?: string; success: boolean; text?: string; error?: string }) => void;
       focus: () => void;
     };
     webkit?: {
@@ -70,6 +71,7 @@ const statusElement = document.getElementById('status');
 let view: EditorView | null = null;
 let activePayload: HudsonCodeEditorPayload = {};
 let savedText = '';
+let pendingSaveText: string | null = null;
 let changeTimer: number | undefined;
 let applyingDocument = false;
 
@@ -268,6 +270,21 @@ function setStatus(dirty: boolean) {
   if (!statusElement) return;
   statusElement.textContent = activePayload.readOnly ? 'Read only' : dirty ? 'Modified' : 'Saved';
   statusElement.classList.toggle('dirty', dirty);
+  statusElement.title = '';
+}
+
+function setSavingStatus() {
+  if (!statusElement) return;
+  statusElement.textContent = 'Saving';
+  statusElement.classList.remove('dirty');
+  statusElement.title = '';
+}
+
+function setSaveFailureStatus(error?: string) {
+  if (!statusElement) return;
+  statusElement.textContent = 'Save failed';
+  statusElement.classList.add('dirty');
+  statusElement.title = error || 'The document could not be saved.';
 }
 
 function editorExtensions(language: string, readOnly: boolean) {
@@ -307,9 +324,13 @@ function editorExtensions(language: string, readOnly: boolean) {
       key: 'Mod-s',
       preventDefault: true,
       run(nextView) {
+        if (activePayload.readOnly) {
+          setStatus(false);
+          return true;
+        }
         const text = nextView.state.doc.toString();
-        savedText = text;
-        setStatus(false);
+        pendingSaveText = text;
+        setSavingStatus();
         post({ type: 'save', id: activePayload.id, text });
         return true;
       },
@@ -322,6 +343,7 @@ function setDocument(payload: HudsonCodeEditorPayload) {
 
   activePayload = payload;
   savedText = payload.text || '';
+  pendingSaveText = null;
   const language = normalizedLanguage(payload.language, payload.path);
   const tint = payload.tintHex || '#5eead4';
   document.documentElement.style.setProperty('--tint', tint);
@@ -344,6 +366,20 @@ function setDocument(payload: HudsonCodeEditorPayload) {
 
 window.__hudsonCodeEditor = {
   setDocument,
+  saveResult(result) {
+    if (result.id && activePayload.id && result.id !== activePayload.id) return;
+    if (!result.success) {
+      pendingSaveText = null;
+      setSaveFailureStatus(result.error);
+      return;
+    }
+
+    const nextSavedText = result.text ?? pendingSaveText ?? view?.state.doc.toString() ?? savedText;
+    savedText = nextSavedText;
+    pendingSaveText = null;
+    const currentText = view?.state.doc.toString() ?? savedText;
+    setStatus(currentText !== savedText);
+  },
   focus() {
     view?.focus();
   },
