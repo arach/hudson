@@ -2,31 +2,8 @@ name: CI
 
 on:
   pull_request:
-    paths:
-      - '.github/workflows/ci.yml'
-      - 'app/**'
-      - 'bun.lock'
-      - 'cloudflare-static-worker.ts'
-      - 'docs/**'
-      - 'docs.json'
-      - 'drizzle/**'
-      - 'drizzle.config.ts'
-      - 'embed-worker/**'
-      - 'eslint.config.mjs'
-      - 'lib/**'
-      - 'marketing/**'
-      - 'next.config.ts'
-      - 'package.json'
-      - 'packages/**'
-      - 'postcss.config.mjs'
-      - 'public/**'
-      - 'scripts/**'
-      - 'site/**'
-      - 'specs/**'
-      - 'tsconfig.json'
-      - 'types/**'
-      - 'vitest.config.ts'
-      - 'wrangler.jsonc'
+  push:
+    branches: [main]
   workflow_call:
 
 concurrency:

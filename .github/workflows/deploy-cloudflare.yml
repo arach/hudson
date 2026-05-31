@@ -1,28 +1,10 @@
 name: Deploy Site
 
 on:
-  push:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
     branches: [main]
-    paths:
-      - '.github/workflows/deploy-cloudflare.yml'
-      - 'app/**'
-      - 'bun.lock'
-      - 'cloudflare-static-worker.ts'
-      - 'docs/**'
-      - 'docs.json'
-      - 'drizzle/**'
-      - 'embed-worker/**'
-      - 'lib/**'
-      - 'marketing/**'
-      - 'next.config.ts'
-      - 'package.json'
-      - 'packages/cloud/hudson-relay-worker/**'
-      - 'packages/web/ai-backends/**'
-      - 'packages/web/hudsonkit/**'
-      - 'public/**'
-      - 'site/**'
-      - 'tsconfig.json'
-      - 'wrangler.jsonc'
   workflow_dispatch:
 
 concurrency:
@@ -35,12 +17,15 @@ permissions:
 jobs:
   deploy:
     name: Deploy HudsonKit site and embed worker
+    if: ${{ github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success' }}
     runs-on: ubuntu-latest
     environment: production
     env:
       CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event_name == 'workflow_run' && github.event.workflow_run.head_sha || github.sha }}
 
       - uses: actions/setup-node@v4
         with:
