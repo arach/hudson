@@ -6,8 +6,8 @@ import HudsonUI
 // One icon cell for the fixed rail column of `HudNavigationSidebar`.
 //
 // Hover/focus/selection states honor `@Environment(\.accessibilityReduceMotion)`.
-// Full-row hover and compact selection are rendered by `HudNavigationSidebar`
-// so rail and label columns stay visually connected.
+// Full-row hover, compact selection, and compact hover labels are rendered by
+// `HudNavigationSidebar` so rail and label columns stay visually connected.
 //
 // Public so callers composing custom rail rows (groupings, badges, drag
 // affordances) can build on the same hover/focus/selection visuals without
@@ -104,7 +104,6 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
                 case .active: setHovering(true)
                 case .ended:  setHovering(false)
                 }
-                // TODO: HudSidebarTooltip — compact-mode tooltips land in a follow-up
             }
             .accessibilityLabel(item.tooltipLabel ?? item.title)
             .accessibilityValue(isSelected ? "Selected" : "Not selected")

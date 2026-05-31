@@ -4,12 +4,12 @@ import CoreGraphics
 //
 // Geometry tokens for the two-column sidebar.
 //
-//   ┌──────┬───────────────────────────┐
-//   │ rail │ label                     │
-//   │  32  │   200 → 0  (animates)     │
-//   └──────┴───────────────────────────┘
+//   ┌──────────┬───────────────────────┐
+//   │ rail     │ label                 │
+//   │  56      │   200 → 0  (animates) │
+//   └──────────┴───────────────────────┘
 //
-// Rail: fixed 32pt column, icons centered. Never animated.
+// Rail: fixed compact column, icons centered. Never animated.
 // Label: variable-width column. Width animates from labelWidth → 0 via
 //   `progress` (0 = expanded, 1 = compact). Text inside is fixed-size and
 //   clipped from the right — icons cannot bounce because their x-position
@@ -21,17 +21,17 @@ public enum HudSidebarLayout {
 
     // ── Columns ──────────────────────────────────────────────────────────────
 
-    /// Fixed icon column at the leading edge. Icons center on x = railWidth/2.
-    public static let railWidth: CGFloat = 32
+    /// Fixed compact column at the leading edge. Icons center on x = railWidth/2.
+    /// This is the minimized sidebar width; expansion only adds label width to
+    /// the trailing side, so icon x-positions never move between states.
+    public static let railWidth: CGFloat = 56
 
     /// Maximum width of the animated label column when fully expanded.
     public static let labelWidth: CGFloat = 200
 
-    /// Static breathing room between the host window edge and the rail.
-    /// Applied by resizable sidebar hosts outside `HudNavigationSidebar` so
-    /// the rail's internal icon geometry stays fixed while the whole sidebar
-    /// sits comfortably away from the window edge.
-    public static let leadingInset: CGFloat = 6
+    /// Optional host-level offset. The compact rail owns its internal padding,
+    /// so resizable hosts default to zero extra inset.
+    public static let leadingInset: CGFloat = 0
 
     // ── Cells ────────────────────────────────────────────────────────────────
 

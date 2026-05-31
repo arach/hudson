@@ -12,6 +12,9 @@ import Foundation
 // Enable both at once: HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
 let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
 let voiceEnabled    = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
+let terminiPackagePath = ProcessInfo.processInfo.environment["HUDSONKIT_TERMINI_PATH"].flatMap { value in
+    value.isEmpty ? nil : value
+} ?? "/Users/arach/dev/termini"
 
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
@@ -81,7 +84,7 @@ if voiceEnabled {
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    dependencies.append(.package(path: "/Users/arach/dev/termini"))
+    dependencies.append(.package(path: terminiPackagePath))
     products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     targets.append(
