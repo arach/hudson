@@ -27,6 +27,12 @@ public enum HudSidebarLayout {
     /// Maximum width of the animated label column when fully expanded.
     public static let labelWidth: CGFloat = 200
 
+    /// Static breathing room between the host window edge and the rail.
+    /// Applied by resizable sidebar hosts outside `HudNavigationSidebar` so
+    /// the rail's internal icon geometry stays fixed while the whole sidebar
+    /// sits comfortably away from the window edge.
+    public static let leadingInset: CGFloat = 6
+
     // ── Cells ────────────────────────────────────────────────────────────────
 
     /// Height of a single nav row.
