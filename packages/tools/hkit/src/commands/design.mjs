@@ -25,8 +25,10 @@ COMMANDS
 const TARGETS = new Set(['web', 'ios', 'macos', 'apple', 'native']);
 
 function parse(argv) {
+  const first = argv[0];
+  const hasExplicitCommand = Boolean(first && !first.startsWith('-'));
   const args = {
-    cmd: argv[0] ?? 'intro',
+    cmd: hasExplicitCommand ? first : 'intro',
     rest: [],
     target: undefined,
     group: undefined,
@@ -34,13 +36,7 @@ function parse(argv) {
     help: false,
   };
 
-  if (args.cmd === '--help' || args.cmd === '-h') {
-    args.cmd = 'intro';
-    args.help = true;
-    return args;
-  }
-
-  for (let i = 1; i < argv.length; i++) {
+  for (let i = hasExplicitCommand ? 1 : 0; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { args.help = true; continue; }
     if (a === '--json') { args.json = true; continue; }
