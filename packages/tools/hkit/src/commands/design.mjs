@@ -34,6 +34,12 @@ function parse(argv) {
     help: false,
   };
 
+  if (args.cmd === '--help' || args.cmd === '-h') {
+    args.cmd = 'intro';
+    args.help = true;
+    return args;
+  }
+
   for (let i = 1; i < argv.length; i++) {
     const a = argv[i];
     if (a === '--help' || a === '-h') { args.help = true; continue; }
