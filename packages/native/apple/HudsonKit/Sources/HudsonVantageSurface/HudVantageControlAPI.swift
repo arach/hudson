@@ -1,5 +1,6 @@
 import Foundation
 import Combine
+import HudsonVantageCore
 
 public enum HudVantageControlContract {
     public static let currentVersion = "v0"

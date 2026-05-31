@@ -22,6 +22,8 @@ var products: [Product] = [
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
     .library(name: "HudsonAI", targets: ["HudsonAI"]),
+    .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
+    .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
 var dependencies: [Package.Dependency] = [
@@ -49,6 +51,19 @@ var targets: [Target] = [
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
+    .target(
+        name: "HudsonVantageCore",
+        dependencies: [
+            "HudsonUI",
+        ]
+    ),
+    .target(
+        name: "HudsonVantageCompanion",
+        dependencies: [
+            "HudsonUI",
+            "HudsonVantageCore",
+        ]
+    ),
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"]),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"]),
@@ -67,6 +82,7 @@ if voiceEnabled {
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
     dependencies.append(.package(path: "/Users/arach/dev/termini"))
+    products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     targets.append(
         .target(
@@ -80,7 +96,7 @@ if terminalEnabled {
     )
     targets.append(
         .target(
-            name: "HudsonVantage",
+            name: "HudsonVantageSurface",
             dependencies: [
                 "HudsonDiff",
                 "HudsonLive",
@@ -88,7 +104,22 @@ if terminalEnabled {
                 "HudsonUI",
                 "HudsonShell",
                 "HudsonTerminal",
+                "HudsonVantageCore",
                 .product(name: "Termini", package: "Termini"),
+            ],
+            resources: [
+                .process("Resources")
+            ]
+        )
+    )
+    targets.append(
+        .target(
+            name: "HudsonVantage",
+            dependencies: [
+                "HudsonUI",
+                "HudsonVantageCompanion",
+                "HudsonVantageCore",
+                "HudsonVantageSurface",
             ]
         )
     )

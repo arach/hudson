@@ -11,6 +11,8 @@ public enum VantageHostCommand: String, Sendable, CaseIterable {
     case layoutByTag
     case saveWorkspace
     case clearSelection
+    case toggleNavigator
+    case toggleInspector
 }
 
 extension Notification.Name {

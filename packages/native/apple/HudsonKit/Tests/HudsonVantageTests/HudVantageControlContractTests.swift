@@ -279,7 +279,7 @@ final class HudVantageControlContractTests: XCTestCase {
             {
               "id": "hudson.vantage.files.surface",
               "runtimeKind": "file",
-              "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift",
+              "path": "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSurface.swift",
               "language": "swift",
               "role": "source"
             },
@@ -314,7 +314,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(manifest.workspaceID, "vantage-practice")
         XCTAssertEqual(manifest.nodes.count, 3)
         XCTAssertEqual(manifest.nodes[0].runtimeKind, "file")
-        XCTAssertEqual(manifest.nodes[0].path, "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift")
+        XCTAssertEqual(manifest.nodes[0].path, "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSurface.swift")
         XCTAssertEqual(manifest.nodes[0].language, "swift")
         XCTAssertEqual(manifest.nodes[0].role, "source")
         XCTAssertEqual(manifest.nodes[1].runtime?.kind, "plan")

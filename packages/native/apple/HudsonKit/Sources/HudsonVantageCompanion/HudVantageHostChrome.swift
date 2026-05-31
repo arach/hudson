@@ -1,9 +1,24 @@
 import SwiftUI
 import HudsonUI
+import HudsonVantageCore
 
 #if canImport(AppKit)
 import AppKit
 #endif
+
+enum HudVantageMenuBarPopoverMetrics {
+    static let width: CGFloat = HudLayout.popoverWidth
+    static let height: CGFloat = HudLayout.textDocumentPreviewHeight
+    static let metadataLabelWidth: CGFloat = 96
+    static let iconButtonSize: CGFloat = HudLayout.textDocumentModeButtonHeight
+    static let settingsWindowWidth: CGFloat = 500
+    static let aboutWindowMinSize: CGFloat = 620
+    static var size: CGSize { CGSize(width: width, height: height) }
+
+    #if os(macOS)
+    static var nsSize: NSSize { NSSize(width: width, height: height) }
+    #endif
+}
 
 // MARK: - Shared identity hero
 
@@ -95,7 +110,7 @@ private struct VantageMetaRow: View {
             Text(label)
                 .font(HudFont.ui(HudTextSize.md))
                 .foregroundStyle(HudPalette.ink)
-                .frame(width: 96, alignment: .leading)
+                .frame(width: HudVantageMenuBarPopoverMetrics.metadataLabelWidth, alignment: .leading)
 
             Text(value)
                 .font(monoValue
@@ -179,7 +194,10 @@ private struct VantageInlineActionButton: View {
             Image(systemName: systemName)
                 .font(HudFont.ui(HudTextSize.xs, weight: .medium))
                 .foregroundStyle(HudPalette.muted)
-                .frame(width: 24, height: 24)
+                .frame(
+                    width: HudVantageMenuBarPopoverMetrics.iconButtonSize,
+                    height: HudVantageMenuBarPopoverMetrics.iconButtonSize
+                )
                 .background(
                     RoundedRectangle(cornerRadius: HudRadius.tight)
                         .fill(HudSurface.control)
@@ -260,7 +278,7 @@ public struct HudVantageHostAboutView: View {
 
             footer
         }
-        .frame(width: 500)
+        .frame(width: HudVantageMenuBarPopoverMetrics.settingsWindowWidth)
         .background(HudPalette.bg)
     }
 
@@ -368,7 +386,10 @@ public struct HudVantageHostSettingsView: View {
 
             footerBar
         }
-        .frame(minWidth: 620, minHeight: 620)
+        .frame(
+            minWidth: HudVantageMenuBarPopoverMetrics.aboutWindowMinSize,
+            minHeight: HudVantageMenuBarPopoverMetrics.aboutWindowMinSize
+        )
         .background(HudPalette.bg)
     }
 
@@ -510,162 +531,316 @@ public struct HudVantageHostMenuBarCoordinator: View {
 
     public var body: some View {
         Color.clear
-            .frame(width: 0, height: 0)
+            .frame(width: .zero, height: .zero)
             .onAppear {
-                storage.controller.start(model: model)
-                storage.controller.warmUpPopover()
+                Task { @MainActor in
+                    await Task.yield()
+                    storage.controller.start(model: model)
+                }
             }
     }
 }
 
 public struct HudVantageHostMenuBarPopoverView: View {
     @ObservedObject private var model: HudVantageHostAppModel
-    @Environment(\.openWindow) private var openWindow
-    @Environment(\.openSettings) private var openSettings
     private let onDismiss: () -> Void
+    private let onShowMainWindow: () -> Void
+    private let onOpenSettings: () -> Void
 
-    public init(model: HudVantageHostAppModel, onDismiss: @escaping () -> Void) {
+    public init(
+        model: HudVantageHostAppModel,
+        onDismiss: @escaping () -> Void,
+        onShowMainWindow: @escaping () -> Void,
+        onOpenSettings: @escaping () -> Void
+    ) {
         self.model = model
         self.onDismiss = onDismiss
+        self.onShowMainWindow = onShowMainWindow
+        self.onOpenSettings = onOpenSettings
     }
 
     public var body: some View {
         VStack(spacing: 0) {
-            header
+            hero
             VantageHairlineDivider()
-            statusSection
-            VantageHairlineDivider()
+            metricsSection
             actionSection
-            Spacer(minLength: 0)
+            controlLane
             footer
         }
-        .frame(width: 380, height: 320)
-        .background(HudPalette.bg)
+        .frame(width: HudVantageMenuBarPopoverMetrics.width, height: HudVantageMenuBarPopoverMetrics.height)
+        .background(popoverBackground)
         .preferredColorScheme(.dark)
     }
 
-    private var header: some View {
+    private var popoverBackground: some View {
+        ZStack(alignment: .topLeading) {
+            HudPalette.bg
+            LinearGradient(
+                colors: [
+                    HudSurface.tintFill(model.identity.tint.color),
+                    HudSurface.tintGhost(model.identity.tint.color),
+                    .clear,
+                ],
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+        }
+    }
+
+    private var hero: some View {
+        HStack(alignment: .center, spacing: HudSpacing.lg) {
+            ZStack {
+                RoundedRectangle(cornerRadius: HudRadius.card)
+                    .fill(HudSurface.tintFill(model.identity.tint.color))
+                    .overlay(
+                        RoundedRectangle(cornerRadius: HudRadius.card)
+                            .stroke(HudSurface.tintBorder(model.identity.tint.color), lineWidth: HudStrokeWidth.standard)
+                    )
+                Image(systemName: "square.grid.2x2")
+                    .font(HudFont.ui(HudTextSize.lg, weight: .semibold))
+                    .foregroundStyle(model.identity.tint.color)
+            }
+            .frame(width: HudIconSize.huge, height: HudIconSize.huge)
+
+            VStack(alignment: .leading, spacing: HudSpacing.xxs) {
+                HStack(spacing: HudSpacing.sm) {
+                    Text(model.appName)
+                        .font(HudFont.ui(HudTextSize.lg, weight: .semibold))
+                        .foregroundStyle(HudPalette.ink)
+                    HudBadge(liveLabel, tint: statusTint, dot: model.status != nil)
+                }
+                Text(model.identity.tagline)
+                    .font(HudFont.ui(HudTextSize.xs))
+                    .foregroundStyle(HudPalette.muted)
+                    .lineLimit(1)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            Button {
+                activateMainWindow()
+            } label: {
+                Image(systemName: "arrow.up.forward.app")
+                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                    .foregroundStyle(HudPalette.ink)
+                    .frame(width: HudIconSize.medium, height: HudIconSize.medium)
+                    .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
+                    .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
+            }
+            .buttonStyle(.plain)
+            .help("Show canvas")
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.vertical, HudSpacing.xl)
+    }
+
+    private var metricsSection: some View {
         HStack(spacing: HudSpacing.sm) {
-            Text(model.appName)
-                .font(HudFont.ui(HudTextSize.md, weight: .semibold))
-                .foregroundStyle(HudPalette.ink)
-
-            Spacer(minLength: HudSpacing.sm)
-
-            headerIconButton("macwindow.on.rectangle", help: "Show canvas") {
-                activateMainWindow()
-            }
-            headerIconButton("command", help: "Command palette") {
-                activateMainWindow()
-                model.send(.showCommandPalette)
-            }
-            headerIconButton("magnifyingglass", help: "Search nodes") {
-                activateMainWindow()
-                model.send(.openLens)
-            }
-            headerIconButton("square.and.arrow.down", help: "Save workspace") {
-                model.send(.saveWorkspace)
-            }
-            headerIconButton("arrow.clockwise", help: "Focus canvas") {
-                activateMainWindow()
-            }
+            VantagePopoverMetricCard(
+                title: "Nodes",
+                value: "\(model.status?.nodeCount ?? 0)",
+                icon: "square.stack.3d.up",
+                tint: model.identity.tint.color
+            )
+            VantagePopoverMetricCard(
+                title: "Selected",
+                value: "\(model.status?.selectedCount ?? 0)",
+                icon: "scope",
+                tint: (model.status?.selectedCount ?? 0) > 0 ? HudPalette.statusOk : HudPalette.muted
+            )
+            VantagePopoverMetricCard(
+                title: "Control",
+                value: model.status?.controlStatus ?? "Warming",
+                icon: "waveform.path.ecg",
+                tint: statusTint
+            )
         }
-        .padding(.horizontal, HudSpacing.xl)
-        .padding(.top, HudSpacing.xl)
-        .padding(.bottom, HudSpacing.md)
-    }
-
-    private func headerIconButton(_ icon: String, help: String, action: @escaping () -> Void) -> some View {
-        Button(action: action) {
-            Image(systemName: icon)
-                .font(.system(size: 12, weight: .medium))
-                .frame(width: 28, height: 24)
-                .foregroundStyle(HudPalette.muted)
-                .background(HudPalette.chrome.opacity(0.65))
-                .clipShape(RoundedRectangle(cornerRadius: HudRadius.tight))
-        }
-        .buttonStyle(.plain)
-        .help(help)
-    }
-
-    private var statusSection: some View {
-        VStack(alignment: .leading, spacing: HudSpacing.md) {
-            if let status = model.status {
-                popoverStatusRow("Nodes", value: "\(status.nodeCount)")
-                popoverStatusRow("Selected", value: "\(status.selectedCount)")
-                popoverStatusRow("Control", value: status.controlStatus)
-            } else {
-                Text("Waiting for canvas status…")
-                    .font(HudFont.ui(HudTextSize.sm))
-                    .foregroundStyle(HudPalette.dim)
-            }
-
-            popoverStatusRow("Workspace", value: model.configuration.workspaceID)
-        }
-        .padding(.horizontal, HudSpacing.xl)
+        .padding(.horizontal, HudSpacing.xxl)
         .padding(.vertical, HudSpacing.lg)
-        .frame(maxWidth: .infinity, alignment: .leading)
-    }
-
-    private func popoverStatusRow(_ label: String, value: String) -> some View {
-        HStack(alignment: .firstTextBaseline, spacing: HudSpacing.md) {
-            Text(label.uppercased())
-                .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
-                .tracking(0.6)
-                .foregroundStyle(HudPalette.dim)
-                .frame(width: 72, alignment: .leading)
-            Text(value)
-                .font(HudFont.mono(HudTextSize.xs))
-                .foregroundStyle(HudPalette.muted)
-                .lineLimit(2)
-                .textSelection(.enabled)
-            Spacer(minLength: 0)
-        }
     }
 
     private var actionSection: some View {
-        HStack(spacing: HudSpacing.md) {
-            HudButton("Show Canvas", icon: "macwindow.on.rectangle", style: .secondary) {
-                activateMainWindow()
+        VStack(spacing: HudSpacing.sm) {
+            HStack(spacing: HudSpacing.sm) {
+                VantagePopoverActionButton(title: "Palette", icon: "command", tint: model.identity.tint.color) {
+                    performCanvasCommand(.showCommandPalette)
+                }
+                VantagePopoverActionButton(title: "Lens", icon: "magnifyingglass", tint: model.identity.tint.color) {
+                    performCanvasCommand(.openLens)
+                }
+                VantagePopoverActionButton(title: "Save", icon: "square.and.arrow.down", tint: HudPalette.statusOk) {
+                    model.send(.saveWorkspace)
+                }
             }
-            HudButton("Copy Paths", icon: "doc.on.doc", style: .ghost) {
-                model.copyControlPaths()
+            HStack(spacing: HudSpacing.sm) {
+                VantagePopoverActionButton(title: "Fit", icon: "viewfinder", tint: model.identity.tint.color) {
+                    performCanvasCommand(.fitViewport)
+                }
+                VantagePopoverActionButton(title: "Tags", icon: "rectangle.3.group", tint: model.identity.tint.color) {
+                    performCanvasCommand(.layoutByTag)
+                }
+                VantagePopoverActionButton(title: "Paths", icon: "doc.on.doc", tint: HudPalette.muted) {
+                    model.copyControlPaths()
+                }
             }
         }
-        .padding(.horizontal, HudSpacing.xl)
-        .padding(.vertical, HudSpacing.md)
+        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.bottom, HudSpacing.lg)
+    }
+
+    private var controlLane: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HStack(spacing: HudSpacing.sm) {
+                HudSectionLabel("CONTROL LANE", tint: statusTint)
+                Spacer(minLength: 0)
+                Text(model.configuration.workspaceID)
+                    .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
+                    .foregroundStyle(HudPalette.dim)
+                    .lineLimit(1)
+            }
+
+            HStack(spacing: HudSpacing.sm) {
+                Image(systemName: "point.3.connected.trianglepath.dotted")
+                    .font(HudFont.ui(HudTextSize.xs, weight: .medium))
+                    .foregroundStyle(statusTint)
+                    .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                Text(model.controlFilePath)
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.muted)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+                Spacer(minLength: 0)
+                VantageInlineActionButton(systemName: "folder", help: "Reveal control file") {
+                    model.revealControlFile()
+                }
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .padding(.vertical, HudSpacing.sm)
+            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.inset))
+            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
+        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.bottom, HudSpacing.lg)
     }
 
     private var footer: some View {
         HStack(spacing: HudSpacing.md) {
-            Button("Settings") {
+            Button {
                 onDismiss()
-                openSettings()
-                NSApp.activate(ignoringOtherApps: true)
+                onOpenSettings()
+            } label: {
+                Label("Settings", systemImage: "slider.horizontal.3")
             }
             .buttonStyle(.plain)
             .font(HudFont.ui(HudTextSize.sm))
-            .foregroundStyle(HudPalette.dim)
+            .foregroundStyle(HudPalette.muted)
 
-            Spacer()
+            Spacer(minLength: 0)
 
-            Button("About") {
-                onDismiss()
+            Text("Right-click the icon for the full command menu")
+                .font(HudFont.ui(HudTextSize.xs))
+                .foregroundStyle(HudPalette.muted)
+                .lineLimit(1)
+
+            Button {
                 model.showsAbout = true
                 activateMainWindow()
+            } label: {
+                Label("About", systemImage: "info.circle")
             }
             .buttonStyle(.plain)
             .font(HudFont.ui(HudTextSize.sm))
-            .foregroundStyle(HudPalette.dim)
+            .foregroundStyle(HudPalette.muted)
         }
-        .padding(.horizontal, HudSpacing.xl)
+        .padding(.horizontal, HudSpacing.xxl)
         .padding(.bottom, HudSpacing.lg)
     }
 
+    private var liveLabel: String {
+        model.status == nil ? "WARMING" : "LIVE"
+    }
+
+    private var statusTint: Color {
+        guard let status = model.status else { return HudPalette.statusWarn }
+        let value = status.controlStatus.lowercased()
+        if value.contains("error") || value.contains("failed") || value.contains("missing") {
+            return HudPalette.statusError
+        }
+        if value.contains("saved") || value.contains("ready") {
+            return HudPalette.statusOk
+        }
+        return model.identity.tint.color
+    }
+
+    private func performCanvasCommand(_ command: VantageHostCommand) {
+        activateMainWindow()
+        model.send(command)
+    }
+
     private func activateMainWindow() {
-        onDismiss()
-        openWindow(id: "main")
-        NSApp.activate(ignoringOtherApps: true)
+        onShowMainWindow()
+    }
+}
+
+private struct VantagePopoverMetricCard: View {
+    let title: String
+    let value: String
+    let icon: String
+    let tint: Color
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            HStack(spacing: HudSpacing.xs) {
+                Image(systemName: icon)
+                    .font(HudFont.ui(HudTextSize.xs, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                Text(title.uppercased())
+                    .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
+                    .tracking(0.6)
+                    .foregroundStyle(HudPalette.dim)
+            }
+            Text(value)
+                .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                .foregroundStyle(HudPalette.ink)
+                .lineLimit(1)
+                .truncationMode(.tail)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(HudSpacing.md)
+        .frame(maxWidth: .infinity, minHeight: HudLayout.rowHeightRegular)
+        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
+        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudSurface.tintBorder(tint), lineWidth: HudStrokeWidth.thin))
+    }
+}
+
+private struct VantagePopoverActionButton: View {
+    let title: String
+    let icon: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: HudSpacing.sm) {
+                Image(systemName: icon)
+                    .font(HudFont.ui(HudTextSize.xs, weight: .medium))
+                    .foregroundStyle(tint)
+                    .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                Text(title)
+                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                    .foregroundStyle(HudPalette.ink)
+                    .lineLimit(1)
+                Spacer(minLength: 0)
+            }
+            .padding(.horizontal, HudSpacing.md)
+            .frame(maxWidth: .infinity, minHeight: HudLayout.rowHeightCompact)
+            .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
+            .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
+            .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))
+        }
+        .buttonStyle(.plain)
+        .help(title)
     }
 }
 

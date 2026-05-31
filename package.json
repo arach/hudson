@@ -19,7 +19,8 @@
     "test:watch": "vitest",
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "relay:legacy": "node --no-warnings scripts/ai-relay.ts",
-    "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev"
+    "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
+    "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/editor.js"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",
@@ -77,13 +78,11 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "apps/studio",
     "packages/tools/create-hudson-app",
     "packages/tools/hkit",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
-    "packages/web/hudsonkit",
-    "../studio"
+    "packages/web/hudsonkit"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

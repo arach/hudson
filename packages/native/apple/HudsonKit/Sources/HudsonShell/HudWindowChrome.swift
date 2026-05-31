@@ -10,9 +10,26 @@ import AppKit
 /// light/dark family as the Hudson surface hosted inside it.
 public struct HudWindowChrome: NSViewRepresentable {
     public var colorScheme: ColorScheme
+    public var titleVisibility: NSWindow.TitleVisibility
+    public var titlebarAppearsTransparent: Bool
+    public var usesFullSizeContentView: Bool
+    public var isMovableByWindowBackground: Bool
+    public var hidesToolbar: Bool
 
-    public init(colorScheme: ColorScheme) {
+    public init(
+        colorScheme: ColorScheme,
+        titleVisibility: NSWindow.TitleVisibility = .hidden,
+        titlebarAppearsTransparent: Bool = true,
+        usesFullSizeContentView: Bool = true,
+        isMovableByWindowBackground: Bool = true,
+        hidesToolbar: Bool = true
+    ) {
         self.colorScheme = colorScheme
+        self.titleVisibility = titleVisibility
+        self.titlebarAppearsTransparent = titlebarAppearsTransparent
+        self.usesFullSizeContentView = usesFullSizeContentView
+        self.isMovableByWindowBackground = isMovableByWindowBackground
+        self.hidesToolbar = hidesToolbar
     }
 
     public func makeNSView(context: Context) -> NSView {
@@ -34,13 +51,19 @@ public struct HudWindowChrome: NSViewRepresentable {
 
         window.appearance = NSAppearance(named: .darkAqua)
         window.backgroundColor = .black
-        window.titlebarAppearsTransparent = true
-        window.styleMask.insert(.fullSizeContentView)
-        window.titleVisibility = .hidden
+        window.titlebarAppearsTransparent = titlebarAppearsTransparent
+        if usesFullSizeContentView {
+            window.styleMask.insert(.fullSizeContentView)
+        } else {
+            window.styleMask.remove(.fullSizeContentView)
+        }
+        window.titleVisibility = titleVisibility
         window.titlebarSeparatorStyle = .none
-        window.isMovableByWindowBackground = true
+        window.isMovableByWindowBackground = isMovableByWindowBackground
         window.isOpaque = true
-        window.toolbar?.isVisible = false
+        if hidesToolbar {
+            window.toolbar?.isVisible = false
+        }
     }
 }
 

@@ -9,52 +9,10 @@ import HudsonObservability
 import HudsonUI
 import HudsonShell
 import HudsonTerminal
+import HudsonVantageCore
 import Termini
 
 private let hudVantagePerfTrace = HudTrace(category: "vantage.perf")
-
-/// Configuration for an embeddable Hudson Vantage.
-///
-/// A Vantage is a spatial operating surface for live runtimes and artifacts.
-/// Hosts provide product naming, control-plane paths, and an optional working
-/// directory while Hudson owns the canvas interaction model.
-public struct HudVantageConfiguration: Sendable {
-    public var workspaceID: String
-    public var surfaceTitle: String
-    public var surfaceSubtitle: String
-    public var commandURL: URL
-    public var responseURL: URL
-    public var stateURL: URL
-    public var launchSetupURL: URL?
-    public var workingDirectoryURL: URL?
-    public var followsSystemColorScheme: Bool
-    public var restoresStateOnLaunch: Bool
-
-    public init(
-        workspaceID: String = "vantage",
-        surfaceTitle: String = "Vantage",
-        surfaceSubtitle: String = "native Hudson runtime surface",
-        commandURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.jsonl"),
-        responseURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-control.responses.jsonl"),
-        stateURL: URL = URL(fileURLWithPath: "/tmp/hudson-vantage-state.json"),
-        launchSetupURL: URL? = nil,
-        workingDirectoryURL: URL? = nil,
-        followsSystemColorScheme: Bool = true,
-        restoresStateOnLaunch: Bool = false
-    ) {
-        self.workspaceID = GraphitePath.slugify(workspaceID, fallback: "vantage")
-        self.surfaceTitle = surfaceTitle
-        self.surfaceSubtitle = surfaceSubtitle
-        self.commandURL = commandURL
-        self.responseURL = responseURL
-        self.stateURL = stateURL
-        self.launchSetupURL = launchSetupURL
-        self.workingDirectoryURL = workingDirectoryURL
-        self.followsSystemColorScheme = followsSystemColorScheme
-        self.restoresStateOnLaunch = restoresStateOnLaunch
-    }
-
-}
 
 private enum HudVantageMetrics {
     static let terminalTitleBarHeight = HudLayout.fieldHeight
@@ -219,6 +177,24 @@ private struct VantageDocumentArtifact {
         return kind.badge.lowercased()
     }
 }
+
+private enum VantageArtifactSaveError: LocalizedError {
+    case missingArtifact
+
+    var errorDescription: String? {
+        switch self {
+        case .missingArtifact:
+            "No document artifact is available to save."
+        }
+    }
+}
+
+private let hudVantageLegacyDocumentPaths: [String: String] = [
+    "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift":
+        "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSurface.swift",
+    "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSetupManifest.swift":
+        "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSetupManifest.swift",
+]
 
 private final class VantageArtifactFileWatcher {
     let url: URL
@@ -1043,7 +1019,16 @@ public struct HudVantageSurface: View {
                 exitFocusMode()
             }
         }
-        .background(HudWindowChrome(colorScheme: .dark))
+        .background(
+            HudWindowChrome(
+                colorScheme: .dark,
+                titleVisibility: .visible,
+                titlebarAppearsTransparent: false,
+                usesFullSizeContentView: false,
+                isMovableByWindowBackground: false,
+                hidesToolbar: false
+            )
+        )
         #if os(macOS)
         .toolbarBackground(.visible, for: .windowToolbar)
         .toolbarBackground(Color.black, for: .windowToolbar)
@@ -1057,7 +1042,7 @@ public struct HudVantageSurface: View {
         } trailing: {
             AnyView(inspectorShellSlot)
         } topDrawer: {
-            AnyView(appTopNav)
+            AnyView(surfaceTopDrawer)
         } bottomDrawer: {
             EmptyView()
         } content: {
@@ -1388,6 +1373,14 @@ public struct HudVantageSurface: View {
         case .clearSelection:
             selectedIDs.removeAll()
             controlStatus = "Selection cleared"
+        case .toggleNavigator:
+            if !isTerminalFocusActive {
+                navigationCollapsed.toggle()
+            }
+        case .toggleInspector:
+            if !isTerminalFocusActive {
+                inspectorCollapsed.toggle()
+            }
         }
     }
 
@@ -1609,27 +1602,20 @@ public struct HudVantageSurface: View {
         return "\(scope) · \(configuration.workspaceID) · \(lane)"
     }
 
-    private var appTopNav: some View {
+    @ViewBuilder
+    private var surfaceTopDrawer: some View {
+        if isTerminalFocusActive {
+            focusTopNav
+        }
+    }
+
+    private var focusTopNav: some View {
         ZStack(alignment: .bottom) {
             activeTheme.palette.bg
                 .ignoresSafeArea(edges: .top)
 
             VStack(spacing: 0) {
-                Spacer(minLength: HudSidebarLayout.headerTopPadding)
-
                 HStack(alignment: .center, spacing: HudSpacing.md) {
-                    Text(presentationTitle.uppercased())
-                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                        .foregroundStyle(activeTheme.palette.ink)
-
-                    if !isTerminalFocusActive {
-                        CanvasIconButton(
-                            systemName: "sidebar.left",
-                            help: navigationCollapsed ? "Show navigator" : "Hide navigator",
-                            action: { navigationCollapsed.toggle() }
-                        )
-                    }
-
                     if let focusedNode {
                         Text("·")
                             .font(HudFont.mono(10))
@@ -1652,21 +1638,6 @@ public struct HudVantageSurface: View {
                         HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
                             exitFocusMode()
                         }
-                    } else {
-                        Spacer(minLength: HudSpacing.lg)
-
-                        Text(vantageLinkLabel ?? environmentContextLabel)
-                            .font(HudFont.mono(9))
-                            .foregroundStyle(activeTheme.palette.dim)
-                            .lineLimit(1)
-                    }
-
-                    if !isTerminalFocusActive {
-                        CanvasIconButton(
-                            systemName: "sidebar.right",
-                            help: inspectorCollapsed ? "Show inspector" : "Hide inspector",
-                            action: { inspectorCollapsed.toggle() }
-                        )
                     }
                 }
                 .padding(.horizontal, HudSpacing.xxl)
@@ -1675,7 +1646,7 @@ public struct HudVantageSurface: View {
                 HudDivider(color: activeTheme.hairline.subtle)
             }
         }
-        .frame(height: HudSidebarLayout.headerTopPadding + HudLayout.navHeight + HudStrokeWidth.thin)
+        .frame(height: HudLayout.navHeight + HudStrokeWidth.thin)
     }
 
     private func vantageLinkText(_ label: String) -> some View {
@@ -1829,6 +1800,7 @@ public struct HudVantageSurface: View {
                     onShortcut: handleCanvasShortcut,
                     onCursorMoved: { point in hoverPoint = point },
                     isLensPresented: lensPresented,
+                    allowsCanvasScrollInput: !isTerminalFocusActive,
                     cursor: canvasCursor
                 )
             )
@@ -2145,6 +2117,7 @@ public struct HudVantageSurface: View {
                         canvasPan: displayPan(for: node, scale: displayScale),
                         canvasScale: displayScale,
                         screenSizeOverride: isFocused ? focusScreenSize : nil,
+                        documentBaseURL: configuration.workingDirectoryURL,
                         onSelect: { selectNode(node.id) },
                         onFocus: { enterFocusMode(node.id) },
                         onPopOut: { popOut(nodes: [node]) },
@@ -4181,8 +4154,19 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func normalizedDocumentPath(_ path: String?) -> String? {
+        guard let path = trimmed(path) else { return nil }
+        return hudVantageLegacyDocumentPaths[path] ?? path
+    }
+
+    private func normalizedLegacyDocumentPathReferences(in text: String) -> String {
+        hudVantageLegacyDocumentPaths.reduce(text) { value, entry in
+            value.replacingOccurrences(of: entry.key, with: entry.value)
+        }
+    }
+
     private func setupDocumentPath(for setupNode: HudVantageSetupNode) -> String? {
-        trimmed(setupNode.path ?? setupNode.runtime?.path ?? setupNode.target ?? setupNode.runtime?.target)
+        normalizedDocumentPath(setupNode.path ?? setupNode.runtime?.path ?? setupNode.target ?? setupNode.runtime?.target)
     }
 
     private func documentArtifact(
@@ -4356,12 +4340,13 @@ public struct HudVantageSurface: View {
     }
 
     private func documentURL(for path: String) -> URL {
-        if path.hasPrefix("/") {
-            return URL(fileURLWithPath: path)
+        let resolvedPath = normalizedDocumentPath(path) ?? path
+        if resolvedPath.hasPrefix("/") {
+            return URL(fileURLWithPath: resolvedPath)
         }
         let base = configuration.workingDirectoryURL
             ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
-        return base.appendingPathComponent(path)
+        return base.appendingPathComponent(resolvedPath)
     }
 
     private func setupGraphitePath(for setupNode: HudVantageSetupNode) throws -> GraphitePath? {
@@ -5389,11 +5374,11 @@ public struct HudVantageSurface: View {
             .lowercased()
         if isDocumentRuntimeKind(runtimeKind) {
             let kind = VantageDocumentKind(runtimeKind: runtimeKind)
-            let path = snapshot.runtime.path
+            let path = normalizedDocumentPath(snapshot.runtime.path)
             let artifact = documentArtifact(
                 kind: kind,
                 path: path,
-                language: snapshot.runtime.language ?? inferredLanguage(from: snapshot.runtime.path),
+                language: snapshot.runtime.language ?? inferredLanguage(from: path),
                 inlineContent: snapshot.runtime.content,
                 role: snapshot.runtime.role
             )
@@ -5409,7 +5394,7 @@ public struct HudVantageSurface: View {
                 tint: HudTint.from(token: snapshot.tint),
                 zIndex: snapshot.zIndex,
                 title: snapshot.title,
-                subtitle: snapshot.subtitle,
+                subtitle: normalizedLegacyDocumentPathReferences(in: snapshot.subtitle),
                 runtimeIdentity: .document(artifact),
                 tag: snapshot.tag.flatMap(CanvasTag.init(rawValue:)),
                 styleOverride: snapshot.style
@@ -5568,7 +5553,8 @@ public struct HudVantageSurface: View {
             title: title,
             nodes: nodesToPopOut,
             terminalAppearances: terminalAppearances,
-            fallbackTerminalAppearance: terminalAppearance
+            fallbackTerminalAppearance: terminalAppearance,
+            documentBaseURL: configuration.workingDirectoryURL
         ) {
             popOutWindows[windowID]?.close()
         }
@@ -6016,6 +6002,7 @@ private struct TerminalNodeView: View {
     let canvasPan: CGSize
     let canvasScale: CGFloat
     let screenSizeOverride: CGSize?
+    let documentBaseURL: URL?
     let onSelect: () -> Void
     let onFocus: () -> Void
     let onPopOut: () -> Void
@@ -6169,7 +6156,8 @@ private struct TerminalNodeView: View {
                     DocumentArtifactPreview(
                         node: node,
                         mode: isFocused ? .full : .canvas,
-                        canvasDetail: documentCanvasDetail
+                        canvasDetail: documentCanvasDetail,
+                        documentBaseURL: documentBaseURL
                     )
                         .frame(maxWidth: .infinity, maxHeight: .infinity)
                         .background(theme.palette.bg)
@@ -6389,6 +6377,7 @@ private struct TerminalPopOutWindow: View {
     let nodes: [TerminalNode]
     let terminalAppearances: [UUID: HudTerminalAppearance]
     let fallbackTerminalAppearance: HudTerminalAppearance
+    let documentBaseURL: URL?
     let onClose: () -> Void
 
     @State private var focusedID: UUID?
@@ -6459,9 +6448,17 @@ private struct TerminalPopOutWindow: View {
     @ViewBuilder
     private var content: some View {
         if nodes.count == 1, let node = nodes.first {
-            TerminalPopOutTerminal(node: node, terminalAppearance: terminalAppearance(for: node))
+            TerminalPopOutTerminal(
+                node: node,
+                terminalAppearance: terminalAppearance(for: node),
+                documentBaseURL: documentBaseURL
+            )
         } else if let focusedNode {
-            TerminalPopOutTerminal(node: focusedNode, terminalAppearance: terminalAppearance(for: focusedNode))
+            TerminalPopOutTerminal(
+                node: focusedNode,
+                terminalAppearance: terminalAppearance(for: focusedNode),
+                documentBaseURL: documentBaseURL
+            )
         } else {
             GeometryReader { proxy in
                 ScrollView {
@@ -6472,7 +6469,8 @@ private struct TerminalPopOutWindow: View {
                         ForEach(nodes) { node in
                             TerminalPopOutCard(
                                 node: node,
-                                terminalAppearance: terminalAppearance(for: node)
+                                terminalAppearance: terminalAppearance(for: node),
+                                documentBaseURL: documentBaseURL
                             ) {
                                 focusedID = node.id
                             }
@@ -6500,6 +6498,7 @@ private struct TerminalPopOutWindow: View {
 private struct TerminalPopOutTerminal: View {
     @ObservedObject var node: TerminalNode
     let terminalAppearance: HudTerminalAppearance
+    let documentBaseURL: URL?
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -6513,7 +6512,12 @@ private struct TerminalPopOutTerminal: View {
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(terminalAppearance.backgroundColor)
             } else {
-                DocumentArtifactPreview(node: node, mode: .full, canvasDetail: .preview)
+                DocumentArtifactPreview(
+                    node: node,
+                    mode: .full,
+                    canvasDetail: .preview,
+                    documentBaseURL: documentBaseURL
+                )
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
                     .background(theme.palette.bg)
             }
@@ -6525,6 +6529,7 @@ private struct TerminalPopOutTerminal: View {
 private struct TerminalPopOutCard: View {
     @ObservedObject var node: TerminalNode
     let terminalAppearance: HudTerminalAppearance
+    let documentBaseURL: URL?
     let onFocus: () -> Void
     @Environment(\.hudTheme) private var theme
 
@@ -6539,7 +6544,12 @@ private struct TerminalPopOutCard: View {
                     .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
                     .background(terminalAppearance.backgroundColor)
             } else {
-                DocumentArtifactPreview(node: node, mode: .canvas, canvasDetail: .metrics)
+                DocumentArtifactPreview(
+                    node: node,
+                    mode: .canvas,
+                    canvasDetail: .metrics,
+                    documentBaseURL: documentBaseURL
+                )
                     .frame(height: HudVantageMetrics.popOutTerminalPreviewHeight)
                     .background(theme.palette.bg)
             }
@@ -6757,6 +6767,7 @@ private struct DocumentArtifactPreview: View {
     @ObservedObject var node: TerminalNode
     let mode: DocumentArtifactPreviewMode
     let canvasDetail: DocumentArtifactCanvasDetail
+    var documentBaseURL: URL?
     @Environment(\.hudTheme) private var theme
 
     private var artifact: VantageDocumentArtifact? {
@@ -6836,8 +6847,12 @@ private struct DocumentArtifactPreview: View {
         default:
             CodeArtifactFullPreview(
                 text: previewText,
+                path: artifact?.path,
                 language: artifact?.language,
-                tint: theme.palette.statusInfo
+                readOnly: artifact?.contentSource == .empty,
+                tint: theme.palette.statusInfo,
+                onChange: { _ in },
+                onSave: saveNodeArtifactContent
             )
         }
     }
@@ -6869,6 +6884,40 @@ private struct DocumentArtifactPreview: View {
             title: node.title,
             language: artifact?.language ?? "diff"
         )
+    }
+
+    private func updateNodeArtifactContent(_ next: String) {
+        guard var artifact else { return }
+        artifact.content = next
+        artifact.readByteCount = next.utf8.count
+        artifact.byteCount = next.utf8.count
+        artifact.truncated = false
+        artifact.diffDocument = artifact.kind == .diff
+            ? HudUnifiedDiffParser.parse(next, title: node.title, language: artifact.language ?? "diff")
+            : nil
+        node.runtimeIdentity = .document(artifact)
+    }
+
+    private func saveNodeArtifactContent(_ next: String) throws {
+        guard let artifact else {
+            throw VantageArtifactSaveError.missingArtifact
+        }
+
+        if let path = artifact.path, !path.isEmpty {
+            let url = documentURL(for: path)
+            try next.write(to: url, atomically: true, encoding: .utf8)
+        }
+
+        updateNodeArtifactContent(next)
+    }
+
+    private func documentURL(for path: String) -> URL {
+        if path.hasPrefix("/") {
+            return URL(fileURLWithPath: path)
+        }
+        let base = documentBaseURL
+            ?? URL(fileURLWithPath: FileManager.default.currentDirectoryPath)
+        return base.appendingPathComponent(path)
     }
 }
 
@@ -7206,8 +7255,12 @@ private struct PlanArtifactCanvasPreview: View {
 
 private struct CodeArtifactFullPreview: View {
     let text: String
+    let path: String?
     let language: String?
+    let readOnly: Bool
     let tint: Color
+    let onChange: (String) -> Void
+    let onSave: (String) throws -> Void
     @Environment(\.hudTheme) private var theme
 
     private var lines: [String] {
@@ -7215,13 +7268,31 @@ private struct CodeArtifactFullPreview: View {
     }
 
     var body: some View {
-        ReadOnlyArtifactWebPreview(
-            payload: ArtifactHTMLRenderer.codePayload(
-                lines: lines,
-                language: language,
-                tintHex: "#5eead4"
-            )
-        )
+        Group {
+            if HudsonCodeEditorWebBundle.indexURL != nil {
+                HudsonCodeEditorWebView(
+                    payload: HudsonCodeEditorWebPayload(
+                        id: path ?? "inline",
+                        title: path?.split(separator: "/").last.map(String.init),
+                        path: path,
+                        language: language,
+                        text: text,
+                        readOnly: readOnly,
+                        tintHex: "#5eead4"
+                    ),
+                    onChange: onChange,
+                    onSave: onSave
+                )
+            } else {
+                ReadOnlyArtifactWebPreview(
+                    payload: ArtifactHTMLRenderer.codePayload(
+                        lines: lines,
+                        language: language,
+                        tintHex: "#5eead4"
+                    )
+                )
+            }
+        }
         .artifactFullSurface(theme: theme)
     }
 
@@ -7523,6 +7594,214 @@ private struct DiffStatPill: View {
                 RoundedRectangle(cornerRadius: theme.radius.tight)
                     .stroke(color.opacity(HudOpacity.soft))
             )
+    }
+}
+
+private enum HudsonCodeEditorWebBundle {
+    static let messageHandlerName = "hudsonCodeEditor"
+
+    static var indexURL: URL? {
+        Bundle.module.url(
+            forResource: "index",
+            withExtension: "html",
+            subdirectory: "HudsonCodeEditor"
+        )
+        ?? Bundle.module.url(forResource: "index", withExtension: "html")
+    }
+
+    static func configuration(handler: WKScriptMessageHandler) -> WKWebViewConfiguration {
+        let configuration = WKWebViewConfiguration()
+        configuration.websiteDataStore = .nonPersistent()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        configuration.userContentController.add(handler, name: messageHandlerName)
+        return configuration
+    }
+
+    static func tearDown(_ webView: WKWebView) {
+        webView.stopLoading()
+        webView.navigationDelegate = nil
+        webView.uiDelegate = nil
+        webView.configuration.userContentController.removeScriptMessageHandler(
+            forName: messageHandlerName
+        )
+        webView.configuration.userContentController.removeAllUserScripts()
+        webView.loadHTMLString(
+            "<!doctype html><meta charset='utf-8'><body style='background:#0a0f12'></body>",
+            baseURL: nil
+        )
+    }
+}
+
+private struct HudsonCodeEditorWebPayload: Codable, Equatable {
+    var id: String
+    var title: String?
+    var path: String?
+    var language: String?
+    var text: String
+    var readOnly: Bool
+    var tintHex: String
+}
+
+private struct HudsonCodeEditorSaveResult: Codable {
+    var id: String?
+    var success: Bool
+    var text: String?
+    var error: String?
+}
+
+private struct HudsonCodeEditorWebView: NSViewRepresentable {
+    let payload: HudsonCodeEditorWebPayload
+    let onChange: (String) -> Void
+    let onSave: (String) throws -> Void
+
+    func makeNSView(context: Context) -> WKWebView {
+        let webView = WKWebView(
+            frame: .zero,
+            configuration: HudsonCodeEditorWebBundle.configuration(handler: context.coordinator)
+        )
+        webView.navigationDelegate = context.coordinator
+        webView.setValue(false, forKey: "drawsBackground")
+        if let indexURL = HudsonCodeEditorWebBundle.indexURL {
+            webView.loadFileURL(
+                indexURL,
+                allowingReadAccessTo: indexURL.deletingLastPathComponent()
+            )
+        } else {
+            webView.loadHTMLString(
+                "<html><body style='background:#0a0f12;color:#94a3b8;font:12px monospace'>Hudson editor bundle missing.</body></html>",
+                baseURL: nil
+            )
+        }
+        return webView
+    }
+
+    func updateNSView(_ webView: WKWebView, context: Context) {
+        context.coordinator.payload = payload
+        context.coordinator.onChange = onChange
+        context.coordinator.onSave = onSave
+        context.coordinator.renderPayloadIfReady(in: webView)
+    }
+
+    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
+        coordinator.tearDown()
+        HudsonCodeEditorWebBundle.tearDown(webView)
+    }
+
+    func makeCoordinator() -> Coordinator {
+        Coordinator(payload: payload, onChange: onChange, onSave: onSave)
+    }
+
+    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
+        var payload: HudsonCodeEditorWebPayload
+        var onChange: (String) -> Void
+        var onSave: (String) throws -> Void
+        private var isReady = false
+        private var renderedPayload: HudsonCodeEditorWebPayload?
+        private var isTornDown = false
+        private let encoder = JSONEncoder()
+
+        init(
+            payload: HudsonCodeEditorWebPayload,
+            onChange: @escaping (String) -> Void,
+            onSave: @escaping (String) throws -> Void
+        ) {
+            self.payload = payload
+            self.onChange = onChange
+            self.onSave = onSave
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            guard !isTornDown else { return }
+            isReady = true
+            renderPayloadIfReady(in: webView, force: true)
+        }
+
+        func userContentController(
+            _ userContentController: WKUserContentController,
+            didReceive message: WKScriptMessage
+        ) {
+            guard !isTornDown else { return }
+            guard message.name == "hudsonCodeEditor",
+                  let body = message.body as? [String: Any],
+                  let type = body["type"] as? String
+            else { return }
+
+            switch type {
+            case "ready":
+                isReady = true
+                if let webView = message.webView {
+                    renderPayloadIfReady(in: webView, force: true)
+                }
+            case "change":
+                guard let text = body["text"] as? String else { return }
+                onChange(text)
+            case "save":
+                guard let text = body["text"] as? String else { return }
+                let id = body["id"] as? String
+                do {
+                    try onSave(text)
+                    if let webView = message.webView {
+                        renderSaveResult(
+                            HudsonCodeEditorSaveResult(
+                                id: id,
+                                success: true,
+                                text: text,
+                                error: nil
+                            ),
+                            in: webView
+                        )
+                    }
+                } catch {
+                    if let webView = message.webView {
+                        renderSaveResult(
+                            HudsonCodeEditorSaveResult(
+                                id: id,
+                                success: false,
+                                text: nil,
+                                error: error.localizedDescription
+                            ),
+                            in: webView
+                        )
+                    }
+                }
+            default:
+                break
+            }
+        }
+
+        func renderPayloadIfReady(in webView: WKWebView, force: Bool = false) {
+            guard !isTornDown else { return }
+            guard isReady else { return }
+            guard force || renderedPayload != payload else { return }
+            guard let data = try? encoder.encode(payload),
+                  let json = String(data: data, encoding: .utf8)
+            else { return }
+
+            renderedPayload = payload
+            webView.evaluateJavaScript(
+                "window.__hudsonCodeEditor?.setDocument(\(json));",
+                completionHandler: nil
+            )
+        }
+
+        private func renderSaveResult(_ result: HudsonCodeEditorSaveResult, in webView: WKWebView) {
+            guard !isTornDown else { return }
+            guard let data = try? encoder.encode(result),
+                  let json = String(data: data, encoding: .utf8)
+            else { return }
+
+            webView.evaluateJavaScript(
+                "window.__hudsonCodeEditor?.saveResult(\(json));",
+                completionHandler: nil
+            )
+        }
+
+        func tearDown() {
+            isTornDown = true
+            renderedPayload = nil
+            onChange = { _ in }
+            onSave = { _ in }
+        }
     }
 }
 
@@ -9785,6 +10064,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     let onShortcut: (CanvasKeyboardShortcut) -> Void
     let onCursorMoved: (CGPoint?) -> Void
     let isLensPresented: Bool
+    let allowsCanvasScrollInput: Bool
     let cursor: CanvasCursor
 
     func makeCoordinator() -> Coordinator {
@@ -9803,6 +10083,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         let view = EventView()
         view.coordinator = context.coordinator
         view.cursor = cursor.nsCursor
+        context.coordinator.allowsCanvasScrollInput = allowsCanvasScrollInput
         context.coordinator.view = view
         context.coordinator.installMonitor()
         return view
@@ -9817,6 +10098,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         context.coordinator.onCommandPalette = onCommandPalette
         context.coordinator.onShortcut = onShortcut
         context.coordinator.isLensPresented = isLensPresented
+        context.coordinator.allowsCanvasScrollInput = allowsCanvasScrollInput
         context.coordinator.view = nsView
         nsView.cursor = cursor.nsCursor
     }
@@ -9867,6 +10149,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         var onCommandPalette: () -> Void
         var onShortcut: (CanvasKeyboardShortcut) -> Void
         var isLensPresented = false
+        var allowsCanvasScrollInput = true
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
@@ -9911,6 +10194,10 @@ private struct CanvasInputBridge: NSViewRepresentable {
                 case .mouseMoved, .leftMouseDragged:
                     return event
                 case .scrollWheel:
+                    guard self.allowsCanvasScrollInput else {
+                        self.scrollAnchor = nil
+                        return event
+                    }
                     guard let location = self.viewportLocation(for: event) else { return event }
                     let phase = event.phase
                     let momentum = event.momentumPhase
@@ -10144,7 +10431,7 @@ private struct CanvasActionToolbar: View {
         .padding(.vertical, HudSpacing.sm)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.card)
-                .fill(theme.palette.bg.opacity(0.92))
+                .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
         )
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.card)
@@ -10267,7 +10554,7 @@ private struct CanvasZoomTool: View {
         .padding(.vertical, HudSpacing.sm)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.card)
-                .fill(theme.palette.bg.opacity(0.92))
+                .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
         )
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.card)

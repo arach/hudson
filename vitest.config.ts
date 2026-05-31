@@ -14,6 +14,7 @@ export default defineConfig({
       ...configDefaults.exclude,
       '.claude/**',
       '.build/**',
+      '**/.build/**',
       'examples/**/.build/**',
       'packages/native/**/.build/**',
     ],
@@ -31,6 +32,7 @@ export default defineConfig({
       { find: 'ai', replacement: resolve(rootNodeModules, 'ai') },
       { find: '@ai-sdk/react', replacement: resolve(rootNodeModules, '@ai-sdk/react') },
       { find: 'lucide-react', replacement: resolve(rootNodeModules, 'lucide-react') },
+      { find: 'server-only', replacement: resolve(root, 'test/mocks/server-only.ts') },
       {
         find: 'hudsonkit/workflow',
         replacement: resolve(hudsonkitSrc, 'workflow/index.ts'),

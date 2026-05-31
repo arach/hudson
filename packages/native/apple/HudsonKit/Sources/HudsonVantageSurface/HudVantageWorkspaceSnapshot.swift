@@ -1,4 +1,5 @@
 import Foundation
+import HudsonVantageCore
 
 public struct HudVantageViewportSnapshot: Codable, Hashable, Sendable {
     public var panX: Double
