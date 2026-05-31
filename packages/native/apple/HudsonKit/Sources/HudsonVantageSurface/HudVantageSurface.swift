@@ -536,6 +536,51 @@ private enum CanvasTool: String {
     }
 }
 
+private enum VantageNavigationItem: String, Hashable {
+    case canvas
+    case terminal
+    case navigator
+    case lens
+    case appearance
+    case fit
+    case newTerminal
+    case inspector
+
+    var title: String {
+        switch self {
+        case .canvas:      "Canvas"
+        case .terminal:    "Terminal"
+        case .navigator:   "Navigator"
+        case .lens:        "Lens"
+        case .appearance:  "Appearance"
+        case .fit:         "Fit Canvas"
+        case .newTerminal: "New Terminal"
+        case .inspector:   "Inspector"
+        }
+    }
+
+    var icon: String {
+        switch self {
+        case .canvas:      "square.grid.3x3"
+        case .terminal:    "terminal"
+        case .navigator:   "sidebar.left"
+        case .lens:        "magnifyingglass"
+        case .appearance:  "gearshape"
+        case .fit:         "viewfinder"
+        case .newTerminal: "plus"
+        case .inspector:   "sidebar.right"
+        }
+    }
+
+    var selectedIcon: String? {
+        switch self {
+        case .terminal:   "terminal.fill"
+        case .appearance: "gearshape.fill"
+        default:          nil
+        }
+    }
+}
+
 private enum VantageLensTarget: Hashable {
     case node(UUID)
 }
@@ -883,6 +928,9 @@ public struct HudVantageSurface: View {
     @State private var selectedIDs: Set<UUID> = []
     @State private var navigationFilter: CanvasNavigationFilter = .all
     @State private var navigationTagFilter: CanvasTag?
+    @State private var navigationRailCompact = true
+    @State private var navigationRailLabelWidth: CGFloat = 132
+    @State private var navigationRailSelection: VantageNavigationItem? = .canvas
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
     @State private var minimapCollapsed = false
@@ -1036,15 +1084,11 @@ public struct HudVantageSurface: View {
         #endif
     }
 
-    private var shellView: HudAppShell<AnyView, AnyView, AnyView, EmptyView, AnyView, AnyView> {
+    private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
         HudAppShell {
             AnyView(navigationShellSlot)
         } trailing: {
             AnyView(inspectorShellSlot)
-        } topDrawer: {
-            AnyView(surfaceTopDrawer)
-        } bottomDrawer: {
-            EmptyView()
         } content: {
             AnyView(terminalCanvasShell)
         } statusBar: {
@@ -1054,8 +1098,17 @@ public struct HudVantageSurface: View {
 
     @ViewBuilder
     private var navigationShellSlot: some View {
-        if !isTerminalFocusActive {
-            navigationPanel
+        vantageNavigationShell
+    }
+
+    private var vantageNavigationShell: some View {
+        HStack(spacing: 0) {
+            navigationRail
+                .zIndex(2)
+            if !isTerminalFocusActive {
+                navigationPanel
+                    .zIndex(1)
+            }
         }
     }
 
@@ -1250,6 +1303,178 @@ public struct HudVantageSurface: View {
 
     private var isTerminalFocusActive: Bool {
         focusedNode != nil
+    }
+
+    private var navigationRailEntries: [HudSidebarEntry<VantageNavigationItem>] {
+        [
+            .item(navigationRailItem(.canvas)),
+            .item(navigationRailItem(.terminal)),
+            .section(id: "workspace", title: "Workspace"),
+            .item(navigationRailItem(.navigator)),
+            .item(navigationRailItem(.lens)),
+            .item(navigationRailItem(.appearance)),
+            .section(id: "actions", title: "Actions"),
+            .item(navigationRailItem(.fit)),
+            .item(navigationRailItem(.newTerminal)),
+            .item(navigationRailItem(.inspector)),
+        ]
+    }
+
+    private func navigationRailItem(_ item: VantageNavigationItem) -> HudSidebarItem<VantageNavigationItem> {
+        HudSidebarItem(
+            id: item,
+            title: item.title,
+            icon: item.icon,
+            selectedIcon: item.selectedIcon
+        )
+    }
+
+    private var navigationRail: some View {
+        HudResizableNavigationSidebar(
+            selection: Binding(
+                get: { activeNavigationRailSelection },
+                set: { next in
+                    if let next {
+                        activateNavigationRailItem(next)
+                    }
+                }
+            ),
+            entries: navigationRailEntries,
+            isCompact: $navigationRailCompact,
+            labelWidth: $navigationRailLabelWidth,
+            accent: activeTheme.palette.statusInfo,
+            minLabelWidth: 112,
+            maxLabelWidth: 180,
+            railHeader: {
+                Image(systemName: "square.grid.2x2.fill")
+                    .font(HudFont.ui(HudTextSize.lgm, weight: .semibold))
+                    .foregroundStyle(activeTheme.palette.statusInfo)
+                    .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.headerHeight)
+                    .accessibilityLabel("Toggle Vantage rail labels")
+            },
+            labelHeader: {
+                Text("Vantage")
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .lineLimit(1)
+                    .fixedSize(horizontal: true, vertical: false)
+                    .accessibilityLabel("Toggle Vantage rail labels")
+            },
+            footer: {
+                HStack(spacing: 0) {
+                    HudStatusDot(color: liveSourceCount > 0 ? activeTheme.palette.statusOk : activeTheme.palette.dim)
+                        .frame(width: HudSidebarLayout.railWidth, height: HudLayout.rowHeightCompact)
+
+                    if !navigationRailCompact {
+                        Text(liveSourceCount > 0 ? "\(liveSourceCount) live" : "idle")
+                            .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
+                            .foregroundStyle(activeTheme.palette.muted)
+                            .lineLimit(1)
+                            .fixedSize(horizontal: true, vertical: false)
+                            .transition(.opacity)
+                    }
+                }
+                .frame(height: HudLayout.rowHeightCompact, alignment: .leading)
+            }
+        )
+        .environment(
+            \.hudsonSidebarStyle,
+            HudSidebarStyle(
+                surface: .base,
+                indicator: .kinetic,
+                icon: .kinetic,
+                motion: .kinetic
+            )
+        )
+    }
+
+    private var activeNavigationRailSelection: VantageNavigationItem? {
+        if isTerminalFocusActive {
+            return .terminal
+        }
+        if lensPresented {
+            return .lens
+        }
+        if appearanceSettingsPresented {
+            return .appearance
+        }
+        return navigationRailSelection
+    }
+
+    private func activateNavigationRailItem(_ item: VantageNavigationItem) {
+        navigationRailSelection = item
+
+        switch item {
+        case .canvas:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            controlStatus = "Canvas"
+
+        case .terminal:
+            focusTerminalFromRail()
+
+        case .navigator:
+            withAnimation(HudMotion.chromeSpring) {
+                navigationCollapsed.toggle()
+            }
+            controlStatus = navigationCollapsed ? "Navigator hidden" : "Navigator"
+
+        case .lens:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            openLens()
+
+        case .appearance:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            openAppearanceSettings()
+
+        case .fit:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            handleCanvasShortcut(.fitViewport)
+
+        case .newTerminal:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            spawnTerminal()
+            controlStatus = "New terminal"
+
+        case .inspector:
+            if isTerminalFocusActive {
+                exitFocusMode()
+            }
+            withAnimation(HudMotion.chromeSpring) {
+                inspectorCollapsed.toggle()
+            }
+            controlStatus = inspectorCollapsed ? "Inspector hidden" : "Inspector"
+        }
+    }
+
+    private func focusTerminalFromRail() {
+        if isTerminalFocusActive {
+            return
+        }
+
+        if let selectedTerminal = selectedNodes.first(where: \.isTerminal) {
+            enterFocusMode(selectedTerminal.id)
+            return
+        }
+
+        if let firstTerminal = nodes.first(where: \.isTerminal) {
+            enterFocusMode(firstTerminal.id)
+            return
+        }
+
+        spawnTerminal()
+        if let spawnedTerminal = selectedNodes.first(where: \.isTerminal) {
+            enterFocusMode(spawnedTerminal.id)
+        }
     }
 
     @ViewBuilder
@@ -1600,53 +1825,6 @@ public struct HudVantageSurface: View {
         let lane = configuration.commandURL.lastPathComponent
         let scope = configuration.commandURL.path.hasPrefix("/tmp/") ? "LOCAL DEV" : "HOST"
         return "\(scope) · \(configuration.workspaceID) · \(lane)"
-    }
-
-    @ViewBuilder
-    private var surfaceTopDrawer: some View {
-        if isTerminalFocusActive {
-            focusTopNav
-        }
-    }
-
-    private var focusTopNav: some View {
-        ZStack(alignment: .bottom) {
-            activeTheme.palette.bg
-                .ignoresSafeArea(edges: .top)
-
-            VStack(spacing: 0) {
-                HStack(alignment: .center, spacing: HudSpacing.md) {
-                    if let focusedNode {
-                        Text("·")
-                            .font(HudFont.mono(10))
-                            .foregroundStyle(activeTheme.palette.dim)
-                        Text(focusedNode.title)
-                            .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
-                            .foregroundStyle(activeTheme.palette.ink)
-                            .lineLimit(1)
-                            .minimumScaleFactor(0.82)
-
-                        Spacer(minLength: HudSpacing.lg)
-
-                        HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost) {
-                            popOut(nodes: [focusedNode])
-                        }
-                        HudButton("Close", icon: "xmark", style: .ghost) {
-                            exitFocusMode()
-                            close(focusedNode.id)
-                        }
-                        HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
-                            exitFocusMode()
-                        }
-                    }
-                }
-                .padding(.horizontal, HudSpacing.xxl)
-                .frame(height: HudLayout.navHeight)
-
-                HudDivider(color: activeTheme.hairline.subtle)
-            }
-        }
-        .frame(height: HudLayout.navHeight + HudStrokeWidth.thin)
     }
 
     private func vantageLinkText(_ label: String) -> some View {
@@ -5513,6 +5691,7 @@ public struct HudVantageSurface: View {
     private func enterFocusMode(_ id: UUID) {
         guard let node = nodes.first(where: { $0.id == id }) else { return }
         focusedNodeID = id
+        navigationRailSelection = .terminal
         selectedIDs = [id]
         transientHandActive = false
         panStart = nil
@@ -5527,6 +5706,7 @@ public struct HudVantageSurface: View {
     private func exitFocusMode() {
         guard focusedNodeID != nil else { return }
         focusedNodeID = nil
+        navigationRailSelection = .canvas
         controlStatus = "Focus mode closed"
         perfTracker.increment("focusMode.exit")
         schedulePersistStateIfConfigured()

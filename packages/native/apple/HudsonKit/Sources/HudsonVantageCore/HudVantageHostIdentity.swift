@@ -37,6 +37,7 @@ public struct HudVantageHostIdentity: Sendable {
         appName: "Vantage",
         tagline: "Spatial runtime canvas for tmux sessions, terminals, and workspace artifacts.",
         tint: .cyan,
-        targetLabel: "Node"
+        targetLabel: "Node",
+        windowTitle: "Hudson Vantage"
     )
 }

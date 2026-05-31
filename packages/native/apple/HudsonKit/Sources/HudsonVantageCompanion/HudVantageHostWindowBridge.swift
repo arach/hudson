@@ -38,9 +38,7 @@ private struct HudVantageTitlebarChromeInstaller: NSViewRepresentable {
 
 private final class HudVantageTitlebarChromeView: NSView {
     private static let accessoryMarker = "com.hudsonkit.vantage.titlebar-accessory"
-    private static let toolbarIdentifier = NSToolbar.Identifier("com.hudsonkit.vantage.window-toolbar")
     private var installationScheduled = false
-    private var toolbarDelegate: VantageWindowToolbarDelegate?
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
@@ -67,109 +65,77 @@ private final class HudVantageTitlebarChromeView: NSView {
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = false
 
+        if window.toolbar?.identifier == NSToolbar.Identifier("com.hudsonkit.vantage.window-toolbar") {
+            window.toolbar = nil
+        }
+
         for (index, controller) in window.titlebarAccessoryViewControllers.enumerated().reversed() {
             if controller.representedObject as? String == Self.accessoryMarker {
                 window.removeTitlebarAccessoryViewController(at: index)
             }
         }
 
-        let delegate = toolbarDelegate ?? VantageWindowToolbarDelegate()
-        toolbarDelegate = delegate
-
-        let toolbar: NSToolbar
-        if let existingToolbar = window.toolbar,
-           existingToolbar.identifier == Self.toolbarIdentifier {
-            toolbar = existingToolbar
-        } else {
-            toolbar = NSToolbar(identifier: Self.toolbarIdentifier)
-        }
-
-        toolbar.delegate = delegate
-        toolbar.displayMode = .iconOnly
-        toolbar.sizeMode = .small
-        toolbar.allowsUserCustomization = false
-        toolbar.autosavesConfiguration = false
-        toolbar.showsBaselineSeparator = false
-        toolbar.isVisible = true
-
-        window.toolbarStyle = .unifiedCompact
-        window.toolbar = toolbar
-        window.toolbar?.isVisible = true
-    }
-}
-
-private final class VantageWindowToolbarDelegate: NSObject, NSToolbarDelegate {
-    private static let sidebarToggles = NSToolbarItem.Identifier("com.hudsonkit.vantage.sidebar-toggles")
-
-    func toolbarDefaultItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [Self.sidebarToggles]
+        window.toolbarStyle = .unified
+        window.addTitlebarAccessoryViewController(
+            titlebarButtonAccessory(
+                placement: .left,
+                label: "Toggle Navigator",
+                symbolName: "sidebar.left",
+                action: #selector(toggleNavigator)
+            )
+        )
+        window.addTitlebarAccessoryViewController(
+            titlebarButtonAccessory(
+                placement: .right,
+                label: "Toggle Inspector",
+                symbolName: "sidebar.right",
+                action: #selector(toggleInspector)
+            )
+        )
     }
 
-    func toolbarAllowedItemIdentifiers(_ toolbar: NSToolbar) -> [NSToolbarItem.Identifier] {
-        [
-            Self.sidebarToggles,
-            .flexibleSpace,
-            .space,
-        ]
-    }
+    private func titlebarButtonAccessory(
+        placement: NSLayoutConstraint.Attribute,
+        label: String,
+        symbolName: String,
+        action: Selector
+    ) -> NSTitlebarAccessoryViewController {
+        let button = NSButton(
+            image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
+            target: self,
+            action: action
+        )
+        button.translatesAutoresizingMaskIntoConstraints = false
+        button.bezelStyle = .texturedRounded
+        button.imagePosition = .imageOnly
+        button.isBordered = true
+        button.toolTip = label
+        button.setButtonType(.momentaryPushIn)
 
-    func toolbar(
-        _ toolbar: NSToolbar,
-        itemForItemIdentifier itemIdentifier: NSToolbarItem.Identifier,
-        willBeInsertedIntoToolbar flag: Bool
-    ) -> NSToolbarItem? {
-        switch itemIdentifier {
-        case Self.sidebarToggles:
-            sidebarToggleItem(identifier: itemIdentifier)
-        default:
-            nil
-        }
-    }
-
-    private func sidebarToggleItem(identifier: NSToolbarItem.Identifier) -> NSToolbarItem {
-        let item = NSToolbarItem(itemIdentifier: identifier)
-        let control = NSSegmentedControl(frame: NSRect(x: 0, y: 0, width: 60, height: 24))
-        control.translatesAutoresizingMaskIntoConstraints = false
-        control.segmentCount = 2
-        control.segmentStyle = .separated
-        control.trackingMode = .momentary
-        control.setImage(NSImage(systemSymbolName: "sidebar.left", accessibilityDescription: "Toggle Navigator"), forSegment: 0)
-        control.setImage(NSImage(systemSymbolName: "sidebar.right", accessibilityDescription: "Toggle Inspector"), forSegment: 1)
-        control.setToolTip("Toggle Navigator", forSegment: 0)
-        control.setToolTip("Toggle Inspector", forSegment: 1)
-        control.setWidth(28, forSegment: 0)
-        control.setWidth(28, forSegment: 1)
-        control.target = self
-        control.action = #selector(toggleSidebar(_:))
-
-        let container = NSView(frame: NSRect(x: 0, y: 0, width: 60, height: 24))
-        container.addSubview(control)
+        let container = NSView(frame: NSRect(x: 0, y: 0, width: 28, height: 24))
+        container.addSubview(button)
         NSLayoutConstraint.activate([
-            control.leadingAnchor.constraint(equalTo: container.leadingAnchor),
-            control.trailingAnchor.constraint(equalTo: container.trailingAnchor),
-            control.topAnchor.constraint(equalTo: container.topAnchor),
-            control.bottomAnchor.constraint(equalTo: container.bottomAnchor),
-            container.widthAnchor.constraint(equalToConstant: 60),
+            button.leadingAnchor.constraint(equalTo: container.leadingAnchor),
+            button.trailingAnchor.constraint(equalTo: container.trailingAnchor),
+            button.topAnchor.constraint(equalTo: container.topAnchor),
+            button.bottomAnchor.constraint(equalTo: container.bottomAnchor),
+            container.widthAnchor.constraint(equalToConstant: 28),
             container.heightAnchor.constraint(equalToConstant: 24),
         ])
 
-        item.label = "Sidebars"
-        item.paletteLabel = "Sidebars"
-        item.toolTip = "Toggle Navigator or Inspector"
-        item.view = container
-        item.isNavigational = true
-        return item
+        let controller = NSTitlebarAccessoryViewController()
+        controller.representedObject = Self.accessoryMarker
+        controller.layoutAttribute = placement
+        controller.view = container
+        return controller
     }
 
-    @objc private func toggleSidebar(_ sender: NSSegmentedControl) {
-        switch sender.selectedSegment {
-        case 0:
-            VantageHostCommandCenter.post(.toggleNavigator)
-        case 1:
-            VantageHostCommandCenter.post(.toggleInspector)
-        default:
-            break
-        }
+    @objc private func toggleNavigator() {
+        VantageHostCommandCenter.post(.toggleNavigator)
+    }
+
+    @objc private func toggleInspector() {
+        VantageHostCommandCenter.post(.toggleInspector)
     }
 }
 #endif
