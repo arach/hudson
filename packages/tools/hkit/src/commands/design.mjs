@@ -60,6 +60,14 @@ function normalizeTarget(value) {
   return value;
 }
 
+function resolveTarget(value = 'web') {
+  const normalized = normalizeTarget(value) ?? 'web';
+  if (!TARGETS.has(normalized)) {
+    throw new Error(`unknown target "${value}". Use web, ios, macos, apple, or native.`);
+  }
+  return normalized;
+}
+
 function asPlatform(target) {
   if (target === 'ios' || target === 'macos' || target === 'apple') return 'apple';
   return 'web';
@@ -111,10 +119,7 @@ function renderBrief(id, target, color) {
     throw new Error(`unknown design pattern "${id}". Known patterns: ${known}`);
   }
 
-  const requestedTarget = target ?? 'web';
-  if (!TARGETS.has(requestedTarget)) {
-    throw new Error(`unknown target "${requestedTarget}". Use web, ios, macos, apple, or native.`);
-  }
+  const requestedTarget = resolveTarget(target ?? 'web');
   const platform = asPlatform(requestedTarget);
   const targetLabel = requestedTarget === 'ios' || requestedTarget === 'macos'
     ? `${requestedTarget} (Apple)`
@@ -167,12 +172,17 @@ function filterTokens(group) {
   return group ? ROOT_TOKENS.filter(t => t.group === group) : ROOT_TOKENS;
 }
 
-function renderTokens(group, color) {
+function tokensForGroup(group) {
   const tokens = filterTokens(group);
   if (group && tokens.length === 0) {
     const groups = [...new Set(ROOT_TOKENS.map(t => t.group))].join(', ');
     throw new Error(`unknown token group "${group}". Known groups: ${groups}`);
   }
+  return tokens;
+}
+
+function renderTokens(group, color) {
+  const tokens = tokensForGroup(group);
 
   const lines = [paint('bold', group ? `Hudson Root Tokens: ${group}` : 'Hudson Root Tokens', color), ''];
   for (const token of tokens) {
@@ -185,10 +195,7 @@ function renderTokens(group, color) {
 }
 
 function renderMappings(target, color) {
-  const normalized = normalizeTarget(target ?? 'web');
-  if (!TARGETS.has(normalized)) {
-    throw new Error(`unknown target "${target}". Use web, apple, ios, macos, or native.`);
-  }
+  const normalized = resolveTarget(target ?? 'web');
   const platform = asPlatform(normalized);
   const lines = [paint('bold', `Hudson Design Mappings: ${normalized}`, color), ''];
   for (const token of ROOT_TOKENS) {
@@ -257,10 +264,11 @@ export async function run(argv) {
         if (!id) throw new Error('brief requires a pattern id');
         const pattern = DESIGN_PATTERNS[id];
         if (!pattern) throw new Error(`unknown design pattern "${id}"`);
-        process.stdout.write(JSON.stringify({ id, target: args.target ?? 'web', ...pattern }, null, 2) + '\n');
-      } else if (args.cmd === 'tokens') process.stdout.write(JSON.stringify(filterTokens(args.group), null, 2) + '\n');
+        const target = resolveTarget(args.target ?? 'web');
+        process.stdout.write(JSON.stringify({ id, target, ...pattern }, null, 2) + '\n');
+      } else if (args.cmd === 'tokens') process.stdout.write(JSON.stringify(tokensForGroup(args.group), null, 2) + '\n');
       else if (args.cmd === 'mappings') {
-        const platform = asPlatform(normalizeTarget(args.target ?? 'web'));
+        const platform = asPlatform(resolveTarget(args.target ?? 'web'));
         process.stdout.write(JSON.stringify(ROOT_TOKENS.map(t => ({ id: t.id, mapping: t[platform] })), null, 2) + '\n');
       } else if (args.cmd === 'check') {
         const findings = checkContract();
