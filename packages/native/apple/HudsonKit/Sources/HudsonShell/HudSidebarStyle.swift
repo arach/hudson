@@ -90,9 +90,9 @@ public enum HudSidebarMotionStyle: String, CaseIterable, Identifiable, Sendable 
     /// Animation used when the selection indicator slides between rows.
     public var selectionSlide: Animation {
         switch self {
-        case .base:      return .spring(response: 0.32, dampingFraction: 0.82)
-        case .editorial: return .spring(response: 0.50, dampingFraction: 0.95)
-        case .kinetic:   return .spring(response: 0.36, dampingFraction: 0.72)
+        case .base:      return .spring(response: 0.20, dampingFraction: 0.85)
+        case .editorial: return .spring(response: 0.30, dampingFraction: 0.92)
+        case .kinetic:   return .spring(response: 0.22, dampingFraction: 0.72)
         }
     }
 }

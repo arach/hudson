@@ -77,6 +77,7 @@ struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
     @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
+    @State private var navLabelWidth: CGFloat = HudSidebarLayout.labelWidth
     @State private var sidebarSurface: HudSidebarSurfaceStyle = .base
     @State private var glassRadius: CGFloat = 10
     @State private var glassTranslucency: Double = 1.0
@@ -95,8 +96,6 @@ struct ContentView: View {
         return TargetMock.fleet.first(where: { $0.id == id })
     }
 
-    private var navProgress: Double { navExpanded ? 0.0 : 1.0 }
-
     private var sidebarEntries: [HudSidebarEntry<DemoTab>] {
         let workbench: [DemoTab] = [.dashboard, .voice, .shell, .sidebar]
         let reference: [DemoTab] = [.tokens, .primitives, .manifest]
@@ -113,32 +112,30 @@ struct ContentView: View {
 
     var body: some View {
         HudAppShell {
-            HudNavigationSidebar(
+            HudResizableNavigationSidebar(
                 selection: Binding(
                     get: { tab as DemoTab? },
                     set: { if let next = $0 { tab = next } }
                 ),
                 entries: sidebarEntries,
-                progress: navProgress,
+                isCompact: Binding(
+                    get: { !navExpanded },
+                    set: { navExpanded = !$0 }
+                ),
+                labelWidth: $navLabelWidth,
                 railHeader: {
-                    Button(action: toggleNav) {
-                        HudStatusDot(color: variant.manifest.accent)
-                            .frame(width: HudIconSize.micro, height: HudIconSize.micro)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Toggle navigation")
+                    HudStatusDot(color: variant.manifest.accent)
+                        .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Toggle navigation")
                 },
                 labelHeader: {
-                    Button(action: toggleNav) {
-                        Text(variant.manifest.name)
-                            .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                            .foregroundStyle(HudPalette.ink)
-                            .lineLimit(1)
-                            .contentShape(Rectangle())
-                    }
-                    .buttonStyle(.plain)
-                    .accessibilityLabel("Toggle navigation")
+                    Text(variant.manifest.name)
+                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                        .foregroundStyle(HudPalette.ink)
+                        .lineLimit(1)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Toggle navigation")
                 },
                 footer: {
                     variantPicker

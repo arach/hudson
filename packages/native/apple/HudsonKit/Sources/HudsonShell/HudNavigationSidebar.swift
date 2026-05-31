@@ -77,6 +77,7 @@ public struct HudNavigationSidebar<
     public let progress: Double
     public let accent: Color?           // nil = use manifest.accent
     public let labelWidth: CGFloat      // expanded label-column width; defaults to HudSidebarLayout.labelWidth
+    public let onHeaderTap: (() -> Void)?
     public let railHeader: RailHeader
     public let labelHeader: LabelHeader
     public let footer: Footer
@@ -85,6 +86,7 @@ public struct HudNavigationSidebar<
     @Environment(\.hudsonSidebarStyle) private var style
     @Environment(\.hudsonSidebarMotionMode) private var motionMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hoveredID: Selection?
 
     public init(
         selection: Binding<Selection?>,
@@ -92,6 +94,7 @@ public struct HudNavigationSidebar<
         progress: Double,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
@@ -101,6 +104,7 @@ public struct HudNavigationSidebar<
         self.progress = progress
         self.accent = accent
         self.labelWidth = labelWidth
+        self.onHeaderTap = onHeaderTap
         self.railHeader = railHeader()
         self.labelHeader = labelHeader()
         self.footer = footer()
@@ -207,6 +211,7 @@ public struct HudNavigationSidebar<
 
     private var sidebarBody: some View {
         ZStack(alignment: .topLeading) {
+            hoverUnderlay
             selectionUnderlay
             HStack(alignment: .top, spacing: 0) {
                 railColumn
@@ -243,6 +248,8 @@ public struct HudNavigationSidebar<
                 .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.headerHeight)
                 .padding(.top, HudSidebarLayout.headerTopPadding)
                 .padding(.bottom, HudSidebarLayout.headerBottomPadding)
+                .contentShape(Rectangle())
+                .onTapGesture { onHeaderTap?() }
 
             ForEach(entries) { entry in
                 railCell(for: entry)
@@ -265,6 +272,9 @@ public struct HudNavigationSidebar<
                 reduceMotion: reduceMotion,
                 onTap: {
                     selectItem(item)
+                },
+                onHoverChange: { hovering in
+                    updateHover(item.id, hovering: hovering)
                 }
             )
             .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
@@ -289,6 +299,8 @@ public struct HudNavigationSidebar<
                 .padding(.top, HudSidebarLayout.headerTopPadding)
                 .padding(.bottom, HudSidebarLayout.headerBottomPadding)
                 .padding(.leading, HudSidebarLayout.labelLeading)
+                .contentShape(Rectangle())
+                .onTapGesture { onHeaderTap?() }
 
             ForEach(entries) { entry in
                 labelCell(for: entry)
@@ -317,6 +329,12 @@ public struct HudNavigationSidebar<
                 .frame(height: HudSidebarLayout.rowHeight, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { selectItem(item) }
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active: updateHover(item.id, hovering: true)
+                    case .ended:  updateHover(item.id, hovering: false)
+                    }
+                }
 
         case .section(_, let title):
             VStack(alignment: .leading, spacing: 0) {
@@ -373,20 +391,59 @@ public struct HudNavigationSidebar<
     /// Y-offset of the selected row, measured from the top of the sidebar body.
     /// Computed from the entries array — no GeometryReader needed.
     private var selectionY: CGFloat? {
-        guard let selection else { return nil }
+        rowY(for: selection)
+    }
+
+    private var hoveredY: CGFloat? {
+        guard let hoveredID, hoveredID != selection else { return nil }
+        return rowY(for: hoveredID)
+    }
+
+    private func updateHover(_ id: Selection, hovering: Bool) {
+        if hovering {
+            if hoveredID != id { hoveredID = id }
+        } else if hoveredID == id {
+            hoveredID = nil
+        }
+    }
+
+    private func rowY(for id: Selection?) -> CGFloat? {
+        guard let id else { return nil }
         var y: CGFloat = HudSidebarLayout.headerTopPadding
                        + HudSidebarLayout.headerHeight
                        + HudSidebarLayout.headerBottomPadding
         for entry in entries {
             switch entry {
             case .item(let item):
-                if item.id == selection { return y }
+                if item.id == id { return y }
                 y += HudSidebarLayout.rowHeight
             case .section:
                 y += HudSidebarLayout.sectionTopGap + HudSidebarLayout.sectionHeaderHeight
             }
         }
         return nil
+    }
+
+    /// Full-row hover treatment from the Talkie sidebar. It sits below
+    /// selection, teleports between rows, and keeps hover feedback continuous
+    /// as the pointer crosses between rail and label columns.
+    @ViewBuilder
+    private var hoverUnderlay: some View {
+        if let y = hoveredY {
+            RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
+                .fill(HudSurface.hover)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
+                        .strokeBorder(HudHairline.subtle, lineWidth: HudStrokeWidth.thin)
+                )
+                .frame(height: HudSidebarLayout.rowHeight - HudSidebarLayout.selectionVerticalInset * 2)
+                .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
+                .padding(.vertical, HudSidebarLayout.selectionVerticalInset)
+                .offset(y: y)
+                .animation(nil, value: hoveredY)
+                .allowsHitTesting(false)
+                .transition(.opacity.animation(.easeOut(duration: 0.06)))
+        }
     }
 
     // MARK: Selection with instrumentation
@@ -418,6 +475,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
         progress: Double,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader
     ) {
@@ -427,6 +485,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
             progress: progress,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: { EmptyView() }
@@ -450,6 +509,7 @@ extension HudNavigationSidebar {
         isCompact: Bool,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
@@ -460,6 +520,7 @@ extension HudNavigationSidebar {
             progress: isCompact ? 1.0 : 0.0,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: footer
@@ -475,6 +536,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
         isCompact: Bool,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader
     ) {
@@ -484,6 +546,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
             progress: isCompact ? 1.0 : 0.0,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: { EmptyView() }
