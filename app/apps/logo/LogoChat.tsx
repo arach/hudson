@@ -22,7 +22,7 @@ const LOGO_CHAT_SESSION_ID = 'logo-app-chat';
  * - Tool calls/results render as the same collapsible cards the trace uses.
  */
 export function LogoChat() {
-  const { aiChat, appSettings } = useLogo();
+  const { aiChat, appSettings, sendAiMessage } = useLogo();
 
   if (!aiChat) {
     return (
@@ -32,21 +32,23 @@ export function LogoChat() {
     );
   }
 
-  return <LogoChatSurface aiChat={aiChat} appSettings={appSettings} />;
+  return <LogoChatSurface aiChat={aiChat} appSettings={appSettings} sendAiMessage={sendAiMessage} />;
 }
 
 function LogoChatSurface({
   aiChat,
   appSettings,
+  sendAiMessage,
 }: {
   aiChat: NonNullable<ReturnType<typeof useLogo>['aiChat']>;
   appSettings: ReturnType<typeof useLogo>['appSettings'];
+  sendAiMessage: ReturnType<typeof useLogo>['sendAiMessage'];
 }) {
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
   const {
-    messages, sendMessage, stop, status, clearChat, error,
+    messages, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
   } = aiChat;
   const provider = String(appSettings.aiProvider || 'minimax');
@@ -89,16 +91,16 @@ function LogoChatSurface({
   const voiceBusy = voiceStatus === 'recording' || voiceStatus === 'transcribing';
   const voiceDisabled = voiceStatus !== 'recording' && (isStreaming || voiceStatus === 'transcribing' || !isVoiceSupported);
   const voiceStatusText = voiceStatus === 'recording'
-    ? 'Listening...'
+    ? 'Listening'
     : voiceStatus === 'transcribing'
-      ? 'Transcribing...'
+      ? 'Transcribing'
       : voiceError;
   const voiceButtonTitle = !isVoiceSupported
     ? 'Voice input is not supported in this browser'
     : voiceStatus === 'recording'
       ? 'Stop voice input'
       : voiceStatus === 'transcribing'
-        ? 'Transcribing...'
+        ? 'Transcribing'
         : 'Dictate prompt';
 
   useEffect(() => {
@@ -112,7 +114,7 @@ function LogoChatSurface({
     e.preventDefault();
     const text = input.trim();
     if (!text || isStreaming) return;
-    sendMessage({ text });
+    sendAiMessage(text, { action: 'logo.chat', label: 'Logo chat', surface: 'logo-chat' });
     setInput('');
   };
 
@@ -162,7 +164,7 @@ function LogoChatSurface({
       </div>
 
       {error && (
-        <div className="px-3 py-2 bg-red-900/20 border-t border-red-500/30 text-red-400 text-[11px] flex items-center gap-2">
+        <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/30 text-destructive text-[11px] flex items-center gap-2">
           <AlertCircle size={12} />
           <span className="truncate">{error.message || 'An error occurred'}</span>
         </div>
@@ -181,7 +183,7 @@ function LogoChatSurface({
                   onClick={() => toggleAttachment(att.label)}
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                      ? 'bg-info/10 text-info border-info/30'
                       : 'text-muted-foreground/80 border-border hover:text-foreground hover:border-neutral-600'
                   }`}
                 >
@@ -194,10 +196,10 @@ function LogoChatSurface({
         {(voiceBusy || voiceError) && (
           <div className={`mb-2 flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] ${
             voiceError
-              ? 'border-amber-500/30 bg-amber-500/10 text-amber-600'
+              ? 'border-warning/30 bg-warning/10 text-warning'
               : 'border-accent/25 bg-accent/10 text-muted-foreground'
           }`}>
-            <Mic size={11} className={voiceStatus === 'recording' ? 'text-red-500 animate-pulse' : 'text-accent'} />
+            <Mic size={11} className={voiceStatus === 'recording' ? 'text-destructive animate-pulse' : 'text-accent'} />
             <span className="truncate">{voiceStatusText}</span>
           </div>
         )}
@@ -218,7 +220,7 @@ function LogoChatSurface({
             disabled={voiceDisabled}
             className={`p-1 rounded transition-colors shrink-0 ${
               voiceStatus === 'recording'
-                ? 'text-red-500 bg-red-500/10 hover:bg-red-500/15'
+                ? 'text-destructive bg-destructive/10 hover:bg-destructive/15'
                 : 'text-muted-foreground/80 hover:text-accent hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed'
             }`}
             title={voiceButtonTitle}
@@ -232,7 +234,7 @@ function LogoChatSurface({
             value={input}
             onChange={e => setInput(e.target.value)}
             onKeyDown={onKeyDown}
-            placeholder="Describe a logo direction, or ask me to iterate on the current variant…"
+            placeholder="Describe a logo direction, or ask me to iterate on the current variant"
             className="flex-1 bg-transparent outline-none text-foreground placeholder:text-muted-foreground/60 caret-accent"
             disabled={isStreaming}
           />
@@ -240,7 +242,7 @@ function LogoChatSurface({
             <button
               type="button"
               onClick={() => stop()}
-              className="p-1.5 rounded text-amber-400 hover:bg-amber-900/20 transition-colors"
+              className="p-1.5 rounded text-warning hover:bg-warning/10 transition-colors"
               title="Stop"
             >
               <Square size={12} />
@@ -346,7 +348,7 @@ function SessionFooter({ sessionId, harness, provider, model, cwd, messages }: S
       <span className="truncate flex-1 min-w-0">
         <span className="text-muted-foreground/40">{provider}</span>
         <span className="text-muted-foreground/25 mx-1">/</span>
-        <span className="text-cyan-300/55">{model}</span>
+        <span className="text-info/70">{model}</span>
         <span className="text-muted-foreground/25 mx-2">·</span>
         <span title={`Session: ${sessionId}`}>{sessionId}</span>
         <span className="text-muted-foreground/25 mx-2">·</span>
@@ -373,7 +375,7 @@ function SessionFooter({ sessionId, harness, provider, model, cwd, messages }: S
       <button
         type="button"
         onClick={() => copy('all')}
-        className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-cyan-500/25 bg-cyan-500/[0.05] text-cyan-300/70 hover:bg-cyan-500/10 hover:text-cyan-200 transition-colors"
+        className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-info/25 bg-info/[0.05] text-info/80 hover:bg-info/10 hover:text-info transition-colors"
         title="Copy full session (metadata + conversation) — paste into Claude/GPT/etc to hand off"
       >
         {copied === 'all' ? <Check size={9} /> : <Copy size={9} />}
@@ -394,7 +396,7 @@ function ChatBubble({ role, children }: { role: 'user' | 'assistant' | 'system' 
       <div className="flex flex-col gap-1 max-w-[92%]">
         <span
           className={`text-[9px] font-mono uppercase tracking-[0.18em] px-0.5 ${
-            isUser ? 'text-accent/70 self-end' : 'text-cyan-300/60 self-start'
+            isUser ? 'text-accent/80 self-end' : 'text-info/70 self-start'
           }`}
         >
           {isUser ? 'you' : 'assistant'}
@@ -402,8 +404,8 @@ function ChatBubble({ role, children }: { role: 'user' | 'assistant' | 'system' 
         <div
           className={`rounded-lg px-3 py-2 break-words leading-relaxed border ${
             isUser
-              ? 'bg-accent/[0.06] text-neutral-50 border-accent/25'
-              : 'bg-cyan-500/[0.04] text-neutral-50 border-cyan-500/20'
+              ? 'bg-accent/[0.07] text-foreground/90 border-accent/25'
+              : 'bg-info/[0.04] text-foreground/90 border-info/20'
           }`}
         >
           {children}
@@ -545,7 +547,7 @@ function renderInline(text: string): React.ReactNode {
     if (token.startsWith('**')) {
       tokens.push(<strong key={key++} className="font-semibold text-foreground">{token.slice(2, -2)}</strong>);
     } else {
-      tokens.push(<code key={key++} className="bg-muted/60 text-cyan-300/90 px-1 py-px rounded text-[11px]">{token.slice(1, -1)}</code>);
+      tokens.push(<code key={key++} className="bg-muted/60 text-info/90 px-1 py-px rounded text-[11px]">{token.slice(1, -1)}</code>);
     }
     lastIdx = re.lastIndex;
   }
@@ -570,7 +572,7 @@ function PreviewBlock({ lang, content }: { lang: string; content: string }) {
     const h = sizeMatch?.[2];
     headline = (
       <span className="flex items-center gap-2">
-        <span className="text-emerald-300/90">svg</span>
+        <span className="text-success/90">svg</span>
         {w && h && <span className="text-muted-foreground/55">{w}×{h}</span>}
         <span className="text-muted-foreground/55">{content.length.toLocaleString()} chars</span>
       </span>
@@ -585,7 +587,7 @@ function PreviewBlock({ lang, content }: { lang: string; content: string }) {
     } catch { summary = '(invalid)'; }
     headline = (
       <span className="flex items-center gap-2">
-        <span className="text-amber-300/90">json</span>
+        <span className="text-warning/90">json</span>
         <span className="text-muted-foreground/70 truncate max-w-[40ch]">{summary}</span>
       </span>
     );
@@ -593,7 +595,7 @@ function PreviewBlock({ lang, content }: { lang: string; content: string }) {
     const first = content.split('\n')[0]?.trim().slice(0, 80) ?? '';
     headline = (
       <span className="flex items-center gap-2">
-        <span className="text-cyan-300/90">{lang || 'code'}</span>
+        <span className="text-info/90">{lang || 'code'}</span>
         <span className="text-muted-foreground/55 truncate max-w-[40ch]">{first}</span>
       </span>
     );
@@ -681,10 +683,10 @@ function ToolBlock({ toolName, state, input, output }: { toolName: string; state
   };
 
   return (
-    <div className={`rounded border ${errored ? 'border-red-500/30 bg-red-500/5' : done ? 'border-emerald-500/25 bg-emerald-500/5' : 'border-cyan-500/25 bg-cyan-500/5'} px-2 py-1 my-1`}>
+    <div className={`rounded border ${errored ? 'border-destructive/30 bg-destructive/5' : done ? 'border-success/25 bg-success/5' : 'border-info/25 bg-info/5'} px-2 py-1 my-1`}>
       <button onClick={() => setExpanded(e => !e)} className="flex items-center gap-1.5 w-full text-left">
         {expanded ? <ChevronDown size={11} className="opacity-60 shrink-0" /> : <ChevronRight size={11} className="opacity-60 shrink-0" />}
-        <span className={`font-mono text-[10.5px] ${errored ? 'text-red-300' : done ? 'text-emerald-300' : 'text-cyan-300'}`}>{toolName}</span>
+        <span className={`font-mono text-[10.5px] ${errored ? 'text-destructive' : done ? 'text-success' : 'text-info'}`}>{toolName}</span>
         <span className="font-mono text-[9.5px] uppercase tracking-wider text-muted-foreground/60 shrink-0">{state}</span>
         {!expanded && inputPreview && (
           <span className="font-mono text-[10px] text-muted-foreground/65 truncate ml-1">{inputPreview}</span>
@@ -702,7 +704,7 @@ function ToolBlock({ toolName, state, input, output }: { toolName: string; state
           <button
             type="button"
             onClick={openTemplate}
-            className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-emerald-500/30 bg-emerald-500/10 text-emerald-300 text-[9.5px] font-mono uppercase tracking-wider hover:bg-emerald-500/20 transition-colors"
+            className="shrink-0 inline-flex items-center gap-1 px-1.5 py-0.5 rounded border border-success/30 bg-success/10 text-success text-[9.5px] font-mono uppercase tracking-wider hover:bg-success/20 transition-colors"
             title="Set as active variant and switch to preview"
           >
             Open

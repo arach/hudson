@@ -2,11 +2,23 @@
 import { createContext, useContext, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { usePersistentState, useAppSettings, usePlatform } from 'hudsonkit';
 import type { AppSettingsValues } from 'hudsonkit';
-import type { LogoTemplate, TemplateParam, ColorSet, WordmarkConfig, LightingConfig } from './types';
+import type {
+  LogoTemplate,
+  TemplateParam,
+  ColorSet,
+  WordmarkConfig,
+  LightingConfig,
+  LogoElementOffsets,
+  ShapeOffset,
+  LogoEditorTool,
+  LogoDrawingShape,
+  LogoDrawingShapeMap,
+} from './types';
 import { logoSettings } from './settings';
-import { isBuiltinVariant } from './types';
-import { useLogoAI } from './useLogoAI';
+import { isBuiltinVariant, normalizeLogoTemplateLineage } from './types';
+import { useLogoAI, type SendLogoAIMessageOptions } from './useLogoAI';
 import { useEventSourceInvalidation } from '../../hooks/useEventSourceInvalidation';
+import { drawingNodeMapReducer } from '../../lib/drawing';
 
 export type { ColorSet, WordmarkConfig, LightingConfig };
 
@@ -158,6 +170,27 @@ interface LogoState {
   discardedIds: Set<string>;
   customParamValues: CustomParamValues;
   setCustomParam: (templateId: string, key: string, value: CustomParamValue) => void;
+  /** Per-template, per-shape drag offsets applied on top of the template-computed
+   *  positions. Templates mark draggable shapes with `data-element-id="<id>"`;
+   *  the render layer wraps each marked node in a transform built from the
+   *  matching `ShapeOffset`. Persists separately from `customParamValues`. */
+  elementOffsets: Record<string, LogoElementOffsets>;
+  /** Merge a partial offset into the (templateId, shapeId) entry. Pass `null`
+   *  for `offset` to clear the entry entirely. */
+  setElementOffset: (templateId: string, shapeId: string, offset: ShapeOffset | null) => void;
+  /** Drop every offset for a template — used when resetting a template. */
+  resetElementOffsets: (templateId: string) => void;
+  /** Primary drawing tool for structured logo components. */
+  editorTool: LogoEditorTool;
+  setEditorTool: (tool: LogoEditorTool) => void;
+  /** Structured component layer, keyed by template id. */
+  drawingShapes: LogoDrawingShapeMap;
+  selectedDrawingId: string | null;
+  setSelectedDrawingId: (id: string | null) => void;
+  addDrawingShape: (templateId: string, shape: LogoDrawingShape) => void;
+  updateDrawingShape: (templateId: string, shapeId: string, updates: Partial<LogoDrawingShape>) => void;
+  deleteDrawingShape: (templateId: string, shapeId: string) => void;
+  resetDrawingShapes: (templateId: string) => void;
   // App settings (relay URL, compile endpoint, etc.)
   appSettings: AppSettingsValues;
   /** Resolved API base URL from platform adapter */
@@ -175,7 +208,7 @@ interface LogoState {
   /** Read and clear the pending command (consumed by LogoTerminal) */
   consumeTerminalCommand: () => string | null;
   /** Send a message to the background AI (no terminal needed) */
-  sendAiMessage: (message: string) => void;
+  sendAiMessage: (message: string, options?: SendLogoAIMessageOptions) => void;
   /** Background AI status */
   aiStatus: string;
   /** Recent AI tool call activity log */
@@ -196,6 +229,9 @@ interface LogoState {
   /** Content view — single-template preview vs comparison matrix */
   view: 'preview' | 'matrix';
   setView: (v: 'preview' | 'matrix') => void;
+  /** Whether the Code Mode workbench (template source editor) is open. */
+  codeOpen: boolean;
+  setCodeOpen: (open: boolean) => void;
   /** Picked cell meta from the matrix view (winners). */
   picks: MatrixPick[];
   togglePick: (pick: MatrixPick) => void;
@@ -230,8 +266,9 @@ export function buildPersistedMatrixSession(
   sourceTemplateId: string,
   sessions: MatrixSession[],
 ): MatrixSession | null {
+  const normalizedTemplates = normalizeLogoTemplateLineage(templates);
   const sessionTemplateIds = new Set(sessions.flatMap(session => session.templateIds));
-  const children = templates
+  const children = normalizedTemplates
     .filter(template =>
       template.parentId === sourceTemplateId &&
       !template.builtin &&
@@ -472,6 +509,7 @@ export function LogoProvider({
   const [inspectMode, setInspectMode] = useState(false);
   const toggleInspectMode = useCallback(() => setInspectMode(v => !v), []);
   const [view, setView] = usePersistentState<'preview' | 'matrix'>('logo.view', 'preview');
+  const [codeOpen, setCodeOpen] = useState(false);
   const [picks, setPicks] = useState<MatrixPick[]>([]);
   const togglePick = useCallback((pick: MatrixPick) => {
     setPicks(prev => {
@@ -559,6 +597,10 @@ export function LogoProvider({
   // Templates fetched from server-side JSON files
   const [templates, setTemplates] = useState<LogoTemplate[]>([]);
   const [customParamValues, setCustomParamValues] = usePersistentState<CustomParamValues>('logo.customParamValues', {});
+  const [elementOffsets, setElementOffsets] = usePersistentState<Record<string, LogoElementOffsets>>('logo.elementOffsets', {});
+  const [editorTool, setEditorTool] = useState<LogoEditorTool>('select');
+  const [selectedDrawingId, setSelectedDrawingId] = useState<string | null>(null);
+  const [drawingShapes, setDrawingShapes] = usePersistentState<LogoDrawingShapeMap>('logo.drawingShapes', {});
 
   // Reconcile template files created outside the UI (relay/terminal edits).
   const templateEndpoint = `${apiBaseUrl}/api/logo/template`;
@@ -574,7 +616,7 @@ export function LogoProvider({
       if (json !== lastFetchRef.current) {
         lastFetchRef.current = json;
         if (activeRef.current) {
-          setTemplates(data.templates);
+          setTemplates(normalizeLogoTemplateLineage(data.templates));
           setCustomParamValues(cpv => {
             let next = cpv;
             for (const t of data.templates as { id: string; params: Pick<TemplateParam, 'key' | 'default'>[] }[]) {
@@ -607,9 +649,10 @@ export function LogoProvider({
 
   const setParam = useCallback(<K extends keyof LogoParams>(key: K, value: LogoParams[K]) => {
     setParams(prev => ({ ...prev, [key]: value }));
-  }, []);
+  }, [setParams]);
 
   const setVariant = useCallback((v: string) => {
+    setSelectedDrawingId(null);
     // Save current template's tool config before switching
     setParams(prev => {
       templateToolsRef.current[prev.variant] = {
@@ -664,14 +707,14 @@ export function LogoProvider({
         wordmark: toolConfig.wordmark,
       }));
     }
-  }, [templates, setCustomParamValues]);
+  }, [templates, setCustomParamValues, setParams]);
 
-  const resetDefaults = useCallback(() => setParams(defaults), []);
+  const resetDefaults = useCallback(() => setParams(defaults), [setParams]);
 
   // Template CRUD — writes go through the API, polling picks up changes
   const addTemplate = useCallback(async (template: LogoTemplate) => {
     // Optimistically add to local state
-    setTemplates(prev => [...prev, template]);
+    setTemplates(prev => normalizeLogoTemplateLineage([...prev, template]));
     setCustomParamValues(prev => withTemplateParamDefaults(prev, template.id, template.params));
     // Bucket into the targeted session (set by beginAiSession). If no target
     // (e.g. addTemplate fired outside an AI round), skip session bucketing.
@@ -694,6 +737,7 @@ export function LogoProvider({
         id: template.id,
         name: template.name,
         description: template.description,
+        kind: template.kind,
         parentId: template.parentId,
         renderBody: template.sourceCode || template.renderBody,
         params: template.params,
@@ -704,9 +748,9 @@ export function LogoProvider({
 
   const updateTemplate = useCallback(async (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => {
     // Optimistically update local state
-    setTemplates(prev => prev.map(t =>
+    setTemplates(prev => normalizeLogoTemplateLineage(prev.map(t =>
       t.id === id ? { ...t, ...updates, updatedAt: Date.now() } : t
-    ));
+    )));
     if (updates.params) {
       setCustomParamValues(prev => withTemplateParamDefaults(prev, id, updates.params));
     }
@@ -718,6 +762,8 @@ export function LogoProvider({
         id,
         name: updates.name,
         description: updates.description,
+        kind: updates.kind,
+        parentId: updates.parentId,
         renderBody: updates.sourceCode || updates.renderBody,
         params: updates.params,
       }),
@@ -748,7 +794,7 @@ export function LogoProvider({
         return next;
       });
     }
-  }, [discardedMap, templateEndpoint]);
+  }, [discardedMap, templateEndpoint, setDiscardedMap, DISCARD_TTL_MS]);
 
   const discardedIds = useMemo(() => new Set(Object.keys(discardedMap)), [discardedMap]);
 
@@ -777,13 +823,25 @@ export function LogoProvider({
       delete next[id];
       return next;
     });
+    setElementOffsets(prev => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
+    setDrawingShapes(prev => {
+      if (!(id in prev)) return prev;
+      const next = { ...prev };
+      delete next[id];
+      return next;
+    });
     const res = await fetch(templateEndpoint, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ id, action: 'delete' }),
     });
     await assertOkResponse(res, `Failed to delete template "${id}"`);
-  }, [templateEndpoint, setCustomParamValues, setDiscardedMap]);
+  }, [templateEndpoint, setCustomParamValues, setDiscardedMap, setDrawingShapes, setElementOffsets]);
 
   const setCustomParam = useCallback((templateId: string, key: string, value: CustomParamValue) => {
     setCustomParamValues(prev => ({
@@ -791,6 +849,79 @@ export function LogoProvider({
       [templateId]: { ...(prev[templateId] ?? {}), [key]: value },
     }));
   }, [setCustomParamValues]);
+
+  const setElementOffset = useCallback((templateId: string, shapeId: string, offset: ShapeOffset | null) => {
+    setElementOffsets(prev => {
+      const templateMap = prev[templateId] ?? {};
+      if (offset === null) {
+        // Clear the entry. If the template map is now empty, drop the template too.
+        if (!(shapeId in templateMap)) return prev;
+        const rest = { ...templateMap };
+        delete rest[shapeId];
+        if (Object.keys(rest).length === 0) {
+          const others = { ...prev };
+          delete others[templateId];
+          return others;
+        }
+        return { ...prev, [templateId]: rest };
+      }
+      // Merge: existing fields are preserved, supplied fields overwrite.
+      const next: ShapeOffset = { ...(templateMap[shapeId] ?? {}), ...offset };
+      // If every field is 0/undefined, treat the entry as cleared.
+      const scale = typeof next.scale === 'number' ? next.scale : 1;
+      const hasContent = (typeof next.dx === 'number' && next.dx !== 0)
+        || (typeof next.dy === 'number' && next.dy !== 0)
+        || (typeof next.rotate === 'number' && next.rotate !== 0)
+        || scale !== 1;
+      if (!hasContent) {
+        const rest = { ...templateMap };
+        delete rest[shapeId];
+        if (Object.keys(rest).length === 0) {
+          const others = { ...prev };
+          delete others[templateId];
+          return others;
+        }
+        return { ...prev, [templateId]: rest };
+      }
+      return { ...prev, [templateId]: { ...templateMap, [shapeId]: next } };
+    });
+  }, [setElementOffsets]);
+
+  const resetElementOffsets = useCallback((templateId: string) => {
+    setElementOffsets(prev => {
+      if (!(templateId in prev)) return prev;
+      const rest = { ...prev };
+      delete rest[templateId];
+      return rest;
+    });
+  }, [setElementOffsets]);
+
+  const addDrawingShape = useCallback((templateId: string, shape: LogoDrawingShape) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, { type: 'node/add', node: shape }));
+    setSelectedDrawingId(shape.id);
+    setEditorTool('select');
+  }, [setDrawingShapes]);
+
+  const updateDrawingShape = useCallback((templateId: string, shapeId: string, updates: Partial<LogoDrawingShape>) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, {
+      type: 'node/update',
+      id: shapeId,
+      patch: updates,
+    }));
+  }, [setDrawingShapes]);
+
+  const deleteDrawingShape = useCallback((templateId: string, shapeId: string) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, {
+      type: 'node/delete',
+      ids: [shapeId],
+    }));
+    setSelectedDrawingId(prev => prev === shapeId ? null : prev);
+  }, [setDrawingShapes]);
+
+  const resetDrawingShapes = useCallback((templateId: string) => {
+    setDrawingShapes(prev => drawingNodeMapReducer(prev, templateId, { type: 'document/reset' }));
+    setSelectedDrawingId(null);
+  }, [setDrawingShapes]);
 
   // Background AI (works without terminal)
   const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat } = useLogoAI({
@@ -804,6 +935,10 @@ export function LogoProvider({
     templates, addTemplate, updateTemplate, deleteTemplate,
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
+    elementOffsets, setElementOffset, resetElementOffsets,
+    editorTool, setEditorTool,
+    drawingShapes, selectedDrawingId, setSelectedDrawingId,
+    addDrawingShape, updateDrawingShape, deleteDrawingShape, resetDrawingShapes,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,
@@ -812,12 +947,16 @@ export function LogoProvider({
     sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
     view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    codeOpen, setCodeOpen,
     sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   }), [
     params, setParam, setVariant, resetDefaults,
     templates, addTemplate, updateTemplate, deleteTemplate,
     discardTemplate, restoreTemplate, discardedIds,
     customParamValues, setCustomParam,
+    elementOffsets, setElementOffset, resetElementOffsets,
+    editorTool, drawingShapes, selectedDrawingId,
+    addDrawingShape, updateDrawingShape, deleteDrawingShape, resetDrawingShapes,
     appSettings, apiBaseUrl,
     backgroundSvg, setBackgroundSvg,
     showPreviews, togglePreviews,
@@ -826,6 +965,7 @@ export function LogoProvider({
     sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat, refreshTemplates,
     inspectMode, toggleInspectMode,
     view, setView, picks, togglePick, clearPicks, updatePickInstruction,
+    codeOpen,
     sessions, activeSession, setActiveSession, beginAiSession, dismissSession,
   ]);
 

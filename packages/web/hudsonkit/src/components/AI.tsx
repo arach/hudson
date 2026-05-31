@@ -19,7 +19,7 @@ interface AIProps {
 
 export function AI({
   chat,
-  placeholder = 'Ask AI...',
+  placeholder = 'Ask AI',
   inputExtras,
   inputStatus,
   inputValue,
@@ -84,7 +84,7 @@ export function AI({
             <div
               className={`max-w-[85%] rounded-lg px-3 py-2 whitespace-pre-wrap break-words leading-relaxed ${
                 msg.role === 'user'
-                  ? 'bg-accent/10 text-accent-foreground border border-accent/20'
+                  ? 'bg-accent/10 text-foreground border border-accent/20'
                   : 'bg-muted/50 text-foreground border border-border/50'
               }`}
             >
@@ -100,7 +100,7 @@ export function AI({
                     .map(([k, v]) => `${k}: ${JSON.stringify(v)}`)
                     .join(', ');
                   return (
-                    <div key={i} className="text-[11px] text-cyan-400/70 mt-1 font-mono">
+                    <div key={i} className="text-[11px] text-info/80 mt-1 font-mono">
                       <span className="text-muted-foreground/80">{'↳ '}</span>
                       {name}({argStr})
                     </div>
@@ -115,7 +115,7 @@ export function AI({
         {isStreaming && messages[messages.length - 1]?.role !== 'assistant' && (
           <div className="flex justify-start">
             <div className="bg-muted/50 border border-border/50 rounded-lg px-3 py-2 text-muted-foreground">
-              <span className="animate-pulse">...</span>
+              <span className="animate-pulse">Thinking</span>
             </div>
           </div>
         )}
@@ -123,7 +123,7 @@ export function AI({
 
       {/* Error */}
       {error && (
-        <div className="px-3 py-2 bg-red-900/20 border-t border-red-500/30 text-red-400 text-[11px] flex items-center gap-2">
+        <div className="px-3 py-2 bg-destructive/10 border-t border-destructive/30 text-destructive text-[11px] flex items-center gap-2">
           <AlertCircle size={12} />
           <span className="truncate">{error.message || 'An error occurred'}</span>
         </div>
@@ -149,7 +149,7 @@ export function AI({
                   onClick={() => toggleAttachment(att.label)}
                   className={`text-[10px] px-2 py-0.5 rounded-full border transition-colors ${
                     isActive
-                      ? 'bg-cyan-500/15 text-cyan-300 border-cyan-500/40'
+                      ? 'bg-info/10 text-info border-info/30'
                       : 'text-muted-foreground/80 border-border hover:text-foreground hover:border-foreground/30'
                   }`}
                 >
@@ -188,7 +188,7 @@ export function AI({
             <button
               type="button"
               onClick={() => stop()}
-              className="p-1.5 rounded text-amber-400 hover:bg-amber-900/20 transition-colors"
+              className="p-1.5 rounded text-warning hover:bg-warning/10 transition-colors"
               title="Stop"
             >
               <Square size={12} />

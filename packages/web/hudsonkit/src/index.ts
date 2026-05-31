@@ -4,8 +4,9 @@
 // Types
 export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
 export type { HudsonAppBackend } from './types/backend';
+export type { HudsonCodeChatMessage, HudsonCodeChatSurface, HudsonCodeObject, HudsonCodeSurfaceConfig, HudsonCodeSurfacePlacement, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from './types/code';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
-export type { AppIntent, IntentCategory, IntentParameter, CatalogAppEntry, IntentCatalog } from './types/intent';
+export type { AppIntent, IntentCategory, IntentParameter, ServerIntent, CatalogAppEntry, IntentCatalog } from './types/intent';
 export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction, ServiceStatus } from './types/service';
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
 export type { EmbedSurface, EmbedSizing, AppExports } from './types/embed';
@@ -13,12 +14,19 @@ export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSep
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
+export * from './lib/cache';
+export { useCachedResource } from './hooks/useCachedResource';
+export type {
+  CachedResourceStatus,
+  UseCachedResourceOptions,
+  UseCachedResourceResult,
+} from './hooks/useCachedResource';
 export { InstanceProvider, useInstance, useOptionalInstance } from './context/InstanceContext';
 export type { InstanceContextValue } from './context/InstanceContext';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';
-export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment } from './hooks/useHudsonAI';
+export type { HudsonAIChat, UseHudsonAIOptions, AIAttachment, HudsonAIAgentTrace } from './hooks/useHudsonAI';
 export { useAssistant } from './hooks/useAssistant';
 export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 // Voice kit interface (types only — no runtime voice code).
@@ -28,8 +36,31 @@ export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
 export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
 export { useTerminalRelay } from './hooks/useTerminalRelay';
 export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
-export { HLogger, HMetrics, HObservability, HObservabilityDefault, HSpan, HTrace } from './observability';
+export {
+  HLogger,
+  HMetrics,
+  HObservability,
+  HObservabilityDefault,
+  HSpan,
+  HTrace,
+  dispatchHudsonAgentAction,
+  HUDSON_AGENT_ACTION_EVENT,
+  HudLogger,
+  HudLoggerStatusItem,
+  logHudsonAgentAction,
+  redactAgentActionValue,
+  summarizeHudLoggerEvents,
+  useHudLoggerEvents,
+  useHudLoggerSummary,
+} from './observability';
 export type {
+  HudLoggerProps,
+  HudLoggerScopeFilter,
+  HudLoggerStatusItemProps,
+  HudLoggerSummary,
+  HudLoggerUseEventsOptions,
+  HudsonAgentActionInput,
+  HudsonAgentActionStatus,
   HLogEvent,
   HLogInput,
   HLogLevel,
@@ -57,6 +88,7 @@ export {
   TerminalRelay,
   captureWorkspace,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
+  HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from './components/TerminalRelay';
 export type { HudsonTerminalVoiceTranscriptDetail } from './components/TerminalRelay';
 
@@ -70,6 +102,20 @@ export type { VoxAvailability } from './lib/voxProbe';
 export { safeLocalStorage, safeSessionStorage } from './lib/safe-storage';
 export type { SafeStorage } from './lib/safe-storage';
 export { createHudsonId } from './lib/id';
+export { agentCopy, agentCopyToClipboard } from './lib/agentCopy';
+export type { AgentCopyOptions, AgentCopyRenderer } from './lib/agentCopy';
+
+// Copy-context React surface (scope wrapper, themed button, context-menu hook)
+export {
+  CopyContextScope,
+  useCopyContextScope,
+  CopyContextButton,
+  useCopyContextInScope,
+} from './components/copy-context';
+export type {
+  CopyContextScopeProps,
+  CopyContextButtonProps,
+} from './components/copy-context';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
@@ -125,12 +171,12 @@ export type {
 export {
   CodeEditor,
   CodeViewer,
+  ObjectCodeSurface,
+  ObjectCodeWorkbench,
   TextDocumentProvider,
   TextDocumentSurface,
   TextDocumentSurfaceInner,
-  TextDiffSurface,
   createHudsonTextDocument,
-  createHudsonTextDiff,
   detectTextDocumentKind,
   inferDocumentLanguage,
   useTextDocument,
@@ -141,17 +187,12 @@ export type {
   CodeViewerProps,
   DocumentLanguage,
   HudsonTextDocument,
+  ObjectCodeSurfaceProps,
+  ObjectCodeWorkbenchProps,
   TextDocumentDetectionInput,
   TextDocumentContextValue,
   TextDocumentKind,
   TextDocumentMode,
   TextDocumentProviderProps,
   TextDocumentSurfaceProps,
-  HudsonTextDiff,
-  HudsonTextDiffSnapshot,
-  HudsonTextDocumentDiff,
-  HudsonTextPatchDiff,
-  TextDiffDetectionInput,
-  TextDiffLayout,
-  TextDiffSurfaceProps,
 } from './controls';

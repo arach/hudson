@@ -44,7 +44,7 @@ None of this is exposed by hudsonkit, so adoption is by-osmosis.
 
 Two concrete pressure points:
 
-1. **Logo Designer's "Animate" button** currently dispatches via `dataBus.pushDirect('logo-designer', 'animation-job', 'preframe-catalog', 'logo-animation-job')` — a cross-app coupling that requires Preframe to be running for an in-app affordance to work. The fix is to host animation programs as code inside Logo Designer (see HUD-009 — to be written). For the common in-browser case there's no backend at all; for any future server-touching cases (mp4 compile, AI-authored animation programs, render farm), Logo should reach its own backend under `/api/logo/animate/...`. The convention needs to be ready and obvious.
+1. **Logo Designer's "Animate" button** currently dispatches via `dataBus.pushDirect('logo-designer', 'animation-job', 'preframe-catalog', 'logo-animation-job')` — a cross-app coupling that requires Preframe to be running for an in-app affordance to work. The fix is to package Logo drawing nodes and SVG nodes as structured animatable targets (see HUD-009). For the common in-browser case there's no backend at all; for any future server-touching cases (mp4 compile, AI-authored animation programs, render farm), Logo should reach its own backend under `/api/logo/animate/...`. The convention needs to be ready and obvious.
 2. **The Preframe sibling-service experience** (catalog at `localhost:3100`, Hudson at `:3500`) creates fragility — port collisions, separate dev servers, graceful-degradation work, fetch-failure error surfaces. We just hardened the catalog with a checking/online/offline state machine + safe fetch wrapper. The same primitive should ship from hudsonkit so the next app that *could* be a sibling service is instead an `/api/{id}/...` namespace by default. Sibling services become an explicit escalation, not the path of least resistance.
 
 ## Where to harvest
@@ -59,7 +59,7 @@ Two concrete pressure points:
 
 None. HUD-008 is a documentation + small-helpers PR. It unblocks:
 
-- **HUD-009** (logo animation framework, to be written) — Logo Designer hosts `LogoAnimation` programs in template files for in-browser rendering, with optional backend escalation for mp4 compile and AI-authored programs. HUD-009 wants the HUD-008 conventions in place so it doesn't bake in another bespoke api-client.
+- **HUD-009** (drawing documents and animatable targets) — Logo extracts its drawing component layer first, then packages drawing nodes and marked SVG nodes as structured animation targets for Preframe. HUD-009 wants the HUD-008 conventions in place so any backend escalation does not bake in another bespoke api-client.
 - **Generalized Preframe decoupling** — if/when Preframe's catalog gets ported into Hudson, it lands as `/api/catalog/*` with `appStorage('catalog')`. The current sibling-service stays optional.
 
 ## What you ship

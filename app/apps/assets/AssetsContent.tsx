@@ -113,7 +113,7 @@ export function AssetsContent() {
               type="text"
               value={url}
               onChange={e => setUrl(e.target.value)}
-              placeholder="Paste URL to fetch images..."
+              placeholder="Paste URL to fetch images"
               className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[13px] text-white/80 placeholder:text-white/20 outline-none focus:border-cyan-500/30 transition-colors font-mono"
             />
           </div>

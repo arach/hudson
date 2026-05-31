@@ -15,7 +15,9 @@ import {
   CommandDock,
   TerminalDrawer,
   AppWindow,
+  SHELL_THEME,
 } from 'hudsonkit/shell';
+import { ObjectCodeSurface, ObjectCodeWorkbench } from 'hudsonkit/controls';
 import {
   useSaveIndicator,
   usePlatformLayout,
@@ -24,10 +26,20 @@ import {
   useAppSettings,
   captureWorkspace,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
+  HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, ContextMenuEntry } from 'hudsonkit';
-import { Volume2, VolumeX, Settings, Crosshair, Maximize2, Minimize2, RotateCcw, ScanSearch, Map as MapIcon, BookOpen, X, TerminalSquare, Layers, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square } from 'lucide-react';
+import {
+  HObservabilityDefault,
+  HUDSON_AGENT_ACTION_EVENT,
+  HudLogger,
+  HudLoggerStatusItem,
+  logHudsonAgentAction,
+  type HudsonAgentActionInput,
+  type HObservation,
+} from 'hudsonkit/observability';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from 'hudsonkit';
+import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -42,6 +54,7 @@ import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 import { HudsonTerminal } from './HudsonTerminal';
 import { WorkspaceAI, type WorkspaceAIComposerRequest } from './WorkspaceAI';
 import { HudsonAIRuntimeProvider } from './HudsonAIRuntimeContext';
+import { useAgentActionLog } from './useAgentActionLog';
 import type { HudsonAIToolContext } from './HudsonAIRuntimeContext';
 import { DataBusProvider, usePortBridge, useDataBus } from './DataBusContext';
 import { PipeConnectorLayer } from './PipeConnectorLayer';
@@ -61,6 +74,19 @@ import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
 import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
+import {
+  announceSettingChanged,
+  SettingChangedNotice,
+  useSettingChangedNotice,
+} from './SettingChangedNotice';
+import {
+  buildAppWindowContextMenu,
+  buildCanvasContextMenu,
+  buildDynamicWindowContextMenu,
+  hasInspectorSurface,
+  type ContextMenuMode,
+} from './contextMenus';
+import { installHudsonDevtoolsWelcome, showHudsonDevtoolsWelcome, type HudsonDevtoolsWelcomeInfo } from './devtoolsWelcome';
 
 // ---------------------------------------------------------------------------
 // Shell configuration — all tuneable defaults and timing constants
@@ -88,6 +114,10 @@ const DEFAULTS = {
   pan: { x: 0, y: 0 } as { x: number; y: number },
   zoom: 1 as number,
 };
+
+const TERMINAL_VOICE_SHORTCUT_LABEL = 'Cmd+Shift+M';
+const HUD_LOGGER_MAX_EVENTS = 240;
+const AGENT_ACTION_PERSIST_SEEN_LIMIT = 500;
 
 /** Window sizes used by the smart-tiler on first launch. */
 const TILE = {
@@ -125,6 +155,37 @@ function useCanvasMountTrace(label: string) {
     const delta = start ? `  Δ=${(t - start.startTime).toFixed(1)}ms` : '';
     console.log(`[perf] mount ${label}  @${t.toFixed(1)}ms${delta}`);
   }, []);
+}
+
+function observationData(event: HObservation): Record<string, unknown> {
+  return event.data && typeof event.data === 'object' && !Array.isArray(event.data)
+    ? event.data
+    : {};
+}
+
+function isPersistableAgentActionObservation(event: HObservation) {
+  const data = observationData(event);
+  return (
+    event.category === 'agent-action' ||
+    data.triggeredBy === 'agent' ||
+    data.source === 'workspace-ai' ||
+    data.source === 'logo-ai' ||
+    data.source === 'shaper-ai' ||
+    data.source === 'day-stack-ai' ||
+    data.source === 'openscout'
+  );
+}
+
+async function persistAgentActionObservation(event: HObservation) {
+  try {
+    await fetch('/api/agent-actions', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ event }),
+    });
+  } catch {
+    // The live in-memory log still works if the durable dev-local feed is unavailable.
+  }
 }
 
 function MountTrace({ label, children }: { label: string; children: ReactNode }) {
@@ -298,6 +359,95 @@ function ServiceStatusIndicator({ registry, onOpenSettings, serviceIds }: {
   );
 }
 
+function HudLoggerStatusButton({ onOpen }: { onOpen: () => void }) {
+  return (
+    <button
+      onClick={onOpen}
+      className="flex min-w-0 items-center rounded px-1 py-0.5 transition-colors hover:bg-muted/70 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+      title="Open Agent Actions"
+      aria-label="Open Agent Actions"
+    >
+      <HudLoggerStatusItem maxEvents={HUD_LOGGER_MAX_EVENTS} />
+    </button>
+  );
+}
+
+function HudLoggerOverlay({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  const replayEvents = useAgentActionLog({
+    limit: HUD_LOGGER_MAX_EVENTS,
+    refreshMs: 5000,
+    enabled: open,
+  });
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex bg-background/88 p-3 text-foreground backdrop-blur-md md:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Agent Actions"
+    >
+      <div className="flex min-h-0 w-full flex-col">
+        <div className="flex h-10 shrink-0 items-center justify-between border border-border border-b-0 bg-card/95 px-3 shadow-[var(--hud-shadow-nav)]">
+          <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
+            Agent Actions
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Close Agent Actions"
+            aria-label="Close Agent Actions"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <HudLogger
+          observability={HObservabilityDefault}
+          replayEvents={replayEvents}
+          maxEvents={HUD_LOGGER_MAX_EVENTS}
+          title="agent actions"
+          className="min-h-0 flex-1 rounded-t-none"
+          emptyMessage="No agent actions yet."
+          initialScope="agent-actions"
+        />
+      </div>
+    </div>
+  );
+}
+
+function renderStatusRightItems(appRight: ReactNode | null, loggerButton: ReactNode | null) {
+  if (!appRight && !loggerButton) return null;
+
+  return (
+    <div className="flex min-w-0 items-center gap-3 md:gap-4">
+      {appRight}
+      {appRight && loggerButton && (
+        <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
+      )}
+      {loggerButton}
+    </div>
+  );
+}
+
 function getWorkspaceServiceStatus(
   workspace: HudsonWorkspace,
   registry: ReturnType<typeof useServiceRegistry>,
@@ -424,6 +574,10 @@ function buildShellSettingsPatch(
       return typeof value === 'string' && /^[a-z][a-z0-9-]{1,64}$/.test(value)
         ? { template: value }
         : null;
+    case 'contextMenuMode':
+      return value === 'hudson-first' || value === 'chrome-first'
+        ? { contextMenuMode: value }
+        : null;
     case 'masterMute':
     case 'uiClickSounds':
     case 'uiTransitionSounds': {
@@ -536,6 +690,28 @@ export function WorkspaceShell({
   const [hasSession, setHasSession] = useState(false);
   const [bootPhase, setBootPhase] = useState<BootPhase>(bootMode === 'none' ? 'done' : 'brand');
   const [booted, setBooted] = useState(bootMode === 'none');
+
+  useEffect(() => {
+    HObservabilityDefault.setEnabled(true);
+
+    const seen = new Set<string>();
+    const order: string[] = [];
+    const unsubscribe = HObservabilityDefault.subscribe((event) => {
+      if (!isPersistableAgentActionObservation(event)) return;
+      if (seen.has(event.id)) return;
+
+      seen.add(event.id);
+      order.push(event.id);
+      while (order.length > AGENT_ACTION_PERSIST_SEEN_LIMIT) {
+        const oldest = order.shift();
+        if (oldest) seen.delete(oldest);
+      }
+
+      void persistAgentActionObservation(event);
+    });
+
+    return unsubscribe;
+  }, []);
 
   // Read session from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -719,11 +895,14 @@ interface AppHookData {
   appName: string;
   commands: CommandOption[];
   status: { label: string; color: StatusColor };
+  statusLeft: ReactNode | null;
+  statusRight: ReactNode | null;
   search: SearchConfig | null;
   navCenter: ReactNode | null;
   navActions: ReactNode | null;
   layoutMode: 'canvas' | 'panel' | 'focus';
   activeToolHint: string | null;
+  codeSurface: HudsonCodeSurfaceState | null;
 }
 
 // ---------------------------------------------------------------------------
@@ -736,11 +915,14 @@ function useAppHooks(config: WorkspaceAppConfig): AppHookData {
     appName: app.name,
     commands: app.hooks.useCommands(),
     status: app.hooks.useStatus(),
+    statusLeft: app.hooks.useStatusLeft?.() ?? null,
+    statusRight: app.hooks.useStatusRight?.() ?? null,
     search: app.hooks.useSearch?.() ?? null,
     navCenter: app.hooks.useNavCenter?.() ?? null,
     navActions: app.hooks.useNavActions?.() ?? null,
     layoutMode: app.hooks.useLayoutMode?.() ?? app.mode,
     activeToolHint: app.hooks.useActiveToolHint?.() ?? null,
+    codeSurface: app.hooks.useCodeSurface?.() ?? null,
   };
 }
 
@@ -1103,17 +1285,35 @@ function WorkspaceInner({
   // --- Dynamic windows (e.g. spawned terminals, not tied to static workspace apps) ---
   const [dynamicWindows, setDynamicWindows] = useState<DynamicWindowEntry[]>([]);
   const dynamicCountRef = useRef(0);
+  const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
   const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
+  const [showHudLogger, setShowHudLogger] = useState(false);
+  const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
-  const spawnTerminal = useCallback((cwd = '~') => {
+  const spawnTerminal = useCallback((
+    cwd = '~',
+    opts?: { backend?: 'pty' | 'tmux'; title?: string },
+  ) => {
     dynamicCountRef.current++;
     const n = dynamicCountRef.current;
     const offset = (n - 1) * 30;
     const shortCwd = cwd.replace(/^\/Users\/[^/]+/, '~');
+    const backend = opts?.backend ?? 'pty';
+    const id = `dyn-terminal-${n}`;
+    const tmuxSession = backend === 'tmux' ? `hudson-${id}` : undefined;
+    const title = opts?.title?.trim()
+      ? opts.title.trim()
+      : `Terminal ${n} — ${shortCwd}${backend === 'tmux' ? ' · tmux' : ''}`;
     const win: DynamicWindowEntry = {
-      id: `dyn-terminal-${n}`,
-      title: `Terminal ${n} — ${shortCwd}`,
-      render: () => <TerminalContent initialCwd={cwd} />,
+      id,
+      title,
+      render: () => (
+        <TerminalContent
+          initialCwd={cwd}
+          backend={backend}
+          tmuxSession={tmuxSession}
+        />
+      ),
       bounds: { x: -350 + offset, y: -250 + offset, w: 700, h: 500 },
     };
     setDynamicWindows(prev => [...prev, win]);
@@ -1233,6 +1433,21 @@ function WorkspaceInner({
   const [fsLeftOpen, setFsLeftOpen] = useState(true);
   const [fsRightOpen, setFsRightOpen] = useState(true);
   const pendingFullscreenHashRef = useRef<string | null>(null);
+  const fullscreenConfig = fullscreenAppId
+    ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
+    : null;
+  const fullscreenHook = fullscreenAppId
+    ? allAppHooksRaw.find(h => h.appId === fullscreenAppId)
+    : null;
+  const fullscreenLayoutMode = fullscreenHook?.layoutMode ?? fullscreenConfig?.app.mode ?? null;
+  const isCanvasFocusMode = !!fullscreenConfig && fullscreenLayoutMode === 'canvas';
+  const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
+  const fullscreenHasInspectorSurface = !!(
+    fullscreenConfig?.app.slots.Inspector ||
+    fullscreenConfig?.app.slots.RightPanel ||
+    fullscreenConfig?.app.tools?.length ||
+    fullscreenHasPorts
+  );
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal, { enabled: persistSession });
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
   const [terminalHeight, setTerminalHeight] = usePersistentState('hudson.termH', DEFAULTS.terminalHeight, { enabled: persistSession });
@@ -1275,15 +1490,43 @@ function WorkspaceInner({
 
   const [minimapCollapsed, setMinimapCollapsed] = usePersistentState('hudson.minimap', DEFAULTS.minimapCollapsed, { enabled: persistSession });
   const [showGuides, setShowGuides] = usePersistentState(`hudson.ws.${workspace.id}.guides`, DEFAULTS.showGuides, { enabled: persistSession });
+  const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(
+    `hudson.ws.${workspace.id}.codeWorkbenchSize`,
+    'half',
+    { enabled: persistSession },
+  );
+  const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeWorkbenchEditorWidth`,
+    420,
+    { enabled: persistSession },
+  );
+  const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeWorkbenchChatWidth`,
+    320,
+    { enabled: persistSession },
+  );
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const focusedCodeSurface = focused.codeSurface;
+  const focusedCodePlacement = focusedCodeSurface?.placement ?? focusedApp?.code?.placement ?? 'workbench';
+  const focusedCodeAvailable = Boolean(focusedCodeSurface?.object);
+  const focusedCodeInInspector = focusedCodeAvailable && focusedCodeSurface?.open === true && focusedCodePlacement === 'inspector';
+  const focusedCodeWorkbenchOpen = focusedCodeAvailable && focusedCodeSurface?.open === true && focusedCodePlacement === 'workbench';
+  const previousFocusedCodeWorkbenchOpenRef = useRef(false);
   const focusedHasPorts = appShowsPorts(focusedApp);
   const hasInspectorOrTools = !!(focusedApp && (focusedApp.slots.Inspector || focusedApp.tools?.length));
   const hasRightPanelSlot = !!focusedApp?.slots.RightPanel;
-  const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts);
+  const hasRightRailContent = !!focusedApp && (hasInspectorOrTools || hasRightPanelSlot || focusedHasPorts || focusedCodeAvailable);
   const showRightRail = showPanels || (isCanvasMode && hasRightRailContent);
   const effectiveRightWidth = showRightRail && !rightCollapsed ? rightWidth : 0;
+
+  useEffect(() => {
+    if (focusedCodeWorkbenchOpen && !previousFocusedCodeWorkbenchOpenRef.current && !rightCollapsed) {
+      setRightCollapsed(true);
+    }
+    previousFocusedCodeWorkbenchOpenRef.current = focusedCodeWorkbenchOpen;
+  }, [focusedCodeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
 
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
@@ -1414,6 +1657,48 @@ function WorkspaceInner({
     setShellSettings(DEFAULT_SHELL_SETTINGS);
   }, [setShellSettings]);
 
+  const contextMenuMode = shellSettings.contextMenuMode ?? DEFAULT_SHELL_SETTINGS.contextMenuMode;
+  const contextMenuActivationMode = contextMenuMode === 'chrome-first' ? 'modifier' : 'default';
+  const toggleContextMenuMode = useCallback(() => {
+    const nextMode = contextMenuMode === 'hudson-first' ? 'chrome-first' : 'hudson-first';
+    updateShellSettings({
+      contextMenuMode: nextMode,
+    });
+    announceSettingChanged({
+      id: 'context-menu-mode',
+      title: 'Right click updated',
+      valueLabel: nextMode === 'hudson-first' ? 'Hudson First' : 'Chrome First',
+      description: nextMode === 'hudson-first'
+        ? 'Right-click opens Hudson menus. Option-right-click opens Chrome Inspect Element.'
+        : 'Right-click opens Chrome Inspect Element. Option-right-click opens Hudson menus.',
+      locationLabel: 'Settings > Navigation > Right Click',
+    });
+  }, [contextMenuMode, updateShellSettings]);
+
+  const devtoolsWelcomeInfo = useMemo(() => ({
+    workspaceId: workspace.id,
+    workspaceName: workspace.name,
+    mode: frameMode,
+    contextMenuMode,
+    focusedAppId: focusedApp?.id ?? null,
+    focusedAppName: focusedApp?.name ?? null,
+    apps: workspace.apps.map(config => ({
+      id: config.app.id,
+      name: config.app.name,
+      mode: config.app.mode,
+      canvasMode: config.canvasMode ?? 'native',
+    })),
+  }), [workspace.id, workspace.name, workspace.apps, frameMode, contextMenuMode, focusedApp?.id, focusedApp?.name]);
+
+  useEffect(() => {
+    installHudsonDevtoolsWelcome(devtoolsWelcomeInfo);
+  }, [devtoolsWelcomeInfo]);
+
+  const openDevtoolsWelcome = useCallback(() => {
+    showHudsonDevtoolsWelcome(devtoolsWelcomeInfo);
+    setShowDevtoolsWelcome(true);
+  }, [devtoolsWelcomeInfo]);
+
   // --- Sound helper ---
   const playSound = useCallback(
     (name: string) => {
@@ -1425,6 +1710,70 @@ function WorkspaceInner({
     },
     [shellSettings.masterMute, shellSettings.uiClickSounds, shellSettings.uiTransitionSounds],
   );
+
+  useEffect(() => {
+    const onAgentAction = (event: Event) => {
+      const detail = (event as CustomEvent<HudsonAgentActionInput>).detail;
+      if (!detail || typeof detail !== 'object') return;
+      logHudsonAgentAction(detail);
+    };
+
+    window.addEventListener(HUDSON_AGENT_ACTION_EVENT, onAgentAction);
+    return () => window.removeEventListener(HUDSON_AGENT_ACTION_EVENT, onAgentAction);
+  }, []);
+
+  useEffect(() => {
+    const onOpenApp = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        appId?: string;
+        workspaceId?: string | null;
+        fullscreen?: boolean;
+      }>).detail;
+      const appId = typeof detail?.appId === 'string' ? detail.appId : '';
+      if (!appId) return;
+
+      if (allAppIds.includes(appId)) {
+        handleActivateApp(appId);
+        setFullscreenAppId(detail?.fullscreen ? appId : null);
+        setShowHudLogger(false);
+        setShowLauncher(false);
+        playSound('thock');
+        return;
+      }
+
+      const requestedWorkspaceId =
+        typeof detail?.workspaceId === 'string' ? detail.workspaceId : null;
+      const targetWorkspace = workspaces.find(candidate =>
+        (requestedWorkspaceId ? candidate.id === requestedWorkspaceId : true) &&
+        candidate.apps.some(config => config.app.id === appId),
+      ) ?? workspaces.find(candidate =>
+        candidate.apps.some(config => config.app.id === appId),
+      );
+
+      if (!targetWorkspace) return;
+      if (typeof window !== 'undefined') {
+        const hash = detail?.fullscreen
+          ? `focus=${encodeURIComponent(appId)}&fullscreen=${encodeURIComponent(appId)}`
+          : `focus=${encodeURIComponent(appId)}`;
+        window.location.hash = hash;
+      }
+      onSwitchWorkspace(targetWorkspace.id);
+      setShowHudLogger(false);
+      setShowLauncher(false);
+      playSound('thock');
+    };
+
+    window.addEventListener('hudson:open-app', onOpenApp);
+    return () => window.removeEventListener('hudson:open-app', onOpenApp);
+  }, [allAppIds, handleActivateApp, onSwitchWorkspace, playSound, workspaces]);
+
+  const openHudLogger = useCallback(() => {
+    setShowHudLogger(true);
+    setShowLauncher(false);
+    playSound('thock');
+  }, [playSound]);
+  const closeHudLogger = useCallback(() => setShowHudLogger(false), []);
+  const hudLoggerStatusButton = <HudLoggerStatusButton onOpen={openHudLogger} />;
 
   const startVoicePrompt = useCallback(() => {
     setShowTerminal(true);
@@ -1614,6 +1963,14 @@ function WorkspaceInner({
           }
         },
       },
+      ...(focusedCodeSurface?.object ? [{
+        id: `shell:code-surface:${focused.appId}`,
+        label: focusedCodeSurface.open
+          ? `Hide ${focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Code'}`
+          : (focusedApp?.code?.commandLabel ?? focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View Code'),
+        icon: <Code2 size={14} />,
+        action: () => focusedCodeSurface.setOpen(!focusedCodeSurface.open),
+      }] : []),
       {
         id: 'shell:toggle-left',
         label: 'Toggle Left Panel',
@@ -1736,6 +2093,10 @@ function WorkspaceInner({
       openSettings,
       openWorkspaceManager,
       startVoicePrompt,
+      focused.appId,
+      focusedApp?.code?.commandLabel,
+      focusedApp?.code?.label,
+      focusedCodeSurface,
     ],
   );
 
@@ -1809,48 +2170,26 @@ function WorkspaceInner({
   }, [focusedAppId, fullscreenAppId]);
 
   // --- Canvas context menu ---
-  const canvasContextMenuItems: ContextMenuEntry[] = useMemo(() => [
-    {
-      id: 'canvas:new-terminal',
-      label: 'New Terminal...',
-      icon: <TerminalSquare size={12} />,
-      action: () => setShowTerminalSpawn(true),
-    },
-    { type: 'separator' },
-    {
-      id: 'canvas:reset-view',
-      label: 'Reset View',
-      shortcut: '⌘0',
-      icon: <RotateCcw size={12} />,
-      action: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
-    },
-    {
-      id: 'canvas:fit-all',
-      label: 'Fit All in View',
-      icon: <Maximize2 size={12} />,
-      action: handleFitAll,
-    },
-    {
-      id: 'canvas:reset-all-windows',
-      label: 'Reset All Windows',
-      icon: <RotateCcw size={12} />,
-      action: handleResetAllWindows,
-    },
-    { type: 'separator' },
-    {
-      id: 'canvas:toggle-guides',
-      label: showGuides ? 'Hide Guides' : 'Show Guides',
-      shortcut: '⌘\\',
-      icon: <Crosshair size={12} />,
-      action: () => setShowGuides(g => !g),
-    },
-    {
-      id: 'canvas:toggle-minimap',
-      label: minimapCollapsed ? 'Show Minimap' : 'Hide Minimap',
-      icon: <MapIcon size={12} />,
-      action: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
-    },
-  ], [showGuides, minimapCollapsed, handleFitAll, handleResetAllWindows, playSound, setMinimapCollapsed, spawnTerminal]);
+  const canvasContextMenuItems = useMemo(() => buildCanvasContextMenu({
+    showGuides,
+    minimapCollapsed,
+    onNewTerminal: () => setShowTerminalSpawn(true),
+    onResetView: () => { setPanOffset({ x: 0, y: 0 }); setScale(1); playSound('blipUp'); },
+    onFitAll: handleFitAll,
+    onResetAllWindows: handleResetAllWindows,
+    onToggleGuides: () => setShowGuides(g => !g),
+    onToggleMinimap: () => { setMinimapCollapsed(c => !c); playSound('thock'); },
+    onOpenDevtools: openDevtoolsWelcome,
+  }), [
+    showGuides,
+    minimapCollapsed,
+    playSound,
+    handleFitAll,
+    handleResetAllWindows,
+    spawnTerminal,
+    setMinimapCollapsed,
+    openDevtoolsWelcome,
+  ]);
 
   // --- Shell layout context ---
   const shellLayout = useMemo(
@@ -1865,6 +2204,10 @@ function WorkspaceInner({
     }),
     [showLeftNavigation, leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
   );
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const canvasHeightAboveTerminal = viewport.height - SHELL_THEME.layout.statusBarHeight - terminalCanvasBottomOffset;
+  const showCanvasZoomControls = !showTerminal
+    || (!isTerminalMaximized && (viewport.height === 0 || canvasHeightAboveTerminal >= 160));
 
   // --- Left panel footer ---
   const leftFooter = (
@@ -1912,7 +2255,13 @@ function WorkspaceInner({
   );
 
   // --- Left/Right sidebar content ---
-  const leftPanelContent = isSingleApp ? (
+  const leftPanelContent = isCanvasFocusMode && fullscreenConfig ? (
+    fullscreenConfig.app.slots.LeftPanel && (
+      <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="LeftPanel">
+        <fullscreenConfig.app.slots.LeftPanel />
+      </AppSlotErrorBoundary>
+    )
+  ) : isSingleApp ? (
     singleApp?.slots.LeftPanel && (
       <AppSlotErrorBoundary appName={singleApp.name} slotName="LeftPanel">
         <singleApp.slots.LeftPanel />
@@ -1952,6 +2301,14 @@ function WorkspaceInner({
   // --- Right panel content: app inspector, tools, and ports ---
   const rightPanelContent = focusedApp ? (
     <>
+      {focusedCodeInInspector && focusedCodeSurface?.object && (
+        <ObjectCodeSurface
+          object={focusedCodeSurface.object}
+          placement="inspector"
+          onClose={() => focusedCodeSurface.setOpen(false)}
+          className="min-h-[420px]"
+        />
+      )}
       {focusedHasPorts && (
         <PortInspector appId={focusedApp.id} />
       )}
@@ -1976,19 +2333,43 @@ function WorkspaceInner({
   ) : null;
 
   // --- Panel titles ---
-  const leftPanelTitle = isSingleApp
+  const leftPanelTitle = isCanvasFocusMode && fullscreenConfig
+    ? (fullscreenConfig.app.leftPanel?.title ?? 'Navigation')
+    : isSingleApp
     ? (singleApp?.leftPanel?.title ?? 'Navigation')
     : 'Navigation';
   const rightPanelTitle = isSingleApp
     ? (singleApp?.rightPanel?.title ?? 'Inspector')
     : 'Inspector';
-  const leftPanelIcon = isSingleApp ? singleApp?.leftPanel?.icon : undefined;
-  const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedHasPorts ? <Activity size={12} /> : undefined);
+  const leftPanelIcon = isCanvasFocusMode && fullscreenConfig
+    ? fullscreenConfig.app.leftPanel?.icon
+    : isSingleApp ? singleApp?.leftPanel?.icon : undefined;
+  const rightPanelIcon = focusedApp?.rightPanel?.icon ?? (focusedCodeAvailable ? <Code2 size={12} /> : focusedHasPorts ? <Activity size={12} /> : undefined);
   const leftHeaderActions = isSingleApp && singleApp?.leftPanel?.headerActions
     ? <singleApp.leftPanel.headerActions />
     : undefined;
-  const rightHeaderActions = focusedApp?.rightPanel?.headerActions
-    ? <focusedApp.rightPanel.headerActions />
+  const codeSurfaceHeaderAction = focusedCodeSurface?.object ? (
+    <button
+      type="button"
+      onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
+      className={`rounded p-1 transition-colors ${
+        focusedCodeSurface.open
+          ? 'bg-cyan-700/10 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200'
+          : 'text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground'
+      }`}
+      title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+      aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+    >
+      <Code2 size={12} />
+    </button>
+  ) : null;
+  const rightHeaderActions = codeSurfaceHeaderAction || focusedApp?.rightPanel?.headerActions
+    ? (
+      <div className="flex items-center gap-1">
+        {codeSurfaceHeaderAction}
+        {focusedApp?.rightPanel?.headerActions && <focusedApp.rightPanel.headerActions />}
+      </div>
+    )
     : undefined;
 
   const { pushPipe, createPipe, deletePipe, getPortCatalog, pipes } = useDataBus();
@@ -2479,7 +2860,9 @@ function WorkspaceInner({
     () => ({ workspaceId: workspace.id }),
     [workspace.id],
   );
+  const [terminalVoiceDraftSubmitted, setTerminalVoiceDraftSubmitted] = useState(false);
   const handleTerminalVoiceTranscript = useCallback((transcript: string) => {
+    setTerminalVoiceDraftSubmitted(shellSettings.voice.autoSend);
     window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
       detail: {
         transcript,
@@ -2496,6 +2879,7 @@ function WorkspaceInner({
   const {
     status: terminalVoiceStatus,
     error: terminalVoiceError,
+    lastTranscript: terminalVoiceLastTranscript,
     isSupported: terminalVoiceSupported,
     start: startTerminalVoice,
     stop: stopTerminalVoice,
@@ -2503,8 +2887,14 @@ function WorkspaceInner({
   const terminalVoiceRecording = terminalVoiceStatus === 'recording';
   const terminalVoiceTranscribing = terminalVoiceStatus === 'transcribing';
   const terminalVoiceAvailable = consoleWorkspaceKind === 'terminal';
+  const terminalVoiceCanQuickSubmit =
+    terminalVoiceAvailable
+    && terminalVoiceStatus === 'ready'
+    && Boolean(terminalVoiceLastTranscript)
+    && !shellSettings.voice.autoSend
+    && !terminalVoiceDraftSubmitted;
   const handleTerminalVoiceClick = useCallback(() => {
-    if (!terminalVoiceAvailable) return;
+    if (!terminalVoiceSupported || terminalVoiceTranscribing) return;
 
     setShowTerminal(true);
     openWorkspaceConsole('terminal');
@@ -2514,6 +2904,7 @@ function WorkspaceInner({
       return;
     }
 
+    setTerminalVoiceDraftSubmitted(false);
     void registerHudsonVoxIntegration()
       .catch(error => {
         console.warn('[WorkspaceShell] Vox integration registration failed:', error);
@@ -2521,16 +2912,42 @@ function WorkspaceInner({
       .finally(() => {
         void startTerminalVoice();
       });
-  }, [openWorkspaceConsole, setShowTerminal, startTerminalVoice, stopTerminalVoice, terminalVoiceAvailable, terminalVoiceRecording]);
+  }, [
+    openWorkspaceConsole,
+    setShowTerminal,
+    startTerminalVoice,
+    stopTerminalVoice,
+    terminalVoiceRecording,
+    terminalVoiceSupported,
+    terminalVoiceTranscribing,
+  ]);
+  const handleTerminalVoiceSubmit = useCallback(() => {
+    window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT));
+    setTerminalVoiceDraftSubmitted(true);
+    playSound('blipUp');
+  }, [playSound]);
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.repeat) return;
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey || event.key.toLowerCase() !== 'm') return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleTerminalVoiceClick();
+    };
+
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [handleTerminalVoiceClick]);
   const terminalVoiceTitle = (() => {
-    if (!terminalVoiceAvailable) return 'Switch to Terminal to record voice';
+    if (!terminalVoiceAvailable) return `Switch to Terminal and record voice (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
     if (!terminalVoiceSupported) return 'Voice input is not supported in this browser';
     if (terminalVoiceError) return terminalVoiceError;
-    if (terminalVoiceRecording) return 'Stop recording';
+    if (terminalVoiceRecording) return `Stop recording (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
     if (terminalVoiceTranscribing) return 'Transcribing voice prompt';
+    if (terminalVoiceCanQuickSubmit) return 'Voice draft ready';
     return shellSettings.voice.autoSend
-      ? 'Record and send voice prompt'
-      : 'Record voice prompt';
+      ? `Record and send voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`
+      : `Record voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
   })();
 
   // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
@@ -2611,6 +3028,7 @@ function WorkspaceInner({
         }`}
         title={terminalVoiceTitle}
         aria-label={terminalVoiceTitle}
+        aria-keyshortcuts="Meta+Shift+M Control+Shift+M"
       >
         {terminalVoiceTranscribing
           ? <Loader2 size={14} className="animate-spin" />
@@ -2618,13 +3036,26 @@ function WorkspaceInner({
             ? <Square size={13} />
             : <Mic size={15} />}
       </button>
-      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable') && (
+      {terminalVoiceCanQuickSubmit && (
+        <button
+          type="button"
+          onClick={handleTerminalVoiceSubmit}
+          className="ml-0.5 flex h-8 w-8 items-center justify-center rounded-full border border-emerald-600/25 bg-emerald-600/10 text-emerald-700 transition-colors hover:border-emerald-600/35 hover:bg-emerald-600/15 dark:border-emerald-400/25 dark:bg-emerald-500/10 dark:text-emerald-200 dark:hover:border-emerald-300/40"
+          title="Submit pasted voice prompt"
+          aria-label="Submit pasted voice prompt"
+        >
+          <CornerDownLeft size={14} />
+        </button>
+      )}
+      {(terminalVoiceRecording || terminalVoiceTranscribing || terminalVoiceError || terminalVoiceStatus === 'unavailable' || terminalVoiceCanQuickSubmit) && (
         <div className="max-w-[220px] pr-2 text-[10px] font-mono uppercase tracking-[0.12em]">
           {terminalVoiceRecording
             ? 'Recording'
             : terminalVoiceTranscribing
               ? 'Transcribing'
-              : terminalVoiceError || 'Unavailable'}
+              : terminalVoiceCanQuickSubmit
+                ? 'Ready'
+                : terminalVoiceError || 'Unavailable'}
         </div>
       )}
     </div>
@@ -2718,14 +3149,30 @@ function WorkspaceInner({
   // --- World content (always rendered — launcher overlays on top) ---
   const SingleContent = singleApp?.slots.Content ?? null;
   const singleAppConfig = isSingleApp ? workspace.apps[0] : null;
+  const CanvasFocusContent = isCanvasFocusMode ? fullscreenConfig?.app.slots.Content ?? null : null;
+  const canvasFocusContentNode = isCanvasFocusMode && fullscreenConfig && CanvasFocusContent ? (
+    <ServiceBanner appConfig={fullscreenConfig} onOpenServices={openWorkspaceManager}>
+      <AppSlotErrorBoundary appName={fullscreenConfig.app.name} slotName="Content">
+        <CanvasFocusContent />
+      </AppSlotErrorBoundary>
+    </ServiceBanner>
+  ) : null;
+  const singleContentNode = isSingleApp && SingleContent && singleAppConfig ? (
+    <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
+      <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
+        <SingleContent />
+      </AppSlotErrorBoundary>
+    </ServiceBanner>
+  ) : null;
+  const focusedCanvasContentNode = canvasFocusContentNode ?? singleContentNode;
   const worldContent = (
     <div data-hudson-world>
-      {isSingleApp && SingleContent && singleAppConfig ? (
-        <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
-          <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
-            <SingleContent />
-          </AppSlotErrorBoundary>
-        </ServiceBanner>
+      {focusedCanvasContentNode ? (
+        isCanvasMode ? (
+          <div className="pointer-events-auto" style={{ transform: 'translate(-50%, -50%)' }}>
+            {focusedCanvasContentNode}
+          </div>
+        ) : focusedCanvasContentNode
       ) : (
         <MultiAppCanvas
           workspace={workspace}
@@ -2740,6 +3187,10 @@ function WorkspaceInner({
           showLauncher={showLauncher}
           onOpenServices={openWorkspaceManager}
           onOpenInspector={() => setRightCollapsed(false)}
+          onCloseInspector={() => setRightCollapsed(true)}
+          isInspectorOpen={!rightCollapsed}
+          onOpenDevtools={openDevtoolsWelcome}
+          contextMenuActivationMode={contextMenuActivationMode}
           dynamicWindows={dynamicWindows}
           onCloseDynamicWindow={closeDynamicWindow}
           zOrderMap={zOrderMap}
@@ -2783,17 +3234,6 @@ function WorkspaceInner({
     onResetShellSettings: resetShellSettings,
   }), [fullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
 
-  // --- Fullscreen app config ---
-  const fullscreenConfig = fullscreenAppId
-    ? fullWorkspace.apps.find(c => c.app.id === fullscreenAppId)
-    : null;
-  const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
-  const fullscreenHasInspectorSurface = !!(
-    fullscreenConfig?.app.slots.Inspector ||
-    fullscreenConfig?.app.slots.RightPanel ||
-    fullscreenConfig?.app.tools?.length ||
-    fullscreenHasPorts
-  );
   const hudsonAIRuntime = useMemo(() => ({
     workspace,
     onToolCall: handleWorkspaceToolCall,
@@ -2817,8 +3257,8 @@ function WorkspaceInner({
     <ServiceRegistryProvider value={serviceRegistry}>
     <WorkspaceManagerProvider value={wmData}>
     <ShellLayoutProvider value={shellLayout}>
-      {/* Fullscreen app mode — escapes the canvas entirely */}
-      {fullscreenConfig ? (
+      {/* Focus mode: canvas apps stay in the Hudson canvas; panel apps use the fullscreen layout. */}
+      {fullscreenConfig && !isCanvasFocusMode ? (
         <div className="h-screen flex flex-col bg-background text-foreground">
           {/* Header bar */}
           <div className="h-10 shrink-0 flex items-center px-3 gap-2 border-b border-border bg-background/95 backdrop-blur-xl shadow-[var(--hud-shadow-nav)]">
@@ -2926,8 +3366,16 @@ function WorkspaceInner({
             status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
             onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
             isTerminalOpen={showTerminal}
+            right={renderStatusRightItems(
+              allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusRight ?? null,
+              hudLoggerStatusButton,
+            )}
             left={
               <div className="flex items-center gap-4">
+                {allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusLeft}
+                {allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusLeft && (
+                  <div className="h-3 w-px bg-border" />
+                )}
                 {workspaceServiceIds.length > 0 && (
                   <>
                     <ServiceStatusIndicator
@@ -2998,9 +3446,12 @@ function WorkspaceInner({
         onViewportChange={setViewport}
         zoomSensitivity={shellSettings.zoomSensitivity}
         zoomControlsRightOffset={effectiveRightWidth}
+        zoomControlsBottomOffset={terminalCanvasBottomOffset}
+        showZoomControls={showCanvasZoomControls}
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
+          canvasContextMenuActivationMode: contextMenuActivationMode,
         } : {})}
         hud={
           <>
@@ -3019,10 +3470,35 @@ function WorkspaceInner({
                   />
                 }
                 search={focused.search ?? undefined}
-                center={isSingleApp ? focused.navCenter : undefined}
+                center={(isSingleApp || isCanvasFocusMode) ? focused.navCenter : undefined}
                 actions={
                   <>
                     {focused.navActions}
+                    {focusedCodeSurface?.object && focusedApp?.code?.navAction === true && (
+                      <button
+                        type="button"
+                        onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
+                        className={`p-1.5 rounded border transition-colors ${
+                          focusedCodeSurface.open
+                            ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                            : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
+                        }`}
+                        title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                        aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                      >
+                        <Code2 size={14} />
+                      </button>
+                    )}
+                    {isCanvasFocusMode && (
+                      <button
+                        onClick={exitFullscreen}
+                        className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
+                        title="Exit Focus Mode"
+                        aria-label="Exit Focus Mode"
+                      >
+                        <Minimize2 size={14} />
+                      </button>
+                    )}
                     <a
                       href="/docs"
                       target="_blank"
@@ -3103,8 +3579,13 @@ function WorkspaceInner({
                 }}
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
+                right={renderStatusRightItems(focused.statusRight, hudLoggerStatusButton)}
                 left={
                 <div className="flex items-center gap-4">
+                  {focused.statusLeft}
+                  {focused.statusLeft && (
+                    <div className="h-3 w-px bg-border" />
+                  )}
                   {workspaceServiceIds.length > 0 && (
                     <>
                       <ServiceStatusIndicator
@@ -3174,20 +3655,52 @@ function WorkspaceInner({
               </TerminalDrawer>
             </div>
 
+            {focusedCodeSurface?.open && focusedCodeSurface.object && focusedCodePlacement === 'sheet' && (
+              <div
+                className="pointer-events-auto fixed bottom-7 right-0 top-12 z-[44]"
+                aria-label={focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Object code'}
+              >
+                <ObjectCodeSurface
+                  object={focusedCodeSurface.object}
+                  placement="sheet"
+                  onClose={() => focusedCodeSurface.setOpen(false)}
+                />
+              </div>
+            )}
+
+            {focusedCodeSurface?.open && focusedCodeSurface.object && focusedCodePlacement === 'workbench' && (
+              <div
+                className="pointer-events-none fixed bottom-7 top-12 z-[44]"
+                style={{
+                  left: codeWorkbenchSize === 'full'
+                    ? 0
+                    : showLeftNavigation && !leftCollapsed
+                      ? leftWidth
+                      : 0,
+                  right: codeWorkbenchSize === 'full' ? 0 : effectiveRightWidth,
+                }}
+                aria-label={focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Object code'}
+              >
+                <ObjectCodeWorkbench
+                  object={focusedCodeSurface.object}
+                  size={codeWorkbenchSize}
+                  onSizeChange={setCodeWorkbenchSize}
+                  onClose={() => focusedCodeSurface.setOpen(false)}
+                  chat={focusedCodeSurface.chat}
+                  editorWidth={codeWorkbenchEditorWidth}
+                  chatWidth={codeWorkbenchChatWidth}
+                  onEditorWidthChange={setCodeWorkbenchEditorWidth}
+                  onChatWidthChange={setCodeWorkbenchChatWidth}
+                />
+              </div>
+            )}
+
             {/* Command palette */}
             <CommandPalette
               isOpen={showCommandPalette}
               onClose={() => setShowCommandPalette(false)}
               commands={allCommands}
             />
-
-            {/* Terminal spawn dialog */}
-            {showTerminalSpawn && (
-              <TerminalSpawnDialog
-                onSpawn={(cwd) => { spawnTerminal(cwd); setShowTerminalSpawn(false); }}
-                onClose={() => setShowTerminalSpawn(false)}
-              />
-            )}
 
             {/* App launcher overlay (rendered in HUD layer to escape canvas transform) */}
             {showLauncher && launcherReady && (
@@ -3210,6 +3723,41 @@ function WorkspaceInner({
         isOpen={showWorkspaceManager}
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
+      />
+      <HudLoggerOverlay
+        open={showHudLogger}
+        onClose={closeHudLogger}
+      />
+      {showTerminalSpawn && (
+        <TerminalSpawnDialog
+          onSpawn={(cwd, opts) => {
+            spawnTerminal(cwd, opts);
+            setShowTerminalSpawn(false);
+          }}
+          onClose={() => setShowTerminalSpawn(false)}
+        />
+      )}
+      {showDevtoolsWelcome && (
+        <DevtoolsIntegrationDialog
+          info={devtoolsWelcomeInfo}
+          mode={contextMenuMode}
+          onClose={() => setShowDevtoolsWelcome(false)}
+          onToggleContextMenuMode={toggleContextMenuMode}
+          onOpenSettings={() => {
+            setShowDevtoolsWelcome(false);
+            openSettings('settings');
+          }}
+          onShowConsole={() => showHudsonDevtoolsWelcome(devtoolsWelcomeInfo)}
+        />
+      )}
+      <SettingChangedNotice
+        notice={settingChangedNotice}
+        onDismiss={() => setSettingChangedNotice(null)}
+        onOpenSettings={() => {
+          setSettingChangedNotice(null);
+          setShowDevtoolsWelcome(false);
+          openSettings('settings');
+        }}
       />
     </ShellLayoutProvider>
     </WorkspaceManagerProvider>
@@ -3241,6 +3789,10 @@ function MultiAppCanvas({
   showLauncher,
   onOpenServices,
   onOpenInspector,
+  onCloseInspector,
+  isInspectorOpen,
+  onOpenDevtools,
+  contextMenuActivationMode,
   dynamicWindows,
   onCloseDynamicWindow,
   zOrderMap,
@@ -3262,6 +3814,10 @@ function MultiAppCanvas({
   showLauncher: boolean;
   onOpenServices: () => void;
   onOpenInspector: () => void;
+  onCloseInspector: () => void;
+  isInspectorOpen: boolean;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
   dynamicWindows: DynamicWindowEntry[];
   onCloseDynamicWindow: (id: string) => void;
   zOrderMap: Record<string, number>;
@@ -3363,6 +3919,10 @@ function MultiAppCanvas({
                 onReportBounds={onReportBounds}
                 onOpenServices={onOpenServices}
                 onOpenInspector={onOpenInspector}
+                onCloseInspector={onCloseInspector}
+                isInspectorOpen={config.app.id === focusedAppId && isInspectorOpen}
+                onOpenDevtools={onOpenDevtools}
+                contextMenuActivationMode={contextMenuActivationMode}
                 navCenter={appHooksMap[config.app.id]?.navCenter ?? null}
                 onEnterFullscreen={() => onEnterFullscreen(config.app.id)}
               />
@@ -3389,6 +3949,8 @@ function MultiAppCanvas({
                 onFocus={() => onFocusApp(dw.id)}
                 onClose={() => onCloseDynamicWindow(dw.id)}
                 worldScale={worldScale}
+                onOpenDevtools={onOpenDevtools}
+                contextMenuActivationMode={contextMenuActivationMode}
               />
             </MountTrace>
           </motion.div>
@@ -3407,15 +3969,38 @@ function DynamicWindowedApp({
   onFocus,
   onClose,
   worldScale,
+  onOpenDevtools,
+  contextMenuActivationMode,
 }: {
   win: DynamicWindowEntry;
   isFocused: boolean;
   onFocus: () => void;
   onClose: () => void;
   worldScale: number;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
 }) {
   useCanvasMountTrace(`DynamicWindowedApp:${win.id}`);
   const [bounds, setBounds] = useState(win.bounds);
+  const initialBoundsRef = useRef(win.bounds);
+  const handleBringToCenter = useCallback(() => {
+    setBounds(prev => ({
+      ...prev,
+      x: -(prev.w / 2),
+      y: -(prev.h / 2),
+    }));
+  }, []);
+  const handleResetWindow = useCallback(() => {
+    setBounds(initialBoundsRef.current);
+  }, []);
+  const contextMenuItems = useMemo(() => buildDynamicWindowContextMenu({
+    windowId: win.id,
+    onFocus,
+    onBringToCenter: handleBringToCenter,
+    onResetWindow: handleResetWindow,
+    onClose,
+    onOpenDevtools,
+  }), [win.id, onFocus, handleBringToCenter, handleResetWindow, onClose, onOpenDevtools]);
 
   return (
     <AppWindow
@@ -3426,6 +4011,9 @@ function DynamicWindowedApp({
       onFocus={onFocus}
       onClose={onClose}
       worldScale={worldScale}
+      contextMenuItems={contextMenuItems}
+      contextMenuScope="chrome"
+      contextMenuActivationMode={contextMenuActivationMode}
     >
       {win.render()}
     </AppWindow>
@@ -3433,16 +4021,37 @@ function DynamicWindowedApp({
 }
 
 // ---------------------------------------------------------------------------
-// TerminalSpawnDialog — lightweight popover to set CWD before spawning
+// TerminalSpawnDialog — 2-step wizard: directory presets → identity + backend.
+// Same shape as the canvas-terminals studio exhibit; eventually both surfaces
+// should share the wizard primitive.
 // ---------------------------------------------------------------------------
-function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => void; onClose: () => void }) {
-  const [cwd, setCwd] = useState('~');
-  const inputRef = useRef<HTMLInputElement>(null);
+type SpawnBackend = 'pty' | 'tmux';
 
-  useEffect(() => {
-    inputRef.current?.focus();
-    inputRef.current?.select();
-  }, []);
+interface CwdPreset {
+  label: string;
+  cwd: string;
+}
+
+const SPAWN_PRESETS: CwdPreset[] = [
+  { label: '~/dev/hudson', cwd: '/Users/arach/dev/hudson' },
+  { label: '~/dev/studio', cwd: '/Users/arach/dev/studio' },
+  { label: '~', cwd: '~' },
+];
+
+function TerminalSpawnDialog({
+  onSpawn,
+  onClose,
+}: {
+  onSpawn: (cwd: string, opts: { backend: SpawnBackend; title: string }) => void;
+  onClose: () => void;
+}) {
+  const [step, setStep] = useState<1 | 2>(1);
+  const [cwd, setCwd] = useState('');
+  const [customCwd, setCustomCwd] = useState('');
+  const [title, setTitle] = useState('');
+  const [backend, setBackend] = useState<SpawnBackend>('pty');
+  const customInputRef = useRef<HTMLInputElement>(null);
+  const titleInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
@@ -3452,55 +4061,339 @@ function TerminalSpawnDialog({ onSpawn, onClose }: { onSpawn: (cwd: string) => v
     return () => window.removeEventListener('keydown', handler);
   }, [onClose]);
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    onSpawn(cwd.trim() || '~');
+  useEffect(() => {
+    if (step === 1 && cwd === '__custom__') customInputRef.current?.focus();
+    if (step === 2) {
+      titleInputRef.current?.focus();
+      titleInputRef.current?.select();
+    }
+  }, [step, cwd]);
+
+  const resolvedCwd = cwd === '__custom__' ? customCwd.trim() || '~' : cwd;
+
+  const advance = (nextCwd: string) => {
+    setCwd(nextCwd);
+    setTitle(prettyCwdShort(nextCwd));
+    setStep(2);
+  };
+
+  const commit = () => {
+    if (!resolvedCwd) return;
+    onSpawn(resolvedCwd, { backend, title });
   };
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center" onClick={onClose}>
       <div
-        className="rounded-lg border border-border shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
-        style={{ background: 'rgba(18, 18, 18, 0.97)', backdropFilter: 'blur(20px)' }}
+        className="rounded-lg border border-border bg-popover/95 text-popover-foreground shadow-[0_0_40px_rgba(0,0,0,0.6)] overflow-hidden w-[380px]"
+        style={{ backdropFilter: 'blur(20px)' }}
         onClick={(e) => e.stopPropagation()}
       >
-        <form onSubmit={handleSubmit}>
-          <div className="px-4 pt-4 pb-2">
-            <div className="flex items-center gap-2 mb-3">
-              <TerminalSquare size={14} className="text-foreground/80" />
-              <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+        <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
+          <div className="flex items-center gap-2">
+            <TerminalSquare size={14} className="text-foreground/80" />
+            <span className="text-[12px] font-mono text-foreground tracking-wider">New Terminal</span>
+            <span className="text-[10px] font-mono text-muted-foreground">
+              · {step === 1 ? '1 / 2 directory' : '2 / 2 identity'}
+            </span>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="text-muted-foreground hover:text-foreground"
+            aria-label="Close"
+          >
+            ×
+          </button>
+        </div>
+
+        {step === 1 ? (
+          <div className="p-3 space-y-1.5">
+            <div className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider px-1 pb-1">
+              starting directory
             </div>
-            <label className="text-[10px] font-mono text-muted-foreground uppercase tracking-wider mb-1.5 block">
-              Working Directory
-            </label>
-            <input
-              ref={inputRef}
-              type="text"
-              value={cwd}
-              onChange={(e) => setCwd(e.target.value)}
-              placeholder="~/dev/my-project"
-              className="w-full bg-muted/80 border border-border rounded px-3 py-2 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40 transition-colors"
-              spellCheck={false}
-              autoComplete="off"
-            />
+            {SPAWN_PRESETS.map((preset) => (
+              <button
+                key={preset.cwd}
+                type="button"
+                onClick={() => advance(preset.cwd)}
+                className="flex w-full items-center gap-2.5 rounded border border-border bg-muted/40 px-3 py-2 text-left hover:border-foreground/30 hover:bg-muted/70 transition-colors"
+              >
+                <span className="font-mono text-[12px] text-foreground">{preset.label}</span>
+                <span className="ml-auto text-[9.5px] font-mono uppercase tracking-wider text-muted-foreground">
+                  shell
+                </span>
+              </button>
+            ))}
+            {cwd === '__custom__' ? (
+              <div className="rounded border border-border bg-muted/40 p-2">
+                <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground mb-1.5">
+                  custom path
+                </div>
+                <input
+                  ref={customInputRef}
+                  type="text"
+                  value={customCwd}
+                  onChange={(e) => setCustomCwd(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter') advance('__custom__');
+                  }}
+                  placeholder="/path/to/dir or ~/shortcut"
+                  className="w-full bg-background/60 border border-border rounded px-2 py-1 text-[12px] font-mono text-foreground placeholder:text-muted-foreground outline-none focus:border-accent/40"
+                  spellCheck={false}
+                  autoComplete="off"
+                />
+                <div className="mt-2 flex justify-end">
+                  <button
+                    type="button"
+                    onClick={() => advance('__custom__')}
+                    className="text-[10px] font-mono uppercase tracking-wider px-2 py-0.5 rounded border border-border text-foreground hover:border-foreground/40"
+                  >
+                    next →
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCwd('__custom__')}
+                className="flex w-full items-center gap-2.5 rounded border border-dashed border-border bg-muted/20 px-3 py-2 text-left hover:border-foreground/30 hover:bg-muted/50 transition-colors"
+              >
+                <span className="font-mono text-[12px] text-foreground/80">custom path…</span>
+              </button>
+            )}
           </div>
-          <div className="flex items-center justify-end gap-2 px-4 py-3 border-t border-border">
-            <button
-              type="button"
-              onClick={onClose}
-              className="text-[11px] px-3 py-1.5 rounded border border-border text-foreground/80 hover:text-foreground hover:bg-foreground/5 transition-colors font-mono"
-            >
-              Cancel
-            </button>
-            <button
-              type="submit"
-              className="text-[11px] px-4 py-1.5 rounded border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-mono"
-            >
-              Create
-            </button>
+        ) : (
+          <div className="p-3 space-y-3">
+            <div className="rounded border border-border bg-muted/40 px-3 py-2">
+              <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">cwd</div>
+              <div className="mt-0.5 font-mono text-[12px] text-foreground truncate">
+                {prettyCwdShort(resolvedCwd)}
+              </div>
+            </div>
+
+            <div>
+              <label className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground block">
+                title
+              </label>
+              <input
+                ref={titleInputRef}
+                type="text"
+                value={title}
+                onChange={(e) => setTitle(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') commit();
+                }}
+                className="mt-1 w-full bg-background/60 border border-border rounded px-2 py-1 text-[12px] font-mono text-foreground outline-none focus:border-accent/40"
+                placeholder={prettyCwdShort(resolvedCwd)}
+                spellCheck={false}
+              />
+            </div>
+
+            <div>
+              <div className="text-[9px] font-mono uppercase tracking-wider text-muted-foreground">
+                backend
+              </div>
+              <div className="mt-1.5 flex items-center gap-1.5">
+                {(['pty', 'tmux'] as const).map((b) => (
+                  <button
+                    key={b}
+                    type="button"
+                    onClick={() => setBackend(b)}
+                    aria-pressed={backend === b}
+                    className={`flex-1 rounded border px-2 py-1.5 text-left transition-colors ${
+                      backend === b
+                        ? 'border-accent/60 bg-accent/10'
+                        : 'border-border bg-muted/40 hover:border-foreground/30'
+                    }`}
+                  >
+                    <div className={`text-[11px] font-mono uppercase tracking-wider ${
+                      backend === b ? 'text-accent' : 'text-foreground'
+                    }`}>
+                      {b}
+                    </div>
+                    <div className="text-[9px] font-mono text-muted-foreground">
+                      {b === 'pty' ? 'orphan-ttl persistence' : 'survives reload'}
+                    </div>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <button
+                type="button"
+                onClick={() => setStep(1)}
+                className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground hover:text-foreground"
+              >
+                ← back
+              </button>
+              <button
+                type="button"
+                onClick={commit}
+                className="text-[11px] px-3 py-1 rounded border border-accent/40 bg-accent/10 text-accent hover:bg-accent/20 font-mono uppercase tracking-wider"
+              >
+                create terminal
+              </button>
+            </div>
           </div>
-        </form>
+        )}
       </div>
+    </div>
+  );
+}
+
+function prettyCwdShort(cwd: string): string {
+  if (!cwd) return '~';
+  return cwd.replace(/^\/Users\/[^/]+/, '~');
+}
+
+// ---------------------------------------------------------------------------
+// DevtoolsIntegrationDialog — explains the browser/Hudson context menu split
+// ---------------------------------------------------------------------------
+function DevtoolsIntegrationDialog({
+  info,
+  mode,
+  onClose,
+  onToggleContextMenuMode,
+  onOpenSettings,
+  onShowConsole,
+}: {
+  info: HudsonDevtoolsWelcomeInfo;
+  mode: ContextMenuMode;
+  onClose: () => void;
+  onToggleContextMenuMode: () => void;
+  onOpenSettings: () => void;
+  onShowConsole: () => void;
+}) {
+  useEffect(() => {
+    const handler = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+    window.addEventListener('keydown', handler);
+    return () => window.removeEventListener('keydown', handler);
+  }, [onClose]);
+
+  const hudsonGesture = mode === 'hudson-first' ? 'Right-click' : 'Option + right-click';
+  const chromeGesture = mode === 'hudson-first' ? 'Option + right-click' : 'Right-click';
+  const nextModeLabel = mode === 'hudson-first' ? 'Use Chrome First' : 'Use Hudson First';
+  const currentModeLabel = mode === 'hudson-first' ? 'Hudson right click first' : 'Chrome right click first';
+
+  return (
+    <div
+      className="fixed inset-0 z-[220] flex items-center justify-center bg-background/55 px-4 backdrop-blur-sm"
+      role="dialog"
+      aria-modal="true"
+      aria-labelledby="hudson-devtools-dialog-title"
+      onClick={onClose}
+    >
+      <motion.div
+        initial={{ opacity: 0, y: 10, scale: 0.98 }}
+        animate={{ opacity: 1, y: 0, scale: 1 }}
+        exit={{ opacity: 0, y: 8, scale: 0.98 }}
+        transition={{ duration: 0.14, ease: 'easeOut' }}
+        className="w-full max-w-[560px] overflow-hidden rounded-lg border border-border bg-card shadow-2xl"
+        onClick={(event) => event.stopPropagation()}
+      >
+        <div className="flex items-start gap-3 border-b border-border/70 px-4 py-3">
+          <div className="mt-0.5 flex h-8 w-8 shrink-0 items-center justify-center rounded-md border border-cyan-500/25 bg-cyan-500/10 text-cyan-500">
+            <ScanSearch size={16} />
+          </div>
+          <div className="min-w-0 flex-1">
+            <h2 id="hudson-devtools-dialog-title" className="text-[13px] font-mono font-semibold uppercase tracking-[0.18em] text-foreground">
+              Chrome DevTools
+            </h2>
+            <p className="mt-1 text-[12px] leading-5 text-muted-foreground">
+              Chrome only exposes Inspect Element through the browser native menu or DevTools shortcut.
+              Hudson can choose which menu gets right-click first, but page JavaScript cannot open DevTools directly.
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-md p-1 text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
+            aria-label="Close DevTools help"
+          >
+            <X size={14} />
+          </button>
+        </div>
+
+        <div className="space-y-4 px-4 py-4">
+          <div className="flex flex-wrap items-center gap-2 text-[11px] font-mono">
+            <span className="rounded border border-emerald-500/25 bg-emerald-500/10 px-2 py-1 text-emerald-600 dark:text-emerald-300">
+              {currentModeLabel}
+            </span>
+            <span className="text-muted-foreground">
+              {info.workspaceName} / {info.focusedAppName ?? 'no focused app'}
+            </span>
+          </div>
+
+          <div className="grid border-y border-border/70 text-[12px]">
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 px-1 py-2">
+              <MousePointer2 size={14} className="text-cyan-500" />
+              <span className="font-mono text-foreground">{hudsonGesture}</span>
+              <span className="text-muted-foreground">Open the Hudson menu.</span>
+            </div>
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 border-t border-border/70 px-1 py-2">
+              <ScanSearch size={14} className="text-emerald-500" />
+              <span className="font-mono text-foreground">{chromeGesture}</span>
+              <span className="text-muted-foreground">Open Chrome native menu for Inspect Element.</span>
+            </div>
+            <div className="grid grid-cols-[24px_minmax(120px,0.6fr)_1fr] items-center gap-3 border-t border-border/70 px-1 py-2">
+              <Keyboard size={14} className="text-teal-500" />
+              <span className="font-mono text-foreground">Cmd + Option + I</span>
+              <span className="text-muted-foreground">Open Chrome DevTools directly.</span>
+            </div>
+          </div>
+
+          <div className="border-t border-border/70 pt-3">
+            <div className="flex items-center gap-2 text-[11px] font-mono uppercase tracking-[0.16em] text-foreground">
+              <Code2 size={13} className="text-cyan-500" />
+              Console helper
+            </div>
+            <p className="mt-2 text-[12px] leading-5 text-muted-foreground">
+              The CDP welcome splash is available in the console as <code className="text-emerald-500">window.HudsonDevtools</code>.
+              Try <code className="text-emerald-500">help()</code>, <code className="text-emerald-500">shortcuts()</code>, <code className="text-emerald-500">apps()</code>, or <code className="text-emerald-500">resources()</code>.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-border/70 px-4 py-3">
+          <button
+            type="button"
+            onClick={onShowConsole}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Code2 size={12} />
+            Print Console Help
+          </button>
+          <a
+            href="https://developer.chrome.com/docs/extensions/how-to/devtools/extend-devtools"
+            target="_blank"
+            rel="noreferrer"
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <ExternalLink size={12} />
+            Extension Docs
+          </a>
+          <button
+            type="button"
+            onClick={onOpenSettings}
+            className="inline-flex items-center gap-1.5 rounded-md border border-border px-3 py-1.5 text-[11px] font-mono text-foreground/80 transition-colors hover:bg-muted hover:text-foreground"
+          >
+            <Settings size={12} />
+            Settings
+          </button>
+          <button
+            type="button"
+            onClick={onToggleContextMenuMode}
+            className="inline-flex items-center gap-1.5 rounded-md border border-cyan-500/30 bg-cyan-500/10 px-3 py-1.5 text-[11px] font-mono text-cyan-600 transition-colors hover:bg-cyan-500/15 dark:text-cyan-300"
+          >
+            <MousePointer2 size={12} />
+            {nextModeLabel}
+          </button>
+        </div>
+      </motion.div>
     </div>
   );
 }
@@ -3521,6 +4414,10 @@ function WindowedApp({
   onReportBounds,
   onOpenServices,
   onOpenInspector,
+  onCloseInspector,
+  isInspectorOpen,
+  onOpenDevtools,
+  contextMenuActivationMode,
   navCenter,
   onEnterFullscreen,
 }: {
@@ -3536,6 +4433,10 @@ function WindowedApp({
   onReportBounds: (appId: string, bounds: { x: number; y: number; w: number; h: number }) => void;
   onOpenServices: () => void;
   onOpenInspector: () => void;
+  onCloseInspector: () => void;
+  isInspectorOpen: boolean;
+  onOpenDevtools: () => void;
+  contextMenuActivationMode: 'default' | 'modifier';
   navCenter: ReactNode | null;
   onEnterFullscreen: () => void;
 }) {
@@ -3597,74 +4498,47 @@ function WindowedApp({
     setPreMaxBounds(null);
   }, [defaults, setBounds]);
 
-  const hasPorts = !!(config.app.ports?.outputs?.length || config.app.ports?.inputs?.length);
-  const hasInspectorSurface = !!(config.app.slots.Inspector || config.app.slots.RightPanel || config.app.tools?.length || hasPorts);
+  const hasPorts = appShowsPorts(config.app);
+  const hasInspector = hasInspectorSurface(config.app, hasPorts);
+  const handleBringToCenter = useCallback(() => {
+    setBounds(prev => ({
+      ...prev,
+      x: -(prev.w / 2),
+      y: -(prev.h / 2),
+    }));
+  }, [setBounds]);
 
-  const contextMenuItems: ContextMenuEntry[] = useMemo(() => [
-    {
-      id: `${config.app.id}:focus-mode`,
-      label: 'Focus Mode',
-      shortcut: '⌘⇧F',
-      icon: <Maximize2 size={12} />,
-      action: onEnterFullscreen,
-    },
-    {
-      id: `${config.app.id}:bring-to-front`,
-      label: 'Bring to Front',
-      icon: <Layers size={12} />,
-      action: onFocus,
-    },
-    {
-      id: `${config.app.id}:bring-to-center`,
-      label: 'Bring to Center',
-      icon: <Crosshair size={12} />,
-      action: () => {
-        setBounds(prev => ({
-          ...prev,
-          x: -(prev.w / 2),
-          y: -(prev.h / 2),
-        }));
-      },
-    },
-    {
-      id: `${config.app.id}:maximize`,
-      label: isMaximized ? 'Restore' : 'Maximize',
-      icon: isMaximized ? <Minimize2 size={12} /> : <Maximize2 size={12} />,
-      action: handleToggleMaximize,
-    },
-    {
-      id: `${config.app.id}:reset-window`,
-      label: 'Reset Window',
-      icon: <RotateCcw size={12} />,
-      action: handleResetWindow,
-    },
-    { type: 'separator' },
-    {
-      id: `${config.app.id}:reset-view`,
-      label: 'Reset View',
-      shortcut: '⌘0',
-      icon: <RotateCcw size={12} />,
-      action: onResetView,
-    },
-    {
-      id: `${config.app.id}:inspect`,
-      label: 'Inspect',
-      icon: <ScanSearch size={12} />,
-      disabled: !hasInspectorSurface,
-      action: () => {
-        onFocus();
-        onOpenInspector();
-      },
-    },
-    { type: 'separator' },
-    {
-      id: `${config.app.id}:close`,
-      label: 'Close',
-      shortcut: '⌘W',
-      icon: <X size={12} />,
-      action: onClose,
-    },
-  ], [config.app.id, isMaximized, setBounds, handleToggleMaximize, handleResetWindow, onResetView, onClose, onFocus, onEnterFullscreen, hasInspectorSurface, onOpenInspector]);
+  const contextMenuItems = useMemo(() => buildAppWindowContextMenu({
+    appId: config.app.id,
+    isMaximized,
+    hasInspector,
+    inspectorOpen: isInspectorOpen,
+    onEnterFullscreen,
+    onFocus,
+    onShowInspector: onOpenInspector,
+    onHideInspector: onCloseInspector,
+    onBringToCenter: handleBringToCenter,
+    onToggleMaximize: handleToggleMaximize,
+    onResetWindow: handleResetWindow,
+    onResetView,
+    onClose,
+    onOpenDevtools,
+  }), [
+    config.app.id,
+    isMaximized,
+    hasInspector,
+    isInspectorOpen,
+    onEnterFullscreen,
+    onFocus,
+    onOpenInspector,
+    onCloseInspector,
+    handleBringToCenter,
+    handleToggleMaximize,
+    handleResetWindow,
+    onResetView,
+    onClose,
+    onOpenDevtools,
+  ]);
 
   return (
     <>
@@ -3680,6 +4554,8 @@ function WindowedApp({
         isMaximized={isMaximized}
         onToggleMaximize={handleToggleMaximize}
         contextMenuItems={contextMenuItems}
+        contextMenuScope="chrome"
+        contextMenuActivationMode={contextMenuActivationMode}
         decorations={
           <WindowPorts
             appId={config.app.id}

@@ -162,7 +162,7 @@ export function ThemeDesignerProvider({
   const [exportTemplateId, setExportTemplateIdState] = useState(() => defaultCustomId(SSR_DEFAULT_TEMPLATE));
   const [refId, setRefIdState] = useState(() => defaultCustomId(SSR_DEFAULT_TEMPLATE));
   const [registerRef, setRegisterRef] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('Loading templates…');
+  const [saveStatus, setSaveStatus] = useState('Loading templates');
   const [importCss, setImportCss] = useState('');
   const [isDev, setIsDev] = useState(false);
   const [templatesLoaded, setTemplatesLoaded] = useState(false);
@@ -379,7 +379,7 @@ export function ThemeDesignerProvider({
       setSaveStatus('Built-in ids are read-only; save as a new id');
       return;
     }
-    setSaveStatus('Saving tokens.css…');
+    setSaveStatus('Saving tokens.css');
     const payload = { ...cloneTemplate(currentTemplate), id };
     const response = await fetch('/api/theme-designer', {
       method: 'POST',

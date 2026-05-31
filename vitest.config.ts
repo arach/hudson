@@ -1,6 +1,10 @@
 import { configDefaults, defineConfig } from 'vitest/config';
 import { resolve } from 'path';
 
+const root = __dirname;
+const rootNodeModules = resolve(root, 'node_modules');
+const hudsonkitSrc = resolve(root, 'node_modules/hudsonkit/src');
+
 export default defineConfig({
   test: {
     environment: 'jsdom',
@@ -9,28 +13,40 @@ export default defineConfig({
     exclude: [
       ...configDefaults.exclude,
       '.claude/**',
+      '.build/**',
       'examples/**/.build/**',
+      'packages/native/**/.build/**',
     ],
   },
   resolve: {
+    preserveSymlinks: true,
+    dedupe: ['react', 'react-dom'],
     alias: [
-      { find: '@', replacement: resolve(__dirname, '.') },
+      { find: '@', replacement: root },
+      { find: 'react/jsx-dev-runtime', replacement: resolve(rootNodeModules, 'react/jsx-dev-runtime.js') },
+      { find: 'react/jsx-runtime', replacement: resolve(rootNodeModules, 'react/jsx-runtime.js') },
+      { find: 'react-dom/client', replacement: resolve(rootNodeModules, 'react-dom/client.js') },
+      { find: 'react-dom', replacement: resolve(rootNodeModules, 'react-dom') },
+      { find: 'react', replacement: resolve(rootNodeModules, 'react') },
+      { find: 'ai', replacement: resolve(rootNodeModules, 'ai') },
+      { find: '@ai-sdk/react', replacement: resolve(rootNodeModules, '@ai-sdk/react') },
+      { find: 'lucide-react', replacement: resolve(rootNodeModules, 'lucide-react') },
       {
         find: 'hudsonkit/workflow',
-        replacement: resolve(__dirname, 'packages/web/hudsonkit/src/workflow/index.ts'),
+        replacement: resolve(hudsonkitSrc, 'workflow/index.ts'),
       },
       {
         find: /^hudsonkit\/(.+)$/,
-        replacement: `${resolve(__dirname, 'packages/web/hudsonkit/src')}/$1.ts`,
+        replacement: `${hudsonkitSrc}/$1.ts`,
       },
-      { find: 'hudsonkit', replacement: resolve(__dirname, 'packages/web/hudsonkit/src/index.ts') },
+      { find: 'hudsonkit', replacement: resolve(hudsonkitSrc, 'index.ts') },
       {
         find: '@hudsonkit/ai/toolsets',
-        replacement: resolve(__dirname, 'packages/web/ai-backends/src/toolsets/index.ts'),
+        replacement: resolve(root, 'packages/web/ai-backends/src/toolsets/index.ts'),
       },
       {
         find: '@hudsonkit/ai',
-        replacement: resolve(__dirname, 'packages/web/ai-backends/src/index.ts'),
+        replacement: resolve(root, 'packages/web/ai-backends/src/index.ts'),
       },
     ],
   },

@@ -146,12 +146,8 @@ const StatusBar: React.FC<StatusBarProps> = ({
         </div>
       )}
 
-      {/* RIGHT: Console toggle + Clock */}
+      {/* RIGHT: Console toggle + app/system status items + Clock */}
       <div className="shrink-0 flex items-center gap-3 md:gap-4">
-        {right}
-
-        {right && <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>}
-
         {onToggleTerminal && (
           <>
             <button
@@ -169,6 +165,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
             <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
           </>
         )}
+
+        {right}
+
+        {right && <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>}
 
         <div className="flex items-center gap-1.5 text-foreground min-w-[60px] justify-end">
           <Clock size={11} className="text-muted-foreground" />

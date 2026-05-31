@@ -33,6 +33,7 @@ interface TerminalRelayProps {
 }
 
 export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
+export const HUDSON_TERMINAL_VOICE_SUBMIT_EVENT = 'hudson:terminal:voice-submit';
 
 export interface HudsonTerminalVoiceTranscriptDetail {
   transcript: string;
@@ -196,6 +197,7 @@ function isElementVisible(el: HTMLElement | null): boolean {
 
 // CSI-u modified Enter: key code 13 with Shift modifier 2.
 const SHIFT_ENTER_INPUT = '\x1b[13;2u';
+const ENTER_INPUT = '\x0d';
 
 function fileToBase64(file: File): Promise<string> {
   return new Promise((resolve, reject) => {
@@ -240,6 +242,7 @@ export function TerminalRelay({
   const termRef = useRef<import('@xterm/xterm').Terminal | null>(null);
   const fitRef = useRef<import('@xterm/addon-fit').FitAddon | null>(null);
   const pendingVoiceInputRef = useRef<HudsonTerminalVoiceTranscriptDetail | null>(null);
+  const pendingVoiceSubmitRef = useRef(false);
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
@@ -265,7 +268,11 @@ export function TerminalRelay({
   const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
     const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
     if (!transcript) return;
-    sendInput(detail.submit ? `${transcript}\r` : transcript);
+    sendInput(detail.submit ? `${transcript}${ENTER_INPUT}` : transcript);
+  }, [sendInput]);
+
+  const sendVoiceSubmit = useCallback(() => {
+    sendInput(ENTER_INPUT);
   }, [sendInput]);
 
   useEffect(() => {
@@ -296,6 +303,31 @@ export function TerminalRelay({
     pendingVoiceInputRef.current = null;
     sendVoiceTranscript(detail);
   }, [sendVoiceTranscript, status]);
+
+  useEffect(() => {
+    const handleVoiceSubmit = () => {
+      if (!isElementVisible(wrapperRef.current)) return;
+
+      if (status === 'connected') {
+        sendVoiceSubmit();
+        return;
+      }
+
+      pendingVoiceSubmitRef.current = true;
+      if (status !== 'connecting') {
+        connect();
+      }
+    };
+
+    window.addEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
+    return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
+  }, [connect, sendVoiceSubmit, status]);
+
+  useEffect(() => {
+    if (status !== 'connected' || !pendingVoiceSubmitRef.current) return;
+    pendingVoiceSubmitRef.current = false;
+    sendVoiceSubmit();
+  }, [sendVoiceSubmit, status]);
 
   const uploadFile = useCallback(async (file: File): Promise<string | null> => {
     try {
@@ -385,11 +417,26 @@ export function TerminalRelay({
     let terminal: import('@xterm/xterm').Terminal | null = null;
 
     async function init() {
-      const [{ Terminal }, { FitAddon }, webglMod] = await Promise.all([
+      const [xtermMod, fitMod, webglMod] = await Promise.all([
         import('@xterm/xterm'),
         import('@xterm/addon-fit'),
         import('@xterm/addon-webgl').catch(() => null),
       ]);
+
+      // Some bundlers (notably Next 15+/Turbopack) wrap CJS-shaped packages
+      // into { default: { Terminal: … } } when consumed via dynamic ESM
+      // import, even though Node and Vite expose them as named exports.
+      // Read from either shape so we work across runtimes.
+      const Terminal = ((xtermMod as any).Terminal ?? (xtermMod as any).default?.Terminal) as typeof import('@xterm/xterm').Terminal | undefined;
+      const FitAddon = ((fitMod as any).FitAddon ?? (fitMod as any).default?.FitAddon) as typeof import('@xterm/addon-fit').FitAddon | undefined;
+      const WebglAddon = webglMod
+        ? ((webglMod as any).WebglAddon ?? (webglMod as any).default?.WebglAddon) as typeof import('@xterm/addon-webgl').WebglAddon | undefined
+        : undefined;
+
+      if (!Terminal || !FitAddon) {
+        console.error('[TerminalRelay] @xterm/xterm or @xterm/addon-fit missing constructors', { xtermMod, fitMod });
+        return;
+      }
 
       injectXtermCss();
 
@@ -413,9 +460,9 @@ export function TerminalRelay({
       terminal.open(containerRef.current);
 
       // GPU-accelerated rendering (graceful fallback to DOM renderer)
-      if (webglMod) {
+      if (WebglAddon) {
         try {
-          const webglAddon = new webglMod.WebglAddon();
+          const webglAddon = new WebglAddon();
           webglAddon.onContextLoss(() => { webglAddon.dispose(); });
           terminal.loadAddon(webglAddon);
         } catch {}
@@ -572,7 +619,7 @@ export function TerminalRelay({
               disabled={starting}
               className="text-[11px] px-4 py-1.5 rounded-full border border-accent/30 text-accent hover:bg-accent/10 transition-colors font-medium disabled:opacity-50"
             >
-              {starting ? 'Starting...' : 'Start Service'}
+              {starting ? 'Starting' : 'Start Service'}
             </button>
           )}
           <button
@@ -675,7 +722,7 @@ export function TerminalRelay({
     overlay = (
       <div className="flex flex-col items-center gap-3 text-center">
         <div className="w-6 h-6 border-2 border-muted-foreground/30 border-t-cyan-500 rounded-full animate-spin" />
-        <span className="text-[12px] text-muted-foreground">Connecting to relay...</span>
+        <span className="text-[12px] text-muted-foreground">Connecting to relay</span>
         <button
           type="button"
           onClick={() => { disconnect(); }}
@@ -712,7 +759,6 @@ export function TerminalRelay({
         className="flex-1 min-h-0 min-w-0 overflow-hidden"
         style={{
           visibility: overlay ? 'hidden' : 'visible',
-          padding: '4px 8px',
           backgroundColor: xtermTheme.background,
           '--hud-terminal-bg': xtermTheme.background,
           '--hud-terminal-fg': xtermTheme.foreground,

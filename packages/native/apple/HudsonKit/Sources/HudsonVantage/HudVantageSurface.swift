@@ -54,15 +54,6 @@ public struct HudVantageConfiguration: Sendable {
         self.restoresStateOnLaunch = restoresStateOnLaunch
     }
 
-    public static let terminiCanvasCaseStudy = HudVantageConfiguration(
-        workspaceID: "termini-canvas",
-        surfaceTitle: "Termini Canvas",
-        surfaceSubtitle: "native macOS Hudson Vantage case study",
-        commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
-        responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl"),
-        stateURL: URL(fileURLWithPath: "/tmp/termini-canvas-state.json"),
-        restoresStateOnLaunch: true
-    )
 }
 
 private enum HudVantageMetrics {
@@ -84,8 +75,6 @@ private enum HudVantageMetrics {
     static let resizeGripInset = HudSpacing.xxs + HudStrokeWidth.standard
     static let resizeGripSize = HudLayout.rowHeightCompact
     static let minimapHeight: CGFloat = 132
-    static let panelResizeHandleWidth = HudSpacing.xs
-    static let panelResizeIndicatorHeight = HudIconSize.xLarge
     static let filterButtonHeight = HudLayout.rowHeightCompact - HudSpacing.xs
     static let commandButtonWidth = HudLayout.rowHeightRegular
     static let viewportChipHeight = HudLayout.rowHeightCompact - HudSpacing.xxs
@@ -121,6 +110,9 @@ private enum HudVantageMetrics {
     static let commandPaletteTopPadding = HudLayout.navHeight
         + HudSpacing.huge
         + HudSpacing.lg
+    static let announceOverlayMaxWidth = HudLayout.popoverWidth + HudSpacing.huge + HudSpacing.xl
+    static let announceOverlayShadowRadius = HudSpacing.xxxl - HudSpacing.xxs
+    static let sceneTabMaxWidth = HudLayout.panelWidth - HudSpacing.huge - HudSpacing.xxxl - HudSpacing.xl
 }
 
 private extension HudTheme {
@@ -369,7 +361,7 @@ private final class TerminalNode: ObservableObject, Identifiable {
                 controller: $0
             )
         }
-        self.title = title ?? "Termini \(index)"
+        self.title = title ?? "Session \(index)"
         self.subtitle = subtitle ?? runtimeIdentity.detail
         self.origin = origin
         self.size = size
@@ -655,9 +647,9 @@ private enum CanvasTag: String, CaseIterable, Identifiable {
 
     func tint(in theme: HudTheme) -> Color {
         switch self {
-        case .focus: theme.palette.statusOk
-        case .watch: theme.palette.statusInfo
-        case .parked: theme.palette.statusWarn
+        case .focus: theme.palette.statusInfo
+        case .watch: theme.palette.muted
+        case .parked: theme.palette.dim
         }
     }
 }
@@ -714,6 +706,44 @@ private struct VantagePresentationState: Hashable {
         icon = presentation.icon ?? icon
         theme = presentation.theme ?? theme
         accent = presentation.accent ?? accent
+    }
+}
+
+private struct VantageSceneTab: Identifiable, Equatable {
+    let manifestPath: String?
+    let title: String
+    let subtitle: String?
+    let badge: String?
+    let accent: String?
+    let appliedAt: Date
+
+    var id: String {
+        manifestPath ?? "inline-\(appliedAt.timeIntervalSince1970)"
+    }
+
+    static let recentsCap = 8
+
+    static func make(
+        manifestPath: String?,
+        presentation: HudVantageSetupPresentation?,
+        fallbackTitle: String
+    ) -> VantageSceneTab {
+        let title: String = {
+            if let value = presentation?.title, !value.isEmpty { return value }
+            if let value = presentation?.productName, !value.isEmpty { return value }
+            if let path = manifestPath, !path.isEmpty {
+                return URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+            }
+            return fallbackTitle
+        }()
+        return VantageSceneTab(
+            manifestPath: manifestPath,
+            title: title,
+            subtitle: presentation?.subtitle,
+            badge: presentation?.badge,
+            accent: presentation?.accent ?? presentation?.theme,
+            appliedAt: Date()
+        )
     }
 }
 
@@ -903,6 +933,13 @@ public struct HudVantageSurface: View {
     @State private var styleProfile: HudVantageStyleProfile = .adaptive
     @State private var tagStyleOverrides: [CanvasTag: HudVantageTerminalStyleOverride] = [:]
     @State private var presentationState = VantagePresentationState()
+    @State private var activeWorkspaceID: String?
+    @State private var activeHandoffID: String?
+    @State private var sceneTabs: [VantageSceneTab] = []
+    @State private var announceTab: VantageSceneTab?
+    @State private var announceDismissTask: Task<Void, Never>?
+    @State private var hoverPoint: CGPoint?
+    @State private var zoomGestureAnchor: CGPoint?
     @State private var appearanceSettingsPresented = false
     @State private var commandPalettePresented = false
     @State private var lensPresented = false
@@ -961,6 +998,21 @@ public struct HudVantageSurface: View {
         .onChange(of: lensQuery) { _, _ in
             lensSelectedIndex = 0
         }
+        .onReceive(NotificationCenter.default.publisher(for: .vantageHostCommand)) { notification in
+            handleHostCommand(notification)
+        }
+        .onAppear {
+            publishHostStatus()
+        }
+        .onChange(of: nodes.count) { _, _ in
+            publishHostStatus()
+        }
+        .onChange(of: selectedIDs) { _, _ in
+            publishHostStatus()
+        }
+        .onChange(of: controlStatus) { _, _ in
+            publishHostStatus()
+        }
         .confirmationDialog(
             "Install tmux with Homebrew?",
             isPresented: $tmuxInstallConfirmationPresented
@@ -974,38 +1026,12 @@ public struct HudVantageSurface: View {
         }
         .hudTheme(activeTheme)
         .environment(\.colorScheme, activeColorScheme)
+        .environment(\.hudsonSidebarStyle, HudSidebarStyle(surface: .base))
         .overlay {
             AnyView(surfaceOverlay)
         }
         .sheet(isPresented: $appearanceSettingsPresented) {
             AnyView(appearanceSettingsSheet)
-        }
-        .toolbar {
-            ToolbarItemGroup(placement: .navigation) {
-                if navigationCollapsed {
-                    Button {
-                        navigationCollapsed = false
-                    } label: {
-                        Label("Show navigator", systemImage: "sidebar.left")
-                    }
-                    .labelStyle(.iconOnly)
-                    .help("Show navigator")
-                    .accessibilityLabel("Show navigator")
-                }
-            }
-
-            ToolbarItemGroup(placement: .primaryAction) {
-                if inspectorCollapsed {
-                    Button {
-                        inspectorCollapsed = false
-                    } label: {
-                        Label("Show inspector", systemImage: "sidebar.right")
-                    }
-                    .labelStyle(.iconOnly)
-                    .help("Show inspector")
-                    .accessibilityLabel("Show inspector")
-                }
-            }
         }
         .onExitCommand {
             if dismissTopOverlay() {
@@ -1017,14 +1043,23 @@ public struct HudVantageSurface: View {
                 exitFocusMode()
             }
         }
-        .background(HudWindowChrome(colorScheme: activeColorScheme))
+        .background(HudWindowChrome(colorScheme: .dark))
+        #if os(macOS)
+        .toolbarBackground(.visible, for: .windowToolbar)
+        .toolbarBackground(Color.black, for: .windowToolbar)
+        .toolbarColorScheme(.dark, for: .windowToolbar)
+        #endif
     }
 
-    private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
+    private var shellView: HudAppShell<AnyView, AnyView, AnyView, EmptyView, AnyView, AnyView> {
         HudAppShell {
             AnyView(navigationShellSlot)
         } trailing: {
             AnyView(inspectorShellSlot)
+        } topDrawer: {
+            AnyView(appTopNav)
+        } bottomDrawer: {
+            EmptyView()
         } content: {
             AnyView(terminalCanvasShell)
         } statusBar: {
@@ -1085,6 +1120,53 @@ public struct HudVantageSurface: View {
     private var surfaceOverlay: some View {
         commandPaletteOverlay
         lensOverlay
+        announceOverlay
+    }
+
+    @ViewBuilder
+    private var announceOverlay: some View {
+        if let tab = announceTab {
+            VStack(spacing: HudSpacing.xs) {
+                if let badge = tab.badge, !badge.isEmpty {
+                    HudBadge(
+                        badge.uppercased(),
+                        tint: activeTheme.palette.statusInfo,
+                        dot: true
+                    )
+                }
+                Text(tab.title)
+                    .font(HudFont.mono(HudTextSize.base, weight: .bold))
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .multilineTextAlignment(.center)
+                    .lineLimit(2)
+                if let subtitle = tab.subtitle, !subtitle.isEmpty {
+                    Text(subtitle)
+                        .font(HudFont.mono(HudTextSize.sm))
+                        .foregroundStyle(activeTheme.palette.muted)
+                        .multilineTextAlignment(.center)
+                        .lineLimit(2)
+                }
+            }
+            .padding(.horizontal, HudSpacing.xl)
+            .padding(.vertical, HudSpacing.lg)
+            .frame(maxWidth: HudVantageMetrics.announceOverlayMaxWidth)
+            .background(
+                RoundedRectangle(cornerRadius: activeTheme.radius.card)
+                    .fill(activeTheme.palette.chrome)
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: activeTheme.radius.card)
+                    .strokeBorder(activeTheme.hairline.standard, lineWidth: 0.5)
+            )
+            .shadow(color: activeTheme.vantageShadow, radius: HudVantageMetrics.announceOverlayShadowRadius, y: HudSpacing.sm)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .center)
+            .allowsHitTesting(false)
+            .transition(
+                .opacity.combined(
+                    with: .scale(scale: 0.96, anchor: .center)
+                )
+            )
+        }
     }
 
     @ViewBuilder
@@ -1188,47 +1270,54 @@ public struct HudVantageSurface: View {
     @ViewBuilder
     private var navigationPanel: some View {
         if !navigationCollapsed {
-            CanvasNavigationPanel(
+            HudSidebarPanel(
                 width: $navigationWidth,
-                nodes: navigationNodes,
-                minimapNodes: nodes,
-                totalCount: nodes.count,
-                selectedCount: selectedIDs.count,
-                filter: $navigationFilter,
-                tagFilter: $navigationTagFilter,
-                minimapCollapsed: $minimapCollapsed,
-                selectedIDs: selectedIDs,
-                viewportWorldRect: canvasState.visibleWorldRect,
-                canvasWorldBounds: canvasWorldBounds,
-                canvasScale: canvasState.scale,
-                onSelectNode: selectNode,
-                onCenterNode: centerNode,
-                onTagSelection: tagSelection(as:),
-                onCenterWorldPoint: centerCanvas(on:),
-                onFit: fitCanvasToViewport,
-                onOpenAppearanceSettings: openAppearanceSettings,
-                onCollapse: { navigationCollapsed = true }
-            )
+                edge: .leading,
+                widthRange: 210...360
+            ) {
+                CanvasNavigationPanel(
+                    nodes: navigationNodes,
+                    minimapNodes: nodes,
+                    totalCount: nodes.count,
+                    selectedCount: selectedIDs.count,
+                    filter: $navigationFilter,
+                    tagFilter: $navigationTagFilter,
+                    minimapCollapsed: $minimapCollapsed,
+                    selectedIDs: selectedIDs,
+                    viewportWorldRect: canvasState.visibleWorldRect,
+                    canvasWorldBounds: canvasWorldBounds,
+                    canvasScale: canvasState.scale,
+                    onSelectNode: selectNode,
+                    onCenterNode: centerNode,
+                    onTagSelection: tagSelection(as:),
+                    onCenterWorldPoint: centerCanvas(on:),
+                    onFit: fitCanvasToViewport,
+                    onOpenAppearanceSettings: openAppearanceSettings
+                )
+            }
         }
     }
 
     @ViewBuilder
     private var inspectorPanel: some View {
         if !inspectorCollapsed {
-            CanvasInspectorPanel(
+            HudSidebarPanel(
                 width: $inspectorWidth,
-                selectedNodes: selectedNodes,
-                totalCount: nodes.count,
-                tmuxAvailable: TerminalNode.localTmuxURL != nil,
-                tmuxInstallInProgress: tmuxInstallInProgress,
-                tmuxInstallMessage: tmuxInstallMessage,
-                onCenterNode: { node in
-                    centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
-                },
-                onCloseNode: close,
-                onInstallTmux: { tmuxInstallConfirmationPresented = true },
-                onCollapse: { inspectorCollapsed = true }
-            )
+                edge: .trailing,
+                widthRange: 250...440
+            ) {
+                CanvasInspectorPanel(
+                    selectedNodes: selectedNodes,
+                    tmuxAvailable: TerminalNode.localTmuxURL != nil,
+                    tmuxInstallInProgress: tmuxInstallInProgress,
+                    tmuxInstallMessage: tmuxInstallMessage,
+                    onCenterNode: { node in
+                        centerCanvas(on: CGPoint(x: node.origin.x + node.size.width / 2, y: node.origin.y + node.size.height / 2))
+                    },
+                    onCloseNode: close,
+                    onInstallTmux: { tmuxInstallConfirmationPresented = true }
+                )
+            }
         }
     }
 
@@ -1272,6 +1361,45 @@ public struct HudVantageSurface: View {
         lensPresented = true
         lensSelectedIndex = 0
         controlStatus = "Lens"
+    }
+
+    private func handleHostCommand(_ notification: Notification) {
+        guard let raw = notification.userInfo?["command"] as? String,
+              let command = VantageHostCommand(rawValue: raw) else {
+            return
+        }
+
+        switch command {
+        case .showCommandPalette:
+            openCommandPalette()
+        case .showAppearanceSettings:
+            openAppearanceSettings()
+        case .openLens:
+            openLens()
+        case .fitViewport:
+            handleCanvasShortcut(.fitViewport)
+        case .resetViewport:
+            handleCanvasShortcut(.resetViewport)
+        case .layoutByTag:
+            handleCanvasShortcut(.layoutByTag)
+        case .saveWorkspace:
+            persistStateIfConfigured()
+            controlStatus = "Workspace saved"
+        case .clearSelection:
+            selectedIDs.removeAll()
+            controlStatus = "Selection cleared"
+        }
+    }
+
+    private func publishHostStatus() {
+        HudVantageHostStatusCenter.post(
+            HudVantageHostStatus(
+                workspaceID: configuration.workspaceID,
+                nodeCount: nodes.count,
+                selectedCount: selectedIDs.count,
+                controlStatus: controlStatus
+            )
+        )
     }
 
     private func closeLens() {
@@ -1459,91 +1587,201 @@ public struct HudVantageSurface: View {
         presentationState.subtitle ?? presentationState.cobrand ?? configuration.surfaceSubtitle
     }
 
-    private var canvasHeader: some View {
-        HStack(spacing: HudSpacing.lg) {
-            if let focusedNode {
-                HudStatusDot(color: focusedNode.tint.color, size: HudDotSize.small)
-                Text(presentationTitle.uppercased())
-                    .font(HudFont.mono(10, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(activeTheme.palette.ink)
-                if let badge = presentationState.badge {
-                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
-                }
-                HudBadge("FOCUS", tint: focusedNode.tint.color, dot: true)
-                Text(focusedNode.title)
-                    .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
-                    .foregroundStyle(activeTheme.palette.ink)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.82)
-                Text(focusedNode.subtitle)
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.muted)
-                    .lineLimit(1)
-                    .minimumScaleFactor(0.75)
-                Spacer()
+    private var vantageLinkLabel: String? {
+        let workspace = activeWorkspaceID ?? configuration.workspaceID
+        if let handoffID = compactHandoffID(activeHandoffID) {
+            return "\(workspace) · \(handoffID)"
+        }
+        return workspace
+    }
 
-                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost) {
-                    popOut(nodes: [focusedNode])
-                }
-                HudButton("Close", icon: "xmark", style: .ghost) {
-                    exitFocusMode()
-                    close(focusedNode.id)
-                }
-                HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
-                    exitFocusMode()
-                }
-            } else {
-                HudStatusDot(color: activeTheme.palette.statusOk, size: HudDotSize.small)
-                Text(presentationTitle.uppercased())
-                    .font(HudFont.mono(10, weight: .bold))
-                    .tracking(1.4)
-                    .foregroundStyle(activeTheme.palette.ink)
-                if let badge = presentationState.badge {
-                    HudBadge(badge.uppercased(), tint: activeTheme.palette.statusInfo, dot: true)
-                }
-                Text(presentationSubtitle)
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.muted)
-                if let cobrand = presentationState.cobrand,
-                   cobrand != presentationSubtitle {
-                    HudBadge(cobrand.uppercased(), tint: activeTheme.palette.muted, dot: false)
-                }
-                Spacer()
-                CanvasToolSwitch(
-                    tool: effectiveCanvasTool,
-                    onSelect: { canvasTool = .select },
-                    onHand: { canvasTool = .hand }
-                )
-                CommandKeyButton(action: openCommandPalette)
+    private func compactHandoffID(_ value: String?) -> String? {
+        guard var handoffID = trimmed(value) else { return nil }
+        if handoffID.hasPrefix("handoff-") {
+            handoffID.removeFirst("handoff-".count)
+        }
+        return String(handoffID.prefix(18))
+    }
 
-                HudButton("Focus", icon: "rectangle.inset.filled", style: .secondary) {
-                    focusSelection()
-                }
-                .disabled(selectedIDs.count != 1)
+    private var environmentContextLabel: String {
+        let lane = configuration.commandURL.lastPathComponent
+        let scope = configuration.commandURL.path.hasPrefix("/tmp/") ? "LOCAL DEV" : "HOST"
+        return "\(scope) · \(configuration.workspaceID) · \(lane)"
+    }
 
-                HudButton("Pop out", icon: "rectangle.on.rectangle", style: .secondary) {
-                    popOutSelection()
-                }
-                .disabled(selectedIDs.isEmpty)
+    private var appTopNav: some View {
+        ZStack(alignment: .bottom) {
+            activeTheme.palette.bg
+                .ignoresSafeArea(edges: .top)
 
-                HudButton("New", icon: "plus", style: .primary(.cyan)) {
-                    spawnTerminal()
+            VStack(spacing: 0) {
+                Spacer(minLength: HudSidebarLayout.headerTopPadding)
+
+                HStack(alignment: .center, spacing: HudSpacing.md) {
+                    Text(presentationTitle.uppercased())
+                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                        .foregroundStyle(activeTheme.palette.ink)
+
+                    if !isTerminalFocusActive {
+                        CanvasIconButton(
+                            systemName: "sidebar.left",
+                            help: navigationCollapsed ? "Show navigator" : "Hide navigator",
+                            action: { navigationCollapsed.toggle() }
+                        )
+                    }
+
+                    if let focusedNode {
+                        Text("·")
+                            .font(HudFont.mono(10))
+                            .foregroundStyle(activeTheme.palette.dim)
+                        Text(focusedNode.title)
+                            .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
+                            .foregroundStyle(activeTheme.palette.ink)
+                            .lineLimit(1)
+                            .minimumScaleFactor(0.82)
+
+                        Spacer(minLength: HudSpacing.lg)
+
+                        HudButton("Pop out", icon: "rectangle.on.rectangle", style: .ghost) {
+                            popOut(nodes: [focusedNode])
+                        }
+                        HudButton("Close", icon: "xmark", style: .ghost) {
+                            exitFocusMode()
+                            close(focusedNode.id)
+                        }
+                        HudButton("Exit", icon: "arrow.down.right.and.arrow.up.left", style: .secondary) {
+                            exitFocusMode()
+                        }
+                    } else {
+                        Spacer(minLength: HudSpacing.lg)
+
+                        Text(vantageLinkLabel ?? environmentContextLabel)
+                            .font(HudFont.mono(9))
+                            .foregroundStyle(activeTheme.palette.dim)
+                            .lineLimit(1)
+                    }
+
+                    if !isTerminalFocusActive {
+                        CanvasIconButton(
+                            systemName: "sidebar.right",
+                            help: inspectorCollapsed ? "Show inspector" : "Hide inspector",
+                            action: { inspectorCollapsed.toggle() }
+                        )
+                    }
                 }
+                .padding(.horizontal, HudSpacing.xxl)
+                .frame(height: HudLayout.navHeight)
+
+                HudDivider(color: activeTheme.hairline.subtle)
             }
         }
+        .frame(height: HudSidebarLayout.headerTopPadding + HudLayout.navHeight + HudStrokeWidth.thin)
+    }
+
+    private func vantageLinkText(_ label: String) -> some View {
+        Text(label)
+            .font(HudFont.mono(9, weight: .semibold))
+            .foregroundStyle(activeTheme.palette.statusInfo.opacity(HudOpacity.emphatic))
+            .lineLimit(1)
+            .minimumScaleFactor(0.72)
+            .help("Scout/Vantage link identifier")
     }
 
     private var terminalCanvasShell: some View {
+        canvasViewport
+    }
+
+    private var sceneTabBar: some View {
         VStack(spacing: 0) {
-            canvasHeader
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.horizontal, HudSpacing.xxl)
-                .frame(height: HudLayout.navHeight)
-                .background(activeTheme.palette.chrome)
+            HStack(spacing: 0) {
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: HudSpacing.xs) {
+                        ForEach(sceneTabs) { tab in
+                            sceneTabButton(tab)
+                        }
+                    }
+                    .padding(.leading, HudSpacing.xxl)
+                    .padding(.trailing, HudSpacing.sm)
+                    .padding(.vertical, HudSpacing.xs)
+                }
+                newWorkspaceButton
+                    .padding(.trailing, HudSpacing.xxl)
+            }
+            .frame(height: HudLayout.buttonHeight)
+            .background(activeTheme.palette.chrome)
             HudDivider(color: activeTheme.hairline.standard)
-            canvasViewport
         }
+    }
+
+    private var newWorkspaceButton: some View {
+        Button {
+            createBlankWorkspace()
+        } label: {
+            Image(systemName: "plus")
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(activeTheme.palette.muted)
+                .frame(width: HudIconSize.small, height: HudIconSize.small)
+                .background(
+                    RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                        .fill(Color.clear)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                        .strokeBorder(activeTheme.hairline.standard, lineWidth: 0.5)
+                )
+        }
+        .buttonStyle(.plain)
+        .help("New workspace")
+    }
+
+    private func sceneTabButton(_ tab: VantageSceneTab) -> some View {
+        let isActive = tab.id == activeSceneTabID
+        let isClickable = tab.manifestPath != nil
+        return Button {
+            applySceneTab(tab)
+        } label: {
+            HStack(spacing: HudSpacing.xs) {
+                HudStatusDot(
+                    color: isActive
+                        ? activeTheme.palette.statusInfo
+                        : activeTheme.palette.muted,
+                    size: HudDotSize.tiny
+                )
+                Text(tab.title)
+                    .font(HudFont.mono(HudTextSize.xxs, weight: isActive ? .bold : .regular))
+                    .tracking(0.6)
+                    .foregroundStyle(
+                        isActive
+                            ? activeTheme.palette.ink
+                            : activeTheme.palette.muted
+                    )
+                    .lineLimit(1)
+                    .truncationMode(.tail)
+            }
+            .padding(.horizontal, HudSpacing.sm)
+            .padding(.vertical, HudSpacing.xs)
+            .frame(maxWidth: HudVantageMetrics.sceneTabMaxWidth)
+            .background(
+                RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                    .fill(
+                        isActive
+                            ? HudSurface.tintFill(activeTheme.palette.statusInfo)
+                            : Color.clear
+                    )
+            )
+            .overlay(
+                RoundedRectangle(cornerRadius: activeTheme.radius.standard)
+                    .strokeBorder(
+                        isActive
+                            ? HudSurface.tintMuted(activeTheme.palette.statusInfo)
+                            : activeTheme.hairline.standard,
+                        lineWidth: 0.5
+                    )
+            )
+        }
+        .buttonStyle(.plain)
+        .disabled(!isClickable)
+        .help(tab.subtitle ?? tab.title)
     }
 
     private var canvasViewport: some View {
@@ -1589,6 +1827,7 @@ public struct HudVantageSurface: View {
                     },
                     onCommandPalette: openCommandPalette,
                     onShortcut: handleCanvasShortcut,
+                    onCursorMoved: { point in hoverPoint = point },
                     isLensPresented: lensPresented,
                     cursor: canvasCursor
                 )
@@ -1608,12 +1847,28 @@ public struct HudVantageSurface: View {
                     panStart = nil
                 }
             }
+            .overlay(alignment: .top) {
+                if !isTerminalFocusActive {
+                    CanvasActionToolbar(
+                        tool: effectiveCanvasTool,
+                        onSelect: { canvasTool = .select },
+                        onHand: { canvasTool = .hand },
+                        onCommandPalette: openCommandPalette,
+                        onFocus: focusSelection,
+                        onPopOut: popOutSelection,
+                        onNew: spawnTerminal,
+                        focusDisabled: selectedIDs.count != 1,
+                        popOutDisabled: selectedIDs.isEmpty
+                    )
+                    .padding(.top, HudSpacing.lg)
+                }
+            }
             .overlay(alignment: .bottomTrailing) {
                 if !isTerminalFocusActive {
                     CanvasZoomTool(
                         scale: canvasState.scale,
-                        onZoomOut: { zoom(by: 0.5) },
-                        onZoomIn: { zoom(by: 2) },
+                        onZoomOut: { zoom(by: 0.8) },
+                        onZoomIn: { zoom(by: 1.25) },
                         onReset: {
                             resetCanvasViewport()
                             schedulePersistStateIfConfigured()
@@ -1621,16 +1876,6 @@ public struct HudVantageSurface: View {
                         onFit: { fitCanvasToViewport() }
                     )
                     .padding(HudSpacing.xl)
-                }
-            }
-            .overlay(alignment: .topTrailing) {
-                if !isTerminalFocusActive {
-                    CanvasFrameRateHUD(
-                        sample: frameRateMonitor.sample,
-                        nodeCount: nodes.count
-                    )
-                    .padding(.top, HudSpacing.xl)
-                    .padding(.trailing, HudSpacing.xxl)
                 }
             }
         }
@@ -1687,12 +1932,17 @@ public struct HudVantageSurface: View {
         MagnificationGesture()
             .onChanged { value in
                 guard !isTerminalFocusActive else { return }
+                if zoomStart == nil {
+                    zoomStart = canvasState.scale
+                    zoomGestureAnchor = hoverPoint ?? canvasState.viewportCenter
+                }
                 let start = zoomStart ?? canvasState.scale
-                zoomStart = start
-                setCanvasScale(start * value, around: canvasState.viewportCenter)
+                let anchor = zoomGestureAnchor ?? canvasState.viewportCenter
+                setCanvasScale(start * value, around: anchor)
             }
             .onEnded { _ in
                 zoomStart = nil
+                zoomGestureAnchor = nil
             }
     }
 
@@ -1927,7 +2177,7 @@ public struct HudVantageSurface: View {
                 }
             }
         }
-        .coordinateSpace(name: "termini-canvas")
+        .coordinateSpace(name: "vantage-canvas")
         .contentShape(Rectangle())
         .onTapGesture {
             guard !isTerminalFocusActive else { return }
@@ -1957,7 +2207,9 @@ public struct HudVantageSurface: View {
 
     private var statusBar: some View {
         ZStack {
-            HStack(spacing: HudSpacing.xl) {
+            HudGrainOverlay(opacity: 0.035)
+
+            HStack(spacing: HudSpacing.lg) {
                 Text("\(nodes.count) nodes")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.muted)
@@ -1970,21 +2222,10 @@ public struct HudVantageSurface: View {
                 Text("·")
                     .font(HudFont.mono(10))
                     .foregroundStyle(activeTheme.palette.dim)
-                Text("\(selectedIDs.count) selected")
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.muted)
-                Text("·")
-                    .font(HudFont.mono(10))
+                Text(environmentContextLabel)
+                    .font(HudFont.mono(9))
                     .foregroundStyle(activeTheme.palette.dim)
-                Text(controlPerfLabel)
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.muted)
-                Text("·")
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.dim)
-                Text(controlStatus.uppercased())
-                    .font(HudFont.mono(10))
-                    .foregroundStyle(activeTheme.palette.muted)
+                    .lineLimit(1)
                 Spacer()
             }
             .padding(.horizontal, HudSpacing.xxl)
@@ -1996,6 +2237,7 @@ public struct HudVantageSurface: View {
             )
         }
         .frame(height: HudVantageMetrics.statusBarHeight)
+        .background(activeTheme.palette.bg)
     }
 
     private var canvasCursor: CanvasCursor {
@@ -3408,6 +3650,113 @@ public struct HudVantageSurface: View {
         }
     }
 
+    private func recordSceneTab(
+        manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) {
+        let path = trimmed(command.manifestPath ?? command.statePath)
+        let tab = VantageSceneTab.make(
+            manifestPath: path,
+            presentation: manifest.presentation,
+            fallbackTitle: configuration.surfaceTitle
+        )
+        if let path, !path.isEmpty {
+            sceneTabs.removeAll { $0.manifestPath == path }
+            sceneTabs.insert(tab, at: 0)
+            if sceneTabs.count > VantageSceneTab.recentsCap {
+                sceneTabs = Array(sceneTabs.prefix(VantageSceneTab.recentsCap))
+            }
+        }
+        triggerSceneAnnounce(tab)
+    }
+
+    private func triggerSceneAnnounce(_ tab: VantageSceneTab) {
+        announceDismissTask?.cancel()
+        withAnimation(.easeInOut(duration: 0.28)) {
+            announceTab = tab
+        }
+        announceDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 1_700_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(.easeInOut(duration: 0.32)) {
+                announceTab = nil
+            }
+        }
+    }
+
+    private func applySceneTab(_ tab: VantageSceneTab) {
+        if let path = tab.manifestPath, !path.isEmpty {
+            let command = HudVantageControlCommand(
+                apiVersion: "v0",
+                kind: "hudson.vantage.command",
+                id: "scene-tab-\(UUID().uuidString)",
+                action: "setup",
+                manifestPath: path,
+                createIfMissing: true,
+                removeMissing: true
+            )
+            _ = applySetupCommand(command)
+        } else {
+            switchToBlankWorkspace(named: tab.title)
+        }
+    }
+
+    private func createBlankWorkspace() {
+        let existingBlanks = sceneTabs.filter { $0.manifestPath == nil }.count
+        let title = "Workspace \(existingBlanks + 1)"
+        switchToBlankWorkspace(named: title)
+    }
+
+    private func switchToBlankWorkspace(named title: String) {
+        stopAllNodes()
+        activeWorkspaceID = GraphitePath.slugify(title, fallback: configuration.workspaceID)
+        activeHandoffID = nil
+        presentationState = VantagePresentationState(
+            title: title,
+            subtitle: nil,
+            badge: nil,
+            cobrand: nil,
+            productName: nil,
+            hostName: nil,
+            icon: nil,
+            theme: nil,
+            accent: nil
+        )
+        let tab = VantageSceneTab(
+            manifestPath: nil,
+            title: title,
+            subtitle: nil,
+            badge: nil,
+            accent: nil,
+            appliedAt: Date()
+        )
+        sceneTabs.removeAll { $0.id == tab.id }
+        sceneTabs.insert(tab, at: 0)
+        if sceneTabs.count > VantageSceneTab.recentsCap {
+            sceneTabs = Array(sceneTabs.prefix(VantageSceneTab.recentsCap))
+        }
+        triggerSceneAnnounce(tab)
+        schedulePersistStateIfConfigured()
+    }
+
+    private var activeSceneTabID: String? {
+        sceneTabs.first?.id
+    }
+
+    private func setupHandoffID(
+        from manifest: HudVantageSetupManifest,
+        command: HudVantageControlCommand
+    ) -> String? {
+        if let handoffID = trimmed(manifest.handoffId) {
+            return handoffID
+        }
+        guard let commandID = trimmed(command.id),
+              commandID.hasPrefix("openscout-handoff-") else {
+            return nil
+        }
+        return String(commandID.dropFirst("openscout-".count))
+    }
+
     private func setupSuccessMessage(_ report: HudVantageSetupReport) -> String {
         let created = report.createdNodeIDs.count
         let reused = report.reusedNodeIDs.count
@@ -3451,7 +3800,10 @@ public struct HudVantageSurface: View {
         )
         var touchedIDs = Set<UUID>()
 
+        activeWorkspaceID = report.workspaceID
+        activeHandoffID = setupHandoffID(from: manifest, command: command)
         presentationState.apply(manifest.presentation)
+        recordSceneTab(manifest: manifest, command: command)
         applySetupPresentationTheme(manifest.presentation)
         if let style = manifest.style {
             applySetupStyle(style)
@@ -3665,19 +4017,19 @@ public struct HudVantageSurface: View {
         from setupNode: HudVantageSetupNode
     ) throws -> Bool {
         var changed = false
-        if let x = setupNode.x {
+        if let x = setupNode.x ?? setupNode.layout?.x {
             node.origin.x = CGFloat(x)
             changed = true
         }
-        if let y = setupNode.y {
+        if let y = setupNode.y ?? setupNode.layout?.y {
             node.origin.y = CGFloat(y)
             changed = true
         }
-        if let width = setupNode.width {
+        if let width = setupNode.width ?? setupNode.layout?.width {
             node.size.width = max(300, CGFloat(width))
             changed = true
         }
-        if let height = setupNode.height {
+        if let height = setupNode.height ?? setupNode.layout?.height {
             node.size.height = max(200, CGFloat(height))
             changed = true
         }
@@ -3712,13 +4064,14 @@ public struct HudVantageSurface: View {
         let nodeID = setupNode.nodeID
             ?? setupNode.id.flatMap(UUID.init(uuidString:))
             ?? UUID()
+        let layout = setupNode.layout
         let origin = CGPoint(
-            x: CGFloat(setupNode.x ?? (72 + Double(offset * 38))),
-            y: CGFloat(setupNode.y ?? (76 + Double(offset * 38)))
+            x: CGFloat(setupNode.x ?? layout?.x ?? (72 + Double(offset * 38))),
+            y: CGFloat(setupNode.y ?? layout?.y ?? (76 + Double(offset * 38)))
         )
         let size = CGSize(
-            width: max(300, CGFloat(setupNode.width ?? 500)),
-            height: max(200, CGFloat(setupNode.height ?? 316))
+            width: max(300, CGFloat(setupNode.width ?? layout?.width ?? 500)),
+            height: max(200, CGFloat(setupNode.height ?? layout?.height ?? 316))
         )
         let tint = HudTint.from(token: setupNode.tint ?? tint(for: nextIndex).rawValue)
         let zIndex = setupNode.zIndex ?? nextZIndex
@@ -5473,7 +5826,8 @@ public struct HudVantageSurface: View {
             ok: ok,
             message: message,
             errorCode: errorCode,
-            workspaceID: command.workspaceID ?? configuration.workspaceID,
+            workspaceID: activeWorkspaceID ?? command.workspaceID ?? configuration.workspaceID,
+            handoffId: activeHandoffID,
             nodeCount: nodes.count,
             nodes: command.includeNodes == false ? nil : responseNodes.map(controlNodeSummary),
             selectedNodeIDs: selectedIDs.sorted { $0.uuidString < $1.uuidString },
@@ -5869,18 +6223,18 @@ private struct TerminalNodeView: View {
                         .truncationMode(.middle)
                 }
                 if let liveSource = node.liveSource {
-                    HudLiveIndicator(source: liveSource, displayMode: .compact)
+                    HudLiveIndicator(source: liveSource, displayMode: .compact, chrome: .ghost)
                 }
                 titleBarFocusButton
             } else if titleBarMode == .compact {
                 if let liveSource = node.liveSource {
-                    HudLiveIndicator(source: liveSource, displayMode: .dot)
+                    HudLiveIndicator(source: liveSource, displayMode: .dot, chrome: .ghost)
                 }
                 if shouldShowCompactFocusButton {
                     titleBarFocusButton
                 }
             } else if let liveSource = node.liveSource {
-                HudLiveIndicator(source: liveSource, displayMode: .dot)
+                HudLiveIndicator(source: liveSource, displayMode: .dot, chrome: .ghost)
             }
         }
         .padding(.horizontal, titleBarHorizontalPadding)
@@ -5910,7 +6264,7 @@ private struct TerminalNodeView: View {
                 .foregroundStyle(theme.palette.muted)
         case .compact:
             if shouldShowKindBadge {
-                HudBadge(titleBarKindLabel, tint: node.tint.color, dot: true)
+                HudBadge(titleBarKindLabel, tint: theme.palette.statusInfo, dot: true)
             } else {
                 sourceDot
                 Image(systemName: node.symbolName)
@@ -5929,13 +6283,13 @@ private struct TerminalNodeView: View {
         HStack(spacing: HudSpacing.sm) {
             closeLight
             Circle()
-                .fill(theme.palette.statusWarn)
+                .fill(theme.palette.dim.opacity(HudOpacity.ghost))
                 .frame(
                     width: HudVantageMetrics.terminalTrafficLightSize,
                     height: HudVantageMetrics.terminalTrafficLightSize
                 )
             Circle()
-                .fill(node.tint.color)
+                .fill(theme.palette.muted.opacity(HudOpacity.subtle))
                 .frame(
                     width: HudVantageMetrics.terminalTrafficLightSize,
                     height: HudVantageMetrics.terminalTrafficLightSize
@@ -5945,7 +6299,7 @@ private struct TerminalNodeView: View {
 
     private var sourceDot: some View {
         Circle()
-            .fill(node.tint.color)
+            .fill(theme.palette.muted)
             .frame(
                 width: HudVantageMetrics.terminalTrafficLightSize,
                 height: HudVantageMetrics.terminalTrafficLightSize
@@ -5954,7 +6308,7 @@ private struct TerminalNodeView: View {
 
     private var closeLight: some View {
         Circle()
-            .fill(theme.palette.statusError)
+            .fill(theme.palette.muted.opacity(HudOpacity.subtle))
             .frame(
                 width: HudVantageMetrics.terminalTrafficLightSize,
                 height: HudVantageMetrics.terminalTrafficLightSize
@@ -5974,7 +6328,7 @@ private struct TerminalNodeView: View {
     }
 
     private var dragGesture: some Gesture {
-        DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
+        DragGesture(minimumDistance: 0, coordinateSpace: .named("vantage-canvas"))
             .onChanged { value in
                 if !isDragging {
                     isDragging = true
@@ -6006,7 +6360,7 @@ private struct TerminalNodeView: View {
             .help("Resize")
             .accessibilityLabel("Resize node")
             .gesture(
-                DragGesture(minimumDistance: 0, coordinateSpace: .named("termini-canvas"))
+                DragGesture(minimumDistance: 0, coordinateSpace: .named("vantage-canvas"))
                     .onChanged { value in
                         if !isResizing {
                             isResizing = true
@@ -6207,7 +6561,7 @@ private struct TerminalPopOutTitleBar: View {
 
     var body: some View {
         HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: node.tint.color, size: HudDotSize.small)
+            HudStatusDot(color: theme.palette.muted, size: HudDotSize.small)
             Image(systemName: node.symbolName)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(theme.palette.muted)
@@ -6367,7 +6721,7 @@ private struct TerminalPreview: View {
                         )
                         context.fill(
                             Path(roundedRect: rect, cornerRadius: 0.5),
-                            with: .color(node.tint.color.opacity(alpha))
+                            with: .color(theme.palette.muted.opacity(alpha))
                         )
                     }
                 }
@@ -6375,7 +6729,7 @@ private struct TerminalPreview: View {
             .allowsHitTesting(false)
 
             VStack(alignment: .leading, spacing: HudSpacing.sm) {
-                HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
+                HudBadge(node.runtimeIdentity.badge, tint: theme.palette.statusInfo, dot: true)
                 Text("surface virtualized")
                     .font(HudFont.mono(10))
                     .foregroundStyle(theme.palette.muted)
@@ -6438,7 +6792,7 @@ private struct DocumentArtifactPreview: View {
 
     private var header: some View {
         HStack(spacing: HudSpacing.md) {
-            HudBadge(artifact?.kind.badge ?? "DOC", tint: node.tint.color, dot: true)
+            HudBadge(artifact?.kind.badge ?? "DOC", tint: theme.palette.statusInfo, dot: true)
             if let language = artifact?.language {
                 HudBadge(language.uppercased(), tint: theme.palette.statusInfo)
             }
@@ -6455,19 +6809,19 @@ private struct DocumentArtifactPreview: View {
         case .diff:
             DiffArtifactCanvasPreview(
                 document: diffDocument,
-                tint: node.tint.color,
+                tint: theme.palette.statusInfo,
                 byteCount: artifact?.byteCount ?? 0,
                 readByteCount: artifact?.readByteCount ?? 0,
                 isTruncated: artifact?.truncated == true,
                 detail: canvasDetail
             )
         case .plan, .note:
-            PlanArtifactCanvasPreview(text: previewText, tint: node.tint.color)
+            PlanArtifactCanvasPreview(text: previewText, tint: theme.palette.statusInfo)
         default:
             CodeArtifactCanvasPreview(
                 text: previewText,
                 detail: compactDetail,
-                tint: node.tint.color
+                tint: theme.palette.statusInfo
             )
         }
     }
@@ -6476,14 +6830,14 @@ private struct DocumentArtifactPreview: View {
     private var fullPreview: some View {
         switch artifact?.kind {
         case .diff:
-            DiffArtifactFullPreview(document: diffDocument, tint: node.tint.color)
+            DiffArtifactFullPreview(document: diffDocument, tint: theme.palette.statusInfo)
         case .plan, .note:
-            PlanArtifactFullPreview(text: previewText, tint: node.tint.color)
+            PlanArtifactFullPreview(text: previewText, tint: theme.palette.statusInfo)
         default:
             CodeArtifactFullPreview(
                 text: previewText,
                 language: artifact?.language,
-                tint: node.tint.color
+                tint: theme.palette.statusInfo
             )
         }
     }
@@ -6612,8 +6966,8 @@ private struct DiffArtifactCanvasPreview: View {
                         label: "\(document.stats.files)f",
                         color: theme.palette.statusInfo
                     )
-                    DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.statusOk)
-                    DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.statusError)
+                    DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.muted)
+                    DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.dim)
                     if document.stats.hunks > 0 {
                         DiffStatPill(
                             label: "\(document.stats.hunks)h",
@@ -6624,7 +6978,7 @@ private struct DiffArtifactCanvasPreview: View {
                 }
 
                 diffBody
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                 HStack(spacing: HudSpacing.sm) {
                     Text(footerLabel)
@@ -6634,7 +6988,7 @@ private struct DiffArtifactCanvasPreview: View {
                         .minimumScaleFactor(0.78)
                     Spacer(minLength: 0)
                     if isTruncated {
-                        HudBadge("TRUNC", tint: theme.palette.statusWarn)
+                        HudBadge("TRUNC", tint: theme.palette.muted)
                     }
                 }
             }
@@ -6667,8 +7021,8 @@ private struct DiffArtifactCanvasPreview: View {
             for row in 0..<rows {
                 let kind = row % 5
                 let color = kind == 1
-                    ? theme.palette.statusOk
-                    : (kind == 3 ? theme.palette.statusError : theme.palette.ink)
+                    ? theme.palette.statusInfo.opacity(HudOpacity.subtle)
+                    : (kind == 3 ? theme.palette.dim.opacity(HudOpacity.subtle) : theme.palette.ink.opacity(HudOpacity.ghost))
                 let barRect = CGRect(
                     x: 0,
                     y: CGFloat(row) * rowHeight + 2,
@@ -6699,7 +7053,7 @@ private struct DiffArtifactCanvasPreview: View {
             ForEach(Array(document.files.prefix(4))) { file in
                 HStack(spacing: HudSpacing.sm) {
                     Circle()
-                        .fill(file.stats.deletions > 0 ? theme.palette.statusError : theme.palette.statusOk)
+                        .fill(file.stats.deletions > 0 ? theme.palette.dim : theme.palette.muted)
                         .frame(width: HudDotSize.tiny, height: HudDotSize.tiny)
                     Text(file.displayPath(fallback: document.title))
                         .font(HudFont.mono(9))
@@ -6741,9 +7095,8 @@ private struct DiffArtifactCanvasPreview: View {
                         .font(HudFont.mono(9, weight: .bold))
                         .foregroundStyle(color(for: row.kind))
                         .frame(width: HudSpacing.lg)
-                    Text(row.text.isEmpty ? " " : row.text)
-                        .font(HudFont.mono(9))
-                        .foregroundStyle(row.kind == .context ? theme.palette.muted : color(for: row.kind))
+                    Text(highlightedRowText(row))
+                        .font(HudFont.mono(9, weight: .light))
                         .lineLimit(1)
                         .truncationMode(.tail)
                 }
@@ -6762,16 +7115,34 @@ private struct DiffArtifactCanvasPreview: View {
             .hunks
             .first?
             .rows
-            .prefix(8)
+            .prefix(24)
             .map { $0 } ?? []
     }
 
     private func color(for kind: HudDiffRowKind) -> Color {
         switch kind {
-        case .addition: theme.palette.statusOk
-        case .deletion: theme.palette.statusError
+        case .addition: theme.palette.statusInfo
+        case .deletion: theme.palette.dim
         case .context: theme.palette.muted
         case .metadata: theme.palette.statusInfo
+        }
+    }
+
+    private func highlightedRowText(_ row: HudDiffRow) -> AttributedString {
+        let text = row.text.isEmpty ? " " : row.text
+        switch row.kind {
+        case .context:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.muted
+            return attributed
+        case .metadata:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.statusInfo
+            return attributed
+        case .addition, .deletion:
+            let file = document.files.first
+            let language = file?.newPath ?? file?.oldPath ?? file?.language
+            return HudCodeHighlighter.highlight(text, language: language)
         }
     }
 
@@ -6866,7 +7237,7 @@ private struct CodeArtifactFullPreview: View {
             return tint
         }
         if trimmed.contains("let ") || trimmed.contains("var ") {
-            return theme.palette.statusOk
+            return theme.palette.muted
         }
         return theme.palette.ink
     }
@@ -6924,8 +7295,8 @@ private struct NativeDiffFullPreview: View {
                     .font(HudFont.mono(10))
                     .foregroundStyle(theme.palette.muted)
                 Spacer(minLength: 0)
-                DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.statusOk)
-                DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.statusError)
+                DiffStatPill(label: "+\(document.stats.additions)", color: theme.palette.muted)
+                DiffStatPill(label: "-\(document.stats.deletions)", color: theme.palette.dim)
             }
             .padding(.horizontal, HudSpacing.xl)
             .frame(height: HudLayout.rowHeightRegular)
@@ -6954,7 +7325,7 @@ private struct NativeDiffFileSection: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             HStack(spacing: HudSpacing.md) {
-                HudStatusDot(color: theme.palette.statusWarn, size: HudDotSize.small)
+                HudStatusDot(color: theme.palette.statusInfo, size: HudDotSize.small)
                 Text(file.displayPath(fallback: fallbackTitle))
                     .font(HudFont.mono(11, weight: .semibold))
                     .foregroundStyle(theme.palette.ink)
@@ -6966,10 +7337,10 @@ private struct NativeDiffFileSection: View {
             }
             .padding(.horizontal, HudSpacing.xl)
             .frame(height: HudLayout.rowHeightRegular)
-            .background(theme.palette.statusWarn.opacity(HudOpacity.ghost))
+            .background(theme.palette.chrome.opacity(HudOpacity.ghost))
 
             ForEach(file.hunks) { hunk in
-                NativeDiffHunkSection(hunk: hunk)
+                NativeDiffHunkSection(hunk: hunk, language: file.newPath ?? file.oldPath ?? file.language)
             }
         }
     }
@@ -6977,6 +7348,7 @@ private struct NativeDiffFileSection: View {
 
 private struct NativeDiffHunkSection: View {
     let hunk: HudDiffHunk
+    let language: String?
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -6989,7 +7361,7 @@ private struct NativeDiffHunkSection: View {
                 .background(theme.palette.statusInfo.opacity(HudOpacity.ghost))
 
             ForEach(hunk.rows) { row in
-                NativeDiffRowView(row: row)
+                NativeDiffRowView(row: row, language: language)
             }
         }
     }
@@ -6997,6 +7369,7 @@ private struct NativeDiffHunkSection: View {
 
 private struct NativeDiffRowView: View {
     let row: HudDiffRow
+    let language: String?
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
@@ -7018,9 +7391,8 @@ private struct NativeDiffRowView: View {
                 .font(HudFont.mono(11, weight: .semibold))
                 .foregroundStyle(barColor)
                 .frame(width: HudIconSize.micro, alignment: .center)
-            Text(row.text.isEmpty ? " " : row.text)
-                .font(HudFont.mono(11))
-                .foregroundStyle(textColor)
+            Text(highlightedText)
+                .font(HudFont.mono(11, weight: .light))
                 .textSelection(.enabled)
                 .fixedSize(horizontal: true, vertical: false)
         }
@@ -7028,10 +7400,26 @@ private struct NativeDiffRowView: View {
         .background(backgroundColor)
     }
 
+    private var highlightedText: AttributedString {
+        let text = row.text.isEmpty ? " " : row.text
+        switch row.kind {
+        case .context:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.muted
+            return attributed
+        case .metadata:
+            var attributed = AttributedString(text)
+            attributed.foregroundColor = theme.palette.statusInfo
+            return attributed
+        case .addition, .deletion:
+            return HudCodeHighlighter.highlight(text, language: language)
+        }
+    }
+
     private var barColor: Color {
         switch row.kind {
-        case .addition: theme.palette.statusOk
-        case .deletion: theme.palette.statusError
+        case .addition: theme.palette.statusInfo
+        case .deletion: theme.palette.dim
         case .context: Color.clear
         case .metadata: theme.palette.dim
         }
@@ -7039,8 +7427,8 @@ private struct NativeDiffRowView: View {
 
     private var backgroundColor: Color {
         switch row.kind {
-        case .addition: theme.palette.statusOk.opacity(HudOpacity.subtle)
-        case .deletion: theme.palette.statusError.opacity(HudOpacity.subtle)
+        case .addition: theme.palette.statusInfo.opacity(HudOpacity.ghost)
+        case .deletion: theme.palette.dim.opacity(HudOpacity.ghost)
         case .metadata: theme.palette.ink.opacity(HudOpacity.ghost)
         case .context: Color.clear
         }
@@ -7690,7 +8078,6 @@ private struct InfiniteCanvasBackground: View {
 }
 
 private struct CanvasNavigationPanel: View {
-    @Binding var width: CGFloat
     let nodes: [TerminalNode]
     let minimapNodes: [TerminalNode]
     let totalCount: Int
@@ -7708,77 +8095,42 @@ private struct CanvasNavigationPanel: View {
     let onCenterWorldPoint: (CGPoint) -> Void
     let onFit: () -> Void
     let onOpenAppearanceSettings: () -> Void
-    let onCollapse: () -> Void
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 0) {
-            VStack(spacing: 0) {
-                header
-                HudDivider(color: theme.hairline.standard)
-                filters
-                    .padding(.horizontal, HudSpacing.xl)
-                    .padding(.vertical, HudSpacing.lg)
-                HudDivider(color: theme.hairline.subtle)
+        VStack(spacing: 0) {
+            filters
+                .padding(.horizontal, HudSpacing.xl)
+                .padding(.vertical, HudSpacing.lg)
+            HudDivider(color: theme.hairline.subtle)
 
-                ScrollView {
-                    LazyVStack(spacing: HudSpacing.sm) {
-                        ForEach(nodes) { node in
-                            CanvasNavigationRow(
-                                node: node,
-                                isSelected: selectedIDs.contains(node.id),
-                                onSelect: { onSelectNode(node.id) },
-                                onCenter: { onCenterNode(node.id) }
-                            )
-                        }
-
-                        if nodes.isEmpty {
-                            Text("No nodes")
-                                .font(HudFont.mono(10))
-                                .foregroundStyle(theme.palette.dim)
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                                .padding(HudSpacing.xl)
-                        }
+            ScrollView {
+                LazyVStack(spacing: HudSpacing.sm) {
+                    ForEach(nodes) { node in
+                        CanvasNavigationRow(
+                            node: node,
+                            isSelected: selectedIDs.contains(node.id),
+                            onSelect: { onSelectNode(node.id) },
+                            onCenter: { onCenterNode(node.id) }
+                        )
                     }
-                    .padding(HudSpacing.xl)
+
+                    if nodes.isEmpty {
+                        Text("No nodes")
+                            .font(HudFont.mono(10))
+                            .foregroundStyle(theme.palette.dim)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(HudSpacing.xl)
+                    }
                 }
-
-                HudDivider(color: theme.hairline.subtle)
-                footer
-                    .padding(HudSpacing.xl)
+                .padding(HudSpacing.xl)
             }
-            .frame(width: width)
-            .frame(maxHeight: .infinity)
-            .background(theme.palette.chrome)
 
-            PanelResizeHandle(
-                side: .right,
-                width: $width,
-                range: 210...360
-            )
+            HudDivider(color: theme.hairline.subtle)
+            footer
+                .padding(HudSpacing.xl)
         }
-    }
-
-    private var header: some View {
-        HStack(spacing: HudSpacing.lg) {
-            HudStatusDot(color: theme.palette.statusInfo)
-            VStack(alignment: .leading, spacing: 1) {
-                Text("Termini Canvas")
-                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                    .foregroundStyle(theme.palette.ink)
-                Text("Figma for shells")
-                    .font(HudFont.mono(9))
-                    .foregroundStyle(theme.palette.dim)
-            }
-            Spacer()
-            CanvasIconButton(
-                systemName: "sidebar.left",
-                help: "Hide navigator",
-                action: onCollapse
-            )
-        }
-        .padding(.horizontal, HudSpacing.xl)
-        .frame(height: HudLayout.navHeight)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var filters: some View {
@@ -7786,7 +8138,9 @@ private struct CanvasNavigationPanel: View {
             HStack {
                 HudSectionLabel("Workspace")
                 Spacer()
-                HudBadge("\(totalCount)", tint: theme.palette.statusInfo)
+                Text("\(totalCount)")
+                    .font(HudFont.mono(9, weight: .semibold))
+                    .foregroundStyle(theme.palette.dim)
             }
 
             HStack(spacing: HudSpacing.sm) {
@@ -7933,10 +8287,9 @@ private struct CanvasNavigationRow: View {
         HStack(spacing: HudSpacing.sm) {
             Button(action: onSelect) {
                 HStack(spacing: HudSpacing.md) {
-                    HudStatusDot(color: node.tint.color, size: 6)
                     Text(node.title)
                         .font(HudFont.mono(11, weight: .semibold))
-                        .foregroundStyle(theme.palette.ink)
+                        .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
                         .lineLimit(1)
                     Spacer(minLength: HudSpacing.sm)
                     if let tag = node.tag {
@@ -7956,11 +8309,11 @@ private struct CanvasNavigationRow: View {
         .padding(.vertical, HudSpacing.xs)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.standard)
-                .fill(isSelected ? HudSurface.selected(node.tint.color) : theme.vantageControlFill)
+                .fill(isSelected ? theme.vantageControlHoverFill : theme.vantageControlFill)
         )
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.standard)
-                .stroke(isSelected ? HudSurface.tintStrong(node.tint.color) : theme.hairline.subtle)
+                .stroke(isSelected ? theme.hairline.standard : theme.hairline.subtle)
         )
     }
 }
@@ -7972,12 +8325,12 @@ private struct CanvasTagPill: View {
     var body: some View {
         Text(tag.label.uppercased())
             .font(HudFont.mono(8, weight: .bold))
-            .foregroundStyle(tag.tint(in: theme))
+            .foregroundStyle(theme.palette.dim)
             .padding(.horizontal, HudSpacing.sm)
             .frame(height: HudIconSize.micro)
             .background(
                 RoundedRectangle(cornerRadius: theme.radius.tight)
-                    .fill(HudSurface.tintFill(tag.tint(in: theme)))
+                    .fill(theme.vantageControlFill)
             )
     }
 }
@@ -8014,20 +8367,16 @@ private struct CanvasTagFilterButton: View {
         .accessibilityLabel(helpText)
     }
 
-    private var tint: Color {
-        tag?.tint(in: theme) ?? theme.palette.statusInfo
-    }
-
     private var foregroundColor: Color {
-        isActive ? tint : theme.palette.muted
+        isActive ? theme.palette.ink : theme.palette.muted
     }
 
     private var backgroundColor: Color {
-        isActive ? HudSurface.tintFill(tint) : theme.vantageControlFill
+        isActive ? theme.vantageControlHoverFill : theme.vantageControlFill
     }
 
     private var borderColor: Color {
-        isActive ? HudSurface.tintBorder(tint) : theme.hairline.subtle
+        isActive ? theme.hairline.standard : theme.hairline.subtle
     }
 
     private var helpText: String {
@@ -8047,24 +8396,20 @@ private struct CanvasTagActionButton: View {
         Button(action: action) {
             Image(systemName: tag?.symbolName ?? "tag.slash")
                 .font(HudFont.ui(10, weight: .semibold))
-                .foregroundStyle(tint)
+                .foregroundStyle(theme.palette.muted)
                 .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
                 .background(
                     RoundedRectangle(cornerRadius: theme.radius.standard)
-                        .fill(HudSurface.tintFill(tint))
+                        .fill(theme.vantageControlFill)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: theme.radius.standard)
-                        .stroke(HudSurface.tintBorder(tint))
+                        .stroke(theme.hairline.subtle)
                 )
         }
         .buttonStyle(.plain)
         .help(helpText)
         .accessibilityLabel(helpText)
-    }
-
-    private var tint: Color {
-        tag?.tint(in: theme) ?? theme.palette.dim
     }
 
     private var helpText: String {
@@ -8075,98 +8420,34 @@ private struct CanvasTagActionButton: View {
     }
 }
 
-private enum PanelResizeSide {
-    case left
-    case right
-}
-
-private struct PanelResizeHandle: View {
-    let side: PanelResizeSide
-    @Binding var width: CGFloat
-    let range: ClosedRange<CGFloat>
-
-    @State private var startWidth: CGFloat?
-    @Environment(\.hudTheme) private var theme
-
-    var body: some View {
-        Rectangle()
-            .fill(theme.hairline.subtle)
-            .frame(width: HudVantageMetrics.panelResizeHandleWidth)
-            .overlay {
-                Capsule()
-                    .fill(HudSurface.tintMuted(theme.palette.dim))
-                    .frame(
-                        width: HudStrokeWidth.standard,
-                        height: HudVantageMetrics.panelResizeIndicatorHeight
-                    )
-            }
-            .contentShape(Rectangle())
-            .gesture(
-                DragGesture(minimumDistance: 0)
-                    .onChanged { value in
-                        let start = startWidth ?? width
-                        startWidth = start
-                        let signedDelta = side == .right
-                            ? value.translation.width
-                            : -value.translation.width
-                        width = min(max(start + signedDelta, range.lowerBound), range.upperBound)
-                    }
-                    .onEnded { _ in
-                        startWidth = nil
-                    }
-            )
-            .help("Resize panel")
-            .accessibilityLabel("Resize panel")
-    }
-}
-
 private struct CanvasInspectorPanel: View {
-    @Binding var width: CGFloat
     let selectedNodes: [TerminalNode]
-    let totalCount: Int
     let tmuxAvailable: Bool
     let tmuxInstallInProgress: Bool
     let tmuxInstallMessage: String
     let onCenterNode: (TerminalNode) -> Void
     let onCloseNode: (UUID) -> Void
     let onInstallTmux: () -> Void
-    let onCollapse: () -> Void
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 0) {
-            PanelResizeHandle(
-                side: .left,
-                width: $width,
-                range: 250...440
-            )
+        VStack(spacing: 0) {
+            header
+            HudDivider(color: theme.hairline.subtle)
 
-            VStack(spacing: 0) {
-                header
-                HudDivider(color: theme.hairline.standard)
-
-                ScrollView {
-                    content
-                        .padding(HudSpacing.xl)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
+            ScrollView {
+                content
+                    .padding(HudSpacing.xl)
+                    .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .frame(width: width)
-            .frame(maxHeight: .infinity)
-            .background(theme.palette.chrome)
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
     }
 
     private var header: some View {
         HStack(spacing: HudSpacing.lg) {
             HudSectionLabel("Detail")
             Spacer()
-            HudBadge("\(totalCount)", tint: theme.palette.statusInfo)
-            CanvasIconButton(
-                systemName: "sidebar.right",
-                help: "Hide inspector",
-                action: onCollapse
-            )
         }
         .padding(.horizontal, HudSpacing.lg)
         .frame(height: HudLayout.navHeight)
@@ -8735,7 +9016,7 @@ private struct TerminalDetailView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.xl) {
             HStack(spacing: HudSpacing.md) {
-                HudStatusDot(color: node.tint.color, size: 8)
+                HudStatusDot(color: theme.palette.muted, size: 8)
                 VStack(alignment: .leading, spacing: 2) {
                     Text(node.title)
                         .font(HudFont.mono(13, weight: .semibold))
@@ -8758,7 +9039,7 @@ private struct TerminalDetailView: View {
 
             VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HudSectionLabel("Runtime")
-                HudBadge(node.runtimeIdentity.badge, tint: node.tint.color, dot: true)
+                HudBadge(node.runtimeIdentity.badge, tint: theme.palette.statusInfo, dot: true)
                 Text(node.runtimeIdentity.detail)
                     .font(HudFont.mono(10))
                     .foregroundStyle(theme.palette.muted)
@@ -8776,7 +9057,7 @@ private struct TerminalDetailView: View {
             if let liveSource = node.liveSource {
                 VStack(alignment: .leading, spacing: HudSpacing.md) {
                     HudSectionLabel("Live Source")
-                    HudLiveIndicator(source: liveSource, displayMode: .expanded)
+                    HudLiveIndicator(source: liveSource, displayMode: .expanded, chrome: .ghost)
                 }
             }
 
@@ -9069,7 +9350,7 @@ private struct VantageCommandPalette: View {
                         icon: "square.grid.2x2",
                         title: "Group By Tag",
                         detail: "G · focus, watch, parked, untagged",
-                        tint: theme.palette.statusOk,
+                        tint: theme.palette.muted,
                         action: onLayoutByTag
                     )
                     VantageCommandRow(
@@ -9083,7 +9364,7 @@ private struct VantageCommandPalette: View {
                         icon: "plus",
                         title: "New Terminal",
                         detail: "Create local PTY",
-                        tint: theme.palette.statusOk,
+                        tint: theme.palette.muted,
                         action: onCreateTerminal
                     )
                     VantageCommandRow(
@@ -9098,7 +9379,7 @@ private struct VantageCommandPalette: View {
                         icon: "rectangle.on.rectangle",
                         title: "Pop Out Selection",
                         detail: "\(selectedCount) selected",
-                        tint: theme.palette.statusWarn,
+                        tint: theme.palette.muted,
                         isDisabled: selectedCount == 0,
                         action: onPopOutSelection
                     )
@@ -9192,21 +9473,19 @@ private struct CanvasFilterButton: View {
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        let tint = theme.palette.statusInfo
-
         Button(action: action) {
             Text(title)
                 .font(HudFont.mono(9, weight: .semibold))
-                .foregroundStyle(isActive ? tint : theme.palette.muted)
+                .foregroundStyle(isActive ? theme.palette.ink : theme.palette.muted)
                 .padding(.horizontal, HudSpacing.md)
                 .frame(height: HudVantageMetrics.filterButtonHeight)
                 .background(
                     RoundedRectangle(cornerRadius: theme.radius.tight)
-                        .fill(isActive ? HudSurface.selected(tint) : theme.vantageControlFill)
+                        .fill(isActive ? theme.vantageControlHoverFill : theme.vantageControlFill)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: theme.radius.tight)
-                        .stroke(isActive ? HudSurface.tintStrong(tint) : theme.hairline.subtle)
+                        .stroke(isActive ? theme.hairline.standard : theme.hairline.subtle)
                 )
         }
         .buttonStyle(.plain)
@@ -9504,6 +9783,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     let onSpacePanChanged: (Bool) -> Void
     let onCommandPalette: () -> Void
     let onShortcut: (CanvasKeyboardShortcut) -> Void
+    let onCursorMoved: (CGPoint?) -> Void
     let isLensPresented: Bool
     let cursor: CanvasCursor
 
@@ -9511,6 +9791,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         Coordinator(
             onScroll: onScroll,
             onMagnify: onMagnify,
+            onCursorMoved: onCursorMoved,
             canBeginSpacePan: canBeginSpacePan,
             onSpacePanChanged: onSpacePanChanged,
             onCommandPalette: onCommandPalette,
@@ -9530,6 +9811,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     func updateNSView(_ nsView: EventView, context: Context) {
         context.coordinator.onScroll = onScroll
         context.coordinator.onMagnify = onMagnify
+        context.coordinator.onCursorMoved = onCursorMoved
         context.coordinator.canBeginSpacePan = canBeginSpacePan
         context.coordinator.onSpacePanChanged = onSpacePanChanged
         context.coordinator.onCommandPalette = onCommandPalette
@@ -9564,6 +9846,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
 
         override func viewDidMoveToWindow() {
             super.viewDidMoveToWindow()
+            window?.acceptsMouseMovedEvents = true
             setCursorIfPointerIsInside()
         }
 
@@ -9578,6 +9861,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
     final class Coordinator {
         var onScroll: (CGSize, CGPoint) -> Void
         var onMagnify: (CGFloat, CGPoint) -> Void
+        var onCursorMoved: (CGPoint?) -> Void
         var canBeginSpacePan: (CGPoint) -> Bool
         var onSpacePanChanged: (Bool) -> Void
         var onCommandPalette: () -> Void
@@ -9586,10 +9870,12 @@ private struct CanvasInputBridge: NSViewRepresentable {
         weak var view: EventView?
         private var monitor: Any?
         private var spacePanActive = false
+        private var scrollAnchor: CGPoint?
 
         init(
             onScroll: @escaping (CGSize, CGPoint) -> Void,
             onMagnify: @escaping (CGFloat, CGPoint) -> Void,
+            onCursorMoved: @escaping (CGPoint?) -> Void,
             canBeginSpacePan: @escaping (CGPoint) -> Bool,
             onSpacePanChanged: @escaping (Bool) -> Void,
             onCommandPalette: @escaping () -> Void,
@@ -9597,6 +9883,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         ) {
             self.onScroll = onScroll
             self.onMagnify = onMagnify
+            self.onCursorMoved = onCursorMoved
             self.canBeginSpacePan = canBeginSpacePan
             self.onSpacePanChanged = onSpacePanChanged
             self.onCommandPalette = onCommandPalette
@@ -9606,7 +9893,7 @@ private struct CanvasInputBridge: NSViewRepresentable {
         func installMonitor() {
             guard monitor == nil else { return }
             monitor = NSEvent.addLocalMonitorForEvents(
-                matching: [.scrollWheel, .magnify, .keyDown, .keyUp]
+                matching: [.scrollWheel, .magnify, .keyDown, .keyUp, .mouseMoved, .leftMouseDragged]
             ) { [weak self] event in
                 guard let self,
                       let view,
@@ -9616,19 +9903,47 @@ private struct CanvasInputBridge: NSViewRepresentable {
                     return event
                 }
 
+                // Track cursor on every relevant event so SwiftUI gesture can use
+                // an authoritative anchor at gesture start.
+                self.onCursorMoved(self.viewportLocation(for: event))
+
                 switch event.type {
+                case .mouseMoved, .leftMouseDragged:
+                    return event
                 case .scrollWheel:
                     guard let location = self.viewportLocation(for: event) else { return event }
+                    let phase = event.phase
+                    let momentum = event.momentumPhase
+                    let isTrackpadGesture = !phase.isEmpty || !momentum.isEmpty
                     let delta = CGSize(
                         width: event.scrollingDeltaX,
                         height: event.scrollingDeltaY
                     )
-                    self.onScroll(delta, location)
+
+                    if !isTrackpadGesture {
+                        // Discrete event (mouse wheel): each click anchors fresh.
+                        self.scrollAnchor = nil
+                        self.onScroll(delta, location)
+                        return nil
+                    }
+
+                    // Trackpad scroll: lock anchor at gesture start, hold through
+                    // momentum so cursor drift between events can't move the pivot.
+                    if phase.contains(.began) {
+                        self.scrollAnchor = location
+                    }
+                    let anchor = self.scrollAnchor ?? location
+                    self.onScroll(delta, anchor)
+                    if phase.contains(.cancelled) || momentum.contains(.ended) {
+                        self.scrollAnchor = nil
+                    }
                     return nil
                 case .magnify:
-                    guard let location = self.viewportLocation(for: event) else { return event }
-                    self.onMagnify(event.magnification, location)
-                    return nil
+                    // Pinch-zoom is handled by the SwiftUI MagnificationGesture
+                    // attached to the canvas (cursor-anchored, locked at gesture
+                    // start). Pass the event through (don't consume) so SwiftUI's
+                    // gesture system can pick it up.
+                    return event
                 case .keyDown:
                     if self.isLensPresented {
                         if let shortcut = self.lensShortcut(for: event) {
@@ -9777,6 +10092,115 @@ private struct CanvasInputBridge: NSViewRepresentable {
     }
 }
 
+private struct CanvasActionToolbar: View {
+    let tool: CanvasTool
+    let onSelect: () -> Void
+    let onHand: () -> Void
+    let onCommandPalette: () -> Void
+    let onFocus: () -> Void
+    let onPopOut: () -> Void
+    let onNew: () -> Void
+    var focusDisabled = false
+    var popOutDisabled = false
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        HStack(spacing: HudSpacing.sm) {
+            CanvasToolSwitch(
+                tool: tool,
+                onSelect: onSelect,
+                onHand: onHand
+            )
+
+            CanvasToolbarDivider()
+
+            CommandKeyButton(action: onCommandPalette)
+
+            CanvasToolbarDivider()
+
+            CanvasToolbarIconButton(
+                systemName: "rectangle.inset.filled",
+                help: "Focus selection",
+                isDisabled: focusDisabled,
+                action: onFocus
+            )
+
+            CanvasToolbarIconButton(
+                systemName: "rectangle.on.rectangle",
+                help: "Pop out selection",
+                isDisabled: popOutDisabled,
+                action: onPopOut
+            )
+
+            CanvasToolbarIconButton(
+                systemName: "plus",
+                help: "New terminal",
+                isDisabled: false,
+                action: onNew
+            )
+        }
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.sm)
+        .background(
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .fill(theme.palette.bg.opacity(0.92))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: theme.radius.card)
+                .stroke(theme.hairline.standard)
+        )
+        .shadow(
+            color: theme.vantageShadow,
+            radius: HudVantageMetrics.zoomControlShadowRadius,
+            x: .zero,
+            y: HudSpacing.md
+        )
+    }
+}
+
+private struct CanvasToolbarDivider: View {
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Rectangle()
+            .fill(theme.hairline.subtle)
+            .frame(width: HudStrokeWidth.standard, height: HudLayout.rowHeightCompact - HudSpacing.sm)
+    }
+}
+
+private struct CanvasToolbarIconButton: View {
+    let systemName: String
+    let help: String
+    var isDisabled = false
+    let action: () -> Void
+
+    @State private var isHovering = false
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(isDisabled ? theme.palette.dim : theme.palette.muted)
+                .frame(width: HudIconSize.medium, height: HudIconSize.medium)
+                .background(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .fill(isHovering && !isDisabled ? theme.vantageControlHoverFill : theme.vantageControlFill)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.radius.standard)
+                        .stroke(theme.hairline.subtle)
+                )
+        }
+        .buttonStyle(.plain)
+        .disabled(isDisabled)
+        .help(help)
+        .accessibilityLabel(help)
+        .onHover { isHovering = $0 }
+    }
+}
+
 private struct CanvasToolSwitch: View {
     let tool: CanvasTool
     let onSelect: () -> Void
@@ -9843,7 +10267,7 @@ private struct CanvasZoomTool: View {
         .padding(.vertical, HudSpacing.sm)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.card)
-                .fill(theme.palette.chrome)
+                .fill(theme.palette.bg.opacity(0.92))
         )
         .overlay(
             RoundedRectangle(cornerRadius: theme.radius.card)

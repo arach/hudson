@@ -34,8 +34,13 @@ interface FrameProps {
   zoomSensitivity?: number;
   /** Right offset for zoom controls in px (tracks right panel width) */
   zoomControlsRightOffset?: number;
+  /** Bottom offset for zoom controls in px (tracks terminal drawer height) */
+  zoomControlsBottomOffset?: number;
+  /** Whether to render canvas zoom controls */
+  showZoomControls?: boolean;
   /** Context menu items shown on right-click on canvas background */
   canvasContextMenuItems?: ContextMenuEntry[];
+  canvasContextMenuActivationMode?: 'default' | 'modifier';
 }
 
 const noop = () => {};
@@ -53,7 +58,10 @@ const Frame: React.FC<FrameProps> = ({
   canvasProps,
   zoomSensitivity,
   zoomControlsRightOffset,
+  zoomControlsBottomOffset,
+  showZoomControls = true,
   canvasContextMenuItems,
+  canvasContextMenuActivationMode,
 }) => {
   const frameRef = useRef<HTMLDivElement>(null);
 
@@ -219,7 +227,7 @@ const Frame: React.FC<FrameProps> = ({
   return (
     <div ref={frameRef} className="fixed inset-0 bg-background text-foreground overflow-hidden font-sans select-none z-0">
       {/* Layer 0: Canvas (pan/zoom background) */}
-      <HudsonContextMenu items={canvasContextMenuItems ?? []}>
+      <HudsonContextMenu items={canvasContextMenuItems ?? []} activationMode={canvasContextMenuActivationMode}>
         <Canvas
           panOffset={panOffset}
           scale={scale}
@@ -258,15 +266,17 @@ const Frame: React.FC<FrameProps> = ({
           visible canvas viewport. The right offset shifts the controls left
           when the shell's right inspector is open so they don't get hidden
           behind it. */}
-      <div
-        className="absolute z-30 transition-[bottom,right] duration-200"
-        style={{
-          bottom: 'calc(44px + var(--hud-player-panel-offset, 0px))',
-          right: 16 + (zoomControlsRightOffset ?? 0),
-        }}
-      >
-        <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
-      </div>
+      {showZoomControls && (
+        <div
+          className="absolute z-30 transition-[bottom,right] duration-200"
+          style={{
+            bottom: `calc(${44 + (zoomControlsBottomOffset ?? 0)}px + var(--hud-player-panel-offset, 0px))`,
+            right: 16 + (zoomControlsRightOffset ?? 0),
+          }}
+        >
+          <ZoomControls scale={scale} onZoom={(s) => onZoom(s)} />
+        </div>
+      )}
 
       {/* Layer 2: Static HUD chrome (fixed, never scales) */}
       <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">

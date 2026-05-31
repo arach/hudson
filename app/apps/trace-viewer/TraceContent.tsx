@@ -51,7 +51,7 @@ export function TraceContent() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-full text-neutral-400 font-mono text-[13px]">
-        Loading trace...
+        Loading trace
       </div>
     );
   }

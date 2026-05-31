@@ -13,6 +13,7 @@
     "isolatedModules": true,
     "jsx": "react-jsx",
     "incremental": true,
+    "preserveSymlinks": true,
     "plugins": [
       {
         "name": "next"
@@ -20,9 +21,15 @@
     ],
     "paths": {
       "@/*": ["./*"],
-      "hudsonkit": ["./packages/web/hudsonkit/src/index.ts"],
-      "hudsonkit/workflow": ["./packages/web/hudsonkit/src/workflow/index.ts"],
-      "hudsonkit/*": ["./packages/web/hudsonkit/src/*.ts"]
+      "ai": ["./node_modules/ai"],
+      "ai/*": ["./node_modules/ai/*"],
+      "@ai-sdk/react": ["./node_modules/@ai-sdk/react"],
+      "@ai-sdk/react/*": ["./node_modules/@ai-sdk/react/*"],
+      "lucide-react": ["./node_modules/lucide-react"],
+      "lucide-react/*": ["./node_modules/lucide-react/*"],
+      "hudsonkit": ["./node_modules/hudsonkit/src/index.ts"],
+      "hudsonkit/workflow": ["./node_modules/hudsonkit/src/workflow/index.ts"],
+      "hudsonkit/*": ["./node_modules/hudsonkit/src/*.ts"]
     }
   },
   "include": [
@@ -33,5 +40,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "hudson-docs", "native", "scripts", "drizzle.config.ts", "app/catalog/apps.local.example.ts", "packages/cloud", "embed-worker", "**/__tests__"]
+  "exclude": ["node_modules", "hudson-docs", "native", "scripts", "drizzle.config.ts", "app/catalog/apps.local.example.ts", "packages/cloud", "embed-worker", "apps/studio", "**/__tests__"]
 }

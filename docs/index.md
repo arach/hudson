@@ -18,6 +18,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Systems](./systems.md)** — Intents (LLM/voice), Services (process deps), Ports (inter-app piping)
 - **[Theming](./theming.md)** — runtime theme/template switching, token surface
 - **[Controls](./controls.md)** — parameter controls and code components for inspectors
+- **[Cache](./cache.md)** — shared cache primitive (`hudsonkit/cache`) and the policy direction for API data, derived values, and asset metadata
 
 ## iOS apps
 

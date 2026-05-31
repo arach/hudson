@@ -1,6 +1,6 @@
 'use client';
 
-import { useCallback, useEffect, useRef, useState, type ReactNode } from 'react';
+import React, { useCallback, useEffect, useRef, useState, useSyncExternalStore, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import {
   ExternalLink,
@@ -35,6 +35,9 @@ const MIN_H = 120;
 const PLAYER_PANEL_OFFSET_VAR = '--hud-player-panel-offset';
 const PLAYER_STATUS_OFFSET_VAR = '--hud-player-status-inline-offset';
 const PLAYER_STATUS_OFFSET = '118px';
+const subscribeMounted = () => () => {};
+const getMountedSnapshot = () => true;
+const getServerMountedSnapshot = () => false;
 
 function formatDuration(s: number | null | undefined): string {
   if (s == null || !Number.isFinite(s)) return '--:--';
@@ -235,16 +238,23 @@ export function PlayerStatusBarPill({ pipActive = false }: { pipActive?: boolean
   const { playing, isPlayerOpen, togglePlayer, togglePlay, media } = usePlayer();
   const hasMedia = media != null;
   const isVideo = media?.kind === 'video';
+  const visible = pipActive || isPlayerOpen || hasMedia;
   const open = pipActive || isPlayerOpen;
 
   useEffect(() => {
     if (typeof document === 'undefined') return;
     const root = document.documentElement;
+    if (!visible) {
+      root.style.removeProperty(PLAYER_STATUS_OFFSET_VAR);
+      return;
+    }
     root.style.setProperty(PLAYER_STATUS_OFFSET_VAR, PLAYER_STATUS_OFFSET);
     return () => {
       root.style.removeProperty(PLAYER_STATUS_OFFSET_VAR);
     };
-  }, []);
+  }, [visible]);
+
+  if (!visible) return null;
 
   return (
     <div
@@ -369,10 +379,8 @@ export function PlayerPanel({
   const { isPlayerOpen, togglePlayer, media } = usePlayer();
   const [height, setHeight] = useLocalState(heightKey, 220);
   const [maximized, setMaximized] = useState(false);
-  const [everOpened, setEverOpened] = useState(false);
+  const [draggingPanel, setDraggingPanel] = useState(false);
   const dragging = useRef(false);
-
-  useEffect(() => { if (isPlayerOpen) setEverOpened(true); }, [isPlayerOpen]);
 
   const panelH = pipMode
     ? '100vh'
@@ -397,20 +405,25 @@ export function PlayerPanel({
     if (pipMode || maximized || typeof window === 'undefined') return;
     e.preventDefault();
     dragging.current = true;
+    setDraggingPanel(true);
     const startY = e.clientY;
     const startH = height;
     const onMove = (ev: MouseEvent) => {
       const next = Math.max(MIN_H, Math.min(window.innerHeight - STATUS_H, startH + (startY - ev.clientY)));
       setHeight(next);
     };
-    const onUp = () => { dragging.current = false; document.removeEventListener('mousemove', onMove); document.removeEventListener('mouseup', onUp); };
+    const onUp = () => {
+      dragging.current = false;
+      setDraggingPanel(false);
+      document.removeEventListener('mousemove', onMove);
+      document.removeEventListener('mouseup', onUp);
+    };
     document.addEventListener('mousemove', onMove);
     document.addEventListener('mouseup', onUp);
   };
 
   const isVideo = media?.kind === 'video';
   if (!showWhenEmpty && !media) return null;
-  if (!pipMode && !everOpened) return null;
 
   const containerStyle: React.CSSProperties = pipMode
     ? { position: 'static', height: '100vh', width: '100vw', overflow: 'hidden', display: 'flex', flexDirection: 'column' }
@@ -424,7 +437,7 @@ export function PlayerPanel({
         borderTop: isPlayerOpen ? '1px solid var(--hud-chrome-border-subtle)' : 'none',
         boxShadow: isPlayerOpen ? '0 -8px 32px rgba(0,0,0,0.6)' : 'none',
         overflow: 'hidden',
-        transition: dragging.current ? 'none' : 'height 250ms ease',
+        transition: draggingPanel ? 'none' : 'height 250ms ease',
         display: 'flex',
         flexDirection: 'column',
       };
@@ -504,9 +517,8 @@ export interface PlayerWidgetProps {
 }
 
 export function PlayerWidget({ children, enableDocumentPiP = true, heightKey }: PlayerWidgetProps) {
-  const [mounted, setMounted] = useState(false);
+  const mounted = useSyncExternalStore(subscribeMounted, getMountedSnapshot, getServerMountedSnapshot);
   const { supported: docPipSupported, pipWindow, toggle: toggleDocPip } = useDocPip(enableDocumentPiP);
-  useEffect(() => { setMounted(true); }, []);
   if (!mounted) return null;
   const docPipActive = pipWindow != null;
   const panel = (

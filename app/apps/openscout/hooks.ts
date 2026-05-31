@@ -110,6 +110,6 @@ export function useOpenScoutSearch(): SearchConfig {
   return useMemo(() => ({
     value: searchQuery,
     onChange: setSearchQuery,
-    placeholder: 'Filter agents, projects, or messages...',
+    placeholder: 'Filter agents, projects, or messages',
   }), [searchQuery, setSearchQuery]);
 }

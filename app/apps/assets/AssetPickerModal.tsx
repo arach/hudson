@@ -155,7 +155,7 @@ export function AssetPickerModal() {
           >
             <Download size={12} />
             {importing
-              ? 'Importing...'
+              ? 'Importing'
               : `Import ${selected.size || ''} image${selected.size !== 1 ? 's' : ''}`
             }
           </button>

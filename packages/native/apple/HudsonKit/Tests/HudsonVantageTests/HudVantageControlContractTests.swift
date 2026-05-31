@@ -206,6 +206,9 @@ final class HudVantageControlContractTests: XCTestCase {
             "kind": "hudson.vantage.setup",
             "schemaVersion": 1,
             "workspaceID": "scout-lab",
+            "handoffId": "handoff-1779250564641-425a5e93",
+            "handoffPath": "/tmp/openscout/vantage/handoff.json",
+            "setupPath": "/tmp/openscout/vantage/handoff.setup.json",
             "presentation": {
               "title": "Scout Vantage",
               "subtitle": "native operating surface",
@@ -251,6 +254,9 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(command.removeMissing, true)
         let manifest = try XCTUnwrap(command.setupManifest)
         XCTAssertEqual(manifest.workspaceID, "scout-lab")
+        XCTAssertEqual(manifest.handoffId, "handoff-1779250564641-425a5e93")
+        XCTAssertEqual(manifest.handoffPath, "/tmp/openscout/vantage/handoff.json")
+        XCTAssertEqual(manifest.setupPath, "/tmp/openscout/vantage/handoff.setup.json")
         XCTAssertEqual(manifest.presentation?.title, "Scout Vantage")
         XCTAssertEqual(manifest.presentation?.cobrand, "powered by Hudson")
         XCTAssertEqual(manifest.presentation?.theme, "jade")
@@ -281,7 +287,7 @@ final class HudVantageControlContractTests: XCTestCase {
               "id": "hudson.vantage.plan.practice",
               "runtime": {
                 "kind": "plan",
-                "path": "examples/termini-canvas/examples/vantage-practice/PLAN.md",
+                "path": "apps/vantage/fixtures/vantage-practice/PLAN.md",
                 "language": "markdown",
                 "role": "plan"
               },
@@ -312,7 +318,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(manifest.nodes[0].language, "swift")
         XCTAssertEqual(manifest.nodes[0].role, "source")
         XCTAssertEqual(manifest.nodes[1].runtime?.kind, "plan")
-        XCTAssertEqual(manifest.nodes[1].runtime?.path, "examples/termini-canvas/examples/vantage-practice/PLAN.md")
+        XCTAssertEqual(manifest.nodes[1].runtime?.path, "apps/vantage/fixtures/vantage-practice/PLAN.md")
         XCTAssertEqual(manifest.nodes[1].runtime?.language, "markdown")
         XCTAssertEqual(manifest.nodes[1].runtime?.role, "plan")
         XCTAssertEqual(manifest.nodes[2].runtimeKind, "diff")
@@ -490,7 +496,7 @@ final class HudVantageControlContractTests: XCTestCase {
                     tag: "watch",
                     runtime: HudVantageRuntimeReference(
                         kind: "diff",
-                        path: "examples/termini-canvas/examples/vantage-practice/RUNNING.diff",
+                        path: "apps/vantage/fixtures/vantage-practice/RUNNING.diff",
                         language: "diff",
                         content: "diff --git a/file b/file",
                         role: "review"
@@ -505,7 +511,7 @@ final class HudVantageControlContractTests: XCTestCase {
 
         XCTAssertEqual(decoded.nodes.first?.externalID, "hudson.vantage.diff.running")
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "diff")
-        XCTAssertEqual(decoded.nodes.first?.runtime.path, "examples/termini-canvas/examples/vantage-practice/RUNNING.diff")
+        XCTAssertEqual(decoded.nodes.first?.runtime.path, "apps/vantage/fixtures/vantage-practice/RUNNING.diff")
         XCTAssertEqual(decoded.nodes.first?.runtime.language, "diff")
         XCTAssertEqual(decoded.nodes.first?.runtime.content, "diff --git a/file b/file")
         XCTAssertEqual(decoded.nodes.first?.runtime.role, "review")
@@ -546,6 +552,7 @@ final class HudVantageControlContractTests: XCTestCase {
             message: "1 terminals",
             errorCode: nil,
             workspaceID: "scout-lab",
+            handoffId: "handoff-1779250564641-425a5e93",
             nodeCount: 1,
             nodes: [
                 HudVantageControlNode(
@@ -656,6 +663,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
         XCTAssertEqual(object["ok"] as? Bool, true)
         XCTAssertEqual(object["workspaceID"] as? String, "scout-lab")
+        XCTAssertEqual(object["handoffId"] as? String, "handoff-1779250564641-425a5e93")
         XCTAssertEqual(object["nodeCount"] as? Int, 1)
         XCTAssertEqual(object["statePath"] as? String, "/tmp/scout-vantage-state.json")
         XCTAssertEqual(object["tmuxPath"] as? String, "/opt/homebrew/bin/tmux")
@@ -723,6 +731,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(object["kind"] as? String, "hudson.vantage.response")
         XCTAssertEqual(object["errorCode"] as? String, "node_not_found")
         XCTAssertFalse(object.keys.contains("nodes"))
+        XCTAssertFalse(object.keys.contains("handoffId"))
         XCTAssertFalse(object.keys.contains("viewport"))
         XCTAssertFalse(object.keys.contains("metrics"))
     }
@@ -755,11 +764,11 @@ final class HudVantageControlContractTests: XCTestCase {
 
     func testCanvasCtlEmitsV0FocusAndCloseCommands() throws {
         let focus = try queuedCommandFromScript(
-            relativeScriptPath: "examples/termini-canvas/scripts/canvasctl.sh",
+            relativeScriptPath: "apps/vantage/scripts/vantagectl.sh",
             arguments: ["focus", "node-a"]
         )
         let close = try queuedCommandFromScript(
-            relativeScriptPath: "examples/termini-canvas/scripts/canvasctl.sh",
+            relativeScriptPath: "apps/vantage/scripts/vantagectl.sh",
             arguments: ["close", "node-a"]
         )
 
@@ -777,7 +786,7 @@ final class HudVantageControlContractTests: XCTestCase {
     func testControlScriptsEmitViewportCommands() throws {
         for scriptPath in [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "examples/termini-canvas/scripts/canvasctl.sh",
+            "apps/vantage/scripts/vantagectl.sh",
         ] {
             let command = try queuedCommandFromScript(
                 relativeScriptPath: scriptPath,
@@ -804,7 +813,7 @@ final class HudVantageControlContractTests: XCTestCase {
     func testControlScriptsEmitStyleAndTmuxHealthCommands() throws {
         for scriptPath in [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "examples/termini-canvas/scripts/canvasctl.sh",
+            "apps/vantage/scripts/vantagectl.sh",
         ] {
             let style = try queuedCommandFromScript(
                 relativeScriptPath: scriptPath,

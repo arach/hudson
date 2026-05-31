@@ -16,10 +16,12 @@ export default function SingleAppPage({
   // Find the app across all workspaces
   const allWorkspaces = getAllWorkspaces();
   let foundConfig = null;
+  let foundWorkspace: HudsonWorkspace | null = null;
   for (const ws of allWorkspaces) {
     const match = ws.apps.find((c) => c.app.id === appId);
     if (match) {
       foundConfig = match;
+      foundWorkspace = ws;
       break;
     }
   }
@@ -35,17 +37,24 @@ export default function SingleAppPage({
     );
   }
 
+  const appUsesCanvas = foundConfig.app.mode === 'canvas';
+  const singleWorkspaceId = appUsesCanvas ? `${appId}-focus` : appId;
   const singleWorkspace: HudsonWorkspace = {
-    id: appId,
+    id: singleWorkspaceId,
     name: foundConfig.app.name,
     mode: foundConfig.app.mode,
     apps: [foundConfig],
+    defaultFocusedAppId: foundConfig.app.id,
+    defaultActivatedAppIds: [foundConfig.app.id],
+    defaultScale: appUsesCanvas ? 1 : foundWorkspace?.defaultScale,
+    defaultPan: appUsesCanvas ? { x: 0, y: 0 } : foundWorkspace?.defaultPan,
+    leftNavigation: foundWorkspace?.leftNavigation ?? (foundConfig.app.mode === 'canvas' ? 'on' : undefined),
   };
 
   return (
     <WorkspaceShell
       workspaces={[singleWorkspace]}
-      defaultWorkspaceId={appId}
+      defaultWorkspaceId={singleWorkspaceId}
       bootMode="none"
     />
   );

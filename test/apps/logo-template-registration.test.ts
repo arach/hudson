@@ -5,7 +5,12 @@ import {
   withTemplateParamDefaults,
   type MatrixSession,
 } from '@/app/apps/logo/LogoProvider';
-import type { LogoTemplate } from '@/app/apps/logo/types';
+import {
+  compactLogoTemplateLabel,
+  normalizeLogoTemplateLineage,
+  resolveLogoTemplatePlacement,
+  type LogoTemplate,
+} from '@/app/apps/logo/types';
 
 function template(
   id: string,
@@ -52,6 +57,76 @@ describe('Logo template registration', () => {
       'talkie-instrument-viewer-v1',
       'talkie-instrument-viewer-v2',
     ]);
+  });
+
+  it('heals older AI-created brand templates that were saved without lineage metadata', () => {
+    const sections = bucketTemplatesForSidebar([
+      template('t-decoration', 'Talkie T', { kind: 'brand', builtin: true }),
+      template('talkie-instrument-viewer', 'Talkie T · Instrument Viewer', {
+        kind: 'brand',
+        builtin: true,
+        parentId: 't-decoration',
+      }),
+      template('16857149', 'Talkie T · Instrument Viewer-v2', {
+        kind: 'brand',
+        parentId: 'talkie-instrument-viewer',
+        createdAt: 2,
+      }),
+      template('4a313932', 'Talkie T · Instrument Viewer-v2-v2', {
+        createdAt: 3,
+      }),
+    ]);
+
+    expect(sections.styles.map(node => node.template.id)).not.toContain('4a313932');
+    const instrumentViewer = sections.brands[0].children.find(
+      node => node.template.id === 'talkie-instrument-viewer',
+    );
+    const v2 = instrumentViewer?.children.find(node => node.template.id === '16857149');
+
+    expect(v2?.children.map(node => node.template.id)).toEqual(['4a313932']);
+    expect(v2?.children[0].template).toMatchObject({
+      id: '4a313932',
+      kind: 'brand',
+      parentId: '16857149',
+    });
+  });
+
+  it('places new AI-created templates under the active source template by default', () => {
+    const templates = [
+      template('t-decoration', 'Talkie T', { kind: 'brand', builtin: true }),
+      template('talkie-instrument-viewer', 'Talkie T · Instrument Viewer', {
+        kind: 'brand',
+        parentId: 't-decoration',
+      }),
+    ];
+
+    expect(resolveLogoTemplatePlacement(templates, 'talkie-instrument-viewer', {
+      name: 'Streamlined Viewer',
+    })).toEqual({
+      parentId: 'talkie-instrument-viewer',
+      kind: 'brand',
+    });
+  });
+
+  it('compacts repeated brand prefixes in nested sidebar labels', () => {
+    const lineage = normalizeLogoTemplateLineage([
+      template('t-decoration', 'Talkie T', { kind: 'brand', builtin: true }),
+      template('16857149', 'Talkie T · Instrument Viewer-v2', {
+        kind: 'brand',
+        parentId: 't-decoration',
+      }),
+      template('4a313932', 'Talkie T · Instrument Viewer-v2-v2', {
+        createdAt: 3,
+      }),
+    ]);
+    const byId = new Map(lineage.map(item => [item.id, item]));
+
+    expect(compactLogoTemplateLabel(byId.get('16857149')!, [byId.get('t-decoration')!]))
+      .toBe('Instrument Viewer-v2');
+    expect(compactLogoTemplateLabel(byId.get('4a313932')!, [
+      byId.get('t-decoration')!,
+      byId.get('16857149')!,
+    ])).toBe('v2');
   });
 
   it('reconstructs saved matrix experiments from persisted child templates', () => {

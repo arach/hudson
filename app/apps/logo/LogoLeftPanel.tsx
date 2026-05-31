@@ -1,8 +1,14 @@
 'use client';
-import { useEffect, useMemo, useState } from 'react';
-import { X, RotateCcw, ChevronRight } from 'lucide-react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { X, RotateCcw, ChevronRight, Code2 } from 'lucide-react';
+import { HudsonContextMenu, type ContextMenuEntry } from 'hudsonkit/context-menu';
 import { useLogo } from './LogoProvider';
-import { isBuiltinVariant, type LogoTemplate } from './types';
+import {
+  compactLogoTemplateLabel,
+  isBuiltinVariant,
+  normalizeLogoTemplateLineage,
+  type LogoTemplate,
+} from './types';
 
 // ---------------------------------------------------------------------------
 // Left panel — variant selection (navigation only).
@@ -54,10 +60,11 @@ interface SidebarSections {
  * Templates without explicit `kind` default to the style section at the root.
  */
 export function bucketTemplatesForSidebar(templates: LogoTemplate[]): SidebarSections {
-  const byId = new Map(templates.map(t => [t.id, t]));
+  const normalizedTemplates = normalizeLogoTemplateLineage(templates);
+  const byId = new Map(normalizedTemplates.map(t => [t.id, t]));
   const childrenByParent = new Map<string, LogoTemplate[]>();
 
-  for (const t of templates) {
+  for (const t of normalizedTemplates) {
     if (t.parentId) {
       if (byId.has(t.parentId)) {
         const list = childrenByParent.get(t.parentId) ?? [];
@@ -76,10 +83,10 @@ export function bucketTemplatesForSidebar(templates: LogoTemplate[]): SidebarSec
       .map(makeNode),
   });
 
-  const roots = templates.filter(t => !t.parentId).slice().sort(byName);
+  const roots = normalizedTemplates.filter(t => !t.parentId).slice().sort(byName);
   const styles = roots.filter(t => t.kind !== 'brand').map(makeNode);
   const brands = roots.filter(t => t.kind === 'brand').map(makeNode);
-  const orphans = templates
+  const orphans = normalizedTemplates
     .filter(t => t.parentId && !byId.has(t.parentId))
     .slice()
     .sort(byName)
@@ -96,7 +103,13 @@ export function LogoLeftPanel() {
   const {
     setVariant, params,
     templates, discardTemplate, restoreTemplate, discardedIds,
+    setCodeOpen,
   } = useLogo();
+
+  const openCodeMode = useCallback((templateId: string) => {
+    setVariant(templateId);
+    setCodeOpen(true);
+  }, [setVariant, setCodeOpen]);
 
   const [showDiscarded, setShowDiscarded] = useState(false);
   // Lazy init from localStorage. Component is 'use client' so this runs on the
@@ -128,13 +141,14 @@ export function LogoLeftPanel() {
     });
   };
 
-  const renderTreeNode = (node: TemplateTreeNode, depth: number) => {
+  const renderTreeNode = (node: TemplateTreeNode, depth: number, ancestors: LogoTemplate[] = []) => {
     const expanded = isExpanded(node);
     const hasChildren = node.children.length > 0;
     return (
       <div key={node.template.id} className="flex flex-col">
         <SidebarRow
           template={node.template}
+          label={compactLogoTemplateLabel(node.template, ancestors)}
           active={params.variant === node.template.id}
           depth={depth}
           expandable={hasChildren}
@@ -142,8 +156,9 @@ export function LogoLeftPanel() {
           onToggleExpand={hasChildren ? () => toggleBranch(node.template.id) : undefined}
           onSelect={() => setVariant(node.template.id)}
           onDiscard={() => discardTemplate(node.template.id)}
+          onOpenInCode={() => openCodeMode(node.template.id)}
         />
-        {hasChildren && expanded && node.children.map(child => renderTreeNode(child, depth + 1))}
+        {hasChildren && expanded && node.children.map(child => renderTreeNode(child, depth + 1, [...ancestors, node.template]))}
       </div>
     );
   };
@@ -152,7 +167,7 @@ export function LogoLeftPanel() {
     <div className="flex flex-col gap-3 px-2 py-3 text-sm overflow-y-auto h-full">
       {templates.length === 0 && (
         <div className="text-[11px] text-muted-foreground px-2 py-3 text-center border border-dashed border-border/60 rounded-lg mx-1">
-          Loading templates...
+          Loading templates
         </div>
       )}
 
@@ -178,9 +193,9 @@ export function LogoLeftPanel() {
         <div className="flex flex-col mt-3">
           <button
             onClick={() => setShowDiscarded(v => !v)}
-            className="flex items-center gap-1.5 px-2 h-6 text-[11px] uppercase tracking-[0.06em] text-muted-foreground/80 hover:text-foreground/80 transition-colors"
+            className="flex items-center gap-0.5 px-2 h-6 text-[11px] uppercase tracking-[0.06em] text-foreground/70 hover:text-foreground/90 transition-colors"
           >
-            <ChevronRight size={10} className={`transition-transform ${showDiscarded ? 'rotate-90' : ''}`} />
+            <ChevronRight size={10} strokeWidth={2.25} className={`transition-transform ${showDiscarded ? 'rotate-90' : ''}`} />
             Discarded ({discardedTemplates.length})
           </button>
           {showDiscarded && (
@@ -231,6 +246,7 @@ function SectionHeader({ label }: { label: string }) {
 
 interface SidebarRowProps {
   template: LogoTemplate;
+  label: string;
   active: boolean;
   depth: number;
   expandable?: boolean;
@@ -238,63 +254,97 @@ interface SidebarRowProps {
   onToggleExpand?: () => void;
   onSelect: () => void;
   onDiscard: () => void;
+  onOpenInCode: () => void;
 }
 
 function SidebarRow({
-  template, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard,
+  template, label, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard, onOpenInCode,
 }: SidebarRowProps) {
   const isBuiltin = template.builtin === true || isBuiltinVariant(template.id);
   // Indent: parents have 8px hang for the caret; children indent 14-16px under
   // the parent text. Without an expand caret, parents align with the section.
-  const padLeft = expandable ? 'pl-1' : depth === 0 ? 'pl-2' : '';
+  const padLeft = expandable ? 'pl-0' : depth === 0 ? 'pl-2' : '';
   const depthStyle = depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined;
 
+  const menuItems = useMemo<ContextMenuEntry[]>(() => {
+    const items: ContextMenuEntry[] = [
+      {
+        id: 'open-in-code',
+        label: isBuiltin ? 'View code…' : 'Open in code…',
+        action: onOpenInCode,
+        icon: <Code2 size={12} />,
+      },
+    ];
+    if (!isBuiltin) {
+      items.push({ type: 'separator' });
+      items.push({
+        id: 'discard',
+        label: 'Discard template',
+        action: onDiscard,
+        icon: <X size={12} />,
+      });
+    }
+    return items;
+  }, [isBuiltin, onOpenInCode, onDiscard]);
+
   return (
-    <div className="group/row relative flex items-stretch">
-      {active && (
-        <span
-          aria-hidden="true"
-          className="absolute left-0 top-[3px] bottom-[3px] w-[2px] bg-accent rounded-sm"
-        />
-      )}
-      {expandable && (
-        <button
-          type="button"
-          onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
-          className="flex items-center justify-center w-5 shrink-0 text-muted-foreground/70 hover:text-foreground/80 transition-colors"
-          title={expanded ? 'Collapse' : 'Expand'}
-          aria-label={expanded ? 'Collapse' : 'Expand'}
-        >
-          <ChevronRight
-            size={8}
-            className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+    <HudsonContextMenu items={menuItems}>
+      <div className="group/row relative flex items-stretch">
+        {active && (
+          <span
+            aria-hidden="true"
+            className="absolute left-0 top-[3px] bottom-[3px] w-[2px] bg-accent rounded-sm"
           />
-        </button>
-      )}
-      <button
-        type="button"
-        onClick={onSelect}
-        title={template.name}
-        style={depthStyle}
-        className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
-          active
-            ? 'text-foreground'
-            : 'text-foreground/70 hover:text-foreground/90 hover:bg-foreground/[0.06] dark:hover:bg-white/[0.06]'
-        }`}
-      >
-        <span className="truncate">{template.name}</span>
-      </button>
-      {!isBuiltin && (
+        )}
+        {expandable && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
+            className="flex h-[28px] w-4 shrink-0 items-center justify-center text-foreground/70 hover:text-foreground/95 transition-colors"
+            title={expanded ? 'Collapse' : 'Expand'}
+            aria-label={expanded ? 'Collapse' : 'Expand'}
+          >
+            <ChevronRight
+              size={10}
+              strokeWidth={2.25}
+              className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
+            />
+          </button>
+        )}
         <button
           type="button"
-          onClick={(e) => { e.stopPropagation(); onDiscard(); }}
-          className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-warning transition-opacity"
-          title="Discard template (recoverable for 7 days)"
-          aria-label="Discard template"
+          onClick={onSelect}
+          title={template.name}
+          style={depthStyle}
+          className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
+            active
+              ? 'text-foreground'
+              : 'text-foreground/70 hover:text-foreground/90 hover:bg-foreground/[0.06] dark:hover:bg-white/[0.06]'
+          }`}
         >
-          <X size={11} />
+          <span className="truncate">{label}</span>
         </button>
-      )}
-    </div>
+        <button
+          type="button"
+          onClick={(e) => { e.stopPropagation(); onOpenInCode(); }}
+          className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-foreground transition-opacity"
+          title={isBuiltin ? 'View template code' : 'Open template in code mode'}
+          aria-label="Open in code mode"
+        >
+          <Code2 size={11} />
+        </button>
+        {!isBuiltin && (
+          <button
+            type="button"
+            onClick={(e) => { e.stopPropagation(); onDiscard(); }}
+            className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-warning transition-opacity"
+            title="Discard template (recoverable for 7 days)"
+            aria-label="Discard template"
+          >
+            <X size={11} />
+          </button>
+        )}
+      </div>
+    </HudsonContextMenu>
   );
 }

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square } from 'lucide-react';
+import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import { useHudsonAI, usePersistentState, useDebouncedPersistentState, probeVoxAvailability } from 'hudsonkit';
 import type { UIMessage } from 'ai';
@@ -468,6 +468,11 @@ export function WorkspaceAI({
     context: scopedContext,
     provider: activeProvider,
     model: activeModel,
+    agentTrace: {
+      source: 'workspace-ai',
+      workspaceId: workspace.id,
+      workspaceName: workspace.name,
+    },
     onToolCall: async (name, args) => {
       if (name === 'change_workspace_scope') {
         const targetWorkspaceId = typeof args.workspaceId === 'string' ? args.workspaceId : workspace.id;
@@ -1246,6 +1251,18 @@ export function WorkspaceAI({
             </div>
           </div>
         )}
+
+        {chat.error && (
+          <div className="flex justify-start">
+            <div className="max-w-[85%] rounded-lg border border-red-500/15 bg-red-500/5 px-3 py-2 text-[11px] leading-relaxed text-red-200/80">
+              <div className="mb-1 flex items-center gap-1.5 font-mono text-[9px] uppercase tracking-wider text-red-300/80">
+                <AlertTriangle size={11} />
+                Hudson AI error
+              </div>
+              {chat.error.message}
+            </div>
+          </div>
+        )}
       </div>
 
       {/* Attachment preview strip */}
@@ -1344,7 +1361,7 @@ export function WorkspaceAI({
               }
             }}
             onPaste={handlePaste}
-            placeholder="Ask Hudson anything..."
+            placeholder="Ask Hudson anything"
             className="flex-1 px-3 py-2 rounded-lg bg-background border border-border text-[12px] text-foreground placeholder:text-muted-foreground/70 outline-none focus:border-cyan-700/35 transition-colors dark:focus:border-cyan-300/35"
           />
           <button

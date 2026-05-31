@@ -150,6 +150,13 @@ function findPiBin(): string | null {
   return findBin('pi', 'PI_BIN');
 }
 
+/** Locate the user's shell, falling back to common POSIX shells. */
+function findShellBin(): string | null {
+  const configured = process.env.SHELL;
+  if (configured && existsSync(configured)) return configured;
+  return findBin('zsh') ?? findBin('bash') ?? findBin('sh') ?? (existsSync('/bin/sh') ? '/bin/sh' : null);
+}
+
 /** Map Hudson-facing provider ids to the exact provider names accepted by the Pi CLI. */
 function normalizePiProviderForCli(provider?: string): string | undefined {
   if (!provider) return undefined;
@@ -208,15 +215,15 @@ function spawnTmuxSession(
   cols: number,
   rows: number,
   cwd: string,
-  claudeBin: string,
-  claudeArgs: string[],
+  commandBin: string,
+  commandArgs: string[],
   env: Record<string, string | undefined>,
 ): IPty {
   const exists = tmuxSessionExists(tmuxName);
 
   if (!exists) {
-    // Create the tmux session detached, running claude inside it
-    const shellCmd = [claudeBin, ...claudeArgs].map(a => a.includes(' ') ? `'${a}'` : a).join(' ');
+    // Create the tmux session detached, running the requested command inside it.
+    const shellCmd = [commandBin, ...commandArgs].map(a => a.includes(' ') ? `'${a}'` : a).join(' ');
     execSync(
       `tmux new-session -d -s ${tmuxName} -x ${cols} -y ${rows} -c '${cwd}' '${shellCmd}'`,
       { env: env as NodeJS.ProcessEnv },
@@ -247,9 +254,17 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   const tmuxName = msg.tmuxSession || `hudson-${id}`;
   const agent = msg.agent || 'claude';
 
-  // ---- Pre-flight: locate agent binary ----
+  // ---- Pre-flight: locate command binary ----
   let agentBin: string | null;
-  if (agent === 'pi') {
+  if (agent === 'shell') {
+    agentBin = findShellBin();
+    if (!agentBin) {
+      const reason = 'No login shell found. Set SHELL or install zsh, bash, or sh.';
+      console.error(`[relay] Session ${id} failed: ${reason}`);
+      send(ws, { type: 'session:error', error: reason });
+      return null;
+    }
+  } else if (agent === 'pi') {
     agentBin = findPiBin();
     if (!agentBin) {
       const reason = 'pi CLI not found. Install it with: npm install -g @mariozechner/pi-coding-agent';
@@ -290,10 +305,13 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     bootstrapFiles(cwd, msg.workspaceFiles, id);
   }
 
-  // ---- Build CLI arguments based on agent type ----
+  // ---- Build command arguments based on process type ----
   let agentArgs: string[];
 
-  if (agent === 'pi') {
+  if (agent === 'shell') {
+    const shellName = agentBin.split('/').pop() ?? '';
+    agentArgs = shellName === 'sh' ? [] : ['-l'];
+  } else if (agent === 'pi') {
     agentArgs = ['--verbose'];
     const provider = normalizePiProviderForCli(msg.provider);
     if (provider) agentArgs.push('--provider', provider);

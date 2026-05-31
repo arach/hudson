@@ -95,7 +95,7 @@ enum TmuxTargetError: Error, LocalizedError, Equatable, Sendable {
     }
 }
 
-struct TerminiCanvasBounds: Codable, Hashable, Sendable {
+struct VantageCanvasBounds: Codable, Hashable, Sendable {
     var x: Double
     var y: Double
     var width: Double
@@ -115,7 +115,7 @@ struct TerminiRegistryRecord: Codable, Identifiable, Hashable, Sendable {
     var nodeID: UUID
     var path: GraphitePath
     var tmuxTarget: TmuxTarget
-    var bounds: TerminiCanvasBounds
+    var bounds: VantageCanvasBounds
     var zIndex: Double
     var renderState: TerminiRenderState
     var updatedAt: Date
@@ -124,7 +124,7 @@ struct TerminiRegistryRecord: Codable, Identifiable, Hashable, Sendable {
         nodeID: UUID,
         path: GraphitePath,
         tmuxTarget: TmuxTarget,
-        bounds: TerminiCanvasBounds,
+        bounds: VantageCanvasBounds,
         zIndex: Double,
         renderState: TerminiRenderState,
         updatedAt: Date = Date()

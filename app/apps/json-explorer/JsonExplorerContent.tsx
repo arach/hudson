@@ -233,7 +233,7 @@ export function JsonExplorerContent() {
           <input
             value={filter}
             onChange={e => setFilter(e.target.value)}
-            placeholder="Filter keys..."
+            placeholder="Filter keys"
             className="w-full pl-8 pr-3 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-500/30 transition-colors"
           />
         </div>

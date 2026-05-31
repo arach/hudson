@@ -1,6 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildIntentCatalog } from '../../lib/intent-catalog';
 import { allWorkspaces } from '../../workspaces';
+import '../../intents-registry'; // side-effect: populates the runtime registry
+import { intentMetaToServerIntent, listIntents } from '../../lib/intent';
+
+export const runtime = 'nodejs';
 
 const workspaceMap = Object.fromEntries(
   allWorkspaces.map((ws) => [ws.id, ws]),
@@ -17,6 +21,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const catalog = buildIntentCatalog(workspace);
+  const serverIntents = listIntents().map(({ meta }) => intentMetaToServerIntent(meta));
+  const catalog = buildIntentCatalog(workspace, { serverIntents });
   return NextResponse.json(catalog);
 }

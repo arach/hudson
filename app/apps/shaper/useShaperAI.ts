@@ -79,6 +79,11 @@ export function useShaperAI(opts: UseShaperAIOptions) {
     // added conditionally in sendAiMessage based on resolved mode.
     provider: provider ?? 'minimax',
     model: model ?? 'MiniMax-M2.7',
+    agentTrace: {
+      source: 'shaper-ai',
+      appId: 'shaper',
+      appName: 'Shaper',
+    },
     onFinish: (event) => {
       const { finishReason, message } = event as { finishReason?: string; message?: { parts?: Array<{ type: string; text?: string }> } };
       console.log('[shaper-ai] stream finished:', finishReason, message);
@@ -123,7 +128,7 @@ export function useShaperAI(opts: UseShaperAIOptions) {
             break;
           }
           case 'retrace': {
-            logActivity('retrace', String(args.reason ?? 'retracing...'), 'change');
+            logActivity('retrace', String(args.reason ?? 'retracing'), 'change');
             await handleRetrace();
             break;
           }
@@ -172,7 +177,7 @@ export function useShaperAI(opts: UseShaperAIOptions) {
    */
   const sendAiMessage = useCallback((text: string, label?: string) => {
     if (!chat) return;
-    logActivity('start', label ?? 'Running…', 'info');
+    logActivity('start', label ?? 'Running', 'info');
     const canAttachImage = chat.mode === 'api' && !!projectImage?.url;
     try {
       if (canAttachImage && projectImage) {

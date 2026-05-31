@@ -259,7 +259,7 @@ private struct HudRailLabelButton: View {
                 Spacer(minLength: 0)
             }
             .padding(.horizontal, HudSpacing.md)
-            .frame(height: 32)
+            .frame(height: HudLayout.buttonHeight)
             .frame(maxWidth: .infinity, alignment: .leading)
             .background(
                 RoundedRectangle(cornerRadius: theme.radius.standard)

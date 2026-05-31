@@ -50,6 +50,7 @@ export interface FontSettings {
 export interface HudsonSettings {
   theme: HudsonTheme;
   template: HudsonTemplate;
+  contextMenuMode: 'hudson-first' | 'chrome-first';
   glowIntensity: number;
   gridOpacity: number;
   connectorStyle: 'dashed' | 'solid' | 'dotted';

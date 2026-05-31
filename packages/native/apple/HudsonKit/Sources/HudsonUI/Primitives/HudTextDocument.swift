@@ -412,30 +412,6 @@ private struct HudCodeText: View {
     }
 
     private func highlightedLine(_ line: String, language: String?) -> AttributedString {
-        var attributed = AttributedString(line.isEmpty ? " " : line)
-        attributed.foregroundColor = HudPalette.ink
-
-        apply(pattern: #""(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'"#, color: HudTint.green.color, to: &attributed, in: line)
-        apply(pattern: #"//.*$|#.*$"#, color: HudPalette.dim, to: &attributed, in: line)
-        apply(pattern: #"\b(true|false|null|nil|undefined)\b"#, color: HudPalette.statusWarn, to: &attributed, in: line)
-        apply(pattern: #"\b(import|export|from|return|func|function|struct|class|enum|let|var|const|if|else|switch|case|for|while|guard|public|private|try|await|async|throws)\b"#, color: HudPalette.statusInfo, to: &attributed, in: line)
-        apply(pattern: #"\b([0-9]+(?:\.[0-9]+)?)\b"#, color: HudTint.teal.color, to: &attributed, in: line)
-
-        return attributed
-    }
-
-    private func apply(pattern: String, color: Color, to attributed: inout AttributedString, in source: String) {
-        guard !source.isEmpty, let regex = try? NSRegularExpression(pattern: pattern) else {
-            return
-        }
-
-        let nsRange = NSRange(source.startIndex..<source.endIndex, in: source)
-        for match in regex.matches(in: source, range: nsRange) {
-            guard let stringRange = Range(match.range, in: source),
-                  let attributedRange = Range(stringRange, in: attributed) else {
-                continue
-            }
-            attributed[attributedRange].foregroundColor = color
-        }
+        HudCodeHighlighter.highlight(line, language: language)
     }
 }

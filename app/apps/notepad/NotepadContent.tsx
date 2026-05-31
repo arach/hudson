@@ -51,7 +51,7 @@ export function NotepadContent() {
           value={activeNote.title}
           onChange={event => updateTitle(event.target.value)}
           className="min-w-0 flex-1 bg-transparent text-[14px] font-medium text-white/80 outline-none placeholder:text-white/15"
-          placeholder="Note title..."
+          placeholder="Note title"
         />
         <button
           onClick={() => setShowPreview(!showPreview)}

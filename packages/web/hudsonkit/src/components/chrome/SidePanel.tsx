@@ -49,19 +49,22 @@ const SidePanel: React.FC<SidePanelProps> = ({
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator
-  const baseClasses = 'bg-card/95 border shadow-[var(--hud-shadow-panel)] fixed bottom-[28px] z-40 rounded-none border-t-0 overflow-hidden';
+  const baseClasses = 'bg-card/95 border shadow-[var(--hud-shadow-panel)] fixed z-40 rounded-none border-t-0 overflow-hidden';
   const sideSpecificClasses = side === 'left' ? 'border-l-0 border-r-0' : 'border-r-0 border-l-0';
   const panelClass = `${baseClasses} ${sideSpecificClasses}`;
 
+  // Caller-provided style.top/bottom (e.g. AppShell passing chrome-aware insets)
+  // wins over the internal defaults; the platform offsets remain the fallback
+  // for direct consumers of SidePanel that don't supply positioning.
   const finalStyle: React.CSSProperties = {
-    ...style,
-    // Explicitly set positioning and width via inline styles
     position: 'fixed',
     top: panelTopOffset,
+    bottom: 28,
     left: side === 'left' ? 0 : undefined,
     right: side === 'right' ? 0 : undefined,
     width: `${width || 280}px`,
     borderColor: chromeBorder,
+    ...style,
   };
 
   return (

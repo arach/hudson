@@ -9,12 +9,22 @@ import CommandDock from './chrome/CommandDock';
 import CommandPalette from './overlays/CommandPalette';
 import TerminalDrawer from './overlays/TerminalDrawer';
 import { Assistant } from './Assistant';
+import { ObjectCodeSurface, ObjectCodeWorkbench } from './controls/ObjectCodeSurface';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { InstanceProvider } from '../context/InstanceContext';
+import {
+  AppShellControlsProvider,
+  type AppShellControlsContextValue,
+  type DrawerControls,
+  type DrawerTab,
+  type PaletteControls,
+  type SidePanelControls,
+} from '../context/AppShellControlsContext';
 import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { HudsonApp } from '../types/app';
+import type { HudsonCodeWorkbenchSize } from '../types/code';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 import {
   HudsonThemeScript,
   ThemeProvider,
@@ -28,10 +38,36 @@ import {
 // chrome (nav bar, side panels, status bar, command palette, terminal drawer).
 // Use WorkspaceShell instead when you need multi-app canvas mode.
 // ---------------------------------------------------------------------------
+export interface AppShellChromeOptions {
+  /** Render the top navigation bar. Defaults to true. */
+  nav?: boolean;
+  /** Render the bottom status bar. Defaults to true. */
+  statusBar?: boolean;
+  /** Render the left side panel when the app is in panel layout. Defaults to true. */
+  leftPanel?: boolean;
+  /** Render the right side panel when the app is in panel layout. Defaults to true. */
+  rightPanel?: boolean;
+  /** Enable the command palette chrome and Cmd/Ctrl+K shortcut. Defaults to true. */
+  palette?: boolean;
+  /** Enable the terminal/assistant drawer chrome and shortcuts. Defaults to true. */
+  terminal?: boolean;
+}
+
+const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
+  nav: true,
+  statusBar: true,
+  leftPanel: true,
+  rightPanel: true,
+  palette: true,
+  terminal: true,
+};
+
 interface AppShellProps {
   app: HudsonApp;
   /** Disable the built-in Assistant tab in the bottom drawer. Defaults to true (Assistant on). */
   assistant?: boolean;
+  /** Per-feature chrome opt-outs. Each feature defaults to true. */
+  chrome?: AppShellChromeOptions;
   /** Default theme; user can still switch at runtime. Defaults to 'system'. */
   defaultTheme?: HudsonTheme;
   /** Default template. Defaults to 'hudson'. */
@@ -43,6 +79,7 @@ interface AppShellProps {
 export function AppShell({
   app,
   assistant = true,
+  chrome,
   defaultTheme = 'system',
   defaultTemplate = 'hudson',
   managedTheme = true,
@@ -52,7 +89,7 @@ export function AppShell({
   const content = (
     <InstanceProvider instanceId={app.id} appId={app.id}>
       <app.Provider>
-        <AppShellInner app={app} assistantEnabled={assistant} />
+        <AppShellInner app={app} assistantEnabled={assistant} chrome={chrome} />
       </app.Provider>
     </InstanceProvider>
   );
@@ -80,20 +117,39 @@ export function AppShell({
 // ---------------------------------------------------------------------------
 // AppShellInner — rendered inside Provider so app hooks can be called
 // ---------------------------------------------------------------------------
-function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEnabled: boolean }) {
+function AppShellInner({
+  app,
+  assistantEnabled,
+  chrome: chromeOptions,
+}: {
+  app: HudsonApp;
+  assistantEnabled: boolean;
+  chrome?: AppShellChromeOptions;
+}) {
   const theme = useOptionalTheme();
+  const chrome = useMemo<Required<AppShellChromeOptions>>(
+    () => ({ ...DEFAULT_APP_SHELL_CHROME, ...chromeOptions }),
+    [chromeOptions],
+  );
   // Platform layout
   const { navTotalHeight } = usePlatformLayout();
 
   // App hooks
   const appCommands = app.hooks.useCommands();
   const appStatus = app.hooks.useStatus();
+  const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
+  const appStatusRight = app.hooks.useStatusRight?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
   const layoutMode = app.hooks.useLayoutMode?.() ?? app.mode;
   const activeToolHint = app.hooks.useActiveToolHint?.() ?? null;
   const takeover = app.hooks.useTakeover?.() ?? null;
+  const codeSurface = app.hooks.useCodeSurface?.() ?? null;
+  const codePlacement = codeSurface?.placement ?? app.code?.placement ?? 'workbench';
+  const codeInInspector = codeSurface?.open === true && Boolean(codeSurface.object) && codePlacement === 'inspector';
+  const codeWorkbenchOpen = codeSurface?.open === true && Boolean(codeSurface.object) && codePlacement === 'workbench';
+  const previousCodeWorkbenchOpenRef = useRef(false);
   const takeoverActive = takeover?.active === true;
   const takeoverDismissible = takeoverActive && takeover?.dismissible === true;
   const takeoverOnDismiss = takeover?.onDismiss;
@@ -104,6 +160,16 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
   const [leftWidth, setLeftWidth] = usePersistentState(`appshell.${app.id}.leftW`, 260);
   const [rightWidth, setRightWidth] = usePersistentState(`appshell.${app.id}.rightW`, 280);
+  const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
+  const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
+  const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
+
+  useEffect(() => {
+    if (codeWorkbenchOpen && !previousCodeWorkbenchOpenRef.current && !rightCollapsed) {
+      setRightCollapsed(true);
+    }
+    previousCodeWorkbenchOpenRef.current = codeWorkbenchOpen;
+  }, [codeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
 
   // Canvas pan/zoom state
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -175,12 +241,19 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
 
   // Shell commands
   const shellCommands: CommandOption[] = useMemo(() => {
-    const cmds: CommandOption[] = [
-      { id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: () => setLeftCollapsed(c => !c) },
-      { id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) },
-      { id: 'shell:toggle-terminal', label: 'Toggle Terminal', shortcut: 'Ctrl+`', action: () => setShowTerminal(t => !t) },
-    ];
-    if (assistantEnabled) {
+    if (!chrome.palette) return [];
+
+    const cmds: CommandOption[] = [];
+    if (chrome.leftPanel) {
+      cmds.push({ id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: () => setLeftCollapsed(c => !c) });
+    }
+    if (chrome.rightPanel) {
+      cmds.push({ id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) });
+    }
+    if (chrome.terminal) {
+      cmds.push({ id: 'shell:toggle-terminal', label: 'Toggle Terminal', shortcut: 'Ctrl+`', action: () => setShowTerminal(t => !t) });
+    }
+    if (chrome.terminal && assistantEnabled) {
       cmds.push({
         id: 'shell:toggle-assistant',
         label: 'Toggle Assistant',
@@ -189,6 +262,16 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
           setActiveTab('assistant');
           setShowTerminal(t => !t || activeTab !== 'assistant');
         },
+      });
+    }
+    if (codeSurface?.object) {
+      cmds.push({
+        id: `shell:code-surface:${app.id}`,
+        label: codeSurface.open
+          ? `Hide ${app.code?.label ?? codeSurface.label ?? 'Code'}`
+          : (app.code?.commandLabel ?? app.code?.label ?? codeSurface.label ?? 'View Code'),
+        icon: <Code2 size={14} />,
+        action: () => codeSurface.setOpen(!codeSurface.open),
       });
     }
     if (theme) {
@@ -202,7 +285,7 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
       );
     }
     return cmds;
-  }, [activeTab, assistantEnabled, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
+  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -214,23 +297,23 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (takeoverActive) return;
-      if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      if (chrome.palette && (e.metaKey || e.ctrlKey) && e.key === 'k') {
         e.preventDefault();
         setShowCommandPalette(true);
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === '[') {
+      if (chrome.leftPanel && (e.metaKey || e.ctrlKey) && e.key === '[') {
         e.preventDefault();
         setLeftCollapsed(c => !c);
       }
-      if ((e.metaKey || e.ctrlKey) && e.key === ']') {
+      if (chrome.rightPanel && (e.metaKey || e.ctrlKey) && e.key === ']') {
         e.preventDefault();
         setRightCollapsed(c => !c);
       }
-      if (e.ctrlKey && e.key === '`') {
+      if (chrome.terminal && e.ctrlKey && e.key === '`') {
         e.preventDefault();
         setShowTerminal(t => !t);
       }
-      if (assistantEnabled && (e.metaKey || e.ctrlKey) && e.key === 'j') {
+      if (chrome.terminal && assistantEnabled && (e.metaKey || e.ctrlKey) && e.key === 'j') {
         e.preventDefault();
         setActiveTab('assistant');
         setShowTerminal(t => !(t && resolvedTab === 'assistant'));
@@ -238,15 +321,46 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab, takeoverActive]);
+  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab, takeoverActive, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal]);
 
   // Right panel content: Inspector + tools accordion
   const InspectorSlot = app.slots.Inspector;
   const RightPanelSlot = app.slots.RightPanel;
   const hasTools = app.tools && app.tools.length > 0;
+  const codeSurfaceHeaderAction = codeSurface?.object ? (
+    <button
+      type="button"
+      onClick={() => codeSurface.setOpen(!codeSurface.open)}
+      className={`rounded p-1 transition-colors ${
+        codeSurface.open
+          ? 'bg-cyan-700/10 text-cyan-700 dark:bg-cyan-400/10 dark:text-cyan-200'
+          : 'text-muted-foreground/80 hover:bg-muted/50 hover:text-foreground'
+      }`}
+      title={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+      aria-label={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+    >
+      <Code2 size={12} />
+    </button>
+  ) : null;
+  const rightHeaderActions = codeSurfaceHeaderAction || app.rightPanel?.headerActions
+    ? (
+      <div className="flex items-center gap-1">
+        {codeSurfaceHeaderAction}
+        {app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
+      </div>
+    )
+    : undefined;
 
   const rightContent = (
     <>
+      {codeInInspector && codeSurface?.object && (
+        <ObjectCodeSurface
+          object={codeSurface.object}
+          placement="inspector"
+          onClose={() => codeSurface.setOpen(false)}
+          className="min-h-[420px]"
+        />
+      )}
       {InspectorSlot && <InspectorSlot />}
       {!InspectorSlot && RightPanelSlot && <RightPanelSlot />}
       {hasTools && (
@@ -282,9 +396,9 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
   const leftFooter = app.slots.LeftFooter ? <app.slots.LeftFooter /> : undefined;
 
   // Right panel footer: CommandDock
-  const rightFooter = (
-    <CommandDock onOpenCommandPalette={() => setShowCommandPalette(true)} />
-  );
+  const rightFooter = chrome.palette
+    ? <CommandDock onOpenCommandPalette={() => setShowCommandPalette(true)} />
+    : undefined;
 
   // Takeover refs + effects — background goes `inert` while active so focus
   // and pointer events can't reach chrome. Initial focus is moved into the
@@ -325,19 +439,103 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
 
   // Whether side panels should be visible — canvas/focus modes hide them
   const showPanels = layoutMode === 'panel';
+  const showLeftPanel = chrome.leftPanel && showPanels;
+  const showRightPanel = chrome.rightPanel && showPanels;
   // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
   const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const showCanvasZoomControls = !showTerminal || !isTerminalMaximized;
+  const topInset = chrome.nav ? navTotalHeight : 0;
+  const bottomInset = chrome.statusBar ? 28 : 0;
+  const leftInset = showLeftPanel && !leftCollapsed ? leftWidth : 0;
+  const rightInset = showRightPanel && !rightCollapsed ? rightWidth : 0;
 
   // Content insets — offset content area so it doesn't render behind fixed chrome
   const contentStyle: React.CSSProperties = frameMode === 'panel' ? {
     position: 'absolute',
-    top: navTotalHeight,
-    bottom: 28, // status bar
-    left: showPanels && !leftCollapsed ? leftWidth : 0,
-    right: showPanels && !rightCollapsed ? rightWidth : 0,
+    top: topInset,
+    bottom: bottomInset,
+    left: leftInset,
+    right: rightInset,
     overflow: 'auto',
-    transition: 'left 200ms ease, right 200ms ease',
+    transition: 'top 200ms ease, bottom 200ms ease, left 200ms ease, right 200ms ease',
   } : {};
+
+  // -------------------------------------------------------------------------
+  // Imperative controls — published via AppShellControlsContext so app code
+  // can do `useAppShellDrawer().open('terminal')` from inside its Provider.
+  // When a feature is chrome-disabled, the matching methods no-op and the
+  // `isOpen` flag always reports false.
+  // -------------------------------------------------------------------------
+  const drawerEnabled = chrome.terminal;
+  const paletteEnabled = chrome.palette;
+
+  const drawerControls = useMemo<DrawerControls>(() => ({
+    isOpen: drawerEnabled && showTerminal,
+    activeTab: drawerTabs.length > 0 ? resolvedTab : null,
+    availableTabs: drawerTabs,
+    isMaximized: isTerminalMaximized,
+    height: terminalHeight,
+    open: (tab) => {
+      if (!drawerEnabled) return;
+      if (tab && drawerTabs.includes(tab)) setActiveTab(tab);
+      setShowTerminal(true);
+    },
+    close: () => setShowTerminal(false),
+    toggle: (tab) => {
+      if (!drawerEnabled) return;
+      setShowTerminal((prev) => {
+        if (!prev) {
+          if (tab && drawerTabs.includes(tab)) setActiveTab(tab);
+          return true;
+        }
+        if (tab && drawerTabs.includes(tab) && resolvedTab !== tab) {
+          setActiveTab(tab);
+          return true;
+        }
+        return false;
+      });
+    },
+    setTab: (tab) => {
+      if (drawerTabs.includes(tab)) setActiveTab(tab);
+    },
+    maximize: () => setIsTerminalMaximized((m) => !m),
+    setHeight: (px) => setTerminalHeight(px),
+  }), [
+    drawerEnabled, showTerminal, drawerTabs, resolvedTab,
+    isTerminalMaximized, terminalHeight,
+    setActiveTab, setShowTerminal, setIsTerminalMaximized, setTerminalHeight,
+  ]);
+
+  const paletteControls = useMemo<PaletteControls>(() => ({
+    isOpen: paletteEnabled && showCommandPalette,
+    open: () => { if (paletteEnabled) setShowCommandPalette(true); },
+    close: () => setShowCommandPalette(false),
+    toggle: () => { if (paletteEnabled) setShowCommandPalette((o) => !o); },
+  }), [paletteEnabled, showCommandPalette]);
+
+  const leftPanelControls = useMemo<SidePanelControls>(() => ({
+    isCollapsed: showLeftPanel ? leftCollapsed : true,
+    width: leftWidth,
+    toggle: () => setLeftCollapsed((c) => !c),
+    setCollapsed: (v) => setLeftCollapsed(v),
+    setWidth: (px) => setLeftWidth(Math.max(200, Math.min(500, px))),
+  }), [showLeftPanel, leftCollapsed, leftWidth, setLeftCollapsed, setLeftWidth]);
+
+  const rightPanelControls = useMemo<SidePanelControls>(() => ({
+    isCollapsed: showRightPanel ? rightCollapsed : true,
+    width: rightWidth,
+    toggle: () => setRightCollapsed((c) => !c),
+    setCollapsed: (v) => setRightCollapsed(v),
+    setWidth: (px) => setRightWidth(Math.max(200, Math.min(500, px))),
+  }), [showRightPanel, rightCollapsed, rightWidth, setRightCollapsed, setRightWidth]);
+
+  const controlsValue = useMemo<AppShellControlsContextValue>(() => ({
+    drawer: drawerControls,
+    palette: paletteControls,
+    leftPanel: leftPanelControls,
+    rightPanel: rightPanelControls,
+  }), [drawerControls, paletteControls, leftPanelControls, rightPanelControls]);
 
   const shell = (
     <>
@@ -348,17 +546,41 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
       scale={scale}
       onPan={handlePan}
       onZoom={handleZoom}
+      zoomControlsRightOffset={showPanels && !rightCollapsed ? rightWidth : 0}
+      zoomControlsBottomOffset={terminalCanvasBottomOffset}
+      showZoomControls={showCanvasZoomControls}
       hud={
         <>
-          <NavigationBar
-            title={app.name.toUpperCase()}
-            subtitle={app.icon}
-            search={appSearch ?? undefined}
-            center={appNavCenter}
-            actions={appNavActions}
-          />
+          {chrome.nav && (
+            <NavigationBar
+              title={app.name.toUpperCase()}
+              subtitle={app.icon}
+              search={appSearch ?? undefined}
+              center={appNavCenter}
+              actions={
+                <>
+                  {appNavActions}
+                  {codeSurface?.object && app.code?.navAction === true && (
+                    <button
+                      type="button"
+                      onClick={() => codeSurface.setOpen(!codeSurface.open)}
+                      className={`p-1.5 rounded border transition-colors ${
+                        codeSurface.open
+                          ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                          : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
+                      }`}
+                      title={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+                      aria-label={codeSurface.open ? 'Hide code' : (app.code?.label ?? codeSurface.label ?? 'View code')}
+                    >
+                      <Code2 size={14} />
+                    </button>
+                  )}
+                </>
+              }
+            />
+          )}
 
-          {showPanels && (
+          {showLeftPanel && (
             <SidePanel
               side="left"
               title={app.leftPanel?.title ?? 'Navigation'}
@@ -369,12 +591,13 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
               onResizeStart={handleResizeStart('left')}
               footer={leftFooter}
               headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
+              style={{ top: topInset, bottom: bottomInset }}
             >
               {app.slots.LeftPanel && <app.slots.LeftPanel />}
             </SidePanel>
           )}
 
-          {showPanels && (
+          {showRightPanel && (
             <SidePanel
               side="right"
               title={app.rightPanel?.title ?? 'Inspector'}
@@ -384,68 +607,113 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
               width={rightWidth}
               onResizeStart={handleResizeStart('right')}
               footer={rightFooter}
-              headerActions={app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
+              headerActions={rightHeaderActions}
+              style={{ top: topInset, bottom: bottomInset }}
             >
               {rightContent}
             </SidePanel>
           )}
 
-          <StatusBar
-            status={appStatus}
-            onToggleTerminal={() => setShowTerminal(t => !t)}
-            isTerminalOpen={showTerminal}
-          />
+          {chrome.statusBar && (
+            <StatusBar
+              status={appStatus}
+              left={appStatusLeft}
+              right={appStatusRight}
+              onToggleTerminal={chrome.terminal ? () => setShowTerminal(t => !t) : undefined}
+              isTerminalOpen={chrome.terminal ? showTerminal : false}
+            />
+          )}
 
           {/* Terminal — inset between panels */}
-          <div
-            className="pointer-events-none"
-            style={{
-              position: 'fixed',
-              left: showPanels && !leftCollapsed ? leftWidth : 0,
-              right: showPanels && !rightCollapsed ? rightWidth : 0,
-              bottom: 0,
-              top: 0,
-              zIndex: 45,
-              transition: 'left 200ms ease, right 200ms ease',
-              transform: 'translateZ(0)',
-            }}
-          >
-            <TerminalDrawer
-              isOpen={showTerminal}
-              onClose={() => setShowTerminal(false)}
-              onToggleMaximize={() => setIsTerminalMaximized(m => !m)}
-              isMaximized={isTerminalMaximized}
-              height={terminalHeight}
-              onHeightChange={setTerminalHeight}
-              title={
-                <DrawerTabs
-                  tabs={drawerTabs}
-                  active={resolvedTab}
-                  onSelect={setActiveTab}
-                />
-              }
+          {chrome.terminal && (
+            <div
+              className="pointer-events-none"
+              style={{
+                position: 'fixed',
+                left: leftInset,
+                right: rightInset,
+                bottom: 0,
+                top: 0,
+                zIndex: 45,
+                transition: 'left 200ms ease, right 200ms ease',
+                transform: 'translateZ(0)',
+              }}
             >
-              {resolvedTab === 'terminal' && (
-                app.slots.Terminal ? (
-                  <app.slots.Terminal />
-                ) : (
-                  <div className="p-4 font-mono text-[12px] text-muted-foreground">
-                    No terminal content
-                  </div>
-                )
-              )}
-              {resolvedTab === 'assistant' && (
-                <Assistant app={app} commands={appCommands} />
-              )}
-            </TerminalDrawer>
-          </div>
+              <TerminalDrawer
+                isOpen={showTerminal}
+                onClose={() => setShowTerminal(false)}
+                onToggleMaximize={() => setIsTerminalMaximized(m => !m)}
+                isMaximized={isTerminalMaximized}
+                height={terminalHeight}
+                onHeightChange={setTerminalHeight}
+                title={
+                  <DrawerTabs
+                    tabs={drawerTabs}
+                    active={resolvedTab}
+                    onSelect={setActiveTab}
+                  />
+                }
+              >
+                {resolvedTab === 'terminal' && (
+                  app.slots.Terminal ? (
+                    <app.slots.Terminal />
+                  ) : (
+                    <div className="p-4 font-mono text-[12px] text-muted-foreground">
+                      No terminal content
+                    </div>
+                  )
+                )}
+                {resolvedTab === 'assistant' && (
+                  <Assistant app={app} commands={appCommands} />
+                )}
+              </TerminalDrawer>
+            </div>
+          )}
+
+          {codeSurface?.open && codeSurface.object && codePlacement === 'sheet' && (
+            <div
+              className="pointer-events-auto fixed bottom-7 right-0 top-12 z-[44]"
+              aria-label={app.code?.label ?? codeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeSurface
+                object={codeSurface.object}
+                placement="sheet"
+                onClose={() => codeSurface.setOpen(false)}
+              />
+            </div>
+          )}
+
+          {codeSurface?.open && codeSurface.object && codePlacement === 'workbench' && (
+            <div
+              className="pointer-events-none fixed bottom-7 top-12 z-[44]"
+              style={{
+                left: codeWorkbenchSize === 'full' ? 0 : leftInset,
+                right: codeWorkbenchSize === 'full' ? 0 : rightInset,
+              }}
+              aria-label={app.code?.label ?? codeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeWorkbench
+                object={codeSurface.object}
+                size={codeWorkbenchSize}
+                onSizeChange={setCodeWorkbenchSize}
+                onClose={() => codeSurface.setOpen(false)}
+                chat={codeSurface.chat}
+                editorWidth={codeWorkbenchEditorWidth}
+                chatWidth={codeWorkbenchChatWidth}
+                onEditorWidthChange={setCodeWorkbenchEditorWidth}
+                onChatWidthChange={setCodeWorkbenchChatWidth}
+              />
+            </div>
+          )}
 
           {/* Command palette */}
-          <CommandPalette
-            isOpen={showCommandPalette}
-            onClose={() => setShowCommandPalette(false)}
-            commands={allCommands}
-          />
+          {chrome.palette && (
+            <CommandPalette
+              isOpen={showCommandPalette}
+              onClose={() => setShowCommandPalette(false)}
+              commands={allCommands}
+            />
+          )}
         </>
       }
     >
@@ -468,8 +736,14 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
     </>
   );
 
+  const wrapped = (
+    <AppShellControlsProvider value={controlsValue}>
+      {shell}
+    </AppShellControlsProvider>
+  );
+
   if (!theme) {
-    return shell;
+    return wrapped;
   }
 
   return (
@@ -477,15 +751,16 @@ function AppShellInner({ app, assistantEnabled }: { app: HudsonApp; assistantEna
       {...(theme.resolvedTheme ? { 'data-hudson-theme': theme.resolvedTheme } : {})}
       data-hudson-template={theme.template}
     >
-      {shell}
+      {wrapped}
     </div>
   );
 }
 
 // ---------------------------------------------------------------------------
 // Drawer tabs — Terminal slot vs Assistant
+// (DrawerTab type lives in AppShellControlsContext so the imperative hook
+// surface and AppShell agree on what tabs exist.)
 // ---------------------------------------------------------------------------
-type DrawerTab = 'terminal' | 'assistant';
 
 function DrawerTabs({
   tabs,

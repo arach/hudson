@@ -3,14 +3,20 @@ import { AlertTriangle, RefreshCw, ChevronRight } from 'lucide-react';
 import type { LogoParams } from './LogoProvider';
 import { useLogo } from './LogoProvider';
 import { TemplateSvg, useTemplateRender } from './TemplateSvg';
+import { LogoInteractiveSurface } from './LogoInteractiveSurface';
+import type { LogoDrawingShape, LogoElementOffsets } from './types';
 
 interface Props {
   params: LogoParams;
   size: number;
+  /** When true, the rendered SVG is wrapped in a direct-manipulation surface:
+   *  hover/select rings on `data-element-id` shapes, drag-to-offset, Esc to
+   *  deselect. Default false — thumbnails and previews stay read-only. */
+  interactive?: boolean;
 }
 
-export function LogoSvg({ params, size }: Props) {
-  const { templates, customParamValues, backgroundSvg, setVariant, refreshTemplates } = useLogo();
+export function LogoSvg({ params, size, interactive = false }: Props) {
+  const { templates, customParamValues, backgroundSvg, setVariant, refreshTemplates, elementOffsets, drawingShapes } = useLogo();
   const template = templates.find(t => t.id === params.variant);
 
   if (templates.length === 0) {
@@ -70,6 +76,9 @@ export function LogoSvg({ params, size }: Props) {
       templates={templates}
       setVariant={setVariant}
       refreshTemplates={refreshTemplates}
+      elementOffsets={elementOffsets[template.id]}
+      drawingShapes={drawingShapes[template.id]}
+      interactive={interactive}
     />
   );
 }
@@ -84,6 +93,9 @@ function LogoSvgInner({
   templates,
   setVariant,
   refreshTemplates,
+  elementOffsets,
+  drawingShapes,
+  interactive,
 }: {
   template: Parameters<typeof TemplateSvg>[0]['template'];
   params: LogoParams;
@@ -93,6 +105,9 @@ function LogoSvgInner({
   templates: { id: string; name: string }[];
   setVariant: (v: string) => void;
   refreshTemplates: () => void;
+  elementOffsets?: LogoElementOffsets;
+  drawingShapes?: LogoDrawingShape[];
+  interactive?: boolean;
 }) {
   const { error } = useTemplateRender(template, params, customParamValues, backgroundSvg);
 
@@ -101,15 +116,27 @@ function LogoSvgInner({
   const prevTemplate = currentIdx > 0 ? templates[currentIdx - 1] : null;
   const nextTemplate = currentIdx < templates.length - 1 ? templates[currentIdx + 1] : null;
 
+  const svgNode = (
+    <TemplateSvg
+      template={template}
+      params={params}
+      customParamValues={customParamValues}
+      backgroundSvg={backgroundSvg}
+      size={size}
+      elementOffsets={elementOffsets}
+      drawingShapes={drawingShapes}
+    />
+  );
+
   return (
     <div className="relative" style={{ width: size, height: size }}>
-      <TemplateSvg
-        template={template}
-        params={params}
-        customParamValues={customParamValues}
-        backgroundSvg={backgroundSvg}
-        size={size}
-      />
+      {interactive ? (
+        <LogoInteractiveSurface templateId={template.id} size={size}>
+          {svgNode}
+        </LogoInteractiveSurface>
+      ) : (
+        svgNode
+      )}
       {error && (
         <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-background/70 backdrop-blur-sm rounded-[inherit]">
           <AlertTriangle size={20} className="text-destructive/80" />

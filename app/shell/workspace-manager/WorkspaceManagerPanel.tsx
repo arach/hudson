@@ -591,6 +591,19 @@ function SettingsTab() {
       </SettingsSection>
       <SettingsSection label="Navigation">
         <SettingsSlider label="Zoom Sensitivity" value={shellSettings.zoomSensitivity ?? 1.0} min={0.5} max={3} step={0.1} format={v => `${(v ?? 1.0).toFixed(1)}x`} onChange={v => onUpdateShellSettings({ zoomSensitivity: v })} />
+        <SettingsSegment
+          label="Right Click"
+          value={shellSettings.contextMenuMode ?? DEFAULT_SHELL_SETTINGS.contextMenuMode}
+          options={[
+            { value: 'hudson-first', label: 'Hudson First' },
+            { value: 'chrome-first', label: 'Chrome First' },
+          ]}
+          onChange={v => onUpdateShellSettings({ contextMenuMode: v })}
+        />
+        <div className="rounded border border-border/60 bg-secondary/70 px-3 py-2 text-[10px] font-mono text-muted-foreground">
+          Hudson First opens workspace menus on right-click and Chrome&apos;s native menu with Option-right-click.
+          Chrome First swaps those gestures for easier Inspect Element access.
+        </div>
       </SettingsSection>
       <SettingsSection label="Sound">
         <SettingsToggle label="Master Mute" checked={shellSettings.masterMute} onChange={v => onUpdateShellSettings({ masterMute: v })} />

@@ -105,7 +105,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
             ref={inputRef}
             className="flex-1 bg-transparent border-none outline-none text-popover-foreground placeholder:text-muted-foreground font-mono text-[12px] font-normal"
             style={{ boxShadow: 'none' }}
-            placeholder="Type a command or search..."
+            placeholder="Type a command or search"
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}

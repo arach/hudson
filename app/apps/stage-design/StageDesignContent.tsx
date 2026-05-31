@@ -257,7 +257,7 @@ function ImageEditor({ item }: { item: ImageDecor }) {
       <input
         type="text"
         className={FIELD_INPUT}
-        placeholder="https://…"
+        placeholder="https://example.com/image.png"
         value={item.src}
         onChange={(e) => updateItem(item.id, { src: e.target.value })}
       />
@@ -298,7 +298,7 @@ function WebEditor({ item }: { item: WebDecor }) {
       <input
         type="text"
         className={FIELD_INPUT}
-        placeholder="https://…"
+        placeholder="https://example.com"
         value={item.url}
         onChange={(e) => updateItem(item.id, { url: e.target.value })}
       />

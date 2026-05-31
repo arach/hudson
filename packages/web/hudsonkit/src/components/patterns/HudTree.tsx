@@ -107,18 +107,18 @@ function HudTreeRow({
 
   return (
     <div className="flex flex-col gap-1">
-      <div className="flex items-stretch gap-1" style={{ paddingLeft }}>
+      <div className="flex items-stretch gap-0.5" style={{ paddingLeft }}>
         {hasChildren ? (
           <button
             type="button"
             onClick={() => onToggleExpanded(node.id)}
-            className="flex w-5 shrink-0 items-center justify-center rounded text-muted-foreground/70 transition-colors hover:bg-muted/40 hover:text-foreground"
+            className="flex w-4 shrink-0 items-center justify-center rounded text-foreground/70 transition-colors hover:bg-muted/40 hover:text-foreground/95"
             aria-label={isExpanded ? 'Collapse' : 'Expand'}
           >
-            <ChevronRight size={12} className={cx('transition-transform duration-150', isExpanded && 'rotate-90')} />
+            <ChevronRight size={12} strokeWidth={2.25} className={cx('transition-transform duration-150', isExpanded && 'rotate-90')} />
           </button>
         ) : (
-          <span className="w-5 shrink-0" aria-hidden="true" />
+          <span className="w-4 shrink-0" aria-hidden="true" />
         )}
 
         <div className="min-w-0 flex-1">

@@ -13,7 +13,7 @@ export interface UseTerminalRelayOptions {
   url?: string;
   /** Optional HTTP health URL used for the pre-flight relay probe. Defaults to `${url}/health` over http(s). */
   healthUrl?: string;
-  /** System prompt to pass to the Claude CLI session */
+  /** System prompt to pass to the CLI agent session. Ignored by shell sessions. */
   systemPrompt?: string;
   /** Working directory for the PTY session. Defaults to $HOME on the server. */
   cwd?: string;
@@ -30,8 +30,8 @@ export interface UseTerminalRelayOptions {
   backend?: 'pty' | 'tmux';
   /** For tmux backend: the named tmux session to create/attach to. */
   tmuxSession?: string;
-  /** CLI agent to spawn. 'claude' (default) or 'pi'. */
-  agent?: 'claude' | 'pi';
+  /** Process to spawn. 'claude' (default), 'pi', or 'shell' for a normal login shell. */
+  agent?: 'claude' | 'pi' | 'shell';
   /** For pi agent: provider name (e.g. 'minimax', 'github-copilot'). */
   provider?: string;
   /** For pi agent: model ID (e.g. 'MiniMax-M1'). */
@@ -51,8 +51,22 @@ export interface TerminalRelayHandle {
   cwd: string;
   /** Update the CWD — only takes effect on next connect/session:init */
   setCwd: (cwd: string) => void;
-  /** Register a callback for incoming terminal data */
+  /**
+   * Register the **primary** data sink — typically the `TerminalRelay`
+   * component's xterm writer. Pass `null` to clear. Data buffered before
+   * registration is flushed to the new sink on registration. For
+   * additional, non-claiming listeners (e.g. tail-previews, activity
+   * trackers) use `subscribeData` instead.
+   */
   onData: (cb: ((data: string) => void) | null) => void;
+  /**
+   * Subscribe to incoming PTY data without claiming the primary sink slot.
+   * Returns an unsubscribe function. Multiple subscribers allowed; called
+   * after the primary sink on every chunk. Subscribers do NOT receive
+   * buffered output from before the subscription — they see live data
+   * only.
+   */
+  subscribeData: (cb: (data: string) => void) => () => void;
   /** Send raw keystrokes (for keyboard events) */
   sendInput: (data: string) => void;
   /** Send a line of text (appends \r) */
@@ -121,19 +135,29 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   cwdRef.current = cwd;
   // Persist sessionId across reconnects so we can resume
   const sessionIdRef = useRef<string | null>(readPersistedSession());
-  // Data callback registered by the TerminalRelay component
+  // Primary data callback (typically the TerminalRelay xterm writer).
   const dataCallbackRef = useRef<((data: string) => void) | null>(null);
+  // Additional, non-claiming subscribers (tail previews, activity trackers).
+  // We fan out to them on every chunk, after the primary sink.
+  const subscribersRef = useRef<Set<(data: string) => void>>(new Set());
   const MAX_PENDING_OUTPUT = 512 * 1024;
 
   const pushOutput = useCallback((data: string) => {
     if (!data) return;
     if (dataCallbackRef.current) {
       dataCallbackRef.current(data);
-      return;
+    } else {
+      pendingOutputRef.current += data;
+      if (pendingOutputRef.current.length > MAX_PENDING_OUTPUT) {
+        pendingOutputRef.current = pendingOutputRef.current.slice(-MAX_PENDING_OUTPUT);
+      }
     }
-    pendingOutputRef.current += data;
-    if (pendingOutputRef.current.length > MAX_PENDING_OUTPUT) {
-      pendingOutputRef.current = pendingOutputRef.current.slice(-MAX_PENDING_OUTPUT);
+    // Fan out to passive subscribers regardless of whether the primary
+    // sink is bound. They never get buffered output — only live chunks.
+    if (subscribersRef.current.size > 0) {
+      for (const cb of subscribersRef.current) {
+        try { cb(data); } catch { /* one bad subscriber shouldn't break the others */ }
+      }
     }
   }, []);
 
@@ -344,6 +368,13 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     pendingOutputRef.current = '';
   }, []);
 
+  const subscribeData = useCallback((cb: (data: string) => void) => {
+    subscribersRef.current.add(cb);
+    return () => {
+      subscribersRef.current.delete(cb);
+    };
+  }, []);
+
   useEffect(() => {
     // Only auto-connect if explicitly requested — don't auto-reconnect
     // just because a stale session ID exists in localStorage
@@ -376,6 +407,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     cwd,
     setCwd,
     onData,
+    subscribeData,
     sendInput,
     sendLine,
     resize,

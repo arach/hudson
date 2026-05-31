@@ -73,13 +73,11 @@ public struct HudAppShell<
 
                 HStack(spacing: 0) {
                     leading
-                    HudShellVRule()
 
                     content
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
 
                     if !isCompact {
-                        HudShellVRule()
                         trailing
                     }
                 }
@@ -87,7 +85,7 @@ public struct HudAppShell<
 
                 bottomDrawer
 
-                HudDivider(color: theme.hairline.standard)
+                HudDivider(color: theme.hairline.subtle)
                 statusBar
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -148,8 +146,8 @@ private struct HudShellVRule: View {
 
     var body: some View {
         Rectangle()
-            .fill(theme.hairline.standard)
-            .frame(width: HudStrokeWidth.standard)
+            .fill(theme.hairline.subtle)
+            .frame(width: HudStrokeWidth.thin)
             .frame(maxHeight: .infinity)
     }
 }

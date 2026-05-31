@@ -81,7 +81,7 @@ export function HudRail({
               type="search"
               value={search.value}
               onChange={event => search.onChange(event.target.value)}
-              placeholder={search.placeholder ?? 'Search...'}
+              placeholder={search.placeholder ?? 'Search'}
               className="h-8 w-full rounded-md border border-border bg-muted/25 pl-7 pr-2 font-mono text-[11px] text-foreground outline-none transition-colors placeholder:text-muted-foreground/70 focus-visible:border-ring focus-visible:ring-1 focus-visible:ring-ring/30"
             />
           </label>

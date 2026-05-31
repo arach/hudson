@@ -10,6 +10,7 @@ import {
   CommandPalette,
   CommandDock,
   TerminalDrawer,
+  SHELL_THEME,
 } from 'hudsonkit/shell';
 import {
   usePersistentState,
@@ -68,6 +69,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
   // Call app hooks directly — we're inside Provider
   const appCommands = app.hooks.useCommands();
   const appStatus = app.hooks.useStatus();
+  const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
+  const appStatusRight = app.hooks.useStatusRight?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
@@ -224,6 +227,10 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
     terminalHeight,
     isTerminalMaximized,
   }), [leftWidth, rightWidth, leftCollapsed, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized]);
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const canvasHeightAboveTerminal = viewport.height - SHELL_THEME.layout.statusBarHeight - terminalCanvasBottomOffset;
+  const showCanvasZoomControls = !showTerminal
+    || (!isTerminalMaximized && (viewport.height === 0 || canvasHeightAboveTerminal >= 160));
 
   // Left panel footer: LeftFooter slot + CommandDock + Minimap (shell chrome)
   const leftFooter = (
@@ -261,6 +268,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
       onViewportChange={setViewport}
       zoomSensitivity={shellSettings.zoomSensitivity}
       zoomControlsRightOffset={rightCollapsed ? 0 : rightWidth}
+      zoomControlsBottomOffset={terminalCanvasBottomOffset}
+      showZoomControls={showCanvasZoomControls}
       {...(isCanvasMode ? { canvasProps: { showGuides, onGuidesChange: setShowGuides } } : {})}
       hud={
         <>
@@ -321,6 +330,8 @@ function AppShellInner({ app, apps, activeAppId, onSwitchApp }: {
 
           <StatusBar
             status={appStatus}
+            left={appStatusLeft}
+            right={appStatusRight}
             viewport={{
               pan: panOffset,
               zoom: scale,
