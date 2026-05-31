@@ -11,8 +11,28 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
+  changes:
+    name: Changes
+    runs-on: ubuntu-latest
+    outputs:
+      workflows: ${{ steps.classify.outputs.workflows }}
+      web: ${{ steps.classify.outputs.web }}
+      native: ${{ steps.classify.outputs.native }}
+      cloud: ${{ steps.classify.outputs.cloud }}
+      any: ${{ steps.classify.outputs.any }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Classify changed surfaces
+        id: classify
+        run: node scripts/ci/classify-changes.mjs
+
   web:
     name: Web
+    needs: changes
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -32,8 +52,8 @@ jobs:
       - name: Typecheck (root)
         run: bunx tsc --noEmit
 
-      - name: HudsonKit tests
-        run: bunx vitest run packages/web/hudsonkit/__tests__
+      - name: Tests
+        run: bun run test
 
       - name: Worker typecheck
         run: bun run --cwd packages/cloud/hudson-relay-worker typecheck
@@ -43,6 +63,8 @@ jobs:
 
   apple:
     name: Apple
+    needs: changes
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.native == 'true' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4
