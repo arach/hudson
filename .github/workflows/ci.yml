@@ -32,8 +32,8 @@ jobs:
       - name: Typecheck (root)
         run: bunx tsc --noEmit
 
-      - name: HudsonKit tests
-        run: bunx vitest run packages/web/hudsonkit/__tests__
+      - name: Tests
+        run: bun run test
 
       - name: Worker typecheck
         run: bun run --cwd packages/cloud/hudson-relay-worker typecheck
