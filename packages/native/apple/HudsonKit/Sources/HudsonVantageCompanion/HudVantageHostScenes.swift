@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonVantageCore
 
 #if os(macOS)
 /// Standard macOS scene bundle for a Vantage host: main window, menu-bar companion,

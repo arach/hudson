@@ -68,7 +68,7 @@
     {
       "id": "hudson.vantage.files.surface",
       "runtimeKind": "file",
-      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift",
+      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSurface.swift",
       "title": "HudVantageSurface.swift",
       "subtitle": "canvas + node renderer",
       "language": "swift",
@@ -83,7 +83,7 @@
     {
       "id": "hudson.vantage.files.manifest",
       "runtimeKind": "file",
-      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSetupManifest.swift",
+      "path": "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/HudVantageSetupManifest.swift",
       "title": "Setup Manifest",
       "subtitle": "agent-definable workspace contract",
       "language": "swift",

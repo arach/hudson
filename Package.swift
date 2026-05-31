@@ -16,6 +16,8 @@ var products: [Product] = [
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
     .library(name: "HudsonVoice", targets: ["HudsonVoice"]),
+    .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
+    .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
 var dependencies: [Package.Dependency] = [
@@ -66,10 +68,21 @@ var targets: [Target] = [
         dependencies: ["HudsonUI", "HudsonObservability"],
         path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
     ),
+    .target(
+        name: "HudsonVantageCore",
+        dependencies: ["HudsonUI"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCore"
+    ),
+    .target(
+        name: "HudsonVantageCompanion",
+        dependencies: ["HudsonUI", "HudsonVantageCore"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCompanion"
+    ),
 ]
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
+    products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     dependencies.append(.package(path: "../Termini"))
     targets.append(
@@ -85,14 +98,31 @@ if terminalEnabled {
     )
     targets.append(
         .target(
-            name: "HudsonVantage",
+            name: "HudsonVantageSurface",
             dependencies: [
                 "HudsonDiff",
                 "HudsonLive",
+                "HudsonObservability",
                 "HudsonUI",
                 "HudsonShell",
                 "HudsonTerminal",
+                "HudsonVantageCore",
                 .product(name: "Termini", package: "Termini"),
+            ],
+            path: "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface",
+            resources: [
+                .process("Resources")
+            ]
+        )
+    )
+    targets.append(
+        .target(
+            name: "HudsonVantage",
+            dependencies: [
+                "HudsonUI",
+                "HudsonVantageCompanion",
+                "HudsonVantageCore",
+                "HudsonVantageSurface",
             ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonVantage"
         )

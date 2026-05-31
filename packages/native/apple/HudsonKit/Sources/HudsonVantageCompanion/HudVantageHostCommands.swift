@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonVantageCore
 
 public struct HudVantageHostCommands: Commands {
     @ObservedObject private var model: HudVantageHostAppModel

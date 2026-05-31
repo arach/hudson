@@ -19,6 +19,7 @@ public struct HudResizableDivider: View {
 
     @State private var dragOrigin: CGFloat?
     @State private var isHovering = false
+    @State private var cursorIsPushed = false
     @Environment(\.hudTheme) private var theme
 
     public init(
@@ -48,12 +49,12 @@ public struct HudResizableDivider: View {
             updateResizeCursor(isActive: hovering || dragOrigin != nil)
         }
         .gesture(
-            DragGesture(minimumDistance: 0)
+            DragGesture(minimumDistance: 1, coordinateSpace: .global)
                 .onChanged { value in
-                    let origin = dragOrigin ?? width
                     if dragOrigin == nil {
-                        dragOrigin = origin
+                        dragOrigin = width
                     }
+                    guard let origin = dragOrigin else { return }
                     let signedDelta = placement == .trailing
                         ? value.translation.width
                         : -value.translation.width
@@ -75,10 +76,12 @@ public struct HudResizableDivider: View {
 
     private func updateResizeCursor(isActive: Bool) {
         #if os(macOS)
-        if isActive {
+        if isActive, !cursorIsPushed {
             NSCursor.resizeLeftRight.push()
-        } else {
+            cursorIsPushed = true
+        } else if !isActive, cursorIsPushed {
             NSCursor.pop()
+            cursorIsPushed = false
         }
         #endif
     }
