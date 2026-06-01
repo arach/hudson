@@ -9,8 +9,6 @@ options:
 packages:
   HudsonKit:
     path: ../..
-  Termini:
-    path: /Users/arach/dev/termini
 
 targets:
   HudsonKitDemoIOS:
@@ -44,10 +42,6 @@ targets:
         product: HudsonShell
       - package: HudsonKit
         product: HudsonAI
-      - package: HudsonKit
-        product: HudsonVoice  # requires HUDSONKIT_WITH_VOICE=1 in build env
-      - package: Termini
-        product: Termini
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios
@@ -70,4 +64,3 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
         ENABLE_PREVIEWS: YES
-        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) HUDSON_VOICE"
