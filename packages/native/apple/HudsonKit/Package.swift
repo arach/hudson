@@ -26,10 +26,7 @@ var products: [Product] = [
     .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
-var dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", from: "0.10.0"),
-    .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", branch: "with-generated-files"),
-]
+var dependencies: [Package.Dependency] = []
 
 var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
 var demoSwiftSettings: [SwiftSetting] = []
@@ -43,8 +40,6 @@ var targets: [Target] = [
         dependencies: [
             "HudsonLive",
             "HudsonObservability",
-            .product(name: "SwiftTreeSitter", package: "SwiftTreeSitter"),
-            .product(name: "TreeSitterSwift", package: "tree-sitter-swift"),
         ]
     ),
     .target(name: "HudsonWorkflow", dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"]),

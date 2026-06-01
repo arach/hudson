@@ -179,10 +179,9 @@ private struct HudComplicationCornerSlot: View {
 
 // MARK: - Tray renderer (default)
 
-/// Default renderer. Bottom three slots (BL · center · BR) grouped in a
-/// glass-material tray attached via `safeAreaInset(.bottom)`. Top two slots
-/// (TL · TR) hosted as `ToolbarItem`s so they sit inline with the
-/// navigation title — same vertical level, Talkie-style.
+/// Default renderer. Bottom three slots (BL · center · BR) sit in a compact
+/// floating liquid bar. Top two slots (TL · TR) are hosted as `ToolbarItem`s
+/// so they sit inline with the navigation title.
 public struct HudPhoneComplicationsTray: ViewModifier {
     let complications: HudPhoneComplications
 
@@ -237,15 +236,13 @@ public struct HudPhoneComplicationsTray: ViewModifier {
                 Spacer(minLength: 0)
                 slotOrSpacer(br, size: HudPhoneComplicationsLayout.primarySize)
             }
-            .padding(.horizontal, HudPhoneComplicationsLayout.trayHorizontalPadding)
-            .padding(.vertical, HudSpacing.lg)
-            .background(.regularMaterial)
-            .overlay(
-                Rectangle()
-                    .fill(HudHairline.subtle)
-                    .frame(height: HudStrokeWidth.thin),
-                alignment: .top
-            )
+            .padding(.horizontal, HudSpacing.xxl)
+            .padding(.vertical, HudSpacing.sm)
+            .frame(minHeight: HudLiquidBarMetrics.minHeight)
+            .frame(maxWidth: HudLiquidBarMetrics.maxWidth)
+            .hudLiquidBarMaterial(tint: .regular)
+            .padding(.horizontal, HudSpacing.lg)
+            .padding(.bottom, HudSpacing.md)
         }
     }
 

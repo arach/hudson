@@ -1,3 +1,4 @@
+#if HUDSON_TERMINAL
 import SwiftUI
 import HudsonUI
 import Termini
@@ -263,3 +264,27 @@ struct TerminalTab: View {
         }
     }
 }
+#else
+import SwiftUI
+import HudsonUI
+
+struct TerminalTab: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudSectionLabel("Terminal")
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    Text("Termini is not built into this binary.")
+                        .font(HudFont.ui(HudTextSize.sm))
+                        .foregroundStyle(HudPalette.muted)
+                    Text("The default iOS demo keeps terminal rendering out of the fast shell loop.")
+                        .font(HudFont.mono(HudTextSize.xxs))
+                        .foregroundStyle(HudPalette.dim)
+                }
+            }
+        }
+        .padding(.horizontal, HudSpacing.xl)
+        .padding(.top, HudSpacing.xl)
+    }
+}
+#endif

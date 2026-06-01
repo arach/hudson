@@ -161,7 +161,7 @@ struct HudAITab: View {
 
             do {
                 for try await event in client.stream(request) {
-                    await handle(event)
+                    handle(event)
                 }
                 await MainActor.run {
                     isSending = false

@@ -60,36 +60,39 @@ struct PrimitivesTab: View {
     ]
 
     var body: some View {
-        ScrollViewReader { proxy in
-            ScrollView {
-                VStack(alignment: .leading, spacing: HudSpacing.xxxl) {
-                    intro
-                    sectionButtons
-                    sectionStatusDots
-                    sectionBadges
-                    sectionField
-                    sectionTextDocuments
-                    sectionQRCode
-                    sectionQRScanner
-                    sectionPermissions
-                    sectionVault
-                    sectionShare
-                    sectionListRows
-                    sectionTable
-                    sectionKVRows
-                    sectionCards
-                    sectionEmptyState
-                    sectionLiquidBar
-                    sectionDividers
+        GeometryReader { geometry in
+            ScrollViewReader { proxy in
+                ScrollView {
+                    LazyVStack(alignment: .leading, spacing: HudSpacing.xxxl) {
+                        intro
+                        sectionButtons
+                        sectionStatusDots
+                        sectionBadges
+                        sectionField
+                        sectionTextDocuments
+                        sectionQRCode
+                        sectionQRScanner
+                        sectionPermissions
+                        sectionVault
+                        sectionShare
+                        sectionListRows
+                        sectionTable
+                        sectionKVRows
+                        sectionCards
+                        sectionEmptyState
+                        sectionLiquidBar
+                        sectionDividers
+                    }
+                    .frame(width: max(0, geometry.size.width - HudSpacing.xl * 2), alignment: .leading)
+                    .padding(.horizontal, HudSpacing.xl)
+                    .padding(.top, HudSpacing.lg)
+                    .padding(.bottom, HudSpacing.huge)
                 }
-                .padding(.horizontal, HudSpacing.xl)
-                .padding(.top, HudSpacing.lg)
-                .padding(.bottom, HudSpacing.huge)
-            }
-            .safeAreaInset(edge: .top, spacing: 0) {
-                HudSettingsQuickNav(items: scrollAnchors, proxy: proxy)
-                    .padding(.vertical, HudSpacing.md)
-                    .background(HudPalette.bg.opacity(HudOpacity.emphatic))
+                .safeAreaInset(edge: .top, spacing: 0) {
+                    HudSettingsQuickNav(items: scrollAnchors, proxy: proxy)
+                        .padding(.vertical, HudSpacing.md)
+                        .background(HudPalette.bg.opacity(HudOpacity.emphatic))
+                }
             }
         }
     }
@@ -632,9 +635,15 @@ struct PrimitivesTab: View {
 
     private var liquidActions: [HudLiquidBarAction] {
         [
-            .init(id: "compose", icon: "square.and.pencil", title: "Compose") { lastLiquidAction = "compose" },
-            .init(id: "sync", icon: "arrow.triangle.2.circlepath", title: "Sync") { lastLiquidAction = "sync" },
-            .init(id: "delete", icon: "trash", title: "Delete", role: .destructive) { lastLiquidAction = "delete" },
+            .init(id: "compose", icon: "square.and.pencil", title: "Compose") {
+                Task { @MainActor in lastLiquidAction = "compose" }
+            },
+            .init(id: "sync", icon: "arrow.triangle.2.circlepath", title: "Sync") {
+                Task { @MainActor in lastLiquidAction = "sync" }
+            },
+            .init(id: "delete", icon: "trash", title: "Delete", role: .destructive) {
+                Task { @MainActor in lastLiquidAction = "delete" }
+            },
         ]
     }
 
