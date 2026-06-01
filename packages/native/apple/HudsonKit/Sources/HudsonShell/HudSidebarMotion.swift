@@ -14,9 +14,9 @@ public enum HudSidebarMotion {
     // MARK: Expand/compact transitions
 
     /// Default animation for the label-column width transition.
-    /// Tuned for a settled, no-overshoot feel — labels disappear cleanly,
-    /// rail icons never move.
-    public static let expandCollapse: Animation = .spring(response: 0.42, dampingFraction: 0.86)
+    /// Kept deliberately quick so toolbar/sidebar toggles feel immediate while
+    /// rail icons remain locked to the leading edge.
+    public static let expandCollapse: Animation = .easeOut(duration: 0.14)
 
     // MARK: Label / underlay opacity modes
 

@@ -6,7 +6,7 @@ import CoreGraphics
 //
 //   ┌──────────┬───────────────────────┐
 //   │ rail     │ label                 │
-//   │  56      │   200 → 0  (animates) │
+//   │  48      │   200 → 0  (animates) │
 //   └──────────┴───────────────────────┘
 //
 // Rail: fixed compact column, icons centered. Never animated.
@@ -24,7 +24,7 @@ public enum HudSidebarLayout {
     /// Fixed compact column at the leading edge. Icons center on x = railWidth/2.
     /// This is the minimized sidebar width; expansion only adds label width to
     /// the trailing side, so icon x-positions never move between states.
-    public static let railWidth: CGFloat = 56
+    public static let railWidth: CGFloat = 48
 
     /// Maximum width of the animated label column when fully expanded.
     public static let labelWidth: CGFloat = 200

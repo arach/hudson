@@ -10,8 +10,8 @@ import AppKit
 ///
 /// The sidebar still uses Hudson's fixed rail + animated label-column contract:
 /// icons never move. This wrapper owns the missing shell behavior around it:
-/// an edge handle, drag-to-resize in expanded mode, drag-left-to-collapse, and
-/// drag-right-to-expand from compact mode.
+/// an edge handle, preview-then-commit resize in expanded mode,
+/// drag-left-to-collapse, and drag-right-to-expand from compact mode.
 public struct HudResizableNavigationSidebar<
     Selection: Hashable,
     RailHeader: View,
@@ -77,12 +77,15 @@ public struct HudResizableNavigationSidebar<
             .overlay(alignment: .trailing) {
                 edgeHandle
                     .alignmentGuide(.trailing) { dimensions in
-                        dimensions[.trailing] - HudSidebarEdgeHandle.hitWidth / 2
+                        dimensions[.trailing] - dimensions.width / 2
                     }
             }
             .overlay(alignment: .trailing) {
+                resizePreviewEdge
+            }
+            .overlay(alignment: .trailing) {
                 Rectangle()
-                    .fill(activeAccent.opacity(isDragging ? 0.42 : 0))
+                    .fill(activeAccent.opacity(isDragging && dragPreviewLabelWidth == nil ? 0.42 : 0))
                     .frame(width: HudStrokeWidth.standard)
                     .allowsHitTesting(false)
                     .animation(HudMotion.ifAllowed(.easeOut(duration: 0.12), reduceMotion: reduceMotion), value: isDragging)
@@ -129,6 +132,7 @@ public struct HudResizableNavigationSidebar<
             minWidth: minLabelWidth,
             maxWidth: maxLabelWidth,
             collapseWidth: collapseLabelWidth,
+            visualOffset: resizePreviewOffset ?? 0,
             reduceMotion: reduceMotion,
             accent: activeAccent,
             isDragging: $isDragging,
@@ -151,7 +155,7 @@ public struct HudResizableNavigationSidebar<
     }
 
     private var effectiveLabelWidth: CGFloat {
-        dragPreviewLabelWidth ?? clampedCommittedWidth(labelWidth)
+        clampedCommittedWidth(labelWidth)
     }
 
     private var progress: Double {
@@ -160,6 +164,23 @@ public struct HudResizableNavigationSidebar<
 
     private var layoutWidth: CGFloat {
         leadingInset + HudSidebarLayout.intrinsicWidth(progress: progress, labelWidth: effectiveLabelWidth)
+    }
+
+    private var resizePreviewOffset: CGFloat? {
+        guard let dragPreviewLabelWidth else { return nil }
+        let previewWidth = leadingInset + HudSidebarLayout.railWidth + clampedPreviewWidth(dragPreviewLabelWidth)
+        return previewWidth - layoutWidth
+    }
+
+    @ViewBuilder
+    private var resizePreviewEdge: some View {
+        if let resizePreviewOffset {
+            Rectangle()
+                .fill(activeAccent.opacity(0.62))
+                .frame(width: HudStrokeWidth.standard)
+                .offset(x: resizePreviewOffset)
+                .allowsHitTesting(false)
+        }
     }
 
     private var activeAccent: Color {
@@ -174,7 +195,7 @@ public struct HudResizableNavigationSidebar<
         if reduceMotion {
             isCompact = compact
         } else {
-            withAnimation(HudMotion.chromeSpring) {
+            withAnimation(HudSidebarMotion.expandCollapse) {
                 isCompact = compact
             }
         }
@@ -224,31 +245,6 @@ extension HudResizableNavigationSidebar where Footer == EmptyView {
     }
 }
 
-private struct HudSidebarEdgeHitShape: Shape {
-    let narrowWidth: CGFloat
-    let wideWidth: CGFloat
-    let wideHeight: CGFloat
-
-    func path(in rect: CGRect) -> Path {
-        var path = Path()
-        path.addRect(CGRect(
-            x: (rect.width - narrowWidth) / 2,
-            y: 0,
-            width: narrowWidth,
-            height: rect.height
-        ))
-
-        let height = min(wideHeight, rect.height)
-        path.addRect(CGRect(
-            x: (rect.width - wideWidth) / 2,
-            y: (rect.height - height) / 2,
-            width: wideWidth,
-            height: height
-        ))
-        return path
-    }
-}
-
 private struct HudSidebarEdgeHandle: View {
     let isCompact: Bool
     let activationDistance: CGFloat
@@ -256,6 +252,7 @@ private struct HudSidebarEdgeHandle: View {
     let minWidth: CGFloat
     let maxWidth: CGFloat
     let collapseWidth: CGFloat
+    let visualOffset: CGFloat
     let reduceMotion: Bool
     let accent: Color
     @Binding var isDragging: Bool
@@ -269,31 +266,32 @@ private struct HudSidebarEdgeHandle: View {
     @State private var cursorPushed = false
     @State private var dragStartWidth: CGFloat?
     @State private var latestResizeWidth: CGFloat?
-    @State private var lastDragCommitTime: TimeInterval = 0
     @State private var didCommitResize = false
     @State private var lastClickTime: Date?
 
-    static let hitWidth: CGFloat = 14
-    private static let dragCommitInterval: TimeInterval = 1.0 / 60.0
     private static let doubleClickInterval: TimeInterval = 0.35
+
+    private var hitWidth: CGFloat {
+        isCompact ? 26 : 16
+    }
+
+    private var activationThreshold: CGFloat {
+        isCompact ? max(2, activationDistance * 0.5) : activationDistance
+    }
 
     var body: some View {
         let isActive = isHovered || isDragging
-        let handleVisualWidth: CGFloat = 3
-        let pillHeight: CGFloat = isActive ? 64 : 56
-        let haloWidth = handleVisualWidth + 8
+        let handleVisualWidth: CGFloat = isCompact ? 4 : 3
+        let pillHeight: CGFloat = isCompact ? (isActive ? 74 : 62) : (isActive ? 64 : 56)
+        let haloWidth = handleVisualWidth + (isCompact ? 12 : 8)
         let haloHeight = pillHeight + 12
         let haloFill = accent.opacity(0.10)
-        let handleFill = accent.opacity(isActive ? 0.44 : 0)
+        let handleFill = accent.opacity(isActive ? 0.48 : (isCompact ? 0.16 : 0))
 
         Rectangle()
             .fill(Color.clear)
-            .frame(width: Self.hitWidth)
-            .contentShape(HudSidebarEdgeHitShape(
-                narrowWidth: 6,
-                wideWidth: Self.hitWidth,
-                wideHeight: 88
-            ))
+            .frame(width: hitWidth)
+            .contentShape(Rectangle())
             .overlay {
                 ZStack {
                     if isActive {
@@ -307,7 +305,7 @@ private struct HudSidebarEdgeHandle: View {
                         .fill(handleFill)
                         .frame(width: handleVisualWidth, height: pillHeight)
                 }
-                .offset(x: -HudStrokeWidth.thin / 2)
+                .offset(x: visualOffset - HudStrokeWidth.thin / 2)
                 .animation(HudMotion.ifAllowed(.easeOut(duration: 0.14), reduceMotion: reduceMotion), value: isActive)
             }
             .onContinuousHover { phase in
@@ -341,7 +339,7 @@ private struct HudSidebarEdgeHandle: View {
         let horizontalDelta = value.location.x - value.startLocation.x
         let verticalDelta = value.location.y - value.startLocation.y
 
-        guard abs(horizontalDelta) >= activationDistance,
+        guard abs(horizontalDelta) >= activationThreshold,
               abs(horizontalDelta) > abs(verticalDelta) * 1.5
         else { return }
 
@@ -357,16 +355,10 @@ private struct HudSidebarEdgeHandle: View {
         let proposed = clampedPreviewWidth(rawProposed)
         latestResizeWidth = proposed
 
-        let now = Date.timeIntervalSinceReferenceDate
-        guard now - lastDragCommitTime >= Self.dragCommitInterval else { return }
-        lastDragCommitTime = now
-
-        if !isCompact {
-            var transaction = Transaction(animation: nil)
-            transaction.disablesAnimations = true
-            withTransaction(transaction) {
-                onResize(proposed)
-            }
+        var transaction = Transaction(animation: nil)
+        transaction.disablesAnimations = true
+        withTransaction(transaction) {
+            onResize(proposed)
         }
     }
 
@@ -385,8 +377,8 @@ private struct HudSidebarEdgeHandle: View {
             } else {
                 onResizeEnded(finalWidth)
             }
-        } else if abs(horizontalDelta) < activationDistance,
-                  abs(verticalDelta) < activationDistance {
+        } else if abs(horizontalDelta) < activationThreshold,
+                  abs(verticalDelta) < activationThreshold {
             handleClick()
         }
 

@@ -74,6 +74,11 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
         }
     }
 
+    private var showsFocusRing: Bool {
+        guard isFocused else { return false }
+        return !(isSelected && style.indicator == .editorial)
+    }
+
     public var body: some View {
         Image(systemName: glyphName)
             .font(.system(size: HudSidebarLayout.iconSize))
@@ -87,7 +92,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(isFocused ? HudFocus.ring : Color.clear, lineWidth: HudFocus.ringWidth)
+                    .stroke(showsFocusRing ? HudFocus.ring : Color.clear, lineWidth: HudFocus.ringWidth)
             )
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
