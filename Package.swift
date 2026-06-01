@@ -3,6 +3,7 @@ import PackageDescription
 import Foundation
 
 let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
+let voiceEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
 
 // SwiftPM resolves every declared package dependency up front. Keep the heavy
 // terminal backend out of default HudsonKit consumers, and opt into it only for
@@ -15,15 +16,11 @@ var products: [Product] = [
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
-    .library(name: "HudsonVoice", targets: ["HudsonVoice"]),
     .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
     .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
-var dependencies: [Package.Dependency] = [
-    .package(url: "https://github.com/ChimeHQ/SwiftTreeSitter", from: "0.10.0"),
-    .package(url: "https://github.com/alex-pinkus/tree-sitter-swift", branch: "with-generated-files"),
-]
+var dependencies: [Package.Dependency] = []
 
 var targets: [Target] = [
     .target(
@@ -43,8 +40,6 @@ var targets: [Target] = [
         dependencies: [
             "HudsonLive",
             "HudsonObservability",
-            .product(name: "SwiftTreeSitter", package: "SwiftTreeSitter"),
-            .product(name: "TreeSitterSwift", package: "tree-sitter-swift"),
         ],
         path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
     ),
@@ -64,11 +59,6 @@ var targets: [Target] = [
         path: "packages/native/apple/HudsonKit/Sources/HudsonShell"
     ),
     .target(
-        name: "HudsonVoice",
-        dependencies: ["HudsonUI", "HudsonObservability"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
-    ),
-    .target(
         name: "HudsonVantageCore",
         dependencies: ["HudsonUI"],
         path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCore"
@@ -79,6 +69,17 @@ var targets: [Target] = [
         path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCompanion"
     ),
 ]
+
+if voiceEnabled {
+    products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
+    targets.append(
+        .target(
+            name: "HudsonVoice",
+            dependencies: ["HudsonUI", "HudsonObservability"],
+            path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
+        )
+    )
+}
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))

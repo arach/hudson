@@ -185,10 +185,10 @@ private struct HudChromeTitlebar: View {
         }
         .padding(.leading, HudSpacing.lg)
         .padding(.trailing, HudSpacing.md)
-        .frame(height: 34)
-        .background(Color.black)
+        .frame(height: HudLayout.rowHeightCompact + HudSpacing.sm)
+        .background(theme.palette.bg)
         .overlay(alignment: .bottom) {
-            HudDivider(color: Color.white.opacity(0.035))
+            HudDivider(color: theme.hairline.subtle)
         }
     }
 }
@@ -283,7 +283,7 @@ private struct HudChromeTitlebarButton: View {
             Image(systemName: action.systemImage)
                 .font(HudFont.ui(12, weight: .semibold))
                 .foregroundStyle(isHovering ? theme.palette.ink : theme.palette.muted)
-                .frame(width: 28, height: 24)
+                .frame(width: HudIconSize.medium, height: HudLayout.textDocumentModeButtonHeight)
                 .background(
                     RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
                         .fill(isHovering ? HudSurface.hover : Color.clear)

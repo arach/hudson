@@ -13,7 +13,7 @@ struct ShellTab: View {
                         Text("HudPhoneAppShell")
                             .font(HudFont.mono(HudTextSize.lg, weight: .semibold))
                             .foregroundStyle(HudPalette.ink)
-                        Text("Sibling to HudAppShell. Wraps a NavigationStack and dispatches HUD-coordinated complications to the chosen renderer (.tray default).")
+                        Text("Sibling to HudAppShell. Keeps app navigation native with a SwiftUI tab bar while still letting pages publish HUD-coordinated complications when they need contextual chrome.")
                             .font(HudFont.ui(HudTextSize.base))
                             .foregroundStyle(HudPalette.muted)
                     }
@@ -22,17 +22,17 @@ struct ShellTab: View {
                 HudCard {
                     VStack(alignment: .leading, spacing: HudSpacing.lg) {
                         HudSectionLabel("TRY IT")
-                        Label("Long-press the center button", systemImage: "hand.tap")
+                        Label("Use the bottom tab bar", systemImage: "rectangle.bottomthird.inset.filled")
                             .font(HudFont.ui(HudTextSize.base))
                             .foregroundStyle(HudPalette.ink)
-                        Text("Cycles the renderer style — Tray · Scattered · Minimal — to demo the long-press = alternative-action semantic.")
+                        Text("Primary demo surfaces live in the iOS tab bar. Extra pages move behind More, keeping the bottom stable instead of turning it into a catch-all action tray.")
                             .font(HudFont.ui(HudTextSize.sm))
                             .foregroundStyle(HudPalette.muted)
                         Divider().background(HudHairline.subtle)
-                        Label("Tap a corner button", systemImage: "hand.point.up")
+                        Label("Open the Complications demo", systemImage: "circle.grid.2x2")
                             .font(HudFont.ui(HudTextSize.base))
                             .foregroundStyle(HudPalette.ink)
-                        Text("Top-left → Logs · top-right → all pages · bottom-left → Settings · bottom-right → Shell · center → Complications.")
+                        Text("The custom HUD slots are still there, but now they demonstrate contextual chrome instead of carrying global navigation.")
                             .font(HudFont.ui(HudTextSize.sm))
                             .foregroundStyle(HudPalette.muted)
                     }
