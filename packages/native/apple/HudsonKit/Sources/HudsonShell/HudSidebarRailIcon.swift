@@ -5,11 +5,9 @@ import HudsonUI
 //
 // One icon cell for the fixed rail column of `HudNavigationSidebar`.
 //
-// Hover/focus/selection states honor the four `HudSidebarStyle` axes and
-// `@Environment(\.accessibilityReduceMotion)`. The compact-mode accent bar
-// is rendered as an overlay; its visibility is controlled by `compactBarOpacity`
-// so the parent can fade it in only when the sidebar has fully settled into
-// compact mode.
+// Hover/focus/selection states honor `@Environment(\.accessibilityReduceMotion)`.
+// Full-row hover, compact selection, and compact hover labels are rendered by
+// `HudNavigationSidebar` so rail and label columns stay visually connected.
 //
 // Public so callers composing custom rail rows (groupings, badges, drag
 // affordances) can build on the same hover/focus/selection visuals without
@@ -24,10 +22,10 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
     public let style: HudSidebarStyle
     public let reduceMotion: Bool
     public let onTap: () -> Void
+    public let onHoverChange: (Bool) -> Void
 
     @State private var isHovering = false
     @State private var isPressing = false
-    @State private var breathPhase: CGFloat = 1.0
     @FocusState private var isFocused: Bool
 
     public init(
@@ -38,7 +36,8 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
         compactBarOpacity: Double,
         style: HudSidebarStyle,
         reduceMotion: Bool,
-        onTap: @escaping () -> Void
+        onTap: @escaping () -> Void,
+        onHoverChange: @escaping (Bool) -> Void = { _ in }
     ) {
         self.item = item
         self.isSelected = isSelected
@@ -48,6 +47,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
         self.style = style
         self.reduceMotion = reduceMotion
         self.onTap = onTap
+        self.onHoverChange = onHoverChange
     }
 
     private var glyphName: String {
@@ -62,17 +62,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
     }
 
     private var iconScale: CGFloat {
-        switch style.icon {
-        case .kinetic:
-            let breath = isSelected ? breathPhase : 1.0
-            let lift   = (isHovering && !isSelected) ? 1.08 : 1.0
-            let press  = isPressing ? 0.94 : 1.0
-            return breath * lift * press
-        case .glass:
-            return (isHovering && !isSelected) ? 1.04 : 1.0
-        default:
-            return 1.0
-        }
+        isPressing ? 0.92 : 1.0
     }
 
     private var hoverAnimation: Animation {
@@ -89,23 +79,12 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             .font(.system(size: HudSidebarLayout.iconSize))
             .foregroundStyle(iconColor)
             .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
-            .background { hoverBackground }
             .scaleEffect(iconScale)
             .animation(reduceMotion ? nil : hoverAnimation, value: isHovering)
             .animation(
-                reduceMotion ? nil : .spring(response: 0.18, dampingFraction: 0.65),
+                reduceMotion ? nil : .spring(response: 0.20, dampingFraction: 0.65),
                 value: isPressing
             )
-            .overlay(alignment: .bottom) {
-                // Compact-mode accent bar — centered in rail, shown at bottom of row.
-                RoundedRectangle(cornerRadius: HudStrokeWidth.standard)
-                    .fill(accent)
-                    .frame(
-                        width: HudSidebarLayout.compactAccentBarWidth,
-                        height: HudSidebarLayout.compactAccentBarHeight
-                    )
-                    .opacity(isSelected ? compactBarOpacity : 0)
-            }
             .overlay(
                 RoundedRectangle(cornerRadius: HudRadius.standard)
                     .stroke(isFocused ? HudFocus.ring : Color.clear, lineWidth: HudFocus.ringWidth)
@@ -113,93 +92,27 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             .contentShape(Rectangle())
             .onTapGesture { onTap() }
             .simultaneousGesture(
-                style.icon == .kinetic
-                    ? DragGesture(minimumDistance: 0)
-                        .onChanged { _ in isPressing = true }
-                        .onEnded   { _ in isPressing = false }
-                    : nil
+                DragGesture(minimumDistance: 0)
+                    .onChanged { _ in isPressing = true }
+                    .onEnded   { _ in isPressing = false }
             )
             .focusable(true)
             .focused($isFocused)
-            .onHover { isHovering = $0 }
+            .onHover { setHovering($0) }
             .onContinuousHover { phase in
                 switch phase {
-                case .active: isHovering = true
-                case .ended:  isHovering = false
+                case .active: setHovering(true)
+                case .ended:  setHovering(false)
                 }
-                // TODO: HudSidebarTooltip — compact-mode tooltips land in a follow-up
-            }
-            .onChange(of: isSelected) { _, nowSelected in
-                guard style.icon == .kinetic else { return }
-                if nowSelected {
-                    breathPhase = 1.10
-                    if !reduceMotion {
-                        withAnimation(.spring(response: 0.34, dampingFraction: 0.55)) {
-                            breathPhase = 1.0
-                        }
-                        startBreathing()
-                    } else {
-                        breathPhase = 1.0
-                    }
-                } else {
-                    breathPhase = 1.0
-                }
-            }
-            .onAppear {
-                if style.icon == .kinetic, isSelected, !reduceMotion { startBreathing() }
             }
             .accessibilityLabel(item.tooltipLabel ?? item.title)
             .accessibilityValue(isSelected ? "Selected" : "Not selected")
             .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 
-    @ViewBuilder
-    private var hoverBackground: some View {
-        if isHovering && !isSelected {
-            switch style.icon {
-            case .editorial:
-                EmptyView()
-            case .glass:
-                ZStack {
-                    RoundedRectangle(cornerRadius: HudRadius.standard)
-                        .fill(
-                            RadialGradient(
-                                // Liquid-glass radial gradient stops, calibrated together.
-                                // hudlint:disable next-line palette,opacity
-                                colors: [Color.white.opacity(0.10), Color.white.opacity(0)],
-                                center: .center, startRadius: 0, endRadius: 18
-                            )
-                        )
-                        .blur(radius: 2)
-                    RoundedRectangle(cornerRadius: HudRadius.standard)
-                        // Liquid-glass border, calibrated for the radial gradient above.
-                        // hudlint:disable next-line palette,opacity
-                        .strokeBorder(Color.white.opacity(0.06), lineWidth: HudStrokeWidth.thin)
-                }
-                .padding(.horizontal, HudSpacing.xs)
-                .padding(.vertical, HudSpacing.xxs + 1)
-                .transition(.opacity.combined(with: .scale(scale: 0.94)))
-
-            case .kinetic:
-                RoundedRectangle(cornerRadius: HudRadius.standard + 1)
-                    .fill(HudSurface.hover)
-                    .padding(.horizontal, HudSpacing.xs)
-                    .padding(.vertical, HudSpacing.xxs + 1)
-
-            case .base:
-                RoundedRectangle(cornerRadius: HudRadius.standard - 1)
-                    .fill(HudSurface.inset)
-                    .padding(.horizontal, HudSpacing.xs)
-                    .padding(.vertical, HudSpacing.xxs + 1)
-                    .transition(.opacity)
-            }
-        }
-    }
-
-    private func startBreathing() {
-        guard style.icon == .kinetic, isSelected else { return }
-        withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
-            breathPhase = 1.04
-        }
+    private func setHovering(_ hovering: Bool) {
+        guard isHovering != hovering else { return }
+        isHovering = hovering
+        onHoverChange(hovering)
     }
 }

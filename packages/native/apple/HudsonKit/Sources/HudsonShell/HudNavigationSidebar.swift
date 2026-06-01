@@ -77,6 +77,7 @@ public struct HudNavigationSidebar<
     public let progress: Double
     public let accent: Color?           // nil = use manifest.accent
     public let labelWidth: CGFloat      // expanded label-column width; defaults to HudSidebarLayout.labelWidth
+    public let onHeaderTap: (() -> Void)?
     public let railHeader: RailHeader
     public let labelHeader: LabelHeader
     public let footer: Footer
@@ -85,6 +86,7 @@ public struct HudNavigationSidebar<
     @Environment(\.hudsonSidebarStyle) private var style
     @Environment(\.hudsonSidebarMotionMode) private var motionMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    @State private var hoveredID: Selection?
 
     public init(
         selection: Binding<Selection?>,
@@ -92,6 +94,7 @@ public struct HudNavigationSidebar<
         progress: Double,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
@@ -101,6 +104,7 @@ public struct HudNavigationSidebar<
         self.progress = progress
         self.accent = accent
         self.labelWidth = labelWidth
+        self.onHeaderTap = onHeaderTap
         self.railHeader = railHeader()
         self.labelHeader = labelHeader()
         self.footer = footer()
@@ -137,6 +141,23 @@ public struct HudNavigationSidebar<
         case .smoothFade:                        return progress
         case .quietTransition, .snapEverything:  return compactSettled ? 1 : 0
         }
+    }
+
+    /// Visible width of the animated label column at the current transition point.
+    private var visibleLabelWidth: CGFloat {
+        max(0, labelWidth * CGFloat(1 - progress))
+    }
+
+    /// Hover labels take over only once the real label column can no longer
+    /// carry readable text. This also covers user-resized narrow states.
+    private var compactHoverLabelReveal: Double {
+        let fadeStart: CGFloat = 88
+        let fadeEnd: CGFloat = 28
+
+        if visibleLabelWidth <= fadeEnd { return 1 }
+        if visibleLabelWidth >= fadeStart { return 0 }
+
+        return Double((fadeStart - visibleLabelWidth) / (fadeStart - fadeEnd))
     }
 
     // MARK: Body
@@ -207,12 +228,16 @@ public struct HudNavigationSidebar<
 
     private var sidebarBody: some View {
         ZStack(alignment: .topLeading) {
+            hoverUnderlay
             selectionUnderlay
             HStack(alignment: .top, spacing: 0) {
                 railColumn
                 labelColumn
             }
             compactAccentBar
+        }
+        .overlay(alignment: .topLeading) {
+            compactHoverLabel
         }
     }
 
@@ -243,6 +268,8 @@ public struct HudNavigationSidebar<
                 .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.headerHeight)
                 .padding(.top, HudSidebarLayout.headerTopPadding)
                 .padding(.bottom, HudSidebarLayout.headerBottomPadding)
+                .contentShape(Rectangle())
+                .onTapGesture { onHeaderTap?() }
 
             ForEach(entries) { entry in
                 railCell(for: entry)
@@ -265,6 +292,9 @@ public struct HudNavigationSidebar<
                 reduceMotion: reduceMotion,
                 onTap: {
                     selectItem(item)
+                },
+                onHoverChange: { hovering in
+                    updateHover(item.id, hovering: hovering)
                 }
             )
             .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
@@ -289,6 +319,8 @@ public struct HudNavigationSidebar<
                 .padding(.top, HudSidebarLayout.headerTopPadding)
                 .padding(.bottom, HudSidebarLayout.headerBottomPadding)
                 .padding(.leading, HudSidebarLayout.labelLeading)
+                .contentShape(Rectangle())
+                .onTapGesture { onHeaderTap?() }
 
             ForEach(entries) { entry in
                 labelCell(for: entry)
@@ -317,6 +349,12 @@ public struct HudNavigationSidebar<
                 .frame(height: HudSidebarLayout.rowHeight, alignment: .leading)
                 .contentShape(Rectangle())
                 .onTapGesture { selectItem(item) }
+                .onContinuousHover { phase in
+                    switch phase {
+                    case .active: updateHover(item.id, hovering: true)
+                    case .ended:  updateHover(item.id, hovering: false)
+                    }
+                }
 
         case .section(_, let title):
             VStack(alignment: .leading, spacing: 0) {
@@ -373,20 +411,114 @@ public struct HudNavigationSidebar<
     /// Y-offset of the selected row, measured from the top of the sidebar body.
     /// Computed from the entries array — no GeometryReader needed.
     private var selectionY: CGFloat? {
-        guard let selection else { return nil }
+        rowY(for: selection)
+    }
+
+    private var hoveredY: CGFloat? {
+        guard let hoveredID, hoveredID != selection else { return nil }
+        return rowY(for: hoveredID)
+    }
+
+    private var hoveredLabelY: CGFloat? {
+        rowY(for: hoveredID)
+    }
+
+    private var hoveredItem: HudSidebarItem<Selection>? {
+        guard let hoveredID else { return nil }
+        for entry in entries {
+            if case .item(let item) = entry, item.id == hoveredID {
+                return item
+            }
+        }
+        return nil
+    }
+
+    private func updateHover(_ id: Selection, hovering: Bool) {
+        if hovering {
+            if hoveredID != id { hoveredID = id }
+        } else if hoveredID == id {
+            hoveredID = nil
+        }
+    }
+
+    private func rowY(for id: Selection?) -> CGFloat? {
+        guard let id else { return nil }
         var y: CGFloat = HudSidebarLayout.headerTopPadding
                        + HudSidebarLayout.headerHeight
                        + HudSidebarLayout.headerBottomPadding
         for entry in entries {
             switch entry {
             case .item(let item):
-                if item.id == selection { return y }
+                if item.id == id { return y }
                 y += HudSidebarLayout.rowHeight
             case .section:
                 y += HudSidebarLayout.sectionTopGap + HudSidebarLayout.sectionHeaderHeight
             }
         }
         return nil
+    }
+
+    /// Full-row hover treatment from the Talkie sidebar. It sits below
+    /// selection, teleports between rows, and keeps hover feedback continuous
+    /// as the pointer crosses between rail and label columns.
+    @ViewBuilder
+    private var hoverUnderlay: some View {
+        if let y = hoveredY {
+            RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
+                .fill(HudSurface.hover)
+                .overlay(
+                    RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
+                        .strokeBorder(HudHairline.subtle, lineWidth: HudStrokeWidth.thin)
+                )
+                .frame(height: HudSidebarLayout.rowHeight - HudSidebarLayout.selectionVerticalInset * 2)
+                .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
+                .padding(.vertical, HudSidebarLayout.selectionVerticalInset)
+                .offset(y: y)
+                .animation(nil, value: hoveredY)
+                .allowsHitTesting(false)
+                .transition(.opacity.animation(.easeOut(duration: 0.06)))
+        }
+    }
+
+    /// Talkie-style hover label for compact/narrow sidebar states.
+    ///
+    /// This is an overlay, not a ZStack child, so the pill can float past the
+    /// rail edge without changing the sidebar's measured width.
+    @ViewBuilder
+    private var compactHoverLabel: some View {
+        if let item = hoveredItem,
+           let y = hoveredLabelY,
+           compactHoverLabelReveal > 0 {
+            HudSidebarCompactHoverLabel(
+                title: item.tooltipLabel ?? item.title,
+                style: style
+            )
+            .opacity(compactHoverLabelReveal)
+            .scaleEffect(
+                reduceMotion ? 1 : CGFloat(0.97 + compactHoverLabelReveal * 0.03),
+                anchor: .leading
+            )
+            .offset(
+                x: HudSidebarLayout.railWidth + visibleLabelWidth + HudSpacing.xs,
+                y: y + (HudSidebarLayout.rowHeight - HudSidebarCompactHoverLabel.height) / 2
+            )
+            .allowsHitTesting(false)
+            .zIndex(10)
+            .transition(
+                .asymmetric(
+                    insertion: .opacity.combined(with: .scale(scale: 0.97, anchor: .leading)),
+                    removal: .opacity
+                )
+            )
+            .animation(
+                HudMotion.ifAllowed(.easeOut(duration: 0.08), reduceMotion: reduceMotion),
+                value: hoveredID
+            )
+            .animation(
+                HudMotion.ifAllowed(.easeOut(duration: 0.08), reduceMotion: reduceMotion),
+                value: compactHoverLabelReveal
+            )
+        }
     }
 
     // MARK: Selection with instrumentation
@@ -418,6 +550,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
         progress: Double,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader
     ) {
@@ -427,6 +560,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
             progress: progress,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: { EmptyView() }
@@ -450,6 +584,7 @@ extension HudNavigationSidebar {
         isCompact: Bool,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
@@ -460,6 +595,7 @@ extension HudNavigationSidebar {
             progress: isCompact ? 1.0 : 0.0,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: footer
@@ -475,6 +611,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
         isCompact: Bool,
         accent: Color? = nil,
         labelWidth: CGFloat = HudSidebarLayout.labelWidth,
+        onHeaderTap: (() -> Void)? = nil,
         @ViewBuilder railHeader: () -> RailHeader,
         @ViewBuilder labelHeader: () -> LabelHeader
     ) {
@@ -484,10 +621,75 @@ extension HudNavigationSidebar where Footer == EmptyView {
             progress: isCompact ? 1.0 : 0.0,
             accent: accent,
             labelWidth: labelWidth,
+            onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
             footer: { EmptyView() }
         )
+    }
+}
+
+// MARK: - Compact hover label
+
+private struct HudSidebarCompactHoverLabel: View {
+    static let height: CGFloat = 26
+
+    let title: String
+    let style: HudSidebarStyle
+
+    private var surfaceFill: Color {
+        switch style.surface {
+        case .glass, .liquidGlass:
+            return HudPalette.surface.opacity(0.94)
+        case .base, .editorial:
+            return HudPalette.surface
+        }
+    }
+
+    private var strokeColor: Color {
+        switch style.surface {
+        case .glass, .liquidGlass:
+            return HudHairline.standard
+        case .base, .editorial:
+            return HudHairline.subtle
+        }
+    }
+
+    var body: some View {
+        HStack(spacing: 0) {
+            HudSidebarCompactHoverArrow()
+                .fill(surfaceFill)
+                .frame(width: 6, height: 10)
+
+            Text(title)
+                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .foregroundStyle(HudPalette.ink)
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .padding(.horizontal, HudSpacing.xl)
+                .frame(height: Self.height)
+                .background(
+                    RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
+                        .fill(surfaceFill)
+                        .shadow(color: HudSurface.scrim, radius: 10, x: 3, y: 4)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
+                        .strokeBorder(strokeColor, lineWidth: HudStrokeWidth.thin)
+                )
+        }
+        .fixedSize()
+    }
+}
+
+private struct HudSidebarCompactHoverArrow: Shape {
+    func path(in rect: CGRect) -> Path {
+        Path { path in
+            path.move(to: CGPoint(x: rect.maxX, y: rect.minY))
+            path.addLine(to: CGPoint(x: rect.minX, y: rect.midY))
+            path.addLine(to: CGPoint(x: rect.maxX, y: rect.maxY))
+            path.closeSubpath()
+        }
     }
 }
 
