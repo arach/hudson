@@ -632,7 +632,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
 // MARK: - Compact hover label
 
 private struct HudSidebarCompactHoverLabel: View {
-    static let height: CGFloat = 26
+    static let height: CGFloat = HudLayout.rowHeightCompact - HudSpacing.xxs
 
     let title: String
     let style: HudSidebarStyle
@@ -640,7 +640,7 @@ private struct HudSidebarCompactHoverLabel: View {
     private var surfaceFill: Color {
         switch style.surface {
         case .glass, .liquidGlass:
-            return HudPalette.surface.opacity(0.94)
+            return HudSurface.raised
         case .base, .editorial:
             return HudPalette.surface
         }
@@ -659,7 +659,7 @@ private struct HudSidebarCompactHoverLabel: View {
         HStack(spacing: 0) {
             HudSidebarCompactHoverArrow()
                 .fill(surfaceFill)
-                .frame(width: 6, height: 10)
+                .frame(width: HudSpacing.sm, height: HudSpacing.lg)
 
             Text(title)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))

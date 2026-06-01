@@ -176,7 +176,7 @@ public struct HudResizableNavigationSidebar<
     private var resizePreviewEdge: some View {
         if let resizePreviewOffset {
             Rectangle()
-                .fill(activeAccent.opacity(0.62))
+                .fill(HudSurface.tintStrong(activeAccent))
                 .frame(width: HudStrokeWidth.standard)
                 .offset(x: resizePreviewOffset)
                 .allowsHitTesting(false)
@@ -285,8 +285,10 @@ private struct HudSidebarEdgeHandle: View {
         let pillHeight: CGFloat = isCompact ? (isActive ? 74 : 62) : (isActive ? 64 : 56)
         let haloWidth = handleVisualWidth + (isCompact ? 12 : 8)
         let haloHeight = pillHeight + 12
-        let haloFill = accent.opacity(0.10)
-        let handleFill = accent.opacity(isActive ? 0.48 : (isCompact ? 0.16 : 0))
+        let haloFill = HudSurface.selected(accent)
+        let handleFill = isActive
+            ? HudSurface.tintMuted(accent)
+            : (isCompact ? HudSurface.tintFill(accent) : Color.clear)
 
         Rectangle()
             .fill(Color.clear)
