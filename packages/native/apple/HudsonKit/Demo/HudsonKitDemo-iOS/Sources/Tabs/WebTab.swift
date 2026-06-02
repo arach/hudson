@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonUIWeb
 
 struct WebTab: View {
     @State private var webState = HudWebViewState()

@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonUI
 
 /// Drop-in gate for permission-protected content. Shows the appropriate UI
 /// for each `HudPermissionStatus` state without each call site reimplementing
