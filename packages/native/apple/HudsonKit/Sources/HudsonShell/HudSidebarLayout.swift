@@ -47,12 +47,12 @@ public enum HudSidebarLayout {
     // ── Header ───────────────────────────────────────────────────────────────
 
     /// Height of the logo / wordmark header row.
-    public static let headerHeight: CGFloat = 44
+    public static let headerHeight: CGFloat = 40
 
     /// Padding above the header — keeps the logo clear of the traffic-light cluster.
-    public static let headerTopPadding: CGFloat = 18
+    public static let headerTopPadding: CGFloat = 10
 
-    /// Padding below the header before the first nav row. Completes the 76pt
+    /// Padding below the header before the first nav row. Completes the 64pt
     /// first-row rhythm shared by native content and inspector headers.
     public static let headerBottomPadding: CGFloat = 14  // HudSpacing.xxl
 
