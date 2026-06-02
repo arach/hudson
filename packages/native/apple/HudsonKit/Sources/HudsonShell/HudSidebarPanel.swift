@@ -11,6 +11,7 @@ public struct HudSidebarPanel<Content: View>: View {
     @Binding private var width: CGFloat
     private let edge: Edge
     private let widthRange: ClosedRange<CGFloat>
+    private let resizeHitWidth: CGFloat
     private let content: Content
 
     @Environment(\.hudsonSidebarStyle) private var style
@@ -20,43 +21,77 @@ public struct HudSidebarPanel<Content: View>: View {
         width: Binding<CGFloat>,
         edge: Edge,
         widthRange: ClosedRange<CGFloat>,
+        resizeHitWidth: CGFloat = 10,
         @ViewBuilder content: () -> Content
     ) {
         self._width = width
         self.edge = edge
         self.widthRange = widthRange
+        self.resizeHitWidth = resizeHitWidth
         self.content = content()
     }
 
     public var body: some View {
         HStack(spacing: 0) {
             if edge == .trailing {
-                HudResizableDivider(
-                    width: $width,
-                    placement: .leading,
-                    range: widthRange
-                )
+                outerResizeHandle
             }
 
-            content
-                .frame(width: width, alignment: .topLeading)
-                .frame(maxHeight: .infinity)
-                .background(HudSidebarSurfaceBackground(style: style.surface))
-                .overlay(alignment: edgeRuleAlignment) {
-                    HudSidebarEdgeRule(style: style.surface)
-                }
+            panelContent
 
             if edge == .leading {
-                HudResizableDivider(
-                    width: $width,
-                    placement: .trailing,
-                    range: widthRange
-                )
+                outerResizeHandle
             }
         }
     }
 
+    private var panelContent: some View {
+        content
+            .frame(width: width, alignment: .topLeading)
+            .frame(maxHeight: .infinity)
+            .background(HudSidebarSurfaceBackground(style: style.surface))
+            .overlay(alignment: edgeRuleAlignment) {
+                HudSidebarEdgeRule(style: style.surface)
+            }
+            .overlay(alignment: edgeRuleAlignment) {
+                innerResizeHandle
+            }
+    }
+
+    private var outerResizeHandle: some View {
+        HudResizableDivider(
+            width: $width,
+            placement: resizePlacement,
+            range: widthRange,
+            hitWidth: resizeHitWidth,
+            hairlinePlacement: outerHairlinePlacement
+        )
+    }
+
+    private var innerResizeHandle: some View {
+        HudResizableDivider(
+            width: $width,
+            placement: resizePlacement,
+            range: widthRange,
+            hitWidth: resizeHitWidth,
+            hairlinePlacement: innerHairlinePlacement,
+            showsHairline: false
+        )
+    }
+
     private var edgeRuleAlignment: Alignment {
+        edge == .leading ? .trailing : .leading
+    }
+
+    private var resizePlacement: HudResizableDivider.Placement {
+        edge == .leading ? .trailing : .leading
+    }
+
+    private var outerHairlinePlacement: HudResizableDivider.HairlinePlacement {
+        edge == .leading ? .leading : .trailing
+    }
+
+    private var innerHairlinePlacement: HudResizableDivider.HairlinePlacement {
         edge == .leading ? .trailing : .leading
     }
 }

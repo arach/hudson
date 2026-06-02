@@ -12,10 +12,19 @@ public struct HudResizableDivider: View {
         case trailing
     }
 
+    public enum HairlinePlacement: Sendable {
+        case automatic
+        case leading
+        case center
+        case trailing
+    }
+
     @Binding private var width: CGFloat
     private let placement: Placement
     private let range: ClosedRange<CGFloat>
     private let hitWidth: CGFloat
+    private let hairlinePlacement: HairlinePlacement
+    private let showsHairline: Bool
 
     @State private var dragOrigin: CGFloat?
     @State private var isHovering = false
@@ -25,12 +34,16 @@ public struct HudResizableDivider: View {
         width: Binding<CGFloat>,
         placement: Placement,
         range: ClosedRange<CGFloat>,
-        hitWidth: CGFloat = 8
+        hitWidth: CGFloat = 8,
+        hairlinePlacement: HairlinePlacement = .automatic,
+        showsHairline: Bool = true
     ) {
         self._width = width
         self.placement = placement
         self.range = range
         self.hitWidth = hitWidth
+        self.hairlinePlacement = hairlinePlacement
+        self.showsHairline = showsHairline
     }
 
     public var body: some View {
@@ -70,10 +83,12 @@ public struct HudResizableDivider: View {
     private var handleSurface: some View {
         ZStack(alignment: hairlineAlignment) {
             Color.clear
-            Rectangle()
-                .fill(isActive ? theme.hairline.standard : theme.hairline.subtle)
-                .frame(width: HudStrokeWidth.thin)
-                .frame(maxHeight: .infinity, alignment: .center)
+            if showsHairline {
+                Rectangle()
+                    .fill(isActive ? theme.hairline.standard : theme.hairline.subtle)
+                    .frame(width: HudStrokeWidth.thin)
+                    .frame(maxHeight: .infinity, alignment: .center)
+            }
             #if os(macOS)
             HudResizeHandleRegion(
                 width: $width,
@@ -91,7 +106,16 @@ public struct HudResizableDivider: View {
     }
 
     private var hairlineAlignment: Alignment {
-        placement == .leading ? .trailing : .leading
+        switch hairlinePlacement {
+        case .automatic:
+            placement == .leading ? .trailing : .leading
+        case .leading:
+            .leading
+        case .center:
+            .center
+        case .trailing:
+            .trailing
+        }
     }
 }
 
