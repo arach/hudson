@@ -76,6 +76,7 @@ struct WebTab: View {
     private var notes: some View {
         VStack(alignment: .leading, spacing: HudSpacing.sm) {
             HudKVRow("backend", value: "WKWebView")
+            HudKVRow("policies", value: "bundled / paired / hosted")
             HudKVRow("data store", value: "non-persistent in this demo")
             HudKVRow("teardown", value: "stops loading and releases delegates on dismantle")
         }
