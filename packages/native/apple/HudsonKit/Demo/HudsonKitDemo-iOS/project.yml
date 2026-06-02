@@ -16,6 +16,31 @@ targets:
     platform: iOS
     sources:
       - path: Sources
+    info:
+      path: Sources/Info.plist
+      properties:
+        CFBundleShortVersionString: $(MARKETING_VERSION)
+        CFBundleVersion: $(CURRENT_PROJECT_VERSION)
+        CFBundleURLTypes:
+          - CFBundleURLName: com.hudsonkit.demoios
+            CFBundleURLSchemes:
+              - hudson
+              - hudsonkit
+        UIApplicationSceneManifest:
+          UIApplicationSupportsMultipleScenes: false
+        UILaunchScreen: {}
+        UIStatusBarStyle: UIStatusBarStyleLightContent
+        NSMicrophoneUsageDescription: "Demo for HudPermissionGate microphone request."
+        NSSpeechRecognitionUsageDescription: "Demo for HudPermissionGate speech-recognition request."
+        NSCameraUsageDescription: "Demo for HudPermissionGate camera request."
+        NSPhotoLibraryUsageDescription: "Demo for HudPermissionGate photos request."
+        UISupportedInterfaceOrientations:
+          - UIInterfaceOrientationPortrait
+        "UISupportedInterfaceOrientations~ipad":
+          - UIInterfaceOrientationPortrait
+          - UIInterfaceOrientationPortraitUpsideDown
+          - UIInterfaceOrientationLandscapeLeft
+          - UIInterfaceOrientationLandscapeRight
     preBuildScripts:
       - name: HudLint (drift guard)
         basedOnDependencyAnalysis: false
@@ -39,6 +64,20 @@ targets:
       - package: HudsonKit
         product: HudsonUI
       - package: HudsonKit
+        product: HudsonUIPermissions
+      - package: HudsonKit
+        product: HudsonUIAudio
+      - package: HudsonKit
+        product: HudsonUICapture
+      - package: HudsonKit
+        product: HudsonUIWeb
+      - package: HudsonKit
+        product: HudsonUIKeyboard
+      - package: HudsonKit
+        product: HudsonUIOnboarding
+      - package: HudsonKit
+        product: HudsonBridge
+      - package: HudsonKit
         product: HudsonShell
       - package: HudsonKit
         product: HudsonAI
@@ -47,16 +86,6 @@ targets:
         PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios
         MARKETING_VERSION: "0.1.0"
         CURRENT_PROJECT_VERSION: "1"
-        GENERATE_INFOPLIST_FILE: YES
-        INFOPLIST_KEY_UIApplicationSceneManifest_Generation: YES
-        INFOPLIST_KEY_UILaunchScreen_Generation: YES
-        INFOPLIST_KEY_UIStatusBarStyle: UIStatusBarStyleLightContent
-        INFOPLIST_KEY_NSMicrophoneUsageDescription: "Demo for HudPermissionGate microphone request."
-        INFOPLIST_KEY_NSSpeechRecognitionUsageDescription: "Demo for HudPermissionGate speech-recognition request."
-        INFOPLIST_KEY_NSCameraUsageDescription: "Demo for HudPermissionGate camera request."
-        INFOPLIST_KEY_NSPhotoLibraryUsageDescription: "Demo for HudPermissionGate photos request."
-        INFOPLIST_KEY_UISupportedInterfaceOrientations: UIInterfaceOrientationPortrait
-        INFOPLIST_KEY_UISupportedInterfaceOrientations~ipad: "UIInterfaceOrientationPortrait UIInterfaceOrientationPortraitUpsideDown UIInterfaceOrientationLandscapeLeft UIInterfaceOrientationLandscapeRight"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.9"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"

@@ -1,5 +1,8 @@
 import SwiftUI
 import HudsonUI
+import HudsonUIAudio
+import HudsonUICapture
+import HudsonUIPermissions
 
 /// Gallery of every public Hudson primitive shown in real context, with the
 /// matching call-site snippet underneath. This tab is built strictly against
@@ -36,6 +39,9 @@ struct PrimitivesTab: View {
     @State private var showSharing: Bool = false
     @State private var selectedLiquidTab: HudLiquidBarTab.ID = "home"
     @State private var lastLiquidAction: String = "—"
+    @StateObject private var primitiveAudioRecorder = HudAudioRecorderController(
+        configuration: HudAudioRecorderConfiguration(filePrefix: "hudson-primitive-audio")
+    )
 
     private let demoVault = HudVault(service: "com.hudsonkit.demoios.vault-demo")
 
@@ -230,8 +236,8 @@ struct PrimitivesTab: View {
 
     private var sectionPermissions: some View {
         gallerySection("Permissions", snippet: """
-            HudPermissionGate(.microphone, rationale: "Talkie listens to your dictation.") {
-                RecordingView()
+            HudPermissionGate(.microphone, rationale: "Hudson captures short voice notes.") {
+                HudAudioRecorderView(controller: recorder)
             }
 
             // imperative
@@ -240,11 +246,9 @@ struct PrimitivesTab: View {
             VStack(spacing: HudSpacing.md) {
                 HudPermissionGate(
                     .microphone,
-                    rationale: "We listen for the demo only — this just shows the gate states."
+                    rationale: "We listen for the demo only — this shows a real recording surface."
                 ) {
-                    HudInset {
-                        HudKVRow("microphone", value: "GRANTED — your content here")
-                    }
+                    HudAudioRecorderView(controller: primitiveAudioRecorder)
                 }
                 HudPermissionGate(
                     .speech,

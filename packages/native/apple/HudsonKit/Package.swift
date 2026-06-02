@@ -21,6 +21,12 @@ var products: [Product] = [
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
+    .library(name: "HudsonUIPermissions", targets: ["HudsonUIPermissions"]),
+    .library(name: "HudsonUIAudio", targets: ["HudsonUIAudio"]),
+    .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
+    .library(name: "HudsonUIWeb", targets: ["HudsonUIWeb"]),
+    .library(name: "HudsonUIKeyboard", targets: ["HudsonUIKeyboard"]),
+    .library(name: "HudsonUIOnboarding", targets: ["HudsonUIOnboarding"]),
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -45,8 +51,14 @@ var targets: [Target] = [
             "HudsonObservability",
         ]
     ),
+    .target(name: "HudsonUIPermissions", dependencies: ["HudsonUI"]),
+    .target(name: "HudsonUIAudio", dependencies: ["HudsonUI", "HudsonUIPermissions"]),
+    .target(name: "HudsonUICapture", dependencies: ["HudsonUI"]),
+    .target(name: "HudsonUIWeb"),
+    .target(name: "HudsonUIKeyboard", dependencies: ["HudsonUI"]),
+    .target(name: "HudsonUIOnboarding", dependencies: ["HudsonUI"]),
     .target(name: "HudsonWorkflow", dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"]),
-    .target(name: "HudsonBridge", dependencies: ["HudsonUI"]),
+    .target(name: "HudsonBridge"),
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"]),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"]),
     .target(
@@ -63,9 +75,21 @@ var targets: [Target] = [
         ]
     ),
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"]),
+    .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"]),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"]),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"]),
-    .testTarget(name: "HudsonUITests", dependencies: ["HudsonUI", "HudsonLive"]),
+    .testTarget(
+        name: "HudsonUITests",
+        dependencies: [
+            "HudsonUI",
+            "HudsonUIPermissions",
+            "HudsonUIAudio",
+            "HudsonUICapture",
+            "HudsonUIKeyboard",
+            "HudsonUIOnboarding",
+            "HudsonLive",
+        ]
+    ),
 ]
 
 if voiceEnabled {

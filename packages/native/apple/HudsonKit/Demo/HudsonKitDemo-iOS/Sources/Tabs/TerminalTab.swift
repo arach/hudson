@@ -1,6 +1,7 @@
 #if HUDSON_TERMINAL
 import SwiftUI
 import HudsonUI
+import HudsonUIKeyboard
 import Termini
 
 /// Theme Playground — live Termini Ghostty surface up top, theme picker
@@ -10,11 +11,14 @@ struct TerminalTab: View {
     @State private var selectedTheme: TerminiTerminalTheme = .midnightBloom
     @State private var controller = TerminiTerminalController()
     @State private var demoTick: Int = 0
+    @State private var keyboardPresetID = HudMiniKeyboardPreset.terminal.id
+    @State private var lastMiniKey = "Ready"
 
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: HudSpacing.xxl) {
                 ghosttySurface
+                miniKeyboard
                 themePicker
                 swatchGrid
                 metaCard
@@ -47,6 +51,57 @@ struct TerminalTab: View {
         Task { @MainActor in
             try? await Task.sleep(nanoseconds: 200_000_000)
             controller.processRemoteOutput(Data(demoOutput().utf8))
+        }
+    }
+
+    private var miniKeyboard: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.md) {
+            HStack {
+                HudSectionLabel("MINI KEYBOARD", tint: HudPalette.accent)
+                Spacer()
+                HudBadge(lastMiniKey, tint: HudPalette.statusInfo)
+            }
+            HudMiniKeyboard(
+                presets: [.terminal],
+                selectedPresetID: $keyboardPresetID,
+                presentation: .minimal,
+                showsPresetPicker: false,
+                showsDictateButton: false
+            ) { output, key in
+                handleMiniKeyboard(output, key: key)
+            }
+        }
+    }
+
+    private func handleMiniKeyboard(_ output: HudMiniKeyboardOutput, key: HudMiniKeyboardKey) {
+        lastMiniKey = key.label.isEmpty
+            ? key.id.components(separatedBy: ".").last?.uppercased() ?? key.id
+            : key.label
+
+        switch output {
+        case .text(let value), .sequence(let value):
+            controller.processRemoteOutput(Data(terminalEcho(for: value, key: key).utf8))
+        case .command(let value):
+            controller.processRemoteOutput(Data("\r\n# \(value)\r\n".utf8))
+        }
+    }
+
+    private func terminalEcho(for value: String, key: HudMiniKeyboardKey) -> String {
+        switch value {
+        case "\r": return "\r\n$ "
+        case "\t": return "    "
+        case "\u{1B}": return "^ESC "
+        case "\u{3}": return "^C\r\n$ "
+        case "\u{4}": return "^D "
+        case "\u{7F}": return "\u{8} \u{8}"
+        default:
+            if value.hasPrefix("\u{1B}[") {
+                let label = key.label.isEmpty
+                    ? key.id.components(separatedBy: ".").last?.uppercased() ?? "KEY"
+                    : key.label
+                return "[\(label)] "
+            }
+            return value
         }
     }
 
