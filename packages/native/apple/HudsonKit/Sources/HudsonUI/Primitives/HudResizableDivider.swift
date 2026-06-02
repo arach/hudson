@@ -19,7 +19,6 @@ public struct HudResizableDivider: View {
 
     @State private var dragOrigin: CGFloat?
     @State private var isHovering = false
-    @State private var cursorIsPushed = false
     @Environment(\.hudTheme) private var theme
 
     public init(
@@ -35,7 +34,7 @@ public struct HudResizableDivider: View {
     }
 
     public var body: some View {
-        ZStack {
+        ZStack(alignment: hairlineAlignment) {
             Color.clear
             Rectangle()
                 .fill(isActive ? theme.hairline.standard : theme.hairline.subtle)
@@ -43,10 +42,12 @@ public struct HudResizableDivider: View {
                 .frame(maxHeight: .infinity, alignment: .center)
         }
         .frame(width: hitWidth)
+        #if os(macOS)
+        .background(HudResizeCursorRegion())
+        #endif
         .contentShape(Rectangle())
         .onHover { hovering in
             isHovering = hovering
-            updateResizeCursor(isActive: hovering || dragOrigin != nil)
         }
         .gesture(
             DragGesture(minimumDistance: 1, coordinateSpace: .global)
@@ -59,11 +60,9 @@ public struct HudResizableDivider: View {
                         ? value.translation.width
                         : -value.translation.width
                     width = min(max(origin + signedDelta, range.lowerBound), range.upperBound)
-                    updateResizeCursor(isActive: true)
                 }
                 .onEnded { _ in
                     dragOrigin = nil
-                    updateResizeCursor(isActive: isHovering)
                 }
         )
         .accessibilityLabel("Resize panel")
@@ -74,15 +73,39 @@ public struct HudResizableDivider: View {
         isHovering || dragOrigin != nil
     }
 
-    private func updateResizeCursor(isActive: Bool) {
-        #if os(macOS)
-        if isActive, !cursorIsPushed {
-            NSCursor.resizeLeftRight.push()
-            cursorIsPushed = true
-        } else if !isActive, cursorIsPushed {
-            NSCursor.pop()
-            cursorIsPushed = false
-        }
-        #endif
+    private var hairlineAlignment: Alignment {
+        placement == .leading ? .trailing : .leading
     }
 }
+
+#if os(macOS)
+private struct HudResizeCursorRegion: NSViewRepresentable {
+    func makeNSView(context: Context) -> CursorView {
+        CursorView()
+    }
+
+    func updateNSView(_ view: CursorView, context: Context) {
+        view.window?.invalidateCursorRects(for: view)
+    }
+}
+
+private final class CursorView: NSView {
+    override init(frame frameRect: NSRect) {
+        super.init(frame: frameRect)
+        wantsLayer = false
+    }
+
+    @available(*, unavailable)
+    required init?(coder: NSCoder) {
+        nil
+    }
+
+    override func hitTest(_ point: NSPoint) -> NSView? {
+        nil
+    }
+
+    override func resetCursorRects() {
+        addCursorRect(bounds, cursor: .resizeLeftRight)
+    }
+}
+#endif
