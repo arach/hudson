@@ -78,6 +78,7 @@ var targets: [Target] = [
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"]),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"]),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"]),
+    .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"]),
     .testTarget(
         name: "HudsonUITests",
         dependencies: [
