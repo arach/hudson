@@ -52,8 +52,9 @@ public enum HudSidebarLayout {
     /// Padding above the header — keeps the logo clear of the traffic-light cluster.
     public static let headerTopPadding: CGFloat = 18
 
-    /// Padding below the header before the first nav row.
-    public static let headerBottomPadding: CGFloat = 4  // HudSpacing.xs
+    /// Padding below the header before the first nav row. Completes the 76pt
+    /// first-row rhythm shared by native content and inspector headers.
+    public static let headerBottomPadding: CGFloat = 14  // HudSpacing.xxl
 
     // ── Glyphs ───────────────────────────────────────────────────────────────
 
