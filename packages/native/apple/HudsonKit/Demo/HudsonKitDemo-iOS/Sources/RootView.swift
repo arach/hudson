@@ -9,6 +9,7 @@ enum DemoPage: String, CaseIterable, Identifiable {
     case primitives
     case hudAI
     case web
+    case terminal
     case capture
     case vox
     case audio
@@ -16,7 +17,6 @@ enum DemoPage: String, CaseIterable, Identifiable {
     case keyboard
     case settings
     case logs
-    case terminal
     case about
 
     var id: String { rawValue }
