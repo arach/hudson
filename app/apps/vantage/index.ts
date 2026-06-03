@@ -22,11 +22,11 @@ const IS_DEV_ENV = process.env.NODE_ENV === 'development';
 const vantageManifest: AppManifest = {
   id: 'vantage',
   name: 'Vantage',
-  description: 'Spatial runtime console for the native Vantage menubar companion',
+  description: 'Spatial runtime console for the native Hudson app',
   mode: 'panel',
   commands: [
     { id: 'vantage:refresh', label: 'Refresh Vantage Status' },
-    { id: 'vantage:launch-companion', label: 'Launch Vantage Companion' },
+    { id: 'vantage:launch-companion', label: 'Launch Hudson App' },
     { id: 'vantage:metrics', label: 'Fetch Vantage Metrics' },
     { id: 'vantage:viewport-fit', label: 'Fit Vantage Viewport' },
     { id: 'vantage:focus-selected', label: 'Focus Selected Node' },
@@ -45,7 +45,7 @@ export const vantageApp: HudsonApp = {
   backend: {},
 
   services: IS_DEV_ENV
-    ? [{ serviceId: 'vantage-companion', optional: true, reason: 'Native macOS menubar canvas for tmux-backed runtime nodes' }]
+    ? [{ serviceId: 'hudson-native', optional: true, reason: 'Native macOS Hudson app for Vantage, permissions, and local services' }]
     : [],
 
   leftPanel: {

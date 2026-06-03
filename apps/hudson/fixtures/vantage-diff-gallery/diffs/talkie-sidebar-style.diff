@@ -1,0 +1,622 @@
+diff --git a/macOS/Talkie/Components/Sidebar/Sidebar.swift b/macOS/Talkie/Components/Sidebar/Sidebar.swift
+index aa1b1d56..4b8012c1 100644
+--- a/macOS/Talkie/Components/Sidebar/Sidebar.swift
++++ b/macOS/Talkie/Components/Sidebar/Sidebar.swift
+@@ -79,6 +79,8 @@ public struct Sidebar<Selection: Hashable, RailHeader: View, LabelHeader: View,
+     @ViewBuilder let labelHeader: () -> LabelHeader
+     @ViewBuilder let footer: () -> Footer
+
++    @Environment(\.sidebarStyle) private var style
++
+     public init(
+         selection: Binding<Selection?>,
+         entries: [SidebarEntry<Selection>],
+@@ -161,17 +163,18 @@ public struct Sidebar<Selection: Hashable, RailHeader: View, LabelHeader: View,
+         // own width from labelWidth → 0 by progress. Host (HStack) honors
+         // the intrinsic width; nothing slides because nothing is being
+         // re-anchored by a shrinking parent column.
+-        .background(
+-            // Subtle surface differential — distinguishes the sidebar from
+-            // the content area without competing with the theme.
+-            Color.white.opacity(0.025)
+-        )
++        .background(SidebarSurfaceBackground(style: style.surface))
++        .overlay(alignment: .top) {
++            // Editorial only: hairline at the very top so the rail reads
++            // like a masthead under the title bar.
++            if style.surface == .editorial {
++                Rectangle()
++                    .fill(Color.white.opacity(0.10))
++                    .frame(height: 0.5)
++            }
++        }
+         .overlay(alignment: .trailing) {
+-            // Hairline trailing separator — defines the rail's right edge
+-            // even when the label column is fully collapsed.
+-            Rectangle()
+-                .fill(Color.white.opacity(0.06))
+-                .frame(width: 0.5)
++            SidebarTrailingSeparator(style: style.surface)
+         }
+     }
+
+@@ -319,42 +322,34 @@ public struct Sidebar<Selection: Hashable, RailHeader: View, LabelHeader: View,
+     @ViewBuilder
+     private var selectionUnderlay: some View {
+         if let y = selectionY {
+-            RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius)
+-                .fill(accent.opacity(0.14))
+-                .frame(height: SidebarLayout.rowHeight - SidebarLayout.selectionVerticalInset * 2)
+-                .padding(.horizontal, SidebarLayout.selectionHorizontalInset)
+-                .padding(.vertical, SidebarLayout.selectionVerticalInset)
+-                .opacity(underlayOpacity)
+-                .animation(nil, value: labelsSettled)
+-                .offset(y: y)
+-                // Slide between rows when selection changes.
+-                .animation(.spring(response: 0.32, dampingFraction: 0.82), value: y)
+-                .allowsHitTesting(false)
++            SidebarSelectionIndicator(
++                style: style.indicator,
++                accent: accent
++            )
++            .opacity(underlayOpacity)
++            .animation(nil, value: labelsSettled)
++            .offset(y: y)
++            .animation(style.motion.selectionSlide, value: y)
++            .allowsHitTesting(false)
+         }
+     }
+
+-    /// Single accent bar rendered at the rail level, positioned at the
+-    /// selected row's bottom edge. Slides between rows when selection
+-    /// changes; fades in/out by `compactBarOpacity`.
++    /// Compact-mode accent. Style switches between a horizontal bottom bar
++    /// (default), a vertical glowing rod (glass), and a leading stripe
++    /// (editorial — same shape as the expanded selection so the indicator
++    /// stays continuous through the transition).
+     @ViewBuilder
+     private var compactAccentBar: some View {
+         if let y = selectionY {
+-            RoundedRectangle(cornerRadius: 1)
+-                .fill(accent)
+-                .frame(
+-                    width: SidebarLayout.compactAccentBarWidth,
+-                    height: SidebarLayout.compactAccentBarHeight
+-                )
+-                // Center horizontally in the rail (rail center = 16),
+-                // and seat at the bottom of the selected row.
+-                .offset(
+-                    x: (SidebarLayout.railWidth - SidebarLayout.compactAccentBarWidth) / 2,
+-                    y: y + SidebarLayout.rowHeight - SidebarLayout.compactAccentBarHeight
+-                )
+-                .opacity(compactBarOpacity)
+-                .animation(.spring(response: 0.32, dampingFraction: 0.82), value: y)
+-                .animation(nil, value: compactSettled)
+-                .allowsHitTesting(false)
++            SidebarCompactAccent(
++                style: style.indicator,
++                accent: accent
++            )
++            .offset(y: y)
++            .opacity(compactBarOpacity)
++            .animation(style.motion.selectionSlide, value: y)
++            .animation(nil, value: compactSettled)
++            .allowsHitTesting(false)
+         }
+     }
+
+@@ -389,7 +384,11 @@ private struct RailIcon<Selection: Hashable>: View {
+     let compactBarOpacity: Double
+     let onTap: () -> Void
+
++    @Environment(\.sidebarStyle) private var style
++
+     @State private var isHovering = false
++    @State private var isPressing = false
++    @State private var breathPhase: CGFloat = 1.0
+     @State private var rowFrame: CGRect = .zero
+
+     private var glyphName: String {
+@@ -417,19 +416,36 @@ private struct RailIcon<Selection: Hashable>: View {
+             .font(.system(size: SidebarLayout.iconSize))
+             .foregroundColor(iconColor)
+             .frame(width: SidebarLayout.railWidth, height: SidebarLayout.rowHeight)
+-            // Subtle hover affordance (rail-only — labels handle their own).
+-            .background {
+-                if isHovering && !isSelected {
+-                    RoundedRectangle(cornerRadius: 5)
+-                        .fill(Color.white.opacity(0.05))
+-                        .padding(.horizontal, 4)
+-                        .padding(.vertical, 3)
+-                        .transition(.opacity)
+-                }
+-            }
+-            .animation(.easeOut(duration: 0.12), value: isHovering)
++            // Hover affordance — switches per style.icon.
++            .background { hoverBackground }
++            .scaleEffect(iconScale)
++            .offset(y: iconYOffset)
++            .animation(hoverAnimation, value: isHovering)
++            .animation(.spring(response: 0.18, dampingFraction: 0.65), value: isPressing)
+             .contentShape(Rectangle())
+             .onTapGesture { onTap() }
++            .simultaneousGesture(
++                style.icon == .kinetic
++                    ? DragGesture(minimumDistance: 0)
++                        .onChanged { _ in isPressing = true }
++                        .onEnded   { _ in isPressing = false }
++                    : nil
++            )
++            .onChange(of: isSelected) { _, nowSelected in
++                guard style.icon == .kinetic else { return }
++                if nowSelected {
++                    breathPhase = 1.10
++                    withAnimation(.spring(response: 0.34, dampingFraction: 0.55)) {
++                        breathPhase = 1.0
++                    }
++                    startBreathing()
++                } else {
++                    breathPhase = 1.0
++                }
++            }
++            .onAppear {
++                if style.icon == .kinetic, isSelected { startBreathing() }
++            }
+         .background {
+             GeometryReader { geo in
+                 Color.clear
+@@ -458,5 +474,297 @@ private struct RailIcon<Selection: Hashable>: View {
+             }
+         }
+     }
++
++    // MARK: Per-style helpers
++
++    @ViewBuilder
++    private var hoverBackground: some View {
++        if isHovering && !isSelected {
++            switch style.icon {
++            case .editorial:
++                EmptyView()
++            case .glass:
++                ZStack {
++                    RoundedRectangle(cornerRadius: 6)
++                        .fill(
++                            RadialGradient(
++                                colors: [Color.white.opacity(0.10), Color.white.opacity(0)],
++                                center: .center, startRadius: 0, endRadius: 18
++                            )
++                        )
++                        .blur(radius: 2)
++                    RoundedRectangle(cornerRadius: 6)
++                        .strokeBorder(Color.white.opacity(0.06), lineWidth: 0.5)
++                }
++                .padding(.horizontal, 4)
++                .padding(.vertical, 3)
++                .transition(.opacity.combined(with: .scale(scale: 0.94)))
++            case .kinetic:
++                RoundedRectangle(cornerRadius: 7)
++                    .fill(Color.white.opacity(0.06))
++                    .padding(.horizontal, 4)
++                    .padding(.vertical, 3)
++            case .default:
++                RoundedRectangle(cornerRadius: 5)
++                    .fill(Color.white.opacity(0.05))
++                    .padding(.horizontal, 4)
++                    .padding(.vertical, 3)
++                    .transition(.opacity)
++            }
++        }
++    }
++
++    private var iconScale: CGFloat {
++        switch style.icon {
++        case .kinetic:
++            let breath = isSelected ? breathPhase : 1.0
++            let lift = (isHovering && !isSelected) ? 1.08 : 1.0
++            let press = isPressing ? 0.94 : 1.0
++            return breath * lift * press
++        case .glass:
++            return (isHovering && !isSelected) ? 1.04 : 1.0
++        default:
++            return 1.0
++        }
++    }
++
++    private var iconYOffset: CGFloat {
++        switch style.icon {
++        case .kinetic:
++            return (isHovering && !isSelected) ? -1 : 0
++        case .editorial:
++            return (isHovering && !isSelected) ? 0 : 0  // editorial uses x-shift on labels, not icons
++        default:
++            return 0
++        }
++    }
++
++    private var hoverAnimation: Animation {
++        switch style.icon {
++        case .kinetic: return .spring(response: 0.28, dampingFraction: 0.72)
++        case .glass:   return .spring(response: 0.22, dampingFraction: 0.85)
++        case .editorial: return .easeInOut(duration: 0.16)
++        case .default: return .easeOut(duration: 0.12)
++        }
++    }
++
++    private func startBreathing() {
++        guard style.icon == .kinetic, isSelected else { return }
++        withAnimation(.easeInOut(duration: 1.6).repeatForever(autoreverses: true)) {
++            breathPhase = 1.04
++        }
++    }
++}
++
++// MARK: - Style variant views
++
++/// Background plane that switches per surface style.
++struct SidebarSurfaceBackground: View {
++    let style: SidebarSurfaceStyle
++
++    var body: some View {
++        switch style {
++        case .default:
++            // Gentle upgrade from a flat tint: a vertical gradient that
++            // reads slightly brighter at the top (under the title bar)
++            // and a touch darker at the bottom. Combined with a hairline
++            // at the top edge in `body`'s overlay, this gives the rail a
++            // soft, layered surface without crossing into Glass/Editorial
++            // territory.
++            ZStack {
++                LinearGradient(
++                    colors: [
++                        Color.white.opacity(0.045),
++                        Color.white.opacity(0.030),
++                        Color.white.opacity(0.020)
++                    ],
++                    startPoint: .top, endPoint: .bottom
++                )
++                VStack(spacing: 0) {
++                    // Top hairline — sits under the title bar, defines the
++                    // surface boundary without being loud.
++                    Rectangle()
++                        .fill(Color.white.opacity(0.06))
++                        .frame(height: 0.5)
++                    Spacer(minLength: 0)
++                }
++            }
++            .allowsHitTesting(false)
++        case .glass:
++            ZStack {
++                Rectangle().fill(.ultraThinMaterial).opacity(0.55)
++                LinearGradient(
++                    colors: [
++                        Color.white.opacity(0.040),
++                        Color.white.opacity(0.018),
++                        Color.black.opacity(0.060)
++                    ],
++                    startPoint: .top, endPoint: .bottom
++                )
++                VStack(spacing: 0) {
++                    LinearGradient(
++                        colors: [Color.white.opacity(0.10), Color.white.opacity(0)],
++                        startPoint: .top, endPoint: .bottom
++                    )
++                    .frame(height: 24)
++                    .blendMode(.plusLighter)
++                    Spacer(minLength: 0)
++                }
++                VStack(spacing: 0) {
++                    Spacer(minLength: 0)
++                    LinearGradient(
++                        colors: [Color.black.opacity(0), Color.black.opacity(0.18)],
++                        startPoint: .top, endPoint: .bottom
++                    )
++                    .frame(height: 80)
++                }
++            }
++            .allowsHitTesting(false)
++        case .editorial:
++            Color.white.opacity(0.045)
++        }
++    }
++}
++
++/// Trailing hairline that defines the rail's right edge.
++struct SidebarTrailingSeparator: View {
++    let style: SidebarSurfaceStyle
++
++    var body: some View {
++        switch style {
++        case .glass:
++            LinearGradient(
++                colors: [
++                    Color.white.opacity(0.02),
++                    Color.white.opacity(0.10),
++                    Color.white.opacity(0.02)
++                ],
++                startPoint: .top, endPoint: .bottom
++            )
++            .frame(width: 0.5)
++        case .editorial:
++            Rectangle()
++                .fill(Color.white.opacity(0.06))
++                .frame(width: 0.5)
++        case .default:
++            Rectangle()
++                .fill(Color.white.opacity(0.06))
++                .frame(width: 0.5)
++        }
++    }
++}
++
++/// Expanded-mode selection indicator. Switches per indicator style.
++struct SidebarSelectionIndicator: View {
++    let style: SidebarIndicatorStyle
++    let accent: Color
++
++    var body: some View {
++        switch style {
++        case .default:
++            RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius)
++                .fill(accent.opacity(0.14))
++                .frame(height: SidebarLayout.rowHeight - SidebarLayout.selectionVerticalInset * 2)
++                .padding(.horizontal, SidebarLayout.selectionHorizontalInset)
++                .padding(.vertical, SidebarLayout.selectionVerticalInset)
++
++        case .glass:
++            ZStack {
++                RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius + 2)
++                    .fill(accent.opacity(0.22))
++                    .blur(radius: 8)
++                    .padding(.horizontal, max(0, SidebarLayout.selectionHorizontalInset - 2))
++                    .padding(.vertical, max(0, SidebarLayout.selectionVerticalInset - 1))
++
++                RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius)
++                    .fill(
++                        LinearGradient(
++                            colors: [accent.opacity(0.22), accent.opacity(0.10)],
++                            startPoint: .top, endPoint: .bottom
++                        )
++                    )
++                    .overlay(
++                        RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius)
++                            .strokeBorder(accent.opacity(0.35), lineWidth: 0.5)
++                    )
++                    .padding(.horizontal, SidebarLayout.selectionHorizontalInset)
++                    .padding(.vertical, SidebarLayout.selectionVerticalInset)
++            }
++            .frame(height: SidebarLayout.rowHeight)
++
++        case .editorial:
++            // 2pt vertical stripe at the leading edge — same shape stays
++            // visible in compact mode for visual continuity.
++            HStack(spacing: 0) {
++                Rectangle()
++                    .fill(accent)
++                    .frame(width: 2)
++                    .padding(.vertical, 4)
++                Spacer(minLength: 0)
++            }
++            .frame(height: SidebarLayout.rowHeight)
++
++        case .kinetic:
++            // Same shape as default; the kinetic feel comes from the spring
++            // (motion style) and a slightly more vivid fill.
++            RoundedRectangle(cornerRadius: SidebarLayout.selectionCornerRadius)
++                .fill(accent.opacity(0.18))
++                .frame(height: SidebarLayout.rowHeight - SidebarLayout.selectionVerticalInset * 2)
++                .padding(.horizontal, SidebarLayout.selectionHorizontalInset)
++                .padding(.vertical, SidebarLayout.selectionVerticalInset)
++        }
++    }
++}
++
++/// Compact-mode accent. Sits at the selected row's y-offset; the parent
++/// view positions and animates it.
++struct SidebarCompactAccent: View {
++    let style: SidebarIndicatorStyle
++    let accent: Color
++
++    var body: some View {
++        switch style {
++        case .default, .kinetic:
++            RoundedRectangle(cornerRadius: 1)
++                .fill(accent)
++                .frame(
++                    width: SidebarLayout.compactAccentBarWidth,
++                    height: SidebarLayout.compactAccentBarHeight
++                )
++                .frame(width: SidebarLayout.railWidth, alignment: .center)
++                .frame(height: SidebarLayout.rowHeight, alignment: .bottom)
++
++        case .glass:
++            ZStack {
++                Capsule()
++                    .fill(accent.opacity(0.55))
++                    .frame(width: 6, height: 18)
++                    .blur(radius: 4)
++                Capsule()
++                    .fill(
++                        LinearGradient(
++                            colors: [accent.opacity(0.95), accent.opacity(0.65)],
++                            startPoint: .top, endPoint: .bottom
++                        )
++                    )
++                    .frame(width: 2, height: 16)
++            }
++            .frame(width: SidebarLayout.railWidth, alignment: .leading)
++            .frame(height: SidebarLayout.rowHeight, alignment: .center)
++            .padding(.leading, 2)
++
++        case .editorial:
++            // Same leading 2pt stripe as the expanded indicator — continuous
++            // through the transition.
++            HStack(spacing: 0) {
++                Rectangle()
++                    .fill(accent)
++                    .frame(width: 2)
++                    .padding(.vertical, 4)
++                Spacer(minLength: 0)
++            }
++            .frame(width: SidebarLayout.railWidth, height: SidebarLayout.rowHeight)
++        }
++    }
+ }
+
+diff --git a/macOS/Talkie/Components/Sidebar/SidebarLayout.swift b/macOS/Talkie/Components/Sidebar/SidebarLayout.swift
+index cdb87df8..9fdfdd4a 100644
+--- a/macOS/Talkie/Components/Sidebar/SidebarLayout.swift
++++ b/macOS/Talkie/Components/Sidebar/SidebarLayout.swift
+@@ -30,6 +30,13 @@ public enum SidebarLayout {
+     /// Maximum width of the label column when fully expanded.
+     public static let labelWidth: CGFloat = 200
+
++    /// Static breathing room between the window's leading edge and the
++    /// rail's leading edge. Applied at the host level (outside the
++    /// Sidebar view) so the rail's internal geometry — including icon
++    /// x-positions — stays exactly the same. Only the rail-as-a-whole
++    /// shifts inward by this amount, once, statically.
++    public static let leadingInset: CGFloat = 6
++
+     // ── Cells ──
+     /// Height of a row cell (icon row, label row).
+     public static let rowHeight: CGFloat = 30
+diff --git a/macOS/Talkie/Components/Sidebar/SidebarStyle.swift b/macOS/Talkie/Components/Sidebar/SidebarStyle.swift
+new file mode 100644
+index 00000000..99af915a
+--- /dev/null
++++ b/macOS/Talkie/Components/Sidebar/SidebarStyle.swift
+@@ -0,0 +1,133 @@
++//
++//  SidebarStyle.swift
++//
++//  Per-axis style selectors for the sidebar. Each axis is independent so
++//  the user can mix-and-match treatments (e.g. Editorial surface +
++//  Kinetic icons + default selection). Selectors persist via AppStorage
++//  and propagate via the `\.sidebarStyle` environment.
++//
++//  All defaults keep the current look — so this file is additive and
++//  shipping-safe.
++//
++
++import SwiftUI
++
++// MARK: - Axis enums
++
++public enum SidebarSurfaceStyle: String, CaseIterable, Identifiable {
++    case `default`
++    case glass
++    case editorial
++
++    public var id: String { rawValue }
++    public var label: String {
++        switch self {
++        case .default:   return "Base"
++        case .glass:     return "Glass"
++        case .editorial: return "Print"
++        }
++    }
++}
++
++public enum SidebarIndicatorStyle: String, CaseIterable, Identifiable {
++    case `default`
++    case glass
++    case editorial
++    case kinetic
++
++    public var id: String { rawValue }
++    public var label: String {
++        switch self {
++        case .default:   return "Base"
++        case .glass:     return "Glass"
++        case .editorial: return "Stripe"
++        case .kinetic:   return "Spring"
++        }
++    }
++}
++
++public enum SidebarIconStyle: String, CaseIterable, Identifiable {
++    case `default`
++    case glass
++    case editorial
++    case kinetic
++
++    public var id: String { rawValue }
++    public var label: String {
++        switch self {
++        case .default:   return "Base"
++        case .glass:     return "Bloom"
++        case .editorial: return "Quiet"
++        case .kinetic:   return "Live"
++        }
++    }
++}
++
++public enum SidebarMotionStyle: String, CaseIterable, Identifiable {
++    case `default`
++    case editorial
++    case kinetic
++
++    public var id: String { rawValue }
++    public var label: String {
++        switch self {
++        case .default:   return "Base"
++        case .editorial: return "Slow"
++        case .kinetic:   return "Spring"
++        }
++    }
++
++    /// Spring used for selection slide between rows.
++    public var selectionSlide: Animation {
++        switch self {
++        case .default:   return .spring(response: 0.32, dampingFraction: 0.82)
++        case .editorial: return .spring(response: 0.50, dampingFraction: 0.95)
++        case .kinetic:   return .spring(response: 0.36, dampingFraction: 0.72)
++        }
++    }
++}
++
++// MARK: - Bundle
++
++public struct SidebarStyle: Equatable {
++    public var surface: SidebarSurfaceStyle
++    public var indicator: SidebarIndicatorStyle
++    public var icon: SidebarIconStyle
++    public var motion: SidebarMotionStyle
++
++    public init(
++        surface: SidebarSurfaceStyle = .default,
++        indicator: SidebarIndicatorStyle = .default,
++        icon: SidebarIconStyle = .default,
++        motion: SidebarMotionStyle = .default
++    ) {
++        self.surface = surface
++        self.indicator = indicator
++        self.icon = icon
++        self.motion = motion
++    }
++
++    public static let `default` = SidebarStyle()
++}
++
++// MARK: - Environment
++
++private struct SidebarStyleKey: EnvironmentKey {
++    static let defaultValue: SidebarStyle = .default
++}
++
++public extension EnvironmentValues {
++    var sidebarStyle: SidebarStyle {
++        get { self[SidebarStyleKey.self] }
++        set { self[SidebarStyleKey.self] = newValue }
++    }
++}
++
++// MARK: - AppStorage keys
++
++public enum SidebarStyleStorage {
++    public static let surfaceKey   = "sidebar.style.surface"
++    public static let indicatorKey = "sidebar.style.indicator"
++    public static let iconKey      = "sidebar.style.icon"
++    public static let motionKey    = "sidebar.style.motion"
++}

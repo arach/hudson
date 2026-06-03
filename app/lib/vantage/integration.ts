@@ -14,8 +14,8 @@ export function createVantageIntegrationDescriptor(origin: string): VantageInteg
       accent: 'cyan',
     },
     description:
-      'HudsonKit Vantage bridges the web workspace to the native macOS menubar companion. ' +
-      'Runtime nodes, tmux sessions, and spatial layout stay on the companion; Hudson sends JSONL control commands and reads workspace status back.',
+      'HudsonKit Vantage bridges the web workspace to the native macOS Hudson app. ' +
+      'Runtime nodes, tmux sessions, spatial layout, permissions, and local services stay in the native host; Hudson Web sends JSONL control commands and reads workspace status back.',
     controlProfiles: VANTAGE_CONTROL_PROFILES,
     commands: [
       'status',
@@ -41,6 +41,6 @@ export function createVantageLaunchCommand(origin: string): string {
     'HUDSON_VANTAGE_CONTROL_FILE=' + primary.commandPath,
     'HUDSON_VANTAGE_RESPONSE_FILE=' + primary.responsePath,
     'HUDSON_VANTAGE_STATE_FILE=' + primary.statePath,
-    'apps/vantage/scripts/run-app.sh',
+    'apps/hudson/scripts/run-app.sh',
   ].join(' ');
 }
