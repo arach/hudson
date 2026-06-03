@@ -2,19 +2,25 @@
 
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
-import { probeVoxAvailability, type VoxAvailability } from '../lib/voxProbe';
 import { HObservabilityDefault } from '../observability';
+import {
+  HudsonVoiceClientError,
+  createHudsonVoiceDaemonClient,
+  type HudsonVoiceAvailability,
+  type HudsonVoiceClient,
+  type HudsonVoiceLiveEvent,
+  type HudsonVoiceLiveSession,
+} from '../lib/hudsonVoiceClient';
 
 const HUDSONKIT_VOX_CLIENT_ID = 'hudsonkit';
 
 // ---------------------------------------------------------------------------
-// useVoiceInput — Vox-backed STT.
-// Handles mic capture via MediaRecorder, ships audio to the local Vox companion
-// (127.0.0.1:43115) for transcription, and surfaces the transcript via callback.
+// useVoiceInput — Hudson-owned voice STT.
+// By default, Hudson Menu owns mic capture through the embedded Vox daemon.
+// Callers can still inject a transcribe() override to use browser MediaRecorder.
 //
-// Vox client is dynamically imported so the SDK has no hard dependency on
-// @voxd/client; consumers that want to substitute another STT provider can
-// pass in their own `transcribe` function.
+// This keeps app code on the Hudson voice boundary while preserving the older
+// blob-transcription escape hatch for tests or custom providers.
 // ---------------------------------------------------------------------------
 
 type AudioFormat = 'wav' | 'aac' | 'opus';
@@ -31,15 +37,15 @@ type ProbeFn = () => Promise<boolean>;
 export interface UseVoiceInputOptions {
   /** Called with the transcript once recording stops and transcription completes. */
   onTranscript: (transcript: string) => void;
-  /** Identifies the calling surface in Vox metadata (e.g. "hudson-ai", "assistant"). Defaults to "hudson-assistant". */
+  /** Identifies the calling Hudson voice surface (e.g. "hudson-ai", "assistant"). Defaults to "hudson-assistant". */
   surface?: string;
   /** Free-form metadata included with every transcribe request (e.g. `{ workspaceId }`). */
   metadata?: Record<string, unknown>;
   /** Spoken language hint. Defaults to "en". */
   language?: string;
-  /** Optional STT provider override. If omitted, the hook lazily loads @voxd/client. */
+  /** Optional STT provider override. If omitted, Hudson's embedded daemon owns capture. */
   transcribe?: TranscribeFn;
-  /** Optional availability probe override. Defaults to the Vox client's probe(). */
+  /** Optional availability probe override for custom transcribe providers. */
   probe?: ProbeFn;
 }
 
@@ -50,7 +56,7 @@ export interface UseVoiceInputResult {
   lastTranscript: string | null;
   start: () => Promise<void>;
   stop: () => void;
-  /** Whether MediaRecorder is supported in this environment. */
+  /** Whether this environment can start the configured voice path. */
   isSupported: boolean;
 }
 
@@ -99,15 +105,35 @@ interface NormalizedError {
 }
 
 function normalizeVoiceError(error: unknown): NormalizedError {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
+  if (error instanceof HudsonVoiceClientError) {
+    if (error.code === 'network_error') {
+      return {
+        status: 'unavailable',
+        message: 'Hudson voice daemon is not reachable. Launch Hudson Menu and try again.',
+      };
+    }
+    if (error.code === 'daemon_error') {
+      return {
+        status: 'error',
+        message: error.message || 'Hudson voice daemon returned an error.',
+      };
+    }
+    if (error.code === 'session_id_missing') {
+      return {
+        status: 'error',
+        message: 'Hudson voice session has not started yet.',
+      };
+    }
+    return { status: 'error', message: error.message || 'Hudson voice capture failed.' };
+  }
 
-  // Duck-type Vox errors so we don't have to import @voxd/client at module scope
+  // Duck-type legacy Vox errors for injected @voxd/client-style providers.
   if (error && typeof error === 'object' && 'code' in error && 'message' in error) {
     const e = error as { code?: string; message?: string };
     if (e.code === 'network_error') {
       return {
         status: 'unavailable',
-        message: 'Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.',
+        message: 'Voice service is not reachable.',
       };
     }
     if (e.code === 'http_error') {
@@ -115,10 +141,10 @@ function normalizeVoiceError(error: unknown): NormalizedError {
       if (msg.includes('Origin not allowed') || msg.includes('403')) {
         return {
           status: 'error',
-          message: `Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`,
+          message: 'Voice service rejected this origin.',
         };
       }
-      return { status: 'error', message: 'Vox returned an error while transcribing. Check Vox and try again.' };
+      return { status: 'error', message: 'Voice service returned an error while transcribing.' };
     }
   }
 
@@ -133,21 +159,17 @@ function normalizeVoiceError(error: unknown): NormalizedError {
 
 interface ClientHandle {
   probe: ProbeFn;
-  transcribe: TranscribeFn;
-  /** Detailed availability probe. Only present for the default @voxd/client-backed
-   *  client; when a caller injects their own transcribe() we fall back to a
-   *  binary probe and cannot distinguish warming / blocked-origin. */
-  probeAvailability?: () => Promise<VoxAvailability>;
+  transcribe?: TranscribeFn;
+  hudsonVoice?: HudsonVoiceClient;
+  probeAvailability?: () => Promise<HudsonVoiceAvailability | 'blocked-origin'>;
 }
 
-async function loadDefaultVoxClient(): Promise<ClientHandle> {
-  const mod = await import('@voxd/client');
-  const client = mod.createVoxdClient({ clientId: HUDSONKIT_VOX_CLIENT_ID });
+async function loadDefaultHudsonVoiceClient(): Promise<ClientHandle> {
+  const client = createHudsonVoiceDaemonClient({ clientId: HUDSONKIT_VOX_CLIENT_ID });
   return {
     probe: () => client.probe(),
-    transcribe: ({ audio, format, language, metadata }) =>
-      client.transcribe({ audio, format, language, metadata }),
-    probeAvailability: () => probeVoxAvailability(client),
+    hudsonVoice: client,
+    probeAvailability: () => client.availability(),
   };
 }
 
@@ -168,6 +190,8 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
+  const sessionRef = useRef<HudsonVoiceLiveSession | null>(null);
+  const mountedRef = useRef(true);
   const onTranscriptRef = useRef(onTranscript);
   onTranscriptRef.current = onTranscript;
   const metadataRef = useRef(metadata);
@@ -177,7 +201,14 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    setIsSupported(canCaptureMicrophoneAudio());
+    setIsSupported(transcribe ? canCaptureMicrophoneAudio() : typeof WebSocket !== 'undefined');
+  }, [transcribe]);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    return () => {
+      mountedRef.current = false;
+    };
   }, []);
 
   const getClient = useCallback(async () => {
@@ -185,10 +216,107 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       return { probe: probe ?? (async () => true), transcribe };
     }
     if (!clientRef.current) {
-      clientRef.current = await loadDefaultVoxClient();
+      clientRef.current = await loadDefaultHudsonVoiceClient();
     }
     return clientRef.current;
   }, [transcribe, probe]);
+
+  const handleHudsonVoiceEvent = useCallback((event: HudsonVoiceLiveEvent) => {
+    if (!mountedRef.current) return;
+
+    if (event.event === 'session.state') {
+      const state = typeof event.data.state === 'string' ? event.data.state : '';
+      if (state === 'recording') setStatus('recording');
+      if (state === 'processing') setStatus('transcribing');
+      if (state === 'cancelled') setStatus('idle');
+      if (state === 'error') setStatus('error');
+      return;
+    }
+
+    if (event.event === 'session.final') {
+      const rawText = typeof event.data.text === 'string' ? event.data.text : '';
+      const transcript = rawText.trim();
+      setLastTranscript(transcript);
+      setStatus('ready');
+      if (transcript) onTranscriptRef.current(transcript);
+      return;
+    }
+
+    if (event.event === 'session.cancelled') {
+      setStatus('idle');
+      return;
+    }
+
+    if (event.event === 'session.error') {
+      const message = typeof event.data.text === 'string'
+        ? event.data.text
+        : 'Hudson voice session failed.';
+      setStatus('error');
+      setError(message);
+    }
+  }, []);
+
+  const consumeHudsonVoiceSession = useCallback(async (session: HudsonVoiceLiveSession) => {
+    try {
+      for await (const event of session.events) {
+        handleHudsonVoiceEvent(event);
+      }
+    } catch (err) {
+      if (!mountedRef.current) return;
+      HObservabilityDefault.logger.error('hudson.voice.daemon.stream_error', {
+        category: 'voice',
+        data: { surface, error: err instanceof Error ? err.message : String(err) },
+      });
+      const normalized = normalizeVoiceError(err);
+      setStatus(normalized.status);
+      setError(normalized.message);
+    } finally {
+      if (sessionRef.current === session) sessionRef.current = null;
+    }
+  }, [handleHudsonVoiceEvent, surface]);
+
+  const startHudsonVoiceSession = useCallback(async (client: HudsonVoiceClient) => {
+    const availability = await client.availability();
+    if (availability === 'warming') {
+      HObservabilityDefault.logger.info('hudson.voice.daemon.warming', {
+        category: 'voice',
+        data: { surface },
+      });
+      setStatus('unavailable');
+      setError('Hudson voice daemon is starting up. Try again in a moment.');
+      return;
+    }
+    if (availability === 'permission-denied') {
+      setStatus('error');
+      setError('Microphone access is denied for Hudson. Open Hudson Menu settings to grant microphone access.');
+      return;
+    }
+    if (availability === 'unreachable') {
+      HObservabilityDefault.logger.warn('hudson.voice.daemon.unreachable', {
+        category: 'voice',
+        data: { surface },
+      });
+      setStatus('unavailable');
+      setError('Hudson voice daemon is not reachable. Launch Hudson Menu and try again.');
+      return;
+    }
+    if (availability === 'error') {
+      setStatus('error');
+      setError('Hudson voice daemon is not ready. Check Hudson Menu and try again.');
+      return;
+    }
+
+    const session = await client.startLiveSession({
+      clientId: HUDSONKIT_VOX_CLIENT_ID,
+      surface,
+      language,
+      mode: 'push_to_talk',
+      metadata: metadataRef.current,
+    });
+    sessionRef.current = session;
+    setStatus('recording');
+    void consumeHudsonVoiceSession(session);
+  }, [consumeHudsonVoiceSession, language, surface]);
 
   const finalize = useCallback(async (chunks: Blob[], mimeType: string) => {
     stopStreamTracks(streamRef.current);
@@ -222,6 +350,10 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
 
     try {
       const client = await getClient();
+      if (!client.transcribe) {
+        throw new Error('Voice transcription is not configured.');
+      }
+
       const result = await client.transcribe({
         audio: new Blob(chunks, { type: recordedMimeType }),
         format: inferVoiceFormat(recordedMimeType),
@@ -256,7 +388,12 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
 
     try {
       const client = await getClient();
-      const availability: VoxAvailability = client.probeAvailability
+      if (client.hudsonVoice && !client.transcribe) {
+        await startHudsonVoiceSession(client.hudsonVoice);
+        return;
+      }
+
+      const availability = client.probeAvailability
         ? await client.probeAvailability()
         : ((await client.probe()) ? 'connected' : 'unreachable');
       if (availability === 'blocked-origin') {
@@ -266,7 +403,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         });
         const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
         setStatus('error');
-        setError(`Vox rejected this origin. Allowlist ${origin} in Vox settings and try again.`);
+        setError(`Voice service rejected this origin. Allowlist ${origin} and try again.`);
         return;
       }
       if (availability === 'warming') {
@@ -275,7 +412,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
           data: { surface },
         });
         setStatus('unavailable');
-        setError('Vox is starting up — try again in a moment.');
+        setError('Voice service is starting up. Try again in a moment.');
         return;
       }
       if (availability === 'unreachable') {
@@ -284,7 +421,17 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
           data: { surface },
         });
         setStatus('unavailable');
-        setError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
+        setError('Voice service is not reachable.');
+        return;
+      }
+      if (availability === 'permission-denied') {
+        setStatus('error');
+        setError('Microphone access is denied for Hudson. Open Hudson Menu settings to grant microphone access.');
+        return;
+      }
+      if (availability === 'error') {
+        setStatus('error');
+        setError('Voice service is not ready. Check Hudson Menu and try again.');
         return;
       }
 
@@ -330,9 +477,20 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       setStatus(normalized.status);
       setError(normalized.message);
     }
-  }, [finalize, getClient, isSupported, status, surface]);
+  }, [finalize, getClient, isSupported, startHudsonVoiceSession, status, surface]);
 
   const stop = useCallback(() => {
+    const session = sessionRef.current;
+    if (session) {
+      setStatus('transcribing');
+      void session.stop().catch(err => {
+        const normalized = normalizeVoiceError(err);
+        setStatus(normalized.status);
+        setError(normalized.message);
+      });
+      return;
+    }
+
     const recorder = recorderRef.current;
     if (!recorder || recorder.state !== 'recording') return;
     HObservabilityDefault.logger.info('hudson.voice.capture.stop', {
@@ -351,6 +509,9 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         try { recorder.stop(); } catch { /* ignore */ }
       }
       stopStreamTracks(streamRef.current);
+      const session = sessionRef.current;
+      sessionRef.current = null;
+      if (session) void session.cancel().catch(() => {});
       streamRef.current = null;
       recorderRef.current = null;
       chunksRef.current = [];
