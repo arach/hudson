@@ -43,7 +43,7 @@ The logo is procedurally generated SVG rendered live from parameters. All design
 You have two modes of operation:
 
 1. **Parameter tweaking** — Change colors, dimensions, and layout using set_param, set_variant, apply_preset.
-2. **Template authoring** — Create entirely new logo designs or modify any existing template (including built-ins) by writing TypeScript render functions using create_template and update_template.
+2. **Template authoring** — Author new logo designs by writing TypeScript render functions using create_template. Existing templates are **source-of-truth references** — read them with get_template_source and derive a new template from them. The Logo app does not expose an in-place update tool; iteration always produces a new child template.
 
 ## Built-in Parameters
 | Parameter     | Type   | Range/Format | Description                               |
@@ -60,11 +60,11 @@ You have two modes of operation:
 | padding       | number | 20-120 px    | Inner padding from container edge         |
 
 ## Templates
-All variants are templates. The 6 built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows) are pre-seeded templates that can be edited like any other.
+All variants are templates. The built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows, dot-matrix, mosaic, …) are pre-seeded source templates. Custom templates created by you or the user are also treated as sources for derivation.
 
 To switch between templates, use set_variant with the template ID.
 
-Brand explorations live in a hierarchy. When creating a variation of the active template, set \`parentId\` to the source template id and keep \`kind: "brand"\` for brand-specific families. The sidebar hierarchy carries the repeated brand prefix, so names should describe the branch/direction instead of becoming raw ids.
+**Source templates are immutable from your seat.** When the user asks you to polish, simplify, elevate, remix, or otherwise iterate on a template, the result is always a new template derived from the source. Set \`parentId\` to the source template id so the new variant nests under it in the sidebar; keep \`kind: "brand"\` for brand-specific families. The sidebar hierarchy carries the repeated brand prefix, so names should describe the branch/direction (e.g. \`relay-polish-1\`) instead of becoming raw ids.
 
 ## Creating & Editing Templates
 
@@ -104,26 +104,32 @@ Declare template-specific params that appear as sliders/pickers in the inspector
 - Reference \`p.bgColor\`, \`p.paneColor\`, etc. for consistency with standard controls
 - Do not redeclare \`p\` or \`vb\`; the app injects them when rendering.
 - After creating a template, it auto-activates. Use set_param/set_custom_param to refine.
-- If a template errors, you'll see the error in context — fix it with update_template.
+- If the new template you just authored renders with an error, call create_template again with a fixed renderBody — do not try to update the broken one.
 
 ## Reading template source
 
-Template renderBody/params are **not** pre-loaded into your context. Call \`get_template_source(id)\` to fetch a template's source on demand — for the active template, the read-only built-ins, or any custom template. This keeps your context lean and lets you pull only what you need for the task at hand.
+Template renderBody/params are **not** pre-loaded into your context. Call \`get_template_source(id)\` to fetch a template's source on demand — for the active template, the built-in sources, or any user-created template. This keeps your context lean and lets you pull only what you need for the task at hand.
 
-## Editing Templates In Place
+## Iterating: Always Derive, Never Mutate
 
-**IMPORTANT: When modifying an existing template, ALWAYS use update_template — do NOT create a new template.**
+**IMPORTANT: There is no update_template tool. Every iteration on an existing template — built-in or custom — creates a new template via create_template with a parentId pointing at the source.**
 
 Workflow for iterating on a design:
 1. Call \`get_template_source(activeVariantId)\` to read the current source
-2. Modify the renderBody and/or params, then call \`update_template\` with the existing templateId and the changes
-3. The 8 read-only built-ins (see below) cannot be modified — clone them with \`create_template\` instead
+2. Decide what to keep and what to change in renderBody / params
+3. Call \`create_template\` with:
+   - \`renderBody\`: your edited version
+   - \`params\`: the schema with your changes (include only controls still used)
+   - \`parentId\`: the source template's id (this nests the new variant under it)
+   - \`kind\`: inherit from the parent unless you have a reason to switch
+   - \`name\`: derived from the source — e.g. \`\${sourceName}-polish-1\`, \`\${sourceName}-simplified\`
+   - \`description\`: 1 sentence on what changed relative to the source
 
-Keep metadata honest while editing. If you simplify a design, update the description so it matches the new design. If you remove controls or features from renderBody, pass a replacement \`params\` array with only the controls still used; pass \`[]\` when no custom controls remain. Do not rename a template to its raw id, and do not remove its family placement. Omitted metadata is preserved by the app, but changed metadata should stay human-readable.
+This applies to **all** sources — built-ins and custom templates alike. The source is preserved so the user can compare and roll back. If a previous derivation you authored has the wrong design, derive another one from the same parent instead of trying to overwrite it.
 
 ## Built-in Variants
 
-The 8 built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows, dot-matrix, mosaic) are **read-only**. You CANNOT modify or delete them. To create a variation, use create_template to make a new template inspired by a built-in.
+The built-in variants (negative-space, green-channel, grid-color, interlocking, lattice-grid, app-windows, dot-matrix, mosaic) are read-only sources. Treat them the same way you treat any other source: derive new templates from them via create_template with parentId set.
 
 ## Light / Dark Mode
 Set \`lightEnabled: true\` via set_param to enable a light variant. Then use set_param to adjust \`lightColors\` (an object with bgColor, paneColor, dimPaneColor, channelColor for the light variant). The app renders both variants side-by-side. Templates are unaware of modes — they receive swapped colors automatically.
@@ -172,7 +178,8 @@ function context(ctx: Record<string, unknown>): string {
   }
 
   sections.push(`## Template editing guardrails
-- Tool output means the call was accepted; the rendered preview is the truth. If a preview reports a render error, fix the template source with \`update_template\`.
+- Tool output means the call was accepted; the rendered preview is the truth. If a preview reports a render error, call \`create_template\` again with a fixed renderBody and the same parentId — do not try to update the broken template in place (no such tool).
+- Iteration is **always** derivation. Pass \`parentId\` to \`create_template\` whenever the new template is based on an existing one (built-in or custom). The source stays untouched.
 - \`renderBody\` is only the function body that returns SVG inner content. Do not include \`const meta = {...}\`, an outer function, an outer \`<svg>\`, or redeclarations of \`p\` / \`vb\`.
 - Keep readable names, descriptions, params, and family placement aligned with the actual design. Do not turn names into raw ids like \`16857149\`.`);
 
@@ -212,7 +219,7 @@ function context(ctx: Record<string, unknown>): string {
 function tools(ctx: Record<string, unknown>) {
   return {
     get_template_source: tool({
-      description: 'Read a template\'s source (renderBody, params, name, description) by id. Call this before update_template, or before create_template if cloning an existing template. Lets you pull the source on demand instead of having every template inlined in context.',
+      description: 'Read a template\'s source (renderBody, params, name, description) by id. Call this before create_template when iterating on or cloning an existing template — every iteration is a derivation, so you need the source first. Lets you pull the source on demand instead of having every template inlined in context.',
       inputSchema: z.object({
         id: z.string().describe('Template id — e.g. "negative-space", "t-decoration", or a custom hex id'),
       }),
@@ -274,7 +281,7 @@ function tools(ctx: Record<string, unknown>) {
     }),
 
     create_template: tool({
-      description: 'Create a new logo template. Write renderBody as a TypeScript function body only — no meta header, no outer function, no p/vb redeclarations. The template auto-activates after creation. When iterating or exploring from the active template, pass parentId so the new template nests under the source in the variant tree; omit parentId only for a new top-level family.',
+      description: 'Create a new logo template. Write renderBody as a TypeScript function body only — no meta header, no outer function, no p/vb redeclarations. The template auto-activates after creation. **Always pass parentId when iterating on an existing template** — built-in or custom. Iteration never mutates the source; it creates a child variant nested under the source in the variant tree. Omit parentId only when authoring a brand-new top-level family.',
       inputSchema: z.object({
         name: z.string().describe('Human-readable template name'),
         description: z.string().describe('Short description of the design'),
@@ -284,20 +291,6 @@ function tools(ctx: Record<string, unknown>) {
         kind: z.enum(['style', 'brand']).optional().describe('Use brand for project/brand-specific explorations and style for abstract reusable template styles. Children usually inherit this from their parent.'),
       }),
       execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
-    }),
-
-    update_template: tool({
-      description: 'Modify a custom template (NOT built-ins — they are read-only). Only include fields you want to change. Write renderBody as a TypeScript function body only. Omitted metadata is preserved; update description/params when the visual behavior changes.',
-      inputSchema: z.object({
-        templateId: z.string().describe('The template ID to update'),
-        name: z.string().optional().describe('New name'),
-        description: z.string().optional().describe('New description'),
-        parentId: z.string().optional().describe('New parent template id for variant-tree placement.'),
-        kind: z.enum(['style', 'brand']).optional().describe('Template classification for sidebar grouping.'),
-        renderBody: z.string().optional().describe('New render function body (TypeScript). Do not redeclare p/vb, include const meta, wrap in a function, or include an outer <svg>.'),
-        params: z.array(templateParamSchema).optional().describe('New param declarations, replacing all existing controls. Include [] when removing every custom control.'),
-      }),
-      execute: async (args) => ({ applied: true, action: 'update_template', ...args }),
     }),
 
     delete_template: tool({

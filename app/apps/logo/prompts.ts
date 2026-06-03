@@ -211,7 +211,9 @@ function presetList(presets: { label: string; params: Partial<LogoParams> }[]): 
 
 function templateGuideShort(): string {
   return `# Templates
-Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. NEVER redeclare these — no \`const vb = 512\` or \`const p = ...\`. Edit the file, the app picks up changes.
+Each \`.js\` file in \`.data/logo-templates/\` receives \`(p, vb)\` and returns SVG inner content. \`p\` = params, \`vb\` = 512. NEVER redeclare these — no \`const vb = 512\` or \`const p = ...\`. The app picks up new files automatically.
+
+**Iterate by deriving, not by mutating.** When the user asks you to refine, polish, simplify, elevate, or remix the active variant, write a NEW file rather than editing the source. Set \`parentId\` in the new file's \`const meta = {...}\` header to the source template's id so the variant nests under it. The source stays untouched.
 
 Keep the \`const meta = {...}\` header aligned with the design. Preserve readable \`name\`, \`kind\`, and \`parentId\` fields so variants stay nested in the sidebar; do not replace a name with a raw id. If you remove visual features, remove their custom params too.
 
@@ -271,7 +273,7 @@ return \`<rect width="\${vb}" height="\${vb}" rx="\${borderRadius}" fill="\${bgC
 **Rules:**
 - **NEVER redeclare \`p\` or \`vb\`** — they are function parameters, not constants. Do NOT write \`const vb = 512\` or \`const p = ...\`. Use them directly.
 - **Always save templates to \`.data/logo-templates/\`** — this is the only directory the app reads from. Files saved to the workspace root will NOT appear in the app.
-- Edit the existing file when modifying a template — don't create duplicates
+- **Iteration derives, it never mutates.** When asked to polish/simplify/elevate/remix/iterate on a template, write a new file with a derived name and set \`parentId\` in \`meta\` to the source template's id. Don't edit the source file in place. The only time it's OK to edit an existing file is when fixing a render error in a template you authored earlier in this session, or when the user explicitly asks for an in-place rename/tweak.
 - Preserve readable metadata. Keep \`name\`, \`description\`, \`kind\`, and \`parentId\` truthful so AI-created variants stay in the correct family tree instead of becoming top-level raw-id entries.
 - If you remove a feature from the render body, remove its custom param from \`meta.params\` too.
 - Keep \`dimPaneColor\` consistent with \`paneColor\` (same hue, lower opacity)

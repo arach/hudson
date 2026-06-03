@@ -580,7 +580,7 @@ export function HudsonAIContent() {
                 <CapabilityRow
                   icon={<Mic size={12} />}
                   label="Transcription Path"
-                  description="Capture still runs through the local Vox companion. Hudson only needs the origin allowlisted in Vox when the bridge is locked down."
+                  description="Capture runs through Hudson Menu’s embedded Vox daemon, so Hudson owns microphone permission and the recording lifecycle."
                 />
                 <CapabilityRow
                   icon={<AudioLines size={12} />}
