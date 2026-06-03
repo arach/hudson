@@ -3,7 +3,6 @@ import PackageDescription
 import Foundation
 
 let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
 
 // SwiftPM resolves every declared package dependency up front. Keep the heavy
 // terminal backend out of default HudsonKit consumers, and opt into it only for
@@ -13,6 +12,8 @@ var products: [Product] = [
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
+    .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
+    .library(name: "HudsonVoice", targets: ["HudsonVoice"]),
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -20,7 +21,12 @@ var products: [Product] = [
     .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
-var dependencies: [Package.Dependency] = []
+// Vox is the controlled, embeddable Parakeet engine (≈FluidAudio replacement):
+// on-device model download + execution. HudsonVoice wraps it (plus an Apple
+// Speech fallback) into the iOS dictation UX layer.
+var dependencies: [Package.Dependency] = [
+    .package(name: "Vox", path: "../vox/swift"),
+]
 
 var targets: [Target] = [
     .target(
@@ -42,6 +48,20 @@ var targets: [Target] = [
             "HudsonObservability",
         ],
         path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
+    ),
+    .target(
+        name: "HudsonUICapture",
+        dependencies: ["HudsonUI"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonUICapture"
+    ),
+    .target(
+        name: "HudsonVoice",
+        dependencies: [
+            "HudsonUI",
+            "HudsonObservability",
+            .product(name: "VoxEngine", package: "Vox"),
+        ],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
     ),
     .target(
         name: "HudsonWorkflow",
@@ -69,17 +89,6 @@ var targets: [Target] = [
         path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCompanion"
     ),
 ]
-
-if voiceEnabled {
-    products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
-    targets.append(
-        .target(
-            name: "HudsonVoice",
-            dependencies: ["HudsonUI", "HudsonObservability"],
-            path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
-        )
-    )
-}
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
