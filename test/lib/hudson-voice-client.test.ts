@@ -240,6 +240,52 @@ describe('Hudson voice client', () => {
     });
   });
 
+  it('preserves daemon health status and permission details', async () => {
+    resetMockSockets();
+    const client = createHudsonVoiceDaemonClient({
+      clientId: 'hudson-web',
+      WebSocket: MockWebSocket as unknown as typeof WebSocket,
+    });
+
+    const healthPromise = client.health();
+    const healthRequest = await waitForSent(0);
+    expect(healthRequest.request.method).toBe('health');
+
+    healthRequest.socket.emit({
+      id: healthRequest.request.id,
+      result: {
+        service: 'hudson-voice',
+        status: 'warming',
+        version: '0.1.0',
+        permissions: { microphone: 'denied' },
+        voxRuntime: { status: 'starting', version: '0.3.3' },
+      },
+    });
+
+    await expect(healthPromise).resolves.toMatchObject({
+      service: 'Hudson',
+      status: 'warming',
+      permissions: { microphone: 'denied' },
+      voxRuntime: {
+        status: 'starting',
+        version: '0.3.3',
+      },
+    });
+
+    const availabilityPromise = client.availability();
+    const availabilityRequest = await waitForSent(1);
+    expect(availabilityRequest.request.method).toBe('health');
+    availabilityRequest.socket.emit({
+      id: availabilityRequest.request.id,
+      result: {
+        status: 'warming',
+        permissions: { microphone: 'denied' },
+      },
+    });
+
+    await expect(availabilityPromise).resolves.toBe('permission-denied');
+  });
+
   it('starts daemon live sessions and stops by emitted session id', async () => {
     resetMockSockets();
     const client = createHudsonVoiceDaemonClient({
@@ -258,7 +304,8 @@ describe('Hudson voice client', () => {
     started.socket.emit({
       id: started.request.id,
       event: 'session.state',
-      data: { sessionId: 'voice_1', state: 'recording' },
+      sessionId: 'voice_1',
+      data: { state: 'recording' },
     });
 
     const session = await startPromise;
@@ -282,13 +329,51 @@ describe('Hudson voice client', () => {
     started.socket.emit({
       id: started.request.id,
       event: 'session.final',
-      data: { sessionId: 'voice_1', text: 'Open the terminal.' },
+      sessionId: 'voice_1',
+      data: { text: 'Open the terminal.' },
     });
     started.socket.emit({ id: started.request.id, result: { sessionId: 'voice_1', text: 'Open the terminal.' } });
 
     await expect(eventsPromise).resolves.toEqual([
-      { event: 'session.state', sessionId: 'voice_1', data: { sessionId: 'voice_1', state: 'recording' } },
-      { event: 'session.final', sessionId: 'voice_1', data: { sessionId: 'voice_1', text: 'Open the terminal.' } },
+      { event: 'session.state', sessionId: 'voice_1', data: { state: 'recording' } },
+      { event: 'session.final', sessionId: 'voice_1', data: { text: 'Open the terminal.' } },
+    ]);
+  });
+
+  it('closes daemon live streams cleanly after a final event', async () => {
+    resetMockSockets();
+    const client = createHudsonVoiceDaemonClient({
+      clientId: 'hudson-web',
+      WebSocket: MockWebSocket as unknown as typeof WebSocket,
+    });
+
+    const startPromise = client.startLiveSession({ surface: 'terminal' });
+    const started = await waitForSent(0);
+    started.socket.emit({
+      id: started.request.id,
+      event: 'session.state',
+      sessionId: 'voice_1',
+      data: { state: 'recording' },
+    });
+
+    const session = await startPromise;
+    const eventsPromise = (async () => {
+      const events = [];
+      for await (const event of session.events) events.push(event);
+      return events;
+    })();
+
+    started.socket.emit({
+      id: started.request.id,
+      event: 'session.final',
+      sessionId: 'voice_1',
+      data: { text: 'Open the terminal.' },
+    });
+    started.socket.close();
+
+    await expect(eventsPromise).resolves.toEqual([
+      { event: 'session.state', sessionId: 'voice_1', data: { state: 'recording' } },
+      { event: 'session.final', sessionId: 'voice_1', data: { text: 'Open the terminal.' } },
     ]);
   });
 });

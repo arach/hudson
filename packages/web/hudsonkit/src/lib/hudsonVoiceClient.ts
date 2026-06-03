@@ -233,6 +233,7 @@ function extractSessionId(event: HudsonVoiceLiveEvent): string | null {
 interface HudsonVoiceDaemonRpcEnvelope {
   id?: unknown;
   event?: unknown;
+  sessionId?: unknown;
   data?: unknown;
   result?: unknown;
   error?: unknown;
@@ -322,12 +323,23 @@ function normalizeDaemonEvent(payload: HudsonVoiceDaemonRpcEnvelope): HudsonVoic
   const data = payload.data && typeof payload.data === 'object'
     ? payload.data as Record<string, unknown>
     : {};
-  const sessionId = typeof data.sessionId === 'string' ? data.sessionId : undefined;
+  const sessionId = typeof payload.sessionId === 'string'
+    ? payload.sessionId
+    : (typeof data.sessionId === 'string' ? data.sessionId : undefined);
   return {
     event: payload.event,
     sessionId,
     data,
   };
+}
+
+function isTerminalVoiceEvent(event: HudsonVoiceLiveEvent): boolean {
+  if (event.event === 'session.final' || event.event === 'session.cancelled' || event.event === 'session.error') {
+    return true;
+  }
+  if (event.event !== 'session.state') return false;
+  const state = event.data && typeof event.data.state === 'string' ? event.data.state : '';
+  return state === 'done' || state === 'cancelled' || state === 'error';
 }
 
 async function callHudsonVoiceDaemonRpc(
@@ -421,21 +433,30 @@ async function callHudsonVoiceDaemonRpc(
 }
 
 function normalizeDaemonHealth(result: Record<string, unknown>): HudsonVoiceHealth {
-  const status: HudsonVoiceDaemonStatus = 'ready';
+  const status: HudsonVoiceDaemonStatus =
+    typeof result.status === 'string' && result.status ? result.status : 'ready';
   const version = typeof result.version === 'string' ? result.version : undefined;
   const pid = typeof result.pid === 'number' ? result.pid : undefined;
   const startedAt = typeof result.startedAt === 'string' ? result.startedAt : undefined;
+  const rawVoxRuntime = result.voxRuntime && typeof result.voxRuntime === 'object'
+    ? result.voxRuntime as Record<string, unknown>
+    : result;
+  const voxStatus = typeof rawVoxRuntime.status === 'string' && rawVoxRuntime.status
+    ? rawVoxRuntime.status
+    : status;
+
   return {
+    ...result,
     service: 'Hudson',
     status,
     version,
     pid,
     startedAt,
     voxRuntime: {
-      status,
-      ...result,
+      status: voxStatus,
+      ...rawVoxRuntime,
     },
-  };
+  } as HudsonVoiceHealth;
 }
 
 async function startHudsonVoiceDaemonLiveSession(
@@ -452,6 +473,7 @@ async function startHudsonVoiceDaemonLiveSession(
   let sessionId: string | null = null;
   let ready = false;
   let manuallyClosing = false;
+  let terminalEventReceived = false;
 
   return new Promise<HudsonVoiceLiveSession>((resolve, reject) => {
     const timer = setTimeout(() => {
@@ -553,6 +575,7 @@ async function startHudsonVoiceDaemonLiveSession(
         const liveEvent = normalizeDaemonEvent(payload);
         if (!liveEvent) return;
         sessionId = sessionId ?? extractSessionId(liveEvent);
+        terminalEventReceived = terminalEventReceived || isTerminalVoiceEvent(liveEvent);
         queue.push(liveEvent);
         if (sessionId || liveEvent.event === 'session.state') resolveReady();
         return;
@@ -567,10 +590,29 @@ async function startHudsonVoiceDaemonLiveSession(
         return;
       }
 
+      const result = payload.result && typeof payload.result === 'object'
+        ? payload.result as Record<string, unknown>
+        : {};
+      if (!sessionId && typeof result.sessionId === 'string' && result.sessionId) {
+        sessionId = result.sessionId;
+      }
+      if (typeof result.text === 'string' && !terminalEventReceived) {
+        const liveEvent: HudsonVoiceLiveEvent = {
+          event: 'session.final',
+          sessionId: sessionId ?? (typeof result.sessionId === 'string' ? result.sessionId : undefined),
+          data: result,
+        };
+        sessionId = sessionId ?? extractSessionId(liveEvent);
+        terminalEventReceived = true;
+        queue.push(liveEvent);
+      }
       resolveReady();
-      cleanupHandlers();
-      queue.close();
-      socket.close();
+      if (terminalEventReceived) {
+        manuallyClosing = true;
+        cleanupHandlers();
+        queue.close();
+        socket.close();
+      }
     };
 
     socket.onerror = () => {
@@ -583,6 +625,11 @@ async function startHudsonVoiceDaemonLiveSession(
 
     socket.onclose = () => {
       if (manuallyClosing) return;
+      if (terminalEventReceived) {
+        cleanupHandlers();
+        queue.close();
+        return;
+      }
       const error = new HudsonVoiceClientError(
         'network_error',
         ready
