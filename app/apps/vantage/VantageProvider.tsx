@@ -95,7 +95,7 @@ export function VantageProvider({
         setSelectedNodeId(next.selectedNodeIDs[0]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to probe Vantage companion.');
+      setError(err instanceof Error ? err.message : 'Failed to probe Hudson app.');
       setPhase('offline');
     }
   }, [disabled, profileId]);
@@ -117,16 +117,16 @@ export function VantageProvider({
       const res = await fetch('/api/services/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId: 'vantage-companion', action: 'start', triggeredBy: 'user' }),
+        body: JSON.stringify({ serviceId: 'hudson-native', action: 'start', triggeredBy: 'user' }),
         signal: AbortSignal.timeout(120_000),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error ?? data.output ?? 'Failed to launch Vantage companion.');
+        throw new Error(data.error ?? data.output ?? 'Failed to launch Hudson app.');
       }
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to launch Vantage companion.');
+      setError(err instanceof Error ? err.message : 'Failed to launch Hudson app.');
     } finally {
       setLaunching(false);
     }

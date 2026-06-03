@@ -1,0 +1,104 @@
+diff --git a/install.md b/install.md
+index b00602b..a81d42d 100644
+--- a/install.md
++++ b/install.md
+@@ -25,6 +25,25 @@ scout doctor
+
+ `scout doctor` verifies that the local broker is installed, reachable, and writing expected support files.
+
++## Companion Host Integrations
++
++The OpenScout CLI and broker are the shared base layer. Host-specific packages
++can then add native commands or MCP surfaces inside the agent tools where you
++already work.
++
++| Host | Package | Install |
++| --- | --- | --- |
++| pi | [Pi Scout](https://github.com/arach/pi-scout) | `pi install git:github.com/arach/pi-scout` |
++| Claude Code | [Claude Scout](https://github.com/arach/claude-scout) | `/plugin marketplace add arach/claude-scout` |
++| Codex | [Codex Scout](https://github.com/arach/codex-scout) | `/plugin marketplace add arach/codex-scout` |
++
++Install these after `scout setup` and `scout doctor` pass. Each companion
++package should use the installed `scout` CLI or the local broker rather than
++vendoring OpenScout internals.
++
++See [docs/integrations.md](./docs/integrations.md) for the current integration
++map, repository links, and sibling-checkout guidance.
++
+ ## Install From This Repo
+
+ ```bash
+diff --git a/landing/public/.well-known/scout.json b/landing/public/.well-known/scout.json
+index 5b4e0bb..4c4d206 100644
+--- a/landing/public/.well-known/scout.json
++++ b/landing/public/.well-known/scout.json
+@@ -116,6 +116,7 @@
+     "architecture": "https://openscout.app/docs/architecture",
+     "agentIdentity": "https://openscout.app/docs/agent-identity",
+     "agentIntegrationContract": "https://openscout.app/docs/agent-integration-contract",
++    "integrations": "https://openscout.app/docs/integrations",
+     "dataOwnership": "https://openscout.app/docs/data-ownership",
+     "operatorAttention": "https://openscout.app/docs/operator-attention-and-unblock",
+     "repository": "https://github.com/arach/openscout"
+@@ -125,6 +126,29 @@
+     "nextSteps": [
+       "scout setup",
+       "scout doctor"
++    ],
++    "companionIntegrations": [
++      {
++        "host": "pi",
++        "name": "Pi Scout",
++        "repository": "https://github.com/arach/pi-scout",
++        "page": "https://arach.github.io/pi-scout/",
++        "install": "pi install git:github.com/arach/pi-scout"
++      },
++      {
++        "host": "Claude Code",
++        "name": "Claude Scout",
++        "repository": "https://github.com/arach/claude-scout",
++        "page": "https://arach.github.io/claude-scout/",
++        "install": "/plugin marketplace add arach/claude-scout"
++      },
++      {
++        "host": "Codex",
++        "name": "Codex Scout",
++        "repository": "https://github.com/arach/codex-scout",
++        "page": "https://arach.github.io/codex-scout/",
++        "install": "/plugin marketplace add arach/codex-scout"
++      }
+     ]
+   }
+ }
+diff --git a/landing/public/install.md b/landing/public/install.md
+index 5d27705..b816e30 100644
+--- a/landing/public/install.md
++++ b/landing/public/install.md
+@@ -23,6 +23,19 @@ scout doctor
+
+ `scout doctor` verifies that the local broker is installed and reachable.
+
++## Companion Host Integrations
++
++Install OpenScout first, then add the host package for the tool you use:
++
++| Host | Package | Install |
++| --- | --- | --- |
++| pi | [Pi Scout](https://github.com/arach/pi-scout) | `pi install git:github.com/arach/pi-scout` |
++| Claude Code | [Claude Scout](https://github.com/arach/claude-scout) | `/plugin marketplace add arach/claude-scout` |
++| Codex | [Codex Scout](https://github.com/arach/codex-scout) | `/plugin marketplace add arach/codex-scout` |
++
++These packages stay installable on their own while sharing the same Scout CLI,
++broker, and protocol surface.
++
+ ## Success Criteria
+
+ - `scout --help` prints the CLI help.
+@@ -51,6 +64,7 @@ Routing rules:
+ ## Related
+
+ - [Documentation root](/docs)
++- [Host integrations](/docs/integrations)
+ - [Current posture](/docs/current-posture)
+ - [Agent integration contract](/docs/agent-integration-contract)
+ - [Full LLM context](/llms-full.txt)

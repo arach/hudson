@@ -65,36 +65,19 @@ async function markClientEntries() {
   }));
 }
 
-export default defineConfig([
-  {
-    entry: clientEntries,
-    format: ['esm'],
-    dts: true,
-    splitting: true,
-    treeshake: true,
-    clean: true,
-    outDir: 'dist',
-    external: sharedExternal,
-    onSuccess: markClientEntries,
-  },
-  {
-    // Server-safe entry: no 'use client' banner, no shared chunks with the
-    // client bundle, so it can be imported from React Server Components.
-    entry: {
-      'theme-script': 'src/theme-script.ts',
-    },
-    format: ['esm'],
-    dts: true,
-    splitting: false,
-    treeshake: true,
-    clean: false,
-    outDir: 'dist',
-    external: sharedExternal,
-  },
-]);
+export default defineConfig({
+  entry: clientEntries,
+  format: ['esm'],
+  dts: true,
+  splitting: true,
+  treeshake: true,
+  clean: true,
+  outDir: 'dist',
+  external: sharedExternal,
+  onSuccess: markClientEntries,
+});
 
-// Note: the Node-only `hudsonkit/server` entry (HUD-008) is built by a separate
-// tsup invocation against `tsup.server.config.ts`. Running it together with the
+// Note: server-safe entries (`hudsonkit/theme-script`, `hudsonkit/server`) are
+// built by separate tsup invocations. Running them together with the
 // client entry config causes tsup's DTS bundler to clobber outputs across
-// configs, so the server build is sequenced after the main build via the
-// `build:js` script.
+// configs, so they are sequenced after the main build via the `build:js` script.

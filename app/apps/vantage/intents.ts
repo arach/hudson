@@ -4,14 +4,14 @@ export const vantageIntents: AppIntent[] = [
   {
     commandId: 'vantage:refresh',
     title: 'Refresh Vantage Status',
-    description: 'Probe the native Vantage companion and reload workspace node summaries.',
+    description: 'Probe the native Hudson app and reload workspace node summaries.',
     category: 'view',
     keywords: ['vantage', 'status', 'refresh', 'companion', 'workspace'],
   },
   {
     commandId: 'vantage:launch-companion',
-    title: 'Launch Vantage Companion',
-    description: 'Start the native macOS Vantage menubar companion from Hudson.',
+    title: 'Launch Hudson App',
+    description: 'Start the native macOS Hudson app from Hudson Web.',
     category: 'workspace',
     keywords: ['vantage', 'launch', 'companion', 'menubar', 'native'],
   },

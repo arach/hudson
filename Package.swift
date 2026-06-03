@@ -13,6 +13,7 @@ var products: [Product] = [
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
+    .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
@@ -44,6 +45,11 @@ var targets: [Target] = [
         path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
     ),
     .target(
+        name: "HudsonUICapture",
+        dependencies: ["HudsonUI"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonUICapture"
+    ),
+    .target(
         name: "HudsonWorkflow",
         dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"],
         path: "packages/native/apple/HudsonKit/Sources/HudsonWorkflow"
@@ -71,11 +77,17 @@ var targets: [Target] = [
 ]
 
 if voiceEnabled {
+    // Vox = embeddable Parakeet engine (on-device download + execution).
+    dependencies.append(.package(name: "Vox", path: "../vox/swift"))
     products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
         .target(
             name: "HudsonVoice",
-            dependencies: ["HudsonUI", "HudsonObservability"],
+            dependencies: [
+                "HudsonUI",
+                "HudsonObservability",
+                .product(name: "VoxEngine", package: "Vox"),
+            ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
         )
     )

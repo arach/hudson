@@ -211,7 +211,7 @@ final class HudVantageControlScriptTests: XCTestCase {
     private var controlScriptPaths: [String] {
         [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "apps/vantage/scripts/vantagectl.sh",
+            "apps/hudson/scripts/vantagectl.sh",
         ]
     }
 

@@ -94,9 +94,18 @@ var targets: [Target] = [
 ]
 
 if voiceEnabled {
+    // Vox = embeddable Parakeet engine (on-device download + execution).
+    dependencies.append(.package(name: "Vox", path: "../../../../../vox/swift"))
     products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
-        .target(name: "HudsonVoice", dependencies: ["HudsonUI", "HudsonObservability"])
+        .target(
+            name: "HudsonVoice",
+            dependencies: [
+                "HudsonUI",
+                "HudsonObservability",
+                .product(name: "VoxEngine", package: "Vox"),
+            ]
+        )
     )
     demoDependencies.append("HudsonVoice")
     demoSwiftSettings.append(.define("HUDSON_VOICE"))

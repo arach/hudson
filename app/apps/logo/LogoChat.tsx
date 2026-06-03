@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useMemo, useRef, useState, type FormEvent, type KeyboardEvent } from 'react';
 import { isToolUIPart, getToolName } from 'ai';
-import { AlertCircle, ArrowUpRight, Check, ChevronDown, ChevronRight, Copy, Loader2, Mic, Paperclip, Settings, Square, Trash2 } from 'lucide-react';
+import { AlertCircle, ArrowUpRight, Camera, Check, ChevronDown, ChevronRight, Copy, Loader2, Mic, Paperclip, Settings, Square, Trash2, X } from 'lucide-react';
 import { useVoiceInput } from 'hudsonkit/voice';
+import { captureWorkspace } from 'hudsonkit';
 import { useLogo } from './LogoProvider';
 import type { LogoTemplate } from './types';
 
@@ -47,6 +48,12 @@ function LogoChatSurface({
   const [input, setInput] = useState('');
   const inputRef = useRef<HTMLInputElement>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
+  // Pending workspace screenshot — captured on Camera click, attached to the
+  // next send, then cleared. Stored as a data URL so it survives a remount and
+  // can be passed straight to chat.sendMessage as a FileUIPart.
+  const [pendingShot, setPendingShot] = useState<{ url: string; sizeKb: number } | null>(null);
+  const [shotError, setShotError] = useState<string | null>(null);
+  const [capturing, setCapturing] = useState(false);
   const {
     messages, stop, status, clearChat, error,
     attachments, activeAttachments, toggleAttachment,
@@ -110,12 +117,47 @@ function LogoChatSurface({
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
+  const handleCaptureShot = useCallback(async () => {
+    if (capturing || isStreaming) return;
+    setCapturing(true);
+    setShotError(null);
+    try {
+      const blob = await captureWorkspace();
+      if (!blob) {
+        setShotError('Capture returned empty');
+        return;
+      }
+      const dataUrl: string = await new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = () => resolve(reader.result as string);
+        reader.onerror = () => reject(reader.error ?? new Error('FileReader failed'));
+        reader.readAsDataURL(blob);
+      });
+      setPendingShot({ url: dataUrl, sizeKb: Math.round(blob.size / 1024) });
+    } catch (err) {
+      setShotError(err instanceof Error ? err.message : 'Capture failed');
+    } finally {
+      setCapturing(false);
+    }
+  }, [capturing, isStreaming]);
+
+  const clearPendingShot = useCallback(() => {
+    setPendingShot(null);
+    setShotError(null);
+  }, []);
+
   const onSubmit = (e: FormEvent | KeyboardEvent) => {
     e.preventDefault();
     const text = input.trim();
     if (!text || isStreaming) return;
-    sendAiMessage(text, { action: 'logo.chat', label: 'Logo chat', surface: 'logo-chat' });
+    sendAiMessage(text, {
+      action: 'logo.chat',
+      label: 'Logo chat',
+      surface: 'logo-chat',
+      files: pendingShot ? [{ mediaType: 'image/jpeg', url: pendingShot.url, filename: 'workspace.jpg' }] : undefined,
+    });
     setInput('');
+    if (pendingShot) clearPendingShot();
   };
 
   const onKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
@@ -203,6 +245,35 @@ function LogoChatSurface({
             <span className="truncate">{voiceStatusText}</span>
           </div>
         )}
+        {(pendingShot || shotError) && (
+          <div className={`mb-2 flex items-center gap-2 rounded-md border px-2 py-1 text-[10px] ${
+            shotError
+              ? 'border-warning/30 bg-warning/10 text-warning'
+              : 'border-info/25 bg-info/[0.05] text-info'
+          }`}>
+            {pendingShot && (
+              // eslint-disable-next-line @next/next/no-img-element -- data URL preview, no benefit from next/image
+              <img
+                src={pendingShot.url}
+                alt="Pending screenshot"
+                className="h-7 w-10 object-cover rounded border border-border/50"
+              />
+            )}
+            <Camera size={11} className={shotError ? 'text-warning' : 'text-info'} />
+            <span className="truncate flex-1">
+              {shotError ?? `Screenshot ready · ${pendingShot?.sizeKb}kb — attaches to next message`}
+            </span>
+            <button
+              type="button"
+              onClick={clearPendingShot}
+              className="shrink-0 p-0.5 rounded hover:bg-muted/40 text-muted-foreground/80 hover:text-foreground transition-colors"
+              title="Discard screenshot"
+              aria-label="Discard screenshot"
+            >
+              <X size={10} />
+            </button>
+          </div>
+        )}
         <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 focus-within:border-accent/40 transition-colors">
           {messages.length > 0 && (
             <button
@@ -227,6 +298,20 @@ function LogoChatSurface({
             aria-label={voiceButtonTitle}
           >
             <Mic size={12} />
+          </button>
+          <button
+            type="button"
+            onClick={handleCaptureShot}
+            disabled={capturing || isStreaming}
+            className={`p-1 rounded transition-colors shrink-0 ${
+              pendingShot
+                ? 'text-info bg-info/10 hover:bg-info/15'
+                : 'text-muted-foreground/80 hover:text-info hover:bg-muted disabled:opacity-30 disabled:cursor-not-allowed'
+            }`}
+            title={pendingShot ? 'Replace pending screenshot' : 'Attach a workspace screenshot to the next message'}
+            aria-label="Capture workspace screenshot"
+          >
+            {capturing ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
           </button>
           <input
             ref={inputRef}

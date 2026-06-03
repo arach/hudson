@@ -29,6 +29,10 @@ export interface ObjectCodeSurfaceProps {
   className?: string;
   emptyMessage?: string;
   headerActions?: React.ReactNode;
+  /** Width in px for the 'sheet' placement. Ignored for other placements. */
+  width?: number;
+  /** Called when the user drags the sheet's left-edge resize handle. */
+  onWidthChange?: (width: number) => void;
 }
 
 export interface ObjectCodeWorkbenchProps {
@@ -48,6 +52,9 @@ const EDITOR_MIN_WIDTH = 280;
 const EDITOR_MAX_WIDTH = 920;
 const CHAT_MIN_WIDTH = 240;
 const CHAT_MAX_WIDTH = 560;
+const SHEET_MIN_WIDTH = 360;
+const SHEET_MAX_WIDTH = 1200;
+const SHEET_DEFAULT_WIDTH = 720;
 
 function clamp(value: number, min: number, max: number) {
   if (max < min) return min;
@@ -59,7 +66,7 @@ function placementClass(placement: HudsonCodeSurfacePlacement) {
     return 'h-full min-h-0 border-r border-border/70 bg-background/96';
   }
   if (placement === 'sheet') {
-    return 'h-full w-[min(48vw,720px)] min-w-[360px] max-w-[760px] border-l border-border/70 bg-background/94 shadow-2xl shadow-foreground/12';
+    return 'relative h-full border-l border-border/70 bg-background/94 shadow-2xl shadow-foreground/12';
   }
   if (placement === 'inspector') {
     return 'h-full min-h-0 border-y border-border/60 bg-card/82';
@@ -77,11 +84,46 @@ export function ObjectCodeSurface({
   className,
   emptyMessage = 'Select an object to view its code.',
   headerActions,
+  width,
+  onWidthChange,
 }: ObjectCodeSurfaceProps) {
   const [value, setValue] = useState(object?.document.value ?? '');
   const [pending, setPending] = useState<'save' | 'fork' | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [localSheetWidth, setLocalSheetWidth] = useState(width ?? SHEET_DEFAULT_WIDTH);
+  const resolvedSheetWidth = clamp(width ?? localSheetWidth, SHEET_MIN_WIDTH, SHEET_MAX_WIDTH);
+  const commitSheetWidth = onWidthChange ?? setLocalSheetWidth;
   const objectId = object?.id ?? null;
+
+  const handleSheetResizeStart = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    const startX = event.clientX;
+    const startWidth = resolvedSheetWidth;
+    // `document` is shadowed by a local `const document = useMemo(...)` below,
+    // so we go through `window.document` to reach the body element.
+    const body = window.document.body;
+    const previousCursor = body.style.cursor;
+    const previousUserSelect = body.style.userSelect;
+
+    const handleMove = (moveEvent: MouseEvent) => {
+      // Handle sits on the LEFT edge of a right-anchored sheet, so dragging
+      // left grows the sheet and dragging right shrinks it.
+      const next = clamp(startWidth - (moveEvent.clientX - startX), SHEET_MIN_WIDTH, SHEET_MAX_WIDTH);
+      commitSheetWidth(Math.round(next));
+    };
+
+    const handleUp = () => {
+      body.style.cursor = previousCursor;
+      body.style.userSelect = previousUserSelect;
+      window.removeEventListener('mousemove', handleMove);
+      window.removeEventListener('mouseup', handleUp);
+    };
+
+    body.style.cursor = 'col-resize';
+    body.style.userSelect = 'none';
+    window.addEventListener('mousemove', handleMove);
+    window.addEventListener('mouseup', handleUp);
+  }, [commitSheetWidth, resolvedSheetWidth]);
 
   useEffect(() => {
     setValue(object?.document.value ?? '');
@@ -139,10 +181,22 @@ export function ObjectCodeSurface({
     placementClass(placement),
     className ?? '',
   ].join(' ');
+  const isSheet = placement === 'sheet';
+  const sheetStyle = isSheet ? { width: resolvedSheetWidth } : undefined;
+  const sheetResizeHandle = isSheet ? (
+    <div
+      role="separator"
+      aria-orientation="vertical"
+      aria-label="Resize code sheet"
+      onMouseDown={handleSheetResizeStart}
+      className="absolute left-0 top-0 z-10 h-full w-1.5 -translate-x-1/2 cursor-col-resize bg-transparent transition-colors hover:bg-cyan-700/20 dark:hover:bg-cyan-300/20"
+    />
+  ) : null;
 
   if (!object || !document) {
     return (
-      <aside className={containerClass} data-hudson-code-surface={placement}>
+      <aside className={containerClass} style={sheetStyle} data-hudson-code-surface={placement}>
+        {sheetResizeHandle}
         <div className="flex h-full items-center justify-center p-6 text-center font-mono text-[11px] text-muted-foreground">
           {emptyMessage}
         </div>
@@ -156,7 +210,8 @@ export function ObjectCodeSurface({
     ?? (canFork ? 'This object is protected. Fork it to edit a copy.' : 'This object is read only.');
 
   return (
-    <aside className={containerClass} data-hudson-code-surface={placement}>
+    <aside className={containerClass} style={sheetStyle} data-hudson-code-surface={placement}>
+      {sheetResizeHandle}
       <div className="flex shrink-0 items-center gap-2 border-b border-border/70 bg-card/76 px-3 py-2">
         <span className="flex shrink-0 items-center justify-center">{icon}</span>
         <div className="min-w-0 flex-1">
@@ -247,7 +302,7 @@ export function ObjectCodeWorkbench({
   onChatWidthChange,
   className,
 }: ObjectCodeWorkbenchProps) {
-  const [chatOpen, setChatOpen] = useState(Boolean(chat));
+  const [chatOpen, setChatOpen] = useState(false);
   const [localEditorWidth, setLocalEditorWidth] = useState(editorWidth ?? 420);
   const [localChatWidth, setLocalChatWidth] = useState(chatWidth ?? 320);
   const resolvedEditorWidth = editorWidth ?? localEditorWidth;

@@ -23,7 +23,7 @@ export function useVantageCommands(): CommandOption[] {
     },
     {
       id: 'vantage:launch-companion',
-      label: 'Launch Vantage Companion',
+      label: 'Launch Hudson App',
       action: () => void launchCompanion(),
       section: 'Vantage',
     },

@@ -1,0 +1,418 @@
+diff --git a/landing/public/llms-full.txt b/landing/public/llms-full.txt
+index 7a9bb2c..bf1448c 100644
+--- a/landing/public/llms-full.txt
++++ b/landing/public/llms-full.txt
+@@ -15,6 +15,7 @@ Current posture: OpenScout is for high-trust local developer pilots. It is not e
+ - `docs/architecture.md`
+ - `docs/data-ownership.md`
+ - `docs/agent-integration-contract.md`
++- `docs/integrations.md`
+ - `docs/agent-identity.md`
+ - `docs/collaboration-workflows-v1.md`
+ - `docs/operator-attention-and-unblock.md`
+@@ -113,6 +114,10 @@ This repository is the active Scout product codebase. The main path through it i
+ - `packages/protocol` for shared contracts and identity grammar
+ - `packages/cli` for the public `@openscout/scout` package that installs `scout`
+
++Host-specific integrations can live beside this repo when they are independently
++installable packages. See [`docs/integrations.md`](./docs/integrations.md) for
++the current pi, Claude Code, and Codex integration map.
++
+ ## Start Here
+
+ If you are new to the docs, start with [`docs/README.md`](./docs/README.md) for the reading order. The shortest newcomer path is [`docs/quickstart.md`](./docs/quickstart.md), then [`docs/current-posture.md`](./docs/current-posture.md), then [`docs/architecture.md`](./docs/architecture.md), then [`docs/agent-identity.md`](./docs/agent-identity.md).
+@@ -142,6 +147,9 @@ At the repo level, Scout is organized around one product path:
+ - `apps/desktop` and `apps/ios` own the human-facing surfaces
+ - `packages/runtime` and `packages/protocol` are the shared broker/runtime foundation
+ - `packages/cli` is the public npm package; the other packages stay as private internal boundaries
++- host plugins and extensions are documented in [`docs/integrations.md`](./docs/integrations.md);
++  separate repos are linked rather than vendored unless the integration needs
++  to build with OpenScout internals
+
+ ## Getting Started
+
+@@ -250,6 +258,25 @@ scout doctor
+
+ `scout doctor` verifies that the local broker is installed, reachable, and writing expected support files.
+
++## Companion Host Integrations
++
++The OpenScout CLI and broker are the shared base layer. Host-specific packages
++can then add native commands or MCP surfaces inside the agent tools where you
++already work.
++
++| Host | Package | Install |
++| --- | --- | --- |
++| pi | [Pi Scout](https://github.com/arach/pi-scout) | `pi install git:github.com/arach/pi-scout` |
++| Claude Code | [Claude Scout](https://github.com/arach/claude-scout) | `/plugin marketplace add arach/claude-scout` |
++| Codex | [Codex Scout](https://github.com/arach/codex-scout) | `/plugin marketplace add arach/codex-scout` |
++
++Install these after `scout setup` and `scout doctor` pass. Each companion
++package should use the installed `scout` CLI or the local broker rather than
++vendoring OpenScout internals.
++
++See [docs/integrations.md](./docs/integrations.md) for the current integration
++map, repository links, and sibling-checkout guidance.
++
+ ## Install From This Repo
+
+ ```bash
+@@ -347,14 +374,15 @@ If you want the shortest path to understanding the project:
+ 4. [`architecture.md`](./architecture.md) for the system-level control-plane model
+ 5. [`data-ownership.md`](./data-ownership.md) for what Scout owns, observes, and intentionally does not import
+ 6. [`agent-integration-contract.md`](./agent-integration-contract.md) for the minimum contract expected from agents and adapters
+-7. [`glossary.md`](./glossary.md) for the definitive Scout vocabulary
+-8. [`ranger.md`](./ranger.md) for the preferred top-level orchestration agent contract
+-9. [`a2a-alignment.md`](./a2a-alignment.md) for Scout's A2A positioning and term mapping
+-10. [`agent-identity.md`](./agent-identity.md) for how agent names stay unambiguous
+-11. [`ask-scout.md`](./ask-scout.md) for the human-facing ask flow over the same system
+-12. [`collaboration-workflows-v1.md`](./collaboration-workflows-v1.md) for the current workflow semantics above messages and invocations
+-13. [`scout-agent-delegation.md`](./scout-agent-delegation.md) for the intended DM and actor-preservation pattern for one-to-one agent handoffs
+-14. [`eng/sco-015-pi-scout-integration.md`](../docs/eng/sco-015-pi-scout-integration.md) for the pi extension that makes Scout coordination native to pi sessions
++7. [`integrations.md`](./integrations.md) for the current host integration map and sibling repository policy
++8. [`glossary.md`](./glossary.md) for the definitive Scout vocabulary
++9. [`ranger.md`](./ranger.md) for the preferred top-level orchestration agent contract
++10. [`a2a-alignment.md`](./a2a-alignment.md) for Scout's A2A positioning and term mapping
++11. [`agent-identity.md`](./agent-identity.md) for how agent names stay unambiguous
++12. [`ask-scout.md`](./ask-scout.md) for the human-facing ask flow over the same system
++13. [`collaboration-workflows-v1.md`](./collaboration-workflows-v1.md) for the current workflow semantics above messages and invocations
++14. [`scout-agent-delegation.md`](./scout-agent-delegation.md) for the intended DM and actor-preservation pattern for one-to-one agent handoffs
++15. [`eng/sco-015-pi-scout-integration.md`](../docs/eng/sco-015-pi-scout-integration.md) for the pi extension that makes Scout coordination native to pi sessions
+
+ ## Current Orientation Docs
+
+@@ -365,6 +393,7 @@ If you want the shortest path to understanding the project:
+ - [`architecture.md`](./architecture.md) explains the broker-first system shape and the main control-plane terms
+ - [`data-ownership.md`](./data-ownership.md) defines the boundary between Scout-owned coordination state and observed harness source material
+ - [`agent-integration-contract.md`](./agent-integration-contract.md) gives coding agents and adapter authors the minimum contract for plugging into Scout
++- [`integrations.md`](./integrations.md) maps host-specific Scout integrations and explains why they are linked rather than vendored by default
+ - [`glossary.md`](./glossary.md) defines the canonical meanings of Scout's core nouns
+ - [`ranger.md`](./ranger.md) defines Ranger as the preferred Codex-backed orchestration agent
+ - [`a2a-alignment.md`](./a2a-alignment.md) explains where Scout intentionally aligns with A2A and where it does not
+@@ -401,6 +430,7 @@ If you want the shortest path to understanding the project:
+ - "What data does Scout own?" Read [`data-ownership.md`](./data-ownership.md).
+ - "Is this enterprise-ready?" Read [`current-posture.md`](./current-posture.md).
+ - "How should an agent integrate?" Read [`agent-integration-contract.md`](./agent-integration-contract.md).
++- "Where do host plugins live?" Read [`integrations.md`](./integrations.md).
+ - "What exactly do Scout's core terms mean?" Read [`glossary.md`](./glossary.md).
+ - "What is Ranger?" Read [`ranger.md`](./ranger.md).
+ - "How does Scout relate to A2A?" Read [`a2a-alignment.md`](./a2a-alignment.md).
+@@ -881,12 +911,16 @@ These records are broker-owned facts. They can be persisted, replayed, projected
+ Scout observes external harness source material:
+
+ - Claude Code transcript JSONL
++- Claude Code team, task, subagent, and session topology when available
+ - Codex session JSONL
++- Codex subagent, thread, and custom-agent topology when available
+ - harness-specific logs, turn streams, and file-backed history
+ - process and filesystem signals that help explain what is running now
+
+ These sources are not Scout-owned conversation state. Scout may discover them, tail them, summarize them, link to them, index lightweight metadata, or expose live views over them. Scout should not bulk-copy external transcript turns into its control-plane database and treat them as first-party messages.
+
++For harness-owned ecosystems such as Claude Code's `.claude` files, the boundary is stricter than "do not bulk-import": adapters should not write there at all. They may inspect what the harness exposes locally, but creating or modifying harness agents, teams, task lists, or MCP settings is outside adapter runtime behavior. Any host setup that changes a harness configuration must be an explicit operator action, not something an adapter does while observing or driving a session.
++
+ ## Current Posture
+
+ The intentional split today is:
+@@ -904,7 +938,8 @@ If a surface needs raw harness detail, it should prefer the original harness mat
+ 2. Do not persist every observed harness turn as a Scout `message`.
+ 3. Do persist Scout-originated and Scout-routed coordination records.
+ 4. Do use lightweight metadata, cursors, summaries, and links when external source material needs to appear in Scout surfaces.
+-5. Do keep the boundary visible in docs and APIs: `message` means a Scout conversation record, while `TailEvent` means an observed harness event.
++5. Do not let adapters mutate harness-owned ecosystems such as Claude Code's `.claude` state.
++6. Do keep the boundary visible in docs and APIs: `message` means a Scout conversation record, while `TailEvent` means an observed harness event.
+
+ This is an intentional product and architecture boundary, not just a current implementation shortcut. Scout may grow better indexing and replay tools over time, but those should preserve the distinction between owned coordination state and observed harness source material.
+
+@@ -1037,7 +1072,10 @@ Scout-owned records are coordination facts: messages, invocations, flights, deli
+
+ Integrations may link to, tail, summarize, or index lightweight metadata from harness logs. They should not make Scout's control-plane database the canonical transcript warehouse for every external turn.
+
++Adapters must not write into a harness-owned ecosystem. For Claude Code, that means `.claude` project state, subagent definitions, agent-team config, task files, and MCP settings are read-only observation surfaces for adapters. Scout can inspect those surfaces to model reachability and topology when the harness makes them available, but it must not author or repair them on Claude's behalf. Host setup commands that intentionally install Scout into a harness are separate, explicit operator actions, never adapter runtime behavior.
++
+ Read [`data-ownership.md`](./data-ownership.md).
++Read [`eng/harness-topology-observation.md`](./eng/harness-topology-observation.md) for the shared observed-topology shape.
+
+ ## Mesh Expectations
+
+@@ -1064,6 +1102,71 @@ Before calling an integration "Scout-native", verify:
+
+ ---
+
++## docs/integrations.md
++
++<!-- BEGIN docs/integrations.md -->
++
++# Host Integrations
++
++OpenScout's core broker, runtime, protocol, CLI, desktop app, and mobile app live
++in this repository. Host-specific integrations can live beside this repo when
++they are independently installable packages for another host's plugin or
++extension system.
++
++This keeps the OpenScout root focused on the product control plane while still
++making the integration surface discoverable.
++
++## Current Integrations
++
++| Host | Repository | Page | Purpose |
++| --- | --- | --- | --- |
++| pi | [`arach/pi-scout`](https://github.com/arach/pi-scout) | [`arach.github.io/pi-scout`](https://arach.github.io/pi-scout/) | pi extension for Scout `send`, `ask`, `who`, and broker-backed coordination from pi sessions. |
++| Claude Code | [`arach/claude-scout`](https://github.com/arach/claude-scout) | [`arach.github.io/claude-scout`](https://arach.github.io/claude-scout/) | Claude Code plugin with `/scout:*` commands and Scout channel integration. |
++| Codex | [`arach/codex-scout`](https://github.com/arach/codex-scout) | [`arach.github.io/codex-scout`](https://arach.github.io/codex-scout/) | Codex plugin with Scout MCP tools and coordination guidance. |
++
++## Relationship To This Repo
++
++Use links and install docs rather than git submodules by default.
++
++Submodules are useful when this repo must build, test, or vendor another
++repository at an exact commit. The current Scout host integrations do not need
++that coupling: they shell out to the installed `scout` CLI or talk to the local
++broker, and their compatibility boundary is the published Scout protocol and CLI
++behavior.
++
++Keep integration source in a separate repository when:
++
++- the host has its own plugin marketplace or install flow
++- the integration can be installed without cloning OpenScout
++- the package should have its own release cadence
++- the integration depends on Scout's public CLI/protocol surface rather than
++  private app internals
++
++Keep integration source in this repository when:
++
++- it depends on unreleased internal code
++- it is still shaping the core protocol or broker API
++- local product development needs cross-package changes in one commit
++
++## Local Development
++
++Recommended sibling checkout layout:
++
++```text
++~/dev/
++├── openscout/
++├── pi-scout/
++├── claude-scout/
++└── codex-scout/
++```
++
++That layout keeps the product repo clean while making related host integrations
++easy to work on side by side.
++
++<!-- END docs/integrations.md -->
++
++---
++
+ ## docs/agent-identity.md
+
+ <!-- BEGIN docs/agent-identity.md -->
+diff --git a/llms-full.txt b/llms-full.txt
+index 7a9bb2c..bf1448c 100644
+--- a/llms-full.txt
++++ b/llms-full.txt
+@@ -15,6 +15,7 @@ Current posture: OpenScout is for high-trust local developer pilots. It is not e
+ - `docs/architecture.md`
+ - `docs/data-ownership.md`
+ - `docs/agent-integration-contract.md`
++- `docs/integrations.md`
+ - `docs/agent-identity.md`
+ - `docs/collaboration-workflows-v1.md`
+ - `docs/operator-attention-and-unblock.md`
+@@ -113,6 +114,10 @@ This repository is the active Scout product codebase. The main path through it i
+ - `packages/protocol` for shared contracts and identity grammar
+ - `packages/cli` for the public `@openscout/scout` package that installs `scout`
+
++Host-specific integrations can live beside this repo when they are independently
++installable packages. See [`docs/integrations.md`](./docs/integrations.md) for
++the current pi, Claude Code, and Codex integration map.
++
+ ## Start Here
+
+ If you are new to the docs, start with [`docs/README.md`](./docs/README.md) for the reading order. The shortest newcomer path is [`docs/quickstart.md`](./docs/quickstart.md), then [`docs/current-posture.md`](./docs/current-posture.md), then [`docs/architecture.md`](./docs/architecture.md), then [`docs/agent-identity.md`](./docs/agent-identity.md).
+@@ -142,6 +147,9 @@ At the repo level, Scout is organized around one product path:
+ - `apps/desktop` and `apps/ios` own the human-facing surfaces
+ - `packages/runtime` and `packages/protocol` are the shared broker/runtime foundation
+ - `packages/cli` is the public npm package; the other packages stay as private internal boundaries
++- host plugins and extensions are documented in [`docs/integrations.md`](./docs/integrations.md);
++  separate repos are linked rather than vendored unless the integration needs
++  to build with OpenScout internals
+
+ ## Getting Started
+
+@@ -250,6 +258,25 @@ scout doctor
+
+ `scout doctor` verifies that the local broker is installed, reachable, and writing expected support files.
+
++## Companion Host Integrations
++
++The OpenScout CLI and broker are the shared base layer. Host-specific packages
++can then add native commands or MCP surfaces inside the agent tools where you
++already work.
++
++| Host | Package | Install |
++| --- | --- | --- |
++| pi | [Pi Scout](https://github.com/arach/pi-scout) | `pi install git:github.com/arach/pi-scout` |
++| Claude Code | [Claude Scout](https://github.com/arach/claude-scout) | `/plugin marketplace add arach/claude-scout` |
++| Codex | [Codex Scout](https://github.com/arach/codex-scout) | `/plugin marketplace add arach/codex-scout` |
++
++Install these after `scout setup` and `scout doctor` pass. Each companion
++package should use the installed `scout` CLI or the local broker rather than
++vendoring OpenScout internals.
++
++See [docs/integrations.md](./docs/integrations.md) for the current integration
++map, repository links, and sibling-checkout guidance.
++
+ ## Install From This Repo
+
+ ```bash
+@@ -347,14 +374,15 @@ If you want the shortest path to understanding the project:
+ 4. [`architecture.md`](./architecture.md) for the system-level control-plane model
+ 5. [`data-ownership.md`](./data-ownership.md) for what Scout owns, observes, and intentionally does not import
+ 6. [`agent-integration-contract.md`](./agent-integration-contract.md) for the minimum contract expected from agents and adapters
+-7. [`glossary.md`](./glossary.md) for the definitive Scout vocabulary
+-8. [`ranger.md`](./ranger.md) for the preferred top-level orchestration agent contract
+-9. [`a2a-alignment.md`](./a2a-alignment.md) for Scout's A2A positioning and term mapping
+-10. [`agent-identity.md`](./agent-identity.md) for how agent names stay unambiguous
+-11. [`ask-scout.md`](./ask-scout.md) for the human-facing ask flow over the same system
+-12. [`collaboration-workflows-v1.md`](./collaboration-workflows-v1.md) for the current workflow semantics above messages and invocations
+-13. [`scout-agent-delegation.md`](./scout-agent-delegation.md) for the intended DM and actor-preservation pattern for one-to-one agent handoffs
+-14. [`eng/sco-015-pi-scout-integration.md`](../docs/eng/sco-015-pi-scout-integration.md) for the pi extension that makes Scout coordination native to pi sessions
++7. [`integrations.md`](./integrations.md) for the current host integration map and sibling repository policy
++8. [`glossary.md`](./glossary.md) for the definitive Scout vocabulary
++9. [`ranger.md`](./ranger.md) for the preferred top-level orchestration agent contract
++10. [`a2a-alignment.md`](./a2a-alignment.md) for Scout's A2A positioning and term mapping
++11. [`agent-identity.md`](./agent-identity.md) for how agent names stay unambiguous
++12. [`ask-scout.md`](./ask-scout.md) for the human-facing ask flow over the same system
++13. [`collaboration-workflows-v1.md`](./collaboration-workflows-v1.md) for the current workflow semantics above messages and invocations
++14. [`scout-agent-delegation.md`](./scout-agent-delegation.md) for the intended DM and actor-preservation pattern for one-to-one agent handoffs
++15. [`eng/sco-015-pi-scout-integration.md`](../docs/eng/sco-015-pi-scout-integration.md) for the pi extension that makes Scout coordination native to pi sessions
+
+ ## Current Orientation Docs
+
+@@ -365,6 +393,7 @@ If you want the shortest path to understanding the project:
+ - [`architecture.md`](./architecture.md) explains the broker-first system shape and the main control-plane terms
+ - [`data-ownership.md`](./data-ownership.md) defines the boundary between Scout-owned coordination state and observed harness source material
+ - [`agent-integration-contract.md`](./agent-integration-contract.md) gives coding agents and adapter authors the minimum contract for plugging into Scout
++- [`integrations.md`](./integrations.md) maps host-specific Scout integrations and explains why they are linked rather than vendored by default
+ - [`glossary.md`](./glossary.md) defines the canonical meanings of Scout's core nouns
+ - [`ranger.md`](./ranger.md) defines Ranger as the preferred Codex-backed orchestration agent
+ - [`a2a-alignment.md`](./a2a-alignment.md) explains where Scout intentionally aligns with A2A and where it does not
+@@ -401,6 +430,7 @@ If you want the shortest path to understanding the project:
+ - "What data does Scout own?" Read [`data-ownership.md`](./data-ownership.md).
+ - "Is this enterprise-ready?" Read [`current-posture.md`](./current-posture.md).
+ - "How should an agent integrate?" Read [`agent-integration-contract.md`](./agent-integration-contract.md).
++- "Where do host plugins live?" Read [`integrations.md`](./integrations.md).
+ - "What exactly do Scout's core terms mean?" Read [`glossary.md`](./glossary.md).
+ - "What is Ranger?" Read [`ranger.md`](./ranger.md).
+ - "How does Scout relate to A2A?" Read [`a2a-alignment.md`](./a2a-alignment.md).
+@@ -881,12 +911,16 @@ These records are broker-owned facts. They can be persisted, replayed, projected
+ Scout observes external harness source material:
+
+ - Claude Code transcript JSONL
++- Claude Code team, task, subagent, and session topology when available
+ - Codex session JSONL
++- Codex subagent, thread, and custom-agent topology when available
+ - harness-specific logs, turn streams, and file-backed history
+ - process and filesystem signals that help explain what is running now
+
+ These sources are not Scout-owned conversation state. Scout may discover them, tail them, summarize them, link to them, index lightweight metadata, or expose live views over them. Scout should not bulk-copy external transcript turns into its control-plane database and treat them as first-party messages.
+
++For harness-owned ecosystems such as Claude Code's `.claude` files, the boundary is stricter than "do not bulk-import": adapters should not write there at all. They may inspect what the harness exposes locally, but creating or modifying harness agents, teams, task lists, or MCP settings is outside adapter runtime behavior. Any host setup that changes a harness configuration must be an explicit operator action, not something an adapter does while observing or driving a session.
++
+ ## Current Posture
+
+ The intentional split today is:
+@@ -904,7 +938,8 @@ If a surface needs raw harness detail, it should prefer the original harness mat
+ 2. Do not persist every observed harness turn as a Scout `message`.
+ 3. Do persist Scout-originated and Scout-routed coordination records.
+ 4. Do use lightweight metadata, cursors, summaries, and links when external source material needs to appear in Scout surfaces.
+-5. Do keep the boundary visible in docs and APIs: `message` means a Scout conversation record, while `TailEvent` means an observed harness event.
++5. Do not let adapters mutate harness-owned ecosystems such as Claude Code's `.claude` state.
++6. Do keep the boundary visible in docs and APIs: `message` means a Scout conversation record, while `TailEvent` means an observed harness event.
+
+ This is an intentional product and architecture boundary, not just a current implementation shortcut. Scout may grow better indexing and replay tools over time, but those should preserve the distinction between owned coordination state and observed harness source material.
+
+@@ -1037,7 +1072,10 @@ Scout-owned records are coordination facts: messages, invocations, flights, deli
+
+ Integrations may link to, tail, summarize, or index lightweight metadata from harness logs. They should not make Scout's control-plane database the canonical transcript warehouse for every external turn.
+
++Adapters must not write into a harness-owned ecosystem. For Claude Code, that means `.claude` project state, subagent definitions, agent-team config, task files, and MCP settings are read-only observation surfaces for adapters. Scout can inspect those surfaces to model reachability and topology when the harness makes them available, but it must not author or repair them on Claude's behalf. Host setup commands that intentionally install Scout into a harness are separate, explicit operator actions, never adapter runtime behavior.
++
+ Read [`data-ownership.md`](./data-ownership.md).
++Read [`eng/harness-topology-observation.md`](./eng/harness-topology-observation.md) for the shared observed-topology shape.
+
+ ## Mesh Expectations
+
+@@ -1064,6 +1102,71 @@ Before calling an integration "Scout-native", verify:
+
+ ---
+
++## docs/integrations.md
++
++<!-- BEGIN docs/integrations.md -->
++
++# Host Integrations
++
++OpenScout's core broker, runtime, protocol, CLI, desktop app, and mobile app live
++in this repository. Host-specific integrations can live beside this repo when
++they are independently installable packages for another host's plugin or
++extension system.
++
++This keeps the OpenScout root focused on the product control plane while still
++making the integration surface discoverable.
++
++## Current Integrations
++
++| Host | Repository | Page | Purpose |
++| --- | --- | --- | --- |
++| pi | [`arach/pi-scout`](https://github.com/arach/pi-scout) | [`arach.github.io/pi-scout`](https://arach.github.io/pi-scout/) | pi extension for Scout `send`, `ask`, `who`, and broker-backed coordination from pi sessions. |
++| Claude Code | [`arach/claude-scout`](https://github.com/arach/claude-scout) | [`arach.github.io/claude-scout`](https://arach.github.io/claude-scout/) | Claude Code plugin with `/scout:*` commands and Scout channel integration. |
++| Codex | [`arach/codex-scout`](https://github.com/arach/codex-scout) | [`arach.github.io/codex-scout`](https://arach.github.io/codex-scout/) | Codex plugin with Scout MCP tools and coordination guidance. |
++
++## Relationship To This Repo
++
++Use links and install docs rather than git submodules by default.
++
++Submodules are useful when this repo must build, test, or vendor another
++repository at an exact commit. The current Scout host integrations do not need
++that coupling: they shell out to the installed `scout` CLI or talk to the local
++broker, and their compatibility boundary is the published Scout protocol and CLI
++behavior.
++
++Keep integration source in a separate repository when:
++
++- the host has its own plugin marketplace or install flow
++- the integration can be installed without cloning OpenScout
++- the package should have its own release cadence
++- the integration depends on Scout's public CLI/protocol surface rather than
++  private app internals
++
++Keep integration source in this repository when:
++
++- it depends on unreleased internal code
++- it is still shaping the core protocol or broker API
++- local product development needs cross-package changes in one commit
++
++## Local Development
++
++Recommended sibling checkout layout:
++
++```text
++~/dev/
++├── openscout/
++├── pi-scout/
++├── claude-scout/
++└── codex-scout/
++```
++
++That layout keeps the product repo clean while making related host integrations
++easy to work on side by side.
++
++<!-- END docs/integrations.md -->
++
++---
++
+ ## docs/agent-identity.md
+
+ <!-- BEGIN docs/agent-identity.md -->

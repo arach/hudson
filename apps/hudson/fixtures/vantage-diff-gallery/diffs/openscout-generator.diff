@@ -1,0 +1,25 @@
+diff --git a/bun.lock b/bun.lock
+index 2f30fe9..a7aae45 100644
+--- a/bun.lock
++++ b/bun.lock
+@@ -81,7 +81,7 @@
+     },
+     "packages/cli": {
+       "name": "@openscout/scout",
+-      "version": "0.2.64",
++      "version": "0.2.65",
+       "bin": {
+         "scout": "./bin/scout.mjs",
+       },
+diff --git a/scripts/generate-agent-docs.mjs b/scripts/generate-agent-docs.mjs
+index 6c64b91..b48014d 100644
+--- a/scripts/generate-agent-docs.mjs
++++ b/scripts/generate-agent-docs.mjs
+@@ -14,6 +14,7 @@ const SOURCES = [
+   "docs/architecture.md",
+   "docs/data-ownership.md",
+   "docs/agent-integration-contract.md",
++  "docs/integrations.md",
+   "docs/agent-identity.md",
+   "docs/collaboration-workflows-v1.md",
+   "docs/operator-attention-and-unblock.md",

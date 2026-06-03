@@ -1,0 +1,692 @@
+diff --git a/macOS/Talkie/Debug/DesignMode/DesignOverlay.swift b/macOS/Talkie/Debug/DesignMode/DesignOverlay.swift
+index 67f7b164..ff97cfa9 100644
+--- a/macOS/Talkie/Debug/DesignMode/DesignOverlay.swift
++++ b/macOS/Talkie/Debug/DesignMode/DesignOverlay.swift
+@@ -211,7 +211,7 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+     @ViewBuilder
+     private var controlsPanel: some View {
+-        VStack(alignment: .leading, spacing: 8) {
++        VStack(alignment: .leading, spacing: 10) {
+             // Header
+             HStack {
+                 Text("Design Tools")
+@@ -233,60 +233,55 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+                 .buttonStyle(.plain)
+             }
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
++            sectionDivider()
+
+             // Section: Window Info (dimensions)
+             windowInfoSection
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
++            sectionDivider()
+
+             // Section: Inspection Tools
+-            Text("Inspection Tools")
+-                .font(.system(size: 9, weight: .semibold))
+-                .foregroundColor(.white.opacity(0.5))
+-                .padding(.top, 4)
++            sectionHeader("Inspection Tools")
+
+-            ForEach(DesignTool.allCases, id: \.self) { tool in
+-                toolToggleRow(tool: tool)
++            VStack(alignment: .leading, spacing: 6) {
++                ForEach(DesignTool.allCases, id: \.self) { tool in
++                    toolToggleRow(tool: tool)
++                }
+             }
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
+
+             // Section: Visual Decorators
+-            Text("Visual Decorators")
+-                .font(.system(size: 9, weight: .semibold))
+-                .foregroundColor(.white.opacity(0.5))
++            sectionHeader("Visual Decorators")
+
+             // Grid with spacing selector
+             gridToggleRow()
+
+-            toggleRow(
+-                icon: "ruler",
+-                label: "Rulers",
+-                isOn: $designMode.showRulers
+-            )
++            VStack(alignment: .leading, spacing: 6) {
++                toggleRow(
++                    icon: "ruler",
++                    label: "Rulers",
++                    isOn: $designMode.showRulers
++                )
+
+-            toggleRow(
+-                icon: "arrow.up.and.down.and.arrow.left.and.right",
+-                label: "Spacing",
+-                isOn: $designMode.showSpacing
+-            )
++                toggleRow(
++                    icon: "arrow.up.and.down.and.arrow.left.and.right",
++                    label: "Spacing",
++                    isOn: $designMode.showSpacing
++                )
+
+-            toggleRow(
+-                icon: "square.dashed",
+-                label: "Borders",
+-                isOn: $designMode.showBorders
+-            )
++                toggleRow(
++                    icon: "square.dashed",
++                    label: "Borders",
++                    isOn: $designMode.showBorders
++                )
+
+-            toggleRow(
+-                icon: "line.horizontal.3",
+-                label: "Guides",
+-                isOn: $designMode.showGuides
+-            )
++                toggleRow(
++                    icon: "line.horizontal.3",
++                    label: "Guides",
++                    isOn: $designMode.showGuides
++                )
++            }
+
+             // Quick-add guide buttons (when guides visible)
+             if designMode.showGuides {
+@@ -341,43 +336,37 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+                 .padding(.leading, 4)
+             }
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
+
+             // Section: TalkieText Inspector
+             TalkieTextInspectorPanel()
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
+
+             // Section: Sidebar Lab (transition scrub + slow-mo)
+             sidebarLabSection
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
++
++            // Section: Sidebar Style Lab (per-axis treatment toggles)
++            sidebarStyleLabSection
++
++            sectionDivider()
+
+             // Section: List Tuning
+             listTuningSection
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
+
+             // Section: Tooltip Tuning
+             tooltipTuningSection
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
+-                .padding(.vertical, 4)
++            sectionDivider()
+
+             // Section: Liquid Glass Tuning
+             liquidGlassSection
+
+-            Divider()
+-                .background(Color.white.opacity(0.2))
++            sectionDivider()
+
+             // Quick actions
+             HStack(spacing: 6) {
+@@ -401,13 +390,9 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+             // Page Design Context (if provided)
+             let info = designInfo()
+             if !info.isEmpty {
+-                Divider()
+-                    .background(Color.white.opacity(0.2))
+-                    .padding(.vertical, 4)
++                sectionDivider()
+
+-                Text("PAGE CONTEXT")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("Page Context")
+
+                 VStack(alignment: .leading, spacing: 4) {
+                     ForEach(info.keys.sorted(), id: \.self) { key in
+@@ -426,9 +411,7 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+             // Custom page content (if provided)
+             if CustomContent.self != EmptyView.self {
+-                Divider()
+-                    .background(Color.white.opacity(0.2))
+-                    .padding(.vertical, 4)
++                sectionDivider()
+
+                 customContent
+             }
+@@ -439,9 +422,32 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+                 .fill(Color.black.opacity(0.85))
+                 .shadow(color: .black.opacity(0.4), radius: 8, x: 0, y: 4)
+         )
+-        .frame(width: 200)
++        .frame(width: 260)
++    }
++
++    // MARK: - Section Helpers
++
++    /// Standardized section header — small uppercase label
++    @ViewBuilder
++    private func sectionHeader(_ title: String) -> some View {
++        Text(title.uppercased())
++            .font(.system(size: 9, weight: .semibold, design: .monospaced))
++            .tracking(0.5)
++            .foregroundColor(.white.opacity(0.55))
++    }
++
++    /// Standardized divider used between sections
++    @ViewBuilder
++    private func sectionDivider() -> some View {
++        Divider()
++            .background(Color.white.opacity(0.18))
++            .padding(.vertical, 2)
+     }
+
++    /// Fixed label width for inline label-toggle / label-picker rows.
++    /// Keeps controls aligned across the panel.
++    private var inlineLabelWidth: CGFloat { DesignOverlayLayout.inlineLabelWidth }
++
+     @ViewBuilder
+     private func toolToggleRow(tool: DesignTool) -> some View {
+         Button(action: {
+@@ -578,15 +584,13 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+     @ViewBuilder
+     private var windowInfoSection: some View {
+-        VStack(alignment: .leading, spacing: 6) {
+-            HStack {
++        VStack(alignment: .leading, spacing: 8) {
++            HStack(spacing: 6) {
+                 Image(systemName: "rectangle.dashed")
+                     .font(.system(size: 10))
+                     .foregroundColor(.cyan)
+
+-                Text("Window Info")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("Window Info")
+
+                 Spacer()
+
+@@ -742,16 +746,14 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+     @ViewBuilder
+     private var sidebarLabSection: some View {
+-        VStack(alignment: .leading, spacing: 8) {
++        VStack(alignment: .leading, spacing: 10) {
+             // Header
+-            HStack {
++            HStack(spacing: 6) {
+                 Image(systemName: "sidebar.leading")
+                     .font(.system(size: 10))
+                     .foregroundColor(designMode.sidebarScrubEnabled ? .cyan : .white.opacity(0.5))
+
+-                Text("Sidebar Lab")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("Sidebar Lab")
+
+                 Spacer()
+
+@@ -781,12 +783,13 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+             .opacity(designMode.sidebarScrubEnabled ? 1 : 0.4)
+
+             // Time-scale picker for slow-mo playback (applies when scrub is OFF)
+-            HStack(spacing: 4) {
++            HStack(spacing: 6) {
+                 Text("Time")
+                     .font(.system(size: 9))
+                     .foregroundColor(.white.opacity(0.7))
++                    .frame(width: inlineLabelWidth, alignment: .leading)
+
+-                Spacer()
++                Spacer(minLength: 0)
+
+                 ForEach(SidebarLabPresets.timeScales, id: \.self) { preset in
+                     let isActive = abs(designMode.sidebarAnimationTimeScale - preset) < 0.01
+@@ -808,12 +811,13 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+             // Measurements toggle — borders on icon/label frames so you can
+             // literally see whether anything is moving during the transition.
+-            HStack(spacing: 4) {
++            HStack(spacing: 6) {
+                 Text("Measure")
+                     .font(.system(size: 9))
+                     .foregroundColor(.white.opacity(0.7))
++                    .frame(width: inlineLabelWidth, alignment: .leading)
+
+-                Spacer()
++                Spacer(minLength: 0)
+
+                 Button(action: { designMode.sidebarShowMeasurements.toggle() }) {
+                     Text(designMode.sidebarShowMeasurements ? "ON" : "OFF")
+@@ -848,20 +852,128 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+         }
+     }
+
++    // MARK: - Sidebar Style Lab Section
++
++    @AppStorage(SidebarStyleStorage.surfaceKey)   private var styleLabSurface:   String = SidebarSurfaceStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.indicatorKey) private var styleLabIndicator: String = SidebarIndicatorStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.iconKey)      private var styleLabIcon:      String = SidebarIconStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.motionKey)    private var styleLabMotion:    String = SidebarMotionStyle.default.rawValue
++
++    private var styleLabIsCustomized: Bool {
++        styleLabSurface   != SidebarSurfaceStyle.default.rawValue ||
++        styleLabIndicator != SidebarIndicatorStyle.default.rawValue ||
++        styleLabIcon      != SidebarIconStyle.default.rawValue ||
++        styleLabMotion    != SidebarMotionStyle.default.rawValue
++    }
++
++    @ViewBuilder
++    private var sidebarStyleLabSection: some View {
++        VStack(alignment: .leading, spacing: 10) {
++            HStack(spacing: 6) {
++                Image(systemName: "paintpalette")
++                    .font(.system(size: 10))
++                    .foregroundColor(styleLabIsCustomized ? .pink : .white.opacity(0.5))
++
++                sectionHeader("Sidebar Style Lab")
++
++                Spacer()
++
++                if styleLabIsCustomized {
++                    Button(action: resetStyleLab) {
++                        Text("Reset")
++                            .font(.system(size: 8, weight: .medium))
++                            .foregroundColor(.white.opacity(0.85))
++                            .padding(.horizontal, 6)
++                            .padding(.vertical, 2)
++                            .background(
++                                RoundedRectangle(cornerRadius: 4)
++                                    .fill(Color.white.opacity(0.12))
++                            )
++                    }
++                    .buttonStyle(.plain)
++                }
++            }
++
++            stylePicker(
++                title: "Surface",
++                selection: $styleLabSurface,
++                options: SidebarSurfaceStyle.allCases.map { ($0.rawValue, $0.label) }
++            )
++
++            stylePicker(
++                title: "Indicator",
++                selection: $styleLabIndicator,
++                options: SidebarIndicatorStyle.allCases.map { ($0.rawValue, $0.label) }
++            )
++
++            stylePicker(
++                title: "Icon",
++                selection: $styleLabIcon,
++                options: SidebarIconStyle.allCases.map { ($0.rawValue, $0.label) }
++            )
++
++            stylePicker(
++                title: "Motion",
++                selection: $styleLabMotion,
++                options: SidebarMotionStyle.allCases.map { ($0.rawValue, $0.label) }
++            )
++        }
++    }
++
++    private func resetStyleLab() {
++        styleLabSurface   = SidebarSurfaceStyle.default.rawValue
++        styleLabIndicator = SidebarIndicatorStyle.default.rawValue
++        styleLabIcon      = SidebarIconStyle.default.rawValue
++        styleLabMotion    = SidebarMotionStyle.default.rawValue
++    }
++
++    @ViewBuilder
++    private func stylePicker(
++        title: String,
++        selection: Binding<String>,
++        options: [(value: String, label: String)]
++    ) -> some View {
++        HStack(alignment: .center, spacing: 6) {
++            Text(title)
++                .font(.system(size: 9))
++                .foregroundColor(.white.opacity(0.7))
++                .frame(width: inlineLabelWidth, alignment: .leading)
++
++            // Equal-width buttons that fill the remaining row.
++            HStack(spacing: 4) {
++                ForEach(options, id: \.value) { opt in
++                    let isActive = selection.wrappedValue == opt.value
++                    Button(action: { selection.wrappedValue = opt.value }) {
++                        Text(opt.label)
++                            .font(.system(size: 9, weight: .bold, design: .monospaced))
++                            .foregroundColor(isActive ? .black : .white.opacity(0.7))
++                            .lineLimit(1)
++                            .minimumScaleFactor(0.8)
++                            .frame(maxWidth: .infinity)
++                            .padding(.vertical, 3)
++                            .background(
++                                RoundedRectangle(cornerRadius: 4)
++                                    .fill(isActive ? Color.pink : Color.white.opacity(0.12))
++                            )
++                    }
++                    .buttonStyle(.plain)
++                }
++            }
++        }
++    }
++
+     // MARK: - List Tuning Section
+
+     @ViewBuilder
+     private var listTuningSection: some View {
+-        VStack(alignment: .leading, spacing: 8) {
++        VStack(alignment: .leading, spacing: 10) {
+             // Section header with enable toggle
+-            HStack {
++            HStack(spacing: 6) {
+                 Image(systemName: "list.bullet")
+                     .font(.system(size: 10))
+                     .foregroundColor(designMode.listTuningEnabled ? .cyan : .white.opacity(0.5))
+
+-                Text("List Tuning")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("List Tuning")
+
+                 Spacer()
+
+@@ -880,19 +992,21 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+             }
+
+             if designMode.listTuningEnabled {
+-                // Row padding
+-                glassSlider(label: "H Padding", value: cgFloatBinding($designMode.listHorizontalPadding), range: 0...24, format: "%.0fpt", multiplier: 1)
+-                glassSlider(label: "V Padding", value: cgFloatBinding($designMode.listVerticalPadding), range: 0...20, format: "%.0fpt", multiplier: 1)
++                VStack(alignment: .leading, spacing: 6) {
++                    // Row padding
++                    glassSlider(label: "H Padding", value: cgFloatBinding($designMode.listHorizontalPadding), range: 0...24, format: "%.0fpt", multiplier: 1)
++                    glassSlider(label: "V Padding", value: cgFloatBinding($designMode.listVerticalPadding), range: 0...20, format: "%.0fpt", multiplier: 1)
+
+-                // Spacing between slots
+-                glassSlider(label: "Lead Gap", value: cgFloatBinding($designMode.listLeadingSpacing), range: 0...24, format: "%.0fpt", multiplier: 1)
+-                glassSlider(label: "Trail Gap", value: cgFloatBinding($designMode.listTrailingSpacing), range: 0...24, format: "%.0fpt", multiplier: 1)
++                    // Spacing between slots
++                    glassSlider(label: "Lead Gap", value: cgFloatBinding($designMode.listLeadingSpacing), range: 0...24, format: "%.0fpt", multiplier: 1)
++                    glassSlider(label: "Trail Gap", value: cgFloatBinding($designMode.listTrailingSpacing), range: 0...24, format: "%.0fpt", multiplier: 1)
+
+-                // Icon
+-                glassSlider(label: "Icon Size", value: cgFloatBinding($designMode.listIconSize), range: 24...56, format: "%.0fpt", multiplier: 1)
+-                glassSlider(label: "Icon Radius", value: cgFloatBinding($designMode.listIconCornerRadius), range: 0...28, format: "%.0fpt", multiplier: 1)
+-                glassSlider(label: "Icon Border", value: cgFloatBinding($designMode.listIconBorderWidth), range: 0...3, format: "%.1fpt", multiplier: 1)
+-                glassSlider(label: "Border Op.", value: $designMode.listIconBorderOpacity, range: 0...1, format: "%.0f%%", multiplier: 100)
++                    // Icon
++                    glassSlider(label: "Icon Size", value: cgFloatBinding($designMode.listIconSize), range: 24...56, format: "%.0fpt", multiplier: 1)
++                    glassSlider(label: "Icon Radius", value: cgFloatBinding($designMode.listIconCornerRadius), range: 0...28, format: "%.0fpt", multiplier: 1)
++                    glassSlider(label: "Icon Border", value: cgFloatBinding($designMode.listIconBorderWidth), range: 0...3, format: "%.1fpt", multiplier: 1)
++                    glassSlider(label: "Border Op.", value: $designMode.listIconBorderOpacity, range: 0...1, format: "%.0f%%", multiplier: 100)
++                }
+
+                 // Copy + Reset buttons
+                 HStack(spacing: 4) {
+@@ -954,27 +1068,27 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+     @ViewBuilder
+     private var tooltipTuningSection: some View {
+         let tune = TooltipTuning.shared
+-        VStack(alignment: .leading, spacing: 8) {
+-            HStack {
++        VStack(alignment: .leading, spacing: 10) {
++            HStack(spacing: 6) {
+                 Image(systemName: "text.bubble")
+                     .font(.system(size: 10))
+                     .foregroundColor(.cyan)
+
+-                Text("Tooltip Tuning")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("Tooltip Tuning")
+
+                 Spacer()
+             }
+
+-            glassSlider(label: "Offset", value: Binding(get: { Double(tune.offsetDistance) }, set: { tune.offsetDistance = CGFloat($0) }), range: 0...20, format: "%.0fpt", multiplier: 1)
+-            glassSlider(label: "Font", value: Binding(get: { Double(tune.fontSize) }, set: { tune.fontSize = CGFloat($0) }), range: 8...16, format: "%.0fpt", multiplier: 1)
+-            glassSlider(label: "H Pad", value: Binding(get: { Double(tune.horizontalPadding) }, set: { tune.horizontalPadding = CGFloat($0) }), range: 2...20, format: "%.0fpt", multiplier: 1)
+-            glassSlider(label: "V Pad", value: Binding(get: { Double(tune.verticalPadding) }, set: { tune.verticalPadding = CGFloat($0) }), range: 1...12, format: "%.0fpt", multiplier: 1)
+-            glassSlider(label: "Radius", value: Binding(get: { Double(tune.cornerRadius) }, set: { tune.cornerRadius = CGFloat($0) }), range: 0...16, format: "%.0fpt", multiplier: 1)
+-            glassSlider(label: "Shadow R", value: Binding(get: { Double(tune.shadowRadius) }, set: { tune.shadowRadius = CGFloat($0) }), range: 0...20, format: "%.0f", multiplier: 1)
+-            glassSlider(label: "Shadow α", value: Binding(get: { Double(tune.shadowOpacity) }, set: { tune.shadowOpacity = CGFloat($0) }), range: 0...1, format: "%.0f%%", multiplier: 100)
+-            glassSlider(label: "Arrow", value: Binding(get: { Double(tune.arrowSize) }, set: { tune.arrowSize = CGFloat($0) }), range: 0...12, format: "%.0fpt", multiplier: 1)
++            VStack(alignment: .leading, spacing: 6) {
++                glassSlider(label: "Offset", value: Binding(get: { Double(tune.offsetDistance) }, set: { tune.offsetDistance = CGFloat($0) }), range: 0...20, format: "%.0fpt", multiplier: 1)
++                glassSlider(label: "Font", value: Binding(get: { Double(tune.fontSize) }, set: { tune.fontSize = CGFloat($0) }), range: 8...16, format: "%.0fpt", multiplier: 1)
++                glassSlider(label: "H Pad", value: Binding(get: { Double(tune.horizontalPadding) }, set: { tune.horizontalPadding = CGFloat($0) }), range: 2...20, format: "%.0fpt", multiplier: 1)
++                glassSlider(label: "V Pad", value: Binding(get: { Double(tune.verticalPadding) }, set: { tune.verticalPadding = CGFloat($0) }), range: 1...12, format: "%.0fpt", multiplier: 1)
++                glassSlider(label: "Radius", value: Binding(get: { Double(tune.cornerRadius) }, set: { tune.cornerRadius = CGFloat($0) }), range: 0...16, format: "%.0fpt", multiplier: 1)
++                glassSlider(label: "Shadow R", value: Binding(get: { Double(tune.shadowRadius) }, set: { tune.shadowRadius = CGFloat($0) }), range: 0...20, format: "%.0f", multiplier: 1)
++                glassSlider(label: "Shadow α", value: Binding(get: { Double(tune.shadowOpacity) }, set: { tune.shadowOpacity = CGFloat($0) }), range: 0...1, format: "%.0f%%", multiplier: 100)
++                glassSlider(label: "Arrow", value: Binding(get: { Double(tune.arrowSize) }, set: { tune.arrowSize = CGFloat($0) }), range: 0...12, format: "%.0fpt", multiplier: 1)
++            }
+         }
+     }
+
+@@ -994,16 +1108,14 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+
+     @ViewBuilder
+     private var liquidGlassSection: some View {
+-        VStack(alignment: .leading, spacing: 8) {
++        VStack(alignment: .leading, spacing: 10) {
+             // Section header with enable toggle
+-            HStack {
++            HStack(spacing: 6) {
+                 Image(systemName: "drop.fill")
+                     .font(.system(size: 10))
+                     .foregroundColor(designMode.glassOverrideEnabled ? .cyan : .white.opacity(0.5))
+
+-                Text("Liquid Glass")
+-                    .font(.system(size: 9, weight: .semibold))
+-                    .foregroundColor(.white.opacity(0.5))
++                sectionHeader("Liquid Glass")
+
+                 Spacer()
+
+@@ -1026,65 +1138,67 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+             }
+
+             if designMode.glassOverrideEnabled {
+-                // Transparency slider
+-                glassSlider(
+-                    label: "Transparency",
+-                    value: Binding(
+-                        get: { 1.0 - designMode.glassMaterialOpacity },
+-                        set: { designMode.glassMaterialOpacity = 1.0 - $0 }
+-                    ),
+-                    range: 0...1,
+-                    format: "%.0f%%",
+-                    multiplier: 100
+-                )
++                VStack(alignment: .leading, spacing: 6) {
++                    // Transparency slider
++                    glassSlider(
++                        label: "Transparency",
++                        value: Binding(
++                            get: { 1.0 - designMode.glassMaterialOpacity },
++                            set: { designMode.glassMaterialOpacity = 1.0 - $0 }
++                        ),
++                        range: 0...1,
++                        format: "%.0f%%",
++                        multiplier: 100
++                    )
+
+-                // Blur slider
+-                glassSlider(
+-                    label: "Blur",
+-                    value: $designMode.glassBlurMultiplier,
+-                    range: 0...3,
+-                    format: "%.1fx",
+-                    multiplier: 1
+-                )
++                    // Blur slider
++                    glassSlider(
++                        label: "Blur",
++                        value: $designMode.glassBlurMultiplier,
++                        range: 0...3,
++                        format: "%.1fx",
++                        multiplier: 1
++                    )
+
+-                // Highlight opacity slider
+-                glassSlider(
+-                    label: "Highlight",
+-                    value: $designMode.glassHighlightOpacity,
+-                    range: 0...1,
+-                    format: "%.0f%%",
+-                    multiplier: 100
+-                )
++                    // Highlight opacity slider
++                    glassSlider(
++                        label: "Highlight",
++                        value: $designMode.glassHighlightOpacity,
++                        range: 0...1,
++                        format: "%.0f%%",
++                        multiplier: 100
++                    )
+
+-                // Border glow slider
+-                glassSlider(
+-                    label: "Border Glow",
+-                    value: $designMode.glassBorderOpacity,
+-                    range: 0...1,
+-                    format: "%.0f%%",
+-                    multiplier: 100
+-                )
++                    // Border glow slider
++                    glassSlider(
++                        label: "Border Glow",
++                        value: $designMode.glassBorderOpacity,
++                        range: 0...1,
++                        format: "%.0f%%",
++                        multiplier: 100
++                    )
+
+-                // Inner glow slider
+-                glassSlider(
+-                    label: "Inner Glow",
+-                    value: Binding(
+-                        get: { Double(designMode.glassInnerGlowRadius) },
+-                        set: { designMode.glassInnerGlowRadius = CGFloat($0) }
+-                    ),
+-                    range: 0...20,
+-                    format: "%.0fpt",
+-                    multiplier: 1
+-                )
++                    // Inner glow slider
++                    glassSlider(
++                        label: "Inner Glow",
++                        value: Binding(
++                            get: { Double(designMode.glassInnerGlowRadius) },
++                            set: { designMode.glassInnerGlowRadius = CGFloat($0) }
++                        ),
++                        range: 0...20,
++                        format: "%.0fpt",
++                        multiplier: 1
++                    )
+
+-                // Tint intensity slider
+-                glassSlider(
+-                    label: "Tint",
+-                    value: $designMode.glassTintIntensity,
+-                    range: 0...1,
+-                    format: "%.0f%%",
+-                    multiplier: 100
+-                )
++                    // Tint intensity slider
++                    glassSlider(
++                        label: "Tint",
++                        value: $designMode.glassTintIntensity,
++                        range: 0...1,
++                        format: "%.0f%%",
++                        multiplier: 100
++                    )
++                }
+
+                 // Preset buttons
+                 HStack(spacing: 4) {
+@@ -1121,18 +1235,20 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+         format: String,
+         multiplier: Double
+     ) -> some View {
+-        VStack(alignment: .leading, spacing: 2) {
+-            HStack {
++        VStack(alignment: .leading, spacing: 3) {
++            HStack(spacing: 6) {
+                 Text(label)
+                     .font(.system(size: 9))
+                     .foregroundColor(.white.opacity(0.7))
++                    .lineLimit(1)
++                    .frame(width: inlineLabelWidth, alignment: .leading)
+
+-                Spacer()
++                Spacer(minLength: 0)
+
+                 Text(String(format: format, value.wrappedValue * multiplier))
+                     .font(.system(size: 9, weight: .medium, design: .monospaced))
+                     .foregroundColor(.cyan)
+-                    .frame(width: 40, alignment: .trailing)
++                    .frame(width: 48, alignment: .trailing)
+             }
+
+             // Custom slider track
+@@ -1184,7 +1300,7 @@ struct DesignToolsOverlay<CustomContent: View>: View {
+             Text(label)
+                 .font(.system(size: 8, weight: .medium))
+                 .foregroundColor(.white.opacity(0.8))
+-                .padding(.horizontal, 8)
++                .frame(maxWidth: .infinity)
+                 .padding(.vertical, 4)
+                 .background(
+                     RoundedRectangle(cornerRadius: 4)
+@@ -1259,6 +1375,15 @@ private enum SidebarLabPresets {
+     static let timeScales: [Double] = [1, 2, 4, 8]
+ }
+
++/// Shared layout constants for the design overlay panel.
++/// Lives outside the generic type so values can be referenced from any
++/// instantiation of `DesignToolsOverlay<CustomContent>`.
++private enum DesignOverlayLayout {
++    /// Width applied to inline labels in label/control rows so the rest of
++    /// the controls (sliders, pill toggles, pickers) sit at a consistent x.
++    static let inlineLabelWidth: CGFloat = 60
++}
++
+ #Preview("Design Overlay") {
+     ZStack {
+         Color.gray.opacity(0.1)

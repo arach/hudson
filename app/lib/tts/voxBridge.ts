@@ -1,13 +1,10 @@
 import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import { randomUUID } from 'crypto';
+import { callHudsonVoiceRuntimeRpc, readHudsonVoiceRuntimeCapability } from '@/app/lib/hudsonVoiceRuntime';
 
 export const HUDSON_VOX_DEFAULT_MODEL = 'avspeech:system';
 export const HUDSON_VOX_DEFAULT_PROVIDER = 'vox';
-export const HUDSON_VOX_BASE_URL = process.env.VOX_COMPANION_URL ?? 'http://127.0.0.1:43115';
-const HUDSON_VOX_RPC_HOST = '127.0.0.1';
-const HUDSON_VOX_RPC_DEFAULT_PORT = 42137;
 const HUDSON_VOX_RPC_TIMEOUT_MS = 30_000;
 
 export type HudsonVoxAudioFormat = 'mp3' | 'wav' | 'aac' | 'opus' | 'aiff';
@@ -121,10 +118,6 @@ interface VoxSynthesisResult {
 let voiceCatalogCache: { fetchedAt: number; catalog: HudsonVoxVoiceCatalog } | null = null;
 const VOICE_CATALOG_CACHE_TTL_MS = 30_000;
 
-function voxUrl(path: string) {
-  return new URL(path, HUDSON_VOX_BASE_URL);
-}
-
 function toMetadataValue(value: unknown): HudsonVoxMetadataValue | undefined {
   if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean' || value === null) {
     return value;
@@ -174,22 +167,28 @@ export function parseHudsonVoxNdjson(text: string): unknown[] {
 }
 
 export function resolveHudsonVoxRpcPort(env: NodeJS.ProcessEnv = process.env): number {
-  const runtimePath = env.VOX_RUNTIME_PATH ?? join(env.VOX_HOME ?? join(homedir(), '.vox'), 'runtime.json');
-  if (existsSync(runtimePath)) {
+  try {
+    return readHudsonVoiceRuntimeCapability(env).port;
+  } catch { /* fall through to legacy Vox runtime discovery */ }
+
+  const candidatePaths = [
+    env.HUDSON_VOICE_RUNTIME_PATH,
+    env.VOX_RUNTIME_PATH,
+    join(homedir(), 'Library', 'Application Support', 'Hudson', 'Vox', 'vox-runtime.json'),
+    join(homedir(), 'Library', 'Application Support', 'Hudson', 'Vox', 'runtime.json'),
+    join(env.VOX_HOME ?? join(homedir(), '.vox'), 'runtime.json'),
+  ].filter((path): path is string => Boolean(path));
+
+  for (const runtimePath of candidatePaths) {
+    if (!existsSync(runtimePath)) continue;
     try {
       const parsed = JSON.parse(readFileSync(runtimePath, 'utf-8')) as { port?: unknown };
       const port = Number(parsed.port);
       if (Number.isFinite(port) && port > 0) return port;
     } catch { /* fall through */ }
   }
-  const fromEnv = Number(env.VOX_PORT);
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : HUDSON_VOX_RPC_DEFAULT_PORT;
-}
-
-interface VoxRpcEnvelope {
-  id?: unknown;
-  result?: unknown;
-  error?: unknown;
+  const fromEnv = Number(env.HUDSON_VOICE_VOX_PORT ?? env.VOX_PORT);
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 0;
 }
 
 async function callHudsonVoxRpc(
@@ -197,65 +196,7 @@ async function callHudsonVoxRpc(
   params: Record<string, unknown>,
   timeoutMs = HUDSON_VOX_RPC_TIMEOUT_MS,
 ): Promise<Record<string, unknown>> {
-  const port = resolveHudsonVoxRpcPort();
-  const id = randomUUID();
-  const socket = new WebSocket(`ws://${HUDSON_VOX_RPC_HOST}:${port}`);
-
-  return await new Promise<Record<string, unknown>>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Vox ${method} timed out after ${timeoutMs}ms.`));
-    }, timeoutMs);
-
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.onopen = null;
-      socket.onmessage = null;
-      socket.onerror = null;
-      socket.onclose = null;
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-        socket.close();
-      }
-    };
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ id, method, params }));
-    };
-
-    socket.onmessage = (event: MessageEvent) => {
-      const raw = typeof event.data === 'string'
-        ? event.data
-        : event.data instanceof ArrayBuffer
-          ? new TextDecoder().decode(event.data)
-          : '';
-      if (!raw) return;
-      let payload: VoxRpcEnvelope;
-      try {
-        payload = JSON.parse(raw) as VoxRpcEnvelope;
-      } catch {
-        return;
-      }
-      if (payload.id !== id) return;
-      cleanup();
-      if (payload.error) {
-        reject(new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error)));
-        return;
-      }
-      resolve(payload.result && typeof payload.result === 'object'
-        ? payload.result as Record<string, unknown>
-        : {});
-    };
-
-    socket.onerror = () => {
-      cleanup();
-      reject(new Error(`Could not connect to Vox on port ${port}.`));
-    };
-
-    socket.onclose = () => {
-      cleanup();
-      reject(new Error('Vox closed the connection before returning a result.'));
-    };
-  });
+  return await callHudsonVoiceRuntimeRpc(method, params, { timeoutMs });
 }
 
 function normalizeHudsonVoxVoice(voice: VoxVoiceRecord): HudsonVoxVoice | null {
@@ -407,13 +348,10 @@ export async function listHudsonVoxVoiceCatalog(args?: {
     return voiceCatalogCache.catalog;
   }
 
-  const response = await fetch(voxUrl('/voices'));
-  if (!response.ok) {
-    throw new Error(`Vox voice catalog unavailable (${response.status}).`);
-  }
-
-  const payload = await response.json() as { voices?: VoxVoiceRecord[] };
-  const voices = (payload.voices ?? [])
+  const payload = await callHudsonVoxRpc('synthesize.voices', { modelId: model });
+  const rawVoices = Array.isArray(payload.voices) ? payload.voices : [];
+  const voices = rawVoices
+    .filter((voice): voice is VoxVoiceRecord => Boolean(voice) && typeof voice === 'object')
     .map(normalizeHudsonVoxVoice)
     .filter((voice): voice is HudsonVoxVoice => Boolean(voice));
   const models = createVoxModelOptions(voices, model);
@@ -440,14 +378,18 @@ export async function listHudsonVoxVoiceCatalog(args?: {
 }
 
 export async function getHudsonVoxHealth(): Promise<HudsonVoxHealth> {
-  const [catalog, capabilitiesResponse] = await Promise.all([
+  const [catalog, runtime, doctor] = await Promise.all([
     listHudsonVoxVoiceCatalog(),
-    fetch(voxUrl('/capabilities')),
+    callHudsonVoxRpc('health', {}),
+    callHudsonVoxRpc('doctor.run', {}).catch(() => null),
   ]);
-  const bridge = capabilitiesResponse.ok ? await capabilitiesResponse.json() : null;
-  const features = bridge && typeof bridge === 'object'
-    ? (bridge as { features?: Record<string, unknown> }).features
-    : undefined;
+  const checks = doctor && typeof doctor === 'object' && Array.isArray((doctor as { checks?: unknown }).checks)
+    ? (doctor as { checks: Array<{ name?: unknown; status?: unknown }> }).checks
+    : [];
+  const backendCheck = checks.find(check => check.name === 'backend');
+  const synthesisCheck = checks.find(check => check.name === 'synthesis');
+  const localAsr = backendCheck ? backendCheck.status !== 'error' : true;
+  const localTts = synthesisCheck ? synthesisCheck.status !== 'error' : catalog.voices.length > 0;
 
   return {
     ...catalog,
@@ -458,17 +400,17 @@ export async function getHudsonVoxHealth(): Promise<HudsonVoxHealth> {
       streaming: true,
       boundaries: false,
       providerSwitching: false,
-      localTts: features?.local_tts === true,
-      localAsr: features?.local_asr === true || features?.live_asr === true || features?.batch_asr === true,
+      localTts,
+      localAsr,
     },
-    bridge,
+    bridge: { runtime, doctor },
   };
 }
 
 export function createHudsonVoxUnavailableHealth(error: unknown): HudsonVoxHealth {
   const catalog = createUnavailableCatalog(
     HUDSON_VOX_DEFAULT_MODEL,
-    error instanceof Error ? error.message : 'Vox companion is unavailable.',
+    error instanceof Error ? error.message : 'Hudson voice service is unavailable.',
   );
   return {
     ...catalog,

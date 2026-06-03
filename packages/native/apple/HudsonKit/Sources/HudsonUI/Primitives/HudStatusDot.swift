@@ -1,5 +1,7 @@
 import SwiftUI
 
+private let hudStatusDotPulseAnimationEnabled = ProcessInfo.processInfo.environment["HUDSON_STATUS_DOT_PULSE"] == "1"
+
 /// Small colored circle, optionally pulsing — for live status indication
 /// (online, recording, listening). Pulse animation is GPU-cheap (opacity + scale)
 /// and respects Reduce Motion.
@@ -27,20 +29,32 @@ public struct HudStatusDot: View {
     public var body: some View {
         ZStack {
             if pulses && !reduceMotion {
-                Circle()
-                    .fill(HudSurface.tintBorder(color))
-                    .frame(width: size, height: size)
-                    .scaleEffect(animating ? 2.0 : 1.0)
-                    .opacity(animating ? 0 : 1)
-                    .animation(.easeOut(duration: 1.4).repeatForever(autoreverses: false), value: animating)
+                pulseHalo
             }
             Circle().fill(color).frame(width: size, height: size)
         }
         .onAppear {
-            guard pulses && !reduceMotion else { return }
+            guard pulses && !reduceMotion && hudStatusDotPulseAnimationEnabled else { return }
             animating = true
         }
         .accessibilityLabel(label ?? "")
         .accessibilityHidden(label == nil)
+    }
+
+    @ViewBuilder
+    private var pulseHalo: some View {
+        if hudStatusDotPulseAnimationEnabled {
+            Circle()
+                .fill(HudSurface.tintBorder(color))
+                .frame(width: size, height: size)
+                .scaleEffect(animating ? 2.0 : 1.0)
+                .opacity(animating ? 0 : 1)
+                .animation(.easeOut(duration: 1.4).repeatForever(autoreverses: false), value: animating)
+        } else {
+            Circle()
+                .fill(HudSurface.tintBorder(color))
+                .frame(width: size * 1.75, height: size * 1.75)
+                .opacity(0.28)
+        }
     }
 }

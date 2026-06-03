@@ -1,0 +1,337 @@
+diff --git a/macOS/Talkie/Views/AppNavigation.swift b/macOS/Talkie/Views/AppNavigation.swift
+index 09968ce0..4d368dea 100644
+--- a/macOS/Talkie/Views/AppNavigation.swift
++++ b/macOS/Talkie/Views/AppNavigation.swift
+@@ -84,6 +84,33 @@ struct AppNavigation: View {
+     @State private var sidebarEdgeHovered = false
+     @State private var didPrepareConsoleRegistry = false
+
++    // Sidebar visibility (third state beyond compact: fully hidden, with toolbar restore button).
++    @AppStorage("sidebar.isHidden") private var sidebarHidden: Bool = false
++    // Sidebar expanded label-column width — user-resizable via trailing-edge drag handle.
++    @AppStorage("sidebar.expandedLabelWidth") private var expandedLabelWidth: Double = Double(SidebarLayout.labelWidth)
++
++    // Sidebar style toggles — user can mix Surface/Indicator/Icon/Motion freely.
++    // Defaults to ".default" on each axis so production behavior is unchanged.
++    @AppStorage(SidebarStyleStorage.surfaceKey)   private var surfaceStyleRaw: String   = SidebarSurfaceStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.indicatorKey) private var indicatorStyleRaw: String = SidebarIndicatorStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.iconKey)      private var iconStyleRaw: String      = SidebarIconStyle.default.rawValue
++    @AppStorage(SidebarStyleStorage.motionKey)    private var motionStyleRaw: String    = SidebarMotionStyle.default.rawValue
++
++    private var sidebarStyle: SidebarStyle {
++        SidebarStyle(
++            surface:   SidebarSurfaceStyle(rawValue: surfaceStyleRaw)     ?? .default,
++            indicator: SidebarIndicatorStyle(rawValue: indicatorStyleRaw) ?? .default,
++            icon:      SidebarIconStyle(rawValue: iconStyleRaw)           ?? .default,
++            motion:    SidebarMotionStyle(rawValue: motionStyleRaw)       ?? .default
++        )
++    }
++    // Resize-drag state for the trailing edge handle.
++    @State private var resizeDragStartWidth: Double = 0
++    @State private var resizeDidDrag = false
++
++    private static let sidebarMinLabelWidth: Double = 100
++    private static let sidebarMaxLabelWidth: Double = 360
++
+     // Responsive 3-column layout - when window is too narrow, middle column becomes a sheet
+     @State private var isNarrowForThreeColumns = false
+     @State private var showContentSheet = false
+@@ -165,13 +192,13 @@ struct AppNavigation: View {
+         }
+     }
+
+-    // Sidebar width - fixed to prevent resizing when dragging content column divider
+-    // Icons-only mode uses narrow fixed width, expanded mode uses standard fixed width
+-    // Sidebar column widths must match SidebarLayout.intrinsicWidth(progress:)
+-    // so the OS column tracks the inner Sidebar's intrinsic width 1:1.
+-    //   expanded = railWidth + labelWidth = 32 + 200 = 232
+-    //   compact  = railWidth              = 32
+-    private static let sidebarWidthExpanded: (min: CGFloat, ideal: CGFloat, max: CGFloat) = (232, 232, 232)
++    // Sidebar width - matches the inner Sidebar's intrinsic width 1:1.
++    //   expanded = railWidth + expandedLabelWidth (persisted, resizable)
++    //   compact  = railWidth
++    private var sidebarWidthExpanded: (min: CGFloat, ideal: CGFloat, max: CGFloat) {
++        let total = SidebarLayout.railWidth + CGFloat(expandedLabelWidth)
++        return (total, total, total)
++    }
+     private static let sidebarWidthCompact: (min: CGFloat, ideal: CGFloat, max: CGFloat) = (32, 32, 32)
+     private static let workflowsColumnWidth: (min: CGFloat, ideal: CGFloat, max: CGFloat) = (260, 300, 400)
+     private var contentColumnWidth: (min: CGFloat, ideal: CGFloat, max: CGFloat) {
+@@ -209,6 +236,10 @@ struct AppNavigation: View {
+             #endif
+         }()
+         let animation: Animation = {
++            // While the user is dragging the resize handle, kill the spring so
++            // width updates apply 1:1 with the cursor — otherwise every drag
++            // tick re-springs and the column jitters.
++            if edgeHandleDragging { return .linear(duration: 0) }
+             #if DEBUG
+             return SidebarMotion.spring(timeScale: DesignModeManager.shared.sidebarAnimationTimeScale)
+             #else
+@@ -219,9 +250,9 @@ struct AppNavigation: View {
+             isCompact: sidebarIconsOnly,
+             scrubOverride: scrubOverride,
+             expanded: SidebarTransition.WidthSpec(
+-                min: Self.sidebarWidthExpanded.min,
+-                ideal: Self.sidebarWidthExpanded.ideal,
+-                max: Self.sidebarWidthExpanded.max
++                min: sidebarWidthExpanded.min,
++                ideal: sidebarWidthExpanded.ideal,
++                max: sidebarWidthExpanded.max
+             ),
+             compact: SidebarTransition.WidthSpec(
+                 min: Self.sidebarWidthCompact.min,
+@@ -253,6 +284,7 @@ struct AppNavigation: View {
+         }()
+         mainLayout
+             .environment(\.sidebarTransition, sidebarTransition)
++            .environment(\.sidebarStyle, sidebarStyle)
+             .environment(\.sidebarShowMeasurements, measurements)
+             .onAppear {
+                 // Override macOS's persisted split-view visibility so the
+@@ -325,7 +357,6 @@ struct AppNavigation: View {
+                 audioDropOverlay: { audioDropOverlay },
+                 handleAudioDrop: handleAudioDrop
+             ))
+-            .modifier(SidebarButtonOverlayModifier(columnVisibility: $columnVisibility))
+             .modifier(DebugOverlaysModifier())
+             .modifier(NavigationChangeHandlersModifier(
+                 selectedSection: $selectedSection,
+@@ -353,28 +384,48 @@ struct AppNavigation: View {
+         // header for the why. NavigationSplitView still owns content/detail
+         // (or just detail in the 2-col case) so we keep AppKit's resize
+         // handle and toolbar integration where it actually helps.
+-        SidebarColumns {
++        SidebarColumns(isHidden: sidebarHidden) {
+             sidebarView
+         } trailing: {
+-            if usesTwoColumns || (isNarrowForThreeColumns && !usesTwoColumns) {
+-                // 2-column: just the main content area
+-                if isNarrowForThreeColumns && !usesTwoColumns {
+-                    narrowThreeColumnContent
+-                } else {
+-                    mainContentView
++            trailingContent
++        }
++        .toolbar {
++            // OS-level title bar: sidebar toggle next to the traffic lights.
++            // Visible across all modes (expanded, compact, hidden) — same icon,
++            // same position, click toggles `sidebarHidden`.
++            ToolbarItem(placement: .navigation) {
++                Button(action: {
++                    withAnimation(.spring(response: 0.36, dampingFraction: 0.86)) {
++                        sidebarHidden.toggle()
++                    }
++                }) {
++                    Image(systemName: "sidebar.left")
+                 }
++                .help(sidebarHidden ? "Show sidebar" : "Hide sidebar")
++            }
++        }
++    }
++
++    @ViewBuilder
++    private var trailingContent: some View {
++        if usesTwoColumns || (isNarrowForThreeColumns && !usesTwoColumns) {
++            // 2-column: just the main content area
++            if isNarrowForThreeColumns && !usesTwoColumns {
++                narrowThreeColumnContent
+             } else {
+-                // 3-column: NavigationSplitView for content + detail
+-                NavigationSplitView(columnVisibility: $columnVisibility) {
+-                    contentView
+-                        .navigationSplitViewColumnWidth(
+-                            min: contentColumnWidth.min,
+-                            ideal: contentColumnWidth.ideal,
+-                            max: contentColumnWidth.max
+-                        )
+-                } detail: {
+-                    mainContentView
+-                }
++                mainContentView
++            }
++        } else {
++            // 3-column: NavigationSplitView for content + detail
++            NavigationSplitView(columnVisibility: $columnVisibility) {
++                contentView
++                    .navigationSplitViewColumnWidth(
++                        min: contentColumnWidth.min,
++                        ideal: contentColumnWidth.ideal,
++                        max: contentColumnWidth.max
++                    )
++            } detail: {
++                mainContentView
+             }
+         }
+     }
+@@ -579,8 +630,8 @@ struct AppNavigation: View {
+     private var sidebarView: some View {
+         sidebarList
+             .overlay(alignment: .trailing) {
+-                // Hover-reveal toggle tab at the sidebar edge
+-                sidebarEdgeToggle
++                // Drag to resize, click to toggle compact.
++                sidebarEdgeHandle
+             }
+             #if DEBUG
+             .overlay(alignment: .leading) {
+@@ -595,28 +646,75 @@ struct AppNavigation: View {
+                 }
+             }
+             #endif
++            // Host-level inset only — the rail's internal geometry is
++            // untouched, so icon x-positions inside the rail stay fixed
++            // through expand/collapse. The whole sidebar (including its
++            // surface background and trailing-edge handle) shifts right
++            // by this static amount, once.
++            .padding(.leading, SidebarLayout.leadingInset)
+     }
+
+     @State private var edgeHandleHovered = false
++    @State private var edgeHandleDragging = false
+
+-    private var sidebarEdgeToggle: some View {
+-        // Subtle edge handle — thin pill that reveals on hover
+-        Button {
+-            toggleSidebarRenderMode()
+-        } label: {
+-            RoundedRectangle(cornerRadius: 2)
+-                .fill(Theme.current.foreground.opacity(edgeHandleHovered ? 0.2 : 0.06))
+-                .frame(width: 4, height: 28)
+-                .contentShape(Rectangle().inset(by: -6)) // Larger hit target
+-        }
+-        .buttonStyle(.plain)
+-        .help(sidebarIconsOnly ? "Expand sidebar" : "Collapse sidebar")
+-        .onHover { hovering in
+-            withAnimation(.easeOut(duration: 0.15)) {
+-                edgeHandleHovered = hovering
++    private var sidebarEdgeHandle: some View {
++        // Trailing-edge handle — drag to resize the expanded width, click to
++        // toggle compact mode. The hit zone is wider than the visual pill so
++        // users can grab it without aiming.
++        let isActive = edgeHandleHovered || edgeHandleDragging
++        return Rectangle()
++            .fill(Color.clear)
++            .frame(width: 8)
++            .contentShape(Rectangle())
++            .overlay(
++                RoundedRectangle(cornerRadius: 2)
++                    .fill(Theme.current.foreground.opacity(isActive ? 0.22 : 0.06))
++                    .frame(width: 3, height: isActive ? 36 : 28)
++                    .animation(.easeOut(duration: 0.15), value: isActive)
++            )
++            .cursor(sidebarIconsOnly ? .arrow : .resizeLeftRight)
++            .onHover { hovering in
++                withAnimation(.easeOut(duration: 0.15)) { edgeHandleHovered = hovering }
+             }
+-        }
+-        .offset(x: 4)
++            .gesture(
++                DragGesture(minimumDistance: 2)
++                    .onChanged { value in
++                        if !edgeHandleDragging {
++                            edgeHandleDragging = true
++                            resizeDidDrag = false
++                            resizeDragStartWidth = expandedLabelWidth
++                        }
++                        // Resize is only meaningful when expanded.
++                        guard !sidebarIconsOnly else { return }
++                        resizeDidDrag = true
++                        let proposed = resizeDragStartWidth + Double(value.translation.width)
++                        let clamped = min(
++                            Self.sidebarMaxLabelWidth,
++                            max(Self.sidebarMinLabelWidth, proposed)
++                        )
++                        // Apply synchronously, no implicit animation — each
++                        // pointer move maps directly to a width change.
++                        var txn = Transaction(animation: nil)
++                        txn.disablesAnimations = true
++                        withTransaction(txn) {
++                            expandedLabelWidth = clamped
++                        }
++                    }
++                    .onEnded { _ in
++                        edgeHandleDragging = false
++                    }
++            )
++            .onTapGesture {
++                // Only treat as click-to-toggle if the gesture didn't drag.
++                if !resizeDidDrag { toggleSidebarRenderMode() }
++                resizeDidDrag = false
++            }
++            .help(
++                sidebarIconsOnly
++                    ? "Expand sidebar"
++                    : "Drag to resize · click to collapse"
++            )
++            .offset(x: 4)
+     }
+
+     private var sidebarList: some View {
+@@ -626,6 +724,7 @@ struct AppNavigation: View {
+             progress: sidebarTransition.progress,
+             accent: Theme.current.accent,
+             allCaps: settings.uiAllCaps,
++            labelWidth: CGFloat(expandedLabelWidth),
+             onHeaderTap: { toggleSidebarRenderMode() },
+             railHeader: { talkieLogo },
+             labelHeader: { wordmarkText },
+@@ -1027,42 +1126,6 @@ struct AudioDropModifier<DropOverlay: View>: ViewModifier {
+     }
+ }
+
+-/// Sidebar toggle button overlay when sidebar is hidden
+-struct SidebarButtonOverlayModifier: ViewModifier {
+-    @Binding var columnVisibility: NavigationSplitViewVisibility
+-
+-    func body(content: Content) -> some View {
+-        content
+-            .overlay(alignment: .topLeading) {
+-                if columnVisibility == .detailOnly {
+-                    Button(action: {
+-                        withAnimation(.easeInOut(duration: 0.2)) {
+-                            columnVisibility = .all
+-                        }
+-                    }) {
+-                        Image(systemName: "sidebar.left")
+-                            .font(.system(size: 12, weight: .medium))
+-                            .foregroundColor(Theme.current.foregroundSecondary)
+-                            .padding(8)
+-                            .background(
+-                                RoundedRectangle(cornerRadius: 6)
+-                                    .fill(.ultraThinMaterial)
+-                            )
+-                            .overlay(
+-                                RoundedRectangle(cornerRadius: 6)
+-                                    .strokeBorder(Theme.current.border.opacity(0.2), lineWidth: 0.5)
+-                            )
+-                    }
+-                    .buttonStyle(.plain)
+-                    .help("Show sidebar")
+-                    .padding(.top, 8)
+-                    .padding(.leading, 12)
+-                    .transition(.opacity.combined(with: .move(edge: .leading)))
+-                }
+-            }
+-    }
+-}
+-
+ /// Debug overlays (only in DEBUG builds)
+ struct DebugOverlaysModifier: ViewModifier {
+     func body(content: Content) -> some View {
+diff --git a/macOS/Talkie/Views/Live/Components/StatusBar.swift b/macOS/Talkie/Views/Live/Components/StatusBar.swift
+index 5306f181..03b841e3 100644
+--- a/macOS/Talkie/Views/Live/Components/StatusBar.swift
++++ b/macOS/Talkie/Views/Live/Components/StatusBar.swift
+@@ -284,7 +284,10 @@ struct StatusBar: View {
+                     }
+                 }
+             }
+-            .padding(.leading, 8) // Sync icon (SF Symbol size 14, ~16pt rendered) centers at x=16, matching the sidebar's 32pt rail icon column
++            // Leading: SidebarLayout.leadingInset (rail's window-edge gap)
++            // + 8pt so the cloud icon centers near the rail's icon column
++            // and has corner breathing room above the bottom-leading edge.
++            .padding(.leading, SidebarLayout.leadingInset + 8)
+             .padding(.trailing, Spacing.md)
+             .padding(.vertical, Spacing.xs)
+         }
