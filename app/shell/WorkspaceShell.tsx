@@ -1504,6 +1504,11 @@ function WorkspaceInner({
     320,
     { enabled: persistSession },
   );
+  const [codeSheetWidth, setCodeSheetWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeSheetWidth`,
+    720,
+    { enabled: persistSession },
+  );
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
@@ -3172,7 +3177,7 @@ function WorkspaceInner({
   ) : null;
   const focusedCanvasContentNode = canvasFocusContentNode ?? singleContentNode;
   const worldContent = (
-    <div data-hudson-world>
+    <div data-hudson-world className={frameMode === 'panel' ? 'h-full min-h-0' : undefined}>
       {focusedCanvasContentNode ? (
         isCanvasMode ? (
           <div className="pointer-events-auto" style={{ transform: 'translate(-50%, -50%)' }}>
@@ -3671,6 +3676,8 @@ function WorkspaceInner({
                   object={focusedCodeSurface.object}
                   placement="sheet"
                   onClose={() => focusedCodeSurface.setOpen(false)}
+                  width={codeSheetWidth}
+                  onWidthChange={setCodeSheetWidth}
                 />
               </div>
             )}
