@@ -8,7 +8,7 @@ order: 8
 
 ## Overview
 
-`hudsonkit/controls` provides two categories of components for building inspector and settings panels: a suite of typed parameter controls (`ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`) and text/code surfaces (`CodeViewer`, `CodeEditor`, `TextDocumentSurface`, `TextDiffSurface`). All components are styled to match the active Hudson theme and template via the shared token surface.
+`hudsonkit/controls` provides two categories of components for building inspector and settings panels: typed parameter controls (`ParamSlider`, `ParamToggle`, `ParamColor`, `ParamEnum`, `ParamText`, `ParamRepeatable`, `ParamGrid`) and text/code surfaces (`CodeViewer`, `CodeEditor`, `TextDocumentSurface`, `TextDiffSurface`). All components are styled to match the active Hudson theme and template via the shared token surface.
 
 `hudsonkit/controls` is a client entry. In React Server Component apps, import these controls from a Client Component boundary.
 

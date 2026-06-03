@@ -1,6 +1,6 @@
 import Foundation
 
-enum VantageCanvasResources {
+enum HudsonAppResources {
     static var packageRoot: URL {
         URL(fileURLWithPath: #filePath)
             .deletingLastPathComponent()
@@ -9,12 +9,16 @@ enum VantageCanvasResources {
     }
 
     static var repositoryRoot: URL {
-        packageRoot
+        appRoot
             .deletingLastPathComponent()
             .deletingLastPathComponent()
     }
 
+    static var appRoot: URL {
+        packageRoot.deletingLastPathComponent()
+    }
+
     static var practiceSetupURL: URL {
-        packageRoot.appendingPathComponent("fixtures/hudson-vantage-practice.setup.json")
+        appRoot.appendingPathComponent("fixtures/hudson-vantage-practice.setup.json")
     }
 }

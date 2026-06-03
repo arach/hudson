@@ -72,7 +72,6 @@ import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
-import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
 import {
   announceSettingChanged,
   SettingChangedNotice,
@@ -1489,6 +1488,11 @@ function WorkspaceInner({
     320,
     { enabled: persistSession },
   );
+  const [codeSheetWidth, setCodeSheetWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeSheetWidth`,
+    720,
+    { enabled: persistSession },
+  );
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
@@ -2888,13 +2892,7 @@ function WorkspaceInner({
     }
 
     setTerminalVoiceDraftSubmitted(false);
-    void registerHudsonVoxIntegration()
-      .catch(error => {
-        console.warn('[WorkspaceShell] Vox integration registration failed:', error);
-      })
-      .finally(() => {
-        void startTerminalVoice();
-      });
+    void startTerminalVoice();
   }, [
     openWorkspaceConsole,
     setShowTerminal,
@@ -3133,7 +3131,7 @@ function WorkspaceInner({
   const SingleContent = singleApp?.slots.Content ?? null;
   const singleAppConfig = isSingleApp ? workspace.apps[0] : null;
   const worldContent = (
-    <div data-hudson-world>
+    <div data-hudson-world className={frameMode === 'panel' ? 'h-full min-h-0' : undefined}>
       {isSingleApp && SingleContent && singleAppConfig ? (
         <ServiceBanner appConfig={singleAppConfig} onOpenServices={openWorkspaceManager}>
           <AppSlotErrorBoundary appName={singleApp!.name} slotName="Content">
@@ -3631,6 +3629,8 @@ function WorkspaceInner({
                   object={focusedCodeSurface.object}
                   placement="sheet"
                   onClose={() => focusedCodeSurface.setOpen(false)}
+                  width={codeSheetWidth}
+                  onWidthChange={setCodeSheetWidth}
                 />
               </div>
             )}

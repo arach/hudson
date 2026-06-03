@@ -9,9 +9,7 @@ section: "AI"
 
 ## Overview
 
-`HudAI` is the Apple-side inference primitive in HudsonKit. It handles one model turn at a time — provider setup, credentials, streaming, typed tool calls, recoverable errors — behind a single `HudAIClient`. Swap providers by passing a different adapter.
-
-Design rationale lives in the internal engineering spec at `specs/hud-ai-framework.md`.
+`HudAI` is the Apple-side inference primitive in HudsonKit. It handles one model turn at a time: provider setup, credentials, streaming, typed tool calls, recoverable errors, behind a single `HudAIClient`. Swap providers by passing a different adapter.
 
 ## HudAIClient
 
@@ -53,7 +51,7 @@ HudAIProviders.OpenRouter(appTitle: "MyApp", siteURL: url)  // implemented
 HudAIProviders.Grok()        // stub — throws .unsupportedFeature
 ```
 
-Each adapter declares a `credentialKey` read from the vault: `anthropic_key`, `openai_key`, `openrouter_key`, `grok_key`. OpenRouter expects namespaced model ids like `openai/gpt-4o-mini`.
+Each adapter declares a `credentialKey` read from the vault: `anthropic_key`, `openai_key`, `openrouter_key`, `grok_key`. OpenRouter expects namespaced model ids (e.g. `openai/gpt-4o-mini`).
 
 ## Requests and messages
 
@@ -92,7 +90,7 @@ Other events: `.started`, `.toolCallStarted`, `.toolCallInputDelta` (partial JSO
 
 ## Tool calls
 
-Tools take a JSON Schema plus a Swift `Decodable` input type. HudAI validates the model's input, so call sites work in typed values, not raw JSON.
+Tools take a JSON Schema plus a Swift `Decodable` input type. HudAI validates the model's input, so call sites work in typed values rather than raw JSON.
 
 ```swift
 struct WeatherInput: Decodable { let city: String; let units: String? }

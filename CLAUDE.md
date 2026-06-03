@@ -91,7 +91,7 @@ See `app/apps/shaper/` as the reference implementation.
 When a Scout message, CLI prompt, Codex task, Claude Code task, or direct
 operator request asks Hudson to create/change/deliver something:
 
-1. Check `docs/hudson-playbooks/` — if a playbook matches the shape of the
+1. Check `docs/_internal/hudson-playbooks/` — if a playbook matches the shape of the
    ask, follow it (with autonomy; playbooks are recipes, not rails).
 2. Otherwise, enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
    the dev server is up, or read `app/apps/<id>/intents.ts` + grep for `intent(`
@@ -145,4 +145,4 @@ operator request asks Hudson to create/change/deliver something:
 7. Reply to Scout/operator with the result. The HudLogger trail is the durable
    record; the reply doesn't need to re-narrate every step.
 
-See `docs/HUD-007-agent-intent-instrumentation.md` for the design rationale.
+See `docs/_internal/HUD-007-agent-intent-instrumentation.md` for the design rationale.

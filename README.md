@@ -17,16 +17,6 @@ Two modes:
 
 I build a lot of small apps. Each one was ~70% chrome: sidebar, settings, command palette, status bar, keyboard shortcuts, persistent-state plumbing, AI panel. Hudson is that chrome extracted as a primitive, so every new project starts from *build the interesting part* instead of *build yet another sidebar*.
 
-## Case study: Premotion
-
-[![Premotion catalog studio](./docs/images/premotion-case-study.png)](./docs/case-study-premotion.md)
-
-**[Full write-up →](./docs/case-study-premotion.md)**
-
-A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project, imports `hudsonkit/app-shell`, fills in a single `HudsonApp` with Provider + slots, ships. Left panel + search + status bar + inspector + URL-driven filter state all came from the shell — the only real work was the catalog logic itself.
-
-The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
-
 ## Native Vantage
 
 Hudson ships **Vantage** — a native macOS spatial canvas for tmux sessions,
@@ -34,16 +24,14 @@ terminals, and workspace artifacts. The surface is embeddable via `HudsonVantage
 Scout, Talkie, Fabric, or your own app can host one too.
 
 ```sh
-apps/vantage/scripts/run-app.sh
+apps/hudson/scripts/run-app.sh
 ```
-
-See [Hudson Vantage](./docs/hudson-vantage.md) for the SDK boundary.
 
 ## Orientation
 
 ```
 app/                     # The Hudson workspace itself (Next.js 16)
-apps/vantage/            # Native Vantage macOS product (VantageCanvas host)
+apps/hudson/            # Native Hudson macOS app (Vantage main window + local services)
 packages/web/hudsonkit/     # Shell + primitives (workspace-internal package)
 packages/native/apple/HudsonKit/ # Apple-native Swift package
 packages/services/hudson-relay/  # Terminal relay service
@@ -62,7 +50,7 @@ bun dev           # Hudson workspace on :3500
 
 Hudson is **built in the open** — the code is legible, the commits are explicit, the docs are honest — but it is **not packaged for external consumption yet**. The SDK is `private: true` and lives in this monorepo. Pulling it into another app today *is* possible (Premotion does it) but requires manual wiring, and several gaps are documented in the case study.
 
-If you're looking at this to understand *how I think about building apps*, start with the [overview](./docs/overview.md) and the [case study](./docs/case-study-premotion.md).
+If you're looking at this to understand *how I think about building apps*, start with the [overview](./docs/overview.md).
 
 ## Stack
 
@@ -72,7 +60,6 @@ React 19 · Next.js 16 · Tailwind v4 · bun · TypeScript
 
 - [Overview](./docs/overview.md) — what Hudson is, the mental model
 - [Architecture](./docs/architecture.md) — how the shell is structured
-- [Case study: Premotion](./docs/case-study-premotion.md) — the real consumption story
 - [Building apps](./docs/building-apps.md) — the `HudsonApp` contract in detail
 - [Perf patterns](./docs/perf-drag-resize-patterns.md) — drag/resize/pan tricks worth reusing
 - [For agents](./docs/agent/overview.agent.md) — LLM-oriented reference

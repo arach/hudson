@@ -33,6 +33,68 @@
 - Working with **component**? → Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays
 - Working with **styling**? → Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts
 
+## Logo Studio Brand Exploration Playbook
+
+Use this when helping with app icons, brand marks, or local Logo Studio
+templates. The goal is not to make a single cool image; the goal is to find
+the user's taste and turn the winning direction into durable, editable
+geometry.
+
+### What works
+
+- Start broad, then let the user's reactions define the map. Early misses are
+  useful when they clarify what is too cute, too literal, too rounded, too
+  detailed, or too much like a generic UI control.
+- Name promising candidates as soon as there are several of them. Stable names
+  let the user compare directions without re-describing screenshots.
+- Separate brand meaning from visual obligation. A mark can imply capture,
+  structure, transformation, computation, or workflow without literally being a
+  letter, mic, waveform, phone, or chat bubble.
+- Move from raster/image exploration to parametric templates quickly. Image gen
+  is useful for discovering taste; Hudson templates preserve and refine that
+  taste through real controls.
+- When the user strongly reacts to a state, capture that exact state as a
+  default or named preset immediately. Do not continue exploring from an older
+  baseline.
+- Explore around the lead with matrix sweeps rather than random new marks:
+  scale, aperture/void ratio, stroke weight, fold opacity, node visibility,
+  guide visibility, polarity, and small-size simplification.
+- Let construction artifacts be part of the identity when they are the point.
+  Axes, nodes, guide lines, frame math, and wireframe overlays can make a logo
+  feel mechanical, mathematical, and code-oriented instead of decorative.
+- Ask the project-native agent when available. For Hudson Logo work, `@hudson`
+  can catch local conventions such as template placement, parent/child
+  hierarchy, matrix preset registration, API visibility, and deterministic
+  render concerns.
+
+### Avoid
+
+- Avoid over-rounding. It tends to make marks feel cute, soft, or like standard
+  controls.
+- Avoid over-detailing. Dithering, filters, pixel texture, and fine waveform
+  treatments often need too much explanation and fail at icon scale.
+- Avoid forcing literal brand callbacks. A subtle guide or echo can be useful,
+  but making every direction become the product initial usually weakens better
+  geometric ideas.
+- Avoid treating generated images or screenshots as the deliverable. The
+  deliverable is the reusable template, the captured defaults, and the matrix
+  presets that let the user keep steering.
+
+### Practical loop
+
+1. Generate or sketch 12-20 broad directions.
+2. Ask the user to identify 2-4 with signal.
+3. Give those candidates stable names.
+4. Implement the best few as local parametric templates in the Logo Studio data
+   template path.
+5. Add matrix presets for serious candidates so exploration is reproducible.
+6. When the user strongly reacts, make that state the canonical default or lead
+   preset.
+7. Verify template compilation, API visibility, hierarchy, matrix availability,
+   and small-size behavior.
+8. Keep exploring around the live winning template instead of restarting from
+   unrelated visual directions.
+
 ## Overview
 
 > Introduction to Hudson — a multi-app canvas workspace platform for React

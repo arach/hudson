@@ -24,15 +24,48 @@ const STEPS = [
   },
 ];
 
-const FOOTER_COLS = [
-  { h: 'Project', links: ['GitHub', 'Changelog', 'Roadmap', 'Discord'] },
-  { h: 'Docs', links: ['Quickstart', 'Manifest', 'Primitives', 'Voice / AI'] },
-  { h: 'Apps', links: ['Talkie', 'Scout', 'Linea', 'Lattices', 'Vox'] },
-  { h: 'Legal', links: ['License (MINE)', 'Contributing', 'Code of Conduct', 'Security'] },
-];
-
 const WORKSPACE_URL = 'https://app.hudsonkit.com';
 const GITHUB_URL = 'https://github.com/arach/hudsonos';
+
+const FOOTER_COLS: Array<{
+  h: string;
+  links: Array<{ label: string; href: string; external?: boolean }>;
+}> = [
+  {
+    h: 'PROJECT',
+    links: [
+      { label: 'GitHub', href: GITHUB_URL, external: true },
+      { label: 'Releases', href: `${GITHUB_URL}/releases`, external: true },
+      { label: 'License (MINE)', href: '/license' },
+    ],
+  },
+  {
+    h: 'MAP',
+    links: [
+      { label: 'Web', href: WORKSPACE_URL, external: true },
+      { label: 'macOS', href: '/docs/macos-shell' },
+      { label: 'iOS', href: '/docs/ios-shell' },
+      { label: 'SDK', href: 'https://www.npmjs.com/package/hudsonkit', external: true },
+    ],
+  },
+  {
+    h: 'DOCS',
+    links: [
+      { label: 'Quickstart', href: '/docs/quickstart' },
+      { label: 'Architecture', href: '/docs/architecture' },
+      { label: 'App contract', href: '/docs/building-apps' },
+    ],
+  },
+  {
+    h: 'REFERENCE',
+    links: [
+      { label: 'Patterns', href: '/docs/patterns' },
+      { label: 'API', href: '/docs/api' },
+      { label: 'Voice', href: '/docs/voice' },
+      { label: 'AI', href: '/docs/ai' },
+    ],
+  },
+];
 
 export function Sheet07Quickstart() {
   return (
@@ -131,9 +164,9 @@ export function Sheet07Quickstart() {
         <div data-cal data-cal-label="docs preview" style={{ position: 'relative', marginBottom: 64 }}>
           <div className="embed-plate__caption">
             <span className="live" />
-            EMBED · app = hudson/docs · status: live
+            EMBED · view = hudson/map · status: live
           </div>
-          <EmbedFrame height={520} padding={0}>
+          <EmbedFrame height={640} padding={0}>
             <HudsonEmbed
               src="/embed/hudson/docs"
               surface="docs"
@@ -141,7 +174,7 @@ export function Sheet07Quickstart() {
               density="comfy"
               template="drafting"
               consumerId="hudsonos"
-              title="Hudson docs · getting started"
+              title="Hudson map · surfaces · apps · primitives"
             />
           </EmbedFrame>
         </div>
@@ -208,55 +241,85 @@ export function Sheet07Quickstart() {
 
         <div
           style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(4, 1fr)',
-            gap: 32,
             paddingTop: 32,
             borderTop: '1px solid var(--line-strong)',
           }}
         >
-          {FOOTER_COLS.map((c) => (
-            <div key={c.h}>
-              <div
-                style={{
-                  fontFamily: 'var(--font-mono)',
-                  fontSize: 10,
-                  letterSpacing: '0.22em',
-                  textTransform: 'uppercase',
-                  color: 'var(--ink-2)',
-                  marginBottom: 12,
-                }}
-              >
-                {c.h}
-              </div>
-              <ul
-                style={{
-                  listStyle: 'none',
-                  padding: 0,
-                  margin: 0,
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 6,
-                }}
-              >
-                {c.links.map((l) => {
-                  const href =
-                    l === 'License (MINE)'
-                      ? '/license'
-                      : l === 'GitHub'
-                        ? GITHUB_URL
-                        : '#';
-                  return (
-                    <li key={l}>
-                      <a href={href} style={{ fontSize: 13, color: 'var(--ink)' }}>
-                        {l}
+          <div
+            style={{
+              fontFamily: 'var(--font-mono)',
+              fontSize: 10,
+              letterSpacing: '0.22em',
+              textTransform: 'uppercase',
+              color: 'var(--ink-2)',
+              marginBottom: 28,
+            }}
+          >
+            ⸻ end of sheet
+          </div>
+
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(4, 1fr)',
+              gap: 32,
+            }}
+          >
+            {FOOTER_COLS.map((c) => (
+              <div key={c.h}>
+                <div
+                  style={{
+                    fontFamily: 'var(--font-mono)',
+                    fontSize: 10,
+                    letterSpacing: '0.22em',
+                    textTransform: 'uppercase',
+                    color: 'var(--ink-2)',
+                    marginBottom: 12,
+                  }}
+                >
+                  {c.h}
+                </div>
+                <ul
+                  style={{
+                    listStyle: 'none',
+                    padding: 0,
+                    margin: 0,
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: 6,
+                  }}
+                >
+                  {c.links.map((l) => (
+                    <li key={l.label}>
+                      <a
+                        href={l.href}
+                        style={{ fontSize: 13, color: 'var(--ink)' }}
+                        {...(l.external
+                          ? { target: '_blank', rel: 'noopener noreferrer' }
+                          : {})}
+                      >
+                        {l.label}
                       </a>
                     </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+
+          <div
+            style={{
+              marginTop: 36,
+              paddingTop: 20,
+              borderTop: '1px solid var(--line-soft, var(--line-strong))',
+              fontFamily: 'var(--font-mono)',
+              fontSize: 11,
+              letterSpacing: '0.04em',
+              color: 'var(--ink-2)',
+            }}
+          >
+            Built in the open. Not packaged yet.
+          </div>
         </div>
       </div>
     </Sheet>

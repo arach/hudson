@@ -98,7 +98,7 @@
     {
       "id": "hudson.vantage.plan.practice",
       "runtimeKind": "plan",
-      "path": "apps/vantage/fixtures/vantage-practice/PLAN.md",
+      "path": "apps/hudson/fixtures/vantage-practice/PLAN.md",
       "title": "Practice Plan",
       "subtitle": "how this workspace was composed",
       "language": "markdown",
@@ -113,7 +113,7 @@
     {
       "id": "hudson.vantage.diff.running",
       "runtimeKind": "diff",
-      "path": "apps/vantage/fixtures/vantage-practice/RUNNING.diff",
+      "path": "apps/hudson/fixtures/vantage-practice/RUNNING.diff",
       "title": "Running Diff",
       "subtitle": "review surface placeholder",
       "language": "diff",

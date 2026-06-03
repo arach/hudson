@@ -8,9 +8,9 @@ order: 7
 
 ## Overview
 
-Import from `hudsonkit/voice` to add speech-to-text input, text-to-speech output, or full voice-driven assistant interaction. The subpath is opt-in: it lazily loads `@voxd/client` (the local Vox Companion) and pulls in voice hooks and reply-shaping utilities. The main `hudsonkit` package has zero voice dependencies — nothing ships to users who don't import this subpath.
+Import from `hudsonkit/voice` to add speech-to-text input, text-to-speech output, or voice-driven assistant interaction. The subpath is opt-in: it lazily loads `@voxd/client` (the local Vox Companion) and pulls in voice hooks and reply-shaping utilities. The main `hudsonkit` package has zero voice dependencies; nothing ships to users who don't import this subpath.
 
-Voice input requires the [Vox Companion](https://vox.app) running locally on `127.0.0.1:43115`. You can substitute your own STT provider by passing a `transcribe` function directly.
+Voice input requires the [Vox Companion](https://vox.app) running locally on `127.0.0.1:43115`. Substitute your own STT provider by passing a `transcribe` function directly.
 
 ## useVoiceInput
 
@@ -51,7 +51,7 @@ export function VoiceButton() {
 |------|------|-------------|
 | `status` | `VoiceStatus` | Current state of the input pipeline. |
 | `error` | `string \| null` | Human-readable error message, or `null`. |
-| `lastTranscript` | `string \| null` | Most recent transcript — useful for "draft ready" UI before send. |
+| `lastTranscript` | `string \| null` | Most recent transcript. Useful for "draft ready" UI before send. |
 | `start` | `() => Promise<void>` | Request mic access and begin recording. |
 | `stop` | `() => void` | Stop recording and trigger transcription. |
 | `isSupported` | `boolean` | `true` if `MediaRecorder` and `getUserMedia` are available. |
@@ -96,7 +96,7 @@ export function SpeakButton({ text }: { text: string }) {
 
 ## useAssistantVoice
 
-Combines `useVoiceInput` and `useVoiceOutput` into an `AssistantVoiceKit` — the prop type the built-in `<Assistant>` component consumes for mic + speaker UI and auto-reply playback.
+Combines `useVoiceInput` and `useVoiceOutput` into an `AssistantVoiceKit`, the prop type the built-in `<Assistant>` component consumes for mic + speaker UI and auto-reply playback.
 
 ```tsx
 'use client';
@@ -109,7 +109,7 @@ const voiceKit = useAssistantVoice({
 });
 ```
 
-> **Heads up:** `<AppShell>` does not currently forward a `voiceKit` prop to its built-in Assistant. Today this hook is the building block for wiring voice to a manually mounted `<Assistant>` or to your own UI. Threading through AppShell will follow.
+> **Heads up:** `<AppShell>` does not currently forward a `voiceKit` prop to its built-in Assistant. Today this hook wires voice to a manually mounted `<Assistant>` or to your own UI. Threading through AppShell will follow.
 
 ### UseAssistantVoiceOptions
 
@@ -188,7 +188,7 @@ import { DEFAULT_VOICE_SETTINGS } from 'hudsonkit/voice';
 
 ## Reply shaping
 
-These utilities convert raw assistant text into speech-friendly output — stripping markdown, code blocks, and `<think>` tags, then applying length and style constraints.
+These utilities convert raw assistant text into speech-friendly output: stripping markdown, code blocks, and `<think>` tags, then applying length and style constraints.
 
 ```ts
 import {
@@ -235,11 +235,11 @@ const availability = await probeVoxAvailability(voxClient);
 // → "connected" | "warming" | "unreachable" | "blocked-origin"
 ```
 
-Use this to gate voice UI before the user tries to record — for example, showing a "Install Vox" prompt when the result is `"unreachable"`.
+Use this to gate voice UI before the user tries to record (e.g. show an "Install Vox" prompt when the result is `"unreachable"`).
 
 ## Apple (HudsonVoice)
 
-Hudson's Apple SDK ships a Swift counterpart to `hudsonkit/voice` as the `HudsonVoice` target inside the `HudsonKit` Swift package. Like the web subpath, it is fully opt-in — voice code never compiles into your binary unless you flip a build flag.
+Hudson's Apple SDK ships a Swift counterpart to `hudsonkit/voice` as the `HudsonVoice` target inside the `HudsonKit` Swift package. Like the web subpath, it is opt-in: voice code never compiles into your binary unless you flip a build flag.
 
 ### Build flag opt-in
 
@@ -255,7 +255,7 @@ HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
 
 ### HudVoicePanel — SwiftUI primitive
 
-`HudVoicePanel` is a drop-in SwiftUI view that renders the full Vox listen / stop / cancel UI in Hudson's design language (HudCard, HudButton, HudBadge, HudStatusDot). It owns its own `HudVoxLiveSession`, transcript buffer, and health probe lifecycle.
+`HudVoicePanel` is a drop-in SwiftUI view that renders the Vox listen / stop / cancel UI in Hudson's design language (HudCard, HudButton, HudBadge, HudStatusDot). It owns its own `HudVoxLiveSession`, transcript buffer, and health-probe lifecycle.
 
 ```swift
 import SwiftUI
@@ -274,7 +274,7 @@ Provide a custom endpoint to point at a remote Mac running Vox:
 
 ```swift
 HudVoicePanel(
-    endpoint: HudVoxEndpoint(host: "macbook.local", port: 42137),
+    endpoint: HudVoxEndpoint(host: "macbook.local", port: 42138),
     options: HudVoxLiveSessionOptions(clientId: "my-app", language: "en")
 )
 ```
@@ -291,8 +291,8 @@ HudVoicePanel(
 
 ### Connection state — iOS pairs with a Mac
 
-Vox is a local daemon that today runs on macOS. On macOS the panel reaches `ws://127.0.0.1:42137`. On iOS there is typically no Vox daemon on-device — the device pairs with a nearby Mac running Vox, and `HudVoxEndpoint` should point at that host.
+Vox is a local daemon that today runs on macOS. On macOS the panel reaches `ws://127.0.0.1:42138`. iOS has no on-device Vox daemon: the device pairs with a nearby Mac running Vox, and `HudVoxEndpoint` should point at that host.
 
 When Vox is unreachable, `HudVoicePanel` surfaces an `OFFLINE` badge and a message like _"Vox is not reachable at <url>. Launch Vox and check again."_ Tap **Check** to re-probe via `HudVoxProbe.health(...)`. The Listen button auto-runs the probe before connecting and short-circuits to offline if no health is returned.
 
-Cross-device pairing (discovery, trust, transport) will be handled by the forthcoming **HudPairing** primitive — see `docs/next-up.md`. Until then, set the host manually.
+Cross-device pairing (discovery, trust, transport) will be handled by the forthcoming **HudPairing** primitive. Until then, set the host manually.

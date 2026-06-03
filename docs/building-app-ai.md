@@ -7,16 +7,16 @@ section: "Web"
 
 # Building app AI
 
-This guide is for agents and authors adding an AI surface (chat composer + tool-driven actions) to a Hudson app. The pattern is **two files**: one server-side toolset, one client-side hook. Once you know the shape, copy the reference app that's closest to what you're building and edit.
+This guide is for agents and authors adding an AI surface (chat composer + tool-driven actions) to a Hudson app. The pattern is **two files**: a server-side toolset and a client-side hook. Once you know the shape, copy the reference app closest to what you're building and edit.
 
 > Working examples to copy from, simplest first:
 > - **`app/apps/shaper/`** + **`app/api/ai/toolsets/shaper.ts`** — smallest end-to-end. Start here if you don't know the pattern yet.
-> - **`app/apps/logo-designer/`** + **`app/api/ai/toolsets/logo.ts`** — the most fully-baked: 9 tools, server-compiled TypeScript templates, attachable SVG context.
+> - **`app/apps/logo/`** + **`app/api/ai/toolsets/logo.ts`** — the most fully-baked: 9 tools, server-compiled TypeScript templates, attachable SVG context.
 > - **`app/apps/day-stack/`** + **`app/api/ai/toolsets/day-stack.ts`** — the latest convention.
 
 ## Mental model
 
-The server defines **what** the AI can do (system prompt, tool schemas). The client defines **what to do with results** (apply state changes when a tool fires). The two halves meet at one string: the toolset id.
+The server defines what the AI can do (system prompt, tool schemas). The client defines what to do with results (apply state changes when a tool fires). The two halves meet at one string: the toolset id.
 
 ```
 client                                       server
@@ -37,7 +37,7 @@ useFooAI(opts)            POST /api/ai/chat   route.ts
 onToolCall('set_x', { ... })  →  app state changes
 ```
 
-The route, the backend, the multi-step tool loop — none of that is your concern. You write a server toolset and a client hook.
+The route, the backend, and the multi-step tool loop are not your concern. You write a server toolset and a client hook.
 
 ## File layout
 
@@ -130,7 +130,7 @@ defaultRegistry.register('foo', fooToolset);
 - **Schemas with `.describe()` everywhere.** The model reads these. Don't skip them.
 - **Tool names are snake_case verbs**: `set_param`, `add_item`, `delete_template`. Never `setParam` or `Item.add`.
 - **One responsibility per tool.** If you find yourself writing `do_thing` with a switch inside, split it.
-- **`execute` is an echo, not the action.** Return `{ applied: true, ...args }` (or a small status object). The actual state change happens in the client's `onToolCall`. The only time `execute` does real work is when the action genuinely belongs server-side (DB write, compile, fetch — see `logo.ts` `create_template` which calls the TS compile endpoint).
+- **`execute` is an echo, not the action.** Return `{ applied: true, ...args }` (or a small status object). The actual state change happens in the client's `onToolCall`. The only time `execute` does real work is when the action belongs server-side (DB write, compile, fetch — see `logo.ts` `create_template`, which calls the TS compile endpoint).
 - **Use `z.enum` over `z.string`** when there's a fixed list. The model gets clearer guidance and you get validation.
 - **Optional params are optional.** Don't force the model to always pass everything.
 
@@ -273,7 +273,7 @@ provider: String(appSettings.aiProvider || 'copilot'),
 model: String(appSettings.aiModel || 'gemini-3-flash-preview'),
 ```
 
-`appSettings.aiProvider` and `appSettings.aiModel` come from the app's declarative settings schema (see `docs/settings.md`). If your app doesn't expose these as user-tunable settings, hardcode sensible defaults — but pick `copilot` + a Gemini-flash model unless you have a specific reason. They're fastest and cheapest for tool-driven work.
+`appSettings.aiProvider` and `appSettings.aiModel` come from the app's declarative settings schema (see `docs/settings.md`). If your app doesn't expose these as user-tunable settings, hardcode defaults — pick `copilot` + a Gemini-flash model unless you have a specific reason. They're fastest and cheapest for tool-driven work.
 
 Available providers today (see `app/api/ai/providers.ts`):
 - `copilot` (GitHub Copilot, OAuth via OpenCode auth.json)
@@ -318,7 +318,7 @@ In the running app, open the AI composer and ask the model to do something cover
 
 ## Future: declarative `ai: hudAI({...})`
 
-The current pattern requires a hook file + a toolset file + a registration line. The brief (HUD-006 step 5) envisions collapsing this into a single field on `HudsonApp`:
+The current pattern requires a hook file, a toolset file, and a registration line. HUD-006 step 5 envisions collapsing this into a single field on `HudsonApp`:
 
 ```ts
 // future
@@ -331,4 +331,4 @@ export const fooApp: HudsonApp = {
 };
 ```
 
-Until that lands, the two-file pattern above is the path. The convention is stable — the future migration will be mechanical.
+Until that lands, the two-file pattern above is the path. The convention is stable; the future migration will be mechanical.

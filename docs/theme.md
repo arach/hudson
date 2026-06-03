@@ -9,9 +9,9 @@ section: Design System
 
 ## Overview
 
-`HudTheme` is the runtime counterpart to Hudson's static design tokens (`HudPalette`, `HudHairline`, `HudRadius`, `HudFocus`, `HudSurface`). A theme bundles every visual token the shell + primitives read at render time, so apps can swap themes per-app or per-window via SwiftUI's environment instead of recompiling against a single static palette.
+`HudTheme` is the runtime counterpart to Hudson's static design tokens (`HudPalette`, `HudHairline`, `HudRadius`, `HudFocus`, `HudSurface`). A theme bundles every visual token the shell and primitives read at render time, so apps can swap themes per-app or per-window via SwiftUI's environment instead of recompiling against a single static palette.
 
-The static tokens still work — they point at the same values as `HudTheme.default`. Migration is opportunistic, not big-bang: primitives move to `@Environment(\.hudTheme)` when they're touched for another reason, or when a consuming app needs runtime theming.
+The static tokens still work; they point at the same values as `HudTheme.default`. Migration is opportunistic: primitives move to `@Environment(\.hudTheme)` when they're touched for another reason, or when a consuming app needs runtime theming.
 
 ## Composition
 
@@ -24,16 +24,16 @@ The static tokens still work — they point at the same values as `HudTheme.defa
 | `HudThemeRadius` | `tight`, `standard`, `card` | `HudRadius` |
 | `HudThemeFocus` | `ring`, `ringWidth` | `HudFocus` |
 
-Spacing (`HudSpacing`), typography (`HudFont`, `HudTextSize`), motion (`HudMotion`), and layout (`HudLayout`) remain static — they're not bundled into the runtime theme. They don't change per-template today; if that need surfaces, they'll graduate to sub-themes.
+Spacing (`HudSpacing`), typography (`HudFont`, `HudTextSize`), motion (`HudMotion`), and layout (`HudLayout`) stay static. They don't change per-template today; if that need surfaces, they'll graduate to sub-themes.
 
 ## Built-in themes
 
 ```swift
-HudTheme.default     // dark surface aesthetic — mirrors HudPalette exactly
-HudTheme.lightDraft  // light-theme stub — placeholder values, opt-in early feedback
+HudTheme.default     // dark surface aesthetic; mirrors HudPalette exactly
+HudTheme.lightDraft  // light-theme stub; placeholder values, opt-in early feedback
 ```
 
-`lightDraft` is intentionally rough — light mode is on the roadmap but not the user-facing default yet. Don't ship it as the production light theme; do mount it behind a developer flag to start gathering feedback.
+`lightDraft` is intentionally rough. Light mode is on the roadmap but not the user-facing default yet. Don't ship it as the production light theme; mount it behind a developer flag to start gathering feedback.
 
 ## Reading the theme
 
@@ -63,7 +63,7 @@ struct StatRow: View {
 }
 ```
 
-`@Environment(\.hudTheme)` resolves to `HudTheme.default` if no ancestor has injected one — so primitives that read from the environment continue to render correctly in untouched apps.
+`@Environment(\.hudTheme)` resolves to `HudTheme.default` if no ancestor has injected one, so primitives that read from the environment continue to render correctly in untouched apps.
 
 ## Injecting a theme
 
@@ -104,7 +104,7 @@ struct AppRoot: View {
 }
 ```
 
-Theme swaps propagate through SwiftUI's normal invalidation — every view reading `@Environment(\.hudTheme)` re-renders with the new values. No manual notification plumbing.
+Theme swaps propagate through SwiftUI's normal invalidation: every view reading `@Environment(\.hudTheme)` re-renders with the new values. No manual notification plumbing.
 
 ## Custom themes
 
@@ -135,12 +135,12 @@ Apps shipping a fixed brand palette typically declare a single `static let` and 
 
 ## Migration policy
 
-Existing primitives that reference `HudPalette.bg`, `HudHairline.standard`, etc. continue to render correctly under any theme that uses `default` sub-themes — because `HudTheme.default` mirrors the static enums byte-for-byte. Migrate to `@Environment(\.hudTheme)` when:
+Existing primitives that reference `HudPalette.bg`, `HudHairline.standard`, etc. continue to render correctly under any theme that uses `default` sub-themes, because `HudTheme.default` mirrors the static enums byte-for-byte. Migrate to `@Environment(\.hudTheme)` when:
 
 - you're already touching the primitive's file for another reason, or
 - a consuming app needs the primitive to respond to runtime theme overrides.
 
-There's no deprecation pressure on the static enums in v1 — they're the floor, the runtime theme is the ceiling.
+No deprecation pressure on the static enums in v1: they're the floor, the runtime theme is the ceiling.
 
 ## See also
 

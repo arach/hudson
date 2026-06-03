@@ -11,7 +11,7 @@ section: "Web"
 
 `hudsonkit/cache` is the shared substrate apps use instead of reaching for `Map`, `localStorage`, or a bespoke fetch wrapper each time they need to remember a value. It ships TTL + stale-while-revalidate semantics, in-flight async dedupe, tag invalidation, optional `local`/`session` persistence, hydrate/dehydrate, bounded entry counts, and a React hook.
 
-The primitive is intentionally small. The bigger idea is **caching as policy** — pick a named policy for the kind of data you're storing rather than tuning numbers per call site. That keeps app code declarative and lets us swap implementations (or graduate to TanStack Query for serious server state) without touching every call site.
+The primitive is intentionally small. The bigger idea is **caching as policy**: pick a named policy for the kind of data you're storing rather than tuning numbers per call site. That keeps app code declarative and lets us swap implementations (or graduate to TanStack Query for serious server state) without touching every call site.
 
 > **Status.** The substrate (`createHudsonCache`, `hudsonCache`, `useCachedResource`) ships today. The named-policy surface (`cachePolicies`, `cachedFetchJson`, `useHudsonQuery`, `createDerivedCache`, `createAssetCache`) is the direction described in `specs/hud-010-cache-policies.md` and is being layered in. Use the substrate now; expect a policy import to land.
 
@@ -30,11 +30,11 @@ If invalidating it would lose user work, it's not cache.
 
 ## Policy categories
 
-Cache decisions split cleanly by data type. Reach for the right tool per category — Hudson's primitive isn't always it.
+Cache decisions split cleanly by data type. Reach for the right tool per category; Hudson's primitive isn't always it.
 
 ### API data
 
-External fetches that need freshness, dedupe, retry, and invalidation. Use `useCachedResource` (or a `cachedFetchJson` helper, once it lands) with the `apiLive` or `apiCatalog` policy. If you need pagination, optimistic mutation, dependent queries, or devtools, **adopt TanStack Query** behind a thin Hudson adapter rather than expanding the substrate.
+External fetches that need freshness, dedupe, retry, and invalidation. Use `useCachedResource` (or a `cachedFetchJson` helper, once it lands) with the `apiLive` or `apiCatalog` policy. If you need pagination, optimistic mutation, dependent queries, or devtools, **adopt TanStack Query** behind a Hudson adapter rather than expanding the substrate.
 
 _Examples:_ model catalog, OpenScout agent list, service status, remote app manifests, `/api/{app}/...` responses.
 
@@ -52,7 +52,7 @@ _Examples:_ generated images, data URLs, imported files, trace payloads, binary 
 
 ### Server route results
 
-Server-side computations cache through **Next.js cache APIs** (route tags, `revalidateTag`, `fetch` cache options) — not the client primitive. Align tag names with client cache tags where it helps mental model, but treat client and server invalidation as separate mechanisms.
+Server-side computations cache through **Next.js cache APIs** (route tags, `revalidateTag`, `fetch` cache options), not the client primitive. Align tag names with client cache tags where it helps mental model, but treat client and server invalidation as separate mechanisms.
 
 ### Offline / static resources
 

@@ -236,7 +236,7 @@ struct VoiceReferenceScreen: View {
                         HInset {
                             VStack(alignment: .leading, spacing: HSpacing.md) {
                                 HKVRow("Provider", value: "Vox")
-                                HKVRow("Endpoint", value: "127.0.0.1:42137")
+                                HKVRow("Endpoint", value: "127.0.0.1:42138")
                                 HKVRow("Recovery", value: "App owned", valueColor: HPalette.statusInfo)
                             }
                         }

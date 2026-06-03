@@ -9,11 +9,11 @@ section: "Storage"
 
 ## Overview
 
-`HudVault` is a service-namespaced, encrypted key/value store for opaque secrets — API keys, OAuth tokens, refresh tokens. Apple and web ship the same shape (`set` / `get` / `list` / `delete` / `clear`) so an app can pair a Swift client and a TypeScript client against the same conceptual API.
+`HudVault` is a service-namespaced, encrypted key/value store for opaque secrets: API keys, OAuth tokens, refresh tokens. Apple and web ship the same shape (`set` / `get` / `list` / `delete` / `clear`) so an app can pair a Swift client and a TypeScript client against the same conceptual API.
 
 Each instance is scoped by a `service` string (reverse-DNS by convention) so unrelated apps don't collide: `HudVault(service: "com.talkie.api-keys")` is a different bucket from `HudVault(service: "com.scout.tokens")`.
 
-No passphrase ceremony in v1 — the OS keychain (Apple) or the browser's non-extractable CryptoKey (web) is the trust anchor.
+No passphrase ceremony in v1. The OS keychain (Apple) or the browser's non-extractable CryptoKey (web) is the trust anchor.
 
 ## Apple — `HudVault`
 
@@ -50,7 +50,7 @@ Errors surface as `HudVaultError` (`.saveFailed`, `.loadFailed`, `.deleteFailed`
 
 ### Threat model
 
-Defends against casual device theft and cross-app snooping. Does **not** defend against local malware running with the same entitlement and bundle ID — that code can read the same items.
+Defends against casual device theft and cross-app snooping. Does **not** defend against local malware running with the same entitlement and bundle ID; that code can read the same items.
 
 ## Apple — `HudSecretField`
 
@@ -124,4 +124,4 @@ Defends against cross-origin snooping and casual inspection of `localStorage` / 
 - malicious code running on the same origin — it can call `get` directly;
 - shared OS profiles that share the browser profile.
 
-No passphrase in v1 — to add one, derive a key with PBKDF2 / Argon2 and wrap the master key yourself.
+No passphrase in v1. To add one, derive a key with PBKDF2 / Argon2 and wrap the master key yourself.

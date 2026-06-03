@@ -1,8 +1,13 @@
+---
+title: Building Apps
+description: The HudsonApp contract with walkthrough
+order: 4
+section: Web
+---
+
 # Building Apps
 
-A Hudson app is a plain TypeScript object satisfying the `HudsonApp` interface. The shell reads the object and renders chrome around it. This guide covers the whole contract with concrete examples.
-
-For a real-world app built against this contract, see [Case study: Premotion](./case-study-premotion.md).
+A Hudson app is a plain TypeScript object satisfying the `HudsonApp` interface. The shell reads the object and renders chrome around it. This guide covers the contract with concrete examples.
 
 ## The interface
 
@@ -150,7 +155,7 @@ export function CounterProvider({ children }: { children: ReactNode }) {
 }
 ```
 
-`usePersistentState` is SSR-safe and cross-tab-synced — use it for anything you want to survive a refresh.
+`usePersistentState` is SSR-safe and cross-tab-synced. Use it for anything you want to survive a refresh.
 
 ### 2. Content slot
 
@@ -236,7 +241,7 @@ Provider: React.FC<{ children: ReactNode; disabled?: boolean; visible?: boolean;
 - **`visible`** — the app is on screen. Pause expensive work when `false`.
 - **`focused`** — the app is the active target for shell interactions. Reserve high-frequency polling or subscriptions for when this is `true`.
 
-**Important:** `AppShell` (single-app shell) only passes `children` to the Provider — it does not thread `disabled`, `visible`, or `focused`. These props are exercised inside `WorkspaceShell`, where multiple apps share screen real estate and exactly one is focused at a time. If you're building for `AppShell` only you can ignore them for now, but writing defensive code costs nothing.
+**Important:** `AppShell` (single-app shell) only passes `children` to the Provider. It does not thread `disabled`, `visible`, or `focused`. These props are exercised inside `WorkspaceShell`, where multiple apps share screen space and exactly one is focused at a time. If you're building for `AppShell` only you can ignore them for now, but writing defensive code costs nothing.
 
 Pattern inside `CounterProvider`:
 
@@ -285,7 +290,7 @@ interface AppTool {
 }
 ```
 
-Tools render below the `Inspector` slot (or the deprecated `RightPanel` slot if `Inspector` is absent). The user opens and closes them independently; the shell persists nothing — open state resets on remount.
+Tools render below the `Inspector` slot (or the deprecated `RightPanel` slot if `Inspector` is absent). The user opens and closes them independently; the shell persists nothing, so open state resets on remount.
 
 Example — a **Layers** tool that reads from the counter context:
 
@@ -336,7 +341,7 @@ Use `useActiveToolHint` to highlight a specific tool programmatically — return
 
 ## Takeover slot
 
-`slots.Takeover` is a full-viewport component rendered above all chrome. It activates when `hooks.useTakeover` returns `{ active: true }`. While active, the shell marks the rest of the UI `inert` and `aria-hidden` — pointer events and keyboard focus cannot reach chrome. The overlay is wrapped in a `role="dialog" aria-modal="true"` container; the shell moves focus into it automatically.
+`slots.Takeover` is a full-viewport component rendered above all chrome. It activates when `hooks.useTakeover` returns `{ active: true }`. While active, the shell marks the rest of the UI `inert` and `aria-hidden`, so pointer events and keyboard focus cannot reach chrome. The overlay is wrapped in a `role="dialog" aria-modal="true"` container; the shell moves focus into it automatically.
 
 `TakeoverState` shape:
 
@@ -348,7 +353,7 @@ interface TakeoverState {
 }
 ```
 
-When `dismissible` is `true`, pressing Escape calls `onDismiss`. The hook owns the state; the shell is stateless about dismissal — flipping `active` to `false` in `onDismiss` is what clears the overlay.
+When `dismissible` is `true`, pressing Escape calls `onDismiss`. The hook owns the state; the shell is stateless about dismissal. Flipping `active` to `false` in `onDismiss` is what clears the overlay.
 
 Typical pattern — first-run setup:
 
@@ -436,7 +441,7 @@ interface CommandOption {
 }
 ```
 
-The shell merges your app's commands with its own built-in shell commands (toggle panels, toggle terminal, theme switching, etc.) before passing the combined list to the palette. Duplicate `id` values from your app will not shadow shell commands — keep IDs namespaced: `'counter:increment'`, not `'increment'`.
+The shell merges your app's commands with its built-in shell commands (toggle panels, toggle terminal, theme switching) before passing the combined list to the palette. Duplicate `id` values from your app will not shadow shell commands. Keep IDs namespaced: `'counter:increment'`, not `'increment'`.
 
 **Shortcuts are display hints.** The `shortcut` string is rendered in the palette row as a visual cue. It does not register a global key listener. To make `Cmd+I` actually trigger `increment`, wire it yourself inside the Provider:
 
@@ -453,7 +458,7 @@ useEffect(() => {
 }, [increment]);
 ```
 
-Palette interaction flow: the user types → substring filter against `label` → `ArrowUp`/`ArrowDown` to navigate → `Enter` or click calls `action()` and closes. Memoize the array returned from `useCommands` — the shell calls the hook on every render.
+Palette interaction flow: the user types, the palette substring-filters against `label`, `ArrowUp`/`ArrowDown` navigates, `Enter` or click calls `action()` and closes. Memoize the array returned from `useCommands`; the shell calls the hook on every render.
 
 ## Registering the app
 
@@ -507,14 +512,12 @@ export default function Page() {
 @import "hudsonkit/styles";
 ```
 
-See the [Premotion case study](./case-study-premotion.md) for an end-to-end consumer setup.
-
 ## Rules of thumb
 
 - **Always `'use client'`** on every file that imports from `hudsonkit` or uses hooks — the SDK components are client-side only, and the RSC boundary must be explicit.
 - **Provider goes first.** Slots and hooks read state from the Provider's context. The shell wraps everything in the Provider once; you never wrap it manually.
 - **`usePersistentState` over raw `useState`** for anything you want surviving a refresh (note selection, filter state, panel sizes, etc.).
-- **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works. See Premotion's `catalog/Provider.tsx`.
+- **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works.
 - **Keep hooks cheap.** The shell calls them on every render. Memoize command arrays, avoid building large objects on the fly.
 - **`useMemo` the context value.** Without it, every Provider render creates a new value reference and downstream consumers re-render for nothing.
 
@@ -523,4 +526,3 @@ See the [Premotion case study](./case-study-premotion.md) for an end-to-end cons
 - [Systems](./systems.md) — Intents, Services, Ports
 - [Perf patterns](./perf-drag-resize-patterns.md) — drag/resize/pan optimizations used by the shell
 - [API reference](./api.md) — every `hudsonkit` export with a short description
-- [Case study: Premotion](./case-study-premotion.md) — a complete real app

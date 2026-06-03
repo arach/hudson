@@ -9,9 +9,9 @@ section: Primitives
 
 ## Overview
 
-`HudTable` is the tabular-data primitive. Same conceptual API on both surfaces: items + column descriptors + optional selection + density. Apple ships `HudTable` as a SwiftUI view; web ships `hudsonkit/table` (TS) with web-native affordances the native side doesn't have — namely resizable columns with localStorage persistence.
+`HudTable` is the tabular-data primitive. Same conceptual API on both surfaces: items + column descriptors + optional selection + density. Apple ships `HudTable` as a SwiftUI view; web ships `hudsonkit/table` (TS) with web-native affordances the native side doesn't have, namely resizable columns with localStorage persistence.
 
-v1 is presentational + selectable. Sorting, editing, and built-in detail-mode are deliberately deferred. Apps that need drill-down compose `onSelect` with `NavigationStack` / sheet / their own inspector.
+v1 is presentational and selectable. Sorting, editing, and built-in detail-mode are deliberately deferred. Apps that need drill-down compose `onSelect` with `NavigationStack` / sheet / their own inspector.
 
 ## Apple — `HudTable` (SwiftUI)
 
@@ -93,7 +93,7 @@ import { HudTable } from 'hudsonkit/table';
 |------|------|-------------|
 | `items` | `readonly Item[]` | Row data. |
 | `columns` | `HudTableColumn<Item>[]` | Column descriptors. |
-| `rowKey` | `(item: Item) => string` | Stable key per row — used for selection comparison and React keys. |
+| `rowKey` | `(item: Item) => string` | Stable key per row. Used for selection comparison and React keys. |
 | `density` | `'compact' \| 'regular'` | Defaults to `'regular'`. |
 | `selectedKey` | `string \| null` | Externally controlled selection. |
 | `onSelect` | `(item: Item) => void` | Fired on row click. |
@@ -125,7 +125,7 @@ const { getColumnProps, getResizeHandleProps, resetAll } = useResizableColumns({
 });
 ```
 
-The hook was lifted near-verbatim from OpenScout's Atop screen — already battle-tested.
+The hook was lifted near-verbatim from OpenScout's Atop screen; already battle-tested.
 
 ## Tokens consumed
 

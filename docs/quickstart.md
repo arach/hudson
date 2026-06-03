@@ -16,7 +16,7 @@ bun add hudsonkit
 npm install hudsonkit
 ```
 
-`react` and `react-dom` ≥ 19 are peer dependencies — they should already be present in your Next.js 16 project.
+`react` and `react-dom` ≥ 19 are peer dependencies. They should already be present in your Next.js 16 project.
 
 ## Add the CSS bundle
 

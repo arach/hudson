@@ -3,12 +3,11 @@
 // ─────────────────────────────────────────────────────────────────────────────
 // EmbedVoice — Getting-Started-with-Voice mini-app for /embed/<appId>/voice
 // ─────────────────────────────────────────────────────────────────────────────
-// State machine driven by probeVoxAvailability() (polled every 2s):
+// State machine driven by Hudson voice availability (polled every 2s):
 //
 //   probing      → first paint, no result yet
-//   install      → Vox unreachable on 127.0.0.1:43115 → invite DMG download
-//   connect      → Vox running but origin blocked → vox:// launch handshake
-//   ready        → Vox connected → 3-step setup walk-through
+//   install      → Hudson Menu daemon unreachable → ask user to launch Hudson
+//   ready        → Hudson-owned embedded Vox daemon connected
 //
 // All chrome respects --hud-* tokens delivered by the consumer registry +
 // embed-context handshake, so the surface inherits drafting / hudson palettes
@@ -25,65 +24,44 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  createVoxdClient,
-  type LiveSession,
-  type SessionState,
-  type VoxDClient,
-} from '@voxd/client';
-import { probeVoxAvailability, type VoxAvailability } from 'hudsonkit';
+  createHudsonVoiceDaemonClient,
+  type HudsonVoiceAvailability,
+  type HudsonVoiceClient,
+  type HudsonVoiceLiveSession,
+} from 'hudsonkit';
 
-// Stable brand URL — voxd.cc redirects to the current Vox.dmg. Avoids hard-coding
-// the GitHub release path so we don't break when the release pipeline moves.
-const VOX_INSTALL_URL = 'https://voxd.cc/download';
-const VOX_BRAND_URL = 'https://voxd.cc/';
 const POLL_INTERVAL_MS = 2000;
 const HUDSON_VOX_CLIENT_ID = 'hudsonkit';
 
-type Phase = 'probing' | 'install' | 'connect' | 'ready';
+type Phase = 'probing' | 'install' | 'ready';
 
-function phaseFor(a: VoxAvailability | null): Phase {
+function phaseFor(a: HudsonVoiceAvailability | null): Phase {
   if (a === null) return 'probing';
-  if (a === 'connected' || a === 'warming') return 'ready';
-  if (a === 'blocked-origin') return 'connect';
+  if (a === 'connected' || a === 'warming' || a === 'permission-denied' || a === 'error') return 'ready';
   return 'install';
-}
-
-function buildLaunchUrl(origin: string): string {
-  const params = new URLSearchParams({
-    clientId: HUDSON_VOX_CLIENT_ID,
-    name: 'HudsonKit',
-    origin,
-    origins: origin,
-    product: 'Hudson workspace',
-    description: 'Hudson uses Vox for local voice prompts and replies.',
-    routes: '/capabilities,/transcribe,/live,/voices,/speak',
-    permissions: 'local_asr,local_tts,live_sessions',
-  });
-  return `vox://launch?${params.toString()}`;
 }
 
 // ─── Component ───────────────────────────────────────────────────────────────
 
 export function EmbedVoice() {
-  const [availability, setAvailability] = useState<VoxAvailability | null>(null);
+  const [availability, setAvailability] = useState<HudsonVoiceAvailability | null>(null);
   const [ticks, setTicks] = useState(0);
-  const [downloadClicked, setDownloadClicked] = useState(false);
 
-  // Single voxd client for the lifetime of the embed — drives both the
-  // availability poll and the LiveSession test. Vox handles the mic capture
-  // itself; we just send control signals over loopback.
-  const voxClient = useMemo<VoxDClient | null>(() => {
+  // Single Hudson voice client for the lifetime of the embed — drives both the
+  // availability poll and the live-session test. Hudson handles mic capture
+  // inside Hudson Menu; this page only sends control signals over loopback.
+  const voiceClient = useMemo<HudsonVoiceClient | null>(() => {
     if (typeof window === 'undefined') return null;
-    return createVoxdClient({ clientId: HUDSON_VOX_CLIENT_ID });
+    return createHudsonVoiceDaemonClient({ clientId: HUDSON_VOX_CLIENT_ID });
   }, []);
 
   useEffect(() => {
-    if (!voxClient) return;
+    if (!voiceClient) return;
     let cancelled = false;
     async function poll() {
-      if (cancelled || !voxClient) return;
+      if (cancelled || !voiceClient) return;
       try {
-        const r = await probeVoxAvailability(voxClient);
+        const r = await voiceClient.availability();
         if (cancelled) return;
         setAvailability(r);
         setTicks((c) => c + 1);
@@ -99,27 +77,17 @@ export function EmbedVoice() {
       cancelled = true;
       clearInterval(id);
     };
-  }, [voxClient]);
+  }, [voiceClient]);
 
   const phase = phaseFor(availability);
-  const launchUrl = useMemo(() => {
-    if (typeof window === 'undefined') return '';
-    return buildLaunchUrl(window.location.origin);
-  }, []);
 
   return (
     <div style={ROOT}>
       <TopBar phase={phase} />
       <div style={STAGE}>
         {phase === 'probing' && <Probing />}
-        {phase === 'install' && (
-          <Install
-            downloadClicked={downloadClicked}
-            onDownload={() => setDownloadClicked(true)}
-          />
-        )}
-        {phase === 'connect' && <Connect launchUrl={launchUrl} />}
-        {phase === 'ready' && <Ready voxClient={voxClient} />}
+        {phase === 'install' && <Install />}
+        {phase === 'ready' && <Ready voiceClient={voiceClient} availability={availability} />}
       </div>
       <BottomBar phase={phase} ticks={ticks} availability={availability} />
     </div>
@@ -146,9 +114,8 @@ const STAGE: CSSProperties = {
 };
 
 const STEPS: Array<{ id: Phase; label: string }> = [
-  { id: 'install', label: '01 · Install' },
-  { id: 'connect', label: '02 · Permit' },
-  { id: 'ready', label: '03 · Ready' },
+  { id: 'install', label: '01 · Launch' },
+  { id: 'ready', label: '02 · Ready' },
 ];
 
 function TopBar({ phase }: { phase: Phase }) {
@@ -203,23 +170,19 @@ function BottomBar({
 }: {
   phase: Phase;
   ticks: number;
-  availability: VoxAvailability | null;
+  availability: HudsonVoiceAvailability | null;
 }) {
   const dotColor =
     phase === 'ready'
       ? 'var(--hud-accent, oklch(0.72 0.18 162))'
-      : phase === 'connect'
-        ? 'var(--hud-ink-1, oklch(0.86 0.005 240))'
-        : 'var(--hud-ink-3, oklch(0.50 0.01 240))';
+      : 'var(--hud-ink-3, oklch(0.50 0.01 240))';
 
   const status =
     phase === 'ready'
       ? 'connected'
-      : phase === 'connect'
-        ? 'awaiting permission'
-        : phase === 'install'
-          ? 'watching for vox'
-          : 'probing';
+      : phase === 'install'
+        ? 'watching for hudson'
+        : 'probing';
 
   return (
     <div
@@ -240,7 +203,7 @@ function BottomBar({
         {status}
       </span>
       <span>
-        127.0.0.1:43115 · check #{ticks.toString().padStart(2, '0')}
+        127.0.0.1:42138 · check #{ticks.toString().padStart(2, '0')}
         {availability && phase !== 'ready' && (
           <span style={{ marginLeft: 10, color: 'var(--hud-ink-2, oklch(0.66 0.008 240))' }}>
             · {availability}
@@ -280,9 +243,9 @@ function Probing() {
   return (
     <Card>
       <Caption>Initializing</Caption>
-      <h2 style={H2}>Looking for Vox.</h2>
+      <h2 style={H2}>Looking for Hudson voice.</h2>
       <p style={SUB}>
-        Probing the local Vox companion on 127.0.0.1:43115 — this takes a moment.
+        Probing the Hudson-owned voice daemon on 127.0.0.1:42138 — this takes a moment.
       </p>
     </Card>
   );
@@ -290,51 +253,30 @@ function Probing() {
 
 // ─── Phase: Install ──────────────────────────────────────────────────────────
 
-function Install({ downloadClicked, onDownload }: { downloadClicked: boolean; onDownload: () => void }) {
+function Install() {
   return (
     <Card>
       <div style={{ display: 'grid', gridTemplateColumns: '1.1fr 1fr', gap: 32, alignItems: 'center' }}>
         <div>
-          <Caption>Step 01 · Install</Caption>
-          <h2 style={H2}>Get voice on Hudson.</h2>
+          <Caption>Step 01 · Launch</Caption>
+          <h2 style={H2}>Start Hudson Menu.</h2>
           <p style={SUB}>
-            Vox is the local companion that captures, transcribes, and replies — runs
-            entirely on your machine, no cloud round-trip. Once installed, this page
-            picks it up automatically.
+            Hudson Menu owns the embedded Vox daemon, microphone permission, and
+            recording lifecycle. Launch Hudson from the native app bundle, then this
+            page will detect the daemon automatically.
           </p>
-          <div style={{ display: 'flex', gap: 12, marginTop: 22, flexWrap: 'wrap' }}>
-            <a
-              href={VOX_INSTALL_URL}
-              target="_top"
-              rel="noopener noreferrer"
-              onClick={onDownload}
-              style={PrimaryButton}
-            >
-              ↓ Download Vox.dmg
-            </a>
-            <a
-              href={VOX_BRAND_URL}
-              target="_top"
-              rel="noopener noreferrer"
-              style={GhostButton}
-            >
-              About Vox
-            </a>
-          </div>
-          {downloadClicked && (
-            <p
-              style={{
-                marginTop: 18,
-                fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
-                fontSize: 11,
-                letterSpacing: '0.06em',
-                color: 'var(--hud-ink-2, oklch(0.66 0.008 240))',
-              }}
-            >
-              ⏵ Drag <strong style={{ color: 'var(--hud-ink, oklch(0.94 0.005 240))' }}>Vox.app</strong> into
-              Applications, launch it, then return here. This page will detect Vox in ~2s.
-            </p>
-          )}
+          <p
+            style={{
+              marginTop: 18,
+              fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
+              fontSize: 11,
+              letterSpacing: '0.06em',
+              color: 'var(--hud-ink-2, oklch(0.66 0.008 240))',
+            }}
+          >
+            The browser should not request microphone access here. It talks to
+            Hudson Menu, and Hudson Menu talks to Vox.
+          </p>
         </div>
         <MenuBarIllustration />
       </div>
@@ -343,14 +285,14 @@ function Install({ downloadClicked, onDownload }: { downloadClicked: boolean; on
 }
 
 function MenuBarIllustration() {
-  // Single-stroke drafting illustration of the macOS menu bar with Vox icon.
+  // Single-stroke drafting illustration of the macOS menu bar with Hudson voice.
   return (
     <svg
       viewBox="0 0 360 220"
       width="100%"
       style={{ maxWidth: 360, alignSelf: 'center', display: 'block' }}
       role="img"
-      aria-label="macOS menu bar with Vox icon"
+      aria-label="macOS menu bar with Hudson voice icon"
     >
       <defs>
         <pattern id="grid-mb" width="14" height="14" patternUnits="userSpaceOnUse">
@@ -401,7 +343,7 @@ function MenuBarIllustration() {
         File  Edit  View
       </text>
 
-      {/* Vox icon (highlighted) — mic glyph in a small box */}
+      {/* Hudson voice icon (highlighted) — mic glyph in a small box */}
       <g transform="translate(290, 38)">
         <rect
           x="-1"
@@ -440,7 +382,7 @@ function MenuBarIllustration() {
         11 : 07
       </text>
 
-      {/* Dim leader pointing to Vox icon */}
+      {/* Dim leader pointing to Hudson voice icon */}
       <path
         d="M 300 70 L 280 96 L 200 96"
         fill="none"
@@ -457,7 +399,7 @@ function MenuBarIllustration() {
         letterSpacing="2"
         fill="var(--hud-accent, oklch(0.72 0.18 162))"
       >
-        VOX · MENU BAR
+        HUDSON · MENU BAR
       </text>
       <text
         x="196"
@@ -468,7 +410,7 @@ function MenuBarIllustration() {
         letterSpacing="1.6"
         fill="var(--hud-ink-3, oklch(0.50 0.01 240))"
       >
-        always-on companion
+        embedded voice daemon
       </text>
 
       {/* App body */}
@@ -496,88 +438,91 @@ function MenuBarIllustration() {
   );
 }
 
-// ─── Phase: Connect (Vox running, origin not allowed) ────────────────────────
-
-function Connect({ launchUrl }: { launchUrl: string }) {
-  return (
-    <Card>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: 18, maxWidth: 540 }}>
-        <Caption color="accent">Vox is running ✓ · permission needed</Caption>
-        <h2 style={H2}>Allow this page to talk to Vox.</h2>
-        <p style={SUB}>
-          Vox keeps an allowlist so only pages you trust can use your microphone. One
-          click hands this origin to Vox — it&rsquo;ll prompt you to confirm.
-        </p>
-        <div style={{ display: 'flex', gap: 12, marginTop: 6 }}>
-          <a href={launchUrl} target="_top" rel="noopener noreferrer" style={PrimaryButton}>
-            ⏵ Open Vox · grant access
-          </a>
-        </div>
-        <ul style={{ margin: '14px 0 0', padding: 0, listStyle: 'none', display: 'grid', gap: 8 }}>
-          <Bullet>Vox.app will appear; press “Allow”.</Bullet>
-          <Bullet>Return here — the loop activates instantly.</Bullet>
-        </ul>
-      </div>
-    </Card>
-  );
-}
-
 // ─── Phase: Ready ────────────────────────────────────────────────────────────
 //
-// The Ready test panel uses Vox's native LiveSession — Vox itself captures
-// the audio (it already has macOS-level mic permission as a registered app),
-// the embed just sends start/stop control signals over loopback. The browser
-// never touches getUserMedia, so the embed works without iframe-permissions
-// gymnastics or a per-origin mic prompt.
+// The Ready test panel uses Hudson's embedded Vox daemon. Hudson Menu captures
+// the audio with its macOS microphone permission; the embed just sends
+// start/stop control signals over loopback.
 
-type LiveStatus = 'idle' | SessionState;
+type LiveStatus = 'idle' | 'starting' | 'recording' | 'processing' | 'done' | 'cancelled' | 'error';
 
-function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
+function Ready({
+  voiceClient,
+  availability,
+}: {
+  voiceClient: HudsonVoiceClient | null;
+  availability: HudsonVoiceAvailability | null;
+}) {
   const [state, setState] = useState<LiveStatus>('idle');
   const [partial, setPartial] = useState('');
   const [finalText, setFinalText] = useState('');
   const [error, setError] = useState<string | null>(null);
-  const sessionRef = useRef<LiveSession | null>(null);
+  const sessionRef = useRef<HudsonVoiceLiveSession | null>(null);
 
   // Cleanup any in-flight session on unmount.
   useEffect(() => {
     return () => {
-      sessionRef.current?.close();
+      void sessionRef.current?.cancel().catch(() => {});
       sessionRef.current = null;
     };
   }, []);
 
   const start = useCallback(async () => {
-    if (!voxClient) return;
+    if (!voiceClient) return;
     setError(null);
     setPartial('');
     setFinalText('');
     setState('starting');
 
-    const session = voxClient.createLiveSession();
-    sessionRef.current = session;
-
-    const offState = session.onState((e) => setState(e.state));
-    const offPartial = session.onPartial((e) => setPartial(e.text));
-    const offError = session.onError((err) => {
-      setError(err.message || 'Vox returned an error.');
-      setState('error');
-    });
-
     try {
-      const final = await session.start();
-      setFinalText(final.text);
+      const session = await voiceClient.startLiveSession({
+        surface: 'hudson-embed-voice',
+        language: 'en',
+        mode: 'push_to_talk',
+      });
+      sessionRef.current = session;
+      setState('recording');
+
+      for await (const event of session.events) {
+        if (event.event === 'session.state') {
+          const next = typeof event.data.state === 'string' ? event.data.state : '';
+          if (
+            next === 'starting'
+            || next === 'recording'
+            || next === 'processing'
+            || next === 'done'
+            || next === 'cancelled'
+            || next === 'error'
+          ) {
+            setState(next);
+          }
+          continue;
+        }
+
+        if (event.event === 'session.partial') {
+          setPartial(typeof event.data.text === 'string' ? event.data.text : '');
+          continue;
+        }
+
+        if (event.event === 'session.final') {
+          setPartial('');
+          setFinalText(typeof event.data.text === 'string' ? event.data.text : '');
+          setState('done');
+          continue;
+        }
+
+        if (event.event === 'session.error') {
+          setError(typeof event.data.text === 'string' ? event.data.text : 'Hudson voice returned an error.');
+          setState('error');
+        }
+      }
     } catch (err) {
-      // onError already handled UI state; swallow so the promise rejection
-      // doesn't bubble. session may have ended in 'cancelled' — that's fine.
-      if (err instanceof Error && !error) setError(err.message);
+      if (err instanceof Error) setError(err.message);
+      setState('error');
     } finally {
-      offState();
-      offPartial();
-      offError();
       sessionRef.current = null;
     }
-  }, [voxClient, error]);
+  }, [voiceClient]);
 
   const stop = useCallback(async () => {
     const s = sessionRef.current;
@@ -621,7 +566,7 @@ function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
       <Caption color="accent">Voice loop · active · test live</Caption>
       <h2 style={H2}>You&rsquo;re wired up.</h2>
       <p style={SUB}>
-        Press to start, click again to stop. Vox handles the capture and transcription on your
+        Press to start, click again to stop. Hudson handles the capture and transcription on your
         machine — the browser never touches your microphone.
       </p>
 
@@ -641,7 +586,7 @@ function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
         <button
           type="button"
           onClick={handleClick}
-          disabled={!voxClient || isBusy}
+          disabled={!voiceClient || isBusy || availability === 'permission-denied'}
           aria-pressed={isRecording}
           style={{
             background: buttonBg,
@@ -693,8 +638,8 @@ function Ready({ voxClient }: { voxClient: VoxDClient | null }) {
       >
         <SmallStep
           n="01"
-          t="Pin to menu bar"
-          b="Vox lives in your menu bar. Keep its icon visible to see when it's listening."
+          t="Keep Hudson Menu running"
+          b="Hudson Menu owns the embedded Vox daemon and the microphone permission."
         />
         <SmallStep
           n="02"
@@ -739,7 +684,7 @@ function TranscriptPane({
   if (state === 'starting') {
     return (
       <div style={{ ...baseStyle, color: 'var(--hud-ink-2, oklch(0.66 0.008 240))' }}>
-        Vox is warming up the model…
+        Hudson voice is warming up the model…
       </div>
     );
   }
@@ -775,7 +720,7 @@ function TranscriptPane({
               color: 'var(--hud-ink-3, oklch(0.50 0.01 240))',
             }}
           >
-            Vox listening
+            Hudson listening
           </span>
         </div>
         <div
@@ -799,7 +744,7 @@ function TranscriptPane({
   if (state === 'processing') {
     return (
       <div style={{ ...baseStyle, color: 'var(--hud-ink-2, oklch(0.66 0.008 240))' }}>
-        Vox finalizing the transcript…
+        Hudson finalizing the transcript…
       </div>
     );
   }
@@ -922,24 +867,6 @@ function Caption({ children, color }: { children: ReactNode; color?: 'accent' })
   );
 }
 
-function Bullet({ children }: { children: ReactNode }) {
-  return (
-    <li
-      style={{
-        display: 'grid',
-        gridTemplateColumns: '14px 1fr',
-        gap: 10,
-        fontSize: 12,
-        color: 'var(--hud-ink-2, oklch(0.66 0.008 240))',
-        lineHeight: 1.5,
-      }}
-    >
-      <span style={{ color: 'var(--hud-ink-3, oklch(0.50 0.01 240))' }}>·</span>
-      <span>{children}</span>
-    </li>
-  );
-}
-
 const H2: CSSProperties = {
   fontFamily: 'var(--hud-font-display, "Times New Roman", serif)',
   fontSize: 28,
@@ -956,36 +883,4 @@ const SUB: CSSProperties = {
   lineHeight: 1.6,
   color: 'var(--hud-ink-2, oklch(0.66 0.008 240))',
   maxWidth: 480,
-};
-
-const PrimaryButton: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 8,
-  padding: '10px 18px',
-  background: 'var(--hud-accent, oklch(0.72 0.18 162))',
-  color: 'var(--hud-bg, oklch(0.18 0.02 240))',
-  fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
-  fontSize: 12,
-  fontWeight: 600,
-  letterSpacing: '0.10em',
-  textTransform: 'uppercase',
-  textDecoration: 'none',
-  border: 'var(--hud-border-width, 1px) solid var(--hud-accent, oklch(0.72 0.18 162))',
-  cursor: 'pointer',
-};
-
-const GhostButton: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '10px 16px',
-  background: 'transparent',
-  color: 'var(--hud-ink-1, oklch(0.86 0.005 240))',
-  fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
-  fontSize: 12,
-  letterSpacing: '0.10em',
-  textTransform: 'uppercase',
-  textDecoration: 'none',
-  border: 'var(--hud-border-width, 1px) solid var(--hud-line-strong, oklch(0.48 0.012 240))',
 };

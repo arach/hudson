@@ -127,7 +127,7 @@ to tmux targets through the registry mapping; raw targets are used directly.
 For day-to-day agent use, the sample exposes this through:
 
 ```sh
-apps/vantage/scripts/vantagectl.sh --wait reattach \
+apps/hudson/scripts/vantagectl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
 ```
@@ -136,7 +136,7 @@ Remote tmux uses the same identity model. The local PTY runs SSH, and the
 remote host owns the durable tmux server:
 
 ```sh
-apps/vantage/scripts/vantagectl.sh --wait reattach \
+apps/hudson/scripts/vantagectl.sh --wait reattach \
   --remote user@host \
   --session hudson-lab
 ```

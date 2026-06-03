@@ -13,7 +13,7 @@ Default Vantage paths:
 /tmp/hudson-vantage-control.responses.jsonl
 ```
 
-The Vantage product (`apps/vantage`) uses:
+The Vantage product (`apps/hudson`) uses:
 
 ```text
 /tmp/hudson-vantage-control.jsonl
@@ -447,7 +447,7 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait reattach --remote d
 Vantage exposes the same commands through:
 
 ```bash
-apps/vantage/scripts/vantagectl.sh --wait status
-apps/vantage/scripts/vantagectl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
-apps/vantage/scripts/vantagectl.sh --wait setup --manifest apps/vantage/fixtures/scout-vantage.setup.json --create --fit
+apps/hudson/scripts/vantagectl.sh --wait status
+apps/hudson/scripts/vantagectl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+apps/hudson/scripts/vantagectl.sh --wait setup --manifest apps/hudson/fixtures/scout-vantage.setup.json --create --fit
 ```

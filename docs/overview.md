@@ -1,6 +1,12 @@
+---
+title: Overview
+description: What Hudson is, the two shell modes, the HudsonApp contract
+order: 2
+---
+
 # Overview
 
-Hudson is a **shell** for building app-like interfaces in the browser. It owns the workspace chrome — nav bar, side panels, command palette, terminal, status bar, canvas pan/zoom — and hosts apps that plug in via a small interface.
+Hudson is a **shell** for building app-like interfaces in the browser. It owns the workspace chrome (nav bar, side panels, command palette, terminal, status bar, canvas pan/zoom) and hosts apps that plug in through a small interface.
 
 Think of it as a desktop environment in a tab: each "app" is a self-contained React feature with its own state and UI, but they all share the same chrome, keyboard shortcuts, search, AI, and persistent-state plumbing.
 
@@ -10,7 +16,7 @@ Hudson ships two top-level components. Pick based on whether your product has on
 
 ### `AppShell` — the default
 
-One `HudsonApp`, full chrome. Best for single-purpose products where the whole surface is about one thing: a catalog browser, a settings dashboard, a reader, a logo designer.
+One `HudsonApp`, full chrome. Best for single-purpose products: a catalog browser, a settings dashboard, a reader, a logo designer.
 
 ```tsx
 import { AppShell } from 'hudsonkit/app-shell';
@@ -19,7 +25,7 @@ import { catalogApp } from './catalog';
 <AppShell app={catalogApp} />
 ```
 
-The shell reads the app's hooks for labels, search, status, and commands; renders the app's Provider once around everything; mounts the app's slot components into the chrome's regions (LeftPanel, Content, Inspector, Terminal).
+The shell reads the app's hooks for labels, search, status, and commands. It renders the app's Provider once around everything, then mounts the slot components into the chrome's regions (LeftPanel, Content, Inspector, Terminal).
 
 ### `WorkspaceShell` — multi-app canvas
 
@@ -31,11 +37,11 @@ import { WorkspaceShell } from 'hudsonkit/shell';
 <WorkspaceShell workspaces={[hudsonOSWorkspace]} defaultWorkspaceId="hudsonOS" />
 ```
 
-Each workspace declares which apps it hosts and how they participate (windowed, native, maximized, etc.).
+Each workspace declares which apps it hosts and how they participate (windowed, native, maximized).
 
 ## The `HudsonApp` contract
 
-Every app — whether it runs in AppShell or as a window in WorkspaceShell — satisfies the same interface:
+Every app satisfies the same interface, whether it runs in AppShell or as a window in WorkspaceShell:
 
 ```ts
 interface HudsonApp {
@@ -76,7 +82,7 @@ Every Hudson app follows the same shape:
 - **Slots** are React components the shell renders inside its chrome. They read state via the Provider's hook.
 - **Hooks** are called *inside the Provider's scope* by the shell via an internal Bridge component. They read state and return shell-readable values (commands, status, search config, nav content).
 
-The Provider wraps everything; slots and hooks read from it. This matches how React context works naturally — nothing clever.
+The Provider wraps everything; slots and hooks read from it. This is how React context already works — nothing clever.
 
 ## Frame modes
 
@@ -126,12 +132,11 @@ Workspace apps (rendered by Hudson's `WorkspaceShell` at `/app`):
 | API Inspector   | HTTP request/response debugger             |
 | Assets          | Asset browser                              |
 
-This is the demo workspace shipped with Hudson — your own apps will live in your own registry.
+This is the demo workspace shipped with Hudson; your apps live in your own registry.
 
 ## Next steps
 
 - **[Building apps](./building-apps.md)** — the full contract, with examples
 - **[Architecture](./architecture.md)** — how the shell is structured
 - **[Systems](./systems.md)** — Intents (LLM/voice discovery), Services (process deps), Ports (inter-app piping)
-- **[Case study: Premotion](./case-study-premotion.md)** — a real app built on Hudson
 - **[Perf patterns](./perf-drag-resize-patterns.md)** — drag/resize/pan tricks used by the shell

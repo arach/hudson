@@ -9,11 +9,11 @@ section: "macOS Apps"
 
 ## Overview
 
-HudsonShell is the chassis Hudson apps wear on macOS and iPad regular-width — container, leading nav, trailing inspector, content canvas, drawers, overlays. Apps own state and render into slots; the shell handles dividers, background, and responsive collapse. Counterpart to the web SDK's `<AppShell>`. Compact iPhone uses `HudPhoneAppShell`. See HUD-001 and HUD-002 in `packages/native/apple/HudsonKit/Docs/` for design context.
+HudsonShell is the chassis Hudson apps wear on macOS and iPad regular-width: container, leading nav, trailing inspector, content canvas, drawers, overlays. Apps own state and render into slots; the shell handles dividers, background, and responsive collapse. Counterpart to the web SDK's `<AppShell>`. Compact iPhone uses `HudPhoneAppShell`. See HUD-001 and HUD-002 in `packages/native/apple/HudsonKit/Docs/` for design context.
 
 ## HudAppShell
 
-The top-level chassis. Six ViewBuilder slots — `leading`, `trailing`, `topDrawer`, `bottomDrawer`, `content`, `statusBar`. The trailing slot is hidden in iOS compact size class; convenience inits drop the drawers or render bare content.
+The top-level chassis. Six ViewBuilder slots: `leading`, `trailing`, `topDrawer`, `bottomDrawer`, `content`, `statusBar`. The trailing slot is hidden in iOS compact size class; convenience inits drop the drawers or render bare content.
 
 ```swift
 HudAppShell {
@@ -79,7 +79,7 @@ Restyle the subtree with `.environment(\.hudsonSidebarStyle, ...)` — see `HudS
 
 ## HudInspector + HudInspectorToggle
 
-`HudInspector` is the trailing-slot panel — 280pt wide (`HudLayout.panelWidth`) when expanded, removed from layout when collapsed. `HudInspectorToggle` lives wherever app-owned chrome makes sense (status bar, toolbar) — intentionally separate so the affordance isn't locked to one location.
+`HudInspector` is the trailing-slot panel: 280pt wide (`HudLayout.panelWidth`) when expanded, removed from layout when collapsed. `HudInspectorToggle` lives wherever app-owned chrome makes sense (status bar, toolbar). They're separate so the affordance isn't locked to one location.
 
 ```swift
 HudInspector(isCollapsed: $inspectorCollapsed) {
@@ -102,7 +102,7 @@ HudInspectorToggle(isCollapsed: $inspectorCollapsed)
 
 Free-form work surface for the content slot. Optional grid background, optional pinned header, scrolling body. No opinion on what lives inside.
 
-`HudCanvas` is the current simple surface. The pan/zoom, hand/select, hit-testing, persistence, and multi-app workspace direction is tracked in [Native canvas workspace](./native-canvas-workspace.md).
+`HudCanvas` is the current simple surface. Pan/zoom, hand/select, hit-testing, persistence, and multi-app workspace work is tracked internally.
 
 ```swift
 HudCanvas(showGrid: true) {
@@ -134,7 +134,7 @@ contentView
 
 ## HudTerminalDrawer
 
-Bottom-attached drawer with a hairline header (status dot, title, optional subtitle, chevron) and a collapsible content area (default 280pt). The content slot is generic — Termini, a fake mono shell, a console.
+Bottom-attached drawer with a hairline header (status dot, title, optional subtitle, chevron) and a collapsible content area (default 280pt). The content slot is generic: a Termini view, a fake mono shell, a console.
 
 ```swift
 HudTerminalDrawer(
@@ -157,7 +157,7 @@ HudTerminalDrawer(
 
 ## HudTakeover
 
-Full-viewport blocking surface for flows that need full attention — connection setup, onboarding, destructive confirms, terminal sessions. Mount with `.hudsonTakeover(isPresented:content:)`; fades + slides up from the bottom (opacity-only under reduce-motion).
+Full-viewport blocking surface for flows that need full attention: connection setup, onboarding, destructive confirms, terminal sessions. Mount with `.hudsonTakeover(isPresented:content:)`; fades and slides up from the bottom (opacity-only under reduce-motion).
 
 ```swift
 HudAppShell { ... }
@@ -172,11 +172,11 @@ HudAppShell { ... }
 
 ## Layout primitives
 
-**`HudVisualEffectView`** bridges `NSVisualEffectView` into SwiftUI on macOS — `.sidebar` + `.behindWindow` matches stock macOS sidebars; iOS falls back to `.ultraThinMaterial`.
+**`HudVisualEffectView`** bridges `NSVisualEffectView` into SwiftUI on macOS. `.sidebar` plus `.behindWindow` matches stock macOS sidebars; iOS falls back to `.ultraThinMaterial`.
 
 ```swift
 HudVisualEffectView(material: .sidebar, blendingMode: .behindWindow)
     .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
 ```
 
-**`HudSidebarLayout`** holds the geometry tokens — `railWidth` (32), `labelWidth` (200), `rowHeight` (30), `headerHeight` (44), `intrinsicWidth(progress:labelWidth:)`. **`HudSidebarStyle`** bundles four style axes (`surface`, `indicator`, `icon`, `motion`) plus a `liquidGlass` config; propagate via `.environment(\.hudsonSidebarStyle, ...)`.
+**`HudSidebarLayout`** holds the geometry tokens: `railWidth` (32), `labelWidth` (200), `rowHeight` (30), `headerHeight` (44), `intrinsicWidth(progress:labelWidth:)`. **`HudSidebarStyle`** bundles four style axes (`surface`, `indicator`, `icon`, `motion`) plus a `liquidGlass` config; propagate via `.environment(\.hudsonSidebarStyle, ...)`.

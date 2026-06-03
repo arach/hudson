@@ -3,6 +3,7 @@
 import { useMemo } from 'react';
 import { Check } from 'lucide-react';
 import { builtinRenderBodies, type BuiltinDef } from './builtinRenderBodies';
+import type { LogoTemplate } from './types';
 
 type ParamValue = string | number | boolean;
 
@@ -37,6 +38,7 @@ export interface LogoComparisonCellMeta {
 
 export interface LogoComparisonSheetProps {
   templateId: string;
+  template?: Pick<LogoTemplate, 'renderBody' | 'params'> | null;
   baseParams?: Record<string, ParamValue>;
   families: LogoComparisonFamily[];
   cellSize?: number;
@@ -49,19 +51,40 @@ export interface LogoComparisonSheetProps {
 
 const VB = 512;
 
-function resolveDefaults(def: BuiltinDef): Record<string, ParamValue> {
+type MatrixTemplateDef = Pick<BuiltinDef, 'renderBody' | 'params'> | Pick<LogoTemplate, 'renderBody' | 'params'>;
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return Boolean(value) && typeof value === 'object' && !Array.isArray(value);
+}
+
+function toParamValue(value: unknown): ParamValue | undefined {
+  if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+    return value;
+  }
+  return undefined;
+}
+
+function resolveDefaults(def: MatrixTemplateDef): Record<string, ParamValue> {
   const out: Record<string, ParamValue> = {};
-  const params = def.params as Record<string, { default: ParamValue }> | undefined;
+  const params = def.params;
   if (!params) return out;
+  if (Array.isArray(params)) {
+    for (const decl of params) {
+      const value = toParamValue(decl.default);
+      if (value !== undefined) out[decl.key] = value;
+    }
+    return out;
+  }
   for (const [key, decl] of Object.entries(params)) {
-    out[key] = decl.default;
+    if (!isRecord(decl)) continue;
+    const value = toParamValue(decl.default);
+    if (value !== undefined) out[key] = value;
   }
   return out;
 }
 
 function renderCell(renderBody: string, params: Record<string, unknown>, vb: number): string {
   try {
-    // eslint-disable-next-line no-new-func
     const fn = new Function('p', 'vb', renderBody);
     const result = fn(params, vb);
     return typeof result === 'string' ? result : '';
@@ -72,6 +95,7 @@ function renderCell(renderBody: string, params: Record<string, unknown>, vb: num
 
 export function LogoComparisonSheet({
   templateId,
+  template,
   baseParams,
   families,
   cellSize = 128,
@@ -79,7 +103,7 @@ export function LogoComparisonSheet({
   selectedKeys,
   onToggleCell,
 }: LogoComparisonSheetProps) {
-  const def = builtinRenderBodies[templateId];
+  const def = template?.renderBody ? template : builtinRenderBodies[templateId];
 
   const rows = useMemo(() => {
     if (!def) return [];

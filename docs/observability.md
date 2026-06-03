@@ -8,7 +8,7 @@ order: 10
 
 ## Overview
 
-`hudsonkit/observability` gives you structured logs, metrics, and distributed traces through a single event bus (`HObservability`) and three typed emitters (`HLogger`, `HMetrics`, `HTrace`). Every emission goes to registered sinks and is buffered in-memory for replay. The subpath is opt-in — nothing is loaded unless you import it. A pre-wired global instance is exported as `HObservabilityDefault` for quick use; it is enabled only when `globalThis.H_OBSERVABILITY` or `globalThis.H_DEBUG` is `true`.
+`hudsonkit/observability` gives you structured logs, metrics, and distributed traces through a single event bus (`HObservability`) and three typed emitters (`HLogger`, `HMetrics`, `HTrace`). Every emission goes to registered sinks and is buffered in-memory for replay. The subpath is opt-in; nothing is loaded unless you import it. A pre-wired global instance is exported as `HObservabilityDefault`; it is enabled only when `globalThis.H_OBSERVABILITY` or `globalThis.H_DEBUG` is `true`.
 
 ## Quick start
 
@@ -143,7 +143,7 @@ try {
 }
 ```
 
-`end` and `error` are both idempotent — calling them more than once after the span is closed is a no-op.
+`end` and `error` are both idempotent: calling them more than once after the span is closed is a no-op.
 
 ### `HTraceStatus`
 
@@ -192,7 +192,7 @@ unsubscribe();
 | `kinds` | `HObservationKind[]` | Filter to specific event kinds. Omit to receive everything. |
 | `replay` | `boolean` | If `true`, the sink receives all buffered events synchronously before new ones. |
 
-Sinks must never throw — any thrown error is swallowed to protect product code paths.
+Sinks must never throw. Any thrown error is swallowed to protect product code paths.
 
 ## Types
 
@@ -221,7 +221,7 @@ All types are exported from `hudsonkit/observability`. Full shapes are in `src/t
 
 ## Apple (HudsonObservability)
 
-Hudson's Apple SDK ships `HudsonObservability` as a first-class target in the `HudsonKit` Swift package. It mirrors the web SDK's three-emitter shape (logger / metrics / trace) but is built on Apple-native primitives — `os.Logger` for structured logging and `OSSignposter` for traces — so events show up in Console.app and Instruments without extra wiring.
+Hudson's Apple SDK ships `HudsonObservability` as a first-class target in the `HudsonKit` Swift package. It mirrors the web SDK's three-emitter shape (logger / metrics / trace) but is built on Apple-native primitives: `os.Logger` for structured logging and `OSSignposter` for traces. Events show up in Console.app and Instruments without extra wiring.
 
 ### HudInstrumentation — the entrypoint
 

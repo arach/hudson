@@ -9,11 +9,11 @@ section: "Tooling"
 
 ## Overview
 
-HudLint scans HudsonKit source for raw design values — hardcoded colors, font sizes, padding, frame dimensions, corner radii, opacity literals — and fails the build when it finds them. The token vocabulary (`HudPalette`, `HudSpacing`, `HudRadius`, `HudFont`, `HudTextSize`, `HudLayout`) is the contract; HudLint enforces it.
+HudLint scans HudsonKit source for raw design values (hardcoded colors, font sizes, padding, frame dimensions, corner radii, opacity literals) and fails the build when it finds them. The token vocabulary (`HudPalette`, `HudSpacing`, `HudRadius`, `HudFont`, `HudTextSize`, `HudLayout`) is the contract; HudLint enforces it.
 
 The motivation is Talkie's drift problem: once a `Color(red:0.1, green:0.1, blue:0.12)` or `.padding(13)` lands in one file, the next contributor copies it, and a year later the design system is a folder of conventions nobody reads. **Compile-time enforcement beats convention.** A linter that fails CI is the only thing that holds.
 
-Lives at `packages/native/apple/HudsonKit/Tools/HudLint/` — a standalone Swift Package with two products: `HudLintCore` (library) and `hudlint` (CLI).
+Lives at `packages/native/apple/HudsonKit/Tools/HudLint/`: a standalone Swift Package with two products, `HudLintCore` (library) and `hudlint` (CLI).
 
 ## What it catches
 
@@ -27,7 +27,7 @@ Default rules cover five categories:
 | `geometry` | `.frame(width: 240)`, `.cornerRadius(8)`, `RoundedRectangle(cornerRadius: 12)` | `HudLayout` / `HudRadius` / `HudIconSize` |
 | `opacity` | `.opacity(0.4)` | `HudSurface.*` / `HudPalette.*Soft` |
 
-Rules are stateless regexes evaluated line-by-line — see `Sources/HudLintCore/Rules.swift`. The set is intentionally narrow; broader analyses are out of scope for V1.
+Rules are stateless regexes evaluated line-by-line; see `Sources/HudLintCore/Rules.swift`. The set is intentionally narrow; broader analyses are out of scope for V1.
 
 ## macOS integration — Makefile
 

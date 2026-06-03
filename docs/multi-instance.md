@@ -49,7 +49,7 @@ inst:${instanceId}:${key}
 
 Two terminal instances using `usePersistentState('buffer', '')` each get their own localStorage entry with no extra work.
 
-**Escape hatch.** Keys that already start with `inst:` or `hudson.ws.` are left unchanged. Shell-owned workspace-wide state won't get double-scoped when a hook is called from inside an app provider.
+**Escape hatch.** Keys that already start with `inst:` or `hudson.ws.` are left unchanged. Shell-owned workspace-wide state won't get double-scoped when a hook is called from inside an app Provider.
 
 ## useInstance / useOptionalInstance
 

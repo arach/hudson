@@ -8,7 +8,7 @@ order: 9
 
 ## Overview
 
-App-level settings are declared as a schema of typed fields organized into named sections. Attach the schema to your `HudsonApp` via `settings?: AppSettingsConfig` so it travels with the app definition (and is available to any consumer rendering a settings UI). Values are persisted to localStorage per app and read back via the `useAppSettings` hook inside your `Provider`. Rendering the actual settings UI is your call — pair the schema with the `Param*` controls from [`hudsonkit/controls`](./controls.md) for a quick match.
+App-level settings are declared as a schema of typed fields organized into named sections. Attach the schema to your `HudsonApp` via `settings?: AppSettingsConfig` so it travels with the app definition (and is available to any consumer rendering a settings UI). Values are persisted to localStorage per app and read back via the `useAppSettings` hook inside your `Provider`. Rendering the settings UI is your call; pair the schema with the `Param*` controls from [`hudsonkit/controls`](./controls.md) for a quick match.
 
 ## Declaring settings
 

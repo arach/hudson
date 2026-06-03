@@ -25,7 +25,7 @@ tool before freezing public API.
 
 | Capability | Lives now | Rightful home |
 |---|---|---|
-| Native app host and launcher | `apps/vantage` | First-party Vantage product |
+| Native app host and launcher | `apps/hudson` | First-party Vantage product |
 | Pan/zoom viewport math | `HudVantageSurface` | `HudsonShell` as `HudCanvasTransform` + `HudCanvasViewportState` |
 | Trackpad scroll/magnify bridge | `HudVantageSurface` | `HudsonShell`, possibly via an AppKit-backed viewport adapter |
 | Infinite grid background | `HudVantageSurface` | `HudsonShell` canvas viewport, reusing `HudGridBackground` ideas |
@@ -33,9 +33,9 @@ tool before freezing public API.
 | Left navigator, minimap, right inspector | `HudVantageSurface` | `HudsonShell` workspace chrome primitives |
 | Terminal card drag/resize/z-order | `HudVantageSurface` | `HudsonShell` as `HudCanvasCard` + node store |
 | Preview/live renderer policy | `HudVantageSurface` | `HudsonShell` as generic virtualization policy |
-| Local JSONL control API | `apps/vantage` | Sample/dev harness only |
-| Graphite path and registry models | `apps/vantage` | Shared terminal/workspace runtime layer after API proves out |
-| tmux command boundary | `apps/vantage` | `HudsonTerminal` or a terminal runtime backend module |
+| Local JSONL control API | `apps/hudson` | Sample/dev harness only |
+| Graphite path and registry models | `apps/hudson` | Shared terminal/workspace runtime layer after API proves out |
+| tmux command boundary | `apps/hudson` | `HudsonTerminal` or a terminal runtime backend module |
 | PTY child cleanup | `Termini` repo | Termini local PTY process layer |
 
 The extraction rule is simple: if it knows about Termini, tmux, shells, or the
@@ -47,7 +47,7 @@ it is a HudsonShell candidate.
 
 | Lane | Owns | Avoids |
 |---|---|---|
-| Sample lane | `apps/vantage` fixtures, product README, profiling notes | Public HudsonShell API churn |
+| Sample lane | `apps/hudson` fixtures, product README, profiling notes | Public HudsonShell API churn |
 | Canvas lane | Generic viewport, transforms, cards, selection, persistence in HudsonShell | Terminal process orchestration |
 | Terminal lane | tmux backend, Graphite registry, attach/detach/reattach control plane | Canvas gesture and layout internals |
 | Product lane | Commands, group actions, offshoot workspace flows, docs | Low-level renderer/process code |

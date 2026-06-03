@@ -1,3 +1,10 @@
+---
+title: Perf patterns
+description: Drag, resize, pan, scrub — techniques used inside the shell
+order: 20
+section: Tooling
+---
+
 # Performance Patterns: Drag, Resize & Continuous Interactions in React
 
 Lessons learned from optimizing Hudson's drag, resize, pan, and scrub interactions.
@@ -235,7 +242,7 @@ const panelEl = document.querySelector('[data-frame-panel="manifest"]') as HTMLE
 if (panelEl) panelEl.style.width = `${newWidth}px`;
 ```
 
-This bridges the gap when the drag handler is in a parent but the visual element is in a child. It's simpler than threading refs through props for a one-off interaction.
+This bridges the gap when the drag handler is in a parent but the visual element is in a child. Simpler than threading refs through props for a one-off interaction.
 
 **Applied to:** Sidebar resize (parent handler, child panel element).
 
@@ -245,11 +252,11 @@ This bridges the gap when the drag handler is in a parent but the visual element
 
 Ask yourself these questions when implementing any continuous interaction:
 
-1. **Is setState called inside onMouseMove/onPointerMove?** If yes, it's a hot path — apply Pattern 1 or 3.
+1. **Is setState called inside onMouseMove/onPointerMove?** If yes, it's a hot path. Apply Pattern 1 or 3.
 2. **Am I deep-cloning data every frame?** Use targeted cloning (Pattern 5) or accumulate deltas in refs and apply once.
-3. **Is the visual update purely decorative?** (crosshairs, guides, tooltips) — use rAF batching (Pattern 4) or direct DOM (Pattern 1).
+3. **Is the visual update purely decorative?** (crosshairs, guides, tooltips) Use rAF batching (Pattern 4) or direct DOM (Pattern 1).
 4. **Am I using useEffect to manage drag listeners?** Switch to closure-based handlers (Pattern 2) for simpler, faster code.
-5. **Does my parent re-render children during drag?** The parent's setState re-renders everything below it — push the DOM manipulation as close to the leaf element as possible.
+5. **Does my parent re-render children during drag?** The parent's setState re-renders everything below it. Push the DOM manipulation as close to the leaf element as possible.
 
 ## Where to find these patterns in the SDK
 

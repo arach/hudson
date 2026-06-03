@@ -9,9 +9,9 @@ section: "macOS Apps"
 
 ## Overview
 
-`HudsonTerminal` is a Hudson-vocabulary layer over [Termini](https://github.com/arach/Termini) — the renderer + local PTY + SSH stack at `/Users/arach/dev/termini`. Hudson owns the design contract (theme, status overlay, focus, chrome); Termini owns the renderer and transport.
+`HudsonTerminal` is a Hudson-vocabulary layer over [Termini](https://github.com/arach/Termini), the renderer + local PTY + SSH stack at `/Users/arach/dev/termini`. Hudson owns the design contract (theme, status overlay, focus, chrome); Termini owns the renderer and transport.
 
-Termini is heavy (NIO, NIOSSH, renderer), so the module is gated behind `HUDSONKIT_WITH_TERMINAL=1`. Main `HudsonKit` ships with zero terminal dependencies.
+Termini pulls in NIO and NIOSSH, so the module is gated behind `HUDSONKIT_WITH_TERMINAL=1`. Main `HudsonKit` ships with zero terminal dependencies.
 
 ```sh
 HUDSONKIT_WITH_TERMINAL=1 swift build
@@ -23,7 +23,7 @@ Without the flag, `HudsonTerminal` is not compiled and Termini is not linked.
 
 ## HudTerminalSurface
 
-Base surface — wraps `TerminiTerminalView` with Hudson appearance, focus behavior, and accessibility identifiers. Accepts any `TerminiTerminalController` (local PTY, SSH session, or your own transport).
+Base surface. Wraps `TerminiTerminalView` with Hudson appearance, focus behavior, and accessibility identifiers. Accepts any `TerminiTerminalController` (local PTY, SSH session, or your own transport).
 
 ```swift
 import SwiftUI
@@ -46,11 +46,11 @@ struct TerminalPane: View {
 }
 ```
 
-Tap-to-focus calls `controller?.focus()`. Surface sets `accessibilityIdentifier("hudson-terminal")` for UI tests.
+Tap-to-focus calls `controller?.focus()`. The surface sets `accessibilityIdentifier("hudson-terminal")` for UI tests.
 
 ## HudTerminalSSHSurface
 
-Complete SSH-backed surface for demos and simple host apps. Loads Termini's SSH demo environment configuration on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
+SSH-backed surface for demos and simple host apps. Loads Termini's SSH demo environment configuration on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
 
 ```swift
 import HudsonTerminal
@@ -72,7 +72,7 @@ struct SSHPane: View {
 }
 ```
 
-Overlay uses `HudStatusDot`, `HudButton`, Hudson typography — pulsing warn dot while connecting, info dot while idle, "Connect" and "Load env" actions. Advanced transports (custom auth, multiplexed sessions, tunneling) should compose `HudTerminalSurface` directly.
+Overlay uses `HudStatusDot`, `HudButton`, and Hudson typography: pulsing warn dot while connecting, info dot while idle, "Connect" and "Load env" actions. Advanced transports (custom auth, multiplexed sessions, tunneling) should compose `HudTerminalSurface` directly.
 
 ### HudTerminalSessionState
 
@@ -86,7 +86,7 @@ Overlay uses `HudStatusDot`, `HudButton`, Hudson typography — pulsing warn dot
 
 ## HudTerminalAppearance
 
-Themed presentation defaults — wraps `TerminiTerminalAppearance`.
+Themed presentation defaults. Wraps `TerminiTerminalAppearance`. `HudTerminalAppearance.hudsonDefault(for:)` picks `.hudsonGraphite` in dark mode and `.hudsonPaper` in light.
 
 ```swift
 let appearance = HudTerminalAppearance(
@@ -106,10 +106,10 @@ HudTerminalSurface(controller: controller, appearance: appearance)
 
 ### hudsonGraphite
 
-Default theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`), emerald cursor (`#6CE5B1`), ANSI palette of cyan/teal/blue/emerald — never purple. Defined as a `TerminiTerminalTheme` extension so any Termini surface can adopt it.
+Default dark theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`), emerald cursor (`#6CE5B1`), ANSI palette of cyan, teal, blue, and emerald. Never purple. Defined as a `TerminiTerminalTheme` extension so any Termini surface can adopt it. `hudsonPaper` is the light-mode counterpart.
 
 ## Notes
 
-- Keep the build flag off for apps that don't need a terminal — Termini pulls in NIO + NIOSSH.
+- Keep the build flag off for apps that don't need a terminal. Termini pulls in NIO and NIOSSH.
 - `HudTerminalSSHSurface` is for demos. Production hosts should compose `HudTerminalSurface` with their own controller lifecycle.
-- HudsonKit does not re-export Termini types — import `Termini` for controllers/local PTY/theme types and `TerminiSSH` for SSH configuration.
+- HudsonKit does not re-export Termini types. Import `Termini` for controllers, local PTY, and theme types; import `TerminiSSH` for SSH configuration.

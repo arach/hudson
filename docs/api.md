@@ -1,3 +1,10 @@
+---
+title: API Reference
+description: Every hudsonkit export, organized by subpath
+order: 22
+section: Web
+---
+
 # API Reference
 
 Every `hudsonkit` export, organized by subpath. Types are authoritative in [`packages/web/hudsonkit/src/types/`](../packages/web/hudsonkit/src/types/); this doc is a map, not the source of truth.
@@ -41,7 +48,7 @@ Importable from `hudsonkit`:
 | `AppOutput`, `AppInput`, `AppPorts`, `PipeDefinition` | `types/port.ts`                   |
 | `CommandOption`, `ContextMenuEntry`, `ContextMenuAction`, `ContextMenuSeparator`, `ContextMenuGroup` | `components/overlays` |
 | `HudsonTheme`                     | `'light' \| 'dark' \| 'system'`           |
-| `HudsonTemplate`                  | `'hudson' \| 'editorial'`                 |
+| `HudsonTemplate`                  | `'hudson' \| 'editorial' \| 'drafting' \| (string & {})` |
 
 ## Hooks (from `hudsonkit`)
 
@@ -64,7 +71,7 @@ Returned types (also exported): `AppSettingsValues`, `HudsonAIChat`, `UseHudsonA
 
 ## Cache (from `hudsonkit/cache`)
 
-`hudsonkit/cache` is the shared cache substrate for values that can be refetched or recomputed. It supports TTL, stale-while-revalidate windows, in-flight async dedupe, tag invalidation, optional local/session storage, hydrate/dehydrate, and subscribed React reads.
+`hudsonkit/cache` is the shared cache substrate for values that can be refetched or recomputed. It ships TTL, stale-while-revalidate windows, in-flight async dedupe, tag invalidation, optional local/session storage, hydrate/dehydrate, and subscribed React reads.
 
 | Export | Kind | Description |
 |---|---|---|
@@ -163,7 +170,7 @@ Note: `useAssistant` is app-intent aware; `useHudsonAI` is the lower-level works
 
 Exported types: `HLogEvent`, `HLogInput`, `HLogLevel`, `HMetricEvent`, `HMetricInput`, `HMetricType`, `HObservabilityOptions`, `HObservation`, `HObservationBase`, `HObservationData`, `HObservationKind`, `HObservationSink`, `HObservationTags`, `HSubscribeOptions`, `HTraceInput`, `HTraceSpan`, `HTraceStatus`, `HUnsubscribe`.
 
-These are advanced — refer to `src/observability.ts` and `hudsonkit/observability` for the full surface.
+These are advanced. Refer to `src/observability.ts` and `hudsonkit/observability` for the full surface.
 
 ## Platform adapter (from `hudsonkit`)
 

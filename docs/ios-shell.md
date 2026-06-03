@@ -9,9 +9,9 @@ section: "iOS Apps"
 
 ## Overview
 
-`HudPhoneAppShell` is the iPhone-first sibling of `HudAppShell`. Where the macOS/iPad-regular chassis ships a leading rail, trailing inspector, and drawers, the phone shell wraps your root view in a `NavigationStack` and coordinates a five-zone HUD of programmable affordances called **complications**.
+`HudPhoneAppShell` is the iPhone sibling of `HudAppShell`. The macOS/iPad-regular chassis ships a leading rail, trailing inspector, and drawers; the phone shell wraps your root view in a `NavigationStack` and coordinates a five-zone HUD of programmable affordances called **complications**.
 
-The architecture mirrors Hudson's web shell: **Provider + Slots + Hooks**. Pages own state; the shell renders chrome. Pages publish complications via `View.hudComplications(_:)`; the shell reads the preference and dispatches to the chosen renderer. Native `.sheet` / `.fullScreenCover` / `.toolbar` modifiers stay available — the shell doesn't own modal presentation.
+Pages own state; the shell renders chrome. Pages publish complications via `View.hudComplications(_:)`; the shell reads the preference and dispatches to the chosen renderer. Native `.sheet`, `.fullScreenCover`, and `.toolbar` modifiers stay available — the shell doesn't own modal presentation.
 
 ## HudPhoneAppShell
 
@@ -86,15 +86,15 @@ let complications = HudPhoneComplications(
 
 ### Mode (long-press semantic)
 
-Long-press reveals a slot's `longPressModes` — **alternative actions for that slot**, not a navigation menu in disguise. The demo wires center so tap opens the Complications page while long-press cycles renderer styles. The slot's role doesn't change; you're picking a variant of *its* job.
+Long-press reveals a slot's `longPressModes` — **alternative actions for that slot**, not a hidden navigation menu. The demo wires center so tap opens the Complications page while long-press cycles renderer styles. The slot's role doesn't change; you pick a variant of *its* job.
 
 ## Render styles
 
 | Style | Behavior |
 |-------|----------|
-| `.tray` | Default. Bottom three (BL · center · BR) grouped in a glass-material tray via `safeAreaInset(.bottom)`. Top two host as `ToolbarItem`s, inline with the nav title — same vertical level, Talkie-style. |
-| `.scattered` | All five slots float as corner overlays. No grouping, no tray. Sparser chrome. |
-| `.minimal` | Center only; other positions ignored. For focus / takeover flows. |
+| `.tray` | Default. Bottom three (BL, center, BR) grouped in a glass-material tray via `safeAreaInset(.bottom)`. Top two render as `ToolbarItem`s inline with the nav title, Talkie-style. |
+| `.scattered` | All five slots float as corner overlays. No grouping, no tray. |
+| `.minimal` | Center only; other positions ignored. For focus or takeover flows. |
 
 ## Preference plumbing
 

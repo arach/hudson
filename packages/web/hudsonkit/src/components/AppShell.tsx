@@ -163,6 +163,7 @@ function AppShellInner({
   const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
   const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
   const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
+  const [codeSheetWidth, setCodeSheetWidth] = usePersistentState(`appshell.${app.id}.codeSheetWidth`, 720);
 
   useEffect(() => {
     if (codeWorkbenchOpen && !previousCodeWorkbenchOpenRef.current && !rightCollapsed) {
@@ -674,6 +675,8 @@ function AppShellInner({
                 object={codeSurface.object}
                 placement="sheet"
                 onClose={() => codeSurface.setOpen(false)}
+                width={codeSheetWidth}
+                onWidthChange={setCodeSheetWidth}
               />
             </div>
           )}

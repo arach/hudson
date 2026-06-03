@@ -11,7 +11,7 @@ Talkie has the working pattern in production:
 - `/Users/arach/dev/talkie`
 - `/Users/arach/dev/talkie-companion-poc` (canonical — weight this heavily)
 
-A read-only survey of the pattern was already done; key findings are captured in `docs/next-up.md` under "Survey findings #8 HudPairing":
+A read-only survey of the pattern was already done; key findings are captured in `docs/_internal/next-up.md` under "Survey findings #8 HudPairing":
 
 - Transport: HTTP over LAN/Tailscale, port 8765 (Bun/Elysia server on Mac). No WebSocket/WebRTC/MultipeerConnectivity.
 - QR payload: JSON `{publicKey, hostname, port, protocol}` via `CIFilter.qrCodeGenerator()`.

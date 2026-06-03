@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 OUT_DIR="${1:-$ROOT/screenshots}"
 mkdir -p "$OUT_DIR"
 
-APP="/Users/arach/dev/hudson/dist/Hudson Vantage.app"
+APP="/Users/arach/dev/hudson/dist/Hudson.app"
 open -a "$APP"
 sleep 1.5
 
@@ -14,7 +14,7 @@ import CoreGraphics
 let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
 guard let info = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else { exit(1) }
 for w in info {
-    guard let owner = w[kCGWindowOwnerName as String] as? String, owner == "Vantage" else { continue }
+    guard let owner = w[kCGWindowOwnerName as String] as? String, owner == "Hudson" else { continue }
     guard let layer = w[kCGWindowLayer as String] as? Int, layer == 0 else { continue }
     if let num = w[kCGWindowNumber as String] as? Int {
         print(num)
@@ -32,7 +32,7 @@ if [[ -n "$WID" ]]; then
   screencapture -x -o -l "$WID" "$WINDOW_PATH"
   echo "$WINDOW_PATH"
 else
-  echo "Could not find Vantage window; capturing main display instead." >&2
+  echo "Could not find Hudson window; capturing main display instead." >&2
 fi
 
 screencapture -x -m "$FULL_PATH"

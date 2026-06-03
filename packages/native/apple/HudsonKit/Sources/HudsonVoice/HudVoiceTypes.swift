@@ -83,10 +83,12 @@ public enum HudVoiceEvent: Equatable, Sendable {
 }
 
 public struct HudVoxEndpoint: Equatable, Sendable {
+    public static let defaultPort: UInt16 = 42138
+
     public var host: String
     public var port: UInt16
 
-    public init(host: String = "127.0.0.1", port: UInt16 = 42137) {
+    public init(host: String = "127.0.0.1", port: UInt16 = Self.defaultPort) {
         self.host = host
         self.port = port
     }

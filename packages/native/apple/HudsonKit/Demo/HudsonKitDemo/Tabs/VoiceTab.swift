@@ -59,7 +59,7 @@ struct VoiceTab: View {
 
                 VStack(alignment: .leading, spacing: HudSpacing.md) {
                     ContractRow(label: "Transport", value: "Vox local WebSocket JSON-RPC")
-                    ContractRow(label: "Default", value: "ws://127.0.0.1:42137")
+                    ContractRow(label: "Default", value: HudVoxEndpoint().url.absoluteString)
                     ContractRow(label: "Session", value: "transcribe.startSession / stopSession")
                     ContractRow(label: "Events", value: "state, partial, final")
                 }

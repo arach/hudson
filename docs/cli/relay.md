@@ -16,7 +16,7 @@ The relay server:
 1. Accepts WebSocket connections from Hudson apps running in the browser.
 2. Spawns PTY processes (currently Claude CLI sessions) on the host.
 3. Streams terminal I/O between the WebSocket and the PTY in real time.
-4. Supports session persistence -- disconnected sessions stay alive for reconnection.
+4. Supports session persistence: disconnected sessions stay alive for reconnection.
 5. Exposes HTTP endpoints for TypeScript compilation and file uploads.
 
 ## Installation
@@ -214,7 +214,7 @@ Client                              Server
   |-- terminal:resize { cols, rows }->|
   |                                   |
   |-- WebSocket close --------------->|  session becomes orphaned
-  |                                   |  (kept alive for 5 minutes)
+  |                                   |  (kept alive for 30 minutes)
   |                                   |
   |-- WebSocket connect ------------->|
   |-- session:reconnect { id } ------>|  reattach
@@ -224,9 +224,9 @@ Client                              Server
 
 ### Orphaned Sessions
 
-When a WebSocket disconnects, the PTY session is not killed immediately. It enters an orphaned state and lives for 5 minutes, waiting for a reconnect. This handles browser tab refreshes and transient network issues gracefully.
+When a WebSocket disconnects, the PTY session is not killed immediately. It enters an orphaned state and lives for 30 minutes, waiting for a reconnect. This handles browser tab refreshes and transient network issues.
 
-After 5 minutes without reconnection, the session is destroyed and the PTY process is killed.
+After 30 minutes without reconnection, the session is destroyed and the PTY process is killed.
 
 ### Output Buffering
 
@@ -246,7 +246,7 @@ Liveness check.
 
 ### POST /api/compile
 
-Compiles TypeScript source to JavaScript using esbuild. Used by the logo designer for live template compilation.
+Compiles TypeScript source to JavaScript using esbuild. Used for live template compilation in apps that need it.
 
 Request:
 
@@ -287,7 +287,7 @@ The relay has minimal configuration, controlled by CLI flags and environment var
 | Listen port | `--port` | `RELAY_PORT` | `3600` |
 | Claude binary | -- | `CLAUDE_BIN` | Auto-detected |
 | Terminal type | -- | -- | `xterm-256color` |
-| Orphan timeout | -- | -- | 5 minutes |
+| Orphan timeout | -- | -- | 30 minutes |
 | Buffer size | -- | -- | 512 KB |
 
 ## Graceful Shutdown

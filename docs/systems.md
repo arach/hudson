@@ -10,7 +10,7 @@ Hudson provides three inter-app systems: **Intents** for command discovery by AI
 
 ## Intents
 
-Intents are static declarations that describe what your app can do. They bridge the gap between your app's commands and external systems like LLMs, voice assistants, and semantic search. Each intent maps to a `CommandOption` returned by `useCommands()`.
+Intents are static declarations that describe what your app can do. They bridge your app's commands and external systems like LLMs, voice assistants, and semantic search. Each intent maps to a `CommandOption` returned by `useCommands()`.
 
 ### How Intents Work
 
@@ -154,7 +154,7 @@ interface IntentParameter {
 }
 ```
 
-Parameters are passed to the LLM/agent system for structured invocation. Your `CommandOption.action()` implementation handles the actual execution.
+Parameters are passed to the calling LLM or agent for structured invocation. Your `CommandOption.action()` implementation handles execution.
 
 ### Keywords
 
@@ -299,7 +299,7 @@ export const shaperIntents: AppIntent[] = [
 
 ## Services
 
-The service system lets Hudson apps declare dependencies on external services (local servers, databases, language servers, etc.) and manage their lifecycle through a standard interface.
+The service system lets Hudson apps declare dependencies on external services (local servers, databases, language servers) and manage their lifecycle through a standard interface.
 
 ### Overview
 
@@ -717,7 +717,7 @@ There is no enforced schema for data types. They are hints for the user and shel
 
 ### Full Pipe Setup Example
 
-App A (Shaper) outputs SVG. App B (Logo Designer) accepts SVG as input.
+App A (Shaper) outputs SVG. App B (Logo) accepts SVG as input.
 
 **App A -- Shaper:**
 
@@ -737,11 +737,11 @@ const shaperApp: HudsonApp = {
 };
 ```
 
-**App B -- Logo Designer:**
+**App B -- Logo:**
 
 ```tsx
 const logoApp: HudsonApp = {
-  id: 'logo-designer',
+  id: 'logo',
   // ...
   ports: {
     inputs: [
@@ -762,14 +762,14 @@ const logoApp: HudsonApp = {
   "id": "pipe-shaper-logo-svg",
   "name": "Shaper SVG to Logo",
   "source": { "appId": "shaper", "portId": "svg" },
-  "sink": { "appId": "logo-designer", "portId": "svg" },
+  "sink": { "appId": "logo", "portId": "svg" },
   "createdAt": 1709654321000,
   "lastPushedAt": null,
   "enabled": true
 }
 ```
 
-When the pipe is triggered, the shell calls Shaper's `usePortOutput` getter with `portId: 'svg'`, takes the returned SVG string, and passes it to Logo Designer's `usePortInput` setter with `portId: 'svg'`.
+When the pipe is triggered, the shell calls Shaper's `usePortOutput` getter with `portId: 'svg'`, takes the returned SVG string, and passes it to Logo's `usePortInput` setter with `portId: 'svg'`.
 
 ### Port Best Practices
 

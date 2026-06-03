@@ -1,6 +1,13 @@
+---
+title: Theming
+description: Runtime theme and template switching
+order: 5
+section: Web
+---
+
 # Hudson Theming
 
-Hudson ships with runtime-switchable themes and curated templates for any app that mounts `AppShell`.
+Hudson ships runtime-switchable themes and templates for any app that mounts `AppShell`.
 
 ## Quick Start
 
@@ -55,7 +62,7 @@ function ThemeSwitcher() {
 
 ## Tokens
 
-Hudson follows a shadcn-style semantic token surface. Chrome components consume tokens like `--background`, `--foreground`, `--card`, `--accent`, `--border`, and `--ring`, while legacy `--hud-*` tokens are re-pointed to the active template so existing app content continues to work.
+Hudson follows a shadcn-style semantic token surface. Chrome components consume tokens like `--background`, `--foreground`, `--card`, `--accent`, `--border`, and `--ring`. Legacy `--hud-*` tokens are re-pointed to the active template so existing app content continues to work.
 
 The SDK publishes these Tailwind color names:
 
@@ -114,4 +121,4 @@ export function NotesContent() {
 ## Notes
 
 - `editorial` expects consumers to load `Source Serif 4` themselves if they want the serif body treatment.
-- `WorkspaceShell` remains intentionally dark-focused for now; the current theming work targets `AppShell` and shared SDK chrome.
+- `WorkspaceShell` remains intentionally dark-focused for now; current theming work targets `AppShell` and shared SDK chrome.

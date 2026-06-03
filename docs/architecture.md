@@ -1,3 +1,9 @@
+---
+title: Architecture
+description: Monorepo layout, data flow, key decisions
+order: 3
+---
+
 # Architecture
 
 Hudson is a monorepo with a web workspace, a web SDK, Apple-native Swift packages, and small runtime services.
@@ -115,7 +121,7 @@ app/page.tsx (consumer — e.g. premotion)
 
 ### Provider-first state
 
-Each app owns its state via a React context Provider. The shell never touches app internals — it only reads through the app's declared hooks. Apps stay fully decoupled.
+Each app owns its state via a React context Provider. The shell never touches app internals; it only reads through the app's declared hooks.
 
 ### Hook Bridge pattern
 
@@ -123,21 +129,21 @@ The shell calls an app's hooks *inside* that app's Provider scope via a small in
 
 ### Refs, not state, during drag/pan/resize
 
-Window bounds, pan/zoom offsets, and resize deltas are tracked in `useRef` during interaction — React re-renders are suppressed. State gets flushed on a debounce (`BOUNDS_FLUSH_MS = 500` in `WorkspaceShell.tsx`) so the minimap and persistence observe stable values without dragging the whole tree on every mouse move.
+Window bounds, pan/zoom offsets, and resize deltas live in `useRef` during interaction, so React doesn't re-render. State flushes on a debounce (`BOUNDS_FLUSH_MS = 500` in `WorkspaceShell.tsx`) so the minimap and persistence observe stable values without per-frame re-renders.
 
 See [`perf-drag-resize-patterns.md`](./perf-drag-resize-patterns.md) for the full set of tricks.
 
 ### Static intent declarations
 
-Intents are declared as plain data (not runtime functions) so they can be indexed, serialized, and searched without executing app logic. An intent executor bridges discovered intents back to the app's live commands at runtime.
+Intents are declared as plain data (not runtime functions) so they can be indexed, serialized, and searched without executing app logic. At runtime, an executor bridges declared intents to the app's live commands.
 
 ### Recursive Provider nesting
 
-All app Providers wrap the entire workspace content. This enables cross-app context sharing when needed; isolated state is the default.
+All app Providers wrap the entire workspace. Cross-app context sharing is available when needed; isolated state is the default.
 
 ### Registry-driven app loading
 
-Hudson's own demo registers its built-in apps in `app/apps/registry.ts` and merges in optional developer-local apps from a gitignored `app/local/apps.local.ts` (auto-created as an empty stub on first run). The same split — committed shared registry + gitignored local override — works for any consumer that wants a stable default workspace alongside per-developer private apps.
+Hudson's own demo registers its built-in apps in `app/apps/registry.ts` and merges in optional developer-local apps from a gitignored `app/local/apps.local.ts` (auto-created as an empty stub on first run). The same split — committed shared registry + gitignored local override — works for any consumer that needs a stable default plus per-developer overrides.
 
 ## State persistence
 

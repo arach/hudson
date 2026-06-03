@@ -3,7 +3,7 @@
 **Status**: Draft (Cursor-authored; pending Hudson Codex review)
 **Owner**: TBD (Arach)
 **Targets**: hudsonkit web, `app/apps/*`, `app/api/ai/toolsets/*`, `scripts/agent-snapshot.ts`
-**Related**: HUD-006 (AI backends / toolsets), HUD-008 (app backends), `docs/building-app-ai.md`, `docs/hudson-playbooks/brand-commission.md`
+**Related**: HUD-006 (AI backends / toolsets), HUD-008 (app backends), `docs/building-app-ai.md`, `docs/_internal/hudson-playbooks/brand-commission.md`
 
 ## Summary
 

@@ -1,62 +1,78 @@
-# Vantage
+# Hudson
 
-Native macOS product — a spatial runtime canvas for tmux sessions, terminals,
-and workspace artifacts. Built on **HudsonVantage** (`HudVantageHost*` host kit +
-`HudVantageSurface` canvas). Ships as **Vantage** (`com.hudsonkit.vantage`).
+Native macOS Hudson app. Its main window is the Vantage spatial runtime canvas
+for tmux sessions, terminals, and workspace artifacts. A separate menu-bar
+helper owns microphone permission and long-running local services.
+
+It ships as:
+
+- **Hudson** (`com.hudsonkit.hudson`) - the regular app with the Vantage main window.
+- **Hudson Menu** (`com.hudsonkit.hudson.menu`) - the LSUIElement menu helper and voice daemon host.
 
 Run it from the repo root:
 
 ```sh
-HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/vantage VantageCanvas
+HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/hudson/native HudsonApp
+HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/hudson/native HudsonMenuApp
 ```
 
-For day-to-day use, build a real `.app` bundle with icon, menus, settings, and a
-menu-bar companion:
+For day-to-day use, build real `.app` bundles with icon, menus, settings, and
+the menu helper:
 
 ```sh
-apps/vantage/scripts/run-app.sh
-apps/vantage/scripts/run-app.sh --install   # copies to ~/Applications
+apps/hudson/scripts/run-app.sh
+apps/hudson/scripts/run-app.sh --install   # copies to ~/Applications
 ```
 
-The bundle lands at `dist/Hudson Vantage.app` by default. State persists under
-`~/Library/Application Support/Hudson/Vantage/` instead of `/tmp`.
+The bundles land at `dist/Hudson.app` and `dist/Hudson Menu.app` by default.
+Vantage state persists under `~/Library/Application Support/Hudson/Vantage/`;
+the embedded Vox runtime state persists under `~/Library/Application Support/Hudson/Vox/`.
 
 ## Host app
 
-`VantageCanvas` is the thin SwiftPM executable — all chrome lives in **HudsonVantage**:
+`HudsonApp` is the SwiftPM executable. Vantage canvas chrome still lives in
+**HudsonVantage**, while this app owns product-level services:
 
 | HudsonKit type | Role |
 |----------------|------|
 | `HudVantageHostAppModel` | Host state, control-path helpers, status subscription |
 | `HudVantageHostRootView` | Embeds `HudVantageSurface` + About sheet |
-| `HudVantageHostScenes` | Window, menu bar extra, settings, commands |
+| `HudVantageHostCommands` | Vantage menu commands |
 | `HudVantageConfiguration.hostApplication(...)` | Default paths and persistence wiring |
 
-`VantageCanvasApp.swift` only supplies repo-specific setup manifest paths and
-calls `HudVantageHostApplication.activateOnLaunch()`.
+`HudsonApp.swift` supplies repo-specific setup manifest paths and the regular
+Vantage main window. It does not own microphone capture or daemon lifecycle.
 
 The native host includes:
 
 - Dock icon generated from `scripts/generate-app-icon.swift`
 - Standard macOS menus (`Workspace`, `Canvas`, `Appearance`)
-- Settings window (`⌘,`) with control-lane paths
-- Menu bar extra with live node/status readout
+- Settings window (`Cmd+,`) for Vantage
 - About panel with control-path copy/reveal helpers
 
 Menu actions post into `HudVantageSurface` through `VantageHostCommandCenter`.
 The surface publishes live status back via `HudVantageHostStatusCenter`.
 
-**Menu bar companion** (Lattices-style):
+## Menu helper
 
-- **Left click** the status icon → transient popover with live status and quick actions
-- **Right click** → context menu (show, palette, lens, save, paths, settings, quit)
-- Template **2×2 grid** icon in the menu bar; popover warms up on launch
+`HudsonMenuApp` is the LSUIElement helper. It has no Dock icon and stays alive
+independently of the main window. It owns:
+
+- Menu bar status and quick actions.
+- Microphone permission management for Hudson-owned voice.
+- Embedded `VoxService.VoxRuntimeService` hosting from `../vox/swift`.
+- A long-running process boundary for local services.
+- Show/launch action for the main Hudson app.
+
+The helper requests microphone permission on first launch. Once permission is
+granted, it starts the embedded Vox runtime on `127.0.0.1:42138` by default
+(`HUDSON_VOICE_VOX_PORT` overrides the port).
 
 On first launch, when no saved state exists, the app applies the practice
 manifest at:
 
 ```sh
-apps/vantage/fixtures/hudson-vantage-practice.setup.json
+apps/hudson/fixtures/hudson-vantage-practice.setup.json
 ```
 
 That practice workspace lays out two tmux sessions, two Hudson source files, a
@@ -90,8 +106,7 @@ Termini-owned:
 
 - Local PTY process lifecycle and child cleanup.
 
-See [Hudson Vantage](../../docs/hudson-vantage.md) for the reusable surface
-contract.
+See `docs/_internal/hudson-vantage.md` for the reusable surface contract.
 
 ## Local control API
 
@@ -128,37 +143,37 @@ printf '{"id":"reset","action":"reset"}\n' >> /tmp/hudson-vantage-control.jsonl
 Agents can use the `canvasctl` wrapper instead of hand-writing JSON:
 
 ```sh
-apps/vantage/scripts/vantagectl.sh --wait status
-apps/vantage/scripts/vantagectl.sh --wait tile 8 8 --width 300 --height 200 --gap 18
-apps/vantage/scripts/vantagectl.sh --wait reattach --session hudson-lab --create
-apps/vantage/scripts/vantagectl.sh --wait reattach --remote user@host --session hudson-lab
-apps/vantage/scripts/vantagectl.sh --wait reattach \
+apps/hudson/scripts/vantagectl.sh --wait status
+apps/hudson/scripts/vantagectl.sh --wait tile 8 8 --width 300 --height 200 --gap 18
+apps/hudson/scripts/vantagectl.sh --wait reattach --session hudson-lab --create
+apps/hudson/scripts/vantagectl.sh --wait reattach --remote user@host --session hudson-lab
+apps/hudson/scripts/vantagectl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
-apps/vantage/scripts/vantagectl.sh --wait select NODE_ID_PREFIX
-apps/vantage/scripts/vantagectl.sh --wait inspect
-apps/vantage/scripts/vantagectl.sh --wait focus
-apps/vantage/scripts/vantagectl.sh --wait focus-mode
-apps/vantage/scripts/vantagectl.sh --wait popout
-apps/vantage/scripts/vantagectl.sh --wait exit-focus
-apps/vantage/scripts/vantagectl.sh --wait metrics
-apps/vantage/scripts/vantagectl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
-apps/vantage/scripts/vantagectl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
-apps/vantage/scripts/vantagectl.sh --wait setup --manifest apps/vantage/fixtures/hudson-vantage-practice.setup.json --create --fit
-apps/vantage/scripts/vantagectl.sh --wait setup --manifest apps/vantage/fixtures/scout-vantage.setup.json --create --fit
-apps/vantage/scripts/vantagectl.sh --wait tmux-health --session hudson-lab
-apps/vantage/scripts/vantagectl.sh --wait tmux-health --remote user@host --session hudson-lab
-apps/vantage/scripts/vantagectl.sh --wait tmux-health --remote user@host --session hudson-lab --probe-remote --timeout-ms 750
-apps/vantage/scripts/vantagectl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
-apps/vantage/scripts/vantagectl.sh --wait perf-cleanup --prefix hudson-perf-lab
-apps/vantage/scripts/vantagectl.sh --wait viewport --fit
-apps/vantage/scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
-apps/vantage/scripts/vantagectl.sh --wait ensure-tmux --confirm
-apps/vantage/scripts/vantagectl.sh --wait save
-apps/vantage/scripts/vantagectl.sh --wait save-workspace --state-file /tmp/project.vantage.json
-apps/vantage/scripts/vantagectl.sh --wait restore --create
-apps/vantage/scripts/vantagectl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
-apps/vantage/scripts/vantagectl.sh --wait raw '{"action":"metrics","includeNodes":false}'
+apps/hudson/scripts/vantagectl.sh --wait select NODE_ID_PREFIX
+apps/hudson/scripts/vantagectl.sh --wait inspect
+apps/hudson/scripts/vantagectl.sh --wait focus
+apps/hudson/scripts/vantagectl.sh --wait focus-mode
+apps/hudson/scripts/vantagectl.sh --wait popout
+apps/hudson/scripts/vantagectl.sh --wait exit-focus
+apps/hudson/scripts/vantagectl.sh --wait metrics
+apps/hudson/scripts/vantagectl.sh --wait style --scope workspace --preset jade --terminal-theme hudson-paper
+apps/hudson/scripts/vantagectl.sh --wait style --scope tag --tag focus --terminal-theme jade-night
+apps/hudson/scripts/vantagectl.sh --wait setup --manifest apps/hudson/fixtures/hudson-vantage-practice.setup.json --create --fit
+apps/hudson/scripts/vantagectl.sh --wait setup --manifest apps/hudson/fixtures/scout-vantage.setup.json --create --fit
+apps/hudson/scripts/vantagectl.sh --wait tmux-health --session hudson-lab
+apps/hudson/scripts/vantagectl.sh --wait tmux-health --remote user@host --session hudson-lab
+apps/hudson/scripts/vantagectl.sh --wait tmux-health --remote user@host --session hudson-lab --probe-remote --timeout-ms 750
+apps/hudson/scripts/vantagectl.sh --wait perf-harness --prefix hudson-perf-lab --sessions 64 --active 32 --mode tail --rate-ms 250
+apps/hudson/scripts/vantagectl.sh --wait perf-cleanup --prefix hudson-perf-lab
+apps/hudson/scripts/vantagectl.sh --wait viewport --fit
+apps/hudson/scripts/vantagectl.sh --wait viewport --pan-x -120 --pan-y 44 --scale 0.25
+apps/hudson/scripts/vantagectl.sh --wait ensure-tmux --confirm
+apps/hudson/scripts/vantagectl.sh --wait save
+apps/hudson/scripts/vantagectl.sh --wait save-workspace --state-file /tmp/project.vantage.json
+apps/hudson/scripts/vantagectl.sh --wait restore --create
+apps/hudson/scripts/vantagectl.sh --wait restore-workspace --state-file /tmp/project.vantage.json --create
+apps/hudson/scripts/vantagectl.sh --wait raw '{"action":"metrics","includeNodes":false}'
 ```
 
 That means a Claude, Codex, or shell session outside the app can instantiate
@@ -233,7 +248,7 @@ For direct executable runs, a startup reattach set can be provided with:
 ```sh
 TERMINI_CANVAS_REATTACH_IDS="hudson.lab.termini.canvas.0042.shell,hudson.lab.agents.codex.0007.worker" \
 TERMINI_CANVAS_REATTACH_REMOTE_HOST="user@host" \
-HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/vantage VantageCanvas
+HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/hudson/native HudsonApp
 ```
 
 The case-study configuration restores `/tmp/hudson-vantage-practice-state.json`

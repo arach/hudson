@@ -10,9 +10,8 @@ section: Primitives
 ## Overview
 
 `hudsonkit/patterns` is an optional app-interior UI layer. It does not replace
-an app's visual system or shell slots. It gives apps a shared, high-quality
-vocabulary for dense navigation, object hierarchy, preview surfaces, and
-selection context.
+an app's visual system or shell slots. It gives apps a shared vocabulary for
+dense navigation, object hierarchy, preview surfaces, and selection context.
 
 Use it when an app wants Hudson's default rhythm. Ignore it when an app needs a
 fully custom surface.

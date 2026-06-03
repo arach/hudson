@@ -9,7 +9,7 @@ section: "iOS Apps"
 
 ## Overview
 
-`HudQRCode` and `HudQRScanner` are paired primitives for QR pairing flows. Generation is cross-platform (iOS + macOS) via CoreImage. Scanning is iOS-only via `AVCaptureSession` — macOS shows an empty-state placeholder. Import from `HudsonUI`.
+`HudQRCode` and `HudQRScanner` are paired primitives for QR pairing flows. Generation is cross-platform (iOS + macOS) via CoreImage. Scanning is iOS-only via `AVCaptureSession`; macOS shows an empty-state placeholder. Import from `HudsonUI`.
 
 ## HudQRCode
 
@@ -43,7 +43,7 @@ The view is accessibility-aware: it announces as "QR code" with the encoded cont
 
 ## HudQRScanner
 
-Wraps `AVCaptureSession` with a viewfinder overlay, debounces duplicate scans within 1.5s, and triggers a haptic on each accepted code.
+Wraps `AVCaptureSession` with a viewfinder overlay, debounces duplicate scans within 1.5s, and vibrates on each accepted code via `AudioServicesPlaySystemSound(kSystemSoundID_Vibrate)`.
 
 ```swift
 struct PairingScanView: View {
@@ -57,7 +57,7 @@ struct PairingScanView: View {
 }
 ```
 
-The scanner assumes camera access is granted — calling it without permission yields a black preview, never a crash. Always wrap with `HudPermissionGate(.camera, …)` so denial flows render the Settings deep-link automatically. See [Permissions](./permissions.md).
+The scanner assumes camera access is granted; calling it without permission yields a black preview, never a crash. Always wrap with `HudPermissionGate(.camera, …)` so denial flows render the Settings deep-link automatically. See [Permissions](./permissions.md).
 
 ### Init parameters
 
@@ -69,6 +69,6 @@ The scanner assumes camera access is granted — calling it without permission y
 
 ### Platform behavior
 
-iOS renders a live preview with viewfinder, orientation tracking, and haptic feedback. macOS renders a `HudEmptyState` reading "QR scanner unavailable".
+iOS renders a live preview with viewfinder, orientation tracking, and vibration on scan. macOS renders a `HudEmptyState` reading "QR scanner unavailable".
 
-Don't forget `NSCameraUsageDescription` in your Info.plist — `HudPermission.camera.infoPlistKey` returns the exact key.
+Don't forget `NSCameraUsageDescription` in your Info.plist. `HudPermission.camera.infoPlistKey` returns the exact key.
