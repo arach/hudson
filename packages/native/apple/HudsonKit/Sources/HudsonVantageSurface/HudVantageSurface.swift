@@ -13,6 +13,7 @@ import HudsonVantageCore
 import Termini
 
 private let hudVantagePerfTrace = HudTrace(category: "vantage.perf")
+private let hudVantageFrameProbeEnabled = ProcessInfo.processInfo.environment["HUDSON_VANTAGE_FRAME_PROBE"] == "1"
 
 private enum HudVantageMetrics {
     static let terminalTitleBarHeight = HudLayout.fieldHeight
@@ -1952,10 +1953,12 @@ public struct HudVantageSurface: View {
                     SelectionMarquee(rect: rect)
                 }
 
-                CanvasFrameRateProbe(
-                    monitor: frameRateMonitor,
-                    onSample: updateFrameRatePerfCounters
-                )
+                if hudVantageFrameProbeEnabled {
+                    CanvasFrameRateProbe(
+                        monitor: frameRateMonitor,
+                        onSample: updateFrameRatePerfCounters
+                    )
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             .clipped()

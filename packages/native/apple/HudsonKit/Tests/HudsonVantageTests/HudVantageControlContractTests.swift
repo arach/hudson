@@ -287,7 +287,7 @@ final class HudVantageControlContractTests: XCTestCase {
               "id": "hudson.vantage.plan.practice",
               "runtime": {
                 "kind": "plan",
-                "path": "apps/vantage/fixtures/vantage-practice/PLAN.md",
+                "path": "apps/hudson/fixtures/vantage-practice/PLAN.md",
                 "language": "markdown",
                 "role": "plan"
               },
@@ -318,7 +318,7 @@ final class HudVantageControlContractTests: XCTestCase {
         XCTAssertEqual(manifest.nodes[0].language, "swift")
         XCTAssertEqual(manifest.nodes[0].role, "source")
         XCTAssertEqual(manifest.nodes[1].runtime?.kind, "plan")
-        XCTAssertEqual(manifest.nodes[1].runtime?.path, "apps/vantage/fixtures/vantage-practice/PLAN.md")
+        XCTAssertEqual(manifest.nodes[1].runtime?.path, "apps/hudson/fixtures/vantage-practice/PLAN.md")
         XCTAssertEqual(manifest.nodes[1].runtime?.language, "markdown")
         XCTAssertEqual(manifest.nodes[1].runtime?.role, "plan")
         XCTAssertEqual(manifest.nodes[2].runtimeKind, "diff")
@@ -496,7 +496,7 @@ final class HudVantageControlContractTests: XCTestCase {
                     tag: "watch",
                     runtime: HudVantageRuntimeReference(
                         kind: "diff",
-                        path: "apps/vantage/fixtures/vantage-practice/RUNNING.diff",
+                        path: "apps/hudson/fixtures/vantage-practice/RUNNING.diff",
                         language: "diff",
                         content: "diff --git a/file b/file",
                         role: "review"
@@ -511,7 +511,7 @@ final class HudVantageControlContractTests: XCTestCase {
 
         XCTAssertEqual(decoded.nodes.first?.externalID, "hudson.vantage.diff.running")
         XCTAssertEqual(decoded.nodes.first?.runtime.kind, "diff")
-        XCTAssertEqual(decoded.nodes.first?.runtime.path, "apps/vantage/fixtures/vantage-practice/RUNNING.diff")
+        XCTAssertEqual(decoded.nodes.first?.runtime.path, "apps/hudson/fixtures/vantage-practice/RUNNING.diff")
         XCTAssertEqual(decoded.nodes.first?.runtime.language, "diff")
         XCTAssertEqual(decoded.nodes.first?.runtime.content, "diff --git a/file b/file")
         XCTAssertEqual(decoded.nodes.first?.runtime.role, "review")
@@ -764,11 +764,11 @@ final class HudVantageControlContractTests: XCTestCase {
 
     func testCanvasCtlEmitsV0FocusAndCloseCommands() throws {
         let focus = try queuedCommandFromScript(
-            relativeScriptPath: "apps/vantage/scripts/vantagectl.sh",
+            relativeScriptPath: "apps/hudson/scripts/vantagectl.sh",
             arguments: ["focus", "node-a"]
         )
         let close = try queuedCommandFromScript(
-            relativeScriptPath: "apps/vantage/scripts/vantagectl.sh",
+            relativeScriptPath: "apps/hudson/scripts/vantagectl.sh",
             arguments: ["close", "node-a"]
         )
 
@@ -786,7 +786,7 @@ final class HudVantageControlContractTests: XCTestCase {
     func testControlScriptsEmitViewportCommands() throws {
         for scriptPath in [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "apps/vantage/scripts/vantagectl.sh",
+            "apps/hudson/scripts/vantagectl.sh",
         ] {
             let command = try queuedCommandFromScript(
                 relativeScriptPath: scriptPath,
@@ -813,7 +813,7 @@ final class HudVantageControlContractTests: XCTestCase {
     func testControlScriptsEmitStyleAndTmuxHealthCommands() throws {
         for scriptPath in [
             "packages/native/apple/HudsonKit/Scripts/vantagectl.sh",
-            "apps/vantage/scripts/vantagectl.sh",
+            "apps/hudson/scripts/vantagectl.sh",
         ] {
             let style = try queuedCommandFromScript(
                 relativeScriptPath: scriptPath,
