@@ -26,6 +26,15 @@ export const HUDSON_VOICE_DAEMON_DEFAULT_HOST = '127.0.0.1';
 export const HUDSON_VOICE_DAEMON_DEFAULT_PORT = 42138;
 export const HUDSON_VOICE_DAEMON_DEFAULT_WS_URL =
   `ws://${HUDSON_VOICE_DAEMON_DEFAULT_HOST}:${HUDSON_VOICE_DAEMON_DEFAULT_PORT}`;
+export const HUDSON_VOICE_API_BASE_PATH = '/api/hudson-voice';
+export const HUDSON_VOICE_API_PATHS = {
+  health: '/health',
+  live: '/v1/voice/live',
+  devices: '/v1/voice/devices',
+  defaultDevice: '/v1/voice/devices/default',
+  liveStop: (sessionId: string) => `/v1/voice/live/${encodeURIComponent(sessionId)}/stop`,
+  liveCancel: (sessionId: string) => `/v1/voice/live/${encodeURIComponent(sessionId)}/cancel`,
+} as const;
 const HUDSON_VOICE_DAEMON_REQUEST_TIMEOUT_MS = 30_000;
 
 export interface HudsonVoiceRuntimeHealth {
@@ -124,6 +133,7 @@ export interface HudsonVoiceClientOptions {
 export interface HudsonVoiceDaemonClientOptions {
   webSocketUrl?: string | URL;
   clientId?: string;
+  token?: string;
   WebSocket?: typeof WebSocket;
   requestTimeoutMs?: number;
 }
@@ -157,12 +167,27 @@ export class HudsonVoiceClientError extends Error {
 
 function createEndpoint(baseUrl: string | URL, path: string): string {
   const base = typeof baseUrl === 'string' ? baseUrl : baseUrl.toString();
-  const normalizedBase = base.endsWith('/') ? base : `${base}/`;
-  return new URL(path.replace(/^\//, ''), normalizedBase).toString();
+  const normalizedPath = path.replace(/^\/+/, '');
+
+  if (/^[a-z][a-z\d+\-.]*:\/\//i.test(base)) {
+    const normalizedBase = base.endsWith('/') ? base : `${base}/`;
+    return new URL(normalizedPath, normalizedBase).toString();
+  }
+
+  const normalizedBase = base.replace(/\/+$/, '');
+  return normalizedBase ? `${normalizedBase}/${normalizedPath}` : `/${normalizedPath}`;
 }
 
 function createHudsonVoiceDaemonEndpoint(webSocketUrl?: string | URL): string {
   return (webSocketUrl ?? HUDSON_VOICE_DAEMON_DEFAULT_WS_URL).toString();
+}
+
+function createDaemonParams(
+  options: HudsonVoiceDaemonClientOptions,
+  params: Record<string, unknown>,
+): Record<string, unknown> {
+  if (!options.token) return params;
+  return { ...params, authToken: options.token };
 }
 
 function getWebSocket(options: HudsonVoiceDaemonClientOptions): typeof WebSocket {
@@ -389,7 +414,7 @@ async function callHudsonVoiceDaemonRpc(
     };
 
     socket.onopen = () => {
-      socket.send(JSON.stringify({ id, method, params }));
+      socket.send(JSON.stringify({ id, method, params: createDaemonParams(options, params) }));
     };
 
     socket.onmessage = (event: MessageEvent) => {
@@ -557,6 +582,7 @@ async function startHudsonVoiceDaemonLiveSession(
           mode: request.mode,
           deviceId: request.deviceId,
           metadata: request.metadata,
+          ...(options.token ? { authToken: options.token } : {}),
         },
       }));
     };
@@ -818,21 +844,21 @@ export function createHudsonVoiceClient(options: HudsonVoiceClientOptions): Huds
   const clientId = options.clientId ?? 'hudsonkit';
 
   const stopLiveSession = async (sessionId: string) => {
-    await requestJson<void>(options, `/v1/voice/live/${encodeURIComponent(sessionId)}/stop`, {
+    await requestJson<void>(options, HUDSON_VOICE_API_PATHS.liveStop(sessionId), {
       method: 'POST',
       body: JSON.stringify({ clientId }),
     });
   };
 
   const cancelLiveSession = async (sessionId: string) => {
-    await requestJson<void>(options, `/v1/voice/live/${encodeURIComponent(sessionId)}/cancel`, {
+    await requestJson<void>(options, HUDSON_VOICE_API_PATHS.liveCancel(sessionId), {
       method: 'POST',
       body: JSON.stringify({ clientId }),
     });
   };
 
   return {
-    health: () => requestJson<HudsonVoiceHealth>(options, '/health'),
+    health: () => requestJson<HudsonVoiceHealth>(options, HUDSON_VOICE_API_PATHS.health),
 
     probe: async () => {
       const availability = await probeHudsonVoiceAvailability(createHudsonVoiceClient(options));
@@ -841,16 +867,16 @@ export function createHudsonVoiceClient(options: HudsonVoiceClientOptions): Huds
 
     availability: () => probeHudsonVoiceAvailability(createHudsonVoiceClient(options)),
 
-    listDevices: () => requestJson<HudsonVoiceDeviceList>(options, '/v1/voice/devices'),
+    listDevices: () => requestJson<HudsonVoiceDeviceList>(options, HUDSON_VOICE_API_PATHS.devices),
 
     setDefaultDevice: (deviceId: string) =>
-      requestJson<HudsonVoiceDeviceList>(options, '/v1/voice/devices/default', {
+      requestJson<HudsonVoiceDeviceList>(options, HUDSON_VOICE_API_PATHS.defaultDevice, {
         method: 'PUT',
         body: JSON.stringify({ clientId, deviceId }),
       }),
 
     startLiveSession: async (request: HudsonVoiceLiveSessionRequest = {}) => {
-      const response = await requestStream(options, '/v1/voice/live', {
+      const response = await requestStream(options, HUDSON_VOICE_API_PATHS.live, {
         method: 'POST',
         body: JSON.stringify({
           clientId,

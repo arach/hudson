@@ -46,9 +46,9 @@ if [[ ! -f "$app_root/Resources/AppIcon.icns" ]]; then
   exit 66
 fi
 
-HUDSONKIT_WITH_TERMINAL=1 swift build --package-path "$package_path" -c release --product HudsonApp
-HUDSONKIT_WITH_TERMINAL=1 swift build --package-path "$package_path" -c release --product HudsonMenuApp
-bin_dir="$(HUDSONKIT_WITH_TERMINAL=1 swift build --package-path "$package_path" -c release --show-bin-path)"
+HUDSONKIT_WITH_TERMINAL=1 HUDSON_WITH_VOICE_HELPER=1 swift build --package-path "$package_path" -c release --product HudsonApp
+HUDSONKIT_WITH_TERMINAL=1 HUDSON_WITH_VOICE_HELPER=1 swift build --package-path "$package_path" -c release --product HudsonMenuApp
+bin_dir="$(HUDSONKIT_WITH_TERMINAL=1 HUDSON_WITH_VOICE_HELPER=1 swift build --package-path "$package_path" -c release --show-bin-path)"
 main_bin_path="$bin_dir/HudsonApp"
 menu_bin_path="$bin_dir/HudsonMenuApp"
 

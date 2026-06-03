@@ -4,8 +4,9 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
+  HUDSON_VOICE_API_BASE_PATH,
   HudsonVoiceClientError,
-  createHudsonVoiceDaemonClient,
+  createHudsonVoiceClient,
   useHudsonAI,
   usePersistentState,
   useDebouncedPersistentState,
@@ -110,13 +111,13 @@ function normalizeVoiceError(error: unknown): { status: 'unavailable' | 'error';
     if (error.code === 'network_error') {
       return {
         status: 'unavailable',
-        message: 'Hudson voice daemon is not reachable. Launch Hudson Menu and try again.',
+        message: 'Hudson voice service is not reachable. Launch Hudson Menu and try again.',
       };
     }
     if (error.code === 'daemon_error') {
       return {
         status: 'error',
-        message: error.message || 'Hudson voice daemon returned an error.',
+        message: error.message || 'Hudson voice service returned an error.',
       };
     }
     if (error.code === 'session_id_missing') {
@@ -276,7 +277,10 @@ export function WorkspaceAI({
   inputValueRef.current = input;
   voiceSettingsRef.current = resolvedVoiceSettings;
 
-  const voiceClient = useMemo(() => createHudsonVoiceDaemonClient({ clientId: HUDSON_VOX_CLIENT_ID }), []);
+  const voiceClient = useMemo(() => createHudsonVoiceClient({
+    baseUrl: HUDSON_VOICE_API_BASE_PATH,
+    clientId: HUDSON_VOX_CLIENT_ID,
+  }), []);
 
   const baseContext = useMemo(() => ({
     apps: workspace.apps.map(c => ({
@@ -798,12 +802,12 @@ export function WorkspaceAI({
       const availability = await voiceClient.availability();
       if (availability === 'warming') {
         setVoiceStatus('unavailable');
-        setVoiceError('Hudson voice daemon is starting up. Try again in a moment.');
+        setVoiceError('Hudson voice service is starting up. Try again in a moment.');
         return;
       }
       if (availability === 'unreachable') {
         setVoiceStatus('unavailable');
-        setVoiceError('Hudson voice daemon is not reachable. Launch Hudson Menu and try again.');
+        setVoiceError('Hudson voice service is not reachable. Launch Hudson Menu and try again.');
         return;
       }
       if (availability === 'permission-denied') {
@@ -813,7 +817,7 @@ export function WorkspaceAI({
       }
       if (availability === 'error') {
         setVoiceStatus('error');
-        setVoiceError('Hudson voice daemon is not ready. Check Hudson Menu and try again.');
+        setVoiceError('Hudson voice service is not ready. Check Hudson Menu and try again.');
         return;
       }
 

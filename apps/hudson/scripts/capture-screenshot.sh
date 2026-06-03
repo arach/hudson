@@ -2,10 +2,11 @@
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
+REPO_ROOT="$(cd "$ROOT/../.." && pwd)"
 OUT_DIR="${1:-$ROOT/screenshots}"
 mkdir -p "$OUT_DIR"
 
-APP="/Users/arach/dev/hudson/dist/Hudson.app"
+APP="${HUDSON_APP_PATH:-$REPO_ROOT/dist/Hudson.app}"
 open -a "$APP"
 sleep 1.5
 

@@ -498,7 +498,7 @@ export function HudsonVoiceSettingsEditor({
         </div>
       </details>
       <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
-        Voice capture uses Hudson Menu&apos;s embedded Vox daemon on <span className="text-foreground/80">127.0.0.1:42138</span>.
+        Voice capture uses Hudson Menu&apos;s embedded Vox daemon through <span className="text-foreground/80">/api/hudson-voice</span>.
         Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-foreground/80">/v1/audio/speech</span>,
         with voices and models populated from <span className="text-foreground/80">/v1/voices</span>.
         Hudson owns microphone permission and daemon lifecycle; standalone Vox.app is not required.

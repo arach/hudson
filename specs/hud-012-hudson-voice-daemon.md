@@ -42,8 +42,8 @@ This is an ownership decision, not a rewrite decision. Hudson should not reimple
 |---------|------------------|-----|
 | Hudson Web assistant | `WorkspaceAI` imports `@voxd/client`, records browser audio, and asks users to install or launch Vox when unavailable. | Product dependency is the standalone Vox app. Browser owns capture. |
 | `hudsonkit/voice` web subpath | Lazily loads `@voxd/client` and defaults to browser `MediaRecorder` plus Vox transcription. | Useful hook boundary, but default provider is not Hudson-owned. |
-| Apple `HudsonVoice` | Provides `HudVoxLiveSession`, a WebSocket JSON-RPC adapter to Vox's local daemon at `127.0.0.1:42138`. | Good native client primitives, but no embedded host/daemon ownership. |
-| Vox Swift runtime | `../vox/swift` provides `VoxService.VoxRuntimeService`, which can be embedded and started in-process. | The service still exposes Vox's WebSocket JSON-RPC transport; Hudson needs a Hudson-namespaced local API facade on top. |
+| Apple `HudsonVoice` | Provides `HudVoxLiveSession`, a WebSocket JSON-RPC adapter to a Vox daemon endpoint. | Good native client primitives, but first-party browser surfaces should use Hudson's API facade. |
+| Vox Swift runtime | `../vox/swift` provides `VoxService.VoxRuntimeService`, which can be embedded and started in-process. | Hudson starts it with a per-run token and keeps the raw endpoint private behind the Hudson API facade. |
 | OpenScout native HUD reference | Uses a Swift service to call Vox Companion on `127.0.0.1:43115`; the companion owns mic capture. | Correct local-service interaction model, wrong operator ownership for Hudson. |
 
 The result is confusing: Hudson has a `HudsonVoice` name and some useful provider boundaries, but the actual runtime assumption is still "Vox app is installed and running."
@@ -87,13 +87,13 @@ Hudson native surfaces
         |
         | HudsonVoice client API
         v
-Hudson local voice API
+Next same-origin /api/hudson-voice
         |
-        | loopback HTTP / streaming transport
+        | private capability file + bearer token
         v
-Hudson native app or bundled host
+Hudson Menu helper
         |
-        | process lifecycle, permissions, device settings
+        | token-gated loopback JSON-RPC
         v
 Embedded Vox daemon runtime
         |
@@ -119,18 +119,21 @@ The standalone Vox app is the fallback host only when explicitly configured.
 
 ## Local API contract
 
-The exact port and discovery mechanism are open, but the primary API must be Hudson-namespaced and must not reuse standalone Vox's public ports as the default product contract.
+The browser-visible API is same-origin and Hudson-namespaced. The embedded Vox
+port is randomized per run, stored only in a user-readable runtime capability
+file, and protected by a per-run token that Hudson injects into Vox JSON-RPC
+requests.
 
 Minimum v1 endpoints:
 
 | Endpoint | Method | Purpose |
 |----------|--------|---------|
-| `/health` | `GET` | Check Hudson voice daemon status, version, embedded Vox runtime health, permission state, and active session summary. |
-| `/v1/voice/devices` | `GET` | List input devices and the selected/default microphone. |
-| `/v1/voice/devices/default` | `PUT` | Set Hudson's preferred input device. |
-| `/v1/voice/live` | `POST` | Start a live transcription session. Response streams NDJSON events. |
-| `/v1/voice/live/{sessionId}/stop` | `POST` | Stop capture and finalize the transcript. |
-| `/v1/voice/live/{sessionId}/cancel` | `POST` | Cancel capture and discard pending transcript text. |
+| `/api/hudson-voice/health` | `GET` | Check Hudson voice daemon status, version, embedded Vox runtime health, permission state, and active session summary. |
+| `/api/hudson-voice/v1/voice/devices` | `GET` | List input devices and the selected/default microphone. |
+| `/api/hudson-voice/v1/voice/devices/default` | `PUT` | Set Hudson's preferred input device. |
+| `/api/hudson-voice/v1/voice/live` | `POST` | Start a live transcription session. Response streams NDJSON events. |
+| `/api/hudson-voice/v1/voice/live/{sessionId}/stop` | `POST` | Stop capture and finalize the transcript. |
+| `/api/hudson-voice/v1/voice/live/{sessionId}/cancel` | `POST` | Cancel capture and discard pending transcript text. |
 
 Optional v1 endpoints if the embedded Vox runtime already exposes them cleanly:
 
@@ -144,14 +147,21 @@ Optional v1 endpoints if the embedded Vox runtime already exposes them cleanly:
 
 ```json
 {
-  "service": "hudson-voice",
+  "service": "Hudson",
   "status": "ready",
   "version": "0.1.0",
   "pid": 12345,
   "startedAt": "2026-05-31T00:00:00.000Z",
+  "runtime": {
+    "authenticated": true,
+    "host": "127.0.0.1",
+    "port": 54321
+  },
   "voxRuntime": {
+    "service": "Vox",
     "status": "ready",
-    "version": "0.2.0"
+    "version": "0.3.4",
+    "authenticated": true
   },
   "permissions": {
     "microphone": "granted"
@@ -181,7 +191,7 @@ Optional v1 endpoints if the embedded Vox runtime already exposes them cleanly:
 
 ### Live events
 
-The response from `/v1/voice/live` streams newline-delimited JSON.
+The response from `/api/hudson-voice/v1/voice/live` streams newline-delimited JSON.
 
 Required event names:
 
@@ -213,7 +223,7 @@ V1 should keep session rules strict and easy to test:
 4. A final transcript is emitted at most once.
 5. A cancelled session must not emit final transcript text after cancellation.
 6. The daemon records client id, surface, model id, device id, start time, stop time, elapsed time, and final status for diagnostics.
-7. A daemon restart must clear stale active-session state and make the next `/health` response honest.
+7. A daemon restart must clear stale active-session state and make the next `/api/hudson-voice/health` response honest.
 8. Permission denied, missing input device, model unavailable, and runtime warming states must be represented as typed Hudson errors.
 
 ## Permissions and settings
@@ -284,8 +294,8 @@ Minimum requirements:
 
 1. Bind to loopback by default.
 2. Do not expose LAN access unless routed through HudPairing or another authenticated transport.
-3. Restrict CORS to trusted Hudson origins.
-4. Use an origin allowlist, local bearer token, signed local handshake, or equivalent protection against arbitrary web pages on the user's machine.
+3. Restrict browser access to same-origin Hudson routes.
+4. Use a user-only runtime capability file plus a per-run token for the private Vox JSON-RPC transport.
 5. Avoid accepting raw shell commands, file paths, or model downloads from the unauthenticated local API.
 6. Log client id and surface for every session start/stop/cancel.
 7. Treat standalone Vox direct mode as a separate trust boundary with its own warnings and settings.
@@ -295,19 +305,19 @@ Minimum requirements:
 ### Phase 0 - decision record
 
 - Land HUD-012.
-- Update `docs/voice.md` to say the current implementation still depends on standalone Vox, but the target architecture is Hudson-owned embedded Vox.
+- Update `docs/voice.md` to say first-party Hudson Web uses `/api/hudson-voice`; standalone Vox remains an explicit compatibility path.
 
 ### Phase 1 - Hudson voice API facade
 
-- Define the TypeScript client and Swift client protocol for `/health`, device listing, and live sessions.
+- Define the TypeScript client and Swift client protocol for `/api/hudson-voice/health`, device listing, and live sessions.
 - Add tests for session event parsing, stop/cancel idempotency, and health-state mapping.
-- Keep a direct Vox adapter for development so clients can be migrated before the host exists.
+- Keep a direct Vox adapter only for explicit development or native-tool scenarios that can provide a runtime token.
 
 ### Phase 2 - Hudson native host
 
 - Build the Hudson native host that embeds `VoxRuntimeService` from `../vox/swift`.
 - Add microphone permission flow and selected-device persistence.
-- Expose the v1 Hudson local API as a Hudson-namespaced facade over the embedded Vox runtime transport.
+- Expose the v1 Hudson local API as a same-origin facade over the embedded token-gated Vox runtime transport.
 - Verify that standalone Vox can be stopped and Hudson voice still works.
 
 ### Phase 3 - web migration

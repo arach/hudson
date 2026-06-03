@@ -4,8 +4,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
 import { HObservabilityDefault } from '../observability';
 import {
+  HUDSON_VOICE_API_BASE_PATH,
   HudsonVoiceClientError,
-  createHudsonVoiceDaemonClient,
+  createHudsonVoiceClient,
   type HudsonVoiceAvailability,
   type HudsonVoiceClient,
   type HudsonVoiceLiveEvent,
@@ -109,13 +110,13 @@ function normalizeVoiceError(error: unknown): NormalizedError {
     if (error.code === 'network_error') {
       return {
         status: 'unavailable',
-        message: 'Hudson voice daemon is not reachable. Launch Hudson Menu and try again.',
+        message: 'Hudson voice service is not reachable. Launch Hudson Menu and try again.',
       };
     }
     if (error.code === 'daemon_error') {
       return {
         status: 'error',
-        message: error.message || 'Hudson voice daemon returned an error.',
+        message: error.message || 'Hudson voice service returned an error.',
       };
     }
     if (error.code === 'session_id_missing') {
@@ -165,7 +166,10 @@ interface ClientHandle {
 }
 
 async function loadDefaultHudsonVoiceClient(): Promise<ClientHandle> {
-  const client = createHudsonVoiceDaemonClient({ clientId: HUDSONKIT_VOX_CLIENT_ID });
+  const client = createHudsonVoiceClient({
+    baseUrl: HUDSON_VOICE_API_BASE_PATH,
+    clientId: HUDSONKIT_VOX_CLIENT_ID,
+  });
   return {
     probe: () => client.probe(),
     hudsonVoice: client,
@@ -201,7 +205,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    setIsSupported(transcribe ? canCaptureMicrophoneAudio() : typeof WebSocket !== 'undefined');
+    setIsSupported(transcribe ? canCaptureMicrophoneAudio() : typeof fetch !== 'undefined');
   }, [transcribe]);
 
   useEffect(() => {
@@ -283,7 +287,7 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         data: { surface },
       });
       setStatus('unavailable');
-      setError('Hudson voice daemon is starting up. Try again in a moment.');
+      setError('Hudson voice service is starting up. Try again in a moment.');
       return;
     }
     if (availability === 'permission-denied') {
@@ -297,12 +301,12 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
         data: { surface },
       });
       setStatus('unavailable');
-      setError('Hudson voice daemon is not reachable. Launch Hudson Menu and try again.');
+      setError('Hudson voice service is not reachable. Launch Hudson Menu and try again.');
       return;
     }
     if (availability === 'error') {
       setStatus('error');
-      setError('Hudson voice daemon is not ready. Check Hudson Menu and try again.');
+      setError('Hudson voice service is not ready. Check Hudson Menu and try again.');
       return;
     }
 

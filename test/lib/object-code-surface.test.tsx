@@ -91,6 +91,8 @@ describe('ObjectCodeWorkbench', () => {
     fireEvent.click(screen.getByRole('button', { name: 'Full screen' }));
     expect(onSizeChange).toHaveBeenCalledWith('full');
 
+    fireEvent.click(screen.getByRole('button', { name: 'Code chat' }));
+
     fireEvent.keyDown(screen.getByRole('separator', { name: 'Resize code and chat panes' }), {
       key: 'ArrowRight',
     });

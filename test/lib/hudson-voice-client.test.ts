@@ -121,6 +121,23 @@ describe('Hudson voice client', () => {
     ]);
   });
 
+  it('supports relative same-origin API bases', async () => {
+    const calls: string[] = [];
+    const client = createHudsonVoiceClient({
+      baseUrl: '/api/hudson-voice',
+      fetch: async (url) => {
+        calls.push(String(url));
+        return Response.json({
+          service: 'Hudson',
+          status: 'ready',
+        });
+      },
+    });
+
+    await expect(client.health()).resolves.toMatchObject({ status: 'ready' });
+    expect(calls).toEqual(['/api/hudson-voice/health']);
+  });
+
   it('maps health states to Hudson voice availability', async () => {
     await expect(probeHudsonVoiceAvailability({
       health: async () => ({
@@ -238,6 +255,26 @@ describe('Hudson voice client', () => {
         port: 42138,
       },
     });
+  });
+
+  it('sends daemon auth tokens as JSON-RPC params when configured', async () => {
+    resetMockSockets();
+    const client = createHudsonVoiceDaemonClient({
+      clientId: 'hudson-web',
+      token: 'private-token',
+      WebSocket: MockWebSocket as unknown as typeof WebSocket,
+    });
+
+    const healthPromise = client.health();
+    const { socket, request } = await waitForSent(0);
+    expect(request.params).toMatchObject({ authToken: 'private-token' });
+
+    socket.emit({
+      id: request.id,
+      result: { service: 'Vox' },
+    });
+
+    await expect(healthPromise).resolves.toMatchObject({ service: 'Hudson' });
   });
 
   it('preserves daemon health status and permission details', async () => {

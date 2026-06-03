@@ -9,11 +9,16 @@ It ships as:
 - **Hudson** (`com.hudsonkit.hudson`) - the regular app with the Vantage main window.
 - **Hudson Menu** (`com.hudsonkit.hudson.menu`) - the LSUIElement menu helper and voice daemon host.
 
-Run it from the repo root:
+Run the main app from the repo root:
 
 ```sh
 HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/hudson/native HudsonApp
-HUDSONKIT_WITH_TERMINAL=1 swift run --package-path apps/hudson/native HudsonMenuApp
+```
+
+The menu helper embeds Vox behind Hudson's authenticated local voice service:
+
+```sh
+HUDSONKIT_WITH_TERMINAL=1 HUDSON_WITH_VOICE_HELPER=1 swift run --package-path apps/hudson/native HudsonMenuApp
 ```
 
 For day-to-day use, build real `.app` bundles with icon, menus, settings, and
@@ -64,9 +69,12 @@ independently of the main window. It owns:
 - A long-running process boundary for local services.
 - Show/launch action for the main Hudson app.
 
-The helper requests microphone permission on first launch. Once permission is
-granted, it starts the embedded Vox runtime on `127.0.0.1:42138` by default
-(`HUDSON_VOICE_VOX_PORT` overrides the port).
+The helper starts the embedded Vox runtime with a per-run capability token and
+a private randomized loopback port. It writes a user-only runtime descriptor to
+`~/Library/Application Support/Hudson/Vox/hudson-voice-runtime.json`; Hudson Web
+reads that descriptor server-side and exposes the browser-safe
+`/api/hudson-voice` facade. Browser code should not talk to Vox's raw
+WebSocket port directly.
 
 On first launch, when no saved state exists, the app applies the practice
 manifest at:

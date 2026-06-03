@@ -1,12 +1,10 @@
 import { existsSync, readFileSync } from 'fs';
 import { homedir } from 'os';
 import { join } from 'path';
-import { randomUUID } from 'crypto';
+import { callHudsonVoiceRuntimeRpc, readHudsonVoiceRuntimeCapability } from '@/app/lib/hudsonVoiceRuntime';
 
 export const HUDSON_VOX_DEFAULT_MODEL = 'avspeech:system';
 export const HUDSON_VOX_DEFAULT_PROVIDER = 'vox';
-const HUDSON_VOX_RPC_HOST = '127.0.0.1';
-const HUDSON_VOX_RPC_DEFAULT_PORT = 42138;
 const HUDSON_VOX_RPC_TIMEOUT_MS = 30_000;
 
 export type HudsonVoxAudioFormat = 'mp3' | 'wav' | 'aac' | 'opus' | 'aiff';
@@ -169,8 +167,14 @@ export function parseHudsonVoxNdjson(text: string): unknown[] {
 }
 
 export function resolveHudsonVoxRpcPort(env: NodeJS.ProcessEnv = process.env): number {
+  try {
+    return readHudsonVoiceRuntimeCapability(env).port;
+  } catch { /* fall through to legacy Vox runtime discovery */ }
+
   const candidatePaths = [
+    env.HUDSON_VOICE_RUNTIME_PATH,
     env.VOX_RUNTIME_PATH,
+    join(homedir(), 'Library', 'Application Support', 'Hudson', 'Vox', 'vox-runtime.json'),
     join(homedir(), 'Library', 'Application Support', 'Hudson', 'Vox', 'runtime.json'),
     join(env.VOX_HOME ?? join(homedir(), '.vox'), 'runtime.json'),
   ].filter((path): path is string => Boolean(path));
@@ -184,13 +188,7 @@ export function resolveHudsonVoxRpcPort(env: NodeJS.ProcessEnv = process.env): n
     } catch { /* fall through */ }
   }
   const fromEnv = Number(env.HUDSON_VOICE_VOX_PORT ?? env.VOX_PORT);
-  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : HUDSON_VOX_RPC_DEFAULT_PORT;
-}
-
-interface VoxRpcEnvelope {
-  id?: unknown;
-  result?: unknown;
-  error?: unknown;
+  return Number.isFinite(fromEnv) && fromEnv > 0 ? fromEnv : 0;
 }
 
 async function callHudsonVoxRpc(
@@ -198,65 +196,7 @@ async function callHudsonVoxRpc(
   params: Record<string, unknown>,
   timeoutMs = HUDSON_VOX_RPC_TIMEOUT_MS,
 ): Promise<Record<string, unknown>> {
-  const port = resolveHudsonVoxRpcPort();
-  const id = randomUUID();
-  const socket = new WebSocket(`ws://${HUDSON_VOX_RPC_HOST}:${port}`);
-
-  return await new Promise<Record<string, unknown>>((resolve, reject) => {
-    const timer = setTimeout(() => {
-      cleanup();
-      reject(new Error(`Hudson voice daemon ${method} timed out after ${timeoutMs}ms.`));
-    }, timeoutMs);
-
-    const cleanup = () => {
-      clearTimeout(timer);
-      socket.onopen = null;
-      socket.onmessage = null;
-      socket.onerror = null;
-      socket.onclose = null;
-      if (socket.readyState === WebSocket.OPEN || socket.readyState === WebSocket.CONNECTING) {
-        socket.close();
-      }
-    };
-
-    socket.onopen = () => {
-      socket.send(JSON.stringify({ id, method, params }));
-    };
-
-    socket.onmessage = (event: MessageEvent) => {
-      const raw = typeof event.data === 'string'
-        ? event.data
-        : event.data instanceof ArrayBuffer
-          ? new TextDecoder().decode(event.data)
-          : '';
-      if (!raw) return;
-      let payload: VoxRpcEnvelope;
-      try {
-        payload = JSON.parse(raw) as VoxRpcEnvelope;
-      } catch {
-        return;
-      }
-      if (payload.id !== id) return;
-      cleanup();
-      if (payload.error) {
-        reject(new Error(typeof payload.error === 'string' ? payload.error : JSON.stringify(payload.error)));
-        return;
-      }
-      resolve(payload.result && typeof payload.result === 'object'
-        ? payload.result as Record<string, unknown>
-        : {});
-    };
-
-    socket.onerror = () => {
-      cleanup();
-      reject(new Error(`Could not connect to Hudson voice daemon on port ${port}.`));
-    };
-
-    socket.onclose = () => {
-      cleanup();
-      reject(new Error('Hudson voice daemon closed the connection before returning a result.'));
-    };
-  });
+  return await callHudsonVoiceRuntimeRpc(method, params, { timeoutMs });
 }
 
 function normalizeHudsonVoxVoice(voice: VoxVoiceRecord): HudsonVoxVoice | null {
@@ -470,7 +410,7 @@ export async function getHudsonVoxHealth(): Promise<HudsonVoxHealth> {
 export function createHudsonVoxUnavailableHealth(error: unknown): HudsonVoxHealth {
   const catalog = createUnavailableCatalog(
     HUDSON_VOX_DEFAULT_MODEL,
-    error instanceof Error ? error.message : 'Hudson voice daemon is unavailable.',
+    error instanceof Error ? error.message : 'Hudson voice service is unavailable.',
   );
   return {
     ...catalog,

@@ -24,7 +24,8 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  createHudsonVoiceDaemonClient,
+  HUDSON_VOICE_API_BASE_PATH,
+  createHudsonVoiceClient,
   type HudsonVoiceAvailability,
   type HudsonVoiceClient,
   type HudsonVoiceLiveSession,
@@ -49,10 +50,13 @@ export function EmbedVoice() {
 
   // Single Hudson voice client for the lifetime of the embed — drives both the
   // availability poll and the live-session test. Hudson handles mic capture
-  // inside Hudson Menu; this page only sends control signals over loopback.
+  // inside Hudson Menu; this page only sends same-origin control signals.
   const voiceClient = useMemo<HudsonVoiceClient | null>(() => {
     if (typeof window === 'undefined') return null;
-    return createHudsonVoiceDaemonClient({ clientId: HUDSON_VOX_CLIENT_ID });
+    return createHudsonVoiceClient({
+      baseUrl: HUDSON_VOICE_API_BASE_PATH,
+      clientId: HUDSON_VOX_CLIENT_ID,
+    });
   }, []);
 
   useEffect(() => {
@@ -203,7 +207,7 @@ function BottomBar({
         {status}
       </span>
       <span>
-        127.0.0.1:42138 · check #{ticks.toString().padStart(2, '0')}
+        Hudson Menu voice · check #{ticks.toString().padStart(2, '0')}
         {availability && phase !== 'ready' && (
           <span style={{ marginLeft: 10, color: 'var(--hud-ink-2, oklch(0.66 0.008 240))' }}>
             · {availability}
@@ -245,7 +249,7 @@ function Probing() {
       <Caption>Initializing</Caption>
       <h2 style={H2}>Looking for Hudson voice.</h2>
       <p style={SUB}>
-        Probing the Hudson-owned voice daemon on 127.0.0.1:42138 — this takes a moment.
+        Probing the Hudson-owned voice service through the authenticated local proxy.
       </p>
     </Card>
   );
@@ -275,7 +279,7 @@ function Install() {
             }}
           >
             The browser should not request microphone access here. It talks to
-            Hudson Menu, and Hudson Menu talks to Vox.
+            Hudson&apos;s same-origin API, and Hudson Menu talks to Vox.
           </p>
         </div>
         <MenuBarIllustration />
@@ -410,7 +414,7 @@ function MenuBarIllustration() {
         letterSpacing="1.6"
         fill="var(--hud-ink-3, oklch(0.50 0.01 240))"
       >
-        embedded voice daemon
+        embedded voice service
       </text>
 
       {/* App body */}

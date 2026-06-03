@@ -1,6 +1,7 @@
 import AppKit
 import AVFoundation
 import Darwin
+import Security
 import SwiftUI
 import VoxService
 
@@ -14,11 +15,15 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
     private let bindAddress = "127.0.0.1"
     private let port: UInt16
     private let runtimeHomeURL: URL
+    private let runtimeCapabilityURL: URL
+    private let voxRuntimeURL: URL
     private var runtimeService: VoxRuntimeService?
 
     public init() {
         port = Self.resolvePort()
         runtimeHomeURL = Self.defaultRuntimeHomeURL()
+        runtimeCapabilityURL = runtimeHomeURL.appendingPathComponent("hudson-voice-runtime.json")
+        voxRuntimeURL = runtimeHomeURL.appendingPathComponent("vox-runtime.json")
         refreshMicrophonePermission()
     }
 
@@ -55,16 +60,20 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         }
 
         do {
-            try configureVoxRuntimeEnvironment()
-            let service = VoxRuntimeService(port: port, bindAddress: bindAddress)
+            let token = try Self.generateCapabilityToken()
+            let startedAt = Date()
+            try configureVoxRuntimeEnvironment(authToken: token)
+            let service = VoxRuntimeService(port: port, bindAddress: bindAddress, authToken: token)
             try service.start()
+            try writeRuntimeCapability(authToken: token, startedAt: startedAt)
             runtimeService = service
             lifecycle = .running
-            runtimeDetail = "Embedded Vox runtime is listening on ws://\(bindAddress):\(port)."
-            startedAt = Date()
+            runtimeDetail = "Authenticated Hudson voice runtime is available through /api/hudson-voice."
+            self.startedAt = startedAt
         } catch {
             runtimeService?.stop()
             runtimeService = nil
+            removeRuntimeCapability()
             lifecycle = .error
             runtimeDetail = "Embedded Vox runtime failed to start: \(error.localizedDescription)"
             startedAt = nil
@@ -74,6 +83,7 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
     public func stop() {
         runtimeService?.stop()
         runtimeService = nil
+        removeRuntimeCapability()
         lifecycle = .stopped
         runtimeDetail = "Embedded Vox runtime is stopped."
         startedAt = nil
@@ -113,12 +123,38 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         NSWorkspace.shared.open(url)
     }
 
-    private func configureVoxRuntimeEnvironment() throws {
+    private func configureVoxRuntimeEnvironment(authToken: String) throws {
         try FileManager.default.createDirectory(at: runtimeHomeURL, withIntermediateDirectories: true)
+        try FileManager.default.setAttributes([.posixPermissions: 0o700], ofItemAtPath: runtimeHomeURL.path)
         setenv("VOX_HOME", runtimeHomeURL.path, 1)
-        setenv("VOX_RUNTIME_PATH", runtimeHomeURL.appendingPathComponent("runtime.json").path, 1)
+        setenv("VOX_RUNTIME_PATH", voxRuntimeURL.path, 1)
         setenv("VOX_HOST", bindAddress, 1)
         setenv("VOX_PORT", String(port), 1)
+        setenv("VOX_AUTH_TOKEN", authToken, 1)
+        setenv("HUDSON_VOICE_RUNTIME_PATH", runtimeCapabilityURL.path, 1)
+    }
+
+    private func writeRuntimeCapability(authToken: String, startedAt: Date) throws {
+        let capability = HudsonVoiceRuntimeCapability(
+            host: bindAddress,
+            port: port,
+            authToken: authToken,
+            pid: getpid(),
+            startedAt: startedAt,
+            voxRuntimePath: voxRuntimeURL.path
+        )
+        let encoder = JSONEncoder()
+        encoder.dateEncodingStrategy = .iso8601
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(capability)
+        try data.write(to: runtimeCapabilityURL, options: .atomic)
+        try FileManager.default.setAttributes([.posixPermissions: 0o600], ofItemAtPath: runtimeCapabilityURL.path)
+    }
+
+    private func removeRuntimeCapability() {
+        if FileManager.default.fileExists(atPath: runtimeCapabilityURL.path) {
+            try? FileManager.default.removeItem(at: runtimeCapabilityURL)
+        }
     }
 
     private static func resolvePort() -> UInt16 {
@@ -126,7 +162,26 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         if let raw = env["HUDSON_VOICE_VOX_PORT"], let value = UInt16(raw) {
             return value
         }
-        return 42138
+        return UInt16.random(in: 49152...65535)
+    }
+
+    private static func generateCapabilityToken() throws -> String {
+        var bytes = [UInt8](repeating: 0, count: 32)
+        let byteCount = bytes.count
+        let status = bytes.withUnsafeMutableBytes { buffer in
+            SecRandomCopyBytes(kSecRandomDefault, byteCount, buffer.baseAddress!)
+        }
+        guard status == errSecSuccess else {
+            throw NSError(domain: "HudsonVoiceDaemonHost", code: Int(status), userInfo: [
+                NSLocalizedDescriptionKey: "Could not generate Hudson voice capability token."
+            ])
+        }
+
+        return Data(bytes)
+            .base64EncodedString()
+            .replacingOccurrences(of: "+", with: "-")
+            .replacingOccurrences(of: "/", with: "_")
+            .replacingOccurrences(of: "=", with: "")
     }
 
     private static func defaultRuntimeHomeURL() -> URL {
@@ -135,6 +190,29 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         return base
             .appendingPathComponent("Hudson", isDirectory: true)
             .appendingPathComponent("Vox", isDirectory: true)
+    }
+}
+
+private struct HudsonVoiceRuntimeCapability: Encodable {
+    let schemaVersion = 1
+    let service = "hudson-voice"
+    let transport = "ws+json-rpc"
+    let host: String
+    let port: UInt16
+    let webSocketUrl: String
+    let authToken: String
+    let pid: Int32
+    let startedAt: Date
+    let voxRuntimePath: String
+
+    init(host: String, port: UInt16, authToken: String, pid: Int32, startedAt: Date, voxRuntimePath: String) {
+        self.host = host
+        self.port = port
+        self.webSocketUrl = "ws://\(host):\(port)"
+        self.authToken = authToken
+        self.pid = pid
+        self.startedAt = startedAt
+        self.voxRuntimePath = voxRuntimePath
     }
 }
 
@@ -150,7 +228,7 @@ public enum HudsonVoiceDaemonLifecycle: Equatable {
         case .stopped: return "STOPPED"
         case .starting: return "STARTING"
         case .running: return "RUNNING"
-        case .unavailable: return "RUNTIME MISSING"
+        case .unavailable: return "UNAVAILABLE"
         case .error: return "NEEDS ATTENTION"
         }
     }

@@ -85,7 +85,7 @@ private struct HudsonMenuView: View {
                 Button("Start") { voiceHost.start() }
                     .disabled(voiceHost.lifecycle == .running || voiceHost.lifecycle == .starting)
                 Button("Stop") { voiceHost.stop() }
-                    .disabled(voiceHost.lifecycle == .stopped)
+                    .disabled(voiceHost.lifecycle != .running && voiceHost.lifecycle != .starting)
                 if voiceHost.microphonePermission.canRequest {
                     Button("Allow Mic") {
                         Task { await voiceHost.requestMicrophonePermission() }
@@ -148,7 +148,9 @@ private struct HudsonMenuSettingsView: View {
                 }
                 HStack {
                     Button("Start") { voiceHost.start() }
+                        .disabled(voiceHost.lifecycle == .running || voiceHost.lifecycle == .starting)
                     Button("Stop") { voiceHost.stop() }
+                        .disabled(voiceHost.lifecycle != .running && voiceHost.lifecycle != .starting)
                 }
             }
         }
