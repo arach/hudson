@@ -73,7 +73,6 @@ import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
-import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
 import {
   announceSettingChanged,
   SettingChangedNotice,
@@ -2918,13 +2917,7 @@ function WorkspaceInner({
     }
 
     setTerminalVoiceDraftSubmitted(false);
-    void registerHudsonVoxIntegration()
-      .catch(error => {
-        console.warn('[WorkspaceShell] Vox integration registration failed:', error);
-      })
-      .finally(() => {
-        void startTerminalVoice();
-      });
+    void startTerminalVoice();
   }, [
     openWorkspaceConsole,
     setShowTerminal,

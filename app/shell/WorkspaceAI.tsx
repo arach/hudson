@@ -3,10 +3,16 @@
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
-import { useHudsonAI, usePersistentState, useDebouncedPersistentState, probeVoxAvailability } from 'hudsonkit';
+import {
+  HudsonVoiceClientError,
+  createHudsonVoiceDaemonClient,
+  useHudsonAI,
+  usePersistentState,
+  useDebouncedPersistentState,
+  type HudsonVoiceLiveSession,
+} from 'hudsonkit';
 import type { UIMessage } from 'ai';
 import type { HudsonWorkspace } from 'hudsonkit';
-import { createVoxdClient, VoxDError } from '@voxd/client';
 import type { VoiceSettings } from '../apps/hudson-docs/types';
 import type { HudsonAIToolContext, HudsonAIWorkspaceCatalogEntry } from './HudsonAIRuntimeContext';
 import {
@@ -16,11 +22,7 @@ import {
 } from '../lib/ai-models';
 import { useDataBus } from './DataBusContext';
 import { createHudsonSpokenReply, getHudsonMessageDisplayText } from './voiceReply';
-import {
-  HUDSON_VOX_CLIENT_ID,
-  HUDSON_VOX_INTEGRATION_API_PATH,
-  createHudsonVoxLaunchUrl,
-} from '../lib/voxIntegration';
+import { HUDSON_VOX_CLIENT_ID } from '../lib/voxIntegration';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -46,8 +48,6 @@ type VoiceStatus =
   | 'unavailable'
   | 'error';
 
-const VOX_INSTALL_URL = 'https://github.com/arach/vox/releases/latest/download/Vox.dmg';
-const DEFAULT_VOICE_MIME_TYPE = 'audio/ogg;codecs=opus';
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
   speakReplies: false,
@@ -99,33 +99,6 @@ function generateId(): string {
   return Math.random().toString(36).slice(2, 8);
 }
 
-function pickRecorderMimeType(): string | undefined {
-  if (typeof MediaRecorder === 'undefined') return undefined;
-  const candidates = [
-    'audio/ogg;codecs=opus',
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/mp4',
-    'audio/webm;codecs=opus',
-  ];
-  return candidates.find(type => MediaRecorder.isTypeSupported(type));
-}
-
-function stopStreamTracks(stream: MediaStream | null) {
-  stream?.getTracks().forEach(track => track.stop());
-}
-
-function inferVoiceFormat(mimeType: string): 'wav' | 'aac' | 'opus' {
-  if (mimeType.includes('wav')) return 'wav';
-  if (mimeType.includes('aac') || mimeType.includes('mp4')) return 'aac';
-  return 'opus';
-}
-
-function resolveRecordedMimeType(chunks: Blob[], mimeType: string): string {
-  if (mimeType) return mimeType;
-  const typedChunk = chunks.find(chunk => chunk.type);
-  return typedChunk?.type || DEFAULT_VOICE_MIME_TYPE;
-}
-
 function pickReplySpeechFormat(): 'aac' | 'wav' {
   if (typeof document === 'undefined') return 'wav';
   const audio = document.createElement('audio');
@@ -133,28 +106,23 @@ function pickReplySpeechFormat(): 'aac' | 'wav' {
 }
 
 function normalizeVoiceError(error: unknown): { status: 'unavailable' | 'error'; message: string } {
-  const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
-
-  if (error instanceof VoxDError) {
+  if (error instanceof HudsonVoiceClientError) {
     if (error.code === 'network_error') {
       return {
         status: 'unavailable',
-        message: 'Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.',
+        message: 'Hudson voice daemon is not reachable. Launch Hudson Menu and try again.',
       };
     }
-    if (error.code === 'http_error') {
-      if (error.message.includes('Origin not allowed') || error.message.includes('403')) {
-        return {
-          status: 'error',
-          message: `Vox rejected Hudson's request. Allowlist ${origin} in Vox settings and try again.`,
-        };
-      }
+    if (error.code === 'daemon_error') {
       return {
         status: 'error',
-        message: 'Vox returned an error while transcribing. Check Vox and try again.',
+        message: error.message || 'Hudson voice daemon returned an error.',
       };
     }
-    return { status: 'error', message: error.message };
+    if (error.code === 'session_id_missing') {
+      return { status: 'error', message: 'Hudson voice session has not started yet.' };
+    }
+    return { status: 'error', message: error.message || 'Hudson voice capture failed.' };
   }
 
   if (error instanceof DOMException) {
@@ -213,18 +181,6 @@ function getVoiceBadge(status: VoiceStatus): { label: string; className: string 
     default:
       return null;
   }
-}
-
-async function registerHudsonVoxIntegration() {
-  if (typeof window === 'undefined') return false;
-
-  const response = await fetch(HUDSON_VOX_INTEGRATION_API_PATH, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ origin: window.location.origin }),
-  });
-
-  return response.ok;
 }
 
 /** Capture the visible workspace as a blob + data URL via html2canvas. */
@@ -286,6 +242,7 @@ export function WorkspaceAI({
   const [snapping, setSnapping] = useState(false);
   const [voiceStatus, setVoiceStatus] = useState<VoiceStatus>('idle');
   const [voiceError, setVoiceError] = useState<string | null>(null);
+  const [voiceErrorDismissed, setVoiceErrorDismissed] = useState(false);
   const [lastTranscript, setLastTranscript] = useState<string | null>(null);
   const [generatedImages, setGeneratedImages] = useState<Array<{ dataUrl: string; prompt: string }>>([]);
   const [scopeWorkspaceId, setScopeWorkspaceId] = useState(workspace.id);
@@ -301,11 +258,9 @@ export function WorkspaceAI({
   const scrollRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const recorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
   const speechAudioRef = useRef<HTMLAudioElement | null>(null);
   const speechAudioUrlRef = useRef<string | null>(null);
-  const chunksRef = useRef<Blob[]>([]);
+  const voiceSessionRef = useRef<HudsonVoiceLiveSession | null>(null);
   const lastVoiceTriggerRef = useRef(voiceTriggerNonce);
   const lastComposerRequestRef = useRef<number | null>(null);
   const attachmentsRef = useRef<FileAttachment[]>(attachments);
@@ -321,13 +276,7 @@ export function WorkspaceAI({
   inputValueRef.current = input;
   voiceSettingsRef.current = resolvedVoiceSettings;
 
-  const voxClient = useMemo(() => createVoxdClient({ clientId: HUDSON_VOX_CLIENT_ID }), []);
-
-  useEffect(() => {
-    void registerHudsonVoxIntegration().catch(error => {
-      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
-    });
-  }, []);
+  const voiceClient = useMemo(() => createHudsonVoiceDaemonClient({ clientId: HUDSON_VOX_CLIENT_ID }), []);
 
   const baseContext = useMemo(() => ({
     apps: workspace.apps.map(c => ({
@@ -774,70 +723,70 @@ export function WorkspaceAI({
   }, [composerRequest, onComposerRequestConsumed, stopReplyAudio, submitPrompt]);
 
   // ── Voice capture ───────────────────────────────────────────────────
-  const finalizeVoiceCapture = useCallback(async (chunks: Blob[], mimeType: string) => {
-    stopStreamTracks(streamRef.current);
-    streamRef.current = null;
-    recorderRef.current = null;
-
-    if (chunks.length === 0) {
+  const applyVoiceTranscript = useCallback((transcript: string) => {
+    const trimmed = transcript.trim();
+    if (!trimmed) {
       setVoiceStatus('error');
-      setVoiceError('No audio was captured.');
+      setVoiceError('Hudson voice returned an empty transcript.');
       return;
     }
 
-    setVoiceStatus('transcribing');
-    setVoiceError(null);
+    const mergedPrompt = [inputValueRef.current.trim(), trimmed].filter(Boolean).join(' ');
+    setLastTranscript(trimmed);
+    voiceDraftPendingRef.current = true;
 
+    const autoSent = voiceSettingsRef.current.autoSend && chatStatusRef.current !== 'streaming'
+      ? submitPrompt(mergedPrompt, { source: 'voice' })
+      : false;
+
+    if (!autoSent) {
+      setInput(mergedPrompt);
+      requestAnimationFrame(() => inputRef.current?.focus());
+      setVoiceStatus('ready');
+      return;
+    }
+
+    setLastTranscript(null);
+    setVoiceStatus('idle');
+  }, [submitPrompt]);
+
+  const consumeVoiceSession = useCallback(async (session: HudsonVoiceLiveSession) => {
     try {
-      const recordedMimeType = resolveRecordedMimeType(chunks, mimeType);
-      const result = await voxClient.transcribe({
-        audio: new Blob(chunks, { type: recordedMimeType }),
-        format: inferVoiceFormat(recordedMimeType),
-        language: 'en',
-        metadata: {
-          clientId: HUDSON_VOX_CLIENT_ID,
-          surface: 'hudson-ai',
-          workspaceId: workspace.id,
-        },
-      });
+      for await (const event of session.events) {
+        if (event.event === 'session.state') {
+          const state = typeof event.data.state === 'string' ? event.data.state : '';
+          if (state === 'recording') setVoiceStatus('recording');
+          if (state === 'processing') setVoiceStatus('transcribing');
+          if (state === 'cancelled') setVoiceStatus('idle');
+          if (state === 'error') setVoiceStatus('error');
+          continue;
+        }
 
-      const transcript = result.text.trim();
-      if (!transcript) {
-        throw new Error('Vox returned an empty transcript.');
+        if (event.event === 'session.final') {
+          const text = typeof event.data.text === 'string' ? event.data.text : '';
+          applyVoiceTranscript(text);
+          continue;
+        }
+
+        if (event.event === 'session.error') {
+          const message = typeof event.data.text === 'string'
+            ? event.data.text
+            : 'Hudson voice session failed.';
+          setVoiceStatus('error');
+          setVoiceError(message);
+        }
       }
-
-      const mergedPrompt = [inputValueRef.current.trim(), transcript].filter(Boolean).join(' ');
-      setLastTranscript(transcript);
-      voiceDraftPendingRef.current = true;
-
-      const autoSent = voiceSettingsRef.current.autoSend && chatStatusRef.current !== 'streaming'
-        ? submitPrompt(mergedPrompt, { source: 'voice' })
-        : false;
-
-      if (!autoSent) {
-        setInput(mergedPrompt);
-        requestAnimationFrame(() => inputRef.current?.focus());
-        setVoiceStatus('ready');
-        return;
-      }
-
-      setLastTranscript(null);
-      setVoiceStatus('idle');
     } catch (error) {
       const normalized = normalizeVoiceError(error);
       setVoiceStatus(normalized.status);
       setVoiceError(normalized.message);
+    } finally {
+      if (voiceSessionRef.current === session) voiceSessionRef.current = null;
     }
-  }, [submitPrompt, voxClient, workspace.id]);
+  }, [applyVoiceTranscript]);
 
   const startVoiceCapture = useCallback(async () => {
     if (voiceStatus === 'recording' || voiceStatus === 'transcribing') return;
-
-    if (typeof MediaRecorder === 'undefined' || !navigator.mediaDevices?.getUserMedia) {
-      setVoiceStatus('error');
-      setVoiceError('This browser cannot capture microphone audio.');
-      return;
-    }
 
     setVoiceError(null);
     setLastTranscript(null);
@@ -846,89 +795,56 @@ export function WorkspaceAI({
     stopReplyAudio();
 
     try {
-      await registerHudsonVoxIntegration();
-      const availability = await probeVoxAvailability(voxClient);
-      if (availability === 'blocked-origin') {
-        const origin = typeof window !== 'undefined' ? window.location.origin : 'this origin';
-        setVoiceStatus('error');
-        setVoiceError(`Vox rejected this origin. HudsonKit registered ${origin}; open Vox settings if the bridge has not refreshed yet.`);
-        return;
-      }
+      const availability = await voiceClient.availability();
       if (availability === 'warming') {
         setVoiceStatus('unavailable');
-        setVoiceError('Vox is starting up — try again in a moment.');
+        setVoiceError('Hudson voice daemon is starting up. Try again in a moment.');
         return;
       }
       if (availability === 'unreachable') {
         setVoiceStatus('unavailable');
-        setVoiceError('Vox Companion is not reachable on 127.0.0.1:43115. Install Vox.app, or launch it if it is already installed.');
+        setVoiceError('Hudson voice daemon is not reachable. Launch Hudson Menu and try again.');
+        return;
+      }
+      if (availability === 'permission-denied') {
+        setVoiceStatus('error');
+        setVoiceError('Microphone access is denied for Hudson. Open Hudson Menu settings to grant microphone access.');
+        return;
+      }
+      if (availability === 'error') {
+        setVoiceStatus('error');
+        setVoiceError('Hudson voice daemon is not ready. Check Hudson Menu and try again.');
         return;
       }
 
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mimeType = pickRecorderMimeType();
-      const recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
-
-      chunksRef.current = [];
-      streamRef.current = stream;
-      recorderRef.current = recorder;
-
-      recorder.ondataavailable = event => {
-        if (event.data.size > 0) {
-          chunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.onerror = () => {
-        stopStreamTracks(streamRef.current);
-        streamRef.current = null;
-        recorderRef.current = null;
-        chunksRef.current = [];
-        setVoiceStatus('error');
-        setVoiceError('Voice capture failed while recording.');
-      };
-
-      recorder.onstop = () => {
-        const recordedChunks = [...chunksRef.current];
-        chunksRef.current = [];
-        void finalizeVoiceCapture(recordedChunks, resolveRecordedMimeType(recordedChunks, recorder.mimeType || mimeType || ''));
-      };
-
-      recorder.start();
+      const session = await voiceClient.startLiveSession({
+        surface: 'hudson-ai',
+        language: 'en',
+        mode: 'push_to_talk',
+        metadata: {
+          workspaceId: workspace.id,
+        },
+      });
+      voiceSessionRef.current = session;
       setVoiceStatus('recording');
+      void consumeVoiceSession(session);
     } catch (error) {
       const normalized = normalizeVoiceError(error);
       setVoiceStatus(normalized.status);
       setVoiceError(normalized.message);
     }
-  }, [finalizeVoiceCapture, stopReplyAudio, voiceStatus, voxClient]);
+  }, [consumeVoiceSession, stopReplyAudio, voiceClient, voiceStatus, workspace.id]);
 
   const stopVoiceCapture = useCallback(() => {
-    const recorder = recorderRef.current;
-    if (!recorder || recorder.state !== 'recording') return;
+    const session = voiceSessionRef.current;
+    if (!session) return;
     setVoiceStatus('transcribing');
-    recorder.stop();
-  }, []);
-
-  const handleLaunchVox = useCallback(() => {
-    void registerHudsonVoxIntegration().catch(error => {
-      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
+    void session.stop().catch(error => {
+      const normalized = normalizeVoiceError(error);
+      setVoiceStatus(normalized.status);
+      setVoiceError(normalized.message);
     });
-    window.location.href = createHudsonVoxLaunchUrl(window.location.origin);
   }, []);
-
-  const handleInstallVox = useCallback(() => {
-    window.open(VOX_INSTALL_URL, '_blank', 'noopener,noreferrer');
-  }, []);
-
-  const handleOpenVoxSettings = useCallback(() => {
-    void registerHudsonVoxIntegration().catch(error => {
-      console.warn('[WorkspaceAI] Vox integration registration failed:', error);
-    });
-    voxClient.openSettings();
-  }, [voxClient]);
 
   // ── Drag & drop ─────────────────────────────────────────────────────
   const handleDragOver = useCallback((e: React.DragEvent) => {
@@ -996,18 +912,11 @@ export function WorkspaceAI({
     inputRef.current?.focus();
   }, []);
 
-  // Clean up any live recorder state if the component unmounts.
+  // Clean up any live voice state if the component unmounts.
   useEffect(() => () => {
-    const recorder = recorderRef.current;
-    if (recorder) {
-      recorder.ondataavailable = null;
-      recorder.onerror = null;
-      recorder.onstop = null;
-      if (recorder.state !== 'inactive') {
-        recorder.stop();
-      }
-    }
-    stopStreamTracks(streamRef.current);
+    const session = voiceSessionRef.current;
+    voiceSessionRef.current = null;
+    if (session) void session.cancel().catch(() => {});
     stopReplyAudio();
   }, [stopReplyAudio]);
 
@@ -1018,12 +927,16 @@ export function WorkspaceAI({
     void startVoiceCapture();
   }, [startVoiceCapture, voiceTriggerNonce]);
 
+  useEffect(() => {
+    setVoiceErrorDismissed(false);
+  }, [voiceError]);
+
   const voiceBadge = getVoiceBadge(voiceStatus);
   const voiceErrorText = voiceError?.toLowerCase() ?? '';
-  const showRetryVox = voiceErrorText.includes('starting up');
-  const showInstallVox = voiceErrorText.includes('not reachable');
-  const showLaunchVox = voiceErrorText.includes('not reachable');
-  const showOpenVoxSettings = voiceErrorText.includes('allowlist') || voiceErrorText.includes('origin') || voiceErrorText.includes('registered');
+  const showVoiceError = Boolean(voiceError && !voiceErrorDismissed);
+  const showRetryVoice = voiceErrorText.includes('starting up')
+    || voiceErrorText.includes('not reachable')
+    || voiceErrorText.includes('not ready');
   const isChatBusy = chat.status === 'submitted' || chat.status === 'streaming';
   const scopeLabel = scopedWorkspace?.name ?? workspace.name;
 
@@ -1118,7 +1031,7 @@ export function WorkspaceAI({
         </div>
       </div>
 
-      {voiceError && (
+      {showVoiceError && (
         <div className={`px-3 py-2 border-b ${voiceStatus === 'unavailable' ? 'border-amber-500/10 bg-amber-500/5' : 'border-red-500/10 bg-red-500/5'}`}>
           <div className="flex items-start gap-2">
             <Mic size={12} className={voiceStatus === 'unavailable' ? 'text-amber-400 mt-0.5' : 'text-red-400 mt-0.5'} />
@@ -1130,46 +1043,26 @@ export function WorkspaceAI({
                 {voiceError}
               </div>
             </div>
-            {(showRetryVox || showInstallVox || showLaunchVox || showOpenVoxSettings) && (
+            {showRetryVoice && (
               <div className="flex items-center gap-2 shrink-0">
-                {showRetryVox && (
-                  <button
-                    type="button"
-                    onClick={() => void startVoiceCapture()}
-                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-                  >
-                    Retry
-                  </button>
-                )}
-                {showInstallVox && (
-                  <button
-                    type="button"
-                    onClick={handleInstallVox}
-                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-                  >
-                    Install Vox
-                  </button>
-                )}
-                {showLaunchVox && (
-                  <button
-                    type="button"
-                    onClick={handleLaunchVox}
-                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-                  >
-                    Launch Vox
-                  </button>
-                )}
-                {showOpenVoxSettings && (
-                  <button
-                    type="button"
-                    onClick={handleOpenVoxSettings}
-                    className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
-                  >
-                    Settings
-                  </button>
-                )}
+                <button
+                  type="button"
+                  onClick={() => void startVoiceCapture()}
+                  className="rounded border border-border px-2 py-1 text-[10px] font-mono text-muted-foreground transition-colors hover:border-foreground/20 hover:text-foreground"
+                >
+                  Retry
+                </button>
               </div>
             )}
+            <button
+              type="button"
+              aria-label="Dismiss voice message"
+              title="Dismiss"
+              onClick={() => setVoiceErrorDismissed(true)}
+              className="shrink-0 rounded p-1 text-muted-foreground transition-colors hover:bg-background/70 hover:text-foreground"
+            >
+              <X size={12} />
+            </button>
           </div>
         </div>
       )}
