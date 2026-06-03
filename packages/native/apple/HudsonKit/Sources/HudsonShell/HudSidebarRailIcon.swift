@@ -76,7 +76,10 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
 
     private var showsFocusRing: Bool {
         guard isFocused else { return false }
-        return !(isSelected && style.indicator == .editorial)
+        // The selected item already reads as active via its accent glyph and
+        // selection surround, so a focus ring there is redundant noise. Keep the
+        // ring only for keyboard focus on *unselected* rows (an a11y affordance).
+        return !isSelected
     }
 
     public var body: some View {
