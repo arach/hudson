@@ -4,11 +4,11 @@ import { useServices } from './ServicesProvider';
 import type { ServiceStatus } from 'hudsonkit';
 
 const DOT_COLORS: Record<ServiceStatus, string> = {
-  unknown: 'bg-neutral-600',
-  not_installed: 'bg-neutral-500',
-  installed: 'bg-amber-500',
-  running: 'bg-emerald-500',
-  error: 'bg-red-500',
+  unknown: 'bg-muted-foreground/50',
+  not_installed: 'bg-muted-foreground',
+  installed: 'bg-warning',
+  running: 'bg-success',
+  error: 'bg-destructive',
 };
 
 export function ServicesLeftPanel() {
@@ -27,8 +27,8 @@ export function ServicesLeftPanel() {
             onClick={() => setSelectedId(svc.id)}
             className={`w-full flex items-center gap-2 px-3 py-1.5 text-left transition-colors ${
               isSelected
-                ? 'bg-white/5 text-neutral-200'
-                : 'text-neutral-500 hover:text-neutral-300 hover:bg-white/[0.02]'
+                ? 'bg-muted/60 text-foreground'
+                : 'text-muted-foreground hover:text-foreground hover:bg-muted/40'
             }`}
           >
             <div className={`w-1.5 h-1.5 rounded-full flex-shrink-0 ${DOT_COLORS[status]}`} />

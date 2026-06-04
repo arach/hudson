@@ -33,7 +33,7 @@ function KvRow({
         className="shrink-0 text-muted-foreground/70 hover:text-foreground/80 transition-colors"
       >
         {kv.enabled
-          ? <ToggleRight size={14} className="text-cyan-700/70 dark:text-cyan-400/60" />
+          ? <ToggleRight size={14} className="text-accent/70" />
           : <ToggleLeft size={14} />
         }
       </button>
@@ -41,17 +41,17 @@ function KvRow({
         value={kv.key}
         onChange={e => onUpdate(kv.id, 'key', e.target.value)}
         placeholder="Key"
-        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-cyan-700/40 dark:focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
+        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-accent/50 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
       />
       <input
         value={kv.value}
         onChange={e => onUpdate(kv.id, 'value', e.target.value)}
         placeholder="Value"
-        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-cyan-700/40 dark:focus:border-cyan-500/30 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
+        className={`flex-1 px-2 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] font-mono outline-none focus:border-accent/50 transition-colors ${kv.enabled ? 'text-foreground/78' : 'text-muted-foreground'}`}
       />
       <button
         onClick={() => onRemove(kv.id)}
-        className="shrink-0 text-muted-foreground/40 hover:text-red-400/70 opacity-0 group-hover:opacity-100 transition-all"
+        className="shrink-0 text-muted-foreground/40 hover:text-destructive/70 opacity-0 group-hover:opacity-100 transition-all"
       >
         <X size={12} />
       </button>
@@ -77,9 +77,9 @@ function TabBtn({ active, label, count, onClick }: {
     >
       {label}
       {count !== undefined && count > 0 && (
-        <span className="ml-1.5 text-[9px] text-cyan-700/80 dark:text-cyan-400/60 bg-cyan-700/10 dark:bg-cyan-500/10 px-1.5 py-0.5 rounded-full">{count}</span>
+        <span className="ml-1.5 text-[9px] text-accent/80 bg-accent/10 px-1.5 py-0.5 rounded-full">{count}</span>
       )}
-      {active && <span className="absolute bottom-0 left-3 right-3 h-px bg-cyan-700/50 dark:bg-cyan-400/40" />}
+      {active && <span className="absolute bottom-0 left-3 right-3 h-px bg-accent/50" />}
     </button>
   );
 }
@@ -93,10 +93,10 @@ function highlightJson(json: string): string {
     .replace(/&/g, '&amp;')
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
-    .replace(/"([^"\\]*(\\.[^"\\]*)*)"\s*:/g, '<span class="text-cyan-700 dark:text-cyan-300/80">"$1"</span>:')
-    .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, '<span class="text-amber-700 dark:text-amber-300/70">"$1"</span>')
-    .replace(/\b(true|false|null)\b/g, '<span class="text-blue-700 dark:text-blue-300/70">$1</span>')
-    .replace(/\b(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\b/g, '<span class="text-emerald-700 dark:text-emerald-300/70">$1</span>');
+    .replace(/"([^"\\]*(\\.[^"\\]*)*)"\s*:/g, '<span class="text-info">"$1"</span>:')
+    .replace(/"([^"\\]*(\\.[^"\\]*)*)"/g, '<span class="text-warning">"$1"</span>')
+    .replace(/\b(true|false|null)\b/g, '<span class="text-info">$1</span>')
+    .replace(/\b(-?\d+\.?\d*(?:[eE][+-]?\d+)?)\b/g, '<span class="text-success">$1</span>');
 }
 
 function JsonBody({ body }: { body: string }) {
@@ -205,14 +205,14 @@ export function ApiInspectorContent() {
             value={request.url}
             onChange={e => setUrl(e.target.value)}
             placeholder="https://api.example.com/v1/resource"
-            className="flex-1 px-3 py-2.5 rounded-lg bg-card/88 border border-border/70 text-[13px] text-foreground/84 placeholder:text-muted-foreground/60 outline-none focus:border-cyan-700/40 dark:focus:border-cyan-500/30 transition-colors font-mono"
+            className="flex-1 px-3 py-2.5 rounded-lg bg-card/88 border border-border/70 text-[13px] text-foreground/84 placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors font-mono"
           />
 
           {/* Send button */}
           <button
             type="submit"
             disabled={loading || !request.url.trim()}
-            className="px-5 py-2 rounded-lg bg-cyan-700/10 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 text-[12px] font-semibold hover:bg-cyan-700/20 dark:hover:bg-cyan-500/25 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-2"
+            className="px-5 py-2 rounded-lg bg-accent/10 text-accent text-[12px] font-semibold hover:bg-accent/20 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-2"
           >
             {loading ? <Loader2 size={14} className="animate-spin" /> : <Send size={14} />}
             Send
@@ -260,7 +260,7 @@ export function ApiInspectorContent() {
                   onClick={() => setBodyType(t)}
                   className={`px-2.5 py-1 rounded text-[11px] font-medium transition-colors ${
                     request.bodyType === t
-                      ? 'bg-cyan-700/10 dark:bg-cyan-500/15 text-cyan-700 dark:text-cyan-400 border border-cyan-700/30 dark:border-cyan-500/20'
+                      ? 'bg-accent/10 text-accent border border-accent/30'
                       : 'text-muted-foreground hover:text-foreground/78 border border-transparent'
                   }`}
                 >
@@ -273,7 +273,7 @@ export function ApiInspectorContent() {
                 value={request.body}
                 onChange={e => setBody(e.target.value)}
                 placeholder={request.bodyType === 'json' ? '{\n  "key": "value"\n}' : 'Request body'}
-                className="w-full h-[120px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-700/40 dark:focus:border-cyan-500/30 transition-colors resize-none"
+                className="w-full h-[120px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-accent/50 transition-colors resize-none"
                 spellCheck={false}
               />
             )}
@@ -316,7 +316,7 @@ export function ApiInspectorContent() {
           )}
 
           {responseError && !loading && (
-            <div className="flex items-center gap-2 text-red-400/80 text-[13px] p-3 rounded-lg bg-red-500/5 border border-red-500/10">
+            <div className="flex items-center gap-2 text-destructive/80 text-[13px] p-3 rounded-lg bg-destructive/5 border border-destructive/10">
               <AlertCircle size={15} />
               {responseError}
             </div>
@@ -336,7 +336,7 @@ export function ApiInspectorContent() {
             <div className="flex flex-col gap-1">
               {Object.entries(response.headers).map(([key, value]) => (
                 <div key={key} className="flex gap-3 py-1 border-b border-border/50 last:border-0">
-                  <span className="text-[12px] font-mono text-cyan-700/80 dark:text-cyan-300/60 shrink-0 min-w-[180px]">{key}</span>
+                  <span className="text-[12px] font-mono text-info/80 shrink-0 min-w-[180px]">{key}</span>
                   <span className="text-[12px] font-mono text-foreground/72 break-all">{value}</span>
                 </div>
               ))}

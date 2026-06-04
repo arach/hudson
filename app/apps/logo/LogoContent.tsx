@@ -611,13 +611,13 @@ function LogoMatrixView({
         <div style={{ padding: '20px 28px 64px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
           {newTemplates.length > 0 && (
             <div
-              className="mb-6 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3"
+              className="mb-6 rounded-lg border border-success/40 bg-success/10 px-4 py-3"
               role="status"
             >
               <div className="flex items-center justify-between gap-3 mb-1.5">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={12} className="text-emerald-300" />
-                  <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-emerald-300">
+                  <Sparkles size={12} className="text-success" />
+                  <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-success">
                     AI saved {newTemplates.length} new variant{newTemplates.length === 1 ? '' : 's'}
                   </span>
                 </div>
@@ -625,14 +625,14 @@ function LogoMatrixView({
                   <button
                     type="button"
                     onClick={handlePreviewLatest}
-                    className="rounded border border-emerald-500/35 bg-emerald-500/15 px-2.5 py-1 text-[10.5px] font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
+                    className="rounded border border-success/35 bg-success/15 px-2.5 py-1 text-[10.5px] font-medium text-success transition-colors hover:bg-success/25"
                   >
                     Preview latest →
                   </button>
                   <button
                     type="button"
                     onClick={handleDismissBanner}
-                    className="rounded p-1 text-emerald-300/70 transition-colors hover:bg-emerald-500/15 hover:text-emerald-200"
+                    className="rounded p-1 text-success/70 transition-colors hover:bg-success/15 hover:text-success"
                     title="Dismiss"
                   >
                     <X size={11} />
@@ -641,9 +641,9 @@ function LogoMatrixView({
               </div>
               <ul className="space-y-0.5">
                 {newTemplates.slice(-5).map(t => (
-                  <li key={t.id} className="text-[10.5px] font-mono text-emerald-100/80 truncate">
-                    <span className="text-emerald-300/60">+</span> {t.name}{' '}
-                    <span className="text-emerald-300/50">· {t.id.slice(0, 8)}</span>
+                  <li key={t.id} className="text-[10.5px] font-mono text-foreground/80 truncate">
+                    <span className="text-success/70">+</span> {t.name}{' '}
+                    <span className="text-muted-foreground">· {t.id.slice(0, 8)}</span>
                   </li>
                 ))}
               </ul>
@@ -755,6 +755,18 @@ export function LogoContent() {
   const gridOpacity = 0.4; // Fixed — workspace-level grid opacity is in shell settings
   const canvas = useCanvasControls();
   const containerRef = useRef<HTMLDivElement>(null);
+
+  // Matrix view only has content for templates that define a matrix preset
+  // (it's only enterable via the preset-gated Matrix toolbar button). But
+  // `view` is persisted, so loading with a stale 'matrix' view — or switching
+  // to a preset-less template (e.g. Mosaic) while matrix is open — strands the
+  // app on the "No matrix preset defined" dead-end instead of loading the
+  // logo. Self-heal back to preview so the app always renders something.
+  useEffect(() => {
+    if (view === 'matrix' && !hasMatrixPreset) {
+      setView('preview');
+    }
+  }, [view, hasMatrixPreset, setView]);
 
   // When an AI-saved template is opened from the chat, flash the canvas so
   // the user notices the workspace has just become the result-viewing context.

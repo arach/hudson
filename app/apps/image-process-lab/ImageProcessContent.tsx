@@ -135,7 +135,7 @@ function PreviewPane({
           <div className="text-[10px] font-mono uppercase tracking-widest text-muted-foreground">{title}</div>
           <div className="text-[10px] text-muted-foreground/70 mt-0.5">{caption}</div>
         </div>
-        {active ? <div className="h-2 w-2 rounded-full bg-emerald-400/70" /> : null}
+        {active ? <div className="h-2 w-2 rounded-full bg-success/80" /> : null}
       </div>
       {src ? (
         <PanZoomViewport
@@ -241,10 +241,10 @@ export function ImageProcessContent() {
         onDrop={handleDrop}
       >
         <div className={`absolute inset-4 rounded-xl border border-dashed transition-colors ${
-          dragOver ? 'border-emerald-400/45 bg-emerald-400/8' : 'border-border/70'
+          dragOver ? 'border-success/45 bg-success/10' : 'border-border/70'
         }`} />
         <div className="relative z-10 flex h-20 w-20 items-center justify-center rounded-2xl border border-border/70 bg-card/86">
-          <ImageIcon size={25} className="text-emerald-700 dark:text-emerald-400" />
+          <ImageIcon size={25} className="text-success" />
         </div>
         <div className="relative z-10 mt-4 text-[13px] text-foreground/72">Drop a hero image to process</div>
         <div className="relative z-10 mt-1 max-w-[360px] text-[11px] leading-5 text-muted-foreground">
@@ -253,7 +253,7 @@ export function ImageProcessContent() {
         <div className="relative z-10 mt-5 flex items-center gap-2">
           <button
             onClick={openFile}
-            className="flex items-center gap-2 rounded-lg bg-emerald-600/12 px-4 py-2 text-[12px] font-medium text-emerald-800 transition-colors hover:bg-emerald-600/18 dark:text-emerald-300"
+            className="flex items-center gap-2 rounded-lg bg-success/10 px-4 py-2 text-[12px] font-medium text-success transition-colors hover:bg-success/20"
           >
             <Upload size={13} />
             Browse
@@ -266,7 +266,7 @@ export function ImageProcessContent() {
             Paste
           </button>
         </div>
-        {error ? <div className="relative z-10 mt-4 text-[11px] text-red-500/80">{error}</div> : null}
+        {error ? <div className="relative z-10 mt-4 text-[11px] text-destructive">{error}</div> : null}
         <CanvasToolDock
           right={toolDockRight}
           bottom={56}
@@ -307,7 +307,7 @@ export function ImageProcessContent() {
       <div className="flex items-center justify-between border-b border-border/70 px-4 py-3">
         <div className="min-w-0">
           <div className="flex items-center gap-2 text-[11px] font-mono text-muted-foreground">
-            <ImageIcon size={12} className="text-emerald-700 dark:text-emerald-400" />
+            <ImageIcon size={12} className="text-success" />
             <span className="truncate">{sourceMeta?.name ?? 'source-image'}</span>
           </div>
           <div className="mt-1 text-[10px] text-muted-foreground/70">
@@ -318,7 +318,7 @@ export function ImageProcessContent() {
         <div className="flex items-center gap-1.5">
           <button
             onClick={clearSource}
-            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/8 hover:text-red-500/80 transition-colors"
+            className="rounded-md p-1.5 text-muted-foreground hover:bg-accent/8 hover:text-destructive transition-colors"
             title="Clear source"
           >
             <X size={13} />
@@ -327,7 +327,7 @@ export function ImageProcessContent() {
       </div>
 
       {error ? (
-        <div className="border-b border-red-500/20 bg-red-500/8 px-4 py-2 text-[11px] text-red-500/85">
+        <div className="border-b border-destructive/20 bg-destructive/10 px-4 py-2 text-[11px] text-destructive">
           {error}
         </div>
       ) : null}
@@ -416,7 +416,7 @@ export function ImageProcessContent() {
 
       {status === 'processing' ? (
         <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-background/35 backdrop-blur-[1px]">
-          <div className="flex items-center gap-2 rounded-lg border border-emerald-400/20 bg-card/92 px-3 py-2 text-[11px] text-emerald-600">
+          <div className="flex items-center gap-2 rounded-lg border border-success/20 bg-card/92 px-3 py-2 text-[11px] text-success">
             <Loader2 size={13} className="animate-spin" />
             Processing
           </div>
@@ -424,7 +424,7 @@ export function ImageProcessContent() {
       ) : null}
 
       {dragOver ? (
-        <div className="pointer-events-none absolute inset-3 rounded-xl border border-dashed border-emerald-400/45 bg-emerald-400/8" />
+        <div className="pointer-events-none absolute inset-3 rounded-xl border border-dashed border-success/45 bg-success/10" />
       ) : null}
 
       <input

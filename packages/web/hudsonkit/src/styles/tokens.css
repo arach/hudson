@@ -97,7 +97,7 @@
 
 [data-hudson-template="hudson"][data-hudson-theme="light"] {
   color-scheme: light;
-  --background: 0.982 0.006 205;
+  --background: 0.966 0.008 213;
   --foreground: 0.18 0.018 245;
   --card: 0.998 0.002 205;
   --card-foreground: 0.17 0.018 245;
@@ -105,20 +105,20 @@
   --popover-foreground: 0.17 0.018 245;
   --primary: 0.2 0.02 245;
   --primary-foreground: 0.99 0.002 205;
-  --secondary: 0.955 0.01 205;
+  --secondary: 0.945 0.011 210;
   --secondary-foreground: 0.22 0.02 245;
-  --muted: 0.948 0.008 205;
+  --muted: 0.938 0.009 210;
   --muted-foreground: 0.43 0.02 245;
-  --accent: 0.54 0.16 178;
+  --accent: 0.53 0.16 166;
   --accent-foreground: 0.99 0 0;
   --destructive: 0.54 0.19 25;
   --destructive-foreground: 0.99 0 0;
   --warning: 0.7 0.15 75;
   --success: 0.56 0.15 150;
   --info: 0.52 0.16 225;
-  --border: 0.865 0.012 215;
-  --input: 0.82 0.012 215;
-  --ring: 0.54 0.16 178;
+  --border: 0.848 0.014 218;
+  --input: 0.8 0.015 218;
+  --ring: 0.53 0.16 166;
   --radius: 8px;
 }
 
@@ -152,7 +152,7 @@
 
 [data-hudson-template="editorial"][data-hudson-theme="light"] {
   color-scheme: light;
-  --background: 0.976 0.009 78;
+  --background: 0.962 0.012 78;
   --foreground: 0.18 0.02 60;
   --card: 0.998 0.002 78;
   --card-foreground: 0.18 0.02 60;

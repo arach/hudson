@@ -1819,9 +1819,12 @@
    De-scoped from .hudson-site so it works inside the workspace shell too.
    Themed via local CSS vars; the marketing block below overrides them. */
 .logo-comparison-sheet {
-  --lcs-title: #d4cfc4;
-  --lcs-meta: #8a8273;
-  --lcs-line: rgba(127, 117, 100, 0.20);
+  /* Theme-aware via the shell's semantic tokens; dark values kept as fallback
+     for any context that renders this primitive without Hudson tokens. The
+     marketing `.hudson-site` block below overrides these for the deck. */
+  --lcs-title: oklch(var(--foreground, 0.95 0 0));
+  --lcs-meta: oklch(var(--muted-foreground, 0.64 0 0));
+  --lcs-line: oklch(var(--border, 0.28 0 0) / 0.6);
   --lcs-selected-ring: #FF5346;
   --lcs-cell-bg: transparent;
   display: flex;

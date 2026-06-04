@@ -24,7 +24,7 @@ export function VantageLeftPanel() {
           <select
             value={profileId}
             onChange={event => setProfileId(event.target.value)}
-            className="w-full appearance-none rounded-md border border-border/70 bg-background/40 pl-2.5 pr-7 py-1.5 text-xs text-foreground/85 outline-none transition-colors hover:border-border focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20"
+            className="w-full appearance-none rounded-md border border-border/70 bg-background/40 pl-2.5 pr-7 py-1.5 text-xs text-foreground/85 outline-none transition-colors hover:border-border focus:border-accent/40 focus:ring-2 focus:ring-accent/20"
           >
             {VANTAGE_CONTROL_PROFILES.map(profile => (
               <option key={profile.id} value={profile.id}>{profile.label}</option>
@@ -54,14 +54,14 @@ export function VantageLeftPanel() {
                 key={node.id}
                 type="button"
                 onClick={() => setSelectedNodeId(node.id)}
-                className={`w-full rounded-md px-2.5 py-2 text-left transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 ${
+                className={`w-full rounded-md px-2.5 py-2 text-left transition-colors border outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
                   active
-                    ? 'border-cyan-500/25 bg-cyan-500/10 text-foreground/90'
+                    ? 'border-accent/25 bg-accent/10 text-foreground/90'
                     : 'border-transparent hover:border-border/50 hover:bg-muted/20 text-foreground/75'
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <VantageIcon size={11} className={`shrink-0 ${active ? 'text-cyan-300' : 'text-muted-foreground/60'}`} />
+                  <VantageIcon size={11} className={`shrink-0 ${active ? 'text-accent' : 'text-muted-foreground/60'}`} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[12px]">{node.title ?? node.id.slice(0, 12)}</div>
                     {node.subtitle && (
