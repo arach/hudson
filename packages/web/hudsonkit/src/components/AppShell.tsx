@@ -36,7 +36,7 @@ import {
 // ---------------------------------------------------------------------------
 // AppShell — the default Hudson shell: renders a single HudsonApp with full
 // chrome (nav bar, side panels, status bar, command palette, terminal drawer).
-// Use WorkspaceShell instead when you need multi-app canvas mode.
+// Use the minimal EmbedShell when you need passive multi-app canvas embeds.
 // ---------------------------------------------------------------------------
 export interface AppShellChromeOptions {
   /** Render the top navigation bar. Defaults to true. */

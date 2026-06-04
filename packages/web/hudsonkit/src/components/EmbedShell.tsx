@@ -56,7 +56,7 @@ function writeBounds(key: string, bounds: Bounds) {
   } catch {}
 }
 
-export interface WorkspaceShellProps {
+export interface EmbedShellProps {
   /** Apps to render as floating windows. Accepts `WorkspaceAppConfig` (e.g. from
    *  `createEmbedApp`) or raw `HudsonApp` objects; raw apps get `FALLBACK_BOUNDS`
    *  unless `defaultBounds` is supplied. */
@@ -86,14 +86,14 @@ export interface WorkspaceShellProps {
  * If you need any of that, build a custom shell out of `hudsonkit/shell`
  * (Frame + Canvas + AppWindow + chrome primitives) instead.
  */
-export function WorkspaceShell({
+export function EmbedShell({
   apps,
   defaultScale = 1,
   showGrid = true,
   storageKey,
   defaultBounds,
   header,
-}: WorkspaceShellProps) {
+}: EmbedShellProps) {
   const configs = useMemo(() => apps.map(normalize), [apps]);
 
   // --- Pan & zoom (in-memory; this shell does not persist viewport state) ---
@@ -141,7 +141,7 @@ export function WorkspaceShell({
   // For createEmbedApp this is a Fragment passthrough; for custom HudsonApps
   // with real Providers it keeps the tree stable across re-renders. ---
   let tree: ReactNode = (
-    <WorkspaceShellWorld
+    <EmbedShellWorld
       configs={configs}
       boundsMap={boundsMap}
       onBoundsChange={setBoundsFor}
@@ -183,7 +183,7 @@ interface WorldProps {
   header?: ReactNode;
 }
 
-function WorkspaceShellWorld({
+function EmbedShellWorld({
   configs,
   boundsMap,
   onBoundsChange,
