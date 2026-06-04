@@ -4,6 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next dev --port 3500",
+    "dev:safe": "bun scripts/dev-guard.ts",
     "build": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && next build",
     "build:site": "bun run build && bun run embed:bundle && bun site/export-pages.mjs",
     "deploy:hudsonkit": "bun run build:site && bunx wrangler deploy",
@@ -82,7 +83,8 @@
     "packages/tools/hkit",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
-    "packages/web/hudsonkit"
+    "packages/web/hudsonkit",
+    "packages/web/hudson-showroom"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

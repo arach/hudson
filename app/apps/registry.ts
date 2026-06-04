@@ -23,7 +23,9 @@
 import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation } from 'hudsonkit';
 import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils';
 
-// --- Core apps (always loaded) ------------------------------------------------
+// --- In-tree apps -------------------------------------------------------------
+// Full-stack, shell-runtime, or Tier-2 apps that still live in app/apps/.
+// See docs/hudson-kit-vs-showroom.md for the extraction tiers.
 
 import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
@@ -31,22 +33,29 @@ import { intentExplorerApp } from './intent-explorer';
 import { logoApp } from './logo';
 import { imageProcessLabApp } from './image-process-lab';
 import { shaperApp } from './shaper';
-import { traceViewerApp } from './trace-viewer';
-// Terminal is available in the bottom console panel (AI + Terminal tabs)
-// import { terminalApp } from './terminal';
 import { openscoutApp } from './openscout';
 import { assetsApp } from './assets';
-import { apiInspectorApp } from './api-inspector';
-import { jsonExplorerApp } from './json-explorer';
-import { notepadApp } from './notepad';
-import { codeEditorApp } from './code-editor';
-import { documentLabApp } from './document-lab';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { dayStackApp } from './day-stack';
-import { workflowLabApp } from './workflow-lab';
 import { runtimeApp } from './runtime';
+import { vantageApp } from './vantage';
 import { hudLoggerApp } from './hud-logger';
+
+// --- Showroom apps ------------------------------------------------------------
+// Tier-1 trivial movers, extracted to the `hudson-showroom` package — client-only
+// apps that consume ONLY the published hudsonkit API.
+// webFetchApp also lives in hudson-showroom but isn't registered here.
+// Terminal stays in app/apps/ — the shell renders its console panel directly.
+import {
+  notepadApp,
+  codeEditorApp,
+  documentLabApp,
+  jsonExplorerApp,
+  apiInspectorApp,
+  traceViewerApp,
+  workflowLabApp,
+} from 'hudson-showroom';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is

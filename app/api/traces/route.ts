@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFile, readdir, writeFile, unlink, mkdir, stat } from 'fs/promises';
 import { join } from 'path';
-import type { AgentTrace, TraceSummary } from '../../apps/trace-viewer/types';
+import type { AgentTrace, TraceSummary } from 'hudson-showroom/trace-viewer/types';
 
 // ---------------------------------------------------------------------------
 // Trace directory — one .json file per agent run

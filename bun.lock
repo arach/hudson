@@ -129,6 +129,17 @@
         "ai",
       ],
     },
+    "packages/web/hudson-showroom": {
+      "name": "hudson-showroom",
+      "version": "0.0.0",
+      "dependencies": {
+        "hudsonkit": "workspace:*",
+      },
+      "peerDependencies": {
+        "lucide-react": "^0.564.0 || ^0.574.0",
+        "react": "^19.0.0",
+      },
+    },
     "packages/web/hudsonkit": {
       "name": "hudsonkit",
       "version": "0.3.0",
@@ -1458,6 +1469,8 @@
     "http-proxy-agent": ["http-proxy-agent@7.0.2", "", { "dependencies": { "agent-base": "^7.1.0", "debug": "^4.3.4" } }, "sha512-T1gkAiYYDWYx3V5Bmyu7HcfcvL7mUrTWiM6yOfa3PIphViJ/gFPbvidQ+veqSOHci/PxBcDabeUNCzpOODJZig=="],
 
     "https-proxy-agent": ["https-proxy-agent@7.0.6", "", { "dependencies": { "agent-base": "^7.1.2", "debug": "4" } }, "sha512-vK9P5/iUfdl95AI+JVyUuIcVtd4ofvtrOr3HNtM2yxC9bnMbEdp3x01OhQNnjb8IJYi38VlTE3mBXwcfvywuSw=="],
+
+    "hudson-showroom": ["hudson-showroom@workspace:packages/web/hudson-showroom"],
 
     "hudsonkit": ["hudsonkit@workspace:packages/web/hudsonkit"],
 

@@ -1,0 +1,19 @@
+{
+  "name": "hudson-showroom",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Hudson Showroom — working demo apps built on HudsonKit, on display as live dogfooding of the published SDK surface.",
+  "type": "module",
+  "main": "./src/index.ts",
+  "types": "./src/index.ts",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "dependencies": {
+    "hudsonkit": "workspace:*"
+  },
+  "peerDependencies": {
+    "react": "^19.0.0",
+    "lucide-react": "^0.564.0 || ^0.574.0"
+  }
+}
