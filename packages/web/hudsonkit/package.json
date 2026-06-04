@@ -85,6 +85,11 @@
       "import": "./dist/observability.js",
       "default": "./dist/observability.js"
     },
+    "./settings": {
+      "types": "./dist/settings.d.ts",
+      "import": "./dist/settings.js",
+      "default": "./dist/settings.js"
+    },
     "./voice": {
       "types": "./dist/voice.d.ts",
       "import": "./dist/voice.js",

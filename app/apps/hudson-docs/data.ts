@@ -15,34 +15,7 @@ import {
   LayoutTemplate,
   type LucideIcon,
 } from 'lucide-react';
-import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
-
-export const DEFAULT_SETTINGS: HudsonSettings = {
-  theme: 'system',
-  template: 'hudson',
-  contextMenuMode: 'hudson-first',
-  glowIntensity: 30,
-  gridOpacity: 60,
-  connectorStyle: 'dashed',
-  zoomSensitivity: 1.0,
-  masterMute: false,
-  uiClickSounds: true,
-  uiTransitionSounds: true,
-  aiMode: 'cli',
-  font: { fontSize: 13, fontFamily: 'system-ui' },
-  voice: {
-    autoSend: true,
-    speakReplies: false,
-    replyProvider: 'vox',
-    replyModel: 'avspeech:system',
-    replyVoice: '',
-    replyRate: 1,
-    spokenReplyStyle: 'adaptive',
-    spokenReplyLongResponse: 'invite',
-    spokenReplyCodeResponse: 'summary',
-    spokenReplyMaxChars: 720,
-  },
-};
+import type { AgentDocEntry, ComponentEntry } from './types';
 
 export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Overview', icon: Compass },

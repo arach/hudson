@@ -44,6 +44,7 @@ const clientEntries = {
   cache: 'src/cache.ts',
   workflow: 'src/workflow/index.ts',
   observability: 'src/observability.ts',
+  settings: 'src/settings.ts',
   voice: 'src/voice.ts',
   vault: 'src/vault.ts',
   auth: 'src/auth.ts',

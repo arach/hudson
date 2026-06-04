@@ -9,7 +9,7 @@ import { useWorkspaceManager } from './WorkspaceManagerContext';
 import type { WindowBounds } from './WorkspaceManagerContext';
 import { safeLocalStorage } from 'hudsonkit';
 import type { ServiceStatus } from 'hudsonkit';
-import type { AppSettingsEntry } from '../../apps/hudson-docs/components';
+import type { AppSettingsEntry } from 'hudsonkit/settings';
 import {
   SettingsSlider,
   SettingsToggle,
@@ -19,7 +19,7 @@ import {
   SettingsSection,
   ServiceActionButton,
   FontSettingsCard,
-} from '../../apps/hudson-docs/components';
+} from 'hudsonkit/settings';
 import { DEFAULT_SHELL_SETTINGS } from '../shellSettings';
 import { HudsonVoiceSettingsEditor } from '../HudsonVoiceSettingsEditor';
 import { HudsonEnvironmentEditor } from '../HudsonEnvironmentEditor';

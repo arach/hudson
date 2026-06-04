@@ -24,41 +24,7 @@ export interface AgentDocEntry {
   position: { x: number; y: number };
 }
 
-import type { VoiceSettings as SdkVoiceSettings } from 'hudsonkit/voice';
-import type {
-  HudsonTemplate,
-  HudsonTheme,
-} from 'hudsonkit';
-
-export type AIMode = 'cli' | 'api';
-
-// Voice types live in hudsonkit/voice so the SDK Assistant + app consumers
-// share a single source of truth. Re-exported here for backwards compat with
-// the many existing imports in app/shell.
-export type {
-  SpokenReplyStyle,
-  SpokenReplyLongResponse,
-  SpokenReplyCodeResponse,
-  VoiceSettings,
-} from 'hudsonkit/voice';
-
-export interface FontSettings {
-  fontSize: number;
-  fontFamily: string;
-}
-
-export interface HudsonSettings {
-  theme: HudsonTheme;
-  template: HudsonTemplate;
-  contextMenuMode: 'hudson-first' | 'chrome-first';
-  glowIntensity: number;
-  gridOpacity: number;
-  connectorStyle: 'dashed' | 'solid' | 'dotted';
-  zoomSensitivity: number;
-  masterMute: boolean;
-  uiClickSounds: boolean;
-  uiTransitionSounds: boolean;
-  aiMode: AIMode;
-  font: FontSettings;
-  voice: SdkVoiceSettings;
-}
+// Compatibility only: the Phase 2 guardrail keeps app/shell/WorkspaceShell.tsx
+// unchanged until the host graduates in a later phase. The source type now
+// lives in hudsonkit/settings.
+export type { HudsonSettings } from 'hudsonkit/settings';

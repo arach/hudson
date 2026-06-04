@@ -7,8 +7,8 @@ import {
   SettingsSegment,
   SettingsSelect,
   ServiceActionButton,
-} from '../apps/hudson-docs/components';
-import type { VoiceSettings } from '../apps/hudson-docs/types';
+} from 'hudsonkit/settings';
+import type { VoiceSettings } from 'hudsonkit/voice';
 import {
   applyHudsonVoiceBehaviorPreset,
   getHudsonSpokenReplyStyleLabel,

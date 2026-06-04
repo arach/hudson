@@ -4,8 +4,9 @@ import { createContext, useContext, useState, useCallback, useMemo, useRef, type
 import { usePersistentState, sounds } from 'hudsonkit';
 import { setMuted as setSoundMuted } from 'hudsonkit';
 import { useEffect } from 'react';
-import type { ComponentEntry, ViewMode, HudsonSettings } from './types';
-import { COMPONENTS, AGENT_DOCS, DEFAULT_SETTINGS } from './data';
+import type { ComponentEntry, ViewMode } from './types';
+import { DEFAULT_SETTINGS, type HudsonSettings } from 'hudsonkit/settings';
+import { COMPONENTS, AGENT_DOCS } from './data';
 
 // ---------------------------------------------------------------------------
 // Context shape

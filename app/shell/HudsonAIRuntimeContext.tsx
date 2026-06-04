@@ -2,7 +2,8 @@
 
 import { createContext, useContext, type ReactNode } from 'react';
 import type { HudsonWorkspace } from 'hudsonkit';
-import type { VoiceSettings, HudsonSettings } from '../apps/hudson-docs/types';
+import type { HudsonSettings } from 'hudsonkit/settings';
+import type { VoiceSettings } from 'hudsonkit/voice';
 
 export interface HudsonAIWorkspaceSummary {
   id: string;

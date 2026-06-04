@@ -25,8 +25,7 @@ import {
 } from 'lucide-react';
 import { AppSwitcher } from './AppSwitcher';
 import { ShellLayoutProvider } from './ShellLayoutContext';
-import { SettingsPanel } from '../apps/hudson-docs/components';
-import type { HudsonSettings } from '../apps/hudson-docs/types';
+import { SettingsPanel, type HudsonSettings } from 'hudsonkit/settings';
 import { AppSlotErrorBoundary } from './AppSlotErrorBoundary';
 import { WorkspaceErrorBoundary } from './WorkspaceErrorBoundary';
 import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } from './shellSettings';

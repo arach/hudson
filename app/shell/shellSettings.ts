@@ -1,6 +1,6 @@
 'use client';
 
-import type { HudsonSettings } from '../apps/hudson-docs/types';
+import type { HudsonSettings } from 'hudsonkit/settings';
 
 export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   theme: 'system',

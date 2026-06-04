@@ -20,7 +20,7 @@ import {
   Workflow,
   Wrench,
 } from 'lucide-react';
-import type { VoiceSettings } from '../hudson-docs/types';
+import type { VoiceSettings } from 'hudsonkit/voice';
 import { useHudsonAIRuntime } from '../../shell/HudsonAIRuntimeContext';
 import { useWorkspaceManager } from '../../shell/workspace-manager/WorkspaceManagerContext';
 import { HudsonVoiceSettingsEditor } from '../../shell/HudsonVoiceSettingsEditor';

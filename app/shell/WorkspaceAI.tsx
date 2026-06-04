@@ -14,7 +14,7 @@ import {
 } from 'hudsonkit';
 import type { UIMessage } from 'ai';
 import type { HudsonWorkspace } from 'hudsonkit';
-import type { VoiceSettings } from '../apps/hudson-docs/types';
+import type { VoiceSettings } from 'hudsonkit/voice';
 import type { HudsonAIToolContext, HudsonAIWorkspaceCatalogEntry } from './HudsonAIRuntimeContext';
 import {
   DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,

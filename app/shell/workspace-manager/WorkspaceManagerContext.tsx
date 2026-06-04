@@ -3,8 +3,7 @@
 import { createContext, useContext } from 'react';
 import type { HudsonWorkspace } from 'hudsonkit';
 import type { ServiceRegistryValue } from '../../services/ServiceRegistryContext';
-import type { AppSettingsEntry } from '../../apps/hudson-docs/components';
-import type { HudsonSettings } from '../../apps/hudson-docs/types';
+import type { AppSettingsEntry, HudsonSettings } from 'hudsonkit/settings';
 
 export type WindowBounds = { x: number; y: number; w: number; h: number };
 
