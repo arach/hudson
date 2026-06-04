@@ -10,10 +10,10 @@ function formatMs(ms: number): string {
 }
 
 const STATUS_DOT: Record<string, string> = {
-  completed: 'bg-emerald-400',
-  running: 'bg-amber-400 animate-pulse',
-  failed: 'bg-red-400',
-  cancelled: 'bg-neutral-500',
+  completed: 'bg-success',
+  running: 'bg-warning animate-pulse',
+  failed: 'bg-destructive',
+  cancelled: 'bg-muted-foreground',
 };
 
 export function TraceLeftPanel() {
@@ -21,7 +21,7 @@ export function TraceLeftPanel() {
 
   if (traces.length === 0) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-500 font-mono text-[13px]">
+      <div className="flex items-center justify-center h-full text-muted-foreground font-mono text-[13px]">
         No traces found
       </div>
     );
@@ -35,31 +35,31 @@ export function TraceLeftPanel() {
           <button
             key={t.id}
             onClick={() => setSelectedTraceId(isSelected ? null : t.id)}
-            className={`w-full flex flex-col gap-1.5 px-3 py-3 text-left transition-colors cursor-pointer border-b border-white/[0.06] ${
+            className={`w-full flex flex-col gap-1.5 px-3 py-3 text-left transition-colors cursor-pointer border-b border-border/60 ${
               isSelected
-                ? 'bg-cyan-500/[0.10]'
-                : 'hover:bg-white/[0.05]'
+                ? 'bg-accent/10'
+                : 'hover:bg-muted/60'
             }`}
           >
             <div className="flex items-center gap-2">
-              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[t.status] ?? 'bg-neutral-500'}`} />
+              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[t.status] ?? 'bg-muted-foreground'}`} />
               <span className={`font-mono text-[13px] truncate ${
-                isSelected ? 'text-white' : 'text-neutral-200'
+                isSelected ? 'text-foreground' : 'text-foreground'
               }`}>
                 {t.name}
               </span>
             </div>
             <div className="flex items-center gap-2.5 pl-4">
-              <span className="font-mono text-[11px] text-cyan-400/80 bg-cyan-500/[0.10] px-1.5 py-0.5 rounded">
+              <span className="font-mono text-[11px] text-info/90 bg-info/10 px-1.5 py-0.5 rounded">
                 {t.agent}
               </span>
               {t.totalDurationMs != null && (
-                <span className="flex items-center gap-1 font-mono text-[11px] text-neutral-500">
+                <span className="flex items-center gap-1 font-mono text-[11px] text-muted-foreground">
                   <Clock size={10} />
                   {formatMs(t.totalDurationMs)}
                 </span>
               )}
-              <span className="font-mono text-[11px] text-neutral-500">
+              <span className="font-mono text-[11px] text-muted-foreground">
                 {t.stepCount} steps
               </span>
             </div>

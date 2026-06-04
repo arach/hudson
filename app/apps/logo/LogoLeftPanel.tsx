@@ -193,27 +193,27 @@ export function LogoLeftPanel() {
         <div className="flex flex-col mt-3">
           <button
             onClick={() => setShowDiscarded(v => !v)}
-            className="flex items-center gap-0.5 px-2 h-6 text-[11px] uppercase tracking-[0.06em] text-foreground/70 hover:text-foreground/90 transition-colors"
+            className="flex items-center gap-1 px-2.5 h-6 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60 hover:text-muted-foreground transition-colors"
           >
-            <ChevronRight size={10} strokeWidth={2.25} className={`transition-transform ${showDiscarded ? 'rotate-90' : ''}`} />
-            Discarded ({discardedTemplates.length})
+            <ChevronRight size={11} strokeWidth={2} className={`-ml-0.5 transition-transform duration-200 ease-out ${showDiscarded ? 'rotate-90' : ''}`} />
+            Discarded · {discardedTemplates.length}
           </button>
           {showDiscarded && (
             <div className="flex flex-col">
               {discardedTemplates.map(t => (
                 <div
                   key={t.id}
-                  className="flex items-center gap-1.5 pl-4 pr-1.5 h-[28px] text-muted-foreground"
+                  className="group/drow flex items-center h-[30px] rounded-md pl-5 pr-1.5 text-muted-foreground transition-colors hover:bg-foreground/[0.045]"
                 >
                   <span
-                    className="flex-1 text-[13px] truncate leading-[1.2]"
+                    className="flex-1 truncate font-sans text-[12.5px] leading-none tracking-[-0.005em]"
                     title={t.name}
                   >
                     {t.name}
                   </span>
                   <button
                     onClick={() => restoreTemplate(t.id)}
-                    className="p-1 rounded text-muted-foreground/80 hover:text-accent hover:bg-foreground/[0.06] transition-colors"
+                    className="flex w-6 shrink-0 items-center justify-center rounded text-muted-foreground/80 opacity-0 transition-opacity hover:text-accent focus:opacity-100 group-hover/drow:opacity-100"
                     title="Restore template"
                   >
                     <RotateCcw size={11} />
@@ -234,7 +234,7 @@ export function LogoLeftPanel() {
 
 function SectionHeader({ label }: { label: string }) {
   return (
-    <div className="flex items-center px-2 h-6 mt-3 first:mt-0 text-[11px] uppercase tracking-[0.06em] text-muted-foreground/70 select-none">
+    <div className="flex items-center px-2.5 h-6 mb-0.5 mt-3 first:mt-0 font-mono text-[10px] font-medium uppercase tracking-[0.18em] text-muted-foreground/60 select-none">
       {label}
     </div>
   );
@@ -261,10 +261,9 @@ function SidebarRow({
   template, label, active, depth, expandable, expanded, onToggleExpand, onSelect, onDiscard, onOpenInCode,
 }: SidebarRowProps) {
   const isBuiltin = template.builtin === true || isBuiltinVariant(template.id);
-  // Indent: parents have 8px hang for the caret; children indent 14-16px under
-  // the parent text. Without an expand caret, parents align with the section.
-  const padLeft = expandable ? 'pl-0' : depth === 0 ? 'pl-2' : '';
-  const depthStyle = depth > 0 ? { paddingLeft: `${8 + depth * 14}px` } : undefined;
+  // Every row reserves a fixed caret gutter (the leading spacer + caret slot)
+  // so sibling names align whether or not they have an expand caret. Nesting
+  // depth shifts the whole row right in 14px steps.
 
   const menuItems = useMemo<ContextMenuEntry[]>(() => {
     const items: ContextMenuEntry[] = [
@@ -289,37 +288,44 @@ function SidebarRow({
 
   return (
     <HudsonContextMenu items={menuItems}>
-      <div className="group/row relative flex items-stretch">
+      <div
+        style={depth > 0 ? { marginLeft: `${depth * 14}px` } : undefined}
+        className={`group/row relative flex items-center h-[30px] rounded-md transition-colors ${
+          active ? 'bg-accent/[0.07]' : 'hover:bg-foreground/[0.045]'
+        }`}
+      >
         {active && (
           <span
             aria-hidden="true"
-            className="absolute left-0 top-[3px] bottom-[3px] w-[2px] bg-accent rounded-sm"
+            className="absolute -left-0.5 top-1/2 h-[15px] w-[2px] -translate-y-1/2 rounded-full bg-accent"
           />
         )}
-        {expandable && (
-          <button
-            type="button"
-            onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
-            className="flex h-[28px] w-4 shrink-0 items-center justify-center text-foreground/70 hover:text-foreground/95 transition-colors"
-            title={expanded ? 'Collapse' : 'Expand'}
-            aria-label={expanded ? 'Collapse' : 'Expand'}
-          >
-            <ChevronRight
-              size={10}
-              strokeWidth={2.25}
-              className={`transition-transform ${expanded ? 'rotate-90' : ''}`}
-            />
-          </button>
-        )}
+        {/* Fixed caret gutter — keeps every name's left edge aligned. */}
+        <span className="flex h-full w-5 shrink-0 items-center justify-center">
+          {expandable && (
+            <button
+              type="button"
+              onClick={(e) => { e.stopPropagation(); onToggleExpand?.(); }}
+              className="flex h-5 w-5 items-center justify-center rounded text-muted-foreground/50 transition-colors hover:bg-foreground/[0.06] hover:text-muted-foreground group-hover/row:text-muted-foreground/80"
+              title={expanded ? 'Collapse' : 'Expand'}
+              aria-label={expanded ? 'Collapse' : 'Expand'}
+            >
+              <ChevronRight
+                size={12}
+                strokeWidth={2}
+                className={`transition-transform duration-200 ease-out ${expanded ? 'rotate-90' : ''}`}
+              />
+            </button>
+          )}
+        </span>
         <button
           type="button"
           onClick={onSelect}
           title={template.name}
-          style={depthStyle}
-          className={`flex-1 flex items-center min-w-0 ${padLeft} pr-1.5 h-[28px] text-left text-[13px] leading-[1.2] transition-colors ${
+          className={`flex min-w-0 flex-1 items-center pr-1.5 text-left font-sans text-[12.5px] leading-none tracking-[-0.005em] transition-colors ${
             active
-              ? 'text-foreground'
-              : 'text-foreground/70 hover:text-foreground/90 hover:bg-foreground/[0.06] dark:hover:bg-white/[0.06]'
+              ? 'font-medium text-foreground'
+              : 'text-foreground/65 group-hover/row:text-foreground/90'
           }`}
         >
           <span className="truncate">{label}</span>
@@ -327,7 +333,7 @@ function SidebarRow({
         <button
           type="button"
           onClick={(e) => { e.stopPropagation(); onOpenInCode(); }}
-          className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-foreground transition-opacity"
+          className="flex w-6 shrink-0 items-center justify-center text-muted-foreground/70 opacity-0 transition-opacity hover:text-foreground focus:opacity-100 group-hover/row:opacity-100"
           title={isBuiltin ? 'View template code' : 'Open template in code mode'}
           aria-label="Open in code mode"
         >
@@ -337,7 +343,7 @@ function SidebarRow({
           <button
             type="button"
             onClick={(e) => { e.stopPropagation(); onDiscard(); }}
-            className="opacity-0 group-hover/row:opacity-100 focus:opacity-100 flex items-center justify-center w-6 shrink-0 text-muted-foreground/70 hover:text-warning transition-opacity"
+            className="flex w-6 shrink-0 items-center justify-center text-muted-foreground/70 opacity-0 transition-opacity hover:text-warning focus:opacity-100 group-hover/row:opacity-100"
             title="Discard template (recoverable for 7 days)"
             aria-label="Discard template"
           >

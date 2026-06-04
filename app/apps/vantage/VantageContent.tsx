@@ -25,9 +25,9 @@ function NodeCard({
     <button
       type="button"
       onClick={onSelect}
-      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-cyan-500/40 ${
+      className={`w-full rounded-lg border px-3 py-2.5 text-left transition-colors outline-none focus-visible:ring-2 focus-visible:ring-accent/40 ${
         selected
-          ? 'border-cyan-500/30 bg-cyan-500/10'
+          ? 'border-accent/50 bg-accent/10'
           : 'border-border/50 bg-muted/10 hover:border-border hover:bg-muted/20'
       }`}
     >
@@ -36,7 +36,7 @@ function NodeCard({
           {node.title ?? node.id.slice(0, 8)}
         </span>
         {node.selected && (
-          <span className="shrink-0 rounded bg-cyan-500/12 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-cyan-300">
+          <span className="shrink-0 rounded bg-accent/10 px-1.5 py-0.5 text-[9px] font-mono uppercase tracking-wider text-accent">
             selected
           </span>
         )}

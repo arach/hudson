@@ -8,9 +8,9 @@ import { useTrace } from './TraceProvider';
 // Status helpers
 // ---------------------------------------------------------------------------
 const STATUS_DOT: Record<string, string> = {
-  success: 'bg-emerald-400',
-  error: 'bg-red-400',
-  skipped: 'bg-neutral-500',
+  success: 'bg-success',
+  error: 'bg-destructive',
+  skipped: 'bg-muted-foreground',
 };
 
 const TYPE_ICON: Record<string, React.FC<{ size: number; className?: string }>> = {
@@ -31,10 +31,10 @@ function formatDate(epoch: number): string {
 }
 
 const TRACE_STATUS_STYLES: Record<string, { dot: string; label: string }> = {
-  completed: { dot: 'bg-emerald-400', label: 'text-emerald-400' },
-  running: { dot: 'bg-amber-400', label: 'text-amber-400' },
-  failed: { dot: 'bg-red-400', label: 'text-red-400' },
-  cancelled: { dot: 'bg-neutral-500', label: 'text-neutral-500' },
+  completed: { dot: 'bg-success', label: 'text-success' },
+  running: { dot: 'bg-warning', label: 'text-warning' },
+  failed: { dot: 'bg-destructive', label: 'text-destructive' },
+  cancelled: { dot: 'bg-muted-foreground', label: 'text-muted-foreground' },
 };
 
 // ---------------------------------------------------------------------------
@@ -50,7 +50,7 @@ export function TraceContent() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full text-neutral-400 font-mono text-[13px]">
+      <div className="flex items-center justify-center h-full text-muted-foreground font-mono text-[13px]">
         Loading trace
       </div>
     );
@@ -58,8 +58,8 @@ export function TraceContent() {
 
   if (!selectedTrace) {
     return (
-      <div className="flex flex-col items-center justify-center h-full gap-3 text-neutral-400">
-        <Terminal size={28} className="text-neutral-500" />
+      <div className="flex flex-col items-center justify-center h-full gap-3 text-muted-foreground">
+        <Terminal size={28} className="text-muted-foreground/70" />
         <span className="font-mono text-[13px]">Select a trace to view</span>
       </div>
     );
@@ -70,19 +70,19 @@ export function TraceContent() {
   return (
     <div className="flex flex-col h-full overflow-hidden">
       {/* Header */}
-      <div className="shrink-0 px-4 py-3.5 border-b border-white/[0.08] space-y-1.5">
+      <div className="shrink-0 px-4 py-3.5 border-b border-border/60 space-y-1.5">
         <div className="flex items-center gap-2.5">
           <div className={`w-2 h-2 rounded-full ${st.dot}`} />
-          <span className="font-mono text-[15px] font-semibold text-white tracking-wide">
+          <span className="font-mono text-[15px] font-semibold text-foreground tracking-wide">
             {selectedTrace.name}
           </span>
           <span className={`font-mono text-[11px] uppercase tracking-wider ${st.label}`}>
             {selectedTrace.status}
           </span>
         </div>
-        <div className="flex items-center gap-4 text-[12px] font-mono text-neutral-400">
-          <span className="text-cyan-400">{selectedTrace.agent}</span>
-          {selectedTrace.model && <span className="text-neutral-300">{selectedTrace.model}</span>}
+        <div className="flex items-center gap-4 text-[12px] font-mono text-muted-foreground">
+          <span className="text-info">{selectedTrace.agent}</span>
+          {selectedTrace.model && <span className="text-foreground">{selectedTrace.model}</span>}
           {selectedTrace.totalDurationMs != null && (
             <span className="flex items-center gap-1">
               <Clock size={11} />
@@ -98,7 +98,7 @@ export function TraceContent() {
           <span>{formatDate(selectedTrace.startedAt)}</span>
         </div>
         {selectedTrace.error && (
-          <p className="text-[12px] font-mono text-red-400 truncate">{selectedTrace.error}</p>
+          <p className="text-[12px] font-mono text-destructive truncate">{selectedTrace.error}</p>
         )}
       </div>
 
@@ -113,40 +113,40 @@ export function TraceContent() {
             <button
               key={step.index}
               onClick={() => selectStep(isSelected ? null : step.index)}
-              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-b border-white/[0.05] ${
+              className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors cursor-pointer border-b border-border/60 ${
                 isSelected
-                  ? 'bg-cyan-500/[0.10] border-l-2 border-l-cyan-400'
-                  : 'hover:bg-white/[0.04] border-l-2 border-l-transparent'
+                  ? 'bg-accent/10 border-l-2 border-l-accent'
+                  : 'hover:bg-muted/60 border-l-2 border-l-transparent'
               }`}
             >
               {/* Status dot */}
-              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[step.status] ?? 'bg-neutral-500'}`} />
+              <div className={`w-2 h-2 rounded-full shrink-0 ${STATUS_DOT[step.status] ?? 'bg-muted-foreground'}`} />
 
               {/* Type icon */}
-              <Icon size={13} className="shrink-0 text-neutral-400" />
+              <Icon size={13} className="shrink-0 text-muted-foreground" />
 
               {/* Tool name */}
               {step.tool && (
-                <span className="shrink-0 font-mono text-[12px] text-cyan-400 min-w-[64px]">
+                <span className="shrink-0 font-mono text-[12px] text-info min-w-[64px]">
                   {step.tool}
                 </span>
               )}
 
               {/* Summary */}
-              <span className="flex-1 font-mono text-[12px] text-neutral-200 truncate">
+              <span className="flex-1 font-mono text-[12px] text-foreground truncate">
                 {step.summary}
               </span>
 
               {/* Duration bar */}
-              <div className="shrink-0 w-[80px] h-[5px] bg-white/[0.06] rounded-full overflow-hidden">
+              <div className="shrink-0 w-[80px] h-[5px] bg-muted/60 rounded-full overflow-hidden">
                 <div
-                  className="h-full rounded-full bg-teal-500/60"
+                  className="h-full rounded-full bg-info/60"
                   style={{ width: `${barWidth}%` }}
                 />
               </div>
 
               {/* Duration text */}
-              <span className="shrink-0 font-mono text-[11px] text-neutral-500 w-[50px] text-right">
+              <span className="shrink-0 font-mono text-[11px] text-muted-foreground w-[50px] text-right">
                 {formatMs(step.durationMs)}
               </span>
             </button>

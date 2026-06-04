@@ -10,9 +10,9 @@ function BlockNavItem({ block, active }: { block: ScheduleBlock; active: boolean
     <div
       className={`group border-l-2 px-3 py-2 transition-colors ${
         active
-          ? 'border-l-cyan-600 dark:border-l-cyan-300 bg-cyan-700/[0.08] dark:bg-cyan-400/[0.07]'
+          ? 'border-l-accent bg-accent/10'
           : block.done
-            ? 'border-l-emerald-600/40 dark:border-l-emerald-300/35 bg-emerald-700/[0.06] dark:bg-emerald-400/[0.035]'
+            ? 'border-l-success/40 bg-success/[0.06]'
             : 'border-l-transparent hover:bg-muted/60'
       }`}
     >
@@ -20,7 +20,7 @@ function BlockNavItem({ block, active }: { block: ScheduleBlock; active: boolean
         <button
           onClick={() => toggleDone(block.id)}
           className={`mt-0.5 rounded p-0.5 transition-colors ${
-            block.done ? 'text-emerald-700 dark:text-emerald-300' : 'text-muted-foreground/45 hover:text-emerald-700 dark:hover:text-emerald-300'
+            block.done ? 'text-success' : 'text-muted-foreground/45 hover:text-success'
           }`}
           title={block.done ? 'Mark open' : 'Mark done'}
         >
@@ -78,7 +78,7 @@ export function DayStackLeftPanel() {
           <div className="flex items-center gap-1">
             <button
               onClick={addHourBlock}
-              className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-cyan-700 dark:hover:text-cyan-300"
+              className="rounded p-1.5 text-muted-foreground transition-colors hover:bg-muted hover:text-accent"
               title="Add hour block"
             >
               <Plus size={13} />
