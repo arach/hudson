@@ -11,13 +11,24 @@ section: "macOS Apps"
 
 `HudsonTerminal` is a Hudson-vocabulary layer over [Termini](https://github.com/arach/Termini) — the renderer + local PTY + SSH stack at `/Users/arach/dev/termini`. Hudson owns the design contract (theme, status overlay, focus, chrome); Termini owns the renderer and transport.
 
-Termini is heavy (NIO, NIOSSH, renderer), so the module is gated behind `HUDSONKIT_WITH_TERMINAL=1`. Main `HudsonKit` ships with zero terminal dependencies.
+Termini is heavy (NIO, NIOSSH, renderer), so the module is gated behind `HUDSONKIT_WITH_TERMINAL=1`. Main `HudsonKit` ships with zero terminal dependencies. When the flag is enabled, `Package.swift` defaults Termini to the git package so CI / ship builds do not need local source paths.
 
 ```sh
 HUDSONKIT_WITH_TERMINAL=1 swift build
 # or
 make build-terminal
 ```
+
+For local development against a sibling checkout, opt into the path source through env:
+
+```sh
+HUDSONKIT_WITH_TERMINAL=1 \
+HUDSON_TERMINI_SOURCE=path \
+HUDSON_TERMINI_PATH=../Termini \
+swift build
+```
+
+Setting `HUDSON_TERMINI_PATH` also implies `HUDSON_TERMINI_SOURCE=path`. Ship builds can pin git with `HUDSON_TERMINI_GIT_REVISION`, or override the remote / branch with `HUDSON_TERMINI_GIT_URL` and `HUDSON_TERMINI_GIT_BRANCH`.
 
 Without the flag, `HudsonTerminal` is not compiled and Termini is not linked.
 

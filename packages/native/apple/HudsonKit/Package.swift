@@ -10,11 +10,79 @@ import Foundation
 //   HUDSONKIT_WITH_VOICE=1      → HudsonVoice
 //
 // Enable both at once: HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
-let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled    = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
-let terminiPackagePath = ProcessInfo.processInfo.environment["HUDSONKIT_TERMINI_PATH"].flatMap { value in
-    value.isEmpty ? nil : value
-} ?? "/Users/arach/dev/termini"
+let environment = ProcessInfo.processInfo.environment
+let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
+let voiceEnabled    = environment["HUDSONKIT_WITH_VOICE"] == "1"
+
+func nonEmptyEnv(_ key: String) -> String? {
+    guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !value.isEmpty
+    else {
+        return nil
+    }
+    return value
+}
+
+func firstNonEmptyEnv(_ keys: [String]) -> String? {
+    for key in keys {
+        if let value = nonEmptyEnv(key) {
+            return value
+        }
+    }
+    return nil
+}
+
+func packageIdentity(forGitURL url: String) -> String {
+    var candidate = url.split(separator: "/").last.map(String.init) ?? url
+    if candidate.hasSuffix(".git") {
+        candidate.removeLast(4)
+    }
+    return candidate.lowercased()
+}
+
+@discardableResult
+func appendSourceDependency(
+    to dependencies: inout [Package.Dependency],
+    envPrefix: String,
+    packageName defaultPackageName: String,
+    defaultPath: String,
+    gitURL defaultGitURL: String,
+    branch defaultBranch: String = "main",
+    pathEnvAliases: [String] = []
+) -> String {
+    let packageName = nonEmptyEnv("\(envPrefix)_PACKAGE") ?? defaultPackageName
+    let path = firstNonEmptyEnv(["\(envPrefix)_PATH"] + pathEnvAliases)
+    let defaultSource = path == nil ? "git" : "path"
+    let source = (nonEmptyEnv("\(envPrefix)_SOURCE") ?? defaultSource).lowercased()
+
+    switch source {
+    case "path", "local":
+        dependencies.append(
+            .package(
+                name: packageName,
+                path: path ?? defaultPath
+            )
+        )
+        return packageName
+
+    case "git", "remote":
+        let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultGitURL
+        if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
+            dependencies.append(.package(url: url, revision: revision))
+        } else {
+            dependencies.append(
+                .package(
+                    url: url,
+                    branch: nonEmptyEnv("\(envPrefix)_GIT_BRANCH") ?? defaultBranch
+                )
+            )
+        }
+        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: url)
+
+    default:
+        fatalError("Unsupported \(envPrefix)_SOURCE '\(source)'. Expected 'git' or 'path'.")
+    }
+}
 
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
@@ -79,7 +147,14 @@ if voiceEnabled {
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    dependencies.append(.package(path: terminiPackagePath))
+    let terminiPackage = appendSourceDependency(
+        to: &dependencies,
+        envPrefix: "HUDSON_TERMINI",
+        packageName: "Termini",
+        defaultPath: "../../../../../Termini",
+        gitURL: "git@github.com:arach/Termini.git",
+        pathEnvAliases: ["HUDSONKIT_TERMINI_PATH"]
+    )
     products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
     targets.append(
@@ -87,8 +162,8 @@ if terminalEnabled {
             name: "HudsonTerminal",
             dependencies: [
                 "HudsonUI",
-                .product(name: "Termini", package: "Termini"),
-                .product(name: "TerminiSSH", package: "Termini"),
+                .product(name: "Termini", package: terminiPackage),
+                .product(name: "TerminiSSH", package: terminiPackage),
             ]
         )
     )
@@ -103,7 +178,7 @@ if terminalEnabled {
                 "HudsonShell",
                 "HudsonTerminal",
                 "HudsonVantageCore",
-                .product(name: "Termini", package: "Termini"),
+                .product(name: "Termini", package: terminiPackage),
             ],
             resources: [
                 .process("Resources")

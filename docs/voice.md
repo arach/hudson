@@ -251,7 +251,16 @@ HUDSONKIT_WITH_VOICE=1 swift build
 HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
 ```
 
-`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. For Xcode projects, set the env var in the shell before running `xcodegen` (and re-run xcodegen after toggling).
+`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. When voice is enabled, Vox defaults to the git package for CI / ship builds. Local developers can opt into a sibling checkout without changing the manifest:
+
+```bash
+HUDSONKIT_WITH_VOICE=1 \
+HUDSON_VOX_SOURCE=path \
+HUDSON_VOX_PATH=../vox/swift \
+swift build
+```
+
+Setting `HUDSON_VOX_PATH` also implies `HUDSON_VOX_SOURCE=path`. Ship builds can pin git with `HUDSON_VOX_GIT_REVISION`, or override the remote / branch with `HUDSON_VOX_GIT_URL` and `HUDSON_VOX_GIT_BRANCH`. For Xcode projects, set the env vars in the shell before running `xcodegen` (and re-run xcodegen after toggling).
 
 ### HudVoicePanel — SwiftUI primitive
 
