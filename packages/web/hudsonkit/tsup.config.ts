@@ -34,6 +34,7 @@ const clientEntries = {
   index: 'src/index.ts',
   shell: 'src/shell.ts',
   'app-shell': 'src/app-shell.ts',
+  workspace: 'src/workspace.ts',
   chrome: 'src/chrome.ts',
   overlays: 'src/overlays.ts',
   'context-menu': 'src/context-menu.ts',

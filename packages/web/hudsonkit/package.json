@@ -25,6 +25,11 @@
       "import": "./dist/app-shell.js",
       "default": "./dist/app-shell.js"
     },
+    "./workspace": {
+      "types": "./dist/workspace.d.ts",
+      "import": "./dist/workspace.js",
+      "default": "./dist/workspace.js"
+    },
     "./chrome": {
       "types": "./dist/chrome.d.ts",
       "import": "./dist/chrome.js",
