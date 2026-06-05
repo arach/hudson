@@ -3,7 +3,10 @@ import PackageDescription
 import Foundation
 
 let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
+// Voice is on by default (opt OUT with HUDSONKIT_WITH_VOICE=0). HudsonVoice +
+// Vox are lightweight and iOS-safe, so the on-device dictation product is
+// always available to consumers like ScoutNext without an opt-in flag.
+let voiceEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] != "0"
 
 // SwiftPM resolves every declared package dependency up front. Keep the heavy
 // terminal backend out of default HudsonKit consumers, and opt into it only for

@@ -13,7 +13,7 @@
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 - State is owned by each app Provider via React context
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald color ranges
-- Agentic Hudson work from Scout, Codex, Claude Code, or a shell prompt must log a paired task lifecycle. Prefer `bun scripts/agent-action.ts run -- ...` when wrapping a command; if you use `start`, close it with `complete` or `fail`.
+- Agent action lifecycle logging is for agents fulfilling Hudson product actions, such as generating a logo, testing a route, running an app workflow, or exercising another intended HudsonKit capability. In that context, log a paired lifecycle; prefer `bun scripts/agent-action.ts run -- ...` when wrapping a command, and if you use `start`, close it with `complete` or `fail`. Do not use it for routine platform-development work like code edits, branch checks, reviews, Scout handoffs, or agent coordination unless the user explicitly asks or the task is exercising a product action path.
 
 ## Project Structure
 

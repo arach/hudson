@@ -2,6 +2,7 @@
 
 import { WorkspaceShell } from '../shell/WorkspaceShell';
 import { allWorkspaces } from '../workspaces';
+import { hudsonShellEnvironment } from '../lib/hudsonShellEnvironment';
 
 export default function AppPage() {
   return (
@@ -9,6 +10,7 @@ export default function AppPage() {
       workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="none"
+      environment={hudsonShellEnvironment}
     />
   );
 }
