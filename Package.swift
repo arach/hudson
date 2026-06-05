@@ -2,8 +2,60 @@
 import PackageDescription
 import Foundation
 
-let terminalEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = ProcessInfo.processInfo.environment["HUDSONKIT_WITH_VOICE"] == "1"
+let environment = ProcessInfo.processInfo.environment
+let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
+let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] == "1"
+
+func nonEmptyEnv(_ key: String) -> String? {
+    guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
+          !value.isEmpty
+    else {
+        return nil
+    }
+    return value
+}
+
+func packageIdentity(forGitURL url: String) -> String {
+    var candidate = url.split(separator: "/").last.map(String.init) ?? url
+    if candidate.hasSuffix(".git") {
+        candidate.removeLast(4)
+    }
+    return candidate.lowercased()
+}
+
+@discardableResult
+func appendVoxDependency(to dependencies: inout [Package.Dependency]) -> String {
+    let source = (nonEmptyEnv("HUDSON_VOX_SOURCE") ?? "path").lowercased()
+
+    switch source {
+    case "path", "local":
+        dependencies.append(
+            .package(
+                name: "Vox",
+                path: nonEmptyEnv("HUDSON_VOX_PATH") ?? "../vox/swift"
+            )
+        )
+        return "Vox"
+    case "git":
+        // SwiftPM package URLs must resolve to a repository root that contains
+        // Package.swift; it does not support git package dependencies rooted at
+        // a subdirectory such as `vox.git/swift`.
+        let url = nonEmptyEnv("HUDSON_VOX_GIT_URL") ?? "git@github.com:arach/vox.git"
+        if let revision = nonEmptyEnv("HUDSON_VOX_GIT_REVISION") {
+            dependencies.append(.package(url: url, revision: revision))
+        } else {
+            dependencies.append(
+                .package(
+                    url: url,
+                    branch: nonEmptyEnv("HUDSON_VOX_GIT_BRANCH") ?? "main"
+                )
+            )
+        }
+        return nonEmptyEnv("HUDSON_VOX_PACKAGE") ?? packageIdentity(forGitURL: url)
+    default:
+        fatalError("Unsupported HUDSON_VOX_SOURCE '\(source)'. Expected 'path' or 'git'.")
+    }
+}
 
 // SwiftPM resolves every declared package dependency up front. Keep the heavy
 // terminal backend out of default HudsonKit consumers, and opt into it only for
@@ -78,7 +130,7 @@ var targets: [Target] = [
 
 if voiceEnabled {
     // Vox = embeddable Parakeet engine (on-device download + execution).
-    dependencies.append(.package(name: "Vox", path: "../vox/swift"))
+    let voxPackage = appendVoxDependency(to: &dependencies)
     products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
         .target(
@@ -86,7 +138,7 @@ if voiceEnabled {
             dependencies: [
                 "HudsonUI",
                 "HudsonObservability",
-                .product(name: "VoxEngine", package: "Vox"),
+                .product(name: "VoxEngine", package: voxPackage),
             ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
         )
