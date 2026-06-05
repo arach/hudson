@@ -24,37 +24,26 @@ func packageIdentity(forGitURL url: String) -> String {
 }
 
 @discardableResult
-func appendVoxDependency(to dependencies: inout [Package.Dependency]) -> String {
-    let source = (nonEmptyEnv("HUDSON_VOX_SOURCE") ?? "path").lowercased()
+func appendGitDependency(
+    to dependencies: inout [Package.Dependency],
+    url defaultURL: String,
+    branch defaultBranch: String = "main",
+    envPrefix: String
+) -> String {
+    let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultURL
 
-    switch source {
-    case "path", "local":
+    if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
+        dependencies.append(.package(url: url, revision: revision))
+    } else {
         dependencies.append(
             .package(
-                name: "Vox",
-                path: nonEmptyEnv("HUDSON_VOX_PATH") ?? "../vox/swift"
+                url: url,
+                branch: nonEmptyEnv("\(envPrefix)_GIT_BRANCH") ?? defaultBranch
             )
         )
-        return "Vox"
-    case "git":
-        // SwiftPM package URLs must resolve to a repository root that contains
-        // Package.swift; it does not support git package dependencies rooted at
-        // a subdirectory such as `vox.git/swift`.
-        let url = nonEmptyEnv("HUDSON_VOX_GIT_URL") ?? "git@github.com:arach/vox.git"
-        if let revision = nonEmptyEnv("HUDSON_VOX_GIT_REVISION") {
-            dependencies.append(.package(url: url, revision: revision))
-        } else {
-            dependencies.append(
-                .package(
-                    url: url,
-                    branch: nonEmptyEnv("HUDSON_VOX_GIT_BRANCH") ?? "main"
-                )
-            )
-        }
-        return nonEmptyEnv("HUDSON_VOX_PACKAGE") ?? packageIdentity(forGitURL: url)
-    default:
-        fatalError("Unsupported HUDSON_VOX_SOURCE '\(source)'. Expected 'path' or 'git'.")
     }
+
+    return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: url)
 }
 
 // SwiftPM resolves every declared package dependency up front. Keep the heavy
@@ -136,7 +125,11 @@ var targets: [Target] = [
 
 if voiceEnabled {
     // Vox = embeddable Parakeet engine (on-device download + execution).
-    let voxPackage = appendVoxDependency(to: &dependencies)
+    let voxPackage = appendGitDependency(
+        to: &dependencies,
+        url: "git@github.com:arach/vox.git",
+        envPrefix: "HUDSON_VOX"
+    )
     products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
         .target(
@@ -155,14 +148,18 @@ if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
     products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
-    dependencies.append(.package(path: "../Termini"))
+    let terminiPackage = appendGitDependency(
+        to: &dependencies,
+        url: "git@github.com:arach/Termini.git",
+        envPrefix: "HUDSON_TERMINI"
+    )
     targets.append(
         .target(
             name: "HudsonTerminal",
             dependencies: [
                 "HudsonUI",
-                .product(name: "Termini", package: "Termini"),
-                .product(name: "TerminiSSH", package: "Termini"),
+                .product(name: "Termini", package: terminiPackage),
+                .product(name: "TerminiSSH", package: terminiPackage),
             ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonTerminal"
         )
@@ -178,7 +175,7 @@ if terminalEnabled {
                 "HudsonShell",
                 "HudsonTerminal",
                 "HudsonVantageCore",
-                .product(name: "Termini", package: "Termini"),
+                .product(name: "Termini", package: terminiPackage),
             ],
             path: "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface",
             resources: [
