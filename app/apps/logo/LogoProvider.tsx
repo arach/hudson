@@ -377,10 +377,10 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
     },
   },
   {
-    label: 'Violet',
+    label: 'Teal',
     params: {
-      variant: 'lattice-grid', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.18)', bgColor: '#0d0a14',
-      lightColors: { bgColor: '#f5f3ff', paneColor: '#7c3aed', dimPaneColor: 'rgba(124,58,237,0.15)', channelColor: 'rgba(124,58,237,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+      variant: 'lattice-grid', paneColor: '#2dd4bf', dimPaneColor: 'rgba(45,212,191,0.18)', bgColor: '#06100f',
+      lightColors: { bgColor: '#f0fdfa', paneColor: '#0d9488', dimPaneColor: 'rgba(13,148,136,0.15)', channelColor: 'rgba(13,148,136,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
     },
   },
   {
@@ -456,10 +456,10 @@ const presets: { label: string; params: Partial<LogoParams> }[] = [
     },
   },
   {
-    label: 'Mosaic — violet',
+    label: 'Mosaic — teal',
     params: {
-      variant: 'mosaic', paneColor: '#a78bfa', dimPaneColor: 'rgba(167,139,250,0.35)', bgColor: '#0d0a14',
-      lightColors: { bgColor: '#f5f3ff', paneColor: '#7c3aed', dimPaneColor: 'rgba(124,58,237,0.28)', channelColor: 'rgba(124,58,237,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
+      variant: 'mosaic', paneColor: '#2dd4bf', dimPaneColor: 'rgba(45,212,191,0.35)', bgColor: '#06100f',
+      lightColors: { bgColor: '#f0fdfa', paneColor: '#0d9488', dimPaneColor: 'rgba(13,148,136,0.28)', channelColor: 'rgba(13,148,136,0.08)', strokeColor: 'rgba(0,0,0,0.10)' },
     },
   },
   // ── Other variant presets ──

@@ -61,7 +61,7 @@ export const SHAPER_AI_ACTIONS: ShaperAiAction[] = [
     label: 'Add detail',
     desc: 'More anchors, finer curves',
     icon: Maximize2,
-    color: 'text-violet-400',
+    color: 'text-blue-400',
     prompt:
       'The user wants more detail in the trace. Lower errorTolerance (try -2 to -3 from the current value, minimum 1) ' +
       'and consider switching edgeDetection if the current mode is missing fine features (canny for soft edges, otsu for ' +

@@ -73,12 +73,12 @@ export function AIMenu() {
         title={disabled ? 'Load an image first' : 'AI assist — analyze the image and propose trace improvements'}
         className={`flex h-7 items-center justify-center rounded px-2 gap-1 text-[10px] font-bold font-mono transition-all border ${
           busy
-            ? 'bg-gradient-to-br from-violet-600 to-fuchsia-600 text-white border-violet-400 shadow-lg shadow-violet-500/40 animate-pulse'
+            ? 'bg-gradient-to-br from-cyan-600 to-blue-600 text-white border-cyan-400 shadow-lg shadow-cyan-500/40 animate-pulse'
             : disabled
               ? 'bg-neutral-800/30 text-neutral-600 border-neutral-800 cursor-not-allowed'
               : open
-                ? 'bg-violet-600/20 text-violet-200 border-violet-500/50'
-                : 'bg-violet-500/10 text-violet-300 border-violet-500/20 hover:bg-violet-600/20 hover:text-violet-200 hover:border-violet-500/50'
+                ? 'bg-cyan-600/20 text-cyan-200 border-cyan-500/50'
+                : 'bg-cyan-500/10 text-cyan-300 border-cyan-500/20 hover:bg-cyan-600/20 hover:text-cyan-200 hover:border-cyan-500/50'
         }`}
       >
         {busy ? <Loader2 size={11} className="animate-spin" /> : <Sparkles size={11} />}
@@ -91,13 +91,13 @@ export function AIMenu() {
           className="absolute top-9 right-0 z-[60] w-80 rounded-lg border border-neutral-800 bg-neutral-950/98 backdrop-blur-xl shadow-2xl overflow-hidden pointer-events-auto"
         >
           {/* Header */}
-          <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800/80 bg-gradient-to-r from-violet-500/5 to-transparent">
+          <div className="flex items-center justify-between px-3 py-2 border-b border-neutral-800/80 bg-gradient-to-r from-cyan-500/5 to-transparent">
             <div className="flex items-center gap-1.5">
-              <Sparkles size={12} className="text-violet-400" />
+              <Sparkles size={12} className="text-cyan-400" />
               <span className="text-[11px] font-semibold text-neutral-200">AI assist</span>
               {busy && (
-                <span className="flex items-center gap-1 ml-2 text-[9px] text-violet-300 font-mono">
-                  <span className="w-1 h-1 rounded-full bg-violet-400 animate-pulse" />
+                <span className="flex items-center gap-1 ml-2 text-[9px] text-cyan-300 font-mono">
+                  <span className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
                   {currentStep ? `${currentStep.tool}…` : aiStatus}
                 </span>
               )}
@@ -210,7 +210,7 @@ function ActivityRow({ entry }: { entry: { tool: string; summary: string; level:
   const { dot, labelColor } =
     entry.level === 'error' ? { dot: 'bg-red-400', labelColor: 'text-red-400' } :
     entry.level === 'report' ? { dot: 'bg-emerald-400', labelColor: 'text-emerald-400' } :
-    entry.level === 'change' ? { dot: 'bg-violet-400', labelColor: 'text-violet-300' } :
+    entry.level === 'change' ? { dot: 'bg-cyan-400', labelColor: 'text-cyan-300' } :
     { dot: 'bg-neutral-600', labelColor: 'text-neutral-500' };
   return (
     <div className="flex items-start gap-2 px-2 py-1 text-[10px] font-mono">

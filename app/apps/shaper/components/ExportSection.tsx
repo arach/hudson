@@ -127,7 +127,7 @@ export function ExportSection() {
             <SubLabel>Download</SubLabel>
             <div className="grid grid-cols-3 gap-1.5">
               <ExportButton icon={FileCode}  iconColor="text-emerald-400" label="SVG"  onClick={downloadSvg}  disabled={disabled} />
-              <ExportButton icon={FileImage} iconColor="text-violet-400"  label="PNG"  onClick={downloadPng}  disabled={disabled} />
+              <ExportButton icon={FileImage} iconColor="text-blue-400"  label="PNG"  onClick={downloadPng}  disabled={disabled} />
               <ExportButton icon={FileJson}  iconColor="text-amber-400"   label="JSON" onClick={downloadJson} disabled={disabled} />
             </div>
           </div>
@@ -137,7 +137,7 @@ export function ExportSection() {
             <div className="grid grid-cols-3 gap-1.5">
               <ExportButton icon={FileCode}  iconColor="text-emerald-400" label="SVG"    onClick={copySvg}            disabled={disabled} />
               <ExportButton icon={Copy}      iconColor="text-cyan-400"    label="Path d" onClick={copyPathD}          disabled={disabled} />
-              <ExportButton icon={Clipboard} iconColor="text-violet-400"  label="PNG"    onClick={copyPngToClipboard} disabled={disabled} />
+              <ExportButton icon={Clipboard} iconColor="text-blue-400"  label="PNG"    onClick={copyPngToClipboard} disabled={disabled} />
             </div>
           </div>
 
