@@ -65,6 +65,7 @@ var products: [Product] = [
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
+    .library(name: "HudsonAI", targets: ["HudsonAI"]),
     .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
@@ -100,6 +101,11 @@ var targets: [Target] = [
         name: "HudsonUICapture",
         dependencies: ["HudsonUI"],
         path: "packages/native/apple/HudsonKit/Sources/HudsonUICapture"
+    ),
+    .target(
+        name: "HudsonAI",
+        dependencies: ["HudsonUI"],
+        path: "packages/native/apple/HudsonKit/Sources/HudsonAI"
     ),
     .target(
         name: "HudsonWorkflow",
