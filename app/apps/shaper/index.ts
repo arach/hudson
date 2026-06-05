@@ -60,6 +60,7 @@ export const shaperApp: HudsonApp = {
   name: 'Shaper',
   description: 'Bezier curve editor for vector shapes',
   mode: 'panel',
+  backend: {},
   manifest: shaperManifest,
   intents: shaperIntents,
 

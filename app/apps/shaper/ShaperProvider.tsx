@@ -12,7 +12,7 @@ import {
   type ReactElement,
 } from 'react';
 import { traceFromImage } from './lib/bezier-fit';
-import { createHudsonId, sounds } from 'hudsonkit';
+import { createAppApiClient, createHudsonId, sounds } from 'hudsonkit';
 import { useShaperAI, type AiActivityEntry } from './useShaperAI';
 import type {
   BezierData,
@@ -36,6 +36,8 @@ import {
   MAX_RECENT,
   DEFAULT_TRACE_OPTIONS,
 } from './types';
+
+const shaperApi = createAppApiClient({ id: 'shaper', backend: {} });
 
 // ---------------------------------------------------------------------------
 // Context value shape
@@ -627,7 +629,7 @@ export function ShaperProvider({
   const saveToDisk = useCallback(async (data: BezierData, smooth: Record<string, boolean>) => {
     setSaveStatus('saving');
     try {
-      const res = await fetch('/api/shaper/save', {
+      const res = await shaperApi.post('save', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ bezier: data, smooth, projectId }),

@@ -23,6 +23,8 @@ export type {
 } from './hooks/useCachedResource';
 export { InstanceProvider, useInstance, useOptionalInstance } from './context/InstanceContext';
 export type { InstanceContextValue } from './context/InstanceContext';
+export { ShellLayoutProvider, useShellLayout } from './context/ShellLayoutContext';
+export type { ShellLayout } from './context/ShellLayoutContext';
 export { useAppSettings } from './hooks/useAppSettings';
 export type { AppSettingsValues } from './hooks/useAppSettings';
 export { useHudsonAI } from './hooks/useHudsonAI';

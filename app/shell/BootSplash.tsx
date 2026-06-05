@@ -2,7 +2,6 @@
 
 import { useEffect, useState, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import Image from 'next/image';
 import { sounds } from 'hudsonkit';
 
 // ---------------------------------------------------------------------------
@@ -195,13 +194,11 @@ export function BootSplash({ onPhaseChange, onBooted, mode }: BootSplashProps) {
                 exit={{ opacity: 0 }}
                 transition={{ duration: 0.8, ease: 'easeOut' }}
               >
-                <Image
+                <img
                   src="/demo/hero.png"
                   alt=""
-                  fill
-                  className="object-cover"
+                  className="absolute inset-0 h-full w-full object-cover"
                   style={{ objectPosition: 'center 45%' }}
-                  priority
                 />
                 {/* Vignette overlay */}
                 <div

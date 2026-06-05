@@ -1,6 +1,6 @@
 @import "tailwindcss";
 
-/* Hudson tokens — theme-gated --hud-* plus --background / --foreground / etc.,
+/* Hudson tokens: theme-gated --hud-* plus --background / --foreground / etc.,
    keyed off [data-hudson-template] + [data-hudson-theme] set pre-paint by the
    inline script in index.html. Resolves to the kit SOURCE via package exports. */
 @import "hudsonkit/styles/tokens.css";
@@ -10,14 +10,14 @@
    Skip this and the classes work in dev but disappear in a prod build. */
 @source "../../../../packages/web/hudsonkit/src/**/*.{ts,tsx}";
 
-/* Scan Hudson's real apps too — Atelier mounts the actual Shaper / Logo, so
-   Tailwind must generate the utility classes their components reference. */
-@source "../../../../app/apps/shaper/**/*.{ts,tsx}";
-@source "../../../../app/apps/logo/**/*.{ts,tsx}";
+/* Scan extracted app bundles and the transitional host shell. WorkspaceShell
+   still comes from app/shell until it graduates into hudsonkit. */
+@source "../../../../packages/web/hudson-showroom/src/**/*.{ts,tsx}";
+@source "../../../../app/shell/**/*.{ts,tsx}";
 
 /* Register hudsonkit's semantic colors as Tailwind v4 theme tokens so the
    shell's `bg-background` / `text-foreground` / `border-border` utilities
-   resolve. Mirrors packages/web/hudsonkit/src/styles/bundle.css — we replicate
+   resolve. Mirrors packages/web/hudsonkit/src/styles/bundle.css; we replicate
    it here because Atelier compiles from source instead of importing the
    prebuilt hudsonkit/styles bundle. */
 @theme inline {

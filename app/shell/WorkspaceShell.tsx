@@ -666,6 +666,7 @@ export interface WorkspaceShellEnvironment {
 interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
+  shellTitle?: string;
   bootMode?: 'full' | 'condensed' | 'none';
   persistSession?: boolean;
   initialState?: WorkspaceShellInitialState;
@@ -691,6 +692,7 @@ function defaultActivatedIdsForWorkspace(workspace: HudsonWorkspace): string[] {
 export function WorkspaceShell({
   workspaces,
   defaultWorkspaceId,
+  shellTitle = 'HUDSONKIT',
   bootMode = 'none',
   persistSession = true,
   initialState,
@@ -846,6 +848,7 @@ export function WorkspaceShell({
       workspaces={workspaces}
       activeWorkspaceId={activeWorkspaceId}
       onSwitchWorkspace={handleSwitchWorkspace}
+      shellTitle={shellTitle}
       bootPhase={bootPhase}
       bootMode={bootMode}
       initialShowLauncher={initialShowLauncher}
@@ -969,6 +972,7 @@ function WorkspaceInner({
   workspaces,
   activeWorkspaceId,
   onSwitchWorkspace,
+  shellTitle,
   bootPhase,
   bootMode,
   initialShowLauncher,
@@ -985,6 +989,7 @@ function WorkspaceInner({
   workspaces: HudsonWorkspace[];
   activeWorkspaceId: string;
   onSwitchWorkspace: (id: string) => void;
+  shellTitle: string;
   bootPhase: BootPhase;
   bootMode: 'full' | 'condensed' | 'none';
   initialShowLauncher: boolean;
@@ -3473,7 +3478,7 @@ function WorkspaceInner({
               transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
             >
               <NavigationBar
-                title="HUDSONKIT"
+                title={shellTitle}
                 subtitle={
                   <WorkspaceSwitcher
                     workspaces={workspaces}

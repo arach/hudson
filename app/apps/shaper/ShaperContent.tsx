@@ -2,8 +2,7 @@
 
 import { useEffect } from 'react';
 import { useShaper } from './ShaperProvider';
-import { ZoomControls } from 'hudsonkit';
-import { useShellLayout } from '../../shell/ShellLayoutContext';
+import { ZoomControls, useShellLayout } from 'hudsonkit';
 import { CanvasRenderer } from './components/CanvasRenderer';
 import { ToolPalette } from './components/ToolPalette';
 import { DropZone } from './components/DropZone';

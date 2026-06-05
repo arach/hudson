@@ -1,19 +1,21 @@
 import { createContext, useContext, useState } from "react";
 import type { FC, ReactNode } from "react";
-import { Boxes, Compass, Info, LayoutDashboard, Palette } from "lucide-react";
+import { Bot, Boxes, Compass, Info, LayoutDashboard, Palette, Radio, Server } from "lucide-react";
 import type { HudsonApp } from "hudsonkit";
+import { atelierHostServices } from "./hostServices";
 
 // ---------------------------------------------------------------------------
-// The Atelier single-app — a real HudsonApp (Provider owns state; slots read
+// The Atelier single-app: a real HudsonApp (Provider owns state; slots read
 // it via context; hooks feed the shell chrome). Mounted in AppShell to show
 // the full single-app chrome: nav bar, left panel, content, inspector, status
 // bar, command palette.
 // ---------------------------------------------------------------------------
 
-type Section = "overview" | "shells" | "tokens" | "about";
+type Section = "overview" | "services" | "shells" | "tokens" | "about";
 
 const SECTIONS: { key: Section; label: string; icon: ReactNode }[] = [
   { key: "overview", label: "Overview", icon: <LayoutDashboard size={13} /> },
+  { key: "services", label: "Host Services", icon: <Server size={13} /> },
   { key: "shells", label: "Shells", icon: <Boxes size={13} /> },
   { key: "tokens", label: "Tokens", icon: <Palette size={13} /> },
   { key: "about", label: "About", icon: <Info size={13} /> },
@@ -62,42 +64,34 @@ const AtelierLeftPanel: FC = () => {
 };
 
 // --- Content sections --------------------------------------------------------
-const Kbd: FC<{ children: ReactNode }> = ({ children }) => (
-  <kbd className="rounded border border-border bg-card px-1.5 py-0.5 font-mono text-[10px] text-foreground/70">
-    {children}
-  </kbd>
-);
-
 const Overview: FC = () => (
   <div className="mx-auto max-w-2xl space-y-5 p-8 text-[13px] leading-relaxed text-foreground/80">
     <div>
       <div className="mb-1 font-mono text-[11px] uppercase tracking-widest text-cyan-400/80">
-        Standalone consumer
+        App-builder host
       </div>
       <h1 className="text-[22px] font-semibold tracking-tight text-foreground">Atelier</h1>
     </div>
     <p>
-      This is a plain <span className="text-cyan-300">Vite</span> app — its own server, its own
-      build, its own <code className="text-teal-300">node_modules</code>. It is{" "}
-      <span className="text-foreground">not</span> a route inside Hudson&apos;s Next app. Everything
-      you see is rendered by <code className="text-teal-300">hudsonkit</code>, linked as a package.
+      This is the standalone <span className="text-cyan-300">Atelier</span> host. It serves an
+      Atelier-owned workspace registry and a local service API from Vite; it is not the old Hudson
+      workspace list mounted under a different port.
     </p>
     <p>
-      What you are looking at right now is the <span className="text-cyan-300">AppShell</span> — the
-      kit&apos;s single-app shell. The chrome around this content (the nav bar up top, the section
-      nav on the left, this content area, the inspector on the right, the status bar along the
-      bottom, and the <Kbd>⌘K</Kbd> command palette) all come from{" "}
-      <code className="text-teal-300">hudsonkit/app-shell</code> — none of it is hand-written here.
+      The first window is this Atelier control surface. Shaper, Document Lab, Code Editor, API
+      Inspector, and Workflow Lab come from <code className="text-teal-300">hudson-showroom</code>,
+      the extraction staging package. Product apps no longer come from the Hudson workspace registry.
     </p>
     <p className="text-foreground/60">
-      Flip the switch in the top bar to <span className="text-cyan-300">Workspace</span> to see the
-      other shell the kit ships: a multi-app canvas with draggable windows.
+      The shell implementation is still a transitional import from Hudson. The boundary being tested
+      here is the one that matters first: app bundles and host services belong to Atelier, not the
+      Hudson workspace registry.
     </p>
     <div className="grid grid-cols-3 gap-3 pt-2">
       {[
-        { k: "shells", v: "2", note: "AppShell + Workspace" },
-        { k: "app imports", v: "0", note: "kit only" },
-        { k: "runtime", v: "Vite", note: "port 3034" },
+        { k: "workspace", v: "1", note: "Atelier-owned" },
+        { k: "apps", v: "6", note: "extracted + local" },
+        { k: "services", v: "4", note: "owned / adapter / planned" },
       ].map((s) => (
         <div key={s.k} className="rounded-lg border border-border bg-card/50 p-3">
           <div className="text-[26px] font-semibold tabular-nums text-foreground">{s.v}</div>
@@ -107,6 +101,47 @@ const Overview: FC = () => (
           <div className="mt-1 text-[11px] text-foreground/55">{s.note}</div>
         </div>
       ))}
+    </div>
+  </div>
+);
+
+const statusStyles = {
+  owned: "border-emerald-500/25 bg-emerald-500/10 text-emerald-300",
+  adapter: "border-cyan-500/25 bg-cyan-500/10 text-cyan-300",
+  "not-configured": "border-amber-500/25 bg-amber-500/10 text-amber-300",
+} as const;
+
+const HostServices: FC = () => (
+  <div className="mx-auto max-w-3xl space-y-4 p-8 text-[13px] leading-relaxed text-foreground/80">
+    <div>
+      <div className="mb-1 font-mono text-[11px] uppercase tracking-widest text-cyan-400/80">
+        {atelierHostServices.name}
+      </div>
+      <h2 className="text-[18px] font-semibold tracking-tight text-foreground">Host services</h2>
+    </div>
+    <p className="text-foreground/62">
+      This is the service contract App Builder should get from HudsonKit: relay, AI API, app APIs,
+      storage, uploads, and service lifecycle through one host adapter.
+    </p>
+    <div className="grid gap-3 sm:grid-cols-2">
+      {atelierHostServices.capabilities.map(capability => (
+        <div key={capability.id} className="rounded-lg border border-border bg-card/50 p-4">
+          <div className="mb-2 flex items-center gap-2">
+            {capability.id === "relay" ? <Radio size={14} className="text-cyan-300" /> : <Bot size={14} className="text-cyan-300" />}
+            <span className="font-mono text-[12px] text-foreground/85">{capability.label}</span>
+            <span className={`ml-auto rounded border px-1.5 py-0.5 font-mono text-[9px] uppercase tracking-wide ${statusStyles[capability.status]}`}>
+              {capability.status.replace("-", " ")}
+            </span>
+          </div>
+          <p className="text-[12px] text-foreground/58">{capability.description}</p>
+        </div>
+      ))}
+    </div>
+    <div className="rounded-lg border border-border bg-card/50 p-4 font-mono text-[11px] text-foreground/64">
+      <div>relay: {atelierHostServices.relayUrl}</div>
+      <div>services: {atelierHostServices.serviceApiUrl || "same-origin"}/api/services</div>
+      <div>ai: {atelierHostServices.aiApiUrl}</div>
+      <div>app api: {atelierHostServices.appApiBaseUrl}</div>
     </div>
   </div>
 );
@@ -133,8 +168,8 @@ const Shells: FC = () => (
           <span className="ml-auto font-mono text-[10px] text-foreground/40">multi app</span>
         </div>
         <p className="text-[12px] text-foreground/60">
-          A pan/zoom canvas hosting several apps as draggable windows. The kit&apos;s portable embed
-          shell — chrome-light by design.
+          A pan/zoom canvas hosting several apps as draggable windows. The full chrome host is still
+          being migrated; the lightweight embed shell remains available for passive maps.
         </p>
       </div>
     </div>
@@ -160,7 +195,7 @@ const Tokens: FC = () => (
       Surfaces and text below use the kit&apos;s semantic tokens (
       <code className="text-teal-300">bg-card</code>,{" "}
       <code className="text-teal-300">border-border</code>,{" "}
-      <code className="text-teal-300">text-foreground</code>) — resolved from{" "}
+      <code className="text-teal-300">text-foreground</code>) resolved from{" "}
       <code className="text-teal-300">hudsonkit/styles/tokens.css</code>.
     </p>
     <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
@@ -181,13 +216,12 @@ const About: FC = () => (
   <div className="mx-auto max-w-2xl space-y-4 p-8 text-[13px] leading-relaxed text-foreground/80">
     <h2 className="text-[18px] font-semibold tracking-tight text-foreground">About</h2>
     <p>
-      Atelier exists to answer one question out loud: can HudsonKit stand on its own, outside the
-      Hudson app? This app imports nothing from <code className="text-teal-300">app/shell</code> —
-      only the kit&apos;s public <code className="text-teal-300">hudsonkit/app-shell</code> entry.
+      Atelier exists to become the app-builder host: app bundles, workspace declarations, and the
+      local services needed to run AI-enabled multi-app products.
     </p>
     <p className="text-foreground/60">
-      The full Hudson host (the workspace with its own console, relay, and API) is the next thing to
-      make portable. When it is, it mounts here too — same pattern, more chrome.
+      Today&apos;s state: apps and service ownership are moving here first. The full
+      WorkspaceShell implementation still imports from Hudson until it graduates into hudsonkit.
     </p>
   </div>
 );
@@ -197,6 +231,8 @@ const AtelierContent: FC = () => {
   switch (section) {
     case "overview":
       return <Overview />;
+    case "services":
+      return <HostServices />;
     case "shells":
       return <Shells />;
     case "tokens":
@@ -222,7 +258,7 @@ const AtelierInspector: FC = () => {
       <InspectorRow k="entry" v="hudsonkit/app-shell" />
       <InspectorRow k="shell" v="AppShell" />
       <InspectorRow k="section" v={section} />
-      <InspectorRow k="runtime" v="vite · :3034" />
+      <InspectorRow k="runtime" v="vite :3034" />
       <InspectorRow k="host" v="standalone" />
     </div>
   );
@@ -232,7 +268,7 @@ const AtelierInspector: FC = () => {
 export const atelierApp: HudsonApp = {
   id: "atelier",
   name: "Atelier",
-  description: "HudsonKit, consumed standalone.",
+  description: "Atelier app-builder host.",
   mode: "panel",
   leftPanel: { title: "Atelier", icon: <Compass size={12} /> },
   rightPanel: { title: "Kit", icon: <Info size={12} /> },

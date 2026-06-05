@@ -3,7 +3,7 @@ import { defaultRegistry } from '@hudsonkit/ai/toolsets';
 import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
 import { intentsToolset } from './intents';
-import { shaperToolset } from './shaper';
+import { shaperToolset } from 'hudson-showroom/shaper/toolset';
 import { dayStackToolset } from './day-stack';
 
 // Re-export the canonical ToolsetDefinition type from the package so any

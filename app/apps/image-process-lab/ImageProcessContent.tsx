@@ -10,8 +10,7 @@ import {
   Upload,
   X,
 } from 'lucide-react';
-import { CanvasToolDock, PanZoomViewport, type ViewportPan } from 'hudsonkit';
-import { useShellLayout } from '../../shell/ShellLayoutContext';
+import { CanvasToolDock, PanZoomViewport, useShellLayout, type ViewportPan } from 'hudsonkit';
 import { applyAnimatedFilter } from './engine/animation';
 import { imageDataToPng } from './engine/imageData';
 import { useImageProcess } from './ImageProcessProvider';
