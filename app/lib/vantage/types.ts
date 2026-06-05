@@ -63,10 +63,10 @@ export interface VantageCompanionStatus {
 
 export interface VantageIntegrationDescriptor {
   id: 'hudsonkit-vantage';
-  name: 'HudsonKit Vantage';
+  name: 'HudsonKit Native Console';
   brand: {
     name: 'HudsonKit';
-    product: 'Vantage';
+    product: 'Native Console';
     logo: string;
     accent: 'cyan';
   };

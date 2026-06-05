@@ -91,7 +91,7 @@ export function VantageContent() {
             subtitle={
               phase === 'online'
                 ? 'The host is reachable but has not returned any runtime nodes.'
-                : 'Launch the native Vantage app to populate this view.'
+                : 'Launch the native Hudson app to populate this view.'
             }
           />
         ) : (

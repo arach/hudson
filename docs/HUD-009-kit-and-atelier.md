@@ -1,9 +1,10 @@
 # HUD-009: Kit & Atelier — graduate the multi-app host into HudsonKit
 
-Status: proposal (direction set; no code moved)
+Status: active migration plan (direction set; Shaper extraction probe started)
 Author: hudson.feat-hudson-showroom (claude opus 4.8)
 Date: 2026-06-04
 Revised: 2026-06-04 (after codex review — see §7)
+Revised: 2026-06-05 (Codex takeover — app extraction first)
 
 > Numbering note: **HUD-009**, not 008. HUD-008 is already taken twice in this
 > repo — `specs/hud-008-app-backends.md` ("App Backends Convention", *implemented*)
@@ -13,18 +14,21 @@ Revised: 2026-06-04 (after codex review — see §7)
 
 ## TL;DR
 
-The product is **HudsonKit**, not the apps. The kit provides portable, importable shells any surface embeds.
+The product is **HudsonKit**, not the apps. The first migration goal is to move first-party apps like **Logo**, **Shaper**, Theme Designer, etc. out of the main Hudson repo so Hudson can focus on being the kit/runtime.
 
 - **AppShell** is already kit-level. It takes `app: HudsonApp` plus chrome opts and imports **zero** specific apps. Scout embeds it. That's the bar.
-- **WorkspaceShell** — the multi-app **host** — is 4,591 LOC in `app/shell/WorkspaceShell.tsx` that reaches directly into named apps (`../apps/terminal`, `../apps/hudson-ai/*`, `../apps/hudson-docs/*`), hardcodes ~8 host `/api/*` routes, and depends on a dozen `app/shell` contexts. It is a runtime, not yet a kit component.
+- **WorkspaceShell** — the multi-app **host** — is 4,591 LOC in `app/shell/WorkspaceShell.tsx` that reaches directly into named apps (`../apps/terminal`, `../apps/hudson-ai/*`, `../apps/hudson-docs/*`), hardcodes ~8 host `/api/*` routes, and depends on a dozen `app/shell` contexts. Fixing that is enabling work, not the main outcome.
+- **App bundles travel together.** A moved app brings its `HudsonApp`, slots/hooks/provider, settings, intents, ports, AI toolset(s), backend route handlers, static assets/seeds, and workspace registrations. Hudson imports/registers the bundle; it should not own the app's source.
 
-The work in this HUD: **graduate the host to AppShell's implementation level** — everything injected, zero `../apps/*` imports, no hardcoded host routes — so it becomes portable/importable, **web and native**. Then:
+The work in this HUD: **extract real apps first**, using the host/kit changes only where they remove root-cause coupling. Shaper is the first probe because it is a real app with ports/intents/AI but a small backend surface. Logo follows after the app-bundle contract handles app-owned route handlers and template storage.
 
-- **Hudson = the kit.** **Atelier = the apps** (a separate first-party monorepo: logo, shaper, preframe, hero, arc, og, …) built on the kit.
-- **Thin Atelier = builds apps + declares workspaces. Nothing else.** An app = its UI (slots/hooks) + its own **relay handler(s)** and **API handler(s)** (the latter via the HUD-008 app-backends convention). The kit owns the relay/API/toolset **registries and dispatch**; apps supply the **handlers** that register.
-- All first-party (no external users) → **source-linked, no npm publish**, no "showroom" package, no app-tier system.
+- **Hudson = the kit/runtime.** It keeps hudsonkit, portable shell primitives, host plumbing, and a small dogfood workspace.
+- **Atelier = the apps** (eventually a separate first-party monorepo: logo, shaper, preframe, hero, arc, og, …) built on the kit.
+- **Thin Atelier = app bundles + workspace declarations. Nothing else.** An app = its UI (slots/hooks) + its own **relay handler(s)**, **API handler(s)** (HUD-008), **toolset(s)**, assets, and workspace entries. The kit owns shared registries/dispatch; apps supply the handlers that register.
+- **Hudson should be turnkey for App Builder.** A downstream builder should not assemble a relay, AI route layer, service lifecycle API, storage, uploads, and tool dispatch by hand. HudsonKit should offer the specific host shape needed to serve a multi-app, AI-enabled workspace: declare apps/workspaces, bind secrets/storage, run one host, get shell + relay + AI + app APIs.
+- All first-party (no external users) → **source-linked, no npm publish**, no tiers. The current `hudson-showroom` package is only a transitional staging area for extracted app code; it is not the product shape or naming direction.
 
-This supersedes the showroom framing. PR #111 (apps → a package *inside* hudson) was the wrong cut and is closed. We do **not** repackage the apps; we extract the **kit** and decouple the host.
+This supersedes the showroom framing as a product direction. PR #111's mistake was treating demo packaging as the end state. The corrected path is to move app ownership out of Hudson, while fixing only the kit/host seams needed to make those moved apps run.
 
 > **Name decision (resolved §7-OD1):** the graduated host takes the name
 > `WorkspaceShell`. The kit *already* exports a `WorkspaceShell` — the minimal
@@ -122,6 +126,44 @@ The native multi-app host exists as `HudVantageSurface` / `HudVantageHostRootVie
 
 The dogfood that ships *with* the kit is one minimal, self-referential workspace — the **HudsonKit workspace**: canvas, code editor, document viewer, terminal, AI workflows. No business logic.
 
+### 2.1.1 Turnkey host services
+
+HudsonKit is not just a component library. It should ship a **host services layer**
+for app builders who want to serve a real multi-app, AI-enabled product.
+
+The target App Builder experience:
+
+```ts
+import { createHudsonHost } from 'hudsonkit/host';
+import { logoBundle, shaperBundle } from '@atelier/apps';
+
+export default createHudsonHost({
+  workspaces,
+  bundles: [logoBundle, shaperBundle],
+  storage,
+  secrets,
+  ai,
+  relay,
+});
+```
+
+That host should provide, by default or adapter:
+
+| Surface | Responsibility |
+|---|---|
+| **Workspace app** | Serve the React `WorkspaceShell` with declared workspaces and app bundles. |
+| **Relay** | Own terminal/agent session transport instead of hardcoding `ws://localhost:3600` in apps. Expose a stable relay URL through the shell environment. |
+| **AI API** | Serve chat/model/image routes, toolset registration, and tool-call dispatch. Apps bring toolsets; Hudson owns the loop and provider boundary. |
+| **App API** | Mount app-owned HUD-008 backend handlers under predictable routes, with thin host stubs only where a framework requires files. |
+| **Services** | Provide service status/start/stop/install APIs and a catalog that app bundles can extend. |
+| **Storage/uploads/assets** | Provide app storage, workspace persistence, uploads, screenshots, and static asset/seeds mounting. |
+| **Observability** | Provide action logs, service logs, and shell/runtime events without making product-action lifecycle logging part of routine platform development. |
+| **Voice and local capabilities** | Bind optional local voice/native services through the same environment contract. |
+
+Adapters can differ (`Next`, `Vite+Bun`, cloud worker, native shell), but the
+shape should not. A consumer should choose a host adapter, register app bundles,
+and get a working AI-enabled workspace without rebuilding Hudson's server tier.
+
 ### 2.2 Target host signature — inject an environment, not loose props
 
 Props alone are too thin (the codex review's list). The host takes a `WorkspaceShellEnvironment` (or provider) carrying every capability it reaches for today:
@@ -135,6 +177,7 @@ interface WorkspaceShellProps {
 }
 
 interface WorkspaceShellEnvironment {
+  host: HudsonHostServices;              // turnkey server/service surface
   workspaceStore: WorkspacePersistence;   // was /api/workspace-state
   pipes: PipeStore;                        // was /api/pipes (+ SSE)
   decorStore: DecorPersistence;           // was /api/workspace-decor
@@ -151,7 +194,7 @@ interface WorkspaceShellEnvironment {
 }
 ```
 
-When a host omits a capability, the kit supplies a no-op/default (the way AppShell defaults every chrome flag to `true`). Hudson and Atelier differ only in *what they inject and which workspaces they declare* — not in shell code.
+When a host omits a capability, the kit supplies a no-op/default (the way AppShell defaults every chrome flag to `true`). For App Builder, the default should be stronger than no-op: a local turnkey host that runs the relay, serves app APIs, and exposes the AI route layer. Hudson and Atelier differ only in *what they inject and which workspaces they declare* — not in shell code.
 
 ### 2.3 The seam stays one file
 
@@ -159,35 +202,40 @@ Registration stays in `app/apps/registry.ts` (static imports + `getAppById` + `g
 
 ## 3. Migration
 
-Reordered after review — settings extraction and interface definition come **before** any context move, so nothing half-coupled lands in the kit.
+Reordered after takeover — app extraction drives the work. Host/kit moves happen only when a real app cannot leave `app/apps` without them.
 
 | Phase | Change | Risk |
 |---|---|---|
-| 1 (this HUD) | Write the contract + the full cut inventory (§1.2). Rename embed shell → `EmbedShell`. No host moves. | Low |
-| 2 | **Extract shell settings out of hudson-docs** into the kit: `HudsonSettings`, `VoiceSettings`, `AppSettingsEntry`, `SettingsPanel`, `ServiceActionButton`. Re-point the 8 `app/shell` reaches. | Medium |
-| 3 | **Define the injected interfaces** (`WorkspaceShellEnvironment`) and adapt the 8 hardcoded `/api/*` routes (§1.2.B) + app-id leaks (§1.2.C) to go through them. | Medium |
-| 4 | **Invert the host→app reaches** (§1.2.A): console → kit/slot; hudson-ai runtime → kit/inject; app toolsets register from app side (move logo special-casing into logo's toolset). Host now imports no `../apps/*`. | Medium |
-| 5 | **Move the clean §1.2.D contexts** into `hudsonkit/shell`. `tsc --noEmit` gates each move. | Medium |
-| 6 | **Land `WorkspaceShell` (host)** in `hudsonkit/shell` with the §2.2 signature. Host mounts it with `env`. **Acceptance: running app with console, relay, and API.** | Medium |
-| 7 | Stand up the **Atelier** repo (source-linked via a built-dist/workspace protocol — §4 OD). Move apps. Hudson keeps the dogfood workspace + re-export stubs. | Medium |
-| 8 | **Native:** additive `WorkspaceShell` + `typealias HudVantageSurface`; update native HUD-005 manifest. | Low |
+| 1 | **Extract Shaper as the first real app probe.** Move/register Shaper through the external app package path; move its AI toolset with it; expose any required shell contract from `hudsonkit` instead of importing `app/shell`. Known remaining Shaper bundle work: static seeds under `public/shaper/*`, `/api/shaper/save`, and the cross-app `/api/assets` export path. | Medium |
+| 2 | **Define the app-bundle contract.** A bundle carries apps, toolsets, route handlers/stubs, static assets/seeds, settings, ports, and workspace entries. Hudson's registry imports bundles; the host owns only registration/plumbing. This is the contract Logo needs before it moves. | Medium |
+| 3 | **Move Logo with its backend.** Logo brings `/api/logo/*`, template storage, export/icon-composer routes, `logoToolset`, prompts, settings, and data seeds. Hudson keeps only thin route stubs or registry wiring required by Next. | High |
+| 4 | **Move the rest of the first-party apps by dependency depth.** Simple client apps first, then app pairs with ports/workspaces (Assets, Image Process Lab, Theme Designer, Day Stack, Vantage, etc.). Each move removes source from `app/apps`, not just re-exports it. | Medium |
+| 5 | **Extract shell settings out of hudson-docs** into the kit: `HudsonSettings`, `VoiceSettings`, `AppSettingsEntry`, `SettingsPanel`, `ServiceActionButton`. Re-point the 8 `app/shell` reaches. | Medium |
+| 6 | **Define the injected host interfaces** (`WorkspaceShellEnvironment`) and adapt the 8 hardcoded `/api/*` routes (§1.2.B) + app-id leaks (§1.2.C) to go through them. | Medium |
+| 7 | **Land the turnkey host services layer.** Provide a local host adapter that serves service lifecycle APIs, app backend handlers, AI routes/toolsets, uploads/assets, and relay URL/startup through one `HudsonHostServices` object. | High |
+| 8 | **Invert remaining host→app reaches** (§1.2.A): console → kit/slot; hudson-ai runtime → kit/inject; app toolsets register from app bundles. Host now imports no `../apps/*`. | Medium |
+| 9 | **Graduate `WorkspaceShell` (host)** into `hudsonkit/shell` with the §2.2 signature. Host mounts it with `env`. **Acceptance: running app with console, relay, AI API, and app API.** | Medium |
+| 10 | Stand up the **Atelier** repo (source-linked via a built-dist/workspace protocol — §4 OD). Hudson keeps the kit/runtime + dogfood workspace. | Medium |
+| 11 | **Native:** additive `WorkspaceShell` + `typealias HudVantageSurface`; update native HUD-005 manifest. | Low |
 
-Acceptance for the kit extraction (phases 4–6): **a running app with console, relay, and everything** — a host that boots, opens the console, takes a relay message, and serves an API handler — not a shell that merely compiles in isolation.
+Acceptance for the kit extraction (phases 4–9): **a running app with console, relay, AI, and app APIs** — a host that boots, opens the console, takes a relay message, serves an AI chat/tool request, and serves an app-owned API handler — not a shell that merely compiles in isolation.
 
 ## 4. Open decisions
 
 1. **(Resolved — OD1)** Embed/host name collision → host takes `WorkspaceShell`; embed shell renamed `EmbedShell`; native aligns to `WorkspaceShell`.
 2. **Console ownership.** Kit-owned primitive (ship the terminal body) vs. injected `ConsoleSlot`. Leaning kit-owned — `HudsonTerminal` already lives in `app/shell`; the `../apps/terminal/TerminalContent` import is the accident to undo.
 3. **HudsonAI runtime.** Fold the runtime into the kit shell, or inject an `AIChatRuntime`? The `hudson-ai` *app* (its UI) stays an app regardless; this is only about the runtime wiring + toolset registry.
-4. **Source-link transport.** A bare `file:`/source-folder dep makes Next/Turbopack watch the entire Hudson checkout (the existing consumer warning). Define the actual mechanism: built `dist` consumed via `workspace:`/`link:`, or a watched-but-scoped export. This gates phase 7.
+4. **Source-link transport.** A bare `file:`/source-folder dep makes Next/Turbopack watch the entire Hudson checkout (the existing consumer warning). Define the actual mechanism: built `dist` consumed via `workspace:`/`link:`, or a watched-but-scoped export. This gates the standalone Atelier repo step after the host services layer exists.
 5. **Atelier shape.** One monorepo with all apps, or each app independently source-linkable (preframe-style) with Atelier aggregating.
 
 ## 5. Deliverables for phase 1
 
 - **This doc** (HUD-009).
 - **The cut inventory** (§1.2) as the authoritative list — every import edge, hardcoded route, and app-id leak, each tagged KIT / INJECT / TRAVELS.
-- **Rename** the kit's minimal `WorkspaceShell` → `EmbedShell` (`components/WorkspaceShell.tsx` + `app-shell.ts` export). Low-risk, frees the name; no host code moves yet.
-- **No host moves** in phase 1. PR #111 closed; `docs/hudson-kit-vs-showroom.md` marked superseded.
+- **Shaper extraction probe:** Shaper is registered from the external app package path, and its AI toolset is exported from that package instead of `app/api/ai/toolsets/shaper.ts`.
+- **Public shell-layout contract:** `ShellLayoutProvider` / `useShellLayout` live in `hudsonkit`, because extracted apps cannot import `app/shell/ShellLayoutContext`.
+- **Known remaining Shaper bundle work:** move static seeds out of `public/shaper/*`, make `/api/shaper/save` a bundle-owned route/stub, and replace the direct `/api/assets` export POST with a port or injected asset API.
+- **No broad host move** in phase 1. PR #111 closed; `docs/hudson-kit-vs-showroom.md` marked superseded. Rename the kit's minimal `WorkspaceShell` → `EmbedShell` before host graduation, but it is not the driver of this slice.
 
 ## 6. Relationship to prior HUDs / specs
 

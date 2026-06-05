@@ -6,15 +6,15 @@ export function createVantageIntegrationDescriptor(origin: string): VantageInteg
 
   return {
     id: HUDSON_VANTAGE_CLIENT_ID,
-    name: 'HudsonKit Vantage',
+    name: 'HudsonKit Native Console',
     brand: {
       name: 'HudsonKit',
-      product: 'Vantage',
+      product: 'Native Console',
       logo,
       accent: 'cyan',
     },
     description:
-      'HudsonKit Vantage bridges the web workspace to the native macOS Hudson app. ' +
+      'HudsonKit Native Console bridges the web workspace to the native macOS Hudson app. ' +
       'Runtime nodes, tmux sessions, spatial layout, permissions, and local services stay in the native host; Hudson Web sends JSONL control commands and reads workspace status back.',
     controlProfiles: VANTAGE_CONTROL_PROFILES,
     commands: [

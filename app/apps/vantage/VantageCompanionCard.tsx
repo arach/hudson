@@ -39,7 +39,7 @@ export function VantageCompanionCard() {
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             {online
               ? 'The macOS host owns tmux sessions and terminal renderers. Hudson mirrors node status through the JSONL control lane.'
-              : 'Launch the Vantage app to bring the spatial canvas online, then return here to inspect nodes and send commands.'}
+              : 'Launch the native Hudson app to bring the workspace canvas online, then return here to inspect nodes and send commands.'}
           </p>
 
           {(status?.profileLabel || status?.latencyMs != null) && (

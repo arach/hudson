@@ -1,5 +1,5 @@
 export const VANTAGE_AGENT_GUIDE = `
-Vantage is Hudson's spatial runtime surface for tmux sessions, terminals, and durable workspace nodes.
+Native Console is Hudson's spatial runtime surface for tmux sessions, terminals, and durable workspace nodes.
 
 Use this app to:
 - Check whether the native macOS Hudson app is online

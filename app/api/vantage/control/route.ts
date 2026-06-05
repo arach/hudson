@@ -18,7 +18,7 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: 'Invalid Vantage control request.', issues: parsed.error.flatten() },
+        { ok: false, error: 'Invalid native control request.', issues: parsed.error.flatten() },
         { status: 400 },
       );
     }
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Vantage control command failed.' },
+      { ok: false, error: error instanceof Error ? error.message : 'Native control command failed.' },
       { status: 500 },
     );
   }

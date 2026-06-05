@@ -106,7 +106,7 @@ export function VantageProvider({
       await refresh();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Vantage control command failed.');
+      setError(err instanceof Error ? err.message : 'Native control command failed.');
       return false;
     }
   }, [profileId, refresh]);

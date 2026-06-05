@@ -17,27 +17,27 @@ export function useVantageCommands(): CommandOption[] {
   return useMemo<CommandOption[]>(() => [
     {
       id: 'vantage:refresh',
-      label: 'Refresh Vantage Status',
+      label: 'Refresh Native Console Status',
       action: () => void refresh(),
-      section: 'Vantage',
+      section: 'Native Console',
     },
     {
       id: 'vantage:launch-companion',
       label: 'Launch Hudson App',
       action: () => void launchCompanion(),
-      section: 'Vantage',
+      section: 'Native Console',
     },
     {
       id: 'vantage:metrics',
-      label: 'Fetch Vantage Metrics',
+      label: 'Fetch Native Workspace Metrics',
       action: () => void sendAction('metrics'),
-      section: 'Vantage',
+      section: 'Native Console',
     },
     {
       id: 'vantage:viewport-fit',
-      label: 'Fit Vantage Viewport',
+      label: 'Fit Native Workspace Viewport',
       action: () => void sendAction('viewport', { fit: true }),
-      section: 'Vantage',
+      section: 'Native Console',
     },
     ...(selectedNodeId
       ? [
@@ -45,7 +45,7 @@ export function useVantageCommands(): CommandOption[] {
             id: 'vantage:focus-selected',
             label: 'Focus Selected Node',
             action: () => void sendAction('focus', { nodeID: selectedNodeId }),
-            section: 'Vantage',
+            section: 'Native Console',
           },
         ]
       : []),

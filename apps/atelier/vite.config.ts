@@ -2,6 +2,7 @@ import { fileURLToPath } from "node:url";
 import path from "node:path";
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import { atelierHostServicesPlugin } from "./vite.host-services";
 
 // Atelier links `hudsonkit` from source (../../packages/web/hudsonkit). The kit
 // declares react / react-dom / ai / lucide-react as peers; to keep a single
@@ -18,13 +19,24 @@ const singletonAliases = {
   ai: path.join(hudsonNodeModules, "ai"),
   "@ai-sdk/react": path.join(hudsonNodeModules, "@ai-sdk", "react"),
   "lucide-react": path.join(hudsonNodeModules, "lucide-react"),
-  // Reach Hudson's real apps (app/apps/*) so Atelier can mount Shaper / Logo
-  // exactly as Hudson does — proving they're portable, not reimplemented.
+  // Transitional access for host shell internals that have not graduated into
+  // hudsonkit yet. App bundles come from hudson-showroom, not app/apps.
   "@apps": path.join(hudsonRoot, "app", "apps"),
+  // Mount Hudson's real host shell while the shell package boundary moves.
+  "@app": path.join(hudsonRoot, "app"),
+  // Match the main Next tsconfig "@/..." alias when mounting host code in Vite.
+  "@": hudsonRoot,
 };
 
 export default defineConfig({
-  plugins: [react()],
+  plugins: [react(), atelierHostServicesPlugin({ hudsonRoot })],
+  define: {
+    "process.env.NODE_ENV": JSON.stringify(process.env.NODE_ENV ?? "development"),
+    "process.env.PORT": JSON.stringify(process.env.PORT ?? "3500"),
+    "process.env.NEXT_PUBLIC_HUDSON_EMBED_ORIGINS": JSON.stringify(
+      process.env.NEXT_PUBLIC_HUDSON_EMBED_ORIGINS ?? "",
+    ),
+  },
   resolve: {
     preserveSymlinks: true,
     dedupe: ["react", "react-dom"],
@@ -41,12 +53,12 @@ export default defineConfig({
     // Keep hudsonkit linked to source so Vite doesn't scan its transitive deps.
     exclude: ["hudsonkit"],
     // Because hudsonkit is excluded, Vite never traverses into it to discover
-    // these transitive deps, so they'd be served raw — and `use-sync-external-store`
+    // these transitive deps, so they'd be served raw; `use-sync-external-store`
     // is a CJS module whose named export hides behind a NODE_ENV conditional, which
     // breaks ESM interop unless we pre-bundle it. Force-include the offenders:
-    //   - use-sync-external-store/shim — pulled by @base-ui-components + swr
-    //   - @base-ui-components/react    — the kit's context-menu / media-query
-    //   - xterm                        — dynamic-imported by hudsonkit's terminal
+    //   - use-sync-external-store/shim: pulled by @base-ui-components + swr
+    //   - @base-ui-components/react: the kit's context-menu / media-query
+    //   - xterm: dynamic-imported by hudsonkit's terminal
     include: [
       "@xterm/xterm",
       "@xterm/addon-fit",

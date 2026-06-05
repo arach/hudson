@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.0.0",
   "type": "module",
-  "description": "Standalone Atelier — a Vite app that mounts HudsonKit's AppShell and WorkspaceShell as a plain consumer. Proves the kit is portable outside Hudson's Next host.",
+  "description": "Standalone Atelier - a Vite app-builder host for extracted Hudson apps and local host services.",
   "scripts": {
     "dev": "vite --port 3034",
     "build": "tsc -b && vite build",
@@ -11,7 +11,8 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "hudsonkit": "link:../../packages/web/hudsonkit",
+    "hudsonkit": "workspace:*",
+    "hudson-showroom": "workspace:*",
     "lucide-react": "^0.574.0",
     "react": "^19.0.0",
     "react-dom": "^19.0.0"

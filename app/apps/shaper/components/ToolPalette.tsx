@@ -1,8 +1,7 @@
 'use client';
 
 import { useShaper } from '../ShaperProvider';
-import { sounds } from 'hudsonkit';
-import { useShellLayout } from '../../../shell/ShellLayoutContext';
+import { sounds, useShellLayout } from 'hudsonkit';
 import { MousePointer2, Pen, Hand, Undo2, Redo2, Square, Play } from 'lucide-react';
 import type { ReactNode } from 'react';
 import type { Tool } from '../types';

@@ -80,6 +80,7 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
+    "apps/atelier",
     "packages/tools/create-hudson-app",
     "packages/tools/hkit",
     "packages/services/hudson-relay",

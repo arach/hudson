@@ -21,21 +21,21 @@ const IS_DEV_ENV = process.env.NODE_ENV === 'development';
 
 const vantageManifest: AppManifest = {
   id: 'vantage',
-  name: 'Vantage',
+  name: 'Native Console',
   description: 'Spatial runtime console for the native Hudson app',
   mode: 'panel',
   commands: [
-    { id: 'vantage:refresh', label: 'Refresh Vantage Status' },
+    { id: 'vantage:refresh', label: 'Refresh Native Console Status' },
     { id: 'vantage:launch-companion', label: 'Launch Hudson App' },
-    { id: 'vantage:metrics', label: 'Fetch Vantage Metrics' },
-    { id: 'vantage:viewport-fit', label: 'Fit Vantage Viewport' },
+    { id: 'vantage:metrics', label: 'Fetch Native Workspace Metrics' },
+    { id: 'vantage:viewport-fit', label: 'Fit Native Workspace Viewport' },
     { id: 'vantage:focus-selected', label: 'Focus Selected Node' },
   ],
 };
 
 export const vantageApp: HudsonApp = {
   id: 'vantage',
-  name: 'Vantage',
+  name: 'Native Console',
   description: 'Spatial runtime console for tmux sessions, terminals, and native workspace nodes',
   agentContext: VANTAGE_AGENT_GUIDE,
   mode: 'panel',
@@ -45,7 +45,7 @@ export const vantageApp: HudsonApp = {
   backend: {},
 
   services: IS_DEV_ENV
-    ? [{ serviceId: 'hudson-native', optional: true, reason: 'Native macOS Hudson app for Vantage, permissions, and local services' }]
+    ? [{ serviceId: 'hudson-native', optional: true, reason: 'Native macOS Hudson app for workspace canvas, permissions, and local services' }]
     : [],
 
   leftPanel: {
@@ -60,7 +60,7 @@ export const vantageApp: HudsonApp = {
   ports: {
     outputs: [
       { id: 'workspace-status', name: 'Workspace Status', dataType: 'json', description: 'Latest companion probe and workspace summary' },
-      { id: 'nodes', name: 'Nodes', dataType: 'json', description: 'Node summaries returned by the Vantage control plane' },
+      { id: 'nodes', name: 'Nodes', dataType: 'json', description: 'Node summaries returned by the native control plane' },
       { id: 'selected-node', name: 'Selected Node', dataType: 'json', description: 'Currently selected runtime node' },
     ],
   },
