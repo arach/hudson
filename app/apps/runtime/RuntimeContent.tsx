@@ -1,8 +1,8 @@
 'use client';
 
 import { useMemo } from 'react';
-import { useVantage } from './VantageProvider';
-import { VantageCompanionCard } from './VantageCompanionCard';
+import { useRuntime } from './RuntimeProvider';
+import { RuntimeCompanionCard } from './RuntimeCompanionCard';
 import { EmptyPanel, SectionLabel } from './components';
 
 function NodeCard({
@@ -62,8 +62,8 @@ function NodeCard({
   );
 }
 
-export function VantageContent() {
-  const { nodes, selectedNodeId, setSelectedNodeId, status, phase } = useVantage();
+export function RuntimeContent() {
+  const { nodes, selectedNodeId, setSelectedNodeId, status, phase } = useRuntime();
 
   const sortedNodes = useMemo(
     () => [...nodes].sort((a, b) => (a.title ?? a.id).localeCompare(b.title ?? b.id)),
@@ -72,7 +72,7 @@ export function VantageContent() {
 
   return (
     <div className="flex h-full flex-col gap-5 overflow-auto p-4">
-      <VantageCompanionCard />
+      <RuntimeCompanionCard />
 
       <section className="space-y-3">
         <div className="flex items-end justify-between gap-3 px-0.5">
@@ -91,7 +91,7 @@ export function VantageContent() {
             subtitle={
               phase === 'online'
                 ? 'The host is reachable but has not returned any runtime nodes.'
-                : 'Launch the native Vantage app to populate this view.'
+                : 'Launch the native Runtime app to populate this view.'
             }
           />
         ) : (

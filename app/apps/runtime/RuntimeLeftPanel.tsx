@@ -1,12 +1,12 @@
 'use client';
 
 import { ChevronDown } from 'lucide-react';
-import { VANTAGE_CONTROL_PROFILES } from '@/app/lib/vantage/paths';
-import { useVantage } from './VantageProvider';
-import { VantageIcon } from './VantageIcon';
+import { RUNTIME_CONTROL_PROFILES } from '@/app/lib/runtime/paths';
+import { useRuntime } from './RuntimeProvider';
+import { RuntimeIcon } from './RuntimeIcon';
 import { SectionLabel } from './components';
 
-export function VantageLeftPanel() {
+export function RuntimeLeftPanel() {
   const {
     filteredNodes,
     selectedNodeId,
@@ -14,7 +14,7 @@ export function VantageLeftPanel() {
     profileId,
     setProfileId,
     phase,
-  } = useVantage();
+  } = useRuntime();
 
   return (
     <div className="flex h-full flex-col">
@@ -26,7 +26,7 @@ export function VantageLeftPanel() {
             onChange={event => setProfileId(event.target.value)}
             className="w-full appearance-none rounded-md border border-border/70 bg-background/40 pl-2.5 pr-7 py-1.5 text-xs text-foreground/85 outline-none transition-colors hover:border-border focus:border-cyan-500/40 focus:ring-2 focus:ring-cyan-500/20"
           >
-            {VANTAGE_CONTROL_PROFILES.map(profile => (
+            {RUNTIME_CONTROL_PROFILES.map(profile => (
               <option key={profile.id} value={profile.id}>{profile.label}</option>
             ))}
           </select>
@@ -61,7 +61,7 @@ export function VantageLeftPanel() {
                 }`}
               >
                 <div className="flex items-center gap-2">
-                  <VantageIcon size={11} className={`shrink-0 ${active ? 'text-cyan-300' : 'text-muted-foreground/60'}`} />
+                  <RuntimeIcon size={11} className={`shrink-0 ${active ? 'text-cyan-300' : 'text-muted-foreground/60'}`} />
                   <div className="min-w-0 flex-1">
                     <div className="truncate text-[12px]">{node.title ?? node.id.slice(0, 12)}</div>
                     {node.subtitle && (

@@ -1,10 +1,10 @@
 'use client';
 
 import { useCallback } from 'react';
-import { useVantage } from './VantageProvider';
+import { useRuntime } from './RuntimeProvider';
 
-export function useVantagePortOutput() {
-  const { status, nodes, selectedNode } = useVantage();
+export function useRuntimePortOutput() {
+  const { status, nodes, selectedNode } = useRuntime();
 
   return useCallback((portId: string) => {
     switch (portId) {

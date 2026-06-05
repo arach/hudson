@@ -2,22 +2,22 @@
 
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { usePersistentState } from 'hudsonkit';
-import type { VantageCompanionPhase, VantageCompanionStatus, VantageNodeSummary } from './types';
+import type { RuntimeCompanionPhase, RuntimeCompanionStatus, RuntimeNodeSummary } from './types';
 
 const FOCUSED_POLL_MS = 5_000;
 const VISIBLE_POLL_MS = 15_000;
 
-interface VantageState {
-  phase: VantageCompanionPhase;
-  status: VantageCompanionStatus | null;
+interface RuntimeState {
+  phase: RuntimeCompanionPhase;
+  status: RuntimeCompanionStatus | null;
   error: string | null;
   profileId: string;
   setProfileId: (profileId: string) => void;
   selectedNodeId: string | null;
   setSelectedNodeId: (nodeId: string | null) => void;
-  selectedNode: VantageNodeSummary | null;
-  nodes: VantageNodeSummary[];
-  filteredNodes: VantageNodeSummary[];
+  selectedNode: RuntimeNodeSummary | null;
+  nodes: RuntimeNodeSummary[];
+  filteredNodes: RuntimeNodeSummary[];
   searchQuery: string;
   setSearchQuery: (query: string) => void;
   refresh: () => Promise<void>;
@@ -26,23 +26,23 @@ interface VantageState {
   launching: boolean;
 }
 
-const VantageContext = createContext<VantageState | null>(null);
+const RuntimeContext = createContext<RuntimeState | null>(null);
 
-export function useVantage() {
-  const ctx = useContext(VantageContext);
-  if (!ctx) throw new Error('useVantage must be used inside VantageProvider');
+export function useRuntime() {
+  const ctx = useContext(RuntimeContext);
+  if (!ctx) throw new Error('useRuntime must be used inside RuntimeProvider');
   return ctx;
 }
 
-async function fetchStatus(profileId: string): Promise<VantageCompanionStatus> {
-  const res = await fetch(`/api/vantage/status?profileId=${encodeURIComponent(profileId)}`, {
+async function fetchStatus(profileId: string): Promise<RuntimeCompanionStatus> {
+  const res = await fetch(`/api/runtime/status?profileId=${encodeURIComponent(profileId)}`, {
     signal: AbortSignal.timeout(6_000),
   });
   const data = await res.json();
   if (!res.ok || !data.ok) {
     throw new Error(data.error ?? `Status probe failed (${res.status})`);
   }
-  return data.status as VantageCompanionStatus;
+  return data.status as RuntimeCompanionStatus;
 }
 
 async function postControl(
@@ -50,7 +50,7 @@ async function postControl(
   profileId: string,
   payload?: Record<string, unknown>,
 ): Promise<boolean> {
-  const res = await fetch('/api/vantage/control', {
+  const res = await fetch('/api/runtime/control', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, profileId, payload }),
@@ -63,7 +63,7 @@ async function postControl(
   return true;
 }
 
-export function VantageProvider({
+export function RuntimeProvider({
   children,
   disabled = false,
   visible = true,
@@ -74,9 +74,9 @@ export function VantageProvider({
   visible?: boolean;
   focused?: boolean;
 }) {
-  const [profileId, setProfileId] = usePersistentState('vantage.profileId', 'hudson-default');
-  const [phase, setPhase] = useState<VantageCompanionPhase>('checking');
-  const [status, setStatus] = useState<VantageCompanionStatus | null>(null);
+  const [profileId, setProfileId] = usePersistentState('runtime.profileId', 'hudson-default');
+  const [phase, setPhase] = useState<RuntimeCompanionPhase>('checking');
+  const [status, setStatus] = useState<RuntimeCompanionStatus | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [selectedNodeId, setSelectedNodeId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
@@ -95,7 +95,7 @@ export function VantageProvider({
         setSelectedNodeId(next.selectedNodeIDs[0]);
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to probe Vantage companion.');
+      setError(err instanceof Error ? err.message : 'Failed to probe Runtime companion.');
       setPhase('offline');
     }
   }, [disabled, profileId]);
@@ -106,7 +106,7 @@ export function VantageProvider({
       await refresh();
       return true;
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Vantage control command failed.');
+      setError(err instanceof Error ? err.message : 'Runtime control command failed.');
       return false;
     }
   }, [profileId, refresh]);
@@ -117,16 +117,16 @@ export function VantageProvider({
       const res = await fetch('/api/services/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ serviceId: 'vantage-companion', action: 'start', triggeredBy: 'user' }),
+        body: JSON.stringify({ serviceId: 'runtime-companion', action: 'start', triggeredBy: 'user' }),
         signal: AbortSignal.timeout(120_000),
       });
       const data = await res.json();
       if (!res.ok || !data.success) {
-        throw new Error(data.error ?? data.output ?? 'Failed to launch Vantage companion.');
+        throw new Error(data.error ?? data.output ?? 'Failed to launch Runtime companion.');
       }
       await refresh();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to launch Vantage companion.');
+      setError(err instanceof Error ? err.message : 'Failed to launch Runtime companion.');
     } finally {
       setLaunching(false);
     }
@@ -162,7 +162,7 @@ export function VantageProvider({
     [nodes, selectedNodeId],
   );
 
-  const value = useMemo<VantageState>(() => ({
+  const value = useMemo<RuntimeState>(() => ({
     phase,
     status,
     error,
@@ -196,5 +196,5 @@ export function VantageProvider({
     launching,
   ]);
 
-  return <VantageContext.Provider value={value}>{children}</VantageContext.Provider>;
+  return <RuntimeContext.Provider value={value}>{children}</RuntimeContext.Provider>;
 }

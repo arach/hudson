@@ -25,13 +25,13 @@ const preframeService: ServiceDefinition = {
 
 const HUDSON_DEV_PORT = process.env.PORT ?? '3500';
 
-const vantageCompanionService: ServiceDefinition = {
-  id: 'vantage-companion',
-  name: 'Vantage Companion',
+const runtimeCompanionService: ServiceDefinition = {
+  id: 'runtime-companion',
+  name: 'Runtime Companion',
   description: 'Native macOS spatial canvas for tmux sessions, terminals, and workspace nodes',
   version: '0.1.0',
   icon: 'LayoutGrid',
-  check: { healthUrl: `http://localhost:${HUDSON_DEV_PORT}/api/vantage/status` },
+  check: { healthUrl: `http://localhost:${HUDSON_DEV_PORT}/api/runtime/status` },
   install: {
     command: 'HUDSONKIT_WITH_TERMINAL=1 swift build',
     cwd: 'apps/vantage',
@@ -45,5 +45,5 @@ const vantageCompanionService: ServiceDefinition = {
 
 export const SERVICE_CATALOG: ServiceDefinition[] = [
   relayService,
-  ...(IS_DEV_ENV ? [preframeService, vantageCompanionService] : []),
+  ...(IS_DEV_ENV ? [preframeService, runtimeCompanionService] : []),
 ];

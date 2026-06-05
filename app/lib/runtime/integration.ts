@@ -1,22 +1,22 @@
-import { HUDSON_VANTAGE_CLIENT_ID, VANTAGE_CONTROL_PROFILES } from './paths';
-import type { VantageIntegrationDescriptor } from './types';
+import { HUDSON_RUNTIME_CLIENT_ID, RUNTIME_CONTROL_PROFILES } from './paths';
+import type { RuntimeIntegrationDescriptor } from './types';
 
-export function createVantageIntegrationDescriptor(origin: string): VantageIntegrationDescriptor {
+export function createRuntimeIntegrationDescriptor(origin: string): RuntimeIntegrationDescriptor {
   const logo = new URL('/og.png', origin).href;
 
   return {
-    id: HUDSON_VANTAGE_CLIENT_ID,
-    name: 'HudsonKit Vantage',
+    id: HUDSON_RUNTIME_CLIENT_ID,
+    name: 'HudsonKit Runtime',
     brand: {
       name: 'HudsonKit',
-      product: 'Vantage',
+      product: 'Runtime',
       logo,
       accent: 'cyan',
     },
     description:
-      'HudsonKit Vantage bridges the web workspace to the native macOS menubar companion. ' +
+      'HudsonKit Runtime bridges the web workspace to the native macOS menubar companion. ' +
       'Runtime nodes, tmux sessions, and spatial layout stay on the companion; Hudson sends JSONL control commands and reads workspace status back.',
-    controlProfiles: VANTAGE_CONTROL_PROFILES,
+    controlProfiles: RUNTIME_CONTROL_PROFILES,
     commands: [
       'status',
       'select',
@@ -34,8 +34,8 @@ export function createVantageIntegrationDescriptor(origin: string): VantageInteg
   };
 }
 
-export function createVantageLaunchCommand(origin: string): string {
-  const descriptor = createVantageIntegrationDescriptor(origin);
+export function createRuntimeLaunchCommand(origin: string): string {
+  const descriptor = createRuntimeIntegrationDescriptor(origin);
   const primary = descriptor.controlProfiles[0];
   return [
     'HUDSON_VANTAGE_CONTROL_FILE=' + primary.commandPath,

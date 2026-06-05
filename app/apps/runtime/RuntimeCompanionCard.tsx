@@ -1,29 +1,24 @@
 'use client';
 
-import { VantageIcon } from './VantageIcon';
-import { useVantage } from './VantageProvider';
+import { RuntimeIcon } from './RuntimeIcon';
+import { useRuntime } from './RuntimeProvider';
 import { ActionButton, PanelShell, StatusPill } from './components';
-import { resolveVantageProfile } from '@/app/lib/vantage/paths';
+import { resolveRuntimeProfile } from '@/app/lib/runtime/paths';
 
-function controlLaneBasename(path: string): string {
-  const parts = path.split('/');
-  return parts[parts.length - 1] || path;
-}
-
-export function VantageCompanionCard() {
-  const { phase, status, error, launchCompanion, launching, refresh, profileId } = useVantage();
+export function RuntimeCompanionCard() {
+  const { phase, status, error, launchCompanion, launching, refresh, profileId } = useRuntime();
   const online = phase === 'online' && status?.online;
   const tone = online ? 'online' : phase === 'checking' ? 'checking' : 'offline';
-  const profile = resolveVantageProfile(profileId);
-  const commandLane = controlLaneBasename(status?.commandPath ?? profile.commandPath);
+  const profile = resolveRuntimeProfile(profileId);
+  const profileLabel = status?.profileLabel ?? profile.label;
   const workspaceID = status?.workspaceID ?? '—';
-  const environmentLabel = `LOCAL DEV · ${workspaceID} · ${commandLane}`;
+  const environmentLabel = `LOCAL DEV · ${workspaceID} · ${profileLabel}`;
 
   return (
     <PanelShell className="p-4">
       <div className="flex items-start gap-3">
         <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md border border-cyan-500/20 bg-cyan-500/10 text-cyan-300">
-          <VantageIcon size={18} />
+          <RuntimeIcon size={18} />
         </div>
 
         <div className="min-w-0 flex-1">
@@ -39,7 +34,7 @@ export function VantageCompanionCard() {
           <p className="mt-1.5 text-xs leading-relaxed text-muted-foreground">
             {online
               ? 'The macOS host owns tmux sessions and terminal renderers. Hudson mirrors node status through the JSONL control lane.'
-              : 'Launch the Vantage app to bring the spatial canvas online, then return here to inspect nodes and send commands.'}
+              : 'Launch the Runtime app to bring the spatial canvas online, then return here to inspect nodes and send commands.'}
           </p>
 
           {(status?.profileLabel || status?.latencyMs != null) && (
