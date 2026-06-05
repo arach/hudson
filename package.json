@@ -21,7 +21,6 @@
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "relay:legacy": "node --no-warnings scripts/ai-relay.ts",
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
-    "dev:atelier": "bun run --filter hudsonkit build && bun --cwd apps/atelier dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/editor.js"
   },
   "dependencies": {
@@ -80,7 +79,6 @@
     "zod": "^4.3.6"
   },
   "workspaces": [
-    "apps/atelier",
     "packages/tools/create-hudson-app",
     "packages/tools/hkit",
     "packages/services/hudson-relay",
