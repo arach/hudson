@@ -3,7 +3,7 @@ import {
   coerceCodeDocumentFromInput,
   parseCodeDocumentJson,
   serializeCodeDocument,
-} from '../../packages/web/hudson-showroom/src/code-editor/types';
+} from '../../packages/web/hudsonkit/src/apps/code-editor/types';
 
 describe('code editor document coercion', () => {
   it('preserves explicit document payload fields and source metadata', () => {

@@ -130,6 +130,11 @@
       "import": "./dist/patterns.js",
       "default": "./dist/patterns.js"
     },
+    "./apps": {
+      "types": "./dist/apps.d.ts",
+      "import": "./dist/apps.js",
+      "default": "./dist/apps.js"
+    },
     "./styles": "./dist/styles.css",
     "./styles/tokens.css": "./src/styles/tokens.css"
   },

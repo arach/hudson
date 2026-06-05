@@ -53,6 +53,7 @@ const clientEntries = {
   player: 'src/player.ts',
   primitives: 'src/primitives.ts',
   patterns: 'src/patterns.ts',
+  apps: 'src/apps/index.ts',
 };
 
 async function markClientEntries() {

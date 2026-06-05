@@ -32,7 +32,6 @@ import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
 import { logoApp } from './logo';
 import { imageProcessLabApp } from './image-process-lab';
-import { shaperApp } from './shaper';
 import { openscoutApp } from './openscout';
 import { assetsApp } from './assets';
 import { themeDesignerApp } from './theme-designer';
@@ -41,11 +40,9 @@ import { dayStackApp } from './day-stack';
 import { vantageApp } from './vantage';
 import { hudLoggerApp } from './hud-logger';
 
-// --- Showroom apps ------------------------------------------------------------
-// Tier-1 trivial movers, extracted to the `hudson-showroom` package — client-only
-// apps that consume ONLY the published hudsonkit API.
-// webFetchApp also lives in hudson-showroom but isn't registered here.
-// Terminal stays in app/apps/ — the shell renders its console panel directly.
+// --- Built-in batteries (shipped with the kit) --------------------------------
+// Generic, client-only utility apps now live in the kit as `hudsonkit/apps`.
+// webFetchApp also ships there but isn't registered in this workspace.
 import {
   notepadApp,
   codeEditorApp,
@@ -54,7 +51,11 @@ import {
   apiInspectorApp,
   traceViewerApp,
   workflowLabApp,
-} from 'hudson-showroom';
+} from 'hudsonkit/apps';
+// --- Staged creative app ------------------------------------------------------
+// Shaper is mid-extraction to Atelier (HUD-009 Motion 1); still staged in
+// hudson-showroom with its AI toolset. Terminal stays in app/apps/ (shell console).
+import { shaperApp } from 'hudson-showroom';
 
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
