@@ -37,14 +37,14 @@ export function useDocumentLabStatus(): { label: string; color: StatusColor } {
 export function useDocumentLabNavCenter() {
   const { activeDocument } = useDocumentLab();
   return createElement('span', {
-    className: 'font-mono text-[10px] uppercase tracking-wider text-neutral-500',
+    className: 'font-mono text-[10px] uppercase tracking-wider text-muted-foreground',
   }, activeDocument.mediaType ?? activeDocument.kind);
 }
 
 export function useDocumentLabNavActions() {
   const { activeDocument } = useDocumentLab();
   return createElement('span', {
-    className: 'font-mono text-[11px] text-neutral-400',
+    className: 'font-mono text-[11px] text-muted-foreground',
   }, activeDocument.title);
 }
 
