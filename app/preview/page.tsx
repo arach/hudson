@@ -2,6 +2,7 @@
 
 import { WorkspaceShell } from '../shell/WorkspaceShell';
 import { coreWorkspaces } from '../apps/registry';
+import { hudsonShellEnvironment } from '../lib/hudsonShellEnvironment';
 
 // Lightweight version of /demo, used by the landing page iframe.
 // Skips boot animation and session restore so the public iframe is stable.
@@ -12,6 +13,7 @@ export default function PreviewPage() {
       defaultWorkspaceId="hudson-os"
       bootMode="none"
       persistSession={false}
+      environment={hudsonShellEnvironment}
     />
   );
 }

@@ -1,0 +1,65 @@
+@import "tailwindcss";
+
+/* Hudson tokens — theme-gated --hud-* plus --background / --foreground / etc.,
+   keyed off [data-hudson-template] + [data-hudson-theme] set pre-paint by the
+   inline script in index.html. Resolves to the kit SOURCE via package exports. */
+@import "hudsonkit/styles/tokens.css";
+
+/* Scan the kit source so Tailwind v4 generates every utility class the shell
+   components reference (bg-background, border-border, text-foreground, …).
+   Skip this and the classes work in dev but disappear in a prod build. */
+@source "../../../../packages/web/hudsonkit/src/**/*.{ts,tsx}";
+
+/* Scan Hudson's real apps too — Atelier mounts the actual Shaper / Logo, so
+   Tailwind must generate the utility classes their components reference. */
+@source "../../../../app/apps/shaper/**/*.{ts,tsx}";
+@source "../../../../app/apps/logo/**/*.{ts,tsx}";
+
+/* Register hudsonkit's semantic colors as Tailwind v4 theme tokens so the
+   shell's `bg-background` / `text-foreground` / `border-border` utilities
+   resolve. Mirrors packages/web/hudsonkit/src/styles/bundle.css — we replicate
+   it here because Atelier compiles from source instead of importing the
+   prebuilt hudsonkit/styles bundle. */
+@theme inline {
+  --color-background: oklch(var(--background));
+  --color-foreground: oklch(var(--foreground));
+  --color-card: oklch(var(--card));
+  --color-card-foreground: oklch(var(--card-foreground));
+  --color-popover: oklch(var(--popover));
+  --color-popover-foreground: oklch(var(--popover-foreground));
+  --color-primary: oklch(var(--primary));
+  --color-primary-foreground: oklch(var(--primary-foreground));
+  --color-secondary: oklch(var(--secondary));
+  --color-secondary-foreground: oklch(var(--secondary-foreground));
+  --color-muted: oklch(var(--muted));
+  --color-muted-foreground: oklch(var(--muted-foreground));
+  --color-accent: oklch(var(--accent));
+  --color-accent-foreground: oklch(var(--accent-foreground));
+  --color-destructive: oklch(var(--destructive));
+  --color-destructive-foreground: oklch(var(--destructive-foreground));
+  --color-warning: oklch(var(--warning));
+  --color-success: oklch(var(--success));
+  --color-info: oklch(var(--info));
+  --color-border: oklch(var(--border));
+  --color-input: oklch(var(--input));
+  --color-ring: oklch(var(--ring));
+  --font-sans: var(--hud-font-sans);
+  --font-mono: var(--hud-font-mono);
+  --radius-lg: var(--radius);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-sm: calc(var(--radius) - 4px);
+}
+
+html,
+body,
+#root {
+  height: 100%;
+}
+
+/* Static dark baseline so there's no white flash before the shell paints its
+   own bg-background. Matches the kit's --hud-bg / --hud-ink defaults. */
+body {
+  background-color: rgb(10 10 10);
+  color: rgb(229 229 229);
+  font-family: var(--hud-font-sans, system-ui, sans-serif);
+}

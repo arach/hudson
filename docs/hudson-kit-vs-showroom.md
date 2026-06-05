@@ -1,5 +1,12 @@
 # Hudson Kit vs. Showroom — extraction map
 
+> ⚠️ **SUPERSEDED by [HUD-009](./HUD-009-kit-and-atelier.md) (2026-06-04).** The
+> "move the apps into a showroom package" framing was the wrong cut — apps are
+> full-stack and need the host. The settled direction is the inverse: extract the
+> **kit** (a leaf), graduate **WorkspaceShell** to AppShell's level, and let
+> **Atelier** (a separate first-party monorepo) hold the apps. PR #111 closed.
+> Kept below for the import/coupling scan, which is still accurate.
+>
 > Status: **map only** (no code moved yet). Name decided: **Showroom** (`hudson-showroom`).
 > Still pending: target layout (package vs. repo) + go/no-go on Phase 1.
 > Goal: Hudson the repo focuses on **Kits** (the published primitives + shell/runtime).

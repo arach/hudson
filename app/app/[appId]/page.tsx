@@ -5,6 +5,7 @@ import Link from 'next/link';
 import { WorkspaceShell } from '../../shell/WorkspaceShell';
 import { getAllWorkspaces } from '../../apps/registry';
 import type { HudsonWorkspace } from 'hudsonkit';
+import { hudsonShellEnvironment } from '../../lib/hudsonShellEnvironment';
 
 export default function SingleAppPage({
   params,
@@ -56,6 +57,7 @@ export default function SingleAppPage({
       workspaces={[singleWorkspace]}
       defaultWorkspaceId={singleWorkspaceId}
       bootMode="none"
+      environment={hudsonShellEnvironment}
     />
   );
 }

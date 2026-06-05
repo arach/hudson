@@ -4,7 +4,10 @@ import Foundation
 
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] == "1"
+// Voice is on by default (opt OUT with HUDSONKIT_WITH_VOICE=0). HudsonVoice +
+// Vox are lightweight and iOS-safe, so the on-device dictation product is
+// always available to consumers like ScoutNext without an opt-in flag.
+let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
 
 func nonEmptyEnv(_ key: String) -> String? {
     guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),

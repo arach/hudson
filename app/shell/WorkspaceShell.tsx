@@ -40,7 +40,6 @@ import {
 } from 'hudsonkit/observability';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from 'hudsonkit';
 import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
-import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
@@ -70,9 +69,6 @@ import { DEFAULT_SHELL_SETTINGS, mergeHudsonSettings, normalizeHudsonSettings } 
 import { ActiveWorkspaceProvider } from './ActiveWorkspaceContext';
 import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
 import { DecorationLayer } from './decor/DecorationLayer';
-import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
-import { createHudsonAISettings } from '../apps/hudson-ai/settings';
-import { useAIModelOptions } from '../lib/useAIModelOptions';
 import {
   announceSettingChanged,
   SettingChangedNotice,
@@ -651,12 +647,30 @@ function useWindowBounds(
 // ---------------------------------------------------------------------------
 // WorkspaceShell — outer wrapper that nests all app Providers
 // ---------------------------------------------------------------------------
+/**
+ * Host-app bindings for surfaces the shell must not import directly. The shell
+ * is app-agnostic; the host (Hudson, or any other consumer) supplies concrete
+ * implementations through this object. Kept here with the shell so the type
+ * travels with it when this file moves into the kit.
+ */
+export interface WorkspaceShellEnvironment {
+  /** Render the console for a dynamically-spawned terminal window. Injected so
+   *  the shell never imports a specific terminal app. */
+  renderTerminal?: (opts: { initialCwd: string; backend: 'pty' | 'tmux'; tmuxSession?: string }) => ReactNode;
+  /** Hook producing the Hudson AI settings entry (model options + scoped
+   *  overrides). A hook because it composes app-side hooks; the shell calls it
+   *  unconditionally with a stable identity. */
+  useHudsonAISettingsEntry?: (config: WorkspaceAppConfig | null, workspaceId: string) => AppSettingsEntry | null;
+}
+
 interface WorkspaceShellProps {
   workspaces: HudsonWorkspace[];
   defaultWorkspaceId: string;
   bootMode?: 'full' | 'condensed' | 'none';
   persistSession?: boolean;
   initialState?: WorkspaceShellInitialState;
+  /** Concrete bindings for app-specific surfaces (terminal, …). */
+  environment?: WorkspaceShellEnvironment;
 }
 
 interface ProviderRuntimeState {
@@ -680,6 +694,7 @@ export function WorkspaceShell({
   bootMode = 'none',
   persistSession = true,
   initialState,
+  environment,
 }: WorkspaceShellProps) {
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const initialWorkspaceId = initialState && workspaces.some(w => w.id === initialState.activeWorkspaceId)
@@ -837,6 +852,7 @@ export function WorkspaceShell({
       onProviderRuntimeChange={handleProviderRuntimeChange}
       persistSession={persistSession}
       initialState={activeInitialState}
+      environment={environment}
     />
   );
 
@@ -937,23 +953,9 @@ function useAppSettingsBridge(config: WorkspaceAppConfig): AppSettingsEntry | nu
   return { appId: app.id, appName: app.name, config: app.settings, values, onUpdate: update };
 }
 
-function useHudsonAISettingsBridge(
-  config: WorkspaceAppConfig | null,
-  workspaceId: string,
-): AppSettingsEntry | null {
-  const { modelOptions } = useAIModelOptions();
-  const settingsConfig = useMemo(
-    () => createHudsonAISettings(modelOptions),
-    [modelOptions],
-  );
-  const scoped = useHudsonAISettings(workspaceId, settingsConfig);
-  return {
-    appId: config?.app.id ?? 'hudson-ai',
-    appName: config?.app.name ?? 'Hudson AI',
-    config: settingsConfig,
-    values: scoped.resolvedSettings,
-    onUpdate: scoped.updateWorkspaceOverride,
-  };
+/** No-op fallback used when the host doesn't inject AI settings. */
+function useNoHudsonAISettingsEntry(): AppSettingsEntry | null {
+  return null;
 }
 
 // ---------------------------------------------------------------------------
@@ -973,6 +975,7 @@ function WorkspaceInner({
   onProviderRuntimeChange,
   persistSession,
   initialState,
+  environment,
 }: {
   workspace: HudsonWorkspace;
   /** Full workspace including disabled apps (for workspace editor) */
@@ -988,6 +991,7 @@ function WorkspaceInner({
   onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
   persistSession: boolean;
   initialState?: WorkspaceShellInitialState;
+  environment?: WorkspaceShellEnvironment;
 }) {
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
@@ -1017,7 +1021,9 @@ function WorkspaceInner({
 
   // --- App-level settings (called unconditionally for each app) ---
   const hudsonAIConfig = fullWorkspace.apps.find(config => config.app.id === 'hudson-ai') ?? null;
-  const hudsonAISettingsEntry = useHudsonAISettingsBridge(hudsonAIConfig, activeWorkspaceId);
+  const resolveHudsonAISettings = environment?.useHudsonAISettingsEntry ?? useNoHudsonAISettingsEntry;
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  const hudsonAISettingsEntry = resolveHudsonAISettings(hudsonAIConfig, activeWorkspaceId);
   // eslint-disable-next-line react-hooks/rules-of-hooks
   const genericAppSettings = fullWorkspace.apps
     .filter(config => config.app.id !== 'hudson-ai')
@@ -1306,18 +1312,12 @@ function WorkspaceInner({
     const win: DynamicWindowEntry = {
       id,
       title,
-      render: () => (
-        <TerminalContent
-          initialCwd={cwd}
-          backend={backend}
-          tmuxSession={tmuxSession}
-        />
-      ),
+      render: () => environment?.renderTerminal?.({ initialCwd: cwd, backend, tmuxSession }) ?? null,
       bounds: { x: -350 + offset, y: -250 + offset, w: 700, h: 500 },
     };
     setDynamicWindows(prev => [...prev, win]);
     setFocusedAppId(win.id);
-  }, []);
+  }, [environment]);
 
   const closeDynamicWindow = useCallback((id: string) => {
     setDynamicWindows(prev => prev.filter(w => w.id !== id));

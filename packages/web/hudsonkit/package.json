@@ -130,7 +130,8 @@
       "import": "./dist/patterns.js",
       "default": "./dist/patterns.js"
     },
-    "./styles": "./dist/styles.css"
+    "./styles": "./dist/styles.css",
+    "./styles/tokens.css": "./src/styles/tokens.css"
   },
   "files": [
     "dist",

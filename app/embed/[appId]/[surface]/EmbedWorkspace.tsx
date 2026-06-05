@@ -4,6 +4,7 @@ import { Suspense } from 'react';
 import { ThemeProvider } from 'hudsonkit';
 import { WorkspaceShell, type WorkspaceShellInitialState } from '../../../shell/WorkspaceShell';
 import { coreWorkspaces } from '../../../apps/registry';
+import { hudsonShellEnvironment } from '../../../lib/hudsonShellEnvironment';
 
 export function EmbedWorkspace({ initialState }: { initialState: WorkspaceShellInitialState }) {
   const embedWorkspaces = coreWorkspaces.filter(workspace => workspace.id === initialState.activeWorkspaceId);
@@ -20,6 +21,7 @@ export function EmbedWorkspace({ initialState }: { initialState: WorkspaceShellI
           bootMode="none"
           persistSession={false}
           initialState={initialState}
+          environment={hudsonShellEnvironment}
         />
       </Suspense>
     </ThemeProvider>

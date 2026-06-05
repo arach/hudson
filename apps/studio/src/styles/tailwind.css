@@ -4,7 +4,7 @@
    --background / --foreground / etc. values, gated on
    [data-hudson-template] + [data-hudson-theme] attributes set pre-paint
    by the inline script in index.html. */
-@import "../../../../packages/web/hudsonkit/src/styles/tokens.css";
+@import "hudsonkit/styles/tokens.css";
 
 /* Studio token aliases — maps --studio-*, --scout-*, --status-*, --code-*
    onto hudsonkit's --hud-* contract. Studio components reference the
