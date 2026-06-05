@@ -10,7 +10,7 @@ import { WordmarkSvg } from './WordmarkSvg';
 import { LogoComparisonSheet, type LogoComparisonCellMeta } from './LogoComparisonSheet';
 import { LogoVersionGrid } from './LogoVersionGrid';
 import { MATRIX_PRESETS } from './LogoMatrixPresets';
-import { useOptionalDataBus } from '../../shell/DataBusContext';
+import { useOptionalDataBus } from 'hudsonkit/workspace';
 
 const LOGO_WORK_SURFACE_STYLE: CSSProperties = {
   background: [

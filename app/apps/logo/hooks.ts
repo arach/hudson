@@ -2,7 +2,7 @@
 import { useMemo } from 'react';
 import type { CommandOption } from 'hudsonkit';
 import { useLogo } from './LogoProvider';
-import { useOptionalDataBus } from '../../shell/DataBusContext';
+import { useOptionalDataBus } from 'hudsonkit/workspace';
 
 export function useLogoCommands(): CommandOption[] {
   const {

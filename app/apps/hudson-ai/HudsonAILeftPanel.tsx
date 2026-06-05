@@ -3,8 +3,8 @@
 import type { ReactNode } from 'react';
 import { Sparkles } from 'lucide-react';
 import { useHudsonAIApp } from './HudsonAIProvider';
-import { useHudsonAIRuntime } from '../../shell/HudsonAIRuntimeContext';
-import { getHudsonVoiceBehaviorPreset, getHudsonVoiceBehaviorPresetLabel } from '../../shell/voiceReply';
+import { useHudsonAIRuntime } from 'hudsonkit/workspace';
+import { getHudsonVoiceBehaviorPreset, getHudsonVoiceBehaviorPresetLabel } from 'hudsonkit/workspace';
 import { AI_MODEL_OPTIONS, AI_PROVIDER_OPTIONS } from '../../lib/ai-models';
 
 function SectionTitle({ children }: { children: ReactNode }) {

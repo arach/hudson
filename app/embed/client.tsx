@@ -21,7 +21,7 @@ import { EmbedDocs } from './[appId]/[surface]/EmbedDocs';
 import { EmbedHandshake } from './[appId]/[surface]/EmbedHandshake';
 import { EmbedVoice } from './[appId]/[surface]/EmbedVoice';
 import { EmbedWorkspace } from './[appId]/[surface]/EmbedWorkspace';
-import type { WorkspaceShellInitialState } from '../shell/WorkspaceShell';
+import type { WorkspaceShellInitialState } from 'hudsonkit/workspace';
 
 // ── Read initial state injected by the Worker ─────────────────────────────────
 

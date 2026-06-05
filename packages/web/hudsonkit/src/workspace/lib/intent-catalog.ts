@@ -4,8 +4,8 @@ import type {
   HudsonWorkspace,
   IntentCatalog,
   ServerIntent,
-} from 'hudsonkit';
-import { shellIntents } from 'hudsonkit/workspace';
+} from '../../index';
+import { shellIntents } from '../shell/intents';
 
 export interface BuildIntentCatalogOptions {
   /** Server-callable intents to attach to the catalog. Pass from the API

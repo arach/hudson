@@ -4,8 +4,7 @@ import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from './useAIModelOptions';
-import type { AppSettingsEntry } from '../apps/hudson-docs/components';
-import type { WorkspaceShellEnvironment } from '../shell/WorkspaceShell';
+import type { AppSettingsEntry, WorkspaceShellEnvironment } from 'hudsonkit/workspace';
 
 /**
  * Hudson's concrete bindings for the host WorkspaceShell's injectable surfaces.

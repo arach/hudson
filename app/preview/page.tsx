@@ -1,6 +1,6 @@
 'use client';
 
-import { WorkspaceShell } from '../shell/WorkspaceShell';
+import { WorkspaceShell } from 'hudsonkit/workspace';
 import { coreWorkspaces } from '../apps/registry';
 import { hudsonShellEnvironment } from '../lib/hudsonShellEnvironment';
 

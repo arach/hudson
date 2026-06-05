@@ -2,7 +2,7 @@
 
 import { use } from 'react';
 import Link from 'next/link';
-import { WorkspaceShell } from '../../shell/WorkspaceShell';
+import { WorkspaceShell } from 'hudsonkit/workspace';
 import { getAllWorkspaces } from '../../apps/registry';
 import type { HudsonWorkspace } from 'hudsonkit';
 import { hudsonShellEnvironment } from '../../lib/hudsonShellEnvironment';

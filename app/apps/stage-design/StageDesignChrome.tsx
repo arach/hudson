@@ -1,8 +1,8 @@
 'use client';
 
 import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, LoaderCircle, Save } from 'lucide-react';
-import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
-import type { DecorationType } from '../../shell/decor/types';
+import { useWorkspaceDecor } from 'hudsonkit/workspace';
+import type { DecorationType } from 'hudsonkit/workspace';
 
 const BTN =
   'inline-flex items-center justify-center w-7 h-7 rounded-[3px] text-[var(--hud-ink-2)] hover:text-[var(--hud-ink)] hover:bg-[var(--hud-accent-soft)] transition-colors disabled:opacity-45';

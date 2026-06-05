@@ -2,7 +2,7 @@
 
 import { Suspense } from 'react';
 import { ThemeProvider } from 'hudsonkit';
-import { WorkspaceShell, type WorkspaceShellInitialState } from '../../../shell/WorkspaceShell';
+import { WorkspaceShell, type WorkspaceShellInitialState } from 'hudsonkit/workspace';
 import { coreWorkspaces } from '../../../apps/registry';
 import { hudsonShellEnvironment } from '../../../lib/hudsonShellEnvironment';
 

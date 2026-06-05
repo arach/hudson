@@ -1,9 +1,6 @@
-// Narrow subpath — Hudson app shells for single-app and multi-app cases,
-// plus the createEmbedApp factory for wrapping plain React components as
-// HudsonApp configs ready for WorkspaceShell.
+// Narrow subpath — Hudson's single-app shell plus the createEmbedApp factory
+// for wrapping plain React components as HudsonApp configs.
 export { AppShell } from './components/AppShell';
-export { WorkspaceShell } from './components/WorkspaceShell';
-export type { WorkspaceShellProps } from './components/WorkspaceShell';
 export { createEmbedApp } from './lib/createEmbedApp';
 export type { EmbedAppOptions } from './lib/createEmbedApp';
 export type { AppShellChromeOptions } from './components/AppShell';

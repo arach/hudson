@@ -30,7 +30,8 @@ export interface EmbedAppOptions {
 }
 
 /**
- * Wrap a plain React component into a `HudsonApp` ready for `WorkspaceShell`.
+ * Wrap a plain React component into a `WorkspaceAppConfig` ready for a
+ * `WorkspaceShell` workspace registration.
  *
  * Returns a `WorkspaceAppConfig` — the same shape `HudsonWorkspace.apps` accepts —
  * with `canvasMode: 'windowed'` and `defaultWindowBounds` derived from the
@@ -55,7 +56,7 @@ export interface EmbedAppOptions {
  *   component: Home,
  * });
  *
- * <WorkspaceShell apps={[homeApp, libraryApp]} />
+ * <WorkspaceShell workspaces={[{ id: 'map', name: 'Map', mode: 'canvas', apps: [homeApp, libraryApp] }]} />
  */
 export function createEmbedApp(options: EmbedAppOptions): WorkspaceAppConfig {
   const Component = options.component;
