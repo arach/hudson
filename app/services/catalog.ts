@@ -28,10 +28,10 @@ const HUDSON_DEV_PORT = process.env.PORT ?? '3500';
 const hudsonNativeService: ServiceDefinition = {
   id: 'hudson-native',
   name: 'Hudson App',
-  description: 'Native macOS Hudson host for Vantage, menu services, permissions, and local daemons',
+  description: 'Native macOS Hudson host for Runtime, menu services, permissions, and local daemons',
   version: '0.1.0',
   icon: 'LayoutGrid',
-  check: { healthUrl: `http://localhost:${HUDSON_DEV_PORT}/api/vantage/status` },
+  check: { healthUrl: `http://localhost:${HUDSON_DEV_PORT}/api/runtime/status` },
   install: {
     command: 'HUDSONKIT_WITH_TERMINAL=1 swift build --package-path native',
     cwd: 'apps/hudson',

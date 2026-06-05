@@ -45,7 +45,7 @@ import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { dayStackApp } from './day-stack';
 import { workflowLabApp } from './workflow-lab';
-import { vantageApp } from './vantage';
+import { runtimeApp } from './runtime';
 import { hudLoggerApp } from './hud-logger';
 
 // --- Environment gates --------------------------------------------------------
@@ -97,7 +97,7 @@ function getAppById(id: string): HudsonApp | null {
     'stage-design': stageDesignApp,
     'day-stack': dayStackApp,
     'workflow-lab': workflowLabApp,
-    'vantage': vantageApp,
+    'runtime': runtimeApp,
     'hud-logger': hudLoggerApp,
   };
   if (table[id]) return table[id];
@@ -305,7 +305,7 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
       defaultWindowBounds: { x: 560, y: 360, w: 620, h: 460 },
     },
     {
-      app: vantageApp,
+      app: runtimeApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -220, y: 360, w: 760, h: 560 },
     },

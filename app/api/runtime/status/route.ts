@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { findOnlineVantageProfile, probeVantageCompanion } from '@/app/lib/vantage/controlPlane';
+import { findOnlineRuntimeProfile, probeRuntimeCompanion } from '@/app/lib/runtime/controlPlane';
 
 export const runtime = 'nodejs';
 
@@ -9,15 +9,15 @@ export async function GET(request: Request) {
 
   try {
     const status = profileId
-      ? await probeVantageCompanion(profileId)
-      : await findOnlineVantageProfile();
+      ? await probeRuntimeCompanion(profileId)
+      : await findOnlineRuntimeProfile();
 
     return NextResponse.json({ ok: true, status });
   } catch (error) {
     return NextResponse.json(
       {
         ok: false,
-        error: error instanceof Error ? error.message : 'Failed to probe Vantage companion.',
+        error: error instanceof Error ? error.message : 'Failed to probe Runtime companion.',
       },
       { status: 500 },
     );

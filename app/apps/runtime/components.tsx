@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { VantageIcon } from './VantageIcon';
+import { RuntimeIcon } from './RuntimeIcon';
 
 export function SectionLabel({ label, count }: { label: string; count?: number }) {
   return (
@@ -29,7 +29,7 @@ export function StatusPill({ tone, label }: { tone: 'online' | 'checking' | 'off
 export function EmptyPanel({ title, subtitle }: { title: string; subtitle?: string }) {
   return (
     <div className="rounded-lg border border-dashed border-border/70 bg-muted/10 px-4 py-10 text-center">
-      <VantageIcon size={18} className="mx-auto mb-3 text-cyan-400/70" />
+      <RuntimeIcon size={18} className="mx-auto mb-3 text-cyan-400/70" />
       <p className="text-sm text-foreground/75">{title}</p>
       {subtitle && <p className="mt-1 text-xs text-muted-foreground">{subtitle}</p>}
     </div>

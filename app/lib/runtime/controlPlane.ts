@@ -1,10 +1,11 @@
 import { appendFile, stat } from 'node:fs/promises';
 import { randomUUID } from 'node:crypto';
-import type { VantageControlCommand, VantageControlPaths, VantageControlResponse } from './types';
-import { resolveVantageProfile, VANTAGE_CONTROL_PROFILES } from './paths';
+import type { RuntimeControlCommand, RuntimeControlPaths, RuntimeControlResponse } from './types';
+import { resolveRuntimeProfile, RUNTIME_CONTROL_PROFILES } from './paths';
 
 const DEFAULT_WAIT_MS = 4_000;
 const POLL_MS = 75;
+const NATIVE_COMMAND_KIND = 'hudson.vantage.command';
 
 function sleep(ms: number) {
   return new Promise(resolve => setTimeout(resolve, ms));
@@ -43,20 +44,20 @@ function parseJsonLines<T>(raw: string): T[] {
     .filter((entry): entry is T => entry !== null);
 }
 
-export async function sendVantageCommand(
+export async function sendRuntimeCommand(
   input: {
     action: string;
     profileId?: string;
     waitMs?: number;
     payload?: Record<string, unknown>;
   },
-  paths?: VantageControlPaths,
-): Promise<{ paths: VantageControlPaths; response: VantageControlResponse | null; timedOut: boolean }> {
-  const profile = paths ?? resolveVantageProfile(input.profileId);
+  paths?: RuntimeControlPaths,
+): Promise<{ paths: RuntimeControlPaths; response: RuntimeControlResponse | null; timedOut: boolean }> {
+  const profile = paths ?? resolveRuntimeProfile(input.profileId);
   const id = `hudson-web-${randomUUID()}`;
-  const command: VantageControlCommand = {
+  const command: RuntimeControlCommand = {
     apiVersion: 'v0',
-    kind: 'hudson.vantage.command',
+    kind: NATIVE_COMMAND_KIND,
     id,
     action: input.action,
     includeNodes: true,
@@ -70,7 +71,7 @@ export async function sendVantageCommand(
   while (Date.now() < deadline) {
     const after = await readTailBytes(profile.responsePath);
     const combined = `${before}\n${after}`;
-    const responses = parseJsonLines<VantageControlResponse>(combined);
+    const responses = parseJsonLines<RuntimeControlResponse>(combined);
     const match = responses.find(response => response.id === id);
     if (match) {
       return { paths: profile, response: match, timedOut: false };
@@ -81,9 +82,9 @@ export async function sendVantageCommand(
   return { paths: profile, response: null, timedOut: true };
 }
 
-export async function probeVantageCompanion(profileId?: string) {
+export async function probeRuntimeCompanion(profileId?: string) {
   const started = Date.now();
-  const result = await sendVantageCommand({ action: 'status', profileId, waitMs: 2_500 });
+  const result = await sendRuntimeCommand({ action: 'status', profileId, waitMs: 2_500 });
   const latencyMs = Date.now() - started;
 
   if (!result.response) {
@@ -117,11 +118,11 @@ export async function probeVantageCompanion(profileId?: string) {
   };
 }
 
-export async function findOnlineVantageProfile() {
-  for (const profile of VANTAGE_CONTROL_PROFILES) {
-    const status = await probeVantageCompanion(profile.id);
+export async function findOnlineRuntimeProfile() {
+  for (const profile of RUNTIME_CONTROL_PROFILES) {
+    const status = await probeRuntimeCompanion(profile.id);
     if (status.online) return status;
   }
 
-  return probeVantageCompanion('hudson-default');
+  return probeRuntimeCompanion('hudson-default');
 }

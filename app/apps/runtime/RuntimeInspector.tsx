@@ -1,10 +1,10 @@
 'use client';
 
-import { useVantage } from './VantageProvider';
+import { useRuntime } from './RuntimeProvider';
 import { ActionButton, EmptyPanel, InspectorRow, PanelShell, SectionLabel } from './components';
 
-export function VantageInspector() {
-  const { selectedNode, status, sendAction, selectedNodeId } = useVantage();
+export function RuntimeInspector() {
+  const { selectedNode, status, sendAction, selectedNodeId } = useRuntime();
 
   if (!selectedNode) {
     return (

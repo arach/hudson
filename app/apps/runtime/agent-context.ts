@@ -1,5 +1,5 @@
-export const VANTAGE_AGENT_GUIDE = `
-Vantage is Hudson's spatial runtime surface for tmux sessions, terminals, and durable workspace nodes.
+export const RUNTIME_AGENT_GUIDE = `
+Runtime is Hudson's spatial runtime surface for tmux sessions, terminals, and durable workspace nodes.
 
 Use this app to:
 - Check whether the native macOS Hudson app is online
@@ -7,5 +7,5 @@ Use this app to:
 - Send safe read-oriented commands such as status, inspect, metrics, and viewport
 - Launch or focus the native Hudson app when it is offline
 
-The web app does not own PTY processes. It bridges to the native Hudson app through /api/vantage/status and /api/vantage/control.
+The web app does not own PTY processes. It bridges to the native Hudson app through /api/runtime/status and /api/runtime/control.
 `.trim();
