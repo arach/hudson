@@ -55,7 +55,7 @@ export const HUDSON_OS_SEED: DecorationItem[] = [
     step: '01',
     verb: 'DECLARE',
     body: 'typed manifest',
-    code: "{ id: 'talkie',\n  mode: 'canvas' }",
+    code: "{ id: 'docs',\n  mode: 'canvas' }",
     x: -520,
     y: -400,
     w: 350,

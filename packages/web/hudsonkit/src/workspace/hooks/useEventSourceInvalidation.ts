@@ -3,7 +3,7 @@
 import { useEffect, useRef, useState } from 'react';
 
 interface UseEventSourceInvalidationOptions {
-  url: string;
+  url?: string;
   onInvalidate: () => void | Promise<void>;
   enabled?: boolean;
   fallbackIntervalMs?: number;
@@ -36,7 +36,7 @@ export function useEventSourceInvalidation({
   }, []);
 
   useEffect(() => {
-    if (!enabled || !pageVisible) return;
+    if (!enabled || !pageVisible || !url) return;
 
     let fallbackId: number | null = null;
     let closed = false;

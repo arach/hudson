@@ -78,6 +78,6 @@ export const HUDSON_AI_ACTIONS: HudsonAIActionDescriptor[] = [
   {
     id: 'generate-assets',
     label: 'Generate Assets',
-    description: 'Generate images or create logo templates when those tool paths are available.',
+    description: 'Generate images when the host image-generation bridge is available.',
   },
 ];

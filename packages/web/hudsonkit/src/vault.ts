@@ -39,7 +39,7 @@ export class HudVaultError extends Error {
 export interface HudVaultOptions {
   /** Namespace string — each service gets its own IndexedDB database so
    *  consuming apps don't collide. Conventional form: reverse-DNS, e.g.
-   *  `com.talkie.api-keys`. */
+   *  `com.example.api-keys`. */
   service: string;
 }
 

@@ -3,8 +3,8 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import type { VoiceStatus } from '../types/voice';
 import { HObservabilityDefault } from '../observability';
+import { useWorkspaceHostRoutes } from '../workspace/hostRoutes';
 import {
-  HUDSON_VOICE_API_BASE_PATH,
   HudsonVoiceClientError,
   createHudsonVoiceClient,
   type HudsonVoiceAvailability,
@@ -48,6 +48,8 @@ export interface UseVoiceInputOptions {
   transcribe?: TranscribeFn;
   /** Optional availability probe override for custom transcribe providers. */
   probe?: ProbeFn;
+  /** Host route base for Hudson-owned voice capture. Required when `transcribe` is omitted. */
+  voiceApiBase?: string;
 }
 
 export interface UseVoiceInputResult {
@@ -165,9 +167,9 @@ interface ClientHandle {
   probeAvailability?: () => Promise<HudsonVoiceAvailability | 'blocked-origin'>;
 }
 
-async function loadDefaultHudsonVoiceClient(): Promise<ClientHandle> {
+async function loadDefaultHudsonVoiceClient(baseUrl: string): Promise<ClientHandle> {
   const client = createHudsonVoiceClient({
-    baseUrl: HUDSON_VOICE_API_BASE_PATH,
+    baseUrl,
     clientId: HUDSONKIT_VOX_CLIENT_ID,
   });
   return {
@@ -178,6 +180,7 @@ async function loadDefaultHudsonVoiceClient(): Promise<ClientHandle> {
 }
 
 export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResult {
+  const routes = useWorkspaceHostRoutes();
   const {
     onTranscript,
     surface = 'hudson-assistant',
@@ -185,7 +188,9 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
     language = 'en',
     transcribe,
     probe,
+    voiceApiBase,
   } = options;
+  const resolvedVoiceApiBase = voiceApiBase ?? routes.voiceApiBase;
 
   const [status, setStatus] = useState<VoiceStatus>('idle');
   const [error, setError] = useState<string | null>(null);
@@ -205,8 +210,8 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
   const [isSupported, setIsSupported] = useState(false);
 
   useEffect(() => {
-    setIsSupported(transcribe ? canCaptureMicrophoneAudio() : typeof fetch !== 'undefined');
-  }, [transcribe]);
+    setIsSupported(transcribe ? canCaptureMicrophoneAudio() : Boolean(resolvedVoiceApiBase && typeof fetch !== 'undefined'));
+  }, [transcribe, resolvedVoiceApiBase]);
 
   useEffect(() => {
     mountedRef.current = true;
@@ -215,15 +220,22 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
     };
   }, []);
 
+  useEffect(() => {
+    clientRef.current = null;
+  }, [resolvedVoiceApiBase]);
+
   const getClient = useCallback(async () => {
     if (transcribe) {
       return { probe: probe ?? (async () => true), transcribe };
     }
+    if (!resolvedVoiceApiBase) {
+      throw new Error('Hudson voice API route is not configured for this host.');
+    }
     if (!clientRef.current) {
-      clientRef.current = await loadDefaultHudsonVoiceClient();
+      clientRef.current = await loadDefaultHudsonVoiceClient(resolvedVoiceApiBase);
     }
     return clientRef.current;
-  }, [transcribe, probe]);
+  }, [transcribe, probe, resolvedVoiceApiBase]);
 
   const handleHudsonVoiceEvent = useCallback((event: HudsonVoiceLiveEvent) => {
     if (!mountedRef.current) return;

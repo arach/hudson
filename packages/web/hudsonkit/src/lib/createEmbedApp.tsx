@@ -49,7 +49,7 @@ export interface EmbedAppOptions {
  *
  * @example
  * const homeApp = createEmbedApp({
- *   id: 'talkie-home',
+ *   id: 'docs-home',
  *   title: 'Home',
  *   initialPosition: { x: -190, y: -380 },
  *   initialSize: { w: 380, h: 760 },

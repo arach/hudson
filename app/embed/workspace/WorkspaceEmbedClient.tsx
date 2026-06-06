@@ -39,10 +39,10 @@ function applyTokens(vars: unknown) {
 // ─── Nav / activity content ─────────────────────────────────────────────────
 
 const NAV_APPS: Array<{ id: string; sub: string; active?: boolean }> = [
-  { id: 'talkie', sub: 'ios · macos' },
-  { id: 'scout-ops', sub: 'ios', active: true },
-  { id: 'logo-studio', sub: 'web' },
-  { id: 'vox', sub: 'menu bar' },
+  { id: 'docs', sub: 'reference' },
+  { id: 'ai-console', sub: 'workspace', active: true },
+  { id: 'code-editor', sub: 'documents' },
+  { id: 'voice', sub: 'local' },
 ];
 
 const NAV_SECTIONS = ['Manifest', 'Primitives', 'Voice / AI', 'Settings'];
@@ -65,7 +65,7 @@ const ACTIVITY_FEED = [
 ];
 
 const BUILD_STEPS: Array<{ n: string; verb: string; body: string; code: string }> = [
-  { n: '01', verb: 'DECLARE', body: 'typed manifest', code: "{ id: 'talkie',\n  mode: 'canvas' }" },
+  { n: '01', verb: 'DECLARE', body: 'typed manifest', code: "{ id: 'docs',\n  mode: 'canvas' }" },
   { n: '02', verb: 'WIRE', body: 'intents indexed', code: '→ ⌘K\n→ voice' },
   { n: '03', verb: 'COMPOSE', body: 'drop primitives', code: '<Frame>\n  <Nav/>\n</Frame>' },
   { n: '04', verb: 'RUN', body: 'standard dev', code: '$ bun dev' },

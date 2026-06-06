@@ -4,7 +4,7 @@
 // "Batteries included": client-only HudsonApps that depend on nothing beyond the
 // kit's own peers (react + lucide-react). They ship as a separate `hudsonkit/apps`
 // entry so the core bundle stays app-free — consumers opt in via the subpath.
-// Domain/creative apps (logo, shaper, …) live in Atelier, not here.
+// Domain/creative apps live in downstream hosts such as Atelier, not here.
 // ─────────────────────────────────────────────────────────────────────────────
 
 export { notepadApp } from './notepad';

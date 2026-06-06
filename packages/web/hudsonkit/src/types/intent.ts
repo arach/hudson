@@ -44,7 +44,7 @@ export interface AppIntent {
  * keyed for UI dispatch).
  */
 export interface ServerIntent {
-  /** Stable id, e.g. `logo.compile`. */
+  /** Stable id, e.g. `docs.reindex`. */
   id: string;
   /** Human-readable title. */
   title: string;
@@ -54,9 +54,9 @@ export interface ServerIntent {
   keywords: string[];
   /** Typed parameter schema; same shape used by AppIntent UI intents. */
   params?: IntentParameter[];
-  /** Where the function lives, relative to repo root (e.g. `app/api/logo/intents`). */
+  /** Where the function lives, relative to repo root (e.g. `app/api/docs/intents`). */
   importPath: string;
-  /** Named export to import (e.g. `compileLogo`). */
+  /** Named export to import (e.g. `reindexDocs`). */
   exportName: string;
   /** Owner app id when the intent belongs to an app, otherwise undefined. */
   appId?: string;

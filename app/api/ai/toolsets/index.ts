@@ -1,21 +1,15 @@
 import { z } from 'zod';
 import { defaultRegistry } from '@hudsonkit/ai/toolsets';
-import { logoToolset } from './logo';
 import { workspaceToolset } from './workspace';
 import { intentsToolset } from './intents';
-import { shaperToolset } from 'hudson-showroom/shaper/toolset';
-import { dayStackToolset } from './day-stack';
 
 // Re-export the canonical ToolsetDefinition type from the package so any
 // remaining internal imports of `ToolsetDefinition from './index'` still work.
 export type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
 
 // Register the app's toolsets on the package's default registry at module init.
-defaultRegistry.register('logo', logoToolset);
 defaultRegistry.register('workspace', workspaceToolset);
 defaultRegistry.register('intents', intentsToolset);
-defaultRegistry.register('shaper', shaperToolset);
-defaultRegistry.register('day-stack', dayStackToolset);
 
 /**
  * Convert the Zod-based tool definitions into a text block that can be

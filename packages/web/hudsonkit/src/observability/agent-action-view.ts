@@ -84,11 +84,7 @@ export function isAgentActionEvent(event: HObservation) {
   return (
     event.category === 'agent-action' ||
     data.triggeredBy === 'agent' ||
-    data.source === 'workspace-ai' ||
-    data.source === 'logo-ai' ||
-    data.source === 'shaper-ai' ||
-    data.source === 'day-stack-ai' ||
-    data.source === 'openscout'
+    data.source === 'workspace-ai'
   );
 }
 
@@ -139,16 +135,11 @@ export function inferAgentActionAppId(event: HObservation): string | null {
     dataString(data, 'targetAppId');
   if (explicit) return explicit;
 
-  const toolset = dataString(data, 'toolset');
-  if (toolset === 'logo') return 'logo';
-
   const action = dataString(data, 'action') ?? dataString(data, 'playbook') ?? dataString(data, 'commandId');
   const appFromAction = inferAppIdFromAction(action);
   if (appFromAction) return appFromAction;
 
   const command = agentActionCommand(event);
-  const commandText = command?.join(' ') ?? '';
-  if (commandText.includes('.data/logo-templates') || commandText.includes('hudson/logos')) return 'logo';
   for (const part of command ?? []) {
     const appFromPath = inferAppIdFromPath(part);
     if (appFromPath) return appFromPath;
@@ -315,24 +306,18 @@ function findLatest(
 function inferAppIdFromAction(action: string | null) {
   if (!action) return null;
   const [prefix] = action.split(/[.:_-]/);
-  if (prefix === 'logo') return 'logo';
-  if (prefix === 'shaper') return 'shaper';
-  if (prefix === 'day') return 'day-stack';
-  return null;
+  return prefix || null;
 }
 
 function inferAppIdFromPath(path: string) {
   const appMatch = path.match(/(?:^|\/)app\/apps\/([^/\s]+)/);
   if (appMatch) return appMatch[1];
-  const apiLogoMatch = path.match(/(?:^|\/)app\/api\/logo(?:\/|$)/);
-  if (apiLogoMatch) return 'logo';
   return null;
 }
 
 function inferLabelPath(path: string) {
   const appId = inferAppIdFromPath(path);
   if (appId) return appId;
-  if (path.includes('.data/logo-templates') || path.includes('hudson/logos')) return 'logo';
   return null;
 }
 

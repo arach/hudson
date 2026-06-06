@@ -30,15 +30,8 @@ import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils'
 import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
 import { intentExplorerApp } from './intent-explorer';
-import { logoApp } from './logo';
-import { imageProcessLabApp } from './image-process-lab';
-import { openscoutApp } from './openscout';
-import { assetsApp } from './assets';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
-import { dayStackApp } from './day-stack';
-import { runtimeApp } from './runtime';
-import { vantageApp } from './vantage';
 import { hudLoggerApp } from './hud-logger';
 
 // --- Built-in batteries (shipped with the kit) --------------------------------
@@ -53,11 +46,6 @@ import {
   traceViewerApp,
   workflowLabApp,
 } from 'hudsonkit/apps';
-// --- Staged creative app ------------------------------------------------------
-// Shaper is mid-extraction to Atelier (HUD-009 Motion 1); still staged in
-// hudson-showroom with its AI toolset. Terminal stays in app/apps/ (shell console).
-import { shaperApp } from 'hudson-showroom';
-
 // --- Environment gates --------------------------------------------------------
 // process.env.NODE_ENV is statically replaced by Next.js at build time. It is
 // 'development' only during `bun dev`; every preview/production build (and
@@ -92,12 +80,7 @@ function getAppById(id: string): HudsonApp | null {
     'hudson-docs': hudsonDocsApp,
     'hudson-ai': hudsonAIApp,
     'intent-explorer': intentExplorerApp,
-    'logo': logoApp,
-    'image-process-lab': imageProcessLabApp,
-    'shaper': shaperApp,
     'trace-viewer': traceViewerApp,
-    'openscout': openscoutApp,
-    'assets': assetsApp,
     'api-inspector': apiInspectorApp,
     'json-explorer': jsonExplorerApp,
     'notepad': notepadApp,
@@ -105,9 +88,7 @@ function getAppById(id: string): HudsonApp | null {
     'document-lab': documentLabApp,
     'theme-designer': themeDesignerApp,
     'stage-design': stageDesignApp,
-    'day-stack': dayStackApp,
     'workflow-lab': workflowLabApp,
-    'runtime': runtimeApp,
     'hud-logger': hudLoggerApp,
   };
   if (table[id]) return table[id];
@@ -175,28 +156,6 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
   }
 }
 
-function getPreframeAppConfig(): WorkspaceAppConfig | null {
-  if (!IS_DEV_ENV) return null;
-
-  try {
-    // Optional sibling app: ~/dev/preframe. Kept out of production bundles.
-    // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('../../../preframe/catalog');
-    const app = mod.catalogApp ?? mod.preframeApp ?? mod.default;
-    if (!app) return null;
-    return {
-      app,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 1160, y: -300, w: 900, h: 720 },
-    } as WorkspaceAppConfig;
-  } catch (error) {
-    if (IS_DEV_ENV) {
-      console.warn('[registry] preframe sibling app not available; skipping', error);
-    }
-    return null;
-  }
-}
-
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
     {
@@ -227,82 +186,12 @@ function getCoreApps(): WorkspaceAppConfig[] {
   ];
 }
 
-function getLogoStudioApps(): WorkspaceAppConfig[] {
-  const preframeAppConfig = getPreframeAppConfig();
-
-  return [
-    {
-      app: logoApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -540, y: -300, w: 1080, h: 720 },
-    },
-    {
-      app: assetsApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 580, y: -260, w: 540, h: 360 },
-    },
-    // Shaper bridges raster Assets → vector Logo by tracing/bezier-editing the silhouette.
-    // Pipeline: assets.image → shaper.image, then shaper.svg → logo.background-svg
-    {
-      app: shaperApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 580, y: 140, w: 540, h: 420 },
-    },
-    {
-      app: imageProcessLabApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 580, y: 600, w: 540, h: 460 },
-    },
-    {
-      app: codeEditorApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -540, y: 460, w: 1080, h: 560 },
-    },
-    ...(preframeAppConfig ? [preframeAppConfig] : []),
-  ];
-}
-
-function getScoutOpsApps(): WorkspaceAppConfig[] {
-  return [
-    {
-      app: openscoutApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -760, y: -260, w: 1040, h: 760 },
-    },
-    {
-      app: hudsonAIApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 380, y: -260, w: 720, h: 560 },
-    },
-    {
-      app: traceViewerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -760, y: 560, w: 520, h: 360 },
-    },
-    {
-      app: apiInspectorApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -180, y: 420, w: 720, h: 460 },
-    },
-    {
-      app: jsonExplorerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 600, y: 360, w: 560, h: 440 },
-    },
-  ];
-}
-
 function getDeveloperModeApps(): WorkspaceAppConfig[] {
   return [
     {
       app: traceViewerApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -960, y: -260, w: 660, h: 540 },
-    },
-    {
-      app: openscoutApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: -200, y: -260, w: 660, h: 540 },
     },
     {
       app: apiInspectorApp,
@@ -315,7 +204,7 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
       defaultWindowBounds: { x: 560, y: 360, w: 620, h: 460 },
     },
     {
-      app: runtimeApp,
+      app: hudLoggerApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: -220, y: 360, w: 760, h: 560 },
     },
@@ -360,34 +249,6 @@ export function getHudsonKitWorkspace(): HudsonWorkspace {
   };
 }
 
-/** Personal — lightweight daily planning and focus workspace. */
-export function getPersonalWorkspace(): HudsonWorkspace {
-  return {
-    id: 'personal',
-    name: 'Personal',
-    description: 'Daily focus stack, intentions, and lightweight planning',
-    mode: 'panel',
-    apps: [{ app: dayStackApp }],
-    defaultFocusedAppId: 'day-stack',
-    defaultActivatedAppIds: ['day-stack'],
-    leftNavigation: 'on',
-  };
-}
-
-/** Scout Ops — Hudson workspace centered on the OpenScout operator surface. */
-export function getScoutOpsWorkspace(): HudsonWorkspace {
-  return {
-    id: 'scout-ops',
-    name: 'Scout Ops',
-    description: 'OpenScout-driven workspace for agent traffic, AI assistance, and debugging',
-    mode: 'canvas',
-    apps: getScoutOpsApps(),
-    defaultFocusedAppId: 'openscout',
-    defaultScale: 0.2,
-    leftNavigation: 'minimized',
-  };
-}
-
 /** Developer Mode — operational tools for traces, relay traffic, APIs, and JSON. */
 export function getDeveloperModeWorkspace(): HudsonWorkspace {
   return {
@@ -399,20 +260,6 @@ export function getDeveloperModeWorkspace(): HudsonWorkspace {
     defaultFocusedAppId: 'api-inspector',
     defaultScale: 0.2,
     leftNavigation: 'hidden',
-  };
-}
-
-/** Logo Studio — authoring workspace for HudsonKit brand and shape work. */
-export function getLogoStudioWorkspace(): HudsonWorkspace {
-  return {
-    id: 'logo-studio',
-    name: 'Logo Studio',
-    description: 'Logo design + asset export workflow',
-    mode: 'canvas',
-    apps: getLogoStudioApps(),
-    defaultFocusedAppId: 'logo',
-    defaultScale: 0.5,
-    leftNavigation: 'on',
   };
 }
 
@@ -481,12 +328,9 @@ export const hudsonOSWorkspace = new Proxy({} as HudsonWorkspace, {
 export function getCoreWorkspaces(): HudsonWorkspace[] {
   return uniqueWorkspaces([
     { workspace: getHudsonKitWorkspace(), source: 'core:hudsonkit' },
-    { workspace: getScoutOpsWorkspace(), source: 'core:scout-ops' },
     { workspace: getDeveloperModeWorkspace(), source: 'core:developer-mode' },
-    { workspace: getLogoStudioWorkspace(), source: 'core:logo-studio' },
     { workspace: getDocumentLabWorkspace(), source: 'core:document-lab' },
     { workspace: getWorkflowLabWorkspace(), source: 'core:workflow-lab' },
-    { workspace: getPersonalWorkspace(), source: 'core:personal' },
   ]);
 }
 

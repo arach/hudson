@@ -4,7 +4,6 @@ import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
-  HUDSON_VOICE_API_BASE_PATH,
   HudsonVoiceClientError,
   createHudsonVoiceClient,
   useHudsonAI,
@@ -24,6 +23,7 @@ import {
 import { useDataBus } from '../context/DataBusContext';
 import { createHudsonSpokenReply, getHudsonMessageDisplayText } from './voiceReply';
 import { HUDSON_VOX_CLIENT_ID } from '../lib/voxIntegration';
+import type { WorkspaceHostRoutes } from '../hostRoutes';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -79,6 +79,7 @@ interface WorkspaceAIProps {
   toolContext?: HudsonAIToolContext | Record<string, unknown>;
   provider?: string;
   model?: string;
+  routes?: WorkspaceHostRoutes;
   composerRequest?: WorkspaceAIComposerRequest | null;
   onComposerRequestConsumed?: (requestId: number) => void;
 }
@@ -231,6 +232,7 @@ export function WorkspaceAI({
   toolContext,
   provider,
   model,
+  routes,
   composerRequest,
   onComposerRequestConsumed,
 }: WorkspaceAIProps) {
@@ -277,10 +279,13 @@ export function WorkspaceAI({
   inputValueRef.current = input;
   voiceSettingsRef.current = resolvedVoiceSettings;
 
-  const voiceClient = useMemo(() => createHudsonVoiceClient({
-    baseUrl: HUDSON_VOICE_API_BASE_PATH,
-    clientId: HUDSON_VOX_CLIENT_ID,
-  }), []);
+  const voiceClient = useMemo(() => routes?.voiceApiBase
+    ? createHudsonVoiceClient({
+        baseUrl: routes.voiceApiBase,
+        clientId: HUDSON_VOX_CLIENT_ID,
+      })
+    : null,
+  [routes?.voiceApiBase]);
 
   const baseContext = useMemo(() => ({
     apps: workspace.apps.map(c => ({
@@ -415,6 +420,7 @@ export function WorkspaceAI({
   }, [scopeWorkspaceId, setScopeWorkspaceId, workspace.id, workspaceCatalog]);
 
   const chat = useHudsonAI({
+    api: routes?.aiChat,
     toolset: 'workspace',
     chatId: WORKSPACE_AI_CHAT_ID,
     initialMessages: persistedMessages,
@@ -480,7 +486,8 @@ export function WorkspaceAI({
       setVoiceError(null);
 
       try {
-        const response = await fetch('/v1/audio/speech', {
+        if (!routes?.speech) return;
+        const response = await fetch(routes.speech, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -797,6 +804,12 @@ export function WorkspaceAI({
     voiceDraftPendingRef.current = false;
     replySpeechPendingRef.current = false;
     stopReplyAudio();
+
+    if (!voiceClient) {
+      setVoiceStatus('unavailable');
+      setVoiceError('Hudson voice route is not configured for this host.');
+      return;
+    }
 
     try {
       const availability = await voiceClient.availability();

@@ -11,6 +11,7 @@ import {
   type ReactNode,
 } from 'react';
 import { createHudsonId, usePersistentState } from '../../../index';
+import { useWorkspaceHostRoutes } from '../../hostRoutes';
 import type {
   DecorationItem,
   DecorationType,
@@ -153,6 +154,7 @@ export function WorkspaceDecorProvider({
   workspaceId: string;
   children: ReactNode;
 }) {
+  const routes = useWorkspaceHostRoutes();
   const initial = useMemo<DecorState>(() => {
     const cached = INITIAL_DECOR_BY_WORKSPACE[workspaceId];
     if (cached) return cached;
@@ -192,11 +194,12 @@ export function WorkspaceDecorProvider({
   }, [workspaceId, state.items.length, setState]);
 
   useEffect(() => {
+    if (!routes.workspaceDecor) return;
     let cancelled = false;
 
     async function restoreCachedSnapshot() {
       try {
-        const res = await fetch(`/api/workspace-decor?id=${encodeURIComponent(workspaceId)}`);
+        const res = await fetch(`${routes.workspaceDecor}?id=${encodeURIComponent(workspaceId)}`);
         if (!res.ok) return;
         const cached = await res.json();
         if (cancelled || !isDecorState(cached)) return;
@@ -215,7 +218,7 @@ export function WorkspaceDecorProvider({
 
     void restoreCachedSnapshot();
     return () => { cancelled = true; };
-  }, [workspaceId, setState]);
+  }, [routes.workspaceDecor, workspaceId, setState]);
 
   const setVisible = useCallback(
     (v: boolean) => setState((s) => touchState({ ...s, visible: v })),
@@ -261,12 +264,16 @@ export function WorkspaceDecorProvider({
   }, [workspaceId, setState, setSelectedId]);
 
   const saveSnapshot = useCallback(async () => {
+    if (!routes.workspaceDecor) {
+      setSaveError(null);
+      return;
+    }
     const snapshot = touchState(stateRef.current);
     setState(snapshot);
     setIsSaving(true);
     setSaveError(null);
     try {
-      const res = await fetch('/api/workspace-decor', {
+      const res = await fetch(routes.workspaceDecor, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify({ id: workspaceId, state: snapshot }),
@@ -288,7 +295,7 @@ export function WorkspaceDecorProvider({
     } finally {
       setIsSaving(false);
     }
-  }, [workspaceId, setState]);
+  }, [routes.workspaceDecor, workspaceId, setState]);
 
   const value = useMemo<WorkspaceDecorContextValue>(
     () => ({

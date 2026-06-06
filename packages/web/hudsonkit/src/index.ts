@@ -102,7 +102,6 @@ export { worldToScreen, screenToWorld } from './lib/viewport';
 export { probeVoxAvailability } from './lib/voxProbe';
 export type { VoxAvailability } from './lib/voxProbe';
 export {
-  HUDSON_VOICE_API_BASE_PATH,
   HUDSON_VOICE_API_PATHS,
   HUDSON_VOICE_DAEMON_DEFAULT_HOST,
   HUDSON_VOICE_DAEMON_DEFAULT_PORT,
@@ -173,18 +172,18 @@ export type { UseAppApiStatusResult } from './hooks/useAppApiStatus';
 export type { PlatformAdapter, PlatformLayout } from './platform';
 export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from './platform';
 
-// Reusable widget (used by apps like Shaper directly)
+// Reusable widgets
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
 export {
   HudWorkflowGraph,
   brainDumpProcessorWorkflow,
-  heyTalkieWorkflow,
   hudWorkflowBasicSchema,
   hudWorkflowFixtures,
   quickSummaryWorkflow,
   transcribeWorkflow,
+  voiceAssistantWorkflow,
 } from './workflow';
 export type {
   HudWorkflowConnection,

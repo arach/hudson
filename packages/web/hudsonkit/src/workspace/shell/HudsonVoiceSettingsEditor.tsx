@@ -15,6 +15,7 @@ import {
   getHudsonVoiceBehaviorPreset,
   getHudsonVoiceBehaviorPresetLabel,
 } from './voiceReply';
+import { useWorkspaceHostRoutes } from '../hostRoutes';
 
 type VoiceOption = {
   label: string;
@@ -83,6 +84,7 @@ export function HudsonVoiceSettingsEditor({
   onChange: (next: VoiceSettings) => void;
   intro?: ReactNode;
 }) {
+  const routes = useWorkspaceHostRoutes();
   const [voiceProviders, setVoiceProviders] = useState<VoiceProviderOption[]>(DEFAULT_VOICE_PROVIDER_OPTIONS);
   const [voiceModels, setVoiceModels] = useState<VoiceModelOption[]>(
     DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.models ?? [],
@@ -107,7 +109,15 @@ export function HudsonVoiceSettingsEditor({
       params.set('model', voiceSettings.replyModel);
     }
 
-    void fetch(`/v1/voices?${params.toString()}`)
+    if (!routes.voices) {
+      setVoiceProviders(DEFAULT_VOICE_PROVIDER_OPTIONS);
+      setVoiceModels(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.models ?? []);
+      setVoiceOptions([createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Vox')]);
+      setVoiceOptionsError('Voice catalog is unavailable in this host.');
+      return;
+    }
+
+    void fetch(`${routes.voices}?${params.toString()}`)
       .then(async response => {
         if (!response.ok) {
           throw new Error(`Failed to load voices (${response.status}).`);
@@ -164,7 +174,7 @@ export function HudsonVoiceSettingsEditor({
     return () => {
       cancelled = true;
     };
-  }, [voiceSettings.replyModel, voiceSettings.replyProvider]);
+  }, [routes.voices, voiceSettings.replyModel, voiceSettings.replyProvider]);
 
   const releaseVoicePreview = useCallback((resetState = true) => {
     previewRequestIdRef.current += 1;
@@ -217,7 +227,10 @@ export function HudsonVoiceSettingsEditor({
     setVoicePreviewError(null);
 
     try {
-      const response = await fetch('/v1/audio/speech', {
+      if (!routes.speech) {
+        throw new Error('Voice preview is unavailable in this host.');
+      }
+      const response = await fetch(routes.speech, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -297,6 +310,7 @@ export function HudsonVoiceSettingsEditor({
     }
   }, [
     releaseVoicePreview,
+    routes.speech,
     selectedModelValue,
     selectedVoiceId,
     selectedVoicePreviewText,
@@ -498,10 +512,8 @@ export function HudsonVoiceSettingsEditor({
         </div>
       </details>
       <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
-        Voice capture uses Hudson Menu&apos;s embedded Vox daemon through <span className="text-foreground/80">/api/hudson-voice</span>.
-        Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-foreground/80">/v1/audio/speech</span>,
-        with voices and models populated from <span className="text-foreground/80">/v1/voices</span>.
-        Hudson owns microphone permission and daemon lifecycle; standalone Vox.app is not required.
+        Voice capture and spoken replies use the voice routes provided by this host.
+        Voice previews are available when a speech route is configured.
       </div>
       {!selectedProvider?.available && selectedProvider?.reason && (
         <div className="text-[10px] font-mono text-warning/80">

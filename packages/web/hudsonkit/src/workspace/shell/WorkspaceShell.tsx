@@ -70,6 +70,12 @@ import { ActiveWorkspaceProvider } from '../context/ActiveWorkspaceContext';
 import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
 import { DecorationLayer } from './decor/DecorationLayer';
 import {
+  WorkspaceHostRoutesProvider,
+  routeWithQuery,
+  useWorkspaceHostRoutes,
+  type WorkspaceHostRoutes,
+} from '../hostRoutes';
+import {
   announceSettingChanged,
   SettingChangedNotice,
   useSettingChangedNotice,
@@ -163,17 +169,14 @@ function isPersistableAgentActionObservation(event: HObservation) {
   return (
     event.category === 'agent-action' ||
     data.triggeredBy === 'agent' ||
-    data.source === 'workspace-ai' ||
-    data.source === 'logo-ai' ||
-    data.source === 'shaper-ai' ||
-    data.source === 'day-stack-ai' ||
-    data.source === 'openscout'
+    data.source === 'workspace-ai'
   );
 }
 
-async function persistAgentActionObservation(event: HObservation) {
+async function persistAgentActionObservation(event: HObservation, routes?: WorkspaceHostRoutes) {
+  if (!routes?.agentActions) return;
   try {
-    await fetch('/api/agent-actions', {
+    await fetch(routes.agentActions, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ event }),
@@ -654,6 +657,8 @@ function useWindowBounds(
  * travels with it when this file moves into the kit.
  */
 export interface WorkspaceShellEnvironment {
+  /** Host-owned relative routes for optional server-backed shell features. */
+  routes?: WorkspaceHostRoutes;
   /** Render the console for a dynamically-spawned terminal window. Injected so
    *  the shell never imports a specific terminal app. */
   renderTerminal?: (opts: { initialCwd: string; backend: 'pty' | 'tmux'; tmuxSession?: string }) => ReactNode;
@@ -698,6 +703,7 @@ export function WorkspaceShell({
   initialState,
   environment,
 }: WorkspaceShellProps) {
+  const routes = environment?.routes;
   // --- Session restore (hydration-safe: read localStorage in useEffect) ---
   const initialWorkspaceId = initialState && workspaces.some(w => w.id === initialState.activeWorkspaceId)
     ? initialState.activeWorkspaceId
@@ -723,11 +729,11 @@ export function WorkspaceShell({
         if (oldest) seen.delete(oldest);
       }
 
-      void persistAgentActionObservation(event);
+      void persistAgentActionObservation(event, routes);
     });
 
     return unsubscribe;
-  }, []);
+  }, [routes]);
 
   // Read session from localStorage after mount (avoids SSR hydration mismatch)
   useEffect(() => {
@@ -753,7 +759,11 @@ export function WorkspaceShell({
       return;
     }
     disabledLoaded.current = false;
-    fetch(`/api/workspace-state?id=${workspace.id}`)
+    if (!routes?.workspaceState) {
+      disabledLoaded.current = true;
+      return;
+    }
+    fetch(routeWithQuery(routes.workspaceState, { id: workspace.id }))
       .then(r => r.json())
       .then(data => {
         if (data.disabledApps && Array.isArray(data.disabledApps)) {
@@ -765,21 +775,22 @@ export function WorkspaceShell({
       })
       .catch(() => { disabledLoaded.current = true; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistSession, workspace.id]);
+  }, [persistSession, routes?.workspaceState, workspace.id]);
 
   // Save disabled apps to disk (debounced)
   const disabledSaveRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!persistSession || !disabledLoaded.current) return;
+    if (!routes?.workspaceState) return;
     if (disabledSaveRef.current) clearTimeout(disabledSaveRef.current);
     disabledSaveRef.current = setTimeout(() => {
-      fetch('/api/workspace-state', {
+      fetch(routes.workspaceState!, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: workspace.id, state: { disabledApps: disabledAppIdsArr } }),
       }).catch(() => {});
     }, 1000);
-  }, [disabledAppIdsArr, persistSession, workspace.id]);
+  }, [disabledAppIdsArr, persistSession, routes?.workspaceState, workspace.id]);
 
   const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
   const initialShowLauncher = bootMode !== 'none' && !hasSession;
@@ -877,11 +888,13 @@ export function WorkspaceShell({
   // WorkspaceDecorProvider sits at the same level so the stage-design app and
   // the shell render layer share the same workspace-scoped state.
   tree = (
-    <ActiveWorkspaceProvider workspaceId={workspace.id}>
-      <WorkspaceDecorProvider workspaceId={workspace.id}>
-        <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
-      </WorkspaceDecorProvider>
-    </ActiveWorkspaceProvider>
+    <WorkspaceHostRoutesProvider routes={routes}>
+      <ActiveWorkspaceProvider workspaceId={workspace.id}>
+        <WorkspaceDecorProvider workspaceId={workspace.id}>
+          <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
+        </WorkspaceDecorProvider>
+      </ActiveWorkspaceProvider>
+    </WorkspaceHostRoutesProvider>
   );
 
   return (
@@ -998,6 +1011,7 @@ function WorkspaceInner({
   initialState?: WorkspaceShellInitialState;
   environment?: WorkspaceShellEnvironment;
 }) {
+  const routes = useWorkspaceHostRoutes();
   // Derived visibility flags from boot phase
   const chromeVisible = phaseAtLeast(bootPhase, 'chrome-in');
   const panelsVisible = phaseAtLeast(bootPhase, 'panels-in');
@@ -1045,7 +1059,7 @@ function WorkspaceInner({
     : [hudsonAISettingsEntry, ...workspaceAppSettings];
 
   // --- Service registry (global, not tied to any app) ---
-  const serviceRegistry = useServiceRegistry();
+  const serviceRegistry = useServiceRegistry(routes);
   const workspaceServiceIds = useMemo(() => getWorkspaceServiceIds(workspace), [workspace]);
   const showSaved = useSaveIndicator();
 
@@ -1139,7 +1153,7 @@ function WorkspaceInner({
     setExpandedToolId(prev => prev === toolId ? null : toolId);
   }, []);
 
-  // --- Activated apps tracking (persisted to disk via /api/workspace-state) ---
+  // --- Activated apps tracking (optionally persisted through host workspace state route) ---
   const isFullBoot = bootMode === 'full';
   const defaultVisible = initialState?.activatedAppIds
     ? initialState.activatedAppIds.filter(id => allAppIds.includes(id))
@@ -1150,14 +1164,14 @@ function WorkspaceInner({
 
   // Load from disk on mount / workspace switch
   useEffect(() => {
-    if (!persistSession) {
+    if (!persistSession || !routes.workspaceState) {
       wsStateReady.current = true;
       return;
     }
     wsStateReady.current = false;
     savePending.current++;
     const gen = savePending.current;
-    fetch(`/api/workspace-state?id=${workspace.id}`)
+    fetch(routeWithQuery(routes.workspaceState, { id: workspace.id }))
       .then(r => r.json())
       .then(data => {
         if (gen !== savePending.current) return; // stale
@@ -1169,21 +1183,22 @@ function WorkspaceInner({
       })
       .catch(() => { wsStateReady.current = true; });
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [persistSession, workspace.id]);
+  }, [persistSession, routes.workspaceState, workspace.id]);
 
   // Save to disk on change (debounced, only after initial load completes)
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   useEffect(() => {
     if (!persistSession || !wsStateReady.current) return; // Don't save until disk load finishes
+    if (!routes.workspaceState) return;
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
     saveTimerRef.current = setTimeout(() => {
-      fetch('/api/workspace-state', {
+      fetch(routes.workspaceState!, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ id: workspace.id, state: { visibleApps: activatedAppIdsArr } }),
       }).catch(() => {});
     }, 1000);
-  }, [activatedAppIdsArr, persistSession, workspace.id]);
+  }, [activatedAppIdsArr, persistSession, routes.workspaceState, workspace.id]);
 
   // Derive Set for fast lookups, filtered to only include current workspace's apps
   const activatedAppIds = useMemo(
@@ -1446,11 +1461,16 @@ function WorkspaceInner({
   const fullscreenLayoutMode = fullscreenHook?.layoutMode ?? fullscreenConfig?.app.mode ?? null;
   const isCanvasFocusMode = !!fullscreenConfig && fullscreenLayoutMode === 'canvas';
   const fullscreenHasPorts = appShowsPorts(fullscreenConfig?.app);
+  const fullscreenCodeSurface = fullscreenHook?.codeSurface ?? null;
+  const fullscreenCodePlacement = fullscreenCodeSurface?.placement ?? fullscreenConfig?.app.code?.placement ?? 'workbench';
+  const fullscreenCodeAvailable = Boolean(fullscreenCodeSurface?.object);
+  const fullscreenCodeInInspector = fullscreenCodeAvailable && fullscreenCodeSurface?.open === true && fullscreenCodePlacement === 'inspector';
   const fullscreenHasInspectorSurface = !!(
     fullscreenConfig?.app.slots.Inspector ||
     fullscreenConfig?.app.slots.RightPanel ||
     fullscreenConfig?.app.tools?.length ||
-    fullscreenHasPorts
+    fullscreenHasPorts ||
+    (fullscreenCodeAvailable && fullscreenCodePlacement === 'inspector')
   );
   const [showTerminal, setShowTerminal] = usePersistentState(`hudson.ws.${workspace.id}.terminal`, DEFAULTS.showTerminal, { enabled: persistSession });
   const [isTerminalMaximized, setIsTerminalMaximized] = useState(false);
@@ -2592,8 +2612,7 @@ function WorkspaceInner({
   }, [setShowTerminal]);
 
   // Apps can ask the shell to close the console drawer when they want to
-  // surface a result on the canvas (e.g., Logo's "Open" affordance after a
-  // create_template tool call).
+  // surface a result on the canvas after an app-level action completes.
   useEffect(() => {
     const onClose = () => { setShowTerminal(false); playSound('slideOut'); };
     window.addEventListener('hudson:close-terminal', onClose);
@@ -2712,9 +2731,9 @@ function WorkspaceInner({
       case 'set_environment_variable': {
         const key = args.key as string;
         const value = args.value as string;
-        if (!key) break;
+        if (!key || !routes.localEnvironment) break;
         try {
-          const response = await fetch('/api/settings/environment', {
+          const response = await fetch(routes.localEnvironment, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key, value: value ?? '' }),
@@ -2730,9 +2749,9 @@ function WorkspaceInner({
       }
       case 'delete_environment_variable': {
         const key = args.key as string;
-        if (!key) break;
+        if (!key || !routes.localEnvironment) break;
         try {
-          const response = await fetch('/api/settings/environment', {
+          const response = await fetch(routes.localEnvironment, {
             method: 'DELETE',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ key }),
@@ -2754,9 +2773,9 @@ function WorkspaceInner({
       }
       case 'fetch_image': {
         const url = args.url as string;
-        if (url) {
+        if (url && routes.fetchImage) {
           try {
-            const res = await fetch(`/api/fetch-image?url=${encodeURIComponent(url)}`);
+            const res = await fetch(routeWithQuery(routes.fetchImage, { url }));
             const data = await res.json();
             if (data.dataUrl) {
               console.log('[WorkspaceAI] fetched image:', data.sourceUrl, data.size, 'bytes');
@@ -2765,13 +2784,6 @@ function WorkspaceInner({
         }
         break;
       }
-      // Logo-specific tools are dispatched via a custom event that LogoProvider can listen to
-      case 'set_logo_param':
-      case 'set_logo_custom_param':
-      case 'set_logo_variant':
-      case 'create_template':
-        window.dispatchEvent(new CustomEvent('hudson:workspace-tool', { detail: { name, args } }));
-        break;
       case 'create_pipe': {
         try {
           await createPipe({
@@ -2805,9 +2817,9 @@ function WorkspaceInner({
       }
       case 'generate_image': {
         const prompt = args.prompt as string;
-        if (!prompt) break;
+        if (!prompt || !routes.imageGeneration) break;
         try {
-          const res = await fetch('/api/ai/generate-image', {
+          const res = await fetch(routes.imageGeneration, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ prompt, aspectRatio: args.aspectRatio }),
@@ -2847,6 +2859,9 @@ function WorkspaceInner({
     setFocusedAppId,
     updateShellSettings,
     workspaces,
+    routes.fetchImage,
+    routes.imageGeneration,
+    routes.localEnvironment,
   ]);
 
   // --- Terminal screenshot button ---
@@ -2865,7 +2880,8 @@ function WorkspaceInner({
         reader.onerror = reject;
         reader.readAsDataURL(file);
       });
-      const res = await fetch('/api/relay/upload', {
+      if (!routes.relayUpload) return;
+      const res = await fetch(routes.relayUpload, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: file.name, data: base64 }),
@@ -2875,7 +2891,7 @@ function WorkspaceInner({
     } finally {
       setTermSnapping(false);
     }
-  }, [termSnapping]);
+  }, [routes.relayUpload, termSnapping]);
 
   // --- Terminal voice capture ---
   const terminalVoiceMetadata = useMemo(
@@ -3088,6 +3104,7 @@ function WorkspaceInner({
       toolContext={workspaceAIToolContext}
       provider={hudsonAIProvider}
       model={hudsonAIModel}
+      routes={routes}
       composerRequest={hudsonAIComposerRequest}
       onComposerRequestConsumed={requestId => {
         setHudsonAIComposerRequest(current => current?.id === requestId ? null : current);
@@ -3314,6 +3331,21 @@ function WorkspaceInner({
 
             <div className="h-4 w-px bg-border" />
             {/* Right: panel toggle + settings */}
+            {fullscreenCodeSurface?.object && fullscreenConfig.app.code?.navAction === true && (
+              <button
+                type="button"
+                onClick={() => fullscreenCodeSurface.setOpen(!fullscreenCodeSurface.open)}
+                className={`p-1 rounded border transition-colors ${
+                  fullscreenCodeSurface.open
+                    ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                    : 'border-transparent text-muted-foreground hover:bg-foreground/[0.06] hover:text-foreground'
+                }`}
+                title={fullscreenCodeSurface.open ? 'Hide code' : (fullscreenConfig.app.code?.label ?? fullscreenCodeSurface.label ?? 'View code')}
+                aria-label={fullscreenCodeSurface.open ? 'Hide code' : (fullscreenConfig.app.code?.label ?? fullscreenCodeSurface.label ?? 'View code')}
+              >
+                <Code2 size={12} />
+              </button>
+            )}
             <button
               onClick={() => openSettings()}
               className="p-1 rounded text-muted-foreground hover:text-foreground hover:bg-foreground/[0.06] transition-colors"
@@ -3353,6 +3385,13 @@ function WorkspaceInner({
             {/* Right panel: Inspector, tools, and ports */}
             {fullscreenHasInspectorSurface && fsRightOpen && (
               <div className="w-[260px] shrink-0 border-l border-border overflow-y-auto frame-scrollbar bg-card/80">
+                {fullscreenCodeInInspector && fullscreenCodeSurface?.object && (
+                  <ObjectCodeSurface
+                    object={fullscreenCodeSurface.object}
+                    placement="inspector"
+                    onClose={() => fullscreenCodeSurface.setOpen(false)}
+                  />
+                )}
                 {fullscreenHasPorts && (
                   <PortInspector appId={fullscreenConfig.app.id} />
                 )}
@@ -3451,6 +3490,52 @@ function WorkspaceInner({
               {terminalContent}
             </TerminalDrawer>
           </div>
+
+          {fullscreenCodeSurface?.open && fullscreenCodeSurface.object && fullscreenCodePlacement === 'sheet' && (
+            <div
+              className="pointer-events-auto fixed bottom-7 right-0 top-10 z-[46]"
+              aria-label={fullscreenConfig.app.code?.label ?? fullscreenCodeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeSurface
+                object={fullscreenCodeSurface.object}
+                placement="sheet"
+                onClose={() => fullscreenCodeSurface.setOpen(false)}
+                width={codeSheetWidth}
+                onWidthChange={setCodeSheetWidth}
+              />
+            </div>
+          )}
+
+          {fullscreenCodeSurface?.open && fullscreenCodeSurface.object && fullscreenCodePlacement === 'workbench' && (
+            <div
+              className="pointer-events-none fixed bottom-7 top-10 z-[46]"
+              style={{
+                left: codeWorkbenchSize === 'full'
+                  ? 0
+                  : fsLeftOpen && fullscreenConfig.app.slots.LeftPanel
+                    ? 240
+                    : 0,
+                right: codeWorkbenchSize === 'full'
+                  ? 0
+                  : fsRightOpen && fullscreenHasInspectorSurface
+                    ? 260
+                    : 0,
+              }}
+              aria-label={fullscreenConfig.app.code?.label ?? fullscreenCodeSurface.label ?? 'Object code'}
+            >
+              <ObjectCodeWorkbench
+                object={fullscreenCodeSurface.object}
+                size={codeWorkbenchSize}
+                onSizeChange={setCodeWorkbenchSize}
+                onClose={() => fullscreenCodeSurface.setOpen(false)}
+                chat={fullscreenCodeSurface.chat}
+                editorWidth={codeWorkbenchEditorWidth}
+                chatWidth={codeWorkbenchChatWidth}
+                onEditorWidthChange={setCodeWorkbenchEditorWidth}
+                onChatWidthChange={setCodeWorkbenchChatWidth}
+              />
+            </div>
+          )}
         </div>
       ) : (
       <Frame

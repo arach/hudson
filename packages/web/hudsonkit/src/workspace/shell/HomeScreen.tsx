@@ -64,22 +64,6 @@ const APP_INFO: Record<string, AppInfo> = {
       'Debug cross-app communication in real time',
     ],
   },
-  'logo': {
-    summary: 'Design and export lattice-based logos with live preview and AI-powered template generation.',
-    bullets: [
-      'Multiple built-in variants: lattice grid, dot matrix, mosaic',
-      'Custom template creation via AI relay',
-      'SVG and PNG export at any resolution',
-    ],
-  },
-  'shaper': {
-    summary: 'Vector bezier curve editor for tracing, editing, and animating shapes.',
-    bullets: [
-      'Import images and auto-trace contours to editable paths',
-      'Pen tool for manual bezier drawing',
-      'Built-in animation timeline with easing controls',
-    ],
-  },
   'trace-viewer': {
     summary: 'Visualize and inspect agent execution traces — see what your AI agents did, step by step.',
     bullets: [
@@ -87,17 +71,6 @@ const APP_INFO: Record<string, AppInfo> = {
       'Drill into any step to inspect inputs, outputs, and token usage',
       'Works with any agent: Claude Code, OpenClaw, or custom traces',
     ],
-  },
-  'openclaw': {
-    summary: 'OpenClaw is an open-source local AI assistant. Use Telegram for quick chat-level access — use Hudson when you need a complex, structured UI for your claws.',
-    bullets: [
-      'Formatted, browsable views of agent responses and tool outputs',
-      'Visual task queue — see scheduled jobs, heartbeats, and background work at a glance',
-      'Structured input forms for skills and commands instead of free-text prompts',
-      'Memory inspector to review and edit what your claw remembers',
-      'Socket-level communication via Tailscale and the HudsonKit CLI',
-    ],
-    link: { label: 'openclaw.ai', url: 'https://openclaw.ai' },
   },
 };
 

@@ -45,6 +45,12 @@ export type {
   WorkspaceShellInitialState,
   WindowBounds,
 } from './workspace/shell/WorkspaceShell';
+export {
+  WorkspaceHostRoutesProvider,
+  routeWithQuery,
+  useWorkspaceHostRoutes,
+} from './workspace/hostRoutes';
+export type { WorkspaceHostRoutes } from './workspace/hostRoutes';
 
 // Shell runtime contexts and extension surfaces used by workspace apps
 export {

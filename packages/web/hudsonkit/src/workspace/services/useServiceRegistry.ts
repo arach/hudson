@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef } from 'react';
 import { usePersistentState } from '../../hooks/usePersistentState';
 import { usePlatform } from '../../platform';
 import type { ServiceRecord, ServiceAction, ServiceStatus } from '../../index';
+import type { WorkspaceHostRoutes } from '../hostRoutes';
 import { SERVICE_CATALOG } from './catalog';
 
 const POLL_INTERVAL = 30_000;
@@ -13,8 +14,10 @@ function makeId() {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
 }
 
-export function useServiceRegistry() {
+export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
   const { serviceApiUrl } = usePlatform();
+  const servicesRoute = routes?.services ? `${serviceApiUrl}${routes.services}` : null;
+  const serviceExecuteRoute = routes?.serviceExecute ? `${serviceApiUrl}${routes.serviceExecute}` : null;
   const [records, setRecords] = usePersistentState<Record<string, ServiceRecord>>(
     'hudson.services',
     {},
@@ -71,14 +74,15 @@ export function useServiceRegistry() {
   );
 
   const fetchServiceStatuses = useCallback(async () => {
-    const res = await fetch(`${serviceApiUrl}/api/services`, {
+    if (!servicesRoute) return [] as Array<{ id: string; status: ServiceStatus }>;
+    const res = await fetch(servicesRoute, {
       signal: AbortSignal.timeout(3_000),
     });
     if (!res.ok) {
       throw new Error(`Service status request failed (${res.status})`);
     }
     return res.json() as Promise<Array<{ id: string; status: ServiceStatus }>>;
-  }, [serviceApiUrl]);
+  }, [servicesRoute]);
 
   const checkHealth = useCallback(
     async (serviceId: string) => {
@@ -119,7 +123,10 @@ export function useServiceRegistry() {
       const startTime = Date.now();
 
       try {
-        const res = await fetch(`${serviceApiUrl}/api/services/execute`, {
+        if (!serviceExecuteRoute) {
+          throw new Error('Service actions are unavailable in this host.');
+        }
+        const res = await fetch(serviceExecuteRoute, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ serviceId, action, triggeredBy }),
@@ -176,7 +183,7 @@ export function useServiceRegistry() {
         return entry;
       }
     },
-    [serviceApiUrl, updateRecord, appendHistory],
+    [serviceExecuteRoute, updateRecord, appendHistory],
   );
 
   const toggleAutoStart = useCallback(
@@ -237,17 +244,18 @@ export function useServiceRegistry() {
   useEffect(() => {
     const handleUnload = () => {
       for (const sid of autoStartedRef.current) {
+        if (!serviceExecuteRoute) continue;
         // Fire-and-forget stop via sendBeacon (fetch may be cancelled during unload)
         const blob = new Blob(
           [JSON.stringify({ serviceId: sid, action: 'stop', triggeredBy: 'system' })],
           { type: 'application/json' },
         );
-        navigator.sendBeacon(`${serviceApiUrl}/api/services/execute`, blob);
+        navigator.sendBeacon(serviceExecuteRoute, blob);
       }
     };
     window.addEventListener('beforeunload', handleUnload);
     return () => window.removeEventListener('beforeunload', handleUnload);
-  }, [serviceApiUrl]);
+  }, [serviceExecuteRoute]);
 
   return {
     catalog: SERVICE_CATALOG,

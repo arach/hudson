@@ -368,7 +368,7 @@ function StepCardEditor({ item }: { item: StepCardDecor }) {
         <label className={FIELD_LABEL}>Code (optional)</label>
         <textarea
           className={FIELD_TEXTAREA}
-          placeholder="{ id: 'talkie' }"
+          placeholder="{ id: 'docs' }"
           value={item.code ?? ''}
           onChange={(e) => updateItem(item.id, { code: e.target.value })}
         />

@@ -81,7 +81,7 @@ export function WebFetchContent() {
 
             <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-accent/10 border border-accent/20 text-[10px] text-accent">
               <ArrowRight size={11} />
-              <span>Click the pipe arrow to send to Shaper</span>
+              <span>Click the pipe arrow to send this image to another app</span>
             </div>
           </div>
         ) : !loading && (

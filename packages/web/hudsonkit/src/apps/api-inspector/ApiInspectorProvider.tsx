@@ -10,6 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import { usePersistentState } from '../../index';
+import { useWorkspaceHostRoutes } from '../../workspace/hostRoutes';
 import type {
   HttpMethod,
   ApiRequest,
@@ -82,6 +83,7 @@ export function useApiInspector() {
 // ---------------------------------------------------------------------------
 
 export function ApiInspectorProvider({ children }: { children: ReactNode }) {
+  const routes = useWorkspaceHostRoutes();
   // --- Request state ---
   const [method, setMethod] = useState<HttpMethod>('GET');
   const [url, setUrl] = usePersistentState<string>('api-inspector.url', '');
@@ -147,6 +149,10 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
   // --- Send request ---
   const sendRequest = useCallback(async () => {
     if (!url.trim()) return;
+    if (!routes.apiProxy) {
+      setResponseError('API proxy route is not configured for this host.');
+      return;
+    }
 
     // Abort any in-flight request
     abortRef.current?.abort();
@@ -181,7 +187,7 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
         proxyPayload.body = body;
       }
 
-      const res = await fetch('/api/proxy', {
+      const res = await fetch(routes.apiProxy, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(proxyPayload),
@@ -224,7 +230,7 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [url, method, headers, params, body, bodyType, buildUrl, setHistory]);
+  }, [url, routes.apiProxy, method, headers, params, body, bodyType, buildUrl, setHistory]);
 
   // --- Clear response ---
   const clearResponse = useCallback(() => {

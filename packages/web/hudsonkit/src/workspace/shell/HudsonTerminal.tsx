@@ -7,6 +7,7 @@ import { useDataBus } from '../context/DataBusContext';
 import type { PortCatalogEntry } from '../context/DataBusContext';
 import type { PipeDefinition } from '../../index';
 import { Cloud, TerminalSquare } from 'lucide-react';
+import { useWorkspaceHostRoutes } from '../hostRoutes';
 
 // ---------------------------------------------------------------------------
 // System prompt — workspace-aware HudsonKit assistant
@@ -55,9 +56,9 @@ ${pipes.length === 0 ? 'No pipes configured.' : pipes.map(p =>
   ).join('\n')}
 
 ## Pipe Management
-- Create pipes by POSTing to /api/pipes with { pipe: { name, source: {appId, portId}, sink: {appId, portId}, enabled: true } }
-- Delete pipes: POST /api/pipes with { action: "delete", pipe: { id: "..." } }
-- Pipes are stored as JSON files in .data/pipes/
+- Create pipes by using the workspace pipe UI or the host-provided pipe route when available.
+- Delete pipes through the workspace pipe UI or host-provided pipe route when available.
+- Pipe persistence is owned by the host application.
 
 ## Guidelines
 - You are the global workspace assistant, not tied to any single app
@@ -118,6 +119,7 @@ export interface HudsonTerminalProps {
 
 export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
   const { serviceApiUrl } = usePlatform();
+  const routes = useWorkspaceHostRoutes();
   const { getPortCatalog, pipes } = useDataBus();
   const [hostedDemo] = useState(() => isHostedBrowserDemo());
 
@@ -145,8 +147,9 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
   ], []);
 
   const handleStartRelay = useCallback(async (): Promise<boolean> => {
+    if (!routes.serviceExecute) return false;
     try {
-      const res = await fetch(`${serviceApiUrl}/api/services/execute`, {
+      const res = await fetch(`${serviceApiUrl}${routes.serviceExecute}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ serviceId: 'relay', action: 'start', triggeredBy: 'user' }),
@@ -156,7 +159,7 @@ export function HudsonTerminal({ workspace, catalog }: HudsonTerminalProps) {
     } catch {
       return false;
     }
-  }, [serviceApiUrl]);
+  }, [routes.serviceExecute, serviceApiUrl]);
 
   const openSettings = useCallback(() => {
     window.dispatchEvent(new KeyboardEvent('keydown', {

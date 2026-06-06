@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { Eye, EyeOff, FileText, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ServiceActionButton } from '../settings/components';
+import { useWorkspaceHostRoutes } from '../hostRoutes';
 
 type LocalEnvironmentEntry = {
   key: string;
@@ -39,6 +40,7 @@ export function HudsonEnvironmentEditor({
 }: {
   intro?: ReactNode;
 }) {
+  const routes = useWorkspaceHostRoutes();
   const [environmentStore, setEnvironmentStore] = useState<LocalEnvironmentStore | null>(null);
   const [environmentDrafts, setEnvironmentDrafts] = useState<Record<string, string>>({});
   const [newKey, setNewKey] = useState('');
@@ -56,10 +58,15 @@ export function HudsonEnvironmentEditor({
   }, []);
 
   const loadEnvironment = useCallback(async () => {
+    if (!routes.localEnvironment) {
+      setEnvironmentStore(null);
+      setEnvironmentError('Local environment management is unavailable in this host.');
+      return;
+    }
     setEnvironmentStatus('loading');
 
     try {
-      const response = await fetch('/api/settings/environment', {
+      const response = await fetch(routes.localEnvironment, {
         cache: 'no-store',
       });
       const data = await response.json() as LocalEnvironmentStore & { error?: string };
@@ -75,7 +82,7 @@ export function HudsonEnvironmentEditor({
     } finally {
       setEnvironmentStatus('idle');
     }
-  }, [syncEnvironmentStore]);
+  }, [routes.localEnvironment, syncEnvironmentStore]);
 
   useEffect(() => {
     void loadEnvironment();
@@ -92,7 +99,10 @@ export function HudsonEnvironmentEditor({
     setEnvironmentStatus('saving');
 
     try {
-      const response = await fetch('/api/settings/environment', {
+      if (!routes.localEnvironment) {
+        throw new Error('Local environment management is unavailable in this host.');
+      }
+      const response = await fetch(routes.localEnvironment, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -116,14 +126,17 @@ export function HudsonEnvironmentEditor({
       setActiveEnvironmentKey(null);
       setEnvironmentStatus('idle');
     }
-  }, [environmentStore?.entries, syncEnvironmentStore]);
+  }, [environmentStore?.entries, routes.localEnvironment, syncEnvironmentStore]);
 
   const handleDeleteEnvironmentValue = useCallback(async (key: string) => {
     setActiveEnvironmentKey(key);
     setEnvironmentStatus('saving');
 
     try {
-      const response = await fetch('/api/settings/environment', {
+      if (!routes.localEnvironment) {
+        throw new Error('Local environment management is unavailable in this host.');
+      }
+      const response = await fetch(routes.localEnvironment, {
         method: 'DELETE',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ key }),
@@ -147,7 +160,7 @@ export function HudsonEnvironmentEditor({
       setActiveEnvironmentKey(null);
       setEnvironmentStatus('idle');
     }
-  }, [syncEnvironmentStore]);
+  }, [routes.localEnvironment, syncEnvironmentStore]);
 
   const handleCreateEnvironmentValue = useCallback(async () => {
     const key = newKey.trim();

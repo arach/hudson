@@ -32,6 +32,25 @@ function useHudsonAISettingsEntry(
 }
 
 export const hudsonShellEnvironment: WorkspaceShellEnvironment = {
+  routes: {
+    agentActions: '/api/agent-actions',
+    aiChat: '/api/ai/chat',
+    apiProxy: '/api/proxy',
+    fetchImage: '/api/fetch-image',
+    imageGeneration: '/api/ai/generate-image',
+    localEnvironment: '/api/settings/environment',
+    pipes: '/api/pipes',
+    pipeEvents: '/api/pipes/stream',
+    relayUpload: '/api/relay/upload',
+    services: '/api/services',
+    serviceExecute: '/api/services/execute',
+    speech: '/v1/audio/speech',
+    traces: '/api/traces',
+    voiceApiBase: '/api/hudson-voice',
+    voices: '/v1/voices',
+    workspaceDecor: '/api/workspace-decor',
+    workspaceState: '/api/workspace-state',
+  },
   renderTerminal: (opts) => <TerminalContent {...opts} />,
   useHudsonAISettingsEntry,
 };

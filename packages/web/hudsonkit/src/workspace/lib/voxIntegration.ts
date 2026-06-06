@@ -1,5 +1,4 @@
 export const HUDSON_VOX_CLIENT_ID = 'hudsonkit';
-export const HUDSON_VOX_INTEGRATION_API_PATH = '/api/vox/integration';
 export const HUDSON_VOX_INTEGRATION_FILE_NAME = 'hudsonkit.json';
 
 const LOOPBACK_HOSTS = new Set(['localhost', '127.0.0.1', '[::1]', '::1']);
@@ -19,6 +18,11 @@ export interface HudsonVoxIntegrationDescriptor {
   routes: string[];
   permissions: string[];
   updatedAt: string;
+}
+
+export interface HudsonVoxRegistrationOptions {
+  origin?: string;
+  endpoint?: string;
 }
 
 export function normalizeHudsonVoxOrigin(rawOrigin: string): string {
@@ -91,11 +95,12 @@ export function createHudsonVoxLaunchUrl(origin: string): string {
   return `vox://launch?${params.toString()}`;
 }
 
-export async function registerHudsonVoxIntegration(origin?: string): Promise<boolean> {
-  const resolvedOrigin = origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
-  if (!resolvedOrigin) return false;
+export async function registerHudsonVoxIntegration(options: string | HudsonVoxRegistrationOptions = {}): Promise<boolean> {
+  const resolvedOptions = typeof options === 'string' ? { origin: options } : options;
+  const resolvedOrigin = resolvedOptions.origin ?? (typeof window !== 'undefined' ? window.location.origin : '');
+  if (!resolvedOrigin || !resolvedOptions.endpoint) return false;
 
-  const response = await fetch(HUDSON_VOX_INTEGRATION_API_PATH, {
+  const response = await fetch(resolvedOptions.endpoint, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ origin: resolvedOrigin }),

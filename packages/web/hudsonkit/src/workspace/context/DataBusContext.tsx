@@ -13,6 +13,7 @@ import {
 import { createHudsonId } from '../../lib/id';
 import type { HudsonWorkspace, WorkspaceAppConfig, PipeDefinition, AppOutput, AppInput } from '../../index';
 import { useEventSourceInvalidation } from '../hooks/useEventSourceInvalidation';
+import { useWorkspaceHostRoutes } from '../hostRoutes';
 
 const PIPE_FALLBACK_POLL_MS = 300_000;
 
@@ -121,6 +122,7 @@ export function DataBusProvider({
   workspace: HudsonWorkspace;
   children: ReactNode;
 }) {
+  const routes = useWorkspaceHostRoutes();
   const outputGetters = useRef<Map<string, (portId: string) => unknown | null>>(new Map());
   const inputSetters = useRef<Map<string, (portId: string, data: unknown) => void>>(new Map());
   const [portActivity, setPortActivity] = useState<PortActivityEntry[]>([]);
@@ -145,8 +147,13 @@ export function DataBusProvider({
   const lastPipesJsonRef = useRef('');
 
   const fetchPipes = useCallback(async () => {
+    if (!routes.pipes) {
+      setPipes([]);
+      lastPipesJsonRef.current = '';
+      return;
+    }
     try {
-      const res = await fetch('/api/pipes');
+      const res = await fetch(routes.pipes);
       const data = await res.json();
       const json = JSON.stringify(data.pipes ?? []);
       if (json !== lastPipesJsonRef.current) {
@@ -154,11 +161,12 @@ export function DataBusProvider({
         setPipes(data.pipes ?? []);
       }
     } catch { /* silent */ }
-  }, []);
+  }, [routes.pipes]);
 
   useEventSourceInvalidation({
-    url: '/api/pipes/stream',
+    url: routes.pipeEvents,
     onInvalidate: fetchPipes,
+    enabled: Boolean(routes.pipeEvents),
     fallbackIntervalMs: PIPE_FALLBACK_POLL_MS,
   });
 
@@ -211,9 +219,9 @@ export function DataBusProvider({
     const pipe = pipes.find(p => p.id === pipeId);
     if (!pipe || !pipe.enabled) return false;
     const ok = pushDirect(pipe.source.appId, pipe.source.portId, pipe.sink.appId, pipe.sink.portId, pipe.name);
-    if (ok) {
+    if (ok && routes.pipes) {
       try {
-        await fetch('/api/pipes', {
+        await fetch(routes.pipes, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ action: 'update-pushed', pipe: { id: pipeId } }),
@@ -222,12 +230,13 @@ export function DataBusProvider({
       } catch { /* non-critical */ }
     }
     return ok;
-  }, [pipes, pushDirect, fetchPipes]);
+  }, [pipes, pushDirect, fetchPipes, routes.pipes]);
 
   // --- CRUD ---
   const createPipe = useCallback(async (partial: Omit<PipeDefinition, 'id' | 'createdAt' | 'lastPushedAt'>): Promise<PipeDefinition | null> => {
+    if (!routes.pipes) return null;
     try {
-      const res = await fetch('/api/pipes', {
+      const res = await fetch(routes.pipes, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ pipe: { ...partial, id: createHudsonId('', 8) } }),
@@ -241,18 +250,19 @@ export function DataBusProvider({
     } catch {
       return null;
     }
-  }, [fetchPipes]);
+  }, [fetchPipes, routes.pipes]);
 
   const deletePipe = useCallback(async (id: string) => {
+    if (!routes.pipes) return;
     try {
-      await fetch('/api/pipes', {
+      await fetch(routes.pipes, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action: 'delete', pipe: { id } }),
       });
       await fetchPipes();
     } catch { /* silent */ }
-  }, [fetchPipes]);
+  }, [fetchPipes, routes.pipes]);
 
   // --- Port catalog ---
   const getPortCatalog = useCallback((): PortCatalogEntry[] => {

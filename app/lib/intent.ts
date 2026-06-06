@@ -11,7 +11,7 @@ import {
 } from './agent-log';
 
 export interface IntentMeta {
-  /** Stable id used as the catalog key (e.g. `logo.compile`). */
+  /** Stable id used as the catalog key (e.g. `docs.reindex`). */
   id: string;
   /** Human-readable title. */
   title: string;

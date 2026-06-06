@@ -2,11 +2,11 @@ export { HudWorkflowGraph } from './WorkflowGraph';
 export type { HudWorkflowGraphProps } from './WorkflowGraph';
 export {
   brainDumpProcessorWorkflow,
-  heyTalkieWorkflow,
   hudWorkflowBasicSchema,
   hudWorkflowFixtures,
   quickSummaryWorkflow,
   transcribeWorkflow,
+  voiceAssistantWorkflow,
 } from './fixtures';
 export type {
   HudWorkflowConnection,

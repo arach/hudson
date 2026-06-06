@@ -1,12 +1,11 @@
 'use client';
 
-import { Terminal, Box, FileText } from 'lucide-react';
+import { Terminal, FileText } from 'lucide-react';
 import { useExplorer } from './IntentProvider';
 
 // Icons for known app groups
 const GROUP_ICONS: Record<string, React.FC<{ size: number; className?: string }>> = {
   shell: Terminal,
-  shaper: Box,
   'hudson-docs': FileText,
 };
 

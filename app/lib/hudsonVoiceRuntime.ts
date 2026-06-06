@@ -3,7 +3,6 @@ import { existsSync, readFileSync, statSync } from 'node:fs';
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import WebSocket, { type RawData } from 'ws';
-import { HUDSON_VOICE_API_BASE_PATH } from '@/packages/web/hudsonkit/src/lib/hudsonVoiceClient';
 
 export const HUDSON_VOICE_RUNTIME_PATH_ENV = 'HUDSON_VOICE_RUNTIME_PATH';
 export const HUDSON_VOICE_RUNTIME_FILE_NAME = 'hudson-voice-runtime.json';
@@ -15,7 +14,7 @@ export const HUDSON_VOICE_RUNTIME_DEFAULT_PATH = join(
   'Vox',
   HUDSON_VOICE_RUNTIME_FILE_NAME,
 );
-export const HUDSON_VOICE_PROXY_BASE_PATH = HUDSON_VOICE_API_BASE_PATH;
+export const HUDSON_VOICE_PROXY_BASE_PATH = '/api/hudson-voice';
 export const HUDSON_VOICE_PROXY_STREAM_CONTENT_TYPE = 'application/x-ndjson; charset=utf-8';
 export const HUDSON_VOICE_RPC_TIMEOUT_MS = 30_000;
 

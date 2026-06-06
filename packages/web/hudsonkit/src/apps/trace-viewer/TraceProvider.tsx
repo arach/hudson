@@ -1,6 +1,7 @@
 'use client';
 
 import { createContext, useContext, useState, useCallback, useEffect, useMemo, useRef, type ReactNode } from 'react';
+import { routeWithQuery, useWorkspaceHostRoutes } from '../../workspace/hostRoutes';
 import type { AgentTrace, TraceSummary } from './types';
 
 // ---------------------------------------------------------------------------
@@ -30,6 +31,7 @@ export function useTrace(): TraceState {
 const POLL_MS = 30_000;
 
 export function TraceProvider({ children }: { children: ReactNode }) {
+  const routes = useWorkspaceHostRoutes();
   const [traces, setTraces] = useState<TraceSummary[]>([]);
   const [selectedTraceId, setSelectedTraceId] = useState<string | null>(null);
   const [selectedTrace, setSelectedTrace] = useState<AgentTrace | null>(null);
@@ -40,10 +42,15 @@ export function TraceProvider({ children }: { children: ReactNode }) {
 
   // Poll trace summaries — only when tab is visible
   useEffect(() => {
+    const tracesRoute = routes.traces;
     let cancelled = false;
     const fetchList = async () => {
+      if (!tracesRoute) {
+        if (!cancelled) setTraces([]);
+        return;
+      }
       try {
-        const res = await fetch('/api/traces');
+        const res = await fetch(tracesRoute);
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) {
@@ -62,11 +69,12 @@ export function TraceProvider({ children }: { children: ReactNode }) {
     start();
     document.addEventListener('visibilitychange', onVis);
     return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, []);
+  }, [routes.traces]);
 
   // Fetch full trace when selection changes
   useEffect(() => {
-    if (!selectedTraceId) {
+    const tracesRoute = routes.traces;
+    if (!selectedTraceId || !tracesRoute) {
       setSelectedTrace(null);
       setSelectedStepIndex(null);
       return;
@@ -75,7 +83,7 @@ export function TraceProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     (async () => {
       try {
-        const res = await fetch(`/api/traces?id=${encodeURIComponent(selectedTraceId)}`);
+        const res = await fetch(routeWithQuery(tracesRoute, { id: selectedTraceId }));
         if (!res.ok) return;
         const data = await res.json();
         if (!cancelled) {
@@ -86,7 +94,7 @@ export function TraceProvider({ children }: { children: ReactNode }) {
       finally { if (!cancelled) setLoading(false); }
     })();
     return () => { cancelled = true; };
-  }, [selectedTraceId]);
+  }, [routes.traces, selectedTraceId]);
 
   const selectStep = useCallback((index: number | null) => {
     setSelectedStepIndex(index);
