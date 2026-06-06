@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
 import { z } from 'zod';
-import { sendVantageCommand } from '@/app/lib/vantage/controlPlane';
+import { sendRuntimeCommand } from '@/app/lib/runtime/controlPlane';
 
 export const runtime = 'nodejs';
 
@@ -18,12 +18,12 @@ export async function POST(request: Request) {
 
     if (!parsed.success) {
       return NextResponse.json(
-        { ok: false, error: 'Invalid Vantage control request.', issues: parsed.error.flatten() },
+        { ok: false, error: 'Invalid Runtime control request.', issues: parsed.error.flatten() },
         { status: 400 },
       );
     }
 
-    const result = await sendVantageCommand(parsed.data);
+    const result = await sendRuntimeCommand(parsed.data);
 
     if (!result.response) {
       return NextResponse.json(
@@ -45,7 +45,7 @@ export async function POST(request: Request) {
     });
   } catch (error) {
     return NextResponse.json(
-      { ok: false, error: error instanceof Error ? error.message : 'Vantage control command failed.' },
+      { ok: false, error: error instanceof Error ? error.message : 'Runtime control command failed.' },
       { status: 500 },
     );
   }

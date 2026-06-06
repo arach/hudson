@@ -1,4 +1,4 @@
-export interface VantageControlPaths {
+export interface RuntimeControlPaths {
   id: string;
   label: string;
   commandPath: string;
@@ -6,7 +6,7 @@ export interface VantageControlPaths {
   statePath: string;
 }
 
-export interface VantageControlCommand {
+export interface RuntimeControlCommand {
   apiVersion?: string;
   kind?: string;
   id: string;
@@ -14,7 +14,7 @@ export interface VantageControlCommand {
   [key: string]: unknown;
 }
 
-export interface VantageNodeSummary {
+export interface RuntimeNodeSummary {
   id: string;
   title?: string;
   subtitle?: string;
@@ -26,7 +26,7 @@ export interface VantageNodeSummary {
   bounds?: { x: number; y: number; width: number; height: number };
 }
 
-export interface VantageControlResponse {
+export interface RuntimeControlResponse {
   apiVersion?: string;
   kind?: string;
   id?: string;
@@ -36,7 +36,7 @@ export interface VantageControlResponse {
   workspaceID?: string;
   nodeCount?: number;
   selectedNodeIDs?: string[];
-  nodes?: VantageNodeSummary[];
+  nodes?: RuntimeNodeSummary[];
   commandPath?: string;
   responsePath?: string;
   statePath?: string;
@@ -45,7 +45,7 @@ export interface VantageControlResponse {
   error?: string;
 }
 
-export interface VantageCompanionStatus {
+export interface RuntimeCompanionStatus {
   online: boolean;
   profileId: string;
   profileLabel: string;
@@ -55,23 +55,23 @@ export interface VantageCompanionStatus {
   workspaceID?: string;
   nodeCount?: number;
   selectedNodeIDs?: string[];
-  nodes?: VantageNodeSummary[];
+  nodes?: RuntimeNodeSummary[];
   message?: string;
   lastCheckedAt: string;
   latencyMs?: number;
 }
 
-export interface VantageIntegrationDescriptor {
-  id: 'hudsonkit-vantage';
-  name: 'HudsonKit Vantage';
+export interface RuntimeIntegrationDescriptor {
+  id: 'hudsonkit-runtime';
+  name: 'HudsonKit Runtime';
   brand: {
     name: 'HudsonKit';
-    product: 'Vantage';
+    product: 'Runtime';
     logo: string;
     accent: 'cyan';
   };
   description: string;
-  controlProfiles: VantageControlPaths[];
+  controlProfiles: RuntimeControlPaths[];
   commands: string[];
   updatedAt: string;
 }

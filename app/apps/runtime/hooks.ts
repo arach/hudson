@@ -2,9 +2,9 @@
 
 import { useMemo, createElement } from 'react';
 import type { CommandOption, SearchConfig, StatusColor } from 'hudsonkit';
-import { useVantage } from './VantageProvider';
+import { useRuntime } from './RuntimeProvider';
 
-export function useVantageCommands(): CommandOption[] {
+export function useRuntimeCommands(): CommandOption[] {
   const {
     refresh,
     launchCompanion,
@@ -12,45 +12,45 @@ export function useVantageCommands(): CommandOption[] {
     selectedNodeId,
     nodes,
     setSelectedNodeId,
-  } = useVantage();
+  } = useRuntime();
 
   return useMemo<CommandOption[]>(() => [
     {
-      id: 'vantage:refresh',
-      label: 'Refresh Vantage Status',
+      id: 'runtime:refresh',
+      label: 'Refresh Runtime Status',
       action: () => void refresh(),
-      section: 'Vantage',
+      section: 'Runtime',
     },
     {
-      id: 'vantage:launch-companion',
+      id: 'runtime:launch-companion',
       label: 'Launch Hudson App',
       action: () => void launchCompanion(),
-      section: 'Vantage',
+      section: 'Runtime',
     },
     {
-      id: 'vantage:metrics',
-      label: 'Fetch Vantage Metrics',
+      id: 'runtime:metrics',
+      label: 'Fetch Runtime Metrics',
       action: () => void sendAction('metrics'),
-      section: 'Vantage',
+      section: 'Runtime',
     },
     {
-      id: 'vantage:viewport-fit',
-      label: 'Fit Vantage Viewport',
+      id: 'runtime:viewport-fit',
+      label: 'Fit Runtime Viewport',
       action: () => void sendAction('viewport', { fit: true }),
-      section: 'Vantage',
+      section: 'Runtime',
     },
     ...(selectedNodeId
       ? [
           {
-            id: 'vantage:focus-selected',
+            id: 'runtime:focus-selected',
             label: 'Focus Selected Node',
             action: () => void sendAction('focus', { nodeID: selectedNodeId }),
-            section: 'Vantage',
+            section: 'Runtime',
           },
         ]
       : []),
     ...nodes.map(node => ({
-      id: `vantage:select:${node.id}`,
+      id: `runtime:select:${node.id}`,
       label: `Select Node: ${node.title ?? node.id.slice(0, 8)}`,
       action: () => {
         setSelectedNodeId(node.id);
@@ -68,8 +68,8 @@ export function useVantageCommands(): CommandOption[] {
   ]);
 }
 
-export function useVantageStatus(): { label: string; color: StatusColor } {
-  const { phase, status, error, nodes } = useVantage();
+export function useRuntimeStatus(): { label: string; color: StatusColor } {
+  const { phase, status, error, nodes } = useRuntime();
 
   if (phase === 'checking') return { label: 'PROBE', color: 'neutral' };
   if (error && !status?.online) return { label: 'ERROR', color: 'red' };
@@ -78,8 +78,8 @@ export function useVantageStatus(): { label: string; color: StatusColor } {
   return { label: `${nodes.length} NODES`, color: 'neutral' };
 }
 
-export function useVantageSearch(): SearchConfig {
-  const { searchQuery, setSearchQuery } = useVantage();
+export function useRuntimeSearch(): SearchConfig {
+  const { searchQuery, setSearchQuery } = useRuntime();
 
   return useMemo(() => ({
     value: searchQuery,
@@ -88,14 +88,14 @@ export function useVantageSearch(): SearchConfig {
   }), [searchQuery, setSearchQuery]);
 }
 
-export function useVantageNavCenter() {
-  const { status } = useVantage();
+export function useRuntimeNavCenter() {
+  const { status } = useRuntime();
   if (!status?.workspaceID) return null;
   return createElement('span', {
     className: 'text-[10px] font-mono uppercase tracking-wider text-neutral-500',
   }, status.workspaceID);
 }
 
-export function useVantageLayoutMode(): 'canvas' | 'panel' {
+export function useRuntimeLayoutMode(): 'canvas' | 'panel' {
   return 'panel';
 }

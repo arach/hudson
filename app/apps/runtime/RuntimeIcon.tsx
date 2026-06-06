@@ -2,7 +2,7 @@
 
 import type { SVGProps } from 'react';
 
-export function VantageIcon({ size = 14, className, ...props }: SVGProps<SVGSVGElement> & { size?: number }) {
+export function RuntimeIcon({ size = 14, className, ...props }: SVGProps<SVGSVGElement> & { size?: number }) {
   const stroke = 'currentColor';
   const fill = 'currentColor';
 
