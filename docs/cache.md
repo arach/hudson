@@ -36,7 +36,7 @@ Cache decisions split cleanly by data type. Reach for the right tool per categor
 
 External fetches that need freshness, dedupe, retry, and invalidation. Use `useCachedResource` (or a `cachedFetchJson` helper, once it lands) with the `apiLive` or `apiCatalog` policy. If you need pagination, optimistic mutation, dependent queries, or devtools, **adopt TanStack Query** behind a thin Hudson adapter rather than expanding the substrate.
 
-_Examples:_ model catalog, OpenScout agent list, service status, remote app manifests, `/api/{app}/...` responses.
+_Examples:_ model catalog, service status, remote app manifests, workspace metadata, `/api/{app}/...` responses.
 
 ### Derived data
 

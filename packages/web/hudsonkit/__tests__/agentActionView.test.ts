@@ -29,7 +29,7 @@ describe('agent action view preparation', () => {
           status: 'completed',
           action: 'agent.task',
           traceId: 'tr_read',
-          metadata: { command: ['rg', 'LogoTemplate', 'app/apps/logo', '-g', '*.tsx'] },
+          metadata: { command: ['rg', 'HudsonApp', 'app/apps/hudson-docs', '-g', '*.tsx'] },
         },
       }),
       logEvent({
@@ -41,7 +41,7 @@ describe('agent action view preparation', () => {
           status: 'started',
           action: 'agent.task',
           traceId: 'tr_read',
-          metadata: { command: ['rg', 'LogoTemplate', 'app/apps/logo', '-g', '*.tsx'] },
+          metadata: { command: ['rg', 'HudsonApp', 'app/apps/hudson-docs', '-g', '*.tsx'] },
         },
       }),
     ];
@@ -50,7 +50,7 @@ describe('agent action view preparation', () => {
 
     expect(result.events).toHaveLength(0);
     expect(result.hiddenDetailEvents).toBe(2);
-    expect(inferAgentActionAppId(events[0])).toBe('logo');
+    expect(inferAgentActionAppId(events[0])).toBe('hudson-docs');
   });
 
   it('collapses a user-level prompt lifecycle and relates child tool calls by parent trace', () => {
@@ -61,12 +61,12 @@ describe('agent action view preparation', () => {
         message: 'hudson.agent.action',
         data: {
           triggeredBy: 'agent',
-          source: 'logo-ai',
+          source: 'workspace-ai',
           status: 'completed',
-          action: 'update_template',
+          action: 'update_workspace',
           traceId: 'tr_tool',
           parentTraceId: 'tr_prompt',
-          appId: 'logo',
+          appId: 'hudson-ai',
         },
       }),
       logEvent({
@@ -75,12 +75,12 @@ describe('agent action view preparation', () => {
         message: 'hudson.agent.action',
         data: {
           triggeredBy: 'agent',
-          source: 'logo-ai',
+          source: 'workspace-ai',
           status: 'completed',
-          action: 'logo.polish',
+          action: 'hudson-ai.respond',
           traceId: 'tr_prompt',
-          appId: 'logo',
-          args: { prompt: 'Polish this logo.' },
+          appId: 'hudson-ai',
+          args: { prompt: 'Explain this workspace.' },
         },
       }),
       logEvent({
@@ -89,12 +89,12 @@ describe('agent action view preparation', () => {
         message: 'hudson.agent.action',
         data: {
           triggeredBy: 'agent',
-          source: 'logo-ai',
+          source: 'workspace-ai',
           status: 'started',
-          action: 'logo.polish',
+          action: 'hudson-ai.respond',
           traceId: 'tr_prompt',
-          appId: 'logo',
-          args: { prompt: 'Polish this logo.' },
+          appId: 'hudson-ai',
+          args: { prompt: 'Explain this workspace.' },
         },
       }),
     ];

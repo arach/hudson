@@ -49,7 +49,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
-    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultApps: ['hudson-docs', 'hudson-ai', 'intent-explorer', 'theme-designer'],
     palette: {
       '--hud-bg':           'oklch(0.20 0.02 240)',
       '--hud-bg-2':         'oklch(0.24 0.02 240)',
@@ -84,7 +84,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'drafting',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
-    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultApps: ['hudson-docs', 'hudson-ai', 'intent-explorer', 'theme-designer'],
     palette: {
       '--hud-bg':           'oklch(0.95 0.012 70)',
       '--hud-bg-2':         'oklch(0.97 0.010 70)',
@@ -116,7 +116,7 @@ export const consumers: Record<string, ConsumerConfig> = {
     template: 'hudson',
     defaultWorkspace: 'hudson-os',
     defaultFocus: 'hudson-docs',
-    defaultApps: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultApps: ['hudson-docs', 'hudson-ai', 'intent-explorer', 'theme-designer'],
     palette: {
       '--hud-bg':           'oklch(0.16 0.005 240)',
       '--hud-bg-2':         'oklch(0.20 0.005 240)',

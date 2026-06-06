@@ -5,7 +5,7 @@ import type {
   IntentCatalog,
   ServerIntent,
 } from 'hudsonkit';
-import { shellIntents } from '../shell/intents';
+import { shellIntents } from 'hudsonkit/workspace';
 
 export interface BuildIntentCatalogOptions {
   /** Server-callable intents to attach to the catalog. Pass from the API

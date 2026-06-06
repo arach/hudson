@@ -3,7 +3,7 @@
 import { createElement } from 'react';
 import type { CommandOption } from 'hudsonkit';
 import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
-import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
+import { useWorkspaceDecor } from 'hudsonkit/workspace';
 import { StageDesignHeaderActions, StageDesignNavCenter } from './StageDesignChrome';
 
 const CAN_SAVE_SNAPSHOTS = process.env.NODE_ENV === 'development';

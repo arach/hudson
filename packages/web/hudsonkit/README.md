@@ -25,7 +25,7 @@ import 'hudsonkit/styles';
 
 ### Canvas Mode (Pan/Zoom)
 
-For canvas-based applications like Shaper:
+For canvas-based applications:
 
 ```tsx
 import { Frame, Canvas, NavigationBar, SidePanel } from 'hudsonkit';

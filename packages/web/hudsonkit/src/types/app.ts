@@ -92,7 +92,7 @@ export interface AppManifest {
 /** How many live instances of this app a workspace can hold.
  *  - 'singleton' (default) — exactly one window per workspace
  *  - 'spawnable'  — shell can mint fresh instances on demand (e.g. terminal)
- *  - 'duplicable' — shell can clone an existing instance's state (e.g. logo designer)
+ *  - 'duplicable' — shell can clone an existing instance's state (e.g. document draft)
  *  Both 'spawnable' and 'duplicable' may be combined behaviourally — an app that
  *  declares 'duplicable' also supports fresh spawn; a 'spawnable' app does not
  *  advertise a Duplicate gesture. */

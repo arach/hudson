@@ -6,9 +6,6 @@
  * `storageKey`, and clamped to per-column min/max during drag. New columns
  * appearing after first render fold in at their default width without
  * wiping user-resized values for existing keys.
- *
- * Lifted near-verbatim from OpenScout's `components/ResizableTable/
- * useResizableColumns.ts` — already battle-tested in the Atop screen.
  */
 import {
   useCallback,

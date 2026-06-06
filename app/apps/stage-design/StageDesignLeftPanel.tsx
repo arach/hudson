@@ -1,8 +1,8 @@
 'use client';
 
 import { Type, Image as ImageIcon, Globe, Hash, Trash2 } from 'lucide-react';
-import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
-import type { DecorationItem } from '../../shell/decor/types';
+import { useWorkspaceDecor } from 'hudsonkit/workspace';
+import type { DecorationItem } from 'hudsonkit/workspace';
 
 const ICONS: Record<DecorationItem['type'], React.ComponentType<{ size?: number }>> = {
   text: Type,

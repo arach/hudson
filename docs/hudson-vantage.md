@@ -5,11 +5,8 @@ not a standalone product by itself. A product can embed **a Vantage** when it
 needs a spatial operating view over terminals, agents, tmux sessions, remote
 hosts, or cloud runtimes.
 
-Examples:
-
-- Scout can expose a Scout Vantage for agents, tmux sessions, and invocations.
-- Talkie can expose a Talkie Vantage for workflows, transcripts, and actions.
-- Fabric can expose a Vantage for local and cloud sandboxes.
+Example hosts include agent workspaces, terminal-heavy development tools,
+workflow runners, local sandboxes, and cloud runtime consoles.
 
 The first implementation is terminal-oriented and backed by Termini.
 
@@ -28,8 +25,8 @@ queue:
 3. **Canvas Interaction Hardening** — Multi-select, hand/select refinements,
    zoom/minimap reset behavior, viewport replay, persistent layout, drag/resize
    throttling, and live-renderer hysteresis.
-4. **Embeddable Mode -> Scout** — Make Scout a first real Vantage host with
-   stable config, callbacks/events, product-owned paths, and workspace restore.
+4. **Embeddable Mode** — Make a product host Vantage with stable config,
+   callbacks/events, product-owned paths, and workspace restore.
 5. **Remote tmux Spike** — Treat local tmux and SSH tmux as sibling runtime
    authorities with stronger validation, preflight, health reporting, and
    durable identity.
@@ -45,11 +42,11 @@ Keep the work split into these mandates when Vantage is moving quickly:
 
 | Lane | Mandate | Next concrete slice |
 |------|---------|---------------------|
-| Control API | Lock the JSONL contract used by Scout, Talkie, Codex, and shell agents | Finish v0 selectors, raw commands, metrics, restore, and script tests |
+| Control API | Lock the JSONL contract used by host apps and shell agents | Finish v0 selectors, raw commands, metrics, restore, and script tests |
 | Perf | Make responsiveness measurable before optimizing | Keep counters/timings lightweight, then add drag/zoom/attach samples |
 | Canvas | Harden the native spatial model | Extract viewport math into a Vantage canvas primitive and add viewport replay |
 | Remote tmux | Prove durable sessions can live outside the local app | Keep `remoteHost` as the v0 contract, then harden SSH validation and health |
-| Host embedding | Make Vantage product-owned rather than demo-owned | Evolve host callbacks/events and wire the first Scout surface |
+| Host embedding | Make Vantage product-owned rather than demo-owned | Evolve host callbacks/events and wire a first generic host surface |
 
 The next recommended PR after the control/perf slice is **Canvas State +
 Viewport Replay v0**: extract pure viewport math, add a `viewport` control
@@ -69,16 +66,16 @@ Then embed the surface:
 import SwiftUI
 import HudsonVantage
 
-struct ScoutRuntimeView: View {
+struct RuntimeWorkspaceView: View {
     var body: some View {
         HudVantageSurface(
             configuration: HudVantageConfiguration(
-                surfaceTitle: "Scout Vantage",
-                surfaceSubtitle: "agents, sessions, and remote runtimes",
-                commandURL: URL(fileURLWithPath: "/tmp/scout-vantage-control.jsonl"),
-                responseURL: URL(fileURLWithPath: "/tmp/scout-vantage-control.responses.jsonl"),
-                stateURL: URL(fileURLWithPath: "/tmp/scout-vantage-state.json"),
-                workingDirectoryURL: URL(fileURLWithPath: "/Users/arach/dev/openscout")
+                surfaceTitle: "Runtime Workspace",
+                surfaceSubtitle: "terminals, sessions, and remote runtimes",
+                commandURL: URL(fileURLWithPath: "/tmp/runtime-vantage-control.jsonl"),
+                responseURL: URL(fileURLWithPath: "/tmp/runtime-vantage-control.responses.jsonl"),
+                stateURL: URL(fileURLWithPath: "/tmp/runtime-vantage-state.json"),
+                workingDirectoryURL: URL(fileURLWithPath: "/Users/me/dev/project")
             )
         )
     }
@@ -125,9 +122,9 @@ packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait raw '{"action":"met
 Set custom control paths for product-specific surfaces:
 
 ```sh
-HUDSON_VANTAGE_CONTROL_FILE=/tmp/scout-vantage-control.jsonl \
-HUDSON_VANTAGE_RESPONSE_FILE=/tmp/scout-vantage-control.responses.jsonl \
-HUDSON_VANTAGE_STATE_FILE=/tmp/scout-vantage-state.json \
+HUDSON_VANTAGE_CONTROL_FILE=/tmp/runtime-vantage-control.jsonl \
+HUDSON_VANTAGE_RESPONSE_FILE=/tmp/runtime-vantage-control.responses.jsonl \
+HUDSON_VANTAGE_STATE_FILE=/tmp/runtime-vantage-state.json \
 packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait status
 ```
 

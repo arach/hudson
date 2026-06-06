@@ -1,14 +1,14 @@
 'use client';
 
-import { useWorkspaceDecor } from '../../shell/decor/WorkspaceDecorContext';
+import { useWorkspaceDecor } from 'hudsonkit/workspace';
 import type {
   DecorationItem,
   ImageDecor,
   StepCardDecor,
   TextDecor,
   WebDecor,
-} from '../../shell/decor/types';
-import { SIZING_PRESETS } from '../../shell/decor/types';
+} from 'hudsonkit/workspace';
+import { SIZING_PRESETS } from 'hudsonkit/workspace';
 
 const FIELD_LABEL =
   'block text-[10px] uppercase tracking-[0.18em] text-[var(--hud-ink-3)] font-mono mb-1.5';
@@ -368,7 +368,7 @@ function StepCardEditor({ item }: { item: StepCardDecor }) {
         <label className={FIELD_LABEL}>Code (optional)</label>
         <textarea
           className={FIELD_TEXTAREA}
-          placeholder="{ id: 'talkie' }"
+          placeholder="{ id: 'docs' }"
           value={item.code ?? ''}
           onChange={(e) => updateItem(item.id, { code: e.target.value })}
         />

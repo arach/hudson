@@ -1,7 +1,7 @@
 import { mkdir, readFile, writeFile } from 'fs/promises';
 import { join } from 'path';
 import { NextRequest, NextResponse } from 'next/server';
-import type { DecorationItem, DecorState } from '../../shell/decor/types';
+import type { DecorationItem, DecorState } from 'hudsonkit/workspace';
 
 const RUNTIME_CACHE_DIR = join(process.cwd(), '.data', 'workspace-decor');
 const VALID_WORKSPACE_ID = /^[a-z0-9-]+$/i;

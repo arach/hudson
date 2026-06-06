@@ -8,4 +8,4 @@
  *
  * Add new intent-defining modules here as they're created.
  */
-import './api/logo/intents';
+export {};

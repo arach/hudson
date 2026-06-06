@@ -26,7 +26,6 @@ export const HUDSON_VOICE_DAEMON_DEFAULT_HOST = '127.0.0.1';
 export const HUDSON_VOICE_DAEMON_DEFAULT_PORT = 42138;
 export const HUDSON_VOICE_DAEMON_DEFAULT_WS_URL =
   `ws://${HUDSON_VOICE_DAEMON_DEFAULT_HOST}:${HUDSON_VOICE_DAEMON_DEFAULT_PORT}`;
-export const HUDSON_VOICE_API_BASE_PATH = '/api/hudson-voice';
 export const HUDSON_VOICE_API_PATHS = {
   health: '/health',
   live: '/v1/voice/live',

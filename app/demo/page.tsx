@@ -1,7 +1,8 @@
 'use client';
 
-import { WorkspaceShell } from '../shell/WorkspaceShell';
+import { WorkspaceShell } from 'hudsonkit/workspace';
 import { allWorkspaces } from '../workspaces';
+import { hudsonShellEnvironment } from '../lib/hudsonShellEnvironment';
 
 export default function DemoPage() {
   return (
@@ -9,6 +10,7 @@ export default function DemoPage() {
       workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="full"
+      environment={hudsonShellEnvironment}
     />
   );
 }

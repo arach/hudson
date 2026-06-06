@@ -219,37 +219,37 @@ interface CatalogAppEntry {
 }
 ```
 
-### Real-World Example: Shaper Intents
+### Example: Editor Intents
 
-The Shaper reference app declares intents across multiple categories:
+An editor-style app can declare intents across multiple categories:
 
 ```tsx
 import type { AppIntent } from 'hudsonkit';
 
-export const shaperIntents: AppIntent[] = [
+export const editorIntents: AppIntent[] = [
   // Tools
   {
-    commandId: 'shaper:select-tool',
+    commandId: 'editor:select-tool',
     title: 'Switch to Select Tool',
-    description: 'Activate the selection tool for picking and moving anchor points.',
+    description: 'Activate the selection tool for picking and moving objects.',
     category: 'tool',
     keywords: ['select', 'pointer', 'cursor', 'pick', 'arrow'],
     shortcut: 'V',
   },
   {
-    commandId: 'shaper:pen-tool',
-    title: 'Switch to Pen Tool',
-    description: 'Activate the pen tool for drawing new bezier curve anchor points.',
+    commandId: 'editor:draw-tool',
+    title: 'Switch to Draw Tool',
+    description: 'Activate the drawing tool for adding new objects.',
     category: 'tool',
-    keywords: ['pen', 'draw', 'bezier', 'add point', 'create'],
+    keywords: ['draw', 'create', 'add object', 'canvas tool'],
     shortcut: 'P',
   },
 
   // Edit
   {
-    commandId: 'shaper:undo',
+    commandId: 'editor:undo',
     title: 'Undo',
-    description: 'Undo the last editing action in the bezier editor.',
+    description: 'Undo the last editing action.',
     category: 'edit',
     keywords: ['undo', 'revert', 'go back', 'ctrl z'],
     shortcut: 'Cmd+Z',
@@ -257,9 +257,9 @@ export const shaperIntents: AppIntent[] = [
 
   // File
   {
-    commandId: 'shaper:save',
+    commandId: 'editor:save',
     title: 'Save Project',
-    description: 'Save the current bezier project to local storage.',
+    description: 'Save the current project to local storage.',
     category: 'file',
     keywords: ['save', 'store', 'persist', 'quick save'],
     shortcut: 'Cmd+S',
@@ -267,7 +267,7 @@ export const shaperIntents: AppIntent[] = [
 
   // View
   {
-    commandId: 'shaper:toggle-grid',
+    commandId: 'editor:toggle-grid',
     title: 'Toggle Grid',
     description: 'Show or hide the background grid on the canvas.',
     category: 'view',
@@ -276,11 +276,11 @@ export const shaperIntents: AppIntent[] = [
 
   // Toggle
   {
-    commandId: 'shaper:toggle-animation',
-    title: 'Toggle Animation Mode',
-    description: 'Enable or disable animation mode for previewing path animations.',
+    commandId: 'editor:toggle-preview',
+    title: 'Toggle Preview Mode',
+    description: 'Enable or disable preview mode for the current document.',
     category: 'toggle',
-    keywords: ['animation', 'animate', 'motion', 'preview animation'],
+    keywords: ['preview', 'mode', 'presentation', 'toggle preview'],
     shortcut: 'T',
   },
 ];
@@ -291,7 +291,7 @@ export const shaperIntents: AppIntent[] = [
 1. **One intent per command.** Each intent maps to exactly one `CommandOption`.
 2. **Write descriptions for humans and LLMs.** Be specific about what the action does and when to use it.
 3. **Include 4-6 keywords.** Cover the primary term, synonyms, and common natural-language phrasings.
-4. **Namespace commandIds.** Use the pattern `appId:action` (e.g., `shaper:save`).
+4. **Namespace commandIds.** Use the pattern `appId:action` (e.g., `editor:save`).
 5. **Use categories consistently.** Tools switch modes, edits change data, views toggle visibility.
 6. **Mark destructive actions as dangerous.** Deletion, clearing, and reset actions should require confirmation.
 
@@ -540,17 +540,17 @@ Declare ports statically on your `HudsonApp` definition:
 ```tsx
 import type { HudsonApp } from 'hudsonkit';
 
-const shaperApp: HudsonApp = {
-  id: 'shaper',
-  name: 'Shaper',
+const documentApp: HudsonApp = {
+  id: 'document-lab',
+  name: 'Document Lab',
   // ...
   ports: {
     outputs: [
       {
-        id: 'svg',
-        name: 'SVG Output',
-        dataType: 'svg',
-        description: 'Complete SVG of the current Shaper canvas',
+        id: 'markdown',
+        name: 'Markdown Output',
+        dataType: 'markdown',
+        description: 'Current document rendered as markdown',
       },
     ],
   },
@@ -602,26 +602,19 @@ Returns a getter function that produces a data snapshot for a given port ID.
 usePortOutput?: () => (portId: string) => unknown | null;
 ```
 
-**Implementation example (Shaper):**
+**Implementation example:**
 
 ```tsx
 import { useCallback } from 'react';
-import { useShaper } from './ShaperProvider';
+import { useDocument } from './DocumentProvider';
 
-export function useShaperPortOutput() {
-  const { strokesPath, pathColor, fillEnabled, fillPattern } = useShaper();
+export function useDocumentPortOutput() {
+  const { markdown } = useDocument();
 
   return useCallback((portId: string): unknown | null => {
-    if (portId !== 'svg') return null;
-    if (!strokesPath) return null;
-
-    const fill = fillEnabled ? pathColor : 'none';
-    const stroke = fillEnabled && fillPattern === 'solid' ? 'none' : pathColor;
-
-    return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512">
-  <path d="${strokesPath}" fill="${fill}" stroke="${stroke}" stroke-width="2" />
-</svg>`;
-  }, [strokesPath, pathColor, fillEnabled, fillPattern]);
+    if (portId !== 'markdown') return null;
+    return markdown.trim() ? markdown : null;
+  }, [markdown]);
 }
 ```
 
@@ -717,40 +710,40 @@ There is no enforced schema for data types. They are hints for the user and shel
 
 ### Full Pipe Setup Example
 
-App A (Shaper) outputs SVG. App B (Logo Designer) accepts SVG as input.
+App A outputs markdown. App B accepts markdown as input.
 
-**App A -- Shaper:**
+**App A -- Document source:**
 
 ```tsx
-const shaperApp: HudsonApp = {
-  id: 'shaper',
+const documentApp: HudsonApp = {
+  id: 'document-lab',
   // ...
   ports: {
     outputs: [
-      { id: 'svg', name: 'SVG Output', dataType: 'svg' },
+      { id: 'markdown', name: 'Markdown Output', dataType: 'markdown' },
     ],
   },
   hooks: {
     // ...
-    usePortOutput: useShaperPortOutput,
+    usePortOutput: useDocumentPortOutput,
   },
 };
 ```
 
-**App B -- Logo Designer:**
+**App B -- Markdown sink:**
 
 ```tsx
-const logoApp: HudsonApp = {
-  id: 'logo-designer',
+const previewApp: HudsonApp = {
+  id: 'markdown-preview',
   // ...
   ports: {
     inputs: [
-      { id: 'svg', name: 'SVG Input', dataType: 'svg' },
+      { id: 'markdown', name: 'Markdown Input', dataType: 'markdown' },
     ],
   },
   hooks: {
     // ...
-    usePortInput: useLogoPortInput,
+    usePortInput: useMarkdownPortInput,
   },
 };
 ```
@@ -759,17 +752,17 @@ const logoApp: HudsonApp = {
 
 ```json
 {
-  "id": "pipe-shaper-logo-svg",
-  "name": "Shaper SVG to Logo",
-  "source": { "appId": "shaper", "portId": "svg" },
-  "sink": { "appId": "logo-designer", "portId": "svg" },
+  "id": "pipe-document-preview-markdown",
+  "name": "Document to Preview",
+  "source": { "appId": "document-lab", "portId": "markdown" },
+  "sink": { "appId": "markdown-preview", "portId": "markdown" },
   "createdAt": 1709654321000,
   "lastPushedAt": null,
   "enabled": true
 }
 ```
 
-When the pipe is triggered, the shell calls Shaper's `usePortOutput` getter with `portId: 'svg'`, takes the returned SVG string, and passes it to Logo Designer's `usePortInput` setter with `portId: 'svg'`.
+When the pipe is triggered, the shell calls the source app's `usePortOutput` getter with `portId: 'markdown'`, takes the returned markdown string, and passes it to the sink app's `usePortInput` setter with `portId: 'markdown'`.
 
 ### Port Best Practices
 

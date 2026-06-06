@@ -28,8 +28,8 @@ describe('workspace toolset', () => {
         id: 'hudson-os',
         name: 'HudsonKit',
         mode: 'canvas',
-        focusedAppId: 'logo',
-        visibleAppIds: ['logo'],
+        focusedAppId: 'document-lab',
+        visibleAppIds: ['document-lab'],
         disabledAppIds: ['intent-explorer'],
         availableWorkspaces: [
           { id: 'hudson-os', name: 'HudsonKit', current: true },
@@ -38,8 +38,8 @@ describe('workspace toolset', () => {
       },
       apps: [
         {
-          id: 'logo',
-          name: 'Logo Designer',
+          id: 'document-lab',
+          name: 'Document Lab',
           mode: 'panel',
           canvasMode: 'windowed',
           visible: true,
@@ -62,18 +62,18 @@ describe('workspace toolset', () => {
           description: 'Open Hudson\'s environment panel.',
         },
         {
-          id: 'logo:variant',
-          label: 'Switch Variant',
+          id: 'document-lab:preview',
+          label: 'Toggle Preview',
           scope: 'app',
-          appId: 'logo',
-          appName: 'Logo Designer',
-          description: 'Switch the active logo variant.',
+          appId: 'document-lab',
+          appName: 'Document Lab',
+          description: 'Toggle the active document preview.',
         },
       ],
       appSettings: [
         {
-          appId: 'logo',
-          appName: 'Logo Designer',
+          appId: 'document-lab',
+          appName: 'Document Lab',
           sections: [
             {
               label: 'Layout',
@@ -110,10 +110,10 @@ describe('workspace toolset', () => {
       ],
       pipes: [
         {
-          name: 'Fetch -> Logo',
+          name: 'Fetch -> Document',
           enabled: true,
           source: { appId: 'fetch', portId: 'image' },
-          sink: { appId: 'logo', portId: 'template' },
+          sink: { appId: 'document-lab', portId: 'markdown' },
         },
       ],
       environment: {
@@ -131,7 +131,7 @@ describe('workspace toolset', () => {
     expect(system).toContain('## Shell Settings');
     expect(system).toContain('## Services');
     expect(system).toContain('## Pipes');
-    expect(system).toContain('Fetch -> Logo');
+    expect(system).toContain('Fetch -> Document');
     expect(system).toContain('## Environment');
   });
 });

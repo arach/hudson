@@ -295,16 +295,6 @@ function context(ctx: Record<string, unknown>): string {
     sections.push(`## Environment\n- Local environment management is available via ${environment.path ?? '.env.local'} plus the encrypted local vault at ${environment.vaultPath ?? '.data/hudson-local-vault.json'}. Use env tools only when the user explicitly wants credentials or local variables changed.`);
   }
 
-  if (ctx.logoParams) {
-    sections.push(`## Logo State\n\`\`\`json\n${JSON.stringify(ctx.logoParams, null, 2)}\n\`\`\``);
-  }
-
-  if (ctx.activeTemplate) {
-    const template = ctx.activeTemplate as { name: string; id: string; sourceCode?: string; renderBody?: string };
-    const code = template.sourceCode || template.renderBody || '';
-    sections.push(`## Active Template: ${template.name} (${template.id})\n\`\`\`\n${code.slice(0, 2000)}\n\`\`\``);
-  }
-
   return sections.join('\n\n');
 }
 
@@ -390,32 +380,6 @@ function tools() {
       execute: async (args) => ({ applied: true, action: 'delete_environment_variable', ...args }),
     }),
 
-    set_logo_param: tool({
-      description: 'Set a parameter on the logo designer (colors, dimensions, layout).',
-      inputSchema: z.object({
-        key: z.string().describe('Parameter key such as bgColor, borderRadius, gapWidth, splitX, splitY, or padding.'),
-        value: z.union([z.string(), z.number()]).describe('New value.'),
-      }),
-      execute: async (args) => ({ applied: true, app: 'logo', ...args }),
-    }),
-
-    set_logo_custom_param: tool({
-      description: 'Set a custom parameter on the active logo template.',
-      inputSchema: z.object({
-        key: z.string().describe('Custom parameter key.'),
-        value: z.union([z.string(), z.number()]).describe('New value.'),
-      }),
-      execute: async (args) => ({ applied: true, app: 'logo', action: 'set_custom_param', ...args }),
-    }),
-
-    set_logo_variant: tool({
-      description: 'Switch the logo designer to a different template or variant.',
-      inputSchema: z.object({
-        variant: z.string().describe('Template ID.'),
-      }),
-      execute: async (args) => ({ applied: true, app: 'logo', ...args }),
-    }),
-
     push_pipe: tool({
       description: 'Push data through a named pipe.',
       inputSchema: z.object({
@@ -438,27 +402,6 @@ function tools() {
         url: z.string().describe('Image URL to fetch.'),
       }),
       execute: async (args) => ({ applied: true, action: 'fetch_image', ...args }),
-    }),
-
-    create_template: tool({
-      description: 'Create a new logo template. Write renderBody in TypeScript; it receives (p, vb) and must return the SVG inner string. Include parentId when iterating from an existing logo so the new branch stays nested in the Logo app tree.',
-      inputSchema: z.object({
-        name: z.string().describe('Template name.'),
-        description: z.string().describe('Short description.'),
-        renderBody: z.string().describe('TypeScript function body.'),
-        parentId: z.string().optional().describe('Source template id for nested Logo app variants.'),
-        kind: z.enum(['style', 'brand']).optional().describe('Use brand for brand-specific explorations and style for reusable abstract styles.'),
-        params: z.array(z.object({
-          key: z.string(),
-          label: z.string(),
-          type: z.enum(['number', 'color', 'toggle', 'enum', 'text']),
-          default: z.union([z.number(), z.string(), z.boolean()]),
-          min: z.number().optional(),
-          max: z.number().optional(),
-          step: z.number().optional(),
-        })).describe('Custom parameter declarations.'),
-      }),
-      execute: async (args) => ({ applied: true, action: 'create_template', ...args }),
     }),
 
     create_pipe: tool({

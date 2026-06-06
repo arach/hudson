@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode } from 'react';
-import { useHudsonAIRuntime } from '../../shell/HudsonAIRuntimeContext';
+import { useHudsonAIRuntime } from 'hudsonkit/workspace';
 import { useHudsonAIApp } from './HudsonAIProvider';
 
 function SectionTitle({ children }: { children: ReactNode }) {

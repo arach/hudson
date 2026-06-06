@@ -4,8 +4,8 @@ import {
   createHudsonSpokenReply,
   getHudsonVoiceBehaviorPreset,
   getHudsonMessageDisplayText,
-} from '@/app/shell/voiceReply';
-import type { VoiceSettings } from '@/app/apps/hudson-docs/types';
+} from 'hudsonkit/voice';
+import type { VoiceSettings } from 'hudsonkit/voice';
 
 function makeVoiceSettings(overrides: Partial<VoiceSettings> = {}): VoiceSettings {
   return {

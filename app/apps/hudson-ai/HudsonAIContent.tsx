@@ -21,15 +21,15 @@ import {
   Wrench,
 } from 'lucide-react';
 import type { VoiceSettings } from '../hudson-docs/types';
-import { useHudsonAIRuntime } from '../../shell/HudsonAIRuntimeContext';
-import { useWorkspaceManager } from '../../shell/workspace-manager/WorkspaceManagerContext';
-import { HudsonVoiceSettingsEditor } from '../../shell/HudsonVoiceSettingsEditor';
-import { HudsonEnvironmentEditor } from '../../shell/HudsonEnvironmentEditor';
+import { useHudsonAIRuntime } from 'hudsonkit/workspace';
+import { useWorkspaceManager } from 'hudsonkit/workspace';
+import { HudsonVoiceSettingsEditor } from 'hudsonkit/workspace';
+import { HudsonEnvironmentEditor } from 'hudsonkit/workspace';
 import {
   getHudsonSpokenReplyStyleLabel,
   getHudsonVoiceBehaviorPreset,
   getHudsonVoiceBehaviorPresetLabel,
-} from '../../shell/voiceReply';
+} from 'hudsonkit/workspace';
 import { useHudsonAIApp } from './HudsonAIProvider';
 import { HUDSON_AI_ACTIONS } from './catalog';
 

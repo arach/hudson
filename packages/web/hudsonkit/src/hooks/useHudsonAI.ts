@@ -6,6 +6,7 @@ import { useEffect, useRef, useMemo, useCallback, useState } from 'react';
 import { usePersistentState } from './usePersistentState';
 import { logHudsonAgentAction } from '../observability/agent-actions';
 import { createHudsonId } from '../lib/id';
+import { useWorkspaceHostRoutes } from '../workspace/hostRoutes';
 import type { ChatOnErrorCallback, ChatOnFinishCallback, UIMessage } from 'ai';
 import type { MutableRefObject } from 'react';
 
@@ -28,6 +29,8 @@ export interface HudsonAIAgentTrace {
 }
 
 export interface UseHudsonAIOptions {
+  /** Host route for chat requests. If omitted, reads WorkspaceShell environment.routes.aiChat. */
+  api?: string;
   /** Toolset ID — matches a registered toolset on the server */
   toolset: string;
   /** Stable chat identifier used to preserve the same chat across remounts. */
@@ -55,6 +58,8 @@ export interface UseHudsonAIOptions {
 }
 
 export type HudsonAIChat = ReturnType<typeof useHudsonAI>;
+
+const UNCONFIGURED_AI_ROUTE = 'about:blank';
 
 function buildHudsonAIRequestBody(args: {
   activeAttachmentsRef: MutableRefObject<Set<string>>;
@@ -182,6 +187,7 @@ function emitAgentActionEvent(input: {
 }
 
 export function useHudsonAI({
+  api,
   toolset,
   chatId,
   initialMessages,
@@ -195,6 +201,8 @@ export function useHudsonAI({
   onError,
   agentTrace,
 }: UseHudsonAIOptions) {
+  const hostRoutes = useWorkspaceHostRoutes();
+  const resolvedApi = api ?? hostRoutes.aiChat;
   const onToolCallRef = useRef(onToolCall);
   const onFinishRef = useRef(onFinish);
   const onErrorRef = useRef(onError);
@@ -272,7 +280,7 @@ export function useHudsonAI({
   /* eslint-disable react-hooks/refs */
   const transport = useMemo(
     () => new DefaultChatTransport({
-      api: '/api/ai/chat',
+      api: resolvedApi ?? UNCONFIGURED_AI_ROUTE,
       body: () => buildHudsonAIRequestBody({
         activeAttachmentsRef,
         attachmentsRef,
@@ -283,7 +291,7 @@ export function useHudsonAI({
         modelRef,
       }),
     }),
-    [],
+    [resolvedApi],
   );
   /* eslint-enable react-hooks/refs */
 
@@ -347,11 +355,18 @@ export function useHudsonAI({
     chat.setMessages([]);
   }, [chat]);
 
+  const sendMessage = useCallback((...args: Parameters<typeof chat.sendMessage>) => {
+    if (resolvedApi) return chat.sendMessage(...args);
+    const error = new Error('Hudson AI is not configured for this host. Provide useHudsonAI({ api }) or WorkspaceShell environment.routes.aiChat.');
+    invokeHudsonAIError(onErrorRef, error);
+    return Promise.reject(error);
+  }, [chat, resolvedApi]);
+
   const { messages } = chat;
 
   return {
     messages,
-    sendMessage: chat.sendMessage,
+    sendMessage,
     stop: chat.stop,
     status: chat.status,
     setMessages: chat.setMessages,

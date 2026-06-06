@@ -42,7 +42,6 @@ export type { UseAssistantVoiceOptions } from './hooks/useAssistantVoice';
 
 // Hudson-owned local voice service client
 export {
-  HUDSON_VOICE_API_BASE_PATH,
   HUDSON_VOICE_API_PATHS,
   HUDSON_VOICE_DAEMON_DEFAULT_HOST,
   HUDSON_VOICE_DAEMON_DEFAULT_PORT,

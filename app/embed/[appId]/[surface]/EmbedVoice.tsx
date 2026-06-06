@@ -24,7 +24,6 @@ import {
   type ReactNode,
 } from 'react';
 import {
-  HUDSON_VOICE_API_BASE_PATH,
   createHudsonVoiceClient,
   type HudsonVoiceAvailability,
   type HudsonVoiceClient,
@@ -33,6 +32,7 @@ import {
 
 const POLL_INTERVAL_MS = 2000;
 const HUDSON_VOX_CLIENT_ID = 'hudsonkit';
+const HUDSON_VOICE_API_BASE_PATH = '/api/hudson-voice';
 
 type Phase = 'probing' | 'install' | 'ready';
 

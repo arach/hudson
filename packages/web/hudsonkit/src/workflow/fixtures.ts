@@ -219,7 +219,7 @@ export const brainDumpProcessorWorkflow: HudWorkflowDocument = {
       outputKey: 'createdReminderIDs',
       condition: 'structuredNotes.todos.length > 0',
       fieldValues: {
-        listName: 'Talkie',
+        listName: 'Hudson',
         items: ['{{structuredNotes.todos}}'],
       },
     },
@@ -244,12 +244,12 @@ export const brainDumpProcessorWorkflow: HudWorkflowDocument = {
   ],
 };
 
-export const heyTalkieWorkflow: HudWorkflowDocument = {
-  id: 'fixture.hey-talkie',
-  title: 'Hey Talkie',
+export const voiceAssistantWorkflow: HudWorkflowDocument = {
+  id: 'fixture.voice-assistant',
+  title: 'Voice Assistant',
   metadata: {
     sourceFormat: 'fixture',
-    slug: 'hey-talkie',
+    slug: 'voice-assistant',
     description: 'Route a spoken request into a short response and optional phone notification.',
     icon: 'waveform',
     color: 'cyan',
@@ -308,7 +308,7 @@ export const heyTalkieWorkflow: HudWorkflowDocument = {
       size: { width: 240, height: 136 },
       isEnabled: false,
       fieldValues: {
-        title: 'Talkie reply',
+        title: 'Voice reply',
         body: '{{replyText}}',
       },
     },
@@ -368,7 +368,7 @@ export const transcribeWorkflow: HudWorkflowDocument = {
       size: { width: 250, height: 144 },
       outputKey: 'uploadURL',
       fieldValues: {
-        bucket: 'talkie-transcripts',
+        bucket: 'voice-transcripts',
         includeTranscript: true,
         metadata: {
           workflow: 'transcribe',
@@ -397,10 +397,10 @@ export const hudWorkflowFixtures: HudWorkflowFixture[] = [
     document: brainDumpProcessorWorkflow,
   },
   {
-    id: 'hey-talkie',
-    label: 'Hey Talkie',
+    id: 'voice-assistant',
+    label: 'Voice Assistant',
     description: 'Transcription, spoken reply, and a disabled notification node.',
-    document: heyTalkieWorkflow,
+    document: voiceAssistantWorkflow,
   },
   {
     id: 'transcribe',

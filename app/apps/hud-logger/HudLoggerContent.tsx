@@ -1,7 +1,7 @@
 'use client';
 
 import { HudLogger, HObservabilityDefault } from 'hudsonkit/observability';
-import { useAgentActionLog } from '../../shell/useAgentActionLog';
+import { useAgentActionLog } from 'hudsonkit/workspace';
 
 export function HudLoggerContent() {
   const replayEvents = useAgentActionLog({ limit: 240, refreshMs: 5000 });

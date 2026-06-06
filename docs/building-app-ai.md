@@ -10,9 +10,9 @@ section: "Web"
 This guide is for agents and authors adding an AI surface (chat composer + tool-driven actions) to a Hudson app. The pattern is **two files**: one server-side toolset, one client-side hook. Once you know the shape, copy the reference app that's closest to what you're building and edit.
 
 > Working examples to copy from, simplest first:
-> - **`app/apps/shaper/`** + **`app/api/ai/toolsets/shaper.ts`** — smallest end-to-end. Start here if you don't know the pattern yet.
-> - **`app/apps/logo-designer/`** + **`app/api/ai/toolsets/logo.ts`** — the most fully-baked: 9 tools, server-compiled TypeScript templates, attachable SVG context.
-> - **`app/apps/day-stack/`** + **`app/api/ai/toolsets/day-stack.ts`** — the latest convention.
+> - **`app/apps/hudson-ai/`** — model/provider settings, chat surface, and workspace-level AI affordances.
+> - **`app/api/ai/toolsets/workspace.ts`** — shell/workspace tools, including service-backed actions.
+> - **`app/api/ai/toolsets/intents.ts`** — intent-catalog tools that bridge AI to live app commands.
 
 ## Mental model
 
@@ -130,7 +130,7 @@ defaultRegistry.register('foo', fooToolset);
 - **Schemas with `.describe()` everywhere.** The model reads these. Don't skip them.
 - **Tool names are snake_case verbs**: `set_param`, `add_item`, `delete_template`. Never `setParam` or `Item.add`.
 - **One responsibility per tool.** If you find yourself writing `do_thing` with a switch inside, split it.
-- **`execute` is an echo, not the action.** Return `{ applied: true, ...args }` (or a small status object). The actual state change happens in the client's `onToolCall`. The only time `execute` does real work is when the action genuinely belongs server-side (DB write, compile, fetch — see `logo.ts` `create_template` which calls the TS compile endpoint).
+- **`execute` is usually an echo, not the action.** Return `{ applied: true, ...args }` (or a small status object). The actual state change usually happens in the client's `onToolCall`. The exception is work that genuinely belongs server-side: service execution, database writes, compilation, or fetches.
 - **Use `z.enum` over `z.string`** when there's a fixed list. The model gets clearer guidance and you get validation.
 - **Optional params are optional.** Don't force the model to always pass everything.
 

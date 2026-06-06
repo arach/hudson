@@ -1,5 +1,5 @@
 import type { NextConfig } from "next";
-import { existsSync, mkdirSync, writeFileSync } from "fs";
+import { existsSync, lstatSync, mkdirSync, symlinkSync, writeFileSync } from "fs";
 import { join, relative, sep } from "path";
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -66,6 +66,45 @@ const turbopackRoot = process.env.HUDSON_TURBOPACK_PARENT === "1"
   ? join(__dirname, "..")
   : __dirname;
 const rootNodeModules = join(__dirname, "node_modules");
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Parent-root Tailwind resolution shim
+// ─────────────────────────────────────────────────────────────────────────────
+// When HUDSON_TURBOPACK_PARENT=1 widens the root to ../, turbopack reports the
+// `from` of app/globals.css relative to that parent, so @tailwindcss/postcss
+// resolves the `@import "tailwindcss"` from ../ (which has no node_modules) and
+// fails. Worse, the dev CSS loader retries the failed compile in a loop. Note
+// turbopack's `resolveAlias` below does NOT fix this — Tailwind's plugin uses
+// its own enhanced-resolve, which ignores turbopack's alias table.
+//
+// So we make `tailwindcss` (and the @tailwindcss/* scope: postcss/node/oxide)
+// resolvable from the parent by symlinking them into ../node_modules, pointing
+// back at this repo's installed copies. Dev-only, idempotent, and scoped to the
+// opt-in — sibling repos with their own tailwindcss still resolve theirs first
+// (node walks the closest node_modules).
+// ─────────────────────────────────────────────────────────────────────────────
+if (process.env.HUDSON_TURBOPACK_PARENT === "1") {
+  const parentNodeModules = join(turbopackRoot, "node_modules");
+  const linkIfMissing = (name: string) => {
+    const target = join(rootNodeModules, name);
+    const link = join(parentNodeModules, name);
+    if (!existsSync(target)) return; // nothing to point at
+    try {
+      // existsSync follows symlinks; lstatSync catches a dangling link to replace.
+      if (existsSync(link) || lstatSync(link, { throwIfNoEntry: false })) return;
+      mkdirSync(join(link, ".."), { recursive: true });
+      symlinkSync(target, link, "dir");
+    } catch {
+      // Best-effort: a read-only parent or a race just leaves the original
+      // (loud) resolution error, which is still better than a silent miss.
+    }
+  };
+  linkIfMissing("tailwindcss");
+  linkIfMissing("@tailwindcss");
+  // hudsonkit: app/globals.css imports its source design tokens via the bare
+  // specifier `hudsonkit/styles/tokens.css`, which must resolve from the parent.
+  linkIfMissing("hudsonkit");
+}
 const singletonAliases = {
   "react": join(rootNodeModules, "react"),
   "react/jsx-runtime": join(rootNodeModules, "react", "jsx-runtime.js"),

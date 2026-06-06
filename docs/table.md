@@ -125,7 +125,7 @@ const { getColumnProps, getResizeHandleProps, resetAll } = useResizableColumns({
 });
 ```
 
-The hook was lifted near-verbatim from OpenScout's Atop screen — already battle-tested.
+Use the hook when a custom table needs the same persistent resize behavior without adopting the full `HudTable` rendering.
 
 ## Tokens consumed
 

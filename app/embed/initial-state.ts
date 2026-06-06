@@ -1,6 +1,6 @@
 import type { HudsonWorkspace } from 'hudsonkit';
 import type { ConsumerConfig, EmbedTheme } from './registry';
-import type { WindowBounds, WorkspaceShellInitialState } from '../shell/WorkspaceShell';
+import type { WindowBounds, WorkspaceShellInitialState } from 'hudsonkit/workspace';
 
 export type EmbedSearchParams = Record<string, string | string[] | undefined>;
 

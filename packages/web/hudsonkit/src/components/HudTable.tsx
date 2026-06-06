@@ -11,10 +11,6 @@ import { useResizableColumns } from '../hooks/useResizableColumns';
  * resizable columns (drag the right edge of any header) with optional
  * localStorage persistence.
  *
- * Resize plumbing is harvested from OpenScout's `Atop` screen
- * (packages/web/client/components/ResizableTable/useResizableColumns.ts) —
- * already battle-tested.
- *
  * ```tsx
  * <HudTable
  *   items={agents}

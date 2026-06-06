@@ -9,7 +9,7 @@ import {
 import type { AppSettingsConfig, AppSettingsValues } from 'hudsonkit';
 import { HUDSON_AI_PROMPT_PRESETS, type HudsonAIPromptPreset } from './catalog';
 import { createHudsonAISettings } from './settings';
-import { useActiveWorkspace } from '../../shell/ActiveWorkspaceContext';
+import { useActiveWorkspace } from 'hudsonkit/workspace';
 import { useHudsonAISettings } from './useHudsonAISettings';
 import { useAIModelOptions } from '../../lib/useAIModelOptions';
 

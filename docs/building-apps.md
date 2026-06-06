@@ -2,8 +2,6 @@
 
 A Hudson app is a plain TypeScript object satisfying the `HudsonApp` interface. The shell reads the object and renders chrome around it. This guide covers the whole contract with concrete examples.
 
-For a real-world app built against this contract, see [Case study: Premotion](./case-study-premotion.md).
-
 ## The interface
 
 ```ts
@@ -507,14 +505,12 @@ export default function Page() {
 @import "hudsonkit/styles";
 ```
 
-See the [Premotion case study](./case-study-premotion.md) for an end-to-end consumer setup.
-
 ## Rules of thumb
 
 - **Always `'use client'`** on every file that imports from `hudsonkit` or uses hooks — the SDK components are client-side only, and the RSC boundary must be explicit.
 - **Provider goes first.** Slots and hooks read state from the Provider's context. The shell wraps everything in the Provider once; you never wrap it manually.
 - **`usePersistentState` over raw `useState`** for anything you want surviving a refresh (note selection, filter state, panel sizes, etc.).
-- **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works. See Premotion's `catalog/Provider.tsx`.
+- **URL state is free.** If your app has filters, selected items, or views worth deep-linking, store state in query params via `useSearchParams` + `router.replace`. The Provider reads from the URL; browser back/forward just works.
 - **Keep hooks cheap.** The shell calls them on every render. Memoize command arrays, avoid building large objects on the fly.
 - **`useMemo` the context value.** Without it, every Provider render creates a new value reference and downstream consumers re-render for nothing.
 
@@ -523,4 +519,3 @@ See the [Premotion case study](./case-study-premotion.md) for an end-to-end cons
 - [Systems](./systems.md) — Intents, Services, Ports
 - [Perf patterns](./perf-drag-resize-patterns.md) — drag/resize/pan optimizations used by the shell
 - [API reference](./api.md) — every `hudsonkit` export with a short description
-- [Case study: Premotion](./case-study-premotion.md) — a complete real app

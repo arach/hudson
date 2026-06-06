@@ -102,11 +102,7 @@ function isAgentActionObservation(value: unknown): boolean {
     (
       data.triggeredBy === 'agent' ||
       data.triggeredBy === 'server' ||
-      data.source === 'workspace-ai' ||
-      data.source === 'logo-ai' ||
-      data.source === 'shaper-ai' ||
-      data.source === 'day-stack-ai' ||
-      data.source === 'openscout'
+      data.source === 'workspace-ai'
     )
   );
 }
