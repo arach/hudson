@@ -2,11 +2,18 @@
 import PackageDescription
 import Foundation
 
+// Single Hudson package manifest.
+//
+// This is the one source of truth for the Apple package. It replaces the former
+// split between this root manifest and the inner
+// `packages/native/apple/HudsonKit/Package.swift` dev/CI manifest.
+//
+// Optional heavy backends stay gated by env at manifest-eval time so light
+// consumers do not resolve dependencies they do not use:
+//   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Vantage surface
+//   HUDSONKIT_WITH_VOICE=0     -> opt out of HudsonVoice
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-// Voice is on by default (opt OUT with HUDSONKIT_WITH_VOICE=0). HudsonVoice +
-// Vox are lightweight and iOS-safe, so the on-device dictation product is
-// always available to consumers like ScoutNext without an opt-in flag.
 let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
 
 func nonEmptyEnv(_ key: String) -> String? {
@@ -49,85 +56,73 @@ func appendGitDependency(
     return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: url)
 }
 
-// SwiftPM resolves every declared package dependency up front. Keep the heavy
-// terminal backend out of default HudsonKit consumers, and opt into it only for
-// hosts that explicitly build with HUDSONKIT_WITH_TERMINAL=1.
+let src = "packages/native/apple/HudsonKit/Sources/"
+let tst = "packages/native/apple/HudsonKit/Tests/"
+let demo = "packages/native/apple/HudsonKit/Demo/"
+
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
     .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
     .library(name: "HudsonUI", targets: ["HudsonUI"]),
-    .library(name: "HudsonAI", targets: ["HudsonAI"]),
+    .library(name: "HudsonUIPermissions", targets: ["HudsonUIPermissions"]),
+    .library(name: "HudsonUIAudio", targets: ["HudsonUIAudio"]),
     .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
+    .library(name: "HudsonUIWeb", targets: ["HudsonUIWeb"]),
+    .library(name: "HudsonUIKeyboard", targets: ["HudsonUIKeyboard"]),
+    .library(name: "HudsonUIOnboarding", targets: ["HudsonUIOnboarding"]),
     .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
+    .library(name: "HudsonAI", targets: ["HudsonAI"]),
     .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
     .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
 var dependencies: [Package.Dependency] = []
 
+var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
+var demoSwiftSettings: [SwiftSetting] = []
+
 var targets: [Target] = [
-    .target(
-        name: "HudsonObservability",
-        path: "packages/native/apple/HudsonKit/Sources/HudsonObservability"
-    ),
-    .target(
-        name: "HudsonLive",
-        path: "packages/native/apple/HudsonKit/Sources/HudsonLive"
-    ),
-    .target(
-        name: "HudsonDiff",
-        path: "packages/native/apple/HudsonKit/Sources/HudsonDiff"
-    ),
-    .target(
-        name: "HudsonUI",
+    .target(name: "HudsonObservability", path: src + "HudsonObservability"),
+    .target(name: "HudsonLive", path: src + "HudsonLive"),
+    .target(name: "HudsonDiff", path: src + "HudsonDiff"),
+    .target(name: "HudsonUI", dependencies: ["HudsonLive", "HudsonObservability"], path: src + "HudsonUI"),
+    .target(name: "HudsonUIPermissions", dependencies: ["HudsonUI"], path: src + "HudsonUIPermissions"),
+    .target(name: "HudsonUIAudio", dependencies: ["HudsonUI", "HudsonUIPermissions"], path: src + "HudsonUIAudio"),
+    .target(name: "HudsonUICapture", dependencies: ["HudsonUI"], path: src + "HudsonUICapture"),
+    .target(name: "HudsonUIWeb", path: src + "HudsonUIWeb"),
+    .target(name: "HudsonUIKeyboard", dependencies: ["HudsonUI"], path: src + "HudsonUIKeyboard"),
+    .target(name: "HudsonUIOnboarding", dependencies: ["HudsonUI"], path: src + "HudsonUIOnboarding"),
+    .target(name: "HudsonWorkflow", dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"], path: src + "HudsonWorkflow"),
+    .target(name: "HudsonBridge", dependencies: ["HudsonUI"], path: src + "HudsonBridge"),
+    .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"], path: src + "HudsonShell"),
+    .target(name: "HudsonAI", dependencies: ["HudsonUI"], path: src + "HudsonAI"),
+    .target(name: "HudsonVantageCore", dependencies: ["HudsonUI"], path: src + "HudsonVantageCore"),
+    .target(name: "HudsonVantageCompanion", dependencies: ["HudsonUI", "HudsonVantageCore"], path: src + "HudsonVantageCompanion"),
+
+    .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
+    .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
+    .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
+    .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
+    .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"], path: tst + "HudsonUIWebTests"),
+    .testTarget(
+        name: "HudsonUITests",
         dependencies: [
+            "HudsonUI",
+            "HudsonUIPermissions",
+            "HudsonUIAudio",
+            "HudsonUICapture",
+            "HudsonUIKeyboard",
+            "HudsonUIOnboarding",
             "HudsonLive",
-            "HudsonObservability",
         ],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonUI"
-    ),
-    .target(
-        name: "HudsonUICapture",
-        dependencies: ["HudsonUI"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonUICapture"
-    ),
-    .target(
-        name: "HudsonAI",
-        dependencies: ["HudsonUI"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonAI"
-    ),
-    .target(
-        name: "HudsonWorkflow",
-        dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonWorkflow"
-    ),
-    .target(
-        name: "HudsonBridge",
-        dependencies: ["HudsonUI"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonBridge"
-    ),
-    .target(
-        name: "HudsonShell",
-        dependencies: ["HudsonUI", "HudsonObservability"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonShell"
-    ),
-    .target(
-        name: "HudsonVantageCore",
-        dependencies: ["HudsonUI"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCore"
-    ),
-    .target(
-        name: "HudsonVantageCompanion",
-        dependencies: ["HudsonUI", "HudsonVantageCore"],
-        path: "packages/native/apple/HudsonKit/Sources/HudsonVantageCompanion"
+        path: tst + "HudsonUITests"
     ),
 ]
 
 if voiceEnabled {
-    // Vox = embeddable Parakeet engine (on-device download + execution).
     let voxPackage = appendGitDependency(
         to: &dependencies,
         url: "git@github.com:arach/vox.git",
@@ -142,9 +137,11 @@ if voiceEnabled {
                 "HudsonObservability",
                 .product(name: "VoxEngine", package: voxPackage),
             ],
-            path: "packages/native/apple/HudsonKit/Sources/HudsonVoice"
+            path: src + "HudsonVoice"
         )
     )
+    demoDependencies.append("HudsonVoice")
+    demoSwiftSettings.append(.define("HUDSON_VOICE"))
 }
 
 if terminalEnabled {
@@ -164,7 +161,7 @@ if terminalEnabled {
                 .product(name: "Termini", package: terminiPackage),
                 .product(name: "TerminiSSH", package: terminiPackage),
             ],
-            path: "packages/native/apple/HudsonKit/Sources/HudsonTerminal"
+            path: src + "HudsonTerminal"
         )
     )
     targets.append(
@@ -180,7 +177,7 @@ if terminalEnabled {
                 "HudsonVantageCore",
                 .product(name: "Termini", package: terminiPackage),
             ],
-            path: "packages/native/apple/HudsonKit/Sources/HudsonVantageSurface",
+            path: src + "HudsonVantageSurface",
             resources: [
                 .process("Resources")
             ]
@@ -195,10 +192,24 @@ if terminalEnabled {
                 "HudsonVantageCore",
                 "HudsonVantageSurface",
             ],
-            path: "packages/native/apple/HudsonKit/Sources/HudsonVantage"
+            path: src + "HudsonVantage"
         )
     )
+    targets.append(
+        .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"], path: tst + "HudsonVantageTests")
+    )
+    demoDependencies.append("HudsonTerminal")
+    demoSwiftSettings.append(.define("HUDSON_TERMINAL"))
 }
+
+targets.append(
+    .executableTarget(
+        name: "HudsonKitDemo",
+        dependencies: demoDependencies,
+        path: demo + "HudsonKitDemo",
+        swiftSettings: demoSwiftSettings
+    )
+)
 
 let package = Package(
     name: "Hudson",

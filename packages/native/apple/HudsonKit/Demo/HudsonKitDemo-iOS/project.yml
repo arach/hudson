@@ -7,8 +7,9 @@ options:
   createIntermediateGroups: true
 
 packages:
+  # The Apple package collapsed to a single manifest at the hudson repo root.
   HudsonKit:
-    path: ../..
+    path: ../../../../../..
 
 targets:
   HudsonKitDemoIOS:

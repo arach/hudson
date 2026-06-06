@@ -72,10 +72,15 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      # The Apple package is now a single manifest at the repo root. Voice/terminal
+      # backends are local-path deps to sibling repos the runner doesn't check out,
+      # so keep them gated off here (HudsonVoice defaults on for consumers).
       - name: Swift build
-        working-directory: packages/native/apple/HudsonKit
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
         run: swift build
 
       - name: Swift test
-        working-directory: packages/native/apple/HudsonKit
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
         run: swift test
