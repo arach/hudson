@@ -9050,9 +9050,15 @@ private struct VantageAppearanceSettingsSurface: View {
 
     private var contextHeader: some View {
         VStack(alignment: .leading, spacing: HudSpacing.sm) {
-            Text(currentScope.title)
-                .font(HudFont.ui(18, weight: .semibold))
-                .foregroundStyle(theme.palette.ink)
+            HStack(alignment: .firstTextBaseline, spacing: HudSpacing.md) {
+                Text(currentScope.title)
+                    .font(HudFont.ui(18, weight: .semibold))
+                    .foregroundStyle(theme.palette.ink)
+                HudSettingsStatusChip(
+                    currentScope.statusLabel,
+                    tone: currentScope.statusTone
+                )
+            }
             Text(currentScope.explanation(selectedNode: selectedNode))
                 .font(HudFont.mono(10))
                 .foregroundStyle(theme.palette.muted)
@@ -9147,6 +9153,22 @@ private enum VantageAppearanceScope: Hashable, Identifiable {
         case .workspace: "Default"
         case .tag: "Tag override"
         case .terminal: "Local override"
+        }
+    }
+
+    var statusLabel: String {
+        switch self {
+        case .workspace: "Default"
+        case .tag: "Override"
+        case .terminal: "Local"
+        }
+    }
+
+    var statusTone: HudSettingsStatusTone {
+        switch self {
+        case .workspace: .info
+        case .tag: .warning
+        case .terminal: .ok
         }
     }
 
@@ -9377,7 +9399,11 @@ private struct VantageTerminalOverrideControls: View {
                 subtitle: subtitle
             ) {
                 HStack(spacing: HudSpacing.sm) {
-                    HudBadge(override.isEmpty ? "INHERIT" : "OVERRIDE", tint: tint, dot: !override.isEmpty)
+                    HudSettingsStatusChip(
+                        override.isEmpty ? "INHERIT" : "OVERRIDE",
+                        tone: override.isEmpty ? .neutral : .warning,
+                        showsDot: !override.isEmpty
+                    )
                     Button {
                         override = .empty
                     } label: {

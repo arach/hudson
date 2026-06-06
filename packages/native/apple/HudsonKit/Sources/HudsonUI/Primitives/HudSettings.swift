@@ -272,6 +272,349 @@ public struct HudSettingsSliderRow: View {
     }
 }
 
+/// Shared settings status vocabulary: a small dot plus mono label. Use this for
+/// row annotations such as `ON`, `NEEDS SETUP`, `INHERIT`, or `OVERRIDE` so
+/// settings screens scan consistently instead of mixing ad-hoc badges.
+public enum HudSettingsStatusTone: String, CaseIterable {
+    case ok
+    case warning
+    case error
+    case info
+    case neutral
+
+    public var tint: Color {
+        switch self {
+        case .ok: return HudPalette.statusOk
+        case .warning: return HudPalette.statusWarn
+        case .error: return HudPalette.statusError
+        case .info: return HudPalette.statusInfo
+        case .neutral: return HudPalette.dim
+        }
+    }
+}
+
+public struct HudSettingsStatusChip: View {
+    public let label: String
+    public var tone: HudSettingsStatusTone
+    public var showsDot: Bool
+
+    public init(
+        _ label: String,
+        tone: HudSettingsStatusTone = .neutral,
+        showsDot: Bool = true
+    ) {
+        self.label = label
+        self.tone = tone
+        self.showsDot = showsDot
+    }
+
+    public var body: some View {
+        HStack(spacing: HudSpacing.xs) {
+            if showsDot {
+                HudStatusDot(color: tone.tint, size: HudDotSize.tiny)
+            }
+            Text(label.uppercased())
+                .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
+                .tracking(0.8)
+        }
+        .foregroundStyle(tone.tint)
+        .padding(.horizontal, HudSpacing.sm)
+        .padding(.vertical, HudSpacing.xxs)
+        .background(Capsule().fill(HudSurface.tintFill(tone.tint)))
+        .overlay(Capsule().stroke(HudSurface.tintBorder(tone.tint), lineWidth: HudStrokeWidth.thin))
+    }
+}
+
+public struct HudSettingsInlineAction: Identifiable {
+    public let id: String
+    public let systemName: String
+    public let help: String
+    public let action: () -> Void
+
+    public init(
+        id: String? = nil,
+        systemName: String,
+        help: String,
+        action: @escaping () -> Void
+    ) {
+        self.id = id ?? "\(systemName).\(help)"
+        self.systemName = systemName
+        self.help = help
+        self.action = action
+    }
+}
+
+public struct HudSettingsInlineActionButton: View {
+    public let systemName: String
+    public let help: String
+    public let action: () -> Void
+
+    @State private var isHovering = false
+    @Environment(\.hudTheme) private var theme
+
+    public init(
+        systemName: String,
+        help: String,
+        action: @escaping () -> Void
+    ) {
+        self.systemName = systemName
+        self.help = help
+        self.action = action
+    }
+
+    public var body: some View {
+        Button(action: action) {
+            Image(systemName: systemName)
+                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
+                .foregroundStyle(isHovering ? theme.palette.ink : theme.palette.muted)
+                .frame(
+                    width: HudLayout.textDocumentModeButtonHeight,
+                    height: HudLayout.textDocumentModeButtonHeight
+                )
+                .background(
+                    RoundedRectangle(cornerRadius: theme.radius.tight)
+                        .fill(isHovering ? HudSurface.hover : theme.palette.chrome)
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: theme.radius.tight)
+                        .stroke(isHovering ? theme.hairline.standard : theme.hairline.subtle, lineWidth: HudStrokeWidth.thin)
+                )
+        }
+        .buttonStyle(.plain)
+        .help(help)
+        .onHover { isHovering = $0 }
+    }
+}
+
+/// Labeled key/value row for calm settings metadata. Values select cleanly and
+/// truncate in the middle so bundle IDs and paths remain recognizable.
+public struct HudSettingsMetaRow<Accessory: View>: View {
+    public let icon: String
+    public var iconColor: Color
+    public let label: String
+    public let value: String
+    public var labelWidth: CGFloat
+    public var monoValue: Bool
+    @ViewBuilder public var accessory: () -> Accessory
+
+    @Environment(\.hudTheme) private var theme
+
+    public init(
+        icon: String,
+        iconColor: Color = HudPalette.muted,
+        label: String,
+        value: String,
+        labelWidth: CGFloat = 96,
+        monoValue: Bool = false,
+        @ViewBuilder accessory: @escaping () -> Accessory
+    ) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.label = label
+        self.value = value
+        self.labelWidth = labelWidth
+        self.monoValue = monoValue
+        self.accessory = accessory
+    }
+
+    public var body: some View {
+        HStack(alignment: .center, spacing: HudSpacing.xl) {
+            HudSettingsLeadingIcon(systemName: icon, color: iconColor)
+
+            Text(label)
+                .font(HudFont.ui(HudTextSize.md))
+                .foregroundStyle(theme.palette.ink)
+                .frame(width: labelWidth, alignment: .leading)
+
+            Text(value)
+                .font(monoValue ? HudFont.mono(HudTextSize.xs) : HudFont.ui(HudTextSize.sm))
+                .foregroundStyle(theme.palette.muted)
+                .textSelection(.enabled)
+                .lineLimit(1)
+                .truncationMode(.middle)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            accessory()
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .padding(.vertical, HudSpacing.md)
+    }
+}
+
+extension HudSettingsMetaRow where Accessory == EmptyView {
+    public init(
+        icon: String,
+        iconColor: Color = HudPalette.muted,
+        label: String,
+        value: String,
+        labelWidth: CGFloat = 96,
+        monoValue: Bool = false
+    ) {
+        self.init(
+            icon: icon,
+            iconColor: iconColor,
+            label: label,
+            value: value,
+            labelWidth: labelWidth,
+            monoValue: monoValue,
+            accessory: { EmptyView() }
+        )
+    }
+}
+
+/// Path/file row for agent-manageable settings surfaces. Copy/reveal actions
+/// stay on the trailing edge and become brighter on hover.
+public struct HudSettingsPathRow: View {
+    public let icon: String
+    public var iconColor: Color
+    public let label: String
+    public let path: String
+    public var actions: [HudSettingsInlineAction]
+
+    @State private var isHovering = false
+    @Environment(\.hudTheme) private var theme
+
+    public init(
+        icon: String,
+        iconColor: Color = HudPalette.muted,
+        label: String,
+        path: String,
+        actions: [HudSettingsInlineAction] = []
+    ) {
+        self.icon = icon
+        self.iconColor = iconColor
+        self.label = label
+        self.path = path
+        self.actions = actions
+    }
+
+    public var body: some View {
+        HStack(alignment: .top, spacing: HudSpacing.xl) {
+            HudSettingsLeadingIcon(systemName: icon, color: iconColor)
+
+            VStack(alignment: .leading, spacing: HudSpacing.xxs) {
+                Text(label)
+                    .font(HudFont.ui(HudTextSize.md))
+                    .foregroundStyle(theme.palette.ink)
+                Text(path)
+                    .font(HudFont.mono(HudTextSize.xs))
+                    .foregroundStyle(theme.palette.muted)
+                    .textSelection(.enabled)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if !actions.isEmpty {
+                HStack(spacing: HudSpacing.xs) {
+                    ForEach(actions) { item in
+                        HudSettingsInlineActionButton(
+                            systemName: item.systemName,
+                            help: item.help,
+                            action: item.action
+                        )
+                    }
+                }
+                .opacity(isHovering ? 1 : 0.64)
+            }
+        }
+        .padding(.horizontal, HudSpacing.lg)
+        .padding(.vertical, HudSpacing.md)
+        .contentShape(Rectangle())
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+}
+
+public struct HudSettingsQuickAction: Identifiable {
+    public let id: String
+    public let title: String
+    public let subtitle: String?
+    public let systemName: String
+    public let tint: Color
+    public let action: () -> Void
+
+    public init(
+        id: String? = nil,
+        title: String,
+        subtitle: String? = nil,
+        systemName: String,
+        tint: Color = HudPalette.accent,
+        action: @escaping () -> Void
+    ) {
+        self.id = id ?? title
+        self.title = title
+        self.subtitle = subtitle
+        self.systemName = systemName
+        self.tint = tint
+        self.action = action
+    }
+}
+
+/// Pinned action lane for the settings operations users actually reach for:
+/// copy paths, reveal files, open a paired system pane, or reset a scoped area.
+public struct HudSettingsQuickActionBar: View {
+    public let actions: [HudSettingsQuickAction]
+    @Environment(\.hudTheme) private var theme
+
+    public init(actions: [HudSettingsQuickAction]) {
+        self.actions = actions
+    }
+
+    public var body: some View {
+        HStack(spacing: 0) {
+            ForEach(actions.indices, id: \.self) { index in
+                HudSettingsQuickActionButton(action: actions[index])
+                    .frame(maxWidth: .infinity)
+                if index < actions.count - 1 {
+                    Rectangle()
+                        .fill(theme.hairline.subtle)
+                        .frame(width: HudStrokeWidth.thin)
+                }
+            }
+        }
+    }
+}
+
+private struct HudSettingsQuickActionButton: View {
+    let action: HudSettingsQuickAction
+    @State private var isHovering = false
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: action.action) {
+            HStack(spacing: HudSpacing.md) {
+                HudSettingsLeadingIcon(
+                    systemName: action.systemName,
+                    color: isHovering ? action.tint : theme.palette.muted,
+                    fontSize: 13,
+                    weight: .medium
+                )
+
+                VStack(alignment: .leading, spacing: HudSpacing.xxs) {
+                    Text(action.title)
+                        .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                        .foregroundStyle(theme.palette.ink)
+                    if let subtitle = action.subtitle {
+                        Text(subtitle)
+                            .font(HudFont.mono(HudTextSize.xs))
+                            .foregroundStyle(theme.palette.dim)
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, HudSpacing.lg)
+            .padding(.vertical, HudSpacing.lg)
+            .background(isHovering ? HudSurface.tintFill(action.tint) : Color.clear)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+        .onHover { isHovering = $0 }
+        .animation(.easeOut(duration: 0.12), value: isHovering)
+    }
+}
+
 /// Flat leading icon for `HudSettingsRow`. 28×28 frame, no background — calmer
 /// than `HudListRow`'s tinted-background icon, matching the static-settings tone.
 public struct HudSettingsLeadingIcon: View {

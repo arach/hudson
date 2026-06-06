@@ -118,6 +118,39 @@ HudCanvas(showGrid: true) {
 | `header` | `() -> View` | — | Pinned header; omit for none |
 | `content` | `() -> View` | — | Scrolling body |
 
+## Settings Primitives
+
+Use `HudSettingsSection` and its row family for macOS preferences, setup screens, and inspectors. The vocabulary is deliberately quieter than list navigation: uppercase section labels, calm icon rows, inline status chips, and explicit copy/reveal actions for agent-readable files.
+
+```swift
+HudSettingsSection("Control lane") {
+    HudSettingsPathRow(
+        icon: "terminal",
+        iconColor: HudPalette.statusInfo,
+        label: "Command",
+        path: commandFilePath,
+        actions: [
+            HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy path") { copy(commandFilePath) },
+            HudSettingsInlineAction(systemName: "folder", help: "Reveal in Finder") { reveal(commandFilePath) },
+        ]
+    )
+    HudDivider()
+    HudSettingsRow(icon: "arrow.clockwise", title: "Restore state on launch") {
+        HudSettingsStatusChip("ON", tone: .ok)
+    }
+}
+```
+
+| Primitive | Purpose |
+|---|---|
+| `HudSettingsSection` | Labeled card container for a settings group |
+| `HudSettingsRow` / `HudSettingsControlRow` | Static row or row with a trailing SwiftUI control |
+| `HudSettingsPickerRow` / `HudSettingsSliderRow` | Standard picker and slider rows |
+| `HudSettingsStatusChip` | Dot + mono label for `ON`, `INHERIT`, `NEEDS SETUP`, etc. |
+| `HudSettingsMetaRow` | Key/value metadata with optional trailing accessory |
+| `HudSettingsPathRow` | File/path row with copy/reveal actions |
+| `HudSettingsQuickActionBar` | Pinned lane for the 2–3 actions users repeatedly need |
+
 ## HudCommandPalette
 
 Centered overlay — search field, filterable list, keyboard-driven (typing filters, ↑/↓ select, ⏎ runs, ⎋ dismisses). Mount with `.hudsonCommandPalette(isPresented:commands:)`; trigger from a ⌘K handler. Optional `group` produces sectioned lists.

@@ -9,8 +9,6 @@ import AppKit
 enum HudVantageMenuBarPopoverMetrics {
     static let width: CGFloat = HudLayout.popoverWidth
     static let height: CGFloat = HudLayout.textDocumentPreviewHeight
-    static let metadataLabelWidth: CGFloat = 96
-    static let iconButtonSize: CGFloat = HudLayout.textDocumentModeButtonHeight
     static let settingsWindowWidth: CGFloat = 500
     static let aboutWindowMinSize: CGFloat = 620
     static var size: CGSize { CGSize(width: width, height: height) }
@@ -88,163 +86,13 @@ private struct VantageIdentityHero: View {
     }
 }
 
-// MARK: - Settings row primitives
-
-/// Simple labeled key/value row used by the Application + Workspace sections.
-/// Two columns (label / value) with optional trailing copy button that fades
-/// in on hover so the row reads as informational by default.
-private struct VantageMetaRow: View {
-    let icon: String
-    let label: String
-    let value: String
-    var iconColor: Color
-    var monoValue: Bool = false
-    var onCopy: (() -> Void)? = nil
-
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(alignment: .center, spacing: HudSpacing.xl) {
-            HudSettingsLeadingIcon(systemName: icon, color: iconColor)
-
-            Text(label)
-                .font(HudFont.ui(HudTextSize.md))
-                .foregroundStyle(HudPalette.ink)
-                .frame(width: HudVantageMenuBarPopoverMetrics.metadataLabelWidth, alignment: .leading)
-
-            Text(value)
-                .font(monoValue
-                    ? HudFont.mono(HudTextSize.xs)
-                    : HudFont.ui(HudTextSize.sm))
-                .foregroundStyle(HudPalette.muted)
-                .textSelection(.enabled)
-                .lineLimit(1)
-                .truncationMode(.middle)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-            if let onCopy {
-                VantageInlineActionButton(systemName: "doc.on.doc", help: "Copy \(label)", action: onCopy)
-                    .opacity(isHovering ? 1 : 0)
-            }
-        }
-        .padding(.horizontal, HudSpacing.lg)
-        .padding(.vertical, HudSpacing.md)
-        .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: isHovering)
-    }
-}
-
-/// Filesystem path row with optional inline copy + reveal actions. Path is
-/// rendered in mono with mid-truncation; actions live on the trailing edge
-/// and stay visible (paths are the primary content here, not metadata).
-private struct VantagePathRow: View {
-    let icon: String
-    let label: String
-    let path: String
-    var iconColor: Color
-    var onCopy: (() -> Void)? = nil
-    var onReveal: (() -> Void)? = nil
-
-    @State private var isHovering = false
-
-    var body: some View {
-        HStack(alignment: .top, spacing: HudSpacing.xl) {
-            HudSettingsLeadingIcon(systemName: icon, color: iconColor)
-
-            VStack(alignment: .leading, spacing: HudSpacing.xxs) {
-                Text(label)
-                    .font(HudFont.ui(HudTextSize.md))
-                    .foregroundStyle(HudPalette.ink)
-                Text(path)
-                    .font(HudFont.mono(HudTextSize.xs))
-                    .foregroundStyle(HudPalette.muted)
-                    .textSelection(.enabled)
-                    .lineLimit(2)
-                    .truncationMode(.middle)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .frame(maxWidth: .infinity, alignment: .leading)
-
-            HStack(spacing: HudSpacing.xs) {
-                if let onCopy {
-                    VantageInlineActionButton(systemName: "doc.on.doc", help: "Copy \(label) path", action: onCopy)
-                }
-                if let onReveal {
-                    VantageInlineActionButton(systemName: "folder", help: "Reveal \(label) in Finder", action: onReveal)
-                }
-            }
-            .opacity(isHovering ? 1 : 0.6)
-        }
-        .padding(.horizontal, HudSpacing.lg)
-        .padding(.vertical, HudSpacing.md)
-        .contentShape(Rectangle())
-        .onHover { isHovering = $0 }
-        .animation(.easeOut(duration: 0.12), value: isHovering)
-    }
-}
-
-private struct VantageInlineActionButton: View {
-    let systemName: String
-    let help: String
-    let action: () -> Void
-
-    var body: some View {
-        Button(action: action) {
-            Image(systemName: systemName)
-                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
-                .foregroundStyle(HudPalette.muted)
-                .frame(
-                    width: HudVantageMenuBarPopoverMetrics.iconButtonSize,
-                    height: HudVantageMenuBarPopoverMetrics.iconButtonSize
-                )
-                .background(
-                    RoundedRectangle(cornerRadius: HudRadius.tight)
-                        .fill(HudSurface.control)
-                )
-                .overlay(
-                    RoundedRectangle(cornerRadius: HudRadius.tight)
-                        .stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin)
-                )
-        }
-        .buttonStyle(.plain)
-        .help(help)
-    }
-}
+// MARK: - Settings row helpers
 
 private struct VantageHairlineDivider: View {
     var body: some View {
         Rectangle()
             .fill(HudHairline.subtle)
             .frame(height: HudStrokeWidth.thin)
-    }
-}
-
-/// Compact on/off chip used by the Workspace section to surface boolean
-/// configuration flags. Read-only by design — these reflect runtime config
-/// supplied by the host, not user-editable preferences.
-private struct VantageFlagChip: View {
-    let label: String
-    let isOn: Bool
-    let tint: Color
-
-    var body: some View {
-        HStack(spacing: HudSpacing.sm) {
-            HudStatusDot(
-                color: isOn ? tint : HudPalette.dim,
-                size: HudDotSize.tiny
-            )
-            Text(label)
-                .font(HudFont.mono(HudTextSize.xs))
-                .foregroundStyle(isOn ? HudPalette.ink : HudPalette.muted)
-            Spacer(minLength: 0)
-            Text(isOn ? "ON" : "OFF")
-                .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
-                .tracking(0.8)
-                .foregroundStyle(isOn ? tint : HudPalette.dim)
-        }
-        .padding(.horizontal, HudSpacing.lg)
-        .padding(.vertical, HudSpacing.md)
     }
 }
 
@@ -288,30 +136,46 @@ public struct HudVantageHostAboutView: View {
                 .padding(.horizontal, HudSpacing.xs)
 
             VStack(spacing: 0) {
-                VantagePathRow(
+                HudSettingsPathRow(
                     icon: "terminal",
+                    iconColor: model.identity.tint.color,
                     label: "Command",
                     path: model.controlFilePath,
-                    iconColor: model.identity.tint.color,
-                    onCopy: { copyToPasteboard(model.controlFilePath) },
-                    onReveal: { model.revealControlFile() }
+                    actions: [
+                        HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy Command path") {
+                            copyToPasteboard(model.controlFilePath)
+                        },
+                        HudSettingsInlineAction(systemName: "folder", help: "Reveal Command in Finder") {
+                            model.revealControlFile()
+                        },
+                    ]
                 )
                 VantageHairlineDivider()
-                VantagePathRow(
+                HudSettingsPathRow(
                     icon: "arrow.turn.down.right",
+                    iconColor: model.identity.tint.color,
                     label: "Response",
                     path: model.responseFilePath,
-                    iconColor: model.identity.tint.color,
-                    onCopy: { copyToPasteboard(model.responseFilePath) }
+                    actions: [
+                        HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy Response path") {
+                            copyToPasteboard(model.responseFilePath)
+                        },
+                    ]
                 )
                 VantageHairlineDivider()
-                VantagePathRow(
+                HudSettingsPathRow(
                     icon: "externaldrive",
+                    iconColor: model.identity.tint.color,
                     label: "State",
                     path: model.stateFilePath,
-                    iconColor: model.identity.tint.color,
-                    onCopy: { copyToPasteboard(model.stateFilePath) },
-                    onReveal: { model.revealStateFile() }
+                    actions: [
+                        HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy State path") {
+                            copyToPasteboard(model.stateFilePath)
+                        },
+                        HudSettingsInlineAction(systemName: "folder", help: "Reveal State in Finder") {
+                            model.revealStateFile()
+                        },
+                    ]
                 )
             }
             .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(HudPalette.surface))
@@ -374,6 +238,8 @@ public struct HudVantageHostSettingsView: View {
                     )
                     .padding(.horizontal, HudSpacing.xs)
 
+                    settingsStatusStrip
+                    quickActionsSection
                     applicationSection
                     controlLaneSection
                     workspaceSection
@@ -395,87 +261,171 @@ public struct HudVantageHostSettingsView: View {
 
     // MARK: Sections
 
+    private var settingsStatusStrip: some View {
+        HStack(spacing: HudSpacing.sm) {
+            HudSettingsStatusChip(
+                model.configuration.restoresStateOnLaunch ? "Restore on" : "Restore off",
+                tone: model.configuration.restoresStateOnLaunch ? .ok : .neutral
+            )
+            HudSettingsStatusChip(
+                model.configuration.followsSystemColorScheme ? "System color" : "Fixed color",
+                tone: .info
+            )
+            HudSettingsStatusChip("Agent paths", tone: .neutral)
+            Spacer(minLength: 0)
+        }
+        .padding(.horizontal, HudSpacing.xs)
+    }
+
+    private var quickActionsSection: some View {
+        HudSettingsSection("Quick actions") {
+            HudSettingsQuickActionBar(actions: [
+                HudSettingsQuickAction(
+                    title: "Copy Paths",
+                    subtitle: "Control lane",
+                    systemName: "doc.on.doc",
+                    tint: model.identity.tint.color
+                ) {
+                    model.copyControlPaths()
+                },
+                HudSettingsQuickAction(
+                    title: "Reveal State",
+                    subtitle: "Application data",
+                    systemName: "folder",
+                    tint: model.identity.tint.color
+                ) {
+                    model.revealStateFile()
+                },
+                HudSettingsQuickAction(
+                    title: "Reveal Control",
+                    subtitle: "Command file",
+                    systemName: "terminal",
+                    tint: model.identity.tint.color
+                ) {
+                    model.revealControlFile()
+                },
+            ])
+        }
+    }
+
     private var applicationSection: some View {
         HudSettingsSection("Application") {
-            VantageMetaRow(
+            HudSettingsMetaRow(
                 icon: "app",
+                iconColor: model.identity.tint.color,
                 label: "Name",
-                value: model.appName,
-                iconColor: model.identity.tint.color
+                value: model.appName
             )
             VantageHairlineDivider()
-            VantageMetaRow(
+            HudSettingsMetaRow(
                 icon: "number",
+                iconColor: model.identity.tint.color,
                 label: "Version",
                 value: model.appVersion,
-                iconColor: model.identity.tint.color,
-                monoValue: true,
-                onCopy: { copyToPasteboard(model.appVersion) }
-            )
+                monoValue: true
+            ) {
+                HudSettingsInlineActionButton(systemName: "doc.on.doc", help: "Copy Version") {
+                    copyToPasteboard(model.appVersion)
+                }
+            }
             VantageHairlineDivider()
-            VantageMetaRow(
+            HudSettingsMetaRow(
                 icon: "barcode",
+                iconColor: model.identity.tint.color,
                 label: "Bundle ID",
                 value: model.bundleIdentifier,
-                iconColor: model.identity.tint.color,
-                monoValue: true,
-                onCopy: { copyToPasteboard(model.bundleIdentifier) }
-            )
+                monoValue: true
+            ) {
+                HudSettingsInlineActionButton(systemName: "doc.on.doc", help: "Copy Bundle ID") {
+                    copyToPasteboard(model.bundleIdentifier)
+                }
+            }
         }
     }
 
     private var controlLaneSection: some View {
         HudSettingsSection("Control lane") {
-            VantagePathRow(
+            HudSettingsPathRow(
                 icon: "terminal",
+                iconColor: model.identity.tint.color,
                 label: "Command",
                 path: model.controlFilePath,
-                iconColor: model.identity.tint.color,
-                onCopy: { copyToPasteboard(model.controlFilePath) },
-                onReveal: { model.revealControlFile() }
+                actions: [
+                    HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy Command path") {
+                        copyToPasteboard(model.controlFilePath)
+                    },
+                    HudSettingsInlineAction(systemName: "folder", help: "Reveal Command in Finder") {
+                        model.revealControlFile()
+                    },
+                ]
             )
             VantageHairlineDivider()
-            VantagePathRow(
+            HudSettingsPathRow(
                 icon: "arrow.turn.down.right",
+                iconColor: model.identity.tint.color,
                 label: "Response",
                 path: model.responseFilePath,
-                iconColor: model.identity.tint.color,
-                onCopy: { copyToPasteboard(model.responseFilePath) }
+                actions: [
+                    HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy Response path") {
+                        copyToPasteboard(model.responseFilePath)
+                    },
+                ]
             )
             VantageHairlineDivider()
-            VantagePathRow(
+            HudSettingsPathRow(
                 icon: "externaldrive",
+                iconColor: model.identity.tint.color,
                 label: "State",
                 path: model.stateFilePath,
-                iconColor: model.identity.tint.color,
-                onCopy: { copyToPasteboard(model.stateFilePath) },
-                onReveal: { model.revealStateFile() }
+                actions: [
+                    HudSettingsInlineAction(systemName: "doc.on.doc", help: "Copy State path") {
+                        copyToPasteboard(model.stateFilePath)
+                    },
+                    HudSettingsInlineAction(systemName: "folder", help: "Reveal State in Finder") {
+                        model.revealStateFile()
+                    },
+                ]
             )
         }
     }
 
     private var workspaceSection: some View {
         HudSettingsSection("Workspace") {
-            VantageMetaRow(
+            HudSettingsMetaRow(
                 icon: "square.grid.2x2",
+                iconColor: model.identity.tint.color,
                 label: "Workspace",
                 value: model.configuration.workspaceID,
+                monoValue: true
+            ) {
+                HudSettingsInlineActionButton(systemName: "doc.on.doc", help: "Copy Workspace") {
+                    copyToPasteboard(model.configuration.workspaceID)
+                }
+            }
+            VantageHairlineDivider()
+            HudSettingsRow(
+                icon: "arrow.clockwise",
                 iconColor: model.identity.tint.color,
-                monoValue: true,
-                onCopy: { copyToPasteboard(model.configuration.workspaceID) }
-            )
+                title: "Restore state on launch",
+                subtitle: "Runtime configuration supplied by the host"
+            ) {
+                HudSettingsStatusChip(
+                    model.configuration.restoresStateOnLaunch ? "ON" : "OFF",
+                    tone: model.configuration.restoresStateOnLaunch ? .ok : .neutral
+                )
+            }
             VantageHairlineDivider()
-            VantageFlagChip(
-                label: "Restore state on launch",
-                isOn: model.configuration.restoresStateOnLaunch,
-                tint: model.identity.tint.color
-            )
-            VantageHairlineDivider()
-            VantageFlagChip(
-                label: "Follow system color scheme",
-                isOn: model.configuration.followsSystemColorScheme,
-                tint: model.identity.tint.color
-            )
+            HudSettingsRow(
+                icon: "circle.lefthalf.filled",
+                iconColor: model.identity.tint.color,
+                title: "Follow system color scheme",
+                subtitle: "Adapts chrome to the current macOS appearance"
+            ) {
+                HudSettingsStatusChip(
+                    model.configuration.followsSystemColorScheme ? "ON" : "OFF",
+                    tone: model.configuration.followsSystemColorScheme ? .ok : .neutral
+                )
+            }
         }
     }
 
@@ -710,7 +660,7 @@ public struct HudVantageHostMenuBarPopoverView: View {
                     .lineLimit(1)
                     .truncationMode(.middle)
                 Spacer(minLength: 0)
-                VantageInlineActionButton(systemName: "folder", help: "Reveal control file") {
+                HudSettingsInlineActionButton(systemName: "folder", help: "Reveal control file") {
                     model.revealControlFile()
                 }
             }
