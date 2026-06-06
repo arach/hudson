@@ -1,13 +1,28 @@
-# HUD-012 - Hudson-owned Vox daemon
+# HUD-012 - Hudson-owned voice service / daemon
 
-**Status**: Draft
+**Status**: Draft / historical daemon proposal
 **Owner**: TBD (Arach)
 **Targets**: `hudsonkit/voice`, Apple `HudsonVoice`, Hudson native app/host, Hudson Web voice surfaces, Vox embeddable daemon runtime
 **Related**: `docs/voice.md`, `docs/permissions.md`, `specs/hud-008-app-backends.md`, `specs/hud-pairing-framework.md`, `app/shell/WorkspaceAI.tsx`, `packages/native/apple/HudsonKit/Sources/HudsonVoice/*`
 
+## Reality check
+
+As of the current Apple implementation, first-party Scout macOS voice is not
+daemon-hosted. Scout's HUD and macOS app use an in-process `ScoutVoiceService`
+that wraps `HudsonVoice.HudDictation`. `HudDictation` captures audio in the host
+app, uses Apple Speech for live partials/fallback, and uses
+`HudsonSpeechEngine` for embedded Parakeet transcription.
+
+`HudsonSpeechEngine` is the embedded engine package/product. It does not export
+the old daemon/service targets as public SwiftPM products. A future service layer
+can be named `HudsonVoiceService` or similar, but daemon process identity is
+host-owned: Scout should host Scout voice as `scoutd`, while `hkitd` would only
+make sense for a generic Hudson daemon.
+
 ## Summary
 
-Hudson voice surfaces should depend on a Hudson-owned local voice service, not a separately installed Vox app.
+Hudson voice surfaces should depend on a Hudson-owned local voice service when a
+daemon/service layer exists, not a separately installed Vox app.
 
 The service embeds and operates Vox's daemon runtime. Vox remains the transcription/session engine and still owns the reusable daemon machinery. Hudson owns the app bundle or host process, lifecycle, permissions, device settings, diagnostics, and the public local API that Hudson Web and native Hudson surfaces call.
 

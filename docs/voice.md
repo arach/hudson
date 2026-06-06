@@ -251,18 +251,36 @@ HUDSONKIT_WITH_VOICE=1 swift build
 HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
 ```
 
-`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. When voice is enabled, Vox defaults to the git package for CI / ship builds. Local developers can opt into a sibling checkout without changing the manifest:
+`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. When voice is enabled, `HudsonSpeechEngine` defaults to the git package for CI / ship builds. Local developers can opt into a sibling checkout without changing the manifest:
 
 ```bash
 HUDSONKIT_WITH_VOICE=1 \
-HUDSON_VOX_SOURCE=path \
-HUDSON_VOX_PATH=../vox/swift \
+HUDSON_SPEECH_ENGINE_SOURCE=path \
+HUDSON_SPEECH_ENGINE_PATH=../vox/swift \
 swift build
 ```
 
-Setting `HUDSON_VOX_PATH` also implies `HUDSON_VOX_SOURCE=path`. Ship builds can pin git with `HUDSON_VOX_GIT_REVISION`, or override the remote / branch with `HUDSON_VOX_GIT_URL` and `HUDSON_VOX_GIT_BRANCH`. For Xcode projects, set the env vars in the shell before running `xcodegen` (and re-run xcodegen after toggling).
+Setting `HUDSON_SPEECH_ENGINE_PATH` also implies `HUDSON_SPEECH_ENGINE_SOURCE=path`. Ship builds can pin git with `HUDSON_SPEECH_ENGINE_GIT_REVISION`, or override the remote / branch with `HUDSON_SPEECH_ENGINE_GIT_URL` and `HUDSON_SPEECH_ENGINE_GIT_BRANCH`. For Xcode projects, set the env vars in the shell before running `xcodegen` (and re-run xcodegen after toggling).
 
-### HudVoicePanel — SwiftUI primitive
+### Current Apple layers
+
+`HudsonVoice` currently has two native voice paths:
+
+- `HudDictation` is the first-party in-process dictation controller. The host
+  app owns microphone capture and permission prompts, Apple Speech provides live
+  partial text and fallback final text, and `HudsonSpeechEngine` provides the
+  embedded Parakeet final when the model is warm. This path does not require a
+  standalone Vox app or daemon.
+- `HudVoxLiveSession`, `HudVoxProbe`, and `HudVoicePanel` are compatibility
+  adapters for a Vox daemon endpoint. Keep those names only for code that is
+  explicitly speaking the old Vox daemon protocol.
+
+`HudsonSpeechEngine` lives in the sibling `../vox/swift` checkout today, but its
+public SwiftPM surface is the single `HudsonSpeechEngine` library product.
+`VoxCore`, `VoxService`, and `voxd` remain internal targets in that repo; they
+are not exported as embedded-dictation products.
+
+### Compatibility: HudVoicePanel
 
 `HudVoicePanel` is a drop-in SwiftUI view that renders the full Vox listen / stop / cancel UI in Hudson's design language (HudCard, HudButton, HudBadge, HudStatusDot). It owns its own `HudVoxLiveSession`, transcript buffer, and health probe lifecycle.
 
