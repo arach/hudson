@@ -2,7 +2,9 @@
 import PackageDescription
 import Foundation
 
-let voiceHelperEnabled = ProcessInfo.processInfo.environment["HUDSON_WITH_VOICE_HELPER"] == "1"
+// No voice helper target is declared here today. The embedded speech package
+// exports only HudsonSpeechEngine; a future daemon/helper lane should come back
+// through a separate HudsonVoiceService / HudsonSpeechService boundary.
 
 var dependencies: [Package.Dependency] = [
     .package(path: "../../.."),
@@ -17,30 +19,6 @@ var targets: [Target] = [
         path: "Sources/HudsonApp"
     ),
 ]
-
-if voiceHelperEnabled {
-    dependencies.append(
-        .package(name: "Vox", path: "../../../../vox/swift")
-    )
-    targets.append(
-        .target(
-            name: "HudsonNativeSupport",
-            dependencies: [
-                .product(name: "VoxService", package: "Vox"),
-            ],
-            path: "Sources/HudsonNativeSupport"
-        )
-    )
-    targets.append(
-        .executableTarget(
-            name: "HudsonMenuApp",
-            dependencies: [
-                "HudsonNativeSupport",
-            ],
-            path: "Sources/HudsonMenuApp"
-        )
-    )
-}
 
 let package = Package(
     name: "HudsonApp",

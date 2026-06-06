@@ -23,15 +23,6 @@ func nonEmptyEnv(_ key: String) -> String? {
     return value
 }
 
-func firstNonEmptyEnv(_ keys: [String]) -> String? {
-    for key in keys {
-        if let value = nonEmptyEnv(key) {
-            return value
-        }
-    }
-    return nil
-}
-
 func packageIdentity(forGitURL url: String) -> String {
     var candidate = url.split(separator: "/").last.map(String.init) ?? url
     if candidate.hasSuffix(".git") {
@@ -41,49 +32,27 @@ func packageIdentity(forGitURL url: String) -> String {
 }
 
 @discardableResult
-func appendSourceDependency(
+func appendGitDependency(
     to dependencies: inout [Package.Dependency],
     envPrefix: String,
-    packageName defaultPackageName: String,
-    defaultPath: String,
     gitURL defaultGitURL: String,
-    branch defaultBranch: String = "main",
-    pathEnvAliases: [String] = []
+    branch defaultBranch: String = "main"
 ) -> String {
-    let packageName = nonEmptyEnv("\(envPrefix)_PACKAGE") ?? defaultPackageName
-    let path = firstNonEmptyEnv(["\(envPrefix)_PATH"] + pathEnvAliases)
-    let defaultSource = path == nil ? "git" : "path"
-    let source = (nonEmptyEnv("\(envPrefix)_SOURCE") ?? defaultSource).lowercased()
+    let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultGitURL
 
-    switch source {
-    case "path", "local":
+    if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
+        dependencies.append(.package(url: url, revision: revision))
+    } else {
         dependencies.append(
             .package(
-                name: packageName,
-                path: path ?? defaultPath
+                url: url,
+                branch: nonEmptyEnv("\(envPrefix)_GIT_BRANCH") ?? defaultBranch
             )
         )
-        return packageName
-
-    case "git", "remote":
-        let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultGitURL
-        if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
-            dependencies.append(.package(url: url, revision: revision))
-        } else {
-            dependencies.append(
-                .package(
-                    url: url,
-                    branch: nonEmptyEnv("\(envPrefix)_GIT_BRANCH") ?? defaultBranch
-                )
-            )
-        }
-        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: url)
-
-    default:
-        fatalError("Unsupported \(envPrefix)_SOURCE '\(source)'. Expected 'git' or 'path'.")
     }
-}
 
+    return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: url)
+}
 var products: [Product] = [
     .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
     .library(name: "HudsonLive", targets: ["HudsonLive"]),
@@ -162,8 +131,12 @@ var targets: [Target] = [
 ]
 
 if voiceEnabled {
-    // Vox = embeddable Parakeet engine (on-device download + execution).
-    dependencies.append(.package(name: "Vox", path: "../../../../../vox/swift"))
+    // VoxEngine = embeddable Parakeet engine (on-device download + execution).
+    let voxPackage = appendGitDependency(
+        to: &dependencies,
+        envPrefix: "HUDSON_VOX",
+        gitURL: "git@github.com:arach/vox.git"
+    )
     products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
         .target(
@@ -171,7 +144,7 @@ if voiceEnabled {
             dependencies: [
                 "HudsonUI",
                 "HudsonObservability",
-                .product(name: "VoxEngine", package: "Vox"),
+                .product(name: "VoxEngine", package: voxPackage),
             ]
         )
     )
@@ -181,13 +154,10 @@ if voiceEnabled {
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    let terminiPackage = appendSourceDependency(
+    let terminiPackage = appendGitDependency(
         to: &dependencies,
         envPrefix: "HUDSON_TERMINI",
-        packageName: "Termini",
-        defaultPath: "../../../../../Termini",
-        gitURL: "git@github.com:arach/Termini.git",
-        pathEnvAliases: ["HUDSONKIT_TERMINI_PATH"]
+        gitURL: "git@github.com:arach/Termini.git"
     )
     products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
     products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
