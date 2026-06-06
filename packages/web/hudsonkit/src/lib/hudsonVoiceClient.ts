@@ -150,6 +150,7 @@ export class HudsonVoiceClientError extends Error {
   readonly code: HudsonVoiceClientErrorCode;
   readonly status?: number;
   readonly endpoint?: string;
+  readonly cause?: unknown;
 
   constructor(
     code: HudsonVoiceClientErrorCode,

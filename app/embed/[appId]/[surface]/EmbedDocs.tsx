@@ -41,7 +41,7 @@ const TOPICS: Topic[] = [
       'Hudson is the same shell language across four surfaces. The web workspace is the lead surface; macOS and iOS reuse the contract natively; the SDK is the import you reach for.',
     items: [
       { label: 'Web',   sub: 'Workspace at app.hudsonkit.com',     href: WORKSPACE_URL, external: true },
-      { label: 'macOS', sub: 'Native shell + Vantage canvas',      href: '/docs/macos-shell' },
+      { label: 'macOS', sub: 'Native shell + Runtime canvas',      href: '/docs/macos-shell' },
       { label: 'iOS',   sub: 'HudsonKit Swift package',            href: '/docs/ios-shell' },
       { label: 'SDK',   sub: 'hudsonkit on npm',                   href: NPM_URL, external: true },
     ],
