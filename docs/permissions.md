@@ -41,7 +41,7 @@ import HudsonUI
 
 struct DictationScreen: View {
     var body: some View {
-        HudPermissionGate(.microphone, rationale: "Talkie listens to your dictation.") {
+        HudPermissionGate(.microphone, rationale: "The app uses the microphone for dictation.") {
             RecordingView()
         }
     }

@@ -83,8 +83,7 @@
     "packages/tools/hkit",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
-    "packages/web/hudsonkit",
-    "packages/web/hudson-showroom"
+    "packages/web/hudsonkit"
   ],
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

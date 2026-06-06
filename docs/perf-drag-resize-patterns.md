@@ -151,7 +151,7 @@ const onMouseMove = (ev: MouseEvent) => {
 <div className={isPanning ? 'cursor-grabbing' : 'cursor-grab'}>
 ```
 
-**Applied to:** Shaper pan (`isPanningRef`, `panStartRef`), point drag (`dragStartRef`).
+**Applied to:** Canvas pan (`isPanningRef`, `panStartRef`) and window drag (`dragStartRef`).
 
 ---
 
@@ -175,7 +175,7 @@ const onMouseMove = (ev: MouseEvent) => {
 
 This coalesces multiple mousemove events into a single state update per frame. If the browser fires 3 mousemove events before the next paint, only the last one triggers a React render.
 
-**Applied to:** Shaper crosshair guide coordinates, animation scrubber progress.
+**Applied to:** Canvas guide coordinates, resize overlays, and animation scrubber progress.
 
 ---
 
@@ -218,7 +218,7 @@ Benefits:
 - Unchanged array references let React.memo / useMemo skip re-renders downstream
 - No JSON serialization overhead
 
-**Applied to:** Shaper point drag (bezier data mutation).
+**Applied to:** Window bounds updates and document/visual editor node mutation.
 
 ---
 

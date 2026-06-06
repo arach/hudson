@@ -14,14 +14,15 @@ description: Dense, structured overview of Hudson for AI agent consumption
 | Stack | React 19, Next.js 16, Tailwind v4, TypeScript |
 | Package manager | bun |
 | Dev server | `bun dev` → port 3500 |
-| Entry point | `app/page.tsx` → `WorkspaceShell` |
+| Entry point | `app/app/page.tsx` → `WorkspaceShell` |
 
 ## Architecture (3 layers)
 
 | Layer | Location | Role |
 |-------|----------|------|
 | hudsonkit | `packages/web/hudsonkit/src/` | Component library + type contracts |
-| Shell | `app/shell/` | Runtime orchestrator (WorkspaceShell) |
+| Shell | `packages/web/hudsonkit/src/workspace/shell/` | Package-owned runtime orchestrator (`WorkspaceShell`) |
+| Host environment | `app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route, terminal, and AI settings bindings passed into the shell |
 | Apps | `app/apps/` | Self-contained apps implementing HudsonApp |
 
 ## HudsonApp Interface (required fields)
@@ -76,9 +77,20 @@ description: Dense, structured overview of Hudson for AI agent consumption
 
 | ID | Name | Canvas Mode |
 |----|------|-------------|
-| `shaper` | Shaper | windowed |
-| `hudson-docs` | Hudson Docs | native |
+| `hudson-docs` | Hudson Docs | windowed |
+| `hudson-ai` | Hudson AI | windowed |
 | `intent-explorer` | Intent Explorer | windowed |
+| `services` | Services | windowed |
+| `terminal` | Terminal | windowed |
+| `theme-designer` | Theme Designer | windowed |
+| `document-lab` | Document Lab | windowed |
+| `code-editor` | Code Editor | windowed |
+| `workflow-lab` | Workflow Lab | windowed |
+| `stage-design` | Stage Design | windowed |
+| `api-inspector` | API Inspector | windowed |
+| `trace-viewer` | Trace Viewer | windowed |
+| `json-explorer` | JSON Explorer | windowed |
+| `hud-logger` | HUD Logger | windowed |
 
 ## File structure for new app
 
@@ -98,8 +110,8 @@ app/apps/{name}/
 ## Registration steps
 
 1. Create app in `app/apps/{name}/`
-2. Add to workspace in `app/workspaces/{workspace}.ts`
-3. If new workspace, add to `app/page.tsx` workspaces array
+2. Add it to `app/apps/registry.ts` if it is a tracked HudsonKit showcase app
+3. For local-only experiments, use `app/local/apps.local.ts` or `app/local/workspaces.json`
 
 ## Critical constraints
 

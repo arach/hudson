@@ -30,9 +30,7 @@
       "hudsonkit": ["./node_modules/hudsonkit/src/index.ts"],
       "hudsonkit/workflow": ["./node_modules/hudsonkit/src/workflow/index.ts"],
       "hudsonkit/apps": ["./node_modules/hudsonkit/src/apps/index.ts"],
-      "hudsonkit/*": ["./node_modules/hudsonkit/src/*.ts"],
-      "hudson-showroom": ["./node_modules/hudson-showroom/src/index.ts"],
-      "hudson-showroom/*": ["./node_modules/hudson-showroom/src/*.ts"]
+      "hudsonkit/*": ["./node_modules/hudsonkit/src/*.ts"]
     }
   },
   "include": [

@@ -38,6 +38,10 @@ export default defineConfig({
         replacement: resolve(hudsonkitSrc, 'workflow/index.ts'),
       },
       {
+        find: 'hudsonkit/apps',
+        replacement: resolve(hudsonkitSrc, 'apps/index.ts'),
+      },
+      {
         find: /^hudsonkit\/(.+)$/,
         replacement: `${hudsonkitSrc}/$1.ts`,
       },

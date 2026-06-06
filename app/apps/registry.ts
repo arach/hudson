@@ -24,8 +24,7 @@ import type { HudsonApp, HudsonWorkspace, WorkspaceAppConfig, CanvasParticipatio
 import { uniqueWorkspaces, type WorkspaceRegistryEntry } from './registry-utils';
 
 // --- In-tree apps -------------------------------------------------------------
-// Full-stack, shell-runtime, or Tier-2 apps that still live in app/apps/.
-// See docs/hudson-kit-vs-showroom.md for the extraction tiers.
+// Full-stack, shell-runtime, or framework-showcase apps that still live in app/apps/.
 
 import { hudsonDocsApp } from './hudson-docs';
 import { hudsonAIApp } from './hudson-ai';
@@ -33,6 +32,8 @@ import { intentExplorerApp } from './intent-explorer';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { hudLoggerApp } from './hud-logger';
+import { servicesApp } from './services';
+import { terminalApp } from './terminal';
 
 // --- Built-in batteries (shipped with the kit) --------------------------------
 // Generic, client-only utility apps now live in the kit as `hudsonkit/apps`.
@@ -90,6 +91,8 @@ function getAppById(id: string): HudsonApp | null {
     'stage-design': stageDesignApp,
     'workflow-lab': workflowLabApp,
     'hud-logger': hudLoggerApp,
+    'services': servicesApp,
+    'terminal': terminalApp,
   };
   if (table[id]) return table[id];
   // Also search local apps (e.g., hero, external repos)
@@ -159,29 +162,29 @@ function loadWorkspacesFromJson(): HudsonWorkspace[] {
 function getCoreApps(): WorkspaceAppConfig[] {
   return [
     {
-      app: stageDesignApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 300, y: -320, w: 430, h: 560 },
-    },
-    {
-      app: themeDesignerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 820, y: 980, w: 1040, h: 720 },
-    },
-    {
       app: hudsonDocsApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: -520, y: -280, w: 900, h: 650 },
+      defaultWindowBounds: { x: -820, y: -340, w: 900, h: 650 },
     },
     {
       app: hudsonAIApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 420, y: -280, w: 760, h: 580 },
+      defaultWindowBounds: { x: 140, y: -340, w: 760, h: 580 },
+    },
+    {
+      app: intentExplorerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 960, y: -340, w: 720, h: 560 },
+    },
+    {
+      app: themeDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -820, y: 360, w: 1040, h: 720 },
     },
     {
       app: codeEditorApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 1240, y: -260, w: 760, h: 560 },
+      defaultWindowBounds: { x: 260, y: 360, w: 760, h: 560 },
     },
   ];
 }
@@ -189,29 +192,39 @@ function getCoreApps(): WorkspaceAppConfig[] {
 function getDeveloperModeApps(): WorkspaceAppConfig[] {
   return [
     {
-      app: traceViewerApp,
+      app: servicesApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: -960, y: -260, w: 660, h: 540 },
+      defaultWindowBounds: { x: -1180, y: -320, w: 760, h: 560 },
+    },
+    {
+      app: terminalApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -380, y: -320, w: 860, h: 560 },
     },
     {
       app: apiInspectorApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 560, y: -260, w: 760, h: 560 },
+      defaultWindowBounds: { x: 520, y: -320, w: 760, h: 560 },
+    },
+    {
+      app: traceViewerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -1180, y: 320, w: 660, h: 540 },
     },
     {
       app: jsonExplorerApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 560, y: 360, w: 620, h: 460 },
+      defaultWindowBounds: { x: -480, y: 320, w: 620, h: 460 },
     },
     {
       app: hudLoggerApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: -220, y: 360, w: 760, h: 560 },
+      defaultWindowBounds: { x: 180, y: 320, w: 760, h: 560 },
     },
     {
       app: codeEditorApp,
       canvasMode: 'windowed',
-      defaultWindowBounds: { x: 560, y: 880, w: 760, h: 560 },
+      defaultWindowBounds: { x: 980, y: 320, w: 760, h: 560 },
     },
   ];
 }
@@ -233,42 +246,43 @@ function getWorkflowLabApps(): WorkspaceAppConfig[] {
 
 // --- Exports ------------------------------------------------------------------
 
-/** The main HudsonKit workspace — intentionally minimal for demos and daily use. */
+/** The main HudsonKit workspace — docs-first, with framework-native tooling close by. */
 export function getHudsonKitWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
-    name: 'Hudson Kit workspace',
-    description: 'Clean docs, AI, and API workspace',
+    name: 'HudsonKit Docs',
+    description: 'Documentation, AI, intents, theming, and code surfaces for HudsonKit',
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',
-    defaultActivatedAppIds: ['stage-design', 'theme-designer', 'hudson-docs'],
+    defaultActivatedAppIds: ['hudson-docs', 'hudson-ai', 'intent-explorer', 'theme-designer'],
     defaultScale: 0.45,
     defaultPan: { x: -331, y: -222 },
     leftNavigation: 'on',
   };
 }
 
-/** Developer Mode — operational tools for traces, relay traffic, APIs, and JSON. */
+/** Developer Mode — operational tools for services, terminals, traces, APIs, logs, and JSON. */
 export function getDeveloperModeWorkspace(): HudsonWorkspace {
   return {
     id: 'developer-mode',
     name: 'Developer Mode',
-    description: 'Trace, relay, API, JSON, and architecture tools',
+    description: 'Services, terminal, traces, API, JSON, logs, and code tools',
     mode: 'canvas',
     apps: getDeveloperModeApps(),
-    defaultFocusedAppId: 'api-inspector',
+    defaultFocusedAppId: 'services',
+    defaultActivatedAppIds: ['services', 'terminal', 'api-inspector', 'trace-viewer', 'hud-logger'],
     defaultScale: 0.2,
     leftNavigation: 'hidden',
   };
 }
 
-/** Document Lab — development workspace for shared text, markdown, and code surfaces. */
+/** Document Lab — shared text, markdown, code, workflow, theme, and visual surfaces. */
 export function getDocumentLabWorkspace(): HudsonWorkspace {
   return {
     id: 'document-lab',
-    name: 'Document Lab',
-    description: 'Shared document primitive across text, markdown, and code surfaces',
+    name: 'Document + Visual Lab',
+    description: 'Document, code, workflow, theme, and stage-design primitives',
     mode: 'canvas',
     apps: [{
       app: documentLabApp,
@@ -282,8 +296,21 @@ export function getDocumentLabWorkspace(): HudsonWorkspace {
       app: codeEditorApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 500, y: 360, w: 760, h: 560 },
+    }, {
+      app: workflowLabApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: -460, y: 380, w: 920, h: 620 },
+    }, {
+      app: themeDesignerApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1220, y: -260, w: 920, h: 620 },
+    }, {
+      app: stageDesignApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1220, y: 380, w: 430, h: 560 },
     }],
     defaultFocusedAppId: 'document-lab',
+    defaultActivatedAppIds: ['document-lab', 'notepad', 'code-editor', 'workflow-lab', 'theme-designer', 'stage-design'],
     defaultScale: 0.8,
     leftNavigation: 'on',
   };

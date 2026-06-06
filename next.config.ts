@@ -124,7 +124,7 @@ const turbopackSingletonAliases = Object.fromEntries(
 );
 
 const nextConfig: NextConfig = {
-  transpilePackages: ["hudsonkit", "hudson-showroom", "@voxd/client"],
+  transpilePackages: ["hudsonkit", "@voxd/client"],
   serverExternalPackages: ["@earendil-works/pi-ai", "esbuild"],
   turbopack: {
     root: turbopackRoot,

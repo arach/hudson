@@ -6,7 +6,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 
 - **[Quickstart](./quickstart.md)** — mount `AppShell` with a minimal app in 5 minutes
 - **[Overview](./overview.md)** — what Hudson is, the two shell modes, the `HudsonApp` contract
-- **[Case study: Premotion](./case-study-premotion.md)** — a real catalog studio built on Hudson + the friction points that surfaced during build
+- **[Systems](./systems.md)** — Intents, Services, and Ports, including the runtime plumbing used by AI
 
 ## Web
 
@@ -16,7 +16,9 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Settings](./settings.md)** — declarative app-level settings schema with persisted values
 - **[Multi-instance](./multi-instance.md)** — per-instance state scoping
 - **[Systems](./systems.md)** — Intents (LLM/voice), Services (process deps), Ports (inter-app piping)
+- **[Terminal](./terminal.md)** — terminal surfaces and the relay-backed runtime path
 - **[Theming](./theming.md)** — runtime theme/template switching, token surface
+- **[Theme Designer](./theme-designer.md)** — framework showcase for live HudsonKit tokens and templates
 - **[Controls](./controls.md)** — parameter controls and code components for inspectors
 - **[Cache](./cache.md)** — shared cache primitive (`hudsonkit/cache`) and the policy direction for API data, derived values, and asset metadata
 
@@ -32,7 +34,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Native canvas workspace](./native-canvas-workspace.md)** — draft extraction spec for pan/zoom, selection, persistence, and workspace-hostable native apps
 - **[tmux + Graphite workspaces](./tmux-graphite-workspaces.md)** — durable terminal identity, searchable path names, group actions, and offshoot canvases
 - **[Native terminal canvas roadmap](./native-terminal-canvas-roadmap.md)** — phased implementation plan for sample hardening, canvas extraction, tmux orchestration, and offshoot workspaces
-- **[Terminal](./terminal.md)** — `HudTerminalSurface` (Termini-backed)
+- **[Terminal](./terminal.md)** — `HudTerminalSurface` and local terminal runtime behavior
 
 ## Cross-platform primitives
 

@@ -39,9 +39,9 @@
    or re-point their own theme aliases at them. Shell chrome keeps its dark
    Tailwind utilities hard-coded; these tokens are for *app content*.
 
-   Defaults below are the dark baseline (matches Hudson's chrome aesthetic,
-   so Premotion-style apps inherit with no overrides). Apps like Scout that
-   want a light content area set overrides on their Provider's root element.
+   Defaults below are the dark baseline (matches Hudson's chrome aesthetic).
+   Apps that want a light content area set overrides on their Provider's root
+   element.
    ───────────────────────────────────────────────────────────────────────── */
 :root {
   --background: 0.145 0 0;

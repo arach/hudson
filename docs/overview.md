@@ -10,7 +10,7 @@ Hudson ships two top-level components. Pick based on whether your product has on
 
 ### `AppShell` — the default
 
-One `HudsonApp`, full chrome. Best for single-purpose products where the whole surface is about one thing: a catalog browser, a settings dashboard, a reader, a logo designer.
+One `HudsonApp`, full chrome. Best for single-purpose products where the whole surface is about one thing: a catalog browser, a settings dashboard, a reader, or an editor.
 
 ```tsx
 import { AppShell } from 'hudsonkit/app-shell';
@@ -23,7 +23,7 @@ The shell reads the app's hooks for labels, search, status, and commands; render
 
 ### `WorkspaceShell` — multi-app canvas
 
-Many `HudsonApp`s sharing a dotted-grid workspace, with windows that float, resize, and minimize. Best for tool-kit surfaces — Hudson itself uses this for its default OS workspace (Shaper + Logo Designer + Notepad + more).
+Many `HudsonApp`s sharing a dotted-grid workspace, with windows that float, resize, and minimize. Best for tool-kit surfaces. Hudson itself uses this for documentation, AI, services, terminal, developer tools, and document/visual labs.
 
 ```tsx
 import { WorkspaceShell } from 'hudsonkit/shell';
@@ -96,7 +96,7 @@ In canvas-mode workspaces, each app chooses how it appears:
 | Participation | Behavior                                             | Example            |
 |---------------|------------------------------------------------------|--------------------|
 | `native`      | Renders directly on canvas, no window frame          | Hudson Docs        |
-| `windowed`    | Renders inside `AppWindow` with title bar, drag, resize | Shaper, Notepad |
+| `windowed`    | Renders inside `AppWindow` with title bar, drag, resize | Theme Designer, Code Editor |
 
 ## What the shell gives you
 
@@ -115,23 +115,26 @@ Workspace apps (rendered by Hudson's `WorkspaceShell` at `/app`):
 
 | App             | Purpose                                    |
 |-----------------|--------------------------------------------|
-| Shaper          | Bezier curve editor for vector shapes      |
-| Logo Designer   | Icon composer with templates               |
 | Hudson Docs     | Documentation browser                      |
+| Hudson AI       | Framework AI surface and toolset runner    |
 | Intent Explorer | Browsable intent catalog inspector         |
+| Services        | Runtime service registry and controls      |
+| Terminal        | Relay-backed local terminal surface        |
+| Theme Designer  | Live HudsonKit token/template designer     |
+| Code Editor     | Shared code editing surface                |
+| Document Lab    | Markdown and document primitive lab        |
+| Workflow Lab    | Workflow graph fixture lab                 |
+| Stage Design    | Visual composition and stage primitive     |
 | Trace Viewer    | Frame-log / instrumentation viewer         |
-| Openscout       | Open-source project scout                  |
-| Notepad         | Markdown scratchpad                        |
 | JSON Explorer   | Interactive JSON inspector                 |
 | API Inspector   | HTTP request/response debugger             |
-| Assets          | Asset browser                              |
+| Hud Logger      | Agent action and observability feed        |
 
-This is the demo workspace shipped with Hudson — your own apps will live in your own registry.
+These apps exist to exercise HudsonKit itself. Product-specific apps should live in downstream registries and only override Hudson behavior when they need to.
 
 ## Next steps
 
 - **[Building apps](./building-apps.md)** — the full contract, with examples
 - **[Architecture](./architecture.md)** — how the shell is structured
 - **[Systems](./systems.md)** — Intents (LLM/voice discovery), Services (process deps), Ports (inter-app piping)
-- **[Case study: Premotion](./case-study-premotion.md)** — a real app built on Hudson
 - **[Perf patterns](./perf-drag-resize-patterns.md)** — drag/resize/pan tricks used by the shell

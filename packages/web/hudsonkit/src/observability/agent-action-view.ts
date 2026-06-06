@@ -136,7 +136,9 @@ export function inferAgentActionAppId(event: HObservation): string | null {
   if (explicit) return explicit;
 
   const action = dataString(data, 'action') ?? dataString(data, 'playbook') ?? dataString(data, 'commandId');
-  const appFromAction = inferAppIdFromAction(action);
+  const appFromAction = action && !GENERIC_AGENT_ACTIONS.has(action)
+    ? inferAppIdFromAction(action)
+    : null;
   if (appFromAction) return appFromAction;
 
   const command = agentActionCommand(event);

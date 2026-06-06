@@ -92,7 +92,7 @@ Long-press reveals a slot's `longPressModes` — **alternative actions for that 
 
 | Style | Behavior |
 |-------|----------|
-| `.tray` | Default. Bottom three (BL · center · BR) grouped in a glass-material tray via `safeAreaInset(.bottom)`. Top two host as `ToolbarItem`s, inline with the nav title — same vertical level, Talkie-style. |
+| `.tray` | Default. Bottom three (BL · center · BR) grouped in a glass-material tray via `safeAreaInset(.bottom)`. Top two host as `ToolbarItem`s, inline with the nav title. |
 | `.scattered` | All five slots float as corner overlays. No grouping, no tray. Sparser chrome. |
 | `.minimal` | Center only; other positions ignored. For focus / takeover flows. |
 
