@@ -41,26 +41,30 @@ const COMPONENT_TOOLS: { id: LogoEditorTool; icon: typeof MousePointer2; label: 
   { id: 'text', icon: Type, label: 'Text', title: 'Place text' },
 ];
 
-const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string) => string }[] = [
+// All AI actions derive a new template from the active variant — they NEVER
+// mutate the source. Each prompt instructs the model to call create_template
+// with parentId pointing at the active variant, so the result nests under it
+// in the variant tree and the original is preserved.
+const AI_ACTIONS: { id: AiAction; icon: typeof Wand2; label: string; desc: string; color: string; prompt: (ctx: string, name: string, parentId: string) => string }[] = [
   {
     id: 'polish', icon: Wand2, label: 'Polish', desc: 'Subtle refinements', color: 'text-emerald-400',
-    prompt: (ctx) => `Polish this logo with subtle improvements. Adjust colors for better harmony, refine proportions, improve spacing and balance. Keep the same concept — just make it cleaner and more intentional. Apply changes directly.\n\n${ctx}`,
+    prompt: (ctx, name, parentId) => `Polish this logo with subtle improvements. Adjust colors for better harmony, refine proportions, improve spacing and balance. Keep the same concept — just make it cleaner and more intentional.\n\nCall create_template ONCE with parentId: "${parentId}" and name: "${name}-polish-1". Do not mutate the source. Inherit kind from the parent.\n\n${ctx}`,
   },
   {
     id: 'explore', icon: Shuffle, label: 'Explore', desc: 'Create 3 variations', color: 'text-cyan-400',
-    prompt: (ctx, name) => `Create 3 distinct variations of this logo by modifying the template's renderBody. Explore different visual approaches — different geometries, compositions, or effects. Save each as "${name}-v1", "${name}-v2", "${name}-v3". Keep the color palette.\n\n${ctx}`,
+    prompt: (ctx, name, parentId) => `Create 3 distinct variations of this logo by deriving from its renderBody. Explore different visual approaches — different geometries, compositions, or effects. Keep the color palette.\n\nCall create_template THREE times, each with parentId: "${parentId}" and names "${name}-v1", "${name}-v2", "${name}-v3". Do not mutate the source.\n\n${ctx}`,
   },
   {
     id: 'simplify', icon: Minimize2, label: 'Simplify', desc: 'Remove complexity', color: 'text-amber-400',
-    prompt: (ctx) => `Simplify this logo. Remove decorative elements, reduce the number of shapes, increase negative space. The mark should read clearly at 16px. Less is more — find the essential geometry and remove everything else. Apply changes directly.\n\n${ctx}`,
+    prompt: (ctx, name, parentId) => `Simplify this logo. Remove decorative elements, reduce the number of shapes, increase negative space. The mark should read clearly at 16px. Less is more — find the essential geometry and remove everything else.\n\nCall create_template ONCE with parentId: "${parentId}" and name: "${name}-simplified". Do not mutate the source. Inherit kind from the parent.\n\n${ctx}`,
   },
   {
     id: 'elevate', icon: Maximize2, label: 'Elevate', desc: 'Add sophistication', color: 'text-teal-500',
-    prompt: (ctx) => `Elevate this logo to feel more premium and sophisticated. Add subtle depth through layered opacity, refine the geometry for better mathematical harmony, improve the color palette for more richness. Think Pentagram or Wolff Olins level. Apply changes directly.\n\n${ctx}`,
+    prompt: (ctx, name, parentId) => `Elevate this logo to feel more premium and sophisticated. Add subtle depth through layered opacity, refine the geometry for better mathematical harmony, improve the color palette for more richness. Think Pentagram or Wolff Olins level.\n\nCall create_template ONCE with parentId: "${parentId}" and name: "${name}-elevated". Do not mutate the source. Inherit kind from the parent.\n\n${ctx}`,
   },
   {
     id: 'remix', icon: Zap, label: 'Remix', desc: 'Fresh take, same spirit', color: 'text-rose-400',
-    prompt: (ctx, name) => `Remix this logo — keep the core concept and color palette but reimagine the visual execution. Try a completely different geometric approach. Create a fresh take that feels related but distinctly new. Save as "${name}-remix". \n\n${ctx}`,
+    prompt: (ctx, name, parentId) => `Remix this logo — keep the core concept and color palette but reimagine the visual execution. Try a completely different geometric approach. Create a fresh take that feels related but distinctly new.\n\nCall create_template ONCE with parentId: "${parentId}" and name: "${name}-remix". Do not mutate the source.\n\n${ctx}`,
   },
 ];
 
@@ -429,6 +433,10 @@ function LogoMatrixView({
   const [templateId] = useState(initialTemplateId);
   const { templates, setVariant, setView: setViewFromCtx, sessions, activeSession, setActiveSession, dismissSession } = useLogo();
   const preset = MATRIX_PRESETS[templateId];
+  const matrixTemplate = useMemo(
+    () => templates.find(t => t.id === (preset?.templateId ?? templateId)) ?? null,
+    [templates, preset?.templateId, templateId],
+  );
   const selectedKeys = new Set(picks.map(p => p.key));
   const [traceOpen, setTraceOpen] = useState(false);
 
@@ -603,13 +611,13 @@ function LogoMatrixView({
         <div style={{ padding: '20px 28px 64px', maxWidth: 1280, margin: '0 auto', width: '100%' }}>
           {newTemplates.length > 0 && (
             <div
-              className="mb-6 rounded-lg border border-emerald-500/40 bg-emerald-500/10 px-4 py-3"
+              className="mb-6 rounded-lg border border-success/40 bg-success/10 px-4 py-3"
               role="status"
             >
               <div className="flex items-center justify-between gap-3 mb-1.5">
                 <div className="flex items-center gap-2">
-                  <Sparkles size={12} className="text-emerald-300" />
-                  <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-emerald-300">
+                  <Sparkles size={12} className="text-success" />
+                  <span className="text-[11px] font-mono uppercase tracking-[0.16em] text-success">
                     AI saved {newTemplates.length} new variant{newTemplates.length === 1 ? '' : 's'}
                   </span>
                 </div>
@@ -617,14 +625,14 @@ function LogoMatrixView({
                   <button
                     type="button"
                     onClick={handlePreviewLatest}
-                    className="rounded border border-emerald-500/35 bg-emerald-500/15 px-2.5 py-1 text-[10.5px] font-medium text-emerald-200 transition-colors hover:bg-emerald-500/25"
+                    className="rounded border border-success/35 bg-success/15 px-2.5 py-1 text-[10.5px] font-medium text-success transition-colors hover:bg-success/25"
                   >
                     Preview latest →
                   </button>
                   <button
                     type="button"
                     onClick={handleDismissBanner}
-                    className="rounded p-1 text-emerald-300/70 transition-colors hover:bg-emerald-500/15 hover:text-emerald-200"
+                    className="rounded p-1 text-success/70 transition-colors hover:bg-success/15 hover:text-success"
                     title="Dismiss"
                   >
                     <X size={11} />
@@ -633,9 +641,9 @@ function LogoMatrixView({
               </div>
               <ul className="space-y-0.5">
                 {newTemplates.slice(-5).map(t => (
-                  <li key={t.id} className="text-[10.5px] font-mono text-emerald-100/80 truncate">
-                    <span className="text-emerald-300/60">+</span> {t.name}{' '}
-                    <span className="text-emerald-300/50">· {t.id.slice(0, 8)}</span>
+                  <li key={t.id} className="text-[10.5px] font-mono text-foreground/80 truncate">
+                    <span className="text-success/70">+</span> {t.name}{' '}
+                    <span className="text-muted-foreground">· {t.id.slice(0, 8)}</span>
                   </li>
                 ))}
               </ul>
@@ -646,6 +654,7 @@ function LogoMatrixView({
             preset ? (
               <LogoComparisonSheet
                 templateId={preset.templateId}
+                template={matrixTemplate}
                 baseParams={preset.baseParams}
                 families={preset.families}
                 cellSize={120}
@@ -747,6 +756,18 @@ export function LogoContent() {
   const canvas = useCanvasControls();
   const containerRef = useRef<HTMLDivElement>(null);
 
+  // Matrix view only has content for templates that define a matrix preset
+  // (it's only enterable via the preset-gated Matrix toolbar button). But
+  // `view` is persisted, so loading with a stale 'matrix' view — or switching
+  // to a preset-less template (e.g. Mosaic) while matrix is open — strands the
+  // app on the "No matrix preset defined" dead-end instead of loading the
+  // logo. Self-heal back to preview so the app always renders something.
+  useEffect(() => {
+    if (view === 'matrix' && !hasMatrixPreset) {
+      setView('preview');
+    }
+  }, [view, hasMatrixPreset, setView]);
+
   // When an AI-saved template is opened from the chat, flash the canvas so
   // the user notices the workspace has just become the result-viewing context.
   useEffect(() => {
@@ -789,23 +810,24 @@ export function LogoContent() {
       borderRadius: params.borderRadius, paneRadius: params.paneRadius,
       gapWidth: params.gapWidth, splitX: params.splitX, splitY: params.splitY, padding: params.padding,
     });
-    return { svgMarkup, tmplName: tmpl?.name ?? params.variant, paramSummary };
+    return { svgMarkup, tmplName: tmpl?.name ?? params.variant, tmplId: params.variant, paramSummary };
   }, [params, templates]);
 
   const handleAiAction = useCallback((action: AiAction, editText?: string) => {
-    const { svgMarkup, tmplName, paramSummary } = buildContext();
-    const ctx = `Template: "${tmplName}"\nParams: ${paramSummary}\nCurrent SVG:\n\`\`\`svg\n${svgMarkup}\n\`\`\``;
+    const { svgMarkup, tmplName, tmplId, paramSummary } = buildContext();
+    const ctx = `Template: "${tmplName}" (id: \`${tmplId}\`)\nParams: ${paramSummary}\nCurrent SVG:\n\`\`\`svg\n${svgMarkup}\n\`\`\``;
 
     let prompt: string;
     let actionLabel = 'Edit logo';
     let actionId = 'logo.edit';
     if (action === 'edit') {
-      prompt = `${editText}\n\n${ctx}`;
+      // Free-form edit also derives — the source is preserved.
+      prompt = `${editText}\n\nCall create_template with parentId: "${tmplId}". Do not mutate the source template; iteration always produces a new child variant.\n\n${ctx}`;
     } else {
       const actionDef = AI_ACTIONS.find(a => a.id === action)!;
       actionLabel = `${actionDef.label} logo`;
       actionId = `logo.${action}`;
-      prompt = actionDef.prompt(ctx, tmplName);
+      prompt = actionDef.prompt(ctx, tmplName, tmplId);
     }
 
     sendAiMessage(prompt, { action: actionId, label: actionLabel, surface: 'logo-workspace' });

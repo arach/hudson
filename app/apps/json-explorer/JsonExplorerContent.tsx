@@ -68,7 +68,7 @@ function TreeNode({
     <div>
       <div
         className={`flex items-center gap-1.5 py-0.5 px-2 cursor-pointer transition-colors group ${
-          isSelected ? 'bg-cyan-500/10' : 'hover:bg-accent/8'
+          isSelected ? 'bg-accent/10' : 'hover:bg-accent/8'
         }`}
         style={{ paddingLeft: `${depth * 16 + 8}px` }}
         onClick={() => {
@@ -90,7 +90,7 @@ function TreeNode({
 
         {/* Key name */}
         <span className={`text-[12px] font-mono shrink-0 ${
-          filter && matchesFilter ? 'text-cyan-300/90 font-bold' : 'text-foreground/76'
+          filter && matchesFilter ? 'text-accent font-bold' : 'text-foreground/76'
         }`}>
           {keyName}
         </span>
@@ -183,7 +183,7 @@ export function JsonExplorerContent() {
           <div className="flex gap-2">
             <button
               onClick={handlePaste}
-              className="px-4 py-2 rounded-lg bg-cyan-500/10 border border-cyan-500/15 text-cyan-400 text-[12px] font-medium hover:bg-cyan-500/20 transition-colors flex items-center gap-2"
+              className="px-4 py-2 rounded-lg bg-accent/10 border border-accent/15 text-accent text-[12px] font-medium hover:bg-accent/20 transition-colors flex items-center gap-2"
             >
               <Clipboard size={13} /> Paste from clipboard
             </button>
@@ -196,7 +196,7 @@ export function JsonExplorerContent() {
             <textarea
               ref={textareaRef}
               placeholder='{"paste": "json here"}'
-              className="w-full h-[140px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/76 font-mono outline-none focus:border-cyan-500/30 transition-colors resize-none"
+              className="w-full h-[140px] px-3 py-2 rounded-lg bg-card/85 border border-border/70 text-[12px] text-foreground/76 font-mono outline-none focus:border-accent/50 transition-colors resize-none"
               spellCheck={false}
               onKeyDown={e => {
                 if ((e.metaKey || e.ctrlKey) && e.key === 'Enter') {
@@ -213,7 +213,7 @@ export function JsonExplorerContent() {
                   const val = textareaRef.current?.value ?? '';
                   if (val.trim()) loadJson(val);
                 }}
-                className="px-3 py-1 rounded bg-cyan-500/15 text-cyan-400 text-[11px] font-medium hover:bg-cyan-500/25 transition-colors"
+                className="px-3 py-1 rounded bg-accent/15 text-accent text-[11px] font-medium hover:bg-accent/25 transition-colors"
               >
                 Parse
               </button>
@@ -234,7 +234,7 @@ export function JsonExplorerContent() {
             value={filter}
             onChange={e => setFilter(e.target.value)}
             placeholder="Filter keys"
-            className="w-full pl-8 pr-3 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-cyan-500/30 transition-colors"
+            className="w-full pl-8 pr-3 py-1.5 rounded bg-card/85 border border-border/70 text-[12px] text-foreground/78 font-mono outline-none focus:border-accent/50 transition-colors"
           />
         </div>
         <button onClick={expandAll} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-foreground/80 transition-colors" title="Expand all">
@@ -243,7 +243,7 @@ export function JsonExplorerContent() {
         <button onClick={collapseAll} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-foreground/80 transition-colors" title="Collapse all">
           <ChevronsDownUp size={13} />
         </button>
-        <button onClick={clear} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-red-400/70 transition-colors" title="Clear">
+        <button onClick={clear} className="p-1.5 rounded hover:bg-accent/8 text-muted-foreground/70 hover:text-destructive/70 transition-colors" title="Clear">
           <X size={13} />
         </button>
       </div>
@@ -257,7 +257,7 @@ export function JsonExplorerContent() {
 
       {/* Parse error */}
       {parseError && (
-        <div className="px-4 py-2 text-[11px] text-red-400 bg-red-500/5 border-b border-red-500/10">
+        <div className="px-4 py-2 text-[11px] text-destructive bg-destructive/5 border-b border-destructive/10">
           Parse error: {parseError}
         </div>
       )}

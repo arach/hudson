@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonBridge
 import HudsonUI
 import HudsonShell
 
@@ -8,13 +9,23 @@ enum DemoPage: String, CaseIterable, Identifiable {
     case primitives
     case hudAI
     case web
+    case terminal
+    case capture
     case vox
+    case audio
+    case onboarding
+    case keyboard
     case settings
     case logs
-    case terminal
     case about
 
     var id: String { rawValue }
+
+    static let primaryTabs: [DemoPage] = [.shell, .primitives, .hudAI, .logs, .settings]
+
+    var isPrimaryTab: Bool {
+        DemoPage.primaryTabs.contains(self)
+    }
 
     var title: String {
         switch self {
@@ -23,7 +34,11 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .primitives:    return "Primitives"
         case .hudAI:         return "HudAI"
         case .web:           return "Web"
+        case .capture:       return "Capture"
         case .vox:           return "Vox"
+        case .audio:         return "Audio"
+        case .onboarding:    return "Onboarding"
+        case .keyboard:      return "Keyboard"
         case .settings:      return "Settings"
         case .logs:          return "Logs"
         case .terminal:      return "Terminal"
@@ -38,7 +53,11 @@ enum DemoPage: String, CaseIterable, Identifiable {
         case .primitives:    return "square.stack.3d.up"
         case .hudAI:         return "sparkles"
         case .web:           return "safari"
+        case .capture:       return "text.viewfinder"
         case .vox:           return "waveform"
+        case .audio:         return "mic.circle"
+        case .onboarding:    return "sparkles.rectangle.stack"
+        case .keyboard:      return "keyboard"
         case .settings:      return "gearshape"
         case .logs:          return "list.bullet.rectangle"
         case .terminal:      return "terminal"
@@ -51,6 +70,8 @@ struct RootView: View {
     @State private var page: DemoPage
     @State private var customComplications: HudPhoneComplications? = nil
     @State private var customStyle: HudPhoneComplicationsStyle = .tray
+    @State private var lastDeepLink: HudDeepLink? = nil
+    @State private var deepLinkError: String? = nil
 
     init() {
         let args = ProcessInfo.processInfo.arguments
@@ -64,8 +85,19 @@ struct RootView: View {
 
     var body: some View {
         HudPhoneAppShell(complicationsStyle: customStyle) {
+            rootContent
+            .navigationTitle(navigationTitle)
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar { navigationToolbar }
+        }
+        .onOpenURL(perform: handleDeepLink)
+    }
+
+    @ViewBuilder
+    private var rootContent: some View {
+        if page.isPrimaryTab {
             TabView(selection: $page) {
-                ForEach(DemoPage.allCases) { p in
+                ForEach(DemoPage.primaryTabs) { p in
                     content(for: p)
                         .tag(p)
                         .tabItem {
@@ -73,9 +105,9 @@ struct RootView: View {
                         }
                 }
             }
-                .navigationTitle(navigationTitle)
-                .navigationBarTitleDisplayMode(.inline)
-                .toolbar { navigationToolbar }
+        } else {
+            content(for: page)
+                .toolbar(.hidden, for: .tabBar)
         }
     }
 
@@ -121,11 +153,54 @@ struct RootView: View {
         case .primitives:    PrimitivesTab()
         case .hudAI:         HudAITab()
         case .web:           WebTab()
+        case .capture:       CaptureTab()
         case .vox:           VoxTab()
-        case .settings:      SettingsTab()
+        case .audio:         AudioTab()
+        case .onboarding:    OnboardingTab()
+        case .keyboard:      KeyboardTab()
+        case .settings:      SettingsTab(lastDeepLink: lastDeepLink, deepLinkError: deepLinkError)
         case .logs:          LogsTab()
         case .terminal:      TerminalTab()
         case .about:         AboutTab()
+        }
+    }
+
+    private func handleDeepLink(_ url: URL) {
+        do {
+            let link = try HudDeepLink.parse(url)
+            lastDeepLink = link
+            deepLinkError = nil
+
+            withAnimation(.easeOut(duration: 0.18)) {
+                page = destination(for: link.route)
+            }
+        } catch {
+            lastDeepLink = nil
+            deepLinkError = error.localizedDescription
+            withAnimation(.easeOut(duration: 0.18)) {
+                page = .settings
+            }
+        }
+    }
+
+    private func destination(for route: HudDeepLinkRoute) -> DemoPage {
+        switch route {
+        case .home, .workspace, .node:
+            return .shell
+        case .keyboard:
+            return .keyboard
+        case .settings, .pair:
+            return .settings
+        case .onboarding:
+            return .onboarding
+        case .terminal:
+            return .terminal
+        case .capture:
+            return .capture
+        case .web:
+            return .web
+        case .unknown:
+            return .settings
         }
     }
 }

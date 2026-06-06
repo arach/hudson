@@ -73,7 +73,6 @@ import { DecorationLayer } from './decor/DecorationLayer';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from '../lib/useAIModelOptions';
-import { registerHudsonVoxIntegration } from '../lib/voxIntegration';
 import {
   announceSettingChanged,
   SettingChangedNotice,
@@ -1505,6 +1504,11 @@ function WorkspaceInner({
     320,
     { enabled: persistSession },
   );
+  const [codeSheetWidth, setCodeSheetWidth] = usePersistentState(
+    `hudson.ws.${workspace.id}.codeSheetWidth`,
+    720,
+    { enabled: persistSession },
+  );
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
@@ -1527,6 +1531,19 @@ function WorkspaceInner({
     }
     previousFocusedCodeWorkbenchOpenRef.current = focusedCodeWorkbenchOpen;
   }, [focusedCodeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
+
+  // Parallax nudge: the workbench slides out from the nav bar anchored to the
+  // left of the available area. Gently drift the canvas a touch to the right
+  // so it feels like the workbench is layering over a world that recedes,
+  // rather than just slapping a panel on top. ~15% of the workbench width is
+  // enough to read as motion without re-centering the scene.
+  const codeWorkbenchViewportShiftX = useMemo(() => {
+    if (!focusedCodeWorkbenchOpen || codeWorkbenchSize === 'full' || viewport.width === 0) return 0;
+    const workbenchWidth = codeWorkbenchSize === 'compact'
+      ? Math.min(viewport.width * 0.44, 720)
+      : Math.min(viewport.width * 0.56, 920);
+    return workbenchWidth * 0.24;
+  }, [focusedCodeWorkbenchOpen, codeWorkbenchSize, viewport.width]);
 
   // --- Window bounds tracking (for fit-all + minimap indicators) ---
   // Ref holds the live truth — updated synchronously, zero re-renders.
@@ -2905,13 +2922,7 @@ function WorkspaceInner({
     }
 
     setTerminalVoiceDraftSubmitted(false);
-    void registerHudsonVoxIntegration()
-      .catch(error => {
-        console.warn('[WorkspaceShell] Vox integration registration failed:', error);
-      })
-      .finally(() => {
-        void startTerminalVoice();
-      });
+    void startTerminalVoice();
   }, [
     openWorkspaceConsole,
     setShowTerminal,
@@ -3166,7 +3177,7 @@ function WorkspaceInner({
   ) : null;
   const focusedCanvasContentNode = canvasFocusContentNode ?? singleContentNode;
   const worldContent = (
-    <div data-hudson-world>
+    <div data-hudson-world className={frameMode === 'panel' ? 'h-full min-h-0' : undefined}>
       {focusedCanvasContentNode ? (
         isCanvasMode ? (
           <div className="pointer-events-auto" style={{ transform: 'translate(-50%, -50%)' }}>
@@ -3448,6 +3459,7 @@ function WorkspaceInner({
         zoomControlsRightOffset={effectiveRightWidth}
         zoomControlsBottomOffset={terminalCanvasBottomOffset}
         showZoomControls={showCanvasZoomControls}
+        viewportShiftX={codeWorkbenchViewportShiftX}
         {...(isCanvasMode ? {
           canvasProps: { showGuides, onGuidesChange: setShowGuides, gridOpacity },
           canvasContextMenuItems,
@@ -3664,6 +3676,8 @@ function WorkspaceInner({
                   object={focusedCodeSurface.object}
                   placement="sheet"
                   onClose={() => focusedCodeSurface.setOpen(false)}
+                  width={codeSheetWidth}
+                  onWidthChange={setCodeSheetWidth}
                 />
               </div>
             )}

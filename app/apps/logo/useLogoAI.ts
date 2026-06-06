@@ -15,7 +15,6 @@ interface UseLogoAIOptions {
   presets: { label: string; params: Partial<LogoParams> }[];
   templates: LogoTemplate[];
   addTemplate: (template: LogoTemplate) => Promise<void> | void;
-  updateTemplate: (id: string, updates: Partial<Omit<LogoTemplate, 'id'>>) => Promise<void> | void;
   deleteTemplate: (id: string) => Promise<void> | void;
   customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
   setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
@@ -47,10 +46,21 @@ export interface AiActivityEntry {
   timestamp: number;
 }
 
+export interface SendLogoAIMessageFile {
+  /** IANA media type, e.g. "image/jpeg". */
+  mediaType: string;
+  /** Data URL or hosted URL of the file. */
+  url: string;
+  /** Optional filename for display in the conversation. */
+  filename?: string;
+}
+
 export interface SendLogoAIMessageOptions {
   action?: string;
   label?: string;
   surface?: string;
+  /** Optional file attachments (e.g. a workspace screenshot). Pass-through to chat.sendMessage. */
+  files?: SendLogoAIMessageFile[];
 }
 
 interface ActiveLogoAIAction {
@@ -99,7 +109,7 @@ function labelLogoAIAction(action: string) {
 export function useLogoAI(opts: UseLogoAIOptions) {
   const {
     params, setParam, setVariant, resetDefaults, presets,
-    templates, addTemplate, updateTemplate, deleteTemplate,
+    templates, addTemplate, deleteTemplate,
     customParamValues, setCustomParam, refreshTemplates, appSettings,
   } = opts;
   const { apiBaseUrl } = usePlatform();
@@ -293,39 +303,10 @@ export function useLogoAI(opts: UseLogoAIOptions) {
           break;
         }
         case 'update_template': {
-          const templateId = args.templateId as string;
-          if (typeof templateId !== 'string' || !templateId) throw new Error('update_template requires templateId');
-          if (isBuiltinVariant(templateId)) throw new Error(`Cannot modify built-in template "${templateId}". Use create_template to clone it.`);
-          const currentTemplate = templateByIdRef.current.get(templateId);
-          if (!currentTemplate) throw new Error(`Unknown template "${templateId}"`);
-          const updates: Partial<Omit<LogoTemplate, 'id'>> = {};
-          if (args.name) updates.name = args.name as string;
-          if (args.description) updates.description = args.description as string;
-          if (args.kind === 'brand' || args.kind === 'style') updates.kind = args.kind;
-          if (typeof args.parentId === 'string') {
-            updates.parentId = templateByIdRef.current.has(args.parentId) ? args.parentId : currentTemplate.parentId;
-          }
-          if (args.renderBody) {
-            const source = args.renderBody as string;
-            const result = await compileTemplate(source, compileEndpoint);
-            if ('error' in result) {
-              logActivity('error', `update_template "${args.name ?? templateId}" failed to compile: ${result.error.slice(0, 80)}`);
-              throw new Error(`update_template failed to compile: ${result.error}`);
-            }
-            updates.sourceCode = source;
-            updates.renderBody = result.js;
-          }
-          if (args.params) updates.params = args.params as TemplateParam[];
-          if (Object.keys(updates).length === 0) throw new Error('update_template requires at least one field to update');
-          await updateTemplate(templateId, updates);
-          templateByIdRef.current = new Map(templateByIdRef.current).set(templateId, {
-            ...currentTemplate,
-            ...updates,
-            updatedAt: Date.now(),
-          });
-          logActivity('update_template', `Updated "${args.name ?? templateId}"`);
-          setTimeout(refreshTemplates, 500);
-          break;
+          // AI ops never mutate the source template. If a model still calls
+          // update_template (cached schema, older system prompt), reject loudly
+          // so it falls back to create_template with parentId.
+          throw new Error('update_template is not available — iterations always create a new template via create_template with parentId of the source.');
         }
         case 'delete_template': {
           const id = args.templateId as string;
@@ -368,10 +349,18 @@ export function useLogoAI(opts: UseLogoAIOptions) {
   });
 
   const sendAiMessage = useCallback((message: string, options: SendLogoAIMessageOptions = {}) => {
-    logActivity('send', 'Sending to AI');
+    const files = options.files;
+    logActivity('send', files?.length ? `Sending to AI (${files.length} file${files.length === 1 ? '' : 's'})` : 'Sending to AI');
     startLogoAIAction(message, options);
     try {
-      chat.sendMessage({ text: message });
+      if (files && files.length > 0) {
+        chat.sendMessage({
+          text: message,
+          files: files.map(f => ({ type: 'file' as const, mediaType: f.mediaType, url: f.url, filename: f.filename })),
+        });
+      } else {
+        chat.sendMessage({ text: message });
+      }
     } catch (err) {
       finishLogoAIAction('failed', err);
       logActivity('error', err instanceof Error ? err.message : String(err));

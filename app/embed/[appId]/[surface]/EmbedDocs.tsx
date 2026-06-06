@@ -1,68 +1,89 @@
 'use client';
 
 // ─────────────────────────────────────────────────────────────────────────────
-// EmbedDocs — Getting-started docs preview for /embed/<appId>/docs
+// EmbedDocs — The map of Hudson, served at /embed/<appId>/docs
 // ─────────────────────────────────────────────────────────────────────────────
-// A focused preview of Hudson's getting-started material, served as an embed
-// so consumer sites can drop in a real docs surface (not a marketing recreation)
-// with a clear path to the full workspace experience.
+// A dense overview of what Hudson actually is: the surfaces it runs on, the
+// apps that ship in the workspace, and the primitives the shell exposes.
 //
-// Three topic cards: Manifest, Primitives, Voice/AI. Each is a short excerpt +
-// code snippet + "Read in workspace" link that opens the corresponding doc page
-// in the parent tab (so visitors can keep the marketing scroll behind).
+// Three topic cards: Surfaces, Apps, Primitives. Each renders a short pitch
+// and a list (label + one-line descriptor) — like a parts list on an
+// engineering drawing.
 // ─────────────────────────────────────────────────────────────────────────────
 
 import { useState, type CSSProperties } from 'react';
 
-const WORKSPACE_URL = 'https://app.hudsonkit.com/?focus=hudson-docs';
+const WORKSPACE_URL = 'https://app.hudsonkit.com';
+const NPM_URL = 'https://www.npmjs.com/package/hudsonkit';
+
+interface ListItem {
+  label: string;
+  sub: string;
+  href?: string;
+  external?: boolean;
+}
 
 interface Topic {
   id: string;
   num: string;
   title: string;
   pitch: string;
-  code: string;
-  hash: string;
+  items: ListItem[];
+  cta: { label: string; href: string; external?: boolean };
 }
 
 const TOPICS: Topic[] = [
   {
-    id: 'manifest',
+    id: 'surfaces',
     num: '01',
-    title: 'Manifest',
+    title: 'Surfaces',
     pitch:
-      'Every app declares a typed manifest — id, mode, intents, takeover. Hudson reads it once at boot and wires the rest.',
-    code: `export const manifest: HudsonApp = {
-  id: 'talkie',
-  mode: 'canvas',
-  intents: [openScratch, makeNote],
-};`,
-    hash: 'manifest',
+      'Hudson is the same shell language across four surfaces. The web workspace is the lead surface; macOS and iOS reuse the contract natively; the SDK is the import you reach for.',
+    items: [
+      { label: 'Web',   sub: 'Workspace at app.hudsonkit.com',     href: WORKSPACE_URL, external: true },
+      { label: 'macOS', sub: 'Native shell + Runtime canvas',      href: '/docs/macos-shell' },
+      { label: 'iOS',   sub: 'HudsonKit Swift package',            href: '/docs/ios-shell' },
+      { label: 'SDK',   sub: 'hudsonkit on npm',                   href: NPM_URL, external: true },
+    ],
+    cta: { label: 'Read the architecture →', href: '/docs/architecture' },
+  },
+  {
+    id: 'apps',
+    num: '02',
+    title: 'Apps',
+    pitch:
+      'Apps plug into the shell through a small HudsonApp contract — Provider for state, slot components for chrome, hooks the shell reads. The workspace ships a wide range of them; the variety is the point.',
+    items: [
+      { label: 'Hudson Docs',     sub: 'Built-in component reference, agent-friendly' },
+      { label: 'Code Editor',     sub: 'Source editing inside the workspace' },
+      { label: 'Notepad',         sub: 'Markdown notes with frontmatter' },
+      { label: 'API Inspector',   sub: 'HTTP playground + response viewer' },
+      { label: 'JSON Explorer',   sub: 'Structured data inspection + diffing' },
+      { label: 'Assets',          sub: 'Workspace asset manager' },
+      { label: 'Stage Design',    sub: 'Stage + camera composition' },
+      { label: 'Theme Designer',  sub: 'Tokens, themes, live preview' },
+      { label: 'HudLogger',       sub: 'Agent action trail' },
+    ],
+    cta: { label: 'Open the workspace ↗', href: WORKSPACE_URL, external: true },
   },
   {
     id: 'primitives',
-    num: '02',
+    num: '03',
     title: 'Primitives',
     pitch:
-      'Eight components — Frame, Nav, Panel, Status, Canvas, Palette, Drawer, Voice. Drop them in, they share state through the Hudson context.',
-    code: `<Frame>
-  <Nav title="MYAPP" />
-  <Panel side="left">{tree}</Panel>
-  <Canvas>{world}</Canvas>
-</Frame>`,
-    hash: 'primitives',
-  },
-  {
-    id: 'voice',
-    num: '03',
-    title: 'Voice / AI',
-    pitch:
-      'One hook for capture, one for replies. Vox runs locally; audio never leaves the machine. Same intents work by keystroke or voice.',
-    code: `const { start, stop } = useVoiceInput({
-  onTranscript: dispatchIntent,
-  surface: 'myapp',
-});`,
-    hash: 'voice-ai',
+      'A small set of components owns the chrome. Drop them in, share state through the Hudson context. No app reimplements its own sidebar, palette, or status bar.',
+    items: [
+      { label: 'Frame',           sub: 'Pan/zoom shell with three layers' },
+      { label: 'NavigationBar',   sub: 'Top chrome — title, search, actions' },
+      { label: 'SidePanels',      sub: 'Collapsible left + right docks with resize' },
+      { label: 'StatusBar',       sub: 'Bottom chrome — status, viewport, clock' },
+      { label: 'CommandPalette',  sub: 'Cmd+K fuzzy menu with shortcuts' },
+      { label: 'TerminalDrawer',  sub: 'Slide-in console from the status bar' },
+      { label: 'Canvas',          sub: 'Pan/zoom engine, dot grid, crosshairs' },
+      { label: 'Minimap',         sub: 'Viewport · zoom · click-to-navigate' },
+      { label: 'Voice',           sub: 'Local capture + reply, intent dispatch' },
+    ],
+    cta: { label: 'See the patterns →', href: '/docs/patterns' },
   },
 ];
 
@@ -94,8 +115,8 @@ export function EmbedDocs() {
             ))}
           </ul>
           <div style={{ marginTop: 'auto', paddingTop: 18 }}>
-            <a href={`${WORKSPACE_URL}#${active.hash}`} target="_top" rel="noopener noreferrer" style={CTA_PRIMARY}>
-              ↗ Open in workspace
+            <a href={WORKSPACE_URL} target="_top" rel="noopener noreferrer" style={CTA_PRIMARY}>
+              ↗ Workspace
             </a>
           </div>
         </aside>
@@ -106,16 +127,40 @@ export function EmbedDocs() {
             <h2 style={ARTICLE_TITLE}>{active.title}</h2>
           </div>
           <p style={ARTICLE_PITCH}>{active.pitch}</p>
-          <pre style={CODE_BLOCK}>
-            <code>{active.code}</code>
-          </pre>
+          <ul style={LIST}>
+            {active.items.map((item) => {
+              const row = (
+                <>
+                  <span style={LIST_LABEL}>{item.label}</span>
+                  <span style={LIST_DOT} aria-hidden />
+                  <span style={LIST_SUB}>{item.sub}</span>
+                </>
+              );
+              return (
+                <li key={item.label} style={LIST_ROW}>
+                  {item.href ? (
+                    <a
+                      href={item.href}
+                      target={item.external ? '_top' : undefined}
+                      rel={item.external ? 'noopener noreferrer' : undefined}
+                      style={LIST_LINK}
+                    >
+                      {row}
+                    </a>
+                  ) : (
+                    <div style={LIST_LINK}>{row}</div>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
           <a
-            href={`${WORKSPACE_URL}#${active.hash}`}
-            target="_top"
-            rel="noopener noreferrer"
+            href={active.cta.href}
+            target={active.cta.external ? '_top' : undefined}
+            rel={active.cta.external ? 'noopener noreferrer' : undefined}
             style={READ_MORE}
           >
-            Read the full {active.title.toLowerCase()} docs →
+            {active.cta.label}
           </a>
         </article>
       </div>
@@ -128,16 +173,8 @@ function Header() {
   return (
     <header style={HEADER}>
       <div style={{ display: 'flex', gap: 14, alignItems: 'baseline' }}>
-        <span style={HEADER_LABEL}>HudsonKit · docs</span>
-        <span style={HEADER_SUB}>getting started</span>
-      </div>
-      <div style={{ display: 'flex', gap: 8 }}>
-        <a href={WORKSPACE_URL} target="_top" rel="noopener noreferrer" style={CTA_GHOST}>
-          ⛶ Open full
-        </a>
-        <a href={WORKSPACE_URL} target="_blank" rel="noopener noreferrer" style={CTA_GHOST}>
-          ↗ New tab
-        </a>
+        <span style={HEADER_LABEL}>HudsonKit · map</span>
+        <span style={HEADER_SUB}>surfaces · apps · primitives</span>
       </div>
     </header>
   );
@@ -146,7 +183,7 @@ function Header() {
 function Footer() {
   return (
     <footer style={FOOTER}>
-      <span>app.hudsonkit.com/docs</span>
+      <span>app.hudsonkit.com</span>
       <span>v0.2 · live</span>
     </footer>
   );
@@ -242,6 +279,8 @@ const ARTICLE: CSSProperties = {
   flexDirection: 'column',
   gap: 14,
   minWidth: 0,
+  minHeight: 0,
+  overflow: 'auto',
 };
 
 const ARTICLE_HEAD: CSSProperties = {
@@ -275,16 +314,51 @@ const ARTICLE_PITCH: CSSProperties = {
   maxWidth: 540,
 };
 
-const CODE_BLOCK: CSSProperties = {
-  margin: 0,
-  padding: '14px 16px',
-  background: 'var(--hud-bg, oklch(0.18 0.02 240))',
+const LIST: CSSProperties = {
+  listStyle: 'none',
+  padding: 0,
+  margin: '2px 0 0',
+  display: 'grid',
+  gap: 1,
   border: 'var(--hud-border-width, 1px) solid var(--hud-line, oklch(0.32 0.012 240))',
+  background: 'var(--hud-line, oklch(0.32 0.012 240))',
+};
+
+const LIST_ROW: CSSProperties = {
+  background: 'var(--hud-bg, oklch(0.18 0.02 240))',
+  padding: 0,
+};
+
+const LIST_LINK: CSSProperties = {
+  display: 'flex',
+  alignItems: 'baseline',
+  gap: 10,
+  padding: '10px 14px',
+  textDecoration: 'none',
+  color: 'inherit',
+};
+
+const LIST_LABEL: CSSProperties = {
   fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
-  fontSize: 11.5,
-  lineHeight: 1.55,
-  color: 'var(--hud-ink-1, oklch(0.86 0.005 240))',
-  overflow: 'auto',
+  fontSize: 12,
+  letterSpacing: '0.08em',
+  color: 'var(--hud-ink, oklch(0.94 0.005 240))',
+  minWidth: 130,
+};
+
+const LIST_DOT: CSSProperties = {
+  flex: '0 0 6px',
+  height: 6,
+  borderRadius: '50%',
+  background: 'var(--hud-accent, oklch(0.72 0.18 162))',
+  opacity: 0.7,
+};
+
+const LIST_SUB: CSSProperties = {
+  fontSize: 12,
+  lineHeight: 1.4,
+  color: 'var(--hud-ink-2, oklch(0.66 0.008 240))',
+  flex: 1,
 };
 
 const READ_MORE: CSSProperties = {
@@ -324,19 +398,4 @@ const CTA_PRIMARY: CSSProperties = {
   textTransform: 'uppercase',
   textDecoration: 'none',
   border: 'var(--hud-border-width, 1px) solid var(--hud-accent, oklch(0.72 0.18 162))',
-};
-
-const CTA_GHOST: CSSProperties = {
-  display: 'inline-flex',
-  alignItems: 'center',
-  gap: 6,
-  padding: '6px 12px',
-  background: 'transparent',
-  color: 'var(--hud-ink-1, oklch(0.86 0.005 240))',
-  fontFamily: 'var(--hud-font-mono, ui-monospace, monospace)',
-  fontSize: 10,
-  letterSpacing: '0.12em',
-  textTransform: 'uppercase',
-  textDecoration: 'none',
-  border: 'var(--hud-border-width, 1px) solid var(--hud-line-strong, oklch(0.48 0.012 240))',
 };

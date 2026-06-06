@@ -1,17 +1,21 @@
 import SwiftUI
+import UIKit
 import HudsonUI
 import HudsonObservability
 
 struct LogsTab: View {
     @ObservedObject private var store = HudLogStore.shared
     @State private var levelFilter: HudLogLevel? = nil
+    @State private var seededDemoEntries = false
+    @State private var copiedMessage: String? = nil
 
     private let demoLogger = HudLogger(category: "demo")
 
     var body: some View {
         VStack(spacing: 0) {
             controls
-                .padding(HudSpacing.xl)
+                .padding(.horizontal, HudSpacing.xl)
+                .padding(.vertical, HudSpacing.md)
                 .background(HudPalette.surface)
                 .overlay(Rectangle().fill(HudHairline.subtle).frame(height: HudStrokeWidth.thin), alignment: .bottom)
 
@@ -24,15 +28,16 @@ struct LogsTab: View {
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
             } else {
                 ScrollView {
-                    LazyVStack(spacing: HudSpacing.sm) {
+                    LazyVStack(spacing: HudSpacing.xs) {
                         ForEach(filteredEntries.reversed()) { entry in
                             entryRow(entry)
                         }
                     }
-                    .padding(HudSpacing.xl)
+                    .padding(HudSpacing.md)
                 }
             }
         }
+        .onAppear(perform: seedDemoEntriesIfNeeded)
     }
 
     private var filteredEntries: [HudLogEntry] {
@@ -41,91 +46,262 @@ struct LogsTab: View {
     }
 
     private var controls: some View {
-        VStack(alignment: .leading, spacing: HudSpacing.md) {
-            HStack(spacing: HudSpacing.sm) {
-                emitButton(.debug,   "Debug",   HudPalette.dim)
-                emitButton(.info,    "Info",    HudPalette.muted)
-                emitButton(.notice,  "Notice",  HudPalette.statusInfo)
-                emitButton(.warning, "Warn",    HudPalette.statusWarn)
-                emitButton(.error,   "Error",   HudPalette.statusError)
-            }
-            HStack(spacing: HudSpacing.md) {
-                Text("\(filteredEntries.count) entries")
-                    .font(HudFont.mono(HudTextSize.xs))
-                    .foregroundStyle(HudPalette.muted)
-                Spacer()
-                Button("Clear") { store.clear() }
-                    .font(HudFont.ui(HudTextSize.sm))
-                    .foregroundStyle(HudPalette.statusError)
-                    .buttonStyle(.plain)
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            statusLine
+
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: HudSpacing.sm) {
+                    filterButton(nil, "All")
+                    filterButton(.debug, "Debug")
+                    filterButton(.info, "Info")
+                    filterButton(.notice, "Notice")
+                    filterButton(.warning, "Warn")
+                    filterButton(.error, "Error")
+                }
             }
         }
     }
 
-    private func emitButton(_ level: HudLogLevel, _ label: String, _ tint: Color) -> some View {
-        Button {
-            switch level {
-            case .debug:   demoLogger.debug("Tap test", metadata: ["state": "debug"])
-            case .info:    demoLogger.info("Tap test", metadata: ["state": "info"])
-            case .notice:  demoLogger.notice("Tap test", metadata: ["state": "notice"])
-            case .warning: demoLogger.warning("Tap test", metadata: ["state": "warning"])
-            case .error:   demoLogger.error("Tap test", metadata: ["state": "error"])
-            case .fault:   demoLogger.fault("Tap test", metadata: ["state": "fault"])
+    private var statusLine: some View {
+        HStack(spacing: HudSpacing.sm) {
+            Text("Diagnostics")
+                .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
+                .foregroundStyle(HudPalette.ink)
+
+            Text("LIVE")
+                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                .foregroundStyle(HudPalette.statusOk)
+
+            Spacer(minLength: HudSpacing.sm)
+
+            if let copiedMessage {
+                Text(copiedMessage)
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.statusOk)
+                    .transition(.opacity)
+            } else {
+                Text("\(filteredEntries.count)/\(store.entries.count)")
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.dim)
+                if warningCount > 0 {
+                    countChip("W", warningCount, tint: HudPalette.statusWarn)
+                }
+                if errorCount > 0 {
+                    countChip("E", errorCount, tint: HudPalette.statusError)
+                }
             }
+
+            compactIconButton("Copy all", icon: "doc.on.doc", tint: HudPalette.muted, action: copyAllVisible)
+            compactIconButton("Emit burst", icon: "plus", tint: HudPalette.muted, action: emitDemoBurst)
+            compactIconButton("Clear", icon: "trash", tint: HudPalette.statusError) {
+                store.clear()
+            }
+        }
+    }
+
+    private var warningCount: Int {
+        store.entries.filter { $0.level == .warning }.count
+    }
+
+    private var errorCount: Int {
+        store.entries.filter { $0.level == .error || $0.level == .fault }.count
+    }
+
+    private func filterButton(_ level: HudLogLevel?, _ label: String) -> some View {
+        let active = levelFilter == level
+        let tint = filterTint(for: level)
+        return Button {
+            levelFilter = level
         } label: {
             Text(label)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                .foregroundStyle(tint)
-                .padding(.horizontal, HudSpacing.md)
-                .padding(.vertical, HudSpacing.sm)
-                .background(Capsule().fill(HudSurface.tintFill(tint)))
+                .foregroundStyle(active ? HudPalette.bg : tint)
+                .padding(.horizontal, HudSpacing.sm)
+                .padding(.vertical, HudSpacing.xs)
+                .background(Capsule().fill(active ? tint : HudSurface.tintFill(tint)))
                 .overlay(Capsule().stroke(HudSurface.tintBorder(tint), lineWidth: HudStrokeWidth.thin))
         }
         .buttonStyle(.plain)
     }
 
-    private func entryRow(_ entry: HudLogEntry) -> some View {
-        HStack(alignment: .top, spacing: HudSpacing.md) {
-            Text(entry.level.rawValue.uppercased())
-                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
-                .foregroundStyle(color(for: entry.level))
-                // Log level label gutter — fixed width to keep messages aligned.
-                // hudlint:disable next-line geometry
-                .frame(width: 56, alignment: .leading)
+    private func compactIconButton(
+        _ accessibilityLabel: String,
+        icon: String,
+        tint: Color,
+        action: @escaping () -> Void
+    ) -> some View {
+        Button(action: action) {
+            Image(systemName: icon)
+                .font(HudFont.ui(HudTextSize.xs, weight: .bold))
+                .foregroundStyle(tint)
+                .frame(width: HudIconSize.small, height: HudIconSize.small)
+                .background(Circle().fill(HudSurface.tintFill(tint)))
+                .overlay(Circle().stroke(HudHairline.subtle, lineWidth: HudStrokeWidth.thin))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(accessibilityLabel)
+    }
 
-            VStack(alignment: .leading, spacing: 2) {
-                Text(entry.message)
-                    .font(HudFont.mono(HudTextSize.sm))
-                    .foregroundStyle(HudPalette.ink)
+    private func countChip(_ label: String, _ count: Int, tint: Color) -> some View {
+        Text("\(label) \(count)")
+            .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+            .foregroundStyle(tint)
+    }
+
+    private func entryRow(_ entry: HudLogEntry) -> some View {
+        let tint = severityTint(for: entry.level)
+        return HStack(alignment: .top, spacing: HudSpacing.md) {
+            RoundedRectangle(cornerRadius: HudRadius.tight)
+                .fill(tint)
+                .frame(width: HudStrokeWidth.bold)
+
+            VStack(alignment: .leading, spacing: HudSpacing.sm) {
                 HStack(spacing: HudSpacing.sm) {
+                    Text(entry.level.rawValue.uppercased())
+                        .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                        .foregroundStyle(tint)
+
+                    Text(entry.category)
+                        .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                        .foregroundStyle(HudPalette.muted)
+
+                    Spacer(minLength: 0)
+
                     Text(entry.formattedTime)
                         .font(HudFont.mono(HudTextSize.xxs))
                         .foregroundStyle(HudPalette.dim)
-                    Text(entry.category)
-                        .font(HudFont.mono(HudTextSize.xxs))
-                        .foregroundStyle(HudPalette.muted)
-                    if !entry.metadata.isEmpty {
-                        Text(entry.metadata.map { "\($0.key)=\($0.value)" }.joined(separator: " "))
-                            .font(HudFont.mono(HudTextSize.xxs))
+
+                    Button {
+                        copy(entry)
+                    } label: {
+                        Image(systemName: "doc.on.doc")
+                            .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                             .foregroundStyle(HudPalette.dim)
                     }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("Copy log entry")
                 }
+
+                Text(compactMessage(for: entry))
+                    .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
+                    .foregroundStyle(HudPalette.ink)
+                    .lineLimit(1)
+                    .truncationMode(.tail)
             }
-            Spacer(minLength: 0)
         }
-        .padding(HudSpacing.md)
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.sm)
         .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudPalette.surface))
         .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: 0.5))
     }
 
-    private func color(for level: HudLogLevel) -> Color {
+    private func seedDemoEntriesIfNeeded() {
+        guard !seededDemoEntries else { return }
+        seededDemoEntries = true
+
+        guard store.entries.count <= 1 else { return }
+
+        let now = Date()
+        let seed: [(TimeInterval, HudLogLevel, String, String, [String: String])] = [
+            (-280, .info, "shell", "HudsonKitDemoIOS booted", ["state": "ready"]),
+            (-224, .notice, "bridge", "Deep link router registered hudson and hudsonkit schemes", ["routes": "10"]),
+            (-181, .info, "pairing", "Pairing parser warmed QR and URL payload formats", ["status": "ready"]),
+            (-140, .warning, "network", "Local network endpoint deferred until permission prompt completes", ["fallback": "tailscale"]),
+            (-102, .notice, "terminal", "Termini capability advertised to paired hosts", ["sessions": "2"]),
+            (-64, .debug, "web", "CodeMirror surface released inactive WebKit view", ["reason": "close"]),
+            (-28, .info, "voice", "Dictation route selected device transcription", ["engine": "apple"])
+        ]
+
+        for item in seed {
+            store.append(
+                HudLogEntry(
+                    timestamp: now.addingTimeInterval(item.0),
+                    level: item.1,
+                    subsystem: HudLogger.defaultSubsystem,
+                    category: item.2,
+                    message: item.3,
+                    metadata: item.4
+                )
+            )
+        }
+    }
+
+    private func emitDemoBurst() {
+        demoLogger.notice("Pairing handshake accepted", metadata: ["host": "macbook", "route": "tailscale"])
+        demoLogger.info("Canvas snapshot restored", metadata: ["nodes": "6", "status": "ready"])
+        demoLogger.warning("Terminal resize coalesced", metadata: ["reason": "drag", "changed": "true"])
+    }
+
+    private func filterTint(for level: HudLogLevel?) -> Color {
+        guard let level else { return HudPalette.muted }
         switch level {
-        case .debug:   return HudPalette.dim
-        case .info:    return HudPalette.muted
-        case .notice:  return HudPalette.statusInfo
-        case .warning: return HudPalette.statusWarn
-        case .error:   return HudPalette.statusError
-        case .fault:   return HudPalette.statusError
+        case .warning:
+            return HudPalette.statusWarn
+        case .error, .fault:
+            return HudPalette.statusError
+        default:
+            return HudPalette.muted
+        }
+    }
+
+    private func severityTint(for level: HudLogLevel) -> Color {
+        switch level {
+        case .warning:
+            return HudPalette.statusWarn
+        case .error, .fault:
+            return HudPalette.statusError
+        default:
+            return HudPalette.dim
+        }
+    }
+
+    private func compactMessage(for entry: HudLogEntry) -> String {
+        let metadata = metadataString(entry.metadata)
+        guard !metadata.isEmpty else { return entry.message }
+        return "\(entry.message)  \(metadata)"
+    }
+
+    private func serializedEntry(_ entry: HudLogEntry) -> String {
+        let metadata = metadataString(entry.metadata)
+        return [
+            entry.formattedTime,
+            entry.level.rawValue.uppercased(),
+            entry.category,
+            entry.message,
+            metadata
+        ]
+        .filter { !$0.isEmpty }
+        .joined(separator: " ")
+    }
+
+    private func metadataString(_ metadata: [String: String]) -> String {
+        metadata
+            .sorted { $0.key < $1.key }
+            .map { "\($0.key)=\($0.value)" }
+            .joined(separator: " ")
+    }
+
+    private func copy(_ entry: HudLogEntry) {
+        copyToPasteboard(serializedEntry(entry), message: "Copied row")
+    }
+
+    private func copyAllVisible() {
+        let rows = filteredEntries.reversed().map(serializedEntry).joined(separator: "\n")
+        copyToPasteboard(rows, message: "Copied \(filteredEntries.count)")
+    }
+
+    private func copyToPasteboard(_ text: String, message: String) {
+        guard !text.isEmpty else { return }
+        UIPasteboard.general.string = text
+
+        withAnimation(.easeOut(duration: 0.12)) {
+            copiedMessage = message
+        }
+
+        DispatchQueue.main.asyncAfter(deadline: .now() + 1.4) {
+            withAnimation(.easeOut(duration: 0.12)) {
+                copiedMessage = nil
+            }
         }
     }
 }

@@ -19,9 +19,9 @@ const FILTER_OPTIONS: Array<{ id: OpenScoutActivityFilter; label: string }> = [
 
 function TagBadge({ tag }: { tag: { type: string; id?: string } }) {
   const config: Record<string, { icon: typeof Zap; color: string; label: string }> = {
-    ask: { icon: MessageCircle, color: 'text-cyan-700 dark:text-cyan-400 bg-cyan-700/10 dark:bg-cyan-500/10 border-cyan-700/30 dark:border-cyan-500/20', label: 'ask' },
-    reply: { icon: Zap, color: 'text-emerald-700 dark:text-emerald-400 bg-emerald-700/10 dark:bg-emerald-500/10 border-emerald-700/30 dark:border-emerald-500/20', label: 'reply' },
-    speak: { icon: Volume2, color: 'text-amber-700 dark:text-amber-400 bg-amber-700/10 dark:bg-amber-500/10 border-amber-700/30 dark:border-amber-500/20', label: 'speak' },
+    ask: { icon: MessageCircle, color: 'text-info bg-info/10 border-info/30', label: 'ask' },
+    reply: { icon: Zap, color: 'text-success bg-success/10 border-success/30', label: 'reply' },
+    speak: { icon: Volume2, color: 'text-warning bg-warning/10 border-warning/30', label: 'speak' },
   };
 
   const c = config[tag.type] ?? { icon: Radio, color: 'text-muted-foreground bg-muted/40 border-border/40', label: tag.type };
@@ -46,7 +46,7 @@ function MessageBody({ text }: { text: string }) {
     <span>
       {parts.map((part, i) =>
         part.startsWith('@') ? (
-          <span key={i} className="text-cyan-700 dark:text-cyan-400 font-medium">{part}</span>
+          <span key={i} className="text-info font-medium">{part}</span>
         ) : (
           <span key={i}>{part}</span>
         )
@@ -60,13 +60,13 @@ function MessageBody({ text }: { text: string }) {
 // ---------------------------------------------------------------------------
 
 const AGENT_COLORS: Record<string, string> = {
-  operator: 'text-cyan-700 dark:text-cyan-400',
-  arach: 'text-cyan-700 dark:text-cyan-400',
+  operator: 'text-info',
+  arach: 'text-info',
   system: 'text-muted-foreground/60',
-  hudson: 'text-emerald-700 dark:text-emerald-400',
-  dev: 'text-blue-700 dark:text-blue-400',
-  logos: 'text-amber-700 dark:text-amber-400',
-  test: 'text-rose-700 dark:text-rose-400',
+  hudson: 'text-success',
+  dev: 'text-info',
+  logos: 'text-warning',
+  test: 'text-destructive',
 };
 
 function MessageRow({ entry }: { entry: ChannelEntry }) {
@@ -89,7 +89,7 @@ function MessageRow({ entry }: { entry: ChannelEntry }) {
   const hasAsk = parsed.tags.some(t => t.type === 'ask');
 
   return (
-    <div className={`group flex gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-muted/40 ${hasAsk ? 'border-l-2 border-cyan-700/30 dark:border-cyan-500/20 pl-2.5' : ''}`}>
+    <div className={`group flex gap-3 px-3 py-2 rounded-lg transition-colors hover:bg-muted/40 ${hasAsk ? 'border-l-2 border-info/30 pl-2.5' : ''}`}>
       {/* Timestamp */}
       <span className="text-[10px] text-muted-foreground/70 tabular-nums shrink-0 pt-0.5 font-mono w-[40px]">
         {new Date(entry.timestamp * 1000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
@@ -140,7 +140,7 @@ function FilterChip({
       onClick={onClick}
       className={`rounded-full border px-2.5 py-1 text-[10px] font-mono transition-colors ${
         active
-          ? 'border-cyan-700/40 dark:border-cyan-500/25 bg-cyan-700/10 dark:bg-cyan-500/10 text-cyan-700 dark:text-cyan-300'
+          ? 'border-accent/50 bg-accent/10 text-accent'
           : 'border-border/60 bg-card/60 text-muted-foreground hover:text-foreground/72'
       }`}
     >
@@ -186,7 +186,7 @@ export function OpenScoutContent() {
   return (
     <div className="flex flex-col h-full">
       {error && (
-        <div className="px-4 py-2 text-xs text-red-700 dark:text-red-400 bg-red-700/10 dark:bg-red-500/10 border-b border-red-700/20 dark:border-red-500/20">
+        <div className="px-4 py-2 text-xs text-destructive bg-destructive/10 border-b border-destructive/20">
           {error}
         </div>
       )}
@@ -213,7 +213,7 @@ export function OpenScoutContent() {
         {(selectedAgent || searchQuery) && (
           <div className="flex flex-wrap items-center gap-2 text-[10px] font-mono text-muted-foreground">
             {selectedAgent && (
-              <span className="rounded-full border border-cyan-700/30 dark:border-cyan-500/15 bg-cyan-700/10 dark:bg-cyan-500/10 px-2 py-1 text-cyan-700 dark:text-cyan-300/80">
+              <span className="rounded-full border border-accent/40 bg-accent/10 px-2 py-1 text-accent">
                 agent {selectedAgent}
               </span>
             )}

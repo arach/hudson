@@ -1,0 +1,24 @@
+diff --git a/packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift b/packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift
+index 0000000..1111111 100644
+--- a/packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift
++++ b/packages/native/apple/HudsonKit/Sources/HudsonVantage/HudVantageSurface.swift
+@@
+-/// Native Hudson surface for terminal-backed durable runtimes.
++/// Native Hudson surface for composable agent workspaces.
+@@
+-private final class TerminalNode: ObservableObject, Identifiable {
++private final class TerminalNode: ObservableObject, Identifiable {
++    // Terminals are one canvas node type. Files, plans, and diffs can live
++    // beside them as manifest-defined artifacts.
+ }
+
+diff --git a/examples/termini-canvas/examples/hudson-vantage-practice.setup.json b/examples/termini-canvas/examples/hudson-vantage-practice.setup.json
+new file mode 100644
+index 0000000..2222222
+--- /dev/null
++++ b/examples/termini-canvas/examples/hudson-vantage-practice.setup.json
+@@
++{
++  "kind": "hudson.vantage.setup",
++  "nodes": ["tmux session", "source files", "plan", "running diff"]
++}

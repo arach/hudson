@@ -105,22 +105,22 @@ export function AssetsContent() {
       onPaste={handlePaste}
     >
       {/* URL bar */}
-      <form onSubmit={handleSubmit} className="px-4 pt-4 pb-3 border-b border-white/[0.06]">
+      <form onSubmit={handleSubmit} className="px-4 pt-4 pb-3 border-b border-border/60">
         <div className="flex gap-2">
           <div className="flex-1 relative">
-            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-white/20" />
+            <Search size={13} className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground/60" />
             <input
               type="text"
               value={url}
               onChange={e => setUrl(e.target.value)}
               placeholder="Paste URL to fetch images"
-              className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[13px] text-white/80 placeholder:text-white/20 outline-none focus:border-cyan-500/30 transition-colors font-mono"
+              className="w-full pl-9 pr-3 py-2.5 rounded-lg bg-muted/40 border border-border/60 text-[13px] text-foreground placeholder:text-muted-foreground/60 outline-none focus:border-accent/50 transition-colors font-mono"
             />
           </div>
           <button
             type="submit"
             disabled={discovering || !url.trim()}
-            className="px-4 py-2 rounded-lg bg-cyan-500/15 text-cyan-400 text-[12px] font-medium hover:bg-cyan-500/25 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-2"
+            className="px-4 py-2 rounded-lg bg-accent/10 text-accent text-[12px] font-medium hover:bg-accent/20 disabled:opacity-30 disabled:pointer-events-none transition-colors flex items-center gap-2"
           >
             {discovering ? <Loader2 size={13} className="animate-spin" /> : <Search size={13} />}
             Fetch
@@ -130,7 +130,7 @@ export function AssetsContent() {
 
       {/* Error bar */}
       {discoveryError && (
-        <div className="px-4 py-2 text-[11px] text-red-400 bg-red-500/10 border-b border-red-500/20">
+        <div className="px-4 py-2 text-[11px] text-destructive bg-destructive/10 border-b border-destructive/20">
           {discoveryError}
         </div>
       )}
@@ -140,15 +140,15 @@ export function AssetsContent() {
         {assets.length === 0 ? (
           /* Empty state — big drop zone */
           <div className="flex flex-col items-center justify-center h-full text-center px-8">
-            <div className="w-20 h-20 rounded-2xl bg-white/[0.03] border border-dashed border-white/[0.08] flex items-center justify-center mb-4">
-              <Upload size={24} className="text-white/10" />
+            <div className="w-20 h-20 rounded-2xl bg-muted/40 border border-dashed border-border/60 flex items-center justify-center mb-4">
+              <Upload size={24} className="text-muted-foreground/70" />
             </div>
-            <div className="text-[12px] text-white/30 mb-1">Drop files, paste, or fetch from URL</div>
-            <div className="text-[10px] text-white/15 mb-4">PNG, JPEG, SVG, GIF, WebP</div>
+            <div className="text-[12px] text-muted-foreground mb-1">Drop files, paste, or fetch from URL</div>
+            <div className="text-[10px] text-muted-foreground/70 mb-4">PNG, JPEG, SVG, GIF, WebP</div>
             <div className="flex items-center gap-2">
               <button
                 onClick={() => fileInputRef.current?.click()}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/60 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
               >
                 <Upload size={11} />
                 Browse files
@@ -167,7 +167,7 @@ export function AssetsContent() {
                     }
                   } catch { /* clipboard API may not be available */ }
                 }}
-                className="px-3 py-1.5 rounded-lg bg-white/[0.04] border border-white/[0.08] text-[11px] text-white/40 hover:text-white/60 hover:bg-white/[0.06] transition-colors flex items-center gap-1.5"
+                className="px-3 py-1.5 rounded-lg bg-muted/40 border border-border/60 text-[11px] text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors flex items-center gap-1.5"
               >
                 <Clipboard size={11} />
                 Paste
@@ -179,20 +179,20 @@ export function AssetsContent() {
           <div className="p-3">
             {/* Toolbar */}
             <div className="flex items-center justify-between mb-3">
-              <div className="text-[9px] font-mono uppercase tracking-widest text-white/15">
+              <div className="text-[9px] font-mono uppercase tracking-widest text-muted-foreground/70">
                 {assets.length} asset{assets.length !== 1 ? 's' : ''}
               </div>
               <div className="flex items-center gap-1">
                 <button
                   onClick={() => fileInputRef.current?.click()}
-                  className="p-1.5 rounded text-white/20 hover:text-white/40 hover:bg-white/[0.04] transition-colors"
+                  className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                   title="Add files"
                 >
                   <Upload size={11} />
                 </button>
                 <button
                   onClick={clearAll}
-                  className="p-1.5 rounded text-white/15 hover:text-white/40 hover:bg-white/[0.04] transition-colors"
+                  className="p-1.5 rounded text-muted-foreground hover:text-foreground hover:bg-muted/60 transition-colors"
                   title="Clear all"
                 >
                   <Trash2 size={11} />
@@ -211,8 +211,8 @@ export function AssetsContent() {
                     className={`
                       group relative aspect-square rounded-lg overflow-hidden border transition-all
                       ${isSelected
-                        ? 'border-cyan-500/50 ring-1 ring-cyan-500/20 bg-cyan-500/5'
-                        : 'border-white/[0.06] hover:border-white/[0.12] bg-white/[0.02]'
+                        ? 'border-accent/50 ring-1 ring-accent/20 bg-accent/5'
+                        : 'border-border/60 hover:border-border bg-muted/40'
                       }
                     `}
                   >
@@ -223,7 +223,7 @@ export function AssetsContent() {
                       className="w-full h-full object-contain p-1"
                     />
 
-                    {/* Hover overlay */}
+                    {/* Hover overlay — dark scrim over arbitrary image; white text intentional */}
                     <div className="absolute inset-0 bg-black/0 group-hover:bg-black/40 transition-colors flex items-end opacity-0 group-hover:opacity-100">
                       <div className="w-full px-2 py-1.5 flex items-center justify-between">
                         <div className="text-[9px] text-white/60 truncate flex-1 mr-1">
@@ -232,7 +232,7 @@ export function AssetsContent() {
                         <div
                           role="button"
                           onClick={e => { e.stopPropagation(); removeAsset(asset.id); }}
-                          className="p-0.5 rounded text-white/30 hover:text-red-400 transition-colors cursor-pointer"
+                          className="p-0.5 rounded text-white/30 hover:text-destructive transition-colors cursor-pointer"
                         >
                           <X size={10} />
                         </div>
@@ -241,7 +241,7 @@ export function AssetsContent() {
 
                     {/* Selection indicator */}
                     {isSelected && (
-                      <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-cyan-400" />
+                      <div className="absolute top-1.5 right-1.5 w-2 h-2 rounded-full bg-accent" />
                     )}
                   </button>
                 );
@@ -250,19 +250,19 @@ export function AssetsContent() {
 
             {/* Selected asset info */}
             {selectedAsset && (
-              <div className="mt-3 p-3 rounded-lg bg-white/[0.02] border border-white/[0.06]">
-                <div className="flex items-center gap-2 text-[10px] font-mono text-white/30 mb-1">
+              <div className="mt-3 p-3 rounded-lg bg-muted/40 border border-border/60">
+                <div className="flex items-center gap-2 text-[10px] font-mono text-muted-foreground mb-1">
                   <ImageIcon size={10} />
                   <span className="truncate flex-1">{selectedAsset.name}</span>
                 </div>
-                <div className="flex items-center gap-3 text-[9px] text-white/20">
+                <div className="flex items-center gap-3 text-[9px] text-muted-foreground/70">
                   <span>{selectedAsset.contentType}</span>
                   <span>{formatSize(selectedAsset.size)}</span>
                   {selectedAsset.width ? (
                     <span>{selectedAsset.width} x {selectedAsset.height}</span>
                   ) : null}
                 </div>
-                <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-cyan-500/5 border border-cyan-500/10 text-[9px] text-cyan-400/50">
+                <div className="flex items-center gap-2 mt-2 px-2 py-1.5 rounded bg-accent/5 border border-accent/10 text-[9px] text-accent/70">
                   <ArrowRight size={10} />
                   <span>Pipe this asset to Shaper</span>
                 </div>
@@ -288,8 +288,8 @@ export function AssetsContent() {
 
       {/* Drag overlay */}
       {dragOver && (
-        <div className="absolute inset-0 z-30 flex items-center justify-center bg-cyan-500/5 border-2 border-dashed border-cyan-500/30 rounded-lg backdrop-blur-sm pointer-events-none">
-          <div className="text-[14px] text-cyan-400/60 font-medium">
+        <div className="absolute inset-0 z-30 flex items-center justify-center bg-accent/5 border-2 border-dashed border-accent/30 rounded-lg backdrop-blur-sm pointer-events-none">
+          <div className="text-[14px] text-accent font-medium">
             Drop to add
           </div>
         </div>

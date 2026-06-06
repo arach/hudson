@@ -923,10 +923,12 @@ export function LogoProvider({
     setSelectedDrawingId(null);
   }, [setDrawingShapes]);
 
-  // Background AI (works without terminal)
+  // Background AI (works without terminal). updateTemplate is intentionally
+  // not passed — AI ops are derive-only and must call create_template with
+  // parentId rather than mutating any existing template.
   const { sendAiMessage, aiStatus, aiActivity, aiError, aiMessages, aiChat } = useLogoAI({
     params, setParam, setVariant, resetDefaults, presets,
-    templates, addTemplate, updateTemplate, deleteTemplate,
+    templates, addTemplate, deleteTemplate,
     customParamValues, setCustomParam, refreshTemplates, appSettings,
   });
 

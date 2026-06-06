@@ -99,6 +99,40 @@ export type { FrameLogEntry } from './lib/logger';
 export { worldToScreen, screenToWorld } from './lib/viewport';
 export { probeVoxAvailability } from './lib/voxProbe';
 export type { VoxAvailability } from './lib/voxProbe';
+export {
+  HUDSON_VOICE_API_BASE_PATH,
+  HUDSON_VOICE_API_PATHS,
+  HUDSON_VOICE_DAEMON_DEFAULT_HOST,
+  HUDSON_VOICE_DAEMON_DEFAULT_PORT,
+  HUDSON_VOICE_DAEMON_DEFAULT_WS_URL,
+  HudsonVoiceClientError,
+  createHudsonVoiceDaemonClient,
+  createHudsonVoiceClient,
+  parseHudsonVoiceEventLine,
+  parseHudsonVoiceEventStream,
+  parseHudsonVoiceNdjson,
+  probeHudsonVoiceAvailability,
+} from './lib/hudsonVoiceClient';
+export type {
+  HudsonVoiceAvailability,
+  HudsonVoiceClient,
+  HudsonVoiceClientErrorCode,
+  HudsonVoiceClientOptions,
+  HudsonVoiceDaemonStatus,
+  HudsonVoiceDaemonClientOptions,
+  HudsonVoiceDevice,
+  HudsonVoiceDeviceList,
+  HudsonVoiceFetch,
+  HudsonVoiceHealth,
+  HudsonVoiceInputState,
+  HudsonVoiceLiveEvent,
+  HudsonVoiceLiveSession,
+  HudsonVoiceLiveSessionRequest,
+  HudsonVoiceMode,
+  HudsonVoiceProbeClient,
+  HudsonVoicePermissionStatus,
+  HudsonVoiceRuntimeHealth,
+} from './lib/hudsonVoiceClient';
 export { safeLocalStorage, safeSessionStorage } from './lib/safe-storage';
 export type { SafeStorage } from './lib/safe-storage';
 export { createHudsonId } from './lib/id';

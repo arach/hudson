@@ -14,7 +14,7 @@ struct TmuxInstallResult: Sendable {
 
 enum TmuxToolchain {
     static var localTmuxURL: URL? {
-        executableURL(
+        cachedExecutableURL(
             named: "tmux",
             commonCandidates: [
                 URL(fileURLWithPath: "/opt/homebrew/bin/tmux"),
@@ -25,7 +25,7 @@ enum TmuxToolchain {
     }
 
     static var homebrewURL: URL? {
-        executableURL(
+        cachedExecutableURL(
             named: "brew",
             commonCandidates: [
                 URL(fileURLWithPath: "/opt/homebrew/bin/brew"),
@@ -54,6 +54,7 @@ enum TmuxToolchain {
             )
         }
 
+        invalidateExecutableCache(named: "tmux")
         do {
             let result = try await runInstaller(
                 executableURL: homebrewURL,
@@ -87,17 +88,35 @@ enum TmuxToolchain {
         }
     }
 
-    private static func executableURL(
+    private static let executableCache = TmuxExecutableCache()
+
+    private static func cachedExecutableURL(
         named name: String,
         commonCandidates: [URL]
     ) -> URL? {
+        switch executableCache.lookup(name) {
+        case .hit(let url):
+            return url
+        case .missing:
+            return nil
+        case .uncached:
+            break
+        }
+
         let environment = ProcessInfo.processInfo.environment
         let pathCandidates = (environment["PATH"] ?? "")
             .split(separator: ":")
             .map { URL(fileURLWithPath: String($0)).appendingPathComponent(name) }
 
-        return (pathCandidates + commonCandidates)
+        let resolved = (pathCandidates + commonCandidates)
             .first { FileManager.default.isExecutableFile(atPath: $0.path) }
+
+        executableCache.store(resolved, for: name)
+        return resolved
+    }
+
+    private static func invalidateExecutableCache(named name: String) {
+        executableCache.invalidate(name)
     }
 
     private static func runInstaller(
@@ -134,5 +153,50 @@ enum TmuxToolchain {
                 stderr: String(data: stderr, encoding: .utf8) ?? ""
             )
         }.value
+    }
+}
+
+private final class TmuxExecutableCache: @unchecked Sendable {
+    enum Lookup {
+        case hit(URL)
+        case missing
+        case uncached
+    }
+
+    private let lock = NSLock()
+    private var executables: [String: URL] = [:]
+    private var missing = Set<String>()
+
+    func lookup(_ name: String) -> Lookup {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let executable = executables[name] {
+            return .hit(executable)
+        }
+        if missing.contains(name) {
+            return .missing
+        }
+        return .uncached
+    }
+
+    func store(_ executable: URL?, for name: String) {
+        lock.lock()
+        defer { lock.unlock() }
+
+        if let executable {
+            executables[name] = executable
+            missing.remove(name)
+        } else {
+            executables.removeValue(forKey: name)
+            missing.insert(name)
+        }
+    }
+
+    func invalidate(_ name: String) {
+        lock.lock()
+        executables.removeValue(forKey: name)
+        missing.remove(name)
+        lock.unlock()
     }
 }

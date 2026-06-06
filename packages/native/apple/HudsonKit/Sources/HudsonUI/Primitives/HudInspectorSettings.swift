@@ -23,6 +23,11 @@ public struct HudInspectorSettings<ID: Hashable, Content: View>: View {
     public var subtitle: String?
     public let tabs: [HudInspectorTab<ID>]
     @Binding public var selection: ID
+    /// When set, a close chip is shown at the trailing edge of the header.
+    /// Pass this when the inspector is presented as a standalone page (e.g. a
+    /// `fullScreenCover`) and needs its own dismiss; omit it when embedded in a
+    /// tab or split view that already owns dismissal.
+    public var onClose: (() -> Void)?
     @ViewBuilder public var content: (ID) -> Content
 
     @Environment(\.hudTheme) private var theme
@@ -32,12 +37,14 @@ public struct HudInspectorSettings<ID: Hashable, Content: View>: View {
         subtitle: String? = nil,
         tabs: [HudInspectorTab<ID>],
         selection: Binding<ID>,
+        onClose: (() -> Void)? = nil,
         @ViewBuilder content: @escaping (ID) -> Content
     ) {
         self.title = title
         self.subtitle = subtitle
         self.tabs = tabs
         self._selection = selection
+        self.onClose = onClose
         self.content = content
     }
 
@@ -75,6 +82,18 @@ public struct HudInspectorSettings<ID: Hashable, Content: View>: View {
             }
 
             Spacer(minLength: 0)
+
+            if let onClose {
+                Button(action: onClose) {
+                    Image(systemName: "xmark")
+                        .font(.system(size: HudTextSize.sm, weight: .semibold))
+                        .foregroundStyle(theme.palette.dim)
+                        .frame(width: HudIconSize.medium, height: HudIconSize.medium)
+                        .background(Circle().fill(HudSurface.inset))
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Close")
+            }
         }
         .frame(height: HudLayout.navHeight)
         .padding(.horizontal, HudSpacing.xxl)
@@ -236,6 +255,9 @@ public struct HudInspectorFieldRow: View {
             HStack(spacing: HudInspectorMetrics.trailingSpacing) {
                 HudInspectorValue(value)
 
+                // Only an inline-action chip occupies the trailing edge. With no
+                // chip the value hugs the right edge (no reserved glyph slot), so
+                // plain field + action values land flush against the panel edge.
                 if let inlineAction {
                     Button(action: inlineAction.action) {
                         Text(inlineAction.label.uppercased())
@@ -253,11 +275,6 @@ public struct HudInspectorFieldRow: View {
                             )
                     }
                     .buttonStyle(.plain)
-                } else {
-                    Color.clear
-                        .frame(width: HudInspectorMetrics.trailingGlyphSize,
-                               height: HudInspectorMetrics.trailingGlyphSize)
-                        .accessibilityHidden(true)
                 }
             }
             .fixedSize(horizontal: true, vertical: false)
@@ -471,17 +488,29 @@ public struct HudInspectorMetricStrip: View {
         }
     }
 
+    /// `.centered` — equal columns, every tile centered, vertical hairline
+    /// separators (the dense default). `.spread` — the first tile leads, the
+    /// last trails, the middle stays centered, no separators: a balanced stat
+    /// row that fans across the panel width.
+    public enum Distribution: Sendable {
+        case centered
+        case spread
+    }
+
     public let metrics: [Metric]
+    public let distribution: Distribution
     @Environment(\.hudTheme) private var theme
 
-    public init(_ metrics: [Metric]) {
+    public init(_ metrics: [Metric], distribution: Distribution = .centered) {
         self.metrics = metrics
+        self.distribution = distribution
     }
 
     public var body: some View {
         HStack(spacing: 0) {
             ForEach(Array(metrics.enumerated()), id: \.element.id) { index, metric in
-                VStack(spacing: HudSpacing.sm) {
+                let alignment = tileAlignment(index)
+                VStack(alignment: alignment.horizontal, spacing: HudSpacing.sm) {
                     Text(metric.label.uppercased())
                         .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
                         .tracking(2.0)
@@ -492,12 +521,12 @@ public struct HudInspectorMetricStrip: View {
                         .font(HudFont.mono(HudTextSize.lg, weight: .medium))
                         .foregroundStyle(theme.palette.ink)
                         .lineLimit(2)
-                        .multilineTextAlignment(.center)
+                        .multilineTextAlignment(alignment.text)
                         .minimumScaleFactor(0.72)
                 }
-                .frame(maxWidth: .infinity, minHeight: HudInspectorMetrics.metricStripHeight)
+                .frame(maxWidth: .infinity, minHeight: HudInspectorMetrics.metricStripHeight, alignment: alignment.frame)
 
-                if index < metrics.count - 1 {
+                if distribution == .centered, index < metrics.count - 1 {
                     Rectangle()
                         .fill(theme.hairline.subtle)
                         .frame(width: HudStrokeWidth.thin,
@@ -508,6 +537,15 @@ public struct HudInspectorMetricStrip: View {
         .overlay(alignment: .bottom) {
             HudInspectorDivider()
         }
+    }
+
+    private func tileAlignment(_ index: Int) -> (horizontal: HorizontalAlignment, frame: Alignment, text: TextAlignment) {
+        guard distribution == .spread, metrics.count > 1 else {
+            return (.center, .center, .center)
+        }
+        if index == 0 { return (.leading, .leading, .leading) }
+        if index == metrics.count - 1 { return (.trailing, .trailing, .trailing) }
+        return (.center, .center, .center)
     }
 }
 

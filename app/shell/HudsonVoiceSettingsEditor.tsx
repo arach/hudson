@@ -498,11 +498,10 @@ export function HudsonVoiceSettingsEditor({
         </div>
       </details>
       <div className="text-[11px] font-mono text-muted-foreground leading-relaxed">
-        Voice capture uses the Vox companion on <span className="text-foreground/80">127.0.0.1:43115</span>.
+        Voice capture uses Hudson Menu&apos;s embedded Vox daemon through <span className="text-foreground/80">/api/hudson-voice</span>.
         Spoken replies use Hudson&apos;s local Vox-backed endpoint on <span className="text-foreground/80">/v1/audio/speech</span>,
         with voices and models populated from <span className="text-foreground/80">/v1/voices</span>.
-        If Vox rejects transcription, allowlist Hudson&apos;s origin in Vox settings.
-        End users still need the Vox macOS companion installed.
+        Hudson owns microphone permission and daemon lifecycle; standalone Vox.app is not required.
       </div>
       {!selectedProvider?.available && selectedProvider?.reason && (
         <div className="text-[10px] font-mono text-warning/80">

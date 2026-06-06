@@ -1,6 +1,6 @@
 import Foundation
 import Testing
-@testable import HudsonUI
+@testable import HudsonUIPermissions
 
 @Suite("HudPermissionStatus")
 struct HudPermissionStatusTests {

@@ -38,6 +38,9 @@ interface FrameProps {
   zoomControlsBottomOffset?: number;
   /** Whether to render canvas zoom controls */
   showZoomControls?: boolean;
+  /** Horizontal viewport shift in px (smoothly animated). Used to gently
+   *  slide the canvas when chrome like the code workbench opens on one side. */
+  viewportShiftX?: number;
   /** Context menu items shown on right-click on canvas background */
   canvasContextMenuItems?: ContextMenuEntry[];
   canvasContextMenuActivationMode?: 'default' | 'modifier';
@@ -60,6 +63,7 @@ const Frame: React.FC<FrameProps> = ({
   zoomControlsRightOffset,
   zoomControlsBottomOffset,
   showZoomControls = true,
+  viewportShiftX = 0,
   canvasContextMenuItems,
   canvasContextMenuActivationMode,
 }) => {
@@ -244,10 +248,21 @@ const Frame: React.FC<FrameProps> = ({
 
       {/* Layer 1: World content — zoom anchored at viewport center.
           The outer div sits at 50%/50% so CSS zoom scales from viewport center.
-          The inner div applies pan offset in world space. */}
+          The inner div applies pan offset in world space.
+          viewportShiftX is a parallax nudge — the canvas drifts a touch when
+          side chrome (e.g. the code workbench) appears, so it reads like the
+          world is making room rather than getting covered. The small delay +
+          softer curve makes the canvas feel like it's responding, not
+          mechanically tracking the panel. */}
       <div
         className="absolute z-10 pointer-events-none"
-        style={{ left: '50%', top: '50%', zoom: scale }}
+        style={{
+          left: '50%',
+          top: '50%',
+          zoom: scale,
+          transform: viewportShiftX ? `translateX(${viewportShiftX}px)` : undefined,
+          transition: 'transform 240ms cubic-bezier(0.34, 1.7, 0.64, 1)',
+        }}
       >
         <div style={{ position: 'absolute', left: panOffset.x, top: panOffset.y }}>
           {children}

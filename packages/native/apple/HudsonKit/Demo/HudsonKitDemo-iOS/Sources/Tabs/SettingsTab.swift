@@ -1,4 +1,5 @@
 import SwiftUI
+import HudsonBridge
 import HudsonUI
 
 private enum SettingsInspectorTab: String, CaseIterable, Identifiable {
@@ -6,6 +7,7 @@ private enum SettingsInspectorTab: String, CaseIterable, Identifiable {
     case canvas
     case agent
     case voice
+    case links
     case shell
     case about
 
@@ -17,6 +19,7 @@ private enum SettingsInspectorTab: String, CaseIterable, Identifiable {
         case .canvas: return "CANVAS"
         case .agent: return "AGENT"
         case .voice: return "VOICE"
+        case .links: return "LINKS"
         case .shell: return "SHELL"
         case .about: return "ABOUT"
         }
@@ -24,6 +27,9 @@ private enum SettingsInspectorTab: String, CaseIterable, Identifiable {
 }
 
 struct SettingsTab: View {
+    let lastDeepLink: HudDeepLink?
+    let deepLinkError: String?
+
     @State private var selectedTab: SettingsInspectorTab.ID = SettingsInspectorTab.workspace.id
     @State private var startupSurface = "canvas"
     @State private var layoutDensity = "compact"
@@ -45,6 +51,11 @@ struct SettingsTab: View {
         HudInspectorTab(id: $0.id, label: $0.label.capitalized)
     }
 
+    init(lastDeepLink: HudDeepLink? = nil, deepLinkError: String? = nil) {
+        self.lastDeepLink = lastDeepLink
+        self.deepLinkError = deepLinkError
+    }
+
     var body: some View {
         HudInspectorSettings(
             title: "Hudson · Settings",
@@ -57,9 +68,14 @@ struct SettingsTab: View {
             case .canvas: canvasPanel
             case .agent: agentPanel
             case .voice: voicePanel
+            case .links: linksPanel
             case .shell: shellPanel
             case .about: aboutPanel
             }
+        }
+        .onAppear(perform: selectDeepLinkTabIfNeeded)
+        .onChange(of: lastDeepLink) { _, _ in
+            selectDeepLinkTabIfNeeded()
         }
     }
 
@@ -210,6 +226,79 @@ struct SettingsTab: View {
         }
     }
 
+    private var linksPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            HudInspectorSection("Last Opened") {
+                HudInspectorFieldRow("Status", value: deepLinkStatus, hint: "router")
+                HudInspectorFieldRow("Route", value: lastDeepLink?.route.title ?? "None", hint: lastDeepLink?.route.detail ?? "waiting")
+                HudInspectorFieldRow("Source", value: lastDeepLink?.callback?.source ?? "Direct", hint: callbackHint)
+                if let pairingCandidate {
+                    HudInspectorFieldRow("Pair host", value: pairingCandidate.name, hint: pairingCandidate.primaryEndpoint?.kind.rawValue ?? "manual")
+                }
+            }
+
+            HudInspectorSection("Core Routes") {
+                HudInspectorFieldRow("Settings", value: "hudson://settings", hint: "section")
+                HudInspectorFieldRow("Workspace", value: "hudson://workspace/local", hint: "canvas")
+                HudInspectorFieldRow("Pairing", value: "hudson://pair?hostId=mac", hint: "QR payload")
+                HudInspectorFieldRow("Capture", value: "hudson://capture?mode=ocr", hint: "OCR")
+                HudInspectorFieldRow("Terminal", value: "hudson://terminal", hint: "session")
+            }
+
+            HudInspectorSection("Pairing Foundation") {
+                HudInspectorFieldRow("Payload parser", value: "Ready", hint: pairingFoundationHint)
+                HudInspectorFieldRow("Endpoint routes", value: "LAN + Tailnet", hint: "typed candidates")
+                HudInspectorFieldRow("Trust store", value: "Memory", hint: "vault-ready protocol")
+            }
+
+            HudInspectorSection("iOS Core Order") {
+                HudInspectorFieldRow("Deep links", value: "Ready", hint: "typed route spine")
+                HudInspectorFieldRow("Pairing", value: "Ready", hint: "payload + trust")
+                HudInspectorFieldRow("Mini keyboard", value: "Ready", hint: "phone shortcuts")
+                HudInspectorFieldRow("Onboarding", value: "Built in", hint: "guided setup")
+                HudInspectorFieldRow("Capture OCR", value: "Built in", hint: "Vision wrapper")
+                HudInspectorFieldRow("Audio recording", value: "Built in", hint: "session + waveform")
+                HudInspectorFieldRow("Web view", value: "Built in", hint: "WKWebView surface")
+            }
+        }
+    }
+
+    private var deepLinkStatus: String {
+        if deepLinkError != nil { return "Error" }
+        if lastDeepLink != nil { return "Received" }
+        return "Idle"
+    }
+
+    private var callbackHint: String {
+        if let deepLinkError { return deepLinkError }
+        if lastDeepLink?.callback != nil { return "x-callback-url" }
+        return "onOpenURL"
+    }
+
+    private var pairingCandidate: HudPairingCandidate? {
+        guard let lastDeepLink else { return nil }
+        return try? HudPairingCandidate.from(lastDeepLink)
+    }
+
+    private var pairingFoundationHint: String {
+        guard let pairingCandidate else { return "deep link + QR" }
+        return pairingCandidate.primaryEndpoint?.kind.rawValue ?? pairingCandidate.name
+    }
+
+    private func selectDeepLinkTabIfNeeded() {
+        guard let route = lastDeepLink?.route else { return }
+
+        switch route {
+        case .settings(let section):
+            selectedTab = section.flatMap { SettingsInspectorTab(rawValue: $0)?.id }
+                ?? SettingsInspectorTab.links.id
+        case .pair, .capture, .terminal, .web, .keyboard, .onboarding, .unknown:
+            selectedTab = SettingsInspectorTab.links.id
+        case .home, .workspace, .node:
+            break
+        }
+    }
+
     private var shellPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             HudInspectorSection("Chrome") {
@@ -245,6 +334,7 @@ struct SettingsTab: View {
             HudInspectorSection("Navigation") {
                 HudInspectorNavRow("Open page switcher")
                 HudInspectorNavRow("Open shell diagnostics")
+                HudInspectorNavRow("Open deep link routes")
             }
         }
     }

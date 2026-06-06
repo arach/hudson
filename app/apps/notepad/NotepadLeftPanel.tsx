@@ -21,7 +21,7 @@ export function NotepadLeftPanel() {
 
   if (notes.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center h-full py-8 text-white/10 text-[11px]">
+      <div className="flex flex-col items-center justify-center h-full py-8 text-muted-foreground/60 text-[11px]">
         No notes yet
       </div>
     );
@@ -35,30 +35,30 @@ export function NotepadLeftPanel() {
           onClick={() => selectNote(note.id)}
           className={`group px-3 py-2 cursor-pointer transition-colors border-l-2 ${
             note.id === activeNoteId
-              ? 'bg-cyan-500/5 border-l-cyan-400/40'
-              : 'border-l-transparent hover:bg-white/[0.02]'
+              ? 'bg-accent/5 border-l-accent/50'
+              : 'border-l-transparent hover:bg-muted/50'
           }`}
         >
           <div className="flex items-center gap-2">
-            <FileText size={11} className={note.id === activeNoteId ? 'text-cyan-400/50' : 'text-white/15'} />
+            <FileText size={11} className={note.id === activeNoteId ? 'text-accent' : 'text-muted-foreground/60'} />
             <span className={`text-[12px] font-medium truncate flex-1 ${
-              note.id === activeNoteId ? 'text-white/70' : 'text-white/40'
+              note.id === activeNoteId ? 'text-foreground' : 'text-muted-foreground'
             }`}>
               {note.title}
             </span>
             <button
               onClick={e => { e.stopPropagation(); deleteNote(note.id); }}
-              className="opacity-0 group-hover:opacity-100 text-white/10 hover:text-red-400/50 transition-all"
+              className="opacity-0 group-hover:opacity-100 text-muted-foreground/50 hover:text-destructive transition-all"
             >
               <Trash2 size={10} />
             </button>
           </div>
           {note.content && (
-            <div className="text-[10px] text-white/15 mt-0.5 ml-[19px] truncate">
+            <div className="text-[10px] text-muted-foreground/70 mt-0.5 ml-[19px] truncate">
               {preview(note.content)}
             </div>
           )}
-          <div className="text-[9px] text-white/10 mt-0.5 ml-[19px]">
+          <div className="text-[9px] text-muted-foreground/60 mt-0.5 ml-[19px]">
             {timeAgo(note.updatedAt)}
           </div>
         </div>

@@ -15,7 +15,7 @@ export function IntentLeftPanel() {
 
   return (
     <div className="py-2">
-      <div className="px-4 py-2 text-[10px] font-mono text-neutral-300 tracking-widest uppercase">
+      <div className="px-4 py-2 text-[10px] font-mono text-muted-foreground tracking-widest uppercase">
         App Groups
       </div>
       {groups.map(group => {
@@ -33,14 +33,14 @@ export function IntentLeftPanel() {
             }}
             className={`w-full flex items-center gap-3 px-4 py-2.5 text-left transition-colors ${
               isActive
-                ? 'bg-emerald-500/10 text-emerald-400 border-l-2 border-emerald-500'
-                : 'text-neutral-300 hover:bg-white/5 hover:text-neutral-200 border-l-2 border-transparent'
+                ? 'bg-accent/10 text-accent border-l-2 border-l-accent/50'
+                : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground border-l-2 border-transparent'
             }`}
           >
             {Icon && (
               <Icon
                 size={14}
-                className={isActive ? 'text-emerald-400' : 'text-neutral-400'}
+                className={isActive ? 'text-accent' : 'text-muted-foreground'}
               />
             )}
             <span className="text-[12px] font-mono tracking-wider uppercase flex-1">
@@ -48,7 +48,7 @@ export function IntentLeftPanel() {
             </span>
             <span
               className={`text-[10px] font-mono ${
-                isActive ? 'text-emerald-400/70' : 'text-neutral-500'
+                isActive ? 'text-accent/70' : 'text-muted-foreground'
               }`}
             >
               {group.intents.length}
@@ -58,10 +58,10 @@ export function IntentLeftPanel() {
       })}
 
       {/* Total count */}
-      <div className="border-t border-neutral-700/50 mt-3 pt-3 px-4">
-        <div className="flex items-center justify-between text-[10px] font-mono text-neutral-500">
+      <div className="border-t border-border/60 mt-3 pt-3 px-4">
+        <div className="flex items-center justify-between text-[10px] font-mono text-muted-foreground">
           <span>Total intents</span>
-          <span className="text-neutral-400">
+          <span className="text-foreground">
             {groups.reduce((sum, g) => sum + g.intents.length, 0)}
           </span>
         </div>
