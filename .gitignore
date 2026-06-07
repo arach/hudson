@@ -134,6 +134,7 @@ public/embed/
 
 # native build artifacts
 .build/
+/Package.resolved
 examples/**/Package.resolved
 packages/native/apple/**/Package.resolved
 native/bunsen/artifacts/
