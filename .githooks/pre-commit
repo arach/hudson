@@ -17,8 +17,13 @@ if [ ! -x "$HUDLINT" ]; then
   (cd "$KIT_DIR/Tools/HudLint" && swift build -c release --product hudlint > /dev/null 2>&1)
 fi
 
-"$HUDLINT" \
-  --root "$KIT_DIR/Sources" \
-  --root "$KIT_DIR/Demo/HudsonKitDemo" \
-  --root "$KIT_DIR/Demo/HudsonKitDemo-iOS/Sources" \
-  --format plain
+LINT_ROOTS=$(
+  echo "$STAGED" | while IFS= read -r file; do
+    dirname "$REPO_ROOT/$file"
+  done | sort -u
+)
+
+while IFS= read -r root; do
+  [ -n "$root" ] || continue
+  "$HUDLINT" --root "$root" --format plain
+done <<< "$LINT_ROOTS"
