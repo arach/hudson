@@ -324,7 +324,7 @@ public final class HudAudioRecorderController: ObservableObject {
     private func prepareAudioSession() throws {
         #if os(iOS)
         let session = AVAudioSession.sharedInstance()
-        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetooth, .defaultToSpeaker])
+        try session.setCategory(.playAndRecord, mode: .default, options: [.allowBluetoothHFP, .defaultToSpeaker])
         try session.setActive(true)
         #endif
     }
