@@ -78,6 +78,9 @@
     "ws": "^8.19.0",
     "zod": "^4.3.6"
   },
+  "overrides": {
+    "@earendil-works/pi-ai": "0.78.1"
+  },
   "workspaces": [
     "packages/tools/create-hudson-app",
     "packages/tools/hkit",
