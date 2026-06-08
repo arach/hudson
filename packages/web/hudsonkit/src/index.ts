@@ -11,6 +11,7 @@ export type { ServiceDefinition, ServiceDependency, ServiceRecord, ServiceAction
 export type { AppOutput, AppInput, AppPorts, PipeDefinition } from './types/port';
 export type { EmbedSurface, EmbedSizing, AppExports } from './types/embed';
 export type { CommandOption, ContextMenuEntry, ContextMenuAction, ContextMenuSeparator, ContextMenuGroup } from './components/overlays';
+export type { FeatureFlagAudience, FeatureFlagDefinition, FeatureFlagGate, FeatureFlagKey, FeatureFlagLayer, FeatureFlagLayerInput, FeatureFlagLayers, FeatureFlagOverride, FeatureFlagRegistry, FeatureFlagResolution, FeatureFlagResolver } from './flags';
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
@@ -231,3 +232,5 @@ export type {
   TextDocumentProviderProps,
   TextDocumentSurfaceProps,
 } from './controls';
+
+export { createFlagRegistry, createFlagResolver, FeatureFlagsProvider, FeatureFlagPanel, filterFlaggedItems, isFlagEnabled, isGateEnabled, parseFeatureFlagEnv, parseFeatureFlagUrl, normalizeFeatureFlagLayer, useFeatureFlags, useFlag, useFlagResolution, useOptionalFeatureFlags, useOptionalFlag, parseFeatureFlagLocalState, readFeatureFlagLocalState, writeFeatureFlagLocalState } from './flags';
