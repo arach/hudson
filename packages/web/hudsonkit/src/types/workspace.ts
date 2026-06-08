@@ -1,4 +1,5 @@
 import type { HudsonApp } from './app';
+import type { FeatureFlagGate } from '../flags/types';
 
 // ---------------------------------------------------------------------------
 // Canvas participation — how an app renders inside a multi-app workspace
@@ -12,6 +13,8 @@ export type WorkspaceLeftNavigation = 'on' | 'minimized' | 'hidden';
 // ---------------------------------------------------------------------------
 export interface WorkspaceAppConfig {
   app: HudsonApp;
+  /** Optional feature flag gate for this app within this workspace. */
+  flag?: FeatureFlagGate;
   /** How the app participates in canvas mode (default: 'native') */
   canvasMode?: CanvasParticipation;
   /** Default window bounds for 'windowed' apps */
