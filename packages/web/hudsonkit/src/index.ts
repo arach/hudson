@@ -233,4 +233,4 @@ export type {
   TextDocumentSurfaceProps,
 } from './controls';
 
-export { createFlagRegistry, createFlagResolver, FeatureFlagsProvider, FeatureFlagPanel, filterFlaggedItems, isFlagEnabled, isGateEnabled, parseFeatureFlagEnv, parseFeatureFlagUrl, normalizeFeatureFlagLayer, useFeatureFlags, useFlag, useFlagResolution, useOptionalFeatureFlags, useOptionalFlag } from './flags';
+export { createFlagRegistry, createFlagResolver, FeatureFlagsProvider, FeatureFlagPanel, filterFlaggedItems, isFlagEnabled, isGateEnabled, parseFeatureFlagEnv, parseFeatureFlagUrl, normalizeFeatureFlagLayer, useFeatureFlags, useFlag, useFlagResolution, useOptionalFeatureFlags, useOptionalFlag, parseFeatureFlagLocalState, readFeatureFlagLocalState, writeFeatureFlagLocalState } from './flags';
