@@ -407,3 +407,47 @@ describe('streamUI() — tool validation', () => {
     expect(body).not.toContain('tool-output-available');
   });
 });
+
+describe('streamUI() — schema compilation', () => {
+  it('preserves a raw JSON-Schema tool (no toJSONSchema) through to pi-ai', async () => {
+    // Portable, AI-SDK-free toolsets (like the built-in `intents` toolset) pass
+    // a plain JSON Schema. It must reach pi-ai intact, not collapse to an empty
+    // object — same behavior the lower-level stream() path already has.
+    mockStream.mockReturnValue(fakeEventStream([
+      { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'go' }] }],
+      toolset: 'raw',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({
+        system: 'test',
+        tools: {
+          dispatch: {
+            description: 'dispatch',
+            inputSchema: {
+              type: 'object' as const,
+              properties: { commandId: { type: 'string' } },
+              required: ['commandId'],
+            },
+            execute: async (a: Record<string, unknown>) => ({ ok: true, ...a }),
+          },
+        },
+      }),
+    });
+
+    await response.text();
+    const [, context] = mockStream.mock.calls[0] as [unknown, { tools: { name: string; parameters: Record<string, unknown> }[] }];
+    expect(context.tools).toHaveLength(1);
+    expect(context.tools[0].name).toBe('dispatch');
+    expect(context.tools[0].parameters).toMatchObject({
+      type: 'object',
+      properties: { commandId: { type: 'string' } },
+    });
+  });
+});
