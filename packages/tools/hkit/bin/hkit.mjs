@@ -10,6 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const COMMANDS = {
   design: '../src/commands/design.mjs',
+  package: '../src/commands/package.mjs',
 };
 
 const USAGE = `hkit - Hudson Kit CLI
@@ -19,6 +20,7 @@ USAGE
 
 COMMANDS
   design    Print Hudson Design briefs, token maps, and agent guidance.
+  package   Build Hudson-backed app packages and installers.
 
   Run \`hkit <command> --help\` for command-specific options.
 `;
