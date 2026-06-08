@@ -27,6 +27,9 @@ import {
   captureWorkspace,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
+  FeatureFlagPanel,
+  isGateEnabled,
+  useOptionalFeatureFlags,
 } from 'hudsonkit';
 import { useVoiceInput } from 'hudsonkit/voice';
 import {
@@ -723,6 +726,12 @@ export function WorkspaceShell({
   }, [persistSession, workspaces]);
 
   const workspace = workspaces.find(w => w.id === activeWorkspaceId) ?? workspaces[0];
+  const featureFlags = useOptionalFeatureFlags();
+  const flagDisabledAppIds = useMemo(() => new Set(
+    workspace.apps
+      .filter(config => !isGateEnabled(config.flag ?? config.app.flag, featureFlags))
+      .map(config => config.app.id),
+  ), [workspace.apps, featureFlags]);
   const activeInitialState = initialState?.activeWorkspaceId === workspace.id ? initialState : undefined;
 
   // --- Disabled apps (persisted to disk via workspace-state API) ---
@@ -764,7 +773,8 @@ export function WorkspaceShell({
     }, 1000);
   }, [disabledAppIdsArr, persistSession, workspace.id]);
 
-  const disabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
+  const userDisabledAppIds = useMemo(() => new Set(disabledAppIdsArr), [disabledAppIdsArr]);
+  const disabledAppIds = useMemo(() => new Set([...userDisabledAppIds, ...flagDisabledAppIds]), [userDisabledAppIds, flagDisabledAppIds]);
   const initialShowLauncher = bootMode !== 'none' && !hasSession;
   const defaultProviderVisibleAppIds = useMemo(
     () => {
@@ -1425,7 +1435,9 @@ function WorkspaceInner({
   const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [viewport, setViewport] = useState({ width: 0, height: 0 });
 
+  const featureFlags = useOptionalFeatureFlags();
   const [showCommandPalette, setShowCommandPalette] = useState(false);
+  const [showFeatureFlagPanel, setShowFeatureFlagPanel] = useState(false);
   const [showWorkspaceManager, setShowWorkspaceManager] = useState(false);
   const [workspaceEditorTab, setWorkspaceEditorTab] = useState<EditorTab>('overview');
   const [fullscreenAppId, setFullscreenAppId] = useState<string | null>(null);
@@ -1960,6 +1972,12 @@ function WorkspaceInner({
         icon: <Settings size={14} />,
         action: () => openSettings('environment'),
       },
+      ...(featureFlags ? [{
+        id: 'shell:feature-flags',
+        label: 'Feature Flags',
+        icon: <Settings size={14} />,
+        action: () => setShowFeatureFlagPanel(true),
+      }] : []),
       {
         id: 'shell:workspace-editor',
         label: 'Workspace Editor',
@@ -2114,6 +2132,7 @@ function WorkspaceInner({
       focusedApp?.code?.commandLabel,
       focusedApp?.code?.label,
       focusedCodeSurface,
+      featureFlags,
     ],
   );
 
@@ -2139,8 +2158,8 @@ function WorkspaceInner({
     for (const hookData of allAppHooks) {
       merged.push(...hookData.commands);
     }
-    return merged;
-  }, [shellCommands, serviceCommands, allAppHooks]);
+    return merged.filter(command => isGateEnabled(command.flag, featureFlags));
+  }, [shellCommands, serviceCommands, allAppHooks, featureFlags]);
 
   // --- Intent catalog + executor (plumbing for voice/LLM layer) ---
   const catalog = useIntentCatalog(workspace);
@@ -3714,6 +3733,11 @@ function WorkspaceInner({
               isOpen={showCommandPalette}
               onClose={() => setShowCommandPalette(false)}
               commands={allCommands}
+            />
+
+            <FeatureFlagPanel
+              isOpen={showFeatureFlagPanel}
+              onClose={() => setShowFeatureFlagPanel(false)}
             />
 
             {/* App launcher overlay (rendered in HUD layer to escape canvas transform) */}

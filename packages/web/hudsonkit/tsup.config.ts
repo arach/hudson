@@ -41,6 +41,7 @@ const clientEntries = {
   windows: 'src/windows.ts',
   theme: 'src/theme.ts',
   controls: 'src/controls.ts',
+  flags: 'src/flags.ts',
   cache: 'src/cache.ts',
   workflow: 'src/workflow/index.ts',
   observability: 'src/observability.ts',

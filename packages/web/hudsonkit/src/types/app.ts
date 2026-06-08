@@ -6,6 +6,7 @@ import type { AppExports } from './embed';
 import type { AppIntent } from './intent';
 import type { AppPorts } from './port';
 import type { ServiceDependency } from './service';
+import type { FeatureFlagGate } from '../flags/types';
 
 // ---------------------------------------------------------------------------
 // App-level settings
@@ -108,6 +109,8 @@ export interface HudsonApp {
   description?: string;
   /** Optional agent-facing operating guide included in Hudson AI context. */
   agentContext?: string;
+  /** Optional feature flag gate. When off, the shell hides this app/surface. */
+  flag?: FeatureFlagGate;
   /** Frame mode: 'canvas' enables pan/zoom, 'panel' renders scrollable content */
   mode: 'canvas' | 'panel';
   /** Icon shown next to the app name in the navigation bar */

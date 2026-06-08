@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Search, CornerDownLeft } from 'lucide-react';
 import { HObservabilityDefault } from '../../observability';
+import type { FeatureFlagGate } from '../../flags/types';
 
 export interface CommandOption {
   id: string;
@@ -10,6 +11,7 @@ export interface CommandOption {
   action: () => void;
   shortcut?: string;
   icon?: React.ReactNode;
+  flag?: FeatureFlagGate;
 }
 
 interface CommandPaletteProps {
