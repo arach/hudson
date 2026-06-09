@@ -26,7 +26,11 @@ export {
 
 // Credential resolution
 export type { CredentialResolver } from './credentials';
-export { hudVaultResolver } from './credentials';
+export { hudVaultResolver, envCredentialResolver } from './credentials';
+
+// Available models (pi-ai registry filtered to held credentials)
+export { listAvailableModels } from './models';
+export type { AvailableModel, ListAvailableModelsOptions } from './models';
 
 // Dispatch helper
 export { aggregateStream } from './dispatch';

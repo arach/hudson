@@ -104,6 +104,17 @@ export function buildIntentsToolset(intents: AppIntent[]): ToolsetDefinition {
             },
             required: ['commandId'],
           },
+          // Pass-through executor. The real work is client-side — the host's
+          // Assistant reads the dispatched tool call (via the streamed
+          // tool-input-available event) and invokes the matching command. But
+          // the pi-ai server loop needs *an* executor to run the tool at all
+          // (a tool with no `execute` is rejected as "Unknown tool"), and a
+          // server-side ack lets the model close the loop. Kept as a plain
+          // function so this module stays AI-SDK-free / portable.
+          execute: async (args: Record<string, unknown>) => ({
+            dispatched: true,
+            ...(args && typeof args === 'object' && !Array.isArray(args) ? args : {}),
+          }),
         },
       };
     },

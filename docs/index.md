@@ -45,6 +45,10 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Table](./table.md)** — tabular data primitive on both surfaces
 - **[Patterns](./patterns.md)** — optional app-interior rails, trees, grouped lists, cards, and context panels
 
+## Proposals
+
+- **[Remote capability sources](./proposals/remote-capability-sources.md)** — baseline connection, reconnect, route, diagnostics, and multi-remote primitives for Hudson-powered apps
+
 ## Design system
 
 - **[Theme](./theme.md)** — runtime theming via `@Environment(\.hudTheme)`

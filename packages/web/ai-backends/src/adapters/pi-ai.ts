@@ -206,10 +206,22 @@ function* translateEvent(event: AssistantMessageEvent): Iterable<StreamEvent<PiA
 // every consumer of the pi-ai backend gets identical loop semantics.
 // ---------------------------------------------------------------------------
 
-/** Tool shape the route passes in (Hudson tools, Zod inputSchema + execute). */
+/** A plain JSON Schema object, as portable (AI-SDK-free) toolsets supply. */
+export interface JsonSchemaInput {
+  type?: string;
+  properties?: Record<string, unknown>;
+  required?: string[];
+  [key: string]: unknown;
+}
+
+/**
+ * Tool shape the route passes in. `inputSchema` may be a Zod / standard-schema
+ * (validated + `toJSONSchema`-able) OR a plain JSON Schema object — the latter
+ * is what the portable built-in toolsets (e.g. `intents`) supply.
+ */
 export interface HudsonTool {
   description?: string;
-  inputSchema?: FlexibleSchema<unknown> | { toJSONSchema?: () => unknown };
+  inputSchema?: FlexibleSchema<unknown> | { toJSONSchema?: () => unknown } | JsonSchemaInput;
   execute?: (args: Record<string, unknown>) => Promise<unknown> | unknown;
 }
 
@@ -307,9 +319,19 @@ function stripJsonSchemaMetadata(schema: unknown): unknown {
 }
 
 function schemaForTool(tool: HudsonTool): Record<string, unknown> {
-  const jsonSchema = typeof tool.inputSchema === 'object' && tool.inputSchema !== null && 'toJSONSchema' in tool.inputSchema
-    ? tool.inputSchema.toJSONSchema?.()
-    : undefined;
+  const raw = tool.inputSchema;
+  let jsonSchema: unknown;
+  if (raw && typeof raw === 'object') {
+    if ('toJSONSchema' in raw && typeof (raw as { toJSONSchema?: unknown }).toJSONSchema === 'function') {
+      // Zod / standard-schema style — derive the JSON schema.
+      jsonSchema = (raw as { toJSONSchema: () => unknown }).toJSONSchema();
+    } else if ('type' in raw || 'properties' in raw) {
+      // Already a plain JSON Schema (portable, AI-SDK-free toolsets like the
+      // built-in `intents` toolset). Use it directly instead of dropping it —
+      // this matches what the lower-level stream() path already does.
+      jsonSchema = raw;
+    }
+  }
   const schema = stripJsonSchemaMetadata(jsonSchema);
   if (schema && typeof schema === 'object') return schema as Record<string, unknown>;
   return { type: 'object', properties: {}, additionalProperties: true };
