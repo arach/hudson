@@ -15,13 +15,13 @@ struct VantageTab: View {
             restoresStateOnLaunch: false
         ),
         identity: HudVantageHostIdentity(
-            appName: "HudsonKit Demo",
+            appName: "HudsonKit Lab",
             tagline: "Canvas rooted at the Hudson checkout beside you.",
             tint: .cyan,
             targetLabel: "Canvas",
-            menuBarTitle: "HudsonKit Demo",
+            menuBarTitle: "HudsonKit Lab",
             menuBarSystemImage: "square.grid.2x2",
-            windowTitle: "HudsonKit Demo · Vantage"
+            windowTitle: "HudsonKit Lab · Vantage"
         )
     )
 

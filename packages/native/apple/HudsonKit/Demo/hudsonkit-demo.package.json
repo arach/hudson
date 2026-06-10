@@ -1,6 +1,6 @@
 {
   "macos": {
-    "productName": "HudsonKit Demo",
+    "productName": "HudsonKit Lab",
     "version": "0.1.0",
     "features": ["terminal"],
     "minimumSystemVersion": "14.0",

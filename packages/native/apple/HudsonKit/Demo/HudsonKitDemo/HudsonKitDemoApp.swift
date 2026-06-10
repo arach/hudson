@@ -15,7 +15,7 @@ struct HudsonKitDemoApp: App {
     }
 
     var body: some Scene {
-        WindowGroup("HudsonKit Demo") {
+        WindowGroup("HudsonKit Lab") {
             ContentView()
                 #if os(macOS)
                 // Window minimums — width is HudLayout.readableWidth; height is window-specific.
