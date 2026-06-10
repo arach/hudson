@@ -24,8 +24,8 @@
     ],
     "run": {
       "cwd": ".",
-      "command": "swift",
-      "args": ["run", "HudsonKitDemo"]
+      "command": "bash",
+      "args": ["scripts/run-app.sh", "--restart"]
     }
   }
 }

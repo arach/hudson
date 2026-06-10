@@ -15,8 +15,8 @@ help:
 	@echo "  build-full    - swift build with HUDSONKIT_WITH_TERMINAL=1 + HUDSONKIT_WITH_VOICE=1"
 	@echo "  build-voice   - swift build with HUDSONKIT_WITH_VOICE=1"
 	@echo "  build-terminal - swift build with HUDSONKIT_WITH_TERMINAL=1"
-	@echo "  run           - swift run HudsonKitDemo (lint runs first)"
-	@echo "  run-app       - build HudsonKit Lab .app with Dock icon and launch"
+	@echo "  run           - build HudsonKit Lab .app and launch (real macOS app)"
+	@echo "  run-cli       - swift run HudsonKitDemo (bare binary, generic Dock icon)"
 	@echo "  run-vantage   - hkit dev macos (declarative features: terminal)"
 	@echo "  test          - swift test"
 	@echo "  lint          - run HudLint on kit Sources + macOS demo"
@@ -69,11 +69,11 @@ build-full: lint
 
 .PHONY: run
 run: lint
-	@swift run HudsonKitDemo
+	@bash Demo/scripts/run-app.sh --restart
 
-.PHONY: run-app
-run-app: lint
-	@bash Demo/scripts/run-app.sh
+.PHONY: run-cli
+run-cli: lint
+	@HUDSONKIT_WITH_TERMINAL=1 swift run HudsonKitDemo
 
 .PHONY: run-vantage
 run-vantage: lint
