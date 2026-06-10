@@ -2,8 +2,18 @@
   "macos": {
     "productName": "HudsonKit Lab",
     "version": "0.1.0",
+    "icon": "Resources/AppIcon.icns",
     "features": ["terminal"],
     "minimumSystemVersion": "14.0",
+    "apps": [
+      {
+        "name": "HudsonKit Lab",
+        "displayName": "HudsonKit Lab",
+        "product": "HudsonKitDemo",
+        "bundleIdentifier": "com.hudsonkit.lab",
+        "binaryPath": "../.build/release/HudsonKitDemo"
+      }
+    ],
     "builds": [
       {
         "label": "HudsonKitDemo",

@@ -155,6 +155,14 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://hudsonkit.com"),
   title: "HudsonKit — workspace framework, drawn to spec",
   description: "HudsonKit. Open-source workspace framework. Drawn to spec.",
+  icons: {
+    icon: [
+      { url: "/favicon.ico", sizes: "48x48" },
+      { url: "/favicon.svg", type: "image/svg+xml" },
+    ],
+    apple: "/apple-touch-icon.png",
+  },
+  manifest: "/site.webmanifest",
   openGraph: {
     title: "HudsonKit — workspace framework, drawn to spec",
     description:
