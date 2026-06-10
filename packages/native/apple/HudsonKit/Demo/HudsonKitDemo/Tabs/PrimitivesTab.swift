@@ -33,6 +33,7 @@ struct PrimitivesTab: View {
             buttons
             fieldsAndBadges
             textDocuments
+            directoryTree
             listRows
             kvRows
             emptyState
@@ -76,6 +77,20 @@ struct PrimitivesTab: View {
             HudSectionLabel("Text documents")
             HudTextDocumentSurface(document: $document, mode: $documentMode)
                 .frame(height: HudLayout.textDocumentPreviewHeight)
+        }
+    }
+
+    private var directoryTree: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.xl) {
+            HudSectionLabel("File tree")
+            HudCard(padding: 0) {
+                HudFileTree(
+                    browser: HudFileTreeBrowser(
+                        rootURL: DemoResources.hudsonUIRoot
+                    )
+                )
+                .frame(height: 220)
+            }
         }
     }
 

@@ -7,6 +7,7 @@ import HudsonDiff
 import HudsonLive
 import HudsonObservability
 import HudsonUI
+import HudsonUIWeb
 import HudsonShell
 import HudsonTerminal
 import HudsonVantageCore
@@ -7452,9 +7453,9 @@ private struct CodeArtifactFullPreview: View {
 
     var body: some View {
         Group {
-            if HudsonCodeEditorWebBundle.indexURL != nil {
-                HudsonCodeEditorWebView(
-                    payload: HudsonCodeEditorWebPayload(
+            if HudCodeMirrorWebBundle.indexURL != nil {
+                HudCodeMirrorWebView(
+                    document: HudCodeMirrorDocument(
                         id: path ?? "inline",
                         title: path?.split(separator: "/").last.map(String.init),
                         path: path,
@@ -7777,214 +7778,6 @@ private struct DiffStatPill: View {
                 RoundedRectangle(cornerRadius: theme.radius.tight)
                     .stroke(color.opacity(HudOpacity.soft))
             )
-    }
-}
-
-private enum HudsonCodeEditorWebBundle {
-    static let messageHandlerName = "hudsonCodeEditor"
-
-    static var indexURL: URL? {
-        Bundle.module.url(
-            forResource: "index",
-            withExtension: "html",
-            subdirectory: "HudsonCodeEditor"
-        )
-        ?? Bundle.module.url(forResource: "index", withExtension: "html")
-    }
-
-    static func configuration(handler: WKScriptMessageHandler) -> WKWebViewConfiguration {
-        let configuration = WKWebViewConfiguration()
-        configuration.websiteDataStore = .nonPersistent()
-        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
-        configuration.userContentController.add(handler, name: messageHandlerName)
-        return configuration
-    }
-
-    static func tearDown(_ webView: WKWebView) {
-        webView.stopLoading()
-        webView.navigationDelegate = nil
-        webView.uiDelegate = nil
-        webView.configuration.userContentController.removeScriptMessageHandler(
-            forName: messageHandlerName
-        )
-        webView.configuration.userContentController.removeAllUserScripts()
-        webView.loadHTMLString(
-            "<!doctype html><meta charset='utf-8'><body style='background:#0a0f12'></body>",
-            baseURL: nil
-        )
-    }
-}
-
-private struct HudsonCodeEditorWebPayload: Codable, Equatable {
-    var id: String
-    var title: String?
-    var path: String?
-    var language: String?
-    var text: String
-    var readOnly: Bool
-    var tintHex: String
-}
-
-private struct HudsonCodeEditorSaveResult: Codable {
-    var id: String?
-    var success: Bool
-    var text: String?
-    var error: String?
-}
-
-private struct HudsonCodeEditorWebView: NSViewRepresentable {
-    let payload: HudsonCodeEditorWebPayload
-    let onChange: (String) -> Void
-    let onSave: (String) throws -> Void
-
-    func makeNSView(context: Context) -> WKWebView {
-        let webView = WKWebView(
-            frame: .zero,
-            configuration: HudsonCodeEditorWebBundle.configuration(handler: context.coordinator)
-        )
-        webView.navigationDelegate = context.coordinator
-        webView.setValue(false, forKey: "drawsBackground")
-        if let indexURL = HudsonCodeEditorWebBundle.indexURL {
-            webView.loadFileURL(
-                indexURL,
-                allowingReadAccessTo: indexURL.deletingLastPathComponent()
-            )
-        } else {
-            webView.loadHTMLString(
-                "<html><body style='background:#0a0f12;color:#94a3b8;font:12px monospace'>Hudson editor bundle missing.</body></html>",
-                baseURL: nil
-            )
-        }
-        return webView
-    }
-
-    func updateNSView(_ webView: WKWebView, context: Context) {
-        context.coordinator.payload = payload
-        context.coordinator.onChange = onChange
-        context.coordinator.onSave = onSave
-        context.coordinator.renderPayloadIfReady(in: webView)
-    }
-
-    static func dismantleNSView(_ webView: WKWebView, coordinator: Coordinator) {
-        coordinator.tearDown()
-        HudsonCodeEditorWebBundle.tearDown(webView)
-    }
-
-    func makeCoordinator() -> Coordinator {
-        Coordinator(payload: payload, onChange: onChange, onSave: onSave)
-    }
-
-    final class Coordinator: NSObject, WKNavigationDelegate, WKScriptMessageHandler {
-        var payload: HudsonCodeEditorWebPayload
-        var onChange: (String) -> Void
-        var onSave: (String) throws -> Void
-        private var isReady = false
-        private var renderedPayload: HudsonCodeEditorWebPayload?
-        private var isTornDown = false
-        private let encoder = JSONEncoder()
-
-        init(
-            payload: HudsonCodeEditorWebPayload,
-            onChange: @escaping (String) -> Void,
-            onSave: @escaping (String) throws -> Void
-        ) {
-            self.payload = payload
-            self.onChange = onChange
-            self.onSave = onSave
-        }
-
-        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
-            guard !isTornDown else { return }
-            isReady = true
-            renderPayloadIfReady(in: webView, force: true)
-        }
-
-        func userContentController(
-            _ userContentController: WKUserContentController,
-            didReceive message: WKScriptMessage
-        ) {
-            guard !isTornDown else { return }
-            guard message.name == "hudsonCodeEditor",
-                  let body = message.body as? [String: Any],
-                  let type = body["type"] as? String
-            else { return }
-
-            switch type {
-            case "ready":
-                isReady = true
-                if let webView = message.webView {
-                    renderPayloadIfReady(in: webView, force: true)
-                }
-            case "change":
-                guard let text = body["text"] as? String else { return }
-                onChange(text)
-            case "save":
-                guard let text = body["text"] as? String else { return }
-                let id = body["id"] as? String
-                do {
-                    try onSave(text)
-                    if let webView = message.webView {
-                        renderSaveResult(
-                            HudsonCodeEditorSaveResult(
-                                id: id,
-                                success: true,
-                                text: text,
-                                error: nil
-                            ),
-                            in: webView
-                        )
-                    }
-                } catch {
-                    if let webView = message.webView {
-                        renderSaveResult(
-                            HudsonCodeEditorSaveResult(
-                                id: id,
-                                success: false,
-                                text: nil,
-                                error: error.localizedDescription
-                            ),
-                            in: webView
-                        )
-                    }
-                }
-            default:
-                break
-            }
-        }
-
-        func renderPayloadIfReady(in webView: WKWebView, force: Bool = false) {
-            guard !isTornDown else { return }
-            guard isReady else { return }
-            guard force || renderedPayload != payload else { return }
-            guard let data = try? encoder.encode(payload),
-                  let json = String(data: data, encoding: .utf8)
-            else { return }
-
-            renderedPayload = payload
-            webView.evaluateJavaScript(
-                "window.__hudsonCodeEditor?.setDocument(\(json));",
-                completionHandler: nil
-            )
-        }
-
-        private func renderSaveResult(_ result: HudsonCodeEditorSaveResult, in webView: WKWebView) {
-            guard !isTornDown else { return }
-            guard let data = try? encoder.encode(result),
-                  let json = String(data: data, encoding: .utf8)
-            else { return }
-
-            webView.evaluateJavaScript(
-                "window.__hudsonCodeEditor?.saveResult(\(json));",
-                completionHandler: nil
-            )
-        }
-
-        func tearDown() {
-            isTornDown = true
-            renderedPayload = nil
-            onChange = { _ in }
-            onSave = { _ in }
-        }
     }
 }
 

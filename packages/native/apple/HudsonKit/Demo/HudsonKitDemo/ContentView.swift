@@ -3,13 +3,15 @@ import HudsonUI
 import HudsonShell
 
 enum DemoTab: String, CaseIterable, Identifiable {
-    case dashboard, voice, shell, sidebar, tokens, primitives, manifest, about
+    case dashboard, explorer, vantage, voice, shell, sidebar, tokens, primitives, manifest, about
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
     var icon: String {
         switch self {
         case .dashboard:  return "rectangle.grid.2x2"
+        case .explorer:   return "folder"
+        case .vantage:    return "square.grid.3x3.fill"
         case .voice:      return "waveform"
         case .shell:      return "rectangle.split.3x1"
         case .sidebar:    return "sidebar.left"
@@ -97,7 +99,7 @@ struct ContentView: View {
     }
 
     private var sidebarEntries: [HudSidebarEntry<DemoTab>] {
-        let workbench: [DemoTab] = [.dashboard, .voice, .shell, .sidebar]
+        let workbench: [DemoTab] = [.dashboard, .explorer, .vantage, .voice, .shell, .sidebar]
         let reference: [DemoTab] = [.tokens, .primitives, .manifest]
         var entries: [HudSidebarEntry<DemoTab>] = []
         entries.append(contentsOf: workbench.map {
@@ -379,6 +381,13 @@ struct ContentView: View {
                     selectedTargetId = target.id
                 })
             }
+        case .vantage:
+            VantageTab()
+                .padding(HudSpacing.md)
+        case .explorer:
+            ExplorerTab()
+                .padding(HudSpacing.xxl)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         case .voice, .shell, .sidebar, .tokens, .primitives, .manifest, .about:
             ScrollView {
                 Group {
@@ -402,7 +411,7 @@ struct ContentView: View {
                     case .primitives: PrimitivesTab()
                     case .manifest:   ManifestTab()
                     case .about:      AboutTab()
-                    case .dashboard:  EmptyView()
+                    case .dashboard, .explorer, .vantage: EmptyView()
                     }
                 }
                 .padding(HudSpacing.xxl)

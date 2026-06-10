@@ -15,17 +15,20 @@ struct HudEditableTextDocumentView: View {
     var isReadOnly: Bool
     var showsLineNumbers: Bool
     var backend: HudTextDocumentEditorBackend
+    var requestFocus: Bool = false
 
     var body: some View {
         #if os(macOS)
-        if backend != .swiftUI {
+        if usesNativeEditor {
             HudMacTextDocumentEditor(
                 text: $text,
                 kind: kind,
                 language: language,
                 isReadOnly: isReadOnly,
-                showsLineNumbers: showsLineNumbers
+                showsLineNumbers: showsLineNumbers,
+                requestFocus: requestFocus
             )
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
         } else {
             swiftUIEditor
         }
@@ -34,19 +37,48 @@ struct HudEditableTextDocumentView: View {
         #endif
     }
 
+    private var usesNativeEditor: Bool {
+        #if os(macOS)
+        switch backend {
+        case .native:
+            return true
+        case .swiftUI:
+            return false
+        case .automatic:
+            return kind == .code || kind == .raw
+        }
+        #else
+        return false
+        #endif
+    }
+
     private var swiftUIEditor: some View {
         TextEditor(text: $text)
             .font(editorFont)
             .foregroundStyle(HudPalette.ink)
             .tint(HudPalette.statusInfo)
-            .padding(HudSpacing.xl)
+            .padding(codePadding)
             .scrollContentBackground(.hidden)
             .background(HudSurface.base)
             .disabled(isReadOnly)
     }
 
     private var editorFont: Font {
-        HudFont.mono(HudTextSize.sm)
+        switch kind {
+        case .code, .raw:
+            return HudFont.mono(HudTextSize.sm)
+        case .markdown, .text:
+            return HudFont.ui(HudTextSize.base)
+        }
+    }
+
+    private var codePadding: CGFloat {
+        switch kind {
+        case .code, .raw:
+            return HudLayout.textDocumentCodePadding
+        case .markdown, .text:
+            return HudSpacing.xl
+        }
     }
 }
 
@@ -59,6 +91,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
     var language: String?
     var isReadOnly: Bool
     var showsLineNumbers: Bool
+    var requestFocus: Bool
 
     func makeCoordinator() -> Coordinator {
         Coordinator(text: $text)
@@ -71,8 +104,9 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
         scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = false
+        scrollView.autohidesScrollers = true
         scrollView.scrollerStyle = .overlay
+        scrollView.autoresizingMask = [.width, .height]
 
         let textView = NSTextView()
         textView.delegate = context.coordinator
@@ -99,7 +133,10 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         textView.isVerticallyResizable = true
         textView.isHorizontallyResizable = true
         textView.autoresizingMask = [.width]
-        textView.textContainerInset = NSSize(width: HudSpacing.xl, height: HudSpacing.xl)
+        textView.textContainerInset = NSSize(
+            width: HudLayout.textDocumentCodePadding,
+            height: HudLayout.textDocumentCodePadding
+        )
         textView.textContainer?.widthTracksTextView = false
         textView.textContainer?.containerSize = NSSize(
             width: CGFloat.greatestFiniteMagnitude,
@@ -111,21 +148,28 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
 
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
-        context.coordinator.highlight(kind: kind, language: language)
         context.coordinator.applyPresentation(kind: kind, language: language)
+        context.coordinator.highlightIfNeeded(
+            force: true,
+            kind: kind,
+            language: language
+        )
+        context.coordinator.syncFocus(requestFocus: requestFocus, isReadOnly: isReadOnly)
         return scrollView
     }
 
     func updateNSView(_ scrollView: NSScrollView, context: Context) {
         guard let textView = context.coordinator.textView else { return }
 
-        if textView.string != text {
+        let textChangedExternally = textView.string != text
+        if textChangedExternally {
             let selectedRange = textView.selectedRange()
             textView.string = text
             textView.setSelectedRange(clamped(range: selectedRange, length: (text as NSString).length))
         }
 
         textView.isEditable = !isReadOnly
+        textView.isSelectable = true
         textView.textColor = HudAppKitColor.editorInk
         textView.insertionPointColor = HudAppKitColor.editorCaret
         textView.backgroundColor = HudAppKitColor.editorBackground
@@ -140,8 +184,17 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         }
 
         context.coordinator.applyPresentation(kind: kind, language: language)
-        context.coordinator.highlight(kind: kind, language: language)
+
+        if textChangedExternally {
+            context.coordinator.highlightIfNeeded(
+                force: true,
+                kind: kind,
+                language: language
+            )
+        }
+
         context.coordinator.lineNumberRuler?.needsDisplay = true
+        context.coordinator.syncFocus(requestFocus: requestFocus, isReadOnly: isReadOnly)
     }
 
     private func clamped(range: NSRange, length: Int) -> NSRange {
@@ -157,6 +210,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         guard showsLineNumbers else { return }
         if let ruler = scrollView.verticalRulerView as? HudLineNumberRulerView {
             ruler.textView = textView
+            ruler.updateThickness(for: textView.string)
             return
         }
 
@@ -169,6 +223,10 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         weak var textView: NSTextView?
         weak var scrollView: NSScrollView?
         private var isHighlighting = false
+        private var highlightWorkItem: DispatchWorkItem?
+        private var lastHighlightedSource = ""
+        private var lastHighlightKind: HudTextDocumentKind = .text
+        private var lastHighlightLanguage = ""
 
         var lineNumberRuler: HudLineNumberRulerView? {
             scrollView?.verticalRulerView as? HudLineNumberRulerView
@@ -181,7 +239,8 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         func textDidChange(_ notification: Notification) {
             guard let textView = notification.object as? NSTextView else { return }
             text = textView.string
-            highlight(kind: nil, language: nil)
+            scheduleHighlight()
+            lineNumberRuler?.updateThickness(for: textView.string)
             lineNumberRuler?.needsDisplay = true
         }
 
@@ -189,26 +248,70 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
             lineNumberRuler?.needsDisplay = true
         }
 
+        func syncFocus(requestFocus: Bool, isReadOnly: Bool) {
+            guard requestFocus, !isReadOnly, let textView else { return }
+            guard textView.window?.firstResponder !== textView else { return }
+
+            DispatchQueue.main.async {
+                guard textView.isEditable else { return }
+                textView.window?.makeFirstResponder(textView)
+            }
+        }
+
         func applyPresentation(kind: HudTextDocumentKind, language: String?) {
             guard let textView else { return }
+            currentKind = kind
+            currentLanguage = language
+
             textView.typingAttributes = [
                 .font: HudAppKitFont.editor,
                 .foregroundColor: HudAppKitColor.editorInk,
             ]
 
             if kind == .code || kind == .raw {
-                textView.textContainerInset = NSSize(width: HudSpacing.xl, height: HudSpacing.xl)
+                textView.textContainerInset = NSSize(
+                    width: HudLayout.textDocumentCodePadding,
+                    height: HudLayout.textDocumentCodePadding
+                )
             } else {
                 textView.textContainerInset = NSSize(width: HudSpacing.xxl, height: HudSpacing.xxl)
             }
         }
 
-        func highlight(kind: HudTextDocumentKind?, language: String?) {
+        func highlightIfNeeded(
+            force: Bool,
+            kind: HudTextDocumentKind?,
+            language: String?
+        ) {
+            guard let textView else { return }
+            let resolvedKind = kind ?? currentKind
+            let resolvedLanguage = language ?? currentLanguage ?? ""
+            let source = textView.string
+
+            if !force,
+               source == lastHighlightedSource,
+               resolvedKind == lastHighlightKind,
+               resolvedLanguage == lastHighlightLanguage {
+                return
+            }
+
+            lastHighlightedSource = source
+            lastHighlightKind = resolvedKind
+            lastHighlightLanguage = resolvedLanguage
+            highlight(kind: resolvedKind, language: resolvedLanguage.isEmpty ? nil : resolvedLanguage)
+        }
+
+        private func scheduleHighlight() {
+            highlightWorkItem?.cancel()
+            let item = DispatchWorkItem { [weak self] in
+                self?.highlightIfNeeded(force: true, kind: nil, language: nil)
+            }
+            highlightWorkItem = item
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.05, execute: item)
+        }
+
+        private func highlight(kind: HudTextDocumentKind, language: String?) {
             guard !isHighlighting, let textView, let storage = textView.textStorage else { return }
-            let kind = kind ?? currentKind
-            let language = language ?? currentLanguage
-            currentKind = kind
-            currentLanguage = language
 
             isHighlighting = true
             defer { isHighlighting = false }
@@ -224,12 +327,11 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
             storage.setAttributes(baseAttributes, range: fullRange)
 
             if kind == .code || kind == .raw {
-                let source = storage.string
-                apply(pattern: #""(?:\\.|[^"\\])*"|'(?:\\.|[^'\\])*'"#, color: HudAppKitColor.syntaxString, storage: storage, source: source)
-                apply(pattern: #"\b(true|false|null|nil|undefined)\b"#, color: HudAppKitColor.syntaxLiteral, storage: storage, source: source)
-                apply(pattern: #"\b(import|export|from|return|func|function|struct|class|enum|let|var|const|if|else|switch|case|for|while|guard|public|private|try|await|async|throws|some|View)\b"#, color: HudAppKitColor.syntaxKeyword, storage: storage, source: source)
-                apply(pattern: #"\b([0-9]+(?:\.[0-9]+)?)\b"#, color: HudAppKitColor.syntaxNumber, storage: storage, source: source)
-                apply(pattern: #"//.*$|#.*$"#, color: HudAppKitColor.syntaxComment, storage: storage, source: source, options: [.anchorsMatchLines])
+                HudCodeHighlighter.paintLines(
+                    in: storage,
+                    source: storage.string as NSString,
+                    language: language
+                )
             }
 
             storage.endEditing()
@@ -247,21 +349,6 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
             ]
         }
 
-        private func apply(
-            pattern: String,
-            color: NSColor,
-            storage: NSTextStorage,
-            source: String,
-            options: NSRegularExpression.Options = []
-        ) {
-            guard let regex = try? NSRegularExpression(pattern: pattern, options: options) else { return }
-            let range = NSRange(location: 0, length: (source as NSString).length)
-            regex.enumerateMatches(in: source, range: range) { match, _, _ in
-                guard let matchRange = match?.range, matchRange.location != NSNotFound else { return }
-                storage.addAttribute(.foregroundColor, value: color, range: matchRange)
-            }
-        }
-
         private func clamped(range: NSRange, length: Int) -> NSRange {
             let location = min(range.location, length)
             let end = min(range.location + range.length, length)
@@ -277,11 +364,19 @@ private final class HudLineNumberRulerView: NSRulerView {
         self.textView = textView
         super.init(scrollView: textView.enclosingScrollView, orientation: .verticalRuler)
         self.clientView = textView
-        self.ruleThickness = HudLayout.textDocumentLineNumberWidth + HudSpacing.xxl
+        updateThickness(for: textView.string)
     }
 
     required init(coder: NSCoder) {
         super.init(coder: coder)
+    }
+
+    func updateThickness(for source: String) {
+        let lineCount = max(1, source.split(separator: "\n", omittingEmptySubsequences: false).count)
+        let digits = max(1, String(lineCount).count)
+        let gutter = CGFloat(digits) * HudLayout.textDocumentCodeGutterDigitWidth
+        ruleThickness = gutter + HudLayout.textDocumentCodeLineGap
+        needsDisplay = true
     }
 
     override func drawHashMarksAndLabels(in rect: NSRect) {
@@ -300,6 +395,7 @@ private final class HudLineNumberRulerView: NSRulerView {
         let attributes: [NSAttributedString.Key: Any] = [
             .font: HudAppKitFont.lineNumber,
             .foregroundColor: HudAppKitColor.lineNumber,
+            .kern: -0.2,
         ]
 
         var glyphIndex = glyphRange.location
@@ -322,7 +418,7 @@ private final class HudLineNumberRulerView: NSRulerView {
     private func draw(lineNumber: Int, lineRect: NSRect, attributes: [NSAttributedString.Key: Any]) {
         let numberString = "\(lineNumber)" as NSString
         let size = numberString.size(withAttributes: attributes)
-        let x = ruleThickness - HudSpacing.xxl - size.width
+        let x = ruleThickness - HudLayout.textDocumentCodeLineGap - size.width
         let y = lineRect.minY + textViewYOffset
         numberString.draw(at: NSPoint(x: x, y: y), withAttributes: attributes)
     }
@@ -337,16 +433,11 @@ private enum HudAppKitColor {
     static let editorBackground = NSColor(HudPalette.bg)
     static let editorInk = NSColor(HudPalette.ink)
     static let editorCaret = NSColor(HudPalette.statusInfo)
-    static let lineNumber = NSColor(HudPalette.dim)
-    static let syntaxComment = NSColor(HudPalette.dim)
-    static let syntaxKeyword = NSColor(HudPalette.statusInfo)
-    static let syntaxLiteral = NSColor(HudPalette.statusWarn)
-    static let syntaxNumber = NSColor(HudTint.teal.color)
-    static let syntaxString = NSColor(HudTint.green.color)
+    static let lineNumber = NSColor(HudPalette.dim.opacity(0.72))
 }
 
 private enum HudAppKitFont {
     static let editor = NSFont.monospacedSystemFont(ofSize: HudTextSize.sm, weight: .regular)
-    static let lineNumber = NSFont.monospacedSystemFont(ofSize: HudTextSize.xxs, weight: .regular)
+    static let lineNumber = NSFont.monospacedSystemFont(ofSize: HudTextSize.micro, weight: .light)
 }
 #endif

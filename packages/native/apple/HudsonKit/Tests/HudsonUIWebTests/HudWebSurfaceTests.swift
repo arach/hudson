@@ -47,6 +47,20 @@ struct HudWebSurfaceTests {
         #expect(location.webViewSource() == nil)
     }
 
+    @Test("bundled CodeMirror editor index ships with HudsonUIWeb")
+    func codeMirrorBundleExists() {
+        #expect(HudCodeMirrorWebBundle.indexURL != nil)
+        #expect(HudCodeMirrorWebBundle.editorScriptURL != nil)
+    }
+
+    @Test("bundled CodeMirror shell strips external script reference")
+    func codeMirrorShellStripsExternalScript() throws {
+        let shell = try #require(HudCodeMirrorWebBundle.shellPageHTML())
+        #expect(shell.contains("id=\"editor\""))
+        #expect(!shell.contains("src=\"./editor.js\""))
+        #expect(HudCodeMirrorWebBundle.editorScriptSource?.contains("__hudsonCodeMirror") == true)
+    }
+
     private func expectURLSource(_ location: HudWebSurfaceLocation, equals expectedURL: URL) throws {
         let source = try #require(location.webViewSource())
         guard case .url(let url) = source else {

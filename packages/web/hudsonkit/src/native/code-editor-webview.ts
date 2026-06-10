@@ -12,7 +12,7 @@ import {
   indentOnInput,
   syntaxHighlighting,
 } from '@codemirror/language';
-import { EditorState, Prec, RangeSetBuilder } from '@codemirror/state';
+import { Compartment, EditorState, Prec, RangeSetBuilder, Transaction } from '@codemirror/state';
 import {
   Decoration,
   type DecorationSet,
@@ -31,7 +31,7 @@ import {
 } from '@codemirror/view';
 import { tags } from '@lezer/highlight';
 
-type HudsonCodeEditorPayload = {
+type HudsonCodeMirrorPayload = {
   id?: string;
   title?: string;
   path?: string;
@@ -39,47 +39,56 @@ type HudsonCodeEditorPayload = {
   text?: string;
   readOnly?: boolean;
   tintHex?: string;
+  embedded?: boolean;
 };
 
-type HudsonCodeEditorMessage =
+type HudsonCodeMirrorMessage =
   | { type: 'ready' }
   | { type: 'change'; id?: string; text: string }
   | { type: 'save'; id?: string; text: string };
 
 declare global {
   interface Window {
-    __hudsonCodeEditor?: {
-      setDocument: (payload: HudsonCodeEditorPayload) => void;
+    __hudsonCodeMirror?: {
+      setDocument: (payload: HudsonCodeMirrorPayload) => void;
       saveResult: (result: { id?: string; success: boolean; text?: string; error?: string }) => void;
       focus: () => void;
     };
     webkit?: {
       messageHandlers?: {
-        hudsonCodeEditor?: {
-          postMessage: (message: HudsonCodeEditorMessage) => void;
+        hudsonCodeMirror?: {
+          postMessage: (message: HudsonCodeMirrorMessage) => void;
         };
       };
     };
   }
 }
 
+const rootElement = document.getElementById('root');
 const editorHost = document.getElementById('editor');
 const titleElement = document.getElementById('title');
 const badgeElement = document.getElementById('badge');
 const statusElement = document.getElementById('status');
 
 let view: EditorView | null = null;
-let activePayload: HudsonCodeEditorPayload = {};
+let activePayload: HudsonCodeMirrorPayload = {};
 let savedText = '';
 let pendingSaveText: string | null = null;
 let changeTimer: number | undefined;
 let applyingDocument = false;
+let mountedDocumentID: string | undefined;
+let mountedLanguage = 'plain';
+let mountedReadOnly = false;
 
-function post(message: HudsonCodeEditorMessage) {
-  window.webkit?.messageHandlers?.hudsonCodeEditor?.postMessage(message);
+const languageCompartment = new Compartment();
+const readOnlyCompartment = new Compartment();
+const historyCompartment = new Compartment();
+
+function post(message: HudsonCodeMirrorMessage) {
+  window.webkit?.messageHandlers?.hudsonCodeMirror?.postMessage(message);
 }
 
-function labelFor(payload: HudsonCodeEditorPayload): string {
+function labelFor(payload: HudsonCodeMirrorPayload): string {
   return payload.title || payload.path?.split('/').pop() || 'Untitled';
 }
 
@@ -287,10 +296,17 @@ function setSaveFailureStatus(error?: string) {
   statusElement.title = error || 'The document could not be saved.';
 }
 
-function editorExtensions(language: string, readOnly: boolean) {
+function readOnlyExtensions(readOnly: boolean) {
+  return [
+    EditorView.editable.of(!readOnly),
+    EditorState.readOnly.of(readOnly),
+  ];
+}
+
+function editorExtensions() {
   return [
     highlightSpecialChars(),
-    history(),
+    historyCompartment.of([history(), ...historyKeymap]),
     lineNumbers(),
     foldGutter(),
     drawSelection(),
@@ -304,10 +320,9 @@ function editorExtensions(language: string, readOnly: boolean) {
     crosshairCursor(),
     highlightActiveLine(),
     highlightActiveLineGutter(),
-    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
-    languageExtension(language),
-    EditorView.editable.of(!readOnly),
-    EditorState.readOnly.of(readOnly),
+    keymap.of([...defaultKeymap, indentWithTab]),
+    languageCompartment.of(languageExtension('plain')),
+    readOnlyCompartment.of(readOnlyExtensions(false)),
     hudsonEditorTheme,
     EditorView.lineWrapping,
     EditorView.updateListener.of(update => {
@@ -338,33 +353,100 @@ function editorExtensions(language: string, readOnly: boolean) {
   ];
 }
 
-function setDocument(payload: HudsonCodeEditorPayload) {
-  if (!editorHost) return;
-
-  activePayload = payload;
-  savedText = payload.text || '';
-  pendingSaveText = null;
-  const language = normalizedLanguage(payload.language, payload.path);
+function updateChrome(payload: HudsonCodeMirrorPayload, language: string, readOnly: boolean) {
   const tint = payload.tintHex || '#5eead4';
   document.documentElement.style.setProperty('--tint', tint);
-
+  rootElement?.classList.toggle('embedded', payload.embedded === true);
+  if (payload.embedded) return;
   if (titleElement) titleElement.textContent = payload.path || labelFor(payload);
   if (badgeElement) badgeElement.textContent = language.toUpperCase();
-  setStatus(false);
-
-  applyingDocument = true;
-  view?.destroy();
-  view = new EditorView({
-    parent: editorHost,
-    state: EditorState.create({
-      doc: savedText,
-      extensions: editorExtensions(language, payload.readOnly === true),
-    }),
-  });
-  applyingDocument = false;
+  if (readOnly) {
+    setStatus(false);
+  }
 }
 
-window.__hudsonCodeEditor = {
+function createEditorView(text: string, language: string, readOnly: boolean) {
+  mountedLanguage = language;
+  mountedReadOnly = readOnly;
+  applyingDocument = true;
+  const nextView = new EditorView({
+    parent: editorHost!,
+    state: EditorState.create({
+      doc: text,
+      extensions: editorExtensions(),
+    }),
+  });
+  nextView.dispatch({
+    effects: [
+      languageCompartment.reconfigure(languageExtension(language)),
+      readOnlyCompartment.reconfigure(readOnlyExtensions(readOnly)),
+    ],
+  });
+  applyingDocument = false;
+  return nextView;
+}
+
+function setDocument(payload: HudsonCodeMirrorPayload) {
+  if (!editorHost) return;
+
+  const language = normalizedLanguage(payload.language, payload.path);
+  const text = payload.text || '';
+  const readOnly = payload.readOnly === true;
+  const documentID = payload.id;
+  const switchingFile = documentID !== mountedDocumentID;
+
+  activePayload = payload;
+  pendingSaveText = null;
+  updateChrome(payload, language, readOnly);
+
+  if (!view) {
+    mountedDocumentID = documentID;
+    savedText = text;
+    view = createEditorView(text, language, readOnly);
+    setStatus(false);
+    return;
+  }
+
+  const currentText = view.state.doc.toString();
+  const effects = [];
+
+  if (language !== mountedLanguage) {
+    mountedLanguage = language;
+    effects.push(languageCompartment.reconfigure(languageExtension(language)));
+  }
+
+  if (readOnly !== mountedReadOnly) {
+    mountedReadOnly = readOnly;
+    effects.push(readOnlyCompartment.reconfigure(readOnlyExtensions(readOnly)));
+  }
+
+  if (switchingFile) {
+    mountedDocumentID = documentID;
+    savedText = text;
+    effects.push(historyCompartment.reconfigure([history(), ...historyKeymap]));
+  }
+
+  const textChanged = text !== currentText;
+  if (!textChanged && effects.length === 0) {
+    setStatus(currentText !== savedText);
+    return;
+  }
+
+  applyingDocument = true;
+  view.dispatch({
+    changes: textChanged ? { from: 0, to: view.state.doc.length, insert: text } : undefined,
+    effects: effects.length ? effects : undefined,
+    selection: switchingFile ? { anchor: 0 } : undefined,
+    annotations: textChanged ? Transaction.addToHistory.of(!switchingFile) : undefined,
+  });
+  if (switchingFile) {
+    view.scrollDOM.scrollTop = 0;
+  }
+  applyingDocument = false;
+  setStatus(view.state.doc.toString() !== savedText);
+}
+
+window.__hudsonCodeMirror = {
   setDocument,
   saveResult(result) {
     if (result.id && activePayload.id && result.id !== activePayload.id) return;

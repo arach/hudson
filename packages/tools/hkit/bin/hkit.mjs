@@ -10,6 +10,7 @@ const __dirname = dirname(fileURLToPath(import.meta.url));
 
 const COMMANDS = {
   design: '../src/commands/design.mjs',
+  dev: '../src/commands/dev.mjs',
   package: '../src/commands/package.mjs',
 };
 
@@ -20,6 +21,7 @@ USAGE
 
 COMMANDS
   design    Print Hudson Design briefs, token maps, and agent guidance.
+  dev       Declarative local builds and runs (features, builds, run).
   package   Build Hudson-backed app packages and installers.
 
   Run \`hkit <command> --help\` for command-specific options.

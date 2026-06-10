@@ -179,6 +179,7 @@ public struct HudTextDocumentSurface: View {
     @Binding private var mode: HudTextDocumentMode
 
     private var showHeader: Bool
+    private var showsChrome: Bool
     private var showsLineNumbers: Bool
     private var editorBackend: HudTextDocumentEditorBackend
     private var onSave: ((HudTextDocument) -> Void)?
@@ -187,6 +188,7 @@ public struct HudTextDocumentSurface: View {
         document: Binding<HudTextDocument>,
         mode: Binding<HudTextDocumentMode>,
         showHeader: Bool = true,
+        showsChrome: Bool = true,
         showsLineNumbers: Bool = true,
         editorBackend: HudTextDocumentEditorBackend = .automatic,
         onSave: ((HudTextDocument) -> Void)? = nil
@@ -194,6 +196,7 @@ public struct HudTextDocumentSurface: View {
         self._document = document
         self._mode = mode
         self.showHeader = showHeader
+        self.showsChrome = showsChrome
         self.showsLineNumbers = showsLineNumbers
         self.editorBackend = editorBackend
         self.onSave = onSave
@@ -203,16 +206,15 @@ public struct HudTextDocumentSurface: View {
         VStack(spacing: 0) {
             if showHeader {
                 header
+                Divider()
+                    .overlay(HudHairline.subtle)
             }
 
-            Divider()
-                .overlay(HudHairline.subtle)
-
             content
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
-        .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(HudSurface.raised))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudHairline.standard, lineWidth: 1))
-        .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        .modifier(HudTextDocumentChrome(showsChrome: showsChrome))
     }
 
     private var header: some View {
@@ -282,11 +284,29 @@ public struct HudTextDocumentSurface: View {
         switch resolvedMode {
         case .preview where document.kind == .markdown:
             markdownPreview
+        case .edit where document.kind == .code || document.kind == .raw:
+            codeEditSurface
         case .edit:
             editingSurface
         case .read, .preview:
             readSurface
         }
+    }
+
+    private var codeEditSurface: some View {
+        HudEditableTextDocumentView(
+            text: valueBinding,
+            kind: document.kind,
+            language: document.language,
+            isReadOnly: document.isReadOnly,
+            showsLineNumbers: showsLineNumbers,
+            backend: .native,
+            requestFocus: !document.isReadOnly
+        )
+        .id("\(document.id)-edit")
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .frame(minHeight: HudLayout.textDocumentPreviewHeight)
+        .background(HudSurface.base)
     }
 
     private var markdownPreview: some View {
@@ -322,7 +342,9 @@ public struct HudTextDocumentSurface: View {
                     showsLineNumbers: showsLineNumbers
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(HudSpacing.xxl)
+                .padding(.vertical, HudLayout.textDocumentCodePadding)
+                .padding(.trailing, HudLayout.textDocumentCodePadding)
+                .padding(.leading, HudSpacing.xs)
             } else {
                 Text(document.value)
                     .font(editorFont)
@@ -332,6 +354,7 @@ public struct HudTextDocumentSurface: View {
                     .textSelection(.enabled)
             }
         }
+        .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HudSurface.base)
     }
 
@@ -388,24 +411,38 @@ private struct HudCodeText: View {
     var language: String?
     var showsLineNumbers: Bool
 
+    private var lines: [String] {
+        source.split(separator: "\n", omittingEmptySubsequences: false).map(String.init)
+    }
+
+    private var gutterWidth: CGFloat {
+        let digits = max(1, String(lines.count).count)
+        return CGFloat(digits) * HudLayout.textDocumentCodeGutterDigitWidth
+    }
+
     var body: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            ForEach(Array(source.split(separator: "\n", omittingEmptySubsequences: false).enumerated()), id: \.offset) { index, line in
-                HStack(alignment: .top, spacing: HudSpacing.xl) {
-                    if showsLineNumbers {
+        HStack(alignment: .top, spacing: HudLayout.textDocumentCodeLineGap) {
+            if showsLineNumbers {
+                VStack(alignment: .trailing, spacing: 0) {
+                    ForEach(Array(lines.enumerated()), id: \.offset) { index, _ in
                         Text("\(index + 1)")
-                            .font(HudFont.mono(HudTextSize.xxs))
-                            .foregroundStyle(HudPalette.dim)
-                            .frame(width: HudLayout.textDocumentLineNumberWidth, alignment: .trailing)
+                            .font(HudFont.mono(HudTextSize.micro, weight: .regular))
+                            .foregroundStyle(HudPalette.dim.opacity(0.65))
+                            .frame(maxWidth: .infinity, alignment: .trailing)
                             .textSelection(.disabled)
                     }
-
-                    Text(highlightedLine(String(line), language: language))
-                        .font(HudFont.mono(HudTextSize.sm))
-                        .lineSpacing(3)
-                        .textSelection(.enabled)
                 }
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: gutterWidth, alignment: .trailing)
+            }
+
+            VStack(alignment: .leading, spacing: 0) {
+                ForEach(Array(lines.enumerated()), id: \.offset) { _, line in
+                    Text(highlightedLine(line, language: language))
+                        .font(HudFont.mono(HudTextSize.sm))
+                        .lineSpacing(2)
+                        .textSelection(.enabled)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -413,5 +450,20 @@ private struct HudCodeText: View {
 
     private func highlightedLine(_ line: String, language: String?) -> AttributedString {
         HudCodeHighlighter.highlight(line, language: language)
+    }
+}
+
+private struct HudTextDocumentChrome: ViewModifier {
+    let showsChrome: Bool
+
+    func body(content: Content) -> some View {
+        if showsChrome {
+            content
+                .background(RoundedRectangle(cornerRadius: HudRadius.card).fill(HudSurface.raised))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.card).stroke(HudHairline.standard, lineWidth: 1))
+                .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+        } else {
+            content.background(HudSurface.base)
+        }
     }
 }

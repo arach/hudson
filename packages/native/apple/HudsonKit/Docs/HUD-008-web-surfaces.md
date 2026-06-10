@@ -81,9 +81,66 @@ The durable bridge shape is:
 2. Native sends typed `props`.
 3. Web posts typed events such as `change`, `save`, `height`, or `open`.
 
-The CodeMirror surface in `HudsonVantageSurface` is the current concrete
-example: bundled HTML/JS, a `ready/change/save` message handler, and native
-save acknowledgements.
+The bundled CodeMirror editor is the primary concrete example: HTML/JS shipped
+in `HudsonUIWeb/Resources/HudsonCodeMirror/`, a `ready/change/save` message
+handler, and native save acknowledgements.
+
+### Bundled CodeMirror (`HudCodeMirror` / `HudCodeMirrorWebView`)
+
+The native code pane is **CodeMirror** — bundled `@codemirror/*` in
+`HudsonUIWeb/Resources/HudsonCodeMirror/`. Build from the monorepo root:
+
+```bash
+bun run build:native-editor
+```
+
+Prefer the SwiftUI wrapper when you want chromeless editor + native fallback:
+
+```swift
+HudCodeMirror(document: doc, mode: $mode) { text in
+    try save(text)
+}
+```
+
+Drop to the web view directly when you need full bridge control (Vantage nodes):
+
+```swift
+HudCodeMirrorWebView(
+    document: HudCodeMirrorDocument(
+        id: file.id,
+        title: file.title,
+        path: file.uri,
+        language: file.language,
+        text: file.value,
+        readOnly: mode != .edit,
+        embedded: true   // hide bundled HTML header; native chrome owns title/path
+    ),
+    onChange: { text in document.value = text },
+    onSave: { text in try save(text) },
+    onBridgeState: { state in editorReady = state == "rendered" }
+)
+```
+
+Loading notes:
+
+- Prefer `loadFileURL` on the bundled `index.html` so relative assets resolve.
+- Probe until `window.__hudsonCodeMirror` exists before calling `setDocument`.
+- Do not rely on `<script src="./editor.js">` with `loadHTMLString` — inject
+  `editor.js` via `WKUserScript` or `inlinedPageHTML()` instead.
+- On macOS, pin the web view inside a container with a non-zero `minHeight`
+  (`HudLayout.textDocumentPreviewHeight`) when used inside split views.
+
+Bridge sequence:
+
+1. Web posts `ready` through `hudsonCodeMirror`.
+2. Native sends `setDocument` (base64 JSON payload).
+3. Web posts `rendered`, then `change` / `save` as the user edits.
+
+Set `embedded: true` when native SwiftUI chrome already shows the file title and
+path. The HTML shell hides its header in that mode.
+
+For the full IDE split (file tree + CodeMirror), use `HudFileExplorer` — see
+[HUD-009](./HUD-009-file-explorer.md).
 
 ## Lifecycle
 

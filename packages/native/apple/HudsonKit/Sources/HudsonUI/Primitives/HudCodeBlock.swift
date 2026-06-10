@@ -43,8 +43,15 @@ public enum HudCodeSyntax {
         "do", "switch", "case", "break", "continue", "import", "export", "from",
         "as", "default", "class", "extends", "new", "this", "await", "async",
         "yield", "try", "catch", "finally", "throw", "typeof", "instanceof",
-        "true", "false", "null", "undefined", "in", "of",
+        "true", "false", "null", "undefined", "in", "of", "void", "delete",
     ]
+
+    private static let typescriptKeywords: Set<String> = jsLikeKeywords.union([
+        "interface", "type", "declare", "namespace", "readonly", "keyof",
+        "satisfies", "implements", "abstract", "override", "enum", "module",
+        "public", "private", "protected", "static", "get", "set", "never",
+        "unknown", "infer", "out", "using",
+    ])
 
     private static let swiftKeywords: Set<String> = [
         "func", "let", "var", "if", "else", "guard", "return", "for", "in",
@@ -64,14 +71,20 @@ public enum HudCodeSyntax {
 
     public static func tokenize(_ source: String, language: String?) -> [HudCodeToken] {
         switch (language ?? "").lowercased() {
-        case "json":                      return tokenizeJSON(source)
+        case "json", "jsonc":             return tokenizeJSON(source)
         case "bash", "sh", "shell", "zsh": return tokenizeShell(source)
         case "swift":                     return tokenizeSwift(source)
-        default:                          return tokenizeGeneric(source)
+        case "typescript", "ts", "tsx": return tokenizeWithKeywords(source, keywords: typescriptKeywords)
+        case "javascript", "js", "jsx": return tokenizeWithKeywords(source, keywords: jsLikeKeywords)
+        default:                          return tokenizeWithKeywords(source, keywords: jsLikeKeywords)
         }
     }
 
     private static func tokenizeGeneric(_ source: String) -> [HudCodeToken] {
+        tokenizeWithKeywords(source, keywords: jsLikeKeywords)
+    }
+
+    private static func tokenizeWithKeywords(_ source: String, keywords: Set<String>) -> [HudCodeToken] {
         var tokens: [HudCodeToken] = []
         var buffer = ""
         var inString = false
@@ -85,7 +98,13 @@ public enum HudCodeSyntax {
         }
         func pushWord() {
             guard !buffer.isEmpty else { return }
-            push(jsLikeKeywords.contains(buffer) ? .keyword : .plain)
+            if keywords.contains(buffer) {
+                push(.keyword)
+            } else if buffer.first?.isUppercase == true {
+                push(.identifier)
+            } else {
+                push(.plain)
+            }
         }
 
         let chars = Array(source)
@@ -231,12 +250,7 @@ public enum HudCodeSyntax {
     }
 
     private static func tokenizeSwift(_ source: String) -> [HudCodeToken] {
-        // Swift shares most rules with the generic tokenizer; remap keyword hits
-        // against the Swift keyword set.
-        tokenizeGeneric(source).map { token in
-            guard token.kind == .keyword || token.kind == .plain else { return token }
-            return HudCodeToken(text: token.text, kind: swiftKeywords.contains(token.text) ? .keyword : token.kind)
-        }
+        tokenizeWithKeywords(source, keywords: swiftKeywords)
     }
 }
 

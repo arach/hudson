@@ -59,7 +59,10 @@ public enum HudLayout {
     public static let qrViewfinderSize: CGFloat = 250
     public static let textDocumentPreviewHeight: CGFloat = 360
     public static let textDocumentModeButtonHeight: CGFloat = 24
-    public static let textDocumentLineNumberWidth: CGFloat = 36
+    public static let textDocumentLineNumberWidth: CGFloat = 22
+    public static let textDocumentCodePadding: CGFloat = 8
+    public static let textDocumentCodeLineGap: CGFloat = 2
+    public static let textDocumentCodeGutterDigitWidth: CGFloat = 7
 }
 
 // MARK: - Deprecated Hudson* aliases

@@ -1,0 +1,21 @@
+{
+  "macos": {
+    "productName": "HudsonKit Demo",
+    "version": "0.1.0",
+    "features": ["terminal"],
+    "minimumSystemVersion": "14.0",
+    "builds": [
+      {
+        "label": "HudsonKitDemo",
+        "cwd": ".",
+        "command": "swift",
+        "args": ["build", "--product", "HudsonKitDemo"]
+      }
+    ],
+    "run": {
+      "cwd": ".",
+      "command": "swift",
+      "args": ["run", "HudsonKitDemo"]
+    }
+  }
+}

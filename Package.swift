@@ -81,7 +81,7 @@ var products: [Product] = [
 
 var dependencies: [Package.Dependency] = []
 
-var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
+var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonUIWeb", "HudsonShell"]
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
@@ -92,7 +92,14 @@ var targets: [Target] = [
     .target(name: "HudsonUIPermissions", dependencies: ["HudsonUI"], path: src + "HudsonUIPermissions"),
     .target(name: "HudsonUIAudio", dependencies: ["HudsonUI", "HudsonUIPermissions"], path: src + "HudsonUIAudio"),
     .target(name: "HudsonUICapture", dependencies: ["HudsonUI"], path: src + "HudsonUICapture"),
-    .target(name: "HudsonUIWeb", path: src + "HudsonUIWeb"),
+    .target(
+        name: "HudsonUIWeb",
+        dependencies: ["HudsonUI"],
+        path: src + "HudsonUIWeb",
+        resources: [
+            .process("Resources"),
+        ]
+    ),
     .target(name: "HudsonUIKeyboard", dependencies: ["HudsonUI"], path: src + "HudsonUIKeyboard"),
     .target(name: "HudsonUIOnboarding", dependencies: ["HudsonUI"], path: src + "HudsonUIOnboarding"),
     .target(name: "HudsonWorkflow", dependencies: ["HudsonUI", "HudsonShell", "HudsonObservability"], path: src + "HudsonWorkflow"),
@@ -172,15 +179,13 @@ if terminalEnabled {
                 "HudsonLive",
                 "HudsonObservability",
                 "HudsonUI",
+                "HudsonUIWeb",
                 "HudsonShell",
                 "HudsonTerminal",
                 "HudsonVantageCore",
                 .product(name: "Termini", package: terminiPackage),
             ],
-            path: src + "HudsonVantageSurface",
-            resources: [
-                .process("Resources")
-            ]
+            path: src + "HudsonVantageSurface"
         )
     )
     targets.append(
@@ -199,6 +204,7 @@ if terminalEnabled {
         .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"], path: tst + "HudsonVantageTests")
     )
     demoDependencies.append("HudsonTerminal")
+    demoDependencies.append("HudsonVantage")
     demoSwiftSettings.append(.define("HUDSON_TERMINAL"))
 }
 
@@ -207,6 +213,9 @@ targets.append(
         name: "HudsonKitDemo",
         dependencies: demoDependencies,
         path: demo + "HudsonKitDemo",
+        resources: [
+            .copy("Fixtures"),
+        ],
         swiftSettings: demoSwiftSettings
     )
 )

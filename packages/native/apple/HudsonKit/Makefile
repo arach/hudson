@@ -1,4 +1,6 @@
 KIT_ROOT := $(shell pwd)
+REPO_ROOT := $(shell git -C $(KIT_ROOT) rev-parse --show-toplevel)
+HKIT := $(REPO_ROOT)/packages/tools/hkit/bin/hkit.mjs
 TOOL_DIR := $(KIT_ROOT)/Tools/HudLint
 HUDLINT  := $(TOOL_DIR)/.build/release/hudlint
 
@@ -14,6 +16,7 @@ help:
 	@echo "  build-voice   - swift build with HUDSONKIT_WITH_VOICE=1"
 	@echo "  build-terminal - swift build with HUDSONKIT_WITH_TERMINAL=1"
 	@echo "  run           - swift run HudsonKitDemo (lint runs first)"
+	@echo "  run-vantage   - hkit dev macos (declarative features: terminal)"
 	@echo "  test          - swift test"
 	@echo "  lint          - run HudLint on kit Sources + macOS demo"
 	@echo "  lint-all      - also include iOS demo Sources"
@@ -66,6 +69,10 @@ build-full: lint
 .PHONY: run
 run: lint
 	@swift run HudsonKitDemo
+
+.PHONY: run-vantage
+run-vantage: lint
+	@cd $(KIT_ROOT) && node $(HKIT) dev macos --config Demo/hudsonkit-demo.package.json
 
 .PHONY: ios-project
 ios-project:
