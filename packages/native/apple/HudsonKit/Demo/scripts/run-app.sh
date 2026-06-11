@@ -56,8 +56,8 @@ if [[ "$with_terminal" == true ]]; then
   build_env=(env HUDSONKIT_WITH_TERMINAL=1)
 fi
 
-"${build_env[@]}" swift build -c "$build_config" --product HudsonKitDemo
-bin_dir="$("${build_env[@]}" swift build -c "$build_config" --show-bin-path)"
+"${build_env[@]+"${build_env[@]}"}" swift build -c "$build_config" --product HudsonKitDemo
+bin_dir="$("${build_env[@]+"${build_env[@]}"}" swift build -c "$build_config" --show-bin-path)"
 binary_path="$bin_dir/HudsonKitDemo"
 
 rm -rf "$app_path"
@@ -66,11 +66,16 @@ cp "$binary_path" "$app_path/Contents/MacOS/HudsonKitDemo"
 chmod +x "$app_path/Contents/MacOS/HudsonKitDemo"
 cp "$icon_path" "$app_path/Contents/Resources/AppIcon.icns"
 
+resources_dir="$app_path/Contents/Resources"
+macos_dir="$app_path/Contents/MacOS"
 find "$bin_dir" -maxdepth 1 -type d -name '*.bundle' -exec sh -c '
+  resources_dir="$1"; macos_dir="$2"; shift 2
   for bundle do
-    ditto "$bundle" "$0/$(basename "$bundle")"
+    name="$(basename "$bundle")"
+    ditto "$bundle" "$resources_dir/$name"
+    ditto "$bundle" "$macos_dir/$name"
   done
-' "$app_path" {} +
+' sh "$resources_dir" "$macos_dir" {} +
 
 cat > "$app_path/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
