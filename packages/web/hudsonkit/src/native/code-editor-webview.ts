@@ -306,7 +306,7 @@ function readOnlyExtensions(readOnly: boolean) {
 function editorExtensions() {
   return [
     highlightSpecialChars(),
-    historyCompartment.of([history(), ...historyKeymap]),
+    historyCompartment.of([history(), keymap.of(historyKeymap)]),
     lineNumbers(),
     foldGutter(),
     drawSelection(),
@@ -423,7 +423,7 @@ function setDocument(payload: HudsonCodeMirrorPayload) {
   if (switchingFile) {
     mountedDocumentID = documentID;
     savedText = text;
-    effects.push(historyCompartment.reconfigure([history(), ...historyKeymap]));
+    effects.push(historyCompartment.reconfigure([history(), keymap.of(historyKeymap)]));
   }
 
   const textChanged = text !== currentText;
