@@ -60,7 +60,10 @@ chmod +x "$app_path/Contents/MacOS/Canvas"
 cp "$package_path/Resources/AppIcon.icns" "$app_path/Contents/Resources/AppIcon.icns"
 for resource_bundle in "$(dirname "$bin_path")"/*.bundle; do
   [[ -e "$resource_bundle" ]] || continue
-  ditto "$resource_bundle" "$app_path/$(basename "$resource_bundle")"
+  name="$(basename "$resource_bundle")"
+  ditto "$resource_bundle" "$app_path/$name"
+  ditto "$resource_bundle" "$app_path/Contents/Resources/$name"
+  ditto "$resource_bundle" "$app_path/Contents/MacOS/$name"
 done
 
 cat > "$app_path/Contents/Info.plist" <<PLIST

@@ -54,11 +54,17 @@ menu_bin_path="$bin_dir/HudsonMenuApp"
 
 copy_swiftpm_bundles() {
   local target_app_path=$1
+  local resources_dir="$target_app_path/Contents/Resources"
+  local macos_dir="$target_app_path/Contents/MacOS"
   find "$bin_dir" -maxdepth 1 -type d -name '*.bundle' -exec sh -c '
+    target_app_path="$1"; resources_dir="$2"; macos_dir="$3"; shift 3
     for bundle do
-      ditto "$bundle" "$0/$(basename "$bundle")"
+      name="$(basename "$bundle")"
+      ditto "$bundle" "$target_app_path/$name"
+      ditto "$bundle" "$resources_dir/$name"
+      ditto "$bundle" "$macos_dir/$name"
     done
-  ' "$target_app_path" {} +
+  ' sh "$target_app_path" "$resources_dir" "$macos_dir" {} +
 }
 
 build_app_bundle() {

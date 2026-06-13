@@ -69,13 +69,14 @@ cp "$icon_path" "$app_path/Contents/Resources/AppIcon.icns"
 resources_dir="$app_path/Contents/Resources"
 macos_dir="$app_path/Contents/MacOS"
 find "$bin_dir" -maxdepth 1 -type d -name '*.bundle' -exec sh -c '
-  resources_dir="$1"; macos_dir="$2"; shift 2
+  app_path="$1"; resources_dir="$2"; macos_dir="$3"; shift 3
   for bundle do
     name="$(basename "$bundle")"
+    ditto "$bundle" "$app_path/$name"
     ditto "$bundle" "$resources_dir/$name"
     ditto "$bundle" "$macos_dir/$name"
   done
-' sh "$resources_dir" "$macos_dir" {} +
+' sh "$app_path" "$resources_dir" "$macos_dir" {} +
 
 cat > "$app_path/Contents/Info.plist" <<PLIST
 <?xml version="1.0" encoding="UTF-8"?>
