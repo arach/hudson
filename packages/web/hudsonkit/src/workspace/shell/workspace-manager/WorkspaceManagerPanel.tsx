@@ -370,7 +370,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
               </div>
               <span className="text-[10px] font-mono text-muted-foreground">
                 {enabledApps.length} enabled &middot; {visibleCount} visible
-                {disabledApps.length > 0 && <> &middot; {disabledApps.length} disabled</>}
+                {disabledApps.length > 0 && <> &middot; {disabledApps.length} hidden</>}
               </span>
             </div>
           </div>
@@ -392,7 +392,12 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
 
         {/* Enabled apps (drag-sortable) */}
         <div>
-          <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Applications</div>
+          <div className="flex items-end justify-between gap-3 mb-2">
+            <div>
+              <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase">Applications</div>
+              <div className="text-[9px] font-mono text-muted-foreground/70 mt-0.5">Drag to reorder workspace navigation. Hide apps here and restore them below.</div>
+            </div>
+          </div>
           <div className="space-y-1">
             {enabledApps.map(config => {
               const { app } = config;
@@ -462,7 +467,8 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
                       className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-destructive flex-shrink-0 opacity-0 group-hover:opacity-100"
-                      title="Disable app"
+                      title="Hide from navigation"
+                      aria-label={`Hide ${app.name} from navigation`}
                     >
                       <Power size={12} />
                     </button>
@@ -481,7 +487,7 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
         {/* Disabled apps */}
         {disabledApps.length > 0 && (
           <div>
-            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Disabled</div>
+            <div className="text-[10px] font-mono text-muted-foreground tracking-widest uppercase mb-2">Hidden from Navigation</div>
             <div className="space-y-1">
               {disabledApps.map((config) => {
                 const { app } = config;
@@ -494,8 +500,9 @@ function OverviewTab({ onSwitchToApp }: { onSwitchToApp: (appId: string) => void
                     <button
                       onClick={() => onToggleAppDisabled(app.id)}
                       className="flex items-center gap-1.5 px-2 py-1 rounded text-[10px] font-mono text-accent hover:text-accent border border-accent/20 hover:border-accent/40 transition-colors"
+                      aria-label={`Restore ${app.name} to navigation`}
                     >
-                      <Power size={10} /> Enable
+                      <Power size={10} /> Restore
                     </button>
                   </div>
                 );

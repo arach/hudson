@@ -73,6 +73,12 @@ import { ActiveWorkspaceProvider } from '../context/ActiveWorkspaceContext';
 import { WorkspaceDecorProvider } from './decor/WorkspaceDecorContext';
 import { DecorationLayer } from './decor/DecorationLayer';
 import {
+  normalizeWorkspaceAppIdList,
+  orderWorkspaceApps,
+  toggleWorkspaceDisabledAppIds,
+  useWorkspaceAppOrderState,
+} from './workspaceAppOrder';
+import {
   WorkspaceHostRoutesProvider,
   routeWithQuery,
   useWorkspaceHostRoutes,
@@ -200,6 +206,7 @@ export interface WorkspaceShellInitialState {
   activeWorkspaceId: string;
   activatedAppIds: string[];
   focusedAppId: string;
+  appOrder?: string[];
   tileWindowBounds: Record<string, WindowBounds>;
   theme: 'dark' | 'light';
   template: string;
@@ -777,8 +784,8 @@ export function WorkspaceShell({
       .then(data => {
         if (data.disabledApps && Array.isArray(data.disabledApps)) {
           // Only keep IDs that exist in the workspace
-          const wsAppIds = new Set(workspace.apps.map(c => c.app.id));
-          setDisabledAppIdsArr((data.disabledApps as string[]).filter(id => wsAppIds.has(id)));
+          const wsAppIds = workspace.apps.map(c => c.app.id);
+          setDisabledAppIdsArr(normalizeWorkspaceAppIdList(data.disabledApps, wsAppIds));
         }
         disabledLoaded.current = true;
       })
@@ -1042,7 +1049,6 @@ function WorkspaceInner({
   // Hooks must be called for ALL apps (including disabled) to keep hook order stable.
   // Results for disabled apps are filtered out downstream.
   const allAppHooksRaw: AppHookData[] = fullWorkspace.apps.map(config => useAppHooks(config));
-  const allAppHooks = allAppHooksRaw.filter(h => !disabledAppIds.has(h.appId));
 
   // --- Port bridge (registers output/input hooks with DataBus) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1103,6 +1109,39 @@ function WorkspaceInner({
   }, []);
 
   const allAppIds = useMemo(() => workspace.apps.map(c => c.app.id), [workspace]);
+  const allFullAppIds = useMemo(() => fullWorkspace.apps.map(c => c.app.id), [fullWorkspace]);
+  const {
+    appOrder: normalizedAppOrder,
+    setAppOrder,
+  } = useWorkspaceAppOrderState({
+    workspaceId: workspace.id,
+    appIds: allFullAppIds,
+    persistSession,
+    workspaceStateRoute: routes.workspaceState,
+    initialAppOrder: initialState?.appOrder,
+  });
+  const orderedWorkspace = useMemo(
+    () => orderWorkspaceApps(workspace, normalizedAppOrder),
+    [workspace, normalizedAppOrder],
+  );
+  const orderedFullWorkspace = useMemo(
+    () => orderWorkspaceApps(fullWorkspace, normalizedAppOrder),
+    [fullWorkspace, normalizedAppOrder],
+  );
+  const appOrderRank = useMemo(
+    () => new Map(normalizedAppOrder.map((id, index) => [id, index])),
+    [normalizedAppOrder],
+  );
+  const allAppHooks = allAppHooksRaw
+    .filter(h => !disabledAppIds.has(h.appId))
+    .sort((a, b) => {
+      const aRank = appOrderRank.get(a.appId) ?? Number.MAX_SAFE_INTEGER;
+      const bRank = appOrderRank.get(b.appId) ?? Number.MAX_SAFE_INTEGER;
+      return aRank - bRank;
+    });
+  const handleReorderApps = useCallback((orderedIds: string[]) => {
+    setAppOrder(orderedIds);
+  }, [setAppOrder]);
 
   // --- Focus state (persisted per workspace) ---
   const defaultFocus = initialState?.focusedAppId && allAppIds.includes(initialState.focusedAppId)
@@ -1167,7 +1206,7 @@ function WorkspaceInner({
   const isFullBoot = bootMode === 'full';
   const defaultVisible = initialState?.activatedAppIds
     ? initialState.activatedAppIds.filter(id => allAppIds.includes(id))
-    : isFullBoot && initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(workspace);
+    : isFullBoot && initialShowLauncher ? [] : defaultActivatedIdsForWorkspace(orderedWorkspace);
   const [activatedAppIdsArr, setActivatedAppIdsArr] = useState<string[]>(defaultVisible);
   const wsStateReady = useRef(false);
   const savePending = useRef(0);
@@ -1186,8 +1225,8 @@ function WorkspaceInner({
       .then(data => {
         if (gen !== savePending.current) return; // stale
         if (data.visibleApps && Array.isArray(data.visibleApps)) {
-          const validIds = (data.visibleApps as string[]).filter(id => allAppIds.includes(id));
-          setActivatedAppIdsArr(validIds.length > 0 ? validIds : defaultActivatedIdsForWorkspace(workspace));
+          const validIds = normalizeWorkspaceAppIdList(data.visibleApps, allAppIds);
+          setActivatedAppIdsArr(validIds.length > 0 ? validIds : defaultActivatedIdsForWorkspace(orderedWorkspace));
         }
         wsStateReady.current = true;
       })
@@ -1270,13 +1309,7 @@ function WorkspaceInner({
 
     // Update disabled set
     setDisabledAppIdsArr(prev => {
-      const set = new Set(prev);
-      if (set.has(appId)) {
-        set.delete(appId);
-      } else {
-        set.add(appId);
-      }
-      return [...set];
+      return toggleWorkspaceDisabledAppIds(prev, appId, allFullAppIds);
     });
 
     // Separate state update (not nested in another updater)
@@ -1291,25 +1324,7 @@ function WorkspaceInner({
       // Re-enabling — add to visible
       setActivatedAppIds(vis => new Set([...vis, appId]));
     }
-  }, [disabledAppIds, setDisabledAppIdsArr, setActivatedAppIds]);
-
-  // --- App ordering (for workspace editor display) ---
-  const allFullAppIds = useMemo(() => fullWorkspace.apps.map(c => c.app.id), [fullWorkspace]);
-  const [appOrder, setAppOrder] = usePersistentState<string[]>(
-    `hudson.ws.${workspace.id}.appOrder`,
-    allFullAppIds,
-    { enabled: persistSession },
-  );
-  // Ensure order includes all current apps (handles new apps added to workspace)
-  const normalizedAppOrder = useMemo(() => {
-    const ordered = appOrder.filter(id => allFullAppIds.includes(id));
-    const missing = allFullAppIds.filter(id => !ordered.includes(id));
-    return [...ordered, ...missing];
-  }, [appOrder, allFullAppIds]);
-
-  const handleReorderApps = useCallback((orderedIds: string[]) => {
-    setAppOrder(orderedIds);
-  }, [setAppOrder]);
+  }, [allFullAppIds, disabledAppIds, setDisabledAppIdsArr, setActivatedAppIds]);
 
   // --- Window reset key (bumped to force WindowedApp remount) ---
   const [windowResetKey, setWindowResetKey] = useState(0);
@@ -1355,7 +1370,7 @@ function WorkspaceInner({
 
   // --- Smart tiling: compute clean window positions on first launch ---
   const tileWindowBounds = useCallback((ids: Set<string>) => {
-    const windowed = workspace.apps.filter(
+    const windowed = orderedWorkspace.apps.filter(
       c => ids.has(c.app.id) && c.canvasMode === 'windowed',
     );
     const n = windowed.length;
@@ -1398,12 +1413,12 @@ function WorkspaceInner({
         try { localStorage.setItem(key, JSON.stringify(bounds)); } catch {}
       }
     }
-  }, [persistSession, workspace]);
+  }, [orderedWorkspace, persistSession, workspace.id]);
 
 
   const handleDismissLauncher = useCallback(() => {
     const finalIds = activatedAppIds.size === 0
-      ? new Set(defaultActivatedIdsForWorkspace(workspace))
+      ? new Set(defaultActivatedIdsForWorkspace(orderedWorkspace))
       : activatedAppIds;
 
     setActivatedAppIds(finalIds);
@@ -1416,7 +1431,7 @@ function WorkspaceInner({
     if (persistSession) {
       saveSession(activeWorkspaceId);
     }
-  }, [workspace, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
+  }, [orderedWorkspace, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
@@ -1547,8 +1562,8 @@ function WorkspaceInner({
     { enabled: persistSession },
   );
 
-  const singleApp = isSingleApp ? workspace.apps[0].app : null;
-  const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
+  const singleApp = isSingleApp ? orderedWorkspace.apps[0].app : null;
+  const focusedApp = isSingleApp ? singleApp : orderedWorkspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
   const focusedCodeSurface = focused.codeSurface;
   const focusedCodePlacement = focusedCodeSurface?.placement ?? focusedApp?.code?.placement ?? 'workbench';
   const focusedCodeAvailable = Boolean(focusedCodeSurface?.object);
@@ -1615,9 +1630,9 @@ function WorkspaceInner({
   // `setActiveTerminalAppId(HUDSON_AI_ID)` etc; we mirror that into the kind.
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
-  const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
+  const appsWithConsoleSurface = orderedWorkspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
   const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
-  const initialFocusedChatApp = workspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
+  const initialFocusedChatApp = orderedWorkspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
   const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>(
     initialFocusedChatApp ? 'app' : 'workspace',
   );
@@ -1736,13 +1751,13 @@ function WorkspaceInner({
     contextMenuMode,
     focusedAppId: focusedApp?.id ?? null,
     focusedAppName: focusedApp?.name ?? null,
-    apps: workspace.apps.map(config => ({
+    apps: orderedWorkspace.apps.map(config => ({
       id: config.app.id,
       name: config.app.name,
       mode: config.app.mode,
       canvasMode: config.canvasMode ?? 'native',
     })),
-  }), [workspace.id, workspace.name, workspace.apps, frameMode, contextMenuMode, focusedApp?.id, focusedApp?.name]);
+  }), [workspace.id, workspace.name, orderedWorkspace.apps, frameMode, contextMenuMode, focusedApp?.id, focusedApp?.name]);
 
   useEffect(() => {
     installHudsonDevtoolsWelcome(devtoolsWelcomeInfo);
@@ -2329,7 +2344,7 @@ function WorkspaceInner({
       </AppSlotErrorBoundary>
     )
   ) : (
-    workspace.apps.map(config => {
+    orderedWorkspace.apps.map(config => {
       const { app } = config;
       const deps = app.services;
       const serviceDeps = deps?.map(dep => ({
@@ -3200,7 +3215,7 @@ function WorkspaceInner({
 
   // --- World content (always rendered — launcher overlays on top) ---
   const SingleContent = singleApp?.slots.Content ?? null;
-  const singleAppConfig = isSingleApp ? workspace.apps[0] : null;
+  const singleAppConfig = isSingleApp ? orderedWorkspace.apps[0] : null;
   const CanvasFocusContent = isCanvasFocusMode ? fullscreenConfig?.app.slots.Content ?? null : null;
   const canvasFocusContentNode = isCanvasFocusMode && fullscreenConfig && CanvasFocusContent ? (
     <ServiceBanner appConfig={fullscreenConfig} onOpenServices={openWorkspaceManager}>
@@ -3227,7 +3242,7 @@ function WorkspaceInner({
         ) : focusedCanvasContentNode
       ) : (
         <MultiAppCanvas
-          workspace={workspace}
+          workspace={orderedWorkspace}
           focusedAppId={focusedAppId}
           onFocusApp={setFocusedAppId}
           onCloseApp={handleToggleAppVisibility}
@@ -3266,7 +3281,7 @@ function WorkspaceInner({
 
   // --- Workspace Manager context value ---
   const wmData = useMemo(() => ({
-    workspace: fullWorkspace,
+    workspace: orderedFullWorkspace,
     workspaces,
     activatedAppIds,
     disabledAppIds,
@@ -3284,10 +3299,10 @@ function WorkspaceInner({
     shellSettings,
     onUpdateShellSettings: updateShellSettings,
     onResetShellSettings: resetShellSettings,
-  }), [fullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
+  }), [orderedFullWorkspace, workspaces, activatedAppIds, disabledAppIds, normalizedAppOrder, focusedAppId, handleToggleAppVisibility, handleToggleAppDisabled, handleReorderApps, serviceRegistry, appSettings, windowBoundsMap, handleResetLayout, handleFitAll, shellSettings, updateShellSettings, resetShellSettings]);
 
   const hudsonAIRuntime = useMemo(() => ({
-    workspace,
+    workspace: orderedWorkspace,
     onToolCall: handleWorkspaceToolCall,
     voiceSettings: shellSettings.voice,
     voiceTriggerNonce,
@@ -3300,7 +3315,7 @@ function WorkspaceInner({
     queueHudsonAIPrompt,
     shellSettings.voice,
     voiceTriggerNonce,
-    workspace,
+    orderedWorkspace,
     workspaceAIToolContext,
   ]);
 
@@ -3834,7 +3849,7 @@ function WorkspaceInner({
             {showLauncher && launcherReady && (
               <div className="fixed inset-0 z-[5] pointer-events-auto">
                 <AppLauncher
-                  workspace={workspace}
+                  workspace={orderedWorkspace}
                   activatedAppIds={activatedAppIds}
                   onActivateApp={handleActivateApp}
                   onDismiss={handleDismissLauncher}

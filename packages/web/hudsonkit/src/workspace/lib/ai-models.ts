@@ -16,7 +16,7 @@ export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
   { label: 'GitHub Models', value: 'github' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'OpenAI', value: 'openai' },
-  { label: 'X.ai', value: 'xai' },
+  { label: 'xAI', value: 'xai' },
   { label: 'Groq', value: 'groq' },
   { label: 'Google AI', value: 'google' },
 ];
@@ -24,37 +24,45 @@ export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
 /**
  * Copilot chat models offered by Hudson.
  *
- * Refreshed from `copilot-ask --list-models` on 2026-05-20 and filtered to
- * models currently registered by Hudson's pi-ai backend. Account-visible
- * entries such as Search Agent routers, Lark, Raptor mini, GPT-4o mini, and
- * Gemini 3.5 Flash are intentionally not exposed until the runtime can route
- * them by exact model id.
+ * Refreshed from pi-ai's registry on 2026-06-13. The runtime registry remains
+ * authoritative; this list keeps static settings and fallback controls current.
  */
 export const COPILOT_MODEL_OPTIONS: AISelectOption[] = [
   { label: 'GPT-5.5', value: 'gpt-5.5', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5.4', value: 'gpt-5.4', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5.4 Mini', value: 'gpt-5.4-mini', provider: 'copilot', contextWindow: 400_000 },
+  { label: 'GPT-5.4 Nano', value: 'gpt-5.4-nano', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5.3 Codex', value: 'gpt-5.3-codex', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5.2 Codex', value: 'gpt-5.2-codex', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.2', value: 'gpt-5.2', provider: 'copilot', contextWindow: 264_000 },
+  { label: 'GPT-5.2', value: 'gpt-5.2', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5 Mini', value: 'gpt-5-mini', provider: 'copilot', contextWindow: 264_000 },
+  { label: 'Claude Opus 4.8', value: 'claude-opus-4.8', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Claude Opus 4.7', value: 'claude-opus-4.7', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Opus 4.6', value: 'claude-opus-4.6', provider: 'copilot', contextWindow: 1_000_000 },
   { label: 'Claude Opus 4.5', value: 'claude-opus-4.5', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Sonnet 4', value: 'claude-sonnet-4', provider: 'copilot', contextWindow: 216_000 },
+  { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6', provider: 'copilot', contextWindow: 1_000_000 },
   { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Claude Haiku 4.5', value: 'claude-haiku-4.5', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview', provider: 'copilot', contextWindow: 128_000 },
   { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'Gemini 3.5 Flash', value: 'gemini-3.5-flash', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro', provider: 'copilot', contextWindow: 128_000 },
   { label: 'GPT-4.1', value: 'gpt-4.1', provider: 'copilot', contextWindow: 128_000 },
   { label: 'GPT-4o', value: 'gpt-4o', provider: 'copilot', contextWindow: 128_000 },
+  { label: 'Raptor Mini', value: 'raptor-mini', provider: 'copilot', contextWindow: 400_000 },
 ];
 
 const GENERAL_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax M3', value: 'MiniMax-M3', provider: 'minimax', contextWindow: 512_000 },
   { label: 'MiniMax M2.7', value: 'MiniMax-M2.7', provider: 'minimax' },
   { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed', provider: 'minimax' },
   { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash', provider: 'google' },
-  { label: 'Grok 4.1 Fast', value: 'grok-4-1-fast', provider: 'xai' },
+  { label: 'Grok 4.3', value: 'grok-4.3', provider: 'xai', contextWindow: 1_000_000 },
+  { label: 'Grok 4.20 Reasoning', value: 'grok-4.20-0309-reasoning', provider: 'xai', contextWindow: 2_000_000 },
+  { label: 'Grok 4.20 Non-Reasoning', value: 'grok-4.20-0309-non-reasoning', provider: 'xai', contextWindow: 2_000_000 },
+  { label: 'Grok Build 0.1', value: 'grok-build-0.1', provider: 'xai', contextWindow: 256_000 },
+  { label: 'Grok Code Fast 1', value: 'grok-code-fast-1', provider: 'xai', contextWindow: 32_768 },
   { label: 'Llama 3.3 70B Versatile', value: 'llama-3.3-70b-versatile', provider: 'groq' },
 ];
 
@@ -82,12 +90,19 @@ export function mergeCopilotModelOptions(liveCopilotOptions: AISelectOption[] | 
 
 export const PI_CLI_PROVIDER_OPTIONS: AISelectOption[] = [
   { label: 'MiniMax', value: 'minimax' },
+  { label: 'xAI', value: 'xai' },
   { label: 'GitHub Copilot', value: 'github-copilot' },
 ];
 
 export const PI_CLI_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax M3', value: 'MiniMax-M3', provider: 'minimax' },
   { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
   { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed' },
+  { label: 'xAI / Grok 4.3', value: 'grok-4.3', provider: 'xai' },
+  { label: 'xAI / Grok 4.20 Reasoning', value: 'grok-4.20-0309-reasoning', provider: 'xai' },
+  { label: 'xAI / Grok 4.20 Non-Reasoning', value: 'grok-4.20-0309-non-reasoning', provider: 'xai' },
+  { label: 'xAI / Grok Build 0.1', value: 'grok-build-0.1', provider: 'xai' },
+  { label: 'xAI / Grok Code Fast 1', value: 'grok-code-fast-1', provider: 'xai' },
   ...COPILOT_MODEL_OPTIONS.map(option => ({
     ...option,
     label: `Copilot / ${option.label}`,
@@ -139,6 +154,42 @@ export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
     model: 'gpt-4o',
   },
   {
+    label: 'MiniMax / M3',
+    value: 'minimax:MiniMax-M3',
+    provider: 'minimax',
+    model: 'MiniMax-M3',
+  },
+  {
+    label: 'xAI / Grok 4.3',
+    value: 'xai:grok-4.3',
+    provider: 'xai',
+    model: 'grok-4.3',
+  },
+  {
+    label: 'xAI / Grok 4.20 Reasoning',
+    value: 'xai:grok-4.20-0309-reasoning',
+    provider: 'xai',
+    model: 'grok-4.20-0309-reasoning',
+  },
+  {
+    label: 'xAI / Grok 4.20 Non-Reasoning',
+    value: 'xai:grok-4.20-0309-non-reasoning',
+    provider: 'xai',
+    model: 'grok-4.20-0309-non-reasoning',
+  },
+  {
+    label: 'xAI / Grok Build 0.1',
+    value: 'xai:grok-build-0.1',
+    provider: 'xai',
+    model: 'grok-build-0.1',
+  },
+  {
+    label: 'xAI / Grok Code Fast 1',
+    value: 'xai:grok-code-fast-1',
+    provider: 'xai',
+    model: 'grok-code-fast-1',
+  },
+  {
     label: 'Anthropic / Claude Sonnet 4',
     value: 'anthropic:claude-sonnet-4-20250514',
     provider: 'anthropic',
@@ -155,12 +206,6 @@ export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
     value: 'google:gemini-2.0-flash',
     provider: 'google',
     model: 'gemini-2.0-flash',
-  },
-  {
-    label: 'X.ai / Grok 4.1 Fast',
-    value: 'xai:grok-4-1-fast',
-    provider: 'xai',
-    model: 'grok-4-1-fast',
   },
 ];
 
