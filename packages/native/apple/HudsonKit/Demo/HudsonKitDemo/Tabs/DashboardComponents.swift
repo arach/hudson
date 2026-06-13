@@ -230,7 +230,7 @@ struct TerminalPanel: View {
     var body: some View {
         OverflowPanel(label: "Terminal · iTerm", trailing: "laptop.local") {
             VStack(alignment: .leading, spacing: 2) {
-                line("~", "~/dev/lattices", primaryDim: false)
+                line("~", DemoManifest.workspacePath, primaryDim: false)
                 line("$", "swift build -c release", primaryDim: false)
                 Text("Compiling DeckKit…")
                     .font(HudFont.mono(HudTextSize.xxs))
@@ -335,40 +335,10 @@ struct DashboardBottomChrome: View {
     var body: some View {
         VStack(spacing: 0) {
             HudDivider(color: HudHairline.standard)
-            cloudRow
-            HudDivider(color: HudHairline.standard)
             statusRow
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(HudPalette.chrome)
-    }
-
-    private var cloudRow: some View {
-        HStack(spacing: HudSpacing.md) {
-            Image(systemName: "cloud")
-                .font(HudFont.ui(HudTextSize.xs))
-                .foregroundStyle(HudPalette.muted)
-            Text("CLOUD").font(HudFont.mono(HudTextSize.micro, weight: .semibold)).tracking(0.8).foregroundStyle(HudPalette.muted)
-            sep
-            HudStatusDot(color: HudPalette.statusOk, size: 5)
-            Text("2 \(manifest.targetLabel.lowercased())s")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.ink)
-            sep
-            HudStatusDot(color: HudTint.amber.color, size: 5)
-            Text("1 builds queued")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.ink)
-            sep
-            Text("deploy 4m ago")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.muted)
-            Spacer()
-            Image(systemName: "chevron.up")
-                .font(HudFont.ui(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.muted)
-        }
-        .padding(.horizontal, HudSpacing.xl)
-        .frame(height: HudLayout.statusBarHeight)
     }
 
     private var statusRow: some View {

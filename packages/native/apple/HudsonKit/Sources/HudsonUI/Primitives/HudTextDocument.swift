@@ -334,28 +334,39 @@ public struct HudTextDocumentSurface: View {
     }
 
     private var readSurface: some View {
-        ScrollView([.vertical, .horizontal]) {
-            if document.kind == .code || document.kind == .raw {
-                HudCodeText(
-                    source: document.value,
-                    language: document.language,
-                    showsLineNumbers: showsLineNumbers
-                )
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.vertical, HudLayout.textDocumentCodePadding)
-                .padding(.trailing, HudLayout.textDocumentCodePadding)
-                .padding(.leading, HudSpacing.xs)
-            } else {
-                Text(document.value)
-                    .font(editorFont)
-                    .foregroundStyle(HudPalette.ink)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(HudSpacing.xxl)
-                    .textSelection(.enabled)
+        // A bidirectional ScrollView centers content narrower than its viewport,
+        // which floated the code block in the middle of the card. Pin the content
+        // to at least the viewport width, top-leading, so code reads hard-left
+        // while long lines still scroll horizontally.
+        GeometryReader { geo in
+            ScrollView([.vertical, .horizontal]) {
+                readContent
+                    .frame(minWidth: geo.size.width, alignment: .topLeading)
             }
+            .background(HudSurface.base)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .background(HudSurface.base)
+    }
+
+    @ViewBuilder
+    private var readContent: some View {
+        if document.kind == .code || document.kind == .raw {
+            HudCodeText(
+                source: document.value,
+                language: document.language,
+                showsLineNumbers: showsLineNumbers
+            )
+            .padding(.vertical, HudLayout.textDocumentCodePadding)
+            .padding(.trailing, HudLayout.textDocumentCodePadding)
+            .padding(.leading, HudSpacing.xs)
+        } else {
+            Text(document.value)
+                .font(editorFont)
+                .foregroundStyle(HudPalette.ink)
+                .padding(HudSpacing.xxl)
+                .textSelection(.enabled)
+        }
     }
 
     private var valueBinding: Binding<String> {
@@ -441,11 +452,10 @@ private struct HudCodeText: View {
                         .font(HudFont.mono(HudTextSize.sm))
                         .lineSpacing(2)
                         .textSelection(.enabled)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .fixedSize(horizontal: true, vertical: false)
                 }
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
     }
 
     private func highlightedLine(_ line: String, language: String?) -> AttributedString {

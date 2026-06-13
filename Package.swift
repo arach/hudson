@@ -10,7 +10,7 @@ import Foundation
 //
 // Optional heavy backends stay gated by env at manifest-eval time so light
 // consumers do not resolve dependencies they do not use:
-//   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Vantage surface
+//   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Canvas surface
 //   HUDSONKIT_WITH_VOICE=0     -> opt out of HudsonVoice
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
@@ -75,8 +75,8 @@ var products: [Product] = [
     .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
     .library(name: "HudsonShell", targets: ["HudsonShell"]),
     .library(name: "HudsonAI", targets: ["HudsonAI"]),
-    .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
-    .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
+    .library(name: "HudsonCanvasCore", targets: ["HudsonCanvasCore"]),
+    .library(name: "HudsonCanvasCompanion", targets: ["HudsonCanvasCompanion"]),
 ]
 
 var dependencies: [Package.Dependency] = []
@@ -106,14 +106,15 @@ var targets: [Target] = [
     .target(name: "HudsonBridge", dependencies: ["HudsonUI"], path: src + "HudsonBridge"),
     .target(name: "HudsonShell", dependencies: ["HudsonUI", "HudsonObservability"], path: src + "HudsonShell"),
     .target(name: "HudsonAI", dependencies: ["HudsonUI"], path: src + "HudsonAI"),
-    .target(name: "HudsonVantageCore", dependencies: ["HudsonUI"], path: src + "HudsonVantageCore"),
-    .target(name: "HudsonVantageCompanion", dependencies: ["HudsonUI", "HudsonVantageCore"], path: src + "HudsonVantageCompanion"),
+    .target(name: "HudsonCanvasCore", dependencies: ["HudsonUI"], path: src + "HudsonCanvasCore"),
+    .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
     .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"], path: tst + "HudsonUIWebTests"),
+    .testTarget(name: "HudsonShellTests", dependencies: ["HudsonShell"], path: tst + "HudsonShellTests"),
     .testTarget(
         name: "HudsonUITests",
         dependencies: [
@@ -153,8 +154,8 @@ if voiceEnabled {
 
 if terminalEnabled {
     products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
-    products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
+    products.append(.library(name: "HudsonCanvasSurface", targets: ["HudsonCanvasSurface"]))
+    products.append(.library(name: "HudsonCanvas", targets: ["HudsonCanvas"]))
     let terminiPackage = appendGitDependency(
         to: &dependencies,
         url: "git@github.com:arach/Termini.git",
@@ -173,7 +174,7 @@ if terminalEnabled {
     )
     targets.append(
         .target(
-            name: "HudsonVantageSurface",
+            name: "HudsonCanvasSurface",
             dependencies: [
                 "HudsonDiff",
                 "HudsonLive",
@@ -182,29 +183,33 @@ if terminalEnabled {
                 "HudsonUIWeb",
                 "HudsonShell",
                 "HudsonTerminal",
-                "HudsonVantageCore",
+                "HudsonCanvasCore",
                 .product(name: "Termini", package: terminiPackage),
             ],
-            path: src + "HudsonVantageSurface"
+            path: src + "HudsonCanvasSurface"
         )
     )
     targets.append(
         .target(
-            name: "HudsonVantage",
+            name: "HudsonCanvas",
             dependencies: [
                 "HudsonUI",
-                "HudsonVantageCompanion",
-                "HudsonVantageCore",
-                "HudsonVantageSurface",
+                "HudsonCanvasCompanion",
+                "HudsonCanvasCore",
+                "HudsonCanvasSurface",
             ],
-            path: src + "HudsonVantage"
+            path: src + "HudsonCanvas"
         )
     )
     targets.append(
-        .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"], path: tst + "HudsonVantageTests")
+        .testTarget(
+            name: "HudsonCanvasTests",
+            dependencies: ["HudsonCanvas", "HudsonCanvasSurface"],
+            path: tst + "HudsonCanvasTests"
+        )
     )
     demoDependencies.append("HudsonTerminal")
-    demoDependencies.append("HudsonVantage")
+    demoDependencies.append("HudsonCanvas")
     demoSwiftSettings.append(.define("HUDSON_TERMINAL"))
 }
 

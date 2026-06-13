@@ -41,6 +41,7 @@ public struct HudAppShell<
     private let bottomDrawer: BottomDrawer
     private let content: Content
     private let statusBar: StatusBar
+    private let showsStatusFooter: Bool
 
     @Environment(\.hudTheme) private var theme
 
@@ -54,6 +55,7 @@ public struct HudAppShell<
         @ViewBuilder topDrawer: () -> TopDrawer,
         @ViewBuilder bottomDrawer: () -> BottomDrawer,
         @ViewBuilder content: () -> Content,
+        showsStatusFooter: Bool = true,
         @ViewBuilder statusBar: () -> StatusBar
     ) {
         self.leading = leading()
@@ -62,6 +64,7 @@ public struct HudAppShell<
         self.bottomDrawer = bottomDrawer()
         self.content = content()
         self.statusBar = statusBar()
+        self.showsStatusFooter = showsStatusFooter
     }
 
     public var body: some View {
@@ -71,8 +74,9 @@ public struct HudAppShell<
             VStack(spacing: 0) {
                 topDrawer
 
-                HStack(spacing: 0) {
+                HStack(alignment: .top, spacing: 0) {
                     leading
+                        .fixedSize(horizontal: true, vertical: false)
 
                     content
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
@@ -85,8 +89,11 @@ public struct HudAppShell<
 
                 bottomDrawer
 
-                HudDivider(color: theme.hairline.subtle)
-                statusBar
+                if showsStatusFooter {
+                    HudDivider(color: theme.hairline.subtle)
+                    statusBar
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }
@@ -109,6 +116,7 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content,
+        showsStatusFooter: Bool = true,
         @ViewBuilder statusBar: () -> StatusBar
     ) {
         self.init(
@@ -117,7 +125,29 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
             topDrawer: { EmptyView() },
             bottomDrawer: { EmptyView() },
             content: content,
+            showsStatusFooter: showsStatusFooter,
             statusBar: statusBar
+        )
+    }
+}
+
+extension HudAppShell where StatusBar == EmptyView {
+    /// Shell without a status footer — skips the bottom divider and bar entirely.
+    public init(
+        @ViewBuilder leading: () -> Leading,
+        @ViewBuilder trailing: () -> Trailing,
+        @ViewBuilder topDrawer: () -> TopDrawer,
+        @ViewBuilder bottomDrawer: () -> BottomDrawer,
+        @ViewBuilder content: () -> Content
+    ) {
+        self.init(
+            leading: leading,
+            trailing: trailing,
+            topDrawer: topDrawer,
+            bottomDrawer: bottomDrawer,
+            content: content,
+            showsStatusFooter: false,
+            statusBar: { EmptyView() }
         )
     }
 }
@@ -132,6 +162,7 @@ extension HudAppShell where Leading == EmptyView, Trailing == EmptyView, TopDraw
             topDrawer: { EmptyView() },
             bottomDrawer: { EmptyView() },
             content: content,
+            showsStatusFooter: false,
             statusBar: { EmptyView() }
         )
     }

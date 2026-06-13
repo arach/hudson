@@ -1,9 +1,10 @@
 import SwiftUI
 import HudsonUI
+import HudsonUIWeb
 import HudsonShell
 
 enum DemoTab: String, CaseIterable, Identifiable {
-    case dashboard, explorer, vantage, voice, shell, sidebar, tokens, primitives, manifest, about
+    case dashboard, explorer, terminal, canvas, voice, shell, sidebar, tokens, primitives, manifest, about
     var id: String { rawValue }
     var label: String { rawValue.capitalized }
 
@@ -11,7 +12,8 @@ enum DemoTab: String, CaseIterable, Identifiable {
         switch self {
         case .dashboard:  return "rectangle.grid.2x2"
         case .explorer:   return "folder"
-        case .vantage:    return "square.grid.3x3.fill"
+        case .terminal:   return "terminal"
+        case .canvas:     return "square.grid.3x3.fill"
         case .voice:      return "waveform"
         case .shell:      return "rectangle.split.3x1"
         case .sidebar:    return "sidebar.left"
@@ -24,25 +26,6 @@ enum DemoTab: String, CaseIterable, Identifiable {
 
     var navItem: HudRailItem {
         HudRailItem(id: rawValue, label: label, icon: icon)
-    }
-}
-
-enum DemoVariant: String, CaseIterable, Identifiable {
-    case scout, lattices
-    var id: String { rawValue }
-
-    var manifest: HudAppManifest {
-        switch self {
-        case .scout:    return HudAppManifest(name: "Scout",    tint: .cyan,  targetLabel: "Agent")
-        case .lattices: return HudAppManifest(name: "Lattices", tint: .green, targetLabel: "Machine")
-        }
-    }
-
-    var label: String {
-        switch self {
-        case .scout:    return "Scout"
-        case .lattices: return "Lattices"
-        }
     }
 }
 
@@ -77,7 +60,6 @@ enum GlassAccentChoice: String, CaseIterable, Identifiable {
 
 struct ContentView: View {
     @State private var tab: DemoTab = .dashboard
-    @State private var variant: DemoVariant = .lattices
     @State private var navExpanded: Bool = true
     @State private var navLabelWidth: CGFloat = HudSidebarLayout.labelWidth
     @State private var sidebarSurface: HudSidebarSurfaceStyle = .base
@@ -85,11 +67,20 @@ struct ContentView: View {
     @State private var glassTranslucency: Double = 1.0
     @State private var glassAccentChoice: GlassAccentChoice = .none
     @State private var inspectorCollapsed: Bool = false
-    @State private var terminalOpen: Bool = false
     @State private var selectedTargetId: String? = nil
     @State private var takeoverOpen: Bool = false
     @State private var terminalAppOpen: Bool = false
     @State private var paletteOpen: Bool = false
+    @State private var shellWidth: CGFloat = DemoLayout.shellCompactBreakpoint
+    @State private var shellCompact = false
+    @State private var explorerModel = HudFileExplorerModel(rootURL: DemoResources.defaultExplorerRoot)
+    @State private var settingsPresented = false
+    @State private var settingsSelection: DemoSettingsSection = .general
+    @StateObject private var settingsNavState = HudSecondaryNavState()
+    // Terminal & Canvas own live PTY/tmux sessions. Track which heavy tabs have
+    // been opened so we can mount them lazily and keep them alive once visited,
+    // instead of booting every tab at launch.
+    @State private var liveHeavyTabs: Set<DemoTab> = []
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
@@ -99,7 +90,7 @@ struct ContentView: View {
     }
 
     private var sidebarEntries: [HudSidebarEntry<DemoTab>] {
-        let workbench: [DemoTab] = [.dashboard, .explorer, .vantage, .voice, .shell, .sidebar]
+        let workbench: [DemoTab] = [.dashboard, .explorer, .terminal, .canvas, .voice, .shell, .sidebar]
         let reference: [DemoTab] = [.tokens, .primitives, .manifest]
         var entries: [HudSidebarEntry<DemoTab>] = []
         entries.append(contentsOf: workbench.map {
@@ -113,6 +104,25 @@ struct ContentView: View {
     }
 
     var body: some View {
+        GeometryReader { geometry in
+            shellBody
+                .onAppear {
+                    shellWidth = geometry.size.width
+                    shellCompact = geometry.size.width < DemoLayout.shellCompactBreakpoint
+                }
+                .onChange(of: geometry.size.width) { _, width in
+                    shellWidth = width
+                    let nextCompact = width < DemoLayout.shellCompactBreakpoint
+                    guard nextCompact != shellCompact else { return }
+                    shellCompact = nextCompact
+                    if nextCompact {
+                        applyCompactChromePolicy(width: width)
+                    }
+                }
+        }
+    }
+
+    private var shellBody: some View {
         HudAppShell {
             HudResizableNavigationSidebar(
                 selection: Binding(
@@ -126,13 +136,13 @@ struct ContentView: View {
                 ),
                 labelWidth: $navLabelWidth,
                 railHeader: {
-                    HudStatusDot(color: variant.manifest.accent)
+                    HudStatusDot(color: DemoManifest.app.accent)
                         .frame(width: HudIconSize.micro, height: HudIconSize.micro)
                         .contentShape(Rectangle())
                         .accessibilityLabel("Toggle navigation")
                 },
                 labelHeader: {
-                    Text(variant.manifest.name)
+                    Text(DemoManifest.app.name)
                         .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
                         .lineLimit(1)
@@ -140,46 +150,64 @@ struct ContentView: View {
                         .accessibilityLabel("Toggle navigation")
                 },
                 footer: {
-                    variantPicker
+                    HudSettingsFooterButton(showsLabel: navExpanded) {
+                        openSettings()
+                    }
                 }
             )
         } trailing: {
-            HudInspector(isCollapsed: $inspectorCollapsed) {
-                HStack(spacing: HudSpacing.md) {
-                    HudSectionLabel("Inspector")
-                    Spacer()
-                    if let target = selectedTarget {
-                        HudBadge(target.statusLabel, tint: target.statusColor, dot: true)
-                    } else {
-                        HudBadge(tab.label.uppercased())
+            if showsHostInspector {
+                HudInspector(isCollapsed: $inspectorCollapsed) {
+                    HStack(spacing: HudSpacing.md) {
+                        HudSectionLabel("Inspector")
+                        Spacer()
+                        if let target = selectedTarget {
+                            HudBadge(target.statusLabel, tint: target.statusColor, dot: true)
+                        }
                     }
+                } content: {
+                    inspectorContent
                 }
-            } content: {
-                inspectorContent
+            } else {
+                EmptyView()
             }
         } topDrawer: {
             EmptyView()
         } bottomDrawer: {
-            HudTerminalDrawer(
-                isOpen: $terminalOpen,
-                title: "Terminal",
-                subtitle: "arach-laptop · ~/dev/lattices",
-                statusColor: variant.manifest.accent
-            ) {
-                DrawerTerminal(host: "arach-laptop.local")
-            }
+            EmptyView()
         } content: {
-            tabContent
+            if settingsPresented {
+                HudSettingsWorkspace(
+                    selection: $settingsSelection,
+                    catalog: DemoSettings.catalog,
+                    navState: settingsNavState
+                )
+            } else {
+                tabContent
+            }
         } statusBar: {
-            statusBar
+            if tab == .canvas {
+                EmptyView()
+            } else {
+                DashboardBottomChrome()
+            }
         }
-        .hudsonAppManifest(variant.manifest)
+        .onChange(of: tab) { _, next in
+            settingsPresented = false
+            if next == .canvas {
+                inspectorCollapsed = true
+            }
+            if next == .terminal || next == .canvas {
+                liveHeavyTabs.insert(next)
+            }
+        }
+        .hudsonAppManifest(DemoManifest.app)
         .environment(\.hudsonSidebarStyle, HudSidebarStyle(
             surface: sidebarSurface,
             liquidGlass: HudLiquidGlassConfig(
                 cornerRadius: glassRadius,
                 translucency: glassTranslucency,
-                accent: glassAccentChoice.resolve(manifestAccent: variant.manifest.accent)
+                accent: glassAccentChoice.resolve(manifestAccent: DemoManifest.app.accent)
             )
         ))
         .hudsonTakeover(isPresented: $takeoverOpen) {
@@ -247,6 +275,27 @@ struct ContentView: View {
                 .help("Sidebar surface style")
             }
         }
+        #if os(macOS)
+        .toolbarBackground(.visible, for: .windowToolbar)
+        .toolbarBackground(Color.black, for: .windowToolbar)
+        .toolbarColorScheme(.dark, for: .windowToolbar)
+        .background(HudWindowChrome(
+            colorScheme: .dark,
+            titleVisibility: .hidden,
+            titlebarAppearsTransparent: true,
+            usesFullSizeContentView: false,
+            isMovableByWindowBackground: false,
+            hidesToolbar: false
+        ))
+        #endif
+    }
+
+    private func openSettings() {
+        settingsNavState.prepareForPresentation()
+        if let defaultSelection = DemoSettings.catalog.defaultSelection {
+            settingsSelection = defaultSelection
+        }
+        settingsPresented = true
     }
 
     private func toggleNav() {
@@ -255,6 +304,23 @@ struct ContentView: View {
         } else {
             withAnimation(HudMotion.chromeResize) {
                 navExpanded.toggle()
+            }
+        }
+    }
+
+    private func applyCompactChromePolicy(width: CGFloat) {
+        guard width < DemoLayout.shellCompactBreakpoint else { return }
+
+        if !inspectorCollapsed {
+            inspectorCollapsed = true
+        }
+
+        guard navExpanded else { return }
+        if reduceMotion {
+            navExpanded = false
+        } else {
+            withAnimation(HudMotion.chromeResize) {
+                navExpanded = false
             }
         }
     }
@@ -291,35 +357,15 @@ struct ContentView: View {
             ))
         }
 
-        for candidate in DemoVariant.allCases where candidate != variant {
-            cmds.append(HudCommand(
-                id: "variant.\(candidate.rawValue)",
-                title: "Variant: \(candidate.label)",
-                icon: "paintbrush",
-                group: "Theme",
-                action: { variant = candidate }
-            ))
-        }
-
         cmds.append(HudCommand(
-            id: "drawer.toggle",
-            title: terminalOpen ? "Close terminal drawer" : "Open terminal drawer",
-            subtitle: "Bottom chrome · attached to host app",
-            icon: "rectangle.bottomthird.inset.filled",
-            group: "Surfaces",
-            action: { terminalOpen.toggle() }
-        ))
-        cmds.append(HudCommand(
-            id: "terminalapp.open",
-            title: "Open terminal app",
-            subtitle: "Floating · own header + status bar",
+            id: "terminal.open",
+            title: "Go to Terminal",
+            subtitle: "Primary shell in the Hudson checkout",
             icon: "terminal",
             group: "Surfaces",
             action: {
-                if selectedTargetId == nil {
-                    selectedTargetId = TargetMock.fleet.first?.id
-                }
-                terminalAppOpen = true
+                tab = .terminal
+                selectedTargetId = nil
             }
         ))
         cmds.append(HudCommand(
@@ -352,7 +398,7 @@ struct ContentView: View {
 
     private var takeoverHeader: some View {
         HStack(spacing: HudSpacing.md) {
-            HudSectionLabel("Takeover", tint: variant.manifest.accent)
+            HudSectionLabel("Takeover", tint: DemoManifest.app.accent)
             if let target = selectedTarget {
                 Text("/")
                     .font(HudFont.mono(HudTextSize.xxs))
@@ -366,93 +412,107 @@ struct ContentView: View {
 
     // MARK: Tab content
 
+    // Only the selected light tab is built into the view graph. Switching
+    // between them tears down the previous tab instead of keeping all 11
+    // mounted, so a tab change no longer rebuilds hidden tabs' subtrees.
     @ViewBuilder
     private var tabContent: some View {
-        switch tab {
-        case .dashboard:
-            if let target = selectedTarget {
-                TargetCanvas(
-                    target: target,
-                    onClose: { selectedTargetId = nil },
-                    onConnect: { takeoverOpen = true }
-                )
-            } else {
-                DashboardTab(onSelectTarget: { target in
-                    selectedTargetId = target.id
-                })
-            }
-        case .vantage:
-            VantageTab()
-                .padding(HudSpacing.md)
-        case .explorer:
-            ExplorerTab()
-                .padding(HudSpacing.xxl)
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        case .voice, .shell, .sidebar, .tokens, .primitives, .manifest, .about:
-            ScrollView {
-                Group {
-                    switch tab {
-                    case .voice: VoiceTab()
-                    case .shell:
-                        ShellTab(
-                            onOpenPalette:    { paletteOpen = true },
-                            onOpenTakeover: {
-                                if selectedTargetId == nil {
-                                    selectedTargetId = TargetMock.fleet.first?.id
-                                }
-                                takeoverOpen = true
-                            },
-                            onToggleDrawer:   { terminalOpen.toggle() },
-                            onToggleRail:     { navExpanded.toggle() },
-                            onToggleInspector: { inspectorCollapsed.toggle() }
-                        )
-                    case .sidebar:    SidebarTab()
-                    case .tokens:     TokensTab()
-                    case .primitives: PrimitivesTab()
-                    case .manifest:   ManifestTab()
-                    case .about:      AboutTab()
-                    case .dashboard, .explorer, .vantage: EmptyView()
-                    }
-                }
-                .padding(HudSpacing.xxl)
-                .frame(maxWidth: .infinity, alignment: .topLeading)
-            }
+        ZStack {
+            activeLightTab
+            heavyTabLayer
         }
     }
-
-    // MARK: Variant picker (sidebar footer)
 
     @ViewBuilder
-    private var variantPicker: some View {
-        if navExpanded {
-            VStack(alignment: .leading, spacing: HudSpacing.xs) {
-                HudSectionLabel("Variant")
-                Picker("Variant", selection: $variant) {
-                    ForEach(DemoVariant.allCases) { Text($0.label).tag($0) }
-                }
-                .pickerStyle(.segmented)
-                .controlSize(.small)
+    private var activeLightTab: some View {
+        switch tab {
+        case .dashboard:
+            dashboardTabBody
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        case .explorer:
+            ExplorerTab(model: explorerModel, shellCompact: shellCompact)
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        case .voice:
+            referenceTab { VoiceTab() }
+        case .shell:
+            referenceTab {
+                ShellTab(
+                    onOpenPalette: { paletteOpen = true },
+                    onOpenTakeover: {
+                        if selectedTargetId == nil {
+                            selectedTargetId = TargetMock.fleet.first?.id
+                        }
+                        takeoverOpen = true
+                    },
+                    onOpenTerminal: { tab = .terminal },
+                    onToggleRail: { navExpanded.toggle() },
+                    onToggleInspector: { inspectorCollapsed.toggle() }
+                )
             }
-            .padding(.horizontal, HudSpacing.md)
-            .padding(.vertical, HudSpacing.xs)
-        } else {
-            // Rail-only: a single icon button that cycles through variants.
-            Button(action: cycleVariant) {
-                Image(systemName: "paintpalette")
-                    .font(HudFont.ui(HudTextSize.base, weight: .medium))
-                    .foregroundStyle(variant.manifest.accent)
-                    .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
-                    .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .help("Cycle variant")
+        case .sidebar:
+            referenceTab { SidebarTab() }
+        case .tokens:
+            referenceTab { TokensTab() }
+        case .primitives:
+            referenceTab { PrimitivesTab() }
+        case .manifest:
+            referenceTab { ManifestTab() }
+        case .about:
+            referenceTab { AboutTab() }
+        case .terminal, .canvas:
+            // Rendered by `heavyTabLayer` so their live sessions survive switches.
+            Color.clear
         }
     }
 
-    private func cycleVariant() {
-        let all = DemoVariant.allCases
-        guard let i = all.firstIndex(of: variant) else { return }
-        variant = all[(i + 1) % all.count]
+    @ViewBuilder
+    private var dashboardTabBody: some View {
+        if let target = selectedTarget {
+            TargetCanvas(
+                target: target,
+                onClose: { selectedTargetId = nil },
+                onConnect: { takeoverOpen = true }
+            )
+        } else {
+            DashboardTab(onSelectTarget: { target in
+                selectedTargetId = target.id
+            })
+        }
+    }
+
+    // Terminal and Canvas own live processes (PTY / tmux), so we don't tear them
+    // down on every switch. Each mounts lazily on first visit (`tab == candidate`)
+    // and then stays alive (`liveHeavyTabs`) hidden behind opacity — and neither
+    // boots until the user actually opens it.
+    @ViewBuilder
+    private var heavyTabLayer: some View {
+        if liveHeavyTabs.contains(.terminal) || tab == .terminal {
+            TerminalTab()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .opacity(tab == .terminal ? 1 : 0)
+                .allowsHitTesting(tab == .terminal)
+                .accessibilityHidden(tab != .terminal)
+        }
+        if liveHeavyTabs.contains(.canvas) || tab == .canvas {
+            CanvasTab()
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+                .opacity(tab == .canvas ? 1 : 0)
+                .allowsHitTesting(tab == .canvas)
+                .accessibilityHidden(tab != .canvas)
+        }
+    }
+
+    @ViewBuilder
+    private func referenceTab<Content: View>(@ViewBuilder content: () -> Content) -> some View {
+        ScrollView {
+            content()
+                .padding(HudSpacing.xxl)
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+        }
+    }
+
+    private var showsHostInspector: Bool {
+        tab != .canvas
     }
 
     // MARK: Inspector content
@@ -467,7 +527,7 @@ struct ContentView: View {
     }
 
     private var defaultInspectorContent: some View {
-        let manifest = variant.manifest
+        let manifest = DemoManifest.app
         return VStack(alignment: .leading, spacing: HudSpacing.xl) {
             HudCard {
                 VStack(alignment: .leading, spacing: HudSpacing.md) {
@@ -540,11 +600,8 @@ struct ContentView: View {
             HudCard {
                 VStack(alignment: .leading, spacing: HudSpacing.md) {
                     HudSectionLabel("Quick actions", tint: HudPalette.muted)
-                    HudButton("Terminal app", icon: "terminal", style: .secondary) {
-                        terminalAppOpen = true
-                    }
-                    HudButton("Toggle drawer", icon: "rectangle.bottomthird.inset.filled", style: .ghost) {
-                        terminalOpen.toggle()
+                    HudButton("Terminal", icon: "terminal", style: .secondary) {
+                        tab = .terminal
                     }
                     HudButton("Reconnect", icon: "arrow.clockwise", style: .ghost) {
                         takeoverOpen = true
@@ -554,78 +611,4 @@ struct ContentView: View {
         }
     }
 
-    // MARK: Status bar
-
-    private var statusBar: some View {
-        HStack(spacing: HudSpacing.xl) {
-            HudStatusDot(color: variant.manifest.accent, pulses: true)
-            Text("HUDSON·KIT")
-                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
-                .tracking(1.5)
-                .foregroundStyle(HudPalette.muted)
-
-            statusSeparator
-            statusContext
-
-            Spacer()
-
-            Button(action: { paletteOpen = true }) {
-                HStack(spacing: HudSpacing.xs) {
-                    Image(systemName: "command")
-                        .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
-                    Text("K")
-                        .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
-                    Text("palette")
-                        .font(HudFont.mono(HudTextSize.micro))
-                        .tracking(0.6)
-                }
-                .foregroundStyle(HudPalette.dim)
-                .padding(.horizontal, HudSpacing.md)
-                .padding(.vertical, HudSpacing.xxs)
-                .overlay(
-                    RoundedRectangle(cornerRadius: HudRadius.tight)
-                        .stroke(HudHairline.standard, lineWidth: 1)
-                )
-                .contentShape(Rectangle())
-            }
-            .buttonStyle(.plain)
-            .accessibilityLabel("Open command palette")
-
-            statusSeparator
-
-            Text("v\(variant.manifest.version)")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.dim)
-            HudBadge(tab.label.uppercased(), tint: variant.manifest.accent)
-        }
-        .padding(.horizontal, HudSpacing.xxl)
-        .frame(height: HudLayout.statusBarHeight)
-    }
-
-    @ViewBuilder
-    private var statusContext: some View {
-        if takeoverOpen, let target = selectedTarget {
-            HudStatusDot(color: HudPalette.statusOk, size: 5, pulses: true)
-            Text("connected · \(target.name)")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.statusOk)
-        } else if let target = selectedTarget {
-            Image(systemName: target.icon)
-                .font(HudFont.ui(HudTextSize.micro))
-                .foregroundStyle(target.iconTint.color)
-            Text("canvas · \(target.name)")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.ink)
-        } else {
-            Text("ready")
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.muted)
-        }
-    }
-
-    private var statusSeparator: some View {
-        Text("·")
-            .font(HudFont.mono(HudTextSize.xxs))
-            .foregroundStyle(HudPalette.dim)
-    }
 }

@@ -30,11 +30,18 @@ export function ServicesContent() {
         const isSelected = selectedId === svc.id;
 
         return (
-          <button
+          <div
             key={svc.id}
-            type="button"
+            role="button"
+            tabIndex={0}
             onClick={() => setSelectedId(svc.id)}
-            className={`w-full text-left rounded-lg border p-4 transition-colors ${
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' || e.key === ' ') {
+                e.preventDefault();
+                setSelectedId(svc.id);
+              }
+            }}
+            className={`w-full text-left rounded-lg border p-4 transition-colors cursor-pointer ${
               isSelected
                 ? 'border-cyan-500/40 bg-cyan-500/5'
                 : 'border-neutral-800 bg-neutral-900/50 hover:border-neutral-700'
@@ -86,7 +93,7 @@ export function ServicesContent() {
             {record?.error && (
               <p className="mt-2 text-[10px] text-red-400 font-mono truncate">{record.error}</p>
             )}
-          </button>
+          </div>
         );
       })}
 

@@ -1,0 +1,149 @@
+{
+  "kind": "hudson.canvas.setup",
+  "schemaVersion": 1,
+  "workspaceID": "hudsonkit-demo-canvas",
+  "surfaceTitle": "Hudson",
+  "createIfMissing": true,
+  "presentation": {
+    "title": "Hudson",
+    "subtitle": "monorepo checkout — files and sessions on the canvas",
+    "badge": "demo",
+    "cobrand": "powered by HudsonKit",
+    "productName": "Canvas",
+    "theme": "jade"
+  },
+  "style": {
+    "preset": "jade",
+    "terminalTheme": "jade-night",
+    "canvasGridMode": "dots",
+    "canvasGridStep": 18,
+    "focusPadding": 14,
+    "tagStyles": {
+      "focus": {
+        "terminalThemeID": "jadeNight"
+      },
+      "watch": {
+        "terminalFontSize": 11
+      }
+    }
+  },
+  "viewport": {
+    "fit": true
+  },
+  "layout": {
+    "canvasTool": "select",
+    "navigationFilter": "all",
+    "minimapCollapsed": false,
+    "inspectorCollapsed": false,
+    "navigationWidth": 254,
+    "inspectorWidth": 300
+  },
+  "nodes": [
+    {
+      "id": "hudson.canvas.sessions.tmux.0001.lead",
+      "runtimeKind": "tmux",
+      "target": "hudson-canvas-lead",
+      "title": "lead session",
+      "subtitle": "tmux · hudson-canvas-lead",
+      "tag": "focus",
+      "x": 80,
+      "y": 92,
+      "width": 560,
+      "height": 340,
+      "zIndex": 1
+    },
+    {
+      "id": "hudson.canvas.sessions.tmux.0002.worker",
+      "runtimeKind": "tmux",
+      "target": "hudson-canvas-worker",
+      "title": "worker session",
+      "subtitle": "tmux · hudson-canvas-worker",
+      "tag": "watch",
+      "x": 80,
+      "y": 478,
+      "width": 560,
+      "height": 300,
+      "zIndex": 2
+    },
+    {
+      "id": "hudson.canvas.files.package",
+      "runtimeKind": "file",
+      "path": "Package.swift",
+      "title": "Package.swift",
+      "subtitle": "Apple package manifest",
+      "language": "swift",
+      "role": "contract",
+      "tag": "focus",
+      "x": 700,
+      "y": 92,
+      "width": 520,
+      "height": 300,
+      "zIndex": 3
+    },
+    {
+      "id": "hudson.canvas.files.directory-tree",
+      "runtimeKind": "file",
+      "path": "packages/native/apple/HudsonKit/Sources/HudsonUI/Primitives/HudFileTree.swift",
+      "title": "HudFileTree.swift",
+      "subtitle": "native folder browser primitive",
+      "language": "swift",
+      "role": "source",
+      "tag": "focus",
+      "x": 1260,
+      "y": 92,
+      "width": 620,
+      "height": 360,
+      "zIndex": 4
+    },
+    {
+      "id": "hudson.canvas.files.explorer-tab",
+      "runtimeKind": "file",
+      "path": "packages/native/apple/HudsonKit/Demo/HudsonKitDemo/Tabs/ExplorerTab.swift",
+      "title": "ExplorerTab.swift",
+      "subtitle": "demo explorer wiring",
+      "language": "swift",
+      "role": "source",
+      "tag": "watch",
+      "x": 700,
+      "y": 430,
+      "width": 580,
+      "height": 348,
+      "zIndex": 5
+    },
+    {
+      "id": "hudson.canvas.plan.agents",
+      "runtimeKind": "plan",
+      "path": "Agents.md",
+      "title": "Agents.md",
+      "subtitle": "platform conventions for agents",
+      "language": "markdown",
+      "role": "plan",
+      "tag": "focus",
+      "x": 1320,
+      "y": 506,
+      "width": 560,
+      "height": 360,
+      "zIndex": 6
+    },
+    {
+      "id": "hudson.canvas.diff.running",
+      "runtimeKind": "diff",
+      "path": "apps/hudson/fixtures/canvas-practice/RUNNING.diff",
+      "title": "Running Diff",
+      "subtitle": "review surface sample",
+      "language": "diff",
+      "role": "review",
+      "tag": "watch",
+      "x": 700,
+      "y": 818,
+      "width": 580,
+      "height": 300,
+      "zIndex": 7
+    }
+  ],
+  "selection": [
+    "hudson.canvas.sessions.tmux.0001.lead",
+    "hudson.canvas.files.package",
+    "hudson.canvas.plan.agents"
+  ]
+}

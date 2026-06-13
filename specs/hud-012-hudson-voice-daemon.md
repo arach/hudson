@@ -283,7 +283,7 @@ The host should provide:
 
 The initial product shape is two app bundles:
 
-- **Hudson.app** - regular Vantage main-window app.
+- **Hudson.app** - regular Canvas main-window app.
 - **Hudson Menu.app** - LSUIElement helper that owns microphone permission and embeds `VoxRuntimeService`.
 
 ## Security model

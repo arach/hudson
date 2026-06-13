@@ -327,13 +327,18 @@ public struct HudCodeBlock: View {
     }
 
     private var formattedBody: Text {
-        var combined = Text("")
+        Text(attributedSource)
+    }
+
+    private var attributedSource: AttributedString {
+        var attributed = AttributedString()
         for token in HudCodeSyntax.tokenize(source, language: language) {
-            combined = combined + Text(token.text)
-                .foregroundColor(color(for: token.kind))
-                .font(HudFont.mono(codeSize))
+            var part = AttributedString(token.text)
+            part.foregroundColor = color(for: token.kind)
+            part.font = HudFont.mono(codeSize)
+            attributed.append(part)
         }
-        return combined
+        return attributed
     }
 
     private func color(for kind: HudCodeTokenKind) -> Color {

@@ -10,13 +10,13 @@ diff consistently.
 - Accept unified diff text from git, agents, hosts, or external tools.
 - Produce a stable `hudson.diff.v1` document.
 - Track files, hunks, rows, line numbers, row kind, stats, and optional spans.
-- Stay independent from SwiftUI, AppKit, WebKit, Termini, and Vantage.
+- Stay independent from SwiftUI, AppKit, WebKit, Termini, and Canvas.
 
 ## Non-responsibilities
 
 - HudsonDiff does not compute diffs from source snapshots.
 - Hosts decide which diff engine or tool creates the unified patch.
-- Vantage decides how to put diffs on a canvas.
+- Canvas decides how to put diffs on a canvas.
 - Hudson web decides whether to render with a React diff component.
 - Hosts decide how to resolve comparison sources such as git refs, workspace
   files, remote files, or literal text.
@@ -34,9 +34,9 @@ HudDiffDocument
 
 `HudUnifiedDiffParser` parses existing unified patches into this model.
 
-## Vantage Use
+## Canvas Use
 
-Vantage consumes `HudDiffDocument` for:
+Canvas consumes `HudDiffDocument` for:
 
 - cheap native canvas cards
 - native focused diff viewing

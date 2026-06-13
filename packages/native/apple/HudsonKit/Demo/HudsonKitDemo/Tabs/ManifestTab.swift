@@ -23,7 +23,7 @@ struct ManifestTab: View {
                 HudSectionLabel("Manifest-driven primary")
                 HudCard {
                     VStack(alignment: .leading, spacing: HudSpacing.xl) {
-                        Text("This button reads `manifest.accent` from the environment, so it rebrands when the variant changes — same primitive, different identity.")
+                        Text("This button reads `manifest.accent` from the environment — same primitive, app-owned identity.")
                             .font(HudFont.ui(HudTextSize.sm))
                             .foregroundStyle(HudPalette.muted)
                             .fixedSize(horizontal: false, vertical: true)

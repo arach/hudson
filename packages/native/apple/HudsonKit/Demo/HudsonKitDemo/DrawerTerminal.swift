@@ -48,7 +48,7 @@ private struct FakeTerminalContent: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 2) {
-                line(prompt: "~", text: "~/dev/lattices", color: HudPalette.muted)
+                line(prompt: "~", text: DemoManifest.workspacePath, color: HudPalette.muted)
                 line(prompt: "$", text: "swift build -c release", color: HudPalette.ink)
                 Text("Compiling DeckKit…")
                     .font(HudFont.mono(HudTextSize.xs))

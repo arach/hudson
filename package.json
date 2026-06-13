@@ -23,7 +23,7 @@
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonUIWeb/Resources/HudsonCodeMirror && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonUIWeb/Resources/HudsonCodeMirror/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonUIWeb/Resources/HudsonCodeMirror/editor.js",
     "demo:native": "make -C packages/native/apple/HudsonKit run",
-    "demo:vantage": "make -C packages/native/apple/HudsonKit run-vantage"
+    "demo:canvas": "make -C packages/native/apple/HudsonKit run-canvas"
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",

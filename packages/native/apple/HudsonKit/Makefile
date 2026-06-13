@@ -17,7 +17,7 @@ help:
 	@echo "  build-terminal - swift build with HUDSONKIT_WITH_TERMINAL=1"
 	@echo "  run           - build HudsonKit Lab .app and launch (real macOS app)"
 	@echo "  run-cli       - swift run HudsonKitDemo (bare binary, generic Dock icon)"
-	@echo "  run-vantage   - hkit dev macos (declarative features: terminal)"
+	@echo "  run-canvas   - hkit dev macos (declarative features: terminal)"
 	@echo "  test          - swift test"
 	@echo "  lint          - run HudLint on kit Sources + macOS demo"
 	@echo "  lint-all      - also include iOS demo Sources"
@@ -75,8 +75,8 @@ run: lint
 run-cli: lint
 	@HUDSONKIT_WITH_TERMINAL=1 swift run HudsonKitDemo
 
-.PHONY: run-vantage
-run-vantage: lint
+.PHONY: run-canvas
+run-canvas: lint
 	@cd $(KIT_ROOT) && node $(HKIT) dev macos --config Demo/hudsonkit-demo.package.json
 
 .PHONY: ios-project

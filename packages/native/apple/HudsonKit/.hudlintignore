@@ -6,7 +6,7 @@
 # (When invoked with `--root Sources`, paths are relative to Sources/.)
 HudsonUI/Tokens/**
 
-# Existing token migration debt outside this PR's Vantage surface changes.
+# Existing token migration debt outside this PR's Canvas surface changes.
 HudsonShell/HudSidebarPanel.swift
 HudsonUI/Primitives/HudGrainOverlay.swift
 HudsonUI/Primitives/HudMessageBar.swift

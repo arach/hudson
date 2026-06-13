@@ -27,23 +27,23 @@ A video catalog browser built on Hudson SDK. Fresh Next.js 16 + React 19 project
 
 The case study walks through the build *and* the real friction points we hit consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'` directives) — and what got fixed vs. what's still on the follow-up list.
 
-## Native Vantage
+## Native Canvas
 
-Hudson ships **Vantage** — a native macOS spatial canvas for tmux sessions,
-terminals, and workspace artifacts. The surface is embeddable via `HudsonVantage`;
+Hudson ships **Canvas** — a native macOS spatial canvas for tmux sessions,
+terminals, and workspace artifacts. The surface is embeddable via `HudsonCanvas`;
 Scout, Talkie, Fabric, or your own app can host one too.
 
 ```sh
-apps/vantage/scripts/run-app.sh
+apps/canvas/scripts/run-app.sh
 ```
 
-See [Hudson Vantage](./docs/hudson-vantage.md) for the SDK boundary.
+See [Hudson Canvas](./docs/hudson-canvas.md) for the SDK boundary.
 
 ## Orientation
 
 ```
 app/                     # The Hudson workspace itself (Next.js 16)
-apps/vantage/            # Native Vantage macOS product (VantageCanvas host)
+apps/canvas/            # Native Canvas macOS product (CanvasApp host)
 packages/web/hudsonkit/     # Shell + primitives (workspace-internal package)
 packages/native/apple/HudsonKit/ # Apple-native Swift package
 packages/services/hudson-relay/  # Terminal relay service

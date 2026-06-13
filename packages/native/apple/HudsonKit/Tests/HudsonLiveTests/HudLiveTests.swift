@@ -19,7 +19,7 @@ struct HudLiveTests {
     @Test("source descriptor records received events")
     func descriptorReceivingEvent() {
         let source = HudLiveSourceDescriptor(
-            id: "vantage.diff.packages",
+            id: "canvas.diff.packages",
             label: "Packages Diff",
             kind: "diff",
             status: .connecting

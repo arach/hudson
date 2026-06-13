@@ -16,7 +16,7 @@ struct HudUnifiedDiffParserTests {
              import SwiftUI
             -let title = "Old"
             +let title = "New"
-            +let subtitle = "Vantage"
+            +let subtitle = "Canvas"
              App()
             diff --git a/README.md b/README.md
             --- a/README.md

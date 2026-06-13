@@ -134,6 +134,23 @@ public final class HudFileTreeBrowser {
         _ = children(for: rootURL)
     }
 
+    /// Expands ancestor folders and focuses keyboard selection on `url`.
+    public func reveal(_ url: URL) {
+        let target = url.standardizedFileURL
+        var parent = target.deletingLastPathComponent().standardizedFileURL
+        let root = rootURL.standardizedFileURL
+
+        while parent.path.count >= root.path.count, parent.path.hasPrefix(root.path) {
+            if parent != root {
+                setExpanded(parent, expanded: true)
+            }
+            if parent == root { break }
+            parent = parent.deletingLastPathComponent().standardizedFileURL
+        }
+
+        selection = target
+    }
+
     public func isExpanded(_ url: URL) -> Bool {
         expandedURLs.contains(url.standardizedFileURL)
     }
@@ -308,13 +325,19 @@ public enum HudFileTreeNavigation: Sendable {
 /// Native keyboard-navigable file tree backed by `HudFileTreeBrowser`.
 public struct HudFileTree: View {
     @Bindable private var browser: HudFileTreeBrowser
+    private var openDocumentURLs: Set<URL>
+    private var activeDocumentURL: URL?
     private var onSelect: ((HudFileTreeEntry) -> Void)?
 
     public init(
         browser: HudFileTreeBrowser,
+        openDocumentURLs: Set<URL> = [],
+        activeDocumentURL: URL? = nil,
         onSelect: ((HudFileTreeEntry) -> Void)? = nil
     ) {
         self.browser = browser
+        self.openDocumentURLs = Set(openDocumentURLs.map(\.standardizedFileURL))
+        self.activeDocumentURL = activeDocumentURL?.standardizedFileURL
         self.onSelect = onSelect
     }
 
@@ -329,6 +352,8 @@ public struct HudFileTree: View {
                             browser: browser,
                             entry: entry,
                             depth: 0,
+                            openDocumentURLs: openDocumentURLs,
+                            activeDocumentURL: activeDocumentURL,
                             onSelect: onSelect
                         )
                     }
@@ -408,99 +433,164 @@ private struct HudFileTreeNode: View {
     @Bindable var browser: HudFileTreeBrowser
     let entry: HudFileTreeEntry
     let depth: Int
+    let openDocumentURLs: Set<URL>
+    let activeDocumentURL: URL?
     var onSelect: ((HudFileTreeEntry) -> Void)?
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    private var normalizedURL: URL {
+        entry.url.standardizedFileURL
+    }
 
     private var isExpanded: Bool {
         browser.isExpanded(entry.url)
     }
 
     private var isSelected: Bool {
-        browser.selection == entry.url
+        browser.selection?.standardizedFileURL == normalizedURL
+    }
+
+    private var isOpenInEditor: Bool {
+        guard !entry.isDirectory else { return false }
+        return openDocumentURLs.contains(normalizedURL)
+    }
+
+    private var isActiveDocument: Bool {
+        guard !entry.isDirectory, let activeDocumentURL else { return false }
+        return activeDocumentURL == normalizedURL
     }
 
     var body: some View {
-        if entry.isDirectory {
-            VStack(alignment: .leading, spacing: 0) {
-                HStack(spacing: HudSpacing.xs) {
-                    expandButton
-                    rowLabel
-                }
-                .padding(.leading, HudFileTreeMetrics.leadingInset(depth: depth))
+        VStack(alignment: .leading, spacing: 0) {
+            row
 
-                if isExpanded {
-                    ForEach(browser.children(for: entry.url)) { child in
-                        HudFileTreeNode(
-                            browser: browser,
-                            entry: child,
-                            depth: depth + 1,
-                            onSelect: onSelect
+            if entry.isDirectory, isExpanded {
+                ForEach(browser.children(for: entry.url)) { child in
+                    HudFileTreeNode(
+                        browser: browser,
+                        entry: child,
+                        depth: depth + 1,
+                        openDocumentURLs: openDocumentURLs,
+                        activeDocumentURL: activeDocumentURL,
+                        onSelect: onSelect
+                    )
+                }
+            }
+        }
+    }
+
+    private var row: some View {
+        HStack(spacing: 0) {
+            Spacer()
+                .frame(width: HudFileTreeMetrics.depthInset(depth: depth))
+
+            chevronSlot
+
+            Button {
+                browser.selection = entry.url.standardizedFileURL
+                if entry.isDirectory {
+                    toggleExpanded()
+                } else {
+                    onSelect?(entry)
+                }
+            } label: {
+                HStack(spacing: HudFileTreeMetrics.iconToLabelGap) {
+                    Image(systemName: browser.symbolName(for: entry))
+                        .font(HudFont.ui(HudTextSize.xs, weight: .medium))
+                        .foregroundStyle(iconTint)
+                        .frame(
+                            width: HudFileTreeMetrics.iconSlot,
+                            height: HudFileTreeMetrics.iconSlot,
+                            alignment: .center
                         )
-                    }
+
+                    Text(entry.name)
+                        .font(HudFont.ui(HudTextSize.sm, weight: rowWeight))
+                        .foregroundStyle(labelTint)
+                        .lineLimit(1)
+
+                    Spacer(minLength: 0)
                 }
-            }
-        } else {
-            HStack(spacing: HudSpacing.xs) {
-                Color.clear
-                    .frame(width: HudFileTreeMetrics.chevronWidth, height: HudFileTreeMetrics.chevronWidth)
-                rowLabel
-            }
-            .padding(.leading, HudFileTreeMetrics.leadingInset(depth: depth))
-        }
-    }
-
-    private var expandButton: some View {
-        Button {
-            toggleExpanded()
-        } label: {
-            Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
-                .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
-                .foregroundStyle(HudPalette.dim)
-                .frame(width: HudFileTreeMetrics.chevronWidth, height: HudFileTreeMetrics.chevronWidth)
+                .padding(.leading, HudFileTreeMetrics.chevronToIconGap)
+                .padding(.trailing, HudFileTreeMetrics.trailingPadding)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(height: HudFileTreeMetrics.rowHeight)
+                .background(rowBackground)
                 .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+            .id(entry.url)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isSelected)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isOpenInEditor)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isActiveDocument)
+            .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isExpanded)
         }
-        .buttonStyle(.plain)
-        .accessibilityLabel(isExpanded ? "Collapse \(entry.name)" : "Expand \(entry.name)")
     }
 
-    private var rowLabel: some View {
-        Button {
-            browser.selection = entry.url
-            onSelect?(entry)
-        } label: {
-            HStack(spacing: HudSpacing.md) {
-                Image(systemName: browser.symbolName(for: entry))
-                    .font(HudFont.ui(HudTextSize.sm, weight: .medium))
-                    .foregroundStyle(iconTint)
-                    .frame(width: HudIconSize.small, height: HudIconSize.small)
-
-                Text(entry.name)
-                    .font(HudFont.ui(HudTextSize.sm, weight: isSelected ? .semibold : .regular))
-                    .foregroundStyle(isSelected ? HudPalette.ink : HudPalette.muted)
-                    .lineLimit(1)
-
-                Spacer(minLength: 0)
+    @ViewBuilder
+    private var chevronSlot: some View {
+        Group {
+            if entry.isDirectory {
+                Button {
+                    toggleExpanded()
+                } label: {
+                    Image(systemName: isExpanded ? "chevron.down" : "chevron.right")
+                        .font(.system(size: HudFileTreeMetrics.chevronGlyphSize, weight: .semibold))
+                        .foregroundStyle(HudPalette.dim)
+                        .frame(
+                            width: HudFileTreeMetrics.chevronSlotWidth,
+                            height: HudFileTreeMetrics.rowHeight,
+                            alignment: .center
+                        )
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(isExpanded ? "Collapse \(entry.name)" : "Expand \(entry.name)")
+            } else {
+                Color.clear
+                    .frame(width: HudFileTreeMetrics.chevronSlotWidth, height: HudFileTreeMetrics.rowHeight)
             }
-            .padding(.horizontal, HudSpacing.lg)
-            .padding(.vertical, HudSpacing.xs)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .background(
-                RoundedRectangle(cornerRadius: HudRadius.tight)
-                    .fill(isSelected ? HudSurface.tintFill(HudPalette.statusInfo) : .clear)
-            )
-            .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
-        .id(entry.url)
-        .simultaneousGesture(
-            TapGesture(count: 2).onEnded {
-                guard entry.isDirectory else { return }
-                toggleExpanded()
-            }
-        )
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isSelected)
-        .animation(reduceMotion ? nil : .easeOut(duration: 0.12), value: isExpanded)
+    }
+
+    private var rowBackground: some View {
+        RoundedRectangle(cornerRadius: HudRadius.tight)
+            .fill(backgroundFill)
+            .padding(.horizontal, HudFileTreeMetrics.rowInset)
+    }
+
+    private var backgroundFill: Color {
+        if isActiveDocument {
+            return HudSurface.tintFill(HudPalette.statusInfo)
+        }
+        if isOpenInEditor {
+            return HudSurface.tintFill(HudPalette.statusInfo).opacity(0.38)
+        }
+        if isSelected {
+            return HudSurface.tintFill(HudPalette.statusInfo).opacity(0.18)
+        }
+        return .clear
+    }
+
+    private var rowWeight: Font.Weight {
+        if isActiveDocument || isOpenInEditor {
+            return .semibold
+        }
+        if isSelected {
+            return .medium
+        }
+        return .regular
+    }
+
+    private var labelTint: Color {
+        if isActiveDocument || isOpenInEditor {
+            return HudPalette.ink
+        }
+        if isSelected {
+            return HudPalette.ink.opacity(0.92)
+        }
+        return HudPalette.muted
     }
 
     private func toggleExpanded() {
@@ -508,19 +598,29 @@ private struct HudFileTreeNode: View {
     }
 
     private var iconTint: Color {
-        if entry.isDirectory {
+        if isActiveDocument || isOpenInEditor {
             return HudPalette.statusInfo
+        }
+        if entry.isDirectory {
+            return HudPalette.statusInfo.opacity(isSelected ? 1 : 0.82)
         }
         return HudPalette.muted
     }
 }
 
 private enum HudFileTreeMetrics {
-    static let indentStep: CGFloat = 14
-    static let chevronWidth: CGFloat = 14
-    static let leafGutter: CGFloat = 4
+    static let rowHeight: CGFloat = 22
+    static let indentStep: CGFloat = 12
+    static let leadingPadding: CGFloat = 6
+    static let chevronSlotWidth: CGFloat = 16
+    static let chevronGlyphSize: CGFloat = 9
+    static let chevronToIconGap: CGFloat = 2
+    static let iconSlot: CGFloat = 14
+    static let iconToLabelGap: CGFloat = 6
+    static let trailingPadding: CGFloat = 8
+    static let rowInset: CGFloat = 4
 
-    static func leadingInset(depth: Int) -> CGFloat {
-        CGFloat(depth) * indentStep + leafGutter
+    static func depthInset(depth: Int) -> CGFloat {
+        leadingPadding + CGFloat(depth) * indentStep
     }
 }

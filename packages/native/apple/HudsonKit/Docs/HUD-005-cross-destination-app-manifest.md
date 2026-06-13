@@ -4,7 +4,7 @@
 - **Date:** 2026-05-07
 - **Supersedes:** N/A
 - **Superseded by:** N/A
-- **Related:** HUD-002 (`HudAppShell` slot variants), HUD-004 (`Vantage JSONL Control API v0`)
+- **Related:** HUD-002 (`HudAppShell` slot variants), HUD-004 (`Canvas JSONL Control API v0`)
 
 ## Context
 
@@ -17,7 +17,7 @@ depending on the destination:
   leading/trailing/content/status slots, and optional drawers.
 - Native mobile app: a SwiftUI root using `HudPhoneAppShell`, `NavigationStack`,
   page content, and HUD complications.
-- Vantage host: an embeddable native surface with product-owned identity,
+- Canvas host: an embeddable native surface with product-owned identity,
   control paths, runtime capabilities, setup manifests, and appearance policy.
 
 The conceptual overlap is high. In all cases an app declares identity, brand,
@@ -95,7 +95,7 @@ Initial document kind:
     "macOS": { "shell": "desktop", "leading": "sidebar", "trailing": "inspector" },
     "iOS": { "shell": "phone", "complications": "tray" }
   },
-  "capabilities": ["search", "commands", "settings", "vantage"],
+  "capabilities": ["search", "commands", "settings", "canvas"],
   "externalControl": {
     "mode": "localOptIn",
     "trust": "hostLaunchedAgents",
@@ -110,11 +110,11 @@ Initial document kind:
     { "id": "overview", "role": "content", "destinations": ["web", "macOS", "iOS"] },
     { "id": "agentInspector", "role": "inspector", "destinations": ["web", "macOS"] },
     { "id": "agentDetail", "role": "detail", "destinations": ["iOS"] },
-    { "id": "vantage", "role": "runtimeCanvas", "destinations": ["macOS"] }
+    { "id": "canvas", "role": "runtimeCanvas", "destinations": ["macOS"] }
   ],
   "commands": [
     { "id": "agent.new", "title": "Create Agent", "category": "workspace" },
-    { "id": "vantage.open", "title": "Open Vantage", "category": "view" }
+    { "id": "canvas.open", "title": "Open Canvas", "category": "view" }
   ],
   "settings": [
     { "id": "appearance", "title": "Appearance", "scope": "workspace" },
@@ -128,7 +128,7 @@ apps, agents, and scaffolding tools to produce without linking HudsonKit.
 
 ## External Control Policy
 
-Apps that expose Vantage or another agent-addressable runtime need a policy that
+Apps that expose Canvas or another agent-addressable runtime need a policy that
 keeps setup seamless without making every local process a controller. The app
 manifest can name that policy at the same semantic level as commands and
 capabilities, while the host enforces the platform details.
@@ -165,7 +165,7 @@ Projection maps the same manifest concepts to destination-native chrome:
 | `navigation` | App switcher, left panel, command palette | `HudNavigationSidebar` or rail | Navigation sheet/list |
 | `surfaces.role == content` | `slots.Content` or canvas node | `HudAppShell` content slot | `NavigationStack` page |
 | `surfaces.role == inspector` | right panel | trailing `HudInspector` | detail page or sheet |
-| `surfaces.role == runtimeCanvas` | canvas app or external launch | `HudVantageSurface` | viewer/controller route |
+| `surfaces.role == runtimeCanvas` | canvas app or external launch | `HudCanvasSurface` | viewer/controller route |
 | `commands` | command palette + intents | command palette/menu/shortcuts | complications, toolbar, commands |
 | `settings` | settings route/panel | settings surface or inspector section | settings page/sheet |
 
@@ -187,7 +187,7 @@ struct ScoutHudsonApp: HudNativeAppDefinition {
         switch id {
         case "overview": ScoutOverview(store: store)
         case "agentInspector": ScoutAgentInspector(store: store)
-        case "vantage": ScoutVantageHost(store: store)
+        case "canvas": ScoutCanvasHost(store: store)
         default: HudEmptyState("Unknown surface")
         }
     }
@@ -207,7 +207,7 @@ export const scoutHudsonApp = defineHudsonApp({
   surfaces: {
     overview: ScoutOverview,
     agentInspector: ScoutAgentInspector,
-    vantage: ScoutVantageHost,
+    canvas: ScoutCanvasHost,
   },
   commands: scoutCommands,
 });
@@ -222,7 +222,7 @@ A future `hudson` scaffold command should be able to create the destination
 shape from the manifest:
 
 ```sh
-hudson new app scout --destinations web,macos,ios --capabilities commands,settings,vantage
+hudson new app scout --destinations web,macos,ios --capabilities commands,settings,canvas
 hudson add destination scout ios
 hudson check manifest scout.hudson.json
 ```
@@ -256,9 +256,9 @@ The practical goal is not 100% shared UI. It is predictable leverage.
 | Windowing, popout, local PTY ownership, mobile permissions | destination-specific |
 
 For a normal HudsonKit-enabled product, 70% shared is a reasonable target. For
-a Vantage-style terminal/runtime surface, the first version is lower because
+a Canvas-style terminal/runtime surface, the first version is lower because
 local PTY, popout windows, SSH, and mobile runtime permissions are platform
-heavy. Extracting the Vantage model/control/runtime contracts should move that
+heavy. Extracting the Canvas model/control/runtime contracts should move that
 closer to the normal app target.
 
 ## Build Order
@@ -296,11 +296,11 @@ closer to the normal app target.
   code generate it and export a JSON artifact for agents?
 - How much of the existing web `HudsonApp` interface should be renamed or
   wrapped to match native terminology?
-- Should Vantage setup manifests embed a `hudson.app.manifest` reference, or
+- Should Canvas setup manifests embed a `hudson.app.manifest` reference, or
   stay separate and simply share IDs?
 - Should command/intents be one list with optional destination availability, or
   two lists where commands are executable and intents are semantic metadata?
-- What is the first real product host: Scout, Talkie, or Vantage itself?
+- What is the first real product host: Scout, Talkie, or Canvas itself?
 - Should the public name emphasize artifact or intent? Candidates:
   `HudsonAppManifest`, `HudsonAppSpec`, `HudsonAppBlueprint`, or
   `HudsonAppBrief`.

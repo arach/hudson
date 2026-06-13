@@ -12,7 +12,7 @@ var targets: [Target] = [
     .executableTarget(
         name: "HudsonApp",
         dependencies: [
-            .product(name: "HudsonVantage", package: "Hudson"),
+            .product(name: "HudsonCanvas", package: "Hudson"),
         ],
         path: "Sources/HudsonApp"
     ),

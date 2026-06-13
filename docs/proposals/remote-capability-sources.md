@@ -266,7 +266,7 @@ Relevant current primitives:
   simple terminal connection status model.
 - `HudVoxProbe` and `HudVoxLiveSession` already prove that Hudson can wrap a
   local WebSocket daemon without depending on its implementation package.
-- Hudson Vantage already has remote tmux health checks and remote-host status
+- Hudson Canvas already has remote tmux health checks and remote-host status
   classification that can inform SSH-style source diagnostics.
 
 The remote capability source layer should consolidate these patterns:
@@ -827,7 +827,7 @@ Resolve:
 - how remote diagnostics are represented as a facet of `HudLogger`.
 - how `HudStatusDot`, `HudBadge`, and inspector primitives compose into remote
   rows.
-- how terminal, Vox, and Vantage connection states map into the shared status
+- how terminal, Vox, and Canvas connection states map into the shared status
   vocabulary without losing their specialized behavior.
 
 Success criteria:

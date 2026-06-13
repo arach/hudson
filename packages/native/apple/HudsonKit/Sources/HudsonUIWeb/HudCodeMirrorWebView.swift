@@ -16,6 +16,8 @@ public struct HudCodeMirrorDocument: Codable, Equatable, Sendable {
     public var tintHex: String
     /// When true, the bundled HTML header is hidden because native chrome owns it.
     public var embedded: Bool
+    /// Host-owned open counter; native only re-pushes when this changes.
+    public var revision: UInt64
 
     public init(
         id: String,
@@ -25,7 +27,8 @@ public struct HudCodeMirrorDocument: Codable, Equatable, Sendable {
         text: String,
         readOnly: Bool = false,
         tintHex: String = "#5eead4",
-        embedded: Bool = false
+        embedded: Bool = false,
+        revision: UInt64 = 0
     ) {
         self.id = id
         self.title = title
@@ -35,6 +38,7 @@ public struct HudCodeMirrorDocument: Codable, Equatable, Sendable {
         self.readOnly = readOnly
         self.tintHex = tintHex
         self.embedded = embedded
+        self.revision = revision
     }
 }
 
@@ -282,7 +286,9 @@ extension HudCodeMirrorWebView {
         private weak var webView: WKWebView?
         private var isReady = false
         private var renderedDocument: HudCodeMirrorDocument?
+        private var renderedRevision: UInt64?
         private var isTornDown = false
+        private var pendingDeliveryToken: UInt64 = 0
         private let encoder = JSONEncoder()
 
         func attach(to webView: WKWebView) {
@@ -344,6 +350,7 @@ extension HudCodeMirrorWebView {
                 }
             case "change":
                 guard let text = body["text"] as? String else { return }
+                guard document.id == renderedDocument?.id else { return }
                 onChange(text)
             case "save":
                 guard let text = body["text"] as? String else { return }
@@ -382,18 +389,32 @@ extension HudCodeMirrorWebView {
         func renderDocumentIfReady(in webView: WKWebView, force: Bool = false) {
             guard !isTornDown else { return }
             guard isReady else { return }
-            guard force || renderedDocument != document else { return }
+            guard force || shouldPushDocument() else { return }
             guard let data = try? encoder.encode(document) else {
                 reportBridgeState("encode-failed")
                 return
             }
 
+            pendingDeliveryToken &+= 1
+            let deliveryToken = pendingDeliveryToken
             deliverPayload(
                 function: "setDocument",
                 data: data,
                 matching: document,
+                deliveryToken: deliveryToken,
                 in: webView
             )
+        }
+
+        private func shouldPushDocument() -> Bool {
+            guard let renderedDocument else { return true }
+            if renderedDocument.id != document.id { return true }
+            if renderedRevision != document.revision { return true }
+            if renderedDocument.readOnly != document.readOnly { return true }
+            if renderedDocument.language != document.language { return true }
+            if renderedDocument.tintHex != document.tintHex { return true }
+            if renderedDocument.embedded != document.embedded { return true }
+            return false
         }
 
         private func markReady(in webView: WKWebView) {
@@ -449,6 +470,7 @@ extension HudCodeMirrorWebView {
             function: String,
             data: Data,
             matching document: HudCodeMirrorDocument?,
+            deliveryToken: UInt64 = 0,
             in webView: WKWebView,
             attempt: Int = 0
         ) {
@@ -467,6 +489,9 @@ extension HudCodeMirrorWebView {
             """
             webView.evaluateJavaScript(script) { result, error in
                 guard !self.isTornDown else { return }
+                if function == "setDocument", deliveryToken != self.pendingDeliveryToken {
+                    return
+                }
                 if let error {
                     if attempt < 2 {
                         DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
@@ -474,6 +499,7 @@ extension HudCodeMirrorWebView {
                                 function: function,
                                 data: data,
                                 matching: document,
+                                deliveryToken: deliveryToken,
                                 in: webView,
                                 attempt: attempt + 1
                             )
@@ -491,6 +517,7 @@ extension HudCodeMirrorWebView {
                                 function: function,
                                 data: data,
                                 matching: document,
+                                deliveryToken: deliveryToken,
                                 in: webView,
                                 attempt: attempt + 1
                             )
@@ -502,6 +529,7 @@ extension HudCodeMirrorWebView {
                 }
                 if function == "setDocument", let document {
                     self.renderedDocument = document
+                    self.renderedRevision = document.revision
                     self.reportBridgeState("rendered")
                 }
             }
@@ -510,8 +538,10 @@ extension HudCodeMirrorWebView {
         func tearDown() {
             isTornDown = true
             isReady = false
+            pendingDeliveryToken &+= 1
             webView = nil
             renderedDocument = nil
+            renderedRevision = nil
             onChange = { _ in }
             onSave = { _ in }
             onBridgeState = { _ in }

@@ -3,18 +3,21 @@ import HudsonUI
 import HudsonUIWeb
 
 struct ExplorerTab: View {
-    @State private var model = HudFileExplorerModel(rootURL: DemoResources.defaultExplorerRoot)
+    @Bindable var model: HudFileExplorerModel
+    @State private var contentWidth: CGFloat = DemoLayout.explorerToolbarCompactBreakpoint
+
+    var shellCompact: Bool = false
+
+    private var toolbarCompact: Bool {
+        shellCompact || contentWidth < DemoLayout.explorerToolbarCompactBreakpoint
+    }
 
     var body: some View {
         VStack(spacing: 0) {
             explorerToolbar
-            if model.document != nil {
-                HudDivider()
-                fileToolbar
-            }
             HudDivider()
 
-            HudFileExplorer(model: model) { doc in
+            DemoResponsiveFileExplorer(model: model) { doc in
                 do {
                     try model.save(doc)
                 } catch {
@@ -23,69 +26,73 @@ struct ExplorerTab: View {
             }
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .background {
+            GeometryReader { geometry in
+                Color.clear
+                    .preference(key: ExplorerContentWidthKey.self, value: geometry.size.width)
+            }
+        }
+        .onPreferenceChange(ExplorerContentWidthKey.self) { contentWidth = $0 }
     }
 
     private var explorerToolbar: some View {
         HStack(spacing: HudSpacing.lg) {
             HudSectionLabel("Explorer", tint: HudPalette.statusInfo)
 
-            HStack(spacing: HudSpacing.xs) {
-                rootButton("Hudson", icon: "folder", root: DemoResources.repositoryRoot)
-                rootButton("HudsonKit", icon: "folder.fill", root: DemoResources.kitRoot)
-                rootButton("HudsonUI", icon: "square.stack.3d.up", root: DemoResources.hudsonUIRoot)
+            if !toolbarCompact {
+                HStack(spacing: HudSpacing.xs) {
+                    rootButton("Hudson", icon: "folder", root: DemoResources.repositoryRoot)
+                    rootButton("HudsonKit", icon: "folder.fill", root: DemoResources.kitRoot)
+                    rootButton("HudsonUI", icon: "square.stack.3d.up", root: DemoResources.hudsonUIRoot)
+                }
+            } else {
+                rootMenu
             }
 
-            Spacer(minLength: HudSpacing.xl)
+            Spacer(minLength: HudSpacing.md)
 
-            Text(model.browser.rootURL.path)
-                .font(HudFont.mono(HudTextSize.xxs))
-                .foregroundStyle(HudPalette.dim)
-                .lineLimit(1)
-                .truncationMode(.middle)
+            if !toolbarCompact {
+                Text(model.browser.rootURL.path)
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.dim)
+                    .lineLimit(1)
+                    .truncationMode(.middle)
+            }
 
             HudButton("Refresh", icon: "arrow.clockwise", style: .ghost) {
                 model.browser.refresh()
             }
         }
-        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.horizontal, toolbarCompact ? HudSpacing.lg : HudSpacing.xxl)
         .padding(.vertical, HudSpacing.lg)
     }
 
-    @ViewBuilder
-    private var fileToolbar: some View {
-        if let document = model.document {
-            HStack(spacing: HudSpacing.xl) {
-                VStack(alignment: .leading, spacing: HudSpacing.xs) {
-                    Text(document.title)
-                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
-                        .lineLimit(1)
+    private var rootMenu: some View {
+        Menu {
+            rootMenuItem("Hudson", root: DemoResources.repositoryRoot)
+            rootMenuItem("HudsonKit", root: DemoResources.kitRoot)
+            rootMenuItem("HudsonUI", root: DemoResources.hudsonUIRoot)
+        } label: {
+            Image(systemName: "folder")
+                .font(HudFont.ui(HudTextSize.sm, weight: .medium))
+                .foregroundStyle(HudPalette.muted)
+                .frame(width: HudLayout.rowHeightCompact, height: HudLayout.rowHeightCompact)
+                .contentShape(Rectangle())
+        }
+        .menuStyle(.borderlessButton)
+        .help(model.browser.rootURL.path)
+    }
 
-                    if let uri = document.uri {
-                        Text(model.relativePath(for: uri))
-                            .font(HudFont.mono(HudTextSize.xxs))
-                            .foregroundStyle(HudPalette.dim)
-                            .lineLimit(1)
-                    }
-                }
-
-                Spacer(minLength: HudSpacing.xl)
-
-                HudBadge(document.kind.label, tint: HudPalette.statusInfo)
-                modePicker(for: document)
-
-                HudButton("Save", icon: "square.and.arrow.down", style: .ghost) {
-                    do {
-                        try model.saveDocument()
-                    } catch {
-                        model.loadError = "Cannot save \(document.title)"
-                    }
-                }
-                .disabled(model.documentMode != .edit || document.isReadOnly)
+    private func rootMenuItem(_ title: String, root: URL) -> some View {
+        let isActive = model.browser.rootURL.standardizedFileURL == root.standardizedFileURL
+        return Button {
+            model.setRoot(root)
+        } label: {
+            if isActive {
+                Label(title, systemImage: "checkmark")
+            } else {
+                Text(title)
             }
-            .padding(.horizontal, HudSpacing.xxl)
-            .padding(.vertical, HudSpacing.lg)
-            .background(HudSurface.chrome)
         }
     }
 
@@ -96,32 +103,12 @@ struct ExplorerTab: View {
         }
     }
 
-    private func modePicker(for document: HudTextDocument) -> some View {
-        HStack(spacing: HudSpacing.xs) {
-            ForEach([HudTextDocumentMode.read, .edit]) { candidate in
-                Button {
-                    model.documentMode = candidate
-                } label: {
-                    Text(candidate.label)
-                        .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
-                        .foregroundStyle(model.documentMode == candidate ? HudPalette.ink : HudPalette.muted)
-                        .padding(.horizontal, HudSpacing.md)
-                        .frame(height: HudLayout.textDocumentModeButtonHeight)
-                        .background(
-                            RoundedRectangle(cornerRadius: HudRadius.tight)
-                                .fill(model.documentMode == candidate ? HudSurface.tintFill(HudPalette.statusInfo) : .clear)
-                        )
-                        .overlay(
-                            RoundedRectangle(cornerRadius: HudRadius.tight)
-                                .stroke(model.documentMode == candidate ? HudSurface.tintBorder(HudPalette.statusInfo) : HudHairline.subtle, lineWidth: 1)
-                        )
-                }
-                .buttonStyle(.plain)
-                .disabled(candidate == .edit && document.isReadOnly)
-            }
-        }
-        .padding(HudSpacing.xs)
-        .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: 1))
+}
+
+private struct ExplorerContentWidthKey: PreferenceKey {
+    static let defaultValue: CGFloat = DemoLayout.explorerToolbarCompactBreakpoint
+
+    static func reduce(value: inout CGFloat, nextValue: () -> CGFloat) {
+        value = nextValue()
     }
 }

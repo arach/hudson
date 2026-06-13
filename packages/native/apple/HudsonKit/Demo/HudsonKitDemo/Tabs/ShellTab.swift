@@ -10,7 +10,7 @@ import HudsonUI
 struct ShellTab: View {
     let onOpenPalette: () -> Void
     let onOpenTakeover: () -> Void
-    let onToggleDrawer: () -> Void
+    let onOpenTerminal: () -> Void
     let onToggleRail: () -> Void
     let onToggleInspector: () -> Void
 
@@ -64,7 +64,7 @@ struct ShellTab: View {
                 id: "rail",
                 name: "HudNavigationRail",
                 icon: "sidebar.left",
-                tagline: "Leading rail · 64pt collapsed, 240pt expanded. Brand header reads from manifest. Footer slot hosts the variant picker.",
+                tagline: "Leading rail · 64pt collapsed, 240pt expanded. Brand header reads from manifest.",
                 actionLabel: "Toggle expand",
                 action: onToggleRail
             ),
@@ -80,9 +80,9 @@ struct ShellTab: View {
                 id: "drawer",
                 name: "HudTerminalDrawer",
                 icon: "terminal",
-                tagline: "Bottom slide-up drawer with isOpen binding. Always shows a 32pt header strip; expands to a configurable height when open.",
-                actionLabel: "Toggle drawer",
-                action: onToggleDrawer
+                tagline: "Bottom slide-up drawer with isOpen binding. This demo keeps a single status footer; terminal runs as a floating takeover app instead.",
+                actionLabel: "Open terminal app",
+                action: onOpenTerminal
             ),
             Primitive(
                 id: "canvas",

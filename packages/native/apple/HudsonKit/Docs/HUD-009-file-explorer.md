@@ -1,7 +1,7 @@
 # HUD-009: File Explorer
 
 Chromeless IDE layout for native Hudson apps: a keyboard-navigable file tree
-beside a CodeMirror editor or markdown preview.
+beside a CodeMirror editor for all text files (code, markdown, plain text).
 
 ## Components
 
@@ -26,7 +26,8 @@ Use the pieces independently when you only need a tree or CodeMirror. Compose
 - No per-file title bar, path row, or save/mode controls inside the editor
 - CodeMirror uses `HudCodeMirrorDocument(embedded: true)` so the bundled HTML
   header stays hidden
-- Markdown files use `HudTextDocumentSurface(showHeader: false, showsChrome: false)`
+- Markdown and code both route through `HudCodeMirror` — `@codemirror/lang-markdown`
+  handles `.md` / `.mdx` highlighting in the same warm web view
 
 The host owns outer chrome: workspace roots, breadcrumbs, file actions, and
 toolbars. The demo wires these in `ExplorerTab` above `HudFileExplorer`.
@@ -61,8 +62,9 @@ HudCodeMirror(document: doc, mode: $mode) { text in
 
 `HudCodeMirror` keeps a **warm** `HudCodeMirrorWebView` mounted at all times.
 When no file is selected, the web view receives an idle read-only document.
-While CodeMirror loads or swaps files, native `HudCodeBlock` provides instant
-syntax coloring. Do not conditionally mount the web view on `document != nil`.
+On first load a neutral skeleton appears until the bridge reports `rendered`;
+tab switches reuse the warm editor without resetting visibility. Do not
+conditionally mount the web view on `document != nil`.
 
 ## Tree keyboard
 
@@ -75,6 +77,7 @@ syntax coloring. Do not conditionally mount the web view on `document != nil`.
 | ← | Collapse folder or move to parent |
 | Home / End | First / last visible row |
 | Return / Space | Toggle folder or open file |
+| Double-click tab title | Pin tab (tree navigation then opens a new tab) |
 | Type-ahead | Jump to next matching name |
 
 ## Demo wiring

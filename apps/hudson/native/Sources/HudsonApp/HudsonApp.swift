@@ -1,46 +1,46 @@
 import AppKit
 import SwiftUI
-import HudsonVantage
+import HudsonCanvas
 
 @main
 struct HudsonApp: App {
     @NSApplicationDelegateAdaptor(HudsonAppDelegate.self) private var appDelegate
 
-    @StateObject private var model: HudVantageHostAppModel
+    @StateObject private var model: HudCanvasHostAppModel
 
     init() {
-        _model = StateObject(wrappedValue: Self.makeVantageModel())
+        _model = StateObject(wrappedValue: Self.makeCanvasModel())
 
-        HudVantageHostApplication.activateOnLaunch()
+        HudCanvasHostApplication.activateOnLaunch()
     }
 
     var body: some Scene {
         Window("Hudson", id: "main") {
-            HudVantageHostRootView(model: model)
-                .hudVantageHostWindowBridge()
+            HudCanvasHostRootView(model: model)
+                .hudCanvasHostWindowBridge()
         }
         .defaultSize(width: 1180, height: 780)
         .commands {
-            HudVantageHostCommands(model: model)
+            HudCanvasHostCommands(model: model)
         }
 
         Settings {
-            HudVantageHostSettingsView(model: model)
+            HudCanvasHostSettingsView(model: model)
                 .frame(width: 700, height: 480)
         }
     }
 
     @MainActor
-    private static func makeVantageModel() -> HudVantageHostAppModel {
-        HudVantageHostAppModel(
+    private static func makeCanvasModel() -> HudCanvasHostAppModel {
+        HudCanvasHostAppModel(
             configuration: .hostApplication(
-                workspaceID: "hudson-vantage",
+                workspaceID: "hudson-canvas",
                 launchSetupURL: HudsonAppResources.practiceSetupURL,
                 workingDirectoryURL: HudsonAppResources.repositoryRoot
             ),
-            identity: HudVantageHostIdentity(
+            identity: HudCanvasHostIdentity(
                 appName: "Hudson",
-                tagline: "Native Hudson workspace host for Vantage, local services, and voice.",
+                tagline: "Native Hudson workspace host for Canvas, local services, and voice.",
                 tint: .cyan,
                 targetLabel: "Node",
                 menuBarTitle: "Hudson",

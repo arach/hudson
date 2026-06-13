@@ -35,16 +35,16 @@ enum DemoResources {
         repositoryRoot
     }
 
-    static var vantagePracticeSetupURL: URL {
+    static var canvasPracticeSetupURL: URL {
         if let bundled = Bundle.main.url(
-            forResource: "hudson-vantage-practice.setup",
+            forResource: "hudson-canvas-practice.setup",
             withExtension: "json",
             subdirectory: "Fixtures"
         ) {
             return bundled
         }
         return kitRoot
-            .appendingPathComponent("Demo/HudsonKitDemo/Fixtures/hudson-vantage-practice.setup.json")
+            .appendingPathComponent("Demo/HudsonKitDemo/Fixtures/hudson-canvas-practice.setup.json")
     }
 
     private static func isRepositoryRoot(_ url: URL, fileManager: FileManager) -> Bool {

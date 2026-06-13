@@ -27,14 +27,15 @@ public struct HudSettingsSection<Content: View>: View {
     public var body: some View {
         VStack(alignment: .leading, spacing: HudSpacing.md) {
             HudSectionLabel(title, tint: labelTint)
-                .padding(.horizontal, HudSpacing.xl)
 
             VStack(spacing: 0) {
                 content()
             }
+            .frame(maxWidth: .infinity, alignment: .leading)
             .background(RoundedRectangle(cornerRadius: theme.radius.standard).fill(theme.palette.surface))
             .overlay(RoundedRectangle(cornerRadius: theme.radius.standard).stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.thin))
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
         .id(title)
     }
 }

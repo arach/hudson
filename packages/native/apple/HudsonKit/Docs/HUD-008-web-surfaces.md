@@ -94,7 +94,7 @@ The native code pane is **CodeMirror** — bundled `@codemirror/*` in
 bun run build:native-editor
 ```
 
-Prefer the SwiftUI wrapper when you want chromeless editor + native fallback:
+Prefer the SwiftUI wrapper for chromeless Explorer editing (CodeMirror only):
 
 ```swift
 HudCodeMirror(document: doc, mode: $mode) { text in
@@ -102,7 +102,7 @@ HudCodeMirror(document: doc, mode: $mode) { text in
 }
 ```
 
-Drop to the web view directly when you need full bridge control (Vantage nodes):
+Drop to the web view directly when you need full bridge control (Canvas nodes):
 
 ```swift
 HudCodeMirrorWebView(

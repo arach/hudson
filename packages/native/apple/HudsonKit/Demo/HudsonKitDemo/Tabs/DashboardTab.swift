@@ -75,9 +75,6 @@ struct DashboardTab: View {
 
     var body: some View {
         VStack(spacing: 0) {
-            FleetTopBar(targets: targets)
-            HudDivider(color: HudHairline.standard)
-
             ScrollView {
                 VStack(alignment: .leading, spacing: HudSpacing.huge) {
                     targetsSection
@@ -86,8 +83,6 @@ struct DashboardTab: View {
                 }
                 .padding(HudSpacing.xxl)
             }
-
-            DashboardBottomChrome()
         }
     }
 

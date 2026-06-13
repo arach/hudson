@@ -333,6 +333,7 @@ public struct HudNavigationSidebar<
         .opacity(labelOpacity)
         .animation(nil, value: labelsSettled)
         .allowsHitTesting(labelsSettled)
+        .zIndex(1)
     }
 
     @ViewBuilder

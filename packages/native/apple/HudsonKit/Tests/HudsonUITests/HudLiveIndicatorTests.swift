@@ -42,7 +42,7 @@ struct HudLiveIndicatorTests {
     @Test("legacy two-arg init keeps chrome at auto for source compatibility")
     func legacyInitDefaultsChromeToAuto() {
         let source = HudLiveSourceDescriptor(
-            id: "vantage.diff.packages",
+            id: "canvas.diff.packages",
             label: "Packages Diff",
             kind: "diff",
             status: .live

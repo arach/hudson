@@ -23,7 +23,7 @@ private struct DemoTerminalSessionState {
 /// status bar (rows×cols, connection state), and no rail/inspector chrome.
 ///
 /// Mounted inside `HudTakeover` from the demo so it floats above the
-/// LATTICES app shell, but the structure is identical to a top-level app and
+/// host app shell, but the structure is identical to a top-level app and
 /// can be hosted in a window, a workspace, or a dedicated route.
 struct TerminalApp: View {
     let target: TargetMock
@@ -76,7 +76,7 @@ struct TerminalApp: View {
                 Text("zsh · \(target.name)")
                     .font(HudFont.mono(HudTextSize.sm, weight: .semibold))
                     .foregroundStyle(HudPalette.ink)
-                Text("~/dev/lattices · \(target.host)")
+                Text("\(DemoManifest.workspacePath) · \(target.host)")
                     .font(HudFont.mono(HudTextSize.xxs))
                     .foregroundStyle(HudPalette.muted)
             }
@@ -190,7 +190,7 @@ private struct FakeTerminalSurface: View {
                 lineMono("swift build -c release")
 
                 output("Compiling DeckKit (4 sources)")
-                output("Compiling LatticesUI (12 sources)")
+                output("Compiling HudsonUI (12 sources)")
                 output("Compiling Sources (3 sources)")
                 output("Build complete! (3.42s)", color: HudPalette.statusOk)
 
@@ -243,7 +243,7 @@ private struct FakeTerminalSurface: View {
             Text("➜")
                 .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudPalette.statusOk)
-            Text("lattices")
+            Text("hudson")
                 .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
                 .foregroundStyle(HudTint.cyan.color)
             Text("git:(\u{e0a0}m3-shell)")

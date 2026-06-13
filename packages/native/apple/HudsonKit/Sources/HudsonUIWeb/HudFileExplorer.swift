@@ -6,15 +6,39 @@ import HudsonUI
 
 /// Filesystem-backed state for `HudFileExplorer`.
 ///
-/// Owns the file tree browser, active document, and read/edit mode. Toolbar
+/// Owns the file tree browser, tabbed documents, and read/edit mode. Toolbar
 /// chrome, root shortcuts, and save affordances stay in the host.
 @MainActor
 @Observable
 public final class HudFileExplorerModel {
     public var browser: HudFileTreeBrowser
-    public var document: HudTextDocument?
-    public var documentMode: HudTextDocumentMode = .read
+    public var tabs: [HudExplorerTab] = []
+    public var activeTabID: String?
+    public var documentMode: HudTextDocumentMode = .edit
     public var loadError: String?
+
+    private var nextRevision: UInt64 = 0
+
+    public var document: HudTextDocument? {
+        activeTab?.document
+    }
+
+    public var documentRevision: UInt64 {
+        activeTab?.revision ?? 0
+    }
+
+    public var openDocumentURL: URL? {
+        activeTabID.map { URL(fileURLWithPath: $0) }
+    }
+
+    public var openDocumentURLs: Set<URL> {
+        Set(tabs.map { URL(fileURLWithPath: $0.id).standardizedFileURL })
+    }
+
+    private var activeTab: HudExplorerTab? {
+        guard let activeTabID else { return nil }
+        return tabs.first { $0.id == activeTabID }
+    }
 
     public init(
         rootURL: URL,
@@ -30,7 +54,8 @@ public final class HudFileExplorerModel {
 
     public func setRoot(_ url: URL, clearDocument: Bool = true) {
         if clearDocument {
-            document = nil
+            tabs.removeAll()
+            activeTabID = nil
             loadError = nil
         }
         browser.setRoot(url)
@@ -40,20 +65,45 @@ public final class HudFileExplorerModel {
         loadError = nil
         guard !entry.isDirectory else { return }
 
+        browser.reveal(entry.url)
+
+        if let existingID = tabs.first(where: { $0.id == entry.url.path })?.id {
+            activeTabID = existingID
+            return
+        }
+
+        nextRevision &+= 1
+        let revision = nextRevision
+        let document = loadDocument(from: entry)
+
+        if let previewIndex = tabs.firstIndex(where: { !$0.isPinned }) {
+            tabs[previewIndex] = HudExplorerTab(document: document, revision: revision)
+            activeTabID = document.id
+        } else {
+            let tab = HudExplorerTab(document: document, revision: revision)
+            tabs.append(tab)
+            activeTabID = tab.id
+        }
+    }
+
+    /// Pins a tab so tree navigation opens new files in a separate tab.
+    public func pinTab(id: String) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs[index].isPinned = true
+    }
+
+    private func loadDocument(from entry: HudFileTreeEntry) -> HudTextDocument {
         do {
             let value = try String(contentsOf: entry.url, encoding: .utf8)
-            document = HudTextDocumentDetector.makeDocument(
+            return HudTextDocumentDetector.makeDocument(
                 id: entry.url.path,
                 title: entry.name,
                 uri: entry.url.path,
                 value: value
             )
-            if documentMode == .edit {
-                documentMode = .read
-            }
         } catch {
             loadError = "Cannot preview \(entry.name)"
-            document = HudTextDocumentDetector.makeDocument(
+            return HudTextDocumentDetector.makeDocument(
                 id: entry.url.path,
                 title: entry.name,
                 uri: entry.url.path,
@@ -64,6 +114,37 @@ public final class HudFileExplorerModel {
         }
     }
 
+    public func selectTab(id: String) {
+        guard tabs.contains(where: { $0.id == id }) else { return }
+        activeTabID = id
+        browser.reveal(URL(fileURLWithPath: id))
+    }
+
+    public func closeTab(id: String) {
+        guard let index = tabs.firstIndex(where: { $0.id == id }) else { return }
+        tabs.remove(at: index)
+
+        if activeTabID == id {
+            if tabs.isEmpty {
+                activeTabID = nil
+            } else {
+                let nextIndex = min(index, tabs.count - 1)
+                activeTabID = tabs[nextIndex].id
+                if let activeTabID {
+                    browser.reveal(URL(fileURLWithPath: activeTabID))
+                }
+            }
+        }
+    }
+
+    public func updateActiveDocumentText(_ text: String) {
+        guard let activeTabID,
+              let index = tabs.firstIndex(where: { $0.id == activeTabID })
+        else { return }
+        tabs[index].document.value = text
+        tabs[index].isPinned = true
+    }
+
     public func saveDocument() throws {
         guard let document else { return }
         try save(document)
@@ -72,8 +153,8 @@ public final class HudFileExplorerModel {
     public func save(_ doc: HudTextDocument) throws {
         guard let uri = doc.uri else { return }
         try doc.value.write(to: URL(fileURLWithPath: uri), atomically: true, encoding: .utf8)
-        if self.document?.id == doc.id {
-            self.document?.value = doc.value
+        if let index = tabs.firstIndex(where: { $0.id == doc.id }) {
+            tabs[index].document.value = doc.value
         }
         loadError = nil
     }
@@ -92,7 +173,7 @@ public final class HudFileExplorerModel {
 
 // MARK: - Explorer
 
-/// Chromeless IDE layout: `HudFileTree` beside a code or markdown preview.
+/// Chromeless IDE layout: `HudFileTree` beside a CodeMirror editor.
 ///
 /// The tree and editor panes ship without cards, headers, or window decoration.
 /// Mount toolbar, breadcrumbs, and file actions above this view in the host.
@@ -152,7 +233,11 @@ public struct HudFileExplorer: View {
     }
 
     private var treePane: some View {
-        HudFileTree(browser: model.browser) { entry in
+        HudFileTree(
+            browser: model.browser,
+            openDocumentURLs: model.openDocumentURLs,
+            activeDocumentURL: model.openDocumentURL
+        ) { entry in
             model.open(entry)
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -161,51 +246,49 @@ public struct HudFileExplorer: View {
     @ViewBuilder
     private var previewPane: some View {
         VStack(alignment: .leading, spacing: 0) {
+            if !model.tabs.isEmpty {
+                HudFileExplorerTabBar(
+                    tabs: model.tabs,
+                    activeTabID: model.activeTabID,
+                    onSelect: { model.selectTab(id: $0) },
+                    onPin: { model.pinTab(id: $0) },
+                    onClose: { model.closeTab(id: $0) }
+                )
+                HudDivider()
+            }
+
             if let loadError = model.loadError {
                 HudBadge(loadError, tint: HudPalette.statusWarn)
                     .padding(.horizontal, HudSpacing.lg)
                     .padding(.vertical, HudSpacing.sm)
             }
 
-            if let document = model.document, document.kind == .markdown {
-                HudTextDocumentSurface(
-                    document: binding(for: document),
-                    mode: $model.documentMode,
-                    showHeader: false,
-                    showsChrome: false,
-                    onSave: onSave
-                )
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            } else {
-                HudCodeMirror(
-                    document: model.document,
-                    mode: $model.documentMode,
-                    emptyStateTitle: emptyStateTitle,
-                    emptyStateSubtitle: emptyStateSubtitle,
-                    emptyStateIcon: emptyStateIcon,
-                    tintHex: codeTintHex,
-                    onChange: { model.document?.value = $0 },
-                    onSave: { text in
-                        guard let document = model.document else { return }
-                        var updated = document
-                        updated.value = text
-                        if let onSave {
-                            onSave(updated)
-                        } else {
-                            try model.save(updated)
-                        }
-                    }
-                )
-            }
+            editorSurface
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .background(HudSurface.base)
     }
 
-    private func binding(for document: HudTextDocument) -> Binding<HudTextDocument> {
-        Binding(
-            get: { model.document ?? document },
-            set: { model.document = $0 }
+    private var editorSurface: some View {
+        HudCodeMirror(
+            document: model.document,
+            documentRevision: model.documentRevision,
+            mode: $model.documentMode,
+            emptyStateTitle: emptyStateTitle,
+            emptyStateSubtitle: emptyStateSubtitle,
+            emptyStateIcon: emptyStateIcon,
+            tintHex: codeTintHex,
+            onChange: { model.updateActiveDocumentText($0) },
+            onSave: { text in
+                guard let document = model.document else { return }
+                var updated = document
+                updated.value = text
+                if let onSave {
+                    onSave(updated)
+                } else {
+                    try model.save(updated)
+                }
+            }
         )
     }
 }

@@ -19,6 +19,6 @@ enum HudsonAppResources {
     }
 
     static var practiceSetupURL: URL {
-        appRoot.appendingPathComponent("fixtures/hudson-vantage-practice.setup.json")
+        appRoot.appendingPathComponent("fixtures/hudson-canvas-practice.setup.json")
     }
 }

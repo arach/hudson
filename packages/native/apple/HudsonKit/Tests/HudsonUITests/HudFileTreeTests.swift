@@ -100,6 +100,28 @@ struct HudFileTreeTests {
     }
 
     @MainActor
+    @Test("reveal expands ancestors and selects the target file")
+    func revealExpandsAncestors() throws {
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("hud-file-tree-reveal-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: root) }
+
+        let folder = root.appendingPathComponent("folder", isDirectory: true)
+        let nested = folder.appendingPathComponent("nested", isDirectory: true)
+        try FileManager.default.createDirectory(at: nested, withIntermediateDirectories: true)
+        let file = nested.appendingPathComponent("leaf.swift")
+        try "let x = 1".write(to: file, atomically: true, encoding: .utf8)
+
+        let browser = HudFileTreeBrowser(rootURL: root)
+        browser.reveal(file)
+
+        #expect(browser.isExpanded(folder))
+        #expect(browser.isExpanded(nested))
+        #expect(browser.selection == file.standardizedFileURL)
+    }
+
+    @MainActor
     @Test("browser tracks expanded folders")
     func browserExpandedState() throws {
         let root = FileManager.default.temporaryDirectory

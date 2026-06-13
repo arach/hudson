@@ -1,5 +1,6 @@
 import SwiftUI
 import HudsonUI
+import HudsonShell
 
 #if canImport(AppKit)
 import AppKit
@@ -10,6 +11,7 @@ struct HudsonKitDemoApp: App {
     init() {
         #if canImport(AppKit)
         NSApplication.shared.setActivationPolicy(.regular)
+        NSApplication.shared.appearance = NSAppearance(named: .darkAqua)
         NSApplication.shared.activate(ignoringOtherApps: true)
         #endif
     }
@@ -23,5 +25,9 @@ struct HudsonKitDemoApp: App {
                 .frame(minWidth: HudLayout.readableWidth, minHeight: 540)
                 #endif
         }
+        #if os(macOS)
+        .defaultSize(width: 1180, height: 780)
+        .hudChromeWindow()
+        #endif
     }
 }

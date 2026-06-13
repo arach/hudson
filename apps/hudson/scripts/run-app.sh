@@ -21,7 +21,7 @@ Builds and launches the native Hudson app plus the Hudson Menu helper.
 
 Options:
   --install   Copy both bundles to ~/Applications after building
-  --restart   Quit an existing Hudson/Vantage process before launching
+  --restart   Quit an existing Hudson/Canvas process before launching
 
 Environment:
   HUDSON_APP_PATH       Override main app path (default: dist/Hudson.app)
@@ -123,7 +123,7 @@ build_app_bundle "$menu_app_path" "$menu_app_name" "HudsonMenu" "com.hudsonkit.h
 
 if [[ "$restart_existing" == true ]]; then
   pkill -f '[H]udson' 2>/dev/null || true
-  pkill -f '[V]antage' 2>/dev/null || true
+  pkill -f '[C]anvas' 2>/dev/null || true
   pkill -f '[H]udsonApp' 2>/dev/null || true
   pkill -f '[H]udsonMenuApp' 2>/dev/null || true
 fi

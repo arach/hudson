@@ -6,9 +6,8 @@ import { json } from '@codemirror/lang-json';
 import { markdown } from '@codemirror/lang-markdown';
 import {
   HighlightStyle,
+  LanguageDescription,
   bracketMatching,
-  defaultHighlightStyle,
-  foldGutter,
   indentOnInput,
   syntaxHighlighting,
 } from '@codemirror/language';
@@ -113,6 +112,26 @@ function normalizedLanguage(language: string | undefined, path: string | undefin
   }
 }
 
+const markdownCodeLanguages = [
+  LanguageDescription.of({
+    name: 'javascript',
+    alias: ['js', 'jsx'],
+    support: javascript({ jsx: true }),
+  }),
+  LanguageDescription.of({
+    name: 'typescript',
+    alias: ['ts', 'tsx'],
+    support: javascript({ jsx: true, typescript: true }),
+  }),
+  LanguageDescription.of({ name: 'json', alias: ['jsonc'], support: json() }),
+  LanguageDescription.of({ name: 'css', support: css() }),
+  LanguageDescription.of({ name: 'html', alias: ['htm'], support: html() }),
+];
+
+function markdownExtension() {
+  return markdown({ codeLanguages: markdownCodeLanguages });
+}
+
 function languageExtension(language: string) {
   switch (language) {
     case 'javascript':
@@ -124,9 +143,14 @@ function languageExtension(language: string) {
     case 'css':
       return css();
     case 'html':
+    case 'xml':
+    case 'svg':
       return html();
     case 'markdown':
-      return markdown();
+    case 'mdx':
+      return markdownExtension();
+    case 'shell':
+      return shellHighlightPlugin;
     case 'swift':
       return swiftHighlightPlugin;
     default:
@@ -174,6 +198,59 @@ function buildSwiftDecorations(view: EditorView): DecorationSet {
   return builder.finish();
 }
 
+const shellKeywords = new Set([
+  'if', 'then', 'else', 'elif', 'fi', 'for', 'while', 'do', 'done', 'case', 'esac',
+  'in', 'function', 'return', 'exit', 'export', 'local', 'readonly', 'declare',
+  'set', 'unset', 'shift', 'source', 'alias', 'true', 'false',
+]);
+
+const shellTokenPattern =
+  /#[^\n]*|"(?:\\.|[^"\\])*"|'[^']*'|\$\{[^}]+\}|\$[A-Za-z_][A-Za-z0-9_]*|\b[A-Za-z_][A-Za-z0-9_]*\b|\b\d+\b/g;
+
+function shellTokenClass(token: string): string | null {
+  if (token.startsWith('#')) return 'cm-shell-comment';
+  if (token.startsWith('"') || token.startsWith("'")) return 'cm-shell-string';
+  if (token.startsWith('$')) return 'cm-shell-variable';
+  if (/^\d/.test(token)) return 'cm-shell-number';
+  if (shellKeywords.has(token)) return 'cm-shell-keyword';
+  return null;
+}
+
+function buildShellDecorations(view: EditorView): DecorationSet {
+  const builder = new RangeSetBuilder<Decoration>();
+  for (const range of view.visibleRanges) {
+    const text = view.state.doc.sliceString(range.from, range.to);
+    shellTokenPattern.lastIndex = 0;
+    let match: RegExpExecArray | null;
+    while ((match = shellTokenPattern.exec(text))) {
+      const className = shellTokenClass(match[0]);
+      if (!className) continue;
+      const from = range.from + match.index;
+      builder.add(from, from + match[0].length, Decoration.mark({ class: className }));
+    }
+  }
+  return builder.finish();
+}
+
+const shellHighlightPlugin = ViewPlugin.fromClass(
+  class {
+    decorations: DecorationSet;
+
+    constructor(view: EditorView) {
+      this.decorations = buildShellDecorations(view);
+    }
+
+    update(update: ViewUpdate) {
+      if (update.docChanged || update.viewportChanged) {
+        this.decorations = buildShellDecorations(update.view);
+      }
+    }
+  },
+  {
+    decorations: plugin => plugin.decorations,
+  },
+);
+
 const swiftHighlightPlugin = ViewPlugin.fromClass(
   class {
     decorations: DecorationSet;
@@ -194,8 +271,8 @@ const swiftHighlightPlugin = ViewPlugin.fromClass(
 );
 
 const hudsonHighlightStyle = HighlightStyle.define([
-  { tag: tags.keyword, color: '#67e8f9' },
-  { tag: [tags.name, tags.deleted, tags.character, tags.macroName], color: '#e5e7eb' },
+  { tag: tags.keyword, color: '#67e8f9', fontWeight: '600' },
+  { tag: [tags.name, tags.deleted, tags.character, tags.macroName], color: '#e2e8f0' },
   { tag: [tags.propertyName, tags.attributeName], color: '#bae6fd' },
   { tag: [tags.processingInstruction, tags.string, tags.inserted], color: '#6ee7b7' },
   { tag: [tags.function(tags.variableName), tags.labelName], color: '#93c5fd' },
@@ -204,12 +281,23 @@ const hudsonHighlightStyle = HighlightStyle.define([
   { tag: [tags.className, tags.number, tags.changed, tags.annotation, tags.modifier], color: '#fbbf24' },
   { tag: [tags.typeName, tags.namespace], color: '#22d3ee' },
   { tag: [tags.operator, tags.operatorKeyword], color: '#94a3b8' },
-  { tag: [tags.url, tags.escape, tags.regexp, tags.link], color: '#38bdf8' },
-  { tag: tags.meta, color: '#94a3b8' },
+  { tag: [tags.url, tags.escape, tags.regexp, tags.link], color: '#38bdf8', textDecoration: 'underline' },
+  { tag: tags.meta, color: '#7dd3fc' },
   { tag: tags.comment, color: '#64748b', fontStyle: 'italic' },
-  { tag: tags.strong, fontWeight: '700' },
-  { tag: tags.emphasis, fontStyle: 'italic' },
-  { tag: tags.heading, color: '#f8fafc', fontWeight: '700' },
+  { tag: tags.strong, color: '#f8fafc', fontWeight: '700' },
+  { tag: tags.emphasis, color: '#cbd5e1', fontStyle: 'italic' },
+  { tag: tags.strikethrough, color: '#94a3b8', textDecoration: 'line-through' },
+  { tag: tags.heading, color: '#f0f9ff', fontWeight: '700' },
+  { tag: tags.heading1, color: '#f0f9ff', fontWeight: '700' },
+  { tag: tags.heading2, color: '#e0f2fe', fontWeight: '700' },
+  { tag: tags.heading3, color: '#bae6fd', fontWeight: '650' },
+  { tag: tags.heading4, color: '#7dd3fc', fontWeight: '650' },
+  { tag: tags.heading5, color: '#67e8f9', fontWeight: '600' },
+  { tag: tags.heading6, color: '#5eead4', fontWeight: '600' },
+  { tag: tags.monospace, color: '#6ee7b7', backgroundColor: 'rgba(110, 231, 183, 0.08)' },
+  { tag: tags.quote, color: '#94a3b8', fontStyle: 'italic' },
+  { tag: tags.list, color: '#67e8f9' },
+  { tag: tags.contentSeparator, color: '#475569' },
   { tag: tags.atom, color: '#fcd34d' },
   { tag: tags.bool, color: '#fcd34d' },
   { tag: tags.special(tags.variableName), color: '#38bdf8' },
@@ -236,20 +324,25 @@ const hudsonEditorTheme = EditorView.theme({
     overscrollBehavior: 'contain',
   },
   '.cm-content': {
-    padding: '10px 0 18px',
+    padding: '8px 0 16px',
     caretColor: '#22d3ee',
     minHeight: '100%',
   },
-  '.cm-line': { padding: '0 16px' },
+  '.cm-line': { padding: '0 14px' },
   '.cm-gutters': {
-    backgroundColor: '#0d1518',
-    color: 'rgba(148, 163, 184, 0.62)',
-    borderRight: '1px solid rgba(94, 234, 212, 0.12)',
+    backgroundColor: 'rgba(255, 255, 255, 0.015)',
+    color: 'rgba(148, 163, 184, 0.42)',
+    borderRight: '1px solid rgba(255, 255, 255, 0.05)',
+  },
+  '.cm-gutter.cm-lineNumbers': {
+    fontSize: '11px',
+    fontVariantNumeric: 'tabular-nums',
   },
   '.cm-lineNumbers .cm-gutterElement': {
-    padding: '0 12px 0 14px',
-    minWidth: '46px',
+    padding: '0 10px 0 12px',
+    minWidth: '38px',
     textAlign: 'right',
+    lineHeight: '1.6',
   },
   '.cm-activeLine': { backgroundColor: 'rgba(34, 211, 238, 0.055)' },
   '.cm-activeLineGutter': {
@@ -260,13 +353,18 @@ const hudsonEditorTheme = EditorView.theme({
     backgroundColor: 'rgba(14, 165, 233, 0.26)',
   },
   '.cm-cursor': { borderLeftColor: '#22d3ee' },
-  '.cm-foldGutter span': { color: 'rgba(255, 255, 255, 0.24)' },
+
   '.cm-swift-keyword': { color: '#67e8f9', fontWeight: '650' },
   '.cm-swift-type': { color: '#22d3ee' },
   '.cm-swift-string': { color: '#6ee7b7' },
   '.cm-swift-number': { color: '#fcd34d' },
   '.cm-swift-attribute': { color: '#93c5fd' },
   '.cm-swift-comment': { color: '#64748b', fontStyle: 'italic' },
+  '.cm-shell-keyword': { color: '#67e8f9', fontWeight: '650' },
+  '.cm-shell-string': { color: '#6ee7b7' },
+  '.cm-shell-variable': { color: '#93c5fd' },
+  '.cm-shell-number': { color: '#fcd34d' },
+  '.cm-shell-comment': { color: '#64748b', fontStyle: 'italic' },
   '.cm-tooltip': {
     backgroundColor: '#0f1720',
     border: '1px solid rgba(255, 255, 255, 0.12)',
@@ -306,21 +404,19 @@ function readOnlyExtensions(readOnly: boolean) {
 function editorExtensions() {
   return [
     highlightSpecialChars(),
-    historyCompartment.of([history(), keymap.of(historyKeymap)]),
+    historyCompartment.of(history()),
     lineNumbers(),
-    foldGutter(),
     drawSelection(),
     dropCursor(),
     EditorState.allowMultipleSelections.of(true),
     indentOnInput(),
-    syntaxHighlighting(defaultHighlightStyle, { fallback: true }),
-    syntaxHighlighting(hudsonHighlightStyle),
+    syntaxHighlighting(hudsonHighlightStyle, { fallback: true }),
     bracketMatching(),
     rectangularSelection(),
     crosshairCursor(),
     highlightActiveLine(),
     highlightActiveLineGutter(),
-    keymap.of([...defaultKeymap, indentWithTab]),
+    keymap.of([...defaultKeymap, ...historyKeymap, indentWithTab]),
     languageCompartment.of(languageExtension('plain')),
     readOnlyCompartment.of(readOnlyExtensions(false)),
     hudsonEditorTheme,
@@ -423,7 +519,7 @@ function setDocument(payload: HudsonCodeMirrorPayload) {
   if (switchingFile) {
     mountedDocumentID = documentID;
     savedText = text;
-    effects.push(historyCompartment.reconfigure([history(), keymap.of(historyKeymap)]));
+    effects.push(historyCompartment.reconfigure(history()));
   }
 
   const textChanged = text !== currentText;
