@@ -97,7 +97,13 @@ public struct HudAIClient: Sendable {
 
     public func stream(_ request: HudAIRequest) -> AsyncThrowingStream<HudAIStreamEvent, Error> {
         AsyncThrowingStream { continuation in
-            Task {
+            // Hold the producer task so termination can cancel it. Without this,
+            // a consumer that stops iterating (e.g. a "stop" button cancelling its
+            // task, or breaking the for-await loop) leaves this task running and the
+            // adapter keeps generating. onTermination ties the two together: when
+            // the stream ends for any reason, the producer — and the adapter's
+            // `Task.checkCancellation()` checks downstream — is cancelled cleanly.
+            let task = Task {
                 do {
                     let resolved = try resolvedRequest(request)
                     for try await event in provider.stream(resolved, context: context) {
@@ -114,6 +120,7 @@ public struct HudAIClient: Sendable {
                     continuation.finish(throwing: error)
                 }
             }
+            continuation.onTermination = { @Sendable _ in task.cancel() }
         }
     }
 
