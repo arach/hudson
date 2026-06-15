@@ -515,6 +515,16 @@ function buildShellSettingsPatch(
         : null;
     case 'voice.replyModel':
       return typeof value === 'string' ? { voice: { ...current.voice, replyModel: value } } : null;
+    case 'voice.inputDeviceId':
+      return typeof value === 'string' ? { voice: { ...current.voice, inputDeviceId: value } } : null;
+    case 'voice.transcriptionModel':
+      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionModel: value } } : null;
+    case 'voice.transcriptionLanguage':
+      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionLanguage: value } } : null;
+    case 'voice.captureMode':
+      return value === 'push_to_talk' || value === 'always_on'
+        ? { voice: { ...current.voice, captureMode: value } }
+        : null;
     case 'voice.replyVoice':
       return typeof value === 'string' ? { voice: { ...current.voice, replyVoice: value } } : null;
     case 'voice.replyRate': {

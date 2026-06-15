@@ -1,24 +1,45 @@
 import {
   assertHudsonVoiceSameOriginRequest,
   jsonHudsonVoiceError,
-  readHudsonVoiceRuntimeCapability,
 } from '@/app/lib/hudsonVoiceRuntime';
+import { writeHudsonVoicePreferences } from '@/app/lib/hudsonVoicePreferences';
 
 export const runtime = 'nodejs';
 
 export async function PUT(request: Request) {
   try {
     assertHudsonVoiceSameOriginRequest(request);
-    readHudsonVoiceRuntimeCapability();
     const body = await request.json().catch(() => ({}));
-    const deviceId = body && typeof body === 'object' && 'deviceId' in body
-      ? (body as { deviceId?: unknown }).deviceId
-      : undefined;
+    const deviceId = readDeviceId(body);
+    const preferences = writeHudsonVoicePreferences({
+      preferredInputDeviceId: deviceId,
+    });
     return Response.json({
-      devices: [],
-      selectedDeviceId: typeof deviceId === 'string' ? deviceId : null,
+      devices: preferences.preferredInputDeviceId
+        ? [{
+            id: preferences.preferredInputDeviceId,
+            name: 'Selected Hudson Voice input',
+            isSelected: true,
+            isDefault: false,
+            source: 'hudson-preferences',
+          }]
+        : [],
+      selectedDeviceId: preferences.preferredInputDeviceId,
+      defaultDeviceId: null,
+      source: 'hudson-preferences',
+      settings: preferences,
     });
   } catch (error) {
     return jsonHudsonVoiceError(error);
   }
+}
+
+function readDeviceId(body: unknown): string | null {
+  if (!body || typeof body !== 'object') return null;
+  const record = body as Record<string, unknown>;
+  const value = record.deviceId ?? record.inputDeviceId;
+  if (value === null) return null;
+  if (typeof value !== 'string') return null;
+  const trimmed = value.trim();
+  return trimmed ? trimmed : null;
 }

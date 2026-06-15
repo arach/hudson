@@ -146,6 +146,13 @@ if voiceEnabled {
             path: src + "HudsonVoice"
         )
     )
+    targets.append(
+        .testTarget(
+            name: "HudsonVoiceTests",
+            dependencies: ["HudsonVoice"],
+            path: tst + "HudsonVoiceTests"
+        )
+    )
     demoDependencies.append("HudsonVoice")
     demoSwiftSettings.append(.define("HUDSON_VOICE"))
 }

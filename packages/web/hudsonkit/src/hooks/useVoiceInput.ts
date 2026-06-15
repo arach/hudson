@@ -11,6 +11,7 @@ import {
   type HudsonVoiceClient,
   type HudsonVoiceLiveEvent,
   type HudsonVoiceLiveSession,
+  type HudsonVoiceMode,
 } from '../lib/hudsonVoiceClient';
 
 const HUDSONKIT_VOX_CLIENT_ID = 'hudsonkit';
@@ -44,6 +45,12 @@ export interface UseVoiceInputOptions {
   metadata?: Record<string, unknown>;
   /** Spoken language hint. Defaults to "en". */
   language?: string;
+  /** Transcription model id. Defaults to the Hudson Voice runtime default. */
+  modelId?: string;
+  /** Session mode. Defaults to "push_to_talk". */
+  mode?: HudsonVoiceMode;
+  /** Optional Hudson Voice input device override. */
+  deviceId?: string;
   /** Optional STT provider override. If omitted, Hudson's embedded daemon owns capture. */
   transcribe?: TranscribeFn;
   /** Optional availability probe override for custom transcribe providers. */
@@ -186,6 +193,9 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
     surface = 'hudson-assistant',
     metadata,
     language = 'en',
+    modelId,
+    mode = 'push_to_talk',
+    deviceId,
     transcribe,
     probe,
     voiceApiBase,
@@ -326,13 +336,15 @@ export function useVoiceInput(options: UseVoiceInputOptions): UseVoiceInputResul
       clientId: HUDSONKIT_VOX_CLIENT_ID,
       surface,
       language,
-      mode: 'push_to_talk',
+      modelId,
+      mode,
+      deviceId,
       metadata: metadataRef.current,
     });
     sessionRef.current = session;
     setStatus('recording');
     void consumeHudsonVoiceSession(session);
-  }, [consumeHudsonVoiceSession, language, surface]);
+  }, [consumeHudsonVoiceSession, deviceId, language, mode, modelId, surface]);
 
   const finalize = useCallback(async (chunks: Blob[], mimeType: string) => {
     stopStreamTracks(streamRef.current);

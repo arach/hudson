@@ -10,6 +10,10 @@ import type { VoiceSettings } from 'hudsonkit/voice';
 function makeVoiceSettings(overrides: Partial<VoiceSettings> = {}): VoiceSettings {
   return {
     autoSend: true,
+    inputDeviceId: '',
+    transcriptionModel: 'parakeet:v3',
+    transcriptionLanguage: 'en',
+    captureMode: 'push_to_talk',
     speakReplies: true,
     replyProvider: 'vox',
     replyModel: 'avspeech:system',
