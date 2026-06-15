@@ -140,7 +140,7 @@ export function resolveLogoTemplateDocumentUpdate(
 function applyTemplateParams(
   template: LogoTemplate,
   params: Record<string, unknown>,
-  customValues: Record<string, number | string | Record<string, unknown>[]>,
+  customValues: Record<string, number | string | boolean | Record<string, unknown>[]>,
 ): Record<string, unknown> {
   const merged = { ...params };
   for (const decl of template.params) {
@@ -187,7 +187,7 @@ function buildPrompt(picks: MatrixPick[], template: LogoTemplate): string | unde
 function buildAnimationJobPayload(opts: {
   params: LogoParams;
   templates: LogoTemplate[];
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
+  customParamValues: Record<string, Record<string, number | string | boolean | Record<string, unknown>[]>>;
   picks: MatrixPick[];
 }): LogoAnimationJobPayload | null {
   const { params, templates, customParamValues, picks } = opts;

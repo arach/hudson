@@ -113,7 +113,7 @@ export const defaults: LogoParams = {
 const TEMPLATE_FOCUSED_FALLBACK_POLL_MS = 120_000;
 const TEMPLATE_VISIBLE_FALLBACK_POLL_MS = 300_000;
 
-type CustomParamValue = number | string | Record<string, unknown>[];
+type CustomParamValue = number | string | boolean | Record<string, unknown>[];
 type CustomParamValues = Record<string, Record<string, CustomParamValue>>;
 
 export function templateParamDefaultValue(param: Pick<TemplateParam, 'default'>): CustomParamValue {

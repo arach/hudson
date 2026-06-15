@@ -22,6 +22,17 @@ import {
 } from 'node:path';
 import process from 'node:process';
 
+const FEATURE_CATALOG = {
+  terminal: {
+    env: { HUDSONKIT_WITH_TERMINAL: '1' },
+    note: 'HudsonTerminal — terminal and PTY-backed surfaces',
+  },
+  voice: {
+    env: { HUDSONKIT_WITH_VOICE: '1' },
+    note: 'HudsonVoice — in-process dictation and VoxEngine transcription',
+  },
+};
+
 const USAGE = `hkit package - Hudson-backed app packager
 
 USAGE
@@ -100,6 +111,37 @@ function shellQuote(value) {
 
 function displayPath(path) {
   return relative(process.cwd(), path).startsWith('..') ? path : relative(process.cwd(), path);
+}
+
+function normalizeFeatures(value, label) {
+  if (value == null) return [];
+  if (!Array.isArray(value)) {
+    throw new Error(`${label} must be an array of feature names.`);
+  }
+  return value.map((feature, index) => {
+    if (typeof feature !== 'string' || !feature.trim()) {
+      throw new Error(`${label}[${index}] must be a non-empty feature name.`);
+    }
+    return feature.trim();
+  });
+}
+
+function resolveFeatureEnv(features, label) {
+  const env = {};
+  for (const feature of features) {
+    const entry = FEATURE_CATALOG[feature];
+    if (!entry) {
+      throw new Error(`Unknown feature "${feature}" in ${label}. Known features: ${Object.keys(FEATURE_CATALOG).join(', ')}.`);
+    }
+    Object.assign(env, entry.env);
+  }
+  return env;
+}
+
+function buildFeatures(config, build, index) {
+  const shared = normalizeFeatures(config.features, 'macos.features');
+  const local = normalizeFeatures(build.features, `macos.builds[${index}].features`);
+  return Array.from(new Set([...shared, ...local]));
 }
 
 function runCommand(command, args, options = {}) {
@@ -330,10 +372,15 @@ function buildApps(config, args, context) {
     throw new Error('macos.apps must contain at least one app definition.');
   }
 
-  for (const build of config.builds ?? []) {
+  for (const [index, build] of (config.builds ?? []).entries()) {
     if (!build?.command) continue;
     const cwd = rel(context.configDir, build.cwd ?? '.');
-    const env = { ...process.env, ...(build.env ?? {}) };
+    const features = buildFeatures(config, build, index);
+    const featureEnv = resolveFeatureEnv(features, `macos.builds[${index}].features`);
+    for (const feature of features) {
+      process.stdout.write(`==> Feature: ${feature} (${FEATURE_CATALOG[feature].note})\n`);
+    }
+    const env = { ...process.env, ...featureEnv, ...(build.env ?? {}) };
     runCommand(build.command, build.args ?? [], { cwd, env });
   }
 

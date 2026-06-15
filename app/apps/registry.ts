@@ -170,8 +170,11 @@ function getPreframeAppConfig(): WorkspaceAppConfig | null {
 
   try {
     // Optional sibling app: ~/dev/preframe. Kept out of production bundles.
+    // `@preframe/catalog` is aliased in next.config.ts to the real catalog when
+    // the sibling repo is checked out, or to a local stub otherwise — so the
+    // bundler never warns about a missing module when preframe isn't present.
     // eslint-disable-next-line @typescript-eslint/no-require-imports
-    const mod = require('../../../preframe/catalog');
+    const mod = require('@preframe/catalog');
     const app = mod.catalogApp ?? mod.preframeApp ?? mod.default;
     if (!app) return null;
     return {

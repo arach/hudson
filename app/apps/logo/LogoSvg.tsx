@@ -99,7 +99,7 @@ function LogoSvgInner({
 }: {
   template: Parameters<typeof TemplateSvg>[0]['template'];
   params: LogoParams;
-  customParamValues: Record<string, number | string | Record<string, unknown>[]>;
+  customParamValues: Record<string, number | string | boolean | Record<string, unknown>[]>;
   backgroundSvg?: string | null;
   size: number;
   templates: { id: string; name: string }[];

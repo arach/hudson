@@ -49,20 +49,32 @@ public struct HudWindowChrome: NSViewRepresentable {
     private func apply(to window: NSWindow?) {
         guard let window else { return }
 
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = .black
-        window.titlebarAppearsTransparent = titlebarAppearsTransparent
-        if usesFullSizeContentView {
-            window.styleMask.insert(.fullSizeContentView)
-        } else {
-            window.styleMask.remove(.fullSizeContentView)
+        // Guard EVERY assignment. This runs on every SwiftUI updateNSView; in a
+        // continuously-updating window, re-setting window.appearance/styleMask
+        // each time invalidates SwiftUI's internal window-appearance model and
+        // re-triggers a window relayout — a self-perpetuating re-render loop that
+        // pegs idle CPU. Only touch the window when a value actually changed.
+        let darkAqua = NSAppearance(named: .darkAqua)
+        if window.appearance?.name != darkAqua?.name { window.appearance = darkAqua }
+        if window.backgroundColor != .black { window.backgroundColor = .black }
+        if window.titlebarAppearsTransparent != titlebarAppearsTransparent {
+            window.titlebarAppearsTransparent = titlebarAppearsTransparent
         }
-        window.titleVisibility = titleVisibility
-        window.titlebarSeparatorStyle = .none
-        window.isMovableByWindowBackground = isMovableByWindowBackground
-        window.isOpaque = true
-        if hidesToolbar {
-            window.toolbar?.isVisible = false
+        if window.styleMask.contains(.fullSizeContentView) != usesFullSizeContentView {
+            if usesFullSizeContentView {
+                window.styleMask.insert(.fullSizeContentView)
+            } else {
+                window.styleMask.remove(.fullSizeContentView)
+            }
+        }
+        if window.titleVisibility != titleVisibility { window.titleVisibility = titleVisibility }
+        if window.titlebarSeparatorStyle != .none { window.titlebarSeparatorStyle = .none }
+        if window.isMovableByWindowBackground != isMovableByWindowBackground {
+            window.isMovableByWindowBackground = isMovableByWindowBackground
+        }
+        if !window.isOpaque { window.isOpaque = true }
+        if hidesToolbar, let toolbar = window.toolbar, toolbar.isVisible {
+            toolbar.isVisible = false
         }
     }
 }

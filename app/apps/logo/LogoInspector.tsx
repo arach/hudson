@@ -11,7 +11,7 @@ import {
 } from 'hudsonkit/controls';
 import type { ParamDefinition } from 'hudsonkit/controls';
 import { GOOGLE_FONTS, loadGoogleFont } from './types';
-import type { LogoDrawingShape, ShapeOffset, WordmarkConfig } from './types';
+import type { LogoDrawingShape, ShapeOffset, TemplateParam, WordmarkConfig } from './types';
 
 const EXPORT_SIZES = [512, 256, 128, 64, 32, 16] as const;
 const LOGO_VIEWBOX_SIZE = 512;
@@ -274,6 +274,18 @@ function formatParamSchema(paramsObj: Record<string, unknown> | undefined): stri
     lines.push(parts.join(' '));
   }
   return lines.join('\n');
+}
+
+type CustomTemplateParamValue = number | string | boolean | Record<string, unknown>[];
+
+function readEnumParamSet(
+  param: TemplateParam | undefined,
+  value: unknown,
+): Record<string, CustomTemplateParamValue> | null {
+  if (!param?.sets || typeof value !== 'string') return null;
+  const set = param.sets[value];
+  if (!set) return null;
+  return set as Record<string, CustomTemplateParamValue>;
 }
 
 // ---------------------------------------------------------------------------
@@ -572,6 +584,22 @@ export function LogoInspector() {
 
   const customValues = activeTemplate ? (customParamValues[activeTemplate.id] ?? {}) : {};
 
+  const handleCustomParamChange = useCallback((key: string, value: CustomTemplateParamValue) => {
+    if (!activeTemplate) return;
+    setCustomParam(activeTemplate.id, key, value);
+
+    const set = readEnumParamSet(
+      activeTemplate.params.find(param => param.key === key),
+      value,
+    );
+    if (!set) return;
+
+    for (const [nextKey, nextValue] of Object.entries(set)) {
+      if (nextKey === key) continue;
+      setCustomParam(activeTemplate.id, nextKey, nextValue);
+    }
+  }, [activeTemplate, setCustomParam]);
+
   return (
     <div className="p-3 space-y-1 overflow-y-auto h-full frame-scrollbar">
       {/* ── Active template name ── */}
@@ -697,7 +725,7 @@ export function LogoInspector() {
           <ParamGrid
             params={customParams}
             values={customValues}
-            onChange={(key, value) => setCustomParam(activeTemplate!.id, key, value as number | string | Record<string, unknown>[])}
+            onChange={(key, value) => handleCustomParamChange(key, value as CustomTemplateParamValue)}
             defaultExpanded={true}
           />
         </ParamSection>

@@ -16,8 +16,8 @@ interface UseLogoAIOptions {
   templates: LogoTemplate[];
   addTemplate: (template: LogoTemplate) => Promise<void> | void;
   deleteTemplate: (id: string) => Promise<void> | void;
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
-  setCustomParam: (templateId: string, key: string, value: number | string | Record<string, unknown>[]) => void;
+  customParamValues: Record<string, Record<string, number | string | boolean | Record<string, unknown>[]>>;
+  setCustomParam: (templateId: string, key: string, value: number | string | boolean | Record<string, unknown>[]) => void;
   refreshTemplates: () => void;
   appSettings: AppSettingsValues;
 }

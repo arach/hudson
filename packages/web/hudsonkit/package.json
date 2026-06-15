@@ -135,7 +135,8 @@
       "import": "./dist/patterns.js",
       "default": "./dist/patterns.js"
     },
-    "./styles": "./dist/styles.css"
+    "./styles": "./dist/styles.css",
+    "./styles/*": "./src/styles/*"
   },
   "files": [
     "dist",

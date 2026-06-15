@@ -240,7 +240,7 @@ function getLetterMask(letter: string): Uint8Array | null {
 interface Props {
   template: LogoTemplate;
   params: LogoParams;
-  customParamValues: Record<string, number | string | Record<string, unknown>[]>;
+  customParamValues: Record<string, number | string | boolean | Record<string, unknown>[]>;
   backgroundSvg?: string | null;
   size: number;
   /** Per-shape drag offsets to apply on top of the template's natural positions.
@@ -495,7 +495,7 @@ export interface RenderResult {
 export function useTemplateRender(
   template: LogoTemplate,
   params: LogoParams,
-  customParamValues: Record<string, number | string | Record<string, unknown>[]>,
+  customParamValues: Record<string, number | string | boolean | Record<string, unknown>[]>,
   backgroundSvg?: string | null,
 ): RenderResult {
   const merged = useMemo(() => {

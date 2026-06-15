@@ -12,10 +12,24 @@ hkit package macos --config apps/macos/hudson-package.json --local
 ```
 
 The client config owns product policy: app names, bundle identifiers, build
-commands, icons, entitlements, DMG naming, signing environment variables, and
-notarization profile. Hudson owns the reusable mechanics: SwiftPM build
-execution, `.app` bundle assembly, icon conversion, signing hooks, Finder DMG
-layout, generated installer background, and notarization/stapling.
+commands, Hudson feature names, icons, entitlements, DMG naming, signing
+environment variables, and notarization profile. Hudson owns the reusable
+mechanics: resolving feature names to the build environment SwiftPM needs,
+SwiftPM build execution, `.app` bundle assembly, icon conversion, signing hooks,
+Finder DMG layout, generated installer background, and notarization/stapling.
+
+Build entries may declare optional Hudson features by name:
+
+```json
+{
+  "command": "swift",
+  "args": ["build", "-c", "release"],
+  "features": ["voice"]
+}
+```
+
+Known features: `voice`, `terminal`. Raw `env` remains available as a last-mile
+override, but feature selection should prefer `features`.
 
 Top-level `apps` are copied into the DMG. Add `embeddedHelpers` to an app when
 another app bundle should be built, signed, and nested inside the parent instead

@@ -11,7 +11,7 @@ import {
 } from 'react';
 import type { AppIntent, IntentCatalog } from 'hudsonkit';
 import { buildIntentCatalog } from '../../lib/intent-catalog';
-import { hudsonOSWorkspace } from '../../workspaces/hudsonOS';
+import { useActiveWorkspace } from '../../shell/ActiveWorkspaceContext';
 import type { FloatingCard } from './types';
 
 // ---------------------------------------------------------------------------
@@ -102,7 +102,8 @@ function buildGroups(catalog: IntentCatalog, query: string): IntentGroup[] {
 let cardIdCounter = 0;
 
 export function IntentProvider({ children }: { children: ReactNode }) {
-  const catalog = useMemo(() => buildIntentCatalog(hudsonOSWorkspace), []);
+  const { workspace } = useActiveWorkspace();
+  const catalog = useMemo(() => buildIntentCatalog(workspace), [workspace]);
 
   const [selectedIntentId, setSelectedIntentId] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');

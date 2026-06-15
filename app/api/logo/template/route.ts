@@ -49,6 +49,7 @@ interface TemplateParamMeta {
   itemTemplate?: Record<string, unknown>;
   itemFields?: TemplateParamMeta[];
   group?: string;
+  sets?: Record<string, Record<string, number | string | boolean>>;
 }
 
 interface ParsedTemplate {
@@ -73,6 +74,7 @@ interface ParsedTemplate {
     itemTemplate?: Record<string, unknown>;
     itemFields?: ParsedTemplate['params'];
     group?: string;
+    sets?: Record<string, Record<string, number | string | boolean>>;
   }[];
   createdAt: number;
   updatedAt: number;
@@ -217,6 +219,7 @@ export async function POST(request: Request) {
         itemTemplate?: Record<string, unknown>;
         itemFields?: TemplateParamMeta[];
         group?: string;
+        sets?: Record<string, Record<string, number | string | boolean>>;
       }>;
       action?: 'delete';
     };

@@ -37,7 +37,7 @@ export interface PromptContext {
   params: LogoParams;
   presets: { label: string; params: Partial<LogoParams> }[];
   templates: LogoTemplate[];
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>;
+  customParamValues: Record<string, Record<string, number | string | boolean | Record<string, unknown>[]>>;
   homeFolder: string;
 }
 
@@ -141,7 +141,7 @@ ${rows.join('\n')}`;
 function activeSource(
   templates: LogoTemplate[],
   activeId: string,
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>,
+  customParamValues: Record<string, Record<string, number | string | boolean | Record<string, unknown>[]>>,
 ): string | null {
   const t = templates.find(t => t.id === activeId);
   if (!t) return null;
@@ -177,7 +177,7 @@ function templateListShort(templates: LogoTemplate[], activeId: string): string 
 function templateListFull(
   templates: LogoTemplate[],
   activeId: string,
-  customParamValues: Record<string, Record<string, number | string | Record<string, unknown>[]>>,
+  customParamValues: Record<string, Record<string, number | string | boolean | Record<string, unknown>[]>>,
 ): string | null {
   if (templates.length === 0) return null;
   const lines = templates.map(t => {

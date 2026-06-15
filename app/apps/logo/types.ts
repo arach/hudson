@@ -25,6 +25,8 @@ export interface TemplateParam {
   itemFields?: TemplateParam[];
   /** Collapsible section group name — params with the same group render together */
   group?: string;
+  /** For enum params: selecting an option may apply a bundle of sibling param values. */
+  sets?: Record<string, Record<string, number | string | boolean>>;
 }
 
 // ---------------------------------------------------------------------------

@@ -868,7 +868,7 @@ export function WorkspaceShell({
   // WorkspaceDecorProvider sits at the same level so the stage-design app and
   // the shell render layer share the same workspace-scoped state.
   tree = (
-    <ActiveWorkspaceProvider workspaceId={workspace.id}>
+    <ActiveWorkspaceProvider workspaceId={workspace.id} workspace={enabledWorkspace}>
       <WorkspaceDecorProvider workspaceId={workspace.id}>
         <DataBusProvider workspace={enabledWorkspace}>{tree}</DataBusProvider>
       </WorkspaceDecorProvider>

@@ -62,9 +62,8 @@ if (!existsSync(localWorkspacesFile)) {
 // HUDSON_TURBOPACK_PARENT=1 in your shell. The opt-in keeps the dangerous
 // scope explicit per-shell instead of baked into the repo for everyone.
 // ─────────────────────────────────────────────────────────────────────────────
-const turbopackRoot = process.env.HUDSON_TURBOPACK_PARENT === "1"
-  ? join(__dirname, "..")
-  : __dirname;
+const useParentRoot = process.env.HUDSON_TURBOPACK_PARENT === "1";
+const turbopackRoot = useParentRoot ? join(__dirname, "..") : __dirname;
 const rootNodeModules = join(__dirname, "node_modules");
 const singletonAliases = {
   "react": join(rootNodeModules, "react"),
@@ -84,6 +83,33 @@ const turbopackSingletonAliases = Object.fromEntries(
   Object.entries(singletonAliases).map(([key, target]) => [key, toTurbopackAliasPath(target)]),
 );
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Optional sibling app: ~/dev/preframe
+// ─────────────────────────────────────────────────────────────────────────────
+// registry.ts imports the preframe catalog through the stable `@preframe/catalog`
+// specifier, which we alias here to either the real catalog or a local stub.
+//
+// preframe lives at ../preframe — OUTSIDE the default Turbopack root (__dirname).
+// It only resolves when the root is broadened to the parent via
+// HUDSON_TURBOPACK_PARENT=1 (the same opt-in that pulls sibling repos in). So we
+// point at the real catalog only in parent-root, non-production mode; otherwise
+// we point at the stub. Aliasing to a real, in-root module (the stub) is what
+// stops Turbopack from reporting "Module not found" on every default `bun dev`,
+// and keeps preframe out of production bundles. The runtime gate in registry.ts
+// (IS_DEV_ENV + null catalog) then gracefully skips the app.
+// ─────────────────────────────────────────────────────────────────────────────
+const preframeStub = join(__dirname, "app", "catalog", "preframe-catalog.stub.ts");
+const preframeEnabled = useParentRoot && process.env.NODE_ENV !== "production";
+const preframeCatalog = preframeEnabled
+  ? ([
+      join(__dirname, "..", "preframe", "catalog.ts"),
+      join(__dirname, "..", "preframe", "catalog.tsx"),
+      join(__dirname, "..", "preframe", "catalog", "index.ts"),
+      join(__dirname, "..", "preframe", "catalog.js"),
+      join(__dirname, "..", "preframe", "catalog", "index.js"),
+    ].find((candidate) => existsSync(candidate)) ?? preframeStub)
+  : preframeStub;
+
 const nextConfig: NextConfig = {
   transpilePackages: ["hudsonkit", "@voxd/client"],
   serverExternalPackages: ["@earendil-works/pi-ai", "esbuild"],
@@ -92,6 +118,7 @@ const nextConfig: NextConfig = {
     resolveAlias: {
       ...turbopackSingletonAliases,
       tailwindcss: toTurbopackAliasPath(join(rootNodeModules, "tailwindcss")),
+      "@preframe/catalog": toTurbopackAliasPath(preframeCatalog),
     },
   },
   webpack(config) {
@@ -99,6 +126,7 @@ const nextConfig: NextConfig = {
     config.resolve.alias = {
       ...(config.resolve.alias ?? {}),
       ...singletonAliases,
+      "@preframe/catalog": preframeCatalog,
     };
     return config;
   },
