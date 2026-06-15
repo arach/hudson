@@ -1,53 +1,6 @@
 import Foundation
 import HudsonUI
 
-public struct HudAIDefaults: Sendable {
-    public var temperature: Double?
-    public var maxOutputTokens: Int
-    public var cache: HudAICachePolicy
-    public var timeout: TimeInterval
-
-    public init(temperature: Double? = nil, maxOutputTokens: Int = 1_024, cache: HudAICachePolicy = .automatic(), timeout: TimeInterval = 120) {
-        self.temperature = temperature
-        self.maxOutputTokens = maxOutputTokens
-        self.cache = cache
-        self.timeout = timeout
-    }
-}
-
-public protocol HudAIProviderAdapter: Sendable {
-    var providerID: HudAIProviderID { get }
-    var displayName: String { get }
-    var defaultModel: String { get }
-    var credentialKey: String { get }
-
-    func complete(_ request: HudAIRequest, context: HudAIAdapterContext) async throws -> HudAIResponse
-    func stream(_ request: HudAIRequest, context: HudAIAdapterContext) -> AsyncThrowingStream<HudAIStreamEvent, Error>
-    func listModels(context: HudAIAdapterContext) async throws -> [HudAIModelInfo]
-}
-
-public struct HudAIAdapterContext: Sendable {
-    public var credentialSource: any HudAICredentialSource
-    public var defaults: HudAIDefaults
-    public var urlSession: URLSession
-
-    public init(credentialSource: any HudAICredentialSource, defaults: HudAIDefaults, urlSession: URLSession) {
-        self.credentialSource = credentialSource
-        self.defaults = defaults
-        self.urlSession = urlSession
-    }
-
-    public func apiKey(for adapter: any HudAIProviderAdapter) async throws -> String {
-        guard let data = try await credentialSource.get(adapter.credentialKey) else {
-            throw HudAIError.credentialsMissing(provider: adapter.providerID, key: adapter.credentialKey)
-        }
-        guard let key = String(data: data, encoding: .utf8), !key.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
-            throw HudAIError.credentialsInvalid(provider: adapter.providerID, key: adapter.credentialKey)
-        }
-        return key.trimmingCharacters(in: .whitespacesAndNewlines)
-    }
-}
-
 public struct HudAIClient: Sendable {
     public var provider: any HudAIProviderAdapter
     public var model: String?
