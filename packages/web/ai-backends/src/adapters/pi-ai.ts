@@ -279,6 +279,7 @@ export interface PiAiBackend extends Backend<PiAiConfig, PiAiMeta> {
 }
 
 const DEFAULT_MAX_STEPS = 12;
+const DEFAULT_PROVIDER = 'minimax';
 
 interface PiProviderConfig {
   provider: string;
@@ -289,10 +290,11 @@ function normalizeProvider(provider?: string): PiProviderConfig {
   switch (provider) {
     case undefined:
     case '':
+      return { provider: DEFAULT_PROVIDER, credentialKey: DEFAULT_PROVIDER };
     case 'copilot':
-      return { provider: 'github-copilot', credentialKey: 'copilot' };
     case 'github':
-      return { provider: 'github-copilot', credentialKey: 'copilot' };
+    case 'github-copilot':
+      return { provider: 'openai-codex', credentialKey: 'openai-codex' };
     default:
       return { provider, credentialKey: provider };
   }
@@ -304,9 +306,9 @@ function resolveModelId(
   defaults?: Record<string, string>,
 ): string | undefined {
   if (model) return model;
-  const key = provider || 'copilot';
+  const key = normalizeProvider(provider).provider;
   if (defaults?.[key]) return defaults[key];
-  if (defaults?.copilot) return defaults.copilot;
+  if (defaults?.[DEFAULT_PROVIDER]) return defaults[DEFAULT_PROVIDER];
   return undefined;
 }
 
@@ -516,13 +518,14 @@ function streamUI(req: PiAiUIRequest): Response {
   const modelId = resolveModelId(req.provider, req.model, req.defaultModels);
   const credentials = req.loadCredentials();
   const apiKey = credentials[providerConfig.credentialKey] || getEnvApiKey(providerConfig.provider);
+  const displayProvider = providerConfig.provider;
 
   if (!apiKey) {
-    throw new Error(`No API key for provider "${req.provider || 'copilot'}".`);
+    throw new Error(`No API key for provider "${displayProvider}".`);
   }
   if (!modelId) {
     throw new Error(
-      `No model resolved for provider "${req.provider || 'copilot'}". Pass model in the request or supply defaultModels.`,
+      `No model resolved for provider "${displayProvider}". Pass model in the request or supply defaultModels.`,
     );
   }
 

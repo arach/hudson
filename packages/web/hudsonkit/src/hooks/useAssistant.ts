@@ -18,7 +18,7 @@ export interface UseAssistantOptions {
   commands: CommandOption[];
   /** Optional app-supplied state snapshot included in the model's context each turn. */
   state?: Record<string, unknown>;
-  /** Provider override (e.g. 'anthropic', 'copilot'). Defaults to whatever the API route picks. */
+  /** Provider override (e.g. 'minimax', 'openai-codex', 'anthropic'). Defaults to whatever the API route picks. */
   provider?: string;
   /** Model override (e.g. 'claude-sonnet-4-20250514'). */
   model?: string;

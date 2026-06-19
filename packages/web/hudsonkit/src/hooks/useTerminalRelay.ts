@@ -32,7 +32,7 @@ export interface UseTerminalRelayOptions {
   tmuxSession?: string;
   /** Process to spawn. 'claude' (default), 'pi', or 'shell' for a normal login shell. */
   agent?: 'claude' | 'pi' | 'shell';
-  /** For pi agent: provider name (e.g. 'minimax', 'github-copilot'). */
+  /** For pi agent: provider name (e.g. 'minimax', 'openai-codex'). */
   provider?: string;
   /** For pi agent: model ID (e.g. 'MiniMax-M1'). */
   model?: string;

@@ -45,9 +45,9 @@ export interface UseHudsonAIOptions {
   mode?: AIMode;
   /** Attachable context the user can toggle on per-message */
   attachments?: AIAttachment[];
-  /** AI provider name (e.g. 'minimax', 'anthropic', 'openai', 'groq') */
+  /** AI provider name (e.g. 'minimax', 'openai-codex', 'anthropic', 'openai', 'groq') */
   provider?: string;
-  /** Model ID override (e.g. 'MiniMax-M2.7', 'claude-sonnet-4-20250514') */
+  /** Model ID override (e.g. 'MiniMax-M3', 'gpt-5.5', 'claude-sonnet-4-20250514') */
   model?: string;
   /** Called when the assistant response finishes streaming. */
   onFinish?: ChatOnFinishCallback<UIMessage>;

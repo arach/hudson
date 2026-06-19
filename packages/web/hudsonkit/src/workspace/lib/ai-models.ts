@@ -11,9 +11,8 @@ export interface AIModelPreset extends AISelectOption {
 }
 
 export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
-  { label: 'GitHub Copilot', value: 'copilot' },
   { label: 'MiniMax', value: 'minimax' },
-  { label: 'GitHub Models', value: 'github' },
+  { label: 'Codex', value: 'openai-codex' },
   { label: 'Anthropic', value: 'anthropic' },
   { label: 'OpenAI', value: 'openai' },
   { label: 'X.ai', value: 'xai' },
@@ -22,37 +21,23 @@ export const AI_PROVIDER_OPTIONS: AISelectOption[] = [
 ];
 
 /**
- * Copilot chat models offered by Hudson.
+ * Codex (openai-codex) chat models offered by Hudson's pi-ai backend.
  *
- * Refreshed from `copilot-ask --list-models` on 2026-05-20 and filtered to
- * models currently registered by Hudson's pi-ai backend. Account-visible
- * entries such as Search Agent routers, Lark, Raptor mini, GPT-4o mini, and
- * Gemini 3.5 Flash are intentionally not exposed until the runtime can route
- * them by exact model id.
+ * Mirrors the `openai-codex` provider registered by @earendil-works/pi-ai
+ * 0.78.1; the pi-ai runtime routes these through the ChatGPT Codex backend by
+ * exact model id.
  */
-export const COPILOT_MODEL_OPTIONS: AISelectOption[] = [
-  { label: 'GPT-5.5', value: 'gpt-5.5', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.4', value: 'gpt-5.4', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.4 Mini', value: 'gpt-5.4-mini', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.3 Codex', value: 'gpt-5.3-codex', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.2 Codex', value: 'gpt-5.2-codex', provider: 'copilot', contextWindow: 400_000 },
-  { label: 'GPT-5.2', value: 'gpt-5.2', provider: 'copilot', contextWindow: 264_000 },
-  { label: 'GPT-5 Mini', value: 'gpt-5-mini', provider: 'copilot', contextWindow: 264_000 },
-  { label: 'Claude Opus 4.7', value: 'claude-opus-4.7', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Claude Opus 4.5', value: 'claude-opus-4.5', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Claude Haiku 4.5', value: 'claude-haiku-4.5', provider: 'copilot', contextWindow: 200_000 },
-  { label: 'Gemini 3.1 Pro', value: 'gemini-3.1-pro-preview', provider: 'copilot', contextWindow: 128_000 },
-  { label: 'Gemini 3 Flash', value: 'gemini-3-flash-preview', provider: 'copilot', contextWindow: 128_000 },
-  { label: 'Gemini 2.5 Pro', value: 'gemini-2.5-pro', provider: 'copilot', contextWindow: 128_000 },
-  { label: 'GPT-4.1', value: 'gpt-4.1', provider: 'copilot', contextWindow: 128_000 },
-  { label: 'GPT-4o', value: 'gpt-4o', provider: 'copilot', contextWindow: 128_000 },
+export const CODEX_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'GPT-5.5', value: 'gpt-5.5', provider: 'openai-codex', contextWindow: 272_000 },
+  { label: 'GPT-5.4', value: 'gpt-5.4', provider: 'openai-codex', contextWindow: 272_000 },
+  { label: 'GPT-5.4 Mini', value: 'gpt-5.4-mini', provider: 'openai-codex', contextWindow: 272_000 },
+  { label: 'GPT-5.3 Codex Spark', value: 'gpt-5.3-codex-spark', provider: 'openai-codex', contextWindow: 128_000 },
 ];
 
 const GENERAL_MODEL_OPTIONS: AISelectOption[] = [
-  { label: 'MiniMax M2.7', value: 'MiniMax-M2.7', provider: 'minimax' },
-  { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed', provider: 'minimax' },
+  { label: 'MiniMax M3', value: 'MiniMax-M3', provider: 'minimax', contextWindow: 512_000 },
+  { label: 'MiniMax M2.7', value: 'MiniMax-M2.7', provider: 'minimax', contextWindow: 204_800 },
+  { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed', provider: 'minimax', contextWindow: 204_800 },
   { label: 'Gemini 2.0 Flash', value: 'gemini-2.0-flash', provider: 'google' },
   { label: 'Grok 4.1 Fast', value: 'grok-4-1-fast', provider: 'xai' },
   { label: 'Llama 3.3 70B Versatile', value: 'llama-3.3-70b-versatile', provider: 'groq' },
@@ -68,75 +53,64 @@ function dedupeOptions(options: AISelectOption[]) {
 }
 
 export const AI_MODEL_OPTIONS: AISelectOption[] = dedupeOptions([
-  ...COPILOT_MODEL_OPTIONS,
   ...GENERAL_MODEL_OPTIONS,
+  ...CODEX_MODEL_OPTIONS,
 ]);
 
-export function mergeCopilotModelOptions(liveCopilotOptions: AISelectOption[] | null | undefined) {
-  if (!liveCopilotOptions?.length) return AI_MODEL_OPTIONS;
+export function mergeCodexModelOptions(liveCodexOptions: AISelectOption[] | null | undefined) {
+  if (!liveCodexOptions?.length) return AI_MODEL_OPTIONS;
   return dedupeOptions([
-    ...liveCopilotOptions.map(option => ({ ...option, provider: 'copilot' })),
-    ...AI_MODEL_OPTIONS.filter(option => option.provider !== 'copilot'),
+    ...liveCodexOptions.map(option => ({ ...option, provider: 'openai-codex' })),
+    ...AI_MODEL_OPTIONS.filter(option => option.provider !== 'openai-codex'),
   ]);
 }
 
 export const PI_CLI_PROVIDER_OPTIONS: AISelectOption[] = [
   { label: 'MiniMax', value: 'minimax' },
-  { label: 'GitHub Copilot', value: 'github-copilot' },
+  { label: 'Codex', value: 'openai-codex' },
 ];
 
 export const PI_CLI_MODEL_OPTIONS: AISelectOption[] = [
+  { label: 'MiniMax M3', value: 'MiniMax-M3' },
   { label: 'MiniMax M2.7', value: 'MiniMax-M2.7' },
   { label: 'MiniMax M2.7 High Speed', value: 'MiniMax-M2.7-highspeed' },
-  ...COPILOT_MODEL_OPTIONS.map(option => ({
+  ...CODEX_MODEL_OPTIONS.map(option => ({
     ...option,
-    label: `Copilot / ${option.label}`,
-    provider: 'github-copilot',
+    label: `Codex / ${option.label}`,
+    provider: 'openai-codex',
   })),
 ];
 
 export const HUDSON_AI_DEV_MODEL_PRESETS: AIModelPreset[] = [
   {
-    label: 'Copilot / Gemini 3 Flash',
-    value: 'copilot:gemini-3-flash-preview',
-    provider: 'copilot',
-    model: 'gemini-3-flash-preview',
+    label: 'MiniMax / M3',
+    value: 'minimax:MiniMax-M3',
+    provider: 'minimax',
+    model: 'MiniMax-M3',
   },
   {
-    label: 'Copilot / Gemini 3.1 Pro',
-    value: 'copilot:gemini-3.1-pro-preview',
-    provider: 'copilot',
-    model: 'gemini-3.1-pro-preview',
-  },
-  {
-    label: 'Copilot / GPT-5.5',
-    value: 'copilot:gpt-5.5',
-    provider: 'copilot',
+    label: 'Codex / GPT-5.5',
+    value: 'openai-codex:gpt-5.5',
+    provider: 'openai-codex',
     model: 'gpt-5.5',
   },
   {
-    label: 'Copilot / Claude Sonnet 4.6',
-    value: 'copilot:claude-sonnet-4.6',
-    provider: 'copilot',
-    model: 'claude-sonnet-4.6',
-  },
-  {
-    label: 'Copilot / GPT-5.4',
-    value: 'copilot:gpt-5.4',
-    provider: 'copilot',
+    label: 'Codex / GPT-5.4',
+    value: 'openai-codex:gpt-5.4',
+    provider: 'openai-codex',
     model: 'gpt-5.4',
   },
   {
-    label: 'Copilot / GPT-5.3 Codex',
-    value: 'copilot:gpt-5.3-codex',
-    provider: 'copilot',
-    model: 'gpt-5.3-codex',
+    label: 'Codex / GPT-5.4 Mini',
+    value: 'openai-codex:gpt-5.4-mini',
+    provider: 'openai-codex',
+    model: 'gpt-5.4-mini',
   },
   {
-    label: 'Copilot / GPT-4o',
-    value: 'copilot:gpt-4o',
-    provider: 'copilot',
-    model: 'gpt-4o',
+    label: 'Codex / GPT-5.3 Codex Spark',
+    value: 'openai-codex:gpt-5.3-codex-spark',
+    provider: 'openai-codex',
+    model: 'gpt-5.3-codex-spark',
   },
   {
     label: 'Anthropic / Claude Sonnet 4',

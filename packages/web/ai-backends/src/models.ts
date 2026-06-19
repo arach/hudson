@@ -10,7 +10,7 @@
 import { getProviders, getModels, getEnvApiKey } from '@earendil-works/pi-ai';
 
 export interface AvailableModel {
-  /** pi-ai provider id, e.g. `anthropic`, `openrouter`, `github-copilot`. */
+  /** pi-ai provider id, e.g. `minimax`, `openai-codex`, `anthropic`, `openrouter`. */
   provider: string;
   /** pi-ai model id (keyed under the provider). */
   model: string;
