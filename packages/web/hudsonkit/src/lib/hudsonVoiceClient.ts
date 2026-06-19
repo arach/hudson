@@ -158,7 +158,8 @@ export type HudsonVoiceClientErrorCode =
   | 'daemon_error'
   | 'invalid_response'
   | 'stream_unavailable'
-  | 'session_id_missing';
+  | 'session_id_missing'
+  | 'unsupported';
 
 export class HudsonVoiceClientError extends Error {
   readonly code: HudsonVoiceClientErrorCode;
