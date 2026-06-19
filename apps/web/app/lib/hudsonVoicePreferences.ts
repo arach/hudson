@@ -23,6 +23,8 @@ export const HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_DEFAULT_PATH = join(
 export const HUDSON_VOICE_DEFAULT_TRANSCRIPTION_MODEL = 'parakeet:v3';
 export const HUDSON_VOICE_DEFAULT_LANGUAGE = 'en';
 export const HUDSON_VOICE_DEFAULT_MODE = 'push_to_talk';
+export const HUDSON_VOICE_MODES = ['push_to_talk', 'always_on'] as const;
+export type HudsonVoiceMode = typeof HUDSON_VOICE_MODES[number];
 
 export interface HudsonVoicePreferences {
   schemaVersion: number;
@@ -108,8 +110,20 @@ export function normalizeHudsonVoicePreferences(value: unknown): HudsonVoicePref
       cleanString(raw.preferredTranscriptionModelId) ?? HUDSON_VOICE_DEFAULT_TRANSCRIPTION_MODEL,
     preferredSynthesisModelId: cleanString(raw.preferredSynthesisModelId),
     preferredLanguage: cleanString(raw.preferredLanguage) ?? HUDSON_VOICE_DEFAULT_LANGUAGE,
-    mode: cleanString(raw.mode) ?? HUDSON_VOICE_DEFAULT_MODE,
+    mode: normalizeMode(raw.mode),
   };
+}
+
+function normalizeMode(value: unknown): HudsonVoiceMode {
+  const cleaned = cleanString(value);
+  if (cleaned === 'push_to_talk' || cleaned === 'always_on') return cleaned;
+  return HUDSON_VOICE_DEFAULT_MODE;
+}
+
+export function assertHudsonVoiceMode(value: unknown): HudsonVoiceMode {
+  const cleaned = cleanString(value);
+  if (cleaned === 'push_to_talk' || cleaned === 'always_on') return cleaned;
+  throw new Error(`Invalid Hudson voice mode: ${String(value)}`);
 }
 
 export function createHudsonVoiceSessionDefaults(

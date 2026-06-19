@@ -9,7 +9,7 @@ public enum HudsonVoiceRuntimeError: Error, LocalizedError, Equatable {
     public var errorDescription: String? {
         switch self {
         case .missing(let url):
-            return "Hudson voice runtime is not available at \(url.path). Launch Hudson Menu and try again."
+            return "Hudson voice runtime is not available at \(url.path). Launch the host app and try again."
         case .invalid(let reason):
             return "Hudson voice runtime is invalid: \(reason)"
         case .stale(let pid):

@@ -5,6 +5,7 @@ import {
 import {
   readHudsonVoicePreferences,
   writeHudsonVoicePreferences,
+  assertHudsonVoiceMode,
   type HudsonVoicePreferences,
 } from '@/app/lib/hudsonVoicePreferences';
 
@@ -26,6 +27,9 @@ export async function PUT(request: Request) {
     const settings = readSettingsPatch(body);
     return Response.json({ settings: writeHudsonVoicePreferences(settings) });
   } catch (error) {
+    if (error instanceof Error && error.message.startsWith('Invalid Hudson voice mode:')) {
+      return Response.json({ error: error.message }, { status: 400 });
+    }
     return jsonHudsonVoiceError(error);
   }
 }
@@ -44,7 +48,7 @@ function readSettingsPatch(body: unknown): Partial<HudsonVoicePreferences> {
     preferredTranscriptionModelId: clean(source.preferredTranscriptionModelId ?? source.modelId),
     preferredSynthesisModelId: clean(source.preferredSynthesisModelId),
     preferredLanguage: clean(source.preferredLanguage ?? source.language),
-    mode: clean(source.mode) ?? undefined,
+    mode: source.mode === undefined ? undefined : assertHudsonVoiceMode(source.mode),
   };
 }
 

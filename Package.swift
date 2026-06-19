@@ -142,6 +142,7 @@ if voiceEnabled {
                 "HudsonUI",
                 "HudsonObservability",
                 .product(name: "VoxEngine", package: voxPackage),
+                .product(name: "VoxService", package: voxPackage),
             ],
             path: src + "HudsonVoice"
         )

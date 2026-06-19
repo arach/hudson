@@ -121,4 +121,18 @@ describe('Hudson voice preferences', () => {
       },
     });
   });
+
+  it('settings route rejects invalid capture mode', async () => {
+    useTempPreferences();
+
+    const response = await putSettings(sameOriginRequest('/api/hudson-voice/v1/voice/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings: { mode: 'hands_free' } }),
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Invalid Hudson voice mode'),
+    });
+  });
 });
