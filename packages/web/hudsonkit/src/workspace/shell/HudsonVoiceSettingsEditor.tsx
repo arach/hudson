@@ -133,6 +133,48 @@ export function HudsonVoiceSettingsEditor({
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioUrlRef = useRef<string | null>(null);
   const previewRequestIdRef = useRef(0);
+  const voiceSettingsRef = useRef(voiceSettings);
+  const hydratedCaptureSettingsRef = useRef(false);
+
+  voiceSettingsRef.current = voiceSettings;
+
+  useEffect(() => {
+    if (!routes.voiceApiBase || hydratedCaptureSettingsRef.current) return;
+
+    let cancelled = false;
+    void fetch(`${routes.voiceApiBase}/v1/voice/settings`)
+      .then(async response => {
+        if (!response.ok || cancelled) return;
+        const payload = await response.json() as {
+          settings?: {
+            preferredInputDeviceId?: string | null;
+            preferredTranscriptionModelId?: string | null;
+            preferredLanguage?: string | null;
+            mode?: string;
+          };
+        };
+        if (!payload.settings || cancelled) return;
+
+        hydratedCaptureSettingsRef.current = true;
+        const settings = payload.settings;
+        onChange({
+          ...voiceSettingsRef.current,
+          inputDeviceId: settings.preferredInputDeviceId ?? '',
+          transcriptionModel: settings.preferredTranscriptionModelId
+            || voiceSettingsRef.current.transcriptionModel,
+          transcriptionLanguage: settings.preferredLanguage
+            || voiceSettingsRef.current.transcriptionLanguage,
+          captureMode: settings.mode === 'always_on' ? 'always_on' : 'push_to_talk',
+        });
+      })
+      .catch(() => {
+        // Keep local shell defaults when disk prefs are unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onChange, routes.voiceApiBase]);
 
   useEffect(() => {
     let cancelled = false;

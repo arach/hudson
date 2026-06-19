@@ -135,6 +135,7 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
                 isSelected: preferences.preferredInputDeviceId == device.uniqueID
             )
         }
+        try? writeInputDeviceCache(defaultDeviceId: defaultDeviceId)
     }
 
     public func setPreferredInputDevice(_ deviceId: String?) {
@@ -291,6 +292,26 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
             .appendingPathComponent("preferences.json")
     }
 
+    private func writeInputDeviceCache(defaultDeviceId: String?) throws {
+        let cacheURL = Self.defaultPreferencesURL()
+            .deletingLastPathComponent()
+            .appendingPathComponent("input-devices.json")
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: cacheURL.deletingLastPathComponent().path)
+
+        let cache = HudsonVoiceHostInputDeviceCache(
+            devices: inputDevices,
+            defaultDeviceId: defaultDeviceId,
+            updatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(cache)
+        try data.write(to: cacheURL, options: .atomic)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: cacheURL.path)
+    }
+
     private static func clean(_ value: String?) -> String? {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? nil : trimmed
@@ -388,6 +409,13 @@ public struct HudsonVoiceHostAudioDevice: Codable, Equatable, Sendable, Identifi
     public let name: String
     public let isDefault: Bool
     public let isSelected: Bool
+}
+
+private struct HudsonVoiceHostInputDeviceCache: Encodable {
+    let schemaVersion = 1
+    let devices: [HudsonVoiceHostAudioDevice]
+    let defaultDeviceId: String?
+    let updatedAt: String
 }
 
 public enum HudsonVoiceModelReadiness: Equatable, Sendable {

@@ -378,6 +378,7 @@ public struct HudsonVoiceSettingsView: View {
         let list = HudsonVoiceAudioDevices.listInputDevices(selectedDeviceId: preferences.preferredInputDeviceId)
         inputDevices = list.devices
         defaultInputDeviceId = list.defaultDeviceId
+        try? HudsonVoiceAudioDevices.writeInputDeviceCache(list)
     }
 
     private func saveInputDevice(_ rawDeviceId: String) {

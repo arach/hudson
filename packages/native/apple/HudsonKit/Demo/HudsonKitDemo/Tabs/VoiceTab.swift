@@ -18,6 +18,9 @@ struct VoiceTab: View {
                 HudVoicePanel(options: HudVoxLiveSessionOptions(clientId: "hudsonkit-demo"))
                     .frame(maxWidth: HudLayout.dialogWidth)
 
+                HudsonVoiceSettingsView(appName: "HudsonKit Demo")
+                    .frame(maxWidth: HudLayout.dialogWidth)
+
                 contractCard
             }
         }

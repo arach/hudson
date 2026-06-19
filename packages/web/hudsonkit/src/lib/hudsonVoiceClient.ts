@@ -28,6 +28,7 @@ export const HUDSON_VOICE_DAEMON_DEFAULT_WS_URL =
   `ws://${HUDSON_VOICE_DAEMON_DEFAULT_HOST}:${HUDSON_VOICE_DAEMON_DEFAULT_PORT}`;
 export const HUDSON_VOICE_API_PATHS = {
   health: '/health',
+  settings: '/v1/voice/settings',
   live: '/v1/voice/live',
   devices: '/v1/voice/devices',
   defaultDevice: '/v1/voice/devices/default',
@@ -79,6 +80,16 @@ export interface HudsonVoiceDeviceList {
   [key: string]: unknown;
 }
 
+export interface HudsonVoicePreferencesPayload {
+  schemaVersion: number;
+  preferredInputDeviceId: string | null;
+  preferredOutputDeviceId: string | null;
+  preferredTranscriptionModelId: string | null;
+  preferredSynthesisModelId: string | null;
+  preferredLanguage: string | null;
+  mode: string;
+}
+
 export type HudsonVoiceMode = 'push_to_talk' | 'always_on' | string;
 
 export interface HudsonVoiceLiveSessionRequest {
@@ -108,6 +119,10 @@ export interface HudsonVoiceClient {
   health: () => Promise<HudsonVoiceHealth>;
   probe: () => Promise<boolean>;
   availability: () => Promise<HudsonVoiceAvailability>;
+  getSettings: () => Promise<{ settings: HudsonVoicePreferencesPayload }>;
+  updateSettings: (
+    patch: Partial<HudsonVoicePreferencesPayload> | Record<string, string | null>,
+  ) => Promise<{ settings: HudsonVoicePreferencesPayload }>;
   listDevices: () => Promise<HudsonVoiceDeviceList>;
   setDefaultDevice: (deviceId: string) => Promise<HudsonVoiceDeviceList>;
   startLiveSession: (request?: HudsonVoiceLiveSessionRequest) => Promise<HudsonVoiceLiveSession>;
@@ -867,6 +882,17 @@ export function createHudsonVoiceClient(options: HudsonVoiceClientOptions): Huds
 
     availability: () => probeHudsonVoiceAvailability(createHudsonVoiceClient(options)),
 
+    getSettings: () => requestJson<{ settings: HudsonVoicePreferencesPayload }>(
+      options,
+      HUDSON_VOICE_API_PATHS.settings,
+    ),
+
+    updateSettings: (patch) =>
+      requestJson<{ settings: HudsonVoicePreferencesPayload }>(options, HUDSON_VOICE_API_PATHS.settings, {
+        method: 'PUT',
+        body: JSON.stringify({ settings: patch }),
+      }),
+
     listDevices: () => requestJson<HudsonVoiceDeviceList>(options, HUDSON_VOICE_API_PATHS.devices),
 
     setDefaultDevice: (deviceId: string) =>
@@ -945,6 +971,20 @@ export function createHudsonVoiceDaemonClient(
     },
 
     availability: () => probeHudsonVoiceAvailability(createHudsonVoiceDaemonClient(options)),
+
+    getSettings: async () => {
+      throw new HudsonVoiceClientError(
+        'unsupported',
+        'Hudson voice settings are available through the /api/hudson-voice proxy.',
+      );
+    },
+
+    updateSettings: async () => {
+      throw new HudsonVoiceClientError(
+        'unsupported',
+        'Hudson voice settings are available through the /api/hudson-voice proxy.',
+      );
+    },
 
     listDevices: async () => ({ devices: [] }),
 

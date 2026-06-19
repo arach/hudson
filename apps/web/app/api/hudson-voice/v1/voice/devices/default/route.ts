@@ -2,6 +2,7 @@ import {
   assertHudsonVoiceSameOriginRequest,
   jsonHudsonVoiceError,
 } from '@/app/lib/hudsonVoiceRuntime';
+import { buildHudsonVoiceDeviceList } from '@/app/lib/hudsonVoiceDeviceCache';
 import { writeHudsonVoicePreferences } from '@/app/lib/hudsonVoicePreferences';
 
 export const runtime = 'nodejs';
@@ -14,20 +15,19 @@ export async function PUT(request: Request) {
     const preferences = writeHudsonVoicePreferences({
       preferredInputDeviceId: deviceId,
     });
+    const { devices, defaultDeviceId, source } = buildHudsonVoiceDeviceList(preferences.preferredInputDeviceId);
+
     return Response.json({
-      devices: preferences.preferredInputDeviceId
-        ? [{
-            id: preferences.preferredInputDeviceId,
-            name: 'Selected Hudson Voice input',
-            isSelected: true,
-            isDefault: false,
-            source: 'hudson-preferences',
-          }]
-        : [],
+      devices,
       selectedDeviceId: preferences.preferredInputDeviceId,
-      defaultDeviceId: null,
-      source: 'hudson-preferences',
+      defaultDeviceId,
+      source,
       settings: preferences,
+      input: {
+        selectedDeviceId: preferences.preferredInputDeviceId,
+        selectedDeviceName: devices.find(device => device.id === preferences.preferredInputDeviceId)?.name ?? null,
+        defaultDeviceId,
+      },
     });
   } catch (error) {
     return jsonHudsonVoiceError(error);

@@ -1,109 +1,42 @@
 # HUD-013 — Hudson voice settings and preferences
 
-**Status**: Draft — **Go for implementation** after Codex review (`ref:8-pxngax`); tighten contracts below before marking Accepted.
+**Status**: Draft (implementing on `work/hud-013-voice-settings`)
 **Owner**: Arach
-**Targets**: `app/lib/hudsonVoicePreferences.ts`, `app/api/hudson-voice/**`, `packages/web/hudsonkit` voice settings UI, Apple `HudsonVoice`, Hudson Menu / native hosts
-**Related**: `specs/hud-012-hudson-voice-daemon.md`, `docs/voice.md`, `packages/web/hudsonkit/src/workspace/shell/HudsonVoiceSettingsEditor.tsx`
+**Depends on**: `specs/hud-012-hudson-voice-daemon.md` (daemon + live session transport)
+**Targets**: `app/lib/hudsonVoicePreferences.ts`, `app/api/hudson-voice/**`, `packages/web/hudsonkit`, `packages/native/apple/HudsonKit/Sources/HudsonVoice`, Hudson Menu host
 
 ## Summary
 
-HUD-012 defines Hudson-owned voice daemon ownership and the live-session API. **HUD-013 completes the operator settings layer**: persisted capture preferences, real device enumeration, a settings API, web UI for input/capture, and native settings surfaces that any Hudson host can ship.
-
-The goal is that a user can configure voice once in Hudson and have web + native surfaces agree on microphone, capture mode, model, and language without opening Vox or editing JSON by hand.
+HUD-013 adds the **operator settings layer** on top of HUD-012: persisted capture preferences, a settings API, web + native settings UI, and a native→web device cache so microphone pickers work without standalone Vox.
 
 ```
-Hudson Web settings UI ──┐
-Native settings view  ───┼──> preferences.json (Hudson/Voice)
-                         │         │
-                         │         └── mirror ──> Hudson/Vox/preferences.json
-                         │
-Hudson API proxy ────────┴──> RPC to embedded runtime (devices, live sessions)
+Web HudsonVoiceSettingsEditor ──┐
+Native HudsonVoiceSettingsView ──┼── preferences.json  (Hudson/Voice)
+Hudson Menu / API routes      ───┘         │
+                                           └── mirror ──► Vox/preferences.json
+Native host (AVCaptureDevice) ──► input-devices.json (read by web GET /devices)
 ```
 
-## Problem on `main` today
+## Terminology
 
-| Area | `main` behavior | Gap |
-|------|-----------------|-----|
-| `GET /v1/voice/devices` | Returns `{ devices: [] }` | No real enumeration |
-| `PUT /v1/voice/devices/default` | Echoes `deviceId`, empty list | No persistence |
-| Settings API | Missing | No Hudson preference contract |
-| `HudsonVoiceSettingsEditor` | Reply/TTS only | No mic, mode, model, or runtime status |
-| Native `HudsonVoice` | `HudVoicePanel`, `HudVoxLiveSession` | No preferences store, device helpers, or settings view |
-| Host lifecycle | `HudsonVoiceDaemonHost` in Hudson Menu | Does not load/mirror preferences on start; no reusable `HudsonVoiceRuntimeHost` for other native apps |
+| Name | Where | Role |
+|------|-------|------|
+| **`HudsonVoicePreferences`** | `app/lib/hudsonVoicePreferences.ts`, `HudsonVoice/HudsonVoicePreferences.swift` | Canonical capture prefs (disk JSON) |
+| **`HudsonVoiceHostPreferences`** | `HudsonVoiceDaemonHost.swift` (Hudson Menu) | Same JSON shape as kit prefs; Menu-local type until Menu imports HudsonKit prefs |
+| **`VoiceSettings`** | `packages/web/hudsonkit/src/types/voice.ts` | Shell UI state: capture fields **+** reply/TTS fields; capture fields hydrate from disk |
+| **`hudson-voice-runtime.json`** | `~/Library/Application Support/Hudson/Vox/` | HUD-012 private capability file (not a settings store) |
+| **`input-devices.json`** | `~/Library/Application Support/Hudson/Voice/` | Native-written mic enumeration cache for web |
 
-HUD-012 remains **Draft**; this spec is the settings slice that makes the daemon usable as a product surface.
+## On-disk layout
 
-## Decisions
+| Path | Writer | Mode |
+|------|--------|------|
+| `~/Library/Application Support/Hudson/Voice/preferences.json` | Web API, native prefs APIs | `0600` (dir `0700`) |
+| `~/Library/Application Support/Hudson/Vox/preferences.json` | Mirror on every Hudson prefs save | `0600` |
+| `~/Library/Application Support/Hudson/Voice/input-devices.json` | Native host / `HudsonVoiceAudioDevices` | `0600` |
+| `~/Library/Application Support/Hudson/Vox/hudson-voice-runtime.json` | HUD-012 host only | `0600` |
 
-1. **Hudson owns preference storage** at `~/Library/Application Support/Hudson/Voice/preferences.json` (mode `0600`, directory `0700`).
-2. **Mirror into embedded Vox home** at `~/Library/Application Support/Hudson/Vox/preferences.json` on every write so the runtime picks up device/model defaults without web callers touching Vox paths directly.
-3. **Web never writes Vox files** — only the Node preferences module (API routes) and native Swift preference APIs write disk.
-4. **Device enumeration is native-first** — Swift uses `AVCaptureDevice`; the Next proxy forwards RPC/`health` enrichment. Web lists devices only through `/api/hudson-voice/v1/voice/devices`.
-5. **Two settings domains stay separate** (see [Settings merge precedence](#settings-merge-precedence)):
-   - `HudsonVoicePreferences` on disk — capture/input source of truth
-   - `VoiceSettings` (shell/localStorage) — UI cache for capture fields **plus** reply speech (provider, voice, rate, behavior presets)
-   Web UI shows both in one editor but persists capture fields through the Hudson API, not only localStorage.
-6. **`HudsonVoiceRuntimeHost`** — reusable in-process Vox host for native apps (HudsonKit Lab, future shells). Hudson Menu keeps `HudsonVoiceDaemonHost` but shares preference + capability file shape with the kit host.
-7. **No standalone Vox dependency** for first-party settings paths.
-
-## Settings merge precedence
-
-| Layer | Role | Precedence |
-|-------|------|------------|
-| `~/Library/.../Hudson/Voice/preferences.json` | Capture source of truth | **Wins** for `preferredInputDeviceId`, `mode`, `preferredTranscriptionModelId`, `preferredLanguage` |
-| `VoiceSettings` in shell localStorage | Fast UI + reply speech | Hydrate capture fields from `GET /v1/voice/settings` on editor mount; write capture changes via API first, then mirror into `VoiceSettings` |
-| Embedded Vox mirror | Runtime consumption | Write-only derivative; never read back by web |
-
-On editor load:
-
-1. `GET /api/hudson-voice/health` (runtime + permission summary)
-2. `GET /api/hudson-voice/v1/voice/settings` (disk preferences)
-3. `GET /api/hudson-voice/v1/voice/devices` (device list payload)
-4. Merge into `VoiceSettings` capture fields (`inputDeviceId`, `captureMode`, `transcriptionModel`, `transcriptionLanguage`)
-
-`VoiceSettings` already defines capture fields in `packages/web/hudsonkit/src/types/voice.ts`; HUD-013 wires them to Hudson disk, not new types.
-
-Live sessions (`WorkspaceAI`, `useHudsonVoiceInput`, `useVoiceInput`) read **merged** `VoiceSettings` at session start. Disk preferences must be reflected there after hydration.
-
-## Device enumeration contract
-
-v1 does **not** require the embedded Vox runtime to enumerate macOS devices. Enumeration is **host-native**:
-
-| Runtime state | `GET /v1/voice/devices` behavior |
-|---------------|----------------------------------|
-| Any | Always includes persisted `selectedDeviceId` + `settings` from disk |
-| Hudson Menu / native host running | Host may enrich via `AVCaptureDevice` locally; web API returns preference-backed list until a host-side bridge exports full enumeration |
-| Runtime up, RPC exposes devices later | Optional future: `callHudsonVoiceRuntimeRpc('devices.list')` with native fallback |
-
-`PUT /v1/voice/devices/default`:
-
-- `deviceId: null` → clear preference (system default)
-- Non-null → accept id (v1: trust client; native settings UI validates against `AVCaptureDevice`)
-- v1.1: reject unknown ids when a host enumeration list is available in the same process
-
-Unavailable runtime: device routes **still succeed** (preferences-only); live sessions fail separately with `runtime_missing`.
-
-## Concurrency and atomic writes
-
-- All writers use **atomic replace** (`writeFileSync(..., { flag: 'w' })` / `Data.write(..., .atomic)`).
-- Directory mode `0700`, file mode `0600`.
-- **Last writer wins** for the Hudson preferences file; no file locking in v1.
-- Native host and web API may write the same file; both must read-merge-write the full document (no blind patch files).
-- Vox mirror is rewritten on every Hudson preference save; treat it as derived state.
-
-## Validation (`PUT /v1/voice/settings`)
-
-| Field | Rule |
-|-------|------|
-| `mode` | `push_to_talk` or `always_on` only; ignore/reject others with `400` |
-| `preferredLanguage` | Non-empty string ≤ 16 chars |
-| `preferredTranscriptionModelId` | Non-empty string ≤ 128 chars |
-| `preferredInputDeviceId` / `preferredOutputDeviceId` | `null` or non-empty string |
-| Unknown keys | Ignored |
-
-## Preference schema (v1)
-
-Path: `~/Library/Application Support/Hudson/Voice/preferences.json`
+### `preferences.json` (schema v1)
 
 ```json
 {
@@ -117,16 +50,16 @@ Path: `~/Library/Application Support/Hudson/Voice/preferences.json`
 }
 ```
 
-| Field | Type | Default | Notes |
-|-------|------|---------|-------|
-| `preferredInputDeviceId` | `string \| null` | `null` | `null` = system default mic |
-| `preferredOutputDeviceId` | `string \| null` | `null` | Reserved; not exposed in v1 UI |
-| `preferredTranscriptionModelId` | `string \| null` | `parakeet:v3` | Passed to live session RPC |
-| `preferredSynthesisModelId` | `string \| null` | `null` | Mirror hook for Vox TTS prefs |
-| `preferredLanguage` | `string \| null` | `en` | BCP-47-ish hint |
-| `mode` | `push_to_talk \| always_on` | `push_to_talk` | Default session mode |
+| Field | Values | Default |
+|-------|--------|---------|
+| `preferredInputDeviceId` | `string \| null` | `null` (system default) |
+| `preferredOutputDeviceId` | `string \| null` | `null` (reserved) |
+| `preferredTranscriptionModelId` | string | `parakeet:v3` |
+| `preferredSynthesisModelId` | `string \| null` | `null` |
+| `preferredLanguage` | string | `en` |
+| `mode` | `push_to_talk` \| `always_on` | `push_to_talk` |
 
-Embedded Vox mirror (written atomically on save):
+### Vox mirror (`Vox/preferences.json`)
 
 ```json
 {
@@ -138,161 +71,168 @@ Embedded Vox mirror (written atomically on save):
 }
 ```
 
-Env overrides (tests + CI):
+### Input device cache (`input-devices.json`)
 
-| Variable | Purpose |
-|----------|---------|
-| `HUDSON_VOICE_PREFERENCES_PATH` | Override Hudson preferences file |
-| `HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH` | Override Vox mirror path |
-| `HUDSON_VOICE_RUNTIME_PATH` | Existing runtime capability file (HUD-012) |
-
-## API additions (v1)
-
-All routes stay under `/api/hudson-voice`, same-origin only.
-
-### `GET /v1/voice/settings`
-
-Returns `{ settings: HudsonVoicePreferences }` from disk (defaults if missing).
-
-### `PUT /v1/voice/settings`
-
-Body: `{ settings: Partial<HudsonVoicePreferences> }` (flat keys also accepted).
-
-Returns merged normalized `{ settings }`. Writes Hudson file + Vox mirror.
-
-### `GET /v1/voice/devices` (replace stub)
-
-Returns:
+Written by native code after `AVCaptureDevice` enumeration:
 
 ```json
 {
+  "schemaVersion": 1,
   "devices": [
     { "id": "…", "name": "MacBook Pro Microphone", "isDefault": true, "isSelected": false }
   ],
-  "selectedDeviceId": "…",
-  "defaultDeviceId": "…"
+  "defaultDeviceId": "…",
+  "updatedAt": "2026-06-19T12:00:00.000Z"
 }
 ```
 
-Implementation: RPC to embedded runtime when available; enrich from `readHudsonVoicePreferences()` for selection. Native host may also answer via health `input` block.
+## Environment overrides
 
-### `PUT /v1/voice/devices/default` (replace stub)
+| Variable | Default |
+|----------|---------|
+| `HUDSON_VOICE_PREFERENCES_PATH` | `…/Hudson/Voice/preferences.json` |
+| `HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH` | `…/Hudson/Vox/preferences.json` |
+| `HUDSON_VOICE_INPUT_DEVICES_PATH` | `…/Hudson/Voice/input-devices.json` |
+| `HUDSON_VOICE_RUNTIME_PATH` | `…/Hudson/Vox/hudson-voice-runtime.json` (HUD-012) |
 
-Body: `{ deviceId: string | null }`.
+## HTTP API
 
-Validates device exists when non-null, updates `preferredInputDeviceId`, mirrors to Vox, returns device list payload.
+**Base**: `/api/hudson-voice` (same-origin only; see `app/lib/hudsonVoiceRuntime.ts`)
 
-### `GET /health` enrichment
+**Client paths** (`packages/web/hudsonkit/src/lib/hudsonVoiceClient.ts` → `HUDSON_VOICE_API_PATHS`):
 
-Include:
+| Constant | Path |
+|----------|------|
+| `health` | `/health` |
+| `settings` | `/v1/voice/settings` |
+| `devices` | `/v1/voice/devices` |
+| `defaultDevice` | `/v1/voice/devices/default` |
+| `live` | `/v1/voice/live` |
+| `liveStop(id)` | `/v1/voice/live/{id}/stop` |
+| `liveCancel(id)` | `/v1/voice/live/{id}/cancel` |
+
+Host wiring: `voiceApiBase: '/api/hudson-voice'` in `app/lib/hudsonShellEnvironment.tsx`.
+
+### `GET /api/hudson-voice/health`
+
+HUD-012 health RPC + HUD-013 enrichments:
 
 ```json
 {
+  "service": "hudson-voice",
+  "status": "ready",
   "permissions": { "microphone": "granted" },
   "input": {
     "selectedDeviceId": "…",
-    "selectedDeviceName": "…"
+    "selectedDeviceName": "…",
+    "defaultDeviceId": null
   },
-  "settings": { /* HudsonVoicePreferences subset */ }
+  "settings": { /* HudsonVoicePreferences */ },
+  "model": { "selectedModelId": "parakeet:v3", "readiness": { "state": "ready" } },
+  "troubleshooting": { "runtimeCapabilityPath": "…", "runtimeAlive": true }
 }
 ```
 
-## Web UI (`HudsonVoiceSettingsEditor`)
+Returns `503` with structured error when runtime capability file is missing (disk prefs unchanged).
 
-Add a **Capture** section above existing reply controls:
+### `GET /api/hudson-voice/v1/voice/settings`
 
-| Control | Binds to | Persists via |
-|---------|----------|--------------|
-| Runtime status row | `GET /health` | read-only |
-| Microphone permission | `health.permissions.microphone` | read-only + link copy |
-| Input device | `VoiceSettings.inputDeviceId` + devices API | `PUT …/devices/default` + preferences |
-| Capture mode | `VoiceSettings.captureMode` | `PUT …/settings` (`mode`) |
-| Transcription model | select | `PUT …/settings` |
-| Language | select | `PUT …/settings` |
+`{ "settings": HudsonVoicePreferences }` — defaults when file absent.
 
-Existing reply/TTS section unchanged (provider, model, voice preview, behavior presets).
+### `PUT /api/hudson-voice/v1/voice/settings`
 
-`useVoiceInput` / `useHudsonVoiceInput` / `WorkspaceAI` pass `deviceId`, `modelId`, `language`, `mode` from hydrated `VoiceSettings` when starting live sessions.
+Body: `{ "settings": { … } }` or flat preference keys.
 
-## Native (`HudsonVoice` Swift module)
+Accepts aliases: `inputDeviceId` → `preferredInputDeviceId`, `language` → `preferredLanguage`, `modelId` → `preferredTranscriptionModelId`.
 
-New public types:
+Returns `{ "settings" }` after merge + mirror. Invalid `mode` → `400`.
 
-| Type | Responsibility |
-|------|----------------|
-| `HudsonVoicePreferences` | Codable store + load/save + Vox mirror |
-| `HudsonVoiceAudioDevices` | `AVCaptureDevice` enumeration + set preferred input |
-| `HudsonVoiceRuntime` | Read/validate `hudson-voice-runtime.json` capability |
-| `HudsonVoiceRuntimeHost` | Start/stop embedded `VoxRuntimeService`, write capability, persist prefs on start |
-| `HudsonVoiceSettingsView` | SwiftUI settings: runtime status, mic permission, input/mode/model/language |
+### `GET /api/hudson-voice/v1/voice/devices`
 
-`Package.swift`: add `VoxService` product to `HudsonVoice` target (already used by Hudson Menu host).
+1. Read `input-devices.json` when present (native enumeration).
+2. Else fall back to preference-only list (selected device stub).
+3. Always include `selectedDeviceId`, `defaultDeviceId`, `settings`.
 
-### Host integration
+Works **without** a running runtime (preferences + cache only).
 
-| Host | Change |
-|------|--------|
-| **Hudson Menu** (`HudsonVoiceDaemonHost`) | On start: load preferences, mirror to Vox, apply device RPC defaults; expose settings entry |
-| **HudsonKit Lab / embedders** | May use `HudsonVoiceRuntimeHost.shared` instead of duplicating daemon bootstrap |
+### `PUT /api/hudson-voice/v1/voice/devices/default`
 
-Error copy: prefer **"Launch the host app"** over **"Launch Hudson Menu"** when the kit must work outside Menu-only branding.
+Body: `{ "deviceId": string | null }` (alias: `inputDeviceId`).
 
-## Data flow
+Updates `preferredInputDeviceId`, mirrors to Vox, returns same shape as `GET /devices`.
 
-### Save input device (web)
+v1: does not reject unknown device ids on web (native UI validates via `AVCaptureDevice`).
 
-1. User picks mic in `HudsonVoiceSettingsEditor`
-2. `PUT /api/hudson-voice/v1/voice/devices/default`
-3. Node writes `preferences.json` + Vox mirror
-4. Optional RPC to runtime to apply active input route
-5. UI refreshes `GET /devices` + `GET /health`
+### `POST /api/hudson-voice/v1/voice/live`
 
-### Start live session
+Merges request body with disk preferences via `createHudsonVoiceSessionDefaults()` before RPC `transcribe.startSession`.
 
-1. Caller (`WorkspaceAI`, terminal, `useHudsonVoiceInput`) reads merged settings
-2. `POST /v1/voice/live` body includes `modelId`, `language`, `mode`, `deviceId` when set
-3. Proxy forwards to embedded Vox JSON-RPC with auth token from capability file
+## Settings merge (web)
+
+| Concern | Source of truth | UI field (`VoiceSettings`) |
+|---------|-------------------|----------------------------|
+| Input device | `preferences.preferredInputDeviceId` | `inputDeviceId` (`''` = default) |
+| Capture mode | `preferences.mode` | `captureMode` |
+| Transcription model | `preferences.preferredTranscriptionModelId` | `transcriptionModel` |
+| Language | `preferences.preferredLanguage` | `transcriptionLanguage` |
+| Reply speech | shell localStorage only | `speakReplies`, `replyProvider`, … |
+
+**Hydration** (`HudsonVoiceSettingsEditor` mount):
+
+1. `GET …/health` + `GET …/devices` (status + device list)
+2. `GET …/settings` → merge capture fields into `VoiceSettings` via `onChange`
+3. User edits capture → `PUT …/settings` or `PUT …/devices/default` first, then update local `VoiceSettings`
+
+**Live sessions** (`WorkspaceAI`, `useVoiceInput`, `useHudsonVoiceInput`) use hydrated `VoiceSettings` for `deviceId`, `modelId`, `language`, `mode`.
+
+## Native (`HudsonVoice` module)
+
+| Type | Role |
+|------|------|
+| `HudsonVoicePreferences` | Load/save prefs + Vox mirror |
+| `HudsonVoiceAudioDevices` | `AVCaptureDevice` list/set preferred + write `input-devices.json` |
+| `HudsonVoiceRuntime` | Read `hudson-voice-runtime.json` |
+| `HudsonVoiceRuntimeHost` | Embed `VoxRuntimeService` for kit apps |
+| `HudsonVoiceSettingsView` | SwiftUI capture settings |
+
+**Hosts**
+
+| Host | Integration |
+|------|-------------|
+| Hudson Menu (`HudsonVoiceDaemonHost`) | Start/stop runtime, menu UI, write device cache on refresh |
+| HudsonKit Demo (`VoiceTab`) | `HudsonVoiceSettingsView` beside `HudVoicePanel` |
+
+`Package.swift`: `HudsonVoice` links `VoxEngine` + `VoxService`.
+
+## Concurrency
+
+- Atomic file replace on all writers; last writer wins (no lock v1).
+- Web API read-merge-writes full `preferences.json` document.
 
 ## Out of scope (v1)
 
-- Output device picker UI (field reserved in schema)
-- `/v1/voice/models` catalog endpoint (hardcode Parakeet v3 + passthrough custom id)
-- iOS background audio / always-on policy beyond enum storage
-- Replacing `HudsonVoiceDaemonHost` entirely with `HudsonVoiceRuntimeHost` in Menu (share logic, keep Menu-specific lifecycle UI)
-- Windows/Linux hosts
+- Output device UI
+- Dedicated `/v1/voice/models` route (model list via health RPC)
+- Replacing Menu host with `HudsonVoiceRuntimeHost`
+- Non-macOS hosts
 
 ## Acceptance criteria
 
-1. With Hudson Menu running, `GET /api/hudson-voice/v1/voice/devices` returns ≥1 real device on macOS.
-2. Selecting a mic in web settings survives reload and is reflected in `GET /health` `input`.
-3. `PUT /v1/voice/settings` updates mode/model/language; live sessions inherit defaults.
-4. `HudsonVoiceSettingsView` in HudsonKit Demo/Lab shows the same preferred input as web.
-5. Preferences file permissions: dir `0700`, file `0600`.
-6. Unit tests: `hudsonVoicePreferences` normalize/mirror; device route validation; preferences round-trip; invalid `mode` rejected.
-7. Integration: editor hydration from `GET /settings`; offline health returns structured error without corrupting disk.
-8. No regression to existing reply/TTS settings or live NDJSON session stream.
+1. Native host running → `GET /api/hudson-voice/v1/voice/devices` returns enumerated mics from `input-devices.json`.
+2. Web capture settings hydrate from `GET /settings` and survive reload.
+3. `PUT /settings` with invalid `mode` returns `400`.
+4. `HudsonVoiceSettingsView` and web editor show the same preferred input after save.
+5. `bun test test/lib/hudson-voice-preferences.test.ts` passes.
+6. Live sessions inherit disk defaults when request omits `deviceId` / `modelId` / `mode` / `language`.
 
-## Codex review (2026-06-19)
+## Implementation checklist
 
-**Verdict:** No-go for Accepted until contracts above landed; **go** to implement with those additions.
-
-Incorporated feedback: settings precedence, device enumeration ownership, atomic write semantics, validation table, existing `VoiceSettings` fields.
-
-## Implementation plan
-
-1. Land `app/lib/hudsonVoicePreferences.ts` + tests
-2. Replace device/settings API stubs with real handlers
-3. Enrich health + wire live route defaults from preferences
-4. Extend `HudsonVoiceSettingsEditor` capture section
-5. Add Swift preferences, devices, runtime reader, runtime host, settings view
-6. Integrate Hudson Menu host start path + `Package.swift` dependency
-7. Update `docs/voice.md` settings section; mark HUD-013 **Accepted** when shipped
-
-## Provenance
-
-Recovered from branch commit `93539f9` (*Add Hudson-owned voice runtime settings*) plus stashed WIP:
-
-- `HudsonVoiceRuntimeHost.swift`
-- `HudsonVoiceSettingsView.swift`
-- `Package.swift` (`VoxService` link)
-- Minor `HudsonVoiceRuntime.swift` error-string tweak
+- [x] `hudsonVoicePreferences.ts` + settings route
+- [x] Health enrichment + live session defaults
+- [x] `HudsonVoiceSettingsEditor` capture section
+- [x] Swift prefs, runtime, runtime host, settings view
+- [x] Menu host prefs + device refresh
+- [x] `input-devices.json` cache (native write + web read)
+- [x] Editor hydration from `GET /settings`
+- [x] `HUDSON_VOICE_API_PATHS.settings` + client helpers
+- [x] Demo `VoiceTab` settings surface

@@ -1,6 +1,6 @@
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
 import { afterEach, describe, expect, it } from 'vitest';
 import {
   HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH_ENV,
@@ -15,12 +15,15 @@ import { GET as getSettings, PUT as putSettings } from '@/app/api/hudson-voice/v
 const tempDirs: string[] = [];
 const originalPreferencesPath = process.env[HUDSON_VOICE_PREFERENCES_PATH_ENV];
 const originalMirrorPath = process.env[HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH_ENV];
+const originalDevicesPath = process.env.HUDSON_VOICE_INPUT_DEVICES_PATH;
 
 afterEach(() => {
   if (originalPreferencesPath === undefined) delete process.env[HUDSON_VOICE_PREFERENCES_PATH_ENV];
   else process.env[HUDSON_VOICE_PREFERENCES_PATH_ENV] = originalPreferencesPath;
   if (originalMirrorPath === undefined) delete process.env[HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH_ENV];
   else process.env[HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_PATH_ENV] = originalMirrorPath;
+  if (originalDevicesPath === undefined) delete process.env.HUDSON_VOICE_INPUT_DEVICES_PATH;
+  else process.env.HUDSON_VOICE_INPUT_DEVICES_PATH = originalDevicesPath;
 
   for (const dir of tempDirs.splice(0)) {
     rmSync(dir, { recursive: true, force: true });
@@ -86,6 +89,32 @@ describe('Hudson voice preferences', () => {
     await expect(getResponse.json()).resolves.toMatchObject({
       selectedDeviceId: 'mic-route',
       devices: [{ id: 'mic-route', isSelected: true }],
+    });
+  });
+
+  it('device route prefers native input-devices cache when present', async () => {
+    const { preferencesPath } = useTempPreferences();
+    const devicesPath = join(dirname(preferencesPath), 'input-devices.json');
+    process.env.HUDSON_VOICE_INPUT_DEVICES_PATH = devicesPath;
+    mkdirSync(dirname(devicesPath), { recursive: true });
+    writeFileSync(devicesPath, JSON.stringify({
+      schemaVersion: 1,
+      devices: [
+        { id: 'mic-a', name: 'Desk Mic', isDefault: false },
+        { id: 'mic-b', name: 'MacBook Mic', isDefault: true },
+      ],
+      defaultDeviceId: 'mic-b',
+      updatedAt: '2026-06-19T12:00:00.000Z',
+    }));
+
+    const response = await getDevices(sameOriginRequest('/api/hudson-voice/v1/voice/devices'));
+    await expect(response.json()).resolves.toMatchObject({
+      source: 'native-cache',
+      defaultDeviceId: 'mic-b',
+      devices: [
+        { id: 'mic-a', name: 'Desk Mic' },
+        { id: 'mic-b', name: 'MacBook Mic', isDefault: true },
+      ],
     });
   });
 

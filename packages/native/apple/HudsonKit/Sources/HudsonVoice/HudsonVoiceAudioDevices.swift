@@ -60,7 +60,38 @@ public enum HudsonVoiceAudioDevices {
         var preferences = try HudsonVoicePreferences.load(from: preferencesURL)
         preferences.preferredInputDeviceId = cleaned
         try preferences.save(to: preferencesURL)
+        try writeInputDeviceCache(list)
         return preferences.normalized()
+    }
+
+    public static func writeInputDeviceCache(
+        _ list: HudsonVoiceAudioDeviceList,
+        to url: URL = defaultInputDevicesCacheURL
+    ) throws {
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.deletingLastPathComponent().path)
+
+        let cache = InputDeviceCacheDocument(
+            devices: list.devices,
+            defaultDeviceId: list.defaultDeviceId,
+            updatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(cache)
+        try data.write(to: url, options: .atomic)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+    }
+
+    public static var defaultInputDevicesCacheURL: URL {
+        HudsonVoicePreferences.defaultPreferencesDirectoryURL
+            .appendingPathComponent("input-devices.json")
+    }
+
+    public static func refreshInputDeviceCache(selectedDeviceId: String? = nil) throws {
+        let list = listInputDevices(selectedDeviceId: selectedDeviceId)
+        try writeInputDeviceCache(list)
     }
 
     private static func clean(_ value: String?) -> String? {
@@ -78,4 +109,11 @@ public enum HudsonVoiceAudioDeviceError: Error, LocalizedError, Equatable {
             return "Hudson Voice input device was not found: \(id)"
         }
     }
+}
+
+private struct InputDeviceCacheDocument: Encodable {
+    let schemaVersion = 1
+    let devices: [HudsonVoiceAudioDevice]
+    let defaultDeviceId: String?
+    let updatedAt: String
 }
