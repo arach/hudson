@@ -7,12 +7,12 @@ import HudsonObservability
 public enum HudEdgeSheetDefaults {
     /// Black scrim opacity. Mirrors `HudSurface.scrim` (0.45) — heavy enough to
     /// recede the canvas without fully blacking it out.
-    public static let scrimDim: Double = 0.45
+    public static var scrimDim: Double { 0.45 }
     /// Default container fraction for `.leading` / `.trailing` sheets — a tall
     /// reading column.
-    public static let horizontalFraction: CGFloat = 0.65
+    public static var horizontalFraction: CGFloat { 0.65 }
     /// Default container fraction for `.top` / `.bottom` sheets — a wide drawer.
-    public static let verticalFraction: CGFloat = 0.76
+    public static var verticalFraction: CGFloat { 0.76 }
 }
 
 /// Edge-switchable modal sheet: the *same* content slides in from a chosen

@@ -82,6 +82,8 @@ targets:
         product: HudsonShell
       - package: HudsonKit
         product: HudsonAI
+      - package: HudsonKit
+        product: HudsonVoice
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios
@@ -89,6 +91,7 @@ targets:
         CURRENT_PROJECT_VERSION: "1"
         TARGETED_DEVICE_FAMILY: "1,2"
         SWIFT_VERSION: "5.9"
+        SWIFT_ACTIVE_COMPILATION_CONDITIONS: "$(inherited) HUDSON_VOICE"
         IPHONEOS_DEPLOYMENT_TARGET: "17.0"
         CODE_SIGN_IDENTITY: ""
         CODE_SIGNING_REQUIRED: NO

@@ -45,23 +45,27 @@ public struct HudTheme: Sendable, Equatable {
     /// The default Hudson theme — the dark surface aesthetic baked into
     /// `HudPalette` since day one. Mirrors the static enums exactly so
     /// uncustomized apps see no visual change.
-    public static let `default` = HudTheme(
-        palette:  .default,
-        hairline: .default,
-        radius:   .default,
-        focus:    .default
-    )
+    public static var `default`: HudTheme {
+        HudTheme(
+            palette:  .default,
+            hairline: .default,
+            radius:   .default,
+            focus:    .default
+        )
+    }
 
     /// Light-theme stub. Light mode is on the roadmap; the values here are
     /// placeholders that approximate a light surface so apps can opt in
     /// early and feedback can shape the final values. Don't ship this as
     /// the user-facing light theme yet.
-    public static let lightDraft = HudTheme(
-        palette:  .lightDraft,
-        hairline: .lightDraft,
-        radius:   .default,
-        focus:    .default
-    )
+    public static var lightDraft: HudTheme {
+        HudTheme(
+            palette:  .lightDraft,
+            hairline: .lightDraft,
+            radius:   .default,
+            focus:    .default
+        )
+    }
 }
 
 // MARK: - Sub-themes
@@ -96,39 +100,43 @@ public struct HudThemePalette: Sendable, Equatable {
         self.statusError = statusError; self.statusInfo = statusInfo
     }
 
-    public static let `default` = HudThemePalette(
-        bg:           HudPalette.bg,
-        surface:      HudPalette.surface,
-        chrome:       HudPalette.chrome,
-        ink:          HudPalette.ink,
-        muted:        HudPalette.muted,
-        dim:          HudPalette.dim,
-        border:       HudPalette.border,
-        accent:       HudPalette.accent,
-        accentSoft:   HudPalette.accentSoft,
-        statusOk:     HudPalette.statusOk,
-        statusWarn:   HudPalette.statusWarn,
-        statusError:  HudPalette.statusError,
-        statusInfo:   HudPalette.statusInfo
-    )
+    public static var `default`: HudThemePalette {
+        HudThemePalette(
+            bg:           HudPalette.bg,
+            surface:      HudPalette.surface,
+            chrome:       HudPalette.chrome,
+            ink:          HudPalette.ink,
+            muted:        HudPalette.muted,
+            dim:          HudPalette.dim,
+            border:       HudPalette.border,
+            accent:       HudPalette.accent,
+            accentSoft:   HudPalette.accentSoft,
+            statusOk:     HudPalette.statusOk,
+            statusWarn:   HudPalette.statusWarn,
+            statusError:  HudPalette.statusError,
+            statusInfo:   HudPalette.statusInfo
+        )
+    }
 
     /// Light-theme draft — calibrated against the same status hues but
     /// lifted onto a light surface stack. Intentionally rough.
-    public static let lightDraft = HudThemePalette(
-        bg:           Color(red: 250.0/255, green: 250.0/255, blue: 250.0/255),
-        surface:      Color(red: 245.0/255, green: 245.0/255, blue: 245.0/255),
-        chrome:       Color(red: 255.0/255, green: 255.0/255, blue: 255.0/255),
-        ink:          Color(red: 23.0/255,  green: 23.0/255,  blue: 23.0/255),
-        muted:        Color(red: 82.0/255,  green: 82.0/255,  blue: 82.0/255),
-        dim:          Color(red: 130.0/255, green: 130.0/255, blue: 130.0/255),
-        border:       Color(red: 219.0/255, green: 219.0/255, blue: 219.0/255),
-        accent:       HudPalette.accent,
-        accentSoft:   HudPalette.accent.opacity(0.10),
-        statusOk:     HudPalette.statusOk,
-        statusWarn:   HudPalette.statusWarn,
-        statusError:  HudPalette.statusError,
-        statusInfo:   HudPalette.statusInfo
-    )
+    public static var lightDraft: HudThemePalette {
+        HudThemePalette(
+            bg:           Color(red: 250.0/255, green: 250.0/255, blue: 250.0/255),
+            surface:      Color(red: 245.0/255, green: 245.0/255, blue: 245.0/255),
+            chrome:       Color(red: 255.0/255, green: 255.0/255, blue: 255.0/255),
+            ink:          Color(red: 23.0/255,  green: 23.0/255,  blue: 23.0/255),
+            muted:        Color(red: 82.0/255,  green: 82.0/255,  blue: 82.0/255),
+            dim:          Color(red: 130.0/255, green: 130.0/255, blue: 130.0/255),
+            border:       Color(red: 219.0/255, green: 219.0/255, blue: 219.0/255),
+            accent:       HudPalette.accent,
+            accentSoft:   HudPalette.accent.opacity(0.10),
+            statusOk:     HudPalette.statusOk,
+            statusWarn:   HudPalette.statusWarn,
+            statusError:  HudPalette.statusError,
+            statusInfo:   HudPalette.statusInfo
+        )
+    }
 }
 
 public struct HudThemeHairline: Sendable, Equatable {
@@ -140,15 +148,19 @@ public struct HudThemeHairline: Sendable, Equatable {
         self.standard = standard
     }
 
-    public static let `default` = HudThemeHairline(
-        subtle:   HudHairline.subtle,
-        standard: HudHairline.standard
-    )
+    public static var `default`: HudThemeHairline {
+        HudThemeHairline(
+            subtle:   HudHairline.subtle,
+            standard: HudHairline.standard
+        )
+    }
 
-    public static let lightDraft = HudThemeHairline(
-        subtle:   Color(red: 232.0/255, green: 232.0/255, blue: 232.0/255),
-        standard: Color(red: 219.0/255, green: 219.0/255, blue: 219.0/255)
-    )
+    public static var lightDraft: HudThemeHairline {
+        HudThemeHairline(
+            subtle:   Color(red: 232.0/255, green: 232.0/255, blue: 232.0/255),
+            standard: Color(red: 219.0/255, green: 219.0/255, blue: 219.0/255)
+        )
+    }
 }
 
 public struct HudThemeRadius: Sendable, Equatable {
@@ -162,11 +174,13 @@ public struct HudThemeRadius: Sendable, Equatable {
         self.card = card
     }
 
-    public static let `default` = HudThemeRadius(
-        tight:    HudRadius.tight,
-        standard: HudRadius.standard,
-        card:     HudRadius.card
-    )
+    public static var `default`: HudThemeRadius {
+        HudThemeRadius(
+            tight:    HudRadius.tight,
+            standard: HudRadius.standard,
+            card:     HudRadius.card
+        )
+    }
 }
 
 public struct HudThemeFocus: Sendable, Equatable {
@@ -178,10 +192,12 @@ public struct HudThemeFocus: Sendable, Equatable {
         self.ringWidth = ringWidth
     }
 
-    public static let `default` = HudThemeFocus(
-        ring:      HudFocus.ring,
-        ringWidth: HudFocus.ringWidth
-    )
+    public static var `default`: HudThemeFocus {
+        HudThemeFocus(
+            ring:      HudFocus.ring,
+            ringWidth: HudFocus.ringWidth
+        )
+    }
 }
 
 // MARK: - Environment plumbing

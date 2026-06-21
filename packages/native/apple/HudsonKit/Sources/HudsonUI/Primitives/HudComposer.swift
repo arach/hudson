@@ -111,7 +111,7 @@ public struct HudComposerStyle: Equatable, Sendable {
         self.controlSize = controlSize
     }
 
-    public static let `default` = HudComposerStyle()
+    public static var `default`: HudComposerStyle { HudComposerStyle() }
 }
 
 // MARK: - Action resolver (pure, testable)
@@ -257,7 +257,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
 
     /// One row: leading, field, trailing, primary, with queued chips above.
     private var inlineBody: some View {
-        VStack(alignment: .leading, spacing: 7) {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
             if !queued.isEmpty {
                 HudComposerQueueChips(
                     items: queued,
@@ -267,7 +267,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 .padding(.horizontal, style.fieldHorizontalPadding)
             }
 
-            HStack(alignment: .center, spacing: 10) {
+            HStack(alignment: .center, spacing: HudSpacing.lg) {
                 leadingAccessory()
 
                 applyFocus(to: field)
@@ -289,7 +289,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
     private var stackedBody: some View {
         VStack(alignment: .leading, spacing: 0) {
             if !queued.isEmpty {
-                VStack(alignment: .leading, spacing: 4) {
+                VStack(alignment: .leading, spacing: HudSpacing.xs) {
                     ForEach(queued) { item in
                         HudComposerQueueRow(
                             item: item,
@@ -301,7 +301,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 }
                 .padding(.horizontal, style.fieldHorizontalPadding)
                 .padding(.top, style.fieldVerticalPadding)
-                .padding(.bottom, 8)
+                .padding(.bottom, HudSpacing.md)
 
                 hairline
             }
@@ -310,38 +310,38 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, style.fieldHorizontalPadding)
                 .padding(.top, style.fieldVerticalPadding)
-                .padding(.bottom, 8)
+                .padding(.bottom, HudSpacing.md)
 
             hairline
 
             if !attachments.isEmpty {
                 HudComposerAttachmentChips(items: attachments, onRemove: onRemoveAttachment)
                     .padding(.horizontal, style.fieldHorizontalPadding)
-                    .padding(.top, 8)
+                    .padding(.top, HudSpacing.md)
             }
 
             controlRow
                 .padding(.horizontal, style.fieldHorizontalPadding)
-                .padding(.vertical, 9)
+                .padding(.vertical, HudSpacing.lg)
         }
         .background(fieldChrome)
     }
 
     private var controlRow: some View {
-        HStack(alignment: .center, spacing: 8) {
+        HStack(alignment: .center, spacing: HudSpacing.md) {
             if let onAddAttachment {
                 HudComposerAttachButton(onTap: onAddAttachment)
             }
 
             leadingAccessory()
 
-            Spacer(minLength: 8)
+            Spacer(minLength: HudSpacing.md)
 
             if let model {
                 HudComposerModelLabel(info: model, onTap: onTapModel)
             }
 
-            HStack(alignment: .center, spacing: 6) {
+            HStack(alignment: .center, spacing: HudSpacing.sm) {
                 trailingAccessory()
                 primaryButton
             }
@@ -405,7 +405,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
 
     private var fieldChrome: some View {
         RoundedRectangle(cornerRadius: style.fieldCornerRadius, style: .continuous)
-            .fill(theme.palette.ink.opacity(0.025))
+            .fill(HudSurface.inset)
             .overlay(
                 RoundedRectangle(cornerRadius: style.fieldCornerRadius, style: .continuous)
                     .strokeBorder(
@@ -489,7 +489,7 @@ private struct HudComposerQueueChips: View {
     let onRemove: (HudComposerQueuedItem) -> Void
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: HudSpacing.sm) {
             ForEach(items) { item in
                 HudComposerQueueChip(
                     item: item,
@@ -512,28 +512,28 @@ private struct HudComposerQueueChip: View {
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 4) {
+        HStack(spacing: HudSpacing.xs) {
             Image(systemName: "clock")
-                .font(.system(size: 8.5))
+                .font(HudFont.ui(HudTextSize.micro))
                 .foregroundStyle(theme.palette.dim)
 
             Text(item.text)
-                .font(HudFont.mono(10))
+                .font(HudFont.mono(HudTextSize.xxs))
                 .foregroundStyle(theme.palette.muted)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
             Button(action: onRemove) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 8, weight: .bold))
+                    .font(HudFont.ui(HudTextSize.micro, weight: .bold))
                     .foregroundStyle(theme.palette.dim)
                     .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             .help("Remove")
         }
-        .padding(.horizontal, 8)
-        .padding(.vertical, 3)
+        .padding(.horizontal, HudSpacing.md)
+        .padding(.vertical, HudSpacing.xxs)
         .background(Capsule().fill(theme.palette.ink.opacity(HudOpacity.ghost)))
         .contentShape(Capsule())
         .onTapGesture { if editable { onEdit() } }
@@ -552,22 +552,22 @@ private struct HudComposerQueueRow: View {
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: HudSpacing.md) {
             Image(systemName: "clock")
-                .font(.system(size: 9))
+                .font(HudFont.ui(HudTextSize.micro))
                 .foregroundStyle(theme.palette.dim)
 
             Text(item.text)
-                .font(HudFont.mono(11))
+                .font(HudFont.mono(HudTextSize.xs))
                 .foregroundStyle(theme.palette.muted)
                 .lineLimit(1)
                 .truncationMode(.tail)
 
-            Spacer(minLength: 8)
+            Spacer(minLength: HudSpacing.md)
 
             Button(action: onRemove) {
                 Image(systemName: "xmark")
-                    .font(.system(size: 9, weight: .bold))
+                    .font(HudFont.ui(HudTextSize.micro, weight: .bold))
                     .foregroundStyle(theme.palette.dim)
                     .contentShape(Rectangle())
             }
@@ -591,9 +591,9 @@ private struct HudComposerAttachButton: View {
     var body: some View {
         Button(action: onTap) {
             Image(systemName: "plus")
-                .font(.system(size: 13, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.base, weight: .semibold))
                 .foregroundStyle(theme.palette.muted)
-                .frame(width: 26, height: 26)
+                .frame(width: HudLayout.composerAccessoryButtonSize, height: HudLayout.composerAccessoryButtonSize)
                 .background(
                     Circle()
                         .fill(theme.palette.ink.opacity(HudOpacity.ghost))
@@ -617,7 +617,7 @@ private struct HudComposerModelLabel: View {
     @Environment(\.hudTheme) private var theme
 
     private var labelContent: some View {
-        HStack(spacing: 5) {
+        HStack(spacing: HudSpacing.xs) {
             Text(info.model)
                 .foregroundStyle(theme.palette.muted)
             if let effort = info.effort {
@@ -627,7 +627,7 @@ private struct HudComposerModelLabel: View {
                     .foregroundStyle(theme.palette.dim)
             }
         }
-        .font(HudFont.mono(10))
+        .font(HudFont.mono(HudTextSize.xxs))
         .lineLimit(1)
     }
 
@@ -653,15 +653,15 @@ private struct HudComposerAttachmentChips: View {
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
-        HStack(spacing: 6) {
+        HStack(spacing: HudSpacing.sm) {
             ForEach(items) { item in
-                HStack(spacing: 4) {
+                HStack(spacing: HudSpacing.xs) {
                     Image(systemName: item.systemImage)
-                        .font(.system(size: 9))
+                        .font(HudFont.ui(HudTextSize.micro))
                         .foregroundStyle(theme.palette.dim)
 
                     Text(item.name)
-                        .font(HudFont.mono(10))
+                        .font(HudFont.mono(HudTextSize.xxs))
                         .foregroundStyle(theme.palette.muted)
                         .lineLimit(1)
                         .truncationMode(.middle)
@@ -669,7 +669,7 @@ private struct HudComposerAttachmentChips: View {
                     if let onRemove {
                         Button(action: { onRemove(item) }) {
                             Image(systemName: "xmark")
-                                .font(.system(size: 8, weight: .bold))
+                                .font(HudFont.ui(HudTextSize.micro, weight: .bold))
                                 .foregroundStyle(theme.palette.dim)
                                 .contentShape(Rectangle())
                         }
@@ -677,8 +677,8 @@ private struct HudComposerAttachmentChips: View {
                         .help("Remove")
                     }
                 }
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, HudSpacing.md)
+                .padding(.vertical, HudSpacing.xxs)
                 .background(Capsule().fill(theme.palette.ink.opacity(HudOpacity.ghost)))
             }
             Spacer(minLength: 0)

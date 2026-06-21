@@ -10,7 +10,8 @@ import Foundation
 /// model.
 @MainActor
 public final class HudOverlayNavigationBus: ObservableObject {
-    public static let shared = HudOverlayNavigationBus()
+    private static let sharedStorage = HudOverlayNavigationBus()
+    public static var shared: HudOverlayNavigationBus { sharedStorage }
 
     public var cycleNext: (() -> Void)?
     public var cyclePrev: (() -> Void)?

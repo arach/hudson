@@ -98,7 +98,7 @@ public struct HudPhoneComplications {
         slots[position]
     }
 
-    public static let empty = HudPhoneComplications()
+    public static var empty: HudPhoneComplications { HudPhoneComplications() }
 }
 
 // MARK: - Equatable
@@ -136,7 +136,7 @@ public enum HudPhoneComplicationsStyle: Sendable {
 /// `HudPhoneAppShell`. Last non-nil writer in the view tree wins so a
 /// page can override its container's defaults.
 public struct HudPhoneComplicationsKey: PreferenceKey {
-    public static let defaultValue: HudPhoneComplications? = nil
+    public static var defaultValue: HudPhoneComplications? { nil }
 
     public static func reduce(
         value: inout HudPhoneComplications?,

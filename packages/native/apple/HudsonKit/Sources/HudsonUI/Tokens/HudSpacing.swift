@@ -6,15 +6,15 @@ import SwiftUI
 /// (`spacing: 4`, `12`, `14`, `28`); these constants give native callers the
 /// same vocabulary and let consumers override per-app via HudAppManifest.
 public enum HudSpacing {
-    public static let xxs: CGFloat = 2
-    public static let xs:  CGFloat = 4
-    public static let sm:  CGFloat = 6
-    public static let md:  CGFloat = 8
-    public static let lg:  CGFloat = 10
-    public static let xl:  CGFloat = 12
-    public static let xxl: CGFloat = 14
-    public static let xxxl: CGFloat = 20
-    public static let huge: CGFloat = 28
+    public static var xxs: CGFloat { 2 }
+    public static var xs:  CGFloat { 4 }
+    public static var sm:  CGFloat { 6 }
+    public static var md:  CGFloat { 8 }
+    public static var lg:  CGFloat { 10 }
+    public static var xl:  CGFloat { 12 }
+    public static var xxl: CGFloat { 14 }
+    public static var xxxl: CGFloat { 20 }
+    public static var huge: CGFloat { 28 }
 }
 
 // MARK: - Radius
@@ -23,9 +23,9 @@ public enum HudSpacing {
 /// 3/6/8 hierarchy: `tight` for badges, `standard` for inset rows and small
 /// controls, `card` for surface containers.
 public enum HudRadius {
-    public static let tight:    CGFloat = 3
-    public static let standard: CGFloat = 6
-    public static let card:     CGFloat = 8
+    public static var tight:    CGFloat { 3 }
+    public static var standard: CGFloat { 6 }
+    public static var card:     CGFloat { 8 }
 }
 
 // MARK: - Layout
@@ -35,31 +35,33 @@ public enum HudRadius {
 /// from this so iOS/iPadOS chrome stays dimensionally consistent with the web
 /// shell where it makes sense.
 public enum HudLayout {
-    public static let navHeight:        CGFloat = 48
-    public static let panelWidth:       CGFloat = 280
-    public static let panelTopOffset:   CGFloat = 48
-    public static let statusBarHeight:  CGFloat = 28
-    public static let panelBottomOffset: CGFloat = 28
+    public static var navHeight:        CGFloat { 48 }
+    public static var panelWidth:       CGFloat { 280 }
+    public static var panelTopOffset:   CGFloat { 48 }
+    public static var statusBarHeight:  CGFloat { 28 }
+    public static var panelBottomOffset: CGFloat { 28 }
 
     // Control row heights — used by HudField, HudButton, HudSettings rows.
-    public static let buttonHeight:     CGFloat = 32
-    public static let fieldHeight:      CGFloat = 36
-    public static let rowHeightCompact: CGFloat = 28
-    public static let rowHeightRegular: CGFloat = 44
+    public static var buttonHeight:     CGFloat { 32 }
+    public static var fieldHeight:      CGFloat { 36 }
+    public static var rowHeightCompact: CGFloat { 28 }
+    public static var rowHeightRegular: CGFloat { 44 }
 
     // Common content widths — page caps for legibility, modal widths.
-    public static let readableWidth:    CGFloat = 720
-    public static let dialogWidth:      CGFloat = 560
-    public static let popoverWidth:     CGFloat = 380
-    public static let popoverWidthCompact: CGFloat = 340
-    public static let cliffWidth:       CGFloat = 760
+    public static var readableWidth:    CGFloat { 720 }
+    public static var dialogWidth:      CGFloat { 560 }
+    public static var popoverWidth:     CGFloat { 380 }
+    public static var popoverWidthCompact: CGFloat { 340 }
+    public static var cliffWidth:       CGFloat { 760 }
 
     // Primitive defaults — sizes for self-sized primitives (QR codes, avatars, etc).
-    public static let qrCodeDefault:    CGFloat = 200
-    public static let qrViewfinderSize: CGFloat = 250
-    public static let textDocumentPreviewHeight: CGFloat = 360
-    public static let textDocumentModeButtonHeight: CGFloat = 24
-    public static let textDocumentLineNumberWidth: CGFloat = 36
+    public static var qrCodeDefault:    CGFloat { 200 }
+    public static var qrViewfinderSize: CGFloat { 250 }
+    public static var textDocumentPreviewHeight: CGFloat { 360 }
+    public static var textDocumentModeButtonHeight: CGFloat { 24 }
+    public static var textDocumentLineNumberWidth: CGFloat { 36 }
+    public static var markdownTableCellWidth: CGFloat { 150 }
+    public static var composerAccessoryButtonSize: CGFloat { 26 }
 }
 
 // MARK: - Deprecated Hudson* aliases
@@ -74,8 +76,8 @@ public typealias HudsonLayout = HudLayout
 // MARK: - Liquid bar geometry
 
 public enum HudLiquidBarMetrics {
-    public static let minHeight: CGFloat = 56
-    public static let itemMinHeight: CGFloat = 44
-    public static let maxWidth: CGFloat = HudLayout.dialogWidth
-    public static let selectionAnimation = Animation.spring(response: 0.32, dampingFraction: 0.8)
+    public static var minHeight: CGFloat { 56 }
+    public static var itemMinHeight: CGFloat { 44 }
+    public static var maxWidth: CGFloat { HudLayout.dialogWidth }
+    public static var selectionAnimation: Animation { Animation.spring(response: 0.32, dampingFraction: 0.8) }
 }

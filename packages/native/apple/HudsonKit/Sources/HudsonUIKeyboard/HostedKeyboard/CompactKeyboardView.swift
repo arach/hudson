@@ -7,6 +7,7 @@
 
 #if canImport(UIKit) && !os(watchOS)
 import UIKit
+import HudsonUI
 
 private let log = Log(.ui)
 
@@ -79,74 +80,38 @@ public final class CompactKeyboardView: UIView {
 
     private enum Colors {
         /// Keyboard background - fully transparent to match iOS
-        static let background = UIColor.clear
+        static let background = HudKeyboardUIColor.background
 
         /// Regular key background
-        static let keyBackground = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.03)
-                : UIColor(white: 1.0, alpha: 0.74)
-        }
+        static let keyBackground = HudKeyboardUIColor.surfaceDark
 
         /// Key pressed/hover state
-        static let keyPressed = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.12)
-                : UIColor(white: 1.0, alpha: 0.92)
-        }
+        static let keyPressed = HudKeyboardUIColor.surfaceLight
 
         /// Special key background (shift, delete, etc.)
-        static let specialKey = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.05)
-                : UIColor(white: 1.0, alpha: 0.80)
-        }
+        static let specialKey = HudKeyboardUIColor.surfaceSpecial
 
         /// Special key active state (shift enabled)
-        static let specialKeyActive = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.14)
-                : UIColor(white: 1.0, alpha: 0.92)
-        }
+        static let specialKeyActive = HudKeyboardUIColor.specialKeyActive
 
-        static let keyBorder = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.16)
-                : UIColor(white: 0.0, alpha: 0.08)
-        }
+        static let keyBorder = HudKeyboardUIColor.keyBorder
 
-        static let keyBorderPressed = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.24)
-                : UIColor(white: 0.0, alpha: 0.16)
-        }
+        static let keyBorderPressed = HudKeyboardUIColor.keyBorderPressed
 
         /// Key text color
-        static let keyText = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor.white
-                : UIColor.black
-        }
+        static let keyText = HudKeyboardUIColor.textPrimary
 
         /// Vermillion brand color
-        static let vermillion = UIColor(red: 0.91, green: 0.30, blue: 0.24, alpha: 1.0)
+        static let vermillion = HudKeyboardUIColor.dictationActive
 
         /// Return key blue
-        static let returnBlue = UIColor(red: 0.0, green: 0.478, blue: 1.0, alpha: 1.0)
+        static let returnBlue = HudKeyboardUIColor.returnBlue
 
         /// Accent popup background
-        static let popupBackground = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(red: 0.22, green: 0.22, blue: 0.24, alpha: 0.98)
-                : UIColor(red: 0.95, green: 0.95, blue: 0.97, alpha: 0.98)
-        }
+        static let popupBackground = HudKeyboardUIColor.popupBackground
 
         /// Key shadow color
-        static let keyShadow = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor.black
-                : UIColor(white: 0.0, alpha: 0.3)
-        }
+        static let keyShadow = HudKeyboardUIColor.keyShadow
     }
 
     // MARK: - Callbacks

@@ -24,73 +24,73 @@ public enum HudSidebarLayout {
     /// Fixed compact column at the leading edge. Icons center on x = railWidth/2.
     /// This is the minimized sidebar width; expansion only adds label width to
     /// the trailing side, so icon x-positions never move between states.
-    public static let railWidth: CGFloat = 48
+    public static var railWidth: CGFloat { 48 }
 
     /// Maximum width of the animated label column when fully expanded.
-    public static let labelWidth: CGFloat = 200
+    public static var labelWidth: CGFloat { 200 }
 
     /// Optional host-level offset. The compact rail owns its internal padding,
     /// so resizable hosts default to zero extra inset.
-    public static let leadingInset: CGFloat = 0
+    public static var leadingInset: CGFloat { 0 }
 
     // ── Cells ────────────────────────────────────────────────────────────────
 
     /// Height of a single nav row.
-    public static let rowHeight: CGFloat = 30
+    public static var rowHeight: CGFloat { 30 }
 
     /// Height of the section-header label cell.
-    public static let sectionHeaderHeight: CGFloat = 28
+    public static var sectionHeaderHeight: CGFloat { 28 }
 
     /// Vertical gap inserted above a section header (breathing room between groups).
-    public static let sectionTopGap: CGFloat = 8  // HudSpacing.md
+    public static var sectionTopGap: CGFloat { 8 }  // HudSpacing.md
 
     // ── Header ───────────────────────────────────────────────────────────────
 
     /// Height of the logo / wordmark header row.
-    public static let headerHeight: CGFloat = 40
+    public static var headerHeight: CGFloat { 40 }
 
     /// Padding above the header — keeps the logo clear of the traffic-light cluster.
-    public static let headerTopPadding: CGFloat = 10
+    public static var headerTopPadding: CGFloat { 10 }
 
     /// Padding below the header before the first nav row. Completes the 64pt
     /// first-row rhythm shared by native content and inspector headers.
-    public static let headerBottomPadding: CGFloat = 14  // HudSpacing.xxl
+    public static var headerBottomPadding: CGFloat { 14 }  // HudSpacing.xxl
 
     // ── Glyphs ───────────────────────────────────────────────────────────────
 
     /// SF Symbol point size for row icons.
-    public static let iconSize: CGFloat = 15
+    public static var iconSize: CGFloat { 15 }
 
     // ── Label inset ──────────────────────────────────────────────────────────
 
     /// Horizontal inset between the rail's trailing edge and the label text.
-    public static let labelLeading: CGFloat = 4  // HudSpacing.xs
+    public static var labelLeading: CGFloat { 4 }  // HudSpacing.xs
 
     // ── Selection underlay ───────────────────────────────────────────────────
 
-    public static let selectionCornerRadius: CGFloat = 6      // HudRadius.standard
-    public static let selectionHorizontalInset: CGFloat = 4   // HudSpacing.xs
-    public static let selectionVerticalInset: CGFloat = 2     // HudSpacing.xxs
+    public static var selectionCornerRadius: CGFloat { 6 }      // HudRadius.standard
+    public static var selectionHorizontalInset: CGFloat { 4 }   // HudSpacing.xs
+    public static var selectionVerticalInset: CGFloat { 2 }     // HudSpacing.xxs
 
     // ── Compact accent bar ───────────────────────────────────────────────────
 
     /// Width and height of the bottom accent bar shown in compact (icon-only) mode.
-    public static let compactAccentBarWidth: CGFloat = 16
-    public static let compactAccentBarHeight: CGFloat = 2
+    public static var compactAccentBarWidth: CGFloat { 16 }
+    public static var compactAccentBarHeight: CGFloat { 2 }
 
     // ── Liquid-glass surface ─────────────────────────────────────────────────
 
     /// Inset applied around the surface when `surface == .liquidGlass`.
     /// Lets the rounded floating shape read against the window background.
-    public static let liquidGlassInset: CGFloat = 6
+    public static var liquidGlassInset: CGFloat { 6 }
 
     /// Continuous corner radius for the liquid-glass surface.
-    public static let liquidGlassCornerRadius: CGFloat = 10
+    public static var liquidGlassCornerRadius: CGFloat { 10 }
 
     // ── Convenience ──────────────────────────────────────────────────────────
 
     /// Full expanded width (rail + label columns).
-    public static let totalWidth: CGFloat = railWidth + labelWidth
+    public static var totalWidth: CGFloat { railWidth + labelWidth }
 
     /// Intrinsic width at a given progress (0 = expanded, 1 = compact).
     /// The host uses this to size its column slot; only the label column's

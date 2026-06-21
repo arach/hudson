@@ -263,24 +263,24 @@ public struct HudCodeBlock: View {
                     .font(HudFont.mono(codeSize))
                     .lineSpacing(2)
                     .textSelection(.enabled)
-                    .padding(.horizontal, 12)
-                    .padding(.vertical, 10)
+                    .padding(.horizontal, HudSpacing.xl)
+                    .padding(.vertical, HudSpacing.lg)
             }
-            .background(theme.palette.bg.opacity(0.45))
+            .background(HudSurface.tintMuted(theme.palette.bg))
         }
-        .clipShape(RoundedRectangle(cornerRadius: 10, style: .continuous))
+        .clipShape(RoundedRectangle(cornerRadius: HudRadius.card, style: .continuous))
         .overlay(
-            RoundedRectangle(cornerRadius: 10, style: .continuous)
-                .strokeBorder(theme.palette.border, lineWidth: 0.5)
+            RoundedRectangle(cornerRadius: HudRadius.card, style: .continuous)
+                .strokeBorder(theme.palette.border, lineWidth: HudStrokeWidth.thin)
         )
     }
 
     private var header: some View {
         HStack(spacing: 8) {
             HStack(spacing: 5) {
-                Circle().fill(HudTint.red.color).frame(width: 6, height: 6)
-                Circle().fill(HudTint.amber.color).frame(width: 6, height: 6)
-                Circle().fill(HudTint.green.color).frame(width: 6, height: 6)
+                Circle().fill(HudTint.red.color).frame(width: HudDotSize.small, height: HudDotSize.small)
+                Circle().fill(HudTint.amber.color).frame(width: HudDotSize.small, height: HudDotSize.small)
+                Circle().fill(HudTint.green.color).frame(width: HudDotSize.small, height: HudDotSize.small)
             }
             Text((language ?? "code").uppercased())
                 .font(HudFont.mono(8, weight: .bold))
@@ -294,21 +294,21 @@ public struct HudCodeBlock: View {
                 pb.setString(source, forType: .string)
             } label: {
                 Image(systemName: "doc.on.doc")
-                    .font(.system(size: 9, weight: .semibold))
+                    .font(HudFont.ui(HudTextSize.micro, weight: .semibold))
                     .foregroundStyle(theme.palette.muted)
-                    .padding(4)
+                    .padding(HudSpacing.xs)
                     .background(
                         Circle()
-                            .fill(theme.palette.surface.opacity(0.6))
-                            .overlay(Circle().strokeBorder(theme.palette.border, lineWidth: 0.5))
+                            .fill(HudSurface.tintStrong(theme.palette.surface))
+                            .overlay(Circle().strokeBorder(theme.palette.border, lineWidth: HudStrokeWidth.thin))
                     )
             }
             .buttonStyle(.plain)
             .help("Copy code")
             #endif
         }
-        .padding(.horizontal, 12)
-        .padding(.vertical, 8)
+        .padding(.horizontal, HudSpacing.xl)
+        .padding(.vertical, HudSpacing.md)
         .background(theme.palette.chrome)
     }
 

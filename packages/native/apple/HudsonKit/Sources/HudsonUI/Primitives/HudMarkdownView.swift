@@ -227,9 +227,12 @@ public struct HudMarkdownView: View {
                 font: HudFont.mono(headingSize(depth), weight: .semibold),
                 color: theme.palette.ink
             )
-            .padding(.top, depth <= 2 ? 4 : 1)
+            .padding(.top, depth <= 2 ? HudSpacing.xs : HudStrokeWidth.standard)
         case .rule:
-            Rectangle().fill(theme.palette.border).frame(height: 1).padding(.vertical, 3)
+            Rectangle()
+                .fill(theme.palette.border)
+                .frame(height: HudStrokeWidth.standard)
+                .padding(.vertical, HudSpacing.xxs)
         case .list(let ordered, let items):
             listView(ordered: ordered, items: items)
         case .blockquote:
@@ -275,12 +278,12 @@ public struct HudMarkdownView: View {
 
     private func quoteView(_ text: String) -> some View {
         HStack(alignment: .top, spacing: 9) {
-            RoundedRectangle(cornerRadius: 1, style: .continuous)
-                .fill(theme.palette.accent.opacity(0.5))
-                .frame(width: 3)
+            RoundedRectangle(cornerRadius: HudRadius.tight, style: .continuous)
+                .fill(HudSurface.tintMuted(theme.palette.accent))
+                .frame(width: HudStrokeWidth.bold)
             inline(text, font: HudFont.mono(contentSize), color: theme.palette.dim)
         }
-        .padding(.vertical, 2)
+        .padding(.vertical, HudSpacing.xxs)
     }
 
     private func tableView(headers: [String], rows: [[String]]) -> some View {
@@ -288,16 +291,18 @@ public struct HudMarkdownView: View {
         return ScrollView(.horizontal, showsIndicators: false) {
             VStack(alignment: .leading, spacing: 0) {
                 tableRow(headers, columns: columns, isHeader: true)
-                Rectangle().fill(theme.palette.border).frame(height: 1)
+                Rectangle()
+                    .fill(theme.palette.border)
+                    .frame(height: HudStrokeWidth.standard)
                 ForEach(Array(rows.enumerated()), id: \.offset) { _, row in
                     tableRow(row, columns: columns, isHeader: false)
                 }
             }
-            .background(theme.palette.surface.opacity(0.5))
-            .clipShape(RoundedRectangle(cornerRadius: 7, style: .continuous))
+            .background(HudSurface.tintMuted(theme.palette.surface))
+            .clipShape(RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous))
             .overlay(
-                RoundedRectangle(cornerRadius: 7, style: .continuous)
-                    .strokeBorder(theme.palette.border, lineWidth: 0.5)
+                RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
+                    .strokeBorder(theme.palette.border, lineWidth: HudStrokeWidth.thin)
             )
         }
     }
@@ -310,11 +315,11 @@ public struct HudMarkdownView: View {
                     font: isHeader ? HudFont.mono(11, weight: .semibold) : HudFont.mono(contentSize),
                     color: isHeader ? theme.palette.dim : theme.palette.ink
                 )
-                .frame(width: 150, alignment: .leading)
-                .padding(.horizontal, 10)
-                .padding(.vertical, 7)
+                .frame(width: HudLayout.markdownTableCellWidth, alignment: .leading)
+                .padding(.horizontal, HudSpacing.lg)
+                .padding(.vertical, HudSpacing.sm)
             }
         }
-        .background(isHeader ? theme.palette.surface.opacity(0.6) : Color.clear)
+        .background(isHeader ? HudSurface.tintStrong(theme.palette.surface) : Color.clear)
     }
 }

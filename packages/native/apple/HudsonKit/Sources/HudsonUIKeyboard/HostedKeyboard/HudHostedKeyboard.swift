@@ -11,6 +11,7 @@
 
 import UIKit
 import ObjectiveC
+import HudsonUI
 
 @available(iOS 17.0, *)
 public final class HudHostedKeyboard: UIView, UIGestureRecognizerDelegate {
@@ -83,62 +84,19 @@ public final class HudHostedKeyboard: UIView, UIGestureRecognizerDelegate {
         static let buttonHeight: CGFloat = 48
         static let cornerRadius: CGFloat = 4
 
-        static let background = UIColor.clear
-        static let surfaceDark = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.03)
-                : UIColor(white: 1.0, alpha: 0.74)
-        }
-
-        static let surfaceLight = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.12)
-                : UIColor(white: 1.0, alpha: 0.92)
-        }
-
-        static let surfaceSpecial = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.05)
-                : UIColor(white: 1.0, alpha: 0.80)
-        }
-
-        static let keyBorder = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.16)
-                : UIColor(white: 0.0, alpha: 0.08)
-        }
-
-        static let keyBorderPressed = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 1.0, alpha: 0.24)
-                : UIColor(white: 0.0, alpha: 0.16)
-        }
-
-        static let keyShadow = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor.black
-                : UIColor(white: 0.0, alpha: 0.30)
-        }
-
-        static let textPrimary = UIColor { traits in
-            traits.userInterfaceStyle == .dark ? .white : .black
-        }
-
-        static let textSecondary = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 0.6, alpha: 1.0)
-                : UIColor(white: 0.4, alpha: 1.0)
-        }
-
-        static let textMuted = UIColor { traits in
-            traits.userInterfaceStyle == .dark
-                ? UIColor(white: 0.45, alpha: 1.0)
-                : UIColor(white: 0.55, alpha: 1.0)
-        }
-
-        static let dictationActive = UIColor(red: 0.91, green: 0.30, blue: 0.24, alpha: 1.0)
-        static let processing = UIColor(red: 0.34, green: 0.68, blue: 1.0, alpha: 1.0)
-        static let success = UIColor(red: 0.30, green: 0.78, blue: 0.47, alpha: 1.0)
+        static let background = HudKeyboardUIColor.background
+        static let surfaceDark = HudKeyboardUIColor.surfaceDark
+        static let surfaceLight = HudKeyboardUIColor.surfaceLight
+        static let surfaceSpecial = HudKeyboardUIColor.surfaceSpecial
+        static let keyBorder = HudKeyboardUIColor.keyBorder
+        static let keyBorderPressed = HudKeyboardUIColor.keyBorderPressed
+        static let keyShadow = HudKeyboardUIColor.keyShadow
+        static let textPrimary = HudKeyboardUIColor.textPrimary
+        static let textSecondary = HudKeyboardUIColor.textSecondary
+        static let textMuted = HudKeyboardUIColor.textMuted
+        static let dictationActive = HudKeyboardUIColor.dictationActive
+        static let processing = HudKeyboardUIColor.processing
+        static let success = HudKeyboardUIColor.success
     }
 
     private let bridge = KeyboardBridge.shared

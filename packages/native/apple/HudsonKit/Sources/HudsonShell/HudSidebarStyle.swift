@@ -128,7 +128,7 @@ public struct HudLiquidGlassConfig: Equatable, Sendable {
         self.accent = accent
     }
 
-    public static let `default` = HudLiquidGlassConfig()
+    public static var `default`: HudLiquidGlassConfig { HudLiquidGlassConfig() }
 }
 
 // MARK: - HudSidebarStyle
@@ -157,7 +157,7 @@ public struct HudSidebarStyle: Equatable, Sendable {
         self.liquidGlass = liquidGlass
     }
 
-    public static let `default` = HudSidebarStyle()
+    public static var `default`: HudSidebarStyle { HudSidebarStyle() }
 }
 
 // MARK: - Environment

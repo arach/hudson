@@ -54,7 +54,7 @@ public struct HudStatusDot: View {
             Circle()
                 .fill(HudSurface.tintBorder(color))
                 .frame(width: size * 1.75, height: size * 1.75)
-                .opacity(0.28)
+                .opacity(HudOpacity.soft)
         }
     }
 }
