@@ -7,32 +7,33 @@ import SwiftUI
 /// can override at runtime via `HudPhoneComplicationsLayoutSettings.shared`
 /// for live tweaking; release reads the static defaults.
 public enum HudPhoneComplicationsLayout {
-    public static let trayHeight: CGFloat = 76
-    public static let trayHorizontalPadding: CGFloat = HudSpacing.xxl
-    public static let trayCornerRadius: CGFloat = 22
+    public static var trayHeight: CGFloat { 76 }
+    public static var trayHorizontalPadding: CGFloat { HudSpacing.xxl }
+    public static var trayCornerRadius: CGFloat { 22 }
 
-    public static let primarySize: CGFloat = 48
-    public static let centerSize: CGFloat = 64
-    public static let secondarySize: CGFloat = 22
-    public static let secondaryOffset: CGFloat = 4
+    public static var primarySize: CGFloat { 48 }
+    public static var centerSize: CGFloat { 64 }
+    public static var secondarySize: CGFloat { 22 }
+    public static var secondaryOffset: CGFloat { 4 }
 
     /// Smaller variant for top corners hosted as `ToolbarItem`s — the system
     /// nav bar is 44pt, so the floating-tray sizes (48pt) feel oversized
     /// inline with the title.
-    public static let toolbarPrimarySize: CGFloat = 32
-    public static let toolbarSecondarySize: CGFloat = 18
+    public static var toolbarPrimarySize: CGFloat { 32 }
+    public static var toolbarSecondarySize: CGFloat { 18 }
 
-    public static let cornerInset: CGFloat = HudSpacing.xl
-    public static let scatteredVerticalInset: CGFloat = HudSpacing.huge
+    public static var cornerInset: CGFloat { HudSpacing.xl }
+    public static var scatteredVerticalInset: CGFloat { HudSpacing.huge }
 
-    public static let modePickerLift: CGFloat = 76
-    public static let modePickerSpacing: CGFloat = HudSpacing.sm
+    public static var modePickerLift: CGFloat { 76 }
+    public static var modePickerSpacing: CGFloat { HudSpacing.sm }
 }
 
 #if DEBUG
 @MainActor
 public final class HudPhoneComplicationsLayoutSettings: ObservableObject {
-    public static let shared = HudPhoneComplicationsLayoutSettings()
+    private static let sharedStorage = HudPhoneComplicationsLayoutSettings()
+    public static var shared: HudPhoneComplicationsLayoutSettings { sharedStorage }
     @Published public var trayHeight: CGFloat = HudPhoneComplicationsLayout.trayHeight
     @Published public var primarySize: CGFloat = HudPhoneComplicationsLayout.primarySize
     @Published public var centerSize: CGFloat = HudPhoneComplicationsLayout.centerSize

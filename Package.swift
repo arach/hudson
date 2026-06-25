@@ -15,6 +15,12 @@ import Foundation
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
 let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
+let binaryDistributionEnabled = environment["HUDSONKIT_BINARY_DISTRIBUTION"] == "1"
+let hudsonLibraryType: Product.Library.LibraryType? = binaryDistributionEnabled ? .dynamic : nil
+
+func hudsonLibrary(name: String, targets: [String]) -> Product {
+    .library(name: name, type: hudsonLibraryType, targets: targets)
+}
 
 func nonEmptyEnv(_ key: String) -> String? {
     guard let value = environment[key]?.trimmingCharacters(in: .whitespacesAndNewlines),
@@ -61,22 +67,22 @@ let tst = "packages/native/apple/HudsonKit/Tests/"
 let demo = "packages/native/apple/HudsonKit/Demo/"
 
 var products: [Product] = [
-    .library(name: "HudsonObservability", targets: ["HudsonObservability"]),
-    .library(name: "HudsonLive", targets: ["HudsonLive"]),
-    .library(name: "HudsonDiff", targets: ["HudsonDiff"]),
-    .library(name: "HudsonUI", targets: ["HudsonUI"]),
-    .library(name: "HudsonUIPermissions", targets: ["HudsonUIPermissions"]),
-    .library(name: "HudsonUIAudio", targets: ["HudsonUIAudio"]),
-    .library(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
-    .library(name: "HudsonUIWeb", targets: ["HudsonUIWeb"]),
-    .library(name: "HudsonUIKeyboard", targets: ["HudsonUIKeyboard"]),
-    .library(name: "HudsonUIOnboarding", targets: ["HudsonUIOnboarding"]),
-    .library(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
-    .library(name: "HudsonBridge", targets: ["HudsonBridge"]),
-    .library(name: "HudsonShell", targets: ["HudsonShell"]),
-    .library(name: "HudsonAI", targets: ["HudsonAI"]),
-    .library(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
-    .library(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
+    hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
+    hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
+    hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
+    hudsonLibrary(name: "HudsonUI", targets: ["HudsonUI"]),
+    hudsonLibrary(name: "HudsonUIPermissions", targets: ["HudsonUIPermissions"]),
+    hudsonLibrary(name: "HudsonUIAudio", targets: ["HudsonUIAudio"]),
+    hudsonLibrary(name: "HudsonUICapture", targets: ["HudsonUICapture"]),
+    hudsonLibrary(name: "HudsonUIWeb", targets: ["HudsonUIWeb"]),
+    hudsonLibrary(name: "HudsonUIKeyboard", targets: ["HudsonUIKeyboard"]),
+    hudsonLibrary(name: "HudsonUIOnboarding", targets: ["HudsonUIOnboarding"]),
+    hudsonLibrary(name: "HudsonWorkflow", targets: ["HudsonWorkflow"]),
+    hudsonLibrary(name: "HudsonBridge", targets: ["HudsonBridge"]),
+    hudsonLibrary(name: "HudsonShell", targets: ["HudsonShell"]),
+    hudsonLibrary(name: "HudsonAI", targets: ["HudsonAI"]),
+    hudsonLibrary(name: "HudsonVantageCore", targets: ["HudsonVantageCore"]),
+    hudsonLibrary(name: "HudsonVantageCompanion", targets: ["HudsonVantageCompanion"]),
 ]
 
 var dependencies: [Package.Dependency] = []
@@ -128,7 +134,7 @@ if voiceEnabled {
         url: "git@github.com:arach/vox.git",
         envPrefix: "HUDSON_VOX"
     )
-    products.append(.library(name: "HudsonVoice", targets: ["HudsonVoice"]))
+    products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
     targets.append(
         .target(
             name: "HudsonVoice",
@@ -145,9 +151,9 @@ if voiceEnabled {
 }
 
 if terminalEnabled {
-    products.append(.library(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
-    products.append(.library(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
-    products.append(.library(name: "HudsonVantage", targets: ["HudsonVantage"]))
+    products.append(hudsonLibrary(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
+    products.append(hudsonLibrary(name: "HudsonVantageSurface", targets: ["HudsonVantageSurface"]))
+    products.append(hudsonLibrary(name: "HudsonVantage", targets: ["HudsonVantage"]))
     let terminiPackage = appendGitDependency(
         to: &dependencies,
         url: "git@github.com:arach/Termini.git",

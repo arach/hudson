@@ -16,7 +16,7 @@ public enum HudSidebarMotion {
     /// Default animation for the label-column width transition.
     /// Kept deliberately quick so toolbar/sidebar toggles feel immediate while
     /// rail icons remain locked to the leading edge.
-    public static let expandCollapse: Animation = .easeOut(duration: 0.14)
+    public static var expandCollapse: Animation { .easeOut(duration: 0.14) }
 
     // MARK: Label / underlay opacity modes
 

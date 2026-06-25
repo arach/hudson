@@ -22,26 +22,26 @@ public struct HudOverlayKeyPress: Equatable, Sendable {
 }
 
 public enum HudOverlayKeyCode {
-    public static let escape: UInt16 = 53
-    public static let enter: UInt16 = 36
-    public static let one: UInt16 = 18
-    public static let two: UInt16 = 19
-    public static let three: UInt16 = 20
-    public static let four: UInt16 = 21
-    public static let five: UInt16 = 23
-    public static let f: UInt16 = 3
-    public static let g: UInt16 = 5
-    public static let i: UInt16 = 34
-    public static let j: UInt16 = 38
-    public static let k: UInt16 = 40
-    public static let m: UInt16 = 46
-    public static let slash: UInt16 = 44
-    public static let leftBracket: UInt16 = 33
-    public static let rightBracket: UInt16 = 30
-    public static let leftArrow: UInt16 = 123
-    public static let rightArrow: UInt16 = 124
-    public static let downArrow: UInt16 = 125
-    public static let upArrow: UInt16 = 126
+    public static var escape: UInt16 { 53 }
+    public static var enter: UInt16 { 36 }
+    public static var one: UInt16 { 18 }
+    public static var two: UInt16 { 19 }
+    public static var three: UInt16 { 20 }
+    public static var four: UInt16 { 21 }
+    public static var five: UInt16 { 23 }
+    public static var f: UInt16 { 3 }
+    public static var g: UInt16 { 5 }
+    public static var i: UInt16 { 34 }
+    public static var j: UInt16 { 38 }
+    public static var k: UInt16 { 40 }
+    public static var m: UInt16 { 46 }
+    public static var slash: UInt16 { 44 }
+    public static var leftBracket: UInt16 { 33 }
+    public static var rightBracket: UInt16 { 30 }
+    public static var leftArrow: UInt16 { 123 }
+    public static var rightArrow: UInt16 { 124 }
+    public static var downArrow: UInt16 { 125 }
+    public static var upArrow: UInt16 { 126 }
 }
 
 public struct HudOverlayModifierMatch: Equatable, Sendable {
