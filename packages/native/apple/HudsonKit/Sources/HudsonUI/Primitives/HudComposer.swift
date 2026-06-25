@@ -273,9 +273,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 applyFocus(to: field)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
-                trailingAccessory()
-
-                primaryButton
+                turnActionCluster
             }
             .padding(.horizontal, style.fieldHorizontalPadding)
             .padding(.vertical, style.fieldVerticalPadding)
@@ -341,10 +339,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 HudComposerModelLabel(info: model, onTap: onTapModel)
             }
 
-            HStack(alignment: .center, spacing: HudSpacing.sm) {
-                trailingAccessory()
-                primaryButton
-            }
+            turnActionCluster
         }
     }
 
@@ -364,6 +359,24 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 }
             }
         )
+    }
+
+    private var showsSteerButton: Bool {
+        phase == .streaming && hasText
+    }
+
+    private var turnActionCluster: some View {
+        HStack(alignment: .center, spacing: HudSpacing.sm) {
+            trailingAccessory()
+
+            if showsSteerButton {
+                HudComposerSteerButton(size: style.controlSize) {
+                    onAction(.steer)
+                }
+            }
+
+            primaryButton
+        }
     }
 
     private var field: some View {
@@ -427,9 +440,25 @@ private struct HudComposerPrimaryButton: View {
 
     private var enabled: Bool { kind != .sendDisabled }
 
-    private var icon: String { kind == .stop ? "stop.fill" : "arrow.up" }
+    private var icon: String {
+        switch kind {
+        case .sendDisabled, .send: return "arrow.up"
+        case .stop:                return "stop.fill"
+        case .queue:               return "tray.and.arrow.down.fill"
+        }
+    }
 
-    private var iconSize: CGFloat { kind == .stop ? size * 0.37 : size * 0.42 }
+    private var iconSize: CGFloat {
+        switch kind {
+        case .sendDisabled, .send: return size * 0.42
+        case .stop:                return size * 0.37
+        case .queue:               return size * 0.36
+        }
+    }
+
+    private var label: String? {
+        kind == .queue ? "Queue" : nil
+    }
 
     private var discFill: Color {
         switch kind {
@@ -458,26 +487,67 @@ private struct HudComposerPrimaryButton: View {
 
     var body: some View {
         Button(action: onTap) {
-            Image(systemName: icon)
-                .font(.system(size: iconSize, weight: .bold))
-                .foregroundStyle(iconColor)
-                .frame(width: size, height: size)
-                .background(
-                    Circle()
-                        .fill(discFill)
-                        .overlay(
-                            Circle().strokeBorder(
-                                kind == .sendDisabled ? theme.hairline.standard : Color.clear,
-                                lineWidth: HudStrokeWidth.thin
-                            )
+            HStack(spacing: HudSpacing.xs) {
+                Image(systemName: icon)
+                    .font(.system(size: iconSize, weight: .bold))
+
+                if let label {
+                    Text(label)
+                        .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
+                }
+            }
+            .foregroundStyle(iconColor)
+            .frame(height: size)
+            .frame(width: label == nil ? size : nil)
+            .padding(.horizontal, label == nil ? 0 : HudSpacing.md)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(discFill)
+                    .overlay(
+                        Capsule(style: .continuous).strokeBorder(
+                            kind == .sendDisabled ? theme.hairline.standard : Color.clear,
+                            lineWidth: HudStrokeWidth.thin
                         )
-                )
-                .contentShape(Circle())
+                    )
+            )
+            .contentShape(Capsule(style: .continuous))
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
         .help(help)
         .animation(.easeInOut(duration: 0.15), value: kind)
+    }
+}
+
+private struct HudComposerSteerButton: View {
+    let size: CGFloat
+    let onTap: () -> Void
+
+    @Environment(\.hudTheme) private var theme
+
+    var body: some View {
+        Button(action: onTap) {
+            HStack(spacing: HudSpacing.xs) {
+                Image(systemName: "arrow.turn.up.right")
+                    .font(.system(size: size * 0.34, weight: .bold))
+                Text("Steer")
+                    .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
+            }
+            .foregroundStyle(theme.palette.accent)
+            .frame(height: size)
+            .padding(.horizontal, HudSpacing.md)
+            .background(
+                Capsule(style: .continuous)
+                    .fill(theme.palette.accent.opacity(HudOpacity.subtle))
+                    .overlay(
+                        Capsule(style: .continuous)
+                            .strokeBorder(theme.palette.accent.opacity(HudOpacity.soft), lineWidth: HudStrokeWidth.thin)
+                    )
+            )
+            .contentShape(Capsule(style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .help("Steer now (Cmd-Return)")
     }
 }
 
