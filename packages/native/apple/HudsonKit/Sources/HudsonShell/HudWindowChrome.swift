@@ -15,6 +15,10 @@ public struct HudWindowChrome: NSViewRepresentable {
     public var usesFullSizeContentView: Bool
     public var isMovableByWindowBackground: Bool
     public var hidesToolbar: Bool
+    /// Optional explicit window background. When set, it overrides the default
+    /// system light/dark window color so the transparent title bar reads in the
+    /// host's theme (e.g. a warm paper) instead of stark `windowBackgroundColor`.
+    public var backgroundColor: NSColor?
 
     public init(
         colorScheme: ColorScheme,
@@ -22,7 +26,8 @@ public struct HudWindowChrome: NSViewRepresentable {
         titlebarAppearsTransparent: Bool = true,
         usesFullSizeContentView: Bool = true,
         isMovableByWindowBackground: Bool = true,
-        hidesToolbar: Bool = true
+        hidesToolbar: Bool = true,
+        backgroundColor: NSColor? = nil
     ) {
         self.colorScheme = colorScheme
         self.titleVisibility = titleVisibility
@@ -30,6 +35,7 @@ public struct HudWindowChrome: NSViewRepresentable {
         self.usesFullSizeContentView = usesFullSizeContentView
         self.isMovableByWindowBackground = isMovableByWindowBackground
         self.hidesToolbar = hidesToolbar
+        self.backgroundColor = backgroundColor
     }
 
     public func makeNSView(context: Context) -> NSView {
@@ -49,8 +55,17 @@ public struct HudWindowChrome: NSViewRepresentable {
     private func apply(to window: NSWindow?) {
         guard let window else { return }
 
-        window.appearance = NSAppearance(named: .darkAqua)
-        window.backgroundColor = .black
+        switch colorScheme {
+        case .light:
+            window.appearance = NSAppearance(named: .aqua)
+            window.backgroundColor = backgroundColor ?? .windowBackgroundColor
+        case .dark:
+            window.appearance = NSAppearance(named: .darkAqua)
+            window.backgroundColor = backgroundColor ?? .black
+        @unknown default:
+            window.appearance = nil
+            window.backgroundColor = backgroundColor ?? .windowBackgroundColor
+        }
         window.titlebarAppearsTransparent = titlebarAppearsTransparent
         if usesFullSizeContentView {
             window.styleMask.insert(.fullSizeContentView)

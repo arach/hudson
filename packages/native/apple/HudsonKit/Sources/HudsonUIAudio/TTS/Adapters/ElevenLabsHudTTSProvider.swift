@@ -4,7 +4,9 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
     public var providerID: HudTTSProviderID { .elevenlabs }
     public var displayName: String { "ElevenLabs" }
     public var credentialKey: String? { "elevenlabs_key" }
-    public var defaultVoice: String { "EXAVITQu4vr4xnSDxMaL" }
+    public var defaultVoice: String { "9BWtsMINqrJLrRacOk9x" }
+
+    private static let readingSpeed = 0.92
 
     public var modelID: String
 
@@ -38,10 +40,11 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
             "text": String(trimmed.prefix(5000)),
             "model_id": modelID,
             "voice_settings": [
-                "stability": 0.45,
-                "similarity_boost": 0.7,
-                "style": 0.18,
-                "use_speaker_boost": true
+                "stability": 0.58,
+                "similarity_boost": 0.78,
+                "style": 0.04,
+                "use_speaker_boost": true,
+                "speed": Self.clamp(request.rate * Self.readingSpeed, min: 0.7, max: 1.2)
             ]
         ]
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -72,5 +75,9 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
     private func resolvedVoice(_ voice: String?) -> String {
         let trimmed = voice?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? defaultVoice : trimmed
+    }
+
+    private static func clamp(_ value: Double, min: Double, max: Double) -> Double {
+        Swift.min(Swift.max(value, min), max)
     }
 }
