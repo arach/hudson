@@ -7,6 +7,8 @@ export {
   HudPreviewCard,
   HudCardGrid,
   HudContextPanel,
+  HudTiling,
+  computeTilingLayout,
 } from './components/patterns';
 
 export type {
@@ -23,4 +25,7 @@ export type {
   HudContextPanelProps,
   HudContextRow,
   HudContextSection,
+  HudTilingProps,
+  TilingConstraints,
+  TileLayout,
 } from './components/patterns';

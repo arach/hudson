@@ -177,6 +177,13 @@ export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from '.
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
+
+export { HudTiling, computeTilingLayout } from './components/patterns/HudTiling';
+export type {
+  HudTilingProps,
+  TilingConstraints,
+  TileLayout,
+} from './components/patterns/HudTiling';
 export {
   HudWorkflowGraph,
   brainDumpProcessorWorkflow,

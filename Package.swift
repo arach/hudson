@@ -205,7 +205,10 @@ if terminalEnabled {
         .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"], path: tst + "HudsonVantageTests")
     )
     demoDependencies.append("HudsonTerminal")
+    demoDependencies.append("HudsonVantageSurface")
+    demoDependencies.append("HudsonVantage")
     demoSwiftSettings.append(.define("HUDSON_TERMINAL"))
+    demoSwiftSettings.append(.define("HUDSON_VANTAGE"))
 }
 
 targets.append(
