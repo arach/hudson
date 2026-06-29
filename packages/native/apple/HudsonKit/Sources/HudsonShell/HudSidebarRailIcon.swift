@@ -27,6 +27,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
     @State private var isHovering = false
     @State private var isPressing = false
     @FocusState private var isFocused: Bool
+    @Environment(\.hudTheme) private var theme
 
     public init(
         item: HudSidebarItem<Selection>,
@@ -57,8 +58,8 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
 
     private var iconColor: Color {
         if isSelected  { return accent }
-        if isHovering  { return HudPalette.ink }
-        return HudPalette.muted
+        if isHovering  { return theme.palette.ink }
+        return theme.palette.muted
     }
 
     private var iconScale: CGFloat {
@@ -95,7 +96,7 @@ public struct HudSidebarRailIcon<Selection: Hashable>: View {
             )
             .overlay(
                 RoundedRectangle(cornerRadius: HudRadius.standard)
-                    .stroke(showsFocusRing ? HudFocus.ring : Color.clear, lineWidth: HudFocus.ringWidth)
+                    .stroke(showsFocusRing ? theme.focus.ring : Color.clear, lineWidth: theme.focus.ringWidth)
             )
             .contentShape(Rectangle())
             .onTapGesture { onTap() }

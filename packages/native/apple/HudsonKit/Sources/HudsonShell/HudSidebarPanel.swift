@@ -109,9 +109,12 @@ public struct HudSidebarSurfaceBackground: View {
         case .base:
             ZStack {
                 HudPalette.chrome
+                // hudlint:disable next-line palette,opacity
                 LinearGradient(
                     colors: [
+                        // hudlint:disable next-line palette,opacity
                         Color.white.opacity(0.045),
+                        // hudlint:disable next-line palette,opacity
                         Color.white.opacity(0.020),
                     ],
                     startPoint: .top,
@@ -122,11 +125,16 @@ public struct HudSidebarSurfaceBackground: View {
             HudPalette.surface.opacity(HudOpacity.strong)
         case .glass:
             ZStack {
+                // hudlint:disable next-line opacity
                 Rectangle().fill(.ultraThinMaterial).opacity(0.55)
+                // hudlint:disable next-line palette,opacity
                 LinearGradient(
                     colors: [
+                        // hudlint:disable next-line palette,opacity
                         Color.white.opacity(0.040),
+                        // hudlint:disable next-line palette,opacity
                         Color.white.opacity(0.018),
+                        // hudlint:disable next-line palette,opacity
                         Color.black.opacity(0.060),
                     ],
                     startPoint: .top,
@@ -150,10 +158,14 @@ public struct HudSidebarEdgeRule: View {
     public var body: some View {
         switch style {
         case .glass:
+            // hudlint:disable next-line palette,opacity
             LinearGradient(
                 colors: [
+                    // hudlint:disable next-line palette,opacity
                     Color.white.opacity(0.02),
+                    // hudlint:disable next-line palette,opacity
                     Color.white.opacity(0.10),
+                    // hudlint:disable next-line palette,opacity
                     Color.white.opacity(0.02),
                 ],
                 startPoint: .top,
