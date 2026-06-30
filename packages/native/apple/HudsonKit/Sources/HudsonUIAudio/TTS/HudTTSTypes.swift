@@ -22,6 +22,7 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
 public enum HudTTSAudioFormat: String, Sendable {
     case mp3
     case wav
+    case caf
 }
 
 public struct HudTTSRequest: Equatable, Sendable {

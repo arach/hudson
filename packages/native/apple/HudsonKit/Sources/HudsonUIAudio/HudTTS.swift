@@ -59,6 +59,43 @@ public final class HudTTS {
         await providerStatuses().first(where: { $0.id == providerID })?.isAvailable ?? false
     }
 
+    public func synthesize(
+        _ text: String,
+        providerID: HudTTSProviderID,
+        voice: String? = nil,
+        rate: Double = 1.0,
+        systemVoiceIdentifier: String? = nil
+    ) async throws -> HudTTSResult {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw HudTTSError.emptyInput
+        }
+
+        switch providerID {
+        case .system:
+            let voiceIdentifier = systemVoiceIdentifier ?? voice ?? systemSpeech.selectedVoiceIdentifier
+            let audioData = try await systemSpeech.synthesizeAudioData(
+                trimmed,
+                voiceIdentifier: voiceIdentifier
+            )
+            return HudTTSResult(
+                audioData: audioData,
+                format: .caf,
+                providerID: .system,
+                voice: voiceIdentifier ?? HudSystemSpeechDefaults.defaultVoiceIdentifier
+            )
+
+        case .openai, .elevenlabs:
+            return try await client.synthesize(
+                HudTTSRequest(text: trimmed, voice: voice, rate: rate),
+                providerID: providerID
+            )
+
+        default:
+            throw HudTTSError.unknownProvider(providerID.rawValue)
+        }
+    }
+
     public func speak(
         _ text: String,
         providerID: HudTTSProviderID,
