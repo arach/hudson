@@ -15,3 +15,10 @@ export type { HudCardGridProps } from './HudCardGrid';
 
 export { HudContextPanel } from './HudContextPanel';
 export type { HudContextPanelProps, HudContextRow, HudContextSection } from './HudContextPanel';
+
+export { HudTiling, computeTilingLayout } from './HudTiling';
+export type {
+  HudTilingProps,
+  TilingConstraints,
+  TileLayout,
+} from './HudTiling';
