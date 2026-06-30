@@ -115,8 +115,11 @@ export function computeTilingLayout(
   if (n === 0 || containerWidth <= 0 || containerHeight <= 0) return [];
 
   const gap = constraints.gap ?? DEFAULT_GAP;
-  const maxCols = constraints.maxColumns ?? Infinity;
-  const maxRows = constraints.maxRows ?? Infinity;
+  const rawMaxCols = constraints.maxColumns ?? Infinity;
+  const rawMaxRows = constraints.maxRows ?? Infinity;
+  // Treat explicit 0/negative as "at most 1" (a 0-column grid is invalid).
+  const maxCols = rawMaxCols === Infinity ? Infinity : Math.max(1, rawMaxCols);
+  const maxRows = rawMaxRows === Infinity ? Infinity : Math.max(1, rawMaxRows);
   const maxFill = constraints.maxFill ?? DEFAULT_FILL;
 
   const effW = containerWidth * maxFill;
@@ -132,7 +135,7 @@ export function computeTilingLayout(
   // Otherwise fall back to the sqrt + preferMoreColumns heuristic.
   let cols: number;
   if (constraints.maxColumns != null) {
-    cols = Math.min(constraints.maxColumns, n);
+    cols = Math.min(maxCols, n);
   } else {
     cols = Math.min(
       maxCols,
@@ -144,13 +147,15 @@ export function computeTilingLayout(
     cols = Math.min(maxCols, cols);
   }
 
+  cols = Math.max(1, Math.min(cols, n)); // never 0 or >n
+
   let rows = Math.ceil(n / cols);
   if (rows > maxRows) {
     rows = Math.max(1, maxRows);
-    const effectiveMax = constraints.maxColumns ?? maxCols;
-    cols = Math.min(effectiveMax, Math.ceil(n / rows));
+    const effectiveMax = constraints.maxColumns != null ? maxCols : maxCols;
+    cols = Math.min(effectiveMax === Infinity ? n : effectiveMax, Math.ceil(n / rows));
+    cols = Math.max(1, Math.min(cols, n));
   }
-  cols = Math.min(cols, n);
   rows = Math.max(1, rows);
 
   // Guarantee enough cells for every item even if the caller's
@@ -159,16 +164,17 @@ export function computeTilingLayout(
   // out-of-bounds later.
   let capacity = rows * cols;
   while (capacity < n) {
-    if (cols < maxCols) {
+    if (maxCols !== Infinity && cols < maxCols) {
       cols += 1;
-    } else if (rows < maxRows) {
+    } else if (maxRows !== Infinity && rows < maxRows) {
       rows += 1;
     } else {
-      rows += 1; // last resort: overflow the row cap
+      // last resort: grow rows (or cols if unlimited)
+      if (maxCols === Infinity || cols < maxCols) cols += 1; else rows += 1;
     }
     capacity = rows * cols;
   }
-  cols = Math.min(cols, n);
+  cols = Math.max(1, Math.min(cols, n));
   rows = Math.max(1, rows);
 
   const totalGapW = Math.max(0, (cols - 1) * gap);
@@ -439,10 +445,13 @@ export function HudTiling<Item>({
           });
         }
 
-        // Convert layout index to order index
         const draggedCurrentIdx = currentOrder.indexOf(draggedKey);
-        if (targetIndex !== draggedCurrentIdx && targetIndex >= 0) {
-          setDropIndex(targetIndex);
+        if (targetIndex >= 0) {
+          if (targetIndex !== draggedCurrentIdx) {
+            setDropIndex(targetIndex);
+          } else {
+            setDropIndex(null); // clear when pointer returns over the origin slot
+          }
         }
         setDragPos({ x: relX, y: relY });
       }
