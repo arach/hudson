@@ -146,11 +146,12 @@ export function computeTilingLayout(
 
   let rows = Math.ceil(n / cols);
   if (rows > maxRows) {
-    rows = maxRows;
+    rows = Math.max(1, maxRows);
     const effectiveMax = constraints.maxColumns ?? maxCols;
     cols = Math.min(effectiveMax, Math.ceil(n / rows));
   }
   cols = Math.min(cols, n);
+  rows = Math.max(1, rows);
 
   const totalGapW = Math.max(0, (cols - 1) * gap);
   const totalGapH = Math.max(0, (rows - 1) * gap);
@@ -354,6 +355,7 @@ export function HudTiling<Item>({
   // Drag state
   const [draggingKey, setDraggingKey] = useState<string | number | null>(null);
   const [dropIndex, setDropIndex] = useState<number | null>(null);
+  const [dragPos, setDragPos] = useState<{ x: number; y: number } | null>(null);
   const dragStartRef = useRef<{ key: string | number; pointerId: number } | null>(null);
 
   const reorder = useCallback(
@@ -414,6 +416,7 @@ export function HudTiling<Item>({
         if (targetIndex !== draggedCurrentIdx && targetIndex >= 0) {
           setDropIndex(targetIndex);
         }
+        setDragPos({ x: relX, y: relY });
       }
 
     },
@@ -446,6 +449,7 @@ export function HudTiling<Item>({
 
       setDraggingKey(null);
       setDropIndex(null);
+      setDragPos(null);
       dragStartRef.current = null;
     },
     [currentOrder, dropIndex, reorder]
@@ -477,15 +481,20 @@ export function HudTiling<Item>({
     const { key, startX, startY, startW, startH } = ref;
     const dw = e.clientX - startX;
     const dh = e.clientY - startY;
-    const newW = Math.max(60, Math.round(startW + dw));
-    const newH = Math.max(40, Math.round(startH + dh));
+    const baseW = Math.max(60, Math.round(startW + dw));
+    const baseH = Math.max(40, Math.round(startH + dh));
+    const tile = layout.find(l => l.key === key);
+    const maxW = (tile && containerSize.width > 0) ? (containerSize.width - tile.x) : baseW;
+    const maxH = (tile && containerSize.height > 0) ? (containerSize.height - tile.y) : baseH;
+    const newW = Math.min(baseW, Math.max(60, maxW));
+    const newH = Math.min(baseH, Math.max(40, maxH));
     const next = { ...(currentSizes || {}), [key]: { width: newW, height: newH } };
     if (isSizesControlled) {
       onSizesChange?.(next);
     } else {
       setInternalSizes(next);
     }
-  }, [resizable, currentSizes, isSizesControlled, onSizesChange]);
+  }, [resizable, currentSizes, isSizesControlled, onSizesChange, layout, containerSize]);
 
   const finishResize = useCallback((e: ReactPointerEvent) => {
     const ref = resizeStartRef.current;
@@ -507,8 +516,8 @@ export function HudTiling<Item>({
         className
       )}
       style={{
-        width: dimensions ? dimensions.width : undefined,
-        height: dimensions ? dimensions.height : '100%',
+        width: dimensions?.width,
+        height: dimensions?.height,
         ...style,
       }}
       onPointerMove={(draggingKey || resizingKey) ? (draggingKey ? handlePointerMove : handleResizeMove) : undefined}
@@ -532,9 +541,10 @@ export function HudTiling<Item>({
           <div
             key={tile.key}
             className={cx(
-              'absolute overflow-hidden rounded border border-border/60 bg-card transition-[box-shadow,transform] duration-100',
-              isDraggingThis && 'z-50 shadow-2xl ring-1 ring-ring scale-[1.01]',
-              isDropTarget && 'ring-2 ring-accent'
+              'group absolute overflow-hidden rounded border border-border/60 bg-card transition-all duration-150',
+              isDraggingThis ? 'z-20 border border-dashed border-white/30 bg-transparent opacity-40' : '',
+              isDropTarget ? 'z-40 shadow-xl opacity-20' : '',
+              (draggingKey && !isDraggingThis && !isDropTarget) ? 'opacity-40' : ''
             )}
             style={{
               left: tile.x,
@@ -547,17 +557,21 @@ export function HudTiling<Item>({
             onPointerUp={draggingKey || resizingKey ? (draggingKey ? handlePointerUp : finishResize) : undefined}
             onPointerCancel={draggingKey || resizingKey ? (draggingKey ? handlePointerCancel : finishResize) : undefined}
           >
-            {renderItem(item, {
-              width: itemSize.width,
-              height: itemSize.height,
-              x: tile.x,
-              y: tile.y,
-              index,
-            })}
+            {!isDraggingThis ? (
+              renderItem(item, {
+                width: itemSize.width,
+                height: itemSize.height,
+                x: tile.x,
+                y: tile.y,
+                index,
+              })
+            ) : (
+              <div className="h-full w-full border border-dashed border-white/20" />
+            )}
 
             {resizable && !isDraggingThis && (
               <div
-                className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-foreground/30 hover:bg-foreground/50 rounded-tl"
+                className="absolute bottom-0 right-0 w-3 h-3 cursor-se-resize bg-foreground/30 hover:bg-foreground/50 rounded-tl opacity-0 group-hover:opacity-100 transition-opacity"
                 onPointerDown={handleResizePointerDown(tile.key)}
                 onClick={e => e.stopPropagation()}
               />
@@ -566,9 +580,92 @@ export function HudTiling<Item>({
         );
       })}
 
-      {/* Subtle grid hint when dragging (optional visual affordance) */}
+      {/* Floating preview of the item being dragged - makes "what's moving" obvious */}
+      {draggingKey && dragPos && (() => {
+        const dLayout = layout.find((l) => l.key === draggingKey);
+        if (!dLayout) return null;
+        const dItem = itemByKey.get(draggingKey);
+        if (!dItem) return null;
+        const dSize = currentSizes?.[draggingKey] ?? {
+          width: dLayout.width,
+          height: dLayout.height,
+        };
+        return (
+          <div
+            className="pointer-events-none absolute z-[300] overflow-hidden rounded-lg border border-cyan-400 bg-card shadow-2xl ring-4 ring-cyan-400/80"
+            style={{
+              left: dragPos.x - dSize.width * 0.35,
+              top: dragPos.y - dSize.height * 0.25,
+              width: dSize.width,
+              height: dSize.height,
+            }}
+          >
+            {renderItem(dItem, {
+              width: dSize.width,
+              height: dSize.height,
+              x: 0,
+              y: 0,
+              index: -1,
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Destination preview: faded version of the dragged item at the landing spot */}
+      {draggingKey && dropIndex != null && (() => {
+        const target = layout[dropIndex];
+        if (!target) return null;
+        const dItem = itemByKey.get(draggingKey);
+        if (!dItem) return null;
+        const previewSize = currentSizes?.[draggingKey] ?? { width: target.width, height: target.height };
+        return (
+          <div
+            className="pointer-events-none absolute z-[250] overflow-hidden rounded border border-accent/50 bg-accent/25"
+            style={{
+              left: target.x,
+              top: target.y,
+              width: previewSize.width,
+              height: previewSize.height,
+            }}
+          >
+            {renderItem(dItem, {
+              width: previewSize.width,
+              height: previewSize.height,
+              x: target.x,
+              y: target.y,
+              index: dropIndex,
+            })}
+          </div>
+        );
+      })()}
+
+      {/* Proposed drop zone highlight sized to the dragged item's current size.
+          This shows the "landing area" the item will occupy (can be larger than a single cell/column).
+          Uses a color fill on the region itself rather than just a boundary. */}
+      {draggingKey && dropIndex != null && (() => {
+        const dSize = currentSizes?.[draggingKey] ?? layout.find(l => l.key === draggingKey) ?? { width: 100, height: 60 };
+        const target = layout[dropIndex];
+        if (!target) return null;
+        const hx = target.x;
+        const hy = target.y;
+        const hw = Math.min(dSize.width, containerSize.width - hx);
+        const hh = Math.min(dSize.height, containerSize.height - hy);
+        return (
+          <div
+            className="pointer-events-none absolute z-[200] rounded border border-accent bg-accent/20"
+            style={{
+              left: hx,
+              top: hy,
+              width: hw,
+              height: hh,
+            }}
+          />
+        );
+      })()}
+
+      {/* Subtle grid hint when dragging */}
       {draggingKey && layout.length > 1 && (
-        <div className="pointer-events-none absolute inset-0 opacity-30" />
+        <div className="pointer-events-none absolute inset-0 opacity-20" />
       )}
     </div>
   );
