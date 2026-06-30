@@ -153,6 +153,24 @@ export function computeTilingLayout(
   cols = Math.min(cols, n);
   rows = Math.max(1, rows);
 
+  // Guarantee enough cells for every item even if the caller's
+  // maxRows + maxColumns combination is too small. Relax the
+  // limiting cap (prefer columns) so we never produce NaN or
+  // out-of-bounds later.
+  let capacity = rows * cols;
+  while (capacity < n) {
+    if (cols < maxCols) {
+      cols += 1;
+    } else if (rows < maxRows) {
+      rows += 1;
+    } else {
+      rows += 1; // last resort: overflow the row cap
+    }
+    capacity = rows * cols;
+  }
+  cols = Math.min(cols, n);
+  rows = Math.max(1, rows);
+
   const totalGapW = Math.max(0, (cols - 1) * gap);
   const totalGapH = Math.max(0, (rows - 1) * gap);
 
