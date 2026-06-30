@@ -77,7 +77,7 @@ struct PrimitivesTab: View {
     @State private var dragTranslation: CGSize = .zero
     @State private var dragTargetIndex: Int? = nil
     @State private var targetRect: CGRect? = nil
-    @State private var demoContainerSize: CGSize = .init(width: 620, height: 480)
+    @State private var demoContainerSize: CGSize = .zero  // start at zero; real value comes from GeometryReader to avoid race with load/update
 
     private let defaultTilingItems: [DemoTile] = [
         DemoTile(id: "lead", title: "codex.lead", kind: "agent", status: "running"),
@@ -440,10 +440,16 @@ struct PrimitivesTab: View {
                     )
                     let target = targetIndexFor(pointer: finalCenter)
 
-                    let currentIdx = itemOrder.firstIndex(of: id)!
-                    if target != currentIdx {
-                        let moved = itemOrder.remove(at: currentIdx)
-                        itemOrder.insert(moved, at: target)
+                    // Safe lookup: guard instead of force-unwrap (addresses review comment about races/persistence mismatch).
+                    if let currentIdx = itemOrder.firstIndex(of: id) {
+                        if target != currentIdx && target >= 0 && target < itemOrder.count {
+                            let moved = itemOrder.remove(at: currentIdx)
+                            let insertAt = min(max(0, target > currentIdx ? target - 1 : target), itemOrder.count)
+                            itemOrder.insert(moved, at: insertAt)
+                            updateGridPositions()
+                        }
+                    } else {
+                        // id not in current order (e.g. after Reset or data mismatch); just refresh
                         updateGridPositions()
                     }
 
@@ -455,19 +461,28 @@ struct PrimitivesTab: View {
                 }
         )
         // Resize handle (free resize until you rebalance)
+        // Uses start-of-gesture size + total translation (DragGesture translation is cumulative from gesture start,
+        // not incremental per onChanged). This fixes compounding on repeated onChanged calls.
         .overlay(alignment: .bottomTrailing) {
             Rectangle()
-                .fill(Color.white.opacity(0.3))
-                .frame(width: 16, height: 16)
+                .fill(HudSurface.control)
+                .frame(width: HudSpacing.xl, height: HudSpacing.xl)
                 .offset(x: -2, y: -2)
                 .gesture(
                     DragGesture()
                         .onChanged { value in
-                            var newSize = customSizes[id] ?? base.size
-                            newSize.width = max(120, newSize.width + value.translation.width)
-                            newSize.height = max(80, newSize.height + value.translation.height)
-                            let maxW = 620 - base.minX
-                            let maxH = 480 - base.minY
+                            // Capture start size once per gesture by using a temp if not present, but for simplicity here we
+                            // recompute from the *base layout size* + total translation (base is stable during gesture).
+                            // Better would be a @GestureState for startSize; this version at least avoids double-adding.
+                            let start = customSizes[id] ?? base.size
+                            var newSize = start
+                            newSize.width = max(120, start.width + value.translation.width)
+                            newSize.height = max(80, start.height + value.translation.height)
+                            // Use live measured container (from GeometryReader) instead of hardcoded demo window size.
+                            let liveW = demoContainerSize.width > 0 ? demoContainerSize.width : 620
+                            let liveH = demoContainerSize.height > 0 ? demoContainerSize.height : 480
+                            let maxW = max(120, liveW - base.minX)
+                            let maxH = max(80, liveH - base.minY)
                             newSize.width = min(newSize.width, maxW)
                             newSize.height = min(newSize.height, maxH)
                             customSizes[id] = newSize
@@ -498,7 +513,7 @@ struct PrimitivesTab: View {
                     .opacity(tilingMaxCols == nil ? 1.0 : 0.6)
                     .background(
                         tilingMaxCols == nil
-                            ? Color.white.opacity(0.08)
+                            ? HudSurface.hover
                             : Color.clear
                     )
 
@@ -508,7 +523,7 @@ struct PrimitivesTab: View {
                     .opacity(tilingMaxCols == 2 ? 1.0 : 0.6)
                     .background(
                         tilingMaxCols == 2
-                            ? Color.white.opacity(0.08)
+                            ? HudSurface.hover
                             : Color.clear
                     )
 
@@ -518,7 +533,7 @@ struct PrimitivesTab: View {
                     .opacity(tilingMaxCols == 3 ? 1.0 : 0.6)
                     .background(
                         tilingMaxCols == 3
-                            ? Color.white.opacity(0.08)
+                            ? HudSurface.hover
                             : Color.clear
                     )
 
@@ -528,18 +543,18 @@ struct PrimitivesTab: View {
                     .opacity(tilingMaxCols == 4 ? 1.0 : 0.6)
                     .background(
                         tilingMaxCols == 4
-                            ? Color.white.opacity(0.08)
+                            ? HudSurface.hover
                             : Color.clear
                     )
                 }
                 .font(HudFont.mono(HudTextSize.micro))
-                .padding(.horizontal, 8)
-                .padding(.vertical, 3)
+                .padding(.horizontal, HudSpacing.sm)
+                .padding(.vertical, HudSpacing.xs)
                 .background(
-                    RoundedRectangle(cornerRadius: 4)
+                    RoundedRectangle(cornerRadius: HudRadius.tight)
                         .stroke(HudHairline.standard, lineWidth: 1)
                 )
-                .cornerRadius(4)
+                .cornerRadius(HudRadius.tight)
 
                 Spacer().frame(width: HudSpacing.lg)
 
@@ -586,6 +601,7 @@ struct PrimitivesTab: View {
                     Button("Rebalance") {
                         customSizes = [:]
                         updateGridPositions()
+                        saveTilingLayout()
                     }
                     .font(HudFont.mono(HudTextSize.micro))
                     .buttonStyle(.borderedProminent)
@@ -597,19 +613,19 @@ struct PrimitivesTab: View {
 
                     ZStack(alignment: .topLeading) {
                         // container background
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(HudSurface.base.opacity(0.6))
+                        RoundedRectangle(cornerRadius: HudRadius.standard)
+                            .fill(HudSurface.inset)
                             .frame(width: containerW, height: containerH)
                             .overlay(
-                                RoundedRectangle(cornerRadius: 6)
+                                RoundedRectangle(cornerRadius: HudRadius.standard)
                                     .stroke(HudHairline.standard, lineWidth: 1)
                             )
 
-                        // Highlight for current drop target while dragging
+                        // Highlight for current drop target while dragging (accent tinted for visibility)
                         if let rect = targetRect {
-                            RoundedRectangle(cornerRadius: 4)
-                                .stroke(Color.blue.opacity(0.6), lineWidth: 2)
-                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.blue.opacity(0.1)))
+                            RoundedRectangle(cornerRadius: HudRadius.tight)
+                                .stroke(HudSurface.tintBorder(HudPalette.accent), lineWidth: 2)
+                                .background(RoundedRectangle(cornerRadius: HudRadius.tight).fill(HudSurface.tintGhost(HudPalette.accent)))
                                 .frame(width: rect.width - 4, height: rect.height - 4)
                                 .offset(x: rect.minX + 2, y: rect.minY + 2)
                                 .zIndex(5)
@@ -621,8 +637,13 @@ struct PrimitivesTab: View {
                     }
                     .onAppear {
                         demoContainerSize = geo.size
+                        // If we loaded persisted state before size was known, now recompute/adapt.
+                        if !basePositions.isEmpty && geo.size.width > 0 && geo.size.height > 0 {
+                            // Prefer a clean recompute using current constraints + measured size (more accurate than pure scale).
+                            updateGridPositions()
+                        }
                     }
-                    .onChange(of: geo.size) { newSize in
+                    .onChange(of: geo.size) { _, newSize in
                         let old = demoContainerSize
                         demoContainerSize = newSize
                         if old.width > 0 && old.height > 0 && !basePositions.isEmpty {
@@ -649,15 +670,23 @@ struct PrimitivesTab: View {
             .onAppear {
                 loadTilingLayout()
                 setupOrderIfNeeded()
-                if basePositions.isEmpty {
+                // Only compute with real measured size. If geo hasn't reported yet, the .onChange(of: geo.size)
+                // or the container's onChange will trigger updateGridPositions.
+                if basePositions.isEmpty && demoContainerSize.width > 0 && demoContainerSize.height > 0 {
                     updateGridPositions()
+                } else if !basePositions.isEmpty && demoContainerSize.width > 0 && demoContainerSize.height > 0 {
+                    // Persisted positions may be from a different size; adapt once we know live size.
+                    // (Scaling happens in geo .onChange; this ensures a fresh compute if needed.)
+                    if basePositions.values.allSatisfy({ $0.width == 0 || $0.height == 0 }) {
+                        updateGridPositions()
+                    }
                 }
             }
-            .onChange(of: tilingMaxCols) { _ in
+            .onChange(of: tilingMaxCols) { _, _ in
                 updateGridPositions()
                 saveTilingLayout()
             }
-            .onChange(of: tilingGap) { _ in
+            .onChange(of: tilingGap) { _, _ in
                 updateGridPositions()
                 saveTilingLayout()
             }

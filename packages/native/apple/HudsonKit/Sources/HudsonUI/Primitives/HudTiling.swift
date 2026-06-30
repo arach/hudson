@@ -213,6 +213,17 @@ public func computeTilingLayout(
 ///
 /// On macOS this is implemented with AppKit for fine-grained control over
 /// layout, dragging, and pixel-perfect behavior.
+///
+/// Current scope (native):
+/// - Public API takes `items + constraints + renderItem`.
+/// - Internal order state for drag-reorder (reordering is wired through onOrderChange callback to the view).
+/// - No built-in `sizes` / `resizable` / controlled order exposed at the HudTiling level (yet).
+///
+/// Richer interactive demo (drag + free resize + persistence + rebalance) lives in PrimitivesTab
+/// as a reference implementation that directly uses `computeTilingLayout` + custom ZStack/gestures.
+/// See the web HudTiling for the more fully-featured prop surface (order, sizes, resizable, renderItem layout).
+///
+/// This divergence is intentional while we dogfood use cases; parity can be increased later.
 public struct HudTiling<Item: Identifiable & Sendable>: View where Item.ID: Hashable & Sendable {
     private let items: [Item]
     private let constraints: TilingConstraints
@@ -251,6 +262,20 @@ public struct HudTiling<Item: Identifiable & Sendable>: View where Item.ID: Hash
     }
 }
 
+// Reconcile order when the set of items changes (drop removed ids, append new ones at the end).
+// This prevents stale order causing dropped/new items after items prop updates.
+private func reconciledOrder<ItemID: Hashable>(current: [ItemID], items: [ItemID]) -> [ItemID] {
+    let currentSet = Set(current)
+    let itemSet = Set(items)
+    // Keep only still-present in their relative order
+    var result = current.filter { itemSet.contains($0) }
+    // Append any new ids (in the order they appear in items)
+    for id in items where !currentSet.contains(id) {
+        result.append(id)
+    }
+    return result
+}
+
 // MARK: - macOS: AppKit implementation for best polish and control
 
 #if os(macOS)
@@ -260,20 +285,29 @@ private struct HudTilingRepresentable<Item: Identifiable>: NSViewRepresentable w
     let constraints: TilingConstraints
     let renderItem: (Item) -> AnyView
 
-    func makeCoordinator() -> Coordinator {
-        Coordinator(order: $order)
-    }
+    func makeCoordinator() -> Coordinator { Coordinator() }
 
     func makeNSView(context: Context) -> HudTilingView {
         let view = HudTilingView()
-        // Coordinator wiring would be set via update or a separate generic coordinator pattern
+        // Note: callbacks (onOrderChange) are installed in updateNSView. The Coordinator is kept
+        // for NSViewRepresentable contract but currently minimal (no per-instance state beyond the binding).
         return view
     }
 
     func updateNSView(_ nsView: HudTilingView, context: Context) {
-        // Rebuild hosted content
-        let currentOrder = order.isEmpty ? items.map(\.id) : order
-        let orderedItems = currentOrder.compactMap { id in items.first { $0.id == id } }
+        // Reconcile order against current items (addresses review: init-only + no on items change).
+        let reconciled = reconciledOrder(current: order, items: items.map(\.id))
+        if reconciled != order {
+            // Write back the reconciled order (this will be the new source of truth).
+            DispatchQueue.main.async {
+                if !self.order.isEmpty || !reconciled.isEmpty {  // avoid unnecessary empty writes
+                    self.order = reconciled
+                }
+            }
+        }
+
+        let effectiveOrder = reconciled.isEmpty ? items.map(\.id) : reconciled
+        let orderedItems = effectiveOrder.compactMap { id in items.first { $0.id == id } }
 
         let hostingViews: [NSView] = orderedItems.map { item in
             let hosting = NSHostingView(rootView: renderItem(item))
@@ -284,20 +318,21 @@ private struct HudTilingRepresentable<Item: Identifiable>: NSViewRepresentable w
         nsView.onOrderChange = { newKeys in
             // Map AnyHashable back — in production you'd keep typed IDs
             DispatchQueue.main.async {
-                self.order = newKeys.compactMap { $0 as? Item.ID }
+                let reconciledNew = reconciledOrder(current: newKeys.compactMap { $0 as? Item.ID }, items: self.items.map(\.id))
+                self.order = reconciledNew
             }
         }
 
         nsView.updateTiles(
-            keys: currentOrder.map(AnyHashable.init),
+            keys: effectiveOrder.map(AnyHashable.init),
             views: hostingViews,
             constraints: constraints
         )
     }
 
     final class Coordinator {
-        var order: Binding<[Item.ID]>
-        init(order: Binding<[Item.ID]>) { self.order = order }
+        // Minimal coordinator; real callback wiring happens via onOrderChange closure in updateNSView.
+        // (Left in place to satisfy NSViewRepresentable while keeping the implementation simple.)
     }
 }
 
@@ -413,14 +448,16 @@ private struct _HudTilingSwiftUI<Item: Identifiable>: View where Item.ID: Hashab
     var body: some View {
         // Simplified version of the earlier pure-SwiftUI tiler for non-macOS
         GeometryReader { geo in
+            let reconciled = reconciledOrder(current: order, items: items.map(\.id))
+            let keysForLayout = reconciled.isEmpty ? items.map { AnyHashable($0.id) } : reconciled.map(AnyHashable.init)
             let layouts = computeTilingLayout(
-                keys: order.isEmpty ? items.map { AnyHashable($0.id) } : order.map(AnyHashable.init),
+                keys: keysForLayout,
                 containerWidth: geo.size.width,
                 containerHeight: geo.size.height,
                 constraints: constraints
             )
 
-            let ordered = order.isEmpty ? items : order.compactMap { id in items.first(where: { $0.id == id }) }
+            let ordered = reconciled.isEmpty ? items : reconciled.compactMap { id in items.first(where: { $0.id == id }) }
 
             ZStack(alignment: .topLeading) {
                 ForEach(Array(ordered.enumerated()), id: \.element.id) { pair in

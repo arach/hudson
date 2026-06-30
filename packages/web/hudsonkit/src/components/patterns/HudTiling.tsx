@@ -85,6 +85,14 @@ export interface HudTilingProps<Item> {
   resizable?: boolean;
 }
 
+/**
+ * Web implementation of the tiler (full controlled props for order + sizes + resizable + rich renderItem).
+ *
+ * See packages/native/.../HudTiling.swift for the native counterpart (currently lighter public surface;
+ * rich drag/resize demo lives in the PrimitivesTab reference implementation using the shared compute fn).
+ * Codex review feedback on parity and demo vs primitive split noted in the native file.
+ */
+
 interface TileLayout {
   key: string | number;
   x: number;
@@ -236,6 +244,15 @@ export function computeTilingLayout(
     ry += rowHeights[r] + (r < rows - 1 ? gap : 0);
   }
 
+  // Pre-compute last row centering offset once (outside the item loop)
+  // to avoid per-item duplication and using the wrong colWidths[col] inside the loop.
+  let lastRowOffset = 0;
+  if (alignLast === 'center' && itemsInLastRow < cols && itemsInLastRow > 0) {
+    const lastGap = (itemsInLastRow - 1) * gap;
+    const lastRowTotalW = colStarts[itemsInLastRow - 1] + colWidths[itemsInLastRow - 1] - colStarts[0];
+    lastRowOffset = (effW - lastRowTotalW) / 2;
+  }
+
   for (let i = 0; i < n; i++) {
     const col = i % cols;
     const row = Math.floor(i / cols);
@@ -246,15 +263,9 @@ export function computeTilingLayout(
     let x = colStarts[col];
     let y = rowStarts[row];
 
-    // Center last row (non-stretch)
-    if (
-      row === lastRowIndex &&
-      alignLast === 'center' &&
-      itemsInLastRow < cols
-    ) {
-      const lastRowTotalW = itemsInLastRow * colWidths[col] + (itemsInLastRow - 1) * gap; // use actual
-      const offset = (effW - lastRowTotalW) / 2;
-      x = offset + col * (w + gap);
+    // Center last row (non-stretch) — use the precomputed offset
+    if (row === lastRowIndex && alignLast === 'center' && itemsInLastRow < cols) {
+      x = lastRowOffset + col * (w + gap);
     }
 
     layouts.push({
@@ -518,18 +529,28 @@ export function HudTiling<Item>({
     const { key, startX, startY, startW, startH } = ref;
     const dw = e.clientX - startX;
     const dh = e.clientY - startY;
-    const baseW = Math.max(60, Math.round(startW + dw));
-    const baseH = Math.max(40, Math.round(startH + dh));
+
     const tile = layout.find(l => l.key === key);
-    const maxW = (tile && containerSize.width > 0) ? (containerSize.width - tile.x) : baseW;
-    const maxH = (tile && containerSize.height > 0) ? (containerSize.height - tile.y) : baseH;
-    const newW = Math.min(baseW, Math.max(60, maxW));
-    const newH = Math.min(baseH, Math.max(40, maxH));
+    const minW = 60;
+    const minH = 40;
+    let newW = Math.max(minW, Math.round(startW + dw));
+    let newH = Math.max(minH, Math.round(startH + dh));
+
+    // Upper bound relative to container and this tile's origin (prevents overflow).
+    // Uses the current layout origin + live container size.
+    if (tile && containerSize.width > 0 && containerSize.height > 0) {
+      const availW = Math.max(minW, containerSize.width - tile.x);
+      const availH = Math.max(minH, containerSize.height - tile.y);
+      newW = Math.min(newW, availW);
+      newH = Math.min(newH, availH);
+    }
+
     const next = { ...(currentSizes || {}), [key]: { width: newW, height: newH } };
     if (isSizesControlled) {
       onSizesChange?.(next);
     } else {
       setInternalSizes(next);
+      onSizesChange?.(next);  // emit even in uncontrolled mode (for listeners / persistence) like reorder does
     }
   }, [resizable, currentSizes, isSizesControlled, onSizesChange, layout, containerSize]);
 
@@ -590,6 +611,9 @@ export function HudTiling<Item>({
               height: itemSize.height,
               pointerEvents: isDraggingThis ? 'none' : 'auto',
             }}
+            // Note: the source slot for a drag is rendered as a dashed "hole" (content hidden).
+            // A separate floating preview (cyan ring) follows the pointer with the real content.
+            // This model + destination highlight was added to address earlier review feedback on drag clarity.
             onPointerDown={draggable ? handlePointerDown(tile.key) : undefined}
             onPointerUp={draggingKey || resizingKey ? (draggingKey ? handlePointerUp : finishResize) : undefined}
             onPointerCancel={draggingKey || resizingKey ? (draggingKey ? handlePointerCancel : finishResize) : undefined}
