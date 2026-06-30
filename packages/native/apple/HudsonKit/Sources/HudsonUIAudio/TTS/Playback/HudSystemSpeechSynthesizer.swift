@@ -62,6 +62,73 @@ public final class HudSystemSpeechSynthesizer: NSObject {
         }
     }
 
+    public func synthesizeAudioData(_ text: String, voiceIdentifier: String? = nil) async throws -> Data {
+        let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
+        guard !trimmed.isEmpty else {
+            throw HudTTSError.emptyInput
+        }
+
+        stop()
+
+        let utterance = AVSpeechUtterance(string: trimmed)
+        if let voiceIdentifier, !voiceIdentifier.isEmpty,
+           let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
+            utterance.voice = voice
+        } else if let selectedVoiceIdentifier,
+                  let voice = AVSpeechSynthesisVoice(identifier: selectedVoiceIdentifier) {
+            utterance.voice = voice
+        }
+        utterance.rate = speechRate
+        utterance.prefersAssistiveTechnologySettings = true
+
+        let outputURL = FileManager.default.temporaryDirectory
+            .appendingPathComponent("hudson-system-tts-\(UUID().uuidString)")
+            .appendingPathExtension("caf")
+
+        defer {
+            try? FileManager.default.removeItem(at: outputURL)
+        }
+
+        return try await withCheckedThrowingContinuation { continuation in
+            var audioFile: AVAudioFile?
+            var didResume = false
+
+            synthesizer.write(utterance) { buffer in
+                guard !didResume else { return }
+                guard let pcmBuffer = buffer as? AVAudioPCMBuffer else { return }
+
+                do {
+                    if pcmBuffer.frameLength == 0 {
+                        didResume = true
+                        if audioFile == nil {
+                            continuation.resume(throwing: HudTTSError.synthesisFailed(
+                                provider: .system,
+                                message: "System speech did not produce audio."
+                            ))
+                        } else {
+                            continuation.resume(returning: try Data(contentsOf: outputURL))
+                        }
+                        return
+                    }
+
+                    if audioFile == nil {
+                        audioFile = try AVAudioFile(
+                            forWriting: outputURL,
+                            settings: pcmBuffer.format.settings,
+                            commonFormat: pcmBuffer.format.commonFormat,
+                            interleaved: pcmBuffer.format.isInterleaved
+                        )
+                    }
+
+                    try audioFile?.write(from: pcmBuffer)
+                } catch {
+                    didResume = true
+                    continuation.resume(throwing: error)
+                }
+            }
+        }
+    }
+
     public func pauseOrResume() {
         if synthesizer.isSpeaking {
             synthesizer.pauseSpeaking(at: .word)
