@@ -1,4 +1,7 @@
+'use client';
+
 import { consumers } from '@/app/embed/registry';
+import { HudTiling } from 'hudsonkit';
 
 export default function MultiThemePage() {
   const entries = Object.values(consumers);
@@ -51,6 +54,51 @@ export default function MultiThemePage() {
           </div>
         ))}
       </div>
+
+      {/* Test of web HudTiling primitive with arbitrary content */}
+      <section className="max-w-4xl mt-12">
+        <h2 className="text-xl font-semibold mb-2 text-cyan-300">Web HudTiling test (arbitrary content)</h2>
+        <p className="text-sm text-slate-400 mb-4">
+          Using the web version of the tiler with drag-to-reorder, resizable, and mixed content types (tree, code, image).
+        </p>
+        <HudTiling
+          items={[
+            { id: 'tree', label: 'Code tree' },
+            { id: 'code', label: 'Code view' },
+            { id: 'img', label: 'Image placeholder' },
+          ]}
+          itemKey={(i) => i.id}
+          renderItem={(item) => {
+            if (item.id === 'tree') {
+              return (
+                <div className="p-2 text-xs font-mono bg-black/40 rounded">
+                  <div>project/</div>
+                  <div>├─ src/</div>
+                  <div>│  └─ main.ts</div>
+                  <div>└─ README.md</div>
+                </div>
+              );
+            }
+            if (item.id === 'code') {
+              return (
+                <div className="p-2 text-xs font-mono bg-black/40 rounded">
+                  <div>function tile() {'{'}</div>
+                  <div>  return compute(...)</div>
+                  <div>{'}'}</div>
+                </div>
+              );
+            }
+            return (
+              <div className="flex items-center justify-center h-full bg-gradient-to-br from-cyan-500/20 to-emerald-500/20 rounded text-center text-sm">
+                Image / Visual Content
+              </div>
+            );
+          }}
+          constraints={{ maxColumns: 3, gap: 8 }}
+          resizable
+          className="h-64 border border-white/10 rounded-lg bg-slate-900/50"
+        />
+      </section>
     </main>
   );
 }

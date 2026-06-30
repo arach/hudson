@@ -76,6 +76,8 @@ struct PrimitivesTab: View {
     @State private var draggingID: String? = nil
     @State private var dragTranslation: CGSize = .zero
     @State private var dragTargetIndex: Int? = nil
+    @State private var targetRect: CGRect? = nil
+    @State private var demoContainerSize: CGSize = .init(width: 620, height: 480)
 
     private let defaultTilingItems: [DemoTile] = [
         DemoTile(id: "lead", title: "codex.lead", kind: "agent", status: "running"),
@@ -242,8 +244,9 @@ struct PrimitivesTab: View {
 
     private func updateGridPositions() {
         setupOrderIfNeeded()
-        let containerW: CGFloat = 620
-        let containerH: CGFloat = 480
+        let containerW = demoContainerSize.width
+        let containerH = demoContainerSize.height
+        guard containerW > 0, containerH > 0 else { return }
 
         let keys = itemOrder.map { AnyHashable($0) }
         let constraints = TilingConstraints(
@@ -272,41 +275,24 @@ struct PrimitivesTab: View {
         }
     }
 
-    private func targetIndexFor(pointer: CGPoint, containerW: CGFloat, containerH: CGFloat) -> Int {
+    private func targetIndexFor(pointer: CGPoint) -> Int {
         setupOrderIfNeeded()
-        let n = itemOrder.count
-        guard n > 0 else { return 0 }
-
-        let cols = max(1, tilingMaxCols ?? max(2, Int(ceil(sqrt(Double(n))))))
-        let rows = (n + cols - 1) / cols
-
-        let cellW = containerW / CGFloat(cols)
-        let cellH = containerH / CGFloat(rows)
-
-        let col = max(0, min(cols - 1, Int(pointer.x / cellW)))
-        let row = max(0, min(rows - 1, Int(pointer.y / cellH)))
-
-        var idx = row * cols + col
-        idx = min(idx, n - 1)
-        return idx
+        var bestIdx = 0
+        var bestDist = CGFloat.greatestFiniteMagnitude
+        for (idx, id) in itemOrder.enumerated() {
+            if let rect = basePositions[id] {
+                let center = CGPoint(x: rect.midX, y: rect.midY)
+                let d = hypot(center.x - pointer.x, center.y - pointer.y)
+                if d < bestDist {
+                    bestDist = d
+                    bestIdx = idx
+                }
+            }
+        }
+        return bestIdx
     }
 
-    private func cellRect(for index: Int, containerW: CGFloat, containerH: CGFloat) -> CGRect {
-        setupOrderIfNeeded()
-        let n = itemOrder.count
-        guard n > 0 else { return .zero }
 
-        let cols = max(1, tilingMaxCols ?? max(2, Int(ceil(sqrt(Double(n))))))
-        let rows = (n + cols - 1) / cols
-
-        let cellW = containerW / CGFloat(cols)
-        let cellH = containerH / CGFloat(rows)
-
-        let col = index % cols
-        let row = index / cols
-
-        return CGRect(x: CGFloat(col) * cellW, y: CGFloat(row) * cellH, width: cellW, height: cellH)
-    }
 
     private func saveTilingLayout() {
         let positionsData = basePositions.mapValues { CodableRect(x: Double($0.minX), y: Double($0.minY), w: Double($0.width), h: Double($0.height)) }
@@ -437,24 +423,22 @@ struct PrimitivesTab: View {
                     dragTranslation = value.translation
 
                     // Live target preview (no reordering yet)
-                    let containerW: CGFloat = 620
-                    let containerH: CGFloat = 480
                     let baseForCalc = basePositions[id] ?? base
                     let currentCenter = CGPoint(
                         x: baseForCalc.midX + dragTranslation.width,
                         y: baseForCalc.midY + dragTranslation.height
                     )
-                    dragTargetIndex = targetIndexFor(pointer: currentCenter, containerW: containerW, containerH: containerH)
+                    let target = targetIndexFor(pointer: currentCenter)
+                    dragTargetIndex = target
+                    targetRect = itemOrder.indices.contains(target) ? basePositions[itemOrder[target]] : nil
                 }
                 .onEnded { value in
-                    let containerW: CGFloat = 620
-                    let containerH: CGFloat = 480
                     let baseForCalc = basePositions[id] ?? base
                     let finalCenter = CGPoint(
                         x: baseForCalc.midX + value.translation.width,
                         y: baseForCalc.midY + value.translation.height
                     )
-                    let target = targetIndexFor(pointer: finalCenter, containerW: containerW, containerH: containerH)
+                    let target = targetIndexFor(pointer: finalCenter)
 
                     let currentIdx = itemOrder.firstIndex(of: id)!
                     if target != currentIdx {
@@ -466,6 +450,7 @@ struct PrimitivesTab: View {
                     draggingID = nil
                     dragTranslation = .zero
                     dragTargetIndex = nil
+                    targetRect = nil
                     saveTilingLayout()
                 }
         )
@@ -606,32 +591,60 @@ struct PrimitivesTab: View {
                     .buttonStyle(.borderedProminent)
                 }
 
-                ZStack(alignment: .topLeading) {
-                    // container background
-                    RoundedRectangle(cornerRadius: 6)
-                        .fill(HudSurface.base.opacity(0.6))
-                        .frame(width: 620, height: 480)
-                        .overlay(
-                            RoundedRectangle(cornerRadius: 6)
-                                .stroke(HudHairline.standard, lineWidth: 1)
-                        )
+                GeometryReader { geo in
+                    let containerW = geo.size.width
+                    let containerH = geo.size.height
 
-                    // Highlight for current drop target while dragging
-                    if let target = dragTargetIndex {
-                        let rect = cellRect(for: target, containerW: 620, containerH: 480)
-                        RoundedRectangle(cornerRadius: 4)
-                            .stroke(Color.blue.opacity(0.6), lineWidth: 2)
-                            .background(RoundedRectangle(cornerRadius: 4).fill(Color.blue.opacity(0.1)))
-                            .frame(width: rect.width - 4, height: rect.height - 4)
-                            .offset(x: rect.minX + 2, y: rect.minY + 2)
-                            .zIndex(5)
+                    ZStack(alignment: .topLeading) {
+                        // container background
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(HudSurface.base.opacity(0.6))
+                            .frame(width: containerW, height: containerH)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 6)
+                                    .stroke(HudHairline.standard, lineWidth: 1)
+                            )
+
+                        // Highlight for current drop target while dragging
+                        if let rect = targetRect {
+                            RoundedRectangle(cornerRadius: 4)
+                                .stroke(Color.blue.opacity(0.6), lineWidth: 2)
+                                .background(RoundedRectangle(cornerRadius: 4).fill(Color.blue.opacity(0.1)))
+                                .frame(width: rect.width - 4, height: rect.height - 4)
+                                .offset(x: rect.minX + 2, y: rect.minY + 2)
+                                .zIndex(5)
+                        }
+
+                        ForEach(tilingItems, id: \.id) { item in
+                            tilingCard(for: item)
+                        }
                     }
-
-                    ForEach(tilingItems, id: \.id) { item in
-                        tilingCard(for: item)
+                    .onAppear {
+                        demoContainerSize = geo.size
+                    }
+                    .onChange(of: geo.size) { newSize in
+                        let old = demoContainerSize
+                        demoContainerSize = newSize
+                        if old.width > 0 && old.height > 0 && !basePositions.isEmpty {
+                            let sx = newSize.width / old.width
+                            let sy = newSize.height / old.height
+                            for k in basePositions.keys {
+                                var r = basePositions[k]!
+                                r.origin.x *= sx
+                                r.origin.y *= sy
+                                r.size.width *= sx
+                                r.size.height *= sy
+                                basePositions[k] = r
+                            }
+                            for k in customSizes.keys {
+                                var s = customSizes[k]!
+                                s.width *= sx
+                                s.height *= sy
+                                customSizes[k] = s
+                            }
+                        }
                     }
                 }
-                .frame(width: 620, height: 480)
             }
             .onAppear {
                 loadTilingLayout()
