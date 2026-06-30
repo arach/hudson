@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { consumers } from '@/app/embed/registry';
 import { HudTiling } from 'hudsonkit';
 
@@ -85,7 +85,7 @@ export default function MultiThemePage() {
           ]}
           itemKey={(i) => i.id}
           renderItem={(item) => {
-            const Panel = ({ title, children }) => (
+            const Panel = ({ title, children }: { title: string; children: ReactNode }) => (
               <div className="flex h-full flex-col overflow-hidden rounded-lg border border-white/10 bg-slate-950 shadow-inner text-[10px]">
                 <div className="flex items-center justify-between border-b border-white/10 bg-gradient-to-r from-white/5 to-white/10 px-2 py-1 text-[9px] font-medium text-slate-200">
                   <span className="tracking-tight">{title}</span>

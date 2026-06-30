@@ -407,8 +407,18 @@ export function HudTiling<Item>({
         );
 
         if (targetIndex === -1) {
-          // Check proximity to edges for insertion between
-          targetIndex = layout.length - 1;
+          // Find closest tile by center for better insertion feel in grids
+          let minDist = Infinity;
+          targetIndex = 0;
+          layout.forEach((l, i) => {
+            const cx = l.x + l.width / 2;
+            const cy = l.y + l.height / 2;
+            const dist = (relX - cx) ** 2 + (relY - cy) ** 2;
+            if (dist < minDist) {
+              minDist = dist;
+              targetIndex = i;
+            }
+          });
         }
 
         // Convert layout index to order index
