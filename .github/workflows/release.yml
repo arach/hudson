@@ -39,20 +39,21 @@ jobs:
       - name: Validate HudsonKit packed package
         run: bun run validate:hudsonkit-package
 
-      - name: Detect npm token
+      - name: Detect npm publish eligibility
         id: npm-token
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          ENABLE_NPM_PUBLISH: ${{ vars.ENABLE_NPM_PUBLISH }}
         run: |
-          if [ -n "${NPM_TOKEN:-}" ]; then
+          if [ -n "${NPM_TOKEN:-}" ] && [ "${ENABLE_NPM_PUBLISH:-}" = "true" ]; then
             echo "present=true" >> "$GITHUB_OUTPUT"
-            echo "NPM_TOKEN present; changesets may publish packages after versioning."
+            echo "NPM_TOKEN present and ENABLE_NPM_PUBLISH=true; changesets may publish packages after versioning."
           else
             echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "NPM_TOKEN is absent; changesets will only maintain the version PR and will skip npm publish."
+            echo "npm publish disabled (requires both the NPM_TOKEN secret and the ENABLE_NPM_PUBLISH=true repository variable); changesets will only maintain the version PR."
           fi
 
-      - name: Version packages (publish skipped; NPM_TOKEN absent)
+      - name: Version packages (npm publish disabled)
         if: steps.npm-token.outputs.present != 'true'
         uses: changesets/action@v1
         with:
