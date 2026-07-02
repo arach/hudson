@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { motion, AnimatePresence } from 'motion/react';
 
@@ -66,6 +66,7 @@ function MenuItemRow({ item }: { item: ContextMenuAction }) {
     <ContextMenu.Item
       disabled={item.disabled}
       onClick={item.action}
+      label={item.label}
       className="flex items-center gap-3 px-3 py-1.5 text-[12px] font-mono text-popover-foreground outline-none select-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-accent data-[disabled]:opacity-40 data-[disabled]:pointer-events-none cursor-default"
     >
       {item.icon && <span className="w-4 h-4 flex items-center justify-center text-muted-foreground">{item.icon}</span>}
@@ -89,6 +90,7 @@ const PopupContent = React.forwardRef<HTMLDivElement, { items: ContextMenuEntry[
       <ContextMenu.Popup
         className="bg-popover/95 backdrop-blur-xl border rounded-lg shadow-2xl py-1 min-w-[180px] z-[200] outline-none"
         style={chromeBorderStyle}
+        aria-label="Context menu"
       >
         {items.map((entry, idx) => {
           if (isSeparator(entry)) {
@@ -137,6 +139,8 @@ export function HudsonContextMenu({
   nativeMenuModifier = 'alt',
   activationMode = 'default',
 }: HudsonContextMenuProps) {
+  const keyboardOpenRef = useRef(false);
+
   if (items.length === 0) return <>{children}</>;
 
   return (
@@ -145,7 +149,34 @@ export function HudsonContextMenu({
         render={(
           <div
             style={{ display: 'contents' }}
+            aria-haspopup="menu"
+            onKeyDownCapture={(event) => {
+              if (event.defaultPrevented) return;
+              const opensContextMenu = event.key === 'ContextMenu' || (event.shiftKey && event.key === 'F10');
+              if (!opensContextMenu) return;
+
+              event.preventDefault();
+              event.stopPropagation();
+              const target = event.target instanceof HTMLElement ? event.target : event.currentTarget;
+              const rect = target.getBoundingClientRect();
+              const clientX = rect.left + Math.min(24, Math.max(0, rect.width / 2));
+              const clientY = rect.top + Math.min(24, Math.max(0, rect.height / 2));
+              keyboardOpenRef.current = true;
+              try {
+                event.currentTarget.dispatchEvent(new MouseEvent('contextmenu', {
+                  bubbles: true,
+                  cancelable: true,
+                  view: window,
+                  clientX,
+                  clientY,
+                  button: 2,
+                }));
+              } finally {
+                keyboardOpenRef.current = false;
+              }
+            }}
             onContextMenuCapture={(event) => {
+              if (keyboardOpenRef.current) return;
               const modifierActive = shouldBypassToNativeMenu(event, nativeMenuModifier);
               const shouldUseNativeMenu = activationMode === 'modifier' ? !modifierActive : modifierActive;
               if (shouldUseNativeMenu) {
