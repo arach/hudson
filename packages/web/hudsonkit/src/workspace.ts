@@ -50,7 +50,7 @@ export {
   routeWithQuery,
   useWorkspaceHostRoutes,
 } from './workspace/hostRoutes';
-export type { WorkspaceHostRoutes } from './workspace/hostRoutes';
+export type { WorkspaceHostRoutes, HudsonHostRoutes } from './workspace/hostRoutes';
 
 // Shell runtime contexts and extension surfaces used by workspace apps
 export {

@@ -105,7 +105,8 @@ export const COMPONENTS: ComponentEntry[] = [
     desc: 'Bottom bar with status, viewport, clock',
     overview: 'Fixed bottom chrome with a status indicator (colored dot + label), center viewport data (click to copy coordinates), terminal toggle, system info readout, and a live clock. Supports left/right custom content slots.',
     props: [
-      { name: 'status', type: '{ label, color }', desc: 'Status indicator with emerald/amber/red/neutral' },
+      { name: 'status', type: '{ label, color, title? }', desc: 'Status indicator with emerald/amber/red/neutral' },
+      { name: 'onStatusClick', type: '() => void', desc: 'Optional action for the status indicator' },
       { name: 'viewport', type: '{ pan, zoom, canvasSize }', desc: 'Viewport data for center display' },
       { name: 'onToggleTerminal', type: '() => void', desc: 'Terminal drawer toggle callback' },
       { name: 'left / right', type: 'ReactNode', desc: 'Custom content slots on each side' },

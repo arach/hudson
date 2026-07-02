@@ -19,11 +19,19 @@ interface SidePanelProps {
   width?: number;
   /** Resize start handler */
   onResizeStart?: (e: React.MouseEvent) => void;
+  /**
+   * Render as a floating overlay above the content area: elevated surface
+   * (backdrop blur + stronger shadow, themeable via --hud-shadow-panel-float)
+   * and a `data-floating="true"` attribute. Positioning is unchanged — the
+   * shell decides whether content insets around the panel or flows beneath
+   * it. Defaults to false (identical rendering to before this prop existed).
+   */
+  floating?: boolean;
   children: React.ReactNode;
 }
 
 const SidePanel: React.FC<SidePanelProps> = ({
-  side, title, icon, isCollapsed = false, onToggleCollapse, headerActions, footer, style, width, onResizeStart, children
+  side, title, icon, isCollapsed = false, onToggleCollapse, headerActions, footer, style, width, onResizeStart, floating = false, children
 }) => {
   const chromeBorder = 'var(--hud-chrome-border, oklch(var(--border) / 0.8))';
   // Called before the collapsed early-return so hook order stays stable across renders.
@@ -57,6 +65,19 @@ const SidePanel: React.FC<SidePanelProps> = ({
   // Caller-provided style.top/bottom (e.g. AppShell passing chrome-aware insets)
   // wins over the internal defaults; the platform offsets remain the fallback
   // for direct consumers of SidePanel that don't supply positioning.
+  // Floating overlay elevation — content flows beneath the panel, so it needs
+  // to read as a layer above it: chrome-border ring + deep directional shadow
+  // (themeable via --hud-shadow-panel-float) and a backdrop blur.
+  const floatingStyle: React.CSSProperties = floating
+    ? {
+        boxShadow: `var(--hud-shadow-panel-float, 0 0 0 1px ${chromeBorder}, ${
+          side === 'left' ? '18px' : '-18px'
+        } 0 48px -12px rgba(0, 0, 0, 0.55))`,
+        backdropFilter: 'blur(24px) saturate(140%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(140%)',
+      }
+    : {};
+
   const finalStyle: React.CSSProperties = {
     position: 'fixed',
     top: panelTopOffset,
@@ -65,12 +86,14 @@ const SidePanel: React.FC<SidePanelProps> = ({
     right: side === 'right' ? 0 : undefined,
     width: `${width || 280}px`,
     borderColor: chromeBorder,
+    ...floatingStyle,
     ...style,
   };
 
   return (
     <div
       data-frame-panel={side === 'left' ? 'manifest' : 'inspector'}
+      data-floating={floating ? 'true' : undefined}
       className={`${panelClass} pointer-events-none select-none font-mono text-[11px] flex flex-col`}
       style={finalStyle}
     >

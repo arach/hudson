@@ -12,6 +12,8 @@ import { Assistant } from './Assistant';
 import { ObjectCodeSurface, ObjectCodeWorkbench } from './controls/ObjectCodeSurface';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { InstanceProvider } from '../context/InstanceContext';
+import { AppSlotErrorBoundary } from '../workspace/shell/AppSlotErrorBoundary';
+import { WorkspaceHostRoutesProvider, type HudsonHostRoutes } from '../workspace/hostRoutes';
 import {
   AppShellControlsProvider,
   type AppShellControlsContextValue,
@@ -19,12 +21,13 @@ import {
   type DrawerTab,
   type PaletteControls,
   type SidePanelControls,
+  type SidePanelPinControls,
 } from '../context/AppShellControlsContext';
 import { usePlatformLayout } from '../platform/usePlatformLayout';
-import type { HudsonApp } from '../types/app';
+import type { AppShellLayoutConfig, AppShellResponsivePanelMax, HudsonApp } from '../types/app';
 import type { HudsonCodeWorkbenchSize } from '../types/code';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight, Code2, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Pin, PinOff, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
 import {
   HudsonThemeScript,
   ThemeProvider,
@@ -38,6 +41,40 @@ import {
 // chrome (nav bar, side panels, status bar, command palette, terminal drawer).
 // Use WorkspaceShell instead when you need multi-app canvas mode.
 // ---------------------------------------------------------------------------
+/** How AppShell's side panels claim horizontal space in panel layout. */
+export type AppShellPanelMode = 'push' | 'overlay' | 'auto';
+
+/**
+ * Opt-in side-panel space behavior, passed as `chrome.panelBehavior`.
+ * Omitting it (or passing `{}`) keeps the classic push layout unchanged.
+ */
+export interface AppShellPanelBehavior {
+  /**
+   * - 'push' (default) — open panels inset the content area, exactly as before.
+   * - 'overlay' — open panels always float above the content area.
+   * - 'auto' — panels push until the center content would drop below
+   *   `centerMinWidth`, then float over the content instead. The right panel
+   *   floats first; the left panel only floats when it alone would still
+   *   squeeze the center below the threshold.
+   */
+  mode?: AppShellPanelMode;
+  /**
+   * Minimum center-content width (px) 'auto' mode protects before switching
+   * panels from pushing to floating. Defaults to 560.
+   */
+  centerMinWidth?: number;
+  /**
+   * Render a Pin/PinOff toggle in the right panel header that lets the user
+   * keep the inspector floating over content instead of pushing it. The
+   * preference persists per app (`appshell.{app.id}.rightOverlay`) and is
+   * exposed via `useAppShellSidePanels().right.pin`. Also adds a
+   * Cmd/Ctrl+Shift+] shortcut and a "Toggle Inspector Overlay" palette
+   * command. Ignored in 'overlay' mode, where panels always float.
+   * Defaults to false.
+   */
+  inspectorPin?: boolean;
+}
+
 export interface AppShellChromeOptions {
   /** Render the top navigation bar. Defaults to true. */
   nav?: boolean;
@@ -51,6 +88,11 @@ export interface AppShellChromeOptions {
   palette?: boolean;
   /** Enable the terminal/assistant drawer chrome and shortcuts. Defaults to true. */
   terminal?: boolean;
+  /**
+   * Side-panel space behavior: push (default), overlay, or auto, plus the
+   * inspector pin toggle. Defaults to the classic push layout.
+   */
+  panelBehavior?: AppShellPanelBehavior;
 }
 
 const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
@@ -60,7 +102,76 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   rightPanel: true,
   palette: true,
   terminal: true,
+  panelBehavior: {},
 };
+
+/**
+ * Host-app bindings for the single-app shell — AppShell's counterpart to
+ * `WorkspaceShellEnvironment`. The shell is host-agnostic; features that need
+ * a server (the Assistant's Chat mode, speech, voice input, …) resolve their
+ * endpoints from `routes` instead of hardcoding paths.
+ *
+ * Deliberately a subset of `WorkspaceShellEnvironment`: AppShell has no
+ * dynamically-spawned terminal windows (`renderTerminal`) and no workspace
+ * settings surface (`useHudsonAISettingsEntry`), so only `routes` applies.
+ */
+export interface AppShellEnvironment {
+  /**
+   * Host-owned relative routes for optional server-backed shell features.
+   * Same shape as WorkspaceShell's `environment.routes` — e.g. `aiChat`
+   * powers the built-in Assistant's Chat mode via `useHudsonAI`.
+   */
+  routes?: HudsonHostRoutes;
+}
+
+const DEFAULT_PANEL_MIN = 200;
+const DEFAULT_PANEL_MAX = 500;
+
+// Auto panel mode — center-content width protected before panels float.
+const DEFAULT_CENTER_MIN_WIDTH = 560;
+
+// Responsive panel max (app.layout.responsivePanelMax) — cap panels at 45% of
+// the viewport, floored at 500px so small screens still get a usable panel,
+// hard-capped at 900px on very wide viewports.
+const DEFAULT_RESPONSIVE_PANEL_RATIO = 0.45;
+const DEFAULT_RESPONSIVE_PANEL_FLOOR = 500;
+const DEFAULT_RESPONSIVE_PANEL_CEILING = 900;
+
+/** Viewport-driven max-width cap. Undefined unless the app opts in via
+ *  `layout.responsivePanelMax`. */
+function responsivePanelCap(
+  layout: AppShellLayoutConfig | undefined,
+  viewportWidth: number,
+): number | undefined {
+  const config = layout?.responsivePanelMax;
+  if (!config) return undefined;
+  const { ratio, min, max }: AppShellResponsivePanelMax = config === true ? {} : config;
+  return Math.min(
+    max ?? DEFAULT_RESPONSIVE_PANEL_CEILING,
+    Math.max(
+      min ?? DEFAULT_RESPONSIVE_PANEL_FLOOR,
+      Math.floor(viewportWidth * (ratio ?? DEFAULT_RESPONSIVE_PANEL_RATIO)),
+    ),
+  );
+}
+
+function panelBounds(app: HudsonApp, side: 'left' | 'right', responsiveCap?: number) {
+  const layout = app.layout;
+  const sideBounds = side === 'left' ? layout?.left : layout?.right;
+  // An explicit app max (side max or the layout-wide fallback) always wins
+  // over the responsive viewport cap; the cap only replaces the built-in
+  // default when the app hasn't declared one.
+  const explicitMax = sideBounds?.max ?? layout?.maxPanelWidth;
+  return {
+    min: sideBounds?.min ?? layout?.minPanelWidth ?? DEFAULT_PANEL_MIN,
+    max: explicitMax ?? responsiveCap ?? DEFAULT_PANEL_MAX,
+  };
+}
+
+function clampPanelWidth(app: HudsonApp, side: 'left' | 'right', px: number, responsiveCap?: number) {
+  const { min, max } = panelBounds(app, side, responsiveCap);
+  return Math.max(min, Math.min(max, px));
+}
 
 interface AppShellProps {
   app: HudsonApp;
@@ -74,6 +185,16 @@ interface AppShellProps {
   defaultTemplate?: HudsonTemplate;
   /** When false, AppShell assumes a parent ThemeProvider already exists. */
   managedTheme?: boolean;
+  /**
+   * Host environment bindings (server route map for the Assistant's Chat
+   * mode, speech, voice, …). When `environment.routes` is provided, AppShell
+   * mounts the host-routes context itself — no external
+   * `WorkspaceHostRoutesProvider` wrapper needed — and it wins for this
+   * subtree over any outer provider. When omitted, an outer provider (if
+   * any) keeps working unchanged; with neither, host-backed features stay
+   * unconfigured, exactly as before.
+   */
+  environment?: AppShellEnvironment;
 }
 
 export function AppShell({
@@ -83,16 +204,30 @@ export function AppShell({
   defaultTheme = 'system',
   defaultTemplate = 'hudson',
   managedTheme = true,
+  environment,
 }: AppShellProps) {
   const theme = useOptionalTheme();
 
-  const content = (
+  let content = (
     <InstanceProvider instanceId={app.id} appId={app.id}>
       <app.Provider>
         <AppShellInner app={app} assistantEnabled={assistant} chrome={chrome} />
       </app.Provider>
     </InstanceProvider>
   );
+
+  // Host routes mount above the app Provider, mirroring WorkspaceShell (which
+  // provides them above all app Providers so apps can read them from their own
+  // Provider scope). Only rendered when the consumer actually passed routes:
+  // the context defaults to {}, so an unconditional provider would clobber an
+  // outer WorkspaceHostRoutesProvider supplied by the host.
+  if (environment?.routes) {
+    content = (
+      <WorkspaceHostRoutesProvider routes={environment.routes}>
+        {content}
+      </WorkspaceHostRoutesProvider>
+    );
+  }
 
   if (!managedTheme || theme) {
     return content;
@@ -131,6 +266,14 @@ function AppShellInner({
     () => ({ ...DEFAULT_APP_SHELL_CHROME, ...chromeOptions }),
     [chromeOptions],
   );
+  // Panel behavior — push (default, byte-identical to the classic layout),
+  // overlay (panels always float), or auto (float only when pushing would
+  // squeeze the center content below centerMinWidth).
+  const panelBehavior = chrome.panelBehavior ?? {};
+  const panelMode: AppShellPanelMode = panelBehavior.mode ?? 'push';
+  const centerMinWidth = panelBehavior.centerMinWidth ?? DEFAULT_CENTER_MIN_WIDTH;
+  // The pin toggle is meaningless in overlay mode (everything floats there).
+  const inspectorPinEnabled = panelBehavior.inspectorPin === true && panelMode !== 'overlay';
   // Platform layout
   const { navTotalHeight } = usePlatformLayout();
 
@@ -158,8 +301,50 @@ function AppShellInner({
   // Panel state
   const [leftCollapsed, setLeftCollapsed] = usePersistentState(`appshell.${app.id}.left`, false);
   const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
-  const [leftWidth, setLeftWidth] = usePersistentState(`appshell.${app.id}.leftW`, 260);
-  const [rightWidth, setRightWidth] = usePersistentState(`appshell.${app.id}.rightW`, 280);
+  const [leftWidth, setLeftWidth] = usePersistentState(
+    `appshell.${app.id}.leftW`,
+    app.layout?.leftWidth ?? 260,
+  );
+  const [rightWidth, setRightWidth] = usePersistentState(
+    `appshell.${app.id}.rightW`,
+    app.layout?.rightWidth ?? 280,
+  );
+  // Inspector pin/float preference (true = float over content). Only read and
+  // written when the pin toggle is enabled, so default shells persist exactly
+  // the same key set as before. Key matches OpenScout's forked shell so
+  // consumers migrating back to AppShell keep their users' preference.
+  const [rightOverlayPref, setRightOverlayPref] = usePersistentState(
+    `appshell.${app.id}.rightOverlay`,
+    false,
+    { enabled: inspectorPinEnabled },
+  );
+
+  // Viewport width — only tracked when a feature needs it (auto panel mode or
+  // the responsive panel-width cap). The default path registers no listener.
+  const responsiveMaxEnabled = Boolean(app.layout?.responsivePanelMax);
+  const trackViewport = responsiveMaxEnabled || panelMode === 'auto';
+  const [viewportWidth, setViewportWidth] = useState(() =>
+    typeof window !== 'undefined' ? window.innerWidth : 1280,
+  );
+  useEffect(() => {
+    if (!trackViewport) return;
+    const update = () => setViewportWidth(window.innerWidth);
+    update();
+    window.addEventListener('resize', update);
+    return () => window.removeEventListener('resize', update);
+  }, [trackViewport]);
+
+  // Responsive max-width cap (undefined unless the app opts in).
+  const responsiveCap = responsivePanelCap(app.layout, viewportWidth);
+
+  // Keep stored widths inside the responsive cap as the viewport changes.
+  // Gated on the opt-in — default shells never rewrite persisted widths.
+  useEffect(() => {
+    if (responsiveCap === undefined) return;
+    setLeftWidth((w) => clampPanelWidth(app, 'left', w, responsiveCap));
+    setRightWidth((w) => clampPanelWidth(app, 'right', w, responsiveCap));
+  }, [app, responsiveCap, setLeftWidth, setRightWidth]);
+
   const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
   const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
   const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
@@ -230,7 +415,7 @@ function AppShellInner({
 
     const onMouseMove = (ev: MouseEvent) => {
       const delta = (ev.clientX - startX) * direction;
-      setter(Math.max(200, Math.min(500, startWidth + delta)));
+      setter(clampPanelWidth(app, side, startWidth + delta, responsiveCap));
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
@@ -238,7 +423,44 @@ function AppShellInner({
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [leftWidth, rightWidth, setLeftWidth, setRightWidth]);
+  }, [app, leftWidth, rightWidth, responsiveCap, setLeftWidth, setRightWidth]);
+
+  // Whether side panels should be visible — canvas/focus modes hide them
+  const showPanels = layoutMode === 'panel';
+  const showLeftPanel = chrome.leftPanel && showPanels;
+  const showRightPanel = chrome.rightPanel && showPanels;
+  // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
+  const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
+  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
+  const showCanvasZoomControls = !showTerminal || !isTerminalMaximized;
+  const topInset = chrome.nav ? navTotalHeight : 0;
+  const bottomInset = chrome.statusBar ? 28 : 0;
+
+  // Push math — what each open panel would claim if it pushed content aside.
+  // A float-preferred inspector is out of the push math entirely.
+  const leftPanelOpen = showLeftPanel && !leftCollapsed;
+  const rightPanelOpen = showRightPanel && !rightCollapsed;
+  const rightFloatPreferred = inspectorPinEnabled && rightOverlayPref;
+  const leftPushInset = leftPanelOpen ? leftWidth : 0;
+  const rightPushInset = rightPanelOpen && !rightFloatPreferred ? rightWidth : 0;
+  // Auto mode: when pushed panels would squeeze the center content below
+  // centerMinWidth, they float over the content instead. The right panel
+  // floats first; the left panel only floats when it alone would still
+  // starve the center.
+  const autoOverlayActive =
+    panelMode === 'auto' &&
+    viewportWidth - leftPushInset - rightPushInset < centerMinWidth &&
+    (leftPushInset > 0 || rightPushInset > 0);
+  const autoOverlayRight = autoOverlayActive && rightPushInset > 0;
+  const autoOverlayLeft =
+    autoOverlayActive && leftPushInset > 0 && viewportWidth - leftPushInset < centerMinWidth;
+  const leftFloating = leftPanelOpen && (panelMode === 'overlay' || autoOverlayLeft);
+  const rightFloating =
+    rightPanelOpen && (panelMode === 'overlay' || rightFloatPreferred || autoOverlayRight);
+  // Content insets — floating panels claim no horizontal space. On the
+  // default push path these reduce to exactly the pre-panelBehavior values.
+  const leftInset = leftFloating ? 0 : leftPushInset;
+  const rightInset = rightFloating ? 0 : rightPushInset;
 
   // Shell commands
   const shellCommands: CommandOption[] = useMemo(() => {
@@ -250,6 +472,9 @@ function AppShellInner({
     }
     if (chrome.rightPanel) {
       cmds.push({ id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) });
+    }
+    if (chrome.rightPanel && inspectorPinEnabled) {
+      cmds.push({ id: 'shell:toggle-right-overlay', label: 'Toggle Inspector Overlay', shortcut: 'Cmd+Shift+]', action: () => setRightOverlayPref(o => !o) });
     }
     if (chrome.terminal) {
       cmds.push({ id: 'shell:toggle-terminal', label: 'Toggle Terminal', shortcut: 'Ctrl+`', action: () => setShowTerminal(t => !t) });
@@ -286,7 +511,7 @@ function AppShellInner({
       );
     }
     return cmds;
-  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, setActiveTab, setLeftCollapsed, setRightCollapsed, theme]);
+  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, inspectorPinEnabled, setActiveTab, setLeftCollapsed, setRightCollapsed, setRightOverlayPref, theme]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -308,7 +533,13 @@ function AppShellInner({
       }
       if (chrome.rightPanel && (e.metaKey || e.ctrlKey) && e.key === ']') {
         e.preventDefault();
-        setRightCollapsed(c => !c);
+        // Cmd+Shift+] flips the inspector pin/float preference when the pin
+        // toggle is enabled; otherwise Shift is ignored (classic behavior).
+        if (inspectorPinEnabled && e.shiftKey) {
+          setRightOverlayPref(o => !o);
+        } else {
+          setRightCollapsed(c => !c);
+        }
       }
       if (chrome.terminal && e.ctrlKey && e.key === '`') {
         e.preventDefault();
@@ -322,7 +553,7 @@ function AppShellInner({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setLeftCollapsed, setRightCollapsed, assistantEnabled, resolvedTab, setActiveTab, takeoverActive, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal]);
+  }, [setLeftCollapsed, setRightCollapsed, setRightOverlayPref, assistantEnabled, inspectorPinEnabled, resolvedTab, setActiveTab, takeoverActive, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal]);
 
   // Right panel content: Inspector + tools accordion
   const InspectorSlot = app.slots.Inspector;
@@ -343,9 +574,30 @@ function AppShellInner({
       <Code2 size={12} />
     </button>
   ) : null;
-  const rightHeaderActions = codeSurfaceHeaderAction || app.rightPanel?.headerActions
+  // Inspector pin/float toggle — opt-in via chrome.panelBehavior.inspectorPin.
+  const inspectorPinTitle = rightOverlayPref
+    ? 'Pin inspector (push content)'
+    : autoOverlayRight
+      ? 'Keep inspector floating when there is room'
+      : 'Float inspector (overlay content)';
+  const inspectorPinButton = inspectorPinEnabled ? (
+    <button
+      type="button"
+      // When auto-overlay already floats an unpinned inspector, the toggle
+      // "keeps it floating" (sets the preference) rather than pinning it.
+      onClick={() => setRightOverlayPref(o => (autoOverlayRight && !o ? true : !o))}
+      className="p-1 hover:bg-accent/10 rounded transition-colors text-muted-foreground hover:text-foreground focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none"
+      title={inspectorPinTitle}
+      aria-label={inspectorPinTitle}
+    >
+      {rightFloating ? <PinOff size={12} /> : <Pin size={12} />}
+    </button>
+  ) : null;
+
+  const rightHeaderActions = inspectorPinButton || codeSurfaceHeaderAction || app.rightPanel?.headerActions
     ? (
       <div className="flex items-center gap-1">
+        {inspectorPinButton}
         {codeSurfaceHeaderAction}
         {app.rightPanel?.headerActions && <app.rightPanel.headerActions />}
       </div>
@@ -362,8 +614,16 @@ function AppShellInner({
           className="min-h-[420px]"
         />
       )}
-      {InspectorSlot && <InspectorSlot />}
-      {!InspectorSlot && RightPanelSlot && <RightPanelSlot />}
+      {InspectorSlot && (
+        <AppSlotErrorBoundary appName={app.name} slotName="Inspector">
+          <InspectorSlot />
+        </AppSlotErrorBoundary>
+      )}
+      {!InspectorSlot && RightPanelSlot && (
+        <AppSlotErrorBoundary appName={app.name} slotName="RightPanel">
+          <RightPanelSlot />
+        </AppSlotErrorBoundary>
+      )}
       {hasTools && (
         <div className="border-t border-border/60">
           {app.tools!.map(tool => {
@@ -394,7 +654,11 @@ function AppShellInner({
   );
 
   // Left panel footer: LeftFooter slot only
-  const leftFooter = app.slots.LeftFooter ? <app.slots.LeftFooter /> : undefined;
+  const leftFooter = app.slots.LeftFooter ? (
+    <AppSlotErrorBoundary appName={app.name} slotName="LeftFooter">
+      <app.slots.LeftFooter />
+    </AppSlotErrorBoundary>
+  ) : undefined;
 
   // Right panel footer: CommandDock
   const rightFooter = chrome.palette
@@ -437,19 +701,6 @@ function AppShellInner({
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [takeoverActive, takeoverDismissible, takeoverOnDismiss]);
-
-  // Whether side panels should be visible — canvas/focus modes hide them
-  const showPanels = layoutMode === 'panel';
-  const showLeftPanel = chrome.leftPanel && showPanels;
-  const showRightPanel = chrome.rightPanel && showPanels;
-  // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
-  const frameMode = layoutMode === 'focus' ? 'panel' : layoutMode;
-  const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
-  const showCanvasZoomControls = !showTerminal || !isTerminalMaximized;
-  const topInset = chrome.nav ? navTotalHeight : 0;
-  const bottomInset = chrome.statusBar ? 28 : 0;
-  const leftInset = showLeftPanel && !leftCollapsed ? leftWidth : 0;
-  const rightInset = showRightPanel && !rightCollapsed ? rightWidth : 0;
 
   // Content insets — offset content area so it doesn't render behind fixed chrome
   const contentStyle: React.CSSProperties = frameMode === 'panel' ? {
@@ -518,18 +769,35 @@ function AppShellInner({
   const leftPanelControls = useMemo<SidePanelControls>(() => ({
     isCollapsed: showLeftPanel ? leftCollapsed : true,
     width: leftWidth,
+    isFloating: leftFloating,
     toggle: () => setLeftCollapsed((c) => !c),
     setCollapsed: (v) => setLeftCollapsed(v),
-    setWidth: (px) => setLeftWidth(Math.max(200, Math.min(500, px))),
-  }), [showLeftPanel, leftCollapsed, leftWidth, setLeftCollapsed, setLeftWidth]);
+    setWidth: (px) => setLeftWidth(clampPanelWidth(app, 'left', px, responsiveCap)),
+  }), [app, showLeftPanel, leftCollapsed, leftWidth, leftFloating, responsiveCap, setLeftCollapsed, setLeftWidth]);
+
+  // Pin/float preference handle — only published when the toggle is enabled,
+  // so `right.pin` doubles as the feature-detection flag for app code.
+  const rightPanelPin = useMemo<SidePanelPinControls | undefined>(
+    () =>
+      inspectorPinEnabled
+        ? {
+            isPinned: !rightOverlayPref,
+            toggle: () => setRightOverlayPref((o) => !o),
+            setPinned: (v) => setRightOverlayPref(!v),
+          }
+        : undefined,
+    [inspectorPinEnabled, rightOverlayPref, setRightOverlayPref],
+  );
 
   const rightPanelControls = useMemo<SidePanelControls>(() => ({
     isCollapsed: showRightPanel ? rightCollapsed : true,
     width: rightWidth,
+    isFloating: rightFloating,
     toggle: () => setRightCollapsed((c) => !c),
     setCollapsed: (v) => setRightCollapsed(v),
-    setWidth: (px) => setRightWidth(Math.max(200, Math.min(500, px))),
-  }), [showRightPanel, rightCollapsed, rightWidth, setRightCollapsed, setRightWidth]);
+    setWidth: (px) => setRightWidth(clampPanelWidth(app, 'right', px, responsiveCap)),
+    ...(rightPanelPin ? { pin: rightPanelPin } : {}),
+  }), [app, showRightPanel, rightCollapsed, rightWidth, rightFloating, rightPanelPin, responsiveCap, setRightCollapsed, setRightWidth]);
 
   const controlsValue = useMemo<AppShellControlsContextValue>(() => ({
     drawer: drawerControls,
@@ -547,7 +815,7 @@ function AppShellInner({
       scale={scale}
       onPan={handlePan}
       onZoom={handleZoom}
-      zoomControlsRightOffset={showPanels && !rightCollapsed ? rightWidth : 0}
+      zoomControlsRightOffset={showPanels && !rightCollapsed && !rightFloating ? rightWidth : 0}
       zoomControlsBottomOffset={terminalCanvasBottomOffset}
       showZoomControls={showCanvasZoomControls}
       hud={
@@ -590,11 +858,16 @@ function AppShellInner({
               onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
               width={leftWidth}
               onResizeStart={handleResizeStart('left')}
+              floating={leftFloating}
               footer={leftFooter}
               headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
               style={{ top: topInset, bottom: bottomInset }}
             >
-              {app.slots.LeftPanel && <app.slots.LeftPanel />}
+              {app.slots.LeftPanel && (
+                <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
+                  <app.slots.LeftPanel />
+                </AppSlotErrorBoundary>
+              )}
             </SidePanel>
           )}
 
@@ -607,6 +880,7 @@ function AppShellInner({
               onToggleCollapse={() => setRightCollapsed(!rightCollapsed)}
               width={rightWidth}
               onResizeStart={handleResizeStart('right')}
+              floating={rightFloating}
               footer={rightFooter}
               headerActions={rightHeaderActions}
               style={{ top: topInset, bottom: bottomInset }}
@@ -721,7 +995,9 @@ function AppShellInner({
       }
     >
       <div style={contentStyle} className="frame-scrollbar select-text">
-        <app.slots.Content />
+        <AppSlotErrorBoundary appName={app.name} slotName="Content">
+          <app.slots.Content />
+        </AppSlotErrorBoundary>
       </div>
     </Frame>
     </div>

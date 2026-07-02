@@ -42,6 +42,13 @@ export interface AppSettingsConfig {
 // ---------------------------------------------------------------------------
 export type StatusColor = 'emerald' | 'amber' | 'red' | 'neutral';
 
+export type StatusState = {
+  label: string;
+  color: StatusColor;
+  /** Optional tooltip/accessible detail for the status indicator. */
+  title?: string;
+};
+
 // ---------------------------------------------------------------------------
 // TakeoverState — return type of useTakeover hook
 // ---------------------------------------------------------------------------
@@ -100,6 +107,45 @@ export interface AppManifest {
 export type MultiInstanceMode = 'singleton' | 'spawnable' | 'duplicable';
 export type PortInspectorMode = 'default' | 'compact' | 'hidden';
 
+/** Optional AppShell panel sizing — per-app defaults and resize bounds. */
+export interface AppShellPanelBounds {
+  min?: number;
+  max?: number;
+}
+
+/**
+ * Opt-in responsive cap on AppShell panel max width. When enabled (via
+ * `AppShellLayoutConfig.responsivePanelMax`), each side panel's resize bound
+ * is capped at a fraction of the viewport width instead of the static
+ * default, and re-computed on window resize.
+ */
+export interface AppShellResponsivePanelMax {
+  /** Fraction of the viewport width used as the panel max width. Defaults to 0.45. */
+  ratio?: number;
+  /** Lower bound (px) for the computed cap, so narrow viewports still get a usable panel. Defaults to 500. */
+  min?: number;
+  /** Upper bound (px) for the computed cap on very wide viewports. Defaults to 900. */
+  max?: number;
+}
+
+export interface AppShellLayoutConfig {
+  leftWidth?: number;
+  rightWidth?: number;
+  /** Fallback min/max when a side-specific bound is omitted. */
+  minPanelWidth?: number;
+  maxPanelWidth?: number;
+  left?: AppShellPanelBounds;
+  right?: AppShellPanelBounds;
+  /**
+   * Opt-in: cap each panel's max resize width at a fraction of the viewport,
+   * re-clamped as the window resizes. `true` applies the defaults — 45% of
+   * the viewport, floored at 500px and capped at 900px. An explicit max for a
+   * side (`left.max` / `right.max` / `maxPanelWidth`) always wins over this
+   * cap. Off by default — without it, resize bounds behave exactly as before.
+   */
+  responsivePanelMax?: boolean | AppShellResponsivePanelMax;
+}
+
 export interface HudsonApp {
   /** Unique identifier (used as key + localStorage namespace) */
   id: string;
@@ -123,6 +169,9 @@ export interface HudsonApp {
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
   /** Right panel header config */
   rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
+
+  /** AppShell side panel defaults and resize bounds (panel layout only). */
+  layout?: AppShellLayoutConfig;
 
   /** Wraps all slots — owns app state via React context.
    *  `disabled` is true when the app is disabled in the workspace.
@@ -189,7 +238,7 @@ export interface HudsonApp {
   /** Hooks called inside Provider via Bridge component */
   hooks: {
     useCommands: () => CommandOption[];
-    useStatus: () => { label: string; color: StatusColor };
+    useStatus: () => StatusState;
     useStatusLeft?: () => ReactNode | null;
     useStatusRight?: () => ReactNode | null;
     useSearch?: () => SearchConfig;

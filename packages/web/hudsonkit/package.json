@@ -171,7 +171,8 @@
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css",
     "pack": "bun run build && bun pm pack",
-    "prepare": "node bin/prepare-check.mjs"
+    "prepare": "node bin/prepare-check.mjs",
+    "test": "vitest run --config ./vitest.config.ts"
   },
   "dependencies": {
     "@ai-sdk/react": "^3.0.0",

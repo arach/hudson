@@ -2,7 +2,7 @@
 // Shell internals are in 'hudsonkit/shell'.
 
 // Types
-export type { HudsonApp, AppTool, StatusColor, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode } from './types/app';
+export type { HudsonApp, AppTool, StatusColor, StatusState, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode, AppShellLayoutConfig, AppShellPanelBounds, AppShellResponsivePanelMax } from './types/app';
 export type { HudsonAppBackend } from './types/backend';
 export type { HudsonCodeChatMessage, HudsonCodeChatSurface, HudsonCodeObject, HudsonCodeSurfaceConfig, HudsonCodeSurfacePlacement, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from './types/code';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
@@ -15,7 +15,29 @@ export type { FeatureFlagAudience, FeatureFlagDefinition, FeatureFlagGate, Featu
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
-export * from './lib/cache';
+export type { PersistentStateOptions } from './hooks/usePersistentState';
+export { createHudsonCache, hudsonCache } from './lib/cache';
+export type {
+  HudsonCache,
+  HudsonCacheDehydrateOptions,
+  HudsonCacheEntry,
+  HudsonCacheEvent,
+  HudsonCacheEventType,
+  HudsonCacheGetOptions,
+  HudsonCacheHydrateOptions,
+  HudsonCacheListener,
+  HudsonCacheLoadContext,
+  HudsonCacheLoadOptions,
+  HudsonCacheLoader,
+  HudsonCacheOptions,
+  HudsonCacheRead,
+  HudsonCacheSetOptions,
+  HudsonCacheStatus,
+  HudsonCacheStorage,
+  HudsonCacheStorageKind,
+} from './lib/cache';
+export { useCommandShortcuts } from './hooks/useCommandShortcuts';
+export type { UseCommandShortcutsOptions, ParsedShortcut } from './hooks/useCommandShortcuts';
 export { useCachedResource } from './hooks/useCachedResource';
 export type {
   CachedResourceStatus,
@@ -128,7 +150,29 @@ export type {
 } from './components/TerminalRelay';
 
 // Utilities
-export * from './lib/sounds';
+export {
+  blipDown,
+  blipUp,
+  boot,
+  chime,
+  click,
+  confirm,
+  error,
+  isMuted,
+  ping,
+  pop,
+  preview,
+  setMuted,
+  slideIn,
+  slideOut,
+  sounds,
+  thock,
+  tick,
+  toggleMute,
+  type,
+  whoosh,
+} from './lib/sounds';
+export type { SoundName } from './lib/sounds';
 export { logEvent, FRAME_LOG_EVENT } from './lib/logger';
 export type { FrameLogEntry } from './lib/logger';
 export { worldToScreen, screenToWorld } from './lib/viewport';
@@ -184,6 +228,17 @@ export type {
   CopyContextScopeProps,
   CopyContextButtonProps,
 } from './components/copy-context';
+
+// App factory
+export { defineApp } from './lib/defineApp';
+export type {
+  AppCommandDeclaration,
+  AppCommandOption,
+  AppIntentDeclaration,
+  CommandActionMap,
+  DefineAppConfig,
+  DefineAppHooks,
+} from './lib/defineApp';
 
 // Manifest
 export { deriveManifest } from './lib/manifest';
