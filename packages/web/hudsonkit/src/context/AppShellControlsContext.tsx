@@ -53,6 +53,19 @@ export interface PaletteControls {
   toggle(): void;
 }
 
+export interface SidePanelPinControls {
+  /**
+   * True when the user's persisted preference pins the panel so it pushes
+   * content aside; false when the preference keeps it floating over content.
+   * Persisted per app (`appshell.{app.id}.rightOverlay`).
+   */
+  isPinned: boolean;
+  /** Flip the persisted pin preference. */
+  toggle(): void;
+  /** Explicitly set the pin preference. */
+  setPinned(value: boolean): void;
+}
+
 export interface SidePanelControls {
   /** Whether the panel is collapsed to its peek button. Always false when the panel is chrome-disabled or the layout hides it. */
   isCollapsed: boolean;
@@ -64,6 +77,18 @@ export interface SidePanelControls {
   setCollapsed(value: boolean): void;
   /** Set the panel width (clamped to AppShell's resize bounds). */
   setWidth(px: number): void;
+  /**
+   * True when the panel is currently floating over the content area instead
+   * of pushing it aside — overlay mode, an auto-overlay squeeze, or an
+   * unpinned inspector. Always false on the default push path.
+   */
+  isFloating?: boolean;
+  /**
+   * Pin/float preference for this panel. Present only on the right panel and
+   * only when the shell enables the inspector pin toggle
+   * (`chrome.panelBehavior.inspectorPin`).
+   */
+  pin?: SidePanelPinControls;
 }
 
 export interface AppShellControlsContextValue {

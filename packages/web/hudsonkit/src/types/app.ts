@@ -113,6 +113,21 @@ export interface AppShellPanelBounds {
   max?: number;
 }
 
+/**
+ * Opt-in responsive cap on AppShell panel max width. When enabled (via
+ * `AppShellLayoutConfig.responsivePanelMax`), each side panel's resize bound
+ * is capped at a fraction of the viewport width instead of the static
+ * default, and re-computed on window resize.
+ */
+export interface AppShellResponsivePanelMax {
+  /** Fraction of the viewport width used as the panel max width. Defaults to 0.45. */
+  ratio?: number;
+  /** Lower bound (px) for the computed cap, so narrow viewports still get a usable panel. Defaults to 500. */
+  min?: number;
+  /** Upper bound (px) for the computed cap on very wide viewports. Defaults to 900. */
+  max?: number;
+}
+
 export interface AppShellLayoutConfig {
   leftWidth?: number;
   rightWidth?: number;
@@ -121,6 +136,14 @@ export interface AppShellLayoutConfig {
   maxPanelWidth?: number;
   left?: AppShellPanelBounds;
   right?: AppShellPanelBounds;
+  /**
+   * Opt-in: cap each panel's max resize width at a fraction of the viewport,
+   * re-clamped as the window resizes. `true` applies the defaults — 45% of
+   * the viewport, floored at 500px and capped at 900px. An explicit max for a
+   * side (`left.max` / `right.max` / `maxPanelWidth`) always wins over this
+   * cap. Off by default — without it, resize bounds behave exactly as before.
+   */
+  responsivePanelMax?: boolean | AppShellResponsivePanelMax;
 }
 
 export interface HudsonApp {

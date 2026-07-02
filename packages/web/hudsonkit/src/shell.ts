@@ -15,7 +15,12 @@ export { AppWindow } from './components/windows';
 
 // App shell (default — renders a single HudsonApp with full chrome)
 export { AppShell } from './components/AppShell';
-export type { AppShellChromeOptions, AppShellEnvironment } from './components/AppShell';
+export type {
+  AppShellChromeOptions,
+  AppShellEnvironment,
+  AppShellPanelBehavior,
+  AppShellPanelMode,
+} from './components/AppShell';
 export type { HudsonHostRoutes } from './workspace/hostRoutes';
 
 // Design tokens

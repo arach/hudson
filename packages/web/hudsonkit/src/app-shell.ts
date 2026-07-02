@@ -3,7 +3,12 @@
 export { AppShell } from './components/AppShell';
 export { createEmbedApp } from './lib/createEmbedApp';
 export type { EmbedAppOptions } from './lib/createEmbedApp';
-export type { AppShellChromeOptions, AppShellEnvironment } from './components/AppShell';
+export type {
+  AppShellChromeOptions,
+  AppShellEnvironment,
+  AppShellPanelBehavior,
+  AppShellPanelMode,
+} from './components/AppShell';
 
 // Host route map consumed by server-backed shell features (Assistant chat,
 // speech, voice). Pass via <AppShell environment={{ routes }}>; read with
@@ -24,4 +29,5 @@ export type {
   DrawerTab,
   PaletteControls,
   SidePanelControls,
+  SidePanelPinControls,
 } from './context/AppShellControlsContext';

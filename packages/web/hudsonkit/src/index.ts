@@ -2,7 +2,7 @@
 // Shell internals are in 'hudsonkit/shell'.
 
 // Types
-export type { HudsonApp, AppTool, StatusColor, StatusState, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode, AppShellLayoutConfig, AppShellPanelBounds } from './types/app';
+export type { HudsonApp, AppTool, StatusColor, StatusState, SearchConfig, AppManifest, AppSettingField, AppSettingsSection, AppSettingsConfig, TakeoverState, MultiInstanceMode, PortInspectorMode, AppShellLayoutConfig, AppShellPanelBounds, AppShellResponsivePanelMax } from './types/app';
 export type { HudsonAppBackend } from './types/backend';
 export type { HudsonCodeChatMessage, HudsonCodeChatSurface, HudsonCodeObject, HudsonCodeSurfaceConfig, HudsonCodeSurfacePlacement, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from './types/code';
 export type { HudsonWorkspace, WorkspaceAppConfig, CanvasParticipation, WorkspaceLeftNavigation, AppInstance } from './types/workspace';
