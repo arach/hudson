@@ -96,9 +96,9 @@ Hudson-product behavior in `TerminalRelay` is opt-out/configurable so the compon
 
 ## Tiling Guidance
 
-HudsonKit terminal tiles should be multiple `TerminalRelay` instances, each with a distinct `sessionKey` unless deliberately observing the same backing session.
+Tiling is not the terminal's job. `TerminalRelay` is tiling-unaware: it fills whatever box it's given, refits on demand, and speaks the relay protocol — nothing else. Tiling hosts (e.g. `HudTiling` via `renderItem`) *instantiate* `TerminalRelay` instances as tile content, each with a distinct `sessionKey` unless deliberately observing the same backing session.
 
-Hosts must define the safety model:
+The host that instantiates terminals as tiles owns the safety model:
 
 - one writer per live relay session for takeover mode
 - explicit observe/read-only mode for shared viewing
@@ -122,4 +122,4 @@ Hosts must define the safety model:
 - Add search, web links, serialize, and unicode addons behind explicit props.
 - Add component-level tests with mocked xterm constructors and addon failures.
 - Add browser integration tests for resize, paste, IME, and reconnect behavior.
-- Expose a first-class `HudTerminalTile` chrome component once at least two hosts converge on the same identity controls.
+- If multiple hosts converge on the same tile identity chrome (renderer, backend, session name, control mode), extract it as a composition pattern that wraps `TerminalRelay` — owned by the tiling/pattern layer, never a feature of the terminal component itself.
