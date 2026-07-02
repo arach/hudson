@@ -455,31 +455,49 @@ Palette interaction flow: the user types â†’ substring filter against `label` â†
 
 ## Registering the app
 
-### Inside Hudson (default workspace)
+### Inside Hudson (default workspaces)
 
-Add to `app/apps/registry.ts`:
+Register committed apps in `app/apps/registry.ts`. That file has three moving parts:
+
+1. Import the app near the other in-tree apps.
+2. Add it to the `getAppById()` lookup table so JSON/local workspace entries can resolve the app by id.
+3. Add a `WorkspaceAppConfig` entry to one of the core workspace getters (`getCoreApps()`, `getDeveloperModeApps()`, `getDocumentLabWorkspace()`, etc.), or create a new `HudsonWorkspace` getter and include it in `getCoreWorkspaces()`.
 
 ```ts
 import { counterApp } from './counter';
 
-export const coreApps = [
-  // ...existing apps,
-  counterApp,
-];
+function getAppById(id: string): HudsonApp | null {
+  const table: Record<string, HudsonApp> = {
+    // ...existing apps
+    'counter': counterApp,
+  };
+  return table[id] ?? null;
+}
+
+function getCoreApps(): WorkspaceAppConfig[] {
+  return [
+    // ...existing apps
+    {
+      app: counterApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 120, y: 120, w: 420, h: 320 },
+    },
+  ];
+}
 ```
 
-Apps in `coreApps` appear in the default workspace automatically.
+Committed apps appear where their workspace getter includes them. `allWorkspaces` combines those core workspaces with dev-only local workspace sources.
 
 ### Inside Hudson (dev-local only)
 
 For apps you don't want to commit, add to `app/local/apps.local.ts` (gitignored; auto-created by `next.config.ts`):
 
 ```ts
-import type { WorkspaceAppConfig } from 'hudsonkit';
+import type { HudsonWorkspace, WorkspaceAppConfig } from 'hudsonkit';
 import { counterApp } from '../apps/counter';
 
 export const localApps: WorkspaceAppConfig[] = [
-  { app: counterApp, participation: 'windowed' },
+  { app: counterApp, canvasMode: 'windowed' },
 ];
 export const localWorkspaces: HudsonWorkspace[] = [];
 ```

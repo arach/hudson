@@ -19,7 +19,7 @@
 
 | Component | Path | Purpose |
 |-----------|------|---------|
-| Shell | `app/shell/` | |
+| Shell | `packages/web/hudsonkit/src/workspace/shell/` | Runtime shell source exported via `hudsonkit/workspace` |
 | Apps | `app/apps/` | |
 | Workspaces | `app/workspaces/` | |
 | Hudson SDK | `packages/web/hudsonkit/src/` | |
@@ -27,7 +27,7 @@
 
 ## Quick Navigation
 
-- Working with **new app**? → See docs/building-apps.md and app/apps/shaper/ as reference
+- Working with **new app**? → See docs/building-apps.md and app/apps/hudson-docs/ or packages/web/hudsonkit/src/apps/notepad/ as references
 - Working with **workspace**? → Check app/workspaces/ for workspace definitions
 - Working with **intent**? → See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts
 - Working with **component**? → Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays
@@ -80,7 +80,7 @@ The component library and type system. Provides:
 - **Type contracts** — `HudsonApp`, `HudsonWorkspace`, `AppIntent`
 - **Utilities** — Web Audio sounds, persistent state, viewport math
 
-### 2. Shell (`app/shell/`)
+### 2. Shell (`packages/web/hudsonkit/src/workspace/shell/`)
 
 The runtime orchestrator. `WorkspaceShell` is the main entry point that:
 
@@ -129,7 +129,7 @@ In canvas-mode workspaces, each app chooses how it appears:
 | Participation | Behavior | Example |
 |---------------|----------|---------|
 | `native` | Renders directly on canvas, no window frame | Hudson Docs |
-| `windowed` | Renders inside AppWindow with title bar, dragging, resizing | Shaper, Intent Explorer |
+| `windowed` | Renders inside AppWindow with title bar, dragging, resizing | Hudson Docs, Intent Explorer |
 
 ### Intent System
 
@@ -139,9 +139,11 @@ Hudson includes an intent catalog for LLM/voice integration. Apps declare intent
 
 | App | Description | Mode |
 |-----|-------------|------|
-| **Shaper** | Bezier curve editor for vector shapes | Panel (overrides to canvas) |
-| **Hudson Docs** | Documentation browser | Canvas native |
+| **Hudson Docs** | Documentation browser | Canvas windowed |
+| **Hudson AI** | AI workbench/settings surface | Canvas windowed |
 | **Intent Explorer** | Browsable intent catalog inspector | Canvas windowed |
+| **Theme Designer** | Theme token/design surface | Canvas windowed |
+| **Stage Design** | Compact stage/layout design reference | Canvas windowed |
 
 ## Next Steps
 
@@ -196,16 +198,13 @@ Open [http://localhost:3500](http://localhost:3500). You should see the Hudson w
 ```
 hudson/
   app/
-    page.tsx                  # Entry point — mounts WorkspaceShell
-    shell/                    # Shell components (WorkspaceShell, HomeScreen, BootSplash)
+    page.tsx                  # Redirects to /app
+    app/page.tsx              # Mounts WorkspaceShell from hudsonkit/workspace
     apps/                     # App implementations
-      shaper/                 # Reference app — bezier curve editor
       hudson-docs/            # Docs browser
       intent-explorer/        # Intent catalog inspector
-    workspaces/               # Workspace definitions
-      hudsonOS.ts             # Multi-app canvas workspace
-      shaperDev.ts            # Single-app panel workspace
-      index.ts                # Exports
+      stage-design/           # Compact reference app
+    apps/registry.ts          # Core + local app/workspace registry
     lib/                      # Shared utilities (intent catalog, etc.)
     hooks/                    # Shared hooks (intent executor, etc.)
   packages/
@@ -522,7 +521,7 @@ Inspector, properties, metadata. Rendered inside the right SidePanel.
 
 ### LeftFooter
 
-Rendered at the bottom of the left panel. Shaper uses this for a minimap preview.
+Rendered at the bottom of the left panel. Use this for compact app-specific summaries, previews, or actions.
 
 ### Terminal
 
@@ -706,7 +705,7 @@ import { glyphDevWorkspace } from './workspaces/glyphDev';
 export default function Page() {
   return (
     <WorkspaceShell
-      workspaces={[hudsonOSWorkspace, shaperDevWorkspace, glyphDevWorkspace]}
+      workspaces={[hudsonOSWorkspace, glyphDevWorkspace]}
       defaultWorkspaceId="hudson-os"
       bootMode="condensed"
     />
@@ -779,14 +778,7 @@ app/apps/my-app/
 
 ## Reference Implementation
 
-The **Shaper** app (`app/apps/shaper/`) is the most complete reference:
-
-- Full Provider with complex state (tools, shapes, layers, selections)
-- All 5 slot components implemented
-- 6 hooks bridging state to shell chrome
-- 25+ intents for LLM integration
-- Dynamic frame mode switching (panel default, canvas when editing)
-- Header actions in the left panel
+The **Hudson Docs** app (`app/apps/hudson-docs/`) is the most complete in-tree reference, with Provider-owned state, Content/LeftPanel/RightPanel slots, hooks, and intents. For a compact built-in kit app, see `packages/web/hudsonkit/src/apps/notepad/`.
 
 The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if you want a minimal starting point.
 
@@ -1289,39 +1281,23 @@ Hudson is a monorepo with two main packages: the **shell application** (Next.js)
 ```
 hudson/
   app/                          # Next.js application (App Router)
-    page.tsx                    # Entry: mounts WorkspaceShell
+    page.tsx                    # Redirects to /app
+    app/page.tsx                # Entry: mounts WorkspaceShell from hudsonkit/workspace
     layout.tsx                  # Root layout
     globals.css                 # Tailwind + global styles
-    shell/                      # Shell runtime
-      WorkspaceShell.tsx        # Main orchestrator (~40KB)
-      HomeScreen.tsx            # App launcher grid
-      BootSplash.tsx            # Boot animation
-      SidebarSection.tsx        # Reusable sidebar section
     apps/                       # App implementations
-      shaper/                   # Bezier editor (reference app)
-        index.ts                # HudsonApp definition
-        ShaperProvider.tsx      # Context (~64KB, full state)
-        ShaperContent.tsx       # Canvas renderer
-        ShaperLeftPanel.tsx     # Project tree
-        ShaperRightPanel.tsx    # Inspector
-        ShaperLeftFooter.tsx    # Minimap
-        ShaperTerminal.tsx      # Log output
-        ShaperHeaderActions.tsx # Panel header buttons
-        hooks.ts                # 6 hook implementations
-        intents.ts              # 25+ intent declarations
-        components/             # Private components
-      hudson-docs/              # Docs browser (canvas native)
+      hudson-docs/              # Docs browser
       intent-explorer/          # Intent catalog viewer
-    workspaces/                 # Workspace definitions
-      hudsonOS.ts               # Multi-app canvas workspace
-      shaperDev.ts              # Shaper standalone workspace
-      index.ts                  # Re-exports
+      stage-design/             # Compact reference app
+    apps/registry.ts            # Core + local app/workspace registry
+  packages/web/hudsonkit/src/
+    workspace/shell/WorkspaceShell.tsx # Main orchestrator
+    apps/notepad/               # Compact built-in kit app reference
     lib/                        # Shared utilities
       intent-catalog.ts         # buildIntentCatalog()
     hooks/                      # Shared hooks
       useIntentExecutor.ts      # Intent → command bridge
     api/                        # API routes
-      shaper/save/route.ts      # Shaper save endpoint
   packages/
     web/hudsonkit/                    # Component library
       src/
@@ -1424,7 +1400,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 
 **Steps:**
 1. Read `packages/web/hudsonkit/src/types/app.ts` to understand the HudsonApp interface
-2. Read `app/apps/shaper/index.ts` as the reference implementation
+2. Read `app/apps/hudson-docs/index.ts` or `packages/web/hudsonkit/src/apps/notepad/index.ts` as the reference implementation
 3. Follow the task template in `docs/prompts/create-app.md`
 4. Create all required files (Provider, Content, hooks, index.ts)
 5. Register in workspace and test with `bun dev`
