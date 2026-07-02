@@ -146,7 +146,7 @@
       "default": "./dist/apps.js"
     },
     "./styles": "./dist/styles.css",
-    "./styles/tokens.css": "./src/styles/tokens.css"
+    "./styles/tokens.css": "./dist/tokens.css"
   },
   "files": [
     "dist",
@@ -164,7 +164,7 @@
   "scripts": {
     "build": "bun run build:js && bun run build:css",
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
-    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify",
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css",
     "pack": "bun run build && bun pm pack",
     "prepare": "node bin/prepare-check.mjs"
   },
@@ -177,6 +177,7 @@
   },
   "peerDependencies": {
     "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "lucide-react": "^0.564.0 || ^0.574.0",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-css": "^6.3.1",
