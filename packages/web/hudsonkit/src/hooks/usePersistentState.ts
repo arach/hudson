@@ -48,6 +48,7 @@ export function usePersistentState<T>(key: string, initialValue: T): [T, React.D
 
   // After hydration, synchronously swap in the persisted value (single commit, no flash)
   const didRestore = useRef(false);
+  // eslint-disable-next-line react-hooks/refs -- one-time hydration-restore guard read during render is intentional; enables a single synchronous commit of the persisted value with no post-mount flash
   if (hydrated && !didRestore.current) {
     didRestore.current = true;
     const saved = readStorage<T>(scopedKey);
@@ -82,6 +83,7 @@ export function useDebouncedPersistentState<T>(
   const [state, setState] = useState<T>(initialValue);
 
   const didRestore = useRef(false);
+  // eslint-disable-next-line react-hooks/refs -- one-time hydration-restore guard read during render is intentional; enables a single synchronous commit of the persisted value with no post-mount flash
   if (hydrated && !didRestore.current) {
     didRestore.current = true;
     const saved = readStorage<T>(scopedKey);
@@ -103,12 +105,12 @@ export function useDebouncedPersistentState<T>(
 
   // Also flush on unmount (page navigation, workspace switch)
   const stateRef = useRef(state);
+  // eslint-disable-next-line react-hooks/refs -- mirroring latest state into a ref during render is intentional so the unmount-only flush effect can persist the final value without re-subscribing
   stateRef.current = state;
   useEffect(() => {
     return () => {
       writeStorage(scopedKey, stateRef.current);
     };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scopedKey]);
 
   return [state, setState];

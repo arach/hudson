@@ -12,6 +12,7 @@ export function ShipBlock() {
 
   useEffect(() => {
     if (!inView) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the ship animation stage when scrolled out of view (inView dep); a bounded reaction, not a per-render cascade
       setStage(0);
       return;
     }

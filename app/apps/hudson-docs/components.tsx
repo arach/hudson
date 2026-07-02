@@ -186,6 +186,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
   const [copied, setCopied] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- resets loading/content when the selected doc (slug dep) changes before re-fetching; a bounded reaction to a dep change, not a per-render cascade
     setLoading(true);
     setHtml(null);
     fetch(`/api/agent-docs/${slug}`)

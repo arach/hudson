@@ -57,6 +57,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time client-mount gate (avoids SSR/client clock hydration mismatch); runs once on mount, not a cascade
     setMounted(true);
     const timer = setInterval(() => setTime(new Date()), 1000);
     return () => clearInterval(timer);

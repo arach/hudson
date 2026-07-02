@@ -87,7 +87,7 @@ function EmptyState() {
     <div className="rounded-lg border border-dashed border-border bg-card/40 p-4 text-center">
       <Share2 size={16} className="mx-auto mb-2 text-muted-foreground" />
       <p className="text-[10px] font-mono uppercase tracking-wider text-muted-foreground">
-        Save with "Register ?ref preset" to enable sharing
+        Save with &quot;Register ?ref preset&quot; to enable sharing
       </p>
     </div>
   );

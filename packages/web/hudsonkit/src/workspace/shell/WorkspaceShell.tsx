@@ -1041,6 +1041,7 @@ function WorkspaceInner({
   // --- Hook merging ---
   // Hooks must be called for ALL apps (including disabled) to keep hook order stable.
   // Results for disabled apps are filtered out downstream.
+  // eslint-disable-next-line react-hooks/rules-of-hooks -- fullWorkspace.apps is a stable-length list (hooks run for every app, including disabled ones, per the note above), so mapping a hook over it keeps call order stable across renders
   const allAppHooksRaw: AppHookData[] = fullWorkspace.apps.map(config => useAppHooks(config));
   const allAppHooks = allAppHooksRaw.filter(h => !disabledAppIds.has(h.appId));
 
@@ -1051,11 +1052,10 @@ function WorkspaceInner({
   // --- App-level settings (called unconditionally for each app) ---
   const hudsonAIConfig = fullWorkspace.apps.find(config => config.app.id === 'hudson-ai') ?? null;
   const resolveHudsonAISettings = environment?.useHudsonAISettingsEntry ?? useNoHudsonAISettingsEntry;
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const hudsonAISettingsEntry = resolveHudsonAISettings(hudsonAIConfig, activeWorkspaceId);
-  // eslint-disable-next-line react-hooks/rules-of-hooks
   const genericAppSettings = fullWorkspace.apps
     .filter(config => config.app.id !== 'hudson-ai')
+    // eslint-disable-next-line react-hooks/rules-of-hooks -- the app set (and the fixed hudson-ai exclusion) is stable per workspace, so mapping this hook over the filtered list keeps hook call order stable across renders
     .map(config => useAppSettingsBridge(config))
     .filter((e): e is AppSettingsEntry => e !== null);
   const genericAppSettingsMap = new Map(genericAppSettings.map(entry => [entry.appId, entry]));
@@ -4121,6 +4121,7 @@ function DynamicWindowedApp({
   const handleResetWindow = useCallback(() => {
     setBounds(initialBoundsRef.current);
   }, []);
+  // eslint-disable-next-line react-hooks/refs -- handleResetWindow reads initialBoundsRef only when the user picks "reset" (a click handler stored in the menu), not during render; buildDynamicWindowContextMenu just wires the callbacks
   const contextMenuItems = useMemo(() => buildDynamicWindowContextMenu({
     windowId: win.id,
     onFocus,

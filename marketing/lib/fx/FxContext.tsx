@@ -53,6 +53,7 @@ export function FxProvider({ children }: { children: ReactNode }) {
   const [fx, setFxState] = useState<FxState>(FX_DEFAULTS);
 
   useEffect(() => {
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration of fx prefs from storage after mount (SSR ships defaults); runs once, not a cascade
     setFxState(readFx());
   }, []);
 

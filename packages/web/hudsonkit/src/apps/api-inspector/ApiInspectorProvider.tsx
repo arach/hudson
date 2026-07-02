@@ -131,7 +131,7 @@ export function ApiInspectorProvider({ children }: { children: ReactNode }) {
 
   // --- Build final URL with query params ---
   const buildUrl = useCallback(() => {
-    let finalUrl = url.trim();
+    const finalUrl = url.trim();
     const activeParams = params.filter(p => p.enabled && p.key.trim());
     if (activeParams.length === 0) return finalUrl;
 

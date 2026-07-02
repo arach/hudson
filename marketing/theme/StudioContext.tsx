@@ -39,6 +39,7 @@ export function StudioProvider({
   useEffect(() => {
     const fromCookie = readStudioCookie();
     if (fromCookie) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time rehydration of studio prefs from the cookie after mount to avoid an SSR hydration mismatch (see comment above); runs once, not a cascade
       setStateInternal((prev) => ({ ...prev, ...fromCookie }));
     }
     setHydrated(true);
