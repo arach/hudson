@@ -7,26 +7,19 @@ Hudson is a monorepo with a web workspace, a web SDK, Apple-native Swift package
 ```
 hudson/
   app/                              # Next.js 16 app (App Router)
-    app/page.tsx                    # Mounts <WorkspaceShell>
+    app/page.tsx                    # `/app` route — mounts <WorkspaceShell>
     layout.tsx                      # Root HTML + globals.css
     globals.css                     # Tailwind v4 + scrollbar styles
-    shell/
-      WorkspaceShell.tsx            # Multi-app orchestrator (the main shell)
-      HomeScreen.tsx                # App launcher grid
-      BootSplash.tsx                # Boot animation
-      workspace-manager/            # Runtime workspace editor
     apps/                           # App implementations
       registry.ts                   # Aggregates built-in + local apps
-      shaper/                       # Reference app (bezier editor)
+      stage-design/                 # Compact reference app
+      theme-designer/
       hudson-docs/
+      hudson-ai/
       intent-explorer/
-      logo/
-      trace-viewer/
-      openscout/
-      notepad/
-      json-explorer/
-      api-inspector/
-      assets/
+      hud-logger/
+      services/
+      terminal/
     workspaces/
       hudsonOS.ts                   # Default workspace composition
       index.ts                      # Re-exports
@@ -50,7 +43,9 @@ hudson/
           canvas.ts                 # `hudsonkit/canvas`
           windows.ts                # `hudsonkit/windows`
           theme.ts                  # `hudsonkit/theme`
+          terminal.ts               # `hudsonkit/terminal`
           shell.ts                  # `hudsonkit/shell` (back-compat barrel)
+          workspace/shell/          # WorkspaceShell — multi-app orchestrator (`hudsonkit/workspace`)
           styles/bundle.css         # Source for the compiled CSS bundle
           dist/styles.css           # Compiled via `bun run build:css`
           components/

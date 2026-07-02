@@ -6,6 +6,7 @@ import {
   isValidHudsonEnvKey,
   setHudsonLocalEnvironmentValue,
 } from '@/app/lib/localEnvironment';
+import { rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 export const runtime = 'nodejs';
 
@@ -23,7 +24,11 @@ const deleteEnvironmentSchema = z.object({
   key: envKeySchema,
 });
 
-export async function GET() {
+export async function GET(request: Request) {
+  // The store holds local secrets — reads are as sensitive as writes here.
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
     return NextResponse.json(await getHudsonLocalEnvironmentStore());
   } catch (error) {
@@ -35,6 +40,9 @@ export async function GET() {
 }
 
 export async function POST(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
     const body = await request.json();
     const parsed = setEnvironmentSchema.safeParse(body);
@@ -58,6 +66,9 @@ export async function POST(request: Request) {
 }
 
 export async function DELETE(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
     const body = await request.json();
     const parsed = deleteEnvironmentSchema.safeParse(body);

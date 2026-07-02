@@ -11,6 +11,7 @@ import {
   type ThemeTemplateRecord,
   type TokenMap,
 } from '@/app/apps/theme-designer/model';
+import { isTrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 export const runtime = 'nodejs';
 
@@ -42,43 +43,6 @@ function normalizeTokenMap(value: unknown): TokenMap | null {
     map[key] = tokenValue;
   }
   return map;
-}
-
-function isLoopbackHostname(hostname: string): boolean {
-  const clean = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  return clean === 'localhost' || clean === '127.0.0.1' || clean === '::1';
-}
-
-function isTrustedDevWriteRequest(req: NextRequest): boolean {
-  const requestUrl = new URL(req.url);
-  if (!isLoopbackHostname(requestUrl.hostname)) return false;
-
-  const fetchSite = req.headers.get('sec-fetch-site');
-  if (fetchSite && !['same-origin', 'same-site', 'none'].includes(fetchSite)) return false;
-
-  const origin = req.headers.get('origin');
-  if (origin) {
-    try {
-      const originUrl = new URL(origin);
-      return originUrl.origin === requestUrl.origin && isLoopbackHostname(originUrl.hostname);
-    } catch {
-      return false;
-    }
-  }
-
-  const referer = req.headers.get('referer');
-  if (referer) {
-    try {
-      const refererUrl = new URL(referer);
-      return refererUrl.origin === requestUrl.origin && isLoopbackHostname(refererUrl.hostname);
-    } catch {
-      return false;
-    }
-  }
-
-  // Non-browser local tooling (curl, tests) generally sends neither Origin nor
-  // Referer; keep it usable, but only on a loopback dev server.
-  return true;
 }
 
 function isValidWorkspaceId(value: string): boolean {
@@ -155,7 +119,7 @@ export async function POST(req: NextRequest) {
   if (process.env.NODE_ENV !== 'development') {
     return jsonError('Theme Designer can write source files only in development.', 403);
   }
-  if (!isTrustedDevWriteRequest(req)) {
+  if (!isTrustedLocalRequest(req)) {
     return jsonError('Theme Designer writeback is limited to same-origin loopback development requests.', 403);
   }
   if (!req.headers.get('content-type')?.toLowerCase().includes('application/json')) {

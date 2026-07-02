@@ -1,6 +1,15 @@
 'use client';
 
-import { useRef, useEffect, useState, useCallback, type CSSProperties } from 'react';
+import {
+  forwardRef,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useRef,
+  useState,
+  type CSSProperties,
+  type ForwardedRef,
+} from 'react';
 import type { TerminalRelayHandle } from '../hooks/useTerminalRelay';
 import { usePlatform } from '../platform/PlatformContext';
 import { useOptionalTheme } from '../theme/ThemeProvider';
@@ -9,17 +18,42 @@ import { useOptionalTheme } from '../theme/ThemeProvider';
 // Props
 // ---------------------------------------------------------------------------
 
-interface TerminalRelayConfigItem {
+export interface TerminalRelayConfigItem {
   label: string;
   value: string;
 }
 
-type TerminalColorScheme = 'dark' | 'light' | 'auto';
+export type TerminalColorScheme = 'dark' | 'light' | 'auto';
+export type TerminalRendererPreference = 'auto' | 'dom' | 'webgl';
+export type TerminalRendererState = 'dom' | 'webgl';
 
-interface TerminalRelayProps {
+export interface TerminalRelayTerminalInstance {
+  readonly cols: number;
+  readonly rows: number;
+  write: (data: string, callback?: () => void) => void;
+  focus: () => void;
+  clear: () => void;
+  dispose: () => void;
+}
+
+export interface TerminalRelayRef {
+  focus: () => void;
+  fit: () => { cols: number; rows: number } | null;
+  clear: () => void;
+  getDimensions: () => { cols: number; rows: number } | null;
+  getTerminal: () => TerminalRelayTerminalInstance | null;
+}
+
+export interface TerminalRelayProps {
   relay: TerminalRelayHandle;
   fontSize?: number;
   fontFamily?: string;
+  scrollback?: number;
+  renderer?: TerminalRendererPreference;
+  readOnly?: boolean;
+  ariaLabel?: string;
+  className?: string;
+  style?: CSSProperties;
   /** Follow the Hudson theme by default, using terminal-specific ANSI palettes. */
   colorScheme?: TerminalColorScheme;
   /** Key/value pairs shown in the disconnected state so users can see current config at a glance */
@@ -30,6 +64,10 @@ interface TerminalRelayProps {
   onStartService?: () => Promise<boolean>;
   /** Suppress disconnected/connecting overlays — just show the terminal canvas immediately. Error overlays are still shown. */
   quiet?: boolean;
+  onReady?: (terminal: TerminalRelayTerminalInstance) => void;
+  onDispose?: () => void;
+  onResize?: (cols: number, rows: number) => void;
+  onRendererChange?: (renderer: TerminalRendererState) => void;
 }
 
 export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
@@ -182,6 +220,16 @@ function injectXtermCss() {
   document.head.appendChild(style);
 }
 
+function readModuleExport<T>(mod: unknown, name: string): T | undefined {
+  if (typeof mod !== 'object' || mod === null) return undefined;
+  const record = mod as Record<string, unknown>;
+  const direct = record[name];
+  if (direct) return direct as T;
+  const defaultExport = record.default;
+  if (typeof defaultExport !== 'object' || defaultExport === null) return undefined;
+  return (defaultExport as Record<string, unknown>)[name] as T | undefined;
+}
+
 function isElementVisible(el: HTMLElement | null): boolean {
   if (!el) return false;
   if (!el.closest('[data-hudson-terminal-drawer-content="true"]')) return false;
@@ -216,17 +264,40 @@ function fileToBase64(file: File): Promise<string> {
 // Component
 // ---------------------------------------------------------------------------
 
-export function TerminalRelay({
+function TerminalRelayInner({
   relay,
   fontSize = 12,
   fontFamily = "'JetBrains Mono', 'Hack Nerd Font', monospace",
+  scrollback = 5000,
+  renderer = 'auto',
+  readOnly = false,
+  ariaLabel = 'Terminal',
+  className,
+  style,
   colorScheme = 'auto',
   configItems,
   onOpenSettings,
   onStartService,
   quiet = false,
-}: TerminalRelayProps) {
-  const { status, error, exitCode, cwd, setCwd, sendInput, resize, onData, connect, disconnect } = relay;
+  onReady,
+  onDispose,
+  onResize,
+  onRendererChange,
+}: TerminalRelayProps, ref: ForwardedRef<TerminalRelayRef>) {
+  const {
+    status,
+    error,
+    exitCode,
+    cwd,
+    setCwd,
+    sendInput,
+    resize,
+    onData,
+    connect,
+    disconnect,
+    controlMode = 'owner',
+  } = relay;
+  const effectiveReadOnly = readOnly || controlMode === 'observe';
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
   const themeContext = useOptionalTheme();
@@ -246,6 +317,27 @@ export function TerminalRelay({
   const [ready, setReady] = useState(false);
   const [dragging, setDragging] = useState(false);
   const dragCounter = useRef(0);
+  const readOnlyRef = useRef(effectiveReadOnly);
+  const lastSentDimsRef = useRef<{ cols: number; rows: number } | null>(null);
+  const resizeFrameRef = useRef<number | null>(null);
+  const onReadyRef = useRef(onReady);
+  const onDisposeRef = useRef(onDispose);
+  const onResizeRef = useRef(onResize);
+  const onRendererChangeRef = useRef(onRendererChange);
+
+  useEffect(() => {
+    readOnlyRef.current = effectiveReadOnly;
+    if (effectiveReadOnly) {
+      pendingVoiceInputRef.current = null;
+      pendingVoiceSubmitRef.current = false;
+      dragCounter.current = 0;
+      setDragging(false);
+    }
+  }, [effectiveReadOnly]);
+  useEffect(() => { onReadyRef.current = onReady; }, [onReady]);
+  useEffect(() => { onDisposeRef.current = onDispose; }, [onDispose]);
+  useEffect(() => { onResizeRef.current = onResize; }, [onResize]);
+  useEffect(() => { onRendererChangeRef.current = onRendererChange; }, [onRendererChange]);
 
   // ---- Prevent unmodified Space from propagating to Frame's space+pan handler ----
   // This is more robust than Frame trying to detect .xterm — the terminal
@@ -265,18 +357,70 @@ export function TerminalRelay({
   // ---- Upload helper ----
   const uploadUrl = `${apiBaseUrl}/api/relay/upload`;
 
+  const sendTerminalInput = useCallback((data: string) => {
+    if (readOnlyRef.current) return;
+    sendInput(data);
+  }, [sendInput]);
+
+  const emitResize = useCallback((cols: number, rows: number) => {
+    if (!Number.isFinite(cols) || !Number.isFinite(rows) || cols <= 0 || rows <= 0) return;
+    const previous = lastSentDimsRef.current;
+    if (previous && previous.cols === cols && previous.rows === rows) return;
+    lastSentDimsRef.current = { cols, rows };
+    resize(cols, rows);
+    onResizeRef.current?.(cols, rows);
+  }, [resize]);
+
+  const fitTerminal = useCallback((): { cols: number; rows: number } | null => {
+    const fit = fitRef.current;
+    const term = termRef.current;
+    if (!fit || !term) return null;
+    try {
+      fit.fit();
+    } catch {
+      return null;
+    }
+    const dims = { cols: term.cols, rows: term.rows };
+    emitResize(dims.cols, dims.rows);
+    return dims;
+  }, [emitResize]);
+
+  const scheduleFit = useCallback(() => {
+    if (resizeFrameRef.current !== null) return;
+    resizeFrameRef.current = window.requestAnimationFrame(() => {
+      resizeFrameRef.current = null;
+      fitTerminal();
+    });
+  }, [fitTerminal]);
+
+  useImperativeHandle(ref, () => ({
+    focus: () => {
+      termRef.current?.focus();
+    },
+    fit: fitTerminal,
+    clear: () => {
+      termRef.current?.clear();
+    },
+    getDimensions: () => {
+      const term = termRef.current;
+      return term ? { cols: term.cols, rows: term.rows } : null;
+    },
+    getTerminal: () => termRef.current as TerminalRelayTerminalInstance | null,
+  }), [fitTerminal]);
+
   const sendVoiceTranscript = useCallback((detail: HudsonTerminalVoiceTranscriptDetail) => {
     const transcript = detail.transcript.replace(/\s+/g, ' ').trim();
     if (!transcript) return;
-    sendInput(detail.submit ? `${transcript}${ENTER_INPUT}` : transcript);
-  }, [sendInput]);
+    sendTerminalInput(detail.submit ? `${transcript}${ENTER_INPUT}` : transcript);
+  }, [sendTerminalInput]);
 
   const sendVoiceSubmit = useCallback(() => {
-    sendInput(ENTER_INPUT);
-  }, [sendInput]);
+    sendTerminalInput(ENTER_INPUT);
+  }, [sendTerminalInput]);
 
   useEffect(() => {
     const handleVoiceTranscript = (event: Event) => {
+      if (readOnlyRef.current) return;
       if (!isElementVisible(wrapperRef.current)) return;
 
       const detail = (event as CustomEvent<HudsonTerminalVoiceTranscriptDetail>).detail;
@@ -306,6 +450,7 @@ export function TerminalRelay({
 
   useEffect(() => {
     const handleVoiceSubmit = () => {
+      if (readOnlyRef.current) return;
       if (!isElementVisible(wrapperRef.current)) return;
 
       if (status === 'connected') {
@@ -361,26 +506,37 @@ export function TerminalRelay({
       e.preventDefault();
       e.stopPropagation();
 
+      if (readOnlyRef.current) return;
+
       for (const item of imageItems) {
         const file = item.getAsFile();
         if (!file) continue;
         const path = await uploadFile(file);
-        if (path) sendInput(path);
+        if (path) sendTerminalInput(path);
       }
     };
 
     el.addEventListener('paste', handlePaste);
     return () => el.removeEventListener('paste', handlePaste);
-  }, [sendInput, uploadFile]);
+  }, [sendTerminalInput, uploadFile]);
 
   // ---- Image drop handlers ----
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnlyRef.current) {
+      e.dataTransfer.dropEffect = 'none';
+      return;
+    }
     e.dataTransfer.dropEffect = 'copy';
   }, []);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnlyRef.current) {
+      dragCounter.current = 0;
+      setDragging(false);
+      return;
+    }
     dragCounter.current++;
     if (e.dataTransfer.types.includes('Files')) {
       setDragging(true);
@@ -389,6 +545,11 @@ export function TerminalRelay({
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
+    if (readOnlyRef.current) {
+      dragCounter.current = 0;
+      setDragging(false);
+      return;
+    }
     dragCounter.current--;
     if (dragCounter.current === 0) {
       setDragging(false);
@@ -400,6 +561,8 @@ export function TerminalRelay({
     dragCounter.current = 0;
     setDragging(false);
 
+    if (readOnlyRef.current) return;
+
     const files = Array.from(e.dataTransfer.files).filter((f) =>
       f.type.startsWith('image/'),
     );
@@ -407,14 +570,15 @@ export function TerminalRelay({
 
     for (const file of files) {
       const path = await uploadFile(file);
-      if (path) sendInput(path);
+      if (path) sendTerminalInput(path);
     }
-  }, [sendInput, uploadFile]);
+  }, [sendTerminalInput, uploadFile]);
 
   // ---- Load xterm.js dynamically (SSR-safe) and create terminal ----
   useEffect(() => {
     let disposed = false;
     let terminal: import('@xterm/xterm').Terminal | null = null;
+    setReady(false);
 
     async function init() {
       const [xtermMod, fitMod, webglMod] = await Promise.all([
@@ -427,10 +591,10 @@ export function TerminalRelay({
       // into { default: { Terminal: … } } when consumed via dynamic ESM
       // import, even though Node and Vite expose them as named exports.
       // Read from either shape so we work across runtimes.
-      const Terminal = ((xtermMod as any).Terminal ?? (xtermMod as any).default?.Terminal) as typeof import('@xterm/xterm').Terminal | undefined;
-      const FitAddon = ((fitMod as any).FitAddon ?? (fitMod as any).default?.FitAddon) as typeof import('@xterm/addon-fit').FitAddon | undefined;
+      const Terminal = readModuleExport<typeof import('@xterm/xterm').Terminal>(xtermMod, 'Terminal');
+      const FitAddon = readModuleExport<typeof import('@xterm/addon-fit').FitAddon>(fitMod, 'FitAddon');
       const WebglAddon = webglMod
-        ? ((webglMod as any).WebglAddon ?? (webglMod as any).default?.WebglAddon) as typeof import('@xterm/addon-webgl').WebglAddon | undefined
+        ? readModuleExport<typeof import('@xterm/addon-webgl').WebglAddon>(webglMod, 'WebglAddon')
         : undefined;
 
       if (!Terminal || !FitAddon) {
@@ -450,7 +614,7 @@ export function TerminalRelay({
         cursorBlink: true,
         cursorStyle: 'bar',
         allowTransparency: true,
-        scrollback: 5000,
+        scrollback,
         convertEol: false,
         allowProposedApi: true,
       });
@@ -458,24 +622,27 @@ export function TerminalRelay({
       const fitAddon = new FitAddon();
       terminal.loadAddon(fitAddon);
       terminal.open(containerRef.current);
-
-      // GPU-accelerated rendering (graceful fallback to DOM renderer)
-      if (WebglAddon) {
-        try {
-          const webglAddon = new WebglAddon();
-          webglAddon.onContextLoss(() => { webglAddon.dispose(); });
-          terminal.loadAddon(webglAddon);
-        } catch {}
-      }
-
-      // Initial fit
-      try { fitAddon.fit(); } catch {}
-
       termRef.current = terminal;
       fitRef.current = fitAddon;
 
-      // Send initial dimensions to relay
-      resize(terminal.cols, terminal.rows);
+      let rendererState: TerminalRendererState = 'dom';
+      // GPU-accelerated rendering (graceful fallback to DOM renderer)
+      if (renderer !== 'dom' && WebglAddon) {
+        try {
+          const webglAddon = new WebglAddon();
+          webglAddon.onContextLoss(() => {
+            webglAddon.dispose();
+            onRendererChangeRef.current?.('dom');
+          });
+          terminal.loadAddon(webglAddon);
+          rendererState = 'webgl';
+        } catch {}
+      }
+      onRendererChangeRef.current?.(rendererState);
+
+      // Initial fit + dimension publish. `emitResize` dedupes repeated sizes
+      // so this is safe before ResizeObserver starts firing.
+      fitTerminal();
 
       terminal.attachCustomKeyEventHandler((event) => {
         if (
@@ -488,7 +655,7 @@ export function TerminalRelay({
         ) {
           event.preventDefault();
           event.stopPropagation();
-          sendInput(SHIFT_ENTER_INPUT);
+          sendTerminalInput(SHIFT_ENTER_INPUT);
           return false;
         }
         return true;
@@ -496,24 +663,31 @@ export function TerminalRelay({
 
       // Forward keystrokes from xterm → relay
       terminal.onData((data) => {
-        sendInput(data);
+        sendTerminalInput(data);
       });
 
       setReady(true);
+      onReadyRef.current?.(terminal as TerminalRelayTerminalInstance);
     }
 
     init();
 
     return () => {
       disposed = true;
+      setReady(false);
+      if (resizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(resizeFrameRef.current);
+        resizeFrameRef.current = null;
+      }
       if (terminal) {
         terminal.dispose();
         termRef.current = null;
         fitRef.current = null;
       }
+      onDisposeRef.current?.();
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [fitTerminal, renderer, scrollback, sendTerminalInput]);
 
   // ---- Update font options without recreating terminal ----
   useEffect(() => {
@@ -521,8 +695,8 @@ export function TerminalRelay({
     if (!term) return;
     term.options.fontSize = fontSize;
     term.options.fontFamily = fontFamily;
-    try { fitRef.current?.fit(); } catch {}
-  }, [fontSize, fontFamily]);
+    fitTerminal();
+  }, [fitTerminal, fontSize, fontFamily]);
 
   // ---- Keep xterm colors aligned with the terminal color scheme ----
   useEffect(() => {
@@ -536,8 +710,23 @@ export function TerminalRelay({
   useEffect(() => {
     if (!ready) return;
 
-    onData((data: string) => {
-      termRef.current?.write(data);
+    onData((data: string, ack) => {
+      let acked = false;
+      const ackOnce = () => {
+        if (acked) return;
+        acked = true;
+        ack();
+      };
+      const term = termRef.current;
+      if (!term) {
+        ackOnce();
+        return;
+      }
+      try {
+        term.write(data, ackOnce);
+      } catch {
+        ackOnce();
+      }
     });
 
     return () => {
@@ -551,18 +740,18 @@ export function TerminalRelay({
     if (!el || !ready) return;
 
     const observer = new ResizeObserver(() => {
-      const fit = fitRef.current;
-      const term = termRef.current;
-      if (!fit || !term) return;
-      try {
-        fit.fit();
-        resize(term.cols, term.rows);
-      } catch {}
+      scheduleFit();
     });
 
     observer.observe(el);
-    return () => observer.disconnect();
-  }, [ready, resize]);
+    return () => {
+      observer.disconnect();
+      if (resizeFrameRef.current !== null) {
+        window.cancelAnimationFrame(resizeFrameRef.current);
+        resizeFrameRef.current = null;
+      }
+    };
+  }, [ready, scheduleFit]);
 
   // ---- Focus terminal when connected ----
   useEffect(() => {
@@ -737,7 +926,11 @@ export function TerminalRelay({
   return (
     <div
       ref={wrapperRef}
-      className="relative flex flex-col h-full overflow-hidden"
+      className={className ? `relative flex flex-col h-full overflow-hidden ${className}` : 'relative flex flex-col h-full overflow-hidden'}
+      style={style}
+      role="application"
+      aria-label={effectiveReadOnly ? `${ariaLabel} (read only)` : ariaLabel}
+      data-readonly={effectiveReadOnly ? 'true' : undefined}
       onClick={handleWrapperClick}
       onDragOver={handleDragOver}
       onDragEnter={handleDragEnter}
@@ -767,3 +960,6 @@ export function TerminalRelay({
     </div>
   );
 }
+
+export const TerminalRelay = forwardRef<TerminalRelayRef, TerminalRelayProps>(TerminalRelayInner);
+TerminalRelay.displayName = 'TerminalRelay';

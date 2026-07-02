@@ -1,6 +1,6 @@
 {
   "name": "hudsonkit",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",
@@ -59,6 +59,11 @@
       "types": "./dist/theme.d.ts",
       "import": "./dist/theme.js",
       "default": "./dist/theme.js"
+    },
+    "./terminal": {
+      "types": "./dist/terminal.d.ts",
+      "import": "./dist/terminal.js",
+      "default": "./dist/terminal.js"
     },
     "./theme-script": {
       "types": "./dist/theme-script.d.ts",

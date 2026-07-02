@@ -41,6 +41,7 @@ const clientEntries = {
   canvas: 'src/canvas.ts',
   windows: 'src/windows.ts',
   theme: 'src/theme.ts',
+  terminal: 'src/terminal.ts',
   controls: 'src/controls.ts',
   flags: 'src/flags.ts',
   cache: 'src/cache.ts',

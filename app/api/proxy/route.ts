@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 // ---------------------------------------------------------------------------
-// POST /api/proxy — forwards HTTP requests to avoid CORS restrictions
+// POST /api/proxy — forwards HTTP requests to avoid CORS restrictions.
+// SSRF-capable by design (it's the API-client app's engine), so it only
+// answers same-origin loopback requests.
 // ---------------------------------------------------------------------------
 
 const MAX_BODY_SIZE = 10 * 1024 * 1024; // 10 MB
 
 export async function POST(req: NextRequest) {
+  const rejected = rejectUntrustedLocalRequest(req);
+  if (rejected) return rejected;
+
   try {
     const payload = await req.json();
     const { method, url, headers, body } = payload as {
