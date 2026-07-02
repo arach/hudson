@@ -12,6 +12,7 @@ import { Assistant } from './Assistant';
 import { ObjectCodeSurface, ObjectCodeWorkbench } from './controls/ObjectCodeSurface';
 import { usePersistentState } from '../hooks/usePersistentState';
 import { InstanceProvider } from '../context/InstanceContext';
+import { AppSlotErrorBoundary } from '../workspace/shell/AppSlotErrorBoundary';
 import {
   AppShellControlsProvider,
   type AppShellControlsContextValue,
@@ -385,8 +386,16 @@ function AppShellInner({
           className="min-h-[420px]"
         />
       )}
-      {InspectorSlot && <InspectorSlot />}
-      {!InspectorSlot && RightPanelSlot && <RightPanelSlot />}
+      {InspectorSlot && (
+        <AppSlotErrorBoundary appName={app.name} slotName="Inspector">
+          <InspectorSlot />
+        </AppSlotErrorBoundary>
+      )}
+      {!InspectorSlot && RightPanelSlot && (
+        <AppSlotErrorBoundary appName={app.name} slotName="RightPanel">
+          <RightPanelSlot />
+        </AppSlotErrorBoundary>
+      )}
       {hasTools && (
         <div className="border-t border-border/60">
           {app.tools!.map(tool => {
@@ -417,7 +426,11 @@ function AppShellInner({
   );
 
   // Left panel footer: LeftFooter slot only
-  const leftFooter = app.slots.LeftFooter ? <app.slots.LeftFooter /> : undefined;
+  const leftFooter = app.slots.LeftFooter ? (
+    <AppSlotErrorBoundary appName={app.name} slotName="LeftFooter">
+      <app.slots.LeftFooter />
+    </AppSlotErrorBoundary>
+  ) : undefined;
 
   // Right panel footer: CommandDock
   const rightFooter = chrome.palette
@@ -617,7 +630,11 @@ function AppShellInner({
               headerActions={app.leftPanel?.headerActions && <app.leftPanel.headerActions />}
               style={{ top: topInset, bottom: bottomInset }}
             >
-              {app.slots.LeftPanel && <app.slots.LeftPanel />}
+              {app.slots.LeftPanel && (
+                <AppSlotErrorBoundary appName={app.name} slotName="LeftPanel">
+                  <app.slots.LeftPanel />
+                </AppSlotErrorBoundary>
+              )}
             </SidePanel>
           )}
 
@@ -744,7 +761,9 @@ function AppShellInner({
       }
     >
       <div style={contentStyle} className="frame-scrollbar select-text">
-        <app.slots.Content />
+        <AppSlotErrorBoundary appName={app.name} slotName="Content">
+          <app.slots.Content />
+        </AppSlotErrorBoundary>
       </div>
     </Frame>
     </div>
