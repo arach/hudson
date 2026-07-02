@@ -3,7 +3,13 @@
 export { AppShell } from './components/AppShell';
 export { createEmbedApp } from './lib/createEmbedApp';
 export type { EmbedAppOptions } from './lib/createEmbedApp';
-export type { AppShellChromeOptions } from './components/AppShell';
+export type { AppShellChromeOptions, AppShellEnvironment } from './components/AppShell';
+
+// Host route map consumed by server-backed shell features (Assistant chat,
+// speech, voice). Pass via <AppShell environment={{ routes }}>; read with
+// useWorkspaceHostRoutes() from any component inside the shell.
+export { useWorkspaceHostRoutes } from './workspace/hostRoutes';
+export type { HudsonHostRoutes } from './workspace/hostRoutes';
 
 // Imperative handles for the drawer / palette / side panels. Callable from
 // any component rendered inside an <AppShell>. See AppShellControlsContext

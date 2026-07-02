@@ -22,6 +22,13 @@ export interface WorkspaceHostRoutes {
   workspaceState?: string;
 }
 
+/**
+ * Neutral alias for {@link WorkspaceHostRoutes}. Both shells consume the same
+ * host-route map; prefer this name in single-app (AppShell) contexts where
+ * the "workspace" prefix would be misleading.
+ */
+export type HudsonHostRoutes = WorkspaceHostRoutes;
+
 const WorkspaceHostRoutesContext = createContext<WorkspaceHostRoutes>({});
 
 export function WorkspaceHostRoutesProvider({

@@ -13,6 +13,7 @@ import { ObjectCodeSurface, ObjectCodeWorkbench } from './controls/ObjectCodeSur
 import { usePersistentState } from '../hooks/usePersistentState';
 import { InstanceProvider } from '../context/InstanceContext';
 import { AppSlotErrorBoundary } from '../workspace/shell/AppSlotErrorBoundary';
+import { WorkspaceHostRoutesProvider, type HudsonHostRoutes } from '../workspace/hostRoutes';
 import {
   AppShellControlsProvider,
   type AppShellControlsContextValue,
@@ -63,6 +64,25 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   terminal: true,
 };
 
+/**
+ * Host-app bindings for the single-app shell — AppShell's counterpart to
+ * `WorkspaceShellEnvironment`. The shell is host-agnostic; features that need
+ * a server (the Assistant's Chat mode, speech, voice input, …) resolve their
+ * endpoints from `routes` instead of hardcoding paths.
+ *
+ * Deliberately a subset of `WorkspaceShellEnvironment`: AppShell has no
+ * dynamically-spawned terminal windows (`renderTerminal`) and no workspace
+ * settings surface (`useHudsonAISettingsEntry`), so only `routes` applies.
+ */
+export interface AppShellEnvironment {
+  /**
+   * Host-owned relative routes for optional server-backed shell features.
+   * Same shape as WorkspaceShell's `environment.routes` — e.g. `aiChat`
+   * powers the built-in Assistant's Chat mode via `useHudsonAI`.
+   */
+  routes?: HudsonHostRoutes;
+}
+
 const DEFAULT_PANEL_MIN = 200;
 const DEFAULT_PANEL_MAX = 500;
 
@@ -92,6 +112,16 @@ interface AppShellProps {
   defaultTemplate?: HudsonTemplate;
   /** When false, AppShell assumes a parent ThemeProvider already exists. */
   managedTheme?: boolean;
+  /**
+   * Host environment bindings (server route map for the Assistant's Chat
+   * mode, speech, voice, …). When `environment.routes` is provided, AppShell
+   * mounts the host-routes context itself — no external
+   * `WorkspaceHostRoutesProvider` wrapper needed — and it wins for this
+   * subtree over any outer provider. When omitted, an outer provider (if
+   * any) keeps working unchanged; with neither, host-backed features stay
+   * unconfigured, exactly as before.
+   */
+  environment?: AppShellEnvironment;
 }
 
 export function AppShell({
@@ -101,16 +131,30 @@ export function AppShell({
   defaultTheme = 'system',
   defaultTemplate = 'hudson',
   managedTheme = true,
+  environment,
 }: AppShellProps) {
   const theme = useOptionalTheme();
 
-  const content = (
+  let content = (
     <InstanceProvider instanceId={app.id} appId={app.id}>
       <app.Provider>
         <AppShellInner app={app} assistantEnabled={assistant} chrome={chrome} />
       </app.Provider>
     </InstanceProvider>
   );
+
+  // Host routes mount above the app Provider, mirroring WorkspaceShell (which
+  // provides them above all app Providers so apps can read them from their own
+  // Provider scope). Only rendered when the consumer actually passed routes:
+  // the context defaults to {}, so an unconditional provider would clobber an
+  // outer WorkspaceHostRoutesProvider supplied by the host.
+  if (environment?.routes) {
+    content = (
+      <WorkspaceHostRoutesProvider routes={environment.routes}>
+        {content}
+      </WorkspaceHostRoutesProvider>
+    );
+  }
 
   if (!managedTheme || theme) {
     return content;
