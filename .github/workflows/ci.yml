@@ -66,6 +66,9 @@ jobs:
       - name: HudsonKit CSS bundle
         run: bun run --cwd packages/web/hudsonkit build:css
 
+      - name: Validate HudsonKit packed package
+        run: bun run validate:hudsonkit-package
+
       - name: Typecheck (root)
         run: bunx tsc --noEmit
 
