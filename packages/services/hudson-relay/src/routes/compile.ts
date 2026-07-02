@@ -42,29 +42,15 @@ export async function handleCompile(req: IncomingMessage, res: ServerResponse) {
 
     const js = result.code;
 
-    // Validate: the compiled JS must be executable as a function body (p, vb) => string
+    // Validate: the compiled JS must parse as a function body (p, vb) => string.
+    // Constructing the Function checks syntax without executing the body — the
+    // relay must never RUN client-supplied code (it has full Node builtins).
+    // Runtime behavior (returns a string, etc.) is validated in the browser.
     try {
       // eslint-disable-next-line no-new-func
-      const fn = new Function('p', 'vb', js);
-      const testParams = {
-        bgColor: '#111113',
-        paneColor: '#ffffff',
-        dimPaneColor: 'rgba(255,255,255,0.55)',
-        channelColor: 'rgba(51,199,115,0.3)',
-        borderRadius: 80,
-        paneRadius: 14,
-        gapWidth: 14,
-        splitX: 0.37,
-        splitY: 0.60,
-        padding: 72,
-      };
-      const output = fn(testParams, 512);
-      if (typeof output !== 'string') {
-        json(res, 422, { error: `renderBody must return a string, got ${typeof output}` });
-        return;
-      }
+      new Function('p', 'vb', js);
     } catch (err) {
-      json(res, 422, { error: `Runtime validation failed: ${err instanceof Error ? err.message : String(err)}` });
+      json(res, 422, { error: `Validation failed: ${err instanceof Error ? err.message : String(err)}` });
       return;
     }
 

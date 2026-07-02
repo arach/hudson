@@ -60,6 +60,11 @@
       "import": "./dist/theme.js",
       "default": "./dist/theme.js"
     },
+    "./terminal": {
+      "types": "./dist/terminal.d.ts",
+      "import": "./dist/terminal.js",
+      "default": "./dist/terminal.js"
+    },
     "./theme-script": {
       "types": "./dist/theme-script.d.ts",
       "import": "./dist/theme-script.js",
