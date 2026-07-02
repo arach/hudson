@@ -29,7 +29,7 @@ export default {
     rules: [
       { pattern: 'new app', instruction: 'See docs/building-apps.md and app/apps/stage-design/ as reference' },
       { pattern: 'workspace', instruction: 'Check app/workspaces/ for workspace definitions' },
-      { pattern: 'intent', instruction: 'See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts' },
+      { pattern: 'intent', instruction: 'See packages/web/hudsonkit/src/types/intent.ts and hudsonkit/workspace buildIntentCatalog' },
       { pattern: 'component', instruction: 'Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays' },
       { pattern: 'styling', instruction: 'Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts' },
     ],

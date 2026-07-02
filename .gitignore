@@ -148,3 +148,6 @@ output/
 # Local generated logo template helpers
 scripts/_beacon-render-body.mjs
 scripts/install-beacon-templates.mjs
+# Astro docs-site build output (generated; do not track)
+hudson-docs/dist/
+hudson-docs/.astro/

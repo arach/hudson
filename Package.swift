@@ -202,7 +202,7 @@ if terminalEnabled {
         )
     )
     targets.append(
-        .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage"], path: tst + "HudsonVantageTests")
+        .testTarget(name: "HudsonVantageTests", dependencies: ["HudsonVantage", "HudsonVantageSurface"], path: tst + "HudsonVantageTests")
     )
     demoDependencies.append("HudsonTerminal")
     demoDependencies.append("HudsonVantageSurface")

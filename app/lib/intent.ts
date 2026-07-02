@@ -1,6 +1,5 @@
 import 'server-only';
 import type {
-  IntentCategory,
   IntentParameter,
   ServerIntent,
 } from 'hudsonkit';
@@ -10,34 +9,11 @@ import {
   makeTraceId,
 } from './agent-log';
 
-export interface IntentMeta {
-  /** Stable id used as the catalog key (e.g. `docs.reindex`). */
-  id: string;
-  /** Human-readable title. */
-  title: string;
-  /** Natural-language description for LLM/voice matching. */
-  description: string;
-  /** Catalog category; defaults to `'tool'`. */
-  category?: IntentCategory;
-  /** Synonyms for fuzzy matching. */
-  keywords?: string[];
-  /** Typed parameter schema — same shape as AppIntent.params. Required for
-   *  agents to enumerate what to pass; supply even for primitive args. */
-  params?: IntentParameter[];
-  /** Module path the agent should import from, relative to repo root. */
-  importPath: string;
-  /** Named export the agent should import. */
-  exportName: string;
-  /** Optional owner app id; defaults to the prefix before the first `.` in `id`. */
-  appId?: string;
-  /** Markdown agentic body — describes how to fulfill this intent. */
-  body?: string;
-  /** Source file location, optional override (otherwise inferred from stack). */
-  source?: { file: string; line?: number };
-}
+type ServerIntentRegistration = Omit<ServerIntent, 'category' | 'keywords'> &
+  Partial<Pick<ServerIntent, 'category' | 'keywords'>>;
 
 export interface IntentRegistryEntry {
-  meta: IntentMeta;
+  meta: ServerIntent;
   fn: (...args: unknown[]) => unknown;
 }
 
@@ -84,7 +60,6 @@ function detectDuplicateRegistration(id: string, source: { file: string; line?: 
   const key = `${id}|${existingSrc?.file ?? '?'}|${source?.file ?? '?'}`;
   if (warnedDuplicates.has(key)) return;
   warnedDuplicates.add(key);
-  // eslint-disable-next-line no-console
   console.warn(
     `[intent] duplicate id "${id}" registered in two files:\n  ` +
       `existing: ${existingSrc?.file ?? '(unknown)'}\n  ` +
@@ -111,52 +86,65 @@ function detectDuplicateRegistration(id: string, source: { file: string; line?: 
  * existing callers rely on synchronously — instrument an async caller instead.
  */
 export function intent<TArgs extends unknown[], TResult>(
-  meta: IntentMeta,
+  meta: ServerIntentRegistration,
   fn: (...args: TArgs) => TResult | Promise<TResult>,
 ): (...args: TArgs) => Promise<TResult> {
   const source = meta.source ?? captureCallerSource();
   detectDuplicateRegistration(meta.id, source);
 
+  const appId = meta.appId ?? inferAppId(meta.id);
+  const storedMeta: ServerIntent = {
+    id: meta.id,
+    title: meta.title,
+    description: meta.description,
+    category: meta.category ?? 'tool',
+    keywords: meta.keywords ?? [],
+    params: meta.params,
+    importPath: meta.importPath,
+    exportName: meta.exportName,
+    appId,
+    body: meta.body,
+    source: meta.source ?? source,
+  };
+
   const stored: IntentRegistration = {
-    meta: { ...meta, source: meta.source ?? source },
+    meta: storedMeta,
     fn: fn as IntentRegistration['fn'],
     source,
   };
-  registry.set(meta.id, stored);
-
-  const appId = meta.appId ?? inferAppId(meta.id);
+  registry.set(storedMeta.id, stored);
 
   const wrapped = async (...args: TArgs): Promise<TResult> => {
     const traceId = makeTraceId();
     const startedAt = Date.now();
     await appendAgentSpanStart({
-      name: meta.id,
+      name: storedMeta.id,
       traceId,
       source: 'intent',
-      playbook: meta.id,
+      playbook: storedMeta.id,
       appId,
-      args: argsForLog(args, meta.params),
+      args: argsForLog(args, storedMeta.params),
     });
     try {
       const result = await fn(...args);
       await appendAgentSpanEnd({
-        name: meta.id,
+        name: storedMeta.id,
         traceId,
         startedAt,
         status: 'ok',
         source: 'intent',
-        playbook: meta.id,
+        playbook: storedMeta.id,
         appId,
       });
       return result;
     } catch (err) {
       await appendAgentSpanEnd({
-        name: meta.id,
+        name: storedMeta.id,
         traceId,
         startedAt,
         status: 'error',
         source: 'intent',
-        playbook: meta.id,
+        playbook: storedMeta.id,
         appId,
         error: err,
       });
@@ -195,23 +183,6 @@ export function listIntents(): IntentRegistryEntry[] {
 export function getIntent(id: string): IntentRegistryEntry | undefined {
   const entry = registry.get(id);
   return entry ? { meta: entry.meta, fn: entry.fn } : undefined;
-}
-
-/** Convert a registry entry to the public ServerIntent catalog shape. */
-export function intentMetaToServerIntent(meta: IntentMeta): ServerIntent {
-  return {
-    id: meta.id,
-    title: meta.title,
-    description: meta.description,
-    category: meta.category ?? 'tool',
-    keywords: meta.keywords ?? [],
-    params: meta.params,
-    importPath: meta.importPath,
-    exportName: meta.exportName,
-    appId: meta.appId ?? inferAppId(meta.id),
-    body: meta.body,
-    source: meta.source,
-  };
 }
 
 /** For tests + HMR safety hatches. Not part of the runtime API. */

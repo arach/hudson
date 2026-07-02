@@ -265,7 +265,8 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4",
-    "tsup": "^8.0.0"
+    "tsup": "^8.0.0",
+    "typescript": "5.9.3"
   },
   "publishConfig": {
     "access": "public"
