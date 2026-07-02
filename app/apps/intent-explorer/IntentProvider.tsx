@@ -10,7 +10,7 @@ import {
   type ReactNode,
 } from 'react';
 import type { AppIntent, IntentCatalog } from 'hudsonkit';
-import { buildIntentCatalog } from '../../lib/intent-catalog';
+import { buildIntentCatalog } from 'hudsonkit/workspace';
 import { hudsonOSWorkspace } from '../../workspaces/hudsonOS';
 import type { FloatingCard } from './types';
 
