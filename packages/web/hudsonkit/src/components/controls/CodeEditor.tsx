@@ -446,12 +446,14 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       runtime.EditorState.readOnly.of(readOnly),
       isLight ? hudsonEditorThemeLight : hudsonEditorTheme,
       runtime.EditorView.lineWrapping,
+      // eslint-disable-next-line react-hooks/refs -- ref is read inside a CodeMirror updateListener (invoked on editor changes, not during render); using a ref keeps the memoized extension set stable across onChange identity changes
       runtime.EditorView.updateListener.of(update => {
         if (!update.docChanged) return;
         const next = update.state.doc.toString();
         setValue(next);
         onChangeRef.current?.(next);
       }),
+      // eslint-disable-next-line react-hooks/refs -- ref is read inside a CodeMirror keymap handler (invoked on Mod-s, not during render); using a ref keeps the memoized extension set stable across onSave identity changes
       runtime.Prec.highest(runtime.keymap.of([{
         key: 'Mod-s',
         preventDefault: true,

@@ -384,19 +384,26 @@ public struct HudTiling<Item: Identifiable & Sendable>: View where Item.ID: Hash
     private let constraints: TilingConstraints
     private let renderItem: (Item) -> AnyView
     private let resizable: Bool
+    private let externalSizes: Binding<[Item.ID: CGSize]>?
 
     @State private var order: [Item.ID]
     @State private var customSizes: [Item.ID: CGSize] = [:]
 
+    /// - Parameter sizes: Optional binding for per-tile custom sizes. When
+    ///   provided, the caller owns the sizes (controlled); set it to `[:]` to
+    ///   rebalance back to the uniform grid. When omitted, sizes are managed
+    ///   internally (uncontrolled), mirroring how `order` is handled.
     public init(
         items: [Item],
         constraints: TilingConstraints = .default,
         resizable: Bool = false,
+        sizes: Binding<[Item.ID: CGSize]>? = nil,
         @ViewBuilder renderItem: @escaping (Item) -> some View
     ) {
         self.items = items
         self.constraints = constraints
         self.resizable = resizable
+        self.externalSizes = sizes
         self.renderItem = { AnyView(renderItem($0)) }
         _order = State(initialValue: items.map(\.id))
     }
@@ -406,7 +413,7 @@ public struct HudTiling<Item: Identifiable & Sendable>: View where Item.ID: Hash
         HudTilingRepresentable(
             items: items,
             order: $order,
-            customSizes: $customSizes,
+            customSizes: externalSizes ?? $customSizes,
             constraints: constraints,
             resizable: resizable,
             renderItem: renderItem
@@ -425,7 +432,8 @@ public struct HudTiling<Item: Identifiable & Sendable>: View where Item.ID: Hash
 
 // Reconcile order when the set of items changes (drop removed ids, append new ones at the end).
 // This prevents stale order causing dropped/new items after items prop updates.
-private func reconciledOrder<ItemID: Hashable>(current: [ItemID], items: [ItemID]) -> [ItemID] {
+// Internal (not private) so it is unit-testable.
+func reconciledOrder<ItemID: Hashable>(current: [ItemID], items: [ItemID]) -> [ItemID] {
     let currentSet = Set(current)
     let itemSet = Set(items)
     // Keep only still-present in their relative order
@@ -469,11 +477,27 @@ private struct HudTilingRepresentable<Item: Identifiable>: NSViewRepresentable w
         let effectiveOrder = reconciled.isEmpty ? items.map(\.id) : reconciled
         let orderedItems = effectiveOrder.compactMap { id in items.first { $0.id == id } }
 
-        let hostingViews: [NSView] = orderedItems.map { item in
-            let hosting = NSHostingView(rootView: renderItem(item))
-            hosting.translatesAutoresizingMaskIntoConstraints = false
-            return hosting
+        // Reuse cached hosting views so a SwiftUI commit (e.g. the order/sizes
+        // binding writes on mouseUp) never tears down hosted content — live
+        // terminals keep their state, scrollback, and first responder. Views are
+        // created only for new ids, updated in place otherwise, and dropped when
+        // their item disappears.
+        let cache = context.coordinator
+        var hostingViews: [NSView] = []
+        hostingViews.reserveCapacity(orderedItems.count)
+        for item in orderedItems {
+            if let existing = cache.hostingViews[item.id] {
+                existing.rootView = renderItem(item)
+                hostingViews.append(existing)
+            } else {
+                let hosting = NSHostingView(rootView: renderItem(item))
+                hosting.translatesAutoresizingMaskIntoConstraints = false
+                cache.hostingViews[item.id] = hosting
+                hostingViews.append(hosting)
+            }
         }
+        let liveIDs = Set(orderedItems.map(\.id))
+        cache.hostingViews = cache.hostingViews.filter { liveIDs.contains($0.key) }
 
         nsView.onOrderChange = { newKeys in
             DispatchQueue.main.async {
@@ -505,7 +529,10 @@ private struct HudTilingRepresentable<Item: Identifiable>: NSViewRepresentable w
     }
 
     final class Coordinator {
-        // Minimal coordinator.
+        /// Hosting views cached by item id. Keeping these alive across SwiftUI
+        /// commits is what preserves heavy hosted content (live terminals)
+        /// through reorder/resize binding writes.
+        var hostingViews: [Item.ID: NSHostingView<AnyView>] = [:]
     }
 }
 
@@ -526,7 +553,6 @@ private final class HudTilingView: NSView {
     private var dragStartLocation: NSPoint?
     private var dragCurrentLocation: NSPoint?
     private var dragGrabOffset: NSPoint?
-    private var dragGhostImage: NSImage?
     private var landingGhostView: NSView?
     private var highlightView: NSView?
     private var pendingDragIndex: Int?
@@ -538,7 +564,6 @@ private final class HudTilingView: NSView {
     private var resizingKey: AnyHashable?
     private var resizeStartMouse: NSPoint = .zero
     private var resizeStartSize: CGSize = .zero
-    private var resizeBaseRect: NSRect = .zero
     private var dragOverlayView: NSImageView?
 
     override init(frame frameRect: NSRect) {
@@ -562,16 +587,20 @@ private final class HudTilingView: NSView {
         }
 
         // Clean any previous ghost chrome.
-        landingGhostView?.removeFromSuperview()
-        landingGhostView = nil
-        highlightView?.removeFromSuperview()
-        highlightView = nil
-        if let overlay = dragOverlayView {
-            overlay.removeFromSuperview()
-            dragOverlayView = nil
-        }
+        removeDragChrome()
 
-        tileViews.forEach { $0.removeFromSuperview() }
+        // Incrementally reconcile subviews: surviving views (which may host live
+        // terminal state / first responder) are kept in place, departed views are
+        // removed, and only genuinely new views are added. Never tear down and
+        // re-add everything — that destroys hosted view state on every update.
+        for old in tileViews where !views.contains(where: { $0 === old }) {
+            old.removeFromSuperview()
+        }
+        for view in views where view.superview !== self {
+            view.wantsLayer = true
+            view.layer?.masksToBounds = false
+            addSubview(view)
+        }
 
         self.tileKeys = keys
         self.tileViews = views
@@ -579,145 +608,46 @@ private final class HudTilingView: NSView {
         self.resizable = resizable
         self.customSizes = customSizes
 
-        for view in views {
-            view.wantsLayer = true
-            view.layer?.masksToBounds = false
-            addSubview(view)
-        }
-
         needsLayout = true
     }
 
     override func layout() {
         super.layout()
-        if draggingIndex == nil && resizingKey == nil {
+        if draggingIndex == nil {
+            // Committed layout and live-resize preview share the same math
+            // (customSizes already carries the in-flight resize value).
             relayoutTiles()
-        } else if draggingIndex != nil {
+        } else {
             updateDragPreview()
         }
-        // resize is updated live in mouseDragged
     }
 
+    /// Lays out all tiles from the shared grid metrics. Used for the committed
+    /// layout *and* the live resize preview, so mouseUp never causes a jump.
     private func relayoutTiles() {
         guard !tileViews.isEmpty, bounds.width > 0, bounds.height > 0 else { return }
+        guard let metrics = currentGridMetrics() else { return }
 
-        // Use a single source of truth for the *grid structure*.
-        // Prefer explicit custom col/row sizes (when present) over re-deriving from uniform base.
-        // This avoids the fragile "group by uniform x/y then override" that causes jumpy behavior on add/resize.
-        let gap = tilingConstraints.gap
-        let n = tileKeys.count
+        let resizing = resizingKey != nil
+        for i in 0..<min(tileKeys.count, tileViews.count) {
+            if draggingIndex == i { continue }
+            let view = tileViews[i]
+            // Align to pixel grid to avoid subpixel clipping on borders/buttons.
+            view.frame = pixelAligned(metrics.frame(at: i))
+            if !resizing {
+                view.alphaValue = 1.0
+            }
+        }
+    }
 
-        // First, decide the grid *shape* (numCols/numRows) using the standard compute (respects maxColumns etc.).
-        // We will override the *sizes* of those cells.
-        let baseLayoutsForShape = computeTilingLayout(
+    private func currentGridMetrics() -> TilingGridMetrics? {
+        computeTilingGridMetrics(
             keys: tileKeys,
+            customSizes: customSizes,
             containerWidth: bounds.width,
             containerHeight: bounds.height,
             constraints: tilingConstraints
         )
-
-        if baseLayoutsForShape.isEmpty { return }
-
-        // Derive shape from the first "row" of the base layout (row-major).
-        // This is more stable than re-grouping after every custom change.
-        var numCols = 1
-        if let firstRowY = baseLayoutsForShape.first?.y {
-            numCols = baseLayoutsForShape.prefix(while: { $0.y == firstRowY }).count
-        }
-        numCols = max(1, numCols)
-        let numRows = max(1, (n + numCols - 1) / numCols)
-
-        // Build per-col and per-row sizes.
-        var effectiveColWidths = Array(repeating: CGFloat(0), count: numCols)
-        var effectiveRowHeights = Array(repeating: CGFloat(0), count: numRows)
-
-        if customSizes.isEmpty {
-            // Uniform case: just use what the base compute gave us.
-            // (The base already did the fill/min/max logic.)
-            for i in 0..<n {
-                let c = i % numCols
-                let r = i / numCols
-                effectiveColWidths[c] = baseLayoutsForShape[i].width
-                effectiveRowHeights[r] = baseLayoutsForShape[i].height
-            }
-        } else {
-            // Bespoke: compute desired per logical col/row from current customs.
-            // Logical assignment is still by order position (stable), not by "current x".
-            for i in 0..<n {
-                let c = i % numCols
-                let r = i / numCols
-                let key = tileKeys[i]
-                let prefW = customSizes[key]?.width ?? baseLayoutsForShape[i].width
-                let prefH = customSizes[key]?.height ?? baseLayoutsForShape[i].height
-                effectiveColWidths[c] = max(effectiveColWidths[c], prefW)
-                effectiveRowHeights[r] = max(effectiveRowHeights[r], prefH)
-            }
-
-            // Now scale the *groups* to exactly fill the container (respect mins + gaps).
-            // This is the "systematic fill" part.
-            let totalColGap = CGFloat(max(0, numCols - 1)) * gap
-            let availW = bounds.width - totalColGap
-            let minW = tilingConstraints.minItemWidth
-            let minTotalW = CGFloat(numCols) * minW
-            let excessW = max(0, availW - minTotalW)
-
-            if excessW > 0 && effectiveColWidths.reduce(0, +) > 0 {
-                let sumDesired = effectiveColWidths.reduce(0, +)
-                for c in 0..<numCols {
-                    let share = effectiveColWidths[c] / sumDesired
-                    effectiveColWidths[c] = minW + excessW * share
-                }
-            } else {
-                for c in 0..<numCols {
-                    effectiveColWidths[c] = max(minW, effectiveColWidths[c])
-                }
-            }
-
-            // Same for rows
-            let totalRowGap = CGFloat(max(0, numRows - 1)) * gap
-            let availH = bounds.height - totalRowGap
-            let minH = tilingConstraints.minItemHeight
-            let minTotalH = CGFloat(numRows) * minH
-            let excessH = max(0, availH - minTotalH)
-
-            if excessH > 0 && effectiveRowHeights.reduce(0, +) > 0 {
-                let sumDesired = effectiveRowHeights.reduce(0, +)
-                for r in 0..<numRows {
-                    let share = effectiveRowHeights[r] / sumDesired
-                    effectiveRowHeights[r] = minH + excessH * share
-                }
-            } else {
-                for r in 0..<numRows {
-                    effectiveRowHeights[r] = max(minH, effectiveRowHeights[r])
-                }
-            }
-        }
-
-        // Now lay out using the (possibly variable) cell sizes, row-major.
-        // Align to pixel grid to avoid subpixel clipping on borders/buttons.
-        var colStarts = [CGFloat](repeating: 0, count: numCols)
-        for c in 1..<numCols {
-            colStarts[c] = colStarts[c-1] + effectiveColWidths[c-1] + gap
-        }
-        var rowStarts = [CGFloat](repeating: 0, count: numRows)
-        for r in 1..<numRows {
-            rowStarts[r] = rowStarts[r-1] + effectiveRowHeights[r-1] + gap
-        }
-
-        for i in 0..<n {
-            guard i < baseLayoutsForShape.count else { continue }
-            if draggingIndex == i { continue }
-            if resizingKey == tileKeys[i] { continue }
-            let c = i % numCols
-            let r = i / numCols
-            let x = colStarts[c]
-            let y = rowStarts[r]
-            let w = effectiveColWidths[c]
-            let h = effectiveRowHeights[r]
-            let view = tileViews[i]
-            view.frame = pixelAligned(NSRect(x: x, y: y, width: w, height: h))
-            view.alphaValue = 1.0
-        }
     }
 
     private func pixelAligned(_ rect: NSRect) -> NSRect {
@@ -726,16 +656,6 @@ private final class HudTilingView: NSView {
         let maxX = ceil(rect.maxX)
         let maxY = ceil(rect.maxY)
         return NSRect(x: minX, y: minY, width: maxX - minX, height: maxY - minY)
-    }
-
-    private func computeCurrentLayouts() -> [TileLayout] {
-        guard bounds.width > 0, bounds.height > 0 else { return [] }
-        return computeTilingLayout(
-            keys: tileKeys,
-            containerWidth: bounds.width,
-            containerHeight: bounds.height,
-            constraints: tilingConstraints
-        )
     }
 
     private func snapshot(of view: NSView) -> NSImage? {
@@ -771,7 +691,6 @@ private final class HudTilingView: NSView {
                 resizingKey = key
                 resizeStartMouse = location
                 resizeStartSize = customSizes[key] ?? tileFrame.size
-                resizeBaseRect = tileFrame
                 // bring to front
                 tileViews[idx].superview?.addSubview(tileViews[idx])
                 return
@@ -805,12 +724,11 @@ private final class HudTilingView: NSView {
         )
         clearPendingDrag()
 
-        // Snapshot for the ghost preview at the landing spot (faded) and for drag overlay (full).
-        dragGhostImage = snapshot(of: tileViews[idx])
-
-        // Use a lightweight NSImageView overlay for the dragged item during gesture.
-        // This keeps the heavy NSHostingView (with live terminal) stationary → smooth drag.
-        if let img = dragGhostImage {
+        // Use a lightweight NSImageView overlay (snapshot) for the dragged item
+        // during the gesture. This keeps the heavy NSHostingView (with live
+        // terminal) stationary → smooth drag. The snapshot is used only here;
+        // the landing indicator is a clear outlined slot, not a faded copy.
+        if let img = snapshot(of: tileViews[idx]) {
             let overlay = NSImageView(image: img)
             overlay.wantsLayer = true
             overlay.alphaValue = 0.85  // slightly transparent so it doesn't completely mask content underneath while dragging
@@ -829,13 +747,7 @@ private final class HudTilingView: NSView {
 
         // Setup ghost and highlight views once at drag start (avoid addSubview spam every frame)
         ensureLandingGhost()
-        if let ghost = landingGhostView, ghost.superview == nil {
-            addSubview(ghost)
-        }
         ensureHighlightView()
-        if let hv = highlightView, hv.superview == nil {
-            addSubview(hv)
-        }
 
         updateDragPreview()
     }
@@ -848,42 +760,20 @@ private final class HudTilingView: NSView {
             let dx = location.x - resizeStartMouse.x
             let dy = location.y - resizeStartMouse.y
 
-            var newW = max(100, resizeStartSize.width + dx)
-            var newH = max(80, resizeStartSize.height + dy)
-
-            // Soft clamp within container
-            newW = min(newW, bounds.width * 0.9)
-            newH = min(newH, bounds.height * 0.9)
+            // Clamp against the same constraint values the committed layout uses.
+            let minW = tilingConstraints.minItemWidth
+            let minH = tilingConstraints.minItemHeight
+            let maxW = tilingConstraints.maxItemWidth ?? bounds.width
+            let maxH = tilingConstraints.maxItemHeight ?? bounds.height
+            let newW = min(max(minW, resizeStartSize.width + dx), maxW)
+            let newH = min(max(minH, resizeStartSize.height + dy), maxH)
 
             customSizes[key] = CGSize(width: newW, height: newH)
 
-            // Live update the *column and row group* so dragging resizes the split (whole col/row) and shifts the rest.
-            // This makes "resize rows or columns in the grid" work directly.
-            let layouts = computeCurrentLayouts()
-            if let idx = tileKeys.firstIndex(of: key), idx < layouts.count {
-                let thisL = layouts[idx]
-                let thisX = thisL.x
-                let thisY = thisL.y
-                for j in 0..<tileViews.count {
-                    guard j < layouts.count else { continue }
-                    let l = layouts[j]
-                    let v = tileViews[j]
-                    var f = NSRect(x: l.x, y: l.y, width: l.width, height: l.height)
-                    if abs(l.x - thisX) < 1 {
-                        f.size.width = newW
-                    }
-                    if abs(l.y - thisY) < 1 {
-                        f.size.height = newH
-                    }
-                    if l.x > thisX {
-                        f.origin.x += dx
-                    }
-                    if l.y > thisY {
-                        f.origin.y += dy
-                    }
-                    v.frame = pixelAligned(f)
-                }
-            }
+            // Live preview goes through the exact same grid math as the committed
+            // layout (shape + span redistribution against mins and gaps), so the
+            // frames on mouseUp are identical to what the user is already seeing.
+            relayoutTiles()
 
             // Do NOT notify onSizesChange live — only on mouseUp to avoid binding churn and re-renders during gesture
             return
@@ -933,11 +823,13 @@ private final class HudTilingView: NSView {
         }
 
         if didResize {
-            onSizesChange?(customSizes)
             resizingKey = nil
             resizeStartMouse = .zero
             resizeStartSize = .zero
+            // The live preview already used the committed math; this is just the
+            // final pass (and restores alphas).
             relayoutTiles()
+            onSizesChange?(customSizes)
             return
         }
 
@@ -961,6 +853,18 @@ private final class HudTilingView: NSView {
         }
     }
 
+    /// Removes and nils all transient drag chrome (landing ghost, highlight ring,
+    /// floating overlay) symmetrically — everything created at drag start is torn
+    /// down together here.
+    private func removeDragChrome() {
+        landingGhostView?.removeFromSuperview()
+        landingGhostView = nil
+        highlightView?.removeFromSuperview()
+        highlightView = nil
+        dragOverlayView?.removeFromSuperview()
+        dragOverlayView = nil
+    }
+
     private func resetDragState(restoreFrames: Bool) {
         // Restore alphas on all hosted tile views.
         for v in tileViews {
@@ -972,14 +876,7 @@ private final class HudTilingView: NSView {
             }
         }
 
-        highlightView?.isHidden = true
-        landingGhostView?.isHidden = true
-        landingGhostView?.removeFromSuperview()
-
-        if let overlay = dragOverlayView {
-            overlay.removeFromSuperview()
-            dragOverlayView = nil
-        }
+        removeDragChrome()
 
         if restoreFrames {
             relayoutTiles()
@@ -990,8 +887,6 @@ private final class HudTilingView: NSView {
         dragStartLocation = nil
         dragCurrentLocation = nil
         dragGrabOffset = nil
-        dragGhostImage = nil
-        landingGhostView = nil
         clearPendingDrag()
     }
 
@@ -1000,11 +895,6 @@ private final class HudTilingView: NSView {
         resizingKey = nil
         resizeStartMouse = .zero
         resizeStartSize = .zero
-        resizeBaseRect = .zero
-        if let overlay = dragOverlayView {
-            overlay.removeFromSuperview()
-            dragOverlayView = nil
-        }
         if restoreFrames {
             relayoutTiles()
         }
@@ -1023,8 +913,7 @@ private final class HudTilingView: NSView {
         // Use *committed* layout (original order). No live swapping of other tiles.
         // IMPORTANT: We intentionally avoid touching real tileViews frames here.
         // The heavy NSHostingViews (terminals) stay put; only cheap overlay moves.
-        let layouts = computeCurrentLayouts()
-        guard !layouts.isEmpty else { return }
+        guard let metrics = currentGridMetrics() else { return }
 
         // Dim other tiles during drag so the floating overlay stands out without "masking" everything unpleasantly
         for (i, view) in tileViews.enumerated() {
@@ -1032,16 +921,12 @@ private final class HudTilingView: NSView {
             view.alphaValue = 0.45
         }
 
-        // Determine the landing rect.
-        // Use the *dragged item's own preferred size* at the target's position if possible,
-        // so the ghost matches what will actually land there.
+        // Landing rect = the target slot in the same grid math used for the
+        // committed layout, so the indicator shows exactly where the tile lands.
         let targetIdx = dropTargetIndex ?? dIdx
         var landingRect: NSRect?
-        if targetIdx < layouts.count {
-            let l = layouts[targetIdx]
-            let draggedKey = tileKeys[dIdx]
-            let pref = customSizes[draggedKey] ?? CGSize(width: l.width, height: l.height)
-            landingRect = NSRect(x: l.x, y: l.y, width: pref.width, height: pref.height)
+        if targetIdx < tileKeys.count {
+            landingRect = metrics.frame(at: targetIdx)
         }
 
         // Move the lightweight drag overlay image (snapshot) instead of the real heavy view.
@@ -1069,13 +954,9 @@ private final class HudTilingView: NSView {
                     height: r.height - inset * 2
                 ))
                 ghost.isHidden = false
-
-                // Do not show full faded content in the ghost to avoid masking the tiles underneath.
-                // The container's border + bg serves as the "where it would land" highlight.
-                // (The full snapshot is only used for the dragged overlay itself.)
-                for sub in ghost.subviews where sub is NSImageView {
-                    sub.removeFromSuperview()
-                }
+                // The ghost is intentionally content-free: a clear, outlined slot
+                // so the tiles underneath stay visible. The snapshot image is only
+                // used for the floating drag overlay.
             }
 
             // Accent highlight ring around the ghost/landing spot.

@@ -59,7 +59,7 @@ const clientRefManifestPath = join(
   'server/app/embed/[appId]/[surface]/page_client-reference-manifest.js',
 );
 
-let clientRefChunks = [];
+const clientRefChunks = [];
 if (existsSync(clientRefManifestPath)) {
   const raw = await readFile(clientRefManifestPath, 'utf-8');
   // Extract all "/_next/static/chunks/..." paths from the manifest

@@ -68,6 +68,7 @@ function shellExecSync(command: string, opts: { cwd?: string; timeout?: number }
     return result.stdout.toString();
   }
   // Node.js fallback
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- deliberate lazy Node-only require; this sync helper's callers are sync, so await import() is not viable
   const { execSync } = require('child_process');
   return execSync(command, { cwd: opts.cwd, encoding: 'utf-8', timeout: opts.timeout });
 }
@@ -91,6 +92,7 @@ function spawnDetached(
     return { pid: proc.pid };
   }
   // Node.js fallback
+  // eslint-disable-next-line @typescript-eslint/no-require-imports -- deliberate lazy Node-only require; this sync helper's callers are sync, so await import() is not viable
   const { spawn } = require('child_process');
   const stdioTarget = opts.logFd != null ? opts.logFd : 'ignore';
   const child = spawn(cmd, args, {

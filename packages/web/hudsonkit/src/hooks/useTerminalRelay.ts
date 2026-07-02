@@ -279,10 +279,21 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   // Guard async connect races so stale StrictMode/dev remount attempts
   // cannot steal wsRef or leave a later socket uninitialized.
   const connectAttemptRef = useRef(0);
+  // Seq-space generation. Bumped whenever the server-side seq counter may
+  // reset (new socket, new session). Ack closures capture the generation at
+  // chunk arrival and drop themselves if it has moved on, so an ack for an
+  // old session can never land on a new socket and collide with its seqs.
+  const outputEpochRef = useRef(0);
   const cwdRef = useRef(cwd);
   cwdRef.current = cwd;
-  // Persist sessionId (+ ownership token) across reconnects so we can resume
-  const persistedRef = useRef(readPersistedSession());
+  // Persist sessionId (+ ownership token) across reconnects so we can resume.
+  // Lazy-init so localStorage is only read once, not on every render.
+  const persistedLoadedRef = useRef(false);
+  const persistedRef = useRef<{ id: string; reconnectToken: string | null } | null>(null);
+  if (!persistedLoadedRef.current) {
+    persistedLoadedRef.current = true;
+    persistedRef.current = readPersistedSession();
+  }
   const sessionIdRef = useRef<string | null>(persistedRef.current?.id ?? null);
   const reconnectTokenRef = useRef<string | null>(persistedRef.current?.reconnectToken ?? null);
   // Primary data callback (typically the TerminalRelay xterm writer).
@@ -292,28 +303,41 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
   const subscribersRef = useRef<Set<(data: string) => void>>(new Set());
   const maxPendingOutput = flowControl?.maxBufferedBytes ?? 512 * 1024;
 
-  const send = useCallback((data: TerminalRelayClientMessage | Record<string, unknown>) => {
+  const send = useCallback((data: TerminalRelayClientMessage) => {
     const ws = wsRef.current;
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(data));
     }
   }, []);
 
-  const ackOutput = useCallback((seq: number | null) => {
+  const ackOutput = useCallback((seq: number | null, epoch: number) => {
     if (typeof seq !== 'number') return;
+    // Stale generation: chunk arrived before a reconnect/session swap and its
+    // seq belongs to the old seq-space — acking it now would corrupt the new
+    // session's flow control.
+    if (epoch !== outputEpochRef.current) return;
     send({ type: 'terminal:ack', seq });
   }, [send]);
 
+  // Drop buffered output (and its char accounting) and invalidate any
+  // outstanding ack closures. Called on session teardown and restart.
+  const clearPendingOutput = useCallback(() => {
+    outputEpochRef.current += 1;
+    pendingOutputRef.current = [];
+    pendingOutputCharsRef.current = 0;
+  }, []);
+
   const pushOutput = useCallback((data: string, seq: number | null = null) => {
+    const epoch = outputEpochRef.current;
     if (!data) {
-      ackOutput(seq);
+      ackOutput(seq, epoch);
       return;
     }
     let acked = false;
     const ack = () => {
       if (acked) return;
       acked = true;
-      ackOutput(seq);
+      ackOutput(seq, epoch);
     };
     if (dataCallbackRef.current) {
       try {
@@ -419,6 +443,9 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     connectAttemptRef.current = attempt;
 
     closeCurrentSocket();
+    // New socket → new seq-space. Acks still in flight from xterm write
+    // callbacks against the old socket must not land on this one.
+    outputEpochRef.current += 1;
 
     initSentRef.current = false;
     setStatus('connecting');
@@ -428,7 +455,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     // Pre-flight: check if the relay server is reachable before opening WebSocket
     const resolvedHealthUrl = healthUrl || `${url.replace(/^ws(s?):\/\//, 'http$1://')}/health`;
     try {
-      await fetch(resolvedHealthUrl, { signal: AbortSignal.timeout(2000) });
+      const health = await fetch(resolvedHealthUrl, { signal: AbortSignal.timeout(2000) });
+      if (!health.ok) throw new Error(`Relay health check failed: ${health.status}`);
     } catch {
       if (connectAttemptRef.current !== attempt) return;
       setStatus('error');
@@ -482,6 +510,8 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
             reconnectTokenRef.current = null;
             persistSession(null);
             initSentRef.current = false;
+            // Drop buffered output from the dead session and invalidate its acks
+            clearPendingOutput();
             // Clear the terminal so stale content doesn't show
             pushOutput('\x1b[2J\x1b[H', null); // clear screen + cursor home
             send(buildInitMessage());
@@ -504,6 +534,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
             sessionIdRef.current = null;
             reconnectTokenRef.current = null;
             persistSession(null);
+            clearPendingOutput();
             setSessionId(null);
             setExitCode(msg.exitCode ?? null);
             if (msg.exitCode !== 0) {
@@ -542,7 +573,7 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
       setStatus('error');
       setError('Could not connect to relay');
     };
-  }, [url, healthUrl, token, sendInitOrReconnect, closeCurrentSocket, send, pushOutput, buildInitMessage, persistSession]);
+  }, [url, healthUrl, token, sendInitOrReconnect, closeCurrentSocket, send, pushOutput, buildInitMessage, persistSession, clearPendingOutput]);
 
   const sendInput = useCallback((data: string) => {
     if (controlMode === 'observe') return;
@@ -568,7 +599,13 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     pendingOutputRef.current = [];
     pendingOutputCharsRef.current = 0;
     for (const output of pending) {
-      cb(output.data, output.ack);
+      // Same contract as pushOutput: a throwing sink must not swallow the
+      // ack, or the remaining chunks' flow control stalls server-side.
+      try {
+        cb(output.data, output.ack);
+      } catch {
+        output.ack();
+      }
     }
   }, []);
 
@@ -598,11 +635,17 @@ export function useTerminalRelay(options: UseTerminalRelayOptions = {}): Termina
     reconnectTokenRef.current = null;
     setSessionId(null);
     persistSession(null);
+    clearPendingOutput();
     setError(null);
     setExitCode(null);
-    // Small delay to let the WebSocket close before reconnecting
-    setTimeout(() => connect(), 200);
-  }, [disconnect, connect, persistSession]);
+    // Small delay to let the WebSocket close before reconnecting. Tracked in
+    // reconnectTimer so unmount/disconnect cancels it instead of leaking an
+    // ownerless socket.
+    reconnectTimer.current = setTimeout(() => {
+      reconnectTimer.current = null;
+      connect();
+    }, 200);
+  }, [disconnect, connect, persistSession, clearPendingOutput]);
 
   return {
     status,

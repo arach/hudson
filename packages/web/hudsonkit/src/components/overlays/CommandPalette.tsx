@@ -45,11 +45,13 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
         data: { commandCount: commands.length },
       });
       setTimeout(() => inputRef.current?.focus(), 10);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset of query/selection in reaction to the palette opening (isOpen dep), not a per-render cascade
       setQuery('');
       setSelectedIndex(0);
     }
   }, [commands.length, isOpen]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the highlighted row when the query changes; a bounded reaction to a single dep, not a cascade
   useEffect(() => { setSelectedIndex(0); }, [query]);
 
   useEffect(() => {

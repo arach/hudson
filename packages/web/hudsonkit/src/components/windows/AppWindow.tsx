@@ -90,12 +90,15 @@ const AppWindow: React.FC<AppWindowProps> = ({
   // React renders read from it instead of the (stale) bounds prop.
   const isDraggingRef = useRef(false);
   const liveBoundsRef = useRef(bounds);
+  // eslint-disable-next-line react-hooks/refs -- reading the drag guard during render is intentional; it decides whether the (stale-during-drag) bounds prop should be synced
   if (!isDraggingRef.current) {
+    // eslint-disable-next-line react-hooks/refs -- syncing bounds into liveBoundsRef during render is intentional; bounds is authoritative only when not dragging, and using state here would thrash re-renders every frame during drag
     liveBoundsRef.current = bounds;
   }
 
   // Ref to onBoundsChange so closures always call the latest version
   const onBoundsChangeRef = useRef(onBoundsChange);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render so drag/resize handlers always call the current onBoundsChange without re-binding listeners
   onBoundsChangeRef.current = onBoundsChange;
 
   /** Apply bounds directly to DOM (no React re-render). */
@@ -310,19 +313,20 @@ const AppWindow: React.FC<AppWindowProps> = ({
     </div>
   );
 
+  // Maximized windows float above all siblings.
+  const windowStyle: React.CSSProperties = { ...(isMaximized ? { zIndex: 9999 } : undefined) };
+  // During drag, liveBoundsRef holds the authoritative window position; reading it in
+  // render is intentional (the bounds prop is stale until drag ends) and avoids a
+  // re-render on every pointer frame. Applied via Object.assign so the position stays
+  // authoritative even if an unrelated state change re-renders mid-drag.
+  // eslint-disable-next-line react-hooks/refs -- see comment above; intentional ref read during render for drag performance
+  Object.assign(windowStyle, { left: liveBoundsRef.current.x, top: liveBoundsRef.current.y, width: liveBoundsRef.current.w, height: liveBoundsRef.current.h });
   const windowEl = (
     <div
       ref={windowRef}
       className={`absolute pointer-events-auto${altHeld ? ' cursor-grab' : ''}`}
       data-app-window
-      style={{
-        left: liveBoundsRef.current.x,
-        top: liveBoundsRef.current.y,
-        width: liveBoundsRef.current.w,
-        height: liveBoundsRef.current.h,
-        // Maximized windows float above all siblings
-        ...(isMaximized ? { zIndex: 9999 } : undefined),
-      }}
+      style={windowStyle}
       onMouseDown={handleWindowMouseDown}
     >
       {/* Window chrome */}

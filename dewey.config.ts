@@ -27,7 +27,7 @@ export default {
     },
 
     rules: [
-      { pattern: 'new app', instruction: 'See docs/building-apps.md and app/apps/shaper/ as reference' },
+      { pattern: 'new app', instruction: 'See docs/building-apps.md and app/apps/stage-design/ as reference' },
       { pattern: 'workspace', instruction: 'Check app/workspaces/ for workspace definitions' },
       { pattern: 'intent', instruction: 'See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts' },
       { pattern: 'component', instruction: 'Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays' },

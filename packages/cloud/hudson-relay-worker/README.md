@@ -87,6 +87,7 @@ All env-tunable; defaults baked in:
 | `HUD_PUSH_PAYLOAD_MAX` | 1024 (1 KB) |
 | `HUD_SESSION_TTL_SECONDS` | 2592000 (30 d) |
 | `HUD_GITHUB_REDIRECT_URI` | `<origin>/v1/auth/github/callback` |
+| `HUD_ALLOWED_ORIGINS` | _(empty)_ — comma-separated extra origins allowed on cookie-authenticated mutating requests. The worker's own origin and the `HUD_GITHUB_REDIRECT_URI` origin are always allowed. Cookie-authed POSTs must send a matching `Origin` header (CSRF guard); bearer-authenticated requests are exempt. |
 
 ## Endpoints
 

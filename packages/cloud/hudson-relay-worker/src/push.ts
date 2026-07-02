@@ -15,6 +15,11 @@ export async function handlePush(request: Request, env: Env, session: HudSession
   if (!url.pathname.startsWith('/v1/push')) return undefined;
   if (!session) return json(401, { error: 'unauthorized' });
 
+  if (request.method !== 'GET' && request.method !== 'HEAD') {
+    const csrf = csrfDenyReason(request, env);
+    if (csrf) { await auditLog(env, request, session.providerUserId, 'csrf', csrf); return json(403, { error: csrf }); }
+  }
+
   if (request.method === 'POST' && url.pathname === '/v1/push/devices/register') return registerDevice(request, env, session);
   if (request.method === 'POST' && url.pathname === '/v1/push/devices/unregister') return unregisterDevice(request, env, session);
   if (request.method === 'GET' && url.pathname === '/v1/push/devices') return listDevices(env, session);
@@ -123,12 +128,83 @@ async function chargeBucket(env: Env, key: string, window: string, seconds: numb
   return { ok: false, retryAfterSeconds: Math.ceil((start + seconds * 1000 - Date.now()) / 1000), window };
 }
 
+// CSRF gate for state-changing requests. Cookie-authenticated requests carry
+// ambient credentials, so a cross-site page could forge them; requests that
+// present an Authorization header are exempt because attacker pages cannot
+// attach a victim's bearer token. For cookie auth we REQUIRE a matching Origin
+// header: every modern browser sends Origin on cross-origin requests and on
+// all POSTs, so an absent Origin on a cookie-authed mutation means either a
+// very old browser or a non-browser client — both should use bearer tokens.
+// Rejecting absent Origin is therefore the safe default here.
+function csrfDenyReason(request: Request, env: Env): string | undefined {
+  if (/^Bearer\s+.+/i.test(request.headers.get('authorization') ?? '')) return undefined;
+  const origin = request.headers.get('origin');
+  if (!origin) return 'denied_origin_missing';
+  return allowedOrigins(request, env).has(origin) ? undefined : 'denied_origin_mismatch';
+}
+
+function allowedOrigins(request: Request, env: Env): Set<string> {
+  const origins = new Set<string>([new URL(request.url).origin]);
+  const candidates = (env.HUD_ALLOWED_ORIGINS ?? '').split(',').map(v => v.trim()).filter(Boolean);
+  if (env.HUD_GITHUB_REDIRECT_URI) candidates.push(env.HUD_GITHUB_REDIRECT_URI);
+  for (const candidate of candidates) {
+    try { origins.add(new URL(candidate).origin); } catch { /* ignore malformed entries */ }
+  }
+  return origins;
+}
+
 function validateSubscription(sub: unknown): { ok: true } | { ok: false; error: string } {
   const s = sub as PushSubscriptionJSON | undefined;
   if (!s || typeof s.endpoint !== 'string' || s.endpoint.length > 2048) return { ok: false, error: 'invalid_subscription' };
-  try { const u = new URL(s.endpoint); if (u.protocol !== 'https:') return { ok: false, error: 'invalid_subscription_endpoint' }; } catch { return { ok: false, error: 'invalid_subscription_endpoint' }; }
+  try {
+    const u = new URL(s.endpoint);
+    if (u.protocol !== 'https:' || isInternalHost(u.hostname)) return { ok: false, error: 'invalid_subscription_endpoint' };
+  } catch { return { ok: false, error: 'invalid_subscription_endpoint' }; }
   if (!s.keys || !validB64Url(s.keys.p256dh, 40, 256) || !validB64Url(s.keys.auth, 8, 64)) return { ok: false, error: 'invalid_subscription_keys' };
   return { ok: true };
+}
+
+// SSRF guard for subscription endpoints: deliverWebPush POSTs to whatever
+// endpoint was registered, so reject obviously-internal targets. Real push
+// gateways (fcm.googleapis.com, updates.push.services.mozilla.com,
+// web.push.apple.com, *.notify.windows.com) are always public DNS names,
+// never IP literals or single-label/internal-suffix hosts. The WHATWG URL
+// parser already canonicalizes numeric hosts (e.g. https://2130706433/ ->
+// 127.0.0.1), so checking the parsed hostname covers encoded forms.
+// DNS-resolution SSRF is out of scope for a Worker; literal checks suffice.
+function isInternalHost(hostname: string): boolean {
+  const host = hostname.toLowerCase().replace(/\.$/, '');
+  if (host === 'localhost' || host.endsWith('.localhost')) return true;
+  if (host.endsWith('.local') || host.endsWith('.internal') || host.endsWith('.home.arpa')) return true;
+  if (host.startsWith('[') || host.includes(':')) return isInternalIpv6(host.replace(/^\[|\]$/g, ''));
+  const v4 = parseIpv4(host);
+  if (v4) return isInternalIpv4(v4);
+  if (!host.includes('.')) return true; // single-label hosts are intranet names
+  return false;
+}
+function parseIpv4(host: string): number[] | undefined {
+  const match = /^(\d{1,3})\.(\d{1,3})\.(\d{1,3})\.(\d{1,3})$/.exec(host);
+  if (!match) return undefined;
+  const octets = match.slice(1).map(Number);
+  return octets.every(o => o <= 255) ? octets : undefined;
+}
+function isInternalIpv4([a, b]: number[]): boolean {
+  if (a === 0 || a === 10 || a === 127) return true;    // "this" network, 10/8, loopback
+  if (a === 100 && b >= 64 && b <= 127) return true;    // CGNAT 100.64/10
+  if (a === 169 && b === 254) return true;              // link-local incl. 169.254.169.254 metadata
+  if (a === 172 && b >= 16 && b <= 31) return true;     // 172.16/12
+  if (a === 192 && (b === 0 || b === 168)) return true; // 192.0.0/24 + 192.168/16
+  if (a === 198 && (b === 18 || b === 19)) return true; // benchmarking 198.18/15
+  if (a >= 224) return true;                            // multicast + reserved
+  return false;
+}
+function isInternalIpv6(ip: string): boolean {
+  const v = ip.toLowerCase();
+  if (v === '::' || v === '::1') return true;                        // unspecified, loopback
+  if (/^fe[89ab]/.test(v)) return true;                              // link-local fe80::/10
+  if (v.startsWith('fc') || v.startsWith('fd')) return true;         // unique-local fc00::/7
+  if (v.startsWith('::ffff:') || v.startsWith('64:ff9b:')) return true; // v4-mapped / v4-translated
+  return false;
 }
 function validB64Url(v: unknown, min: number, max: number): boolean { return typeof v === 'string' && v.length >= min && v.length <= max && /^[A-Za-z0-9_-]+$/.test(v); }
 function clean(v: unknown, max: number): string | undefined { return typeof v === 'string' && v.length > 0 && v.length <= max && /^[\w:./-]+$/.test(v) ? v : undefined; }

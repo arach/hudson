@@ -1,3 +1,4 @@
+// eslint-disable-next-line @typescript-eslint/no-explicit-any -- test D1 mock stores heterogeneous SQL row shapes and performs arithmetic on numeric columns; `unknown` would require per-access casts throughout the mock
 type Row = Record<string, any>;
 
 export class InMemoryD1 implements D1Database {
@@ -76,8 +77,8 @@ class Statement implements D1PreparedStatement {
       return result();
     }
     if (q.startsWith('INSERT INTO hud_push_usage_daily')) {
-      const [user_id,day,attempted_count,delivered_count,failed_count,updated_at] = v as any[];
-      let row = this.db.usage.find(r => r.user_id === user_id && r.day === day);
+      const [user_id,day,attempted_count,delivered_count,failed_count,updated_at] = v as [string, string, number, number, number, string];
+      const row = this.db.usage.find(r => r.user_id === user_id && r.day === day);
       if (row) Object.assign(row, { attempted_count: row.attempted_count + attempted_count, delivered_count: row.delivered_count + delivered_count, failed_count: row.failed_count + failed_count, updated_at });
       else this.db.usage.push({ user_id, day, attempted_count, delivered_count, failed_count, updated_at });
       return result();

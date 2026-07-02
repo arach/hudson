@@ -1,12 +1,13 @@
 import { act, cleanup, fireEvent, render, waitFor } from '@testing-library/react';
 import { createRef } from 'react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import { useTerminalRelay, type TerminalRelayHandle } from '../src/hooks/useTerminalRelay';
+import { useTerminalRelay, type TerminalRelayHandle, type UseTerminalRelayOptions } from '../src/hooks/useTerminalRelay';
 import {
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
   TerminalRelay,
   type TerminalRelayRef,
 } from '../src/components/TerminalRelay';
+import TerminalDrawer from '../src/components/overlays/TerminalDrawer';
 
 interface MockTerminalInstance {
   cols: number;
@@ -207,6 +208,40 @@ function flushRaf() {
   });
 }
 
+function ackMessages(ws: MockWebSocket) {
+  return ws.sent.filter((msg) => (
+    typeof msg === 'object' &&
+    msg !== null &&
+    (msg as { type?: string }).type === 'terminal:ack'
+  ));
+}
+
+/** Renders useTerminalRelay bare (no TerminalRelay component / xterm sink). */
+function renderRelayHook(options: UseTerminalRelayOptions = {}) {
+  const handleRef: { current: TerminalRelayHandle | null } = { current: null };
+  function Harness() {
+    // eslint-disable-next-line react-hooks/immutability -- test harness intentionally captures the hook's return value into an outer object so assertions can drive it; this is a test-only escape hatch, not app render logic
+    handleRef.current = useTerminalRelay({
+      url: 'ws://relay.test',
+      healthUrl: 'http://relay.test/health',
+      ...options,
+    });
+    return null;
+  }
+  const view = render(<Harness />);
+  return { handleRef, ...view };
+}
+
+async function openSession(ws: MockWebSocket, sessionId: string) {
+  act(() => {
+    ws.open();
+  });
+  await waitFor(() => expect(ws.sent.length).toBeGreaterThan(0));
+  act(() => {
+    ws.message({ type: 'session:ready', sessionId });
+  });
+}
+
 beforeEach(() => {
   terminalMock.instances.length = 0;
   terminalMock.nextFitSize = { cols: 80, rows: 24 };
@@ -324,7 +359,58 @@ describe('TerminalRelay', () => {
     expect(ack).toHaveBeenCalledTimes(1);
   });
 
+  it('sends voice transcripts without a drawer ancestor by default', async () => {
+    const { relay } = createRelay();
+    render(<TerminalRelay relay={relay} renderer="dom" />);
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
+        detail: { transcript: 'echo hello', submit: true },
+      }));
+    });
+
+    expect(relay.sendInput).toHaveBeenCalledWith('echo hello\r');
+  });
+
+  it('requires the configured voiceVisibilityScope ancestor when provided', async () => {
+    const { relay } = createRelay();
+    render(
+      <TerminalRelay relay={relay} renderer="dom" voiceVisibilityScope='[data-voice-scope="here"]' />,
+    );
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
+        detail: { transcript: 'echo blocked', submit: true },
+      }));
+    });
+
+    expect(relay.sendInput).not.toHaveBeenCalled();
+    expect(relay.connect).not.toHaveBeenCalled();
+  });
+
+  it('keeps voice working for terminals hosted inside TerminalDrawer', async () => {
+    const { relay } = createRelay();
+    render(
+      <TerminalDrawer isOpen onClose={() => {}}>
+        <TerminalRelay relay={relay} renderer="dom" />
+      </TerminalDrawer>,
+    );
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    act(() => {
+      window.dispatchEvent(new CustomEvent(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, {
+        detail: { transcript: 'ls', submit: true },
+      }));
+    });
+
+    expect(relay.sendInput).toHaveBeenCalledWith('ls\r');
+  });
+
   it('blocks voice, image paste upload, and drop upload in read-only / observe mode', async () => {
+    // The default voice scope requires no ancestor, so the transcript event
+    // reaches the handler and this exercises the readOnly gate itself.
     const file = new File(['img'], 'image.png', { type: 'image/png' });
     const fetchSpy = vi.fn().mockResolvedValue({ json: async () => ({ path: '/tmp/image.png' }) });
     vi.stubGlobal('fetch', fetchSpy);
@@ -420,5 +506,178 @@ describe('TerminalRelay', () => {
     });
 
     expect(relay.sendInput).not.toHaveBeenCalled();
+  });
+
+  it('connects after the start-service delay when still mounted', async () => {
+    const { relay } = createRelay({ status: 'error', error: 'Relay service is not running' });
+    const onStartService = vi.fn().mockResolvedValue(true);
+    const { getByText } = render(
+      <TerminalRelay relay={relay} renderer="dom" onStartService={onStartService} />,
+    );
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    await act(async () => {
+      fireEvent.click(getByText('Start Service'));
+    });
+    expect(onStartService).toHaveBeenCalledTimes(1);
+    expect(relay.connect).not.toHaveBeenCalled();
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 600));
+    });
+    expect(relay.connect).toHaveBeenCalledTimes(1);
+  });
+
+  it('does not connect when unmounted during the start-service delay', async () => {
+    const { relay } = createRelay({ status: 'error', error: 'Relay service is not running' });
+    const onStartService = vi.fn().mockResolvedValue(true);
+    const { getByText, unmount } = render(
+      <TerminalRelay relay={relay} renderer="dom" onStartService={onStartService} />,
+    );
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    // Resolve onStartService fully so the reconnect timer is armed, then
+    // unmount inside the 500ms window.
+    await act(async () => {
+      fireEvent.click(getByText('Start Service'));
+    });
+    expect(onStartService).toHaveBeenCalledTimes(1);
+
+    unmount();
+    await new Promise((resolve) => setTimeout(resolve, 600));
+    expect(relay.connect).not.toHaveBeenCalled();
+  });
+});
+
+describe('useTerminalRelay flow control', () => {
+  beforeEach(() => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: true }));
+  });
+
+  it('drops acks from a previous socket/session generation after reconnect', async () => {
+    const { handleRef } = renderRelayHook({ autoConnect: true });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws1 = MockWebSocket.instances[0];
+    await openSession(ws1, 'session-a');
+
+    // Sink that holds acks, simulating xterm writes still in flight.
+    const heldAcks: Array<() => void> = [];
+    act(() => {
+      handleRef.current?.onData((_data, ack) => { heldAcks.push(ack); });
+    });
+    act(() => {
+      ws1.message({ type: 'terminal:data', data: 'old chunk', seq: 5 });
+    });
+    expect(heldAcks).toHaveLength(1);
+
+    // Reconnect before the old chunk's write completes.
+    await act(async () => {
+      handleRef.current?.connect();
+    });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(2));
+    const ws2 = MockWebSocket.instances[1];
+    await openSession(ws2, 'session-b');
+
+    // The stale write callback resolves now — its ack must not reach ws2,
+    // where seq 5 would collide with the new session's seq-space.
+    act(() => { heldAcks[0](); });
+    expect(ackMessages(ws2)).toEqual([]);
+
+    // Chunks from the new generation still ack normally.
+    act(() => {
+      ws2.message({ type: 'terminal:data', data: 'new chunk', seq: 1 });
+    });
+    expect(heldAcks).toHaveLength(2);
+    act(() => { heldAcks[1](); });
+    expect(ackMessages(ws2)).toEqual([{ type: 'terminal:ack', seq: 1 }]);
+  });
+
+  it('clears buffered output on session:exit', async () => {
+    const { handleRef } = renderRelayHook({ autoConnect: true });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+    await openSession(ws, 'session-exit');
+
+    act(() => {
+      ws.message({ type: 'terminal:data', data: 'stale output', seq: 3 });
+      ws.message({ type: 'session:exit', exitCode: 0 });
+    });
+
+    const sink = vi.fn();
+    act(() => { handleRef.current?.onData(sink); });
+    expect(sink).not.toHaveBeenCalled();
+  });
+
+  it('clears buffered output on restart and still reconnects', async () => {
+    const { handleRef } = renderRelayHook({ autoConnect: true });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+    await openSession(ws, 'session-restart');
+
+    act(() => {
+      ws.message({ type: 'terminal:data', data: 'stale output', seq: 9 });
+    });
+    act(() => {
+      handleRef.current?.restart();
+    });
+
+    const sink = vi.fn();
+    act(() => { handleRef.current?.onData(sink); });
+    expect(sink).not.toHaveBeenCalled();
+
+    // The restart timer (200ms) still opens a fresh socket while mounted.
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 300));
+    });
+    expect(MockWebSocket.instances).toHaveLength(2);
+  });
+
+  it('does not open a socket when unmounted during the restart delay', async () => {
+    const { handleRef, unmount } = renderRelayHook({ autoConnect: true });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+    await openSession(ws, 'session-orphan');
+
+    act(() => {
+      handleRef.current?.restart();
+    });
+    unmount();
+
+    await new Promise((resolve) => setTimeout(resolve, 300));
+    expect(MockWebSocket.instances).toHaveLength(1);
+  });
+
+  it('acks every buffered chunk even when the sink throws mid-flush', async () => {
+    const { handleRef } = renderRelayHook({ autoConnect: true });
+    await waitFor(() => expect(MockWebSocket.instances).toHaveLength(1));
+    const ws = MockWebSocket.instances[0];
+    await openSession(ws, 'session-throw');
+
+    act(() => {
+      ws.message({ type: 'terminal:data', data: 'one', seq: 1 });
+      ws.message({ type: 'terminal:data', data: 'two', seq: 2 });
+    });
+
+    const sink = vi.fn(() => { throw new Error('sink exploded'); });
+    act(() => { handleRef.current?.onData(sink); });
+
+    expect(sink).toHaveBeenCalledTimes(2);
+    expect(ackMessages(ws)).toEqual([
+      { type: 'terminal:ack', seq: 1 },
+      { type: 'terminal:ack', seq: 2 },
+    ]);
+  });
+
+  it('treats a non-OK health response as relay down', async () => {
+    vi.stubGlobal('fetch', vi.fn().mockResolvedValue({ ok: false, status: 500 }));
+    const { handleRef } = renderRelayHook();
+
+    await act(async () => {
+      handleRef.current?.connect();
+    });
+
+    expect(MockWebSocket.instances).toHaveLength(0);
+    expect(handleRef.current?.status).toBe('error');
+    expect(handleRef.current?.error).toBe('Relay service is not running');
   });
 });

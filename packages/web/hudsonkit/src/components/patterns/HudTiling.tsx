@@ -257,11 +257,11 @@ export function computeTilingLayout(
     const col = i % cols;
     const row = Math.floor(i / cols);
 
-    let w = colWidths[col];
-    let h = rowHeights[row];
+    const w = colWidths[col];
+    const h = rowHeights[row];
 
     let x = colStarts[col];
-    let y = rowStarts[row];
+    const y = rowStarts[row];
 
     // Center last row (non-stretch) — use the precomputed offset
     if (row === lastRowIndex && alignLast === 'center' && itemsInLastRow < cols) {
@@ -334,6 +334,7 @@ export function HudTiling<Item>({
       next.length !== internalOrder.length ||
       !next.every((k) => currentSet.has(k))
     ) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- guarded derived-state sync: only re-orders when the item key set actually changed (uncontrolled mode), so it settles rather than cascading
       setInternalOrder(next);
     }
   }, [items, itemKey, isControlled]);

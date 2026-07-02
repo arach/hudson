@@ -26,6 +26,7 @@ export function PlotterReveal({
   const [done, setDone] = useState(false);
   const [t, setT] = useState(0);
   const onDoneRef = useRef(onDone);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render so the reveal-complete effect calls the current onDone without re-running when its identity changes
   onDoneRef.current = onDone;
 
   useEffect(() => {

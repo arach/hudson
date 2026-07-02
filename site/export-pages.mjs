@@ -8,7 +8,8 @@ const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 const nextAppDir = join(root, '.next', 'server', 'app');
 const docsSourceDir = join(root, 'docs');
 const primaryOut = join(root, 'site', 'out');
-const cloudflareConfiguredOut = join(root, 'site', 'site', 'out');
+
+const missingRoutes = [];
 
 const staticRoutes = [
   'index',
@@ -32,7 +33,12 @@ async function copyIfExists(from, to) {
 
 async function copyRoute(route, outDir) {
   const source = join(nextAppDir, `${route}.html`);
-  if (!existsSync(source)) return;
+  if (!existsSync(source)) {
+    // Missing here means the route would 404 in production — fail the build
+    // instead of silently exporting without it.
+    missingRoutes.push(route);
+    return;
+  }
 
   const target = route === 'index'
     ? join(outDir, 'index.html')
@@ -144,7 +150,14 @@ async function exportTo(outDir) {
 }
 
 await exportTo(primaryOut);
-await exportTo(cloudflareConfiguredOut);
+
+if (missingRoutes.length > 0) {
+  console.error(
+    `Missing prerendered HTML for route(s): ${[...new Set(missingRoutes)].join(', ')}\n` +
+    `Expected under ${nextAppDir}. Check the staticRoutes allow-list in site/export-pages.mjs ` +
+    'against app/ routes, and make sure `next build` ran first.',
+  );
+  process.exit(1);
+}
 
 console.log(`Exported HudsonKit Pages site to ${primaryOut}`);
-console.log(`Exported HudsonKit Pages site to ${cloudflareConfiguredOut}`);

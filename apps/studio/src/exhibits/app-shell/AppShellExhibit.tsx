@@ -2,10 +2,10 @@ export function AppShellExhibit() {
   return (
     <div className="space-y-6 text-[13px] leading-relaxed text-studio-ink-faint">
       <p>
-        You're inside one. Hudson Studio itself is mounted in{" "}
+        You&apos;re inside one. Hudson Studio itself is mounted in{" "}
         <code className="rounded bg-studio-chip-bg px-1 py-0.5 font-mono text-[11px]">AppShell</code>
         {" "}— the navigation bar above, the left panel hosting the catalog,
-        the content area you're reading, and the status bar at the bottom.
+        the content area you&apos;re reading, and the status bar at the bottom.
       </p>
 
       <div className="rounded-md border border-studio-edge p-5">
@@ -22,7 +22,7 @@ export function AppShellExhibit() {
             (inspector). Right disabled in this studio.
           </li>
           <li>
-            <strong>Content slot</strong> — your app's main surface.
+            <strong>Content slot</strong> — your app&apos;s main surface.
           </li>
           <li>
             <strong>StatusBar</strong> — status pill + status-left/right slots.

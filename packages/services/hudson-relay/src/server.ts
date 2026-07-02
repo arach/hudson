@@ -17,6 +17,8 @@ import {
   verifyReconnectToken,
   writeSession,
   ackSessionOutput,
+  maybeStartMuxReaper,
+  stopMuxReaper,
   RELAY_CAPABILITIES,
 } from './relay/session';
 import type { ClientMessage } from './relay/types';
@@ -139,6 +141,19 @@ export function startServer(port: number, host = process.env.HUDSON_RELAY_HOST |
       const msg = parseMessage(raw.toString());
       if (!msg) return;
 
+      // A throw from any handler (e.g. writeSession/resizeSession re-throwing
+      // a non-EBADF PTY error) must not take down the process — that would
+      // kill every session on this relay. Contain it to this message.
+      try {
+        handleClientMessage(msg);
+      } catch (err) {
+        const detail = err instanceof Error ? err.message : String(err);
+        console.error(`[relay] Error handling ${msg.type}${sessionId ? ` for session ${sessionId}` : ''}: ${detail}`);
+        send(ws, { type: 'session:error', error: `Failed to handle ${msg.type}: ${detail}` });
+      }
+    });
+
+    function handleClientMessage(msg: ClientMessage) {
       switch (msg.type) {
         case 'session:init': {
           // Detach from any previous session on this socket
@@ -224,7 +239,7 @@ export function startServer(port: number, host = process.env.HUDSON_RELAY_HOST |
           }
           break;
       }
-    });
+    }
 
     ws.on('close', () => {
       if (sessionId) {
@@ -250,11 +265,15 @@ export function startServer(port: number, host = process.env.HUDSON_RELAY_HOST |
       console.warn('[relay] WARNING: relay is bound to a non-loopback interface. Set HUDSON_RELAY_TOKEN to require auth.');
     }
     if (authToken()) console.log('[relay] Token auth enabled (HUDSON_RELAY_TOKEN)');
+    // Opt-in TTL reaper for tmux/zellij sessions this relay created
+    // (HUDSON_RELAY_MUX_TTL_MS). Off by default — mux sessions outlive the relay.
+    maybeStartMuxReaper();
   });
 
   // Graceful shutdown
   const shutdown = () => {
     console.log('\n[relay] Shutting down...');
+    stopMuxReaper();
     for (const [id] of sessions) destroy(id);
     wss.close();
     server.close(() => process.exit(0));

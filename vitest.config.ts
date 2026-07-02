@@ -14,6 +14,9 @@ export default defineConfig({
       ...configDefaults.exclude,
       '.claude/**',
       '.build/**',
+      // Worker tests run with their own vitest config (node env, own deps) in
+      // CI's "Worker tests" step — don't double-run them under jsdom here.
+      'packages/cloud/**',
       '**/.build/**',
       'examples/**/.build/**',
       'packages/native/**/.build/**',

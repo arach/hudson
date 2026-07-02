@@ -24,6 +24,7 @@ export function Caliper() {
 
   useEffect(() => {
     if (!fx.caliper) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- clears caliper measurements when the effect is toggled off (fx.caliper dep); a bounded reaction, not a per-render cascade
       setHover(null);
       setPinned(null);
       return;

@@ -72,18 +72,24 @@ const Frame: React.FC<FrameProps> = ({
   // Track scale in a ref so rapid wheel events between React renders
   // always compute deltas from the latest value (avoids stale closure).
   const scaleRef = useRef(scale);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref updated during render (see comment above); wheel handlers read the freshest scale between renders without a stale closure
   scaleRef.current = scale;
 
   // Stable refs for callbacks to avoid re-registering the listener on every render
   const onZoomRef = useRef(onZoom);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render; keeps window listeners stable without re-registration
   onZoomRef.current = onZoom;
   const onPanRef = useRef(onPan);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render; keeps window listeners stable without re-registration
   onPanRef.current = onPan;
   const onPanStartRef = useRef(onPanStart);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render; keeps window listeners stable without re-registration
   onPanStartRef.current = onPanStart;
   const onPanEndRef = useRef(onPanEnd);
+  // eslint-disable-next-line react-hooks/refs -- latest-callback ref updated during render; keeps window listeners stable without re-registration
   onPanEndRef.current = onPanEnd;
   const sensitivityRef = useRef(zoomSensitivity);
+  // eslint-disable-next-line react-hooks/refs -- latest-value ref updated during render; keeps window listeners stable without re-registration
   sensitivityRef.current = zoomSensitivity;
 
   // --- Space+Hold hand tool ---

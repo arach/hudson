@@ -3,6 +3,10 @@
 import React, { useCallback, useRef } from 'react';
 import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
 import { SHELL_THEME } from '../../lib/theme';
+import {
+  HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR,
+  TerminalVoiceScopeContext,
+} from '../TerminalRelay';
 
 const { statusBarHeight } = SHELL_THEME.layout;
 
@@ -130,20 +134,22 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
         </div>
       </div>
 
-      {/* Content */}
-      <div
-        data-hudson-terminal-drawer-content="true"
-        className="flex-1 relative overflow-hidden flex flex-col bg-transparent"
-      >
-        {children}
-        {contentOverlay && (
-          <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center px-4">
-            <div className="pointer-events-auto">
-              {contentOverlay}
+      {/* Content — scopes descendant TerminalRelay voice events to the drawer */}
+      <TerminalVoiceScopeContext.Provider value={HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR}>
+        <div
+          data-hudson-terminal-drawer-content="true"
+          className="flex-1 relative overflow-hidden flex flex-col bg-transparent"
+        >
+          {children}
+          {contentOverlay && (
+            <div className="pointer-events-none absolute inset-x-0 bottom-3 z-30 flex justify-center px-4">
+              <div className="pointer-events-auto">
+                {contentOverlay}
+              </div>
             </div>
-          </div>
-        )}
-      </div>
+          )}
+        </div>
+      </TerminalVoiceScopeContext.Provider>
     </div>
   );
 };

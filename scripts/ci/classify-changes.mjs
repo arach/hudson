@@ -11,10 +11,12 @@ const SURFACES = {
   web: [
     "web/**",
     "app/**",
+    "apps/**",
     "docs/**",
     "marketing/**",
     "packages/web/**",
     "public/**",
+    "scripts/**",
     "site/**",
     "types/**",
     "bun.lock",
@@ -23,6 +25,7 @@ const SURFACES = {
     "package.json",
     "postcss.config.mjs",
     "tsconfig.json",
+    "tsconfig.tests.json",
     "vitest.config.ts",
   ],
   native: [

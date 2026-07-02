@@ -116,6 +116,7 @@ export function useResizableColumns<K extends string = string>({
     document.body.style.cursor = '';
     document.body.style.userSelect = '';
     window.removeEventListener('pointermove', onPointerMove);
+    // eslint-disable-next-line react-hooks/immutability -- onPointerUp must detach the exact listener reference it registered; the closure captures the binding and only runs on a real pointerup (never synchronously during its own init), so the self-reference resolves correctly at call time
     window.removeEventListener('pointerup', onPointerUp);
     window.removeEventListener('pointercancel', onPointerUp);
     setWidths((current) => {

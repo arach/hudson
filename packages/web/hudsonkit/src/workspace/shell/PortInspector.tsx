@@ -144,6 +144,7 @@ function usePersistedExpanded(): [boolean, (v: boolean) => void] {
   useEffect(() => {
     try {
       const raw = window.localStorage.getItem(EXPAND_STORAGE_KEY);
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time hydration of persisted expand state from localStorage on mount (can't read localStorage during SSR render); runs once, not a cascade
       if (raw === '1') setExpanded(true);
     } catch { /* ignore — SSR / private mode */ }
   }, []);
