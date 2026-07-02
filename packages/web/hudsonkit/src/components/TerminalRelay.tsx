@@ -75,6 +75,13 @@ export interface TerminalRelayProps {
    * `false` to disable the ancestor requirement even inside a drawer.
    */
   voiceVisibilityScope?: string | false;
+  /**
+   * Endpoint for image paste/drop uploads. Defaults to Hudson's
+   * `${apiBaseUrl}/api/relay/upload`. Pass a URL to use a host-provided
+   * endpoint, or `null` to disable image uploads entirely (image pastes fall
+   * through untouched and drag/drop stays inert).
+   */
+  imageUploadUrl?: string | null;
   onReady?: (terminal: TerminalRelayTerminalInstance) => void;
   onDispose?: () => void;
   onResize?: (cols: number, rows: number) => void;
@@ -302,6 +309,7 @@ function TerminalRelayInner({
   onStartService,
   quiet = false,
   voiceVisibilityScope,
+  imageUploadUrl,
   onReady,
   onDispose,
   onResize,
@@ -383,7 +391,8 @@ function TerminalRelayInner({
   }, []);
 
   // ---- Upload helper ----
-  const uploadUrl = `${apiBaseUrl}/api/relay/upload`;
+  // undefined → Hudson default endpoint; null → uploads disabled.
+  const uploadUrl = imageUploadUrl === undefined ? `${apiBaseUrl}/api/relay/upload` : imageUploadUrl;
 
   const sendTerminalInput = useCallback((data: string) => {
     if (readOnlyRef.current) return;
@@ -503,6 +512,7 @@ function TerminalRelayInner({
   }, [sendVoiceSubmit, status]);
 
   const uploadFile = useCallback(async (file: File): Promise<string | null> => {
+    if (!uploadUrl) return null;
     try {
       const base64 = await fileToBase64(file);
       const res = await fetch(uploadUrl, {
@@ -525,6 +535,7 @@ function TerminalRelayInner({
 
     const handlePaste = async (e: ClipboardEvent) => {
       if (!e.clipboardData) return;
+      if (!uploadUrl) return; // uploads disabled — leave the paste untouched
 
       const imageItems = Array.from(e.clipboardData.items).filter(
         (item) => item.type.startsWith('image/'),
@@ -546,21 +557,21 @@ function TerminalRelayInner({
 
     el.addEventListener('paste', handlePaste);
     return () => el.removeEventListener('paste', handlePaste);
-  }, [sendTerminalInput, uploadFile]);
+  }, [sendTerminalInput, uploadFile, uploadUrl]);
 
   // ---- Image drop handlers ----
   const handleDragOver = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (readOnlyRef.current) {
+    if (readOnlyRef.current || !uploadUrl) {
       e.dataTransfer.dropEffect = 'none';
       return;
     }
     e.dataTransfer.dropEffect = 'copy';
-  }, []);
+  }, [uploadUrl]);
 
   const handleDragEnter = useCallback((e: React.DragEvent) => {
     e.preventDefault();
-    if (readOnlyRef.current) {
+    if (readOnlyRef.current || !uploadUrl) {
       dragCounter.current = 0;
       setDragging(false);
       return;
@@ -569,7 +580,7 @@ function TerminalRelayInner({
     if (e.dataTransfer.types.includes('Files')) {
       setDragging(true);
     }
-  }, []);
+  }, [uploadUrl]);
 
   const handleDragLeave = useCallback((e: React.DragEvent) => {
     e.preventDefault();
@@ -589,7 +600,7 @@ function TerminalRelayInner({
     dragCounter.current = 0;
     setDragging(false);
 
-    if (readOnlyRef.current) return;
+    if (readOnlyRef.current || !uploadUrl) return;
 
     const files = Array.from(e.dataTransfer.files).filter((f) =>
       f.type.startsWith('image/'),
@@ -600,7 +611,7 @@ function TerminalRelayInner({
       const path = await uploadFile(file);
       if (path) sendTerminalInput(path);
     }
-  }, [sendTerminalInput, uploadFile]);
+  }, [sendTerminalInput, uploadFile, uploadUrl]);
 
   // ---- Load xterm.js dynamically (SSR-safe) and create terminal ----
   useEffect(() => {

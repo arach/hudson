@@ -8,6 +8,7 @@ import {
   markMuxSessionDetached,
   markMuxSessionInUse,
   reapExpiredMuxSessions,
+  resizeSession,
   sessionOwnsSocket,
   sessions,
   trackCreatedMuxSession,
@@ -221,6 +222,36 @@ describe('reconnect token enforcement', () => {
 // ---------------------------------------------------------------------------
 // Detach / destroy lifecycle
 // ---------------------------------------------------------------------------
+
+describe('observe control mode', () => {
+  it('writeSession drops input from observe sessions on every backend', () => {
+    for (const backend of ['pty', 'tmux', 'zellij'] as const) {
+      const session = fakeSession({ controlMode: 'observe', backend });
+      expect(writeSession(session, 'rm -rf /\n')).toBe(false);
+      expect(session.pty.write).not.toHaveBeenCalled();
+    }
+  });
+
+  it('resizeSession blocks observers of shared pty/tmux sessions', () => {
+    for (const backend of ['pty', 'tmux'] as const) {
+      const session = fakeSession({ controlMode: 'observe', backend });
+      expect(resizeSession(session, 120, 40)).toBe(false);
+      expect(session.pty.resize).not.toHaveBeenCalled();
+    }
+  });
+
+  it('resizeSession allows zellij observers to resize their own client view', () => {
+    const session = fakeSession({ controlMode: 'observe', backend: 'zellij' });
+    expect(resizeSession(session, 120, 40)).toBe(true);
+    expect(session.pty.resize).toHaveBeenCalledWith(120, 40);
+  });
+
+  it('writeSession still writes for owner sessions', () => {
+    const session = fakeSession({ controlMode: 'owner' });
+    expect(writeSession(session, 'ls\n')).toBe(true);
+    expect(session.pty.write).toHaveBeenCalledWith('ls\n');
+  });
+});
 
 describe('session lifecycle', () => {
   it('writeSession refuses writes after exit', () => {

@@ -444,6 +444,32 @@ describe('TerminalRelay', () => {
     expect(relay.sendInput).not.toHaveBeenCalled();
   });
 
+  it('disables image paste/drop uploads entirely when imageUploadUrl is null', async () => {
+    const file = new File(['img'], 'image.png', { type: 'image/png' });
+    const fetchSpy = vi.fn().mockResolvedValue({ json: async () => ({ path: '/tmp/image.png' }) });
+    vi.stubGlobal('fetch', fetchSpy);
+    const { relay } = createRelay();
+
+    const { getByRole } = render(
+      <TerminalRelay relay={relay} renderer="dom" imageUploadUrl={null} />,
+    );
+    const wrapper = getByRole('application');
+
+    await waitFor(() => expect(terminalMock.instances).toHaveLength(1));
+
+    fireEvent.paste(wrapper, {
+      clipboardData: {
+        items: [{ type: 'image/png', getAsFile: () => file }],
+      },
+    });
+
+    fireEvent.dragEnter(wrapper, { dataTransfer: { types: ['Files'] } });
+    fireEvent.drop(wrapper, { dataTransfer: { files: [file] } });
+
+    expect(fetchSpy).not.toHaveBeenCalled();
+    expect(relay.sendInput).not.toHaveBeenCalled();
+  });
+
   it('dedupes/coalesces resize observer fits and exposes imperative fit()', async () => {
     const ref = createRef<TerminalRelayRef>();
     const { relay } = createRelay();

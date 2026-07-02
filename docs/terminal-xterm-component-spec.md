@@ -75,6 +75,25 @@ The bundled Hudson relay advertises its negotiated support in `session:ready.cap
 
 The public `hudsonkit/terminal` subpath exports the client/server message types used by this contract (`TerminalRelayClientMessage`, `TerminalRelayServerMessage`, `TerminalAckMessage`, and related session messages). Older relays may ignore `terminal:ack` and `controlMode`; clients must tolerate that.
 
+## Control Modes and Backend Matrix
+
+`controlMode` is a session-level intent sent in `session:init` / `session:reconnect` and enforced **relay-side** — the client also marks observe handles read-only, but the relay is the trust boundary.
+
+| Backend | `owner` | `takeover` | `observe` |
+|---------|---------|------------|-----------|
+| `pty` | full input/resize | n/a (single client) | input dropped, resize dropped |
+| `tmux` | full input/resize | attach steals the tmux client | input dropped, resize dropped |
+| `zellij` | full input/resize | attach to the named session | read-only zellij client; input dropped, resize allowed (observer has its own client PTY, resize only affects its view) |
+
+Relay enforcement lives in `writeSession` / `resizeSession`, so it holds for every message path. Observers of shared pty/tmux sessions cannot resize the PTY out from under the writer; zellij observers keep resize because zellij reconciles per-client views.
+
+## Host Integration Boundary
+
+Hudson-product behavior in `TerminalRelay` is opt-out/configurable so the component stays reusable outside Hudson:
+
+- `imageUploadUrl?: string | null` — endpoint for image paste/drop uploads. Defaults to Hudson's `${apiBaseUrl}/api/relay/upload`; pass a host URL to redirect, or `null` to disable uploads entirely (image pastes fall through untouched, drag/drop is inert).
+- `voiceVisibilityScope?: string | false` — ancestor selector gating global voice events, defaulting to plain visibility (or the drawer scope when hosted in `TerminalDrawer`); `false` disables the ancestor requirement.
+
 ## Tiling Guidance
 
 HudsonKit terminal tiles should be multiple `TerminalRelay` instances, each with a distinct `sessionKey` unless deliberately observing the same backing session.
