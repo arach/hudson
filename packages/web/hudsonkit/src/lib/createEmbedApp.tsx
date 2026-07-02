@@ -2,11 +2,11 @@
 
 import { type FC, type ReactNode } from 'react';
 import type { CommandOption } from '../components/overlays/CommandPalette';
-import type { HudsonApp, StatusColor } from '../types/app';
+import type { HudsonApp, StatusState } from '../types/app';
 import type { WorkspaceAppConfig } from '../types/workspace';
 
 const EMPTY_COMMANDS: CommandOption[] = [];
-const READY_STATUS: { label: string; color: StatusColor } = { label: 'READY', color: 'emerald' };
+const READY_STATUS: StatusState = { label: 'READY', color: 'emerald' };
 
 function PassthroughProvider({ children }: { children: ReactNode }) {
   return <>{children}</>;
@@ -24,7 +24,7 @@ export interface EmbedAppOptions {
   /** Default window size in CSS pixels. */
   initialSize?: { w: number; h: number };
   /** Optional status pill shown by shells that render one. */
-  status?: { label: string; color: StatusColor };
+  status?: StatusState;
   /** Short description for tooltips / palettes. */
   description?: string;
 }

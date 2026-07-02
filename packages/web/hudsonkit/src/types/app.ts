@@ -42,6 +42,13 @@ export interface AppSettingsConfig {
 // ---------------------------------------------------------------------------
 export type StatusColor = 'emerald' | 'amber' | 'red' | 'neutral';
 
+export type StatusState = {
+  label: string;
+  color: StatusColor;
+  /** Optional tooltip/accessible detail for the status indicator. */
+  title?: string;
+};
+
 // ---------------------------------------------------------------------------
 // TakeoverState — return type of useTakeover hook
 // ---------------------------------------------------------------------------
@@ -100,6 +107,22 @@ export interface AppManifest {
 export type MultiInstanceMode = 'singleton' | 'spawnable' | 'duplicable';
 export type PortInspectorMode = 'default' | 'compact' | 'hidden';
 
+/** Optional AppShell panel sizing — per-app defaults and resize bounds. */
+export interface AppShellPanelBounds {
+  min?: number;
+  max?: number;
+}
+
+export interface AppShellLayoutConfig {
+  leftWidth?: number;
+  rightWidth?: number;
+  /** Fallback min/max when a side-specific bound is omitted. */
+  minPanelWidth?: number;
+  maxPanelWidth?: number;
+  left?: AppShellPanelBounds;
+  right?: AppShellPanelBounds;
+}
+
 export interface HudsonApp {
   /** Unique identifier (used as key + localStorage namespace) */
   id: string;
@@ -123,6 +146,9 @@ export interface HudsonApp {
   leftPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
   /** Right panel header config */
   rightPanel?: { title: string; icon?: ReactNode; headerActions?: React.FC };
+
+  /** AppShell side panel defaults and resize bounds (panel layout only). */
+  layout?: AppShellLayoutConfig;
 
   /** Wraps all slots — owns app state via React context.
    *  `disabled` is true when the app is disabled in the workspace.
@@ -189,7 +215,7 @@ export interface HudsonApp {
   /** Hooks called inside Provider via Bridge component */
   hooks: {
     useCommands: () => CommandOption[];
-    useStatus: () => { label: string; color: StatusColor };
+    useStatus: () => StatusState;
     useStatusLeft?: () => ReactNode | null;
     useStatusRight?: () => ReactNode | null;
     useSearch?: () => SearchConfig;

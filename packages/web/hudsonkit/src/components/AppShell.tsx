@@ -62,6 +62,23 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   terminal: true,
 };
 
+const DEFAULT_PANEL_MIN = 200;
+const DEFAULT_PANEL_MAX = 500;
+
+function panelBounds(app: HudsonApp, side: 'left' | 'right') {
+  const layout = app.layout;
+  const sideBounds = side === 'left' ? layout?.left : layout?.right;
+  return {
+    min: sideBounds?.min ?? layout?.minPanelWidth ?? DEFAULT_PANEL_MIN,
+    max: sideBounds?.max ?? layout?.maxPanelWidth ?? DEFAULT_PANEL_MAX,
+  };
+}
+
+function clampPanelWidth(app: HudsonApp, side: 'left' | 'right', px: number) {
+  const { min, max } = panelBounds(app, side);
+  return Math.max(min, Math.min(max, px));
+}
+
 interface AppShellProps {
   app: HudsonApp;
   /** Disable the built-in Assistant tab in the bottom drawer. Defaults to true (Assistant on). */
@@ -158,8 +175,14 @@ function AppShellInner({
   // Panel state
   const [leftCollapsed, setLeftCollapsed] = usePersistentState(`appshell.${app.id}.left`, false);
   const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
-  const [leftWidth, setLeftWidth] = usePersistentState(`appshell.${app.id}.leftW`, 260);
-  const [rightWidth, setRightWidth] = usePersistentState(`appshell.${app.id}.rightW`, 280);
+  const [leftWidth, setLeftWidth] = usePersistentState(
+    `appshell.${app.id}.leftW`,
+    app.layout?.leftWidth ?? 260,
+  );
+  const [rightWidth, setRightWidth] = usePersistentState(
+    `appshell.${app.id}.rightW`,
+    app.layout?.rightWidth ?? 280,
+  );
   const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
   const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
   const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
@@ -230,7 +253,7 @@ function AppShellInner({
 
     const onMouseMove = (ev: MouseEvent) => {
       const delta = (ev.clientX - startX) * direction;
-      setter(Math.max(200, Math.min(500, startWidth + delta)));
+      setter(clampPanelWidth(app, side, startWidth + delta));
     };
     const onMouseUp = () => {
       document.removeEventListener('mousemove', onMouseMove);
@@ -238,7 +261,7 @@ function AppShellInner({
     };
     document.addEventListener('mousemove', onMouseMove);
     document.addEventListener('mouseup', onMouseUp);
-  }, [leftWidth, rightWidth, setLeftWidth, setRightWidth]);
+  }, [app, leftWidth, rightWidth, setLeftWidth, setRightWidth]);
 
   // Shell commands
   const shellCommands: CommandOption[] = useMemo(() => {
@@ -520,16 +543,16 @@ function AppShellInner({
     width: leftWidth,
     toggle: () => setLeftCollapsed((c) => !c),
     setCollapsed: (v) => setLeftCollapsed(v),
-    setWidth: (px) => setLeftWidth(Math.max(200, Math.min(500, px))),
-  }), [showLeftPanel, leftCollapsed, leftWidth, setLeftCollapsed, setLeftWidth]);
+    setWidth: (px) => setLeftWidth(clampPanelWidth(app, 'left', px)),
+  }), [app, showLeftPanel, leftCollapsed, leftWidth, setLeftCollapsed, setLeftWidth]);
 
   const rightPanelControls = useMemo<SidePanelControls>(() => ({
     isCollapsed: showRightPanel ? rightCollapsed : true,
     width: rightWidth,
     toggle: () => setRightCollapsed((c) => !c),
     setCollapsed: (v) => setRightCollapsed(v),
-    setWidth: (px) => setRightWidth(Math.max(200, Math.min(500, px))),
-  }), [showRightPanel, rightCollapsed, rightWidth, setRightCollapsed, setRightWidth]);
+    setWidth: (px) => setRightWidth(clampPanelWidth(app, 'right', px)),
+  }), [app, showRightPanel, rightCollapsed, rightWidth, setRightCollapsed, setRightWidth]);
 
   const controlsValue = useMemo<AppShellControlsContextValue>(() => ({
     drawer: drawerControls,

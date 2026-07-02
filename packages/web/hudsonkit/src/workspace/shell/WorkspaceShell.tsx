@@ -41,7 +41,7 @@ import {
   type HudsonAgentActionInput,
   type HObservation,
 } from '../../observability';
-import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from '../../index';
+import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, StatusState, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from '../../index';
 import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
@@ -935,7 +935,7 @@ interface AppHookData {
   appId: string;
   appName: string;
   commands: CommandOption[];
-  status: { label: string; color: StatusColor };
+  status: StatusState;
   statusLeft: ReactNode | null;
   statusRight: ReactNode | null;
   search: SearchConfig | null;

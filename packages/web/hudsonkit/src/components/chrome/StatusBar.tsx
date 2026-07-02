@@ -3,6 +3,7 @@
 import React, { useState, useEffect } from 'react';
 import { Clock, Map, Maximize2 } from 'lucide-react';
 import { PANEL_STYLES } from '../../lib/theme';
+import type { StatusState } from '../../types/app';
 
 interface StatusBarProps {
   /** Left section content — app-specific status items */
@@ -20,7 +21,9 @@ interface StatusBarProps {
   /** Callback to expand the minimap */
   onExpandMinimap?: () => void;
   /** Status label and color for the online indicator */
-  status?: { label: string; color: 'emerald' | 'amber' | 'red' | 'neutral' };
+  status?: StatusState;
+  /** Optional action for the status indicator. Renders the indicator as a button when supplied. */
+  onStatusClick?: () => void;
   /** Callback to toggle the terminal drawer */
   onToggleTerminal?: () => void;
   /** Whether the terminal is currently open */
@@ -49,6 +52,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   isMinimapCollapsed = false,
   onExpandMinimap,
   status = { label: 'READY', color: 'emerald' },
+  onStatusClick,
   onToggleTerminal,
   isTerminalOpen = false,
 }) => {
@@ -63,6 +67,14 @@ const StatusBar: React.FC<StatusBarProps> = ({
   }, []);
 
   const colors = STATUS_COLORS[status.color];
+  const statusLabel = status.title ?? status.label;
+  const statusClassName = `shrink-0 flex items-center gap-2 ${colors.text}`;
+  const statusContent = (
+    <>
+      <span className={`inline-block h-1.5 w-1.5 rounded-full ${colors.dot}`} />
+      <span className="font-light tracking-[0.18em] uppercase text-[9px]">{status.label}</span>
+    </>
+  );
 
   const handleCopyViewport = async () => {
     if (!viewport) return;
@@ -98,10 +110,21 @@ const StatusBar: React.FC<StatusBarProps> = ({
         )}
 
         {/* System status indicator */}
-        <div className={`shrink-0 flex items-center gap-2 ${colors.text}`}>
-          <span className={`inline-block h-1.5 w-1.5 rounded-full ${colors.dot}`} />
-          <span className="font-light tracking-[0.18em] uppercase text-[9px]">{status.label}</span>
-        </div>
+        {onStatusClick ? (
+          <button
+            type="button"
+            onClick={onStatusClick}
+            className={`${statusClassName} rounded transition-opacity hover:opacity-85 focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none`}
+            title={statusLabel}
+            aria-label={statusLabel}
+          >
+            {statusContent}
+          </button>
+        ) : (
+          <div className={statusClassName} title={status.title}>
+            {statusContent}
+          </div>
+        )}
 
         {left && (
           <>
