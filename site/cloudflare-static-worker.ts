@@ -1,4 +1,4 @@
-import { loadToolset } from './app/api/ai/toolsets';
+import { loadToolset } from '../app/api/ai/toolsets';
 
 const DEFAULT_WORKERS_AI_MODEL = '@cf/meta/llama-3.1-8b-instruct';
 const APP_HOST = 'app.hudsonkit.com';

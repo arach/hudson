@@ -36,7 +36,7 @@ const SURFACES = {
   ],
   cloud: [
     "cloud/**",
-    "cloudflare-static-worker.ts",
+    "site/cloudflare-static-worker.ts",
     "embed-worker/**",
     "packages/cloud/**",
     "packages/services/**",

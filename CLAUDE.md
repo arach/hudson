@@ -31,7 +31,7 @@ bun run lint   # ESLint
 
 ## Routes
 
-Production routes the marketing deck and the product on **different subdomains**, both served by the same Cloudflare Worker (`cloudflare-static-worker.ts`) against the static export in `site/out/`:
+Production routes the marketing deck and the product on **different subdomains**, both served by the same Cloudflare Worker (`site/cloudflare-static-worker.ts`) against the static export in `site/out/`:
 
 | Subdomain | Worker rewrite | Source |
 |-----------|----------------|--------|
@@ -57,7 +57,7 @@ If you add a new top-level static page, append its route to `staticRoutes` in `s
 | `app/workspaces/` | Workspace definitions |
 | `marketing/sheets/index.ts` | Sheets that compose the public deck. Add here only if it's HudsonKit marketing copy |
 | `marketing/primitives/` | Reusable building blocks for sheets (Sheet, Eyebrow, TitleBlock, …) |
-| `cloudflare-static-worker.ts` | Per-host root rewrites + AI chat handler |
+| `site/cloudflare-static-worker.ts` | Per-host root rewrites + AI chat handler |
 | `site/export-pages.mjs` | Allow-list of routes copied into `site/out` for deploy |
 | `packages/web/hudsonkit/src/components/AppShell.tsx` | Default single-app shell |
 | `packages/web/hudsonkit/src/types/app.ts` | `HudsonApp` interface |
