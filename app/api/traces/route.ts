@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { readFile, readdir, writeFile, unlink, mkdir, stat } from 'fs/promises';
 import { join } from 'path';
 import type { AgentTrace, TraceSummary } from 'hudsonkit/apps';
+import { isSafeFileId, rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 // ---------------------------------------------------------------------------
 // Trace directory — one .json file per agent run
@@ -40,12 +41,18 @@ async function readTrace(filePath: string): Promise<AgentTrace | null> {
 // GET — list summaries or fetch a single full trace
 // ---------------------------------------------------------------------------
 export async function GET(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   await ensureDir();
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
   // Single trace by ID
   if (id) {
+    if (!isSafeFileId(id)) {
+      return NextResponse.json({ error: 'Invalid trace id' }, { status: 400 });
+    }
     const filePath = join(TRACES_DIR, `${id}.json`);
     const trace = await readTrace(filePath);
     if (!trace) {
@@ -71,6 +78,9 @@ export async function GET(request: Request) {
 // POST — create, update, or delete a trace
 // ---------------------------------------------------------------------------
 export async function POST(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
     await ensureDir();
     const body = await request.json();
@@ -81,6 +91,9 @@ export async function POST(request: Request) {
 
     // Delete
     if (action === 'delete' && body.id) {
+      if (typeof body.id !== 'string' || !isSafeFileId(body.id)) {
+        return NextResponse.json({ error: 'Invalid trace id' }, { status: 400 });
+      }
       try {
         await unlink(join(TRACES_DIR, `${body.id}.json`));
       } catch { /* already gone */ }
@@ -92,6 +105,9 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'trace object required' }, { status: 400 });
     }
     const traceId = trace.id || crypto.randomUUID().slice(0, 12);
+    if (!isSafeFileId(traceId)) {
+      return NextResponse.json({ error: 'Invalid trace id' }, { status: 400 });
+    }
     const full: AgentTrace = { ...trace, id: traceId };
     const filePath = join(TRACES_DIR, `${traceId}.json`);
     await writeFile(filePath, JSON.stringify(full, null, 2), 'utf-8');

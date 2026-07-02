@@ -10,7 +10,7 @@ public struct OpenAIHudTTSProvider: HudTTSProviderAdapter {
     public var endpoint: URL
 
     public init(
-        model: String = "tts-1",
+        model: String = "gpt-4o-mini-tts",
         endpoint: URL = URL(string: "https://api.openai.com/v1/audio/speech")!
     ) {
         self.model = model

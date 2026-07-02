@@ -1,5 +1,12 @@
 // ---------------------------------------------------------------------------
 // @hudsonkit/ai — public API
+//
+// The root entry must stay importable when neither optional peer
+// (@earendil-works/pi-ai, ai) is installed: types and provider-neutral
+// helpers only. Anything that touches a peer lives on a subpath:
+//   * '@hudsonkit/ai/pi-ai'     — createPiAiBackend, credential resolvers,
+//                                 listAvailableModels
+//   * '@hudsonkit/ai/vercel-ai' — createVercelAiBackend
 // ---------------------------------------------------------------------------
 
 // Core types
@@ -24,38 +31,34 @@ export {
   unavailableAffordance,
 } from './capabilities';
 
-// Credential resolution
+// Credential resolution (resolver implementations live in './pi-ai')
 export type { CredentialResolver } from './credentials';
-export { hudVaultResolver, envCredentialResolver } from './credentials';
 
-// Available models (pi-ai registry filtered to held credentials)
-export { listAvailableModels } from './models';
+// Available models (listAvailableModels lives in './pi-ai')
 export type { AvailableModel, ListAvailableModelsOptions } from './models';
 
 // Dispatch helper
 export { aggregateStream } from './dispatch';
 
-// Adapters
-export {
-  createPiAiBackend,
-  type PiAiConfig,
-  type PiAiMeta,
-  type PiAiBackendOptions,
-  type PiAiBackend,
-  type PiAiUIRequest,
-  type PiAiUIMessage,
-  type PiAiUIMessagePart,
-  type PiAiCompiledToolset,
-  type HudsonTool,
+// Adapter types (factories live on their subpaths)
+export type {
+  PiAiConfig,
+  PiAiMeta,
+  PiAiBackendOptions,
+  PiAiBackend,
+  PiAiUIRequest,
+  PiAiUIMessage,
+  PiAiUIMessagePart,
+  PiAiCompiledToolset,
+  HudsonTool,
 } from './adapters/pi-ai';
-export {
-  createVercelAiBackend,
-  type VercelAiConfig,
-  type VercelAiMeta,
-  type VercelAiBackendOptions,
-  type VercelAiBackend,
-  type VercelAiUIFinishEvent,
-  type VercelAiUIRequest,
+export type {
+  VercelAiConfig,
+  VercelAiMeta,
+  VercelAiBackendOptions,
+  VercelAiBackend,
+  VercelAiUIFinishEvent,
+  VercelAiUIRequest,
 } from './adapters/vercel-ai';
 
 // Toolset types + registry (also available via '@hudsonkit/ai/toolsets')

@@ -59,8 +59,31 @@ export type { AssistantChat, UseAssistantOptions } from './hooks/useAssistant';
 export type { AssistantVoiceKit, VoiceKitInput, VoiceKitOutput, VoiceKitSettings } from './types/voice-kit';
 export { ThemeProvider, useTheme, HudsonThemeScript } from './theme';
 export type { HudsonTheme, HudsonTemplate, ThemeProviderProps } from './theme';
-export { useTerminalRelay } from './hooks/useTerminalRelay';
-export type { TerminalRelayHandle, UseTerminalRelayOptions, RelayStatus } from './hooks/useTerminalRelay';
+export { HUDSON_TERMINAL_CLIENT_CAPABILITIES, useTerminalRelay } from './hooks/useTerminalRelay';
+export type {
+  RelayStatus,
+  TerminalAckMessage,
+  TerminalAgent,
+  TerminalBackend,
+  TerminalControlMode,
+  TerminalDataMessage,
+  TerminalFlowControlOptions,
+  TerminalInputMessage,
+  TerminalRelayClientMessage,
+  TerminalRelayHandle,
+  TerminalRelayOutputAck,
+  TerminalRelayOutputHandler,
+  TerminalRelayServerMessage,
+  TerminalResizeMessage,
+  TerminalSessionDetachedMessage,
+  TerminalSessionErrorMessage,
+  TerminalSessionExitMessage,
+  TerminalSessionExpiredMessage,
+  TerminalSessionInitMessage,
+  TerminalSessionReadyMessage,
+  TerminalSessionReconnectMessage,
+  UseTerminalRelayOptions,
+} from './hooks/useTerminalRelay';
 export {
   HLogger,
   HMetrics,
@@ -115,7 +138,16 @@ export {
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
 } from './components/TerminalRelay';
-export type { HudsonTerminalVoiceTranscriptDetail } from './components/TerminalRelay';
+export type {
+  HudsonTerminalVoiceTranscriptDetail,
+  TerminalColorScheme,
+  TerminalRelayConfigItem,
+  TerminalRelayProps,
+  TerminalRelayRef,
+  TerminalRelayTerminalInstance,
+  TerminalRendererPreference,
+  TerminalRendererState,
+} from './components/TerminalRelay';
 
 // Utilities
 export {
@@ -232,6 +264,13 @@ export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from '.
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
+
+export { HudTiling, computeTilingLayout } from './components/patterns/HudTiling';
+export type {
+  HudTilingProps,
+  TilingConstraints,
+  TileLayout,
+} from './components/patterns/HudTiling';
 export {
   HudWorkflowGraph,
   brainDumpProcessorWorkflow,

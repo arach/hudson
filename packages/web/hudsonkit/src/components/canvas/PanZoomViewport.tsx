@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useId, useRef, useState } from 'react';
 
 export interface ViewportPan {
   x: number;
@@ -21,6 +21,7 @@ interface PanZoomViewportProps {
   zoomSensitivity?: number;
   className?: string;
   contentClassName?: string;
+  ariaLabel?: string;
 }
 
 function clampScale(value: number, min: number, max: number): number {
@@ -47,7 +48,9 @@ const PanZoomViewport: React.FC<PanZoomViewportProps> = ({
   zoomSensitivity = 1,
   className = '',
   contentClassName = '',
+  ariaLabel = 'Pan and zoom canvas',
 }) => {
+  const instructionsId = useId();
   const [spaceHeld, setSpaceHeld] = useState(false);
   const canPan = panEnabled || spaceHeld;
   const dragRef = useRef<{
@@ -133,16 +136,71 @@ const PanZoomViewport: React.FC<PanZoomViewportProps> = ({
     onScaleChange(nextScale);
   }, [maxScale, minScale, onPanChange, onScaleChange, pan, scale, wheelZoom, zoomSensitivity]);
 
+
+  const handleKeyDown = useCallback((event: React.KeyboardEvent<HTMLDivElement>) => {
+    if (event.target !== event.currentTarget) return;
+
+    const panStep = event.shiftKey ? 80 : 24;
+    if (event.key === 'ArrowLeft') {
+      event.preventDefault();
+      onPanChange({ ...pan, x: pan.x + panStep });
+      return;
+    }
+    if (event.key === 'ArrowRight') {
+      event.preventDefault();
+      onPanChange({ ...pan, x: pan.x - panStep });
+      return;
+    }
+    if (event.key === 'ArrowUp') {
+      event.preventDefault();
+      onPanChange({ ...pan, y: pan.y + panStep });
+      return;
+    }
+    if (event.key === 'ArrowDown') {
+      event.preventDefault();
+      onPanChange({ ...pan, y: pan.y - panStep });
+      return;
+    }
+
+    if (!onScaleChange) return;
+    const scaleStep = event.shiftKey ? 0.2 : 0.1;
+    if (event.key === '+' || event.key === '=') {
+      event.preventDefault();
+      onScaleChange(clampScale(scale + scaleStep, minScale, maxScale));
+      return;
+    }
+    if (event.key === '-' || event.key === '_') {
+      event.preventDefault();
+      onScaleChange(clampScale(scale - scaleStep, minScale, maxScale));
+      return;
+    }
+    if (event.key === '0') {
+      event.preventDefault();
+      onPanChange({ x: 0, y: 0 });
+      onScaleChange(clampScale(1, minScale, maxScale));
+    }
+  }, [maxScale, minScale, onPanChange, onScaleChange, pan, scale]);
+
   return (
     <div
-      className={`relative overflow-hidden ${canPan ? 'cursor-grab active:cursor-grabbing' : ''} ${className}`}
+      className={`relative overflow-hidden focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring ${canPan ? 'cursor-grab active:cursor-grabbing' : ''} ${className}`}
       style={{ touchAction: 'none' }}
+      tabIndex={0}
+      role="region"
+      aria-roledescription="pan and zoom viewport"
+      aria-label={ariaLabel}
+      aria-describedby={instructionsId}
+      aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight + - 0 Space"
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
       onPointerCancel={handlePointerUp}
       onWheel={handleWheel}
+      onKeyDown={handleKeyDown}
     >
+      <div id={instructionsId} className="sr-only">
+        Use arrow keys to pan the canvas. Hold Shift with arrow keys to pan faster. Use plus and minus to zoom, or zero to reset. Hold Space and drag to pan with the pointer.
+      </div>
       <div className="absolute inset-0 flex items-center justify-center">
         <div
           className="flex h-full w-full items-center justify-center"

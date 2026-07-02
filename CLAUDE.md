@@ -49,15 +49,14 @@ If you add a new top-level static page, append its route to `staticRoutes` in `s
 | `app/page.tsx` | Client-side redirect to `/app`; dev-only choice surface |
 | `app/landing/page.tsx` | Marketing deck (mounts `<SiteRoot>`). Served at `hudsonkit.com/` via Worker rewrite |
 | `app/app/page.tsx` | Mounts `<WorkspaceShell>` with `allWorkspaces` from the registry. Served at `app.hudsonkit.com/` via Worker rewrite |
-| `app/apps/logo/LogoComparisonSheet.tsx` | Matrix-view primitive (NxM grid renders any built-in template's renderBody). Used by Logo Designer's matrix view |
-| `app/apps/logo/LogoMatrixPresets.ts` | Per-template default families (rows × values) for the matrix view |
-| `app/shell/WorkspaceShell.tsx` | Main shell orchestrator |
+| `packages/web/hudsonkit/src/workspace/shell/WorkspaceShell.tsx` | Main shell orchestrator (package-owned; exported via `hudsonkit/workspace`) |
+| `app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route/terminal/AI-settings bindings passed into the shell |
 | `app/apps/registry.ts` | Canonical app list (built-in + local) |
 | `app/apps/` | App implementations |
 | `app/local/apps.local.ts` | Gitignored; developer-local app/workspace registrations |
 | `app/workspaces/` | Workspace definitions |
 | `marketing/sheets/index.ts` | Sheets that compose the public deck. Add here only if it's HudsonKit marketing copy |
-| `marketing/primitives/` | Reusable building blocks for sheets (Sheet, Eyebrow, LogoComparisonSheet, …) |
+| `marketing/primitives/` | Reusable building blocks for sheets (Sheet, Eyebrow, TitleBlock, …) |
 | `cloudflare-static-worker.ts` | Per-host root rewrites + AI chat handler |
 | `site/export-pages.mjs` | Allow-list of routes copied into `site/out` for deploy |
 | `packages/web/hudsonkit/src/components/AppShell.tsx` | Default single-app shell |
@@ -75,7 +74,9 @@ If you add a new top-level static page, append its route to `staticRoutes` in `s
 4. Add workspace to the registry if new
 
 See `docs/building-apps.md` for the full guide.
-See `app/apps/shaper/` as the reference implementation.
+See `app/apps/stage-design/` as a compact reference implementation
+(Provider + Content + LeftPanel + Chrome + hooks); `app/apps/theme-designer/`
+is a fuller example with intents.
 
 ## Architecture
 
@@ -91,9 +92,9 @@ See `app/apps/shaper/` as the reference implementation.
 When a Scout message, CLI prompt, Codex task, Claude Code task, or direct
 operator request asks Hudson to create/change/deliver something:
 
-1. Check `docs/hudson-playbooks/` — if a playbook matches the shape of the
-   ask, follow it (with autonomy; playbooks are recipes, not rails).
-2. Otherwise, enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
+1. Orient with `docs/agent/overview.agent.md` — a dense structural map of the
+   codebase written for agent consumption.
+2. Enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
    the dev server is up, or read `app/apps/<id>/intents.ts` + grep for `intent(`
    in `app/api/**`.
 3. Start a task envelope before making changes. Prefer `run` when the work can
@@ -102,8 +103,8 @@ operator request asks Hudson to create/change/deliver something:
 
    ```bash
    bun scripts/agent-action.ts run \
-     --prompt "Run logo tests" \
-     --action logo.test \
+     --prompt "Run agent-intent tests" \
+     --action intents.test \
      --actor "${USER:-agent}" \
      -- bun run test test/lib/agent-intent.test.ts
    ```
@@ -112,8 +113,8 @@ operator request asks Hudson to create/change/deliver something:
 
    ```bash
    TRACE=$(bun scripts/agent-action.ts start \
-     --prompt "Create a logo template" \
-     --action logo.create \
+     --prompt "Create a theme preset" \
+     --action theme.create \
      --actor "${USER:-agent}" | jq -r .traceId)
    ```
 
@@ -125,8 +126,8 @@ operator request asks Hudson to create/change/deliver something:
 5. **Sub-actions outside an intent call** — use the CLI logger for milestones:
 
    ```bash
-   bun scripts/agent-action.ts log --trace "$TRACE" --action logo.create \
-     --message "Picked the mono-stamp template family"
+   bun scripts/agent-action.ts log --trace "$TRACE" --action theme.create \
+     --message "Picked the base palette"
    ```
 
    Log the milestones a human would want to see in HudLogger (picked a template,
@@ -136,13 +137,11 @@ operator request asks Hudson to create/change/deliver something:
 6. Complete or fail every manually started envelope:
 
    ```bash
-   bun scripts/agent-action.ts complete --trace "$TRACE" --action logo.create \
-     --message "Delivered logo template and preview"
+   bun scripts/agent-action.ts complete --trace "$TRACE" --action theme.create \
+     --message "Delivered theme preset and preview"
    ```
 
    On failure, use `fail --error "..."`. Do not leave a `started` task without
    a matching terminal event.
 7. Reply to Scout/operator with the result. The HudLogger trail is the durable
    record; the reply doesn't need to re-narrate every step.
-
-See `docs/HUD-007-agent-intent-instrumentation.md` for the design rationale.

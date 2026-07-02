@@ -7,8 +7,11 @@ import Observation
 public final class HudSpeechPlayer: NSObject {
     private var audioPlayer: AVAudioPlayer?
     private var completionHandler: (() -> Void)?
+    private var progressTimer: Timer?
 
     public private(set) var isPlaying = false
+    public private(set) var currentTime: TimeInterval = 0
+    public private(set) var duration: TimeInterval = 0
 
     override public init() {
         super.init()
@@ -19,6 +22,18 @@ public final class HudSpeechPlayer: NSObject {
         configureAudioSession()
 
         let player = try AVAudioPlayer(data: data)
+        try start(player: player, completion: completion)
+    }
+
+    public func play(fileURL: URL, completion: (() -> Void)? = nil) throws {
+        stop()
+        configureAudioSession()
+
+        let player = try AVAudioPlayer(contentsOf: fileURL)
+        try start(player: player, completion: completion)
+    }
+
+    private func start(player: AVAudioPlayer, completion: (() -> Void)?) throws {
         player.delegate = self
         player.prepareToPlay()
         guard player.play() else {
@@ -27,7 +42,10 @@ public final class HudSpeechPlayer: NSObject {
 
         audioPlayer = player
         completionHandler = completion
+        currentTime = player.currentTime
+        duration = player.duration
         isPlaying = true
+        startProgressTimer()
     }
 
     public func pauseOrResume() {
@@ -36,17 +54,58 @@ public final class HudSpeechPlayer: NSObject {
         if audioPlayer.isPlaying {
             audioPlayer.pause()
             isPlaying = false
+            refreshTime()
+            stopProgressTimer()
         } else {
             guard audioPlayer.play() else { return }
             isPlaying = true
+            startProgressTimer()
         }
     }
 
+    @discardableResult
+    public func seek(to time: TimeInterval) -> Bool {
+        guard let audioPlayer else { return false }
+        let clampedTime = min(max(0, time), audioPlayer.duration)
+        audioPlayer.currentTime = clampedTime
+        refreshTime()
+        return true
+    }
+
     public func stop() {
+        stopProgressTimer()
         audioPlayer?.stop()
         audioPlayer = nil
         completionHandler = nil
         isPlaying = false
+        currentTime = 0
+        duration = 0
+    }
+
+    private func startProgressTimer() {
+        stopProgressTimer()
+        let timer = Timer(timeInterval: 0.25, repeats: true) { [weak self] _ in
+            Task { @MainActor in
+                self?.refreshTime()
+            }
+        }
+        RunLoop.main.add(timer, forMode: .common)
+        progressTimer = timer
+    }
+
+    private func stopProgressTimer() {
+        progressTimer?.invalidate()
+        progressTimer = nil
+    }
+
+    private func refreshTime() {
+        guard let audioPlayer else {
+            currentTime = 0
+            duration = 0
+            return
+        }
+        currentTime = audioPlayer.currentTime
+        duration = audioPlayer.duration
     }
 }
 
@@ -54,6 +113,9 @@ extension HudSpeechPlayer: AVAudioPlayerDelegate {
     nonisolated public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
             if self.audioPlayer === player {
+                self.stopProgressTimer()
+                self.currentTime = player.duration
+                self.duration = player.duration
                 self.audioPlayer = nil
             }
             self.isPlaying = false

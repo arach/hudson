@@ -1,6 +1,6 @@
 {
   "name": "hudsonkit",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",
@@ -59,6 +59,11 @@
       "types": "./dist/theme.d.ts",
       "import": "./dist/theme.js",
       "default": "./dist/theme.js"
+    },
+    "./terminal": {
+      "types": "./dist/terminal.d.ts",
+      "import": "./dist/terminal.js",
+      "default": "./dist/terminal.js"
     },
     "./theme-script": {
       "types": "./dist/theme-script.d.ts",
@@ -146,7 +151,7 @@
       "default": "./dist/apps.js"
     },
     "./styles": "./dist/styles.css",
-    "./styles/tokens.css": "./src/styles/tokens.css"
+    "./styles/tokens.css": "./dist/tokens.css"
   },
   "files": [
     "dist",
@@ -164,7 +169,7 @@
   "scripts": {
     "build": "bun run build:js && bun run build:css",
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
-    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify",
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css",
     "pack": "bun run build && bun pm pack",
     "prepare": "node bin/prepare-check.mjs",
     "test": "vitest run --config ./vitest.config.ts"
@@ -178,6 +183,7 @@
   },
   "peerDependencies": {
     "react": "^19.0.0",
+    "react-dom": "^19.0.0",
     "lucide-react": "^0.564.0 || ^0.574.0",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-css": "^6.3.1",
@@ -260,6 +266,10 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4",
-    "tsup": "^8.0.0"
+    "tsup": "^8.0.0",
+    "typescript": "5.9.3"
+  },
+  "publishConfig": {
+    "access": "public"
   }
 }

@@ -130,7 +130,9 @@ export function NotepadProvider({ children }: { children: ReactNode }) {
 
   const wordCount = useMemo(
     () => activeNote?.content.trim() ? activeNote.content.trim().split(/\s+/).length : 0,
-    [activeNote?.content],
+    // Depend on the whole note (matches the compiler-inferred dep): content edits
+    // produce a new note object, so this is equivalent to depending on content alone.
+    [activeNote],
   );
   const charCount = useMemo(() => activeNote?.content.length ?? 0, [activeNote?.content]);
 

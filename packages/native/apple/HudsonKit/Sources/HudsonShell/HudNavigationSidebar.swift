@@ -83,6 +83,7 @@ public struct HudNavigationSidebar<
     public let footer: Footer
 
     @Environment(\.hudsonAppManifest) private var manifest
+    @Environment(\.hudTheme) private var theme
     @Environment(\.hudsonSidebarStyle) private var style
     @Environment(\.hudsonSidebarMotionMode) private var motionMode
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -239,6 +240,12 @@ public struct HudNavigationSidebar<
         .overlay(alignment: .topLeading) {
             compactHoverLabel
         }
+        // Clear the hover highlight when the pointer leaves the whole sidebar — a
+        // per-row hover-end can be missed when the cursor exits the window quickly,
+        // leaving a stray pill stuck on the last-hovered item.
+        .onHover { inside in
+            if !inside, hoveredID != nil { hoveredID = nil }
+        }
     }
 
     // MARK: Footer
@@ -252,7 +259,7 @@ public struct HudNavigationSidebar<
     private var footerBlock: some View {
         if Footer.self != EmptyView.self {
             VStack(spacing: 0) {
-                HudDivider(color: HudHairline.subtle)
+                HudDivider(color: theme.hairline.subtle)
                 footer
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(.vertical, HudSpacing.xs)
@@ -344,7 +351,7 @@ public struct HudNavigationSidebar<
                 .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .semibold : .medium))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
-                .foregroundStyle(isSelected ? HudPalette.ink : HudPalette.muted)
+                .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
                 .padding(.leading, HudSidebarLayout.labelLeading)
                 .frame(height: HudSidebarLayout.rowHeight, alignment: .leading)
                 .contentShape(Rectangle())
@@ -362,7 +369,7 @@ public struct HudNavigationSidebar<
                 Text(title.uppercased())
                     .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
                     .tracking(HudTracking.wider)
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(theme.palette.dim)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                     .padding(.leading, HudSidebarLayout.labelLeading)
@@ -465,10 +472,10 @@ public struct HudNavigationSidebar<
     private var hoverUnderlay: some View {
         if let y = hoveredY {
             RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
-                .fill(HudSurface.hover)
+                .fill(theme.palette.surface)
                 .overlay(
                     RoundedRectangle(cornerRadius: HudSidebarLayout.selectionCornerRadius)
-                        .strokeBorder(HudHairline.subtle, lineWidth: HudStrokeWidth.thin)
+                        .strokeBorder(theme.hairline.subtle, lineWidth: HudStrokeWidth.thin)
                 )
                 .frame(height: HudSidebarLayout.rowHeight - HudSidebarLayout.selectionVerticalInset * 2)
                 .padding(.horizontal, HudSidebarLayout.selectionHorizontalInset)
@@ -636,22 +643,23 @@ private struct HudSidebarCompactHoverLabel: View {
 
     let title: String
     let style: HudSidebarStyle
+    @Environment(\.hudTheme) private var theme
 
     private var surfaceFill: Color {
         switch style.surface {
         case .glass, .liquidGlass:
-            return HudSurface.raised
+            return theme.palette.chrome
         case .base, .editorial:
-            return HudPalette.surface
+            return theme.palette.surface
         }
     }
 
     private var strokeColor: Color {
         switch style.surface {
         case .glass, .liquidGlass:
-            return HudHairline.standard
+            return theme.hairline.standard
         case .base, .editorial:
-            return HudHairline.subtle
+            return theme.hairline.subtle
         }
     }
 
@@ -663,7 +671,7 @@ private struct HudSidebarCompactHoverLabel: View {
 
             Text(title)
                 .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                .foregroundStyle(HudPalette.ink)
+                .foregroundStyle(theme.palette.ink)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .padding(.horizontal, HudSpacing.xl)
@@ -671,7 +679,8 @@ private struct HudSidebarCompactHoverLabel: View {
                 .background(
                     RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
                         .fill(surfaceFill)
-                        .shadow(color: HudSurface.scrim, radius: 10, x: 3, y: 4)
+                        // hudlint:disable next-line palette,opacity
+                        .shadow(color: Color.black.opacity(0.12), radius: 10, x: 3, y: 4)
                 )
                 .overlay(
                     RoundedRectangle(cornerRadius: HudRadius.standard, style: .continuous)
@@ -700,6 +709,7 @@ private struct HudSidebarCompactHoverArrow: Shape {
 /// consistent with the rail and inspector.
 private struct SidebarSurface: View {
     let style: HudSidebarSurfaceStyle
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         switch style {
@@ -707,7 +717,7 @@ private struct SidebarSurface: View {
             // Subtle top-to-bottom gradient over chrome so the sidebar reads
             // slightly brighter near the window title bar. Two calibrated stops.
             ZStack {
-                HudPalette.chrome
+                theme.palette.chrome
                 LinearGradient(
                     // hudlint:disable next-line palette,opacity
                     colors: [Color.white.opacity(0.045), Color.white.opacity(0.020)],
@@ -732,8 +742,7 @@ private struct SidebarSurface: View {
 
         case .editorial:
             // Flat, slightly lighter than chrome — "print" surface.
-            HudPalette.surface
-                .opacity(HudOpacity.strong)
+            theme.palette.surface
                 .allowsHitTesting(false)
 
         case .liquidGlass:
@@ -750,6 +759,7 @@ private struct SidebarSurface: View {
 /// Matches `HudHairline.standard` in base/editorial modes; gradient for glass.
 private struct SidebarTrailingRule: View {
     let style: HudSidebarSurfaceStyle
+    @Environment(\.hudTheme) private var theme
 
     var body: some View {
         switch style {
@@ -764,7 +774,7 @@ private struct SidebarTrailingRule: View {
 
         case .base, .editorial:
             Rectangle()
-                .fill(HudHairline.standard)
+                .fill(theme.hairline.standard)
                 .frame(width: HudStrokeWidth.thin)
 
         case .liquidGlass:

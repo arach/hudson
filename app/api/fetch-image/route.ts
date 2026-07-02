@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 /**
  * CORS proxy for fetching external images.
@@ -7,9 +8,22 @@ import { NextRequest, NextResponse } from 'next/server';
  * GET /api/fetch-image?url=https://example.com/image.png
  */
 export async function GET(req: NextRequest) {
+  const rejected = rejectUntrustedLocalRequest(req);
+  if (rejected) return rejected;
+
   const url = req.nextUrl.searchParams.get('url');
   if (!url) {
     return NextResponse.json({ error: 'Missing ?url= parameter' }, { status: 400 });
+  }
+
+  let parsed: URL;
+  try {
+    parsed = new URL(url);
+  } catch {
+    return NextResponse.json({ error: 'Invalid URL' }, { status: 400 });
+  }
+  if (!['http:', 'https:'].includes(parsed.protocol)) {
+    return NextResponse.json({ error: 'Only http and https URLs are supported' }, { status: 400 });
   }
 
   try {

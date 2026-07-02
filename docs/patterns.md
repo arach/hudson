@@ -26,6 +26,7 @@ fully custom surface.
 | `HudTree` | Recursive disclosure tree with selected state, depth rails, badges, and trailing actions. |
 | `HudPreviewCard` | Single previewable entity card with media/preview, status, metrics, footer, and actions. |
 | `HudCardGrid` | Responsive grid for preview cards or app-rendered custom cards. |
+| `HudTiling` | Universal space-filling tiler/grid for arbitrary items (terminals, chats, docs, etc.). Supports max cols/rows, fill %, gap, strategies, drag-to-reorder, for both fixed panels and canvas world spaces. |
 | `HudContextPanel` | Right-side selected-object summary with metadata rows and collapsible sections. |
 
 ## Import
@@ -36,6 +37,7 @@ import {
   HudTree,
   HudPreviewCard,
   HudCardGrid,
+  HudTiling,
   HudContextPanel,
 } from 'hudsonkit/patterns';
 ```

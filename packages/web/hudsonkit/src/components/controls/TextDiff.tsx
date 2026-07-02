@@ -208,6 +208,7 @@ export function TextDiffSurface({
 
   useEffect(() => {
     if (layout !== undefined) return;
+    // eslint-disable-next-line react-hooks/set-state-in-effect -- syncs uncontrolled layout to the incoming diff when it changes (only in uncontrolled mode); bounded derived-state sync, not a cascade
     setInternalLayout(diff.layout ?? 'split');
   }, [diff.id, diff.layout, layout]);
 

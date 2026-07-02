@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { buildIntentCatalog } from '../../lib/intent-catalog';
+import { buildIntentCatalog } from 'hudsonkit/workspace';
 import { allWorkspaces } from '../../workspaces';
 import '../../intents-registry'; // side-effect: populates the runtime registry
-import { intentMetaToServerIntent, listIntents } from '../../lib/intent';
+import { listIntents } from '../../lib/intent';
 
 export const runtime = 'nodejs';
 
@@ -21,7 +21,7 @@ export async function GET(req: NextRequest) {
     );
   }
 
-  const serverIntents = listIntents().map(({ meta }) => intentMetaToServerIntent(meta));
+  const serverIntents = listIntents().map(({ meta }) => meta);
   const catalog = buildIntentCatalog(workspace, { serverIntents });
   return NextResponse.json(catalog);
 }

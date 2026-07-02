@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { readFile, writeFile, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { isSafeFileId, rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 
 const STATE_DIR = join(process.cwd(), '.data', 'workspace-state');
 
@@ -17,8 +18,12 @@ function filePath(workspaceId: string) {
  * Returns the persisted state for a workspace.
  */
 export async function GET(req: NextRequest) {
+  const rejected = rejectUntrustedLocalRequest(req);
+  if (rejected) return rejected;
+
   const id = req.nextUrl.searchParams.get('id');
   if (!id) return NextResponse.json({ error: 'Missing ?id=' }, { status: 400 });
+  if (!isSafeFileId(id)) return NextResponse.json({ error: 'Invalid workspace id' }, { status: 400 });
 
   await ensureDir();
   try {
@@ -35,10 +40,16 @@ export async function GET(req: NextRequest) {
  * Merges state into the persisted workspace file.
  */
 export async function POST(req: NextRequest) {
+  const rejected = rejectUntrustedLocalRequest(req);
+  if (rejected) return rejected;
+
   try {
     const body = await req.json();
     const { id, state } = body as { id: string; state: Record<string, unknown> };
     if (!id || !state) return NextResponse.json({ error: 'Missing id or state' }, { status: 400 });
+    if (typeof id !== 'string' || !isSafeFileId(id)) {
+      return NextResponse.json({ error: 'Invalid workspace id' }, { status: 400 });
+    }
 
     await ensureDir();
     const path = filePath(id);

@@ -88,6 +88,7 @@ export function useTypewriter(
   const [out, setOut] = useState('');
   useEffect(() => {
     if (!inView) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the typewriter output when scrolled out of view (inView dep); a bounded reaction, not a per-render cascade
       setOut('');
       return;
     }

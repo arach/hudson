@@ -117,3 +117,5 @@ export type {
   HudsonVoiceBehaviorPreset,
 } from './workspace/shell/voiceReply';
 export { shellIntents } from './workspace/shell/intents';
+export { buildIntentCatalog } from './workspace/lib/intent-catalog';
+export type { BuildIntentCatalogOptions } from './workspace/lib/intent-catalog';

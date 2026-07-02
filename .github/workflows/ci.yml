@@ -40,8 +40,22 @@ jobs:
         with:
           bun-version: latest
 
+      - name: Cache bun install cache
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'embed-worker/bun.lock') }}
+          restore-keys: |
+            ${{ runner.os }}-bun-
+
       - name: Install dependencies
         run: bun install --frozen-lockfile
+
+      # hudson-relay-worker is intentionally outside the root workspaces (it is a
+      # deployable template); install its deps explicitly, mirroring how the
+      # deploy workflow installs for embed-worker.
+      - name: Install worker dependencies
+        run: bun install --cwd packages/cloud/hudson-relay-worker
 
       - name: AI backends build
         run: bun run --filter @hudsonkit/ai build
@@ -49,8 +63,28 @@ jobs:
       - name: HudsonKit build
         run: bun run --cwd packages/web/hudsonkit build:js
 
+      - name: HudsonKit CSS bundle
+        run: bun run --cwd packages/web/hudsonkit build:css
+
+      - name: Validate HudsonKit packed package
+        run: bun run validate:hudsonkit-package
+
       - name: Typecheck (root)
         run: bunx tsc --noEmit
+
+      - name: Typecheck (app + hudsonkit tests)
+        run: bunx tsc --noEmit -p tsconfig.tests.json
+
+      - name: Typecheck (relay src + tests)
+        run: bunx tsc --noEmit -p packages/services/hudson-relay/tsconfig.json
+
+      - name: Typecheck (scripts)
+        run: bunx tsc --noEmit -p scripts/tsconfig.json
+
+      # Lint gate: eslint exits non-zero on errors but not on warnings, so this
+      # enforces zero-errors while tolerating the existing warning backlog.
+      - name: Lint
+        run: bun run lint
 
       - name: Tests
         run: bun run test
@@ -72,9 +106,20 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
-      # The Apple package is now a single manifest at the repo root. Voice/terminal
-      # backends are local-path deps to sibling repos the runner doesn't check out,
-      # so keep them gated off here (HudsonVoice defaults on for consumers).
+      - name: Cache SwiftPM
+        uses: actions/cache@v4
+        with:
+          path: |
+            .build
+            ~/Library/Caches/org.swift.swiftpm
+          key: ${{ runner.os }}-spm-${{ hashFiles('Package.swift', 'Package.resolved') }}
+          restore-keys: |
+            ${{ runner.os }}-spm-
+
+      # The Apple package is a single manifest at the repo root. The voice
+      # backend (vox) stays gated off here; the terminal backend (Termini) is
+      # public, so a second leg below builds and tests with it enabled.
+      # (HudsonVoice defaults on for consumers.)
       - name: Swift build
         env:
           HUDSONKIT_WITH_VOICE: "0"
@@ -84,3 +129,22 @@ jobs:
         env:
           HUDSONKIT_WITH_VOICE: "0"
         run: swift test
+
+      # Terminal-enabled leg: compiles HudsonTerminal/HudsonVantageSurface/
+      # HudsonVantage and runs HudsonVantageTests. Runs in the same job so the
+      # shared targets' build products are reused instead of paying for a
+      # second macOS runner. HUDSON_TERMINI_GIT_URL pins the public HTTPS
+      # remote so CI never needs SSH credentials.
+      - name: Swift build (terminal)
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
+          HUDSONKIT_WITH_TERMINAL: "1"
+          HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
+        run: swift build
+
+      - name: Swift test (terminal)
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
+          HUDSONKIT_WITH_TERMINAL: "1"
+          HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
+        run: swift test --filter HudsonVantageTests

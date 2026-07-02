@@ -1,0 +1,23 @@
+{
+  // Typechecks the bun-executed scripts that the root tsconfig excludes.
+  // These legitimately use modern syntax (ES2022 regex flags, top-level await),
+  // so they get their own ES2022/bundler settings instead of the root's ES2017.
+  // Run with: bunx tsc --noEmit -p scripts/tsconfig.json
+  "extends": "../tsconfig.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "target": "ES2022",
+    "module": "ESNext",
+    "moduleResolution": "bundler",
+    // Bun runs these as ESM; dev-guard.ts uses top-level await without an
+    // import/export, so force module detection instead of editing the script.
+    "moduleDetection": "force",
+    "incremental": false
+  },
+  "include": ["**/*"],
+  "exclude": [
+    // Gitignored, generated locally (see .gitignore)
+    "_beacon-render-body.mjs",
+    "install-beacon-templates.mjs"
+  ]
+}

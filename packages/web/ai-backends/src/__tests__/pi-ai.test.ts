@@ -19,7 +19,7 @@ vi.mock('@earendil-works/pi-ai', () => ({
   getEnvApiKey: mockGetEnvApiKey,
 }));
 
-import { createPiAiBackend, type PiAiConfig, type PiAiMeta } from '../adapters/pi-ai';
+import { createPiAiBackend, type PiAiConfig, type PiAiMeta, type HudsonTool } from '../adapters/pi-ai';
 import { createToolsetRegistry, buildIntentsToolset } from '../toolsets/registry';
 import type { CredentialResolver } from '../credentials';
 
@@ -58,6 +58,7 @@ function makeAssistantMessage(text: string) {
     usage: makeUsage(),
     stopReason: 'stop',
     timestamp: Date.now(),
+    errorMessage: undefined as string | undefined,
   };
 }
 
@@ -396,7 +397,7 @@ describe('streamUI() — tool validation', () => {
               description: z.string().optional(),
             }),
             execute: vi.fn(async args => ({ applied: true, ...args })),
-          }),
+          }) as unknown as HudsonTool,
         },
       }),
     });

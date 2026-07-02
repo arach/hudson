@@ -2,48 +2,27 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*.*.*'
+    branches: [main]
+  workflow_dispatch:
 
 concurrency:
   group: release-${{ github.ref }}
   cancel-in-progress: false
 
-jobs:
-  classify:
-    name: Classify tag
-    runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.parse.outputs.version }}
-      kind: ${{ steps.parse.outputs.kind }}
-    steps:
-      - name: Parse semver
-        id: parse
-        run: |
-          tag="${GITHUB_REF#refs/tags/}"
-          version="${tag#v}"
-          if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "::error::Tag $tag is not strict semver (vX.Y.Z)"
-            exit 1
-          fi
-          IFS='.' read -r major minor patch <<< "$version"
-          if [ "$patch" -ne 0 ]; then
-            kind=patch
-          elif [ "$minor" -ne 0 ]; then
-            kind=minor
-          else
-            kind=major
-          fi
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          echo "kind=$kind" >> "$GITHUB_OUTPUT"
-          echo "Tag $tag → version=$version kind=$kind"
+permissions:
+  contents: write
+  pull-requests: write
+  id-token: write
 
-  build:
-    name: Build (always)
-    needs: classify
+jobs:
+  release:
+    name: Version and publish packages
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
@@ -55,13 +34,39 @@ jobs:
         run: bun run --filter @hudsonkit/ai build
 
       - name: HudsonKit build
-        run: bun run --cwd packages/web/hudsonkit build:js
+        run: bun run --cwd packages/web/hudsonkit build
 
-      - name: Site build
-        run: bun run build
+      - name: Validate HudsonKit packed package
+        run: bun run validate:hudsonkit-package
 
-  full-ci:
-    name: Full CI (minor / major)
-    needs: classify
-    if: needs.classify.outputs.kind != 'patch'
-    uses: ./.github/workflows/ci.yml
+      - name: Detect npm token
+        id: npm-token
+        env:
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          if [ -n "${NPM_TOKEN:-}" ]; then
+            echo "present=true" >> "$GITHUB_OUTPUT"
+            echo "NPM_TOKEN present; changesets may publish packages after versioning."
+          else
+            echo "present=false" >> "$GITHUB_OUTPUT"
+            echo "NPM_TOKEN is absent; changesets will only maintain the version PR and will skip npm publish."
+          fi
+
+      - name: Version packages (publish skipped; NPM_TOKEN absent)
+        if: steps.npm-token.outputs.present != 'true'
+        uses: changesets/action@v1
+        with:
+          version: bun run version-packages
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Version and publish packages
+        if: steps.npm-token.outputs.present == 'true'
+        uses: changesets/action@v1
+        with:
+          version: bun run version-packages
+          publish: bun run release
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}

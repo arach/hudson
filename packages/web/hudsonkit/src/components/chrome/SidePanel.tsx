@@ -34,6 +34,8 @@ const SidePanel: React.FC<SidePanelProps> = ({
   side, title, icon, isCollapsed = false, onToggleCollapse, headerActions, footer, style, width, onResizeStart, floating = false, children
 }) => {
   const chromeBorder = 'var(--hud-chrome-border, oklch(var(--border) / 0.8))';
+  // Called before the collapsed early-return so hook order stays stable across renders.
+  const { panelTopOffset } = usePlatformLayout();
 
   // Show expand button when collapsed
   if (isCollapsed) {
@@ -53,7 +55,6 @@ const SidePanel: React.FC<SidePanelProps> = ({
   }
 
   const CollapseIcon = side === 'left' ? PanelLeftClose : PanelRightClose;
-  const { panelTopOffset } = usePlatformLayout();
 
   // Build className manually to avoid any conflicts
   // Remove outer-edge + inner-edge borders; resize handle provides the inner-edge separator

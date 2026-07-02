@@ -156,7 +156,6 @@ public final class HudAgentReplySpeechController {
 
         let marker = reply.marker
         guard marker != preparedMarker else { return nil }
-        preparedMarker = marker
 
         let request = HudAgentReplySpeechRequest(
             replyID: reply.id,
@@ -169,6 +168,11 @@ public final class HudAgentReplySpeechController {
         guard let audio = try await synthesizer.synthesize(request) else {
             return nil
         }
+
+        // Only mark as prepared after successful synthesis. This allows retry on transient
+        // failures for the same revision while still preventing duplicate work on success.
+        preparedMarker = marker
+
         return HudAgentReplySpeechOutput(request: request, audio: audio)
     }
 }

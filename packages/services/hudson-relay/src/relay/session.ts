@@ -1,13 +1,34 @@
 import { createRequire } from 'module';
-import { execFileSync, execSync } from 'child_process';
-import { existsSync, mkdirSync, writeFileSync } from 'fs';
-import { join, dirname as pathDirname } from 'path';
+import { execFileSync } from 'child_process';
+import { randomBytes, timingSafeEqual } from 'crypto';
+import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs';
+import { dirname as pathDirname, resolve as pathResolve, sep as pathSep } from 'path';
 import type { IPty } from '@lydell/node-pty';
 
 const require = createRequire(import.meta.url);
-const pty = require('@lydell/node-pty') as typeof import('@lydell/node-pty');
+const pty = (() => {
+  try {
+    return require('@lydell/node-pty') as typeof import('@lydell/node-pty');
+  } catch {
+    return require('node-pty') as typeof import('@lydell/node-pty');
+  }
+})();
 
 import type { SessionInitMessage, RelaySocket } from './types';
+import {
+  ackTerminalData,
+  createTerminalFlowControlState,
+  enqueueTerminalData,
+  resetTerminalFlowControl,
+  TERMINAL_ACK_CAPABILITY,
+  TERMINAL_FLOW_CONTROL_CAPABILITY,
+  type TerminalFlowControlState,
+} from './flow';
+import {
+  buildZellijAttachArgs,
+  createZellijLayoutFile,
+  prepareZellijSocketDir,
+} from './zellij';
 
 // ---------------------------------------------------------------------------
 // Constants
@@ -18,6 +39,18 @@ const DEFAULT_ORPHAN_TTL_MS = 30 * 60 * 1000; // 30 minutes
 
 /** Maximum size of the raw output buffer for reconnect replay (~512 KB). */
 const MAX_BUFFER_SIZE = 512 * 1024;
+
+/** How far past the truncation point we scan for a clean cut (newline / ESC). */
+const SAFE_TRUNCATION_WINDOW = 4096;
+
+export const RELAY_CAPABILITIES = [
+  TERMINAL_ACK_CAPABILITY,
+  TERMINAL_FLOW_CONTROL_CAPABILITY,
+  'backend:pty',
+  'backend:tmux',
+  'backend:zellij',
+  'control-mode:observe',
+] as const;
 
 // ---------------------------------------------------------------------------
 // Session
@@ -37,10 +70,24 @@ export interface Session {
   reapTimer: ReturnType<typeof setTimeout> | null;
   /** How long this session survives without a client (ms). */
   orphanTTL: number;
+  /** Secret required to reattach to this session (proves ownership on reconnect). */
+  reconnectToken: string;
   /** PTY backend type. */
-  backend: 'pty' | 'tmux';
+  backend: 'pty' | 'tmux' | 'zellij';
+  /** Client control intent. */
+  controlMode: 'owner' | 'takeover' | 'observe';
   /** tmux session name (only set when backend is 'tmux'). */
   tmuxSession?: string;
+  /** zellij session name (only set when backend is 'zellij'). */
+  zellijSession?: string;
+  /** zellij socket directory override (only set when backend is 'zellij'). */
+  zellijSocketDir?: string;
+  /** Temporary layout file used to create a zellij session with the requested command. */
+  zellijLayoutPath?: string;
+  /** ACK-based outbound flow-control state for attached clients. */
+  flowControl: TerminalFlowControlState;
+  /** Whether the currently attached client supports ACK-based flow control. */
+  flowControlEnabled: boolean;
   /** Whether the PTY process has exited. */
   exited: boolean;
   exitCode: number | null;
@@ -49,7 +96,27 @@ export interface Session {
 export const sessions = new Map<string, Session>();
 
 function generateId(): string {
-  return Math.random().toString(36).slice(2, 10);
+  return randomBytes(8).toString('hex');
+}
+
+function generateReconnectToken(): string {
+  return randomBytes(16).toString('hex');
+}
+
+/** Constant-time check of a client-supplied reconnect token against the session's. */
+export function verifyReconnectToken(session: Session, token: unknown): boolean {
+  if (typeof token !== 'string' || token.length === 0) return false;
+  const expected = Buffer.from(session.reconnectToken, 'utf8');
+  const supplied = Buffer.from(token, 'utf8');
+  if (expected.length !== supplied.length) return false;
+  return timingSafeEqual(expected, supplied);
+}
+
+/** Session names get passed to tmux/zellij CLIs — keep them boring. */
+const MULTIPLEXER_NAME_RE = /^[A-Za-z0-9_][A-Za-z0-9_-]{0,63}$/;
+
+export function isValidMultiplexerName(name: string): boolean {
+  return MULTIPLEXER_NAME_RE.test(name);
 }
 
 export function send(ws: RelaySocket, data: Record<string, unknown>) {
@@ -70,12 +137,59 @@ function markSessionPtyClosed(session: Session, err: unknown, op: 'write' | 'res
   scheduleReap(session, 10_000);
 }
 
+function pauseSessionOutput(session: Session) {
+  try { session.pty.pause?.(); } catch {}
+}
+
+function resumeSessionOutput(session: Session) {
+  try { session.pty.resume?.(); } catch {}
+}
+
+function resetSessionFlowControl(session: Session) {
+  resetTerminalFlowControl(session.flowControl, {
+    resume: () => resumeSessionOutput(session),
+  });
+}
+
+export function ackSessionOutput(session: Session, seq: number): boolean {
+  if (!session.flowControlEnabled) return false;
+  return ackTerminalData(session.flowControl, session.ws, seq, {
+    pause: () => pauseSessionOutput(session),
+    resume: () => resumeSessionOutput(session),
+  });
+}
+
+function sendTerminalOutput(session: Session, data: string) {
+  if (!session.flowControlEnabled) {
+    if (session.ws && session.ws.readyState === 1) {
+      send(session.ws, { type: 'terminal:data', data });
+    }
+    return;
+  }
+
+  enqueueTerminalData(session.flowControl, session.ws, data, {
+    pause: () => pauseSessionOutput(session),
+    resume: () => resumeSessionOutput(session),
+    onDrop: ({ bytes, chunks }) => {
+      console.warn(`[relay] Session ${session.id}: dropped ${bytes} bytes across ${chunks} queued output chunks after flow-control overflow`);
+    },
+  });
+}
+
+function clientSupportsAck(capabilities?: string[]): boolean {
+  return Array.isArray(capabilities) && capabilities.includes(TERMINAL_ACK_CAPABILITY);
+}
+
 export function sessionOwnsSocket(session: Session, ws: RelaySocket): boolean {
   return session.ws === ws;
 }
 
 export function writeSession(session: Session, data: string): boolean {
   if (session.exited) return false;
+  // 'observe' clients are read-only. The client marks observe handles
+  // read-only in the UI, but the relay is the trust boundary — enforce it
+  // here so it holds for every backend and call site.
+  if (session.controlMode === 'observe') return false;
   try {
     session.pty.write(data);
     return true;
@@ -90,6 +204,10 @@ export function writeSession(session: Session, data: string): boolean {
 
 export function resizeSession(session: Session, cols: number, rows: number): boolean {
   if (session.exited) return false;
+  // Observers of a shared pty/tmux session must not resize it out from under
+  // the writer. zellij observers run their own client PTY, so their resize
+  // only affects their own view and stays allowed.
+  if (session.controlMode === 'observe' && session.backend !== 'zellij') return false;
   try {
     session.pty.resize(cols, rows);
     if (session.backend === 'tmux' && session.tmuxSession) {
@@ -110,6 +228,62 @@ export function resizeSession(session: Session, cols: number, rows: number): boo
 // ---------------------------------------------------------------------------
 // Helpers
 // ---------------------------------------------------------------------------
+
+function isLowSurrogate(code: number): boolean {
+  return code >= 0xdc00 && code <= 0xdfff;
+}
+
+/**
+ * Trim the rolling output buffer to at most `maxSize` UTF-16 code units,
+ * cutting on a safe boundary. A blind `slice(-maxSize)` can split a surrogate
+ * pair or land mid-ANSI-escape, corrupting the first replayed line. We never
+ * start on the low half of a surrogate pair, and prefer to resume at the next
+ * newline or ESC (start of a fresh line / escape sequence) within a small
+ * window past the cut point.
+ */
+export function truncateOutputBuffer(buffer: string, maxSize: number = MAX_BUFFER_SIZE): string {
+  if (buffer.length <= maxSize) return buffer;
+  let start = buffer.length - maxSize;
+  if (isLowSurrogate(buffer.charCodeAt(start))) start += 1;
+  const scanEnd = Math.min(buffer.length, start + SAFE_TRUNCATION_WINDOW);
+  for (let i = start; i < scanEnd; i++) {
+    const code = buffer.charCodeAt(i);
+    if (code === 0x0a /* \n */) return buffer.slice(i + 1);
+    if (code === 0x1b /* ESC */) return buffer.slice(i);
+  }
+  return buffer.slice(start);
+}
+
+/**
+ * Split replay data into chunks of at most `maxBytes` UTF-8 bytes without
+ * splitting surrogate pairs. The flow controller always sends the first
+ * enqueued chunk regardless of size and a single in-flight chunk can never be
+ * dropped, so an oversized replay blob would bypass flow control entirely.
+ */
+export function chunkReplayData(data: string, maxBytes: number): string[] {
+  if (!data) return [];
+  const limit = Math.max(1, maxBytes);
+  if (Buffer.byteLength(data, 'utf8') <= limit) return [data];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < data.length) {
+    let end = Math.min(start + limit, data.length);
+    for (;;) {
+      // Never split a surrogate pair across chunks.
+      if (end > start + 1 && isLowSurrogate(data.charCodeAt(end))) {
+        end -= 1;
+        continue;
+      }
+      const bytes = Buffer.byteLength(data.slice(start, end), 'utf8');
+      if (bytes <= limit || end <= start + 1) break;
+      // Shrink proportionally toward the byte budget, then re-check.
+      end = start + Math.max(1, Math.floor(((end - start) * limit) / bytes));
+    }
+    chunks.push(data.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
 
 /** Resolve a cwd string, expanding ~, creating if missing, falling back to $HOME. */
 function resolveCwd(raw?: string): string {
@@ -134,7 +308,7 @@ function resolveCwd(raw?: string): string {
 function findBin(name: string, envOverride?: string): string | null {
   if (envOverride && process.env[envOverride]) return process.env[envOverride];
   try {
-    return execSync(`which ${name}`, { encoding: 'utf8' }).trim() || null;
+    return execFileSync('which', [name], { encoding: 'utf8' }).trim() || null;
   } catch {
     return null;
   }
@@ -157,6 +331,26 @@ function findShellBin(): string | null {
   return findBin('zsh') ?? findBin('bash') ?? findBin('sh') ?? (existsSync('/bin/sh') ? '/bin/sh' : null);
 }
 
+/** Locate the zellij binary, returning null if not found. */
+function findZellijBin(): string | null {
+  return findBin('zellij', 'ZELLIJ_BIN');
+}
+
+/** Check if a zellij session exists (only queried when the mux reaper is enabled). */
+function zellijSessionExists(zellijBin: string, name: string, env: Record<string, string | undefined>): boolean {
+  try {
+    const out = execFileSync(zellijBin, ['list-sessions', '-s'], {
+      encoding: 'utf8',
+      env: env as NodeJS.ProcessEnv,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').some((line) => line.trim() === name);
+  } catch {
+    // zellij exits non-zero when there are no sessions at all.
+    return false;
+  }
+}
+
 /** Map Hudson-facing provider ids to the exact provider names accepted by the Pi CLI. */
 function normalizePiProviderForCli(provider?: string): string | undefined {
   if (!provider) return undefined;
@@ -167,11 +361,16 @@ function normalizePiProviderForCli(provider?: string): string | undefined {
 /** Check if a tmux session exists. */
 function tmuxSessionExists(name: string): boolean {
   try {
-    execSync(`tmux has-session -t ${name} 2>/dev/null`, { encoding: 'utf8' });
+    execFileSync('tmux', ['has-session', '-t', name], { stdio: 'ignore' });
     return true;
   } catch {
     return false;
   }
+}
+
+/** Quote a string for POSIX sh (tmux runs the session command through a shell). */
+export function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 /** Resize the tmux window behind an attached bridge PTY. */
@@ -192,10 +391,22 @@ function resizeTmuxWindow(name: string, cols: number, rows: number): boolean {
   }
 }
 
+/** Resolve a bootstrap file path, rejecting anything that escapes the cwd. */
+export function resolveBootstrapPath(cwd: string, relPath: string): string | null {
+  const base = pathResolve(cwd);
+  const absPath = pathResolve(base, relPath);
+  if (absPath === base || !absPath.startsWith(base + pathSep)) return null;
+  return absPath;
+}
+
 /** Bootstrap workspace files into a directory (only creates if missing). */
 function bootstrapFiles(cwd: string, files: Record<string, string>, sessionId: string) {
   for (const [relPath, content] of Object.entries(files)) {
-    const absPath = join(cwd, relPath);
+    const absPath = resolveBootstrapPath(cwd, relPath);
+    if (!absPath) {
+      console.warn(`[relay] Session ${sessionId}: refused to bootstrap ${relPath} — path escapes the session cwd`);
+      continue;
+    }
     if (!existsSync(absPath)) {
       try {
         const dir = pathDirname(absPath);
@@ -223,16 +434,24 @@ function spawnTmuxSession(
 
   if (!exists) {
     // Create the tmux session detached, running the requested command inside it.
-    const shellCmd = [commandBin, ...commandArgs].map(a => a.includes(' ') ? `'${a}'` : a).join(' ');
-    execSync(
-      `tmux new-session -d -s ${tmuxName} -x ${cols} -y ${rows} -c '${cwd}' '${shellCmd}'`,
-      { env: env as NodeJS.ProcessEnv },
-    );
+    // tmux runs the trailing command through a shell, so quote every word;
+    // everything else is passed as discrete argv entries (no shell involved).
+    const shellCmd = [commandBin, ...commandArgs].map(shellQuote).join(' ');
+    execFileSync('tmux', [
+      'new-session', '-d',
+      '-s', tmuxName,
+      '-x', String(cols),
+      '-y', String(rows),
+      '-c', cwd,
+      shellCmd,
+    ], { env: env as NodeJS.ProcessEnv, stdio: 'ignore' });
     console.log(`[relay] Created tmux session: ${tmuxName}`);
+    if (muxTtlMs() > 0) trackCreatedMuxSession('tmux', tmuxName);
   } else {
     // Resize existing session to match client
     resizeTmuxWindow(tmuxName, cols, rows);
     console.log(`[relay] Attaching to existing tmux session: ${tmuxName}`);
+    markMuxSessionInUse('tmux', tmuxName);
   }
 
   // Spawn a PTY bridge that attaches to the tmux session
@@ -246,13 +465,58 @@ function spawnTmuxSession(
   });
 }
 
+/** Spawn a PTY that attaches to a zellij session (creating it if needed). */
+function spawnZellijSession(
+  zellijBin: string,
+  zellijName: string,
+  cols: number,
+  rows: number,
+  cwd: string,
+  commandBin: string,
+  commandArgs: string[],
+  env: Record<string, string | undefined>,
+  controlMode: 'owner' | 'takeover' | 'observe',
+): { ptyProcess: IPty; layoutPath?: string } {
+  const layoutPath = controlMode === 'observe'
+    ? undefined
+    : createZellijLayoutFile({ cwd, commandBin, commandArgs });
+  const args = buildZellijAttachArgs({
+    sessionName: zellijName,
+    controlMode,
+    layoutPath,
+    cwd,
+  });
+
+  return {
+    ptyProcess: pty.spawn(zellijBin, args, {
+      name: 'xterm-256color',
+      cols,
+      rows,
+      cwd,
+      env,
+    }),
+    layoutPath,
+  };
+}
+
 export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session | null {
   const id = generateId();
   const cols = Math.max(msg.cols || 80, 20);
   const rows = Math.max(msg.rows || 24, 4);
   const backend = msg.backend || 'pty';
+  const controlMode = msg.controlMode || 'owner';
   const tmuxName = msg.tmuxSession || `hudson-${id}`;
+  const zellijName = msg.zellijSession || `hudson-${id}`;
   const agent = msg.agent || 'claude';
+
+  // ---- Pre-flight: multiplexer session names reach tmux/zellij CLIs ----
+  const multiplexerName = backend === 'tmux' ? tmuxName : backend === 'zellij' ? zellijName : null;
+  if (multiplexerName && !isValidMultiplexerName(multiplexerName)) {
+    const reason = `Invalid ${backend} session name. Use letters, digits, dashes, and underscores (max 64 chars).`;
+    console.error(`[relay] Session ${id} failed: ${reason}`);
+    send(ws, { type: 'session:error', error: reason });
+    return null;
+  }
 
   // ---- Pre-flight: locate command binary ----
   let agentBin: string | null;
@@ -297,6 +561,14 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     return null;
   }
 
+  const zellijBin = backend === 'zellij' ? findZellijBin() : null;
+  if (backend === 'zellij' && !zellijBin) {
+    const reason = 'zellij not found. Install it with: brew install zellij';
+    console.error(`[relay] Session ${id} failed: ${reason}`);
+    send(ws, { type: 'session:error', error: reason });
+    return null;
+  }
+
   // ---- Pre-flight: resolve working directory ----
   const cwd = resolveCwd(msg.cwd);
 
@@ -322,16 +594,33 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     if (msg.systemPrompt) agentArgs.push('--system-prompt', msg.systemPrompt);
   }
 
-  const env: Record<string, string | undefined> = { ...process.env, TERM: 'xterm-256color', FORCE_COLOR: '1' };
+  const env: Record<string, string | undefined> = {
+    ...process.env,
+    ...prepareZellijSocketDir(backend === 'zellij' ? msg.zellijSocketDir : undefined),
+    TERM: 'xterm-256color',
+    FORCE_COLOR: '1',
+  };
   delete env.CLAUDECODE;
 
   // ---- Spawn PTY (direct or tmux-backed) ----
   let ptyProcess: IPty;
+  let zellijLayoutPath: string | undefined;
 
   try {
     if (backend === 'tmux') {
       console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd} [agent: ${agent}]`);
       ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
+    } else if (backend === 'zellij') {
+      console.log(`[relay] Session ${id}: zellij backend (session: ${zellijName}, mode: ${controlMode}) in ${cwd} [agent: ${agent}]`);
+      // Only pay for the existence check when the mux reaper is on; 'observe'
+      // never creates a session, so it never tracks one either.
+      const trackZellij = muxTtlMs() > 0 && controlMode !== 'observe'
+        && !zellijSessionExists(zellijBin!, zellijName, env);
+      const spawned = spawnZellijSession(zellijBin!, zellijName, cols, rows, cwd, agentBin, agentArgs, env, controlMode);
+      ptyProcess = spawned.ptyProcess;
+      zellijLayoutPath = spawned.layoutPath;
+      if (trackZellij) trackCreatedMuxSession('zellij', zellijName);
+      else markMuxSessionInUse('zellij', zellijName);
     } else {
       console.log(`[relay] Session ${id}: pty backend, spawning ${agentBin} in ${cwd} [agent: ${agent}]`);
       ptyProcess = pty.spawn(agentBin, agentArgs, {
@@ -355,13 +644,22 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
     id,
     pty: ptyProcess,
     ws,
+    reconnectToken: generateReconnectToken(),
     outputBuffer: '',
     cols,
     rows,
     reapTimer: null,
     orphanTTL,
     backend,
+    controlMode,
     ...(backend === 'tmux' ? { tmuxSession: tmuxName } : {}),
+    ...(backend === 'zellij' ? {
+      zellijSession: zellijName,
+      ...(msg.zellijSocketDir ? { zellijSocketDir: msg.zellijSocketDir } : {}),
+      ...(zellijLayoutPath ? { zellijLayoutPath } : {}),
+    } : {}),
+    flowControl: createTerminalFlowControlState(),
+    flowControlEnabled: clientSupportsAck(msg.clientCapabilities),
     exited: false,
     exitCode: null,
   };
@@ -370,19 +668,14 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   const startTime = Date.now();
 
   ptyProcess.onData((data: string) => {
-    // Append to rolling buffer (cap at MAX_BUFFER_SIZE)
-    session.outputBuffer += data;
-    if (session.outputBuffer.length > MAX_BUFFER_SIZE) {
-      session.outputBuffer = session.outputBuffer.slice(-MAX_BUFFER_SIZE);
-    }
+    // Append to rolling buffer (cap at MAX_BUFFER_SIZE, cut on a safe boundary)
+    session.outputBuffer = truncateOutputBuffer(session.outputBuffer + data, MAX_BUFFER_SIZE);
 
-    // Forward raw data to attached client
-    if (session.ws && session.ws.readyState === 1) {
-      send(session.ws, { type: 'terminal:data', data });
-    }
+    // Forward raw data to attached client with ACK-based backpressure.
+    sendTerminalOutput(session, data);
   });
 
-  ptyProcess.onExit(({ exitCode }) => {
+  ptyProcess.onExit(({ exitCode }: { exitCode: number; signal?: number }) => {
     session.exited = true;
     session.exitCode = exitCode;
 
@@ -413,13 +706,15 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
 }
 
 /** Attach a WebSocket to an existing session (reconnect). */
-export function attachSession(session: Session, ws: RelaySocket, cols?: number, rows?: number) {
+export function attachSession(session: Session, ws: RelaySocket, cols?: number, rows?: number, clientCapabilities?: string[]) {
   // Cancel any pending reap
   if (session.reapTimer) {
     clearTimeout(session.reapTimer);
     session.reapTimer = null;
   }
 
+  resetSessionFlowControl(session);
+  session.flowControlEnabled = clientSupportsAck(clientCapabilities);
   session.ws = ws;
 
   // Resize if the client has different dimensions
@@ -431,11 +726,19 @@ export function attachSession(session: Session, ws: RelaySocket, cols?: number, 
     }
   }
 
-  // Replay buffered output so xterm.js rebuilds the screen
+  // Replay buffered output so xterm.js rebuilds the screen. Replay in
+  // ≤ highWaterBytes chunks — the flow controller always transmits the first
+  // enqueued chunk whatever its size, so a single 512 KB blob would blow
+  // straight past the flow-control window.
   if (session.exited) {
     send(ws, { type: 'session:exit', exitCode: session.exitCode });
   } else if (session.outputBuffer.length > 0) {
-    send(ws, { type: 'terminal:data', data: session.outputBuffer });
+    const replayChunks = session.flowControlEnabled
+      ? chunkReplayData(session.outputBuffer, session.flowControl.highWaterBytes)
+      : [session.outputBuffer];
+    for (const chunk of replayChunks) {
+      sendTerminalOutput(session, chunk);
+    }
   }
 
   console.log(`[relay] Session ${session.id} reconnected`);
@@ -443,6 +746,7 @@ export function attachSession(session: Session, ws: RelaySocket, cols?: number, 
 
 /** Detach the WebSocket from a session (keeps PTY alive). */
 export function detachSession(session: Session) {
+  resetSessionFlowControl(session);
   session.ws = null;
 
   if (session.exited) {
@@ -468,11 +772,134 @@ export function destroy(sessionId: string) {
   const session = sessions.get(sessionId);
   if (!session) return;
   if (session.reapTimer) clearTimeout(session.reapTimer);
+  resetSessionFlowControl(session);
   try { session.pty.kill(); } catch {}
+  if (session.zellijLayoutPath) {
+    try { rmSync(pathDirname(session.zellijLayoutPath), { recursive: true, force: true }); } catch {}
+  }
   sessions.delete(sessionId);
   if (session.backend === 'tmux') {
     console.log(`[relay] Session ${sessionId} bridge destroyed (tmux session '${session.tmuxSession}' still alive)`);
+    if (session.tmuxSession) markMuxSessionDetached('tmux', session.tmuxSession);
+  } else if (session.backend === 'zellij') {
+    console.log(`[relay] Session ${sessionId} bridge destroyed (zellij session '${session.zellijSession}' still alive)`);
+    if (session.zellijSession) markMuxSessionDetached('zellij', session.zellijSession);
   } else {
     console.log(`[relay] Session ${sessionId} destroyed`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Multiplexer session reaper (opt-in)
+//
+// destroy() deliberately leaves tmux/zellij sessions alive so users can
+// re-attach from a real terminal — but nothing ever cleans them up. Set
+// HUDSON_RELAY_MUX_TTL_MS to have the relay reap multiplexer sessions *it
+// created* once their last bridge has been gone longer than the TTL.
+// Sessions the relay merely attached to (pre-existing tmux/zellij sessions)
+// are never tracked and never touched. Default: off (current behavior).
+// ---------------------------------------------------------------------------
+
+export interface TrackedMuxSession {
+  backend: 'tmux' | 'zellij';
+  name: string;
+  /** When the last relay bridge for this mux session went away (null while in use). */
+  detachedAt: number | null;
+}
+
+/** Mux sessions this relay created — the only reap candidates. */
+export const trackedMuxSessions = new Map<string, TrackedMuxSession>();
+
+/** TTL for orphaned relay-created mux sessions. 0 = reaper disabled. */
+export function muxTtlMs(): number {
+  const raw = Number(process.env.HUDSON_RELAY_MUX_TTL_MS || 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+function muxKey(backend: 'tmux' | 'zellij', name: string): string {
+  return `${backend}:${name}`;
+}
+
+/** Record a mux session this relay just created. */
+export function trackCreatedMuxSession(backend: 'tmux' | 'zellij', name: string) {
+  trackedMuxSessions.set(muxKey(backend, name), { backend, name, detachedAt: null });
+}
+
+/** Mark a tracked mux session in-use again (a bridge attached to it). */
+export function markMuxSessionInUse(backend: 'tmux' | 'zellij', name: string) {
+  const record = trackedMuxSessions.get(muxKey(backend, name));
+  if (record) record.detachedAt = null;
+}
+
+/** Mark a tracked mux session detached (its bridge was destroyed). No-op for untracked names. */
+export function markMuxSessionDetached(backend: 'tmux' | 'zellij', name: string, now = Date.now()) {
+  const record = trackedMuxSessions.get(muxKey(backend, name));
+  if (record) record.detachedAt = now;
+}
+
+function muxSessionInUse(record: TrackedMuxSession): boolean {
+  for (const session of sessions.values()) {
+    if (record.backend === 'tmux' && session.tmuxSession === record.name) return true;
+    if (record.backend === 'zellij' && session.zellijSession === record.name) return true;
+  }
+  return false;
+}
+
+function killMuxSession(record: Pick<TrackedMuxSession, 'backend' | 'name'>) {
+  if (record.backend === 'tmux') {
+    execFileSync('tmux', ['kill-session', '-t', record.name], { stdio: 'ignore' });
+  } else {
+    const zellijBin = findZellijBin();
+    if (!zellijBin) throw new Error('zellij binary not found');
+    execFileSync(zellijBin, ['delete-session', '--force', record.name], { stdio: 'ignore' });
+  }
+}
+
+/** Reap tracked mux sessions detached longer than ttlMs. Returns reaped names. */
+export function reapExpiredMuxSessions(
+  ttlMs: number,
+  now = Date.now(),
+  kill: (record: TrackedMuxSession) => void = killMuxSession,
+): string[] {
+  const reaped: string[] = [];
+  for (const [key, record] of trackedMuxSessions) {
+    if (record.detachedAt === null || now - record.detachedAt < ttlMs) continue;
+    if (muxSessionInUse(record)) {
+      // A live bridge still references it — treat as in use again.
+      record.detachedAt = null;
+      continue;
+    }
+    try {
+      kill(record);
+      console.log(`[relay] Reaped orphaned ${record.backend} session '${record.name}' (detached > ${ttlMs}ms)`);
+      reaped.push(record.name);
+    } catch (err) {
+      // Most likely the session is already gone (killed by hand). Either way,
+      // drop the record so we don't retry every sweep.
+      console.warn(`[relay] Failed to reap ${record.backend} session '${record.name}': ${err instanceof Error ? err.message : String(err)}`);
+    }
+    trackedMuxSessions.delete(key);
+  }
+  return reaped;
+}
+
+let muxReaperTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Start the TTL reaper if HUDSON_RELAY_MUX_TTL_MS is set. No-op (and no behavior change) otherwise. */
+export function maybeStartMuxReaper(): boolean {
+  const ttl = muxTtlMs();
+  if (ttl <= 0) return false;
+  if (muxReaperTimer) return true;
+  const sweepInterval = Math.min(Math.max(Math.floor(ttl / 2), 5_000), 60_000);
+  muxReaperTimer = setInterval(() => reapExpiredMuxSessions(muxTtlMs()), sweepInterval);
+  muxReaperTimer.unref?.();
+  console.log(`[relay] Mux session reaper enabled: TTL ${ttl}ms, sweeping every ${Math.round(sweepInterval / 1000)}s`);
+  return true;
+}
+
+export function stopMuxReaper() {
+  if (muxReaperTimer) {
+    clearInterval(muxReaperTimer);
+    muxReaperTimer = null;
   }
 }

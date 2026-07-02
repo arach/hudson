@@ -25,11 +25,11 @@ This guide covers everything you need to build a Hudson app — from the interfa
 
 ## API Reference
 
-Everything exported from the `frame-ui` package.
+Everything exported from the `hudsonkit` package.
 
 ## Architecture
 
-Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **frame-ui component library**.
+Hudson is a monorepo with two main packages: the **shell application** (Next.js) and the **hudsonkit component library**.
 
 ## Skills
 

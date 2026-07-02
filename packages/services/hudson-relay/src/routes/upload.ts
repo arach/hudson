@@ -40,7 +40,10 @@ export async function handleUpload(req: IncomingMessage, res: ServerResponse) {
 
     await mkdir(UPLOAD_DIR, { recursive: true });
 
-    const filename = `${randomUUID()}-${name}`;
+    // Client names go straight into a path — keep only a safe basename so
+    // `../` segments can't climb out of the upload dir.
+    const safeName = name.replace(/[^A-Za-z0-9._-]/g, '_').replace(/^\.+/, '_').slice(0, 128);
+    const filename = `${randomUUID()}-${safeName || 'upload'}`;
     const filepath = join(UPLOAD_DIR, filename);
 
     await writeFile(filepath, Buffer.from(data, 'base64'));

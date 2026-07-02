@@ -1,6 +1,6 @@
 {
   "name": "@hudsonkit/ai",
-  "version": "0.1.0",
+  "version": "0.1.1",
   "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai and vercel-ai adapters.",
   "keywords": [
     "hudsonkit",
@@ -24,6 +24,11 @@
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js",
       "default": "./dist/index.js"
+    },
+    "./pi-ai": {
+      "types": "./dist/pi-ai.d.ts",
+      "import": "./dist/pi-ai.js",
+      "default": "./dist/pi-ai.js"
     },
     "./vercel-ai": {
       "types": "./dist/vercel-ai.d.ts",
@@ -64,6 +69,6 @@
     "@earendil-works/pi-ai": "^0.74.0",
     "ai": "^6.0.0",
     "tsup": "^8.0.0",
-    "vitest": "^3.0.0"
+    "vitest": "^4.0.0"
   }
 }

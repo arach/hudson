@@ -1,0 +1,125 @@
+# HudsonKit Xterm Terminal Component Spec
+
+Status: initial reusable contract
+Owner: `packages/web/hudsonkit`
+
+## Product Boundary
+
+`hudsonkit/terminal` is the shared web terminal surface for tiled, multi-session, multi-layout terminal experiences. It is based on xterm.js and is intended for browser, WKWebView, and desktop-web embeds.
+
+Native Termini/Ghostty surfaces remain an Apple-native single-surface path for iOS, focused local-native cases, and experiments that need platform-native terminal rendering.
+
+## Public Entry Point
+
+Consumers should prefer:
+
+```ts
+import { TerminalRelay, useTerminalRelay } from "hudsonkit/terminal";
+```
+
+Root `hudsonkit` exports remain available for compatibility.
+
+## Component Contract
+
+`useTerminalRelay` owns relay protocol state:
+
+- WebSocket connect, disconnect, restart
+- `session:init` and `session:reconnect`
+- PTY, tmux, and zellij backend options
+- persistent session IDs keyed by `sessionKey`
+- terminal resize messages
+- output buffering before the renderer is ready
+- ACK after renderer write for flow-controlled relays
+- passive data subscribers for previews and activity indicators
+
+`TerminalRelay` owns xterm.js rendering:
+
+- SSR-safe dynamic xterm imports
+- required `FitAddon`
+- optional `WebglAddon`
+- DOM fallback after import failure, construction failure, or WebGL context loss
+- configurable scrollback
+- live font and theme updates
+- resize observer with relay dimension updates
+- keyboard input forwarding
+- read-only mode that blocks keyboard, voice, paste, and drop input
+- ARIA label and root styling hooks
+- lifecycle callbacks: ready, dispose, resize, renderer state
+
+## Protocol Requirements
+
+Clients that support renderer ACKs send `clientCapabilities: ["terminal:ack"]` in `session:init` and `session:reconnect`.
+
+Flow-controlled relays should then emit:
+
+```json
+{ "type": "terminal:data", "data": "...", "seq": 123 }
+```
+
+The client must ACK only after xterm accepts the write callback:
+
+```json
+{ "type": "terminal:ack", "seq": 123 }
+```
+
+If no xterm sink is registered yet, the hook buffers output up to its configured cap. Dropped buffered chunks are ACKed so the relay can continue instead of deadlocking.
+
+The bundled Hudson relay advertises its negotiated support in `session:ready.capabilities`, currently including:
+
+- `terminal:ack`
+- `flow-control:ack-v1`
+- `backend:pty`
+- `backend:tmux`
+- `backend:zellij`
+- `control-mode:observe`
+
+The public `hudsonkit/terminal` subpath exports the client/server message types used by this contract (`TerminalRelayClientMessage`, `TerminalRelayServerMessage`, `TerminalAckMessage`, and related session messages). Older relays may ignore `terminal:ack` and `controlMode`; clients must tolerate that.
+
+## Control Modes and Backend Matrix
+
+`controlMode` is a session-level intent sent in `session:init` / `session:reconnect` and enforced **relay-side** — the client also marks observe handles read-only, but the relay is the trust boundary.
+
+| Backend | `owner` | `takeover` | `observe` |
+|---------|---------|------------|-----------|
+| `pty` | full input/resize | n/a (single client) | input dropped, resize dropped |
+| `tmux` | full input/resize | attach steals the tmux client | input dropped, resize dropped |
+| `zellij` | full input/resize | attach to the named session | read-only zellij client; input dropped, resize allowed (observer has its own client PTY, resize only affects its view) |
+
+Relay enforcement lives in `writeSession` / `resizeSession`, so it holds for every message path. Observers of shared pty/tmux sessions cannot resize the PTY out from under the writer; zellij observers keep resize because zellij reconciles per-client views.
+
+## Host Integration Boundary
+
+Hudson-product behavior in `TerminalRelay` is opt-out/configurable so the component stays reusable outside Hudson:
+
+- `imageUploadUrl?: string | null` — endpoint for image paste/drop uploads. Defaults to Hudson's `${apiBaseUrl}/api/relay/upload`; pass a host URL to redirect, or `null` to disable uploads entirely (image pastes fall through untouched, drag/drop is inert).
+- `voiceVisibilityScope?: string | false` — ancestor selector gating global voice events, defaulting to plain visibility (or the drawer scope when hosted in `TerminalDrawer`); `false` disables the ancestor requirement.
+
+## Tiling Guidance
+
+Tiling is not the terminal's job. `TerminalRelay` is tiling-unaware: it fills whatever box it's given, refits on demand, and speaks the relay protocol — nothing else. Tiling hosts (e.g. `HudTiling` via `renderItem`) *instantiate* `TerminalRelay` instances as tile content, each with a distinct `sessionKey` unless deliberately observing the same backing session.
+
+The host that instantiates terminals as tiles owns the safety model:
+
+- one writer per live relay session for takeover mode
+- explicit observe/read-only mode for shared viewing
+- clear tile identity chrome showing renderer, backend, session name, and control mode
+- refit visible tiles after resize, reveal, and layout changes
+
+## Acceptance Checklist
+
+- Output-heavy commands do not freeze the UI or unboundedly buffer in JS.
+- WebGL failure falls back to DOM rendering without remount loops.
+- Hidden or zero-size tiles recover after becoming visible.
+- Resize sends accurate cols/rows after tile and window changes.
+- Read-only mode blocks all input paths.
+- Theme changes update xterm colors without reconnecting.
+- Session reconnect restores buffered terminal state where the relay supports replay.
+- Multi-tile hosts do not accidentally attach two writers to one session.
+- Package builds include `hudsonkit/terminal` declarations.
+
+## Future Work
+
+- Add search, web links, serialize, and unicode addons behind explicit props.
+- Add component-level tests with mocked xterm constructors and addon failures.
+- Add browser integration tests for resize, paste, IME, and reconnect behavior.
+- If multiple hosts converge on the same tile identity chrome (renderer, backend, session name, control mode), extract it as a composition pattern that wraps `TerminalRelay` — owned by the tiling/pattern layer, never a feature of the terminal component itself.

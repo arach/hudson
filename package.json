@@ -19,9 +19,12 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
-    "relay:legacy": "node --no-warnings scripts/ai-relay.ts",
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
-    "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/editor.js"
+    "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonVantageSurface/Resources/HudsonCodeEditor/editor.js",
+    "changeset": "changeset",
+    "version-packages": "changeset version",
+    "release": "changeset publish",
+    "validate:hudsonkit-package": "bun run --cwd packages/web/hudsonkit pack && tarball=\"$(ls -1 packages/web/hudsonkit/hudsonkit-*.tgz | tail -n 1)\" && publint \"$tarball\" && attw \"$tarball\" --profile esm-only --exclude-entrypoints hudsonkit/styles hudsonkit/styles/tokens.css && rm -f \"$tarball\""
   },
   "dependencies": {
     "@ai-sdk/anthropic": "^3.0.50",
@@ -89,10 +92,14 @@
     "packages/web/hudsonkit"
   ],
   "devDependencies": {
+    "@arethetypeswrong/cli": "^0.18.4",
+    "@changesets/cli": "^2.31.0",
+    "@hudsonkit/ai": "workspace:*",
     "@tailwindcss/postcss": "^4",
     "@testing-library/dom": "^10.4.1",
     "@testing-library/jest-dom": "^6.9.1",
     "@testing-library/react": "^16.3.2",
+    "@types/bun": "^1.3.14",
     "@types/node": "^20",
     "@types/react": "^19",
     "@types/react-dom": "^19",
@@ -101,9 +108,9 @@
     "drizzle-kit": "^0.31.9",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
-    "@hudsonkit/ai": "workspace:*",
     "hudsonkit": "workspace:*",
     "jsdom": "^28.1.0",
+    "publint": "^0.3.21",
     "tailwindcss": "^4",
     "tsup": "^8.5.1",
     "typescript": "5.9.3",

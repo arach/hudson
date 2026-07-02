@@ -386,6 +386,7 @@ private enum HudAudioRecorderError: LocalizedError {
 
 public struct HudAudioRecorderView: View {
     @ObservedObject private var controller: HudAudioRecorderController
+    @Environment(\.hudTheme) private var theme
 
     private let barFactors: [CGFloat] = [
         0.28, 0.44, 0.62, 0.38, 0.78, 0.52, 0.34, 0.68,
@@ -414,16 +415,16 @@ public struct HudAudioRecorderView: View {
         HStack(spacing: HudSpacing.md) {
             Image(systemName: "waveform.circle.fill")
                 .font(HudFont.ui(HudTextSize.xl, weight: .semibold))
-                .foregroundStyle(HudPalette.accent)
+                .foregroundStyle(theme.palette.accent)
                 .accessibilityHidden(true)
 
             VStack(alignment: .leading, spacing: HudSpacing.xs) {
                 Text("Audio recorder")
                     .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                    .foregroundStyle(HudPalette.ink)
+                    .foregroundStyle(theme.palette.ink)
                 Text("M4A capture with permission + metering")
                     .font(HudFont.ui(HudTextSize.xs))
-                    .foregroundStyle(HudPalette.dim)
+                    .foregroundStyle(theme.palette.dim)
             }
 
             Spacer(minLength: HudSpacing.md)
@@ -437,11 +438,11 @@ public struct HudAudioRecorderView: View {
                 HStack(alignment: .lastTextBaseline, spacing: HudSpacing.md) {
                     Text(controller.state.formattedDuration)
                         .font(HudFont.mono(HudTextSize.xxl, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.palette.ink)
                     Spacer(minLength: HudSpacing.md)
                     Text(permissionLabel)
                         .font(HudFont.mono(HudTextSize.xxs, weight: .medium))
-                        .foregroundStyle(HudPalette.dim)
+                        .foregroundStyle(theme.palette.dim)
                 }
 
                 HStack(alignment: .center, spacing: HudSpacing.xs) {
@@ -462,7 +463,7 @@ public struct HudAudioRecorderView: View {
         if let errorMessage = controller.state.errorMessage {
             Text(errorMessage)
                 .font(HudFont.ui(HudTextSize.xs, weight: .medium))
-                .foregroundStyle(HudPalette.statusError)
+                .foregroundStyle(theme.palette.statusError)
         }
     }
 
@@ -507,11 +508,11 @@ public struct HudAudioRecorderView: View {
 
     private var phaseTint: Color {
         switch controller.state.phase {
-        case .recording:            return HudPalette.statusError
-        case .finished, .ready:     return HudPalette.statusOk
-        case .failed, .unavailable: return HudPalette.statusWarn
-        case .requestingPermission: return HudPalette.statusInfo
-        case .idle:                 return HudPalette.muted
+        case .recording:            return theme.palette.statusError
+        case .finished, .ready:     return theme.palette.statusOk
+        case .failed, .unavailable: return theme.palette.statusWarn
+        case .requestingPermission: return theme.palette.statusInfo
+        case .idle:                 return theme.palette.muted
         }
     }
 
@@ -544,8 +545,10 @@ public struct HudAudioRecorderView: View {
     }
 
     private func barFill(for index: Int) -> Color {
-        guard controller.state.isRecording else { return HudSurface.control }
+        // hudlint:disable next-line opacity
+        guard controller.state.isRecording else { return theme.palette.border.opacity(0.34) }
         let activeCount = Int((controller.state.normalizedLevel * Double(barFactors.count)).rounded(.up))
-        return index < max(1, activeCount) ? HudPalette.accent : HudSurface.control
+        // hudlint:disable next-line opacity
+        return index < max(1, activeCount) ? theme.palette.accent : theme.palette.border.opacity(0.34)
     }
 }

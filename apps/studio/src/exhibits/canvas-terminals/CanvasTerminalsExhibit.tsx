@@ -973,6 +973,7 @@ function RestingCardView({
     if (status === "connecting") return "connecting…";
     if (status === "error") return "error";
     if (status === "connected" && connectedAt) {
+      // eslint-disable-next-line react-hooks/purity -- exhibit-only uptime label; snapshots Date.now() when status/connectedAt change (the memo deps). A live-ticking clock isn't needed for this static demo label
       return `up ${humanizeDuration(Date.now() - connectedAt)}`;
     }
     return status;
@@ -1120,7 +1121,6 @@ function prettyCwd(cwd: string): string {
 // preview line renders as plain text. Covers CSI (color/cursor) and OSC
 // (window title etc.). Not exhaustive — good enough for one-line previews.
 const ANSI_CSI = /\[[0-9;?]*[A-Za-z]/g;
-// eslint-disable-next-line no-control-regex
 const ANSI_OSC = /\][^]*/g;
 function stripAnsi(input: string): string {
   return input.replace(ANSI_OSC, "").replace(ANSI_CSI, "");

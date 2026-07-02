@@ -25,6 +25,24 @@ public final class HudTTS {
     /// Called whenever speaking state changes — useful for app-level wrappers.
     public var onSpeakingChanged: (@MainActor (Bool) -> Void)?
 
+    public var currentTime: TimeInterval? {
+        switch activePlayback {
+        case .cloud:
+            speechPlayer.currentTime
+        case .system, .none:
+            nil
+        }
+    }
+
+    public var duration: TimeInterval? {
+        switch activePlayback {
+        case .cloud:
+            speechPlayer.duration > 0 ? speechPlayer.duration : nil
+        case .system, .none:
+            nil
+        }
+    }
+
     private let client: HudTTSClient
     private let systemSpeech = HudSystemSpeechSynthesizer.shared
     private let speechPlayer = HudSpeechPlayer()
@@ -150,6 +168,16 @@ public final class HudTTS {
             isSpeaking = speechPlayer.isPlaying
         case .none:
             break
+        }
+    }
+
+    @discardableResult
+    public func seek(to time: TimeInterval) -> Bool {
+        switch activePlayback {
+        case .cloud:
+            return speechPlayer.seek(to: time)
+        case .system, .none:
+            return false
         }
     }
 

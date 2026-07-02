@@ -10,6 +10,7 @@ HudsonUI/Tokens/**
 HudsonShell/HudSidebarPanel.swift
 HudsonUI/Primitives/HudGrainOverlay.swift
 HudsonUI/Primitives/HudMessageBar.swift
+HudsonUI/Primitives/HudAgentTurnView.swift
 
 # Build artifacts.
 **/build/**

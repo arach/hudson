@@ -8,8 +8,7 @@ import type {
 import { shellIntents } from '../shell/intents';
 
 export interface BuildIntentCatalogOptions {
-  /** Server-callable intents to attach to the catalog. Pass from the API
-   *  route by calling `listIntents().map(({meta}) => intentMetaToServerIntent(meta))`.
+  /** Server-callable intents to attach to the catalog. Pass from the API route by calling `listIntents().map(({ meta }) => meta)`.
    *  Omit on the client; the resulting catalog will simply have no
    *  `serverIntents` field, which is the correct UI view. */
   serverIntents?: ServerIntent[];

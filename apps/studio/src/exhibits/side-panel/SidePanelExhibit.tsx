@@ -2,7 +2,7 @@ export function SidePanelExhibit() {
   return (
     <div className="space-y-6 text-[13px] leading-relaxed text-studio-ink-faint">
       <p>
-        You're looking at one right now — the left panel hosting the catalog
+        You&apos;re looking at one right now — the left panel hosting the catalog
         nav. <code className="rounded bg-studio-chip-bg px-1 py-0.5 font-mono text-[11px]">SidePanel</code>{" "}
         is a position-fixed chrome panel with a collapse toggle, optional
         resize handle, optional footer slot, and a header with title + icon.
@@ -14,7 +14,7 @@ export function SidePanelExhibit() {
         </div>
         <ul className="mt-3 space-y-1.5 text-[12.5px] text-studio-ink">
           <li>
-            Left column → <code className="font-mono text-[11px]">SidePanel side="left"</code>
+            Left column → <code className="font-mono text-[11px]">{'SidePanel side="left"'}</code>
             , title <em>Catalog</em>, hosting <code className="font-mono text-[11px]">RegistryNav</code>.
           </li>
           <li>

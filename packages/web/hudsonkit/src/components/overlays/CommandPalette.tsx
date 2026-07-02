@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useId, useRef } from 'react';
 import { Search, CornerDownLeft } from 'lucide-react';
 import { HObservabilityDefault } from '../../observability';
 import type { FeatureFlagGate } from '../../flags/types';
@@ -31,7 +31,10 @@ const focusRingStyle = {
 const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, commands }) => {
   const [query, setQuery] = useState('');
   const [selectedIndex, setSelectedIndex] = useState(0);
+  const paletteId = useId();
+  const listboxId = `${paletteId}-listbox`;
   const inputRef = useRef<HTMLInputElement>(null);
+  const paletteRef = useRef<HTMLDivElement>(null);
   const selectedRef = useRef<HTMLDivElement>(null);
 
   const filteredCommands = commands.filter(cmd =>
@@ -44,12 +47,14 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
         category: 'command',
         data: { commandCount: commands.length },
       });
-      setTimeout(() => inputRef.current?.focus(), 10);
+      inputRef.current?.focus({ preventScroll: true });
+      // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot reset of query/selection in reaction to the palette opening (isOpen dep), not a per-render cascade
       setQuery('');
       setSelectedIndex(0);
     }
   }, [commands.length, isOpen]);
 
+  // eslint-disable-next-line react-hooks/set-state-in-effect -- resets the highlighted row when the query changes; a bounded reaction to a single dep, not a cascade
   useEffect(() => { setSelectedIndex(0); }, [query]);
 
   useEffect(() => {
@@ -88,21 +93,60 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
     else if (e.key === 'Escape') { onClose(); }
   };
 
+
+  const handleDialogKeyDown = (e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (e.key !== 'Tab') return;
+    const root = paletteRef.current;
+    if (!root) return;
+    const focusable = Array.from(
+      root.querySelectorAll<HTMLElement>(
+        'a[href], button:not([disabled]), input:not([disabled]), select:not([disabled]), textarea:not([disabled]), [tabindex]:not([tabindex="-1"])',
+      ),
+    ).filter((el) => !el.hasAttribute('disabled') && el.getAttribute('aria-hidden') !== 'true');
+
+    if (focusable.length === 0) {
+      e.preventDefault();
+      return;
+    }
+
+    const first = focusable[0];
+    const last = focusable[focusable.length - 1];
+    const active = document.activeElement;
+    if (e.shiftKey) {
+      if (active === first || !root.contains(active)) {
+        e.preventDefault();
+        last.focus();
+      }
+    } else if (active === last) {
+      e.preventDefault();
+      first.focus();
+    }
+  };
+
+  const activeOptionId = filteredCommands[selectedIndex]
+    ? `${paletteId}-option-${selectedIndex}`
+    : undefined;
+
   if (!isOpen) return null;
 
   return (
     <div className="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh] bg-background/45 backdrop-blur-[2px] pointer-events-auto" onClick={onClose}>
       <div
+        ref={paletteRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Command palette"
         className="w-[640px] max-w-[90vw] bg-popover border shadow-2xl rounded-lg overflow-hidden flex flex-col animate-in fade-in zoom-in-95 duration-100"
         style={chromeBorderStyle}
         onClick={e => e.stopPropagation()}
+        onKeyDown={handleDialogKeyDown}
       >
         {/* Search input */}
         <div
           className="flex items-center px-4 py-3 border-b gap-3 focus-within:ring-2 focus-within:outline-none"
           style={{ ...chromeBorderStyle, ...focusRingStyle }}
         >
-          <Search className="text-muted-foreground" size={16} strokeWidth={1.5} />
+          <Search className="text-muted-foreground" size={16} strokeWidth={1.5} aria-hidden="true" />
           <input
             ref={inputRef}
             className="flex-1 bg-transparent border-none outline-none text-popover-foreground placeholder:text-muted-foreground font-mono text-[12px] font-normal"
@@ -111,23 +155,30 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
             value={query}
             onChange={e => setQuery(e.target.value)}
             onKeyDown={handleKeyDown}
-            autoFocus
+            role="combobox"
+            aria-expanded="true"
+            aria-haspopup="listbox"
+            aria-controls={listboxId}
+            aria-activedescendant={activeOptionId}
+            aria-autocomplete="list"
           />
-          <div className="px-1.5 py-0.5 rounded bg-muted border text-[10px] text-muted-foreground font-mono tracking-[0.12em]" style={chromeBorderStyle}>ESC</div>
+          <div className="px-1.5 py-0.5 rounded bg-muted border text-[10px] text-muted-foreground font-mono tracking-[0.12em]" style={chromeBorderStyle} aria-hidden="true">ESC</div>
         </div>
 
         {/* Results */}
         <div className="max-h-[300px] overflow-y-auto py-2 relative">
-          <div className="pb-2">
+          <div id={listboxId} role="listbox" aria-label="Command results" className="pb-2">
             {filteredCommands.length === 0 ? (
-              <div className="px-4 py-8 text-center text-muted-foreground text-[11px] font-mono">No matching commands</div>
+              <div className="px-4 py-8 text-center text-muted-foreground text-[11px] font-mono" role="status">No matching commands</div>
             ) : (
               filteredCommands.map((cmd, idx) => (
               <div
                 key={cmd.id}
+                id={`${paletteId}-option-${idx}`}
                 ref={idx === selectedIndex ? selectedRef : null}
-                tabIndex={0}
-                className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none focus-visible:bg-muted ${
+                role="option"
+                aria-selected={idx === selectedIndex}
+                className={`px-4 py-2.5 flex items-center gap-3 cursor-pointer transition-colors ${
                   idx === selectedIndex ? 'bg-accent/10 border-l-2 border-accent' : 'border-l-2 border-transparent hover:bg-muted/70'
                 }`}
                 onClick={() => executeCommand(cmd, 'pointer')}
@@ -140,7 +191,7 @@ const CommandPalette: React.FC<CommandPaletteProps> = ({ isOpen, onClose, comman
                 {cmd.shortcut && (
                   <div className="text-[10px] font-mono text-muted-foreground bg-muted px-1.5 py-0.5 rounded border tracking-[0.04em]" style={chromeBorderStyle}>{cmd.shortcut}</div>
                 )}
-                {idx === selectedIndex && <CornerDownLeft size={14} className="text-accent ml-2" />}
+                {idx === selectedIndex && <CornerDownLeft size={14} className="text-accent ml-2" aria-hidden="true" />}
               </div>
               ))
             )}
