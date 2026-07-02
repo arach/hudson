@@ -25,17 +25,20 @@ export function subscription(id = 'one'): PushSubscriptionJSON {
   };
 }
 
+export const workerOrigin = 'https://relay.example.test';
+
 export function jsonRequest(path: string, body: unknown, init: RequestInit = {}): Request {
   const text = JSON.stringify(body);
-  return new Request(`https://relay.example.test${path}`, {
+  return new Request(`${workerOrigin}${path}`, {
     method: 'POST',
     body: text,
-    headers: { 'content-type': 'application/json', 'content-length': String(new TextEncoder().encode(text).byteLength), ...(init.headers as Record<string, string> | undefined) },
+    // Same-origin Origin header by default: cookie-authed mutations without a matching Origin are rejected (CSRF gate).
+    headers: { 'content-type': 'application/json', 'content-length': String(new TextEncoder().encode(text).byteLength), origin: workerOrigin, ...(init.headers as Record<string, string> | undefined) },
     ...init,
   });
 }
 
-export async function readJson(res: Response): Promise<any> { return res.json(); }
+export async function readJson(res: Response): Promise<Record<string, unknown>> { return res.json() as Promise<Record<string, unknown>>; }
 
 export async function register(envValue: Env, user: HudSession, deviceId: string, sub = subscription(deviceId)): Promise<Response> {
   const { handlePush } = await import('../src/push');

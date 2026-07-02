@@ -40,6 +40,9 @@ const DEFAULT_ORPHAN_TTL_MS = 30 * 60 * 1000; // 30 minutes
 /** Maximum size of the raw output buffer for reconnect replay (~512 KB). */
 const MAX_BUFFER_SIZE = 512 * 1024;
 
+/** How far past the truncation point we scan for a clean cut (newline / ESC). */
+const SAFE_TRUNCATION_WINDOW = 4096;
+
 export const RELAY_CAPABILITIES = [
   TERMINAL_ACK_CAPABILITY,
   TERMINAL_FLOW_CONTROL_CAPABILITY,
@@ -218,6 +221,62 @@ export function resizeSession(session: Session, cols: number, rows: number): boo
 // Helpers
 // ---------------------------------------------------------------------------
 
+function isLowSurrogate(code: number): boolean {
+  return code >= 0xdc00 && code <= 0xdfff;
+}
+
+/**
+ * Trim the rolling output buffer to at most `maxSize` UTF-16 code units,
+ * cutting on a safe boundary. A blind `slice(-maxSize)` can split a surrogate
+ * pair or land mid-ANSI-escape, corrupting the first replayed line. We never
+ * start on the low half of a surrogate pair, and prefer to resume at the next
+ * newline or ESC (start of a fresh line / escape sequence) within a small
+ * window past the cut point.
+ */
+export function truncateOutputBuffer(buffer: string, maxSize: number = MAX_BUFFER_SIZE): string {
+  if (buffer.length <= maxSize) return buffer;
+  let start = buffer.length - maxSize;
+  if (isLowSurrogate(buffer.charCodeAt(start))) start += 1;
+  const scanEnd = Math.min(buffer.length, start + SAFE_TRUNCATION_WINDOW);
+  for (let i = start; i < scanEnd; i++) {
+    const code = buffer.charCodeAt(i);
+    if (code === 0x0a /* \n */) return buffer.slice(i + 1);
+    if (code === 0x1b /* ESC */) return buffer.slice(i);
+  }
+  return buffer.slice(start);
+}
+
+/**
+ * Split replay data into chunks of at most `maxBytes` UTF-8 bytes without
+ * splitting surrogate pairs. The flow controller always sends the first
+ * enqueued chunk regardless of size and a single in-flight chunk can never be
+ * dropped, so an oversized replay blob would bypass flow control entirely.
+ */
+export function chunkReplayData(data: string, maxBytes: number): string[] {
+  if (!data) return [];
+  const limit = Math.max(1, maxBytes);
+  if (Buffer.byteLength(data, 'utf8') <= limit) return [data];
+  const chunks: string[] = [];
+  let start = 0;
+  while (start < data.length) {
+    let end = Math.min(start + limit, data.length);
+    for (;;) {
+      // Never split a surrogate pair across chunks.
+      if (end > start + 1 && isLowSurrogate(data.charCodeAt(end))) {
+        end -= 1;
+        continue;
+      }
+      const bytes = Buffer.byteLength(data.slice(start, end), 'utf8');
+      if (bytes <= limit || end <= start + 1) break;
+      // Shrink proportionally toward the byte budget, then re-check.
+      end = start + Math.max(1, Math.floor(((end - start) * limit) / bytes));
+    }
+    chunks.push(data.slice(start, end));
+    start = end;
+  }
+  return chunks;
+}
+
 /** Resolve a cwd string, expanding ~, creating if missing, falling back to $HOME. */
 function resolveCwd(raw?: string): string {
   const home = process.env.HOME || '/tmp';
@@ -267,6 +326,21 @@ function findShellBin(): string | null {
 /** Locate the zellij binary, returning null if not found. */
 function findZellijBin(): string | null {
   return findBin('zellij', 'ZELLIJ_BIN');
+}
+
+/** Check if a zellij session exists (only queried when the mux reaper is enabled). */
+function zellijSessionExists(zellijBin: string, name: string, env: Record<string, string | undefined>): boolean {
+  try {
+    const out = execFileSync(zellijBin, ['list-sessions', '-s'], {
+      encoding: 'utf8',
+      env: env as NodeJS.ProcessEnv,
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+    return out.split('\n').some((line) => line.trim() === name);
+  } catch {
+    // zellij exits non-zero when there are no sessions at all.
+    return false;
+  }
 }
 
 /** Map Hudson-facing provider ids to the exact provider names accepted by the Pi CLI. */
@@ -364,10 +438,12 @@ function spawnTmuxSession(
       shellCmd,
     ], { env: env as NodeJS.ProcessEnv, stdio: 'ignore' });
     console.log(`[relay] Created tmux session: ${tmuxName}`);
+    if (muxTtlMs() > 0) trackCreatedMuxSession('tmux', tmuxName);
   } else {
     // Resize existing session to match client
     resizeTmuxWindow(tmuxName, cols, rows);
     console.log(`[relay] Attaching to existing tmux session: ${tmuxName}`);
+    markMuxSessionInUse('tmux', tmuxName);
   }
 
   // Spawn a PTY bridge that attaches to the tmux session
@@ -528,9 +604,15 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
       ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
     } else if (backend === 'zellij') {
       console.log(`[relay] Session ${id}: zellij backend (session: ${zellijName}, mode: ${controlMode}) in ${cwd} [agent: ${agent}]`);
+      // Only pay for the existence check when the mux reaper is on; 'observe'
+      // never creates a session, so it never tracks one either.
+      const trackZellij = muxTtlMs() > 0 && controlMode !== 'observe'
+        && !zellijSessionExists(zellijBin!, zellijName, env);
       const spawned = spawnZellijSession(zellijBin!, zellijName, cols, rows, cwd, agentBin, agentArgs, env, controlMode);
       ptyProcess = spawned.ptyProcess;
       zellijLayoutPath = spawned.layoutPath;
+      if (trackZellij) trackCreatedMuxSession('zellij', zellijName);
+      else markMuxSessionInUse('zellij', zellijName);
     } else {
       console.log(`[relay] Session ${id}: pty backend, spawning ${agentBin} in ${cwd} [agent: ${agent}]`);
       ptyProcess = pty.spawn(agentBin, agentArgs, {
@@ -578,17 +660,14 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   const startTime = Date.now();
 
   ptyProcess.onData((data: string) => {
-    // Append to rolling buffer (cap at MAX_BUFFER_SIZE)
-    session.outputBuffer += data;
-    if (session.outputBuffer.length > MAX_BUFFER_SIZE) {
-      session.outputBuffer = session.outputBuffer.slice(-MAX_BUFFER_SIZE);
-    }
+    // Append to rolling buffer (cap at MAX_BUFFER_SIZE, cut on a safe boundary)
+    session.outputBuffer = truncateOutputBuffer(session.outputBuffer + data, MAX_BUFFER_SIZE);
 
     // Forward raw data to attached client with ACK-based backpressure.
     sendTerminalOutput(session, data);
   });
 
-  ptyProcess.onExit(({ exitCode }) => {
+  ptyProcess.onExit(({ exitCode }: { exitCode: number; signal?: number }) => {
     session.exited = true;
     session.exitCode = exitCode;
 
@@ -639,11 +718,19 @@ export function attachSession(session: Session, ws: RelaySocket, cols?: number, 
     }
   }
 
-  // Replay buffered output so xterm.js rebuilds the screen
+  // Replay buffered output so xterm.js rebuilds the screen. Replay in
+  // ≤ highWaterBytes chunks — the flow controller always transmits the first
+  // enqueued chunk whatever its size, so a single 512 KB blob would blow
+  // straight past the flow-control window.
   if (session.exited) {
     send(ws, { type: 'session:exit', exitCode: session.exitCode });
   } else if (session.outputBuffer.length > 0) {
-    sendTerminalOutput(session, session.outputBuffer);
+    const replayChunks = session.flowControlEnabled
+      ? chunkReplayData(session.outputBuffer, session.flowControl.highWaterBytes)
+      : [session.outputBuffer];
+    for (const chunk of replayChunks) {
+      sendTerminalOutput(session, chunk);
+    }
   }
 
   console.log(`[relay] Session ${session.id} reconnected`);
@@ -685,9 +772,126 @@ export function destroy(sessionId: string) {
   sessions.delete(sessionId);
   if (session.backend === 'tmux') {
     console.log(`[relay] Session ${sessionId} bridge destroyed (tmux session '${session.tmuxSession}' still alive)`);
+    if (session.tmuxSession) markMuxSessionDetached('tmux', session.tmuxSession);
   } else if (session.backend === 'zellij') {
     console.log(`[relay] Session ${sessionId} bridge destroyed (zellij session '${session.zellijSession}' still alive)`);
+    if (session.zellijSession) markMuxSessionDetached('zellij', session.zellijSession);
   } else {
     console.log(`[relay] Session ${sessionId} destroyed`);
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Multiplexer session reaper (opt-in)
+//
+// destroy() deliberately leaves tmux/zellij sessions alive so users can
+// re-attach from a real terminal — but nothing ever cleans them up. Set
+// HUDSON_RELAY_MUX_TTL_MS to have the relay reap multiplexer sessions *it
+// created* once their last bridge has been gone longer than the TTL.
+// Sessions the relay merely attached to (pre-existing tmux/zellij sessions)
+// are never tracked and never touched. Default: off (current behavior).
+// ---------------------------------------------------------------------------
+
+export interface TrackedMuxSession {
+  backend: 'tmux' | 'zellij';
+  name: string;
+  /** When the last relay bridge for this mux session went away (null while in use). */
+  detachedAt: number | null;
+}
+
+/** Mux sessions this relay created — the only reap candidates. */
+export const trackedMuxSessions = new Map<string, TrackedMuxSession>();
+
+/** TTL for orphaned relay-created mux sessions. 0 = reaper disabled. */
+export function muxTtlMs(): number {
+  const raw = Number(process.env.HUDSON_RELAY_MUX_TTL_MS || 0);
+  return Number.isFinite(raw) && raw > 0 ? raw : 0;
+}
+
+function muxKey(backend: 'tmux' | 'zellij', name: string): string {
+  return `${backend}:${name}`;
+}
+
+/** Record a mux session this relay just created. */
+export function trackCreatedMuxSession(backend: 'tmux' | 'zellij', name: string) {
+  trackedMuxSessions.set(muxKey(backend, name), { backend, name, detachedAt: null });
+}
+
+/** Mark a tracked mux session in-use again (a bridge attached to it). */
+export function markMuxSessionInUse(backend: 'tmux' | 'zellij', name: string) {
+  const record = trackedMuxSessions.get(muxKey(backend, name));
+  if (record) record.detachedAt = null;
+}
+
+/** Mark a tracked mux session detached (its bridge was destroyed). No-op for untracked names. */
+export function markMuxSessionDetached(backend: 'tmux' | 'zellij', name: string, now = Date.now()) {
+  const record = trackedMuxSessions.get(muxKey(backend, name));
+  if (record) record.detachedAt = now;
+}
+
+function muxSessionInUse(record: TrackedMuxSession): boolean {
+  for (const session of sessions.values()) {
+    if (record.backend === 'tmux' && session.tmuxSession === record.name) return true;
+    if (record.backend === 'zellij' && session.zellijSession === record.name) return true;
+  }
+  return false;
+}
+
+function killMuxSession(record: Pick<TrackedMuxSession, 'backend' | 'name'>) {
+  if (record.backend === 'tmux') {
+    execFileSync('tmux', ['kill-session', '-t', record.name], { stdio: 'ignore' });
+  } else {
+    const zellijBin = findZellijBin();
+    if (!zellijBin) throw new Error('zellij binary not found');
+    execFileSync(zellijBin, ['delete-session', '--force', record.name], { stdio: 'ignore' });
+  }
+}
+
+/** Reap tracked mux sessions detached longer than ttlMs. Returns reaped names. */
+export function reapExpiredMuxSessions(
+  ttlMs: number,
+  now = Date.now(),
+  kill: (record: TrackedMuxSession) => void = killMuxSession,
+): string[] {
+  const reaped: string[] = [];
+  for (const [key, record] of trackedMuxSessions) {
+    if (record.detachedAt === null || now - record.detachedAt < ttlMs) continue;
+    if (muxSessionInUse(record)) {
+      // A live bridge still references it — treat as in use again.
+      record.detachedAt = null;
+      continue;
+    }
+    try {
+      kill(record);
+      console.log(`[relay] Reaped orphaned ${record.backend} session '${record.name}' (detached > ${ttlMs}ms)`);
+      reaped.push(record.name);
+    } catch (err) {
+      // Most likely the session is already gone (killed by hand). Either way,
+      // drop the record so we don't retry every sweep.
+      console.warn(`[relay] Failed to reap ${record.backend} session '${record.name}': ${err instanceof Error ? err.message : String(err)}`);
+    }
+    trackedMuxSessions.delete(key);
+  }
+  return reaped;
+}
+
+let muxReaperTimer: ReturnType<typeof setInterval> | null = null;
+
+/** Start the TTL reaper if HUDSON_RELAY_MUX_TTL_MS is set. No-op (and no behavior change) otherwise. */
+export function maybeStartMuxReaper(): boolean {
+  const ttl = muxTtlMs();
+  if (ttl <= 0) return false;
+  if (muxReaperTimer) return true;
+  const sweepInterval = Math.min(Math.max(Math.floor(ttl / 2), 5_000), 60_000);
+  muxReaperTimer = setInterval(() => reapExpiredMuxSessions(muxTtlMs()), sweepInterval);
+  muxReaperTimer.unref?.();
+  console.log(`[relay] Mux session reaper enabled: TTL ${ttl}ms, sweeping every ${Math.round(sweepInterval / 1000)}s`);
+  return true;
+}
+
+export function stopMuxReaper() {
+  if (muxReaperTimer) {
+    clearInterval(muxReaperTimer);
+    muxReaperTimer = null;
   }
 }

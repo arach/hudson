@@ -5,6 +5,8 @@ export interface Env {
   HUD_GITHUB_CLIENT_ID?: string;
   HUD_GITHUB_CLIENT_SECRET?: string;
   HUD_GITHUB_REDIRECT_URI?: string;
+  /** Comma-separated extra origins allowed to make cookie-authenticated mutating requests (CSRF allow-list). The worker's own origin and the HUD_GITHUB_REDIRECT_URI origin are always allowed. */
+  HUD_ALLOWED_ORIGINS?: string;
   HUD_PUSH_TOKEN_ENCRYPTION_KEY?: string;
   HUD_PUSH_PUBLIC_KEY?: string;
   HUD_PUSH_PRIVATE_KEY?: string;

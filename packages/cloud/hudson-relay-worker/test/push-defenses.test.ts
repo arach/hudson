@@ -3,7 +3,7 @@ import { handleAuth } from '../src/auth';
 import { signToken } from '../src/crypto';
 import { handlePush } from '../src/push';
 import { OAUTH_STATE_COOKIE } from '../src/util';
-import { env, jsonRequest, okPushFetcher, readJson, register, session, subscription } from './helpers';
+import { env, jsonRequest, okPushFetcher, readJson, register, session, subscription, workerOrigin } from './helpers';
 
 const vapidPrivateKey = `-----BEGIN PRIVATE KEY-----
 MIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgsY1epPgWBMxKOrNc
@@ -122,6 +122,96 @@ describe('push worker defense paths', () => {
 
     expect(res.status).toBe(403);
     expect(await readJson(res)).toMatchObject({ error: 'verified_email_required' });
+  });
+
+  it('rejects a cookie-authed mutating POST with a mismatched Origin (403)', async () => {
+    const e = pushEnv();
+    const user = session('user-csrf');
+    await register(e, user, 'device-a');
+
+    const req = jsonRequest('/v1/push', { itemId: 'item-1', kind: 'alert' }, { headers: { origin: 'https://evil.example.test' } });
+    const res = await handlePush(req, e, user, okPushFetcher) as Response;
+
+    expect(res.status).toBe(403);
+    expect(await readJson(res)).toEqual({ error: 'denied_origin_mismatch' });
+  });
+
+  it('rejects a cookie-authed mutating POST with no Origin header (403)', async () => {
+    const e = pushEnv();
+    const user = session('user-csrf-absent');
+    const req = new Request(`${workerOrigin}/v1/push`, { method: 'POST', body: JSON.stringify({ itemId: 'item-1', kind: 'alert' }), headers: { 'content-type': 'application/json' } });
+
+    const res = await handlePush(req, e, user, okPushFetcher) as Response;
+
+    expect(res.status).toBe(403);
+    expect(await readJson(res)).toEqual({ error: 'denied_origin_missing' });
+  });
+
+  it('accepts a mutating POST with a matching (same-origin) Origin', async () => {
+    const e = pushEnv();
+    const user = session('user-csrf-ok');
+    await register(e, user, 'device-a');
+
+    const res = await send(e, user); // jsonRequest sets origin = worker origin
+
+    expect(res.status).toBe(200);
+  });
+
+  it('accepts an Origin from the HUD_ALLOWED_ORIGINS allow-list and from the OAuth redirect origin', async () => {
+    const e = pushEnv({ HUD_ALLOWED_ORIGINS: 'https://app.hudsonkit.test', HUD_GITHUB_REDIRECT_URI: 'https://auth.hudsonkit.test/v1/auth/github/callback' });
+    const user = session('user-csrf-list');
+    await register(e, user, 'device-a');
+
+    for (const origin of ['https://app.hudsonkit.test', 'https://auth.hudsonkit.test']) {
+      const req = jsonRequest('/v1/push', { itemId: 'item-1', kind: 'alert' }, { headers: { origin } });
+      expect(((await handlePush(req, e, user, okPushFetcher)) as Response).status).toBe(200);
+    }
+  });
+
+  it('skips the Origin check for bearer-authenticated requests (CSRF does not apply)', async () => {
+    const e = pushEnv();
+    const user = session('user-bearer');
+    await register(e, user, 'device-a');
+
+    const req = new Request(`${workerOrigin}/v1/push`, { method: 'POST', body: JSON.stringify({ itemId: 'item-1', kind: 'alert' }), headers: { 'content-type': 'application/json', authorization: 'Bearer hud_session_token' } });
+    const res = await handlePush(req, e, user, okPushFetcher) as Response;
+
+    expect(res.status).toBe(200);
+  });
+
+  it.each([
+    ['loopback IPv4', 'https://127.0.0.1/send/x'],
+    ['decimal-encoded loopback', 'https://2130706433/send/x'],
+    ['RFC1918 10/8', 'https://10.0.0.5/send/x'],
+    ['RFC1918 172.16/12', 'https://172.16.9.1/send/x'],
+    ['RFC1918 192.168/16', 'https://192.168.1.20/send/x'],
+    ['CGNAT 100.64/10', 'https://100.64.0.1/send/x'],
+    ['cloud metadata', 'https://169.254.169.254/latest/meta-data/'],
+    ['localhost name', 'https://localhost/send/x'],
+    ['.local suffix', 'https://printer.local/send/x'],
+    ['.internal suffix', 'https://db.internal/send/x'],
+    ['single-label intranet host', 'https://intranet/send/x'],
+    ['IPv6 loopback', 'https://[::1]/send/x'],
+    ['IPv6 unique-local', 'https://[fd12:3456:789a::1]/send/x'],
+    ['IPv6 v4-mapped', 'https://[::ffff:10.0.0.1]/send/x'],
+  ])('rejects internal subscription endpoints: %s', async (_name, endpoint) => {
+    const e = env();
+    const res = await register(e, session('user-ssrf'), 'device-ssrf', { ...subscription('ssrf'), endpoint });
+
+    expect(res.status).toBe(400);
+    expect(await readJson(res)).toEqual({ error: 'invalid_subscription_endpoint' });
+  });
+
+  it.each([
+    ['FCM', 'https://fcm.googleapis.com/fcm/send/abc123'],
+    ['Mozilla autopush', 'https://updates.push.services.mozilla.com/wpush/v2/abc123'],
+    ['Apple web push', 'https://web.push.apple.com/QGabc123'],
+    ['WNS', 'https://db5p.notify.windows.com/w/?token=abc'],
+  ])('accepts legitimate public push endpoints: %s', async (_name, endpoint) => {
+    const e = env();
+    const res = await register(e, session('user-legit'), `device-${endpoint.length}`, { ...subscription('legit'), endpoint });
+
+    expect(res.status).toBe(200);
   });
 
   it.each([410, 404])('auto-revokes stale subscriptions when push gateway returns %s', async (status) => {

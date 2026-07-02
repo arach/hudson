@@ -76,9 +76,9 @@ function ieeeP1363FromDer(sig: Uint8Array): Uint8Array {
   if (sig.length === 64) return sig;
   // Workers return DER for ECDSA. Convert two ASN.1 INTEGERs to raw r||s.
   let p = 3;
-  let rLen = sig[p++];
+  const rLen = sig[p++];
   let r = sig.slice(p, p + rLen); p += rLen + 1;
-  let sLen = sig[p++];
+  const sLen = sig[p++];
   let s = sig.slice(p, p + sLen);
   if (r[0] === 0 && r.length > 32) r = r.slice(1);
   if (s[0] === 0 && s.length > 32) s = s.slice(1);
