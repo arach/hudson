@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { GripHorizontal, Minus, Maximize2, Minimize2, X } from 'lucide-react';
+import { Minus, Maximize2, Minimize2, X } from 'lucide-react';
 import { HudsonContextMenu } from '../overlays/ContextMenu';
 import type { ContextMenuEntry } from '../overlays/ContextMenu';
 
@@ -59,6 +59,47 @@ const EDGE_CURSORS: Record<Edge, string> = {
   se: 'nwse-resize',
   sw: 'nesw-resize',
 };
+
+const EDGE_LABELS: Record<Edge, string> = {
+  n: 'top edge',
+  s: 'bottom edge',
+  e: 'right edge',
+  w: 'left edge',
+  ne: 'top-right corner',
+  nw: 'top-left corner',
+  se: 'bottom-right corner',
+  sw: 'bottom-left corner',
+};
+
+function keyboardStep(event: React.KeyboardEvent): number {
+  if (event.metaKey || event.ctrlKey) return 50;
+  return 10;
+}
+
+function resizeBoundsByEdge(startBounds: Bounds, edge: Edge, dx: number, dy: number): Bounds {
+  let { x, y, w, h } = startBounds;
+
+  if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
+  if (edge.includes('w')) {
+    const newW = Math.max(MIN_W, w - dx);
+    x = x + (w - newW);
+    w = newW;
+  }
+  if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
+  if (edge.includes('n')) {
+    const newH = Math.max(MIN_H, h - dy);
+    y = y + (h - newH);
+    h = newH;
+  }
+
+  return { x, y, w, h };
+}
+
+function resizeHandleOrientation(edge: Edge): 'horizontal' | 'vertical' | undefined {
+  if (edge === 'e' || edge === 'w') return 'vertical';
+  if (edge === 'n' || edge === 's') return 'horizontal';
+  return undefined;
+}
 
 const AppWindow: React.FC<AppWindowProps> = ({
   title,
@@ -205,22 +246,7 @@ const AppWindow: React.FC<AppWindowProps> = ({
         const dx = (ev.clientX - startX) / zoom;
         const dy = (ev.clientY - startY) / zoom;
 
-        let { x, y, w, h } = startBounds;
-
-        if (edge.includes('e')) w = Math.max(MIN_W, w + dx);
-        if (edge.includes('w')) {
-          const newW = Math.max(MIN_W, w - dx);
-          x = x + (w - newW);
-          w = newW;
-        }
-        if (edge.includes('s')) h = Math.max(MIN_H, h + dy);
-        if (edge.includes('n')) {
-          const newH = Math.max(MIN_H, h - dy);
-          y = y + (h - newH);
-          h = newH;
-        }
-
-        liveBoundsRef.current = { x, y, w, h };
+        liveBoundsRef.current = resizeBoundsByEdge(startBounds, edge, dx, dy);
         applyBoundsToDOM(liveBoundsRef.current);
       };
       const onMouseUp = () => {
@@ -255,6 +281,51 @@ const AppWindow: React.FC<AppWindowProps> = ({
     }
   }, [isMaximized, preMaxBounds, bounds, onBoundsChange, worldScale, onToggleMaximizeProp]);
 
+  const commitKeyboardBounds = useCallback((nextBounds: Bounds) => {
+    liveBoundsRef.current = nextBounds;
+    applyBoundsToDOM(nextBounds);
+    onBoundsChangeRef.current(nextBounds);
+  }, [applyBoundsToDOM]);
+
+  const handleTitleBarKeyDown = useCallback((e: React.KeyboardEvent<HTMLDivElement>) => {
+    if (!e.altKey || !['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onFocus();
+    if (isMaximized) return;
+
+    const step = keyboardStep(e);
+    const next = { ...liveBoundsRef.current };
+    if (e.shiftKey) {
+      if (e.key === 'ArrowRight') next.w += step;
+      if (e.key === 'ArrowLeft') next.w = Math.max(MIN_W, next.w - step);
+      if (e.key === 'ArrowDown') next.h += step;
+      if (e.key === 'ArrowUp') next.h = Math.max(MIN_H, next.h - step);
+    } else {
+      if (e.key === 'ArrowRight') next.x += step;
+      if (e.key === 'ArrowLeft') next.x -= step;
+      if (e.key === 'ArrowDown') next.y += step;
+      if (e.key === 'ArrowUp') next.y -= step;
+    }
+    commitKeyboardBounds(next);
+  }, [commitKeyboardBounds, isMaximized, onFocus]);
+
+  const handleResizeHandleKeyDown = useCallback(
+    (edge: Edge) => (e: React.KeyboardEvent<HTMLDivElement>) => {
+      if (!['ArrowUp', 'ArrowDown', 'ArrowLeft', 'ArrowRight'].includes(e.key)) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onFocus();
+      if (isMaximized) return;
+
+      const step = keyboardStep(e);
+      const dx = e.key === 'ArrowRight' ? step : e.key === 'ArrowLeft' ? -step : 0;
+      const dy = e.key === 'ArrowDown' ? step : e.key === 'ArrowUp' ? -step : 0;
+      commitKeyboardBounds(resizeBoundsByEdge(liveBoundsRef.current, edge, dx, dy));
+    },
+    [commitKeyboardBounds, isMaximized, onFocus],
+  );
+
   const GRIP = 6;
   const menuItems = contextMenuItems ?? [];
   const hasContextMenu = menuItems.length > 0;
@@ -265,8 +336,14 @@ const AppWindow: React.FC<AppWindowProps> = ({
 
   const titleBar = (
     <div
-      className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-border/70 bg-gradient-to-r from-background/70 via-card/95 to-background/70 cursor-grab active:cursor-grabbing select-none"
+      className="h-8 shrink-0 flex items-center px-3 gap-2 border-b border-border/70 bg-gradient-to-r from-background/70 via-card/95 to-background/70 cursor-grab active:cursor-grabbing select-none focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
       onMouseDown={handleDragStart}
+      onKeyDown={handleTitleBarKeyDown}
+      onFocus={onFocus}
+      tabIndex={0}
+      role="group"
+      aria-label={`${title} window title bar. Press Option plus arrow keys to move; press Option Shift plus arrow keys to resize.`}
+      aria-keyshortcuts="Alt+ArrowUp Alt+ArrowDown Alt+ArrowLeft Alt+ArrowRight Alt+Shift+ArrowUp Alt+Shift+ArrowDown Alt+Shift+ArrowLeft Alt+Shift+ArrowRight"
     >
       {/* Left controls: expand */}
       <div className="flex items-center gap-1">
@@ -275,6 +352,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
           onClick={handleToggleMaximize}
           className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
           title={isMaximized ? 'Restore' : 'Expand'}
+          aria-label={isMaximized ? 'Restore window' : 'Maximize window'}
+          type="button"
         >
           {isMaximized ? <Minimize2 size={11} /> : <Maximize2 size={11} />}
         </button>
@@ -284,6 +363,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
             onClick={onMinimize}
             className="p-1 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors"
             title="Minimize"
+            aria-label="Minimize window"
+            type="button"
           >
             <Minus size={11} />
           </button>
@@ -305,6 +386,8 @@ const AppWindow: React.FC<AppWindowProps> = ({
             onClick={onClose}
             className="p-1 rounded hover:bg-destructive/15 text-muted-foreground hover:text-destructive transition-colors"
             title="Close"
+            aria-label="Close window"
+            type="button"
           >
             <X size={11} />
           </button>
@@ -328,6 +411,9 @@ const AppWindow: React.FC<AppWindowProps> = ({
       data-app-window
       style={windowStyle}
       onMouseDown={handleWindowMouseDown}
+      onFocusCapture={onFocus}
+      role="region"
+      aria-label={`${title} window`}
     >
       {/* Window chrome */}
       <div
@@ -365,7 +451,23 @@ const AppWindow: React.FC<AppWindowProps> = ({
         // Corners are fixed-size squares
         if (isCorner) { style.width = size; style.height = size; }
 
-        return <div key={edge} style={style} onMouseDown={handleResizeStart(edge)} />;
+        const orientation = resizeHandleOrientation(edge);
+
+        return (
+          <div
+            key={edge}
+            style={style}
+            className="focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-accent/60"
+            onMouseDown={handleResizeStart(edge)}
+            onKeyDown={handleResizeHandleKeyDown(edge)}
+            onFocus={onFocus}
+            tabIndex={0}
+            role="separator"
+            aria-label={`Resize ${title} window from the ${EDGE_LABELS[edge]}`}
+            aria-orientation={orientation}
+            aria-keyshortcuts="ArrowUp ArrowDown ArrowLeft ArrowRight"
+          />
+        );
       })}
 
       {decorations && (
