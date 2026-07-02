@@ -90,8 +90,6 @@ public func computeTilingLayout(
     if n == 0 || containerWidth <= 0 || containerHeight <= 0 { return [] }
 
     let gap = constraints.gap
-    let maxCols = constraints.maxColumns ?? .max
-    let maxRows = constraints.maxRows ?? .max
     let maxFill = min(max(constraints.maxFill, 0), 1)
 
     let effW = containerWidth * maxFill
@@ -102,26 +100,7 @@ public func computeTilingLayout(
     let maxW = constraints.maxItemWidth ?? .greatestFiniteMagnitude
     let maxH = constraints.maxItemHeight ?? .greatestFiniteMagnitude
 
-    // Column count: respect explicit maxColumns as a hard upper bound.
-    // When no maxColumns is set we use the old sqrt + preferMore heuristic.
-    var cols: Int
-    if let explicit = constraints.maxColumns {
-        cols = min(explicit, n)
-    } else {
-        cols = max(1, Int(sqrt(Double(n))))
-        if constraints.preferMoreColumns {
-            cols = max(cols, (n + 1) / 2)
-        }
-        cols = min(maxCols, cols)
-    }
-
-    var rows = (n + cols - 1) / cols
-    if rows > maxRows {
-        rows = maxRows
-        let effectiveMax = constraints.maxColumns ?? maxCols
-        cols = min(effectiveMax, (n + rows - 1) / rows)
-    }
-    cols = min(cols, n)
+    let (cols, rows) = computeTilingGridShape(count: n, constraints: constraints)
 
     let totalGapW = CGFloat(max(0, cols - 1)) * gap
     let totalGapH = CGFloat(max(0, rows - 1)) * gap
@@ -207,6 +186,168 @@ public func computeTilingLayout(
     return layouts
 }
 
+/// Grid shape (columns × rows) that `computeTilingLayout` will use for `count` items.
+///
+/// Exposed as the single source of truth for the grid shape so callers (committed
+/// relayout, live resize preview, tests) never have to reverse-engineer the column
+/// count from tile origins.
+func computeTilingGridShape(count: Int, constraints: TilingConstraints) -> (columns: Int, rows: Int) {
+    guard count > 0 else { return (0, 0) }
+
+    let maxCols = constraints.maxColumns ?? .max
+    let maxRows = constraints.maxRows ?? .max
+
+    // Column count: respect explicit maxColumns as a hard upper bound.
+    // When no maxColumns is set we use the old sqrt + preferMore heuristic.
+    var cols: Int
+    if let explicit = constraints.maxColumns {
+        cols = min(explicit, count)
+    } else {
+        cols = max(1, Int(Double(count).squareRoot()))
+        if constraints.preferMoreColumns {
+            cols = max(cols, (count + 1) / 2)
+        }
+        cols = min(maxCols, cols)
+    }
+
+    var rows = (count + cols - 1) / cols
+    if rows > maxRows {
+        rows = maxRows
+        cols = min(maxCols, (count + rows - 1) / rows)
+    }
+    cols = min(cols, count)
+    return (cols, rows)
+}
+
+/// Distributes container space across grid tracks (columns or rows).
+///
+/// Guarantees each track is at least `minSpan`; any excess beyond the minimums is
+/// shared proportionally to `desired`. Used by both the committed relayout and the
+/// live resize preview so the two always agree (no jump on mouseUp).
+func distributeTilingSpans(
+    desired: [CGFloat],
+    available: CGFloat,
+    gap: CGFloat,
+    minSpan: CGFloat
+) -> [CGFloat] {
+    let count = desired.count
+    guard count > 0 else { return [] }
+
+    let totalGap = CGFloat(max(0, count - 1)) * gap
+    let usable = available - totalGap
+    let minTotal = CGFloat(count) * minSpan
+    let excess = max(0, usable - minTotal)
+    let sumDesired = desired.reduce(0, +)
+
+    guard excess > 0, sumDesired > 0 else {
+        return desired.map { max(minSpan, $0) }
+    }
+    return desired.map { minSpan + excess * ($0 / sumDesired) }
+}
+
+/// Resolved grid geometry: shape plus per-column/row spans and origins.
+///
+/// This is the shared math behind both the committed layout (`relayoutTiles`) and
+/// the live resize preview in the macOS backend.
+struct TilingGridMetrics: Equatable {
+    let columns: Int
+    let rows: Int
+    let columnWidths: [CGFloat]
+    let rowHeights: [CGFloat]
+    let columnStarts: [CGFloat]
+    let rowStarts: [CGFloat]
+
+    func frame(at index: Int) -> CGRect {
+        let c = index % columns
+        let r = index / columns
+        return CGRect(
+            x: columnStarts[c],
+            y: rowStarts[r],
+            width: columnWidths[c],
+            height: rowHeights[r]
+        )
+    }
+}
+
+/// Computes the effective grid geometry for the given keys, honoring bespoke
+/// per-tile sizes when present (redistributed to exactly fill the container while
+/// respecting `minItemWidth`/`minItemHeight` and gaps).
+func computeTilingGridMetrics(
+    keys: [AnyHashable],
+    customSizes: [AnyHashable: CGSize],
+    containerWidth: CGFloat,
+    containerHeight: CGFloat,
+    constraints: TilingConstraints
+) -> TilingGridMetrics? {
+    let n = keys.count
+    guard n > 0, containerWidth > 0, containerHeight > 0 else { return nil }
+
+    let (numCols, numRows) = computeTilingGridShape(count: n, constraints: constraints)
+    guard numCols > 0, numRows > 0 else { return nil }
+
+    let base = computeTilingLayout(
+        keys: keys,
+        containerWidth: containerWidth,
+        containerHeight: containerHeight,
+        constraints: constraints
+    )
+    guard base.count == n else { return nil }
+
+    let gap = constraints.gap
+    var columnWidths = [CGFloat](repeating: 0, count: numCols)
+    var rowHeights = [CGFloat](repeating: 0, count: numRows)
+
+    if customSizes.isEmpty {
+        // Uniform case: the base compute already did the fill/min/max logic.
+        for i in 0..<n {
+            columnWidths[i % numCols] = base[i].width
+            rowHeights[i / numCols] = base[i].height
+        }
+    } else {
+        // Bespoke: desired span per logical column/row from the custom sizes
+        // (logical assignment is by order position, not by current x/y), then
+        // redistribute so the grid exactly fills the container.
+        for i in 0..<n {
+            let c = i % numCols
+            let r = i / numCols
+            let prefW = customSizes[keys[i]]?.width ?? base[i].width
+            let prefH = customSizes[keys[i]]?.height ?? base[i].height
+            columnWidths[c] = max(columnWidths[c], prefW)
+            rowHeights[r] = max(rowHeights[r], prefH)
+        }
+        columnWidths = distributeTilingSpans(
+            desired: columnWidths,
+            available: containerWidth,
+            gap: gap,
+            minSpan: constraints.minItemWidth
+        )
+        rowHeights = distributeTilingSpans(
+            desired: rowHeights,
+            available: containerHeight,
+            gap: gap,
+            minSpan: constraints.minItemHeight
+        )
+    }
+
+    var columnStarts = [CGFloat](repeating: 0, count: numCols)
+    for c in 1..<numCols {
+        columnStarts[c] = columnStarts[c - 1] + columnWidths[c - 1] + gap
+    }
+    var rowStarts = [CGFloat](repeating: 0, count: numRows)
+    for r in 1..<numRows {
+        rowStarts[r] = rowStarts[r - 1] + rowHeights[r - 1] + gap
+    }
+
+    return TilingGridMetrics(
+        columns: numCols,
+        rows: numRows,
+        columnWidths: columnWidths,
+        rowHeights: rowHeights,
+        columnStarts: columnStarts,
+        rowStarts: rowStarts
+    )
+}
+
 // MARK: - Public API
 
 /// Universal space-filling tiler for items (terminals, chats, docs, etc.).
@@ -216,19 +357,22 @@ public func computeTilingLayout(
 ///
 /// Drag-to-reorder:
 /// - Grid stays stable (no premature swapping of other tiles).
-/// - Dragged tile lifts and follows the pointer (using the original grab point).
-/// - At the prospective landing spot we render a grayed-out / masked preview
-///   (faded snapshot of the tile inside a muted card) + accent highlight ring.
+/// - Dragged tile lifts and follows the pointer (using the original grab point)
+///   as a lightweight snapshot overlay; the heavy hosted view stays put, dimmed.
+/// - At the prospective landing spot we render a clear, accent-outlined drop
+///   indicator + highlight ring (no opaque ghost, so the tiles underneath stay
+///   visible).
 /// - This makes it obvious *what will land where* without the layout looking
 ///   like it has already committed.
 /// - Actual reorder + relayout happens only on mouseUp.
 ///
 /// Current scope (native):
-/// - Public API takes `items + constraints + renderItem + resizable`.
-/// - Internal order state for drag-reorder and internal custom sizes for resizes.
+/// - Public API takes `items + constraints + renderItem + resizable + sizes`.
+/// - Internal order state for drag-reorder; custom sizes are internal state by
+///   default, or caller-owned when a `sizes` binding is passed.
 /// - When `resizable: true`, users can drag tile edges/corners to resize bespoke (per-tile sizes override the uniform grid cells). Column/row splits can be adjusted by dragging near shared edges.
 /// - Reordering and resizing are committed on mouse up.
-/// - A "rebalance" can be achieved by resetting sizes externally if a binding is added later.
+/// - A "rebalance" back to the uniform grid = set the `sizes` binding to `[:]`.
 ///
 /// Richer interactive demo (drag + free resize + persistence + rebalance) lives in PrimitivesTab
 /// as a reference implementation that directly uses `computeTilingLayout` + custom ZStack/gestures.
