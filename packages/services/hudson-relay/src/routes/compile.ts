@@ -47,7 +47,6 @@ export async function handleCompile(req: IncomingMessage, res: ServerResponse) {
     // relay must never RUN client-supplied code (it has full Node builtins).
     // Runtime behavior (returns a string, etc.) is validated in the browser.
     try {
-      // eslint-disable-next-line no-new-func
       new Function('p', 'vb', js);
     } catch (err) {
       json(res, 422, { error: `Validation failed: ${err instanceof Error ? err.message : String(err)}` });

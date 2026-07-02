@@ -12,7 +12,6 @@ const SURFACES = {
     "web/**",
     "app/**",
     "docs/**",
-    "hudson-docs/**",
     "marketing/**",
     "packages/web/**",
     "public/**",
