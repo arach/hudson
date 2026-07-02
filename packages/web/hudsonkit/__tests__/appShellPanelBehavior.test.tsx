@@ -44,6 +44,7 @@ function makeApp(id: string, layout?: AppShellLayoutConfig) {
     panels: null,
   };
   function Content() {
+    // eslint-disable-next-line react-hooks/immutability -- test probe: capturing the hook value into a spy record during render is the point of this fixture
     captured.panels = useAppShellSidePanels();
     return <div data-testid={`content-${id}`}>content</div>;
   }

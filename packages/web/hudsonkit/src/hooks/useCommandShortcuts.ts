@@ -235,6 +235,7 @@ export function useCommandShortcuts(
   const { enabled = true, allowInEditable = false, isApplePlatform } = options;
 
   const commandsRef = useRef(commands);
+  // eslint-disable-next-line react-hooks/refs -- mirroring the latest commands into a ref during render is intentional so the window keydown listener (registered once) always dispatches against current commands without re-subscribing
   commandsRef.current = commands;
 
   useEffect(() => {

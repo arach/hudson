@@ -18,6 +18,7 @@ afterEach(() => {
 function makeProbeApp(id: string) {
   const captured: { routes: WorkspaceHostRoutes | null } = { routes: null };
   function Content() {
+    // eslint-disable-next-line react-hooks/immutability -- test probe: capturing the hook value into a spy record during render is the point of this fixture
     captured.routes = useWorkspaceHostRoutes();
     return <div data-testid={`content-${id}`}>probe</div>;
   }
