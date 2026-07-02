@@ -1,19 +1,19 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { HudAuthClient } from '../src/auth';
 import { HudPushClient } from '../src/push';
-import { hudPushSwHandler } from '../src/push/sw';
+import { hudPushSwHandler, type HudPushEvent } from '../src/push/sw';
 
 const originals = new Map<PropertyKey, unknown>();
 
 function setGlobal(key: PropertyKey, value: unknown) {
-  if (!originals.has(key)) originals.set(key, (globalThis as any)[key]);
+  if (!originals.has(key)) originals.set(key, (globalThis as Record<PropertyKey, unknown>)[key]);
   Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
 }
 
 afterEach(() => {
   vi.restoreAllMocks();
   for (const [key, value] of originals) {
-    if (value === undefined) delete (globalThis as any)[key];
+    if (value === undefined) delete (globalThis as Record<PropertyKey, unknown>)[key];
     else Object.defineProperty(globalThis, key, { value, configurable: true, writable: true });
   }
   originals.clear();
@@ -60,7 +60,7 @@ describe('HudAuthClient', () => {
 
   it('attaches a localStorage bearer in signedFetch', async () => {
     installWindowStorage();
-    const fetchMock = vi.fn(async () => jsonResponse({ ok: true }));
+    const fetchMock = vi.fn(async (_input?: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ ok: true }));
     setGlobal('fetch', fetchMock);
     const auth = new HudAuthClient({ workerUrl: 'https://relay.example', bearerStorage: 'localStorage' });
     auth.setBearer('payload.sig');
@@ -89,14 +89,14 @@ describe('HudAuthClient', () => {
 describe('HudPushClient', () => {
   it('wraps Notification.requestPermission', async () => {
     setGlobal('Notification', { permission: 'default', requestPermission: vi.fn(async () => 'granted') });
-    const push = new HudPushClient({ auth: vi.fn(), pushPublicKey: 'AQID' });
+    const push = new HudPushClient({ auth: vi.fn() as unknown as HudAuthClient, pushPublicKey: 'AQID' });
 
     await expect(push.requestPermission()).resolves.toBe(true);
   });
 
   it('subscribes and registers the web push payload expected by the Worker', async () => {
     setGlobal('Notification', { permission: 'granted', requestPermission: vi.fn() });
-    const fetcher = vi.fn(async () => jsonResponse({ ok: true, device: { deviceId: 'dev_1', platform: 'web' } }));
+    const fetcher = vi.fn(async (_input?: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ ok: true, device: { deviceId: 'dev_1', platform: 'web' } }));
     const registration = {
       pushManager: {
         subscribe: vi.fn(async () => ({
@@ -105,7 +105,7 @@ describe('HudPushClient', () => {
       },
     } as unknown as ServiceWorkerRegistration;
     const push = new HudPushClient({
-      auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as any,
+      auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as unknown as HudAuthClient,
       pushPublicKey: 'AQID',
     });
 
@@ -127,8 +127,8 @@ describe('HudPushClient', () => {
   });
 
   it('returns delivered counts for successful sends', async () => {
-    const fetcher = vi.fn(async () => jsonResponse({ ok: true, delivered: 2, failed: 1, rateLimited: 0 }));
-    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as any, pushPublicKey: 'AQID' });
+    const fetcher = vi.fn(async (_input?: RequestInfo | URL, _init?: RequestInit) => jsonResponse({ ok: true, delivered: 2, failed: 1, rateLimited: 0 }));
+    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as unknown as HudAuthClient, pushPublicKey: 'AQID' });
 
     await expect(push.send({ itemId: 'msg_42', kind: 'message', urgency: 'normal' })).resolves.toEqual({ ok: true, delivered: 2, failed: 1, rateLimited: 0 });
 
@@ -138,7 +138,7 @@ describe('HudPushClient', () => {
 
   it('returns rate-limit metadata on 429 sends', async () => {
     const fetcher = vi.fn(async () => jsonResponse({ error: 'rate_limited', retryAfterSeconds: 17, rateLimitWindow: 'minute' }, { status: 429 }));
-    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as any, pushPublicKey: 'AQID' });
+    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as unknown as HudAuthClient, pushPublicKey: 'AQID' });
 
     await expect(push.send({ itemId: 'msg_42', kind: 'message' })).resolves.toEqual({
       ok: false,
@@ -156,7 +156,7 @@ describe('HudPushClient', () => {
       if (url.endsWith('/usage')) return jsonResponse({ usage: [{ day: '2026-05-05', delivered_count: 1 }] });
       return jsonResponse({ audit: [{ action: 'send', outcome: 'sent' }] });
     });
-    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as any, pushPublicKey: 'AQID' });
+    const push = new HudPushClient({ auth: { workerUrl: 'https://relay.example', signedFetch: () => fetcher } as unknown as HudAuthClient, pushPublicKey: 'AQID' });
 
     await expect(push.devices()).resolves.toMatchObject([{ deviceId: 'dev_1', platform: 'web', authorizationStatus: 'granted' }]);
     await expect(push.usage()).resolves.toEqual([{ day: '2026-05-05', delivered_count: 1 }]);
@@ -174,7 +174,7 @@ describe('hudPushSwHandler', () => {
     handler({
       data: { json: () => ({ generic: 'An item needs attention', itemId: 'msg_42', kind: 'message' }) },
       waitUntil,
-    } as unknown as PushEvent);
+    } as unknown as HudPushEvent);
 
     await waitUntil.mock.results[0].value;
     expect(showNotification).toHaveBeenCalledWith('An item needs attention', expect.objectContaining({
@@ -190,7 +190,7 @@ describe('hudPushSwHandler', () => {
     const waitUntil = vi.fn((promise: Promise<void>) => promise);
     const handler = hudPushSwHandler({ format: ({ kind }) => ({ title: 'Custom', body: kind }) });
 
-    handler({ data: { json: () => ({ itemId: 'job_1', kind: 'job' }) }, waitUntil } as unknown as PushEvent);
+    handler({ data: { json: () => ({ itemId: 'job_1', kind: 'job' }) }, waitUntil } as unknown as HudPushEvent);
 
     await waitUntil.mock.results[0].value;
     expect(showNotification).toHaveBeenCalledWith('Custom', expect.objectContaining({ body: 'job' }));

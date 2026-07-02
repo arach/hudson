@@ -11,13 +11,19 @@ const eslintConfig = defineConfig([
     ".next/**",
     ".claude/**",
     ".data/**",
-    "examples/**/.build/**",
     "out/**",
     "site/out/**",
-    "site/site/out/**",
     "build/**",
     "public/embed/**",
     "next-env.d.ts",
+    // Build artifacts and generated bundles — never lint these.
+    "**/dist/**",
+    "**/.build/**",
+    "**/*.app/**",
+    "**/*.bundle/**",
+    "**/_next/**",
+    // Vendored, pre-minified code editor bundle shipped as a Swift resource.
+    "**/HudsonCodeEditor/**",
   ]),
 ]);
 

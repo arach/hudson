@@ -21,7 +21,6 @@ node_modules/
 .next/
 /out/
 site/out/
-site/site/out/
 
 # production
 /build
@@ -134,6 +133,7 @@ public/embed/
 
 # native build artifacts
 .build/
+.build-ios/
 /Package.resolved
 examples/**/Package.resolved
 packages/native/apple/**/Package.resolved
