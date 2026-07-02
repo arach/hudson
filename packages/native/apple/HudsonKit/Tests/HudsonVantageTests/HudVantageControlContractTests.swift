@@ -1,5 +1,6 @@
 import XCTest
 @testable import HudsonVantage
+@testable import HudsonVantageSurface
 
 final class HudVantageControlContractTests: XCTestCase {
     func testControlAPIProcessesCommandsQueuedBeforeStartup() async throws {
