@@ -25,6 +25,11 @@
       "import": "./dist/index.js",
       "default": "./dist/index.js"
     },
+    "./pi-ai": {
+      "types": "./dist/pi-ai.d.ts",
+      "import": "./dist/pi-ai.js",
+      "default": "./dist/pi-ai.js"
+    },
     "./vercel-ai": {
       "types": "./dist/vercel-ai.d.ts",
       "import": "./dist/vercel-ai.js",
