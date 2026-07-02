@@ -131,7 +131,7 @@ var targets: [Target] = [
 if voiceEnabled {
     let voxPackage = appendGitDependency(
         to: &dependencies,
-        url: "git@github.com:arach/vox.git",
+        url: "https://github.com/arach/vox.git",
         envPrefix: "HUDSON_VOX"
     )
     products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
@@ -156,7 +156,7 @@ if terminalEnabled {
     products.append(hudsonLibrary(name: "HudsonVantage", targets: ["HudsonVantage"]))
     let terminiPackage = appendGitDependency(
         to: &dependencies,
-        url: "git@github.com:arach/Termini.git",
+        url: "https://github.com/arach/Termini.git",
         envPrefix: "HUDSON_TERMINI"
     )
     targets.append(
