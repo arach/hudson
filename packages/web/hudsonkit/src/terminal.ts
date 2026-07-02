@@ -27,7 +27,9 @@ export type {
 } from './hooks/useTerminalRelay';
 export {
   TerminalRelay,
+  TerminalVoiceScopeContext,
   captureWorkspace,
+  HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR,
   HUDSON_TERMINAL_VOICE_SUBMIT_EVENT,
   HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT,
 } from './components/TerminalRelay';

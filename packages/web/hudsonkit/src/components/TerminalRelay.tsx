@@ -1,8 +1,10 @@
 'use client';
 
 import {
+  createContext,
   forwardRef,
   useCallback,
+  useContext,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -64,6 +66,15 @@ export interface TerminalRelayProps {
   onStartService?: () => Promise<boolean>;
   /** Suppress disconnected/connecting overlays — just show the terminal canvas immediately. Error overlays are still shown. */
   quiet?: boolean;
+  /**
+   * Ancestor selector this terminal must live inside for the global voice
+   * transcript/submit events to apply. Defaults to plain DOM visibility (no
+   * ancestor requirement), or — when rendered inside Hudson's
+   * `TerminalDrawer` — to the drawer's content selector so voice only
+   * targets the drawer terminal. Pass a selector to scope explicitly, or
+   * `false` to disable the ancestor requirement even inside a drawer.
+   */
+  voiceVisibilityScope?: string | false;
   onReady?: (terminal: TerminalRelayTerminalInstance) => void;
   onDispose?: () => void;
   onResize?: (cols: number, rows: number) => void;
@@ -72,6 +83,17 @@ export interface TerminalRelayProps {
 
 export const HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT = 'hudson:terminal:voice-transcript';
 export const HUDSON_TERMINAL_VOICE_SUBMIT_EVENT = 'hudson:terminal:voice-submit';
+
+/** Selector for the content region of Hudson's `TerminalDrawer`. */
+export const HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR = '[data-hudson-terminal-drawer-content="true"]';
+
+/**
+ * Provides a default `voiceVisibilityScope` to descendant `TerminalRelay`
+ * instances. `TerminalDrawer` supplies its content selector through this so
+ * drawer-hosted terminals keep their voice gating without every consumer
+ * having to thread the prop.
+ */
+export const TerminalVoiceScopeContext = createContext<string | undefined>(undefined);
 
 export interface HudsonTerminalVoiceTranscriptDetail {
   transcript: string;
@@ -230,9 +252,9 @@ function readModuleExport<T>(mod: unknown, name: string): T | undefined {
   return (defaultExport as Record<string, unknown>)[name] as T | undefined;
 }
 
-function isElementVisible(el: HTMLElement | null): boolean {
+function isElementVisible(el: HTMLElement | null, requiredAncestorSelector?: string): boolean {
   if (!el) return false;
-  if (!el.closest('[data-hudson-terminal-drawer-content="true"]')) return false;
+  if (requiredAncestorSelector && !el.closest(requiredAncestorSelector)) return false;
   const rect = el.getBoundingClientRect();
   if (rect.width <= 0 || rect.height <= 0) return false;
   const style = window.getComputedStyle(el);
@@ -279,6 +301,7 @@ function TerminalRelayInner({
   onOpenSettings,
   onStartService,
   quiet = false,
+  voiceVisibilityScope,
   onReady,
   onDispose,
   onResize,
@@ -298,6 +321,10 @@ function TerminalRelayInner({
     controlMode = 'owner',
   } = relay;
   const effectiveReadOnly = readOnly || controlMode === 'observe';
+  const contextVoiceScope = useContext(TerminalVoiceScopeContext);
+  const voiceScope = voiceVisibilityScope === false
+    ? undefined
+    : voiceVisibilityScope ?? contextVoiceScope;
   const [starting, setStarting] = useState(false);
   const { apiBaseUrl } = usePlatform();
   const themeContext = useOptionalTheme();
@@ -320,6 +347,7 @@ function TerminalRelayInner({
   const readOnlyRef = useRef(effectiveReadOnly);
   const lastSentDimsRef = useRef<{ cols: number; rows: number } | null>(null);
   const resizeFrameRef = useRef<number | null>(null);
+  const startConnectTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const onReadyRef = useRef(onReady);
   const onDisposeRef = useRef(onDispose);
   const onResizeRef = useRef(onResize);
@@ -421,7 +449,7 @@ function TerminalRelayInner({
   useEffect(() => {
     const handleVoiceTranscript = (event: Event) => {
       if (readOnlyRef.current) return;
-      if (!isElementVisible(wrapperRef.current)) return;
+      if (!isElementVisible(wrapperRef.current, voiceScope)) return;
 
       const detail = (event as CustomEvent<HudsonTerminalVoiceTranscriptDetail>).detail;
       if (!detail || typeof detail.transcript !== 'string') return;
@@ -439,7 +467,7 @@ function TerminalRelayInner({
 
     window.addEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
     return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_TRANSCRIPT_EVENT, handleVoiceTranscript);
-  }, [connect, sendVoiceTranscript, status]);
+  }, [connect, sendVoiceTranscript, status, voiceScope]);
 
   useEffect(() => {
     if (status !== 'connected' || !pendingVoiceInputRef.current) return;
@@ -451,7 +479,7 @@ function TerminalRelayInner({
   useEffect(() => {
     const handleVoiceSubmit = () => {
       if (readOnlyRef.current) return;
-      if (!isElementVisible(wrapperRef.current)) return;
+      if (!isElementVisible(wrapperRef.current, voiceScope)) return;
 
       if (status === 'connected') {
         sendVoiceSubmit();
@@ -466,7 +494,7 @@ function TerminalRelayInner({
 
     window.addEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
     return () => window.removeEventListener(HUDSON_TERMINAL_VOICE_SUBMIT_EVENT, handleVoiceSubmit);
-  }, [connect, sendVoiceSubmit, status]);
+  }, [connect, sendVoiceSubmit, status, voiceScope]);
 
   useEffect(() => {
     if (status !== 'connected' || !pendingVoiceSubmitRef.current) return;
@@ -776,13 +804,25 @@ function TerminalRelayInner({
     try {
       const ok = await onStartService();
       if (ok) {
-        // Give service a moment to be ready, then connect
-        setTimeout(() => connect(), 500);
+        // Give service a moment to be ready, then connect. Tracked so
+        // unmount doesn't open a socket nothing owns.
+        if (startConnectTimerRef.current) clearTimeout(startConnectTimerRef.current);
+        startConnectTimerRef.current = setTimeout(() => {
+          startConnectTimerRef.current = null;
+          connect();
+        }, 500);
       }
     } finally {
       setStarting(false);
     }
   }, [onStartService, connect]);
+
+  useEffect(() => () => {
+    if (startConnectTimerRef.current) {
+      clearTimeout(startConnectTimerRef.current);
+      startConnectTimerRef.current = null;
+    }
+  }, []);
 
   let overlay: React.ReactNode = null;
   if (isServiceDown) {
