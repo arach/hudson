@@ -37,8 +37,6 @@ const SURFACES = {
   cloud: [
     "cloud/**",
     "cloudflare-static-worker.ts",
-    "drizzle/**",
-    "drizzle.config.ts",
     "embed-worker/**",
     "packages/cloud/**",
     "packages/services/**",

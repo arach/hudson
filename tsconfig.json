@@ -41,5 +41,5 @@
     ".next/dev/types/**/*.ts",
     "**/*.mts"
   ],
-  "exclude": ["node_modules", "native", "scripts", "drizzle.config.ts", "app/catalog/apps.local.example.ts", "packages/cloud", "embed-worker", "apps/studio", "**/__tests__"]
+  "exclude": ["node_modules", "native", "scripts", "app/catalog/apps.local.example.ts", "packages/cloud", "embed-worker", "apps/studio", "**/__tests__"]
 }
