@@ -44,7 +44,7 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.bun/install/cache
-          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'embed-worker/bun.lock') }}
+          key: ${{ runner.os }}-bun-${{ hashFiles('bun.lock', 'apps/web/embed-worker/bun.lock') }}
           restore-keys: |
             ${{ runner.os }}-bun-
 
@@ -69,11 +69,11 @@ jobs:
       - name: Validate HudsonKit packed package
         run: bun run validate:hudsonkit-package
 
-      - name: Typecheck (root)
-        run: bunx tsc --noEmit
+      - name: Typecheck (app)
+        run: bunx tsc --noEmit -p apps/web/tsconfig.json
 
       - name: Typecheck (app + hudsonkit tests)
-        run: bunx tsc --noEmit -p tsconfig.tests.json
+        run: bunx tsc --noEmit -p apps/web/tsconfig.tests.json
 
       - name: Typecheck (relay src + tests)
         run: bunx tsc --noEmit -p packages/services/hudson-relay/tsconfig.json

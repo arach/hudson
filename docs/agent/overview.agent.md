@@ -14,7 +14,7 @@ description: Dense, structured overview of Hudson for AI agent consumption
 | Stack | React 19, Next.js 16, Tailwind v4, TypeScript |
 | Package manager | bun |
 | Dev server | `bun dev` → port 3500 |
-| Entry point | `app/app/page.tsx` → `WorkspaceShell` |
+| Entry point | `apps/web/app/app/page.tsx` → `WorkspaceShell` |
 
 ## Architecture (3 layers)
 
@@ -22,8 +22,8 @@ description: Dense, structured overview of Hudson for AI agent consumption
 |-------|----------|------|
 | hudsonkit | `packages/web/hudsonkit/src/` | Component library + type contracts |
 | Shell | `packages/web/hudsonkit/src/workspace/shell/` | Package-owned runtime orchestrator (`WorkspaceShell`) |
-| Host environment | `app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route, terminal, and AI settings bindings passed into the shell |
-| Apps | `app/apps/` | Self-contained apps implementing HudsonApp |
+| Host environment | `apps/web/app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route, terminal, and AI settings bindings passed into the shell |
+| Apps | `apps/web/app/apps/` | Self-contained apps implementing HudsonApp |
 
 ## HudsonApp Interface (required fields)
 
@@ -95,7 +95,7 @@ description: Dense, structured overview of Hudson for AI agent consumption
 ## File structure for new app
 
 ```
-app/apps/{name}/
+apps/web/app/apps/{name}/
   index.ts              # HudsonApp export
   {Name}Provider.tsx    # Context provider
   hooks.ts              # useCommands, useStatus, etc.
@@ -109,9 +109,9 @@ app/apps/{name}/
 
 ## Registration steps
 
-1. Create app in `app/apps/{name}/`
-2. Add it to `app/apps/registry.ts` if it is a tracked HudsonKit showcase app
-3. For local-only experiments, use `app/local/apps.local.ts` or `app/local/workspaces.json`
+1. Create app in `apps/web/app/apps/{name}/`
+2. Add it to `apps/web/app/apps/registry.ts` if it is a tracked HudsonKit showcase app
+3. For local-only experiments, use `apps/web/app/local/apps.local.ts` or `apps/web/app/local/workspaces.json`
 
 ## Critical constraints
 

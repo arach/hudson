@@ -20,16 +20,16 @@
 | Component | Path | Purpose |
 |-----------|------|---------|
 | Shell | `packages/web/hudsonkit/src/workspace/shell/` | Runtime shell source exported via `hudsonkit/workspace` |
-| Apps | `app/apps/` | |
-| Workspaces | `app/workspaces/` | |
+| Apps | `apps/web/app/apps/` | |
+| Workspaces | `apps/web/app/workspaces/` | |
 | Hudson SDK | `packages/web/hudsonkit/src/` | |
 | Types | `packages/web/hudsonkit/src/types/` | |
 
 ## Quick Navigation
 
-- Working with **new app**? → See docs/building-apps.md and app/apps/hudson-docs/ or packages/web/hudsonkit/src/apps/notepad/ as references
-- Working with **workspace**? → Check app/workspaces/ for workspace definitions
-- Working with **intent**? → See packages/web/hudsonkit/src/types/intent.ts and app/lib/intent-catalog.ts
+- Working with **new app**? → See docs/building-apps.md and apps/web/app/apps/hudson-docs/ or packages/web/hudsonkit/src/apps/notepad/ as references
+- Working with **workspace**? → Check apps/web/app/workspaces/ for workspace definitions
+- Working with **intent**? → See packages/web/hudsonkit/src/types/intent.ts and apps/web/app/lib/intent-catalog.ts
 - Working with **component**? → Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays
 - Working with **styling**? → Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts
 
@@ -90,7 +90,7 @@ The runtime orchestrator. `WorkspaceShell` is the main entry point that:
 - Manages workspace switching, boot animations, and canvas state
 - Provides the command palette, merging commands from all active apps
 
-### 3. Apps (`app/apps/`)
+### 3. Apps (`apps/web/app/apps/`)
 
 Self-contained applications that implement the `HudsonApp` interface. Each app provides:
 
@@ -197,16 +197,17 @@ Open [http://localhost:3500](http://localhost:3500). You should see the Hudson w
 
 ```
 hudson/
-  app/
-    page.tsx                  # Redirects to /app
-    app/page.tsx              # Mounts WorkspaceShell from hudsonkit/workspace
-    apps/                     # App implementations
-      hudson-docs/            # Docs browser
-      intent-explorer/        # Intent catalog inspector
-      stage-design/           # Compact reference app
-    apps/registry.ts          # Core + local app/workspace registry
-    lib/                      # Shared utilities (intent catalog, etc.)
-    hooks/                    # Shared hooks (intent executor, etc.)
+  apps/web/
+    app/
+      page.tsx                # Redirects to /app
+      app/page.tsx            # Mounts WorkspaceShell from hudsonkit/workspace
+      apps/                   # App implementations
+        hudson-docs/          # Docs browser
+        intent-explorer/      # Intent catalog inspector
+        stage-design/         # Compact reference app
+      apps/registry.ts        # Core + local app/workspace registry
+      lib/                    # Shared utilities (intent catalog, etc.)
+      hooks/                  # Shared hooks (intent executor, etc.)
   packages/
     web/hudsonkit/                  # Component library + types
       src/
@@ -218,18 +219,18 @@ hudson/
 
 ## Create Your First App
 
-The fastest way to add an app is to scaffold it in `app/apps/`:
+The fastest way to add an app is to scaffold it in `apps/web/app/apps/`:
 
 ### 1. Create the app directory
 
 ```bash
-mkdir -p app/apps/my-app
+mkdir -p apps/web/app/apps/my-app
 ```
 
 ### 2. Create the Provider
 
 ```tsx
-// app/apps/my-app/MyAppProvider.tsx
+// apps/web/app/apps/my-app/MyAppProvider.tsx
 'use client';
 
 import { createContext, useContext, useState, type ReactNode } from 'react';
@@ -259,7 +260,7 @@ export function MyAppProvider({ children }: { children: ReactNode }) {
 ### 3. Create the Content slot
 
 ```tsx
-// app/apps/my-app/MyAppContent.tsx
+// apps/web/app/apps/my-app/MyAppContent.tsx
 'use client';
 
 import { useMyApp } from './MyAppProvider';
@@ -280,7 +281,7 @@ export function MyAppContent() {
 ### 4. Define the app
 
 ```tsx
-// app/apps/my-app/index.ts
+// apps/web/app/apps/my-app/index.ts
 import type { HudsonApp } from 'hudsonkit';
 import { MyAppProvider } from './MyAppProvider';
 import { MyAppContent } from './MyAppContent';
@@ -304,7 +305,7 @@ export const myApp: HudsonApp = {
 ### 5. Register in a workspace
 
 ```tsx
-// app/workspaces/hudsonOS.ts — add to apps array
+// apps/web/app/workspaces/hudsonOS.ts — add to apps array
 import { myApp } from '../apps/my-app';
 
 // Inside the apps array:
@@ -662,7 +663,7 @@ The shell automatically bridges intents to commands. When an intent is executed 
 ### Add to an existing workspace
 
 ```typescript
-// app/workspaces/hudsonOS.ts
+// apps/web/app/workspaces/hudsonOS.ts
 import { glyphEditorApp } from '../apps/glyph-editor';
 
 export const hudsonOSWorkspace: HudsonWorkspace = {
@@ -683,7 +684,7 @@ export const hudsonOSWorkspace: HudsonWorkspace = {
 ### Create a standalone workspace
 
 ```typescript
-// app/workspaces/glyphDev.ts
+// apps/web/app/workspaces/glyphDev.ts
 import type { HudsonWorkspace } from 'hudsonkit';
 import { glyphEditorApp } from '../apps/glyph-editor';
 
@@ -699,8 +700,8 @@ export const glyphDevWorkspace: HudsonWorkspace = {
 ### Register the workspace
 
 ```typescript
-// app/page.tsx
-import { glyphDevWorkspace } from './workspaces/glyphDev';
+// apps/web/app/app/page.tsx
+import { glyphDevWorkspace } from '../workspaces/glyphDev';
 
 export default function Page() {
   return (
@@ -762,7 +763,7 @@ sounds.thock();     // Heavy press
 ## File Structure Convention
 
 ```
-app/apps/my-app/
+apps/web/app/apps/my-app/
   index.ts                 # App definition (exports HudsonApp)
   MyAppProvider.tsx         # Context provider
   hooks.ts                 # Hook implementations
@@ -778,9 +779,9 @@ app/apps/my-app/
 
 ## Reference Implementation
 
-The **Hudson Docs** app (`app/apps/hudson-docs/`) is the most complete in-tree reference, with Provider-owned state, Content/LeftPanel/RightPanel slots, hooks, and intents. For a compact built-in kit app, see `packages/web/hudsonkit/src/apps/notepad/`.
+The **Hudson Docs** app (`apps/web/app/apps/hudson-docs/`) is the most complete in-tree reference, with Provider-owned state, Content/LeftPanel/RightPanel slots, hooks, and intents. For a compact built-in kit app, see `packages/web/hudsonkit/src/apps/notepad/`.
 
-The **Intent Explorer** (`app/apps/intent-explorer/`) is a simpler example if you want a minimal starting point.
+The **Intent Explorer** (`apps/web/app/apps/intent-explorer/`) is a simpler example if you want a minimal starting point.
 
 ## Further Reading
 
@@ -827,7 +828,7 @@ git URL — **never** a `file:` path to a hudsonkit source folder.
 3. **Do not point Tailwind at the hudsonkit tree.** Import the prebuilt
    bundle instead:
    ```ts
-   // app/layout.tsx — consumer
+   // app/layout.tsx — consumer (external project)
    import 'hudsonkit/styles';
    ```
    ```css
@@ -1280,16 +1281,17 @@ Hudson is a monorepo with two main packages: the **shell application** (Next.js)
 
 ```
 hudson/
-  app/                          # Next.js application (App Router)
-    page.tsx                    # Redirects to /app
-    app/page.tsx                # Entry: mounts WorkspaceShell from hudsonkit/workspace
-    layout.tsx                  # Root layout
-    globals.css                 # Tailwind + global styles
-    apps/                       # App implementations
-      hudson-docs/              # Docs browser
-      intent-explorer/          # Intent catalog viewer
-      stage-design/             # Compact reference app
-    apps/registry.ts            # Core + local app/workspace registry
+  apps/web/                     # Next.js application + marketing + deploy (App Router)
+    app/
+      page.tsx                  # Redirects to /app
+      app/page.tsx              # Entry: mounts WorkspaceShell from hudsonkit/workspace
+      layout.tsx                # Root layout
+      globals.css               # Tailwind + global styles
+      apps/                     # App implementations
+        hudson-docs/            # Docs browser
+        intent-explorer/        # Intent catalog viewer
+        stage-design/           # Compact reference app
+      apps/registry.ts          # Core + local app/workspace registry
   packages/web/hudsonkit/src/
     workspace/shell/WorkspaceShell.tsx # Main orchestrator
     apps/notepad/               # Compact built-in kit app reference
@@ -1400,7 +1402,7 @@ Pre-built skill definitions that agents can use when working with Hudson.
 
 **Steps:**
 1. Read `packages/web/hudsonkit/src/types/app.ts` to understand the HudsonApp interface
-2. Read `app/apps/hudson-docs/index.ts` or `packages/web/hudsonkit/src/apps/notepad/index.ts` as the reference implementation
+2. Read `apps/web/app/apps/hudson-docs/index.ts` or `packages/web/hudsonkit/src/apps/notepad/index.ts` as the reference implementation
 3. Follow the task template in `docs/prompts/create-app.md`
 4. Create all required files (Provider, Content, hooks, index.ts)
 5. Register in workspace and test with `bun dev`
@@ -1432,9 +1434,9 @@ Pre-built skill definitions that agents can use when working with Hudson.
 
 **Steps:**
 1. Read `packages/web/hudsonkit/src/types/workspace.ts` for the HudsonWorkspace interface
-2. Read `app/workspaces/hudsonOS.ts` as reference
-3. Create workspace file in `app/workspaces/`
-4. Register in `app/page.tsx` workspaces array
+2. Read `apps/web/app/workspaces/hudsonOS.ts` as reference
+3. Create workspace file in `apps/web/app/workspaces/`
+4. Register in `apps/web/app/app/page.tsx` workspaces array
 
 **Key rules:**
 - Each workspace has a mode (canvas or panel)

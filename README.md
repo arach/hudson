@@ -63,7 +63,7 @@ See [Hudson Canvas](./docs/hudson-canvas.md) for the SDK boundary.
 ## Orientation
 
 ```
-app/                               # The Hudson workspace itself (Next.js 16)
+apps/web/                          # The Hudson workspace (Next.js 16 + marketing + deploy)
 apps/canvas/                       # Native Canvas macOS product (CanvasApp host)
 packages/web/hudsonkit/            # Shell + primitives — published as `hudsonkit`
 packages/web/ai-backends/          # Provider-neutral AI backends — published as `@hudsonkit/ai`

@@ -54,7 +54,7 @@ export interface ServerIntent {
   keywords: string[];
   /** Typed parameter schema; same shape used by AppIntent UI intents. */
   params?: IntentParameter[];
-  /** Where the function lives, relative to repo root (e.g. `app/api/docs/intents`). */
+  /** Where the function lives, relative to repo root (e.g. `apps/web/app/api/docs/intents`). */
   importPath: string;
   /** Named export to import (e.g. `reindexDocs`). */
   exportName: string;

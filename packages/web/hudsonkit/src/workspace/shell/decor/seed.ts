@@ -2,7 +2,7 @@ import type { DecorationItem, DecorState } from './types';
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Build-sequence seed for the `hudson-os` workspace.
-// Mirrors the schematic in marketing/sheets/Sheet02Possession.tsx (the mock
+// Mirrors the schematic in apps/web/marketing/sheets/Sheet02Possession.tsx (the mock
 // embed) so the live workspace opens with the same beat.
 // ─────────────────────────────────────────────────────────────────────────────
 

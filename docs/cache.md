@@ -13,7 +13,7 @@ section: "Web"
 
 The primitive is intentionally small. The bigger idea is **caching as policy** — pick a named policy for the kind of data you're storing rather than tuning numbers per call site. That keeps app code declarative and lets us swap implementations (or graduate to TanStack Query for serious server state) without touching every call site.
 
-> **Status.** The substrate (`createHudsonCache`, `hudsonCache`, `useCachedResource`) ships today. The named-policy surface (`cachePolicies`, `cachedFetchJson`, `useHudsonQuery`, `createDerivedCache`, `createAssetCache`) is the direction described in `specs/hud-010-cache-policies.md` and is being layered in. Use the substrate now; expect a policy import to land.
+> **Status.** The substrate (`createHudsonCache`, `hudsonCache`, `useCachedResource`) ships today. The named-policy surface (`cachePolicies`, `cachedFetchJson`, `useHudsonQuery`, `createDerivedCache`, `createAssetCache`) is the direction described in `docs/specs/hud-010-cache-policies.md` and is being layered in. Use the substrate now; expect a policy import to land.
 
 ## What is cache, and what isn't
 
@@ -91,7 +91,7 @@ When the user signs out, blow away `app:${appId}`. When a model catalog refreshe
 Apps pick a named policy instead of hand-tuning durations. The exact numbers are defaults, not doctrine — the name is the contract.
 
 ```ts
-// shape we're moving toward — see specs/hud-010-cache-policies.md
+// shape we're moving toward — see docs/specs/hud-010-cache-policies.md
 export const cachePolicies = {
   apiLive:       { ttlMs: 10_000,         staleWhileRevalidateMs: 60_000,        storage: null },
   apiCatalog:    { ttlMs: 5 * 60_000,     staleWhileRevalidateMs: 60 * 60_000,   storage: 'session' },
@@ -179,6 +179,6 @@ The rule of thumb: if the cache primitive starts growing pagination, mutation, o
 
 ## See also
 
-- `specs/hud-010-cache-policies.md` — the in-flight spec this doc tracks.
+- `docs/specs/hud-010-cache-policies.md` — the in-flight spec this doc tracks.
 - [Vault](./vault.md) — for secrets, not derivable cache values.
 - [Settings](./settings.md) — for user-owned persistent state.

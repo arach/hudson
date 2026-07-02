@@ -6,7 +6,7 @@ Date: 2026-07-02
 
 Request: `WorkspaceShell` and `AppShell` accept an `environment.routes` map of
 ~17 optional host endpoints that the kit never ships. Hudson implements them as
-a hand-written `app/api/**` tree; Atelier (the second consumer) reimplemented
+a hand-written `apps/web/app/api/**` tree; Atelier (the second consumer) reimplemented
 them as a ~1,146-line Vite dev-server plugin whose comments explicitly wait on
 "the kit's turnkey AI host shape". This proposal defines that shape: a
 framework-agnostic host backend under `hudsonkit/server`, produced by a single
@@ -34,9 +34,9 @@ state, the HudLogger feed, voice replies, the data bus) must implement most of
 them. The kit specifies the client half of ~17 HTTP contracts and ships zero
 server halves.
 
-### Consumer #1: Hudson's `app/api/**` tree
+### Consumer #1: Hudson's `apps/web/app/api/**` tree
 
-Hudson binds the contract in `app/lib/hudsonShellEnvironment.tsx`, whose header
+Hudson binds the contract in `apps/web/app/lib/hudsonShellEnvironment.tsx`, whose header
 comment narrates the friction directly:
 
 > This lives in app/ (not the kit) because it imports Hudson's own apps. The
@@ -45,17 +45,17 @@ comment narrates the friction directly:
 > supplying its apps. As more reaches are inverted (intents, service registry,
 > /api endpoints) they get bound here.
 
-The server halves are ~20 Next.js route handlers: `app/api/agent-actions/`,
-`app/api/ai/` (chat, generate-image, models), `app/api/proxy/`,
-`app/api/fetch-image/`, `app/api/pipes/` (+ `/stream` SSE), `app/api/relay/upload/`,
-`app/api/services/` (+ `/execute`), `app/api/settings/environment/`,
-`app/api/traces/`, `app/api/workspace-decor/`, `app/api/workspace-state/`,
-`app/api/hudson-voice/**`, `app/api/intents/`, plus the TTS routes at
-`app/v1/audio/speech/` and `app/v1/voices/`. Most of them are thin, generic
-glue: `app/api/workspace-state/route.ts` is 57 lines of read-JSON /
+The server halves are ~20 Next.js route handlers: `apps/web/app/api/agent-actions/`,
+`apps/web/app/api/ai/` (chat, generate-image, models), `apps/web/app/api/proxy/`,
+`apps/web/app/api/fetch-image/`, `apps/web/app/api/pipes/` (+ `/stream` SSE), `apps/web/app/api/relay/upload/`,
+`apps/web/app/api/services/` (+ `/execute`), `apps/web/app/api/settings/environment/`,
+`apps/web/app/api/traces/`, `apps/web/app/api/workspace-decor/`, `apps/web/app/api/workspace-state/`,
+`apps/web/app/api/hudson-voice/**`, `apps/web/app/api/intents/`, plus the TTS routes at
+`apps/web/app/v1/audio/speech/` and `apps/web/app/v1/voices/`. Most of them are thin, generic
+glue: `apps/web/app/api/workspace-state/route.ts` is 57 lines of read-JSON /
 shallow-merge-JSON against `.data/workspace-state/<id>.json`;
-`app/api/agent-actions/route.ts` is 108 lines of JSONL tail/append;
-`app/api/traces/route.ts` and `app/api/workspace-decor/route.ts` are the same
+`apps/web/app/api/agent-actions/route.ts` is 108 lines of JSONL tail/append;
+`apps/web/app/api/traces/route.ts` and `apps/web/app/api/workspace-decor/route.ts` are the same
 file-CRUD pattern again. Nothing about them is Hudson-specific except the fact
 that they live in Hudson.
 
@@ -93,14 +93,14 @@ actions, or traces — because implementing them all by hand was not worth it.
 Three pieces of app-local Hudson code are generic kit infrastructure in the
 wrong layer:
 
-1. **`app/lib/intent.ts`** — the server `intent()` registry. It imports
+1. **`apps/web/app/lib/intent.ts`** — the server `intent()` registry. It imports
    `ServerIntent` from `hudsonkit` (the type lives at
    `packages/web/hudsonkit/src/types/intent.ts:46`) and produces exactly that
    catalog shape via `intentMetaToServerIntent()`. The mechanism (register,
    instrument with trace spans, list, catalog) has nothing Hudson-specific in
    it; only the registered intents do.
-2. **`app/lib/agent-log-core.ts`** — the agent-action JSONL writer. Its own
-   comment (`app/lib/agent-log-core.ts:20-23`) admits the mirroring: *"Event
+2. **`apps/web/app/lib/agent-log-core.ts`** — the agent-action JSONL writer. Its own
+   comment (`apps/web/app/lib/agent-log-core.ts:20-23`) admits the mirroring: *"Event
    shapes — match `HObservation` in hudsonkit so HudLogger renders them
    natively."* The `LogEvent`/`SpanEvent` interfaces are hand-copied subsets
    of `HLogEvent`/`HTraceSpan` from
@@ -121,9 +121,9 @@ wrong layer:
   `{project}/.data/{id}` seed-if-empty pattern,
   `src/lib/server/appStorage.ts`) and `createFsWatchEventStream` (generalized
   SSE, `src/lib/server/createFsWatchEventStream.ts`). Hudson's
-  `app/api/pipes/stream/route.ts` already consumes the app-side twin of the
+  `apps/web/app/api/pipes/stream/route.ts` already consumes the app-side twin of the
   latter.
-- **HUD-008** (`specs/hud-008-app-backends.md`, status "Implemented (helpers +
+- **HUD-008** (`docs/specs/hud-008-app-backends.md`, status "Implemented (helpers +
   types; route migrations pending)") established the per-*app* backend
   convention (`HudsonApp.backend`, `createAppApiClient`, `useAppApiStatus`).
   This proposal is the *shell-level* counterpart: HUD-008 gives each app a
@@ -131,7 +131,7 @@ wrong layer:
 - **`@hudsonkit/ai`** (`packages/web/ai-backends`) already defines the
   provider-neutral `Backend.streamUI(...)` interface plus pi-ai and vercel-ai
   adapters. Both consumers' `aiChat` implementations are already built on it
-  (`app/api/ai/chat/route.ts` via `createPiAiBackend()`; Atelier's
+  (`apps/web/app/api/ai/chat/route.ts` via `createPiAiBackend()`; Atelier's
   `handleAtelierAiChat` likewise). The AI *provider* seam exists — only the
   HTTP handler around it is duplicated.
 
@@ -156,7 +156,7 @@ wrong layer:
    `HObservation` from the kit's own types instead of mirroring them. The
    envelope CLI ships under the existing `hudsonkit` bin.
 5. **Delete real code in both consumers.** Phase 1 must remove — not wrap —
-   handler code from `app/api/**` and `vite.host-services.ts`.
+   handler code from `apps/web/app/api/**` and `vite.host-services.ts`.
 6. **Compile-time completeness.** The host's route manifest is typed against
    `keyof WorkspaceHostRoutes`, so adding a new key to the client contract is
    a build error in the kit until the manifest handles it or explicitly
@@ -165,7 +165,7 @@ wrong layer:
 ## Non-goals for v1
 
 - **No hosted/multi-tenant backend.** Single-user, local-first,
-  filesystem-backed — same trust model as today's `app/api`.
+  filesystem-backed — same trust model as today's `apps/web/app/api`.
 - **No database layer.** The storage interface is deliberately small
   (JSON documents + JSONL append + watch); a DB-backed store can implement it
   later without changing handlers.
@@ -173,7 +173,7 @@ wrong layer:
   (same-origin by default for mutating routes); real auth is HUD-004's
   territory.
 - **No voice runtime.** `voiceApiBase` fronts a native, WebSocket-RPC Vox
-  runtime (`app/api/hudson-voice/**`, `app/lib/hudsonVoiceRuntime.ts`); that
+  runtime (`apps/web/app/api/hudson-voice/**`, `apps/web/app/lib/hudsonVoiceRuntime.ts`); that
   stays host-specific. See the contract table.
 - **No production hardening promises for `apiProxy`/`fetchImage`** beyond a
   pluggable URL policy with safer defaults than today (see Open questions).
@@ -360,7 +360,7 @@ for anyone else.
   `services` + `serviceExecute`.
 - **Host-specific (out of the host core):** `voiceApiBase` — the shell treats
   it as an opaque base URL and the reference implementation
-  (`app/api/hudson-voice/**` → native Vox runtime over WS RPC) cannot be made
+  (`apps/web/app/api/hudson-voice/**` → native Vox runtime over WS RPC) cannot be made
   turnkey. Hosts that have a runtime set the key themselves; the manifest
   documents the sub-path contract (`/health`, `/v1/voice/devices`,
   `/v1/voice/live` NDJSON stream, `/v1/voice/live/{id}/stop|cancel`) without
@@ -370,14 +370,14 @@ for anyone else.
 
 The kit handler parses the body Hudson and Atelier already agree on —
 `{ messages, toolset, context, mode?, provider?, model?, sessionId? }`
-(see `app/api/ai/chat/route.ts` and `useHudsonAI`'s `buildHudsonAIRequestBody`
+(see `apps/web/app/api/ai/chat/route.ts` and `useHudsonAI`'s `buildHudsonAIRequestBody`
 in `packages/web/hudsonkit/src/hooks/useHudsonAI.ts:64-89`) — resolves the
 toolset via `ai.loadToolset`, and returns
 `ai.backend.streamUI({...})`'s AI-SDK UI-message stream `Response` unchanged.
 Both consumers keep their quirks through `ai.handleChat`:
 
 - Hudson wraps the default to intercept `mode: 'cli'` and delegate to its
-  `claude`-CLI streamer (`app/api/ai/chat/cli.ts`, 363 lines, deliberately
+  `claude`-CLI streamer (`apps/web/app/api/ai/chat/cli.ts`, 363 lines, deliberately
   staying host-side).
 - Atelier wraps it to route non-owned toolsets to a remote Hudson origin,
   replacing `proxyToHudsonAi`/`pipeWebResponse` with a one-line
@@ -388,7 +388,7 @@ Both consumers keep their quirks through `ai.handleChat`:
 
 ### `intent()` registry → `hudsonkit/server`
 
-Move `app/lib/intent.ts` essentially verbatim into
+Move `apps/web/app/lib/intent.ts` essentially verbatim into
 `packages/web/hudsonkit/src/lib/server/intents.ts`, exported from
 `hudsonkit/server` as `intent()`, `listIntents()`, `getIntent()`,
 `intentMetaToServerIntent()`, `_resetIntentRegistry()`. The kit already owns
@@ -398,7 +398,7 @@ the classic inverted dependency. The instrumentation calls
 (`appendAgentSpanStart`/`appendAgentSpanEnd`) bind to the graduated
 agent-action log (below) via the host's store rather than a hardcoded path.
 
-Catalog composition (`app/lib/intent-catalog.ts` + `app/api/intents/route.ts`)
+Catalog composition (`apps/web/app/lib/intent-catalog.ts` + `apps/web/app/api/intents/route.ts`)
 stays app-side in v1: it composes `allWorkspaces` and per-app `AppIntent`
 declarations, which are host policy. `WorkspaceHostRoutes` gains no `intents`
 key in v1 (nothing in the kit's client fetches it — agents and CLI do). If a
@@ -407,12 +407,12 @@ kit surface later wants the catalog, adding an `intents` route key + a
 
 ### Agent-action JSONL writer → `hudsonkit/server`
 
-Move `app/lib/agent-log-core.ts` into
+Move `apps/web/app/lib/agent-log-core.ts` into
 `packages/web/hudsonkit/src/lib/server/agentActionLog.ts`, with one structural
 change: delete the local `BaseEvent`/`LogEvent`/`SpanEvent` mirrors and type
 the writers against `HLogEvent`/`HTraceSpan`/`HObservation` imported from
 `../../types/observability` — ending the "match `HObservation` in hudsonkit"
-copy noted at `app/lib/agent-log-core.ts:20-23`. Public API:
+copy noted at `apps/web/app/lib/agent-log-core.ts:20-23`. Public API:
 
 ```ts
 export function createAgentActionLog(opts?: { store?: HostStore; ns?: string }): {
@@ -429,10 +429,10 @@ export function createAgentActionLog(opts?: { store?: HostStore; ns?: string }):
 
 Redaction (`redactAgentActionValue`, the `set_environment_variable.value`
 special case), the 16 KB line cap, and the 2 MB GET tail all move as-is — they
-are contract, exercised by `test/lib/agent-intent.test.ts` today; those tests
+are contract, exercised by `apps/web/test/lib/agent-intent.test.ts` today; those tests
 move to the kit's vitest suite. The kit's `agentActions` route handler is then
 a ~30-line wrapper over `read`/`appendObservation`, replacing
-`app/api/agent-actions/route.ts`. `app/lib/agent-log.ts` (Next `server-only`
+`apps/web/app/api/agent-actions/route.ts`. `apps/web/app/lib/agent-log.ts` (Next `server-only`
 wrapper) shrinks to re-exports.
 
 ### CLI → `hudsonkit` bin
@@ -462,7 +462,7 @@ Why this slice:
   rather than accept console 404 storms (`vite.host-services.ts:1066-1076`).
   Shipping them turns Atelier's stubs into working persistence by deletion.
 - `workspaceDecor` is the same document-store pattern as `workspaceState`
-  (~103 lines in Hudson, `app/api/workspace-decor/route.ts`) — near-zero
+  (~103 lines in Hudson, `apps/web/app/api/workspace-decor/route.ts`) — near-zero
   marginal cost once the store exists, and it is a visible feature (decor
   survives reloads).
 - `aiChat` is the largest single duplication: Hudson's handler + Atelier's
@@ -475,11 +475,11 @@ Why this slice:
 
 Deletions on completion:
 
-- Hudson: `app/api/workspace-state/route.ts`, `app/api/workspace-decor/route.ts`,
-  `app/api/agent-actions/route.ts`, the generic body of
-  `app/api/ai/chat/route.ts` (CLI mode remains as an `ai.handleChat`
-  wrapper), and most of `app/lib/agent-log-core.ts` (re-export shim).
-  `app/lib/hudsonShellEnvironment.tsx` starts from `...host.routes` and only
+- Hudson: `apps/web/app/api/workspace-state/route.ts`, `apps/web/app/api/workspace-decor/route.ts`,
+  `apps/web/app/api/agent-actions/route.ts`, the generic body of
+  `apps/web/app/api/ai/chat/route.ts` (CLI mode remains as an `ai.handleChat`
+  wrapper), and most of `apps/web/app/lib/agent-log-core.ts` (re-export shim).
+  `apps/web/app/lib/hudsonShellEnvironment.tsx` starts from `...host.routes` and only
   overrides host-specific keys.
 - Atelier: the workspace-state/agent-actions/settings stubs, `readBody`/
   `readJson`/`sendJson`, `proxyToHudsonAi`/`pipeWebResponse`, and the
@@ -495,18 +495,18 @@ adapter-level streaming test (SSE + AI data stream through the Vite bridge).
 
 `traces`, `pipes` + `pipeEvents` (store `watch` + `createFsWatchEventStream`),
 `relayUpload`, `localEnvironment` (with `secretStore` seam; Hudson plugs its
-existing vault from `app/lib/localEnvironment.ts`), `apiProxy` + `fetchImage`
+existing vault from `apps/web/app/lib/localEnvironment.ts`), `apiProxy` + `fetchImage`
 behind the shared URL policy (this *upgrades* security: today
-`app/api/fetch-image/route.ts` fetches any URL with no scheme/host check,
-while `app/api/proxy/route.ts` at least enforces http/https).
+`apps/web/app/api/fetch-image/route.ts` fetches any URL with no scheme/host check,
+while `apps/web/app/api/proxy/route.ts` at least enforces http/https).
 
 ### Phase 3 — provider-required surfaces + intents
 
 `imageGeneration`, `speech` + `voices` (Hudson supplies its Vox bridge from
-`app/lib/tts/voxBridge.ts`; path override keeps `/v1/audio/speech` +
+`apps/web/app/lib/tts/voxBridge.ts`; path override keeps `/v1/audio/speech` +
 `/v1/voices` serving during transition), `services` + `serviceExecute`
 (catalog + execute providers; evaluate afterwards whether Hudson's
-`app/services/executor.ts` process manager is worth generalizing into an
+`apps/web/app/services/executor.ts` process manager is worth generalizing into an
 optional `localProcessExecutor` — Atelier hand-rolled a third copy for its
 relay, so the demand signal exists). `intent()` registry graduation and the
 `hudsonkit agent-action` CLI land here.
@@ -519,10 +519,10 @@ consumer acquires a voice runtime.
 
 ### Migration story
 
-Hudson: introduce `app/lib/host.ts` building `createHudsonHost` from existing
-provider code (`app/api/ai/providers.ts` credentials/models,
-`app/api/ai/toolsets`, later voxBridge/executor); mount the catch-all at
-`app/api/[...hudson]/route.ts`; delete migrated route files per phase. Old and
+Hudson: introduce `apps/web/app/lib/host.ts` building `createHudsonHost` from existing
+provider code (`apps/web/app/api/ai/providers.ts` credentials/models,
+`apps/web/app/api/ai/toolsets`, later voxBridge/executor); mount the catch-all at
+`apps/web/app/api/[...hudson]/route.ts`; delete migrated route files per phase. Old and
 new can coexist per-route throughout — the catch-all only claims paths in the
 manifest, and `paths` overrides let any route keep its legacy URL during a
 deprecation window. `.data/*` layouts are unchanged, so no data migration.
@@ -536,30 +536,30 @@ descriptions ("while the kit's turnkey AI host shape lands") get to come true.
 ## Route contract table
 
 Shapes are as observed at the kit's client call sites (file:line refs are in
-`packages/web/hudsonkit/src`). "Hudson" = `app/api/**` implementation;
+`packages/web/hudsonkit/src`). "Hudson" = `apps/web/app/api/**` implementation;
 "Atelier" = `vite.host-services.ts`. Dispositions: **kit-handler** (works with
 defaults), **provider-required** (kit handler + host-supplied provider),
 **host-specific** (contract documented, no kit implementation).
 
 | Key | Observed contract (client side) | Hudson today | Atelier today | Disposition |
 |---|---|---|---|---|
-| `agentActions` | GET `?limit=` → `{ events: HObservation[] }` (`useAgentActionLog.ts:24-33`); POST `{ event }` fire-and-forget (`WorkspaceShell.tsx:180-191`) | `app/api/agent-actions/route.ts` → `.data/agent-actions.jsonl` (tail 2 MB, cap 16 KB/line) | No-op stub (`{ok:true}`) | **kit-handler** (phase 1; graduated JSONL writer) |
-| `aiChat` | POST, AI-SDK UI-message stream via `DefaultChatTransport`; body = messages + `{ toolset, context, mode, provider, model }` (`useHudsonAI.ts:64-89,205,281-295`) | `app/api/ai/chat/route.ts` → `@hudsonkit/ai` `createPiAiBackend().streamUI`; CLI mode spawns `claude` (`chat/cli.ts`) | pi-ai for owned toolsets; proxies rest to Hudson origin | **provider-required** (phase 1; `ai.backend` + `loadToolset`; `handleChat` escape hatch) |
-| `apiProxy` | POST `{ method, url, headers, body? }` → `{ status, statusText, headers, body, bodyType, size, timing }` (`ApiInspectorProvider.tsx:152-190`) | `app/api/proxy/route.ts` (http/https only, 10 MB cap) | Not implemented | **kit-handler** (phase 2; URL policy hook) |
-| `fetchImage` | GET `?url=` → `{ dataUrl, sourceUrl, size }` (`WorkspaceShell.tsx:2699-2701`) | `app/api/fetch-image/route.ts` — **no scheme/host validation today** | Endpoint exists but route key never wired | **kit-handler** (phase 2; shares URL policy — tightens current behavior) |
-| `imageGeneration` | POST `{ prompt, aspectRatio }` → `{ image: { dataUrl } }` / `{ error }` (`WorkspaceShell.tsx:2743-2745`) | `app/api/ai/generate-image/route.ts` — `ai` + `@ai-sdk/google` Imagen | pi-ai `generateOneImage` | **provider-required** (phase 3; `generate` fn) |
-| `localEnvironment` | GET/POST/DELETE one URL; `{ key, value }` bodies → `{ entries: [{ key, value, source }] }`, `source:'vault'` = masked (`HudsonEnvironmentEditor.tsx:61-139`, `WorkspaceShell.tsx:2657-2677`) | `app/api/settings/environment/route.ts` → `.env.local` + secret vault (keychain/file) | GET-only stub `{}` | **kit-handler** (phase 2; plaintext default + `secretStore` seam) |
-| `pipes` | GET → `{ pipes: PipeDefinition[] }`; POST `{ pipe }` / `{ action:'delete'\|'update-pushed', pipe:{id} }` (`DataBusContext.tsx:150-258`) | `app/api/pipes/route.ts` → `.data/pipes/<id>.json` | Not registered | **kit-handler** (phase 2) |
-| `pipeEvents` | `EventSource`, named `invalidate` event triggers refetch; poll fallback on error (`DataBusContext.tsx:166-171`) | `app/api/pipes/stream/route.ts` — SSE via `createFsWatchEventStream` | Held-open empty SSE | **kit-handler** (phase 2; store `watch`) |
-| `relayUpload` | POST `{ name, data: base64 }` → `{ path }` (`WorkspaceShell.tsx:2806-2807`) | `app/api/relay/upload/route.ts` → `/tmp/hudson-uploads/` | Not implemented | **kit-handler** (phase 2; configurable dir) |
-| `services` | GET (prefixed `${serviceApiUrl}` from `usePlatform()`) → `Array<{ id, status, ... }>` (`useServiceRegistry.ts:19,76-85`) | `app/api/services/route.ts` — catalog + health probes | Hand-rolled, relay only | **provider-required** (phase 3; `catalog` + optional `probeHealth`) |
-| `serviceExecute` | POST (same prefix) `{ serviceId, action: check\|install\|start\|stop, triggeredBy }` → `ServiceActionResult`; also `sendBeacon` stop on unload (`useServiceRegistry.ts:129,253`; `HudsonTerminal.tsx:150-152`) | `app/api/services/execute/route.ts` → `app/services/executor.ts` (spawn/lsof/kill, 333 lines) | Hand-rolled relay spawn/stop | **provider-required** (phase 3; `execute` fn; optional kit local-process executor later) |
-| `speech` | POST `{ text, provider, model, voice, rate, format, metadata }` → JSON `{ audio:{ base64, mimeType } }` (or legacy `audioBase64`/`mimeType`) (`WorkspaceAI.tsx:489-490`; `HudsonVoiceSettingsEditor.tsx:230-233`) | `app/v1/audio/speech/route.ts` (note: outside `/api`) → Vox bridge | Not implemented | **provider-required** (phase 3; `synthesize` fn; `paths` override preserves `/v1` alias) |
-| `traces` | GET → `{ traces: TraceSummary[] }`; GET `?id=` → `{ trace: AgentTrace }`; polled (`TraceProvider.tsx:45-97`) | `app/api/traces/route.ts` → `.data/traces/<id>.json` (also POST create/delete) | Not implemented | **kit-handler** (phase 2) |
-| `voiceApiBase` | Base URL; client appends `/health`, `/v1/voice/devices[/default]`, `/v1/voice/live` (**NDJSON stream**), `/v1/voice/live/{id}/stop\|cancel` (`lib/hudsonVoiceClient.ts:29-36,168-179`) | `app/api/hudson-voice/**` → WS JSON-RPC to native Vox runtime | Not implemented | **host-specific** (contract documented; no kit implementation) |
-| `voices` | GET `?provider=&model=` → `{ providers?, models?, voices?: [{ id, label, previewText }] }` (`HudsonVoiceSettingsEditor.tsx:112-120`) | `app/v1/voices/route.ts` → Vox voice catalog | Not implemented | **provider-required** (phase 3; `listVoices`, defaults ship client-side already) |
-| `workspaceDecor` | GET `?id=` → `DecorState` (validated, `updatedAt` compared); POST `{ id, state }` replace (`WorkspaceDecorContext.tsx:197-276`) | `app/api/workspace-decor/route.ts` → `.data/workspace-decor/<id>.json` | Not implemented | **kit-handler** (phase 1) |
-| `workspaceState` | GET `?id=` → `{ disabledApps?, visibleApps?, ... }`; POST `{ id, state }` **shallow merge** (two independent save paths depend on merge semantics) (`WorkspaceShell.tsx:675-700,1081-1109`) | `app/api/workspace-state/route.ts` → `.data/workspace-state/<id>.json`, merge + `updatedAt` | No-op stub | **kit-handler** (phase 1; merge semantics are contract) |
+| `agentActions` | GET `?limit=` → `{ events: HObservation[] }` (`useAgentActionLog.ts:24-33`); POST `{ event }` fire-and-forget (`WorkspaceShell.tsx:180-191`) | `apps/web/app/api/agent-actions/route.ts` → `.data/agent-actions.jsonl` (tail 2 MB, cap 16 KB/line) | No-op stub (`{ok:true}`) | **kit-handler** (phase 1; graduated JSONL writer) |
+| `aiChat` | POST, AI-SDK UI-message stream via `DefaultChatTransport`; body = messages + `{ toolset, context, mode, provider, model }` (`useHudsonAI.ts:64-89,205,281-295`) | `apps/web/app/api/ai/chat/route.ts` → `@hudsonkit/ai` `createPiAiBackend().streamUI`; CLI mode spawns `claude` (`chat/cli.ts`) | pi-ai for owned toolsets; proxies rest to Hudson origin | **provider-required** (phase 1; `ai.backend` + `loadToolset`; `handleChat` escape hatch) |
+| `apiProxy` | POST `{ method, url, headers, body? }` → `{ status, statusText, headers, body, bodyType, size, timing }` (`ApiInspectorProvider.tsx:152-190`) | `apps/web/app/api/proxy/route.ts` (http/https only, 10 MB cap) | Not implemented | **kit-handler** (phase 2; URL policy hook) |
+| `fetchImage` | GET `?url=` → `{ dataUrl, sourceUrl, size }` (`WorkspaceShell.tsx:2699-2701`) | `apps/web/app/api/fetch-image/route.ts` — **no scheme/host validation today** | Endpoint exists but route key never wired | **kit-handler** (phase 2; shares URL policy — tightens current behavior) |
+| `imageGeneration` | POST `{ prompt, aspectRatio }` → `{ image: { dataUrl } }` / `{ error }` (`WorkspaceShell.tsx:2743-2745`) | `apps/web/app/api/ai/generate-image/route.ts` — `ai` + `@ai-sdk/google` Imagen | pi-ai `generateOneImage` | **provider-required** (phase 3; `generate` fn) |
+| `localEnvironment` | GET/POST/DELETE one URL; `{ key, value }` bodies → `{ entries: [{ key, value, source }] }`, `source:'vault'` = masked (`HudsonEnvironmentEditor.tsx:61-139`, `WorkspaceShell.tsx:2657-2677`) | `apps/web/app/api/settings/environment/route.ts` → `.env.local` + secret vault (keychain/file) | GET-only stub `{}` | **kit-handler** (phase 2; plaintext default + `secretStore` seam) |
+| `pipes` | GET → `{ pipes: PipeDefinition[] }`; POST `{ pipe }` / `{ action:'delete'\|'update-pushed', pipe:{id} }` (`DataBusContext.tsx:150-258`) | `apps/web/app/api/pipes/route.ts` → `.data/pipes/<id>.json` | Not registered | **kit-handler** (phase 2) |
+| `pipeEvents` | `EventSource`, named `invalidate` event triggers refetch; poll fallback on error (`DataBusContext.tsx:166-171`) | `apps/web/app/api/pipes/stream/route.ts` — SSE via `createFsWatchEventStream` | Held-open empty SSE | **kit-handler** (phase 2; store `watch`) |
+| `relayUpload` | POST `{ name, data: base64 }` → `{ path }` (`WorkspaceShell.tsx:2806-2807`) | `apps/web/app/api/relay/upload/route.ts` → `/tmp/hudson-uploads/` | Not implemented | **kit-handler** (phase 2; configurable dir) |
+| `services` | GET (prefixed `${serviceApiUrl}` from `usePlatform()`) → `Array<{ id, status, ... }>` (`useServiceRegistry.ts:19,76-85`) | `apps/web/app/api/services/route.ts` — catalog + health probes | Hand-rolled, relay only | **provider-required** (phase 3; `catalog` + optional `probeHealth`) |
+| `serviceExecute` | POST (same prefix) `{ serviceId, action: check\|install\|start\|stop, triggeredBy }` → `ServiceActionResult`; also `sendBeacon` stop on unload (`useServiceRegistry.ts:129,253`; `HudsonTerminal.tsx:150-152`) | `apps/web/app/api/services/execute/route.ts` → `apps/web/app/services/executor.ts` (spawn/lsof/kill, 333 lines) | Hand-rolled relay spawn/stop | **provider-required** (phase 3; `execute` fn; optional kit local-process executor later) |
+| `speech` | POST `{ text, provider, model, voice, rate, format, metadata }` → JSON `{ audio:{ base64, mimeType } }` (or legacy `audioBase64`/`mimeType`) (`WorkspaceAI.tsx:489-490`; `HudsonVoiceSettingsEditor.tsx:230-233`) | `apps/web/app/v1/audio/speech/route.ts` (note: outside `/api`) → Vox bridge | Not implemented | **provider-required** (phase 3; `synthesize` fn; `paths` override preserves `/v1` alias) |
+| `traces` | GET → `{ traces: TraceSummary[] }`; GET `?id=` → `{ trace: AgentTrace }`; polled (`TraceProvider.tsx:45-97`) | `apps/web/app/api/traces/route.ts` → `.data/traces/<id>.json` (also POST create/delete) | Not implemented | **kit-handler** (phase 2) |
+| `voiceApiBase` | Base URL; client appends `/health`, `/v1/voice/devices[/default]`, `/v1/voice/live` (**NDJSON stream**), `/v1/voice/live/{id}/stop\|cancel` (`lib/hudsonVoiceClient.ts:29-36,168-179`) | `apps/web/app/api/hudson-voice/**` → WS JSON-RPC to native Vox runtime | Not implemented | **host-specific** (contract documented; no kit implementation) |
+| `voices` | GET `?provider=&model=` → `{ providers?, models?, voices?: [{ id, label, previewText }] }` (`HudsonVoiceSettingsEditor.tsx:112-120`) | `apps/web/app/v1/voices/route.ts` → Vox voice catalog | Not implemented | **provider-required** (phase 3; `listVoices`, defaults ship client-side already) |
+| `workspaceDecor` | GET `?id=` → `DecorState` (validated, `updatedAt` compared); POST `{ id, state }` replace (`WorkspaceDecorContext.tsx:197-276`) | `apps/web/app/api/workspace-decor/route.ts` → `.data/workspace-decor/<id>.json` | Not implemented | **kit-handler** (phase 1) |
+| `workspaceState` | GET `?id=` → `{ disabledApps?, visibleApps?, ... }`; POST `{ id, state }` **shallow merge** (two independent save paths depend on merge semantics) (`WorkspaceShell.tsx:675-700,1081-1109`) | `apps/web/app/api/workspace-state/route.ts` → `.data/workspace-state/<id>.json`, merge + `updatedAt` | No-op stub | **kit-handler** (phase 1; merge semantics are contract) |
 
 Non-route environment members: `renderTerminal` and `useHudsonAISettingsEntry`
 (`WorkspaceShell.tsx:569-575`) are client-side app bindings, correctly outside
@@ -572,21 +572,21 @@ this proposal.
    compatibility with external clients. Kit default should be
    `${basePath}/tts/speech` + `${basePath}/tts/voices` with Hudson using
    `paths` overrides — but should the kit bless the `/v1` aliases as a
-   documented convention instead? A Next catch-all under `app/api/` cannot
+   documented convention instead? A Next catch-all under `apps/web/app/api/` cannot
    serve `/v1/*`, so keeping them requires either a second mount or the
    override story.
 2. **URL policy default for `fetchImage`/`apiProxy`.** Proposed default denies
    non-http(s) and private/loopback ranges, which *changes behavior*:
-   `app/api/fetch-image` currently fetches anything, and localhost proxying is
+   `apps/web/app/api/fetch-image` currently fetches anything, and localhost proxying is
    a real dev workflow for the API Inspector. Ship permissive-in-dev /
    strict-otherwise, or require explicit `allowUrl` to loosen? Needs a call.
 3. **`localEnvironment` secrets.** Does the kit ship Hudson's vault behavior
    (secret-shaped keys diverted to keychain/file vault,
-   `app/lib/localEnvironment.ts` + `app/lib/localSecretVault.ts`) or only the
+   `apps/web/app/lib/localEnvironment.ts` + `apps/web/app/lib/localSecretVault.ts`) or only the
    `secretStore` seam with a plaintext `.env.local` default? Shipping the
    vault is more turnkey but drags keychain integration into the kit.
 4. **Generic local-process service executor.** Three copies exist (Hudson's
-   `app/services/executor.ts`, Atelier's relay manager, and whatever the next
+   `apps/web/app/services/executor.ts`, Atelier's relay manager, and whatever the next
    consumer writes). Spawning/killing processes from a web-adjacent handler is
    the most security-sensitive capability in the set — graduate it, or keep
    `execute` forever host-supplied?
@@ -599,7 +599,7 @@ this proposal.
    catalog stay an agent/CLI-only surface reached outside the shell contract?
 7. **Stale doc pointer.** `CLAUDE.md` cites
    `docs/HUD-007-agent-intent-instrumentation.md`, which does not exist (the
-   HUD-007 label is used by `specs/hud-007-app-controls.md` and the native
+   HUD-007 label is used by `docs/specs/hud-007-app-controls.md` and the native
    workflow kit note). When the intent/agent-log graduation lands, its design
    doc should claim a fresh HUD number and `CLAUDE.md` should be corrected.
 8. **Observability wiring.** Should kit-default handlers auto-emit

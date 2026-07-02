@@ -6,7 +6,7 @@ import { readFileSync, writeFileSync } from 'fs';
 import { join } from 'path';
 
 const SEED_DIR = join(import.meta.dirname, '..', '.data', 'logo-templates');
-const OUT = join(import.meta.dirname, '..', 'app', 'apps', 'logo', 'builtinRenderBodies.ts');
+const OUT = join(import.meta.dirname, '..', 'apps', 'web', 'app', 'apps', 'logo', 'builtinRenderBodies.ts');
 
 const builtins = [
   'negative-space', 'green-channel', 'grid-color', 'interlocking',

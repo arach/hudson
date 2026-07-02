@@ -21,7 +21,7 @@ function json(res: ServerResponse, status: number, data: unknown) {
 
 /**
  * POST /api/upload — Save a base64-encoded image to /tmp.
- * Mirrors the logic from the Next.js API route app/api/relay/upload/route.ts.
+ * Mirrors the logic from the Next.js API route apps/web/app/api/relay/upload/route.ts.
  */
 export async function handleUpload(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== 'POST') {

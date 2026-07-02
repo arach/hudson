@@ -29,7 +29,7 @@ describe('agent action view preparation', () => {
           status: 'completed',
           action: 'agent.task',
           traceId: 'tr_read',
-          metadata: { command: ['rg', 'HudsonApp', 'app/apps/hudson-docs', '-g', '*.tsx'] },
+          metadata: { command: ['rg', 'HudsonApp', 'apps/web/app/apps/hudson-docs', '-g', '*.tsx'] },
         },
       }),
       logEvent({
@@ -41,7 +41,7 @@ describe('agent action view preparation', () => {
           status: 'started',
           action: 'agent.task',
           traceId: 'tr_read',
-          metadata: { command: ['rg', 'HudsonApp', 'app/apps/hudson-docs', '-g', '*.tsx'] },
+          metadata: { command: ['rg', 'HudsonApp', 'apps/web/app/apps/hudson-docs', '-g', '*.tsx'] },
         },
       }),
     ];

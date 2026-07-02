@@ -1,6 +1,6 @@
 // ---------------------------------------------------------------------------
 // Core types for @hudsonkit/ai
-// Spec: specs/hud-006-ai-backends.md § Core API
+// Spec: docs/specs/hud-006-ai-backends.md § Core API
 // ---------------------------------------------------------------------------
 
 // ---- Messages ----

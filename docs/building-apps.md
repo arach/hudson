@@ -96,10 +96,10 @@ See [Systems](./systems.md) for intents, ports, and services. See [Multi-instanc
 
 ## Directory layout
 
-A typical app lives under `app/apps/<app-name>/`:
+A typical app lives under `apps/web/app/apps/<app-name>/`:
 
 ```
-app/apps/my-app/
+apps/web/app/apps/my-app/
   index.ts                 # HudsonApp export
   MyAppProvider.tsx        # React context + state
   MyAppContent.tsx         # Content slot
@@ -457,7 +457,7 @@ Palette interaction flow: the user types â†’ substring filter against `label` â†
 
 ### Inside Hudson (default workspaces)
 
-Register committed apps in `app/apps/registry.ts`. That file has three moving parts:
+Register committed apps in `apps/web/app/apps/registry.ts`. That file has three moving parts:
 
 1. Import the app near the other in-tree apps.
 2. Add it to the `getAppById()` lookup table so JSON/local workspace entries can resolve the app by id.
@@ -490,7 +490,7 @@ Committed apps appear where their workspace getter includes them. `allWorkspaces
 
 ### Inside Hudson (dev-local only)
 
-For apps you don't want to commit, add to `app/local/apps.local.ts` (gitignored; auto-created by `next.config.ts`):
+For apps you don't want to commit, add to `apps/web/app/local/apps.local.ts` (gitignored; auto-created by `apps/web/next.config.ts`):
 
 ```ts
 import type { HudsonWorkspace, WorkspaceAppConfig } from 'hudsonkit';

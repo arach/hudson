@@ -2,7 +2,7 @@ import type { StudioPage } from "studio";
 import type { Bucket, Surface, Status } from "../registry";
 import mtimes from "virtual:eng-mtimes";
 
-const SPECS_FILES = import.meta.glob("../../../../specs/*.md", {
+const SPECS_FILES = import.meta.glob("../../../../docs/specs/*.md", {
   eager: true,
   query: "?raw",
   import: "default",
@@ -267,7 +267,7 @@ function loadProposals(): Proposal[] {
   };
 
   for (const [p, body] of Object.entries(SPECS_FILES)) {
-    ingest(p, body, "specs", "specs/");
+    ingest(p, body, "specs", "docs/specs/");
   }
   for (const [p, body] of Object.entries(APPLE_FILES)) {
     ingest(p, body, "apple", "packages/native/apple/HudsonKit/Docs/");

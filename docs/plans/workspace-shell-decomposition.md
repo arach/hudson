@@ -184,7 +184,7 @@ Ordering principle: **land tests first, then peel from the file's edges inward**
 
 **PR 0 — gate.** Do not start until §6 items (a)–(d) are merged/committed; rebase onto their result.
 
-**PR 1 — characterization tests only** (no src changes). See §4. Files under `test/lib/`.
+**PR 1 — characterization tests only** (no src changes). See §4. Files under `apps/web/test/lib/`.
 *Verify: tests fail if key strings, debounce timings, or provider gating change.*
 
 **PR 2 — leaf dialogs + status chrome out of the file.** Move `TerminalSpawnDialog` (+`SPAWN_PRESETS`+`prettyCwdShort`), `DevtoolsIntegrationDialog`, `HudLoggerOverlay`, `HudLoggerStatusButton`, `renderStatusRightItems`, `ServiceStatusIndicator` to `dialogs/` and `chrome/statusItems.tsx`. Pure cut-and-paste; no public export changes. (~800 lines removed.)
@@ -225,9 +225,9 @@ Rebase-pain notes: PRs 2–4 don't touch WorkspaceInner's body, so they can land
 
 ## 4. Characterization test strategy (write before moving code — PR 1)
 
-Infrastructure exists: root `vitest.config.ts` (jsdom, `test/setup.ts`, aliases `hudsonkit` → `packages/web/hudsonkit/src`), helper `test/helpers/renderWithHudson.tsx`. Build a shared fixture: `makeTestWorkspace()` with 2–3 minimal `HudsonApp`s (one `canvasMode: 'windowed'`, one native, one with a `Chat` slot) whose `Provider` records its `visible/focused/disabled` props into a spy array. Render `<WorkspaceShell workspaces={[ws]} defaultWorkspaceId="test" bootMode="none" />` with mocked `fetch`.
+Infrastructure exists: `apps/web/vitest.config.ts` (jsdom, `apps/web/test/setup.ts`, aliases `hudsonkit` → `packages/web/hudsonkit/src`), helper `apps/web/test/helpers/renderWithHudson.tsx`. Build a shared fixture: `makeTestWorkspace()` with 2–3 minimal `HudsonApp`s (one `canvasMode: 'windowed'`, one native, one with a `Chat` slot) whose `Provider` records its `visible/focused/disabled` props into a spy array. Render `<WorkspaceShell workspaces={[ws]} defaultWorkspaceId="test" bootMode="none" />` with mocked `fetch`.
 
-1. **Persistence-key goldens** (`test/lib/workspace-shell-persistence.test.tsx`):
+1. **Persistence-key goldens** (`apps/web/test/lib/workspace-shell-persistence.test.tsx`):
    - After mount + flushing timers, snapshot `Object.keys(localStorage)` against a golden list.
    - Open palette (Cmd+K), click "Toggle Left Panel" → assert `hudson.ws.test.leftCollapsed` === `true` and a `hudson:saved` CustomEvent fired with that key.
    - Toggle terminal command → `hudson.ws.test.terminal`; assert `hudson.termH` and `hudson.minimap` are the global (non-workspace-scoped) spellings.
@@ -274,4 +274,4 @@ Concurrent items on/around this working tree:
 - `packages/web/hudsonkit/src/components/AppShell.tsx`
 - `packages/web/hudsonkit/src/hooks/usePersistentState.ts`
 - `packages/web/hudsonkit/src/context/AppShellControlsContext.tsx`
-- `vitest.config.ts` (root) + `test/helpers/renderWithHudson.tsx` (characterization suite)
+- `apps/web/vitest.config.ts` + `apps/web/test/helpers/renderWithHudson.tsx` (characterization suite)

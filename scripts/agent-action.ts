@@ -5,7 +5,7 @@ import {
   appendAgentLog,
   appendAgentTaskLog,
   makeTraceId,
-} from '../app/lib/agent-log-core';
+} from '../apps/web/app/lib/agent-log-core';
 
 type AgentActionCommand = 'start' | 'log' | 'complete' | 'fail' | 'run';
 

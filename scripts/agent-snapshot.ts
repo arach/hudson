@@ -2,7 +2,7 @@
 /**
  * Hudson agent snapshot.
  *
- * Reads app/apps/*\/index.ts and extracts the HudsonApp metadata each app
+ * Reads apps/web/app/apps/*\/index.ts and extracts the HudsonApp metadata each app
  * declares: id, name, description, ports (inputs/outputs), intent count.
  * Emits a markdown summary suitable for Hudson (the agent) to read at the
  * top of a session before deciding how to handle a cross-app commission.
@@ -22,7 +22,7 @@
 import { readFileSync, readdirSync, statSync, existsSync } from 'fs';
 import { join } from 'path';
 
-const APPS_DIR = join(import.meta.dir, '..', 'app', 'apps');
+const APPS_DIR = join(import.meta.dir, '..', 'apps', 'web', 'app', 'apps');
 
 interface PortDecl {
   id: string;

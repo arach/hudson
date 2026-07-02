@@ -27,7 +27,7 @@ function engMtimesPlugin(): Plugin {
   const RESOLVED_ID = "\0virtual:eng-mtimes";
   const SOURCES = [
     "docs",
-    "specs",
+    "docs/specs",
     "packages/native/apple/HudsonKit/Docs",
   ];
 

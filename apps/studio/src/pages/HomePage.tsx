@@ -37,7 +37,7 @@ export function HomePage() {
           studio package — Hudson dogfooding hudsonkit. HUD-NNN proposals
           auto-discovered from{" "}
           <code className="font-mono text-[13px] text-studio-ink-strong">
-            specs/
+            docs/specs/
           </code>{" "}
           and the Apple shell docs, ordered by HUD number. Published Hudson
           docs live at{" "}

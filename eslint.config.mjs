@@ -8,14 +8,14 @@ const eslintConfig = defineConfig([
   // Override default ignores of eslint-config-next.
   globalIgnores([
     // Default ignores of eslint-config-next:
-    ".next/**",
+    "**/.next/**",
     ".claude/**",
     ".data/**",
-    "out/**",
-    "site/out/**",
+    "**/out/**",
+    "apps/web/site/out/**",
     "build/**",
-    "public/embed/**",
-    "next-env.d.ts",
+    "apps/web/public/embed/**",
+    "**/next-env.d.ts",
     // Build artifacts and generated bundles — never lint these.
     "**/dist/**",
     "**/.build/**",

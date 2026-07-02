@@ -317,7 +317,7 @@ packages/web/hudsonkit/src/workflow/
   WorkflowGraph.tsx
   index.ts
 
-app/apps/workflow-lab/
+apps/web/app/apps/workflow-lab/
 ```
 
 The Workflow Lab app is the first visual proof harness. It renders shared

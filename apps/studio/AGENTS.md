@@ -53,7 +53,7 @@ yourself writing code that duplicates a studio or hudsonkit primitive.
   / atoms / compositions exhibits. Proposals are **not** listed here —
   they flow in via `extraPages` from `src/content/`.
 - **Content loaders** (`src/content/`) — auto-discover HUD-NNN proposals:
-  - `proposals.ts` scans `specs/*.md` + `packages/native/apple/HudsonKit/Docs/*.md`
+  - `proposals.ts` scans `docs/specs/*.md` + `packages/native/apple/HudsonKit/Docs/*.md`
     for `hud-NNN-*.md` filenames. Parses the HUD id, sorts by HUD number
     (then kind, then slug), tags each with origin (`specs` → web shell,
     `apple` → iOS/macOS shell). Sidebar listing shows the full catalog —
@@ -62,7 +62,7 @@ yourself writing code that duplicates a studio or hudsonkit primitive.
   - `index.ts` exports `findEngBySlug(slug)` (proposal lookup by slug) and
     `buildEngExtraPages()` (full HUD-NNN-ordered listing for RegistryNav).
 - **Vite plugin** (`vite.config.ts`) — `engMtimesPlugin` exposes
-  filesystem mtimes for `docs/*.md`, `specs/*.md`, and the Apple Docs as
+  filesystem mtimes for `docs/*.md`, `docs/specs/*.md`, and the Apple Docs as
   `virtual:eng-mtimes`. `import.meta.glob` has no mtime channel; the
   plugin closes that gap.
 

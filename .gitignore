@@ -20,7 +20,7 @@ node_modules/
 # next.js
 .next/
 /out/
-site/out/
+apps/web/site/out/
 
 # production
 /build
@@ -53,7 +53,7 @@ appsettings.local.*
 .claude/
 
 # local app directory (developer-specific, auto-created on first run)
-app/local/
+apps/web/app/local/
 
 # OS files
 .DS_Store
@@ -123,10 +123,10 @@ local.db
 local.db-*
 
 # fonts (bundled locally, not committed)
-public/fonts/
+apps/web/public/fonts/
 
 # embed bundle (built artifact, see embed-worker/scripts/bundle-client.mjs)
-public/embed/
+apps/web/public/embed/
 
 # resend config
 .resend

@@ -243,7 +243,7 @@ Inline manifests are also accepted under `setup` or `manifest`.
     {
       "id": "hudson.scout.files.provider",
       "runtimeKind": "file",
-      "path": "app/apps/scout/ScoutProvider.tsx",
+      "path": "apps/web/app/apps/scout/ScoutProvider.tsx",
       "language": "typescript",
       "role": "source",
       "title": "ScoutProvider.tsx",

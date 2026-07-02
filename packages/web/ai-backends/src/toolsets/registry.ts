@@ -1,7 +1,7 @@
 // ---------------------------------------------------------------------------
 // Portable toolset registry
 //
-// Replaces the hardcoded static-import registry in app/api/ai/toolsets/index.ts.
+// Replaces the hardcoded static-import registry in apps/web/app/api/ai/toolsets/index.ts.
 // Runtime-agnostic: Next.js, Vite, and plain Node apps register/resolve
 // toolsets identically.
 // ---------------------------------------------------------------------------
@@ -37,7 +37,7 @@ export function createToolsetRegistry(): ToolsetRegistry {
 // Built-in 'intents' toolset factory
 //
 // Compiles AppIntent[] into the standard dispatch tool shape that the existing
-// intents toolset (app/api/ai/toolsets/intents.ts) uses. This version is
+// intents toolset (apps/web/app/api/ai/toolsets/intents.ts) uses. This version is
 // portable — no AI SDK import required at registration time.
 // ---------------------------------------------------------------------------
 

@@ -52,7 +52,7 @@ export const STUDIO_PAGES: readonly Page[] = [
     ],
   },
   // Engineering material (Proposals + Notes) is auto-discovered from
-  // hudson/docs/, hudson/specs/, and packages/native/apple/HudsonKit/Docs/
+  // hudson/docs/, hudson/docs/specs/, and packages/native/apple/HudsonKit/Docs/
   // and fed into the registry via `extraPages` from src/StudioApp.tsx.
 ];
 

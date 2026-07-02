@@ -11,7 +11,7 @@ section: "AI"
 
 `HudAI` is the Apple-side inference primitive in HudsonKit. It handles one model turn at a time — provider setup, credentials, streaming, typed tool calls, recoverable errors — behind a single `HudAIClient`. Swap providers by passing a different adapter.
 
-Design rationale lives in the internal engineering spec at `specs/hud-ai-framework.md`.
+Design rationale lives in the internal engineering spec at `docs/specs/hud-ai-framework.md`.
 
 ## HudAIClient
 

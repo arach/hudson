@@ -19,16 +19,16 @@ export default {
     ],
 
     entryPoints: {
-      'shell': 'app/shell/',
-      'apps': 'app/apps/',
-      'workspaces': 'app/workspaces/',
+      'shell': 'packages/web/hudsonkit/src/workspace/shell/',
+      'apps': 'apps/web/app/apps/',
+      'workspaces': 'apps/web/app/workspaces/',
       'sdk': 'packages/web/hudsonkit/src/',
       'types': 'packages/web/hudsonkit/src/types/',
     },
 
     rules: [
-      { pattern: 'new app', instruction: 'See docs/building-apps.md and app/apps/stage-design/ as reference' },
-      { pattern: 'workspace', instruction: 'Check app/workspaces/ for workspace definitions' },
+      { pattern: 'new app', instruction: 'See docs/building-apps.md and apps/web/app/apps/stage-design/ as reference' },
+      { pattern: 'workspace', instruction: 'Check apps/web/app/workspaces/ for workspace definitions' },
       { pattern: 'intent', instruction: 'See packages/web/hudsonkit/src/types/intent.ts and hudsonkit/workspace buildIntentCatalog' },
       { pattern: 'component', instruction: 'Check packages/web/hudsonkit/src/components/ for chrome, canvas, windows, and overlays' },
       { pattern: 'styling', instruction: 'Uses Tailwind v4, design tokens in packages/web/hudsonkit/src/lib/theme.ts' },

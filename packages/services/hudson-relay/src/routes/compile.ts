@@ -17,7 +17,7 @@ function json(res: ServerResponse, status: number, data: unknown) {
 
 /**
  * POST /api/compile — Compile TypeScript source to JavaScript via esbuild.
- * Mirrors the logic from the Next.js API route app/api/logo/compile/route.ts.
+ * Mirrors the logic from the Next.js API route apps/web/app/api/logo/compile/route.ts.
  */
 export async function handleCompile(req: IncomingMessage, res: ServerResponse) {
   if (req.method !== 'POST') {

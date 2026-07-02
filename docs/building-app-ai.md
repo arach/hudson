@@ -10,9 +10,9 @@ section: "Web"
 This guide is for agents and authors adding an AI surface (chat composer + tool-driven actions) to a Hudson app. The pattern is **two files**: one server-side toolset, one client-side hook. Once you know the shape, copy the reference app that's closest to what you're building and edit.
 
 > Working examples to copy from, simplest first:
-> - **`app/apps/hudson-ai/`** — model/provider settings, chat surface, and workspace-level AI affordances.
-> - **`app/api/ai/toolsets/workspace.ts`** — shell/workspace tools, including service-backed actions.
-> - **`app/api/ai/toolsets/intents.ts`** — intent-catalog tools that bridge AI to live app commands.
+> - **`apps/web/app/apps/hudson-ai/`** — model/provider settings, chat surface, and workspace-level AI affordances.
+> - **`apps/web/app/api/ai/toolsets/workspace.ts`** — shell/workspace tools, including service-backed actions.
+> - **`apps/web/app/api/ai/toolsets/intents.ts`** — intent-catalog tools that bridge AI to live app commands.
 
 ## Mental model
 
@@ -44,13 +44,13 @@ The route, the backend, the multi-step tool loop — none of that is your concer
 For a new app `foo`:
 
 ```
-app/api/ai/toolsets/foo.ts       ← server: system prompt, context renderer, tool schemas
-app/apps/foo/useFooAI.ts         ← client: useHudsonAI() wrapper + onToolCall router
-app/api/ai/toolsets/index.ts     ← add one line: defaultRegistry.register('foo', fooToolset)
+apps/web/app/api/ai/toolsets/foo.ts       ← server: system prompt, context renderer, tool schemas
+apps/web/app/apps/foo/useFooAI.ts         ← client: useHudsonAI() wrapper + onToolCall router
+apps/web/app/api/ai/toolsets/index.ts     ← add one line: defaultRegistry.register('foo', fooToolset)
 ```
 
 Naming conventions:
-- Toolset id matches app id (`foo` ↔ `app/apps/foo/`).
+- Toolset id matches app id (`foo` ↔ `apps/web/app/apps/foo/`).
 - Hook is `useFooAI` (PascalCase app name).
 - Toolset export is `fooToolset` (lowercase, matches id).
 
@@ -59,7 +59,7 @@ Naming conventions:
 A `ToolsetDefinition` has three parts: `system`, `context(ctx)`, `tools(ctx)`. The shape is enforced by `import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets'`.
 
 ```ts
-// app/api/ai/toolsets/foo.ts
+// apps/web/app/api/ai/toolsets/foo.ts
 import { tool } from 'ai';
 import { z } from 'zod';
 import type { ToolsetDefinition } from '@hudsonkit/ai/toolsets';
@@ -118,7 +118,7 @@ function tools(_ctx: Record<string, unknown>) {
 export const fooToolset: ToolsetDefinition = { system, context, tools };
 ```
 
-Register it once in `app/api/ai/toolsets/index.ts`:
+Register it once in `apps/web/app/api/ai/toolsets/index.ts`:
 
 ```ts
 import { fooToolset } from './foo';
@@ -164,7 +164,7 @@ Don't make the model recite these — embed them in the taste section so they sh
 The hook glues app state to `useHudsonAI`. Three things you control: `context`, `onToolCall`, and (optionally) `attachments`.
 
 ```ts
-// app/apps/foo/useFooAI.ts
+// apps/web/app/apps/foo/useFooAI.ts
 'use client';
 
 import { useCallback, useMemo, useState, useEffect } from 'react';
@@ -275,7 +275,7 @@ model: String(appSettings.aiModel || 'gemini-3-flash-preview'),
 
 `appSettings.aiProvider` and `appSettings.aiModel` come from the app's declarative settings schema (see `docs/settings.md`). If your app doesn't expose these as user-tunable settings, hardcode sensible defaults — but pick `copilot` + a Gemini-flash model unless you have a specific reason. They're fastest and cheapest for tool-driven work.
 
-Available providers today (see `app/api/ai/providers.ts`):
+Available providers today (see `apps/web/app/api/ai/providers.ts`):
 - `copilot` (GitHub Copilot, OAuth via OpenCode auth.json)
 - `anthropic`, `openai`, `groq`, `xai`, `google`, `github`, `minimax`
 

@@ -31,34 +31,34 @@ bun run lint   # ESLint
 
 ## Routes
 
-Production routes the marketing deck and the product on **different subdomains**, both served by the same Cloudflare Worker (`site/cloudflare-static-worker.ts`) against the static export in `site/out/`:
+Production routes the marketing deck and the product on **different subdomains**, both served by the same Cloudflare Worker (`apps/web/site/cloudflare-static-worker.ts`) against the static export in `apps/web/site/out/`:
 
 | Subdomain | Worker rewrite | Source |
 |-----------|----------------|--------|
-| `hudsonkit.com` / `www.hudsonkit.com` | `/` → `/landing/` | `app/landing/page.tsx` (SiteRoot) |
-| `app.hudsonkit.com` | `/` → `/app/` | `app/app/page.tsx` (WorkspaceShell) |
+| `hudsonkit.com` / `www.hudsonkit.com` | `/` → `/landing/` | `apps/web/app/landing/page.tsx` (SiteRoot) |
+| `app.hudsonkit.com` | `/` → `/app/` | `apps/web/app/app/page.tsx` (WorkspaceShell) |
 
-In local dev (`localhost:3500`) there's no host split — `/` is a thin redirect to `/app`, and `/landing` is the marketing deck. **Treat `/` as the product surface** when adding routes; never dump page content into `app/page.tsx` again.
+In local dev (`localhost:3500`) there's no host split — `/` is a thin redirect to `/app`, and `/landing` is the marketing deck. **Treat `/` as the product surface** when adding routes; never dump page content into `apps/web/app/page.tsx` again.
 
-If you add a new top-level static page, append its route to `staticRoutes` in `site/export-pages.mjs` — that allow-list is what gets copied into the Cloudflare deploy bundle.
+If you add a new top-level static page, append its route to `staticRoutes` in `apps/web/site/export-pages.mjs` — that allow-list is what gets copied into the Cloudflare deploy bundle.
 
 ## Key Paths
 
 | Path | Purpose |
 |------|---------|
-| `app/page.tsx` | Client-side redirect to `/app`; dev-only choice surface |
-| `app/landing/page.tsx` | Marketing deck (mounts `<SiteRoot>`). Served at `hudsonkit.com/` via Worker rewrite |
-| `app/app/page.tsx` | Mounts `<WorkspaceShell>` with `allWorkspaces` from the registry. Served at `app.hudsonkit.com/` via Worker rewrite |
+| `apps/web/app/page.tsx` | Client-side redirect to `/app`; dev-only choice surface |
+| `apps/web/app/landing/page.tsx` | Marketing deck (mounts `<SiteRoot>`). Served at `hudsonkit.com/` via Worker rewrite |
+| `apps/web/app/app/page.tsx` | Mounts `<WorkspaceShell>` with `allWorkspaces` from the registry. Served at `app.hudsonkit.com/` via Worker rewrite |
 | `packages/web/hudsonkit/src/workspace/shell/WorkspaceShell.tsx` | Main shell orchestrator (package-owned; exported via `hudsonkit/workspace`) |
-| `app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route/terminal/AI-settings bindings passed into the shell |
-| `app/apps/registry.ts` | Canonical app list (built-in + local) |
-| `app/apps/` | App implementations |
-| `app/local/apps.local.ts` | Gitignored; developer-local app/workspace registrations |
-| `app/workspaces/` | Workspace definitions |
-| `marketing/sheets/index.ts` | Sheets that compose the public deck. Add here only if it's HudsonKit marketing copy |
-| `marketing/primitives/` | Reusable building blocks for sheets (Sheet, Eyebrow, TitleBlock, …) |
-| `site/cloudflare-static-worker.ts` | Per-host root rewrites + AI chat handler |
-| `site/export-pages.mjs` | Allow-list of routes copied into `site/out` for deploy |
+| `apps/web/app/lib/hudsonShellEnvironment.tsx` | Hudson-owned route/terminal/AI-settings bindings passed into the shell |
+| `apps/web/app/apps/registry.ts` | Canonical app list (built-in + local) |
+| `apps/web/app/apps/` | App implementations |
+| `apps/web/app/local/apps.local.ts` | Gitignored; developer-local app/workspace registrations |
+| `apps/web/app/workspaces/` | Workspace definitions |
+| `apps/web/marketing/sheets/index.ts` | Sheets that compose the public deck. Add here only if it's HudsonKit marketing copy |
+| `apps/web/marketing/primitives/` | Reusable building blocks for sheets (Sheet, Eyebrow, TitleBlock, …) |
+| `apps/web/site/cloudflare-static-worker.ts` | Per-host root rewrites + AI chat handler |
+| `apps/web/site/export-pages.mjs` | Allow-list of routes copied into `apps/web/site/out` for deploy |
 | `packages/web/hudsonkit/src/components/AppShell.tsx` | Default single-app shell |
 | `packages/web/hudsonkit/src/types/app.ts` | `HudsonApp` interface |
 | `packages/web/hudsonkit/src/types/workspace.ts` | `HudsonWorkspace` interface |
@@ -68,14 +68,14 @@ If you add a new top-level static page, append its route to `staticRoutes` in `s
 
 ## Adding a New App
 
-1. Create directory in `app/apps/your-app/`
+1. Create directory in `apps/web/app/apps/your-app/`
 2. Implement `HudsonApp` interface (Provider, slots, hooks)
-3. Register in a workspace file in `app/workspaces/`
+3. Register in a workspace file in `apps/web/app/workspaces/`
 4. Add workspace to the registry if new
 
 See `docs/building-apps.md` for the full guide.
-See `app/apps/stage-design/` as a compact reference implementation
-(Provider + Content + LeftPanel + Chrome + hooks); `app/apps/theme-designer/`
+See `apps/web/app/apps/stage-design/` as a compact reference implementation
+(Provider + Content + LeftPanel + Chrome + hooks); `apps/web/app/apps/theme-designer/`
 is a fuller example with intents.
 
 ## Architecture
@@ -95,8 +95,8 @@ operator request asks Hudson to create/change/deliver something:
 1. Orient with `docs/agent/overview.agent.md` — a dense structural map of the
    codebase written for agent consumption.
 2. Enumerate what's callable: `curl -s localhost:3500/api/intents | jq` if
-   the dev server is up, or read `app/apps/<id>/intents.ts` + grep for `intent(`
-   in `app/api/**`.
+   the dev server is up, or read `apps/web/app/apps/<id>/intents.ts` + grep for `intent(`
+   in `apps/web/app/api/**`.
 3. Start a task envelope before making changes. Prefer `run` when the work can
    be represented as one command; it writes both the started event and the
    terminal completed/failed event with the same trace id:
@@ -106,7 +106,7 @@ operator request asks Hudson to create/change/deliver something:
      --prompt "Run agent-intent tests" \
      --action intents.test \
      --actor "${USER:-agent}" \
-     -- bun run test test/lib/agent-intent.test.ts
+     -- bun run test apps/web/test/lib/agent-intent.test.ts
    ```
 
    For interactive or multi-step work, use `start` and keep the trace id:

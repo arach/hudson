@@ -6,30 +6,31 @@ Hudson is a monorepo with a web workspace, a web SDK, Apple-native Swift package
 
 ```
 hudson/
-  app/                              # Next.js 16 app (App Router)
-    app/page.tsx                    # `/app` route — mounts <WorkspaceShell>
-    layout.tsx                      # Root HTML + globals.css
-    globals.css                     # Tailwind v4 + scrollbar styles
-    apps/                           # App implementations
-      registry.ts                   # Aggregates built-in + local apps
-      stage-design/                 # Compact reference app
-      theme-designer/
-      hudson-docs/
-      hudson-ai/
-      intent-explorer/
-      hud-logger/
-      services/
-      terminal/
-    workspaces/
-      hudsonOS.ts                   # Default workspace composition
-      index.ts                      # Re-exports
-    local/
-      apps.local.ts                 # Gitignored — dev-local app registrations
-      workspaces.json
-    lib/                            # Shared utilities
-    hooks/                          # Shared hooks
-    services/                       # Service registry (hx, etc.)
-    api/                            # Next.js API routes (AI, saves, etc.)
+  apps/web/                         # Next.js 16 app + marketing + deploy (App Router)
+    app/
+      app/page.tsx                  # `/app` route — mounts <WorkspaceShell>
+      layout.tsx                    # Root HTML + globals.css
+      globals.css                   # Tailwind v4 + scrollbar styles
+      apps/                         # App implementations
+        registry.ts                 # Aggregates built-in + local apps
+        stage-design/               # Compact reference app
+        theme-designer/
+        hudson-docs/
+        hudson-ai/
+        intent-explorer/
+        hud-logger/
+        services/
+        terminal/
+      workspaces/
+        hudsonOS.ts                 # Default workspace composition
+        index.ts                    # Re-exports
+      local/
+        apps.local.ts               # Gitignored — dev-local app registrations
+        workspaces.json
+      lib/                          # Shared utilities
+      hooks/                        # Shared hooks
+      services/                     # Service registry (hx, etc.)
+      api/                          # Next.js API routes (AI, saves, etc.)
 
   packages/
     web/
@@ -74,7 +75,7 @@ hudson/
 ## Data flow (WorkspaceShell)
 
 ```
-app/app/page.tsx
+apps/web/app/app/page.tsx
   └── <WorkspaceShell workspaces={allWorkspaces} defaultWorkspaceId="hudsonOS" />
         │
         ├── Nests every app's Provider recursively
@@ -92,7 +93,7 @@ app/app/page.tsx
 ## Data flow (AppShell)
 
 ```
-app/page.tsx (consumer — e.g. premotion)
+app/page.tsx (consumer app — e.g. premotion, external project)
   └── <AppShell app={catalogApp} />
         │
         └── app.Provider wraps everything
@@ -132,7 +133,7 @@ All app Providers wrap the entire workspace content. This enables cross-app cont
 
 ### Registry-driven app loading
 
-Hudson's own demo registers its built-in apps in `app/apps/registry.ts` and merges in optional developer-local apps from a gitignored `app/local/apps.local.ts` (auto-created as an empty stub on first run). The same split — committed shared registry + gitignored local override — works for any consumer that wants a stable default workspace alongside per-developer private apps.
+Hudson's own demo registers its built-in apps in `apps/web/app/apps/registry.ts` and merges in optional developer-local apps from a gitignored `apps/web/app/local/apps.local.ts` (auto-created as an empty stub on first run). The same split — committed shared registry + gitignored local override — works for any consumer that wants a stable default workspace alongside per-developer private apps.
 
 ## State persistence
 

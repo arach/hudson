@@ -3,7 +3,7 @@
 //
 // Apps declare a backend namespace + storage namespace through the manifest
 // so hudsonkit can derive defaults (`/api/{app.id}`, `~/hudson/{app.id}/.data`)
-// without copy/paste plumbing on each route. See specs/hud-008-app-backends.md.
+// without copy/paste plumbing on each route. See docs/specs/hud-008-app-backends.md.
 // ---------------------------------------------------------------------------
 
 export interface HudsonAppBackend {

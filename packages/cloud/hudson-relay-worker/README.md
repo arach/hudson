@@ -135,7 +135,7 @@ Payload:
 - Per-user revoke API (v1 = rotate `HUD_SESSION_SECRET`)
 - Multi-recipient broadcast / topic fan-out
 
-See [`specs/hud-004-auth-and-push.md`](../../../specs/hud-004-auth-and-push.md) for the full design context.
+See [`docs/specs/hud-004-auth-and-push.md`](../../../docs/specs/hud-004-auth-and-push.md) for the full design context.
 
 ## Testing (TODO — P1.1.5)
 
