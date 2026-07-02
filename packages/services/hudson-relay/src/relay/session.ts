@@ -186,6 +186,10 @@ export function sessionOwnsSocket(session: Session, ws: RelaySocket): boolean {
 
 export function writeSession(session: Session, data: string): boolean {
   if (session.exited) return false;
+  // 'observe' clients are read-only. The client marks observe handles
+  // read-only in the UI, but the relay is the trust boundary — enforce it
+  // here so it holds for every backend and call site.
+  if (session.controlMode === 'observe') return false;
   try {
     session.pty.write(data);
     return true;
@@ -200,6 +204,10 @@ export function writeSession(session: Session, data: string): boolean {
 
 export function resizeSession(session: Session, cols: number, rows: number): boolean {
   if (session.exited) return false;
+  // Observers of a shared pty/tmux session must not resize it out from under
+  // the writer. zellij observers run their own client PTY, so their resize
+  // only affects their own view and stays allowed.
+  if (session.controlMode === 'observe' && session.backend !== 'zellij') return false;
   try {
     session.pty.resize(cols, rows);
     if (session.backend === 'tmux' && session.tmuxSession) {
