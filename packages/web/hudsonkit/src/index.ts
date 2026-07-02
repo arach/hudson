@@ -15,6 +15,7 @@ export type { FeatureFlagAudience, FeatureFlagDefinition, FeatureFlagGate, Featu
 
 // Hooks
 export { usePersistentState, useDebouncedPersistentState, useSaveIndicator } from './hooks/usePersistentState';
+export type { PersistentStateOptions } from './hooks/usePersistentState';
 export * from './lib/cache';
 export { useCachedResource } from './hooks/useCachedResource';
 export type {

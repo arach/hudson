@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useCallback, useEffect, useRef, useMemo, useSyncExternalStore, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BootSplash, phaseAtLeast } from './BootSplash';
 import type { BootPhase } from './BootSplash';
@@ -32,6 +32,7 @@ import {
   useOptionalFeatureFlags,
 } from '../../index';
 import { useVoiceInput } from '../../voice';
+import { usePersistentState, useDebouncedPersistentState } from '../../hooks/usePersistentState';
 import {
   HObservabilityDefault,
   HUDSON_AGENT_ACTION_EVENT,
@@ -207,103 +208,6 @@ export interface WorkspaceShellInitialState {
   rightCollapsed?: boolean;
 }
 
-
-const subscribeNoop = () => () => {};
-const getHydrated = () => true;
-const getServerHydrated = () => false;
-
-function useHydrated(): boolean {
-  return useSyncExternalStore(subscribeNoop, getHydrated, getServerHydrated);
-}
-
-function readStorage<T>(key: string): T | undefined {
-  try {
-    const saved = localStorage.getItem(key);
-    if (saved) return JSON.parse(saved) as T;
-  } catch {}
-  return undefined;
-}
-
-function writeStorage(key: string, value: unknown) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-    window.dispatchEvent(new CustomEvent('hudson:saved', { detail: { key } }));
-  } catch {}
-}
-
-function usePersistentState<T>(
-  key: string,
-  initialValue: T,
-  options: { enabled?: boolean } = {},
-): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const hydrated = useHydrated();
-  const enabled = options.enabled ?? true;
-  const [state, setState] = useState<T>(initialValue);
-  const [restoreReady, setRestoreReady] = useState(!enabled);
-
-  useEffect(() => {
-    if (!enabled || !hydrated) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      const saved = readStorage<T>(key);
-      if (saved !== undefined) setState(saved);
-      setRestoreReady(true);
-    });
-    return () => { cancelled = true; };
-  }, [key, enabled, hydrated]);
-
-  useEffect(() => {
-    if (!enabled || !hydrated || !restoreReady) return;
-    writeStorage(key, state);
-  }, [key, state, enabled, hydrated, restoreReady]);
-
-  return [state, setState];
-}
-
-function useDebouncedPersistentState<T>(
-  key: string,
-  initialValue: T,
-  delayMs = 300,
-  options: { enabled?: boolean } = {},
-): [T, React.Dispatch<React.SetStateAction<T>>] {
-  const hydrated = useHydrated();
-  const enabled = options.enabled ?? true;
-  const [state, setState] = useState<T>(initialValue);
-  const [restoreReady, setRestoreReady] = useState(!enabled);
-
-  useEffect(() => {
-    if (!enabled || !hydrated) return;
-    let cancelled = false;
-    queueMicrotask(() => {
-      if (cancelled) return;
-      const saved = readStorage<T>(key);
-      if (saved !== undefined) setState(saved);
-      setRestoreReady(true);
-    });
-    return () => { cancelled = true; };
-  }, [key, enabled, hydrated]);
-
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (!enabled || !hydrated || !restoreReady) return;
-    if (timerRef.current) clearTimeout(timerRef.current);
-    timerRef.current = setTimeout(() => writeStorage(key, state), delayMs);
-    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
-  }, [key, state, delayMs, enabled, hydrated, restoreReady]);
-
-  const stateRef = useRef(state);
-  useEffect(() => {
-    stateRef.current = state;
-  }, [state]);
-  useEffect(() => {
-    return () => {
-      if (enabled) writeStorage(key, stateRef.current);
-    };
-  }, [key, enabled]);
-
-  return [state, setState];
-}
 
 function getPendingTerminalAppIdKey(workspaceId: string): string {
   return `hudson.ws.${workspaceId}.terminal.pending-active`;
