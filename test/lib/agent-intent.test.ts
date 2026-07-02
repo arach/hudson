@@ -34,10 +34,9 @@ import {
   _resetIntentRegistry,
   getIntent,
   intent,
-  intentMetaToServerIntent,
   listIntents,
 } from '../../app/lib/intent';
-import { buildIntentCatalog } from '../../app/lib/intent-catalog';
+import { buildIntentCatalog } from 'hudsonkit/workspace';
 
 function readAllLines(): Array<Record<string, unknown>> {
   if (!existsSync(AGENT_LOG_FILE)) return [];
@@ -326,8 +325,8 @@ describe('intent() wrapper', () => {
   });
 });
 
-describe('intentMetaToServerIntent', () => {
-  it('maps a registry entry to the ServerIntent catalog shape', () => {
+describe('intent registry metadata', () => {
+  it('stores registry entries in the ServerIntent catalog shape', () => {
     intent(
       {
         id: 'demo.thing',
@@ -340,8 +339,7 @@ describe('intentMetaToServerIntent', () => {
       async () => 'ok',
     );
     const [entry] = listIntents();
-    const projected = intentMetaToServerIntent(entry.meta);
-    expect(projected).toMatchObject({
+    expect(entry.meta).toMatchObject({
       id: 'demo.thing',
       title: 'Demo',
       importPath: 'app/api/demo',
@@ -394,7 +392,7 @@ describe('buildIntentCatalog server/UI split', () => {
       },
       async (s: string) => s,
     );
-    const serverIntents = listIntents().map(({ meta }) => intentMetaToServerIntent(meta));
+    const serverIntents = listIntents().map(({ meta }) => meta);
     const catalog = buildIntentCatalog(workspace, { serverIntents });
     expect(catalog.index['logo.compile']).toBeUndefined();
     expect(catalog.serverIntents).toHaveLength(1);
