@@ -17,9 +17,19 @@ if [ ! -x "$HUDLINT" ]; then
   (cd "$KIT_DIR/Tools/HudLint" && swift build -c release --product hudlint > /dev/null 2>&1)
 fi
 
+# Lint at the Sources/Demo root, not each staged file's directory. hudlint
+# resolves .hudlintignore from <root>/../.hudlintignore and matches its patterns
+# relative to <root>, so both allowlist discovery and pattern matching only work
+# when the root is Sources (or Demo). Per-directory roots silently defeat the
+# allowlist and resurface deferred token-migration debt.
+# (if/[[ ]] rather than case — bash 3.2 mis-parses case-pattern `)` inside $(...).)
 LINT_ROOTS=$(
   echo "$STAGED" | while IFS= read -r file; do
-    dirname "$REPO_ROOT/$file"
+    if [[ "$file" == packages/native/apple/HudsonKit/Sources/* ]]; then
+      echo "$KIT_DIR/Sources"
+    elif [[ "$file" == packages/native/apple/HudsonKit/Demo/* ]]; then
+      echo "$KIT_DIR/Demo"
+    fi
   done | sort -u
 )
 
