@@ -1,0 +1,48 @@
+diff --git a/examples/termini-canvas/Sources/TerminiCanvas/TerminiCanvasApp.swift b/examples/termini-canvas/Sources/TerminiCanvas/TerminiCanvasApp.swift
+index e571bf0..81ba4bf 100644
+--- a/examples/termini-canvas/Sources/TerminiCanvas/TerminiCanvasApp.swift
++++ b/examples/termini-canvas/Sources/TerminiCanvas/TerminiCanvasApp.swift
+@@ -17,16 +17,40 @@ struct TerminiCanvasApp: App {
+
+     var body: some Scene {
+         WindowGroup("Termini Canvas") {
+-            HudCanvasSurface(configuration: .terminiCanvasCaseStudy)
++            HudCanvasSurface(configuration: .canvasPracticeSession)
+                 .frame(minWidth: 980, minHeight: 680)
+                 .hudsonAppManifest(
+                     HudAppManifest(
+-                        name: "Termini Canvas",
++                        name: "Canvas Practice",
+                         version: "0.1.0",
+                         tint: .cyan,
+-                        targetLabel: "Terminal"
++                        targetLabel: "Canvas"
+                     )
+                 )
+         }
+     }
+ }
++
++private extension HudCanvasConfiguration {
++    static var canvasPracticeSession: HudCanvasConfiguration {
++        let exampleRoot = URL(fileURLWithPath: #filePath)
++            .deletingLastPathComponent()
++            .deletingLastPathComponent()
++            .deletingLastPathComponent()
++        let repositoryRoot = exampleRoot
++            .deletingLastPathComponent()
++            .deletingLastPathComponent()
++
++        return HudCanvasConfiguration(
++            workspaceID: "canvas-practice",
++            surfaceTitle: "Canvas Practice",
++            surfaceSubtitle: "agentic canvas with sessions, files, plan, and diff",
++            commandURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.jsonl"),
++            responseURL: URL(fileURLWithPath: "/tmp/termini-canvas-control.responses.jsonl"),
++            stateURL: URL(fileURLWithPath: "/tmp/hudson-canvas-practice-state.json"),
++            launchSetupURL: exampleRoot.appendingPathComponent("examples/hudson-canvas-practice.setup.json"),
++            workingDirectoryURL: repositoryRoot,
++            restoresStateOnLaunch: true
++        )
++    }
++}

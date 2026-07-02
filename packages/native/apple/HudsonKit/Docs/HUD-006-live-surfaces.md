@@ -57,10 +57,10 @@ The first slice is native HudsonKit:
 
 - Add a new `HudsonLive` package target for the contract.
 - Add `HudLiveIndicator` to `HudsonUI`.
-- Wire Vantage path-backed document/diff artifacts to publish file-watch status
+- Wire Canvas path-backed document/diff artifacts to publish file-watch status
   through `HudLiveSourceDescriptor`.
 
-This deliberately keeps Vantage's existing file watcher in Vantage. Hudson sees
+This deliberately keeps Canvas's existing file watcher in Canvas. Hudson sees
 only the normalized live descriptor.
 
 ## Non-Goals
@@ -78,5 +78,5 @@ only the normalized live descriptor.
   same primitive.
 - Add common stale timers and event coalescing helpers.
 - Add an inspector section for live source health, cursor, and capabilities.
-- Let Vantage manifests declare live source bindings explicitly.
-- Bridge Scout `tail.events` into Vantage as a source adapter.
+- Let Canvas manifests declare live source bindings explicitly.
+- Bridge Scout `tail.events` into Canvas as a source adapter.

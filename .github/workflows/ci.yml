@@ -130,8 +130,8 @@ jobs:
           HUDSONKIT_WITH_VOICE: "0"
         run: swift test
 
-      # Terminal-enabled leg: compiles HudsonTerminal/HudsonVantageSurface/
-      # HudsonVantage and runs HudsonVantageTests. Runs in the same job so the
+      # Terminal-enabled leg: compiles HudsonTerminal/HudsonCanvasSurface/
+      # HudsonCanvas and runs HudsonCanvasTests. Runs in the same job so the
       # shared targets' build products are reused instead of paying for a
       # second macOS runner. HUDSON_TERMINI_GIT_URL pins the public HTTPS
       # remote so CI never needs SSH credentials.
@@ -147,4 +147,4 @@ jobs:
           HUDSONKIT_WITH_VOICE: "0"
           HUDSONKIT_WITH_TERMINAL: "1"
           HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
-        run: swift test --filter HudsonVantageTests
+        run: swift test --filter HudsonCanvasTests

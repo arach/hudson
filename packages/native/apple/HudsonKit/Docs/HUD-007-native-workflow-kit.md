@@ -116,7 +116,7 @@ Parity means:
 Parity does not mean identical implementation internals. The web side should
 reuse HudsonKit web canvas primitives such as `Canvas`, `PanZoomViewport`, and
 `Minimap` where they fit. The native side should reuse `HudAppShell`,
-`HudCanvas`, `HudInspector`, and eventually the Vantage canvas lessons where
+`HudCanvas`, `HudInspector`, and eventually the Canvas canvas lessons where
 they are genuinely useful.
 
 The first proof should be a read-only workflow lab on both sides that renders
@@ -386,7 +386,7 @@ not the package boundary.
   include a generic `PortableWorkflow` adapter that mirrors `workflow-core`?
 - Should the editor round-trip flat workflow JSON directly, or should it only
   round-trip a normalized portable form?
-- Which pieces of Vantage canvas math should be shared with HudsonWorkflow now,
+- Which pieces of Canvas canvas math should be shared with HudsonWorkflow now,
   and which should wait until the workflow canvas proves its own needs?
 - Should workflow execution traces become a separate HudsonLive source attached
   to the graph later?

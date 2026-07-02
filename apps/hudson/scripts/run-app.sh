@@ -21,7 +21,7 @@ Builds and launches the native Hudson app plus the Hudson Menu helper.
 
 Options:
   --install   Copy both bundles to ~/Applications after building
-  --restart   Quit an existing Hudson/Vantage process before launching
+  --restart   Quit an existing Hudson/Canvas process before launching
 
 Environment:
   HUDSON_APP_PATH       Override main app path (default: dist/Hudson.app)

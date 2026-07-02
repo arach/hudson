@@ -313,7 +313,7 @@ Shape:
 - Tailscale hostnames are valid and expected;
 - no WebSocket, WebRTC, Bonjour, or MultipeerConnectivity in v1.
 
-Advantages:
+Adcanvass:
 
 - proven in Talkie;
 - simple to debug with curl;

@@ -1,0 +1,74 @@
+{
+  "kind": "hudson.canvas.setup",
+  "schemaVersion": 1,
+  "workspaceID": "scout-lab",
+  "createIfMissing": true,
+  "presentation": {
+    "title": "Scout Canvas",
+    "subtitle": "agent operating surface",
+    "badge": "workspace",
+    "cobrand": "powered by Hudson",
+    "productName": "Scout",
+    "theme": "jade"
+  },
+  "style": {
+    "preset": "jade",
+    "terminalTheme": "hudson-paper",
+    "tagStyles": {
+      "focus": {
+        "terminalThemeID": "jadeNight"
+      },
+      "watch": {
+        "terminalFontSize": 11
+      }
+    }
+  },
+  "viewport": {
+    "fit": true
+  },
+  "layout": {
+    "canvasTool": "select",
+    "navigationFilter": "all",
+    "minimapCollapsed": false,
+    "inspectorCollapsed": false
+  },
+  "nodes": [
+    {
+      "id": "hudson.scout.agents.codex.0001.lead",
+      "runtimeKind": "tmux",
+      "target": "hudson-scout-lead",
+      "title": "codex lead",
+      "tag": "focus",
+      "x": 80,
+      "y": 96,
+      "width": 520,
+      "height": 320
+    },
+    {
+      "id": "hudson.scout.agents.codex.0002.worker",
+      "runtimeKind": "tmux",
+      "target": "hudson-scout-worker-0002",
+      "title": "codex worker 0002",
+      "tag": "watch",
+      "x": 632,
+      "y": 96,
+      "width": 460,
+      "height": 280
+    },
+    {
+      "id": "hudson.scout.logs.tail.0001.watch",
+      "runtimeKind": "tmux",
+      "target": "hudson-scout-logs",
+      "title": "project logs",
+      "tag": "watch",
+      "x": 80,
+      "y": 448,
+      "width": 1012,
+      "height": 260
+    }
+  ],
+  "selection": [
+    "hudson.scout.agents.codex.0001.lead"
+  ],
+  "focused": "hudson.scout.agents.codex.0001.lead"
+}

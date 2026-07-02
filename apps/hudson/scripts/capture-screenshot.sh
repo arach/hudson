@@ -26,8 +26,8 @@ SWIFT
 )"
 
 STAMP="$(date +%Y%m%d-%H%M%S)"
-WINDOW_PATH="$OUT_DIR/vantage-window-$STAMP.png"
-FULL_PATH="$OUT_DIR/vantage-display-$STAMP.png"
+WINDOW_PATH="$OUT_DIR/canvas-window-$STAMP.png"
+FULL_PATH="$OUT_DIR/canvas-display-$STAMP.png"
 
 if [[ -n "$WID" ]]; then
   screencapture -x -o -l "$WID" "$WINDOW_PATH"

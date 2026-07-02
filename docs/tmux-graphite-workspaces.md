@@ -127,7 +127,7 @@ to tmux targets through the registry mapping; raw targets are used directly.
 For day-to-day agent use, the sample exposes this through:
 
 ```sh
-apps/vantage/scripts/vantagectl.sh --wait reattach \
+apps/canvas/scripts/canvasctl.sh --wait reattach \
   --id hudson.lab.termini.canvas.0042.shell \
   --id hudson.lab.agents.codex.0007.worker
 ```
@@ -136,7 +136,7 @@ Remote tmux uses the same identity model. The local PTY runs SSH, and the
 remote host owns the durable tmux server:
 
 ```sh
-apps/vantage/scripts/vantagectl.sh --wait reattach \
+apps/canvas/scripts/canvasctl.sh --wait reattach \
   --remote user@host \
   --session hudson-lab
 ```
@@ -147,7 +147,7 @@ outside the app.
 
 ## Save and restore
 
-The first Vantage restore slice persists a tiny state file rather than a full
+The first Canvas restore slice persists a tiny state file rather than a full
 canvas document system. It contains:
 
 - schema version and workspace id
@@ -158,11 +158,11 @@ canvas document system. It contains:
 Example:
 
 ```sh
-packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait save \
-  --state-file /tmp/scout-vantage-state.json
+packages/native/apple/HudsonKit/Scripts/canvasctl.sh --wait save \
+  --state-file /tmp/scout-canvas-state.json
 
-packages/native/apple/HudsonKit/Scripts/vantagectl.sh --wait restore \
-  --state-file /tmp/scout-vantage-state.json \
+packages/native/apple/HudsonKit/Scripts/canvasctl.sh --wait restore \
+  --state-file /tmp/scout-canvas-state.json \
   --create
 ```
 

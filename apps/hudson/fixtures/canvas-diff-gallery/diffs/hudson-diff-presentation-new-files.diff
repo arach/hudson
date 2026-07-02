@@ -1,0 +1,603 @@
+diff --git a/packages/native/apple/HudsonKit/Docs/HUD-005-hudson-diff.md b/packages/native/apple/HudsonKit/Docs/HUD-005-hudson-diff.md
+new file mode 100644
+index 0000000..b9213c4
+--- /dev/null
++++ b/packages/native/apple/HudsonKit/Docs/HUD-005-hudson-diff.md
+@@ -0,0 +1,53 @@
++# HUD-005: HudsonDiff Presentation Model
++
++HudsonDiff is the shared diff presentation layer for Hudson surfaces. It is not
++a diff algorithm, canvas renderer, or web view. It owns a small document model
++for unified patches so native, web, and agent-driven hosts can render the same
++diff consistently.
++
++## Responsibilities
++
++- Accept unified diff text from git, agents, hosts, or external tools.
++- Produce a stable `hudson.diff.v1` document.
++- Track files, hunks, rows, line numbers, row kind, stats, and optional spans.
++- Stay independent from SwiftUI, AppKit, WebKit, Termini, and Canvas.
++
++## Non-responsibilities
++
++- HudsonDiff does not compute diffs from source snapshots.
++- Hosts decide which diff engine or tool creates the unified patch.
++- Canvas decides how to put diffs on a canvas.
++- Hudson web decides whether to render with a React diff component.
++- Hosts decide how to resolve comparison sources such as git refs, workspace
++  files, remote files, or literal text.
++
++## Shape
++
++The model is:
++
++```text
++HudDiffDocument
++  files[]
++    hunks[]
++      rows[]
++```
++
++`HudUnifiedDiffParser` parses existing unified patches into this model.
++
++## Canvas Use
++
++Canvas consumes `HudDiffDocument` for:
++
++- cheap native canvas cards
++- native focused diff viewing
++- pop-out/detail diff surfaces
++
++That keeps the canvas free of large DOM/WebKit trees. Web renderers can still
++consume the same JSON document later when the host wants Diffs.com-style polish.
++
++## Host Contract
++
++Hosts should send either unified diff text or a prebuilt `hudson.diff.v1`
++document. That lets Scout, Talkie, Codex, Hudson web, and native Hudson apps
++share one render shape while using whatever diff engine already makes sense for
++their source data.
+
+diff --git a/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudDiffDocument.swift b/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudDiffDocument.swift
+new file mode 100644
+index 0000000..c26e0ad
+--- /dev/null
++++ b/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudDiffDocument.swift
+@@ -0,0 +1,192 @@
++import Foundation
++
++public struct HudDiffDocument: Codable, Equatable, Sendable {
++    public static let currentSchema = "hudson.diff.v1"
++
++    public var schema: String
++    public var title: String?
++    public var files: [HudDiffFile]
++    public var stats: HudDiffStats
++
++    public init(
++        schema: String = Self.currentSchema,
++        title: String? = nil,
++        files: [HudDiffFile]
++    ) {
++        self.schema = schema
++        self.title = title
++        self.files = files
++        self.stats = HudDiffStats(files: files)
++    }
++
++    public var rows: [HudDiffRow] {
++        files.flatMap(\.rows)
++    }
++}
++
++public struct HudDiffFile: Codable, Equatable, Sendable, Identifiable {
++    public var oldPath: String?
++    public var newPath: String?
++    public var language: String?
++    public var metadata: [String]
++    public var hunks: [HudDiffHunk]
++    public var stats: HudDiffStats
++
++    public init(
++        oldPath: String? = nil,
++        newPath: String? = nil,
++        language: String? = nil,
++        metadata: [String] = [],
++        hunks: [HudDiffHunk]
++    ) {
++        self.oldPath = normalizedPath(oldPath)
++        self.newPath = normalizedPath(newPath)
++        self.language = language
++        self.metadata = metadata
++        self.hunks = hunks
++        self.stats = HudDiffStats(hunks: hunks)
++    }
++
++    public var id: String {
++        newPath ?? oldPath ?? "diff-file"
++    }
++
++    public var displayPath: String {
++        newPath ?? oldPath ?? "Untitled"
++    }
++
++    public var rows: [HudDiffRow] {
++        hunks.flatMap(\.rows)
++    }
++}
++
++public struct HudDiffHunk: Codable, Equatable, Sendable, Identifiable {
++    public var id: String
++    public var oldStart: Int
++    public var oldLineCount: Int
++    public var newStart: Int
++    public var newLineCount: Int
++    public var header: String?
++    public var rows: [HudDiffRow]
++
++    public init(
++        id: String,
++        oldStart: Int,
++        oldLineCount: Int,
++        newStart: Int,
++        newLineCount: Int,
++        header: String? = nil,
++        rows: [HudDiffRow]
++    ) {
++        self.id = id
++        self.oldStart = oldStart
++        self.oldLineCount = oldLineCount
++        self.newStart = newStart
++        self.newLineCount = newLineCount
++        self.header = header
++        self.rows = rows
++    }
++}
++
++public enum HudDiffRowKind: String, Codable, Sendable {
++    case addition
++    case deletion
++    case context
++    case metadata
++}
++
++public struct HudDiffRow: Codable, Equatable, Sendable, Identifiable {
++    public var id: String
++    public var kind: HudDiffRowKind
++    public var oldLine: Int?
++    public var newLine: Int?
++    public var text: String
++    public var rawText: String?
++    public var spans: [HudDiffTextSpan]
++
++    public init(
++        id: String,
++        kind: HudDiffRowKind,
++        oldLine: Int? = nil,
++        newLine: Int? = nil,
++        text: String,
++        rawText: String? = nil,
++        spans: [HudDiffTextSpan] = []
++    ) {
++        self.id = id
++        self.kind = kind
++        self.oldLine = oldLine
++        self.newLine = newLine
++        self.text = text
++        self.rawText = rawText
++        self.spans = spans
++    }
++
++    public var marker: String {
++        switch kind {
++        case .addition: "+"
++        case .deletion: "-"
++        case .context: " "
++        case .metadata: " "
++        }
++    }
++}
++
++public struct HudDiffTextSpan: Codable, Equatable, Sendable {
++    public enum Kind: String, Codable, Sendable {
++        case equal
++        case addition
++        case deletion
++        case emphasis
++    }
++
++    public var range: Range<Int>
++    public var kind: Kind
++
++    public init(range: Range<Int>, kind: Kind) {
++        self.range = range
++        self.kind = kind
++    }
++}
++
++public struct HudDiffStats: Codable, Equatable, Sendable {
++    public var additions: Int
++    public var deletions: Int
++    public var files: Int
++    public var hunks: Int
++
++    public init(
++        additions: Int = 0,
++        deletions: Int = 0,
++        files: Int = 0,
++        hunks: Int = 0
++    ) {
++        self.additions = additions
++        self.deletions = deletions
++        self.files = files
++        self.hunks = hunks
++    }
++
++    public init(hunks: [HudDiffHunk]) {
++        self.additions = hunks.flatMap(\.rows).filter { $0.kind == .addition }.count
++        self.deletions = hunks.flatMap(\.rows).filter { $0.kind == .deletion }.count
++        self.files = 1
++        self.hunks = hunks.count
++    }
++
++    public init(files: [HudDiffFile]) {
++        self.additions = files.reduce(0) { $0 + $1.stats.additions }
++        self.deletions = files.reduce(0) { $0 + $1.stats.deletions }
++        self.files = files.count
++        self.hunks = files.reduce(0) { $0 + $1.stats.hunks }
++    }
++}
++
++private func normalizedPath(_ path: String?) -> String? {
++    guard let path, !path.isEmpty else { return nil }
++    if path == "/dev/null" { return path }
++    if path.hasPrefix("a/") || path.hasPrefix("b/") {
++        return String(path.dropFirst(2))
++    }
++    return path
++}
+
+diff --git a/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudUnifiedDiffParser.swift b/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudUnifiedDiffParser.swift
+new file mode 100644
+index 0000000..c1d19e3
+--- /dev/null
++++ b/packages/native/apple/HudsonKit/Sources/HudsonDiff/HudUnifiedDiffParser.swift
+@@ -0,0 +1,268 @@
++import Foundation
++
++public enum HudUnifiedDiffParser {
++    public static func parse(
++        _ diff: String,
++        title: String? = nil,
++        language: String? = nil
++    ) -> HudDiffDocument {
++        var builder = FileBuilder(language: language)
++        var files: [HudDiffFile] = []
++        var rowCounter = 0
++        var hunkCounter = 0
++
++        func finishFile() {
++            if let file = builder.finish() {
++                files.append(file)
++            }
++            builder = FileBuilder(language: language)
++        }
++
++        for line in splitLines(diff) {
++            if line.hasPrefix("diff --git ") {
++                finishFile()
++                let paths = parseGitPaths(line)
++                builder.oldPath = paths.old
++                builder.newPath = paths.new
++                builder.metadata.append(line)
++                continue
++            }
++
++            if line.hasPrefix("--- ") {
++                builder.oldPath = parseFileHeaderPath(line)
++                builder.metadata.append(line)
++                continue
++            }
++
++            if line.hasPrefix("+++ ") {
++                builder.newPath = parseFileHeaderPath(line)
++                builder.metadata.append(line)
++                continue
++            }
++
++            if line.hasPrefix("@@") {
++                hunkCounter += 1
++                builder.startHunk(
++                    header: line,
++                    range: parseHunkRange(line),
++                    id: "hunk-\(hunkCounter)"
++                )
++                continue
++            }
++
++            guard builder.hasActiveHunk else {
++                if !line.isEmpty {
++                    builder.metadata.append(line)
++                }
++                continue
++            }
++
++            rowCounter += 1
++            builder.appendRow(diffLine: line, id: "row-\(rowCounter)")
++        }
++
++        finishFile()
++
++        if files.isEmpty, !diff.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
++            files = [
++                HudDiffFile(
++                    language: language,
++                    hunks: [
++                        HudDiffHunk(
++                            id: "hunk-1",
++                            oldStart: 0,
++                            oldLineCount: 0,
++                            newStart: 0,
++                            newLineCount: 0,
++                            header: nil,
++                            rows: splitLines(diff).enumerated().map { index, line in
++                                HudDiffRow(
++                                    id: "row-\(index + 1)",
++                                    kind: .metadata,
++                                    text: line,
++                                    rawText: line
++                                )
++                            }
++                        )
++                    ]
++                )
++            ]
++        }
++
++        return HudDiffDocument(title: title, files: files)
++    }
++}
++
++private struct FileBuilder {
++    var oldPath: String?
++    var newPath: String?
++    var language: String?
++    var metadata: [String] = []
++    var hunks: [HudDiffHunk] = []
++
++    private var activeHeader: String?
++    private var activeRows: [HudDiffRow] = []
++    private var activeID: String?
++    private var oldStart = 0
++    private var newStart = 0
++    private var oldLine = 0
++    private var newLine = 0
++
++    init(language: String? = nil) {
++        self.language = language
++    }
++
++    var hasActiveHunk: Bool {
++        activeID != nil
++    }
++
++    mutating func startHunk(header: String, range: HunkRange, id: String) {
++        finishActiveHunk()
++        activeHeader = header
++        activeRows = []
++        activeID = id
++        oldStart = range.oldStart
++        newStart = range.newStart
++        oldLine = range.oldStart
++        newLine = range.newStart
++    }
++
++    mutating func appendRow(diffLine line: String, id: String) {
++        if line.hasPrefix(#"\ "#) {
++            activeRows.append(
++                HudDiffRow(id: id, kind: .metadata, text: line, rawText: line)
++            )
++            return
++        }
++
++        if line.hasPrefix("+"), !line.hasPrefix("+++") {
++            activeRows.append(
++                HudDiffRow(
++                    id: id,
++                    kind: .addition,
++                    newLine: newLine,
++                    text: String(line.dropFirst()),
++                    rawText: line
++                )
++            )
++            newLine += 1
++            return
++        }
++
++        if line.hasPrefix("-"), !line.hasPrefix("---") {
++            activeRows.append(
++                HudDiffRow(
++                    id: id,
++                    kind: .deletion,
++                    oldLine: oldLine,
++                    text: String(line.dropFirst()),
++                    rawText: line
++                )
++            )
++            oldLine += 1
++            return
++        }
++
++        if line.hasPrefix(" ") {
++            activeRows.append(
++                HudDiffRow(
++                    id: id,
++                    kind: .context,
++                    oldLine: oldLine,
++                    newLine: newLine,
++                    text: String(line.dropFirst()),
++                    rawText: line
++                )
++            )
++            oldLine += 1
++            newLine += 1
++            return
++        }
++
++        activeRows.append(
++            HudDiffRow(id: id, kind: .metadata, text: line, rawText: line)
++        )
++    }
++
++    mutating func finish() -> HudDiffFile? {
++        finishActiveHunk()
++        guard oldPath != nil || newPath != nil || !metadata.isEmpty || !hunks.isEmpty else {
++            return nil
++        }
++        return HudDiffFile(
++            oldPath: oldPath,
++            newPath: newPath,
++            language: language,
++            metadata: metadata,
++            hunks: hunks
++        )
++    }
++
++    private mutating func finishActiveHunk() {
++        guard let activeID else { return }
++        let oldCount = activeRows.filter { $0.oldLine != nil }.count
++        let newCount = activeRows.filter { $0.newLine != nil }.count
++        hunks.append(
++            HudDiffHunk(
++                id: activeID,
++                oldStart: oldStart,
++                oldLineCount: oldCount,
++                newStart: newStart,
++                newLineCount: newCount,
++                header: activeHeader,
++                rows: activeRows
++            )
++        )
++        self.activeID = nil
++        self.activeHeader = nil
++        self.activeRows = []
++    }
++}
++
++private struct HunkRange {
++    var oldStart: Int
++    var oldCount: Int
++    var newStart: Int
++    var newCount: Int
++}
++
++private func parseHunkRange(_ line: String) -> HunkRange {
++    let parts = line.split(separator: " ")
++    let oldToken = parts.first(where: { $0.hasPrefix("-") }).map(String.init) ?? "-0"
++    let newToken = parts.first(where: { $0.hasPrefix("+") }).map(String.init) ?? "+0"
++    let old = parseRangeToken(oldToken)
++    let new = parseRangeToken(newToken)
++    return HunkRange(
++        oldStart: old.start,
++        oldCount: old.count,
++        newStart: new.start,
++        newCount: new.count
++    )
++}
++
++private func parseRangeToken(_ token: String) -> (start: Int, count: Int) {
++    let pieces = token.dropFirst().split(separator: ",", maxSplits: 1)
++    let start = pieces.first.flatMap { Int($0) } ?? 0
++    let count = pieces.dropFirst().first.flatMap { Int($0) } ?? 1
++    return (start, count)
++}
++
++private func parseGitPaths(_ line: String) -> (old: String?, new: String?) {
++    let pieces = line.split(separator: " ")
++    guard pieces.count >= 4 else { return (nil, nil) }
++    return (String(pieces[2]), String(pieces[3]))
++}
++
++private func parseFileHeaderPath(_ line: String) -> String? {
++    let trimmed = line.dropFirst(4)
++    guard let first = trimmed.split(separator: "\t", maxSplits: 1).first else {
++        return nil
++    }
++    return String(first)
++}
++
++private func splitLines(_ value: String) -> [String] {
++    value
++        .split(separator: "\n", omittingEmptySubsequences: false)
++        .map(String.init)
++}
+
+diff --git a/packages/native/apple/HudsonKit/Tests/HudsonDiffTests/HudUnifiedDiffParserTests.swift b/packages/native/apple/HudsonKit/Tests/HudsonDiffTests/HudUnifiedDiffParserTests.swift
+new file mode 100644
+index 0000000..0d81fd5
+--- /dev/null
++++ b/packages/native/apple/HudsonKit/Tests/HudsonDiffTests/HudUnifiedDiffParserTests.swift
+@@ -0,0 +1,63 @@
++import Foundation
++import Testing
++@testable import HudsonDiff
++
++@Suite("HudsonDiff")
++struct HudUnifiedDiffParserTests {
++    @Test("unified parser produces multi-file document rows")
++    func unifiedParserProducesMultiFileDocumentRows() throws {
++        let document = HudUnifiedDiffParser.parse(
++            """
++            diff --git a/Sources/App.swift b/Sources/App.swift
++            index 0000000..1111111 100644
++            --- a/Sources/App.swift
++            +++ b/Sources/App.swift
++            @@ -1,3 +1,4 @@
++             import SwiftUI
++            -let title = "Old"
++            +let title = "New"
++            +let subtitle = "Canvas"
++             App()
++            diff --git a/README.md b/README.md
++            --- a/README.md
++            +++ b/README.md
++            @@ -1 +1 @@
++            -Old docs
++            +New docs
++            """,
++            title: "Working diff",
++            language: "swift"
++        )
++
++        #expect(document.schema == HudDiffDocument.currentSchema)
++        #expect(document.title == "Working diff")
++        #expect(document.files.count == 2)
++        #expect(document.stats.files == 2)
++        #expect(document.stats.additions == 3)
++        #expect(document.stats.deletions == 2)
++        #expect(document.files[0].displayPath == "Sources/App.swift")
++        #expect(document.files[0].hunks[0].rows.map(\.kind).contains(.addition))
++    }
++
++    @Test("parsed diff document round trips as JSON")
++    func parsedDiffDocumentRoundTripsAsJSON() throws {
++        let document = HudUnifiedDiffParser.parse(
++            """
++            diff --git a/a.txt b/a.txt
++            --- a/a.txt
++            +++ b/a.txt
++            @@ -1,2 +1,2 @@
++             a
++            -b
++            +c
++            """,
++            title: "Round trip"
++        )
++        let data = try JSONEncoder().encode(document)
++        let decoded = try JSONDecoder().decode(HudDiffDocument.self, from: data)
++
++        #expect(decoded == document)
++        #expect(decoded.stats.additions == 1)
++        #expect(decoded.stats.deletions == 1)
++    }
++}

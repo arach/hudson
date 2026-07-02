@@ -81,7 +81,7 @@ The durable bridge shape is:
 2. Native sends typed `props`.
 3. Web posts typed events such as `change`, `save`, `height`, or `open`.
 
-The CodeMirror surface in `HudsonVantageSurface` is the current concrete
+The CodeMirror surface in `HudsonCanvasSurface` is the current concrete
 example: bundled HTML/JS, a `ready/change/save` message handler, and native
 save acknowledgements.
 

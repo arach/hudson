@@ -13,8 +13,9 @@ public typealias HudsonAppShell<
     StatusBar: View
 > = HudAppShell<Leading, Trailing, TopDrawer, BottomDrawer, Content, StatusBar>
 
-@available(*, deprecated, renamed: "HudCanvas")
-public typealias HudsonCanvas<Header: View, Content: View> = HudCanvas<Header, Content>
+// `HudsonCanvas` alias removed: the name now belongs to the canvas workspace
+// module (formerly HudsonVantage) and a typealias would shadow it. Use
+// `HudCanvas` directly.
 
 @available(*, deprecated, renamed: "HudCommand")
 public typealias HudsonCommand = HudCommand
