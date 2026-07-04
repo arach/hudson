@@ -22,6 +22,11 @@ jobs:
         with:
           bun-version: latest
 
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
+
       - name: Check publish eligibility
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
@@ -48,5 +53,28 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          (cd packages/web/hudsonkit && npm publish)
-          (cd packages/web/ai-backends && npm publish)
+          set -euo pipefail
+          published_any=false
+
+          publish_if_new() {
+            local dir="$1"
+            local pkg="$2"
+            local local_ver published_ver
+            local_ver="$(node -p "require('${dir}/package.json').version")"
+            published_ver="$(npm view "$pkg" version 2>/dev/null || true)"
+            if [ "$local_ver" = "$published_ver" ]; then
+              echo "SKIP $pkg@$local_ver already on npm"
+              return 0
+            fi
+            echo "PUBLISH $pkg@$local_ver (npm has ${published_ver:-none})"
+            npm publish --prefix "$dir"
+            published_any=true
+          }
+
+          publish_if_new packages/web/hudsonkit hudsonkit
+          publish_if_new packages/web/ai-backends @hudsonkit/ai
+
+          if [ "$published_any" != true ]; then
+            echo "No packages published — bump package.json versions before running this workflow"
+            exit 1
+          fi
