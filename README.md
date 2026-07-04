@@ -64,6 +64,7 @@ See [Hudson Canvas](./docs/hudson-canvas.md) for the SDK boundary.
 
 ```
 apps/web/                          # The Hudson workspace (Next.js 16 + marketing + deploy)
+apps/web/app/apps/                 # Web app examples (hudson-docs, stage-design, …)
 apps/canvas/                       # Native Canvas macOS product (CanvasApp host)
 packages/web/hudsonkit/            # Shell + primitives — published as `hudsonkit`
 packages/web/ai-backends/          # Provider-neutral AI backends — published as `@hudsonkit/ai`
@@ -72,7 +73,6 @@ packages/tools/hkit/               # `@hudsonkit/hkit` design & diagnostics CLI
 packages/native/apple/HudsonKit/   # Apple-native Swift package
 packages/services/hudson-relay/    # Terminal relay service
 docs/                              # Architecture, case study, builder notes
-examples/                          # SDK reference apps (hudsonkit-reference, …)
 ```
 
 Dev:
@@ -84,7 +84,7 @@ bun dev           # Hudson workspace on :3500
 
 ## State
 
-Hudson is **built in the open** and now **published to npm** — both `hudsonkit` and the optional `@hudsonkit/ai` ship real releases. Versioning is automated with [changesets](https://github.com/changesets/changesets): a "Version Packages" PR keeps bumps and changelogs current, and merging it publishes from CI. This monorepo stays the source of truth — the packages are built and versioned from here.
+Hudson is **built in the open** and now **published to npm** — both `hudsonkit` and the optional `@hudsonkit/ai` ship real releases. Bump each package's `version` and `CHANGELOG.md` when you're ready to cut a release, merge to `main`, then run the **Publish npm packages** GitHub workflow. This monorepo stays the source of truth — the packages are built and versioned from here.
 
 It's still **0.x**, so the surface moves: the code is legible and the commits are explicit, but APIs can change between releases — pin a version and skim the changelog before bumping. The [Premotion case study](./docs/case-study-premotion.md) documents the real friction of consuming the SDK from outside its monorepo (Tailwind scanning, symlink shape, barrel exports, `'use client'`) — some of it since fixed, some still on the follow-up list.
 

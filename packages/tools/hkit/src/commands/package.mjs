@@ -309,7 +309,10 @@ function signAppBundle(bundlePath, app, identity, options) {
   rmSync(tempBinary, { force: true });
 
   const entitlements = app.entitlementsPath;
-  const args = ['--force', '--options', 'runtime', '--deep'];
+  const args = ['--force', '--options', 'runtime'];
+  if ((app.embeddedHelpers?.length ?? 0) === 0) {
+    args.push('--deep');
+  }
   if (identity) args.push('--timestamp');
   args.push('--sign', identity || '-');
   if (entitlements && existsSync(entitlements)) args.push('--entitlements', entitlements);
