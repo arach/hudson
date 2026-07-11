@@ -1,7 +1,7 @@
 'use client';
 
 import React, { Suspense, useEffect, useMemo, useState } from 'react';
-import { Columns2, FileDiff, Rows3 } from 'lucide-react';
+import { Columns2, FileDiff, Rows3 } from '../../icons';
 import type { DocumentLanguage } from './CodeEditor';
 import type { HudsonTextDocument, TextDocumentDetectionInput } from './TextDocument';
 import { createHudsonTextDocument } from './TextDocument';

@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
+import { ArrowDown, ArrowUp, ArrowUpDown } from '../../icons';
 import { HObservability, HObservabilityDefault } from '../../observability/core';
 import {
   agentActionCommand,

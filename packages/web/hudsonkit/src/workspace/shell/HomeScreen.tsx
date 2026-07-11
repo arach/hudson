@@ -2,7 +2,7 @@
 
 import { useState, useCallback, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X, Info } from 'lucide-react';
+import { X, Info } from '../../icons';
 import type { HudsonWorkspace } from '../../index';
 
 // ---------------------------------------------------------------------------

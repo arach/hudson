@@ -1,6 +1,6 @@
 'use client';
 
-import { Terminal, FileText } from 'lucide-react';
+import { Terminal, FileText } from 'hudsonkit/icons';
 import { useExplorer } from './IntentProvider';
 
 // Icons for known app groups

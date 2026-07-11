@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { FileText, Plus } from 'lucide-react';
+import { FileText, Plus } from '../../icons';
 import type { HudsonApp } from '../../index';
 import { NotepadProvider, useNotepad } from './NotepadProvider';
 import { NotepadContent } from './NotepadContent';

@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Activity } from 'lucide-react';
+import { Activity } from 'hudsonkit/icons';
 import type { AppManifest, HudsonApp } from 'hudsonkit';
 import { HudLoggerContent } from './HudLoggerContent';
 import { HudLoggerProvider } from './HudLoggerProvider';

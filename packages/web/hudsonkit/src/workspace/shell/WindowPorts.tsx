@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { ArrowRight, Link2, Play, Unlink, X } from 'lucide-react';
+import { ArrowRight, Link2, Play, Unlink, X } from '../../icons';
 import type { AppInput, AppOutput } from '../../index';
 import { useDataBus, type PortCatalogEntry } from '../context/DataBusContext';
 

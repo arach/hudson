@@ -30,7 +30,7 @@ bun add hudsonkit      # or: npm install hudsonkit
 bun add @hudsonkit/ai
 ```
 
-Peers: React 19 (`react`/`react-dom`) and `lucide-react`. Terminal and editor extras (CodeMirror, xterm) are optional peers, pulled in only if you use those surfaces.
+Peers: React 19 (`react`/`react-dom`). HudsonKit owns its Iconoir icon runtime; terminal and editor extras (CodeMirror, xterm) are optional peers, pulled in only if you use those surfaces.
 
 New here? The [quickstart](./docs/quickstart.md) mounts `AppShell` with a minimal app in a few minutes; [building apps](./docs/building-apps.md) covers the full `HudsonApp` contract.
 

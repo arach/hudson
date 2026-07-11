@@ -1,7 +1,7 @@
 'use client';
 
 import { CSSProperties, useCallback, useEffect, useRef, useState } from 'react';
-import { ExternalLink } from 'lucide-react';
+import { ExternalLink } from 'hudsonkit/icons';
 import { encodeThemeForEmbed } from './embed-theme';
 import { useStudio } from '@/marketing/theme/StudioContext';
 

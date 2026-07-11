@@ -15,6 +15,6 @@ export default defineConfig({
   external: [
     'react',
     'react-dom',
-    'lucide-react',
+    'iconoir-react',
   ],
 });

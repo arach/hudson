@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { GripHorizontal, X } from 'lucide-react';
+import { GripHorizontal, X } from 'hudsonkit/icons';
 import type { AppIntent } from 'hudsonkit';
 import { CATEGORY_COLORS } from './types';
 

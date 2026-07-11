@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search, X } from 'lucide-react';
+import { Search, X } from '../../icons';
 import { usePlatform } from '../../platform/PlatformContext';
 import { usePlatformLayout } from '../../platform/usePlatformLayout';
 import { HudsonKitLockup } from '../brand';

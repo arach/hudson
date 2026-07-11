@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Clipboard } from 'lucide-react';
+import { Clipboard } from '../../icons';
 import { useJsonExplorer } from './JsonExplorerProvider';
 import { getNodeType, TYPE_BADGES } from './types';
 

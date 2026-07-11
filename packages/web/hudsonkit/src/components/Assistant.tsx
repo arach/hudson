@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useCallback, useState } from 'react';
-import { Sparkles, Mic, Square, Volume2, VolumeX, Loader2 } from 'lucide-react';
+import { Sparkles, Mic, Square, Volume2, VolumeX, Loader2 } from '../icons';
 import { AI } from './AI';
 import { TerminalRelay } from './TerminalRelay';
 import { useTerminalRelay } from '../hooks/useTerminalRelay';
