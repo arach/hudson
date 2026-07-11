@@ -30,7 +30,7 @@ export { CodeViewer } from './components/controls/CodeViewer';
 export type { CodeViewerProps, CodeLanguage } from './components/controls/CodeViewer';
 
 export { CodeEditor } from './components/controls/CodeEditor';
-export type { CodeEditorProps, DocumentLanguage } from './components/controls/CodeEditor';
+export type { CodeEditorProps, CodeEditorSelection, DocumentLanguage } from './components/controls/CodeEditor';
 
 export { ObjectCodeSurface, ObjectCodeWorkbench } from './components/controls/ObjectCodeSurface';
 export type { ObjectCodeSurfaceProps, ObjectCodeWorkbenchProps } from './components/controls/ObjectCodeSurface';

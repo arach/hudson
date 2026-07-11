@@ -107,10 +107,12 @@ export interface AppManifest {
 export type MultiInstanceMode = 'singleton' | 'spawnable' | 'duplicable';
 export type PortInspectorMode = 'default' | 'compact' | 'hidden';
 
-/** Optional AppShell panel sizing — per-app defaults and resize bounds. */
+/** Optional AppShell panel defaults and resize bounds. */
 export interface AppShellPanelBounds {
   min?: number;
   max?: number;
+  /** Initial collapsed state when this app has no persisted preference. */
+  collapsed?: boolean;
 }
 
 /**
