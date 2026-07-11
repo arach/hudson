@@ -7,7 +7,7 @@
 //   2  invalid arguments / unreadable project
 
 import { readFileSync, existsSync, realpathSync, statSync } from 'node:fs';
-import { join, resolve, isAbsolute, dirname, relative } from 'node:path';
+import { join, resolve, isAbsolute, relative } from 'node:path';
 import { execSync } from 'node:child_process';
 import process from 'node:process';
 
@@ -25,11 +25,12 @@ OPTIONS
 
 CHECKS
   1. \`file:\` dep pointing at a hudsonkit source folder (HIGH)
-  2. \`transpilePackages\` in next.config includes hudsonkit (HIGH)
-  3. \`turbopack.root\` resolves above the project root (HIGH)
-  4. Tailwind content / @source paths scan hudsonkit src or dist (HIGH)
-  5. Resolved hudsonkit is missing dist/styles.css (HIGH)
-  6. A Hudson dev server (\`next dev\` in a hudson checkout) is already running (MEDIUM)
+  2. \`workspace:*\` resolves hudsonkit from outside the project root (HIGH)
+  3. \`transpilePackages\` in next.config includes hudsonkit (HIGH)
+  4. \`turbopack.root\` resolves above the project root (HIGH)
+  5. Tailwind content / @source paths scan hudsonkit src or dist (HIGH)
+  6. Resolved hudsonkit is missing dist/styles.css (HIGH)
+  7. A Hudson dev server (\`next dev\` in a hudson checkout) is already running (MEDIUM)
 `;
 
 const SEVERITY = { HIGH: 'HIGH', MEDIUM: 'MEDIUM', LOW: 'LOW' };
@@ -88,6 +89,12 @@ function isParentOf(parent, child) {
   return rel === '' || (!rel.startsWith('..') && !isAbsolute(rel));
 }
 
+function workspaceEntries(pkg) {
+  if (Array.isArray(pkg?.workspaces)) return pkg.workspaces;
+  if (Array.isArray(pkg?.workspaces?.packages)) return pkg.workspaces.packages;
+  return [];
+}
+
 // ---------------------------------------------------------------------------
 // Check 1 — file: dep to hudsonkit source folder
 // ---------------------------------------------------------------------------
@@ -136,7 +143,50 @@ function checkFileDep(ctx, findings) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 2 — transpilePackages includes hudsonkit
+// Check 2 — workspace: dep to hudsonkit source outside the consumer root
+// ---------------------------------------------------------------------------
+function checkExternalWorkspaceDep(ctx, findings) {
+  const pkg = ctx.pkg;
+  if (!pkg) return;
+
+  let consumerRoot;
+  try { consumerRoot = realpathSync(ctx.cwd); } catch { consumerRoot = ctx.cwd; }
+
+  const dependencyFields = ['dependencies', 'devDependencies', 'optionalDependencies', 'peerDependencies'];
+  const workspaceDependency = dependencyFields.find(field => {
+    const spec = pkg[field]?.hudsonkit;
+    return spec === 'workspace:*';
+  });
+  if (!workspaceDependency) return;
+
+  for (const entry of workspaceEntries(pkg)) {
+    if (typeof entry !== 'string' || /[*?{}[\]]/.test(entry)) continue;
+
+    const resolved = resolve(ctx.cwd, entry);
+    let realPath;
+    try { realPath = realpathSync(resolved); } catch { realPath = resolved; }
+    if (isParentOf(consumerRoot, realPath)) continue;
+
+    const workspacePkg = readJSON(join(realPath, 'package.json'));
+    if (workspacePkg?.name !== 'hudsonkit') continue;
+
+    findings.push({
+      id: 'workspace-dep-to-external-source',
+      severity: SEVERITY.HIGH,
+      title: `${workspaceDependency}.hudsonkit resolves to an external workspace (${entry})`,
+      detail:
+        `Resolved the workspace entry to ${realPath}, outside the consumer root. ` +
+        `Using workspace:* links the live hudsonkit package into the consumer and can pull Hudson source into its compiler and watcher graph. ` +
+        `Use a sealed tarball or the published package instead.`,
+      fix:
+        `Run \`bun run pack\` inside hudsonkit and depend on the resulting sealed .tgz tarball, or replace \`workspace:*\` with a published hudsonkit version.`,
+    });
+    return;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Check 3 — transpilePackages includes hudsonkit
 // ---------------------------------------------------------------------------
 function checkTranspilePackages(ctx, findings) {
   for (const f of ctx.nextConfigs) {
@@ -160,7 +210,7 @@ function checkTranspilePackages(ctx, findings) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 3 — turbopack.root over-broad
+// Check 4 — turbopack.root over-broad
 // ---------------------------------------------------------------------------
 function checkTurbopackRoot(ctx, findings) {
   for (const f of ctx.nextConfigs) {
@@ -191,7 +241,7 @@ function checkTurbopackRoot(ctx, findings) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 4 — Tailwind config scans hudsonkit source or dist
+// Check 5 — Tailwind config scans hudsonkit source or dist
 // ---------------------------------------------------------------------------
 function checkTailwindScan(ctx, findings) {
   // Tailwind v3 config files
@@ -228,7 +278,7 @@ function checkTailwindScan(ctx, findings) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 5 — hudsonkit/dist/styles.css present?
+// Check 6 — hudsonkit/dist/styles.css present?
 // ---------------------------------------------------------------------------
 function checkStylesPresent(ctx, findings) {
   const candidates = [
@@ -263,7 +313,7 @@ function checkStylesPresent(ctx, findings) {
 }
 
 // ---------------------------------------------------------------------------
-// Check 6 — Hudson dev server already running?
+// Check 7 — Hudson dev server already running?
 // ---------------------------------------------------------------------------
 function checkHudsonProcessRunning(ctx, findings) {
   let out = '';
@@ -381,6 +431,7 @@ export async function run(argv) {
   }
 
   checkFileDep(ctx, findings);
+  checkExternalWorkspaceDep(ctx, findings);
   checkTranspilePackages(ctx, findings);
   checkTurbopackRoot(ctx, findings);
   checkTailwindScan(ctx, findings);

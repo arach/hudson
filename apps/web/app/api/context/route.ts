@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { readFile, readdir, writeFile, unlink, mkdir } from 'fs/promises';
 import { join } from 'path';
+import { isSafeFileId, rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 import { REPO_ROOT } from '@/app/lib/repoRoot';
 
 // ---------------------------------------------------------------------------
@@ -23,11 +24,17 @@ interface ContextItem {
 // GET — list items or fetch a single one
 // ---------------------------------------------------------------------------
 export async function GET(request: Request) {
-  await ensureDir();
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   const { searchParams } = new URL(request.url);
   const id = searchParams.get('id');
 
-  if (id) {
+  if (id !== null) {
+    if (!isSafeFileId(id)) {
+      return NextResponse.json({ error: 'Invalid context id' }, { status: 400 });
+    }
+    await ensureDir();
     try {
       const raw = await readFile(join(CONTEXT_DIR, `${id}.json`), 'utf-8');
       return NextResponse.json({ item: JSON.parse(raw) });
@@ -36,6 +43,7 @@ export async function GET(request: Request) {
     }
   }
 
+  await ensureDir();
   const files = await readdir(CONTEXT_DIR);
   const items: Omit<ContextItem, 'content'>[] = [];
   for (const file of files) {
@@ -56,12 +64,18 @@ export async function GET(request: Request) {
 // POST — create or delete a context item
 // ---------------------------------------------------------------------------
 export async function POST(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
-    await ensureDir();
     const body = await request.json();
 
     // Delete
-    if (body.action === 'delete' && body.id) {
+    if (body.action === 'delete') {
+      if (typeof body.id !== 'string' || !isSafeFileId(body.id)) {
+        return NextResponse.json({ error: 'Invalid context id' }, { status: 400 });
+      }
+      await ensureDir();
       try {
         await unlink(join(CONTEXT_DIR, `${body.id}.json`));
       } catch { /* already gone */ }
@@ -81,6 +95,7 @@ export async function POST(request: Request) {
       createdAt: Date.now(),
     };
 
+    await ensureDir();
     await writeFile(join(CONTEXT_DIR, `${id}.json`), JSON.stringify(item, null, 2), 'utf-8');
     return NextResponse.json({ item });
   } catch (err) {

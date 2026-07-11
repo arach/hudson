@@ -37,38 +37,88 @@ export function TraceProvider({ children }: { children: ReactNode }) {
   const [selectedTrace, setSelectedTrace] = useState<AgentTrace | null>(null);
   const [selectedStepIndex, setSelectedStepIndex] = useState<number | null>(null);
   const [loading, setLoading] = useState(false);
-  const pollRef = useRef<ReturnType<typeof setInterval>>(undefined);
+  const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const lastTracesJsonRef = useRef('');
 
   // Poll trace summaries — only when tab is visible
   useEffect(() => {
     const tracesRoute = routes.traces;
     let cancelled = false;
-    const fetchList = async () => {
-      if (!tracesRoute) {
-        if (!cancelled) setTraces([]);
-        return;
-      }
-      try {
-        const res = await fetch(tracesRoute);
-        if (!res.ok) return;
-        const data = await res.json();
-        if (!cancelled) {
+    let inFlight: Promise<void> | null = null;
+    let abortController: AbortController | null = null;
+
+    if (!tracesRoute) {
+      lastTracesJsonRef.current = '';
+      setTraces([]);
+      return;
+    }
+
+    const fetchList = () => {
+      if (inFlight) return inFlight;
+
+      const controller = new AbortController();
+      abortController = controller;
+      const refresh = (async () => {
+        try {
+          const res = await fetch(tracesRoute, { signal: controller.signal });
+          if (!res.ok || controller.signal.aborted) return;
+          const data = await res.json();
+          if (cancelled || controller.signal.aborted) return;
           const json = JSON.stringify(data.traces ?? []);
           if (json !== lastTracesJsonRef.current) {
             lastTracesJsonRef.current = json;
             setTraces(data.traces ?? []);
           }
+        } catch { /* ignore */ }
+      })();
+
+      inFlight = refresh;
+      const clearRefresh = () => {
+        if (inFlight === refresh) {
+          inFlight = null;
+          abortController = null;
         }
-      } catch { /* ignore */ }
+      };
+      void refresh.then(clearRefresh, clearRefresh);
+      return refresh;
     };
-    const start = () => { pollRef.current = setInterval(fetchList, POLL_MS); };
-    const stop = () => clearInterval(pollRef.current);
-    const onVis = () => { stop(); if (document.visibilityState === 'visible') { fetchList(); start(); } };
-    fetchList();
-    start();
+    const cancelRefresh = () => {
+      abortController?.abort();
+      abortController = null;
+      inFlight = null;
+    };
+    const start = () => {
+      if (document.visibilityState !== 'visible' || pollRef.current) return;
+      pollRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') void fetchList();
+      }, POLL_MS);
+    };
+    const stop = () => {
+      if (!pollRef.current) return;
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') {
+        stop();
+        cancelRefresh();
+        return;
+      }
+      void fetchList();
+      start();
+    };
+
+    if (document.visibilityState === 'visible') {
+      void fetchList();
+      start();
+    }
     document.addEventListener('visibilitychange', onVis);
-    return () => { cancelled = true; stop(); document.removeEventListener('visibilitychange', onVis); };
+    return () => {
+      cancelled = true;
+      stop();
+      cancelRefresh();
+      document.removeEventListener('visibilitychange', onVis);
+    };
   }, [routes.traces]);
 
   // Fetch full trace when selection changes

@@ -56,7 +56,19 @@ The server listens on a single port for both HTTP and WebSocket traffic.
 | Variable | Default | Description |
 |----------|---------|-------------|
 | `RELAY_PORT` | `3600` | Listen port. Overridden by `--port` flag. |
+| `HUDSON_RELAY_HOST` | `127.0.0.1` | Listen host. Non-loopback hosts require `HUDSON_RELAY_TOKEN`. |
+| `HUDSON_RELAY_TOKEN` | None | Shared bearer token required by non-health HTTP routes and WebSocket clients. Required for non-loopback binding. |
+| `HUDSON_RELAY_ALLOWED_ORIGINS` | None | Comma-separated additional browser origins. Loopback origins are allowed by default. |
+| `HUDSON_RELAY_UNSAFE_ALLOW_UNAUTHENTICATED_NON_LOOPBACK` | None | Set to exactly `1` only to deliberately allow an unauthenticated non-loopback bind. This exposes shell access to the network. |
 | `CLAUDE_BIN` | Auto-detected via `which claude` | Path to the Claude CLI binary. |
+
+Loopback development remains unauthenticated by default. To expose the relay on a network interface, configure a token:
+
+```bash
+HUDSON_RELAY_HOST=0.0.0.0 HUDSON_RELAY_TOKEN='replace-with-a-strong-secret' bun run relay
+```
+
+Raw clients may omit the `Origin` header, but they must still send the configured token with `Authorization: Bearer <token>`, `X-Relay-Token`, or the `token` query parameter. Browser origins must also be loopback or included in `HUDSON_RELAY_ALLOWED_ORIGINS`.
 
 ## Connecting from an App
 
