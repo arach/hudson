@@ -1,4 +1,4 @@
-import type { LucideIcon } from 'lucide-react';
+import type { HudsonIcon } from 'hudsonkit/icons';
 
 export type ViewMode = 'canvas' | 'list' | 'tiles';
 
@@ -7,7 +7,7 @@ export interface ComponentEntry {
   /** Dot-separated namespace */
   ns: string;
   label: string;
-  icon: LucideIcon;
+  icon: HudsonIcon;
   desc: string;
   overview: string;
   props: { name: string; type: string; desc: string }[];

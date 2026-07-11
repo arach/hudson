@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
+import { X, Maximize2, Minimize2, Terminal } from '../../icons';
 import { SHELL_THEME } from '../../lib/theme';
 import {
   HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR,

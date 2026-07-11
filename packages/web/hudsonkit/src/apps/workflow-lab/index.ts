@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Network } from 'lucide-react';
+import { Network } from '../../icons';
 import type { HudsonApp } from '../../index';
 import { WorkflowLabContent } from './WorkflowLabContent';
 import { WorkflowLabInspector } from './WorkflowLabInspector';

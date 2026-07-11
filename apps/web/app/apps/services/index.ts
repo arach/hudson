@@ -1,4 +1,4 @@
-import { Server, List } from 'lucide-react';
+import { Server, List } from 'hudsonkit/icons';
 import { createElement } from 'react';
 import type { HudsonApp } from 'hudsonkit';
 import { ServicesProvider } from './ServicesProvider';

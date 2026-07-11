@@ -38,7 +38,7 @@ export default defineConfig({
       { find: 'react', replacement: resolve(rootNodeModules, 'react') },
       { find: 'ai', replacement: resolve(rootNodeModules, 'ai') },
       { find: '@ai-sdk/react', replacement: resolve(rootNodeModules, '@ai-sdk/react') },
-      { find: 'lucide-react', replacement: resolve(rootNodeModules, 'lucide-react') },
+      { find: 'hudsonkit/icons', replacement: resolve(hudsonkitSrc, 'icons.tsx') },
       { find: 'server-only', replacement: resolve(appDir, 'test/mocks/server-only.ts') },
       {
         find: 'hudsonkit/workflow',

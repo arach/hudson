@@ -10,7 +10,7 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { Eye, FileText, Pencil, Save } from 'lucide-react';
+import { Eye, FileText, Pencil, Save } from '../../icons';
 import { CodeEditor, type DocumentLanguage } from './CodeEditor';
 import { CodeViewer, type CodeLanguage } from './CodeViewer';
 

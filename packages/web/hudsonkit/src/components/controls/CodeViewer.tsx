@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useMemo, useRef, useState } from 'react';
-import { Check, Copy, FileCode2 } from 'lucide-react';
+import { Check, Copy, FileCode2 } from '../../icons';
 
 // ---------------------------------------------------------------------------
 // Types

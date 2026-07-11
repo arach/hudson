@@ -14,8 +14,8 @@ import {
   Copy,
   Check,
   ExternalLink,
-} from 'lucide-react';
-import type { LucideIcon } from 'lucide-react';
+} from 'hudsonkit/icons';
+import type { HudsonIcon } from 'hudsonkit/icons';
 import type { AgentDocEntry, ComponentEntry, ViewMode, HudsonSettings } from './types';
 import { AGENT_DOCS } from './data';
 import '@/app/docs/docs.css';
@@ -304,7 +304,7 @@ export function AgentDocSheet({ slug, onClose, isSelected, onSelect, onDragStart
 // View mode toggle (center slot in NavigationBar)
 // ---------------------------------------------------------------------------
 export function ViewModeToggle({ value, onChange }: { value: ViewMode; onChange: (v: ViewMode) => void }) {
-  const modes: { value: ViewMode; label: string; icon: LucideIcon }[] = [
+  const modes: { value: ViewMode; label: string; icon: HudsonIcon }[] = [
     { value: 'canvas', label: 'Canvas', icon: Move },
     { value: 'list', label: 'List', icon: LayoutList },
     { value: 'tiles', label: 'Tiles', icon: LayoutGrid },

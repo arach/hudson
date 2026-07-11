@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Layers } from 'lucide-react';
+import { Layers } from 'hudsonkit/icons';
 import type { HudsonApp } from 'hudsonkit';
 import { StageDesignProvider } from './StageDesignProvider';
 import { StageDesignContent } from './StageDesignContent';

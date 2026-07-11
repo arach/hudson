@@ -16,7 +16,6 @@ const singletonAliases = {
   "react-dom/client": path.join(hudsonNodeModules, "react-dom", "client.js"),
   "ai": path.join(hudsonNodeModules, "ai"),
   "@ai-sdk/react": path.join(hudsonNodeModules, "@ai-sdk", "react"),
-  "lucide-react": path.join(hudsonNodeModules, "lucide-react"),
 };
 
 // Surfaces filesystem mtimes for engineering markdown as `virtual:eng-mtimes`.

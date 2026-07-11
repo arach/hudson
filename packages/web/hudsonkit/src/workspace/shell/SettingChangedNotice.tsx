@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { CheckCircle2, Settings, X } from 'lucide-react';
+import { CheckCircle2, Settings, X } from '../../icons';
 
 export const HUDSON_SETTING_CHANGED_EVENT = 'hudson:setting-changed';
 

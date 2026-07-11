@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { History } from 'lucide-react';
+import { History } from '../../icons';
 import type { HudsonApp } from '../../index';
 import { ApiInspectorProvider } from './ApiInspectorProvider';
 import { ApiInspectorContent } from './ApiInspectorContent';

@@ -1,7 +1,7 @@
 'use client';
 
 import type { ReactNode } from 'react';
-import { Sparkles } from 'lucide-react';
+import { Sparkles } from 'hudsonkit/icons';
 import { useHudsonAIApp } from './HudsonAIProvider';
 import { useHudsonAIRuntime } from 'hudsonkit/workspace';
 import { getHudsonVoiceBehaviorPreset, getHudsonVoiceBehaviorPresetLabel } from 'hudsonkit/workspace';

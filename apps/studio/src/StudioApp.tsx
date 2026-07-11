@@ -1,5 +1,5 @@
 import { createElement, type FC } from "react";
-import { Compass } from "lucide-react";
+import { Compass } from "hudsonkit/icons";
 import { AppShell } from "hudsonkit/app-shell";
 import type { HudsonApp } from "hudsonkit";
 import { ThemeProvider } from "hudsonkit/theme";

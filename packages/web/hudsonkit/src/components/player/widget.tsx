@@ -21,7 +21,7 @@ import {
   Volume2,
   VolumeX,
   X,
-} from 'lucide-react';
+} from '../../icons';
 import { SHELL_THEME } from '../../lib/theme';
 import { usePlayer } from './PlayerProvider';
 

@@ -13,7 +13,7 @@ import {
   Save,
   Send,
   X,
-} from 'lucide-react';
+} from '../../icons';
 import { TextDocumentSurface } from './TextDocument';
 import type {
   HudsonCodeChatSurface,

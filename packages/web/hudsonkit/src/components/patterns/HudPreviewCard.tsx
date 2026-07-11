@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { HudsonIcon } from '../../icons';
 import { HudBadge } from '../primitives';
 import type { HudDensity, HudTone } from '../primitives';
 import { cx } from './utils';
@@ -24,7 +24,7 @@ export interface HudPreviewCardProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
   eyebrow?: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: HudsonIcon;
   preview?: React.ReactNode;
   media?: React.ReactNode;
   metrics?: readonly HudPreviewCardMetric[];

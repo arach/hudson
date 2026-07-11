@@ -1,4 +1,4 @@
-import { FileText, Compass, ScanSearch } from 'lucide-react';
+import { FileText, Compass, ScanSearch } from 'hudsonkit/icons';
 import { createElement } from 'react';
 import type { HudsonApp } from 'hudsonkit';
 import { DocsProvider } from './DocsProvider';
