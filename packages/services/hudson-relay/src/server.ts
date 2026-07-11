@@ -25,13 +25,23 @@ import type { ClientMessage } from './relay/types';
 import { handleCompile } from './routes/compile';
 import { handleUpload } from './routes/upload';
 import { handleHealth } from './routes/health';
-import { authToken, extractToken, isAllowedOrigin, tokenMatches } from './relay/access';
+import {
+  UNSAFE_UNAUTHENTICATED_NON_LOOPBACK_ENV,
+  allowsUnsafeUnauthenticatedNonLoopback,
+  assertSafeRelayBinding,
+  authToken,
+  extractToken,
+  isAllowedOrigin,
+  isLoopbackHostname,
+  tokenMatches,
+} from './relay/access';
 
 // ---------------------------------------------------------------------------
 // Access control
 //
 // The relay hands out interactive shells, so it never trusts the network:
-//  - binds to loopback unless HUDSON_RELAY_HOST is set explicitly
+//  - binds to loopback unless a non-loopback host is protected by a token (or
+//    the deliberately unsafe compatibility override is explicitly enabled)
 //  - browser clients must come from a loopback origin (or an origin listed in
 //    HUDSON_RELAY_ALLOWED_ORIGINS) — this blocks DNS-rebinding and random
 //    webpages driving the relay
@@ -70,6 +80,8 @@ function deny(res: ServerResponse, status: number, error: string) {
 // ---------------------------------------------------------------------------
 
 export function startServer(port: number, host = process.env.HUDSON_RELAY_HOST || '127.0.0.1') {
+  assertSafeRelayBinding(host);
+
   const server = createServer((req, res) => {
     const origin = req.headers.origin;
     cors(res, origin);
@@ -261,8 +273,10 @@ export function startServer(port: number, host = process.env.HUDSON_RELAY_HOST |
 
   server.listen(port, host, () => {
     console.log(`[relay] Server listening on http://${host}:${port} (HTTP + WebSocket)`);
-    if (host !== '127.0.0.1' && host !== 'localhost' && host !== '::1') {
-      console.warn('[relay] WARNING: relay is bound to a non-loopback interface. Set HUDSON_RELAY_TOKEN to require auth.');
+    if (!isLoopbackHostname(host) && !authToken() && allowsUnsafeUnauthenticatedNonLoopback()) {
+      console.warn(
+        `[relay] WARNING: unauthenticated non-loopback binding allowed by ${UNSAFE_UNAUTHENTICATED_NON_LOOPBACK_ENV}=1.`,
+      );
     }
     if (authToken()) console.log('[relay] Token auth enabled (HUDSON_RELAY_TOKEN)');
     // Opt-in TTL reaper for tmux/zellij sessions this relay created

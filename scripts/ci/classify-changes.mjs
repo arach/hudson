@@ -1,8 +1,9 @@
 #!/usr/bin/env node
 import { readFileSync } from "node:fs";
 import { execFileSync } from "node:child_process";
+import { pathToFileURL } from "node:url";
 
-const SURFACES = {
+export const SURFACES = {
   workflows: [
     ".github/workflows/**",
     ".github/ci-surfaces.json",
@@ -29,6 +30,7 @@ const SURFACES = {
   ],
   native: [
     "native/**",
+    "apps/hudson/native/**",
     "packages/native/**",
     "Package.resolved",
     "Package.swift",
@@ -43,12 +45,15 @@ const SURFACES = {
   ],
 };
 
-const args = new Map();
-for (let i = 2; i < process.argv.length; i += 1) {
-  const arg = process.argv[i];
-  if (!arg.startsWith("--")) continue;
-  args.set(arg.slice(2), process.argv[i + 1]);
-  i += 1;
+function parseArgs(argv) {
+  const args = new Map();
+  for (let i = 0; i < argv.length; i += 1) {
+    const arg = argv[i];
+    if (!arg.startsWith("--")) continue;
+    args.set(arg.slice(2), argv[i + 1]);
+    i += 1;
+  }
+  return args;
 }
 
 function sh(command, commandArgs) {
@@ -65,7 +70,7 @@ function readEvent() {
   }
 }
 
-function resolveRange() {
+function resolveRange(args) {
   if (args.has("base") && args.has("head")) {
     return { base: args.get("base"), head: args.get("head") };
   }
@@ -112,13 +117,14 @@ function matches(pattern, file) {
   return file === pattern;
 }
 
-const eventName = process.env.GITHUB_EVENT_NAME || "";
-const forceAll = eventName === "workflow_call";
-const { base, head } = resolveRange();
-const files = forceAll ? ["__workflow_call__"] : changedFiles(base, head);
-const results = Object.fromEntries(Object.keys(SURFACES).map((key) => [key, forceAll]));
+export function classifyFiles(files, { forceAll = false } = {}) {
+  const results = Object.fromEntries(Object.keys(SURFACES).map((key) => [key, forceAll]));
 
-if (!forceAll) {
+  if (forceAll) {
+    results.any = true;
+    return results;
+  }
+
   for (const file of files) {
     for (const [surface, patterns] of Object.entries(SURFACES)) {
       if (patterns.some((pattern) => matches(pattern, file))) {
@@ -126,23 +132,37 @@ if (!forceAll) {
       }
     }
   }
+
+  results.any = Object.values(results).some(Boolean);
+  return results;
 }
 
-results.any = Object.values(results).some(Boolean);
+function main() {
+  const args = parseArgs(process.argv.slice(2));
+  const eventName = process.env.GITHUB_EVENT_NAME || "";
+  const forceAll = eventName === "workflow_call";
+  const { base, head } = resolveRange(args);
+  const files = forceAll ? ["__workflow_call__"] : changedFiles(base, head);
+  const results = classifyFiles(files, { forceAll });
 
-console.log(`Compared ${base || "(unknown)"}..${head || "(unknown)"}`);
-console.log(`Changed files (${files.length}):`);
-for (const file of files) console.log(`- ${file}`);
-console.log("Surfaces:");
-for (const [surface, value] of Object.entries(results)) {
-  console.log(`- ${surface}: ${value}`);
+  console.log(`Compared ${base || "(unknown)"}..${head || "(unknown)"}`);
+  console.log(`Changed files (${files.length}):`);
+  for (const file of files) console.log(`- ${file}`);
+  console.log("Surfaces:");
+  for (const [surface, value] of Object.entries(results)) {
+    console.log(`- ${surface}: ${value}`);
+  }
+
+  if (process.env.GITHUB_OUTPUT) {
+    const lines = Object.entries(results).map(([key, value]) => `${key}=${value ? "true" : "false"}`);
+    lines.push(`files<<EOF\n${files.join("\n")}\nEOF`);
+    execFileSync("sh", ["-c", `cat >> "$GITHUB_OUTPUT"`], {
+      input: `${lines.join("\n")}\n`,
+      env: process.env,
+    });
+  }
 }
 
-if (process.env.GITHUB_OUTPUT) {
-  const lines = Object.entries(results).map(([key, value]) => `${key}=${value ? "true" : "false"}`);
-  lines.push(`files<<EOF\n${files.join("\n")}\nEOF`);
-  execFileSync("sh", ["-c", `cat >> "$GITHUB_OUTPUT"`], {
-    input: `${lines.join("\n")}\n`,
-    env: process.env,
-  });
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  main();
 }

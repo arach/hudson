@@ -1,5 +1,6 @@
 import { timingSafeEqual } from 'crypto';
 import type { IncomingMessage } from 'http';
+import { BlockList, isIP } from 'net';
 
 // ---------------------------------------------------------------------------
 // Relay access control — origin allow-list + optional shared-secret token.
@@ -8,6 +9,13 @@ import type { IncomingMessage } from 'http';
 // These helpers read env lazily because index.ts loads .env.local after the
 // module graph is imported.
 // ---------------------------------------------------------------------------
+
+export const UNSAFE_UNAUTHENTICATED_NON_LOOPBACK_ENV =
+  'HUDSON_RELAY_UNSAFE_ALLOW_UNAUTHENTICATED_NON_LOOPBACK';
+
+const loopbackAddresses = new BlockList();
+loopbackAddresses.addSubnet('127.0.0.0', 8, 'ipv4');
+loopbackAddresses.addAddress('::1', 'ipv6');
 
 export function authToken(): string | null {
   return process.env.HUDSON_RELAY_TOKEN?.trim() || null;
@@ -23,8 +31,27 @@ function extraAllowedOrigins(): Set<string> {
 }
 
 export function isLoopbackHostname(hostname: string): boolean {
-  const clean = hostname.toLowerCase().replace(/^\[|\]$/g, '');
-  return clean === 'localhost' || clean === '127.0.0.1' || clean === '::1';
+  const clean = hostname.trim().toLowerCase().replace(/^\[|\]$/g, '');
+  if (clean === 'localhost') return true;
+
+  const addressFamily = isIP(clean);
+  if (addressFamily === 4) return loopbackAddresses.check(clean, 'ipv4');
+  if (addressFamily === 6) return loopbackAddresses.check(clean, 'ipv6');
+  return false;
+}
+
+export function allowsUnsafeUnauthenticatedNonLoopback(): boolean {
+  return process.env[UNSAFE_UNAUTHENTICATED_NON_LOOPBACK_ENV] === '1';
+}
+
+export function assertSafeRelayBinding(host: string): void {
+  if (isLoopbackHostname(host) || authToken() || allowsUnsafeUnauthenticatedNonLoopback()) return;
+
+  throw new Error(
+    `[relay] Refusing to bind to non-loopback host "${host}" without authentication. ` +
+      `Set HUDSON_RELAY_TOKEN, or set ${UNSAFE_UNAUTHENTICATED_NON_LOOPBACK_ENV}=1 ` +
+      'only if you explicitly accept unauthenticated remote access.',
+  );
 }
 
 /** Browser-sent Origin must be loopback or explicitly allow-listed. Absent
