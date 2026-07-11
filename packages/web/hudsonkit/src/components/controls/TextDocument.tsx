@@ -10,8 +10,8 @@ import React, {
   useState,
   type ReactNode,
 } from 'react';
-import { Eye, FileText, Pencil, Save } from 'lucide-react';
-import { CodeEditor, type DocumentLanguage } from './CodeEditor';
+import { Eye, FileText, LoaderCircle, Pencil, Save } from 'lucide-react';
+import { CodeEditor, type CodeEditorSelection, type DocumentLanguage } from './CodeEditor';
 import { CodeViewer, type CodeLanguage } from './CodeViewer';
 
 export type TextDocumentKind = 'text' | 'markdown' | 'code' | 'raw';
@@ -167,10 +167,12 @@ export interface TextDocumentContextValue {
   value: string;
   savedValue: string;
   dirty: boolean;
+  saving: boolean;
+  saveError: string | null;
   mode: TextDocumentMode;
   setMode: (mode: TextDocumentMode) => void;
   updateValue: (value: string) => void;
-  save: () => void;
+  save: () => Promise<boolean>;
 }
 
 export interface TextDocumentProviderProps {
@@ -178,7 +180,7 @@ export interface TextDocumentProviderProps {
   mode?: TextDocumentMode;
   children: ReactNode;
   onChange?: (value: string) => void;
-  onSave?: (value: string) => void;
+  onSave?: (value: string) => void | Promise<void>;
   onModeChange?: (mode: TextDocumentMode) => void;
 }
 
@@ -201,8 +203,11 @@ export function TextDocumentProvider({
   const [value, setValue] = useState(document.value);
   const [savedValue, setSavedValue] = useState(document.value);
   const [activeMode, setActiveMode] = useState<TextDocumentMode>(mode);
+  const [saving, setSaving] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
   const documentIdRef = useRef(document.id);
   const pendingLocalValuesRef = useRef<string[]>([]);
+  const saveInFlightRef = useRef<Promise<boolean> | null>(null);
 
   useEffect(() => {
     if (documentIdRef.current !== document.id) {
@@ -210,6 +215,8 @@ export function TextDocumentProvider({
       pendingLocalValuesRef.current = [];
       setValue(document.value);
       setSavedValue(document.value);
+      setSaving(false);
+      setSaveError(null);
       return;
     }
 
@@ -221,6 +228,7 @@ export function TextDocumentProvider({
 
     setValue(document.value);
     setSavedValue(document.value);
+    setSaveError(null);
   }, [document.id, document.value]);
 
   useEffect(() => {
@@ -238,21 +246,47 @@ export function TextDocumentProvider({
     onChange?.(next);
   }, [onChange]);
 
-  const save = useCallback(() => {
-    setSavedValue(value);
-    onSave?.(value);
-  }, [onSave, value]);
+  const save = useCallback((): Promise<boolean> => {
+    if (saveInFlightRef.current) return saveInFlightRef.current;
+
+    const valueToSave = value;
+    const documentId = document.id;
+    setSaving(true);
+    setSaveError(null);
+
+    const request = Promise.resolve()
+      .then(() => onSave?.(valueToSave))
+      .then(() => {
+        if (documentIdRef.current === documentId) setSavedValue(valueToSave);
+        return true;
+      })
+      .catch((error: unknown) => {
+        if (documentIdRef.current === documentId) {
+          setSaveError(error instanceof Error ? error.message : String(error));
+        }
+        return false;
+      })
+      .finally(() => {
+        if (documentIdRef.current === documentId) setSaving(false);
+        saveInFlightRef.current = null;
+      });
+
+    saveInFlightRef.current = request;
+    return request;
+  }, [document.id, onSave, value]);
 
   const contextValue = useMemo<TextDocumentContextValue>(() => ({
     document: { ...document, value },
     value,
     savedValue,
     dirty: value !== savedValue,
+    saving,
+    saveError,
     mode: activeMode,
     setMode,
     updateValue,
     save,
-  }), [activeMode, document, savedValue, save, setMode, updateValue, value]);
+  }), [activeMode, document, saveError, savedValue, save, saving, setMode, updateValue, value]);
 
   return (
     <TextDocumentContext.Provider value={contextValue}>
@@ -265,8 +299,9 @@ export interface TextDocumentSurfaceProps {
   document: HudsonTextDocument;
   mode?: TextDocumentMode;
   onChange?: (value: string) => void;
-  onSave?: (value: string) => void;
+  onSave?: (value: string) => void | Promise<void>;
   onModeChange?: (mode: TextDocumentMode) => void;
+  onSelectionChange?: (selection: CodeEditorSelection) => void;
   showHeader?: boolean;
   className?: string;
 }
@@ -280,7 +315,11 @@ export function TextDocumentSurface(props: TextDocumentSurfaceProps) {
       onSave={props.onSave}
       onModeChange={props.onModeChange}
     >
-      <TextDocumentSurfaceInner className={props.className} showHeader={props.showHeader} />
+      <TextDocumentSurfaceInner
+        className={props.className}
+        showHeader={props.showHeader}
+        onSelectionChange={props.onSelectionChange}
+      />
     </TextDocumentProvider>
   );
 }
@@ -288,11 +327,13 @@ export function TextDocumentSurface(props: TextDocumentSurfaceProps) {
 export function TextDocumentSurfaceInner({
   className,
   showHeader = true,
+  onSelectionChange,
 }: {
   className?: string;
   showHeader?: boolean;
+  onSelectionChange?: (selection: CodeEditorSelection) => void;
 }) {
-  const { document, mode, setMode, dirty, save } = useTextDocument();
+  const { document, mode, setMode, dirty, saving, saveError, save } = useTextDocument();
   const isMarkdown = document.kind === 'markdown';
   const isCode = document.kind === 'code';
   const editable = !document.readOnly && mode !== 'read' && mode !== 'preview';
@@ -310,6 +351,11 @@ export function TextDocumentSurfaceInner({
           </div>
           {dirty && (
             <span className="font-mono text-[9px] uppercase tracking-wider text-amber-700/80 dark:text-amber-300/70">Modified</span>
+          )}
+          {saveError && (
+            <span className="max-w-40 truncate font-mono text-[9px] text-red-700/80 dark:text-red-300/70" title={saveError}>
+              Save failed
+            </span>
           )}
           {isMarkdown && (
             <div className="flex rounded border border-border/60 bg-card/60 p-0.5">
@@ -354,21 +400,28 @@ export function TextDocumentSurfaceInner({
           {!document.readOnly && mode === 'edit' && (
             <button
               type="button"
-              onClick={save}
+              onClick={() => void save()}
+              disabled={saving}
               className="rounded border border-cyan-700/30 dark:border-cyan-300/15 bg-cyan-700/10 dark:bg-cyan-400/10 p-1.5 text-cyan-700 dark:text-cyan-200/75 hover:bg-cyan-700/15 dark:hover:bg-cyan-400/16 hover:text-cyan-700 dark:hover:text-cyan-100"
-              title="Save document"
+              title={saving ? 'Saving document' : 'Save document'}
             >
-              <Save size={13} />
+              {saving ? <LoaderCircle size={13} className="animate-spin" /> : <Save size={13} />}
             </button>
           )}
         </div>
       )}
-      <DocumentBody editable={editable} />
+      <DocumentBody editable={editable} onSelectionChange={onSelectionChange} />
     </div>
   );
 }
 
-function DocumentBody({ editable }: { editable: boolean }) {
+function DocumentBody({
+  editable,
+  onSelectionChange,
+}: {
+  editable: boolean;
+  onSelectionChange?: (selection: CodeEditorSelection) => void;
+}) {
   const { document, value, mode, updateValue, save } = useTextDocument();
 
   if (document.kind === 'markdown' && mode === 'preview') {
@@ -383,6 +436,7 @@ function DocumentBody({ editable }: { editable: boolean }) {
         readOnly={!editable}
         onChange={updateValue}
         onSave={save}
+        onSelectionChange={onSelectionChange}
         className="flex-1"
       />
     );

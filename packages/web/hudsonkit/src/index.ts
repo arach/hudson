@@ -313,6 +313,7 @@ export {
 } from './controls';
 export type {
   CodeEditorProps,
+  CodeEditorSelection,
   CodeLanguage,
   CodeViewerProps,
   DocumentLanguage,
