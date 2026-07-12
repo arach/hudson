@@ -25,6 +25,7 @@ apps/web/site/out/
 # production
 /build
 /dist
+packages/native/apple/HudsonKit/dist/
 
 # env & secrets — never commit these
 .env
