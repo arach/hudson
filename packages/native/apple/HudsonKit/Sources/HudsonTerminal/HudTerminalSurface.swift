@@ -22,6 +22,18 @@ public struct HudTerminalSurface: View {
         self.onTap = onTap
     }
 
+    public init(
+        session: HudTerminalSSHSession,
+        showsSystemKeyboard: Bool = true,
+        appearance: HudTerminalAppearance = .default,
+        onTap: (() -> Void)? = nil
+    ) {
+        self.controller = session.terminiController
+        self.showsSystemKeyboard = showsSystemKeyboard
+        self.appearance = appearance
+        self.onTap = onTap
+    }
+
     public var body: some View {
         let resolvedAppearance = appearance == .default
             ? HudTerminalAppearance.hudsonDefault(for: colorScheme)

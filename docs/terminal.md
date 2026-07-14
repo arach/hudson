@@ -23,7 +23,7 @@ Without the flag, `HudsonTerminal` is not compiled and Termini is not linked.
 
 ## HudTerminalSurface
 
-Base surface — wraps `TerminiTerminalView` with Hudson appearance, focus behavior, and accessibility identifiers. Accepts any `TerminiTerminalController` (local PTY, SSH session, or your own transport).
+Base surface — wraps `TerminiTerminalView` with Hudson appearance, focus behavior, and accessibility identifiers. SSH consumers pass a `HudTerminalSSHSession`; low-level local PTY consumers can still pass a `TerminiTerminalController`.
 
 ```swift
 import SwiftUI
@@ -50,20 +50,21 @@ Tap-to-focus calls `controller?.focus()`. Surface sets `accessibilityIdentifier(
 
 ## HudTerminalSSHSurface
 
-Complete SSH-backed surface for demos and simple host apps. Loads Termini's SSH demo environment configuration on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
+Complete SSH-backed surface for demos and simple host apps. Loads SSH demo environment configuration on appear, auto-connects when credentials are present, and overlays a Hudson-styled status pane when disconnected.
 
 ```swift
 import HudsonTerminal
-import Termini
-import TerminiSSH
 
 struct SSHPane: View {
     var body: some View {
         HudTerminalSSHSurface(
             hostLabel: "demo.example.com",
-            connection: TerminiConnectionConfig(
+            connection: HudTerminalSSHConnection(
                 name: "Hudson Terminal",
-                startupCommand: "tmux new -A -s hudson"
+                host: "demo.example.com",
+                username: "operator",
+                authentication: .privateKey(pem: privateKeyPEM),
+                startup: .exec(command: "tmux new -A -s hudson")
             ),
             autoConnect: true,
             onStateChange: { state in /* isConnected, columns, rows... */ }
@@ -72,7 +73,39 @@ struct SSHPane: View {
 }
 ```
 
-Overlay uses `HudStatusDot`, `HudButton`, Hudson typography — pulsing warn dot while connecting, info dot while idle, "Connect" and "Load env" actions. Advanced transports (custom auth, multiplexed sessions, tunneling) should compose `HudTerminalSurface` directly.
+Overlay uses `HudStatusDot`, `HudButton`, Hudson typography — pulsing warn dot while connecting, info dot while idle, "Connect" and "Load env" actions.
+
+## Host-owned SSH sessions
+
+Production hosts normally own provisioning and recovery UI while Hudson owns terminal mechanics. Create one `HudTerminalSSHSession`, then pass it to `HudTerminalSurface` or `HudTerminalSSHSurface`. The host does not import Termini or TerminiSSH.
+
+```swift
+import HudsonTerminal
+
+let connection = HudTerminalSSHConnection(
+    name: "Paired Mac",
+    host: provisionedHost,
+    port: provisionedPort,
+    username: provisionedUsername,
+    authentication: .privateKey(pem: provisionedPrivateKey),
+    startup: .exec(command: "tmux new -A -s app"),
+    hostKeyPolicy: .requireStoredHostKey,
+    hostKeyFingerprint: provisionedFingerprint
+)
+
+let session = HudTerminalSSHSession(connection: connection)
+
+HudTerminalSurface(
+    session: session,
+    showsSystemKeyboard: false,
+    appearance: .default
+)
+
+Task { await session.connect() }
+session.send("ls -la")
+```
+
+`HudTerminalSSHSession.snapshot` exposes connection state, status text, PTY grid and cell dimensions, renderer diagnostics, and parsed visible text for contextual settings or troubleshooting UI. Hudson also provides `HudTerminalHostedKeyboard`, which writes the same translated PTY byte sequences for every host.
 
 ### HudTerminalSessionState
 
@@ -111,5 +144,6 @@ Default theme. Graphite background (`#0A0F14`), pale-ink foreground (`#E6EDF3`),
 ## Notes
 
 - Keep the build flag off for apps that don't need a terminal — Termini pulls in NIO + NIOSSH.
-- `HudTerminalSSHSurface` is for demos. Production hosts should compose `HudTerminalSurface` with their own controller lifecycle.
-- HudsonKit does not re-export Termini types — import `Termini` for controllers/local PTY/theme types and `TerminiSSH` for SSH configuration.
+- `HudTerminalSSHSurface` is the complete simple-host treatment. Production hosts can share a host-owned `HudTerminalSSHSession` with either Hudson surface.
+- SSH consumers should not import `TerminiSSH`; HudsonTerminal owns that dependency and its lifecycle conventions.
+- Low-level local PTY or custom-renderer consumers may still import `Termini` and pass a controller to `HudTerminalSurface`.
