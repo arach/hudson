@@ -46,6 +46,11 @@ func appendGitDependency(
     branch defaultBranch: String = "main",
     envPrefix: String
 ) -> String {
+    if let path = nonEmptyEnv("\(envPrefix)_PATH") {
+        dependencies.append(.package(path: path))
+        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: defaultURL)
+    }
+
     let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultURL
 
     if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
@@ -164,6 +169,7 @@ if terminalEnabled {
             name: "HudsonTerminal",
             dependencies: [
                 "HudsonUI",
+                "HudsonUIKeyboard",
                 .product(name: "Termini", package: terminiPackage),
                 .product(name: "TerminiSSH", package: terminiPackage),
             ],
@@ -203,6 +209,9 @@ if terminalEnabled {
     )
     targets.append(
         .testTarget(name: "HudsonCanvasTests", dependencies: ["HudsonCanvas", "HudsonCanvasSurface"], path: tst + "HudsonCanvasTests")
+    )
+    targets.append(
+        .testTarget(name: "HudsonTerminalTests", dependencies: ["HudsonTerminal"], path: tst + "HudsonTerminalTests")
     )
     demoDependencies.append("HudsonTerminal")
     demoDependencies.append("HudsonCanvasSurface")
