@@ -6,6 +6,16 @@ options:
   generateEmptyDirectories: false
   createIntermediateGroups: true
 
+schemes:
+  HudsonKitDemoIOS:
+    build:
+      targets:
+        HudsonKitDemoIOS: all
+        HudsonKitDemoIOSUITests: [test]
+    test:
+      targets:
+        - HudsonKitDemoIOSUITests
+
 packages:
   # The Apple package collapsed to a single manifest at the hudson repo root.
   HudsonKit:
@@ -97,3 +107,20 @@ targets:
         CODE_SIGNING_REQUIRED: NO
         CODE_SIGNING_ALLOWED: NO
         ENABLE_PREVIEWS: YES
+  HudsonKitDemoIOSUITests:
+    type: bundle.ui-testing
+    platform: iOS
+    sources:
+      - path: UITests
+    dependencies:
+      - target: HudsonKitDemoIOS
+    settings:
+      base:
+        GENERATE_INFOPLIST_FILE: YES
+        PRODUCT_BUNDLE_IDENTIFIER: com.hudsonkit.demoios.ui-tests
+        TEST_TARGET_NAME: HudsonKitDemoIOS
+        TARGETED_DEVICE_FAMILY: "1,2"
+        SWIFT_VERSION: "5.9"
+        CODE_SIGN_IDENTITY: ""
+        CODE_SIGNING_REQUIRED: NO
+        CODE_SIGNING_ALLOWED: NO

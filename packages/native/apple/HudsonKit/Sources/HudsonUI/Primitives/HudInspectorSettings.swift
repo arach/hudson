@@ -138,6 +138,7 @@ public struct HudInspectorSettings<ID: Hashable, Content: View>: View {
                     .rotationEffect(.degrees(-90))
             }
             .frame(width: HudInspectorMetrics.railWidth, height: HudInspectorMetrics.railChipHeight)
+            .contentShape(Rectangle())
             .background(isActive ? HudSurface.tintGhost(theme.palette.accent) : Color.clear)
             .overlay(alignment: .leading) {
                 Rectangle()
@@ -550,7 +551,7 @@ public struct HudInspectorMetricStrip: View {
 }
 
 private enum HudInspectorMetrics {
-    static let railWidth: CGFloat = 28
+    static let railWidth: CGFloat = HudLayout.rowHeightRegular
     static let railChipHeight: CGFloat = 88
     static let panelHeaderHeight: CGFloat = 44
     static let sectionHeaderHeight: CGFloat = 32
