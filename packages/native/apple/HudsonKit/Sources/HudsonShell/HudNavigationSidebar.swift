@@ -450,9 +450,11 @@ public struct HudNavigationSidebar<
 
     private func rowY(for id: Selection?) -> CGFloat? {
         guard let id else { return nil }
-        var y: CGFloat = HudSidebarLayout.headerTopPadding
-                       + HudSidebarLayout.headerHeight
-                       + HudSidebarLayout.headerBottomPadding
+        // `EmptyView` header slots collapse out of the VStack entirely. Keep the
+        // selection/hover geometry on the same contract as the rendered columns;
+        // otherwise an app that moves its branding into a shared top bar gets a
+        // phantom 64pt header and every indicator lands several rows too low.
+        var y = headerExtent
         for entry in entries {
             switch entry {
             case .item(let item):
@@ -463,6 +465,15 @@ public struct HudNavigationSidebar<
             }
         }
         return nil
+    }
+
+    private var headerExtent: CGFloat {
+        guard RailHeader.self != EmptyView.self || LabelHeader.self != EmptyView.self else {
+            return 0
+        }
+        return HudSidebarLayout.headerTopPadding
+             + HudSidebarLayout.headerHeight
+             + HudSidebarLayout.headerBottomPadding
     }
 
     /// Full-row hover treatment from the Talkie sidebar. It sits below
