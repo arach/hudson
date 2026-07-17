@@ -8,7 +8,7 @@ import { Eyebrow } from '@/marketing/primitives/Eyebrow';
 import { Sheet } from '@/marketing/primitives/Sheet';
 
 const INSTALL_CMD = 'bun add hudsonkit';
-const GITHUB_URL = 'https://github.com/arach/hudsonos';
+const GITHUB_URL = 'https://github.com/arach/hudson';
 
 const STATS: Array<[string, string, string]> = [
   ['Surfaces', '3', 'iOS · macOS · Web'],
@@ -43,13 +43,13 @@ export function Sheet01Hero() {
       style={{ minHeight: '100vh' }}
       footer={{
         left: ['CLIENT', 'open-source'],
-        mid: 'HUDSONKIT — A SHARED CHROME FOR PERSONAL SOFTWARE',
+        mid: 'BUILD THE TOOL · HUDSON PROVIDES THE WORKSPACE',
         right: ['STATUS', 'shipped'],
       }}
     >
       <div style={{ maxWidth: 1100, margin: '60px auto 0', position: 'relative' }}>
         <div style={{ marginBottom: 28 }}>
-          <Eyebrow>HudsonKit / open-source workspace framework / v0.4.2</Eyebrow>
+          <Eyebrow>HudsonKit / open-source app shell + workspace</Eyebrow>
         </div>
 
         <h1
@@ -58,15 +58,15 @@ export function Sheet01Hero() {
           data-cal
           data-cal-label="hero headline"
         >
-          A workspace framework,
+          Build the <em>tool</em>.
           <br />
-          <em>drawn</em> to <span className="boxed">spec</span>.
+          Hudson provides the <span className="boxed">workspace</span>.
         </h1>
 
         <p className="subhead" style={{ marginBottom: 36, fontSize: 16 }}>
-          Hudson is the chrome your apps share — nav, panels, command palette, status bar, voice.
-          Declare what your app <em>is</em>; the framework renders it on iOS, macOS, and the web
-          from the same source.
+          Canvas, side rails, commands, persistence, logging, and agent-ready infrastructure —
+          already working together. Your team owns the model, renderer, and interactions that make
+          the product yours.
         </p>
 
         <div style={{ display: 'flex', gap: 12, marginBottom: 64 }} data-cal data-cal-label="hero CTAs">

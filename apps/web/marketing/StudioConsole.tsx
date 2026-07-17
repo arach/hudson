@@ -104,7 +104,7 @@ export function StudioConsole() {
       <div className="studio-console__panel" role="dialog" aria-label="Studio Console">
         <div className="studio-console__head">
           <span style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>
-            <svg width="14" height="14" viewBox="0 0 32 32" fill="none">
+            <svg width="14" height="14" viewBox="0 0 32 32" fill="none" aria-hidden="true">
               <rect x="3" y="3" width="26" height="26" stroke="currentColor" strokeWidth="1.5" />
               <rect
                 x="9"
@@ -330,6 +330,7 @@ export function StudioConsole() {
                 WEIGHT
               </span>
               <input
+                aria-label="Line weight"
                 type="range"
                 min={0.5}
                 max={3}
@@ -350,6 +351,7 @@ export function StudioConsole() {
                 UI · {state.radiusUI ?? DEFAULTS.radiusUI}
               </span>
               <input
+                aria-label="UI radius"
                 type="range"
                 min={0}
                 max={10}
@@ -363,6 +365,7 @@ export function StudioConsole() {
                 CARD · {state.radiusCard ?? DEFAULTS.radiusCard}
               </span>
               <input
+                aria-label="Card radius"
                 type="range"
                 min={0}
                 max={16}
@@ -383,6 +386,7 @@ export function StudioConsole() {
                 WEIGHT
               </span>
               <input
+                aria-label="Body weight"
                 type="range"
                 min={300}
                 max={700}
@@ -403,6 +407,7 @@ export function StudioConsole() {
                 MINOR
               </span>
               <input
+                aria-label="Minor grid opacity"
                 type="range"
                 min={0}
                 max={1}
@@ -416,6 +421,7 @@ export function StudioConsole() {
                 MAJOR
               </span>
               <input
+                aria-label="Major grid opacity"
                 type="range"
                 min={0}
                 max={1}

@@ -183,7 +183,7 @@ function CaliperBadge({ layer }: { layer: Layer }) {
         top: by,
         width: 200,
         background: 'var(--paper)',
-        border: `1.5px solid ${accent}`,
+        border: `var(--stroke-w) solid ${accent}`,
         fontFamily: 'var(--font-mono)',
         fontSize: 10,
         letterSpacing: '0.12em',

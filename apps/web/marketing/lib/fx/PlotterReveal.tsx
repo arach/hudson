@@ -142,7 +142,7 @@ export function PlotterReveal({
       {fx.plotter && run && (
         <div aria-hidden="true" style={{ position: 'absolute', inset: 0, pointerEvents: 'none', zIndex: 3 }}>
           <svg width={W} height={H} style={{ position: 'absolute', inset: 0, overflow: 'visible' }}>
-            <path d={drawnD} fill="none" stroke={ink} strokeWidth="1.5" strokeLinecap="round" />
+            <path d={drawnD} fill="none" stroke={ink} strokeWidth="1.25" strokeLinecap="round" />
             <rect x="0" y="0" width={W} height={H} fill="none" stroke={accent} strokeWidth="0.6" strokeDasharray="2 5" opacity="0.4" />
             {showGantry && (
               <g>

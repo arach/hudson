@@ -9,7 +9,7 @@ export function PrimitiveSparkline({ name }: { name: string }) {
     case 'Frame':
       return (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-          <rect x="2" y="2" width={W - 4} height={H - 4} fill="none" stroke={ink} strokeWidth="1.5" />
+          <rect x="2" y="2" width={W - 4} height={H - 4} fill="none" stroke={ink} strokeWidth="1.25" />
           <rect x="6" y="6" width={W - 12} height="6" fill={accent} opacity="0.6" />
           <rect x="6" y={H - 12} width={W - 12} height="6" fill={line} />
           <rect x="6" y="14" width="14" height={H - 26} fill={line} opacity="0.7" />
@@ -86,7 +86,7 @@ export function PrimitiveSparkline({ name }: { name: string }) {
     case 'Assistant':
       return (
         <svg width={W} height={H} viewBox={`0 0 ${W} ${H}`}>
-          <circle cx={W / 2} cy={H / 2} r="16" fill="none" stroke={accent} strokeWidth="1.5" />
+          <circle cx={W / 2} cy={H / 2} r="16" fill="none" stroke={accent} strokeWidth="1.25" />
           <circle cx={W / 2} cy={H / 2} r="10" fill="none" stroke={accent} strokeWidth="1" opacity="0.6" />
           <circle cx={W / 2} cy={H / 2} r="4" fill={accent} />
           <line x1="0" y1={H / 2} x2="20" y2={H / 2} stroke={line} strokeDasharray="2 2" />
