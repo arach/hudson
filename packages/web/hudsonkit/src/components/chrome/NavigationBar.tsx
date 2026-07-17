@@ -2,6 +2,7 @@ import React from 'react';
 import { Search, X } from 'lucide-react';
 import { usePlatform } from '../../platform/PlatformContext';
 import { usePlatformLayout } from '../../platform/usePlatformLayout';
+import { HudsonKitLockup } from '../brand';
 
 interface NavigationBarProps {
   /** App title/branding */
@@ -20,38 +21,6 @@ interface NavigationBarProps {
     placeholder?: string;
   };
 }
-
-/**
- * Drafting-style mark — a 14px registration glyph (square + crosshair + tick)
- * intended to read as a title-block stamp from an engineering drawing.
- * Strokes use `currentColor` so it themes through `text-foreground` or accent.
- */
-const HudsonMark: React.FC<{ title: string }> = ({ title }) => (
-  <svg
-    width="14"
-    height="14"
-    viewBox="0 0 14 14"
-    fill="none"
-    stroke="currentColor"
-    strokeWidth="0.75"
-    strokeLinecap="square"
-    aria-hidden="true"
-    focusable="false"
-    role="img"
-    style={{ flex: 'none' }}
-  >
-    <title>{title}</title>
-    {/* Outer registration box */}
-    <rect x="1" y="1" width="12" height="12" />
-    {/* Crosshair */}
-    <line x1="7" y1="3.25" x2="7" y2="10.75" />
-    <line x1="3.25" y1="7" x2="10.75" y2="7" />
-    {/* Center pin — small filled accent dot */}
-    <circle cx="7" cy="7" r="0.9" fill="var(--hud-accent, currentColor)" stroke="none" />
-    {/* Title-block tick on bottom edge */}
-    <line x1="1" y1="11.25" x2="13" y2="11.25" strokeWidth="0.5" opacity="0.55" />
-  </svg>
-);
 
 const NavigationBar: React.FC<NavigationBarProps> = ({
   title, subtitle, center, actions, onTitleClick, search,
@@ -77,10 +46,7 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             aria-label={title}
             className="group flex items-center gap-[7px] text-foreground/85 hover:text-foreground transition-colors bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-sm px-0.5 -mx-0.5 leading-none"
           >
-            <HudsonMark title={title} />
-            <span className="font-mono text-[11px] tracking-[0.06em] lowercase leading-none">
-              {title}
-            </span>
+            <HudsonKitLockup markSize={15} wordmark={title} gap={7} />
           </button>
           {subtitle && (
             <span className="text-xs font-mono font-light text-muted-foreground">{subtitle}</span>

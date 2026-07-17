@@ -1,3 +1,5 @@
+import { HudsonKitLockup } from 'hudsonkit';
+
 export type TitleBlockProps = {
   sheet: string;
   total?: string;
@@ -18,12 +20,7 @@ export function TitleBlock({
   return (
     <div className="titleblock titleblock--top-right">
       <div className="titleblock__cell titleblock__cell--full">
-        <svg width="20" height="20" viewBox="0 0 32 32" fill="none" aria-hidden="true">
-          <rect x="2" y="2" width="28" height="28" stroke="currentColor" strokeWidth="1.5" />
-          <rect x="8" y="8" width="16" height="16" stroke="currentColor" strokeWidth="1.5" opacity="0.5" />
-          <rect x="13" y="13" width="6" height="6" fill="currentColor" />
-        </svg>
-        <span style={{ fontSize: 12, fontWeight: 700, letterSpacing: '0.22em' }}>HUDSONKIT</span>
+        <HudsonKitLockup markSize={20} gap={10} />
       </div>
       <div className="titleblock__cell">
         <span className="titleblock__label">Model</span>
