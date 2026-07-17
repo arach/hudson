@@ -30,6 +30,17 @@ export const MONO_FONTS: readonly FontOption[] = [
 
 export const ACCENTS: readonly PaletteOption[] = [
   {
+    id: 'azure',
+    label: 'Azure',
+    swatch: 'oklch(0.72 0.12 215)',
+    vars: {
+      '--accent': 'oklch(0.72 0.12 215)',
+      '--accent-deep': 'oklch(0.58 0.12 220)',
+      '--accent-soft': 'oklch(0.72 0.12 215 / 0.12)',
+      '--accent-line': 'oklch(0.72 0.12 215 / 0.45)',
+    },
+  },
+  {
     id: 'emerald',
     label: 'Emerald',
     swatch: 'oklch(0.62 0.16 162)',
@@ -71,17 +82,6 @@ export const ACCENTS: readonly PaletteOption[] = [
       '--accent-deep': 'oklch(0.50 0.20 18)',
       '--accent-soft': 'oklch(0.62 0.20 18 / 0.12)',
       '--accent-line': 'oklch(0.62 0.20 18 / 0.45)',
-    },
-  },
-  {
-    id: 'violet',
-    label: 'Violet',
-    swatch: 'oklch(0.58 0.22 310)',
-    vars: {
-      '--accent': 'oklch(0.58 0.22 310)',
-      '--accent-deep': 'oklch(0.46 0.22 310)',
-      '--accent-soft': 'oklch(0.58 0.22 310 / 0.12)',
-      '--accent-line': 'oklch(0.58 0.22 310 / 0.45)',
     },
   },
   {
@@ -177,14 +177,14 @@ export const PAPERS: readonly PaletteOption[] = [
 ] as const;
 
 export const DEFAULTS = {
-  display: 'cormorant',
+  display: 'newsreader',
   body: 'space-grotesk',
   mono: 'jetbrains',
-  accent: 'emerald',
+  accent: 'amber',
   paper: 'slate',
   gridMinor: 0.18,
   gridMajor: 0.30,
-  strokeW: 1.5,
+  strokeW: 1.25,
   radiusUI: 0,
   radiusCard: 0,
   bodyWeight: 300,
@@ -270,7 +270,7 @@ export const PRESETS: readonly Preset[] = [
       display: 'newsreader',
       body: 'space-grotesk',
       mono: 'jetbrains',
-      strokeW: 1.5,
+      strokeW: 1.25,
       radiusUI: 0,
       radiusCard: 0,
       bodyWeight: 300,

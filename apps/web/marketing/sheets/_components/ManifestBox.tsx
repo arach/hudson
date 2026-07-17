@@ -1,13 +1,9 @@
-export function ManifestBox() {
+export function WorkspaceSpecBox() {
   return (
     <div
-      className="hud-card"
+      className="code hud-card"
       style={{
-        border: 'var(--stroke-w) solid var(--ink)',
-        background: 'var(--ink)',
-        color: 'var(--paper)',
         padding: 18,
-        fontFamily: 'var(--font-mono)',
         fontSize: 11.5,
         lineHeight: 1.55,
         width: 280,
@@ -17,32 +13,25 @@ export function ManifestBox() {
         style={{
           fontSize: 9,
           letterSpacing: '0.2em',
-          color: 'var(--accent)',
           marginBottom: 12,
           textTransform: 'uppercase',
         }}
+        className="at"
       >
-        SOURCE · manifest.ts
+        PRODUCT SPEC · WORKSPACE NEEDS
       </div>
       <span className="kw">const </span>
-      <span style={{ color: 'var(--paper)' }}>app</span>:{' '}
-      <span className="kw">HudsonApp</span> = {'{'}
+      workspace = {'{'}
       <br />
-      {'  '}id: <span style={{ color: 'var(--accent)' }}>&quot;talkie&quot;</span>,
+      {'  '}chrome: [<span className="str">&quot;nav&quot;</span>, <span className="str">&quot;rails&quot;</span>,
       <br />
-      {'  '}mode: <span style={{ color: 'var(--accent)' }}>&quot;canvas&quot;</span>,
+      {'    '}<span className="str">&quot;status&quot;</span>],
       <br />
-      {'  '}intents: [<span className="num">12</span>],
+      {'  '}actions: [<span className="str">&quot;commands&quot;</span>,
       <br />
-      {'  '}surfaces: [
+      {'    '}<span className="str">&quot;intents&quot;</span>],
       <br />
-      {'    '}<span style={{ color: 'var(--accent)' }}>&quot;ios&quot;</span>,
-      <br />
-      {'    '}<span style={{ color: 'var(--accent)' }}>&quot;macos&quot;</span>,
-      <br />
-      {'    '}<span style={{ color: 'var(--accent)' }}>&quot;web&quot;</span>,
-      <br />
-      {'  '}],
+      {'  '}canvas: <span className="kw">true</span>,
       <br />
       {'};'}
     </div>
