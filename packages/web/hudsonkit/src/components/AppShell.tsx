@@ -289,6 +289,7 @@ function AppShellInner({
   const appStatus = app.hooks.useStatus();
   const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
   const appStatusRight = app.hooks.useStatusRight?.() ?? null;
+  const appViewport = app.hooks.useViewport?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
@@ -961,6 +962,15 @@ function AppShellInner({
               status={appStatus}
               left={appStatusLeft}
               right={appStatusRight}
+              viewport={
+                appViewport
+                  ? {
+                      pan: appViewport.pan,
+                      zoom: appViewport.zoom,
+                      canvasSize: appViewport.canvasSize,
+                    }
+                  : undefined
+              }
               onToggleTerminal={chrome.terminal ? () => setShowTerminal(t => !t) : undefined}
               isTerminalOpen={chrome.terminal ? showTerminal : false}
             />
