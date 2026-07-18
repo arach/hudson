@@ -5,14 +5,28 @@ import { NotFoundPage } from "./NotFoundPage";
 // Exhibits that take over the full content slot (no max-width, no header
 // chrome). The exhibit is responsible for its own layout — including any
 // breadcrumb / source affordances if it wants them.
-const FULL_BLEED_EXHIBITS = new Set<string>(["canvas-terminals"]);
+const FULL_BLEED_EXHIBITS = new Set<string>([
+  "canvas-terminals",
+  "candidate-orientation",
+]);
 
 export function ExhibitPage({ slug }: { slug: string }) {
   const href = `/exhibits/${slug}`;
-  const page = registry.pageForPath(href);
+  // Registry is keyed by canonical href; nested URLs still resolve by slug.
+  const page =
+    registry.pageForPath(href) ??
+    registry.pages.find((p) => p.href === href || p.href.endsWith(`/${slug}`));
   const Exhibit = exhibits[slug];
 
-  if (!page || !Exhibit) return <NotFoundPage path={href} />;
+  if (!Exhibit) return <NotFoundPage path={href} />;
+  // Allow a live exhibit even if registry metadata is missing (dev / partial wire).
+  if (!page) {
+    return (
+      <div className="absolute inset-0">
+        <Exhibit />
+      </div>
+    );
+  }
 
   if (FULL_BLEED_EXHIBITS.has(slug)) {
     return (

@@ -1,0 +1,41 @@
+{
+  "name": "@hudsonkit/paper",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Hudson Paper — agent-driven journey layout on HudsonKit canvas (local MCP + host)",
+  "license": "SEE LICENSE IN ../../../LICENSE.md",
+  "type": "module",
+  "bin": {
+    "hpaper": "./bin/hpaper.mjs"
+  },
+  "exports": {
+    ".": "./src/model.ts",
+    "./model": "./src/model.ts",
+    "./render": "./src/render.tsx",
+    "./host": "./host/src/App.tsx",
+    "./host/styles.css": "./host/src/styles.css"
+  },
+  "scripts": {
+    "serve": "bun run src/cli.ts serve",
+    "doctor": "bun run src/cli.ts doctor",
+    "smoke": "bun run src/smoke.ts",
+    "typecheck": "tsc --noEmit -p tsconfig.json",
+    "host": "bun run src/cli.ts serve"
+  },
+  "dependencies": {
+    "react": "^19.0.0",
+    "react-dom": "^19.0.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/postcss": "^4",
+    "@types/react": "^19.0.0",
+    "@types/react-dom": "^19.0.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "tailwindcss": "^4",
+    "typescript": "^5.9.0",
+    "vite": "^7.0.0"
+  },
+  "engines": {
+    "bun": ">=1.1.0"
+  }
+}
