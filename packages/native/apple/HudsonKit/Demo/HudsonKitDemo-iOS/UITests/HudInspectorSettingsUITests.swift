@@ -2,6 +2,16 @@ import XCTest
 
 final class HudInspectorSettingsUITests: XCTestCase {
     @MainActor
+    func testDefaultShellAppearanceOverridesLightSystemScheme() {
+        assertResolvedSystemScheme("DARK")
+    }
+
+    @MainActor
+    func testSystemShellAppearanceInheritsLightSystemScheme() {
+        assertResolvedSystemScheme("LIGHT", extraArguments: ["--appearance-system"])
+    }
+
+    @MainActor
     func testInactiveRailChipActivatesFromMinimumTapTargetEdge() {
         continueAfterFailure = false
 
@@ -29,5 +39,24 @@ final class HudInspectorSettingsUITests: XCTestCase {
 
         XCTAssertTrue(app.staticTexts["INSPECTOR · CANVAS"].waitForExistence(timeout: 3))
         XCTAssertTrue(app.staticTexts["Renderer"].waitForExistence(timeout: 3))
+    }
+
+    @MainActor
+    private func assertResolvedSystemScheme(
+        _ expected: String,
+        extraArguments: [String] = []
+    ) {
+        let app = XCUIApplication()
+        app.launchArguments = [
+            "--page", "shell",
+            "-AppleInterfaceStyle", "Light",
+            "-AppleLanguages", "(en)",
+            "-AppleLocale", "en_US",
+        ] + extraArguments
+        app.launch()
+
+        let resolvedScheme = app.staticTexts["hudson.shell.resolved-system-scheme"]
+        XCTAssertTrue(resolvedScheme.waitForExistence(timeout: 8))
+        XCTAssertEqual(resolvedScheme.label, "Resolved system scheme · \(expected)")
     }
 }
