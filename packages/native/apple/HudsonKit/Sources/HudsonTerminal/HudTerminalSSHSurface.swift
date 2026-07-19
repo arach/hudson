@@ -101,6 +101,8 @@ public struct HudTerminalSSHSurface: View {
 
     private var statusOverlay: some View {
         ZStack {
+            // Keep the disconnected-state veil nearly opaque over live terminal output.
+            // hudlint:disable next-line opacity
             resolvedAppearance.backgroundColor.opacity(0.92)
 
             VStack(spacing: HudSpacing.xl) {
