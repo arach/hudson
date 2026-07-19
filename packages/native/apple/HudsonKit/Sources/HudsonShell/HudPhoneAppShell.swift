@@ -214,11 +214,13 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
     let controlDeck: HudPhoneControlDeckRuntime
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    @AccessibilityFocusState private var expandedCloseFocused: Bool
 
     func body(content: Content) -> some View {
         let isExpanded = usesControlDeck && controlDeck.state == .expanded
         let renderedComplications = usesControlDeck && !isExpanded ? .empty : complications
+        let reservesTopLane = HudPhoneControlDeckLayoutPolicy.reservesTopLane(
+            state: controlDeck.state
+        )
 
         // Keep the hosted product content in one structural branch. State
         // and presentation changes alter only shell chrome, so opening the
@@ -227,6 +229,20 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
             .accessibilityHidden(isExpanded)
             .overlay {
                 if isExpanded { dismissBackdrop }
+            }
+            // Expanded top controls occupy one shell-owned lane just as the
+            // resting pivot and bottom controls do. Product screens never
+            // need route-specific padding to yield to Hudson chrome.
+            .safeAreaInset(edge: .top, spacing: 0) {
+                if reservesTopLane {
+                    HudPhoneControlDeckTopLane(
+                        complications: renderedComplications,
+                        style: style,
+                        onSlotActivated: slotActivation,
+                        onModePickerPresentationChanged: modePickerPresentationChange,
+                        onDeckDismiss: controlDeck.dismiss
+                    )
+                }
             }
             .hudPhoneShellComplicationsRenderer(
                 renderedComplications,
@@ -250,16 +266,10 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
                     restingPivot
                 }
             }
-            .overlay(alignment: .top) {
-                if isExpanded { expandedClosePivot }
-            }
             .overlay {
                 if isExpanded { keyboardDismissal }
             }
             .accessibilityAddTraits(isExpanded ? .isModal : [])
-            .onChange(of: isExpanded) { _, expanded in
-                expandedCloseFocused = expanded
-            }
             .animation(
                 HudMotion.ifAllowed(HudMotion.quickFade, reduceMotion: reduceMotion),
                 value: isExpanded
@@ -333,28 +343,6 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
             // hudlint:disable next-line geometry
             .frame(width: 0, height: 0)
             .accessibilityHidden(true)
-    }
-
-    private var expandedClosePivot: some View {
-        Button(action: controlDeck.dismiss) {
-            Image(systemName: "xmark")
-                .font(HudFont.ui(HudTextSize.sm, weight: .bold))
-                .foregroundStyle(HudPalette.ink)
-                .frame(
-                    width: HudPhoneComplicationsLayout.controlDeckDismissSize,
-                    height: HudPhoneComplicationsLayout.controlDeckDismissSize
-                )
-                .background(Circle().fill(HudPalette.surface))
-                .overlay(Circle().stroke(HudHairline.standard, lineWidth: HudStrokeWidth.standard))
-        }
-        .buttonStyle(.plain)
-        .padding(.top, HudSpacing.sm)
-        .accessibilityLabel("Hide controls")
-        .accessibilityHint("Returns to the compact control pivot.")
-        .accessibilityFocused($expandedCloseFocused)
-        .accessibilityAction(.escape) {
-            controlDeck.dismiss()
-        }
     }
 
     @ViewBuilder

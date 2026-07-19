@@ -117,6 +117,15 @@ enum HudPhoneControlDeckEligibility {
     }
 }
 
+/// Pure layout policy for the space occupied by shell-owned deck chrome.
+/// Keeping this decision beside the state reducer makes the resting/expanded
+/// contract deterministic without exposing shell state to product screens.
+enum HudPhoneControlDeckLayoutPolicy {
+    static func reservesTopLane(state: HudPhoneControlDeckState) -> Bool {
+        state == .expanded
+    }
+}
+
 /// Runtime owner for the shell's control-deck state. Products cannot mutate
 /// this object; they only publish complications and supply their actions.
 @MainActor
