@@ -2,7 +2,7 @@
 
 import { useState, type ReactNode } from 'react';
 import { consumers } from '@/app/embed/registry';
-import { HudTiling } from 'hudsonkit';
+import { HudTiling, HudsonKitLockup } from 'hudsonkit';
 
 export default function MultiThemePage() {
   const entries = Object.values(consumers);
@@ -12,6 +12,7 @@ export default function MultiThemePage() {
     <main className="min-h-screen bg-slate-950 text-slate-100 px-6 py-12">
       {/* Header */}
       <section className="max-w-3xl mb-12">
+        <HudsonKitLockup markSize={22} gap={9} className="mb-6 text-slate-100" />
         <h1 className="text-3xl font-semibold tracking-tight text-cyan-300 mb-3">
           Multi-tenant theming
         </h1>

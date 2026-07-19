@@ -1,8 +1,8 @@
 import { Eyebrow } from '@/marketing/primitives/Eyebrow';
 import { Sheet } from '@/marketing/primitives/Sheet';
-import { ManifestBox } from './_components/ManifestBox';
+import { WorkspaceSpecBox } from './_components/ManifestBox';
 import { PlatformFrame } from './_components/PlatformFrame';
-import { ShipBlock } from './_components/ShipBlock';
+import { SurfaceMapBlock } from './_components/ShipBlock';
 import { SplitArrow } from './_components/SplitArrow';
 
 export function Sheet04Surfaces() {
@@ -10,25 +10,22 @@ export function Sheet04Surfaces() {
     <Sheet
       id="surfaces"
       num="05"
-      slugTitle="MULTI-SURFACE"
-      slugSub="three views, one source"
-      sheetTitle="One Manifest, Three Surfaces"
+      slugTitle="CONSISTENT PRIMITIVES"
+      slugSub="shared vocabulary · native code"
+      sheetTitle="A Shared Workspace Vocabulary"
       footer={{
         left: ['SHEET', '05 / 08'],
-        mid: 'MULTI-SURFACE — ONE MANIFEST, THREE TARGETS',
-        right: ['FORKS', '0'],
+        mid: 'CONSISTENT PRIMITIVES — WEB · MACOS · IOS',
+        right: ['STACK', 'NATIVE'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>05 / Multi-surface</Eyebrow>
+          <Eyebrow>05 / Consistent primitives</Eyebrow>
         </div>
 
         <h2 className="h-section" style={{ marginBottom: 48 }}>
-          Write <em>once</em>. Render on{' '}
-          <span style={{ borderBottom: 'var(--stroke-w) solid var(--accent)' }}>iOS</span>,{' '}
-          <span style={{ borderBottom: 'var(--stroke-w) solid var(--accent)' }}>macOS</span>, and the{' '}
-          <span style={{ borderBottom: 'var(--stroke-w) solid var(--accent)' }}>Web</span>.
+          Consistent primitives. <em>Native</em> implementations.
         </h2>
 
         <div
@@ -56,7 +53,7 @@ export function Sheet04Surfaces() {
               textTransform: 'uppercase',
             }}
           >
-            FIG. 05-A · ASSEMBLY
+            FIG. 05-A · WORKSPACE VOCABULARY
           </div>
 
           <div
@@ -69,7 +66,7 @@ export function Sheet04Surfaces() {
               marginTop: 28,
             }}
           >
-            <ManifestBox />
+            <WorkspaceSpecBox />
             <SplitArrow />
             <div
               className="reflow-platforms"
@@ -80,9 +77,9 @@ export function Sheet04Surfaces() {
                 gap: 28,
               }}
             >
-              <PlatformFrame kind="ios" label="iOS" sub="TestFlight · App Store" />
-              <PlatformFrame kind="macos" label="macOS" sub="notarized · DMG" />
-              <PlatformFrame kind="web" label="Web" sub="CDN · PWA" />
+              <PlatformFrame kind="ios" label="iOS" sub="SwiftUI · HudsonKit" />
+              <PlatformFrame kind="macos" label="macOS" sub="SwiftUI · HudsonKit" />
+              <PlatformFrame kind="web" label="Web" sub="React · hudsonkit" />
             </div>
           </div>
 
@@ -136,13 +133,13 @@ export function Sheet04Surfaces() {
           }}
         >
           <p className="subhead" style={{ fontSize: 17 }}>
-            Same primitives, same intents, same chrome dimensions across every target. Hudson swaps
-            the platform layer underneath — Swift on Apple, React on the web — but the components
-            your app declares are identical.{' '}
-            <em>Zero forks. Zero &quot;iOS-only&quot; features. Zero per-platform UI debt.</em>
+            Navigation, side rails, commands, status, canvas, and observability follow the same
+            product vocabulary. Each surface implements those primitives in its native stack —
+            SwiftUI on Apple platforms and React on the web.{' '}
+            <em>Hudson provides the workspace model; your team still owns each product implementation.</em>
           </p>
 
-          <div data-cal data-cal-label="ship block">
+          <div data-cal data-cal-label="surface implementation map">
             <div
               style={{
                 fontFamily: 'var(--font-mono)',
@@ -153,9 +150,9 @@ export function Sheet04Surfaces() {
                 marginBottom: 8,
               }}
             >
-              SHIP COMMAND
+              IMPLEMENTATION MAP
             </div>
-            <ShipBlock />
+            <SurfaceMapBlock />
           </div>
         </div>
       </div>

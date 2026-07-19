@@ -1,6 +1,8 @@
 /* ─────────────────────────────────────────────────────────────
    Hudson Site — engineering drawing palette
-   Slate paper, light ink, amber accent. Honest and precise.
+   Slate paper, light ink, amber accent. A warm plotting mark
+   against cool drafting paper keeps the system technical without
+   turning every active surface into another white plate.
 
    The .hudson-site selector carries the *default* state.
    Studio overrides ship as a single <style id="hudson-theme">
@@ -34,30 +36,35 @@
   --line-strong:  oklch(0.62 0.012 240);
   --line-grid:    oklch(0.32 0.012 240);
 
-  /* Accent — emerald, canonical hudson */
-  --accent:       oklch(0.62 0.16 162);
-  --accent-deep:  oklch(0.50 0.16 162);
-  --accent-soft:  oklch(0.62 0.16 162 / 0.10);
-  --accent-line:  oklch(0.62 0.16 162 / 0.45);
+  /* Accent — amber, plotter highlight. Bright enough to carry
+     dark-paper text on filled surfaces (CTA, badges) at strong
+     contrast; --accent-deep is the pressed/hover step. */
+  --accent:       oklch(0.72 0.18 60);
+  --accent-deep:  oklch(0.58 0.18 50);
+  --accent-soft:  oklch(0.72 0.18 60 / 0.12);
+  --accent-line:  oklch(0.72 0.18 60 / 0.45);
 
   /* Typography — overridden by StudioConsole at runtime */
-  --font-display: var(--font-cormorant), 'Times New Roman', serif;
+  --font-display: var(--font-newsreader), 'Times New Roman', serif;
   --font-body:    var(--font-space-grotesk), system-ui, sans-serif;
   --font-mono:    var(--font-jetbrains-mono), ui-monospace, monospace;
 
-  /* Syntax highlighting — semantic, not theme-coupled */
-  --syntax-kw:  oklch(0.78 0.13 320);
+  /* Syntax highlighting — stays in the blueprint family (cool hues
+     plus one amber counterpoint for numerals). These light values
+     suit the dark code plate on light papers; the slate guard below
+     swaps in deep values because .code inverts to a light plate. */
+  --syntax-kw:  oklch(0.78 0.10 230);
   --syntax-str: var(--accent);
-  --syntax-num: oklch(0.78 0.17 75);
+  --syntax-num: oklch(0.78 0.14 75);
   --syntax-com: oklch(0.55 0 0);
-  --syntax-at:  oklch(0.72 0.18 250);
+  --syntax-at:  oklch(0.74 0.12 200);
 
   /* Grid intensity (0..1) */
   --grid-opacity-minor: 0.18;
   --grid-opacity-major: 0.30;
 
   /* Stroke weight */
-  --stroke-w: 1.5px;
+  --stroke-w: 1.25px;
 
   /* Two radius classes — sync independently from the studio console.
      --radius-ui = small UI: btn, code, tag, kbd, chips, console panel
@@ -621,10 +628,6 @@
 /* ─── Build workspace story diagram ─── */
 
 .hudson-site .workspace-story-plate {
-  --accent: oklch(0.66 0.17 175);
-  --accent-deep: oklch(0.52 0.15 178);
-  --accent-soft: oklch(0.66 0.17 175 / 0.12);
-  --accent-line: oklch(0.66 0.17 175 / 0.46);
   position: relative;
   border: var(--stroke-w) solid var(--ink);
   background: var(--paper-edge);
@@ -754,24 +757,26 @@
   color: var(--node-accent);
 }
 
+/* Node accents follow the active console accent. Depth comes from small
+   paper/ink mixes so selecting a palette changes the whole diagram. */
 .hudson-site .workspace-story-node--canvas {
-  --node-accent: oklch(0.66 0.17 175);
-  --node-accent-soft: oklch(0.66 0.17 175 / 0.13);
+  --node-accent: color-mix(in oklch, var(--accent) 82%, var(--ink));
+  --node-accent-soft: color-mix(in oklch, var(--node-accent) 13%, transparent);
 }
 
 .hudson-site .workspace-story-node--layer {
-  --node-accent: oklch(0.67 0.15 235);
-  --node-accent-soft: oklch(0.67 0.15 235 / 0.13);
+  --node-accent: var(--accent);
+  --node-accent-soft: color-mix(in oklch, var(--node-accent) 13%, transparent);
 }
 
 .hudson-site .workspace-story-node--ux {
-  --node-accent: oklch(0.69 0.16 155);
-  --node-accent-soft: oklch(0.69 0.16 155 / 0.13);
+  --node-accent: color-mix(in oklch, var(--accent) 84%, var(--paper));
+  --node-accent-soft: color-mix(in oklch, var(--node-accent) 13%, transparent);
 }
 
 .hudson-site .workspace-story-node--app {
-  --node-accent: oklch(0.72 0.14 195);
-  --node-accent-soft: oklch(0.72 0.14 195 / 0.13);
+  --node-accent: color-mix(in oklch, var(--accent) 70%, var(--paper));
+  --node-accent-soft: color-mix(in oklch, var(--node-accent) 13%, transparent);
 }
 
 .hudson-site .workspace-story-node strong {
@@ -845,10 +850,6 @@
 }
 
 .hudson-site .workspace-story-deck {
-  --accent: oklch(0.66 0.17 175);
-  --accent-deep: oklch(0.52 0.15 178);
-  --accent-soft: oklch(0.66 0.17 175 / 0.12);
-  --accent-line: oklch(0.66 0.17 175 / 0.46);
   position: sticky;
   top: calc(var(--sheet-header-h, 96px) + 16px);
   border: var(--stroke-w) solid var(--ink);
@@ -983,6 +984,19 @@
 .hudson-site .code .num { color: var(--syntax-num); }
 .hudson-site .code .com { color: var(--syntax-com); font-style: italic; }
 .hudson-site .code .at  { color: var(--syntax-at); }
+.hudson-site .code .kw,
+.hudson-site .code .str,
+.hudson-site .code .at { font-weight: 650; }
+
+/* Product implementation CTA — a raised continuation of the sheet rather
+   than an inverted white slab. The accent edge carries the callout while
+   the panel stays inside the active paper palette in every theme. */
+.hudson-site .implementation-cta {
+  border: var(--stroke-w) solid var(--line-strong);
+  background: var(--paper-2);
+  color: var(--ink);
+  box-shadow: inset 4px 0 0 var(--accent);
+}
 
 /* ─── Responsive ─── */
 
@@ -1023,17 +1037,17 @@
 .studio-console__toggle {
   display: inline-flex; align-items: center; gap: 8px;
   padding: 10px 14px;
-  background: var(--ink);
-  color: var(--paper);
-  border: var(--stroke-w) solid var(--ink);
+  background: var(--paper-2);
+  color: var(--ink);
+  border: var(--stroke-w) solid var(--line-strong);
   font-family: inherit;
   font-size: 11px;
   letter-spacing: 0.16em;
   text-transform: uppercase;
   cursor: pointer;
-  box-shadow: 0 4px 0 var(--paper-edge);
+  box-shadow: inset 3px 0 0 var(--accent), 0 4px 0 var(--paper-edge);
 }
-.studio-console__toggle:hover { background: var(--accent); border-color: var(--accent); }
+.studio-console__toggle:hover { background: var(--paper-3); border-color: var(--accent); }
 .studio-console__toggle .dot {
   width: 7px; height: 7px; border-radius: 50%;
   background: var(--accent);
@@ -1047,30 +1061,36 @@
      let the panel shrink to fit without the chrome border being clipped. */
   max-width: calc(100vw - max(16px, env(safe-area-inset-left)) - max(16px, env(safe-area-inset-right)));
   background: var(--paper);
-  border: var(--stroke-w) solid var(--ink);
+  border: var(--stroke-w) solid var(--line-strong);
   box-shadow: 0 6px 0 var(--paper-edge);
   display: flex;
   flex-direction: column;
   /* Allow scroll inside the panel rather than letting it push past the top
      of the screen on short phones in landscape. */
   max-height: calc(100vh - 48px - env(safe-area-inset-top, 0px) - env(safe-area-inset-bottom, 0px));
+  overscroll-behavior: contain;
 }
 
 .studio-console__head {
   display: flex; align-items: center; justify-content: space-between;
   padding: 10px 12px;
-  background: var(--ink);
-  color: var(--paper);
+  background: var(--paper-2);
+  color: var(--ink);
+  border-bottom: 1px solid var(--line-strong);
+  box-shadow: inset 3px 0 0 var(--accent);
   font-size: 10px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
 }
 .studio-console__head svg { display: block; }
 .studio-console__close {
-  background: transparent; border: 0; color: var(--paper);
+  display: inline-grid; place-items: center;
+  min-width: 28px; min-height: 28px;
+  background: transparent; border: 1px solid transparent; color: var(--ink-2);
   font-family: inherit; font-size: 12px; cursor: pointer;
-  padding: 0 4px;
+  padding: 0;
 }
+.studio-console__close:hover { color: var(--ink); border-color: var(--line-strong); }
 
 .studio-console__body {
   padding: 14px 14px 16px;
@@ -1085,13 +1105,13 @@
   font-size: 9px;
   letter-spacing: 0.22em;
   text-transform: uppercase;
-  color: var(--ink-2);
+  color: var(--ink-1);
   display: flex; align-items: center; justify-content: space-between;
 }
 .studio-console__label .meta {
   font-size: 9px;
   letter-spacing: 0.12em;
-  color: var(--ink-3);
+  color: var(--ink-2);
   text-transform: none;
 }
 
@@ -1105,21 +1125,22 @@
   font-size: 10px;
   letter-spacing: 0.1em;
   text-transform: uppercase;
-  background: var(--paper);
-  color: var(--ink);
-  border: 1px solid var(--line-strong);
+  background: var(--paper-2);
+  color: var(--ink-1);
+  border: 1px solid var(--line);
   cursor: pointer;
   transition: background 0.12s, color 0.12s, border-color 0.12s;
 }
-.studio-console__chip:hover { border-color: var(--ink); }
+.studio-console__chip:hover { background: var(--paper-3); border-color: var(--ink-2); color: var(--ink); }
 .studio-console__chip[aria-pressed="true"] {
-  background: var(--ink);
-  color: var(--paper);
-  border-color: var(--ink);
+  background: var(--accent-soft);
+  color: var(--ink);
+  border-color: var(--accent);
+  box-shadow: inset 2px 0 0 var(--accent);
 }
 .studio-console__chip .swatch {
   width: 10px; height: 10px;
-  border: 1px solid var(--ink);
+  border: 1px solid var(--line-strong);
   display: inline-block;
 }
 
@@ -1146,7 +1167,7 @@
   padding: 6px 10px;
   cursor: pointer;
 }
-.studio-console__reset:hover { background: var(--ink); color: var(--paper); border-color: var(--ink); }
+.studio-console__reset:hover { background: var(--accent-soft); color: var(--ink); border-color: var(--accent); }
 
 /* ─── Sticky sheet header — rule, wordmark, title block, studio button ─── */
 
@@ -1194,15 +1215,12 @@
 
 /* Wordmark — visual peer of the studio button on the right */
 .hudson-site .sheet-header__brand {
-  display: grid;
-  place-items: center;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   padding: 0 12px;
   border: 1px solid var(--ink);
   background: var(--paper);
-  font-family: var(--font-mono);
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.22em;
   color: var(--ink);
 }
 
@@ -1438,7 +1456,7 @@
    Dark paper guard — slate (cyano blueprint)
 
    The drafting line system was tuned for light paper, where --ink
-   is near-black and reads as a 1.5px structural border. Inverted
+   is near-black and reads as a 1.25px structural border. Inverted
    onto dark paper, --ink becomes near-white, and every border /
    stroke / divider screams. We don't redesign — we soften the
    bright lines into a mid-tone that still reads as engineered
@@ -1501,6 +1519,33 @@
     var(--paper);
 }
 
+/* 3) Accent used as text on dark paper — --accent-deep was tuned as a
+   pressed state for fills, not a text color; at L 0.58 on L 0.20 paper
+   it muddies. Promote accent text to the bright step on slate. */
+.hudson-site[data-paper='slate'] .spec__v--accent { color: var(--accent); }
+.hudson-site[data-paper='slate'] .tag--accent { color: var(--accent); }
+/* Embed stub label sits on an --ink plate, which is light on slate —
+   the bright accent step washes out there; use the deep step. */
+.hudson-site[data-paper='slate'] .embed-stub__label { color: var(--accent-deep); }
+
+/* 4) Code on slate — use a softly blue light plate instead of pure white,
+   then push syntax into dark, saturated members of the blueprint family.
+   The inset accent rule gives short command blocks a clearer visual anchor. */
+.hudson-site[data-paper='slate'] {
+  --syntax-kw:  oklch(0.32 0.11 232);
+  --syntax-str: oklch(0.36 0.13 216);
+  --syntax-num: oklch(0.38 0.12 65);
+  --syntax-com: oklch(0.43 0.02 240);
+  --syntax-at:  oklch(0.34 0.11 202);
+}
+
+.hudson-site[data-paper='slate'] .code {
+  background: oklch(0.90 0.014 225);
+  color: oklch(0.20 0.025 238);
+  border-color: oklch(0.58 0.025 230);
+  box-shadow: inset 3px 0 0 var(--accent-deep);
+}
+
 /* Note: many sheet bodies set "border: var(--stroke-w) solid var(--ink)"
    as inline styles (Sheet01 hero stat, Sheet03 feature cards, AppCard,
    ManifestBox, PlatformFrame, Sheet07 quickstart steps, .part). Inline
@@ -1510,7 +1555,7 @@
    demote the typography too. The chrome overrides above (sticky header,
    embed plate, spec, drafting tools, titleblock, footer plate) cover the
    majority of the visible "wall of bright lines" feeling. The remaining
-   sheet-body card borders read as 1.5px structural strokes around
+   sheet-body card borders read as 1.25px structural strokes around
    discrete content — that's the engineering-drawing intent and reads
    cleaner once the persistent chrome above is settled. */
 @media (max-width: 720px) {

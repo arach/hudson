@@ -25,36 +25,73 @@ func drawIcon(size: CGFloat) -> NSImage {
     image.lockFocus()
 
     let rect = NSRect(x: 0, y: 0, width: size, height: size)
-    let radius = size * 0.18
+    NSColor.clear.setFill()
+    rect.fill()
 
-    let background = NSColor(calibratedRed: 0.05, green: 0.09, blue: 0.12, alpha: 1)
+    let background = NSColor(
+        calibratedRed: 17.0 / 255,
+        green: 19.0 / 255,
+        blue: 21.0 / 255,
+        alpha: 1
+    )
     background.setFill()
-    NSBezierPath(roundedRect: rect.insetBy(dx: size * 0.04, dy: size * 0.04), xRadius: radius, yRadius: radius).fill()
+    NSBezierPath(
+        roundedRect: rect,
+        xRadius: size * 0.21875,
+        yRadius: size * 0.21875
+    ).fill()
 
-    let gridInset = size * 0.18
-    let cellGap = size * 0.05
-    let cellWidth = (size - gridInset * 2 - cellGap) / 2
-    let cellHeight = cellWidth
-    let starts: [(CGFloat, CGFloat, CGFloat)] = [
-        (0, 0, 0.95),
-        (1, 0, 0.62),
-        (0, 1, 0.62),
-        (1, 1, 0.38),
+    let panels: [[CGPoint]] = [
+        [
+            CGPoint(x: 0, y: 0), CGPoint(x: 30, y: 0),
+            CGPoint(x: 30, y: 30), CGPoint(x: 24, y: 30),
+            CGPoint(x: 24, y: 22), CGPoint(x: 18, y: 22),
+            CGPoint(x: 18, y: 30), CGPoint(x: 0, y: 30),
+        ],
+        [
+            CGPoint(x: 34, y: 0), CGPoint(x: 64, y: 0),
+            CGPoint(x: 64, y: 30), CGPoint(x: 46, y: 30),
+            CGPoint(x: 46, y: 22), CGPoint(x: 40, y: 22),
+            CGPoint(x: 40, y: 30), CGPoint(x: 34, y: 30),
+        ],
+        [
+            CGPoint(x: 0, y: 34), CGPoint(x: 18, y: 34),
+            CGPoint(x: 18, y: 42), CGPoint(x: 24, y: 42),
+            CGPoint(x: 24, y: 34), CGPoint(x: 30, y: 34),
+            CGPoint(x: 30, y: 64), CGPoint(x: 0, y: 64),
+        ],
+        [
+            CGPoint(x: 34, y: 34), CGPoint(x: 40, y: 34),
+            CGPoint(x: 40, y: 42), CGPoint(x: 46, y: 42),
+            CGPoint(x: 46, y: 34), CGPoint(x: 64, y: 34),
+            CGPoint(x: 64, y: 64), CGPoint(x: 34, y: 64),
+        ],
     ]
 
-    for (column, row, alpha) in starts {
-        let x = gridInset + CGFloat(column) * (cellWidth + cellGap)
-        let y = size - gridInset - cellHeight - CGFloat(row) * (cellHeight + cellGap)
-        let cell = NSRect(x: x, y: y, width: cellWidth, height: cellHeight)
-        let color = NSColor(calibratedRed: 0.18, green: 0.78, blue: 0.86, alpha: alpha)
-        color.setFill()
-        NSBezierPath(roundedRect: cell, xRadius: size * 0.05, yRadius: size * 0.05).fill()
+    let markOrigin = size * 0.2265625
+    let markScale = (size * 0.546875) / 64
+    NSColor(
+        calibratedRed: 247.0 / 255,
+        green: 247.0 / 255,
+        blue: 245.0 / 255,
+        alpha: 1
+    ).setFill()
 
-        if alpha > 0.8 {
-            let dot = NSRect(x: x + cellWidth * 0.18, y: y + cellHeight * 0.68, width: cellWidth * 0.12, height: cellHeight * 0.12)
-            NSColor.white.withAlphaComponent(0.85).setFill()
-            NSBezierPath(ovalIn: dot).fill()
+    for panel in panels {
+        guard let first = panel.first else { continue }
+        let path = NSBezierPath()
+        path.move(to: NSPoint(
+            x: markOrigin + first.x * markScale,
+            y: markOrigin + first.y * markScale
+        ))
+        for point in panel.dropFirst() {
+            path.line(to: NSPoint(
+                x: markOrigin + point.x * markScale,
+                y: markOrigin + point.y * markScale
+            ))
         }
+        path.close()
+        path.fill()
     }
 
     image.unlockFocus()
