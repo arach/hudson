@@ -106,6 +106,29 @@ jobs:
       - name: Select Xcode
         run: sudo xcode-select -s /Applications/Xcode.app
 
+      - name: Test experimental-boundary checker
+        env:
+          PYTHONDONTWRITEBYTECODE: "1"
+        run: python3 -m unittest scripts/apple/tests/test_check_experimental_boundary.py
+
+      - name: Validate experimental HudsonKit boundary
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
+        run: python3 scripts/apple/check-experimental-boundary.py
+
+      - name: Validate experimental HudsonKit boundary (voice manifest)
+        env:
+          HUDSONKIT_WITH_VOICE: "1"
+        run: python3 scripts/apple/check-experimental-boundary.py
+
+      - name: Validate experimental HudsonKit boundary (terminal)
+        env:
+          HUDSONKIT_WITH_VOICE: "0"
+          HUDSONKIT_WITH_TERMINAL: "1"
+          HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
+          HUDSON_TERMINI_GIT_REVISION: 1509fdc6d8093b2e41064fbb273c56e630491afa
+        run: python3 scripts/apple/check-experimental-boundary.py
+
       - name: Cache SwiftPM
         uses: actions/cache@v4
         with:
