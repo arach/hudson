@@ -60,6 +60,15 @@ class ExperimentalBoundaryTests(unittest.TestCase):
             CHECKER.package_errors(self.package),
         )
 
+    def test_rejects_stable_target_reaching_visual_demo(self) -> None:
+        self.target("HudsonStable")["dependencies"] = [
+            {"byName": ["HudsonKitExperimentalVisualDemo", None]}
+        ]
+        self.assertIn(
+            "stable product HudsonStable transitively depends on HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
+
     def test_rejects_missing_empty_target_contract(self) -> None:
         self.target("HudsonKitExperimental")["dependencies"] = [{"byName": ["HudsonStable", None]}]
         self.assertIn(
@@ -125,6 +134,7 @@ class ExperimentalBoundaryTests(unittest.TestCase):
             "Sources/HudsonKitExperimental/Allowed.swift",
             "Tests/HudsonKitExperimentalTests/Allowed.swift",
             "Demo/HudsonKitExperimentalDemo/main.swift",
+            "Demo/HudsonKitExperimentalVisualDemo/main.swift",
         ):
             with self.subTest(relative_path=relative_path):
                 self.assertEqual(
@@ -139,12 +149,36 @@ class ExperimentalBoundaryTests(unittest.TestCase):
         )
         self.assertTrue(any("unauthorized source imports or re-exports" in error for error in errors))
 
+    def test_rejects_visual_demo_sibling_import_path(self) -> None:
+        errors = self.source_errors_for(
+            "import HudsonKitExperimental\n",
+            relative_path="Demo/HudsonKitExperimentalVisualDemoCopy/main.swift",
+        )
+        self.assertTrue(any("unauthorized source imports or re-exports" in error for error in errors))
+
     def test_rejects_invalid_experimental_demo_contract(self) -> None:
         self.target("HudsonKitExperimentalDemo")["dependencies"].append(
             {"byName": ["HudsonStable", None]}
         )
         self.assertIn(
             "demo target HudsonKitExperimentalDemo must depend only on HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
+
+    def test_rejects_invalid_experimental_visual_demo_contract(self) -> None:
+        self.target("HudsonKitExperimentalVisualDemo")["dependencies"].append(
+            {"byName": ["HudsonStable", None]}
+        )
+        self.assertIn(
+            "visual demo target HudsonKitExperimentalVisualDemo must depend only on HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
+
+    def test_rejects_moved_experimental_visual_demo(self) -> None:
+        self.target("HudsonKitExperimentalVisualDemo")["path"] = "Demo/HudsonKitDemo"
+        self.assertIn(
+            "visual demo target HudsonKitExperimentalVisualDemo must use path "
+            "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalVisualDemo",
             CHECKER.package_errors(self.package),
         )
 

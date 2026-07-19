@@ -23,9 +23,11 @@ EXPERIMENTAL_PRODUCT = "HudsonKitExperimental"
 EXPERIMENTAL_TARGET = "HudsonKitExperimental"
 EXPERIMENTAL_TEST_TARGET = "HudsonKitExperimentalTests"
 EXPERIMENTAL_DEMO_TARGET = "HudsonKitExperimentalDemo"
+EXPERIMENTAL_VISUAL_DEMO_TARGET = "HudsonKitExperimentalVisualDemo"
 EXPERIMENTAL_SOURCE_PATH = "packages/native/apple/HudsonKit/Sources/HudsonKitExperimental"
 EXPERIMENTAL_TEST_PATH = "packages/native/apple/HudsonKit/Tests/HudsonKitExperimentalTests"
 EXPERIMENTAL_DEMO_PATH = "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalDemo"
+EXPERIMENTAL_VISUAL_DEMO_PATH = "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalVisualDemo"
 
 
 def dependency_names(dependencies: list[dict[str, Any]]) -> list[str]:
@@ -68,8 +70,6 @@ def package_errors(package: dict[str, Any]) -> list[str]:
             errors.append(
                 f"target {EXPERIMENTAL_TARGET} must use path {EXPERIMENTAL_SOURCE_PATH}"
             )
-        if experimental_target.get("path") != EXPERIMENTAL_SOURCE_PATH:
-            errors.append(f"target {EXPERIMENTAL_TARGET} must use path {EXPERIMENTAL_SOURCE_PATH}")
 
     experimental_tests = target_by_name.get(EXPERIMENTAL_TEST_TARGET)
     if experimental_tests is None:
@@ -97,6 +97,24 @@ def package_errors(package: dict[str, Any]) -> list[str]:
     elif experimental_demo.get("path") != EXPERIMENTAL_DEMO_PATH:
         errors.append(
             f"demo target {EXPERIMENTAL_DEMO_TARGET} must use path {EXPERIMENTAL_DEMO_PATH}"
+        )
+
+    experimental_visual_demo = target_by_name.get(EXPERIMENTAL_VISUAL_DEMO_TARGET)
+    if experimental_visual_demo is None:
+        errors.append(
+            f"missing dedicated visual demo target {EXPERIMENTAL_VISUAL_DEMO_TARGET}"
+        )
+    elif experimental_visual_demo.get("type") != "executable":
+        errors.append(
+            f"target {EXPERIMENTAL_VISUAL_DEMO_TARGET} must be an executable target"
+        )
+    elif dependency_names(experimental_visual_demo.get("dependencies", [])) != [EXPERIMENTAL_TARGET]:
+        errors.append(
+            f"visual demo target {EXPERIMENTAL_VISUAL_DEMO_TARGET} must depend only on {EXPERIMENTAL_TARGET}"
+        )
+    elif experimental_visual_demo.get("path") != EXPERIMENTAL_VISUAL_DEMO_PATH:
+        errors.append(
+            f"visual demo target {EXPERIMENTAL_VISUAL_DEMO_TARGET} must use path {EXPERIMENTAL_VISUAL_DEMO_PATH}"
         )
 
     graph = {
@@ -128,6 +146,7 @@ def package_errors(package: dict[str, Any]) -> list[str]:
             EXPERIMENTAL_TARGET,
             EXPERIMENTAL_TEST_TARGET,
             EXPERIMENTAL_DEMO_TARGET,
+            EXPERIMENTAL_VISUAL_DEMO_TARGET,
         }:
             continue
         if reaches_experimental(target_name, set()):
@@ -159,6 +178,7 @@ def source_errors(apple_root: Path) -> list[str]:
         ("Sources", EXPERIMENTAL_TARGET),
         ("Tests", EXPERIMENTAL_TEST_TARGET),
         ("Demo", EXPERIMENTAL_DEMO_TARGET),
+        ("Demo", EXPERIMENTAL_VISUAL_DEMO_TARGET),
     }
     for source_file in sorted(apple_root.rglob("*.swift")):
         relative_parts = source_file.relative_to(apple_root).parts
