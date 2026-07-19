@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Validate that HudsonKitExperimental remains a quarantined SwiftPM rail.
 
-The checker accepts JSON and source-root overrides so its graph and source
+The checker accepts JSON and Apple-root overrides so its graph and source
 rules can be exercised with small, deterministic fixtures. With no overrides,
 it evaluates the root manifest with HudsonVoice disabled and scans the native
 HudsonKit source tree.
@@ -22,6 +22,10 @@ from typing import Any
 EXPERIMENTAL_PRODUCT = "HudsonKitExperimental"
 EXPERIMENTAL_TARGET = "HudsonKitExperimental"
 EXPERIMENTAL_TEST_TARGET = "HudsonKitExperimentalTests"
+EXPERIMENTAL_DEMO_TARGET = "HudsonKitExperimentalDemo"
+EXPERIMENTAL_SOURCE_PATH = "packages/native/apple/HudsonKit/Sources/HudsonKitExperimental"
+EXPERIMENTAL_TEST_PATH = "packages/native/apple/HudsonKit/Tests/HudsonKitExperimentalTests"
+EXPERIMENTAL_DEMO_PATH = "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalDemo"
 
 
 def dependency_names(dependencies: list[dict[str, Any]]) -> list[str]:
@@ -60,6 +64,12 @@ def package_errors(package: dict[str, Any]) -> list[str]:
             errors.append(f"target {EXPERIMENTAL_TARGET} must be a regular target")
         if dependency_names(experimental_target.get("dependencies", [])):
             errors.append(f"target {EXPERIMENTAL_TARGET} must have no dependencies")
+        if experimental_target.get("path") != EXPERIMENTAL_SOURCE_PATH:
+            errors.append(
+                f"target {EXPERIMENTAL_TARGET} must use path {EXPERIMENTAL_SOURCE_PATH}"
+            )
+        if experimental_target.get("path") != EXPERIMENTAL_SOURCE_PATH:
+            errors.append(f"target {EXPERIMENTAL_TARGET} must use path {EXPERIMENTAL_SOURCE_PATH}")
 
     experimental_tests = target_by_name.get(EXPERIMENTAL_TEST_TARGET)
     if experimental_tests is None:
@@ -69,6 +79,24 @@ def package_errors(package: dict[str, Any]) -> list[str]:
     elif dependency_names(experimental_tests.get("dependencies", [])) != [EXPERIMENTAL_TARGET]:
         errors.append(
             f"test target {EXPERIMENTAL_TEST_TARGET} must depend only on {EXPERIMENTAL_TARGET}"
+        )
+    elif experimental_tests.get("path") != EXPERIMENTAL_TEST_PATH:
+        errors.append(
+            f"test target {EXPERIMENTAL_TEST_TARGET} must use path {EXPERIMENTAL_TEST_PATH}"
+        )
+
+    experimental_demo = target_by_name.get(EXPERIMENTAL_DEMO_TARGET)
+    if experimental_demo is None:
+        errors.append(f"missing dedicated demo target {EXPERIMENTAL_DEMO_TARGET}")
+    elif experimental_demo.get("type") != "executable":
+        errors.append(f"target {EXPERIMENTAL_DEMO_TARGET} must be an executable target")
+    elif dependency_names(experimental_demo.get("dependencies", [])) != [EXPERIMENTAL_TARGET]:
+        errors.append(
+            f"demo target {EXPERIMENTAL_DEMO_TARGET} must depend only on {EXPERIMENTAL_TARGET}"
+        )
+    elif experimental_demo.get("path") != EXPERIMENTAL_DEMO_PATH:
+        errors.append(
+            f"demo target {EXPERIMENTAL_DEMO_TARGET} must use path {EXPERIMENTAL_DEMO_PATH}"
         )
 
     graph = {
@@ -96,7 +124,11 @@ def package_errors(package: dict[str, Any]) -> list[str]:
                 break
 
     for target_name, dependencies in graph.items():
-        if target_name in {EXPERIMENTAL_TARGET, EXPERIMENTAL_TEST_TARGET}:
+        if target_name in {
+            EXPERIMENTAL_TARGET,
+            EXPERIMENTAL_TEST_TARGET,
+            EXPERIMENTAL_DEMO_TARGET,
+        }:
             continue
         if reaches_experimental(target_name, set()):
             errors.append(
@@ -116,21 +148,29 @@ def source_without_comments_and_strings(source: str) -> str:
     )
 
 
-def source_errors(sources_root: Path) -> list[str]:
+def source_errors(apple_root: Path) -> list[str]:
     errors: list[str] = []
-    if not sources_root.is_dir():
-        return [f"source root does not exist: {sources_root}"]
+    if not apple_root.is_dir():
+        return [f"Apple root does not exist: {apple_root}"]
 
     import_pattern = re.compile(r"\bimport\s+HudsonKitExperimental\b")
     spi_pattern = re.compile(r"@_spi\s*\(\s*Experimental\s*\)")
-    for source_file in sorted(sources_root.rglob("*.swift")):
+    allowed_import_roots = {
+        ("Sources", EXPERIMENTAL_TARGET),
+        ("Tests", EXPERIMENTAL_TEST_TARGET),
+        ("Demo", EXPERIMENTAL_DEMO_TARGET),
+    }
+    for source_file in sorted(apple_root.rglob("*.swift")):
+        relative_parts = source_file.relative_to(apple_root).parts
+        if ".build" in relative_parts or "DerivedData" in relative_parts:
+            continue
         contents = source_without_comments_and_strings(source_file.read_text(encoding="utf-8"))
         if spi_pattern.search(contents):
             errors.append(f"Apple source uses forbidden @_spi(Experimental): {source_file}")
-        if EXPERIMENTAL_TARGET in source_file.relative_to(sources_root).parts:
-            continue
-        if import_pattern.search(contents):
-            errors.append(f"stable source imports or re-exports experimental module: {source_file}")
+        if import_pattern.search(contents) and relative_parts[:2] not in allowed_import_roots:
+            errors.append(
+                f"unauthorized source imports or re-exports experimental module: {source_file}"
+            )
     return errors
 
 
@@ -156,10 +196,10 @@ def main(argv: list[str]) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--package-json", type=Path, help="SwiftPM dump-package JSON fixture")
     parser.add_argument(
-        "--sources-root",
+        "--apple-root",
         type=Path,
-        default=repository_root / "packages/native/apple/HudsonKit/Sources",
-        help="native source root to scan",
+        default=repository_root / "packages/native/apple/HudsonKit",
+        help="complete native HudsonKit root to scan",
     )
     arguments = parser.parse_args(argv)
 
@@ -169,7 +209,7 @@ def main(argv: list[str]) -> int:
         print(f"experimental boundary check could not load package graph: {error}", file=sys.stderr)
         return 2
 
-    errors = package_errors(package) + source_errors(arguments.sources_root)
+    errors = package_errors(package) + source_errors(arguments.apple_root)
     if errors:
         print("HudsonKit experimental boundary check failed:", file=sys.stderr)
         for error in errors:

@@ -240,6 +240,14 @@ targets.append(
     )
 )
 
+targets.append(
+    .executableTarget(
+        name: "HudsonKitExperimentalDemo",
+        dependencies: ["HudsonKitExperimental"],
+        path: demo + "HudsonKitExperimentalDemo"
+    )
+)
+
 let package = Package(
     name: "Hudson",
     platforms: [
