@@ -72,8 +72,8 @@ let tst = "packages/native/apple/HudsonKit/Tests/"
 let demo = "packages/native/apple/HudsonKit/Demo/"
 
 var products: [Product] = [
-    // This intentionally empty quarantine product is the only entry point for
-    // mechanics still earning stable HudsonKit admission. Stable products must
+    // This quarantine product is the only entry point for mechanics still
+    // earning stable HudsonKit admission. Stable products must
     // never depend on it; scripts/apple/check-experimental-boundary.py enforces
     // that graph rule in CI.
     hudsonLibrary(name: "HudsonKitExperimental", targets: ["HudsonKitExperimental"]),
@@ -246,6 +246,14 @@ targets.append(
         name: "HudsonKitExperimentalDemo",
         dependencies: ["HudsonKitExperimental"],
         path: demo + "HudsonKitExperimentalDemo"
+    )
+)
+
+targets.append(
+    .executableTarget(
+        name: "HudsonKitExperimentalVisualDemo",
+        dependencies: ["HudsonKitExperimental"],
+        path: demo + "HudsonKitExperimentalVisualDemo"
     )
 )
 

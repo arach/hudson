@@ -7,6 +7,7 @@
     {"name": "HudsonKitExperimental", "type": "regular", "path": "packages/native/apple/HudsonKit/Sources/HudsonKitExperimental", "dependencies": []},
     {"name": "HudsonKitExperimentalTests", "type": "test", "path": "packages/native/apple/HudsonKit/Tests/HudsonKitExperimentalTests", "dependencies": [{"byName": ["HudsonKitExperimental", null]}]},
     {"name": "HudsonKitExperimentalDemo", "type": "executable", "path": "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalDemo", "dependencies": [{"byName": ["HudsonKitExperimental", null]}]},
+    {"name": "HudsonKitExperimentalVisualDemo", "type": "executable", "path": "packages/native/apple/HudsonKit/Demo/HudsonKitExperimentalVisualDemo", "dependencies": [{"byName": ["HudsonKitExperimental", null]}]},
     {"name": "HudsonStable", "type": "regular", "path": "packages/native/apple/HudsonKit/Sources/HudsonStable", "dependencies": []}
   ]
 }
