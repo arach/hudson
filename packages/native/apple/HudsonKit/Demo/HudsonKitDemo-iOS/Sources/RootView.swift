@@ -73,10 +73,14 @@ struct RootView: View {
     @State private var lastDeepLink: HudDeepLink? = nil
     @State private var deepLinkError: String? = nil
     private let requestedAppearance: HudPhoneAppShellAppearance?
+    private let complicationsPresentation: HudPhoneComplicationsPresentation
 
     init() {
         let args = ProcessInfo.processInfo.arguments
         requestedAppearance = args.contains("--appearance-system") ? .system : nil
+        complicationsPresentation = args.contains("--control-deck")
+            ? .summonOnDemand()
+            : .alwaysVisible
         if let idx = args.firstIndex(of: "--page"), idx + 1 < args.count,
            let page = DemoPage(rawValue: args[idx + 1]) {
             self._page = State(initialValue: page)
@@ -90,12 +94,16 @@ struct RootView: View {
             if let requestedAppearance {
                 HudPhoneAppShell(
                     complicationsStyle: customStyle,
+                    complicationsPresentation: complicationsPresentation,
                     appearance: requestedAppearance
                 ) {
                     configuredRootContent
                 }
             } else {
-                HudPhoneAppShell(complicationsStyle: customStyle) {
+                HudPhoneAppShell(
+                    complicationsStyle: customStyle,
+                    complicationsPresentation: complicationsPresentation
+                ) {
                     configuredRootContent
                 }
             }
