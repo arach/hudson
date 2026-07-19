@@ -33,9 +33,11 @@ All three should pass clean.
 ## Changes to published packages
 
 If your change touches `packages/web/hudsonkit` or `packages/web/ai-backends`,
-update that package's `CHANGELOG.md`. Bump `version` in its `package.json` when
-you're ready to release, then run the **Publish npm packages** workflow after
-merge.
+add a changeset before opening the PR:
+
+```bash
+bun run changeset
+```
 
 ## Orientation
 

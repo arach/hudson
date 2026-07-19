@@ -19,6 +19,7 @@ help:
 	@echo "  lint-all      - also include iOS demo Sources"
 	@echo "  hudlint       - build the HudLint binary"
 	@echo "  ios-project   - regenerate iOS demo .xcodeproj (sets HUDSONKIT_WITH_VOICE=1)"
+	@echo "  install-hooks - point git core.hooksPath to .githooks"
 	@echo "  clean         - clean build artifacts"
 	@echo ""
 	@echo "Optional features (set env vars before swift build / xcodebuild):"
@@ -74,6 +75,13 @@ ios-project:
 .PHONY: test
 test:
 	@swift test
+
+.PHONY: install-hooks
+install-hooks:
+	@REPO_ROOT=$$(git rev-parse --show-toplevel) && \
+		cd "$$REPO_ROOT" && \
+		git config core.hooksPath .githooks && \
+		echo "git hooks now point to .githooks"
 
 .PHONY: clean
 clean:

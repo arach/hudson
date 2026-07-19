@@ -23,6 +23,7 @@ export default defineConfig({
       // CI's "Worker tests" step — don't double-run them under jsdom here.
       'packages/cloud/**',
       '**/.build/**',
+      'examples/**/.build/**',
       'packages/native/**/.build/**',
     ],
   },
