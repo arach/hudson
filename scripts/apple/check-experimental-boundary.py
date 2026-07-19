@@ -3,8 +3,7 @@
 
 The checker accepts JSON and Apple-root overrides so its graph and source
 rules can be exercised with small, deterministic fixtures. With no overrides,
-it evaluates the root manifest with HudsonVoice disabled and scans the native
-HudsonKit source tree.
+it evaluates the root manifest and scans the native HudsonKit source tree.
 """
 
 from __future__ import annotations
@@ -198,12 +197,10 @@ def load_package(package_json: Path | None, repository_root: Path) -> dict[str, 
     if package_json is not None:
         return json.loads(package_json.read_text(encoding="utf-8"))
 
-    environment = os.environ.copy()
-    environment.setdefault("HUDSONKIT_WITH_VOICE", "0")
     result = subprocess.run(
         ["swift", "package", "dump-package"],
         cwd=repository_root,
-        env=environment,
+        env=os.environ.copy(),
         check=True,
         capture_output=True,
         text=True,

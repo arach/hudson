@@ -1,5 +1,27 @@
 import Foundation
 
+/// Controls when Hudson may acquire the on-device transcription model.
+///
+/// This is a runtime policy. `HudsonVoice` itself is always compiled into the
+/// Apple package, and no model data is embedded in the library product.
+public enum HudVoiceModelDownloadPolicy: String, Codable, CaseIterable, Sendable {
+    /// Never start an automatic model download. Already-installed models may
+    /// still be used, and an explicit user-initiated `prepare()` remains valid.
+    case never
+    /// Begin downloading and warming when dictation is used for the first time.
+    case onFirstUse = "on_first_use"
+    /// Begin downloading and warming when the host activates its voice surface.
+    case eager
+
+    public var title: String {
+        switch self {
+        case .never: return "Never"
+        case .onFirstUse: return "On First Use"
+        case .eager: return "At Launch"
+        }
+    }
+}
+
 public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
     public static let defaultTranscriptionModelId = "parakeet:v3"
 
@@ -9,6 +31,7 @@ public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
     public var preferredTranscriptionModelId: String?
     public var preferredSynthesisModelId: String?
     public var preferredLanguage: String?
+    public var modelDownloadPolicy: HudVoiceModelDownloadPolicy
     public var mode: HudVoiceMode
 
     public init(
@@ -18,6 +41,7 @@ public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
         preferredTranscriptionModelId: String? = Self.defaultTranscriptionModelId,
         preferredSynthesisModelId: String? = nil,
         preferredLanguage: String? = "en",
+        modelDownloadPolicy: HudVoiceModelDownloadPolicy = .onFirstUse,
         mode: HudVoiceMode = .pushToTalk
     ) {
         self.schemaVersion = schemaVersion
@@ -26,7 +50,28 @@ public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
         self.preferredTranscriptionModelId = Self.clean(preferredTranscriptionModelId)
         self.preferredSynthesisModelId = Self.clean(preferredSynthesisModelId)
         self.preferredLanguage = Self.clean(preferredLanguage)
+        self.modelDownloadPolicy = modelDownloadPolicy
         self.mode = mode
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1,
+            preferredInputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredInputDeviceId),
+            preferredOutputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredOutputDeviceId),
+            preferredTranscriptionModelId: try values.decodeIfPresent(
+                String.self,
+                forKey: .preferredTranscriptionModelId
+            ) ?? Self.defaultTranscriptionModelId,
+            preferredSynthesisModelId: try values.decodeIfPresent(String.self, forKey: .preferredSynthesisModelId),
+            preferredLanguage: try values.decodeIfPresent(String.self, forKey: .preferredLanguage) ?? "en",
+            modelDownloadPolicy: try values.decodeIfPresent(
+                HudVoiceModelDownloadPolicy.self,
+                forKey: .modelDownloadPolicy
+            ) ?? .onFirstUse,
+            mode: try values.decodeIfPresent(HudVoiceMode.self, forKey: .mode) ?? .pushToTalk
+        )
     }
 
     public static var defaultPreferencesURL: URL {
@@ -88,6 +133,7 @@ public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
             preferredTranscriptionModelId: preferredTranscriptionModelId ?? Self.defaultTranscriptionModelId,
             preferredSynthesisModelId: preferredSynthesisModelId,
             preferredLanguage: preferredLanguage ?? "en",
+            modelDownloadPolicy: modelDownloadPolicy,
             mode: mode
         )
     }
@@ -101,7 +147,8 @@ public struct HudsonVoicePreferences: Codable, Equatable, Sendable {
             speech: EmbeddedVoxSpeechPreferences(
                 preferredTranscriptionModelId: preferredTranscriptionModelId,
                 preferredSynthesisModelId: preferredSynthesisModelId,
-                preferredInputDeviceId: preferredInputDeviceId
+                preferredInputDeviceId: preferredInputDeviceId,
+                modelDownloadPolicy: modelDownloadPolicy
             )
         )
         let encoder = JSONEncoder()
@@ -125,4 +172,5 @@ private struct EmbeddedVoxSpeechPreferences: Codable {
     var preferredTranscriptionModelId: String?
     var preferredSynthesisModelId: String?
     var preferredInputDeviceId: String?
+    var modelDownloadPolicy: HudVoiceModelDownloadPolicy
 }

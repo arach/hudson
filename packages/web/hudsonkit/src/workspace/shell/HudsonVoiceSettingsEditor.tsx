@@ -49,6 +49,8 @@ type HudsonVoiceRuntimeStatus = {
   };
 };
 
+type HudsonVoiceModelDownloadPolicy = 'never' | 'on_first_use' | 'eager';
+
 type VoiceProviderOption = {
   id: VoiceSettings['replyProvider'];
   label: string;
@@ -135,6 +137,7 @@ export function HudsonVoiceSettingsEditor({
   const [voicePreviewError, setVoicePreviewError] = useState<string | null>(null);
   const [inputDevices, setInputDevices] = useState<HudsonVoiceDeviceOption[]>([]);
   const [hudsonVoiceStatus, setHudsonVoiceStatus] = useState<HudsonVoiceRuntimeStatus | null>(null);
+  const [modelDownloadPolicy, setModelDownloadPolicy] = useState<HudsonVoiceModelDownloadPolicy>('on_first_use');
   const [hudsonVoiceSettingsError, setHudsonVoiceSettingsError] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioUrlRef = useRef<string | null>(null);
@@ -158,6 +161,7 @@ export function HudsonVoiceSettingsEditor({
             preferredInputDeviceId?: string | null;
             preferredTranscriptionModelId?: string | null;
             preferredLanguage?: string | null;
+            modelDownloadPolicy?: HudsonVoiceModelDownloadPolicy;
             mode?: string;
           };
         };
@@ -165,6 +169,7 @@ export function HudsonVoiceSettingsEditor({
 
         hydratedCaptureSettingsRef.current = true;
         const settings = payload.settings;
+        setModelDownloadPolicy(settings.modelDownloadPolicy ?? 'on_first_use');
         onChange({
           ...voiceSettingsRef.current,
           inputDeviceId: settings.preferredInputDeviceId ?? '',
@@ -564,6 +569,22 @@ export function HudsonVoiceSettingsEditor({
               transcriptionModel: value,
             });
             persistHudsonVoiceSettings({ preferredTranscriptionModelId: value });
+          }}
+        />
+        <SettingsSelect
+          label="Model Download"
+          value={modelDownloadPolicy}
+          options={[
+            { value: 'never', label: 'Never Automatically' },
+            { value: 'on_first_use', label: 'On First Use' },
+            { value: 'eager', label: 'When Voice Starts' },
+          ]}
+          onChange={value => {
+            const policy: HudsonVoiceModelDownloadPolicy = value === 'never' || value === 'eager'
+              ? value
+              : 'on_first_use';
+            setModelDownloadPolicy(policy);
+            persistHudsonVoiceSettings({ modelDownloadPolicy: policy });
           }}
         />
         <SettingsSelect

@@ -28,8 +28,8 @@ const FEATURE_CATALOG = {
     note: 'HudsonTerminal — terminal and PTY-backed surfaces',
   },
   voice: {
-    env: { HUDSONKIT_WITH_VOICE: '1' },
-    note: 'HudsonVoice — in-process dictation and VoxEngine transcription',
+    env: {},
+    note: 'HudsonVoice — included by default; model acquisition is runtime-controlled',
   },
 };
 

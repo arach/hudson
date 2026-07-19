@@ -112,18 +112,10 @@ jobs:
         run: python3 -m unittest scripts/apple/tests/test_check_experimental_boundary.py
 
       - name: Validate experimental HudsonKit boundary
-        env:
-          HUDSONKIT_WITH_VOICE: "0"
-        run: python3 scripts/apple/check-experimental-boundary.py
-
-      - name: Validate experimental HudsonKit boundary (voice manifest)
-        env:
-          HUDSONKIT_WITH_VOICE: "1"
         run: python3 scripts/apple/check-experimental-boundary.py
 
       - name: Validate experimental HudsonKit boundary (terminal)
         env:
-          HUDSONKIT_WITH_VOICE: "0"
           HUDSONKIT_WITH_TERMINAL: "1"
           HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
           HUDSON_TERMINI_GIT_REVISION: 1509fdc6d8093b2e41064fbb273c56e630491afa
@@ -139,28 +131,19 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-spm-
 
-      # The Apple package is a single manifest at the repo root. The voice
-      # backend (vox) stays gated off here; the terminal backend (Termini) is
-      # public, so a second leg below builds and tests with it enabled.
-      # (HudsonVoice defaults on for consumers.)
+      # HudsonVoice is part of the default package graph. Building and testing
+      # it resolves/compiles Vox source but never calls runtime model preload,
+      # so CI does not download Parakeet model data. Terminal remains optional.
       - name: Swift build
-        env:
-          HUDSONKIT_WITH_VOICE: "0"
         run: swift build
 
       - name: Swift test
-        env:
-          HUDSONKIT_WITH_VOICE: "0"
         run: swift test
 
       - name: Experimental synthetic demo
-        env:
-          HUDSONKIT_WITH_VOICE: "0"
         run: swift run HudsonKitExperimentalDemo
 
       - name: Experimental visual demo builds
-        env:
-          HUDSONKIT_WITH_VOICE: "0"
         run: swift build --product HudsonKitExperimentalVisualDemo
 
       # Terminal-enabled leg: compiles HudsonTerminal/HudsonCanvasSurface/
@@ -171,7 +154,6 @@ jobs:
       # older Termini API.
       - name: Swift build (terminal)
         env:
-          HUDSONKIT_WITH_VOICE: "0"
           HUDSONKIT_WITH_TERMINAL: "1"
           HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
           HUDSON_TERMINI_GIT_REVISION: 1509fdc6d8093b2e41064fbb273c56e630491afa
@@ -179,7 +161,6 @@ jobs:
 
       - name: Swift test (terminal)
         env:
-          HUDSONKIT_WITH_VOICE: "0"
           HUDSONKIT_WITH_TERMINAL: "1"
           HUDSON_TERMINI_GIT_URL: https://github.com/arach/Termini.git
           HUDSON_TERMINI_GIT_REVISION: 1509fdc6d8093b2e41064fbb273c56e630491afa

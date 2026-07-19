@@ -12,7 +12,8 @@ import VoxEngine
 /// transcription engine itself is **Vox** (`VoxEngine`, an embeddable Parakeet
 /// download+execution facility). For best UX this composes two engines:
 ///
-/// - **Parakeet (Vox)** — preferred; downloaded + warmed on-device.
+/// - **Parakeet (Vox)** — preferred; acquired at runtime according to
+///   `modelDownloadPolicy`, then warmed on-device.
 /// - **Apple Speech** — the always-available fallback used while Parakeet is
 ///   still downloading/warming, and the source of *live* partial text.
 ///
@@ -29,8 +30,8 @@ public final class HudDictation {
     }
 
     /// User's engine choice. `.auto` uses Parakeet when warm and Apple otherwise;
-    /// `.parakeet` prefers Parakeet (downloading/warming it); `.apple` stays on
-    /// Apple Speech only and never downloads the on-device model.
+    /// `.parakeet` prefers Parakeet when available; `.apple` stays on Apple
+    /// Speech only. Model acquisition is configured separately.
     public enum Preference: String, Sendable, CaseIterable {
         case auto
         case parakeet
@@ -66,8 +67,13 @@ public final class HudDictation {
     /// Which engine produced the most recent final transcript.
     public private(set) var lastEngine: Engine = .apple
 
-    /// Engine choice (drives selection + whether the model auto-downloads).
+    /// Engine choice for transcription and fallback behavior.
     public var preference: Preference = .auto
+
+    /// When Hudson may automatically download and warm the Parakeet model.
+    /// Defaults to first use so constructing a dictation object or compiling
+    /// HudsonVoice never starts a model download.
+    public var modelDownloadPolicy: HudVoiceModelDownloadPolicy
 
     /// The most recent resolved final transcript, and a monotonic counter that
     /// ticks once per delivered utterance. SwiftUI consumers observe `finalCount`
@@ -100,16 +106,33 @@ public final class HudDictation {
     private var speechTask: SFSpeechRecognitionTask?
     private var prepareTask: Task<Void, Never>?
 
-    public init(modelId: String = "parakeet:v3", locale: Locale = .current) {
+    public init(
+        modelId: String = HudsonVoicePreferences.defaultTranscriptionModelId,
+        modelDownloadPolicy: HudVoiceModelDownloadPolicy = .onFirstUse,
+        locale: Locale = .current
+    ) {
         self.modelId = modelId
+        self.modelDownloadPolicy = modelDownloadPolicy
         self.recognizer = SFSpeechRecognizer(locale: locale)
+    }
+
+    public convenience init(
+        preferences: HudsonVoicePreferences,
+        locale: Locale = .current
+    ) {
+        self.init(
+            modelId: preferences.preferredTranscriptionModelId
+                ?? HudsonVoicePreferences.defaultTranscriptionModelId,
+            modelDownloadPolicy: preferences.modelDownloadPolicy,
+            locale: locale
+        )
     }
 
     // MARK: - Model lifecycle
 
-    /// Download (if missing) and warm the Parakeet model. Safe to call eagerly —
-    /// on app launch and again when the composer is focused — so the engine is
-    /// hot by the time the user taps the mic. No-op once `modelReady`.
+    /// Explicitly download (if missing) and warm the Parakeet model. This is an
+    /// operator/user action and therefore remains available for every automatic
+    /// download policy. No-op once `modelReady`.
     public func prepare() {
         guard preference != .apple else { return } // Apple-only: never download Parakeet
         guard !modelReady, prepareTask == nil else { return }
@@ -140,6 +163,12 @@ public final class HudDictation {
         }
     }
 
+    /// Notify dictation that its host surface is active. Only the `.eager`
+    /// policy starts model acquisition here; `.onFirstUse` waits for `start()`.
+    public func activate() {
+        prepareAutomatically(for: .activation)
+    }
+
     /// Refresh `modelInstalled`/`modelReady` from the engine (e.g. when opening a
     /// settings page) so the UI reflects on-disk and in-memory state.
     public func refreshStatus() async {
@@ -161,6 +190,7 @@ public final class HudDictation {
 
     public func start() {
         guard !isListening else { return }
+        prepareAutomatically(for: .firstUse)
         Task { [weak self] in
             guard let self else { return }
             guard await self.ensureMicPermission() else {
@@ -179,6 +209,11 @@ public final class HudDictation {
                 self.log.error("beginCapture failed: \(error.localizedDescription)")
             }
         }
+    }
+
+    private func prepareAutomatically(for trigger: HudVoiceAutomaticPreparationTrigger) {
+        guard modelDownloadPolicy.allowsAutomaticPreparation(for: trigger) else { return }
+        prepare()
     }
 
     public func stop() {
@@ -320,6 +355,22 @@ public final class HudDictation {
                 SFSpeechRecognizer.requestAuthorization { status in cont.resume(returning: status == .authorized) }
             }
         @unknown default: return false
+        }
+    }
+}
+
+enum HudVoiceAutomaticPreparationTrigger {
+    case activation
+    case firstUse
+}
+
+extension HudVoiceModelDownloadPolicy {
+    func allowsAutomaticPreparation(for trigger: HudVoiceAutomaticPreparationTrigger) -> Bool {
+        switch (self, trigger) {
+        case (.never, _), (.onFirstUse, .activation):
+            return false
+        case (.onFirstUse, .firstUse), (.eager, _):
+            return true
         }
     }
 }

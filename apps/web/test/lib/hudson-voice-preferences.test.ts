@@ -60,6 +60,7 @@ describe('Hudson voice preferences', () => {
       preferredInputDeviceId: 'mic-1',
       preferredTranscriptionModelId: 'parakeet:v3',
       preferredLanguage: 'en',
+      modelDownloadPolicy: 'never',
     });
 
     expect(preferences.preferredInputDeviceId).toBe('mic-1');
@@ -69,6 +70,7 @@ describe('Hudson voice preferences', () => {
       speech: {
         preferredInputDeviceId: 'mic-1',
         preferredTranscriptionModelId: 'parakeet:v3',
+        modelDownloadPolicy: 'never',
       },
     });
   });
@@ -166,7 +168,7 @@ describe('Hudson voice preferences', () => {
     });
   });
 
-  it('settings route updates model, language, mode, and input preference', async () => {
+  it('settings route updates model acquisition, language, mode, and input preference', async () => {
     useTempPreferences();
 
     const response = await putSettings(sameOriginRequest('/api/hudson-voice/v1/voice/settings', {
@@ -175,6 +177,7 @@ describe('Hudson voice preferences', () => {
         settings: {
           inputDeviceId: 'mic-settings',
           modelId: 'parakeet:v3',
+          modelDownloadPolicy: 'never',
           language: 'en',
           mode: 'always_on',
         },
@@ -185,6 +188,7 @@ describe('Hudson voice preferences', () => {
       settings: {
         preferredInputDeviceId: 'mic-settings',
         preferredTranscriptionModelId: 'parakeet:v3',
+        modelDownloadPolicy: 'never',
         preferredLanguage: 'en',
         mode: 'always_on',
       },
@@ -194,6 +198,7 @@ describe('Hudson voice preferences', () => {
     await expect(getResponse.json()).resolves.toMatchObject({
       settings: {
         preferredInputDeviceId: 'mic-settings',
+        modelDownloadPolicy: 'never',
         mode: 'always_on',
       },
     });
@@ -210,6 +215,20 @@ describe('Hudson voice preferences', () => {
     expect(response.status).toBe(400);
     await expect(response.json()).resolves.toMatchObject({
       error: expect.stringContaining('Invalid Hudson voice mode'),
+    });
+  });
+
+  it('settings route rejects invalid model download policy', async () => {
+    useTempPreferences();
+
+    const response = await putSettings(sameOriginRequest('/api/hudson-voice/v1/voice/settings', {
+      method: 'PUT',
+      body: JSON.stringify({ settings: { modelDownloadPolicy: 'during_build' } }),
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('Invalid Hudson voice model download policy'),
     });
   });
 });

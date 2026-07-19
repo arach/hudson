@@ -8,13 +8,12 @@ import Foundation
 // split between this root manifest and the inner
 // `packages/native/apple/HudsonKit/Package.swift` dev/CI manifest.
 //
-// Optional heavy backends stay gated by env at manifest-eval time so light
-// consumers do not resolve dependencies they do not use:
+// Terminal remains gated because it adds the full PTY/canvas stack. Voice is a
+// stable product and is always present in the package graph; downloading the
+// Parakeet model is controlled at runtime by HudsonVoice instead.
 //   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Canvas surface
-//   HUDSONKIT_WITH_VOICE=0     -> opt out of HudsonVoice
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
 let binaryDistributionEnabled = environment["HUDSONKIT_BINARY_DISTRIBUTION"] == "1"
 let hudsonLibraryType: Product.Library.LibraryType? = binaryDistributionEnabled ? .dynamic : nil
 
@@ -97,7 +96,7 @@ var products: [Product] = [
 
 var dependencies: [Package.Dependency] = []
 
-var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
+var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonVoice"]
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
@@ -145,34 +144,30 @@ var targets: [Target] = [
     ),
 ]
 
-if voiceEnabled {
-    let voxPackage = appendGitDependency(
-        to: &dependencies,
-        url: "https://github.com/arach/vox.git",
-        envPrefix: "HUDSON_VOX"
+let voxPackage = appendGitDependency(
+    to: &dependencies,
+    url: "https://github.com/arach/vox.git",
+    envPrefix: "HUDSON_VOX"
+)
+products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
+targets.append(
+    .target(
+        name: "HudsonVoice",
+        dependencies: [
+            "HudsonUI",
+            "HudsonObservability",
+            .product(name: "VoxEngine", package: voxPackage),
+        ],
+        path: src + "HudsonVoice"
     )
-    products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
-    targets.append(
-        .target(
-            name: "HudsonVoice",
-            dependencies: [
-                "HudsonUI",
-                "HudsonObservability",
-                .product(name: "VoxEngine", package: voxPackage),
-            ],
-            path: src + "HudsonVoice"
-        )
+)
+targets.append(
+    .testTarget(
+        name: "HudsonVoiceTests",
+        dependencies: ["HudsonVoice"],
+        path: tst + "HudsonVoiceTests"
     )
-    targets.append(
-        .testTarget(
-            name: "HudsonVoiceTests",
-            dependencies: ["HudsonVoice"],
-            path: tst + "HudsonVoiceTests"
-        )
-    )
-    demoDependencies.append("HudsonVoice")
-    demoSwiftSettings.append(.define("HUDSON_VOICE"))
-}
+)
 
 if terminalEnabled {
     products.append(hudsonLibrary(name: "HudsonTerminal", targets: ["HudsonTerminal"]))

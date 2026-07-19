@@ -23,8 +23,11 @@ export const HUDSON_VOICE_EMBEDDED_VOX_PREFERENCES_DEFAULT_PATH = join(
 export const HUDSON_VOICE_DEFAULT_TRANSCRIPTION_MODEL = 'parakeet:v3';
 export const HUDSON_VOICE_DEFAULT_LANGUAGE = 'en';
 export const HUDSON_VOICE_DEFAULT_MODE = 'push_to_talk';
+export const HUDSON_VOICE_DEFAULT_MODEL_DOWNLOAD_POLICY = 'on_first_use';
 export const HUDSON_VOICE_MODES = ['push_to_talk', 'always_on'] as const;
+export const HUDSON_VOICE_MODEL_DOWNLOAD_POLICIES = ['never', 'on_first_use', 'eager'] as const;
 export type HudsonVoiceMode = typeof HUDSON_VOICE_MODES[number];
+export type HudsonVoiceModelDownloadPolicy = typeof HUDSON_VOICE_MODEL_DOWNLOAD_POLICIES[number];
 
 export interface HudsonVoicePreferences {
   schemaVersion: number;
@@ -33,6 +36,7 @@ export interface HudsonVoicePreferences {
   preferredTranscriptionModelId: string | null;
   preferredSynthesisModelId: string | null;
   preferredLanguage: string | null;
+  modelDownloadPolicy: HudsonVoiceModelDownloadPolicy;
   mode: HudsonVoiceMode;
 }
 
@@ -44,6 +48,7 @@ export function defaultHudsonVoicePreferences(): HudsonVoicePreferences {
     preferredTranscriptionModelId: HUDSON_VOICE_DEFAULT_TRANSCRIPTION_MODEL,
     preferredSynthesisModelId: null,
     preferredLanguage: HUDSON_VOICE_DEFAULT_LANGUAGE,
+    modelDownloadPolicy: HUDSON_VOICE_DEFAULT_MODEL_DOWNLOAD_POLICY,
     mode: HUDSON_VOICE_DEFAULT_MODE,
   };
 }
@@ -93,6 +98,7 @@ export function writeHudsonVoicePreferences(
         preferredTranscriptionModelId: preferences.preferredTranscriptionModelId,
         preferredSynthesisModelId: preferences.preferredSynthesisModelId,
         preferredInputDeviceId: preferences.preferredInputDeviceId,
+        modelDownloadPolicy: preferences.modelDownloadPolicy,
       },
     });
   }
@@ -110,6 +116,7 @@ export function normalizeHudsonVoicePreferences(value: unknown): HudsonVoicePref
       cleanString(raw.preferredTranscriptionModelId) ?? HUDSON_VOICE_DEFAULT_TRANSCRIPTION_MODEL,
     preferredSynthesisModelId: cleanString(raw.preferredSynthesisModelId),
     preferredLanguage: cleanString(raw.preferredLanguage) ?? HUDSON_VOICE_DEFAULT_LANGUAGE,
+    modelDownloadPolicy: normalizeModelDownloadPolicy(raw.modelDownloadPolicy),
     mode: normalizeMode(raw.mode),
   };
 }
@@ -120,10 +127,22 @@ function normalizeMode(value: unknown): HudsonVoiceMode {
   return HUDSON_VOICE_DEFAULT_MODE;
 }
 
+function normalizeModelDownloadPolicy(value: unknown): HudsonVoiceModelDownloadPolicy {
+  const cleaned = cleanString(value);
+  if (cleaned === 'never' || cleaned === 'on_first_use' || cleaned === 'eager') return cleaned;
+  return HUDSON_VOICE_DEFAULT_MODEL_DOWNLOAD_POLICY;
+}
+
 export function assertHudsonVoiceMode(value: unknown): HudsonVoiceMode {
   const cleaned = cleanString(value);
   if (cleaned === 'push_to_talk' || cleaned === 'always_on') return cleaned;
   throw new Error(`Invalid Hudson voice mode: ${String(value)}`);
+}
+
+export function assertHudsonVoiceModelDownloadPolicy(value: unknown): HudsonVoiceModelDownloadPolicy {
+  const cleaned = cleanString(value);
+  if (cleaned === 'never' || cleaned === 'on_first_use' || cleaned === 'eager') return cleaned;
+  throw new Error(`Invalid Hudson voice model download policy: ${String(value)}`);
 }
 
 export function createHudsonVoiceSessionDefaults(

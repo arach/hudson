@@ -240,7 +240,6 @@ for target in "${build_targets[@]}"; do
     cd "$repo_root"
     HUDSONKIT_BINARY_DISTRIBUTION=1 \
     HUDSONKIT_WITH_TERMINAL=0 \
-    HUDSONKIT_WITH_VOICE=0 \
     xcodebuild archive \
       -scheme "$target" \
       -configuration Release \
