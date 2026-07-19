@@ -17,6 +17,10 @@ export const DEFAULT_SHELL_SETTINGS: HudsonSettings = {
   font: { fontSize: 13, fontFamily: 'system-ui' },
   voice: {
     autoSend: true,
+    inputDeviceId: '',
+    transcriptionModel: 'parakeet:v3',
+    transcriptionLanguage: 'en',
+    captureMode: 'push_to_talk',
     speakReplies: false,
     replyProvider: 'vox',
     replyModel: 'avspeech:system',
@@ -42,6 +46,14 @@ export function normalizeHudsonSettings(
     voice: {
       ...DEFAULT_SHELL_SETTINGS.voice,
       ...(settings?.voice ?? {}),
+      inputDeviceId: settings?.voice?.inputDeviceId ?? '',
+      transcriptionModel: !settings?.voice?.transcriptionModel
+        ? DEFAULT_SHELL_SETTINGS.voice.transcriptionModel
+        : settings.voice.transcriptionModel,
+      transcriptionLanguage: !settings?.voice?.transcriptionLanguage
+        ? DEFAULT_SHELL_SETTINGS.voice.transcriptionLanguage
+        : settings.voice.transcriptionLanguage,
+      captureMode: settings?.voice?.captureMode === 'always_on' ? 'always_on' : 'push_to_talk',
       replyProvider: 'vox',
       replyModel: !settings?.voice?.replyModel || settings.voice.replyModel === 'system'
         ? 'avspeech:system'

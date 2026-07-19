@@ -29,6 +29,26 @@ type VoiceModelOption = {
   description?: string;
 };
 
+type HudsonVoiceDeviceOption = {
+  id: string;
+  name: string;
+  isDefault?: boolean;
+  isSelected?: boolean;
+};
+
+type HudsonVoiceRuntimeStatus = {
+  status?: string;
+  permissions?: { microphone?: string };
+  input?: { selectedDeviceId?: string | null; selectedDeviceName?: string | null };
+  model?: {
+    selectedModelId?: string | null;
+    readiness?: { state?: string; detail?: string };
+  };
+  troubleshooting?: {
+    runtimeAlive?: boolean;
+  };
+};
+
 type VoiceProviderOption = {
   id: VoiceSettings['replyProvider'];
   label: string;
@@ -45,14 +65,14 @@ const DEFAULT_VOICE_PREVIEW_TEXT = 'Hello from Hudson. This is the current reply
 const DEFAULT_VOICE_PROVIDER_OPTIONS: VoiceProviderOption[] = [
   {
     id: 'vox',
-    label: 'Vox',
+    label: 'Hudson Voice',
     available: true,
     defaultModel: 'avspeech:system',
     models: [
       {
         id: 'avspeech:system',
-        label: 'Vox System',
-        description: 'Local synthesis through Vox and the macOS speech backend.',
+        label: 'Hudson Voice System',
+        description: 'Local synthesis through Hudson Voice and the macOS speech backend.',
       },
     ],
     supportsVoiceSelection: true,
@@ -75,6 +95,24 @@ function pickReplyPreviewFormat(): 'aac' | 'wav' {
   return audio.canPlayType('audio/mp4; codecs="mp4a.40.2"') ? 'aac' : 'wav';
 }
 
+function formatHudsonVoiceStatus(status: HudsonVoiceRuntimeStatus | null): string {
+  if (!status) return 'checking';
+  if (status.troubleshooting?.runtimeAlive === false) return 'runtime stopped';
+  return status.status ?? 'unknown';
+}
+
+function formatModelReadiness(status: HudsonVoiceRuntimeStatus | null): string {
+  const selected = status?.model?.selectedModelId ?? 'default';
+  const readiness = status?.model?.readiness?.state ?? 'placeholder';
+  return `${selected} / ${readiness}`;
+}
+
+async function requireHudsonVoiceResponse(response: Response, fallback: string): Promise<void> {
+  if (response.ok) return;
+  const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+  throw new Error(typeof payload?.error === 'string' ? payload.error : fallback);
+}
+
 export function HudsonVoiceSettingsEditor({
   voiceSettings,
   onChange,
@@ -90,14 +128,61 @@ export function HudsonVoiceSettingsEditor({
     DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.models ?? [],
   );
   const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>([
-    createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Vox'),
+    createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Hudson Voice'),
   ]);
   const [voiceOptionsError, setVoiceOptionsError] = useState<string | null>(null);
   const [voicePreviewStatus, setVoicePreviewStatus] = useState<'idle' | 'loading' | 'playing'>('idle');
   const [voicePreviewError, setVoicePreviewError] = useState<string | null>(null);
+  const [inputDevices, setInputDevices] = useState<HudsonVoiceDeviceOption[]>([]);
+  const [hudsonVoiceStatus, setHudsonVoiceStatus] = useState<HudsonVoiceRuntimeStatus | null>(null);
+  const [hudsonVoiceSettingsError, setHudsonVoiceSettingsError] = useState<string | null>(null);
   const previewAudioRef = useRef<HTMLAudioElement | null>(null);
   const previewAudioUrlRef = useRef<string | null>(null);
   const previewRequestIdRef = useRef(0);
+  const voiceSettingsRef = useRef(voiceSettings);
+  const hydratedCaptureSettingsRef = useRef(false);
+
+  useEffect(() => {
+    voiceSettingsRef.current = voiceSettings;
+  }, [voiceSettings]);
+
+  useEffect(() => {
+    if (!routes.voiceApiBase || hydratedCaptureSettingsRef.current) return;
+
+    let cancelled = false;
+    void fetch(`${routes.voiceApiBase}/v1/voice/settings`)
+      .then(async response => {
+        if (!response.ok || cancelled) return;
+        const payload = await response.json() as {
+          settings?: {
+            preferredInputDeviceId?: string | null;
+            preferredTranscriptionModelId?: string | null;
+            preferredLanguage?: string | null;
+            mode?: string;
+          };
+        };
+        if (!payload.settings || cancelled) return;
+
+        hydratedCaptureSettingsRef.current = true;
+        const settings = payload.settings;
+        onChange({
+          ...voiceSettingsRef.current,
+          inputDeviceId: settings.preferredInputDeviceId ?? '',
+          transcriptionModel: settings.preferredTranscriptionModelId
+            || voiceSettingsRef.current.transcriptionModel,
+          transcriptionLanguage: settings.preferredLanguage
+            || voiceSettingsRef.current.transcriptionLanguage,
+          captureMode: settings.mode === 'always_on' ? 'always_on' : 'push_to_talk',
+        });
+      })
+      .catch(() => {
+        // Keep local shell defaults when disk prefs are unavailable.
+      });
+
+    return () => {
+      cancelled = true;
+    };
+  }, [onChange, routes.voiceApiBase]);
 
   useEffect(() => {
     let cancelled = false;
@@ -112,7 +197,7 @@ export function HudsonVoiceSettingsEditor({
     if (!routes.voices) {
       setVoiceProviders(DEFAULT_VOICE_PROVIDER_OPTIONS);
       setVoiceModels(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.models ?? []);
-      setVoiceOptions([createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Vox')]);
+      setVoiceOptions([createDefaultVoiceOption(DEFAULT_VOICE_PROVIDER_OPTIONS[0]?.label ?? 'Hudson Voice')]);
       setVoiceOptionsError('Voice catalog is unavailable in this host.');
       return;
     }
@@ -141,7 +226,7 @@ export function HudsonVoiceSettingsEditor({
           ? data.models
           : selectedProvider?.models ?? [];
         const rawOptions = [
-          createDefaultVoiceOption(selectedProvider?.label ?? 'Vox'),
+          createDefaultVoiceOption(selectedProvider?.label ?? 'Hudson Voice'),
           ...(data.voices ?? []).map(voice => ({
             label: voice.label ?? voice.id,
             value: voice.id,
@@ -167,7 +252,7 @@ export function HudsonVoiceSettingsEditor({
         const fallbackProvider = DEFAULT_VOICE_PROVIDER_OPTIONS[0];
         setVoiceProviders(DEFAULT_VOICE_PROVIDER_OPTIONS);
         setVoiceModels(fallbackProvider?.models ?? []);
-        setVoiceOptions([createDefaultVoiceOption(fallbackProvider?.label ?? 'Vox')]);
+        setVoiceOptions([createDefaultVoiceOption(fallbackProvider?.label ?? 'Hudson Voice')]);
         setVoiceOptionsError(error instanceof Error ? error.message : 'Failed to load voices.');
       });
 
@@ -175,6 +260,51 @@ export function HudsonVoiceSettingsEditor({
       cancelled = true;
     };
   }, [routes.voices, voiceSettings.replyModel, voiceSettings.replyProvider]);
+
+  const refreshHudsonVoiceStatus = useCallback(async () => {
+    if (!routes.voiceApiBase) return;
+
+    try {
+      const [devicesResponse, healthResponse] = await Promise.all([
+        fetch(`${routes.voiceApiBase}/v1/voice/devices`),
+        fetch(`${routes.voiceApiBase}/health`).catch(() => null),
+      ]);
+
+      await requireHudsonVoiceResponse(devicesResponse, 'Hudson Voice input devices are unavailable.');
+      const payload = await devicesResponse.json() as {
+        devices?: HudsonVoiceDeviceOption[];
+        selectedDeviceId?: string | null;
+      };
+      const devices = payload.devices ?? [];
+      if (
+        payload.selectedDeviceId
+        && !devices.some(device => device.id === payload.selectedDeviceId)
+      ) {
+        devices.unshift({
+          id: payload.selectedDeviceId,
+          name: 'Selected Hudson Voice input',
+          isSelected: true,
+        });
+      }
+      setInputDevices(devices);
+
+      if (healthResponse?.ok) {
+        setHudsonVoiceStatus(await healthResponse.json() as HudsonVoiceRuntimeStatus);
+      } else if (healthResponse) {
+        setHudsonVoiceStatus({
+          status: 'unavailable',
+          troubleshooting: { runtimeAlive: false },
+        });
+      }
+      setHudsonVoiceSettingsError(null);
+    } catch (error) {
+      setHudsonVoiceSettingsError(error instanceof Error ? error.message : 'Hudson Voice status is unavailable.');
+    }
+  }, [routes.voiceApiBase]);
+
+  useEffect(() => {
+    void refreshHudsonVoiceStatus();
+  }, [refreshHudsonVoiceStatus]);
 
   const releaseVoicePreview = useCallback((resetState = true) => {
     previewRequestIdRef.current += 1;
@@ -211,9 +341,50 @@ export function HudsonVoiceSettingsEditor({
   const selectedVoiceId = voiceSettings.replyVoice;
   const selectedVoice = voiceOptions.find(option => option.value === selectedVoiceId)
     ?? voiceOptions[0]
-    ?? createDefaultVoiceOption(selectedProvider?.label ?? 'Vox');
+    ?? createDefaultVoiceOption(selectedProvider?.label ?? 'Hudson Voice');
   const selectedVoicePreviewText = selectedVoice?.previewText?.trim() || DEFAULT_VOICE_PREVIEW_TEXT;
   const voiceBehaviorPreset = getHudsonVoiceBehaviorPreset(voiceSettings);
+  const hudsonVoiceHealthLabel = formatHudsonVoiceStatus(hudsonVoiceStatus);
+  const modelReadinessLabel = formatModelReadiness(hudsonVoiceStatus);
+  const inputDeviceOptions = [
+    { value: '', label: 'Runtime Default' },
+    ...inputDevices.map(device => ({
+      value: device.id,
+      label: device.isDefault ? `${device.name} (Default)` : device.name,
+    })),
+  ];
+
+  const persistHudsonVoiceSettings = useCallback((patch: Record<string, string | null>) => {
+    if (!routes.voiceApiBase) return;
+    void fetch(`${routes.voiceApiBase}/v1/voice/settings`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ settings: patch }),
+    })
+      .then(async response => {
+        await requireHudsonVoiceResponse(response, 'Hudson Voice settings did not save.');
+        await refreshHudsonVoiceStatus();
+      })
+      .catch(error => {
+        setHudsonVoiceSettingsError(error instanceof Error ? error.message : 'Hudson Voice settings did not save.');
+      });
+  }, [refreshHudsonVoiceStatus, routes.voiceApiBase]);
+
+  const persistInputDevice = useCallback((deviceId: string) => {
+    if (!routes.voiceApiBase) return;
+    void fetch(`${routes.voiceApiBase}/v1/voice/devices/default`, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ deviceId: deviceId || null }),
+    })
+      .then(async response => {
+        await requireHudsonVoiceResponse(response, 'Hudson Voice input did not save.');
+        await refreshHudsonVoiceStatus();
+      })
+      .catch(error => {
+        setHudsonVoiceSettingsError(error instanceof Error ? error.message : 'Hudson Voice input did not save.');
+      });
+  }, [refreshHudsonVoiceStatus, routes.voiceApiBase]);
 
   const handlePreviewVoice = useCallback(async () => {
     if (voicePreviewStatus !== 'idle') {
@@ -334,6 +505,85 @@ export function HudsonVoiceSettingsEditor({
           autoSend: value,
         })}
       />
+      <div className="rounded-lg border border-border/60 bg-muted/40 px-3 py-3 space-y-3">
+        <div className="grid grid-cols-2 gap-2 text-[10px] font-mono">
+          <div>
+            <div className="uppercase tracking-[0.14em] text-muted-foreground">Engine</div>
+            <div className="text-foreground/80">Hudson Voice embedded runtime</div>
+          </div>
+          <div>
+            <div className="uppercase tracking-[0.14em] text-muted-foreground">Status</div>
+            <div className="text-foreground/80">{hudsonVoiceHealthLabel}</div>
+          </div>
+          <div>
+            <div className="uppercase tracking-[0.14em] text-muted-foreground">Permission</div>
+            <div className="text-foreground/80">{hudsonVoiceStatus?.permissions?.microphone ?? 'unknown'}</div>
+          </div>
+          <div>
+            <div className="uppercase tracking-[0.14em] text-muted-foreground">Model</div>
+            <div className="text-foreground/80">{modelReadinessLabel}</div>
+          </div>
+        </div>
+        <SettingsSelect
+          label="Input Device"
+          value={voiceSettings.inputDeviceId}
+          options={inputDeviceOptions}
+          onChange={value => {
+            onChange({
+              ...voiceSettings,
+              inputDeviceId: value,
+            });
+            persistInputDevice(value);
+          }}
+        />
+        <SettingsSelect
+          label="Capture Mode"
+          value={voiceSettings.captureMode}
+          options={[
+            { value: 'push_to_talk', label: 'Push to Talk' },
+            { value: 'always_on', label: 'Always On' },
+          ]}
+          onChange={value => {
+            const captureMode = value === 'always_on' ? 'always_on' : 'push_to_talk';
+            onChange({
+              ...voiceSettings,
+              captureMode,
+            });
+            persistHudsonVoiceSettings({ mode: captureMode });
+          }}
+        />
+        <SettingsSelect
+          label="Capture Model"
+          value={voiceSettings.transcriptionModel}
+          options={[
+            { value: 'parakeet:v3', label: 'Parakeet v3' },
+          ]}
+          onChange={value => {
+            onChange({
+              ...voiceSettings,
+              transcriptionModel: value,
+            });
+            persistHudsonVoiceSettings({ preferredTranscriptionModelId: value });
+          }}
+        />
+        <SettingsSelect
+          label="Language"
+          value={voiceSettings.transcriptionLanguage}
+          options={[
+            { value: 'en', label: 'English' },
+          ]}
+          onChange={value => {
+            onChange({
+              ...voiceSettings,
+              transcriptionLanguage: value,
+            });
+            persistHudsonVoiceSettings({ preferredLanguage: value });
+          }}
+        />
+        {hudsonVoiceSettingsError && (
+          <div className="text-[10px] font-mono text-warning/80">{hudsonVoiceSettingsError}</div>
+        )}
+      </div>
       <SettingsSelect
         label="Reply Provider"
         value={voiceSettings.replyProvider}

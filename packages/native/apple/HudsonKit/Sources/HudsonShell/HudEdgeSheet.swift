@@ -317,7 +317,9 @@ private struct HudEdgeSheetPreviewHost: View {
     }
 }
 
-#Preview("HudEdgeSheet — trailing & bottom") {
-    HudEdgeSheetPreviewHost()
+private struct HudEdgeSheetPreviewHost_Previews: PreviewProvider {
+    static var previews: some View {
+        HudEdgeSheetPreviewHost()
+    }
 }
 #endif

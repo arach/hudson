@@ -209,7 +209,7 @@ public struct HudVoicePanel: View {
 
         do {
             health = try await HudInstrumentation.ui.span("Voice.check.health", metadata: voiceMetadata(status: "pending")) {
-                try await HudVoxProbe.health(endpoint: endpoint, clientId: options.clientId)
+                try await HudVoxProbe.health(endpoint: endpoint, clientId: options.clientId, authToken: options.authToken)
             }
             if state == .error {
                 state = .done
