@@ -1,0 +1,11 @@
+{
+  "products": [
+    {"name": "HudsonKitExperimental", "targets": ["HudsonKitExperimental"], "type": {"library": ["automatic"]}},
+    {"name": "HudsonStable", "targets": ["HudsonStable"], "type": {"library": ["automatic"]}}
+  ],
+  "targets": [
+    {"name": "HudsonKitExperimental", "type": "regular", "dependencies": []},
+    {"name": "HudsonKitExperimentalTests", "type": "test", "dependencies": [{"byName": ["HudsonKitExperimental", null]}]},
+    {"name": "HudsonStable", "type": "regular", "dependencies": []}
+  ]
+}

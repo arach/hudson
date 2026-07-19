@@ -72,6 +72,11 @@ let tst = "packages/native/apple/HudsonKit/Tests/"
 let demo = "packages/native/apple/HudsonKit/Demo/"
 
 var products: [Product] = [
+    // This intentionally empty quarantine product is the only entry point for
+    // mechanics still earning stable HudsonKit admission. Stable products must
+    // never depend on it; scripts/apple/check-experimental-boundary.py enforces
+    // that graph rule in CI.
+    hudsonLibrary(name: "HudsonKitExperimental", targets: ["HudsonKitExperimental"]),
     hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
     hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
     hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
@@ -96,6 +101,7 @@ var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
+    .target(name: "HudsonKitExperimental", path: src + "HudsonKitExperimental"),
     .target(name: "HudsonObservability", path: src + "HudsonObservability"),
     .target(name: "HudsonLive", path: src + "HudsonLive"),
     .target(name: "HudsonDiff", path: src + "HudsonDiff"),
@@ -114,6 +120,11 @@ var targets: [Target] = [
     .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
+    .testTarget(
+        name: "HudsonKitExperimentalTests",
+        dependencies: ["HudsonKitExperimental"],
+        path: tst + "HudsonKitExperimentalTests"
+    ),
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
