@@ -33,7 +33,7 @@ export interface HudsonVoicePreferences {
   preferredTranscriptionModelId: string | null;
   preferredSynthesisModelId: string | null;
   preferredLanguage: string | null;
-  mode: string;
+  mode: HudsonVoiceMode;
 }
 
 export function defaultHudsonVoicePreferences(): HudsonVoicePreferences {

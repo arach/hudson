@@ -155,7 +155,7 @@ function cleanLiveSessionRequest(body: Record<string, unknown>): Record<string, 
   for (const key of ['deviceId', 'modelId', 'language', 'mode']) {
     if (typeof next[key] === 'string' && next[key].trim()) {
       next[key] = next[key].trim();
-    } else if (next[key] == null || next[key] === '') {
+    } else {
       delete next[key];
     }
   }

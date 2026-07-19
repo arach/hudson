@@ -107,6 +107,12 @@ function formatModelReadiness(status: HudsonVoiceRuntimeStatus | null): string {
   return `${selected} / ${readiness}`;
 }
 
+async function requireHudsonVoiceResponse(response: Response, fallback: string): Promise<void> {
+  if (response.ok) return;
+  const payload = await response.json().catch(() => null) as { error?: unknown } | null;
+  throw new Error(typeof payload?.error === 'string' ? payload.error : fallback);
+}
+
 export function HudsonVoiceSettingsEditor({
   voiceSettings,
   onChange,
@@ -136,7 +142,9 @@ export function HudsonVoiceSettingsEditor({
   const voiceSettingsRef = useRef(voiceSettings);
   const hydratedCaptureSettingsRef = useRef(false);
 
-  voiceSettingsRef.current = voiceSettings;
+  useEffect(() => {
+    voiceSettingsRef.current = voiceSettings;
+  }, [voiceSettings]);
 
   useEffect(() => {
     if (!routes.voiceApiBase || hydratedCaptureSettingsRef.current) return;
@@ -262,24 +270,23 @@ export function HudsonVoiceSettingsEditor({
         fetch(`${routes.voiceApiBase}/health`).catch(() => null),
       ]);
 
-      if (devicesResponse.ok) {
-        const payload = await devicesResponse.json() as {
-          devices?: HudsonVoiceDeviceOption[];
-          selectedDeviceId?: string | null;
-        };
-        const devices = payload.devices ?? [];
-        if (
-          payload.selectedDeviceId
-          && !devices.some(device => device.id === payload.selectedDeviceId)
-        ) {
-          devices.unshift({
-            id: payload.selectedDeviceId,
-            name: 'Selected Hudson Voice input',
-            isSelected: true,
-          });
-        }
-        setInputDevices(devices);
+      await requireHudsonVoiceResponse(devicesResponse, 'Hudson Voice input devices are unavailable.');
+      const payload = await devicesResponse.json() as {
+        devices?: HudsonVoiceDeviceOption[];
+        selectedDeviceId?: string | null;
+      };
+      const devices = payload.devices ?? [];
+      if (
+        payload.selectedDeviceId
+        && !devices.some(device => device.id === payload.selectedDeviceId)
+      ) {
+        devices.unshift({
+          id: payload.selectedDeviceId,
+          name: 'Selected Hudson Voice input',
+          isSelected: true,
+        });
       }
+      setInputDevices(devices);
 
       if (healthResponse?.ok) {
         setHudsonVoiceStatus(await healthResponse.json() as HudsonVoiceRuntimeStatus);
@@ -354,7 +361,10 @@ export function HudsonVoiceSettingsEditor({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ settings: patch }),
     })
-      .then(() => refreshHudsonVoiceStatus())
+      .then(async response => {
+        await requireHudsonVoiceResponse(response, 'Hudson Voice settings did not save.');
+        await refreshHudsonVoiceStatus();
+      })
       .catch(error => {
         setHudsonVoiceSettingsError(error instanceof Error ? error.message : 'Hudson Voice settings did not save.');
       });
@@ -367,7 +377,10 @@ export function HudsonVoiceSettingsEditor({
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ deviceId: deviceId || null }),
     })
-      .then(() => refreshHudsonVoiceStatus())
+      .then(async response => {
+        await requireHudsonVoiceResponse(response, 'Hudson Voice input did not save.');
+        await refreshHudsonVoiceStatus();
+      })
       .catch(error => {
         setHudsonVoiceSettingsError(error instanceof Error ? error.message : 'Hudson Voice input did not save.');
       });

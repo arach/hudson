@@ -118,6 +118,54 @@ describe('Hudson voice preferences', () => {
     });
   });
 
+  it('device route rejects an input missing from the native cache', async () => {
+    const { preferencesPath } = useTempPreferences();
+    const devicesPath = join(dirname(preferencesPath), 'input-devices.json');
+    process.env.HUDSON_VOICE_INPUT_DEVICES_PATH = devicesPath;
+    mkdirSync(dirname(devicesPath), { recursive: true });
+    writeFileSync(devicesPath, JSON.stringify({
+      schemaVersion: 1,
+      devices: [{ id: 'mic-known', name: 'Known Mic', isDefault: true }],
+      defaultDeviceId: 'mic-known',
+      updatedAt: '2026-06-19T12:00:00.000Z',
+    }));
+
+    const response = await putDefaultDevice(sameOriginRequest('/api/hudson-voice/v1/voice/devices/default', {
+      method: 'PUT',
+      body: JSON.stringify({ deviceId: 'mic-missing' }),
+    }));
+
+    expect(response.status).toBe(400);
+    await expect(response.json()).resolves.toMatchObject({
+      error: expect.stringContaining('mic-missing'),
+    });
+    expect(readHudsonVoicePreferences().preferredInputDeviceId).toBeNull();
+  });
+
+  it('clearing the input preference clears stale cache selection flags', async () => {
+    const { preferencesPath } = useTempPreferences();
+    const devicesPath = join(dirname(preferencesPath), 'input-devices.json');
+    process.env.HUDSON_VOICE_INPUT_DEVICES_PATH = devicesPath;
+    mkdirSync(dirname(devicesPath), { recursive: true });
+    writeFileSync(devicesPath, JSON.stringify({
+      schemaVersion: 1,
+      devices: [{ id: 'mic-old', name: 'Old Mic', isSelected: true }],
+      defaultDeviceId: null,
+      updatedAt: '2026-06-19T12:00:00.000Z',
+    }));
+    writeHudsonVoicePreferences({ preferredInputDeviceId: 'mic-old' });
+
+    const response = await putDefaultDevice(sameOriginRequest('/api/hudson-voice/v1/voice/devices/default', {
+      method: 'PUT',
+      body: JSON.stringify({ deviceId: null }),
+    }));
+
+    await expect(response.json()).resolves.toMatchObject({
+      selectedDeviceId: null,
+      devices: [{ id: 'mic-old', isSelected: false }],
+    });
+  });
+
   it('settings route updates model, language, mode, and input preference', async () => {
     useTempPreferences();
 

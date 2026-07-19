@@ -114,7 +114,7 @@ export function buildHudsonVoiceDeviceList(
     return {
       devices: cache.devices.map(device => ({
         ...device,
-        isSelected: selectedDeviceId ? device.id === selectedDeviceId : device.isSelected,
+        isSelected: selectedDeviceId ? device.id === selectedDeviceId : false,
       })),
       defaultDeviceId: cache.defaultDeviceId,
       source: 'native-cache' as const,

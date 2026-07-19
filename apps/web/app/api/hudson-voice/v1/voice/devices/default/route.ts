@@ -2,7 +2,10 @@ import {
   assertHudsonVoiceSameOriginRequest,
   jsonHudsonVoiceError,
 } from '@/app/lib/hudsonVoiceRuntime';
-import { buildHudsonVoiceDeviceList } from '@/app/lib/hudsonVoiceDeviceCache';
+import {
+  buildHudsonVoiceDeviceList,
+  readHudsonVoiceInputDeviceCache,
+} from '@/app/lib/hudsonVoiceDeviceCache';
 import { writeHudsonVoicePreferences } from '@/app/lib/hudsonVoicePreferences';
 
 export const runtime = 'nodejs';
@@ -12,6 +15,17 @@ export async function PUT(request: Request) {
     assertHudsonVoiceSameOriginRequest(request);
     const body = await request.json().catch(() => ({}));
     const deviceId = readDeviceId(body);
+    const cache = readHudsonVoiceInputDeviceCache();
+    if (
+      deviceId
+      && cache?.devices.length
+      && !cache.devices.some(device => device.id === deviceId)
+    ) {
+      return Response.json(
+        { error: `Hudson Voice input device was not found: ${deviceId}` },
+        { status: 400 },
+      );
+    }
     const preferences = writeHudsonVoicePreferences({
       preferredInputDeviceId: deviceId,
     });
