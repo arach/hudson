@@ -67,21 +67,40 @@ class ExperimentalBoundaryTests(unittest.TestCase):
             CHECKER.package_errors(self.package),
         )
 
-    def source_errors_for(self, contents: str, target_name: str = "HudsonStable") -> list[str]:
+    def test_rejects_moved_experimental_source_target(self) -> None:
+        self.target("HudsonKitExperimental")["path"] = (
+            "packages/native/apple/HudsonKit/Sources/HudsonUI"
+        )
+        self.assertIn(
+            "target HudsonKitExperimental must use path "
+            "packages/native/apple/HudsonKit/Sources/HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
+
+    def test_rejects_experimental_target_outside_its_exact_path(self) -> None:
+        self.target("HudsonKitExperimental")["path"] = "packages/native/apple/HudsonKit/Sources/HudsonStable"
+        self.assertIn(
+            "target HudsonKitExperimental must use path packages/native/apple/HudsonKit/Sources/HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
+
+    def source_errors_for(self, contents: str, relative_path: str = "Sources/HudsonStable/Stable.swift") -> list[str]:
         with tempfile.TemporaryDirectory() as temporary_directory:
             source_root = Path(temporary_directory)
-            stable_source = source_root / target_name / "Stable.swift"
-            stable_source.parent.mkdir()
+            stable_source = source_root / relative_path
+            stable_source.parent.mkdir(parents=True)
             stable_source.write_text(contents, encoding="utf-8")
             return CHECKER.source_errors(source_root)
 
     def test_rejects_stable_import(self) -> None:
         errors = self.source_errors_for("import HudsonKitExperimental\n")
-        self.assertTrue(any("imports or re-exports" in error for error in errors))
+        self.assertTrue(
+            any("unauthorized source imports or re-exports" in error for error in errors)
+        )
 
     def test_rejects_stable_reexport(self) -> None:
         errors = self.source_errors_for("@_exported import HudsonKitExperimental\n")
-        self.assertTrue(any("imports or re-exports" in error for error in errors))
+        self.assertTrue(any("unauthorized source imports or re-exports" in error for error in errors))
 
     def test_rejects_spi_escape_hatch(self) -> None:
         errors = self.source_errors_for("@_spi(Experimental) import HudsonStable\n")
@@ -90,7 +109,7 @@ class ExperimentalBoundaryTests(unittest.TestCase):
     def test_rejects_spi_escape_hatch_inside_experimental_target(self) -> None:
         errors = self.source_errors_for(
             "@_spi(Experimental) import HudsonStable\n",
-            target_name="HudsonKitExperimental",
+            relative_path="Sources/HudsonKitExperimental/Stable.swift",
         )
         self.assertTrue(any("forbidden @_spi(Experimental)" in error for error in errors))
 
@@ -100,6 +119,34 @@ class ExperimentalBoundaryTests(unittest.TestCase):
             "let guidance = \"import HudsonKitExperimental\"\n"
         )
         self.assertEqual(errors, [])
+
+    def test_allows_import_only_in_exact_experimental_paths(self) -> None:
+        for relative_path in (
+            "Sources/HudsonKitExperimental/Allowed.swift",
+            "Tests/HudsonKitExperimentalTests/Allowed.swift",
+            "Demo/HudsonKitExperimentalDemo/main.swift",
+        ):
+            with self.subTest(relative_path=relative_path):
+                self.assertEqual(
+                    self.source_errors_for("import HudsonKitExperimental\n", relative_path),
+                    [],
+                )
+
+    def test_rejects_unauthorized_demo_import_path(self) -> None:
+        errors = self.source_errors_for(
+            "import HudsonKitExperimental\n",
+            relative_path="Demo/HudsonKitDemo/Leak.swift",
+        )
+        self.assertTrue(any("unauthorized source imports or re-exports" in error for error in errors))
+
+    def test_rejects_invalid_experimental_demo_contract(self) -> None:
+        self.target("HudsonKitExperimentalDemo")["dependencies"].append(
+            {"byName": ["HudsonStable", None]}
+        )
+        self.assertIn(
+            "demo target HudsonKitExperimentalDemo must depend only on HudsonKitExperimental",
+            CHECKER.package_errors(self.package),
+        )
 
 
 if __name__ == "__main__":
