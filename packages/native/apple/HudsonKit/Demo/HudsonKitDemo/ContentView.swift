@@ -125,18 +125,25 @@ struct ContentView: View {
                 ),
                 labelWidth: $navLabelWidth,
                 railHeader: {
-                    HudStatusDot(color: variant.manifest.accent)
-                        .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                    HudsonKitMark()
+                        .foregroundStyle(HudPalette.ink)
+                        .frame(width: HudIconSize.small, height: HudIconSize.small)
                         .contentShape(Rectangle())
                         .accessibilityLabel("Toggle navigation")
                 },
                 labelHeader: {
-                    Text(variant.manifest.name)
-                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
-                        .lineLimit(1)
-                        .contentShape(Rectangle())
-                        .accessibilityLabel("Toggle navigation")
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("HUDSONKIT")
+                            .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                            .tracking(1.2)
+                            .foregroundStyle(HudPalette.ink)
+                        Text(variant.manifest.name)
+                            .font(HudFont.ui(HudTextSize.xxs, weight: .medium))
+                            .foregroundStyle(HudPalette.muted)
+                    }
+                    .lineLimit(1)
+                    .contentShape(Rectangle())
+                    .accessibilityLabel("Toggle navigation")
                 },
                 footer: {
                     variantPicker
@@ -553,9 +560,7 @@ struct ContentView: View {
     private var statusBar: some View {
         HStack(spacing: HudSpacing.xl) {
             HudStatusDot(color: variant.manifest.accent, pulses: true)
-            Text("HUDSON·KIT")
-                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
-                .tracking(1.5)
+            HudsonKitLockup(markSize: 10, wordmarkSize: HudTextSize.xxs, spacing: 5)
                 .foregroundStyle(HudPalette.muted)
 
             statusSeparator

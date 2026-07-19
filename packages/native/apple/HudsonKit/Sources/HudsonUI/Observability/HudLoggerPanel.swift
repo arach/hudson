@@ -10,13 +10,20 @@ public struct HudLoggerPanel: View {
     public let onClose: () -> Void
 
     public init(
-        store: HudLogStore = .shared,
+        store: HudLogStore,
         title: String = "Activity Log",
         onClose: @escaping () -> Void
     ) {
         self._store = ObservedObject(wrappedValue: store)
         self.title = title
         self.onClose = onClose
+    }
+
+    public init(
+        title: String = "Activity Log",
+        onClose: @escaping () -> Void
+    ) {
+        self.init(store: .shared, title: title, onClose: onClose)
     }
 
     public var body: some View {

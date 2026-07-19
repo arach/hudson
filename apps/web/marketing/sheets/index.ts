@@ -24,5 +24,5 @@ export const sheets: SheetEntry[] = [
   { id: 'surfaces', label: 'Multi-Surface', Component: Sheet04Surfaces },
   { id: 'apps', label: 'Apps Gallery', Component: Sheet05Apps },
   { id: 'primitives', label: 'Primitives', Component: Sheet06Primitives },
-  { id: 'quickstart', label: 'Quickstart', Component: Sheet07Quickstart },
+  { id: 'quickstart', label: 'Implementation', Component: Sheet07Quickstart },
 ];

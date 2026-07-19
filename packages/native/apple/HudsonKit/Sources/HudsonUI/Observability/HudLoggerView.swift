@@ -20,7 +20,7 @@ public struct HudLoggerView: View {
     private let demoLogger = HudLogger(category: "demo")
 
     public init(
-        store: HudLogStore = .shared,
+        store: HudLogStore,
         title: String = "Diagnostics",
         showHeader: Bool = true,
         showDemoControls: Bool = false,
@@ -31,6 +31,21 @@ public struct HudLoggerView: View {
         self.showHeader = showHeader
         self.showDemoControls = showDemoControls
         self.emptySubtitle = emptySubtitle
+    }
+
+    public init(
+        title: String = "Diagnostics",
+        showHeader: Bool = true,
+        showDemoControls: Bool = false,
+        emptySubtitle: String? = nil
+    ) {
+        self.init(
+            store: .shared,
+            title: title,
+            showHeader: showHeader,
+            showDemoControls: showDemoControls,
+            emptySubtitle: emptySubtitle
+        )
     }
 
     public var body: some View {

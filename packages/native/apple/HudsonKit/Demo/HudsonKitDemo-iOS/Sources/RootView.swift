@@ -127,7 +127,8 @@ struct RootView: View {
                     }
                 }
             } label: {
-                Image(systemName: "square.grid.2x2")
+                HudsonKitMark()
+                    .frame(width: HudIconSize.micro, height: HudIconSize.micro)
             }
             .accessibilityLabel("Switch demo page")
         }

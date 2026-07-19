@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server';
-import { readFile, writeFile, readdir, unlink, mkdir, stat } from 'fs/promises';
+import { readFile, writeFile, readdir, unlink, mkdir } from 'fs/promises';
 import { join } from 'path';
 import type { PipeDefinition } from 'hudsonkit';
+import { isSafeFileId, rejectUntrustedLocalRequest } from '@/app/lib/localRequestGuard';
 import { REPO_ROOT } from '@/app/lib/repoRoot';
 
 const PIPES_DIR = join(REPO_ROOT, '.data', 'pipes');
@@ -27,7 +28,10 @@ async function readAllPipes(): Promise<PipeDefinition[]> {
 // ---------------------------------------------------------------------------
 // GET — return all pipes
 // ---------------------------------------------------------------------------
-export async function GET() {
+export async function GET(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   const pipes = await readAllPipes();
   return NextResponse.json({ pipes });
 }
@@ -36,6 +40,9 @@ export async function GET() {
 // POST — create, update, or delete a pipe
 // ---------------------------------------------------------------------------
 export async function POST(request: Request) {
+  const rejected = rejectUntrustedLocalRequest(request);
+  if (rejected) return rejected;
+
   try {
     const body = await request.json();
     const { action, pipe } = body as {
@@ -43,10 +50,12 @@ export async function POST(request: Request) {
       pipe?: PipeDefinition;
     };
 
-    await ensureDir();
-
     // Delete
-    if (action === 'delete' && pipe?.id) {
+    if (action === 'delete') {
+      if (typeof pipe?.id !== 'string' || !isSafeFileId(pipe.id)) {
+        return NextResponse.json({ error: 'Invalid pipe id' }, { status: 400 });
+      }
+      await ensureDir();
       try {
         await unlink(join(PIPES_DIR, `${pipe.id}.json`));
       } catch { /* already gone */ }
@@ -54,7 +63,11 @@ export async function POST(request: Request) {
     }
 
     // Update lastPushedAt only
-    if (action === 'update-pushed' && pipe?.id) {
+    if (action === 'update-pushed') {
+      if (typeof pipe?.id !== 'string' || !isSafeFileId(pipe.id)) {
+        return NextResponse.json({ error: 'Invalid pipe id' }, { status: 400 });
+      }
+      await ensureDir();
       const filePath = join(PIPES_DIR, `${pipe.id}.json`);
       try {
         const raw = await readFile(filePath, 'utf-8');
@@ -71,7 +84,11 @@ export async function POST(request: Request) {
     if (!pipe) {
       return NextResponse.json({ error: 'pipe object is required' }, { status: 400 });
     }
-    const pipeId = pipe.id || crypto.randomUUID().slice(0, 8);
+    const requestedId: unknown = pipe.id;
+    if (requestedId !== undefined && (typeof requestedId !== 'string' || !isSafeFileId(requestedId))) {
+      return NextResponse.json({ error: 'Invalid pipe id' }, { status: 400 });
+    }
+    const pipeId = requestedId ?? crypto.randomUUID().slice(0, 8);
     const definition: PipeDefinition = {
       ...pipe,
       id: pipeId,
@@ -79,6 +96,7 @@ export async function POST(request: Request) {
       lastPushedAt: pipe.lastPushedAt ?? null,
       enabled: pipe.enabled ?? true,
     };
+    await ensureDir();
     await writeFile(
       join(PIPES_DIR, `${pipeId}.json`),
       JSON.stringify(definition, null, 2),

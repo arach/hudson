@@ -1,4 +1,5 @@
 import type { CSSProperties, ReactNode } from 'react';
+import { HudsonKitLockup } from 'hudsonkit';
 import { InlineDraftingToolbar } from '@/marketing/lib/fx/InlineDraftingToolbar';
 import { FooterPlate, type FooterPlateProps } from './FooterPlate';
 
@@ -50,7 +51,9 @@ export function Sheet({
       <header className="sheet-header">
         <div className="sheet-header__rule" />
         <div className="sheet-header__bar">
-          <div className="sheet-header__brand">HUDSONKIT</div>
+          <div className="sheet-header__brand">
+            <HudsonKitLockup markSize={18} gap={9} />
+          </div>
 
           <div className="sheet-header__title">
             <span className="sheet-header__title-badge">

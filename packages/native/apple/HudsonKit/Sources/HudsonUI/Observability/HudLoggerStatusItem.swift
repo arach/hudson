@@ -12,13 +12,20 @@ public struct HudLoggerStatusItem: View {
     public var showCounts: Bool
 
     public init(
-        store: HudLogStore = .shared,
+        store: HudLogStore,
         label: String = "Logs",
         showCounts: Bool = false
     ) {
         self._store = ObservedObject(wrappedValue: store)
         self.label = label
         self.showCounts = showCounts
+    }
+
+    public init(
+        label: String = "Logs",
+        showCounts: Bool = false
+    ) {
+        self.init(store: .shared, label: label, showCounts: showCounts)
     }
 
     public var body: some View {

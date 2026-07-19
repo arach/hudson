@@ -162,3 +162,29 @@ describe('AppShell keyboard commands', () => {
     expect(readStored(scoped('left'))).toBe(false);
   });
 });
+
+describe('AppShell exclusive panels', () => {
+  it('uses per-app collapsed defaults and yields the left panel while the right is open', async () => {
+    const { app } = makeTestApp({ id: APP_ID });
+    app.layout = { right: { collapsed: true } };
+    render(
+      <AppShell
+        app={app}
+        managedTheme={false}
+        chrome={{ panelBehavior: { exclusive: true } }}
+      />,
+    );
+    await act(async () => {});
+
+    expect(readStored(scoped('left'))).toBe(false);
+    expect(readStored(scoped('right'))).toBe(true);
+
+    fireEvent.keyDown(window, { key: ']', metaKey: true });
+    expect(readStored(scoped('left'))).toBe(true);
+    expect(readStored(scoped('right'))).toBe(false);
+
+    fireEvent.keyDown(window, { key: ']', metaKey: true });
+    expect(readStored(scoped('left'))).toBe(false);
+    expect(readStored(scoped('right'))).toBe(true);
+  });
+});

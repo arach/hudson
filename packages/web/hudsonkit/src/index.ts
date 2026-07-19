@@ -261,6 +261,8 @@ export type { PlatformAdapter, PlatformLayout } from './platform';
 export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from './platform';
 
 // Reusable widgets
+export { HudsonKitLockup, HudsonKitMark } from './components/brand';
+export type { HudsonKitLockupProps, HudsonKitMarkProps } from './components/brand';
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';
@@ -313,6 +315,7 @@ export {
 } from './controls';
 export type {
   CodeEditorProps,
+  CodeEditorSelection,
   CodeLanguage,
   CodeViewerProps,
   DocumentLanguage,
