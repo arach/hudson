@@ -7,6 +7,7 @@ import {
   detachSession,
   markMuxSessionDetached,
   markMuxSessionInUse,
+  planTmuxSession,
   reapExpiredMuxSessions,
   resizeSession,
   sessionOwnsSocket,
@@ -224,6 +225,18 @@ describe('reconnect token enforcement', () => {
 // ---------------------------------------------------------------------------
 
 describe('observe control mode', () => {
+  it('rejects missing tmux sessions and never resizes observed sessions', () => {
+    expect(planTmuxSession(false, 'observe')).toEqual({ action: 'reject', resize: false });
+    expect(planTmuxSession(true, 'observe')).toEqual({ action: 'attach', resize: false });
+  });
+
+  it('creates or resizes tmux sessions for controlling clients', () => {
+    for (const controlMode of ['owner', 'takeover'] as const) {
+      expect(planTmuxSession(false, controlMode)).toEqual({ action: 'create', resize: false });
+      expect(planTmuxSession(true, controlMode)).toEqual({ action: 'attach', resize: true });
+    }
+  });
+
   it('writeSession drops input from observe sessions on every backend', () => {
     for (const backend of ['pty', 'tmux', 'zellij'] as const) {
       const session = fakeSession({ controlMode: 'observe', backend });

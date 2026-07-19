@@ -391,6 +391,29 @@ function resizeTmuxWindow(name: string, cols: number, rows: number): boolean {
   }
 }
 
+export type TmuxSessionPlan = {
+  action: 'create' | 'attach' | 'reject';
+  resize: boolean;
+};
+
+/** Resolve tmux startup behavior without mutating a shared session. */
+export function planTmuxSession(
+  exists: boolean,
+  controlMode: Session['controlMode'],
+): TmuxSessionPlan {
+  if (!exists) {
+    return {
+      action: controlMode === 'observe' ? 'reject' : 'create',
+      resize: false,
+    };
+  }
+
+  return {
+    action: 'attach',
+    resize: controlMode !== 'observe',
+  };
+}
+
 /** Resolve a bootstrap file path, rejecting anything that escapes the cwd. */
 export function resolveBootstrapPath(cwd: string, relPath: string): string | null {
   const base = pathResolve(cwd);
@@ -429,10 +452,16 @@ function spawnTmuxSession(
   commandBin: string,
   commandArgs: string[],
   env: Record<string, string | undefined>,
+  controlMode: 'owner' | 'takeover' | 'observe',
 ): IPty {
   const exists = tmuxSessionExists(tmuxName);
+  const plan = planTmuxSession(exists, controlMode);
 
-  if (!exists) {
+  if (plan.action === 'reject') {
+    throw new Error(`tmux session '${tmuxName}' does not exist`);
+  }
+
+  if (plan.action === 'create') {
     // Create the tmux session detached, running the requested command inside it.
     // tmux runs the trailing command through a shell, so quote every word;
     // everything else is passed as discrete argv entries (no shell involved).
@@ -448,9 +477,11 @@ function spawnTmuxSession(
     console.log(`[relay] Created tmux session: ${tmuxName}`);
     if (muxTtlMs() > 0) trackCreatedMuxSession('tmux', tmuxName);
   } else {
-    // Resize existing session to match client
-    resizeTmuxWindow(tmuxName, cols, rows);
-    console.log(`[relay] Attaching to existing tmux session: ${tmuxName}`);
+    // Observers should never perturb the tmux session they are watching.
+    if (plan.resize) {
+      resizeTmuxWindow(tmuxName, cols, rows);
+    }
+    console.log(`[relay] Attaching to existing tmux session: ${tmuxName}${controlMode === 'observe' ? ' (observe)' : ''}`);
     markMuxSessionInUse('tmux', tmuxName);
   }
 
@@ -609,7 +640,7 @@ export function createSession(ws: RelaySocket, msg: SessionInitMessage): Session
   try {
     if (backend === 'tmux') {
       console.log(`[relay] Session ${id}: tmux backend (session: ${tmuxName}) in ${cwd} [agent: ${agent}]`);
-      ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env);
+      ptyProcess = spawnTmuxSession(tmuxName, cols, rows, cwd, agentBin, agentArgs, env, controlMode);
     } else if (backend === 'zellij') {
       console.log(`[relay] Session ${id}: zellij backend (session: ${zellijName}, mode: ${controlMode}) in ${cwd} [agent: ${agent}]`);
       // Only pay for the existence check when the mux reaper is on; 'observe'

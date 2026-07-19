@@ -298,6 +298,10 @@ function resolveSigningIdentity(cliArgs, config) {
     ?? defaultSigningIdentity();
 }
 
+export function shouldUseDeepSigning(app) {
+  return (app.embeddedHelpers?.length ?? 0) === 0;
+}
+
 function signAppBundle(bundlePath, app, identity, options) {
   if (options.skipSign) {
     process.stdout.write(`==> Skipping app signing: ${displayPath(bundlePath)}\n`);
@@ -309,7 +313,10 @@ function signAppBundle(bundlePath, app, identity, options) {
   rmSync(tempBinary, { force: true });
 
   const entitlements = app.entitlementsPath;
-  const args = ['--force', '--options', 'runtime', '--deep'];
+  const args = ['--force', '--options', 'runtime'];
+  if (shouldUseDeepSigning(app)) {
+    args.push('--deep');
+  }
   if (identity) args.push('--timestamp');
   args.push('--sign', identity || '-');
   if (entitlements && existsSync(entitlements)) args.push('--entitlements', entitlements);
