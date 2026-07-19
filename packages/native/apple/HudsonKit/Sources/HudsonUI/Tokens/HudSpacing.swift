@@ -62,6 +62,7 @@ public enum HudLayout {
     public static var textDocumentLineNumberWidth: CGFloat { 36 }
     public static var markdownTableCellWidth: CGFloat { 150 }
     public static var composerAccessoryButtonSize: CGFloat { 26 }
+    public static var settingsPickerWidth: CGFloat { 148 }
 }
 
 // MARK: - Deprecated Hudson* aliases

@@ -20,7 +20,7 @@ var targets: [Target] = [
 
 if voiceHelperEnabled {
     dependencies.append(
-        .package(name: "Vox", path: "../../../../vox/swift")
+        .package(name: "Vox", path: "../../../../vox")
     )
     targets.append(
         .target(

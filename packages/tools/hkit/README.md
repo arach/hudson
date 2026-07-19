@@ -24,11 +24,13 @@ Build entries may declare optional Hudson features by name:
 {
   "command": "swift",
   "args": ["build", "-c", "release"],
-  "features": ["voice"]
+  "features": ["terminal"]
 }
 ```
 
-Known features: `voice`, `terminal`. Raw `env` remains available as a last-mile
+Known features: `terminal`. `voice` remains accepted as a compatibility no-op
+because HudsonVoice is now included in the default package graph; model
+acquisition is selected at runtime. Raw `env` remains available as a last-mile
 override, but feature selection should prefer `features`.
 
 Top-level `apps` are copied into the DMG. Add `embeddedHelpers` to an app when

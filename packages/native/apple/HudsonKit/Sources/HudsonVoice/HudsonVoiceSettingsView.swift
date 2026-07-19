@@ -115,6 +115,21 @@ public struct HudsonVoiceSettingsView: View {
             HudDivider()
 
             VoiceSettingsPickerRow(
+                title: "Model Download",
+                subtitle: "When Hudson may acquire the on-device voice model",
+                value: preferences.modelDownloadPolicy.title,
+                icon: "arrow.down.circle",
+                iconColor: HudPalette.dim,
+                selection: modelDownloadPolicySelection
+            ) {
+                ForEach(HudVoiceModelDownloadPolicy.allCases, id: \.self) { policy in
+                    Text(policy.title).tag(policy)
+                }
+            }
+
+            HudDivider()
+
+            VoiceSettingsPickerRow(
                 title: "Language",
                 subtitle: "Recognition language for the embedded runtime",
                 value: languageLabel(preferences.preferredLanguage),
@@ -242,6 +257,15 @@ public struct HudsonVoiceSettingsView: View {
             get: { preferences.preferredTranscriptionModelId ?? HudsonVoicePreferences.defaultTranscriptionModelId },
             set: { modelId in
                 savePreferences { $0.preferredTranscriptionModelId = clean(modelId) ?? HudsonVoicePreferences.defaultTranscriptionModelId }
+            }
+        )
+    }
+
+    private var modelDownloadPolicySelection: Binding<HudVoiceModelDownloadPolicy> {
+        Binding(
+            get: { preferences.modelDownloadPolicy },
+            set: { policy in
+                savePreferences { $0.modelDownloadPolicy = policy }
             }
         )
     }
@@ -552,7 +576,11 @@ private struct VoiceSettingsRow<Trailing: View>: View {
             Image(systemName: icon)
                 .font(.system(size: HudTextSize.sm, weight: .medium))
                 .foregroundStyle(iconColor)
-                .frame(width: 18, height: 24, alignment: .center)
+                .frame(
+                    width: HudIconSize.micro,
+                    height: HudLayout.textDocumentModeButtonHeight,
+                    alignment: .center
+                )
 
             VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                 Text(title)
@@ -644,7 +672,7 @@ private struct VoiceSettingsPickerRow<SelectionValue: Hashable, Options: View>: 
             }
             .labelsHidden()
             .pickerStyle(.menu)
-            .frame(width: 148)
+            .frame(width: HudLayout.settingsPickerWidth)
         }
     }
 }

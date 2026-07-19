@@ -46,6 +46,7 @@ Native host (AVCaptureDevice) ──► input-devices.json (read by web GET /dev
   "preferredTranscriptionModelId": "parakeet:v3",
   "preferredSynthesisModelId": null,
   "preferredLanguage": "en",
+  "modelDownloadPolicy": "on_first_use",
   "mode": "push_to_talk"
 }
 ```
@@ -57,6 +58,7 @@ Native host (AVCaptureDevice) ──► input-devices.json (read by web GET /dev
 | `preferredTranscriptionModelId` | string | `parakeet:v3` |
 | `preferredSynthesisModelId` | `string \| null` | `null` |
 | `preferredLanguage` | string | `en` |
+| `modelDownloadPolicy` | `never` \| `on_first_use` \| `eager` | `on_first_use` |
 | `mode` | `push_to_talk` \| `always_on` | `push_to_talk` |
 
 ### Vox mirror (`Vox/preferences.json`)
@@ -66,7 +68,8 @@ Native host (AVCaptureDevice) ──► input-devices.json (read by web GET /dev
   "speech": {
     "preferredTranscriptionModelId": "parakeet:v3",
     "preferredSynthesisModelId": null,
-    "preferredInputDeviceId": null
+    "preferredInputDeviceId": null,
+    "modelDownloadPolicy": "on_first_use"
   }
 }
 ```
@@ -189,7 +192,7 @@ Merges request body with disk preferences via `createHudsonVoiceSessionDefaults(
 
 | Type | Role |
 |------|------|
-| `HudsonVoicePreferences` | Load/save prefs + Vox mirror |
+| `HudsonVoicePreferences` | Load/save prefs, including runtime model acquisition policy, + Vox mirror |
 | `HudsonVoiceAudioDevices` | `AVCaptureDevice` list/set preferred + write `input-devices.json` |
 | `HudsonVoiceRuntime` | Read `hudson-voice-runtime.json` |
 | `HudsonVoiceRuntimeHost` | Embed `VoxRuntimeService` for kit apps |
@@ -202,7 +205,7 @@ Merges request body with disk preferences via `createHudsonVoiceSessionDefaults(
 | Hudson Menu (`HudsonVoiceDaemonHost`) | Start/stop runtime, menu UI, write device cache on refresh |
 | HudsonKit Demo (`VoiceTab`) | `HudsonVoiceSettingsView` beside `HudVoicePanel` |
 
-`Package.swift`: `HudsonVoice` links `VoxEngine` + `VoxService`.
+`Package.swift`: `HudsonVoice` is always available and links `VoxEngine` + `VoxService`; the Parakeet model remains a runtime download.
 
 ## Concurrency
 

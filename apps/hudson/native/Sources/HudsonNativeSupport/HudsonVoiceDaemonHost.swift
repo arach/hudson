@@ -327,6 +327,7 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
     public var preferredTranscriptionModelId: String?
     public var preferredSynthesisModelId: String?
     public var preferredLanguage: String?
+    public var modelDownloadPolicy: String
     public var mode: String
 
     public init(
@@ -336,6 +337,7 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
         preferredTranscriptionModelId: String? = defaultTranscriptionModelId,
         preferredSynthesisModelId: String? = nil,
         preferredLanguage: String? = "en",
+        modelDownloadPolicy: String = "on_first_use",
         mode: String = "push_to_talk"
     ) {
         self.schemaVersion = schemaVersion
@@ -344,7 +346,26 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
         self.preferredTranscriptionModelId = Self.clean(preferredTranscriptionModelId)
         self.preferredSynthesisModelId = Self.clean(preferredSynthesisModelId)
         self.preferredLanguage = Self.clean(preferredLanguage)
+        self.modelDownloadPolicy = Self.normalizeModelDownloadPolicy(modelDownloadPolicy)
         self.mode = Self.clean(mode) ?? "push_to_talk"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1,
+            preferredInputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredInputDeviceId),
+            preferredOutputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredOutputDeviceId),
+            preferredTranscriptionModelId: try values.decodeIfPresent(
+                String.self,
+                forKey: .preferredTranscriptionModelId
+            ) ?? Self.defaultTranscriptionModelId,
+            preferredSynthesisModelId: try values.decodeIfPresent(String.self, forKey: .preferredSynthesisModelId),
+            preferredLanguage: try values.decodeIfPresent(String.self, forKey: .preferredLanguage) ?? "en",
+            modelDownloadPolicy: try values.decodeIfPresent(String.self, forKey: .modelDownloadPolicy)
+                ?? "on_first_use",
+            mode: try values.decodeIfPresent(String.self, forKey: .mode) ?? "push_to_talk"
+        )
     }
 
     public static func load(from url: URL) throws -> HudsonVoiceHostPreferences {
@@ -371,7 +392,8 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
         try encoder.encode(EmbeddedVoxPreferences(speech: .init(
             preferredTranscriptionModelId: normalized.preferredTranscriptionModelId,
             preferredSynthesisModelId: normalized.preferredSynthesisModelId,
-            preferredInputDeviceId: normalized.preferredInputDeviceId
+            preferredInputDeviceId: normalized.preferredInputDeviceId,
+            modelDownloadPolicy: normalized.modelDownloadPolicy
         ))).write(to: mirrorURL, options: .atomic)
         try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: mirrorURL.path)
     }
@@ -384,6 +406,7 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
             preferredTranscriptionModelId: preferredTranscriptionModelId ?? Self.defaultTranscriptionModelId,
             preferredSynthesisModelId: preferredSynthesisModelId,
             preferredLanguage: preferredLanguage ?? "en",
+            modelDownloadPolicy: modelDownloadPolicy,
             mode: mode
         )
     }
@@ -391,6 +414,14 @@ public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
     private static func clean(_ value: String?) -> String? {
         let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
         return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizeModelDownloadPolicy(_ value: String) -> String {
+        switch clean(value) {
+        case "never": return "never"
+        case "eager": return "eager"
+        default: return "on_first_use"
+        }
     }
 }
 
@@ -402,6 +433,7 @@ private struct EmbeddedVoxSpeechPreferences: Codable {
     var preferredTranscriptionModelId: String?
     var preferredSynthesisModelId: String?
     var preferredInputDeviceId: String?
+    var modelDownloadPolicy: String
 }
 
 public struct HudsonVoiceHostAudioDevice: Codable, Equatable, Sendable, Identifiable {

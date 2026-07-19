@@ -87,10 +87,12 @@ export interface HudsonVoicePreferencesPayload {
   preferredTranscriptionModelId: string | null;
   preferredSynthesisModelId: string | null;
   preferredLanguage: string | null;
+  modelDownloadPolicy: HudsonVoiceModelDownloadPolicy;
   mode: HudsonVoiceMode;
 }
 
 export type HudsonVoiceMode = 'push_to_talk' | 'always_on';
+export type HudsonVoiceModelDownloadPolicy = 'never' | 'on_first_use' | 'eager';
 
 export interface HudsonVoiceLiveSessionRequest {
   clientId?: string;
