@@ -128,4 +128,18 @@ struct HudPhoneControlDeckStateTests {
         #expect(HudPhoneControlDeckEligibility.hasBottomComplications(bottom, style: .scattered))
         #expect(!HudPhoneControlDeckEligibility.hasBottomComplications(bottom, style: .minimal))
     }
+
+    @Test("Only an expanded deck reserves its top control lane")
+    func topLaneReservationFollowsDeckVisibility() {
+        #expect(
+            !HudPhoneControlDeckLayoutPolicy.reservesTopLane(
+                state: .resting
+            )
+        )
+        #expect(
+            HudPhoneControlDeckLayoutPolicy.reservesTopLane(
+                state: .expanded
+            )
+        )
+    }
 }

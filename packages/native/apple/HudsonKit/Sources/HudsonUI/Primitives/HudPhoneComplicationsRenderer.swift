@@ -32,6 +32,9 @@ public enum HudPhoneComplicationsLayout {
     /// geometry so products never need to compensate for the pivot lane.
     public static var controlDeckPivotSize: CGFloat { 56 }
     public static var controlDeckDismissSize: CGFloat { HudIconSize.xLarge }
+    public static var controlDeckTopLaneHeight: CGFloat {
+        primarySize + (HudSpacing.sm * 2)
+    }
     public static var controlDeckLaneHeight: CGFloat {
         controlDeckPivotSize + HudSpacing.md
     }
@@ -127,7 +130,7 @@ private struct HudComplicationSlotButton: View {
         let core = ZStack {
             if modePickerVisible, let modes = slot.longPressModes {
                 modePicker(modes)
-                    .offset(y: -HudPhoneComplicationsLayout.modePickerLift)
+                    .offset(y: modePickerVerticalOffset)
                     .transition(.scale(scale: 0.85).combined(with: .opacity))
             }
 
@@ -197,6 +200,15 @@ private struct HudComplicationSlotButton: View {
             modePickerVisible = isVisible
         }
         onModePickerPresentationChanged?(position, isVisible)
+    }
+
+    private var modePickerVerticalOffset: CGFloat {
+        switch position {
+        case .topLeft, .topRight:
+            HudPhoneComplicationsLayout.modePickerLift
+        case .bottomLeft, .bottomRight, .center:
+            -HudPhoneComplicationsLayout.modePickerLift
+        }
     }
 
     @ViewBuilder
@@ -275,6 +287,93 @@ private struct HudComplicationCornerSlot: View {
     }
 }
 
+// MARK: - Summonable control-deck top lane
+
+/// Package-only renderer for the complete expanded top zone. The phone shell
+/// owns presentation and dismissal; HudsonUI owns the collision-free geometry
+/// shared by every product using a summon-on-demand deck.
+package struct HudPhoneControlDeckTopLane: View {
+    let complications: HudPhoneComplications
+    let style: HudPhoneComplicationsStyle
+    let onSlotActivated: ((HudPhoneComplications.Position) -> Void)?
+    let onModePickerPresentationChanged: ((HudPhoneComplications.Position, Bool) -> Void)?
+    let onDeckDismiss: () -> Void
+
+    @AccessibilityFocusState private var closeFocused: Bool
+
+    package init(
+        complications: HudPhoneComplications,
+        style: HudPhoneComplicationsStyle,
+        onSlotActivated: ((HudPhoneComplications.Position) -> Void)?,
+        onModePickerPresentationChanged: ((HudPhoneComplications.Position, Bool) -> Void)?,
+        onDeckDismiss: @escaping () -> Void
+    ) {
+        self.complications = complications
+        self.style = style
+        self.onSlotActivated = onSlotActivated
+        self.onModePickerPresentationChanged = onModePickerPresentationChanged
+        self.onDeckDismiss = onDeckDismiss
+    }
+
+    package var body: some View {
+        HStack(spacing: HudSpacing.lg) {
+            topSlotOrSpacer(.topLeft)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            closeButton
+
+            topSlotOrSpacer(.topRight)
+                .frame(maxWidth: .infinity, alignment: .trailing)
+        }
+        .padding(.horizontal, HudPhoneComplicationsLayout.cornerInset)
+        .padding(.vertical, HudSpacing.sm)
+        .frame(minHeight: HudPhoneComplicationsLayout.controlDeckTopLaneHeight)
+        .onAppear { closeFocused = true }
+    }
+
+    @ViewBuilder
+    private func topSlotOrSpacer(_ position: HudPhoneComplications.Position) -> some View {
+        if style != .minimal, let slot = complications[position] {
+            HudComplicationCornerSlot(
+                position: position,
+                slot: slot,
+                primarySize: HudPhoneComplicationsLayout.primarySize,
+                secondarySize: HudPhoneComplicationsLayout.secondarySize,
+                secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset,
+                onSlotActivated: onSlotActivated,
+                onModePickerPresentationChanged: onModePickerPresentationChanged,
+                onDeckDismiss: onDeckDismiss
+            )
+        } else {
+            Color.clear
+                .frame(
+                    width: HudPhoneComplicationsLayout.primarySize,
+                    height: HudPhoneComplicationsLayout.primarySize
+                )
+                .accessibilityHidden(true)
+        }
+    }
+
+    private var closeButton: some View {
+        Button(action: onDeckDismiss) {
+            Image(systemName: "xmark")
+                .font(HudFont.ui(HudTextSize.sm, weight: .bold))
+                .foregroundStyle(HudPalette.ink)
+                .frame(
+                    width: HudPhoneComplicationsLayout.controlDeckDismissSize,
+                    height: HudPhoneComplicationsLayout.controlDeckDismissSize
+                )
+                .background(Circle().fill(HudPalette.surface))
+                .overlay(Circle().stroke(HudHairline.standard, lineWidth: HudStrokeWidth.standard))
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel("Hide controls")
+        .accessibilityHint("Returns to the compact control pivot.")
+        .accessibilityFocused($closeFocused)
+        .accessibilityAction(.escape) { onDeckDismiss() }
+    }
+}
+
 // MARK: - Tray renderer (default)
 
 /// Default renderer. Bottom three slots (BL · center · BR) sit in a compact
@@ -285,23 +384,17 @@ public struct HudPhoneComplicationsTray: ViewModifier {
     var onSlotActivated: ((HudPhoneComplications.Position) -> Void)?
     var onModePickerPresentationChanged: ((HudPhoneComplications.Position, Bool) -> Void)?
     var onDeckDismiss: (() -> Void)?
-    var usesOverlayCorners = false
+    var suppressesTopCorners = false
 
     public func body(content: Content) -> some View {
         content
             .toolbar { topToolbar }
-            .overlay(alignment: .topLeading) {
-                if usesOverlayCorners { overlayCorner(.topLeft) }
-            }
-            .overlay(alignment: .topTrailing) {
-                if usesOverlayCorners { overlayCorner(.topRight) }
-            }
             .safeAreaInset(edge: .bottom, spacing: 0) { bottomTray }
     }
 
     @ToolbarContentBuilder
     private var topToolbar: some ToolbarContent {
-        if !usesOverlayCorners, let tl = complications[.topLeft] {
+        if !suppressesTopCorners, let tl = complications[.topLeft] {
             ToolbarItem(placement: .topBarLeading) {
                 HudComplicationCornerSlot(
                     position: .topLeft,
@@ -315,7 +408,7 @@ public struct HudPhoneComplicationsTray: ViewModifier {
                 )
             }
         }
-        if !usesOverlayCorners, let tr = complications[.topRight] {
+        if !suppressesTopCorners, let tr = complications[.topRight] {
             ToolbarItem(placement: .topBarTrailing) {
                 HudComplicationCornerSlot(
                     position: .topRight,
@@ -328,24 +421,6 @@ public struct HudPhoneComplicationsTray: ViewModifier {
                     onDeckDismiss: onDeckDismiss
                 )
             }
-        }
-    }
-
-    @ViewBuilder
-    private func overlayCorner(_ position: HudPhoneComplications.Position) -> some View {
-        if let slot = complications[position] {
-            HudComplicationCornerSlot(
-                position: position,
-                slot: slot,
-                primarySize: HudPhoneComplicationsLayout.primarySize,
-                secondarySize: HudPhoneComplicationsLayout.secondarySize,
-                secondaryOffset: HudPhoneComplicationsLayout.secondaryOffset,
-                onSlotActivated: onSlotActivated,
-                onModePickerPresentationChanged: onModePickerPresentationChanged,
-                onDeckDismiss: onDeckDismiss
-            )
-            .padding(.horizontal, HudPhoneComplicationsLayout.cornerInset)
-            .padding(.top, HudSpacing.sm)
         }
     }
 
@@ -415,11 +490,16 @@ public struct HudPhoneComplicationsScattered: ViewModifier {
     var onModePickerPresentationChanged: ((HudPhoneComplications.Position, Bool) -> Void)?
     var onDeckDismiss: (() -> Void)?
     var reservesBottomLane = false
+    var suppressesTopCorners = false
 
     public func body(content: Content) -> some View {
         content
-            .overlay(alignment: .topLeading)     { corner(.topLeft) }
-            .overlay(alignment: .topTrailing)    { corner(.topRight) }
+            .overlay(alignment: .topLeading)     {
+                if !suppressesTopCorners { corner(.topLeft) }
+            }
+            .overlay(alignment: .topTrailing)    {
+                if !suppressesTopCorners { corner(.topRight) }
+            }
             .overlay(alignment: .bottomLeading)  {
                 if !reservesBottomLane { corner(.bottomLeft) }
             }
@@ -596,7 +676,7 @@ extension View {
             onSlotActivated: onSlotActivated,
             onModePickerPresentationChanged: onModePickerPresentationChanged,
             onDeckDismiss: onDeckDismiss,
-            usesOverlayCorners: usesControlDeck,
+            suppressesTopCorners: usesControlDeck,
             reservesBottomLane: reservesBottomLane
         )
     }
@@ -608,7 +688,7 @@ extension View {
         onSlotActivated: ((HudPhoneComplications.Position) -> Void)?,
         onModePickerPresentationChanged: ((HudPhoneComplications.Position, Bool) -> Void)?,
         onDeckDismiss: (() -> Void)?,
-        usesOverlayCorners: Bool = false,
+        suppressesTopCorners: Bool = false,
         reservesBottomLane: Bool = false
     ) -> some View {
         switch style {
@@ -618,7 +698,7 @@ extension View {
                 onSlotActivated: onSlotActivated,
                 onModePickerPresentationChanged: onModePickerPresentationChanged,
                 onDeckDismiss: onDeckDismiss,
-                usesOverlayCorners: usesOverlayCorners
+                suppressesTopCorners: suppressesTopCorners
             ))
         case .scattered:
             self.modifier(HudPhoneComplicationsScattered(
@@ -626,7 +706,8 @@ extension View {
                 onSlotActivated: onSlotActivated,
                 onModePickerPresentationChanged: onModePickerPresentationChanged,
                 onDeckDismiss: onDeckDismiss,
-                reservesBottomLane: reservesBottomLane
+                reservesBottomLane: reservesBottomLane,
+                suppressesTopCorners: suppressesTopCorners
             ))
         case .minimal:
             self.modifier(HudPhoneComplicationsMinimal(
