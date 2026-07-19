@@ -5,14 +5,12 @@
   "type": "module",
   "description": "Internal exploration lab for Hudson. Dogfoods hudsonkit primitives via the shared studio package.",
   "scripts": {
-    "dev": "bun scripts/dev.mjs",
-    "dev:ui": "vite --port 3033",
+    "dev": "vite --port 3033",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 3033",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hudsonkit/paper": "link:../../packages/tools/hudson-paper",
     "hudsonkit": "link:../../packages/web/hudsonkit",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

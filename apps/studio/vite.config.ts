@@ -6,130 +6,18 @@ import react from "@vitejs/plugin-react";
 
 const hudsonRoot = fileURLToPath(new URL("../..", import.meta.url));
 const studioRoot = fileURLToPath(new URL("../../../studio", import.meta.url));
-const paperRoot = path.join(hudsonRoot, "packages/tools/hudson-paper");
 const hudsonNodeModules = path.join(hudsonRoot, "node_modules");
-// studio$ = exact package root only. A bare "studio" alias to index.ts breaks
-// CSS imports (studio/theme.css → index.ts/theme.css ENOTDIR).
-const singletonAliases = [
-  {
-    find: "studio/theme.css",
-    replacement: path.join(studioRoot, "src/theme/aliases.css"),
-  },
-  {
-    find: "studio/doc.css",
-    replacement: path.join(studioRoot, "src/doc/eng-doc.css"),
-  },
-  {
-    find: "studio/shell.css",
-    replacement: path.join(studioRoot, "src/shell/shell.css"),
-  },
-  {
-    find: "studio/injection.css",
-    replacement: path.join(studioRoot, "src/injection/styles.css"),
-  },
-  {
-    find: /^studio$/,
-    replacement: path.join(studioRoot, "src/index.ts"),
-  },
-  {
-    find: "@hudsonkit/paper/render",
-    replacement: path.join(paperRoot, "src/render.tsx"),
-  },
-  {
-    find: "@hudsonkit/paper/model",
-    replacement: path.join(paperRoot, "src/model.ts"),
-  },
-  {
-    find: /^@hudsonkit\/paper$/,
-    replacement: path.join(paperRoot, "src/model.ts"),
-  },
-  {
-    find: "@hudsonkit/paper/host/styles.css",
-    replacement: path.join(paperRoot, "host/src/styles.css"),
-  },
-  {
-    find: "@hudsonkit/paper/host",
-    replacement: path.join(paperRoot, "host/src/App.tsx"),
-  },
-  // Paper host resolves Fieldwork surfaces from Studio source
-  {
-    find: "@paper-designs/candidate-orientation",
-    replacement: path.join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      "src/exhibits/fieldwork/CandidateOrientation.tsx",
-    ),
-  },
-  {
-    find: /.*apps\/studio\/src\/exhibits\/fieldwork\/surfaces$/,
-    replacement: path.join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      "src/exhibits/fieldwork/surfaces.ts",
-    ),
-  },
-  // Paper host imports hudsonkit/* from source (same as paper's own vite)
-  {
-    find: "hudsonkit/styles/tokens.css",
-    replacement: path.join(
-      hudsonRoot,
-      "packages/web/hudsonkit/src/styles/tokens.css",
-    ),
-  },
-  {
-    find: "hudsonkit/app-shell",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/app-shell.ts"),
-  },
-  {
-    find: "hudsonkit/canvas",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/canvas.ts"),
-  },
-  {
-    find: "hudsonkit/chrome",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/chrome.ts"),
-  },
-  {
-    find: "hudsonkit/primitives",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/primitives.ts"),
-  },
-  {
-    find: "hudsonkit/theme",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/theme.ts"),
-  },
-  {
-    find: "hudsonkit/overlays",
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/overlays.ts"),
-  },
-  {
-    find: /^hudsonkit$/,
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/index.ts"),
-  },
-  {
-    find: /^hudsonkit\/(.*)$/,
-    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/$1"),
-  },
-  { find: "react", replacement: path.join(hudsonNodeModules, "react") },
-  {
-    find: "react/jsx-runtime",
-    replacement: path.join(hudsonNodeModules, "react", "jsx-runtime.js"),
-  },
-  {
-    find: "react/jsx-dev-runtime",
-    replacement: path.join(hudsonNodeModules, "react", "jsx-dev-runtime.js"),
-  },
-  { find: "react-dom", replacement: path.join(hudsonNodeModules, "react-dom") },
-  {
-    find: "react-dom/client",
-    replacement: path.join(hudsonNodeModules, "react-dom", "client.js"),
-  },
-  { find: "ai", replacement: path.join(hudsonNodeModules, "ai") },
-  {
-    find: "@ai-sdk/react",
-    replacement: path.join(hudsonNodeModules, "@ai-sdk", "react"),
-  },
-  {
-    find: "lucide-react",
-    replacement: path.join(hudsonNodeModules, "lucide-react"),
-  },
-];
+const singletonAliases = {
+  "studio": path.join(studioRoot, "src", "index.ts"),
+  "react": path.join(hudsonNodeModules, "react"),
+  "react/jsx-runtime": path.join(hudsonNodeModules, "react", "jsx-runtime.js"),
+  "react/jsx-dev-runtime": path.join(hudsonNodeModules, "react", "jsx-dev-runtime.js"),
+  "react-dom": path.join(hudsonNodeModules, "react-dom"),
+  "react-dom/client": path.join(hudsonNodeModules, "react-dom", "client.js"),
+  "ai": path.join(hudsonNodeModules, "ai"),
+  "@ai-sdk/react": path.join(hudsonNodeModules, "@ai-sdk", "react"),
+  "lucide-react": path.join(hudsonNodeModules, "lucide-react"),
+};
 
 // Surfaces filesystem mtimes for engineering markdown as `virtual:eng-mtimes`.
 // import.meta.glob has no mtime channel; this plugin closes that gap so the
@@ -170,42 +58,21 @@ function engMtimesPlugin(): Plugin {
   };
 }
 
-const studioNodeModules = path.join(studioRoot, "node_modules");
-
 export default defineConfig({
   plugins: [react(), engMtimesPlugin()],
   resolve: {
-    // false so nested deps under studio/node_modules resolve correctly when
-    // following the linked studio package (codemirror / react-markdown tree).
-    preserveSymlinks: false,
+    preserveSymlinks: true,
     dedupe: ["react", "react-dom"],
     alias: singletonAliases,
   },
   server: {
     port: 3033,
     fs: {
-      allow: [hudsonRoot, studioRoot, paperRoot, studioNodeModules],
-    },
-    proxy: {
-      // Paper map API + discuss (same-origin). Start paper API on 29982:
-      //   bun run --cwd packages/tools/hudson-paper src/cli.ts serve --api-only --port 29982
-      // Or full paper serve (API on publicPort+2).
-      "/api": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
-        changeOrigin: true,
-      },
-      "/mcp": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
-        changeOrigin: true,
-      },
-      "/health": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
-        changeOrigin: true,
-      },
+      allow: [hudsonRoot, studioRoot],
     },
   },
   optimizeDeps: {
-    exclude: ["studio", "hudsonkit", "@hudsonkit/paper"],
+    exclude: ["studio", "hudsonkit"],
     // hudsonkit is excluded so it stays linked to source, which means Vite
     // doesn't scan its transitive deps. xterm is loaded by a dynamic import
     // inside hudsonkit's TerminalRelay — we need to include it explicitly

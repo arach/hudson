@@ -10,7 +10,6 @@ import type { Status } from "./registry";
 import { buildEngExtraPages } from "./content";
 import { HomePage } from "./pages/HomePage";
 import { ExhibitPage } from "./pages/ExhibitPage";
-import { EmbedPage } from "./pages/EmbedPage";
 import { DocPage } from "./pages/DocPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
 
@@ -39,7 +38,6 @@ const StudioLeftPanel: FC = () => (
 );
 
 // Content slot — reads current route and dispatches to a page.
-// Note: /paper and /embed/* mount full-bleed outside this shell (main.tsx).
 const StudioContent: FC = () => {
   const { path, route } = useRoute();
   switch (route.kind) {
@@ -47,11 +45,6 @@ const StudioContent: FC = () => {
       return <HomePage />;
     case "exhibit":
       return <ExhibitPage slug={route.slug} />;
-    case "embed":
-      return <EmbedPage slug={route.slug} />;
-    case "paper":
-      // Should not render inside AppShell — main.tsx full-bleeds Paper.
-      return <NotFoundPage path={path} />;
     case "doc":
       return <DocPage slug={route.slug} />;
     case "not-found":

@@ -2,11 +2,7 @@
 @import "./tokens.css";
 @source "../**/*.{ts,tsx}";
 
-/* Keep semantic utilities pointed at the --color-* variables so downstream
- * apps can override the resolved colors on their provider root. `inline`
- * bakes expressions such as oklch(var(--border)) into .border-border, which
- * breaks consumers whose legacy --border alias is already a complete color. */
-@theme {
+@theme inline {
   --color-background: oklch(var(--background));
   --color-foreground: oklch(var(--foreground));
   --color-card: oklch(var(--card));

@@ -243,12 +243,6 @@ export interface HudsonApp {
     useStatus: () => StatusState;
     useStatusLeft?: () => ReactNode | null;
     useStatusRight?: () => ReactNode | null;
-    /** When set, StatusBar renders the centered viewport strip (pan · size · zoom). */
-    useViewport?: () => {
-      pan: { x: number; y: number };
-      zoom: number;
-      canvasSize?: { w: number; h: number };
-    } | null;
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;
