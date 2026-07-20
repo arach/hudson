@@ -24,7 +24,7 @@ import {
 } from "hudsonkit/primitives";
 import { CompRenderer } from "../../src/render.tsx";
 import { usePaperState } from "./PaperState";
-import { resolveEmbedSurface } from "./embedSurfaces";
+import { renderEmbedSurface } from "./embedSurfaces";
 import { eventTargetElement, regionFromElement } from "./inspect";
 import { PaperInspectProvider, usePaperInspect } from "./InspectContext";
 
@@ -35,7 +35,7 @@ import { PaperInspectProvider, usePaperInspect } from "./InspectContext";
 function LiveEmbedSurface(props: Record<string, unknown>) {
   const src = String(props.src ?? "");
   const title = String(props.title ?? props.name ?? "Embedded design");
-  const Surface = resolveEmbedSurface(src);
+  const surface = renderEmbedSurface(src);
   const inspect = usePaperInspect();
   const selectedRegionId =
     inspect?.selection?.kind === "region"
@@ -71,7 +71,7 @@ function LiveEmbedSurface(props: Record<string, unknown>) {
     [inspect],
   );
 
-  if (Surface) {
+  if (surface) {
     return (
       <div
         data-paper-embed="live"
@@ -87,7 +87,7 @@ function LiveEmbedSurface(props: Record<string, unknown>) {
           cursor: inspect?.inspectMode ? "crosshair" : undefined,
         }}
       >
-        <Surface />
+        {surface}
       </div>
     );
   }
@@ -220,10 +220,11 @@ export function PaperWorld() {
   const [zByPage, setZByPage] = useState<Record<string, number>>({});
   const hudComponents = useMemo(() => hudsonkitComponents(), []);
 
+  const tokens = payload?.tokens;
   const tokenStyle = useMemo(() => {
-    if (!payload?.tokens) return {} as CSSProperties;
-    return Object.fromEntries(Object.entries(payload.tokens)) as CSSProperties;
-  }, [payload?.tokens]);
+    if (!tokens) return {} as CSSProperties;
+    return Object.fromEntries(Object.entries(tokens)) as CSSProperties;
+  }, [tokens]);
 
   const inspectValue = useMemo(
     () => ({

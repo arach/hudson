@@ -84,6 +84,10 @@ type PaperStateValue = {
   resetSettings: () => void;
   rightMode: RightRailMode;
   setRightMode: (m: RightRailMode) => void;
+  rightCollapsed: boolean;
+  setRightCollapsed: (
+    next: boolean | ((current: boolean) => boolean),
+  ) => void;
   /** Page or in-surface region / CompNode under discussion. */
   selection: PaperSelection | null;
   setSelection: (s: PaperSelection | null) => void;
@@ -111,6 +115,16 @@ type PaperStateValue = {
 };
 
 const PaperStateContext = createContext<PaperStateValue | null>(null);
+const RIGHT_COLLAPSED_KEY = "hudson.app.hudson-paper.right";
+
+function loadRightCollapsed() {
+  try {
+    const raw = localStorage.getItem(RIGHT_COLLAPSED_KEY);
+    return raw == null ? false : raw === "true";
+  } catch {
+    return false;
+  }
+}
 
 function readQuery(): { file?: string; page?: string } {
   const q = new URLSearchParams(window.location.search);
@@ -141,6 +155,9 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
     loadSettings(),
   );
   const [rightMode, setRightMode] = useState<RightRailMode>("inspector");
+  const [rightCollapsed, setRightCollapsedState] = useState(
+    loadRightCollapsed,
+  );
   const [selection, setSelection] = useState<PaperSelection | null>(null);
   const [inspectMode, setInspectMode] = useState(true);
   const [view, setViewState] = useState<PaperViewState>({
@@ -154,6 +171,15 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
     mapName: null,
     bounds: null,
   });
+
+  const setRightCollapsed = useCallback(
+    (next: boolean | ((current: boolean) => boolean)) => {
+      setRightCollapsedState((current) =>
+        typeof next === "function" ? next(current) : next,
+      );
+    },
+    [],
+  );
 
   // Refs for wheel handlers and load-fit without stale closures
   const scaleRef = useRef(view.scale);
@@ -197,6 +223,14 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
       /* ignore */
     }
   }, [settings]);
+
+  useEffect(() => {
+    try {
+      localStorage.setItem(RIGHT_COLLAPSED_KEY, String(rightCollapsed));
+    } catch {
+      /* ignore */
+    }
+  }, [rightCollapsed]);
 
   // Load canvas payload when file changes — owns fit-on-load
   useEffect(() => {
@@ -313,10 +347,11 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
         // Live embeds: open inspector so the region list is obvious
         if (page.root.type === "Embed") {
           setRightMode("inspector");
+          setRightCollapsed(false);
         }
       }
     },
-    [payload],
+    [payload, setRightCollapsed],
   );
 
   const focusPage = useCallback(
@@ -367,6 +402,7 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
         text: args.text,
       });
       setRightMode("inspector");
+      setRightCollapsed(false);
       const page = payload?.pages.find((p) => p.id === args.pageId);
       if (page) {
         setViewState((v) => ({
@@ -376,7 +412,7 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
         }));
       }
     },
-    [payload],
+    [payload, setRightCollapsed],
   );
 
   const selectNode = useCallback(
@@ -397,8 +433,9 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
         props: args.props,
       });
       setRightMode("inspector");
+      setRightCollapsed(false);
     },
-    [],
+    [setRightCollapsed],
   );
 
   const fitAll = useCallback(() => {
@@ -476,6 +513,8 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
       resetSettings,
       rightMode,
       setRightMode,
+      rightCollapsed,
+      setRightCollapsed,
       selection,
       setSelection,
       selectRegion,
@@ -507,6 +546,8 @@ export function PaperStateProvider({ children }: { children: ReactNode }) {
       updateSettings,
       resetSettings,
       rightMode,
+      rightCollapsed,
+      setRightCollapsed,
       selection,
       selectRegion,
       selectNode,

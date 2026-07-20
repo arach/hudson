@@ -211,7 +211,7 @@ export function CandidateHandoff() {
           </h1>
           <p className="ho-lede">
             Not a test to submit — a handoff to write. Say what you changed, what
-            still carries risk, and the step you'd take next.
+            still carries risk, and the step you’d take next.
           </p>
 
           <div
@@ -231,13 +231,13 @@ export function CandidateHandoff() {
             <div className="ho-prompt">
               <div className="ho-prompt-label">What still carries risk</div>
               <div className="ho-field">
-                The ledger snapshot is a week old — if the "unknown" status set
+                The ledger snapshot is a week old — if the “unknown” status set
                 has grown, review volume could spike. Worth a metric before
                 widening the flag.<span className="ho-field-caret" />
               </div>
             </div>
             <div className="ho-prompt">
-              <div className="ho-prompt-label">The next step you'd take</div>
+              <div className="ho-prompt-label">The next step you’d take</div>
               <div className="ho-field" data-empty="true">
                 Roll out behind eligibility_v2 to 5%, watch the review queue for a
                 day, then decide…

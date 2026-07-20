@@ -226,7 +226,7 @@ export function CandidatePause() {
         <div className="pz-band-copy">
           <div className="pz-band-lead">Technical pause — your clock is stopped.</div>
           <div className="pz-band-sub">
-            This is the room, not your work, and it won't count against you.
+            This is the room, not your work, and it won’t count against you.
             Your work returns exactly as you left it.
           </div>
         </div>

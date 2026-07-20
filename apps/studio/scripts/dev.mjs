@@ -39,7 +39,7 @@ function run(cmd, args, opts = {}) {
       cwd: opts.cwd ?? studioRoot,
       env,
     });
-  } catch (err) {
+  } catch {
     const line = [cmd, ...args].map((a) => JSON.stringify(a)).join(" ");
     child = spawn("/bin/sh", ["-c", line], {
       stdio: "inherit",

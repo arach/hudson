@@ -339,16 +339,16 @@ export function InterviewerAttention() {
               {"  "}
               <span className="k">if</span>
               {" (claim.eligibility === "}
-              <span className="s">"unknown"</span>
+              <span className="s">{"\"unknown\""}</span>
               {") {\n"}
               {"    "}
               <span className="k">return</span>
               {" {\n"}
               {"      action: "}
-              <span className="s">"hold"</span>
+              <span className="s">{"\"hold\""}</span>
               {",\n"}
               {"      reason: "}
-              <span className="s">"unknown is not eligible"</span>
+              <span className="s">{"\"unknown is not eligible\""}</span>
               {",\n"}
               {"    }\n"}
               {"  }\n"}

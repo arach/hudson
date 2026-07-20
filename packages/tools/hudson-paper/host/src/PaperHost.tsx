@@ -34,7 +34,6 @@ import { MAX_SCALE, MIN_SCALE } from "./types";
 const LEFT_W_KEY = "hudson.app.hudson-paper.leftW";
 const RIGHT_W_KEY = "hudson.app.hudson-paper.rightW";
 const LEFT_COLLAPSED_KEY = "hudson.app.hudson-paper.left";
-const RIGHT_COLLAPSED_KEY = "hudson.app.hudson-paper.right";
 
 function readBool(key: string, fallback: boolean) {
   try {
@@ -92,6 +91,8 @@ export function PaperHost() {
     setViewportSize,
     rightMode,
     setRightMode,
+    rightCollapsed,
+    setRightCollapsed,
     fitAll,
     inspectMode,
     setInspectMode,
@@ -100,10 +101,6 @@ export function PaperHost() {
 
   const [leftCollapsed, setLeftCollapsed] = useState(() =>
     readBool(LEFT_COLLAPSED_KEY, false),
-  );
-  // Default open so inspect regions are visible without hunting chrome
-  const [rightCollapsed, setRightCollapsed] = useState(() =>
-    readBool(RIGHT_COLLAPSED_KEY, false),
   );
   const [leftWidth, setLeftWidth] = useState(() => readNum(LEFT_W_KEY, 280));
   // Wider rail — selection + chat needs room
@@ -115,12 +112,10 @@ export function PaperHost() {
       openInspector: () => {
         setRightMode("inspector");
         setRightCollapsed(false);
-        writePersist(RIGHT_COLLAPSED_KEY, false);
       },
       openSettings: () => {
         setRightMode("settings");
         setRightCollapsed(false);
-        writePersist(RIGHT_COLLAPSED_KEY, false);
       },
       toggleLeft: () => {
         setLeftCollapsed((c) => {
@@ -129,13 +124,10 @@ export function PaperHost() {
         });
       },
       toggleRight: () => {
-        setRightCollapsed((c) => {
-          writePersist(RIGHT_COLLAPSED_KEY, !c);
-          return !c;
-        });
+        setRightCollapsed((c) => !c);
       },
     }),
-    [setRightMode],
+    [setRightMode, setRightCollapsed],
   );
   const appCommands = usePaperCommands(commandBridge);
 
@@ -157,10 +149,7 @@ export function PaperHost() {
         label: "Toggle inspector",
         shortcut: "Cmd+]",
         action: () => {
-          setRightCollapsed((c) => {
-            writePersist(RIGHT_COLLAPSED_KEY, !c);
-            return !c;
-          });
+          setRightCollapsed((c) => !c);
         },
       },
       {
@@ -170,7 +159,7 @@ export function PaperHost() {
         action: () => setPaletteOpen(true),
       },
     ],
-    [],
+    [setRightCollapsed],
   );
 
   const allCommands = useMemo(
@@ -195,10 +184,7 @@ export function PaperHost() {
       }
       if (e.key === "]") {
         e.preventDefault();
-        setRightCollapsed((c) => {
-          writePersist(RIGHT_COLLAPSED_KEY, !c);
-          return !c;
-        });
+        setRightCollapsed((c) => !c);
       }
       if (e.key === "0") {
         e.preventDefault();
@@ -208,16 +194,17 @@ export function PaperHost() {
         e.preventDefault();
         setRightMode("settings");
         setRightCollapsed(false);
-        writePersist(RIGHT_COLLAPSED_KEY, false);
       }
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
-  }, [fitAll, setRightMode]);
+  }, [fitAll, setRightMode, setRightCollapsed]);
 
   // Latest scale for wheel handlers (avoid stale closures between renders)
   const scaleRef = useRef(view.scale);
-  scaleRef.current = view.scale;
+  useEffect(() => {
+    scaleRef.current = view.scale;
+  }, [view.scale]);
 
   /**
    * Map-tool wheel: plain scroll zooms (Frame only does ctrl/meta pinch).
@@ -348,21 +335,10 @@ export function PaperHost() {
   const openInspector = () => {
     setRightMode("inspector");
     setRightCollapsed(false);
-    writePersist(RIGHT_COLLAPSED_KEY, false);
   };
-
-  // Region/node pick → ensure inspector rail is visible
-  useEffect(() => {
-    if (selection?.kind === "region" || selection?.kind === "node") {
-      setRightMode("inspector");
-      setRightCollapsed(false);
-      writePersist(RIGHT_COLLAPSED_KEY, false);
-    }
-  }, [selection, setRightMode]);
   const openSettings = () => {
     setRightMode("settings");
     setRightCollapsed(false);
-    writePersist(RIGHT_COLLAPSED_KEY, false);
   };
 
   const rightContent =
@@ -468,10 +444,7 @@ export function PaperHost() {
             icon={<ScanSearch size={12} strokeWidth={1.5} />}
             isCollapsed={rightCollapsed}
             onToggleCollapse={() => {
-              setRightCollapsed((c) => {
-                writePersist(RIGHT_COLLAPSED_KEY, !c);
-                return !c;
-              });
+              setRightCollapsed((c) => !c);
             }}
             width={rightWidth}
             onResizeStart={handleResizeStart("right")}

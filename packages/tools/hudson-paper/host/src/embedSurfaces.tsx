@@ -7,7 +7,7 @@
  * found" footgun for newly registered journeys).
  */
 
-import type { ComponentType } from "react";
+import { createElement, type ReactElement } from "react";
 import { surfacesBySlug } from "../../../../../apps/studio/src/exhibits/fieldwork/surfaces";
 
 export function embedSlugFromSrc(src: string): string | null {
@@ -25,10 +25,11 @@ export function embedSlugFromSrc(src: string): string | null {
   }
 }
 
-export function resolveEmbedSurface(src: string): ComponentType | null {
+export function renderEmbedSurface(src: string): ReactElement | null {
   const slug = embedSlugFromSrc(src);
   if (!slug) return null;
-  return surfacesBySlug()[slug] ?? null;
+  const Surface = surfacesBySlug()[slug];
+  return Surface ? createElement(Surface) : null;
 }
 
 export function registeredEmbedSlugs(): string[] {

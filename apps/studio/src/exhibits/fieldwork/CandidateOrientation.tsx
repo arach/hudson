@@ -324,7 +324,7 @@ export function CandidateOrientation() {
           data-paper-role="section"
           data-paper-note="Deliverables list"
         >
-          <div className="co-label">What you'll hand off</div>
+          <div className="co-label">What you’ll hand off</div>
           <ul className="co-list">
             <li className="co-item">
               <span className="co-tick" />
@@ -337,14 +337,14 @@ export function CandidateOrientation() {
               <span className="co-tick" />
               <span className="co-item-body">
                 Tests that pin the behavior you decided on — so the boundary
-                can't quietly drift again.
+                can’t quietly drift again.
               </span>
             </li>
             <li className="co-item">
               <span className="co-tick" />
               <span className="co-item-body">
                 A short note: what changed, what still carries risk, the next
-                step you'd take.
+                step you’d take.
               </span>
             </li>
           </ul>
@@ -426,7 +426,7 @@ export function CandidateOrientation() {
             </div>
             <p className="co-ai-body">
               Claude is available and allowed. <strong>Directing it well —
-              and catching it when it's wrong — is part of the work</strong>,
+              and catching it when it’s wrong — is part of the work</strong>,
               not a shortcut around it. Your prompts and its replies travel into
               your handoff exactly as they happened. No one grades how you use
               it.
@@ -523,9 +523,9 @@ export function CandidateOrientation() {
             style={{ position: "absolute", opacity: 0, pointerEvents: "none" }}
           />
           <span className="co-ack-text">
-            I've read how this room works, and I understand what's captured and
-            what isn't.
-            <span>I'm ready to start when I am.</span>
+            I’ve read how this room works, and I understand what’s captured and
+            what isn’t.
+            <span>I’m ready to start when I am.</span>
           </span>
         </label>
 
