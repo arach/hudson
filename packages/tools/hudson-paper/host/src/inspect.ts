@@ -186,10 +186,10 @@ export function formatSelectionBrief(args: {
   selection: PaperSelection | null;
 }): string {
   const { mapName, page, selection } = args;
-  if (!page) return "No page selected on the Paper map.";
+  if (!page) return "No page selected in Studio Flows.";
 
   const lines: string[] = [
-    `Paper map: ${mapName ?? "(unnamed)"}`,
+    `Studio flow: ${mapName ?? "(unnamed)"}`,
     `Page: ${[page.journeyName, page.name].filter(Boolean).join(" · ")}`,
     `Page id: ${page.id}`,
     `Root: ${page.root.type}`,

@@ -91,7 +91,7 @@ async function main() {
     });
     if (studio.isError) throw new Error(studio.content[0]?.text);
     const handoff = JSON.parse(studio.content[0]!.text);
-    if (!handoff.studioUrl?.includes("/exhibits/paper")) {
+    if (!handoff.studioUrl?.includes("/flows")) {
       throw new Error(`bad studioUrl: ${handoff.studioUrl}`);
     }
     if (!handoff.paperApiUrl?.includes("/api/files/")) {

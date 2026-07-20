@@ -870,7 +870,7 @@ export async function callTool(
         });
         return ok({
           ...handoff,
-          hint: "Open studioUrl in Hudson Studio (bun run dev:studio). Paper map stays the glance surface; Studio is focused page work.",
+          hint: "Open studioUrl in Studio Flows (bun run dev:studio) to inspect the journey map and its live screens.",
         });
       }
       default:

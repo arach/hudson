@@ -82,7 +82,7 @@ process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
 console.log(`Paper API  → http://127.0.0.1:${apiPort}  (proxied from Studio /api)`);
-console.log(`Studio     → http://127.0.0.1:${studioPort}/paper`);
+console.log(`Studio Flows → http://127.0.0.1:${studioPort}/flows`);
 
 run(
   bunBin,

@@ -2,7 +2,6 @@ import { StrictMode, useEffect, useState } from "react";
 import { createRoot } from "react-dom/client";
 import StudioApp from "./StudioApp";
 import { EmbedPage } from "./pages/EmbedPage";
-import PaperPage from "./pages/PaperPage";
 import { subscribePath } from "./router";
 import { normalizePath, resolveRoute } from "./router/routes";
 import "./styles/tailwind.css";
@@ -12,12 +11,8 @@ if (!rootEl) throw new Error("Root element #root not found");
 
 /**
  * Full-bleed surfaces skip the catalog shell:
- *   /embed/*  — design page only
- *   /paper    — journey map (Paper inside Studio)
+ *   /embed/*  — bare design surface used by embeds and focused previews
  * Everything else boots the Studio catalog shell.
- *
- * Path is reactive so SPA links from the catalog remount the right root
- * (Paper is not nested under AppShell).
  */
 function Root() {
   const [pathname, setPathname] = useState(
@@ -34,10 +29,19 @@ function Root() {
     };
   }, []);
 
+  useEffect(() => {
+    if (pathname !== "/paper" && !pathname.startsWith("/paper/")) return;
+    const nextPath = pathname.replace(/^\/paper(?=\/|$)/, "/flows");
+    window.history.replaceState(
+      {},
+      "",
+      `${nextPath}${window.location.search}${window.location.hash}`,
+    );
+  }, [pathname]);
+
   const route = resolveRoute(normalizePath(pathname));
 
   if (route.kind === "embed") return <EmbedPage slug={route.slug} />;
-  if (route.kind === "paper") return <PaperPage />;
   return <StudioApp />;
 }
 

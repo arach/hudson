@@ -13,6 +13,7 @@ import { ExhibitPage } from "./pages/ExhibitPage";
 import { EmbedPage } from "./pages/EmbedPage";
 import { DocPage } from "./pages/DocPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
+import { flowsApp } from "./flows/FlowsApp";
 
 // Studio sidebar — drops studio's RegistryNav into hudsonkit's SidePanel.
 // Path B: hudsonkit owns the panel chrome, studio owns the nav contents.
@@ -39,7 +40,7 @@ const StudioLeftPanel: FC = () => (
 );
 
 // Content slot — reads current route and dispatches to a page.
-// Note: /paper and /embed/* mount full-bleed outside this shell (main.tsx).
+// /flows switches to the native canvas app below; embeds remain full-bleed.
 const StudioContent: FC = () => {
   const { path, route } = useRoute();
   switch (route.kind) {
@@ -49,8 +50,7 @@ const StudioContent: FC = () => {
       return <ExhibitPage slug={route.slug} />;
     case "embed":
       return <EmbedPage slug={route.slug} />;
-    case "paper":
-      // Should not render inside AppShell — main.tsx full-bleeds Paper.
+    case "flows":
       return <NotFoundPage path={path} />;
     case "doc":
       return <DocPage slug={route.slug} />;
@@ -89,17 +89,29 @@ export default function StudioApp() {
   return (
     <ThemeProvider>
       <StudioRouterProvider router={spaRouter}>
-        <AppShell
-          app={studioApp}
-          assistant={false}
-          managedTheme
-          chrome={{
-            palette: true,
-            terminal: false,
-            rightPanel: false,
-          }}
-        />
+        <StudioShell />
       </StudioRouterProvider>
     </ThemeProvider>
+  );
+}
+
+function StudioShell() {
+  const { route } = useRoute();
+  const isFlows = route.kind === "flows";
+  const app = isFlows ? flowsApp : studioApp;
+
+  return (
+    <AppShell
+      key={app.id}
+      app={app}
+      assistant={false}
+      managedTheme
+      chrome={{
+        palette: true,
+        terminal: false,
+        rightPanel: isFlows,
+        canvasPanels: isFlows,
+      }}
+    />
   );
 }

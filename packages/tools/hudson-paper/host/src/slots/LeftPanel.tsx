@@ -20,10 +20,10 @@ export function PaperLeftPanel() {
 
   return (
     <div className="flex h-full min-h-0 flex-col font-mono text-[11px]">
-      {/* Maps */}
+      {/* Flow maps */}
       <div className="border-b border-border/60">
         <div className="paper-section-head justify-between">
-          <span className="flex items-center gap-2">Maps</span>
+          <span className="flex items-center gap-2">Flow maps</span>
           <button
             type="button"
             onClick={() => void refreshFiles()}
@@ -52,7 +52,7 @@ export function PaperLeftPanel() {
           ))}
           {!files.length ? (
             <p className="px-2 py-2 text-[10px] text-muted-foreground">
-              No maps — create via MCP
+              No flows — create via MCP
             </p>
           ) : null}
         </div>

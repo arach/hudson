@@ -78,7 +78,7 @@ create_product_map {
   ]
 }
 open_in_studio { pageId: "<Cart page>" }
-# → http://localhost:3033/exhibits/paper?file=…&page=…
+# → http://localhost:3033/flows?file=…&page=…
 ```
 
 **Incremental:**
@@ -89,19 +89,19 @@ open_in_studio { pageId: "<Cart page>" }
 4. Fill with `upsert_node`
 5. `open_in_studio` for pages that need Studio polish
 
-## Paper → Studio handoff (HudsonKit web canvas)
+## Paper engine → Studio Flows
 
 | Surface | Job |
 |---------|-----|
 | **Paper** | Agent layout tool (MCP + REST library) |
-| **Studio** | **HudsonKit Canvas** host — pan/zoom world with page cards |
+| **Studio Flows** | Native **HudsonKit Canvas** surface — pan/zoom world with page cards and shell-owned rails |
 
 ```text
 create_product_map  →  journey map on disk
-open_in_studio      →  Studio /exhibits/paper (Canvas + ZoomControls)
+open_in_studio      →  Studio /flows (Canvas + native Studio chrome)
 ```
 
-Studio exhibit uses the same host pattern as canvas-terminals:
+Studio Flows uses the native AppShell canvas contract:
 
 - `Canvas` (dot grid + pan)
 - World layer (`left:50% top:50%` + `pan` + `zoom: scale`)
