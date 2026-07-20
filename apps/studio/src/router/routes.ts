@@ -2,7 +2,7 @@ export type Route =
   | { kind: "home" }
   | { kind: "exhibit"; slug: string }
   | { kind: "embed"; slug: string }
-  | { kind: "paper" }
+  | { kind: "flows" }
   | { kind: "doc"; slug: string }
   | { kind: "not-found" };
 
@@ -27,8 +27,15 @@ function lastSlug(segments: string[]): string | null {
 export function resolveRoute(path: string): Route {
   if (path === "/" || path === "") return { kind: "home" };
 
-  // Paper journeys map — full-bleed product surface inside Studio
-  if (path === "/paper" || path.startsWith("/paper/")) return { kind: "paper" };
+  // Studio Flows. /paper remains a compatibility alias for existing links.
+  if (
+    path === "/flows" ||
+    path.startsWith("/flows/") ||
+    path === "/paper" ||
+    path.startsWith("/paper/")
+  ) {
+    return { kind: "flows" };
+  }
 
   const exhibit = path.match(/^\/exhibits\/([a-z0-9/-]+)$/i);
   if (exhibit) {

@@ -5,7 +5,7 @@ import { AppShellExhibit } from "./app-shell/AppShellExhibit";
 import { CanvasTerminalsExhibit } from "./canvas-terminals/CanvasTerminalsExhibit";
 import { surfacesBySlug } from "./fieldwork/surfaces";
 
-// Design pages only. Journey maps live at /paper (Paper app inside Studio).
+// Design pages only. Spatial product flows live natively at /flows.
 export const exhibits: Record<string, ComponentType> = {
   "theme-tokens": ThemeTokensExhibit,
   "side-panel": SidePanelExhibit,

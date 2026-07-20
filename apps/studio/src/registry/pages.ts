@@ -52,16 +52,16 @@ export const STUDIO_PAGES: readonly Page[] = [
     ],
   },
   {
-    href: "/paper?file=file_f63343493b36",
-    label: "Fieldwork · Journeys",
+    href: "/flows?file=file_f63343493b36",
+    label: "Fieldwork · Flows",
     bucket: "compositions",
     surface: "web",
     status: "live",
     blurb:
-      "Paper map inside Studio — Fieldwork UX journeys, design embeds, pick + discuss. Not a separate host.",
+      "Studio Flows — Fieldwork journeys, live design surfaces, pick, and discuss on one spatial canvas.",
     source: [
-      "packages/tools/hudson-paper/host/src/PaperHost.tsx",
-      "apps/studio/src/pages/PaperPage.tsx",
+      "apps/studio/src/flows/FlowsApp.tsx",
+      "packages/tools/hudson-paper/host/src/PaperWorld.tsx",
     ],
   },
   {
@@ -70,7 +70,7 @@ export const STUDIO_PAGES: readonly Page[] = [
     bucket: "compositions",
     surface: "web",
     status: "live",
-    blurb: "Fieldwork prepared desk — embedded on the Paper map.",
+    blurb: "Fieldwork prepared desk — embedded in Studio Flows.",
     source: ["apps/studio/src/exhibits/fieldwork/CandidateOrientation.tsx"],
   },
   {

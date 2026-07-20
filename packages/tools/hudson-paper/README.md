@@ -40,23 +40,23 @@ upsert_node { pageId, parentId: bodyRoot, type: "Text", props: { … } }
 
 # Bring one page into Studio for focused work:
 open_in_studio { pageId }
-# → http://localhost:3033/exhibits/paper?file=…&page=…
+# → http://localhost:3033/flows?file=…&page=…
 ```
 
-## Paper → Studio (HudsonKit web canvas)
+## Paper engine → Studio Flows
 
-Studio hosts Paper maps on the **real HudsonKit Canvas** (dot grid, pan, ZoomControls) — same composition as the canvas-terminals exhibit. Each journey page is a world-space card; Hud* nodes render via `hudsonkit/primitives`.
+Studio Flows hosts Paper documents on the native **HudsonKit Canvas** with shell-owned navigation, rails, status, and commands. Each journey page is a world-space card; Hud* nodes render via `hudsonkit/primitives`.
 
 | | Paper | Studio |
 |---|-------|--------|
 | Job | Agent layout + library | Canvas glance + focus |
 | Tool | `create_product_map` | `open_in_studio` |
-| URL | MCP + `/api/*` + `/api/files/:id/canvas` | `/exhibits/paper?file=&page=` |
+| URL | MCP + `/api/*` + `/api/files/:id/canvas` | `/flows?file=&page=` |
 
 ```bash
-# Studio (includes Paper journeys + Paper API proxy)
+# Studio (includes Flows + Paper API proxy)
 bun run --cwd apps/studio dev
-# open http://127.0.0.1:3033/paper
+# open http://127.0.0.1:3033/flows
 # design pages: http://127.0.0.1:3033/exhibits/candidate-orientation
 # embed (chrome-free): http://127.0.0.1:3033/embed/candidate-orientation
 

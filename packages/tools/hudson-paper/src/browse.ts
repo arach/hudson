@@ -51,7 +51,7 @@ export async function browseHtml(opts: {
         </header>
         ${body}
         <footer>
-          <a class="btn" href="${esc(DEFAULT_STUDIO_BASE)}/exhibits/paper?file=${encodeURIComponent(f.id)}" target="_blank" rel="noreferrer">Open in Studio</a>
+          <a class="btn" href="${esc(DEFAULT_STUDIO_BASE)}/flows?file=${encodeURIComponent(f.id)}" target="_blank" rel="noreferrer">Open in Studio Flows</a>
         </footer>
       </article>
     `);

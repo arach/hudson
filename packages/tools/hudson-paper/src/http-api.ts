@@ -65,7 +65,7 @@ export function studioPageUrl(
   studioBase = DEFAULT_STUDIO_BASE,
 ): string {
   const base = studioBase.replace(/\/$/, "");
-  return `${base}/exhibits/paper?file=${encodeURIComponent(fileId)}&page=${encodeURIComponent(pageId)}`;
+  return `${base}/flows?file=${encodeURIComponent(fileId)}&page=${encodeURIComponent(pageId)}`;
 }
 
 export function paperPageApiUrl(
@@ -360,7 +360,7 @@ export async function handleHttpApi(
   const viewFile = url.pathname.match(/^\/view\/([^/]+)$/);
   if (viewFile) {
     const fileId = decodeURIComponent(viewFile[1]!);
-    const studio = `${DEFAULT_STUDIO_BASE.replace(/\/$/, "")}/exhibits/paper?file=${encodeURIComponent(fileId)}`;
+    const studio = `${DEFAULT_STUDIO_BASE.replace(/\/$/, "")}/flows?file=${encodeURIComponent(fileId)}`;
     return new Response(null, {
       status: 302,
       headers: { Location: studio, ...corsHeaders() },
