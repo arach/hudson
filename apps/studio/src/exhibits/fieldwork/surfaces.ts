@@ -1,5 +1,5 @@
 /**
- * Fieldwork design surfaces — single registry for exhibits, embeds, and Paper.
+ * Fieldwork design surfaces — single registry for exhibits, embeds, and Flows.
  */
 
 import type { ComponentType } from "react";

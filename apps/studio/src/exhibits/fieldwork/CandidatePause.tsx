@@ -167,7 +167,7 @@ const CSS = `
 .pz-gutter { text-align: right; padding-right: 16px; color: var(--instr-faint); opacity: 0.6; }
 .pz-code { color: var(--instr-ink); white-space: pre; opacity: 0.85; }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: -2px;
   border-radius: 4px;
@@ -197,10 +197,10 @@ export function CandidatePause() {
 
       <header
         className="pz-header"
-        data-paper-region="header"
-        data-paper-label="Header (frozen)"
-        data-paper-role="header"
-        data-paper-note="Clock frozen + capture held — visibly stopped together."
+        data-flow-region="header"
+        data-flow-label="Header (frozen)"
+        data-flow-role="header"
+        data-flow-note="Clock frozen + capture held — visibly stopped together."
       >
         <div className="pz-id">
           <span className="pz-role">Engineer</span>
@@ -217,10 +217,10 @@ export function CandidatePause() {
 
       <div
         className="pz-band"
-        data-paper-region="band"
-        data-paper-label="Pause band"
-        data-paper-role="signal"
-        data-paper-note="Full-width amber — the only place --pause appears."
+        data-flow-region="band"
+        data-flow-label="Pause band"
+        data-flow-role="signal"
+        data-flow-note="Full-width amber — the only place --pause appears."
       >
         <span className="pz-band-mark">{PAUSE_GLYPH}</span>
         <div className="pz-band-copy">
@@ -233,10 +233,10 @@ export function CandidatePause() {
         <button
           type="button"
           className="pz-resume"
-          data-paper-region="resume"
-          data-paper-label="Resume"
-          data-paper-role="control"
-          data-paper-note="One calm action — no countdown, no anxiety."
+          data-flow-region="resume"
+          data-flow-label="Resume"
+          data-flow-role="control"
+          data-flow-note="One calm action — no countdown, no anxiety."
         >
           Resume
         </button>
@@ -244,10 +244,10 @@ export function CandidatePause() {
 
       <main
         className="pz-instr"
-        data-paper-region="instrument"
-        data-paper-label="Dimmed instrument"
-        data-paper-role="instrument"
-        data-paper-note="Desaturated + non-interactive — the work preserved beneath."
+        data-flow-region="instrument"
+        data-flow-label="Dimmed instrument"
+        data-flow-role="instrument"
+        data-flow-note="Desaturated + non-interactive — the work preserved beneath."
       >
         <div className="pz-tabs">
           <span className="pz-tab" data-active="true">eligibility.ts</span>

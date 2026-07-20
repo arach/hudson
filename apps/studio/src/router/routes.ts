@@ -27,13 +27,7 @@ function lastSlug(segments: string[]): string | null {
 export function resolveRoute(path: string): Route {
   if (path === "/" || path === "") return { kind: "home" };
 
-  // Studio Flows. /paper remains a compatibility alias for existing links.
-  if (
-    path === "/flows" ||
-    path.startsWith("/flows/") ||
-    path === "/paper" ||
-    path.startsWith("/paper/")
-  ) {
+  if (path === "/flows" || path.startsWith("/flows/")) {
     return { kind: "flows" };
   }
 

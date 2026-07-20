@@ -12,7 +12,6 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
-    "@hudsonkit/paper": "link:../../packages/tools/hudson-paper",
     "hudsonkit": "link:../../packages/web/hudsonkit",
     "react": "^19.0.0",
     "react-dom": "^19.0.0",

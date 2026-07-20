@@ -266,7 +266,7 @@ const CSS = `
   color: var(--soft);
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -287,9 +287,9 @@ export function InterviewerAttention() {
 
       <header
         className="ia-header"
-        data-paper-region="header"
-        data-paper-label="Header"
-        data-paper-role="chrome"
+        data-flow-region="header"
+        data-flow-label="Header"
+        data-flow-role="chrome"
       >
         <div className="ia-id">
           <span className="ia-role">Live · Interviewer</span>
@@ -302,10 +302,10 @@ export function InterviewerAttention() {
           </span>
           <span
             className="ia-mark-key"
-            data-paper-region="mark-key"
-            data-paper-label="Mark shortcut"
-            data-paper-role="control"
-            data-paper-note="One frictionless mark — notes wait for review."
+            data-flow-region="mark-key"
+            data-flow-label="Mark shortcut"
+            data-flow-role="control"
+            data-flow-note="One frictionless mark — notes wait for review."
           >
             ⌘M mark
           </span>
@@ -315,10 +315,10 @@ export function InterviewerAttention() {
       <div className="ia-body">
         <section
           className="ia-instrument"
-          data-paper-region="instrument"
-          data-paper-label="Candidate work"
-          data-paper-role="section"
-          data-paper-note="Same surface the candidate sees — grounding, not surveillance chrome."
+          data-flow-region="instrument"
+          data-flow-label="Candidate work"
+          data-flow-role="section"
+          data-flow-note="Same surface the candidate sees — grounding, not surveillance chrome."
         >
           <div className="ia-tabs">
             <span className="ia-tab" data-on="true">decision.ts</span>
@@ -364,10 +364,10 @@ export function InterviewerAttention() {
 
         <aside
           className="ia-rail"
-          data-paper-region="orientation-rail"
-          data-paper-label="Orientation rail"
-          data-paper-role="section"
-          data-paper-note="Criteria as context only — never a live scorecard."
+          data-flow-region="orientation-rail"
+          data-flow-label="Orientation rail"
+          data-flow-role="section"
+          data-flow-note="Criteria as context only — never a live scorecard."
         >
           <div className="ia-rail-head">
             <div className="ia-rail-eyebrow">Orientation · live</div>

@@ -255,7 +255,7 @@ const CSS = `
   border: 1px solid var(--edge);
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -279,9 +279,9 @@ export function CandidateShare() {
           <span className="sh-clock">52:14</span>
           <span
             className="sh-chip"
-            data-paper-region="capture"
-            data-paper-label="Capture chip"
-            data-paper-role="signal"
+            data-flow-region="capture"
+            data-flow-label="Capture chip"
+            data-flow-role="signal"
           >
             <span className="sh-dot" /> Recording
           </span>
@@ -304,17 +304,17 @@ export function CandidateShare() {
 
         <article
           className="sh-sheet"
-          data-paper-region="sheet"
-          data-paper-label="Proof sheet"
-          data-paper-role="section"
-          data-paper-note="Optional portable proof — not a feed, not a score."
+          data-flow-region="sheet"
+          data-flow-label="Proof sheet"
+          data-flow-role="section"
+          data-flow-note="Optional portable proof — not a feed, not a score."
         >
           <div className="sh-eyebrow">Optional · Yours to keep</div>
           <h1
             className="sh-heading"
-            data-paper-region="title"
-            data-paper-label="Title"
-            data-paper-role="title"
+            data-flow-region="title"
+            data-flow-label="Title"
+            data-flow-role="title"
           >
             Leave a clean trail.
           </h1>
@@ -325,9 +325,9 @@ export function CandidateShare() {
 
           <div
             className="sh-block"
-            data-paper-region="travels"
-            data-paper-label="What travels"
-            data-paper-role="section"
+            data-flow-region="travels"
+            data-flow-label="What travels"
+            data-flow-role="section"
           >
             <div className="sh-label">What can travel with you</div>
             <dl className="sh-rows">
@@ -354,9 +354,9 @@ export function CandidateShare() {
 
           <div
             className="sh-block"
-            data-paper-region="never"
-            data-paper-label="Never included"
-            data-paper-role="section"
+            data-flow-region="never"
+            data-flow-label="Never included"
+            data-flow-role="section"
           >
             <div className="sh-label">Never included</div>
             <ul className="sh-never">
@@ -371,9 +371,9 @@ export function CandidateShare() {
 
           <div
             className="sh-actions"
-            data-paper-region="actions"
-            data-paper-label="Actions"
-            data-paper-role="control"
+            data-flow-region="actions"
+            data-flow-label="Actions"
+            data-flow-role="control"
           >
             <button type="button" className="sh-btn">
               Continue work

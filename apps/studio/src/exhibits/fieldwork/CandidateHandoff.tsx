@@ -181,7 +181,7 @@ const CSS = `
 .ho-note:first-of-type { border-top: none; }
 .ho-note-time { font-family: var(--mono); font-size: 11px; color: var(--faint); }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -203,9 +203,9 @@ export function CandidateHandoff() {
           <div className="ho-eyebrow">Engineer · Handoff</div>
           <h1
             className="ho-title"
-            data-paper-region="title"
-            data-paper-label="Title"
-            data-paper-role="title"
+            data-flow-region="title"
+            data-flow-label="Title"
+            data-flow-role="title"
           >
             Leave it safe for the next person.
           </h1>
@@ -216,10 +216,10 @@ export function CandidateHandoff() {
 
           <div
             className="ho-writing"
-            data-paper-region="writing"
-            data-paper-label="Writing surface"
-            data-paper-role="section"
-            data-paper-note="Three calm prompts — the document-like hero."
+            data-flow-region="writing"
+            data-flow-label="Writing surface"
+            data-flow-role="section"
+            data-flow-note="Three calm prompts — the document-like hero."
           >
             <div className="ho-prompt">
               <div className="ho-prompt-label">What changed</div>
@@ -247,10 +247,10 @@ export function CandidateHandoff() {
 
           <div
             className="ho-submit-row"
-            data-paper-region="submit"
-            data-paper-label="Submit"
-            data-paper-role="control"
-            data-paper-note="Calm and final — flows into the quiet close."
+            data-flow-region="submit"
+            data-flow-label="Submit"
+            data-flow-role="control"
+            data-flow-note="Calm and final — flows into the quiet close."
           >
             <button type="button" className="ho-submit">Leave the handoff</button>
             <span className="ho-submit-note">
@@ -262,10 +262,10 @@ export function CandidateHandoff() {
         <aside className="ho-col">
           <div
             className="ho-recap"
-            data-paper-region="recap"
-            data-paper-label="Work recap + proof"
-            data-paper-role="evidence"
-            data-paper-note="Receded instrument — what shipped and your own passing proof."
+            data-flow-region="recap"
+            data-flow-label="Work recap + proof"
+            data-flow-role="evidence"
+            data-flow-note="Receded instrument — what shipped and your own passing proof."
           >
             <div className="ho-recap-head">What shipped</div>
             <div className="ho-recap-file">
@@ -292,10 +292,10 @@ export function CandidateHandoff() {
 
           <div
             className="ho-notes"
-            data-paper-region="notes"
-            data-paper-label="Pre-loaded notes"
-            data-paper-role="section"
-            data-paper-note="The candidate's own margin marks, carried into the handoff."
+            data-flow-region="notes"
+            data-flow-label="Pre-loaded notes"
+            data-flow-role="section"
+            data-flow-note="The candidate's own margin marks, carried into the handoff."
           >
             <div className="ho-notes-head">Your notes</div>
             <div className="ho-notes-sub">

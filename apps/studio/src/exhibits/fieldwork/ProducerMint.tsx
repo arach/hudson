@@ -185,7 +185,7 @@ const CSS = `
   color: var(--faint);
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -200,9 +200,9 @@ export function ProducerMint() {
         <div className="pm-eyebrow">Producer · Mint session</div>
         <h1
           className="pm-title"
-          data-paper-region="title"
-          data-paper-label="Title"
-          data-paper-role="title"
+          data-flow-region="title"
+          data-flow-label="Title"
+          data-flow-role="title"
         >
           Mint a candidate-safe session.
         </h1>
@@ -214,10 +214,10 @@ export function ProducerMint() {
 
         <section
           className="pm-ledger"
-          data-paper-region="ledger"
-          data-paper-label="Session ledger"
-          data-paper-role="ledger"
-          data-paper-note="Mono evidence chain — session draft before start."
+          data-flow-region="ledger"
+          data-flow-label="Session ledger"
+          data-flow-role="ledger"
+          data-flow-note="Mono evidence chain — session draft before start."
         >
           <div className="pm-ledger-head">Session draft</div>
           <div className="pm-row">
@@ -250,9 +250,9 @@ export function ProducerMint() {
 
         <section
           className="pm-channels"
-          data-paper-region="channels"
-          data-paper-label="Capture channels"
-          data-paper-role="section"
+          data-flow-region="channels"
+          data-flow-label="Capture channels"
+          data-flow-role="section"
         >
           <div className="pm-label">Capture (declared)</div>
           <div className="pm-ch-grid">
@@ -288,9 +288,9 @@ export function ProducerMint() {
 
         <div
           className="pm-actions"
-          data-paper-region="actions"
-          data-paper-label="Actions"
-          data-paper-role="control"
+          data-flow-region="actions"
+          data-flow-label="Actions"
+          data-flow-role="control"
         >
           <button type="button" className="pm-btn">
             Mint &amp; open room

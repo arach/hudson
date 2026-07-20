@@ -273,7 +273,7 @@ const CSS = `
   background: color-mix(in srgb, var(--capture) 6%, transparent);
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -322,9 +322,9 @@ export function InterviewerMark() {
       <div className="im-body">
         <section
           className="im-instrument"
-          data-paper-region="instrument"
-          data-paper-label="Work + mark slip"
-          data-paper-role="section"
+          data-flow-region="instrument"
+          data-flow-label="Work + mark slip"
+          data-flow-role="section"
         >
           <div className="im-tabs">
             <span className="im-tab" data-on="true">decision.ts</span>
@@ -342,10 +342,10 @@ export function InterviewerMark() {
 
           <div
             className="im-slip"
-            data-paper-region="composer"
-            data-paper-label="Mark composer"
-            data-paper-role="control"
-            data-paper-note="Optional one-line why. Enter saves, Esc dismisses."
+            data-flow-region="composer"
+            data-flow-label="Mark composer"
+            data-flow-role="control"
+            data-flow-note="Optional one-line why. Enter saves, Esc dismisses."
           >
             <div className="im-slip-head">
               <span className="im-slip-label">Mark · optional why</span>
@@ -365,10 +365,10 @@ export function InterviewerMark() {
 
         <aside
           className="im-rail"
-          data-paper-region="recent"
-          data-paper-label="Session marks"
-          data-paper-role="section"
-          data-paper-note="Light marks for attention — not a live gradebook."
+          data-flow-region="recent"
+          data-flow-label="Session marks"
+          data-flow-role="section"
+          data-flow-note="Light marks for attention — not a live gradebook."
         >
           <div className="im-rail-head">
             <div className="im-rail-eyebrow">This session</div>

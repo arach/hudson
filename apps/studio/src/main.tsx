@@ -29,16 +29,6 @@ function Root() {
     };
   }, []);
 
-  useEffect(() => {
-    if (pathname !== "/paper" && !pathname.startsWith("/paper/")) return;
-    const nextPath = pathname.replace(/^\/paper(?=\/|$)/, "/flows");
-    window.history.replaceState(
-      {},
-      "",
-      `${nextPath}${window.location.search}${window.location.hash}`,
-    );
-  }, [pathname]);
-
   const route = resolveRoute(normalizePath(pathname));
 
   if (route.kind === "embed") return <EmbedPage slug={route.slug} />;

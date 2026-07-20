@@ -7,7 +7,7 @@
  * capture chip are the only status in the header.
  *
  * Sketch — look-and-feel, not wired. Self-contained (own tokens + type) so it
- * renders identically standalone (Paper card iframe) and inside Studio.
+ * renders identically standalone (Flows card) and inside Studio.
  */
 
 const CSS = `
@@ -286,7 +286,7 @@ const CSS = `
   color: color-mix(in srgb, var(--capture) 70%, var(--instr-faint));
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: -2px;
   border-radius: 4px;
@@ -321,10 +321,10 @@ export function CandidateActiveWork() {
 
       <header
         className="aw-header"
-        data-paper-region="header"
-        data-paper-label="Header"
-        data-paper-role="header"
-        data-paper-note="Identity · clock · single capture chip. No tools."
+        data-flow-region="header"
+        data-flow-label="Header"
+        data-flow-role="header"
+        data-flow-note="Identity · clock · single capture chip. No tools."
       >
         <div className="aw-id">
           <span className="aw-id-role">Engineer</span>
@@ -343,10 +343,10 @@ export function CandidateActiveWork() {
       <div className="aw-body">
         <aside
           className="aw-margin"
-          data-paper-region="margin"
-          data-paper-label="Brief margin"
-          data-paper-role="section"
-          data-paper-note="Prepared desk — outcome, materials, constraints. Reference only."
+          data-flow-region="margin"
+          data-flow-label="Brief margin"
+          data-flow-role="section"
+          data-flow-note="Prepared desk — outcome, materials, constraints. Reference only."
         >
           <div className="aw-m-label">Outcome</div>
           <p className="aw-m-outcome">
@@ -369,10 +369,10 @@ export function CandidateActiveWork() {
 
         <main
           className="aw-instr"
-          data-paper-region="instrument"
-          data-paper-label="Instrument"
-          data-paper-role="instrument"
-          data-paper-note="Dominant dark work object — editor, run strip, one surface."
+          data-flow-region="instrument"
+          data-flow-label="Instrument"
+          data-flow-role="instrument"
+          data-flow-note="Dominant dark work object — editor, run strip, one surface."
         >
           <div className="aw-tabs">
             <span className="aw-tab" data-active="true">eligibility.ts</span>
@@ -397,10 +397,10 @@ export function CandidateActiveWork() {
           </div>
           <div
             className="aw-run"
-            data-paper-region="run"
-            data-paper-label="Run strip"
-            data-paper-role="evidence"
-            data-paper-note="Proof — bun test output. Passing reads as proof, quietly."
+            data-flow-region="run"
+            data-flow-label="Run strip"
+            data-flow-role="evidence"
+            data-flow-note="Proof — bun test output. Passing reads as proof, quietly."
           >
             <div className="aw-run-cmd">bun test eligibility.test.ts</div>
             <div className="aw-run-out">
@@ -417,10 +417,10 @@ export function CandidateActiveWork() {
 
         <aside
           className="aw-rail"
-          data-paper-region="ai-rail"
-          data-paper-label="AI rail"
-          data-paper-role="section"
-          data-paper-note="Declared model inside the instrument. Honest, recorded, never coached."
+          data-flow-region="ai-rail"
+          data-flow-label="AI rail"
+          data-flow-role="section"
+          data-flow-note="Declared model inside the instrument. Honest, recorded, never coached."
         >
           <div className="aw-rail-head">
             <span className="aw-rail-model">Claude</span>

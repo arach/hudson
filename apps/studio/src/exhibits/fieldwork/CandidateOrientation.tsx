@@ -2,8 +2,8 @@
  * Candidate · Orientation — the prepared desk.
  *
  * A first-class Studio design page. This is the *real* design (content); the
- * Paper journey card embeds this exact surface via an <iframe> to
- * `/embed/candidate-orientation` (see EmbedPage + the Paper `Embed` primitive).
+ * Flows journey card embeds this exact surface via an <iframe> to
+ * `/embed/candidate-orientation` (see EmbedPage + the Flows `Embed` primitive).
  *
  * Faithful to fieldwork/docs/candidate-experience-direction.md §5:
  *   quiet · exact · trustworthy · serious — a well-set desk, not a ToS wall.
@@ -11,7 +11,7 @@
  *   Capture is the calmest color in the room. Start is calm ink, never a glow.
  *
  * Self-contained: owns its tokens, type, and motion so it renders identically
- * standalone (in the Paper card iframe) and inside Studio.
+ * standalone (in the Flows card) and inside Studio.
  */
 
 import { useId, useState } from "react";
@@ -247,16 +247,16 @@ const CSS = `
 .co-start:not(:disabled):hover { transform: translateY(-1px); }
 .co-start-note { font-size: 13px; line-height: 1.5; color: var(--faint); max-width: 40ch; }
 
-/* Paper inspect — region outline when selected on the map (data-paper-selected). */
-[data-paper-region][data-paper-selected="true"] {
+/* Flows inspect — region outline when selected on the map (data-flow-selected). */
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
 }
-[data-paper-embed="live"][data-inspect="on"] [data-paper-region] {
+[data-flow-embed="live"][data-inspect="on"] [data-flow-region] {
   cursor: crosshair;
 }
-[data-paper-embed="live"][data-inspect="on"] [data-paper-region]:hover {
+[data-flow-embed="live"][data-inspect="on"] [data-flow-region]:hover {
   outline: 1px dashed color-mix(in srgb, #5a7d86 45%, transparent);
   outline-offset: 2px;
 }
@@ -289,28 +289,28 @@ export function CandidateOrientation() {
       <div className="co-column">
         <div
           className="co-eyebrow"
-          data-paper-region="eyebrow"
-          data-paper-label="Eyebrow"
-          data-paper-role="eyebrow"
-          data-paper-note="Role · timebox identity line"
+          data-flow-region="eyebrow"
+          data-flow-label="Eyebrow"
+          data-flow-role="eyebrow"
+          data-flow-note="Role · timebox identity line"
         >
           Engineer · 75-minute work session
         </div>
         <h1
           className="co-title"
-          data-paper-region="title"
-          data-paper-label="Title"
-          data-paper-role="title"
-          data-paper-note="Serif display — the job in plain language"
+          data-flow-region="title"
+          data-flow-label="Title"
+          data-flow-role="title"
+          data-flow-note="Serif display — the job in plain language"
         >
           Make the decision boundary honest.
         </h1>
         <p
           className="co-outcome"
-          data-paper-region="outcome"
-          data-paper-label="Outcome"
-          data-paper-role="body"
-          data-paper-note="One-sentence outcome under the title"
+          data-flow-region="outcome"
+          data-flow-label="Outcome"
+          data-flow-role="body"
+          data-flow-note="One-sentence outcome under the title"
         >
           Unknown eligibility is silently recommending refunds in production.
           Your job is to make the boundary honest again — decide what the code
@@ -319,10 +319,10 @@ export function CandidateOrientation() {
 
         <section
           className="co-section"
-          data-paper-region="handoff"
-          data-paper-label="What you'll hand off"
-          data-paper-role="section"
-          data-paper-note="Deliverables list"
+          data-flow-region="handoff"
+          data-flow-label="What you'll hand off"
+          data-flow-role="section"
+          data-flow-note="Deliverables list"
         >
           <div className="co-label">What you’ll hand off</div>
           <ul className="co-list">
@@ -352,10 +352,10 @@ export function CandidateOrientation() {
 
         <section
           className="co-section"
-          data-paper-region="constraints"
-          data-paper-label="What to hold true"
-          data-paper-role="section"
-          data-paper-note="Constraints / invariants"
+          data-flow-region="constraints"
+          data-flow-label="What to hold true"
+          data-flow-role="section"
+          data-flow-note="Constraints / invariants"
         >
           <div className="co-label">What to hold true</div>
           <ul className="co-list">
@@ -394,10 +394,10 @@ export function CandidateOrientation() {
 
         <section
           className="co-section"
-          data-paper-region="tools"
-          data-paper-label="Your tools — including AI"
-          data-paper-role="section"
-          data-paper-note="Declared tools + AI blessing"
+          data-flow-region="tools"
+          data-flow-label="Your tools — including AI"
+          data-flow-role="section"
+          data-flow-note="Declared tools + AI blessing"
         >
           <div className="co-label">Your tools — including AI</div>
           <ul className="co-list">
@@ -436,10 +436,10 @@ export function CandidateOrientation() {
 
         <section
           className="co-section"
-          data-paper-region="capture"
-          data-paper-label="What this room records"
-          data-paper-role="ledger"
-          data-paper-note="Capture ledger — calm, sunken"
+          data-flow-region="capture"
+          data-flow-label="What this room records"
+          data-flow-role="ledger"
+          data-flow-note="Capture ledger — calm, sunken"
         >
           <div className="co-label">What this room records</div>
           <div className="co-ledger">
@@ -507,10 +507,10 @@ export function CandidateOrientation() {
         <label
           className="co-ack"
           htmlFor={ackId}
-          data-paper-region="ack"
-          data-paper-label="Acknowledgement"
-          data-paper-role="control"
-          data-paper-note="Candidate-authored consent"
+          data-flow-region="ack"
+          data-flow-label="Acknowledgement"
+          data-flow-role="control"
+          data-flow-note="Candidate-authored consent"
         >
           <span className="co-check" data-checked={acked}>
             {CHECK}
@@ -531,20 +531,20 @@ export function CandidateOrientation() {
 
         <div
           className="co-fingerprint"
-          data-paper-region="fingerprint"
-          data-paper-label="Consent fingerprint"
-          data-paper-role="evidence"
-          data-paper-note="Mono receipt of authored consent"
+          data-flow-region="fingerprint"
+          data-flow-label="Consent fingerprint"
+          data-flow-role="evidence"
+          data-flow-note="Mono receipt of authored consent"
         >
           <b>authored by you</b> · sha 3f9a1c07…c2148d · {new Date().getUTCFullYear()}
         </div>
 
         <div
           className="co-start-row"
-          data-paper-region="start"
-          data-paper-label="Start work"
-          data-paper-role="control"
-          data-paper-note="Calm ink CTA — disabled until ack"
+          data-flow-region="start"
+          data-flow-label="Start work"
+          data-flow-role="control"
+          data-flow-note="Calm ink CTA — disabled until ack"
         >
           <button className="co-start" type="button" disabled={!acked}>
             Start work
