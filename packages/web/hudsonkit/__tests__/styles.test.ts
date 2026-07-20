@@ -1,8 +1,9 @@
 import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 
 const bundleSource = readFileSync(
-  new URL('../src/styles/bundle.css', import.meta.url),
+  resolve(__dirname, '../src/styles/bundle.css'),
   'utf8',
 );
 
