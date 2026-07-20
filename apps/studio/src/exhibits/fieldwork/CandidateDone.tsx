@@ -115,7 +115,7 @@ const CSS = `
   cursor: default;
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -136,19 +136,19 @@ export function CandidateDone() {
       <div className="dn-column">
         <div
           className="dn-mark"
-          data-paper-region="mark"
-          data-paper-label="Close mark"
-          data-paper-role="signal"
-          data-paper-note="Quiet moss check — proof, not celebration."
+          data-flow-region="mark"
+          data-flow-label="Close mark"
+          data-flow-role="signal"
+          data-flow-note="Quiet moss check — proof, not celebration."
         >
           {CHECK}
         </div>
         <div className="dn-eyebrow">Engineer · Session complete</div>
         <h1
           className="dn-title"
-          data-paper-region="title"
-          data-paper-label="Title"
-          data-paper-role="title"
+          data-flow-region="title"
+          data-flow-label="Title"
+          data-flow-role="title"
         >
           Your work is saved.
         </h1>
@@ -159,10 +159,10 @@ export function CandidateDone() {
 
         <div
           className="dn-facts"
-          data-paper-region="facts"
-          data-paper-label="Close facts"
-          data-paper-role="section"
-          data-paper-note="Work saved · no score · a person decides. No scorecard, ever."
+          data-flow-region="facts"
+          data-flow-label="Close facts"
+          data-flow-role="section"
+          data-flow-note="Work saved · no score · a person decides. No scorecard, ever."
         >
           <div className="dn-fact">
             <span className="dn-fact-dot" data-tone="pass" />
@@ -192,10 +192,10 @@ export function CandidateDone() {
 
         <p
           className="dn-retention"
-          data-paper-region="retention"
-          data-paper-label="Retention line"
-          data-paper-role="evidence"
-          data-paper-note="One honest mono line — same rules as everything else."
+          data-flow-region="retention"
+          data-flow-label="Retention line"
+          data-flow-role="evidence"
+          data-flow-note="One honest mono line — same rules as everything else."
         >
           Kept for 30 days, then deleted. Ask us to delete it sooner, anytime.
         </p>
@@ -203,9 +203,9 @@ export function CandidateDone() {
         <button
           type="button"
           className="dn-close"
-          data-paper-region="close"
-          data-paper-label="Close"
-          data-paper-role="control"
+          data-flow-region="close"
+          data-flow-label="Close"
+          data-flow-role="control"
         >
           Close the room
         </button>

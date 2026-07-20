@@ -169,7 +169,7 @@ const CSS = `
 .pc-console .dim { color: var(--instr-faint); }
 .pc-console .ok { color: #8ab4a0; }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -198,9 +198,9 @@ export function ProducerCompile() {
         <div className="pc-eyebrow">Producer · Compile</div>
         <h1
           className="pc-title"
-          data-paper-region="title"
-          data-paper-label="Title"
-          data-paper-role="title"
+          data-flow-region="title"
+          data-flow-label="Title"
+          data-flow-role="title"
         >
           Compile the room.
         </h1>
@@ -212,9 +212,9 @@ export function ProducerCompile() {
 
         <section
           className="pc-pipeline"
-          data-paper-region="pipeline"
-          data-paper-label="Compile pipeline"
-          data-paper-role="section"
+          data-flow-region="pipeline"
+          data-flow-label="Compile pipeline"
+          data-flow-role="section"
         >
           {STEPS.map(([t, d], i) => (
             <div key={t} className="pc-step">
@@ -229,9 +229,9 @@ export function ProducerCompile() {
         <div className="pc-split">
           <section
             className="pc-card"
-            data-paper-region="checks"
-            data-paper-label="Gate checks"
-            data-paper-role="section"
+            data-flow-region="checks"
+            data-flow-label="Gate checks"
+            data-flow-role="section"
           >
             <div className="pc-label">Gate checks</div>
             <ul className="pc-checks">
@@ -256,10 +256,10 @@ export function ProducerCompile() {
 
           <section
             className="pc-console"
-            data-paper-region="console"
-            data-paper-label="Compiler log"
-            data-paper-role="evidence"
-            data-paper-note="Mono = proof / system output."
+            data-flow-region="console"
+            data-flow-label="Compiler log"
+            data-flow-role="evidence"
+            data-flow-note="Mono = proof / system output."
           >
             <div className="dim">$ fieldwork compile eng-01-v2</div>
             <div className="ok">✓ sanitize · 0 secrets remaining</div>

@@ -227,7 +227,7 @@ const CSS = `
   text-align: right;
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -254,10 +254,10 @@ export function InterviewerReveal() {
           </span>
           <span
             className="ir-knock"
-            data-paper-region="knock"
-            data-paper-label="Human knock"
-            data-paper-role="signal"
-            data-paper-note="Voice hue only. No red badge, no toast."
+            data-flow-region="knock"
+            data-flow-label="Human knock"
+            data-flow-role="signal"
+            data-flow-note="Voice hue only. No red badge, no toast."
           >
             <span className="ir-knock-dot" />
             Dana · 1 note
@@ -267,9 +267,9 @@ export function InterviewerReveal() {
 
       <div
         className="ir-main"
-        data-paper-region="room"
-        data-paper-label="Work room"
-        data-paper-role="section"
+        data-flow-region="room"
+        data-flow-label="Work room"
+        data-flow-role="section"
       >
         <div className="ir-tabs">
           <span className="ir-tab" data-on="true">decision.ts</span>
@@ -300,10 +300,10 @@ export function InterviewerReveal() {
 
         <div
           className="ir-band"
-          data-paper-region="message"
-          data-paper-label="Human message band"
-          data-paper-role="section"
-          data-paper-note="A person changing constraints — human phrasing, human hue."
+          data-flow-region="message"
+          data-flow-label="Human message band"
+          data-flow-role="section"
+          data-flow-note="A person changing constraints — human phrasing, human hue."
         >
           <div className="ir-avatar" aria-hidden="true">
             D
@@ -320,9 +320,9 @@ export function InterviewerReveal() {
           </div>
           <div
             className="ir-stance"
-            data-paper-region="stance"
-            data-paper-label="Room stance"
-            data-paper-role="body"
+            data-flow-region="stance"
+            data-flow-label="Room stance"
+            data-flow-role="body"
           >
             Quiet knock. Candidate answers when ready. Pressure is a true thing
             said — not a proctor event.

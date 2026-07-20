@@ -5,8 +5,9 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 const hudsonRoot = fileURLToPath(new URL("../..", import.meta.url));
-const studioRoot = fileURLToPath(new URL("../../../studio", import.meta.url));
-const paperRoot = path.join(hudsonRoot, "packages/tools/hudson-paper");
+const studioRoot = process.env.STUDIO_PACKAGE_ROOT
+  ? path.resolve(process.env.STUDIO_PACKAGE_ROOT)
+  : fileURLToPath(new URL("../../../studio", import.meta.url));
 const hudsonNodeModules = path.join(hudsonRoot, "node_modules");
 // studio$ = exact package root only. A bare "studio" alias to index.ts breaks
 // CSS imports (studio/theme.css → index.ts/theme.css ENOTDIR).
@@ -31,42 +32,7 @@ const singletonAliases = [
     find: /^studio$/,
     replacement: path.join(studioRoot, "src/index.ts"),
   },
-  {
-    find: "@hudsonkit/paper/render",
-    replacement: path.join(paperRoot, "src/render.tsx"),
-  },
-  {
-    find: "@hudsonkit/paper/model",
-    replacement: path.join(paperRoot, "src/model.ts"),
-  },
-  {
-    find: /^@hudsonkit\/paper$/,
-    replacement: path.join(paperRoot, "src/model.ts"),
-  },
-  {
-    find: "@hudsonkit/paper/host/styles.css",
-    replacement: path.join(paperRoot, "host/src/styles.css"),
-  },
-  {
-    find: "@hudsonkit/paper/host",
-    replacement: path.join(paperRoot, "host/src/App.tsx"),
-  },
-  // Paper host resolves Fieldwork surfaces from Studio source
-  {
-    find: "@paper-designs/candidate-orientation",
-    replacement: path.join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      "src/exhibits/fieldwork/CandidateOrientation.tsx",
-    ),
-  },
-  {
-    find: /.*apps\/studio\/src\/exhibits\/fieldwork\/surfaces$/,
-    replacement: path.join(
-      fileURLToPath(new URL(".", import.meta.url)),
-      "src/exhibits/fieldwork/surfaces.ts",
-    ),
-  },
-  // Paper host imports hudsonkit/* from source (same as paper's own vite)
+  // Studio Flows imports hudsonkit primitives from source.
   {
     find: "hudsonkit/styles/tokens.css",
     replacement: path.join(
@@ -184,28 +150,26 @@ export default defineConfig({
   server: {
     port: 3033,
     fs: {
-      allow: [hudsonRoot, studioRoot, paperRoot, studioNodeModules],
+      allow: [hudsonRoot, studioRoot, studioNodeModules],
     },
     proxy: {
-      // Paper map API + discuss (same-origin). Start paper API on 29982:
-      //   bun run --cwd packages/tools/hudson-paper src/cli.ts serve --api-only --port 29982
-      // Or full paper serve (API on publicPort+2).
+      // Studio Flows service + discuss, kept same-origin for the browser.
       "/api": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
         changeOrigin: true,
       },
       "/mcp": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
         changeOrigin: true,
       },
       "/health": {
-        target: process.env.PAPER_API_ORIGIN ?? "http://127.0.0.1:29982",
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
         changeOrigin: true,
       },
     },
   },
   optimizeDeps: {
-    exclude: ["studio", "hudsonkit", "@hudsonkit/paper"],
+    exclude: ["studio", "hudsonkit"],
     // hudsonkit is excluded so it stays linked to source, which means Vite
     // doesn't scan its transitive deps. xterm is loaded by a dynamic import
     // inside hudsonkit's TerminalRelay — we need to include it explicitly

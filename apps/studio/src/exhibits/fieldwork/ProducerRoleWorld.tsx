@@ -190,7 +190,7 @@ const CSS = `
   background: var(--raised);
 }
 
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -205,9 +205,9 @@ export function ProducerRoleWorld() {
         <div className="pr-eyebrow">Producer · Role world</div>
         <h1
           className="pr-title"
-          data-paper-region="title"
-          data-paper-label="Title"
-          data-paper-role="title"
+          data-flow-region="title"
+          data-flow-label="Title"
+          data-flow-role="title"
         >
           Turn expired work into a bounded world.
         </h1>
@@ -220,9 +220,9 @@ export function ProducerRoleWorld() {
         <div className="pr-grid">
           <section
             className="pr-card"
-            data-paper-region="inputs"
-            data-paper-label="Inputs"
-            data-paper-role="section"
+            data-flow-region="inputs"
+            data-flow-label="Inputs"
+            data-flow-role="section"
           >
             <div className="pr-card-label">Inputs</div>
             <div className="pr-source">
@@ -259,9 +259,9 @@ export function ProducerRoleWorld() {
 
           <section
             className="pr-card"
-            data-paper-region="outputs"
-            data-paper-label="Outputs"
-            data-paper-role="section"
+            data-flow-region="outputs"
+            data-flow-label="Outputs"
+            data-flow-role="section"
           >
             <div className="pr-card-label">What leaves this stage</div>
             <ul className="pr-out-list">
@@ -275,9 +275,9 @@ export function ProducerRoleWorld() {
 
           <div
             className="pr-banner"
-            data-paper-region="next"
-            data-paper-label="Next step"
-            data-paper-role="control"
+            data-flow-region="next"
+            data-flow-label="Next step"
+            data-flow-role="control"
           >
             <p>
               <strong>Ready when the source is honest.</strong> Next: mint a

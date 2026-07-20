@@ -34,7 +34,6 @@
     "apps/web",
     "packages/tools/create-hudson-app",
     "packages/tools/hkit",
-    "packages/tools/hudson-paper",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
     "packages/web/hudsonkit"

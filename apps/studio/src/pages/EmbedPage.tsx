@@ -1,5 +1,5 @@
 /**
- * EmbedPage — bare host for a single design surface (Paper map cards + focus).
+ * EmbedPage — bare host for a single design surface (Flows map cards + focus).
  *
  * Resolve the surface on each render so registry edits (and Vite HMR) are
  * never stranded behind a module-init snapshot.

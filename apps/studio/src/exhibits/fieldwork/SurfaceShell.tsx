@@ -144,7 +144,7 @@ const BASE = `
   font-size: 12px;
   color: var(--faint);
 }
-[data-paper-region][data-paper-selected="true"] {
+[data-flow-region][data-flow-selected="true"] {
   outline: 2px solid color-mix(in srgb, #5a7d86 75%, transparent);
   outline-offset: 3px;
   border-radius: 4px;
@@ -177,9 +177,9 @@ export function regionProps(
   note?: string,
 ) {
   return {
-    "data-paper-region": id,
-    "data-paper-label": label,
-    ...(role ? { "data-paper-role": role } : {}),
-    ...(note ? { "data-paper-note": note } : {}),
+    "data-flow-region": id,
+    "data-flow-label": label,
+    ...(role ? { "data-flow-role": role } : {}),
+    ...(note ? { "data-flow-note": note } : {}),
   } as const;
 }

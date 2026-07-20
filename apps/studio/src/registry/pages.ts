@@ -61,7 +61,7 @@ export const STUDIO_PAGES: readonly Page[] = [
       "Studio Flows — Fieldwork journeys, live design surfaces, pick, and discuss on one spatial canvas.",
     source: [
       "apps/studio/src/flows/FlowsApp.tsx",
-      "packages/tools/hudson-paper/host/src/PaperWorld.tsx",
+      "studio/src/flows/ui/FlowWorld.tsx",
     ],
   },
   {

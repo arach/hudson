@@ -41,6 +41,7 @@ yourself writing code that duplicates a studio or hudsonkit primitive.
 | `studio/router` | `StudioRouterProvider`, `StudioRouter`, `StudioLinkProps` |
 | `studio/doc` | `EngMarkdown` body, `EngDocSheet` + `DataRow` for header/colophon sheets |
 | `studio/atoms` | `createStatusPalette` → bound `StatusPill` for proposal status |
+| `studio/flows` | `createStudioFlowsApp` + Flows model/UI — the journey canvas owned by Studio |
 | `studio/theme.css` | CSS-var aliases `--studio-* → --hud-*` |
 | `studio/doc.css` | Editorial typography + code-block styles |
 
@@ -83,6 +84,8 @@ yourself writing code that duplicates a studio or hudsonkit primitive.
 - **Pages** (`src/pages/`) — Home, Doc, Exhibit, NotFound page shells.
 - **Exhibits** (`src/exhibits/<slug>/`) — one folder per study. Each exports
   a single component registered in `src/exhibits/index.ts`.
+- **Flows adapter** (`src/flows/FlowsApp.tsx`) — registers Hudson-specific
+  Fieldwork surfaces and navigation with the Studio-owned Flows app.
 - **Tailwind v4 recipe** (`src/styles/tailwind.css`) — the `@import`,
   `@source`, and `@theme` plumbing that wires studio's CSS vars into v4
   utility classes. **Worth contributing back to studio's README** — Hudson is
@@ -124,7 +127,7 @@ consumers; here it'd run too late.
 - `server.fs.allow` includes the Hudson root **and** `../studio` — needed
   because both are workspace-linked from outside `node_modules`.
 - `@source` directives in `tailwind.css` scan both
-  `packages/web/hudsonkit/src/**` and `../studio/src/**`. Skip these and
+  `packages/web/hudsonkit/src/**` and the linked `node_modules/studio/src/**`. Skip these and
   utility classes work in dev but **disappear in prod** (every consumer
   hits this once).
 

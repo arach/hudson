@@ -1,6 +1,6 @@
 /**
- * Studio dev — catalog + Paper (API) on one origin (:3033).
- * Spawns Paper API on :29982 and Vite Studio with /api proxy.
+ * Studio dev — catalog + Flows service on one origin (:3033).
+ * Spawns the Studio-owned Flows service on :29982 and Vite with /api proxy.
  */
 
 import { spawn } from "node:child_process";
@@ -9,8 +9,10 @@ import { fileURLToPath } from "node:url";
 import { existsSync } from "node:fs";
 
 const studioRoot = fileURLToPath(new URL("..", import.meta.url));
-const paperRoot = path.resolve(studioRoot, "../../packages/tools/hudson-paper");
-const apiPort = Number(process.env.PAPER_API_PORT ?? 29982);
+const flowsRoot = process.env.STUDIO_PACKAGE_ROOT
+  ? path.resolve(process.env.STUDIO_PACKAGE_ROOT)
+  : path.resolve(studioRoot, "../../../studio");
+const apiPort = Number(process.env.STUDIO_FLOWS_API_PORT ?? 29982);
 const studioPort = Number(process.env.STUDIO_PORT ?? 3033);
 
 // When this script is launched via `bun run`, execPath is the bun binary.
@@ -81,22 +83,28 @@ function shutdown() {
 process.on("SIGINT", shutdown);
 process.on("SIGTERM", shutdown);
 
-console.log(`Paper API  → http://127.0.0.1:${apiPort}  (proxied from Studio /api)`);
+console.log(`Studio Flows service → http://127.0.0.1:${apiPort}  (proxied from /api)`);
 console.log(`Studio Flows → http://127.0.0.1:${studioPort}/flows`);
 
 run(
   bunBin,
   [
     "run",
-    "src/cli.ts",
+    "src/flows/server/cli.ts",
     "serve",
-    "--api-only",
     "--port",
     String(apiPort),
     "--host",
     "127.0.0.1",
   ],
-  { cwd: paperRoot },
+  {
+    cwd: flowsRoot,
+    env: {
+      STUDIO_FLOWS_DISCUSS_PROJECT:
+        process.env.STUDIO_FLOWS_DISCUSS_PROJECT ??
+        path.resolve(studioRoot, "../../../fieldwork"),
+    },
+  },
 );
 
 setTimeout(() => {
@@ -106,7 +114,8 @@ setTimeout(() => {
     {
       cwd: studioRoot,
       env: {
-        PAPER_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
+        STUDIO_FLOWS_API_ORIGIN: `http://127.0.0.1:${apiPort}`,
+        STUDIO_PACKAGE_ROOT: flowsRoot,
       },
     },
   );

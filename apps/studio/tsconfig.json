@@ -15,14 +15,6 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "baseUrl": ".",
-    "paths": {
-      "studio": ["../../../studio/src/index.ts"],
-      "studio/*": ["../../../studio/src/*"],
-      "@hudsonkit/paper": ["../../packages/tools/hudson-paper/src/model.ts"],
-      "@hudsonkit/paper/model": ["../../packages/tools/hudson-paper/src/model.ts"],
-      "@hudsonkit/paper/render": ["../../packages/tools/hudson-paper/src/render.tsx"]
-    },
     "allowImportingTsExtensions": true,
     "noEmit": true,
     "useDefineForClassFields": true,
