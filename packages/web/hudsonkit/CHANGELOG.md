@@ -6,6 +6,28 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.1] - 2026-07-20
+
+### Added
+
+- Grew `hudsonkit/nav` into a first-class sidebar anatomy (modeled on shadcn's
+  Base UI sidebar) alongside the data-driven `HudSideNav`:
+  - `HudSideNavProvider` + `useHudSideNav` own collapse state, add a Cmd/Ctrl+B
+    keyboard shortcut (configurable/disable-able), and persist open/closed via
+    `usePersistentState` (localStorage) when given a `persistKey`.
+  - `collapsible` modes `offcanvas` | `icon` | `none`, a `side` (`left`/`right`),
+    and controlled/`defaultOpen` state — surfaced as `data-state` /
+    `data-collapsible` / `data-side` on the `<nav>`.
+  - Composable primitives: `HudSideNavHeader`, `HudSideNavContent`,
+    `HudSideNavFooter`, `HudSideNavGroup`, `HudSideNavGroupLabel`,
+    `HudSideNavMenu`, `HudSideNavMenuItem`, `HudSideNavMenuButton` (`isActive`,
+    `live`, `count`, `badge`, `asChild`), `HudSideNavMenuSub` /
+    `HudSideNavMenuSubButton`, plus `HudSideNavRail` (edge toggle) and
+    `HudSideNavTrigger`.
+  - `HudSideNav` now self-provides a provider when standalone and accepts
+    hand-composed `children`; the shipped `items` API is unchanged. The
+    two-tier accent rule (accent === live only) holds across both layers.
+
 ## [0.4.0] - 2026-07-20
 
 ### Added

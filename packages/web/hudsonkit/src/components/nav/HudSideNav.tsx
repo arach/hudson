@@ -12,6 +12,13 @@
 //   Level 3 — items        : leaf rows under a section (or directly under a
 //             destination, for the natural two-level case).
 //
+// This is the convenience layer. For hand-composed navs, use the primitives
+// (HudSideNavProvider/Header/Content/Footer/Group/Menu/…) exported alongside it;
+// pass `children` here to compose them inside the same shell.
+//
+// Collapse is owned by HudSideNavProvider. HudSideNav self-provides one when it
+// is not already inside a provider, so the standalone API needs no wrapper.
+//
 // Two-tier accent rule (matches the rest of the kit): the accent colour is
 // spent ONLY on the live/active signal — the live dot, the live count tone, and
 // the live left-spine. Plain *selection* is a neutral filled chip, never accent,
@@ -19,10 +26,18 @@
 
 import React, { useCallback, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { ChevronRight } from 'lucide-react';
 import { HudBadge } from '../primitives';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
+import {
+  HudSideNavProvider,
+  useHudSideNav,
+  useOptionalHudSideNav,
+  type HudSideNavCollapsible,
+  type HudSideNavSide,
+} from './context';
+import { HudSideNavRail, HudSideNavCaret } from './primitives';
+import { LiveDot, indentFor, navRowBg, navSpine } from './shared';
 
 /** A single navigation node. Nodes nest via `children` to form the tier tree. */
 export interface HudNavNode {
@@ -49,8 +64,11 @@ export interface HudNavNode {
 }
 
 export interface HudSideNavProps {
-  /** Level-1 destinations. Each may nest sections and items via `children`. */
-  items: readonly HudNavNode[];
+  /** Level-1 destinations. Each may nest sections and items via `children`.
+   *  Omit when composing the tree by hand via `children`. */
+  items?: readonly HudNavNode[];
+  /** Hand-composed body (primitives). Ignored when `items` is provided. */
+  children?: React.ReactNode;
   /** Currently selected node id (any tier). */
   selectedId?: string | null;
   /** Fired when an enabled node's row is activated. Selection is the
@@ -63,9 +81,23 @@ export interface HudSideNavProps {
   defaultExpandedIds?: Iterable<string>;
   /** Notified whenever the expanded set changes (both controlled + uncontrolled). */
   onExpandedChange?: (expandedIds: ReadonlySet<string>) => void;
-  /** Icons-only rail: renders level-1 destinations as centred icons and hides
-   *  labels + deeper tiers. The consumer narrows the panel to suit. */
+  /**
+   * Force icons-only collapse. Back-compat shorthand: when set, HudSideNav
+   * self-provides a provider in `icon` mode with this as the controlled state.
+   * Prefer a `HudSideNavProvider` + `collapsible`/`persistKey` for new code.
+   */
   collapsed?: boolean;
+  /** Provider defaults used only when HudSideNav self-provides (no outer
+   *  provider). Ignored when rendered inside a `HudSideNavProvider`. */
+  defaultOpen?: boolean;
+  collapsible?: HudSideNavCollapsible;
+  side?: HudSideNavSide;
+  /** localStorage key to persist collapse (self-provided provider only). */
+  persistKey?: string;
+  /** Cmd/Ctrl shortcut key, or `false` to disable (self-provided provider only). */
+  keyboardShortcut?: string | false;
+  /** Render a rail toggle strip along the sidebar's inner edge. */
+  rail?: boolean;
   /** Optional content pinned above the tree (brand row, workspace switch, …). */
   header?: React.ReactNode;
   /** Optional content pinned below the tree (account, status, actions, …). */
@@ -96,14 +128,37 @@ function collectAncestors(
   return null;
 }
 
-export function HudSideNav({
+export function HudSideNav(props: HudSideNavProps) {
+  const outer = useOptionalHudSideNav();
+  // Already inside a provider (composable usage) — consume it directly.
+  if (outer) return <HudSideNavView {...props} />;
+
+  // Standalone — self-provide. The legacy `collapsed` prop maps to a controlled
+  // `icon`-mode provider so the shipped behavior is byte-identical.
+  const { collapsed, defaultOpen, collapsible, side, persistKey, keyboardShortcut } = props;
+  return (
+    <HudSideNavProvider
+      {...(collapsed !== undefined ? { open: !collapsed } : {})}
+      defaultOpen={defaultOpen ?? true}
+      collapsible={collapsible ?? 'icon'}
+      side={side ?? 'left'}
+      persistKey={persistKey}
+      keyboardShortcut={keyboardShortcut}
+    >
+      <HudSideNavView {...props} />
+    </HudSideNavProvider>
+  );
+}
+
+function HudSideNavView({
   items,
+  children,
   selectedId,
   onSelect,
   expandedIds,
   defaultExpandedIds,
   onExpandedChange,
-  collapsed = false,
+  rail,
   header,
   footer,
   density = 'default',
@@ -111,9 +166,13 @@ export function HudSideNav({
   className,
   empty,
 }: HudSideNavProps) {
+  const { state, collapsible, side } = useHudSideNav();
+  const iconCollapsed = state === 'collapsed' && collapsible === 'icon';
+  const offcanvasHidden = state === 'collapsed' && collapsible === 'offcanvas';
+
   const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => {
     const seed = new Set(defaultExpandedIds);
-    if (selectedId) {
+    if (selectedId && items) {
       for (const id of collectAncestors(items, selectedId) ?? []) seed.add(id);
     }
     return seed;
@@ -138,14 +197,15 @@ export function HudSideNav({
     [expanded, setExpanded],
   );
 
-  const body =
-    items.length === 0 && empty ? (
+  const dataDriven = items !== undefined;
+  const body = dataDriven ? (
+    items!.length === 0 && empty ? (
       <div className="px-3 py-4 text-[11px] text-muted-foreground">{empty}</div>
-    ) : collapsed ? (
-      <CollapsedRail items={items} selectedId={selectedId} onSelect={onSelect} density={density} />
+    ) : iconCollapsed ? (
+      <CollapsedRail items={items!} selectedId={selectedId} onSelect={onSelect} density={density} />
     ) : (
       <div className="flex flex-col gap-0.5">
-        {items.map(node => (
+        {items!.map(node => (
           <HudNavRow
             key={node.id}
             node={node}
@@ -158,12 +218,18 @@ export function HudSideNav({
           />
         ))}
       </div>
-    );
+    )
+  ) : (
+    children
+  );
 
   return (
     <nav
       aria-label={ariaLabel}
-      className={cx('flex min-h-0 flex-col', className)}
+      data-state={state}
+      data-collapsible={collapsible === 'none' ? undefined : collapsible}
+      data-side={side}
+      className={cx('relative flex min-h-0 flex-col', offcanvasHidden && 'hidden', className)}
     >
       {header && (
         <div className={cx('shrink-0 border-b border-border/70', density === 'compact' ? 'p-2' : 'p-3')}>
@@ -173,9 +239,8 @@ export function HudSideNav({
       <div className={cx('min-h-0 flex-1 overflow-y-auto frame-scrollbar', density === 'compact' ? 'py-1.5' : 'py-2')}>
         {body}
       </div>
-      {footer && (
-        <div className="shrink-0 border-t border-border/70 p-3">{footer}</div>
-      )}
+      {footer && <div className="shrink-0 border-t border-border/70 p-3">{footer}</div>}
+      {rail && <HudSideNavRail />}
     </nav>
   );
 }
@@ -233,11 +298,7 @@ function HudNavRow({
             node.disabled ? 'pointer-events-none opacity-50' : 'text-muted-foreground hover:text-foreground',
           )}
         >
-          <ChevronRight
-            size={10}
-            strokeWidth={2.5}
-            className={cx('shrink-0 text-muted-foreground/70 transition-transform duration-150', isExpanded && 'rotate-90')}
-          />
+          <HudSideNavCaret expanded={isExpanded} />
           <span className="min-w-0 flex-1 truncate text-left">{node.label}</span>
           <TrailingCluster node={node} compact={compact} />
         </button>
@@ -262,13 +323,6 @@ function HudNavRow({
   }
 
   const Icon = node.icon;
-  // Two-tier accent rule: live wins the spine (accent); plain selection keeps a
-  // neutral spine; everything else is transparent.
-  const spine = node.live
-    ? 'border-l-accent'
-    : isSelected
-      ? 'border-l-foreground/30'
-      : 'border-l-transparent';
   const isDestination = depth === 0;
 
   return (
@@ -283,8 +337,8 @@ function HudNavRow({
           'group flex w-full items-center gap-2 border-l-2 pr-2.5 text-left transition-colors',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
           compact ? 'py-1.5' : 'py-2',
-          spine,
-          isSelected ? 'bg-secondary/70' : 'hover:bg-muted/40',
+          navSpine(isSelected, node.live),
+          navRowBg(isSelected),
           node.disabled && 'pointer-events-none opacity-50',
         )}
       >
@@ -297,11 +351,9 @@ function HudNavRow({
           !isDestination && <span className="w-1 shrink-0" aria-hidden="true" />
         )}
         {hasChildren && (
-          <ChevronRight
-            size={10}
-            strokeWidth={2.5}
-            className={cx('-ml-1 shrink-0 text-muted-foreground/70 transition-transform duration-150', isExpanded && 'rotate-90')}
-          />
+          <span className="-ml-1 flex">
+            <HudSideNavCaret expanded={isExpanded} />
+          </span>
         )}
         <span
           className={cx(
@@ -353,25 +405,6 @@ function TrailingCluster({ node, compact }: { node: HudNavNode; compact: boolean
   );
 }
 
-function LiveDot({ compact }: { compact: boolean }) {
-  return (
-    <span
-      aria-hidden="true"
-      className={cx('relative inline-flex shrink-0 items-center justify-center', compact ? 'h-2 w-2' : 'h-2.5 w-2.5')}
-    >
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-accent/60" />
-      <span className={cx('relative inline-flex rounded-full bg-accent', compact ? 'h-1 w-1' : 'h-1.5 w-1.5')} />
-    </span>
-  );
-}
-
-// Indentation ramps by depth but is capped so deep trees stay readable.
-function indentFor(depth: number, compact: boolean): number {
-  const base = compact ? 8 : 10;
-  const step = compact ? 12 : 14;
-  return base + Math.min(depth, 2) * step;
-}
-
 // ---------------------------------------------------------------------------
 // Collapsed rail — icons-only level-1 destinations. Deeper tiers are hidden.
 // ---------------------------------------------------------------------------
@@ -412,7 +445,7 @@ function CollapsedRail({
               node.disabled && 'pointer-events-none opacity-50',
             )}
           >
-            {Icon ? <Icon size={compact ? 16 : 18} /> : <span className="text-[11px] font-mono uppercase">{label?.slice(0, 2)}</span>}
+            {Icon ? <Icon size={compact ? 16 : 18} /> : <span className="font-mono text-[11px] uppercase">{label?.slice(0, 2)}</span>}
             {node.live && (
               <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" />
             )}
