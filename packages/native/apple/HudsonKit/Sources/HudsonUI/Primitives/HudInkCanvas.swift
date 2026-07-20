@@ -30,23 +30,45 @@ public enum HudInkToolKind: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
+/// Background treatment for ``HudInkCanvas``.
+///
+/// The canvas itself only ever draws ink strokes; this enum decides what, if
+/// anything, is drawn *behind* those strokes.
+public enum HudInkCanvasBackground: String, CaseIterable, Sendable {
+    /// The default annotation-card look: an opaque base fill with a faint
+    /// graph-paper grid, rounded corners, and a hairline border. Use when the
+    /// canvas is a standalone surface that owns its own space.
+    case graphPaper
+
+    /// No background of its own — strokes draw directly over whatever sits
+    /// beneath the canvas. Use when layering ink as a transparent overlay on
+    /// existing content (a document editor, an image, a live view).
+    case transparent
+
+    /// Whether this treatment lets the content below the canvas show through.
+    public var isTransparent: Bool { self == .transparent }
+}
+
 public struct HudInkCanvas: View {
     @Binding private var drawingData: Data
     @Binding private var tool: HudInkToolKind
 
     private let isFingerDrawingEnabled: Bool
     private let minimumHeight: CGFloat
+    private let background: HudInkCanvasBackground
 
     public init(
         drawingData: Binding<Data>,
         tool: Binding<HudInkToolKind>,
         isFingerDrawingEnabled: Bool = true,
-        minimumHeight: CGFloat = 180
+        minimumHeight: CGFloat = 180,
+        background: HudInkCanvasBackground = .graphPaper
     ) {
         self._drawingData = drawingData
         self._tool = tool
         self.isFingerDrawingEnabled = isFingerDrawingEnabled
         self.minimumHeight = minimumHeight
+        self.background = background
     }
 
     public var body: some View {
@@ -57,13 +79,33 @@ public struct HudInkCanvas: View {
             isFingerDrawingEnabled: isFingerDrawingEnabled
         )
         .frame(minHeight: minimumHeight)
-        .background(HudSurface.base)
-        .overlay(HudGridBackground(step: 18, lineColor: HudHairline.subtle.opacity(HudOpacity.soft)))
-        .clipShape(RoundedRectangle(cornerRadius: HudRadius.standard))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.standard, lineWidth: 1))
+        .modifier(HudInkCanvasChrome(background: background))
         #else
-        HudInkUnavailableView(minimumHeight: minimumHeight)
+        HudInkUnavailableView(minimumHeight: minimumHeight, background: background)
         #endif
+    }
+}
+
+/// Draws the background/chrome behind the ink strokes for a given
+/// ``HudInkCanvasBackground``. Kept separate from the drawing surface so the
+/// canvas stays a pure ink layer and the graph-paper look is one composable,
+/// swappable option rather than a baked-in base.
+private struct HudInkCanvasChrome: ViewModifier {
+    let background: HudInkCanvasBackground
+
+    func body(content: Content) -> some View {
+        switch background {
+        case .graphPaper:
+            content
+                .background(HudSurface.base)
+                .overlay(HudGridBackground(step: 18, lineColor: HudHairline.subtle.opacity(HudOpacity.soft)))
+                .clipShape(RoundedRectangle(cornerRadius: HudRadius.standard))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.standard, lineWidth: 1))
+        case .transparent:
+            // No base fill, grid, clip, or border: strokes composite straight
+            // over whatever sits beneath the canvas.
+            content
+        }
     }
 }
 
@@ -118,6 +160,7 @@ private struct HudInkEmptyPreview: View {
 
 private struct HudInkUnavailableView: View {
     let minimumHeight: CGFloat
+    var background: HudInkCanvasBackground = .graphPaper
 
     var body: some View {
         VStack(spacing: HudSpacing.sm) {
@@ -127,9 +170,26 @@ private struct HudInkUnavailableView: View {
         .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
         .foregroundStyle(HudPalette.dim)
         .frame(maxWidth: .infinity, minHeight: minimumHeight)
-        .background(HudSurface.base)
-        .clipShape(RoundedRectangle(cornerRadius: HudRadius.standard))
-        .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.standard, lineWidth: 1))
+        .modifier(HudInkPlaceholderChrome(background: background))
+    }
+}
+
+/// Card chrome for the non-drawing placeholder states (base fill + rounded clip
+/// + hairline border, no grid). Dropped entirely for the transparent variant so
+/// the placeholder never paints an opaque card over layered content.
+private struct HudInkPlaceholderChrome: ViewModifier {
+    let background: HudInkCanvasBackground
+
+    func body(content: Content) -> some View {
+        switch background {
+        case .graphPaper:
+            content
+                .background(HudSurface.base)
+                .clipShape(RoundedRectangle(cornerRadius: HudRadius.standard))
+                .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.standard, lineWidth: 1))
+        case .transparent:
+            content
+        }
     }
 }
 
