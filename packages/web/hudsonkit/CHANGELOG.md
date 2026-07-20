@@ -6,6 +6,17 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [0.4.0] - 2026-07-20
+
+### Added
+
+- Added the `hudsonkit/nav` subpath with `HudSideNav` — a data-driven,
+  up-to-three-tier application side navigation (destinations → sections → items)
+  that drops into `AppShell`'s `slots.LeftPanel`. Supports selected/hover/live/
+  disabled states (accent reserved for the live signal per the two-tier accent
+  rule), caret-collapsible groups with selected-ancestor reveal, and an optional
+  icons-only collapsed rail. Exposes `HudNavNode` / `HudSideNavProps`.
+
 ## [0.3.3] - 2026-07-01
 
 ### Changed

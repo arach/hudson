@@ -56,6 +56,7 @@ const clientEntries = {
   player: 'src/player.ts',
   primitives: 'src/primitives.ts',
   patterns: 'src/patterns.ts',
+  nav: 'src/nav.ts',
   apps: 'src/apps/index.ts',
 };
 
