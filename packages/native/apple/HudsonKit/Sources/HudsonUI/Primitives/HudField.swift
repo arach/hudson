@@ -57,14 +57,15 @@ public struct HudField: View {
 
             TextField(placeholder, text: $text)
                 .textFieldStyle(.plain)
-                .font(HudFont.mono(HudTextSize.sm))
+                .hudFont(.sm, face: .mono)
                 .foregroundStyle(isEnabled ? HudPalette.ink : HudPalette.dim)
                 .tint(HudPalette.accent)
                 .focused($isFocused)
                 .accessibilityLabel(accessibilityLabelText ?? placeholder)
         }
         .padding(.horizontal, HudSpacing.xl)
-        .frame(height: HudLayout.fieldHeight)
+        .padding(.vertical, HudSpacing.sm)
+        .frame(minHeight: HudLayout.fieldHeight)
         .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(background))
         .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(border, lineWidth: isFocused ? HudFocus.ringWidth : HudStrokeWidth.standard))
         .contentShape(RoundedRectangle(cornerRadius: HudRadius.standard))

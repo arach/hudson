@@ -1,6 +1,7 @@
 import SwiftUI
 #if os(iOS)
 import HudsonUI
+import UIKit
 #endif
 
 enum HudPhoneAppShellAppearancePolicy: Equatable, Sendable {
@@ -357,7 +358,7 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
     }
 
     private var restingPivot: some View {
-        Button(action: controlDeck.pivotTapped) {
+        Button(action: summonControlDeck) {
             Image(systemName: "circle.grid.2x2.fill")
                 .font(HudFont.ui(HudTextSize.lg, weight: .medium))
                 .foregroundStyle(HudPalette.bg)
@@ -381,6 +382,16 @@ private struct HudPhoneComplicationsPresentationModifier: ViewModifier {
         .buttonStyle(.plain)
         .accessibilityLabel("Show controls")
         .accessibilityHint("Shows contextual controls for this screen.")
+    }
+
+    private func summonControlDeck() {
+        UIApplication.shared.sendAction(
+            #selector(UIResponder.resignFirstResponder),
+            to: nil,
+            from: nil,
+            for: nil
+        )
+        controlDeck.pivotTapped()
     }
 }
 #endif
