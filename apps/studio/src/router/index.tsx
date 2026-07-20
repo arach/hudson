@@ -17,6 +17,12 @@ function notify() {
   for (const fn of listeners) fn();
 }
 
+/** Subscribe to SPA path changes (pushState + popstate). Used by full-bleed roots. */
+export function subscribePath(fn: () => void): () => void {
+  listeners.add(fn);
+  return () => listeners.delete(fn);
+}
+
 export function navigate(href: string) {
   const url = new URL(href, window.location.href);
   const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
