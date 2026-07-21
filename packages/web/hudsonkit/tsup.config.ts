@@ -38,6 +38,7 @@ const clientEntries = {
   chrome: 'src/chrome.ts',
   overlays: 'src/overlays.ts',
   'context-menu': 'src/context-menu.ts',
+  behaviors: 'src/behaviors.ts',
   canvas: 'src/canvas.ts',
   windows: 'src/windows.ts',
   theme: 'src/theme.ts',

@@ -1,6 +1,6 @@
 # HUD-014 — Web app starter and behaviors layer
 
-**Status**: RFC — request for comments (implementation packages prepared, nothing landed beyond A1–A2 spikes)
+**Status**: Accepted (owner, 2026-07-20) — integrating
 **Owner**: Arach (proposed from the Iris web client build, 2026-07-20)
 **Depends on**: hudsonkit 0.4.1 (`hudsonkit/nav` HudSideNav provider + collapse modes)
 **Targets**: `packages/web/hudsonkit` (behaviors, nav, app-shell, styles types), new `packages/create-hudson-app` (or `templates/web/`), `AGENTS.md`
@@ -48,23 +48,29 @@ Spinning up and hardening one real consumer app in one day produced:
 | # | Problem (above) | Proposal | Package |
 |---|---|---|---|
 | P1 | 1 | Kit-owned **theme adapter**: one typed function from theme seed → complete token set (hud ladder + shadcn layer); incomplete/miscategorized mappings fail to compile | 04 (contract) |
-| P2 | 4 | **Behaviors layer** in hudsonkit wrapping `@base-ui/react`: `HudTooltip`(+Provider), `HudMenu`, `HudPopover`, `HudSelectBase`; Hudson owns all visual register | 01 |
+| P2 | 4 | **Behaviors layer** in hudsonkit wrapping `@base-ui-components/react`: `HudTooltip`(+Provider), `HudMenu`, `HudPopover`, `HudSelectBase`; Hudson owns all visual register | 01 |
 | P3 | 3, 5 | **Nav/AppShell upgrades**: visible-on-all-themes selection + roving focus in `CollapsedRail`; `snapCollapseAt` option coupling panel width to nav collapse (hysteresis built in); `--hud-nav-live` themeable token; breadcrumb primitive | 02, 03 |
 | P4 | 6 | `./styles` **type declarations** in package exports | (self-authored, trivial) |
 | P5 | 2, 6 | **`create-hudson-app`**: Vite + strict TS with typecheck wired into the build gate, TanStack Router SPA destinations scaffold on AppShell, the P1 theme adapter, P2 behaviors included, documented entries/proxy layout | 04 |
 
-## Open questions — where we specifically want comments
+## Owner rulings (2026-07-20) — all four accepted as written
 
-1. **Base UI doctrine.** AGENTS.md says Base UI is for context menu
-   only. P2 widens it to the sanctioned headless *behaviors* layer
-   (visuals stay custom). Is that the stance this repo wants?
-2. **Second stack.** Hudson itself is Next.js; the starter proposes
-   Vite + TanStack Router as the recommended path for *consumer apps*.
-   Bless, scope ("for standalone clients"), or reject?
-3. **API commitment.** `snapCollapseAt`, `--hud-nav-live`, breadcrumb
-   become supported public API generalized from one consumer. Which,
-   if any, should wait for a second consumer?
-4. **Starter location**: `packages/create-hudson-app` vs `templates/`.
+1. **Base UI doctrine.** `@base-ui-components/react` is the sanctioned
+   headless behaviors layer (tooltip, menu, popover, select, context
+   menu). Opt-in subpaths only (`hudsonkit/behaviors`,
+   `hudsonkit/context-menu`). Full package name in docs. Package 01
+   lands as a **diff** against existing ContextMenu chrome — reconcile
+   via shared `menuChrome`, do not duplicate.
+2. **Second stack.** Vite + TanStack Router blessed **scoped to
+   standalone consumer clients**; docs must state the scope.
+3. **API commitment — land by risk:** theme adapter; `snapCollapseAt`
+   (optional prop + hysteresis); selection/roving **default-off**;
+   breadcrumb minimal.
+4. **Starter location:** new `standalone` template tier inside existing
+   `packages/tools/create-hudson-app`, private until green.
+
+**Integration order:** B (package 01) → A3–A6 (packages 02–03 +
+breadcrumb) → C (package 04 as standalone-tier input).
 
 ## Validation
 

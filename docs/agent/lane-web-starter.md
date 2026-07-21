@@ -15,14 +15,13 @@ layer. The starter encodes the assembled end-state as the beginning.
 Read `/Users/arach/dev/iris/docs/reference/surface-primitives-architecture.md`
 (HudsonKit upstream section) — that punch list is this lane's backlog.
 
-## Rule amendment (owner-authorized, land it in AGENTS.md)
+## Rule amendment (owner-authorized — landed with workstream B)
 
-AGENTS.md currently says Base UI is for context menu only. The owner
-has widened this: **@base-ui/react is the sanctioned headless
-*behaviors* layer — tooltip, menu, popover, select, context menu —
-with Hudson owning all visual register.** Custom-built stays the rule
-for everything the eye touches. Update the AGENTS.md line as part of
-workstream B.
+**`@base-ui-components/react` is the sanctioned headless *behaviors*
+layer** — tooltip, menu, popover, select, context menu — via opt-in
+subpaths (`hudsonkit/behaviors`, `hudsonkit/context-menu`), with
+Hudson owning all visual register. Custom-built stays the rule for
+everything the eye touches.
 
 ## Workstreams (checkpoint each separately)
 
@@ -94,5 +93,7 @@ gates (hudson's own build/lint + the Iris cross-check above),
 screenshot when visual. Cross-harness review happens from those
 reports; steers land in the same DM.
 
-**Order (amended):** A1–A2 now (hudson-native, self-authored) → HOLD
-B, A3–A6, and C until Iris contribution packages land in this DM.
+**Order (amended, owner 2026-07-20):** A1–A2 done → **B** (package 01
+behaviors reconcile) → **A3–A6** (packages 02–03 + breadcrumb) → **C**
+(package 04 as `standalone` tier inside `packages/tools/create-hudson-app`,
+private until green). HUD-014 Accepted (owner, 2026-07-20) — integrating.
