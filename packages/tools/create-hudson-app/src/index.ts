@@ -7,6 +7,7 @@ import { scaffold } from './scaffold';
 import { generateWorkspace } from './workspace';
 import { buildVars } from './utils';
 import { header, summary, error, info, cyan } from './log';
+import { wireStandaloneHudsonkit, warnMissingMonorepoPack } from './wireHudsonkit';
 
 // ---------------------------------------------------------------------------
 // Main
@@ -68,6 +69,13 @@ async function main() {
     projectRoot,
   });
 
+  // Pre-publish: wire monorepo pack (or HUDSONKIT_TGZ) so bun install works
+  // before hudsonkit 0.4.1 is on npm.
+  if (isStandalone) {
+    const wired = await wireStandaloneHudsonkit(appDir, process.cwd());
+    if (!wired) warnMissingMonorepoPack(process.cwd());
+  }
+
   // Workspace files only apply to monorepo app tiers.
   let hasWorkspace = false;
   if (!opts.noWorkspace && !isStandalone) {
@@ -75,7 +83,7 @@ async function main() {
     hasWorkspace = true;
   }
 
-  summary(opts.appId, appFiles.length, hasWorkspace);
+  summary(opts.appId, appFiles.length, hasWorkspace, { standalone: isStandalone });
   if (isStandalone) {
     info(`Private until green — run: cd ${opts.appId} && bun install && bun run check`);
   }

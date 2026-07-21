@@ -26,6 +26,24 @@ bun run check      # typecheck && build
 bun run test       # theme adapter guard
 ```
 
+## hudsonkit dependency (pre-publish)
+
+This template targets **hudsonkit ≥ 0.4.1** (AppShell, `hudsonkit/nav`,
+`hudsonkit/behaviors`, styles type decls). Until that version is on npm,
+point at a local pack from the Hudson monorepo:
+
+```bash
+# from packages/web/hudsonkit in the hudson repo
+bun run pack   # emits hudsonkit-0.4.1.tgz (exact version from package.json)
+
+# in this app
+bun add hudsonkit@file:/absolute/path/to/hudsonkit-0.4.1.tgz
+```
+
+When scaffolding from inside the Hudson monorepo, `create-hudson-app` auto-wires
+`file:` to the monorepo pack matching `packages/web/hudsonkit/package.json`
+version when that tarball is present (set `HUDSONKIT_TGZ=/path/to.tgz` to override).
+
 ## Layout
 
 - `/` — AppShell destinations rail + content (SPA)

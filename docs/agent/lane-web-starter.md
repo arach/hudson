@@ -96,4 +96,6 @@ reports; steers land in the same DM.
 **Order (amended, owner 2026-07-20):** A1–A2 done → **B** (package 01
 behaviors reconcile) → **A3–A6** (packages 02–03 + breadcrumb) → **C**
 (package 04 as `standalone` tier inside `packages/tools/create-hudson-app`,
-private until green). HUD-014 Accepted (owner, 2026-07-20) — integrating.
+private until green → **green 2026-07-21**, see
+`docs/agent/standalone-tier-green-evidence.md`; publish still owner).
+HUD-014 Accepted (owner, 2026-07-20) — integrating.

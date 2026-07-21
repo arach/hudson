@@ -2,6 +2,7 @@ import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
 import tailwindcss from '@tailwindcss/vite';
 import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
 
 /**
  * Standalone Hudson consumer client (Vite + TanStack Router).
@@ -11,6 +12,8 @@ import { resolve } from 'node:path';
  * - /broker proxy avoids CORS to a local OpenScout/Hudson broker
  * - Multi-entry: SPA root + optional embeds under /embeds/
  */
+const rootDir = fileURLToPath(new URL('.', import.meta.url));
+
 export default defineConfig({
   plugins: [react(), tailwindcss()],
   base: './',
@@ -29,8 +32,8 @@ export default defineConfig({
   build: {
     rollupOptions: {
       input: {
-        main: resolve(__dirname, 'index.html'),
-        // editor: resolve(__dirname, 'embeds/editor.html'),
+        main: resolve(rootDir, 'index.html'),
+        // editor: resolve(rootDir, 'embeds/editor.html'),
       },
     },
   },

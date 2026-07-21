@@ -1,6 +1,6 @@
 # HUD-014 — Web app starter and behaviors layer
 
-**Status**: Accepted (owner, 2026-07-20) — integrating (B + A3–A5 + C landed; standalone private until green)
+**Status**: Accepted (owner, 2026-07-20) — integrating (B + A3–A5 + C landed; standalone **green** 2026-07-21 — evidence `docs/agent/standalone-tier-green-evidence.md`; still private until owner publish)
 **Owner**: Arach (proposed from the Iris web client build, 2026-07-20)
 **Depends on**: hudsonkit 0.4.1 (`hudsonkit/nav` HudSideNav provider + collapse modes)
 **Targets**: `packages/web/hudsonkit` (behaviors, nav, app-shell, styles types), new `packages/create-hudson-app` (or `templates/web/`), `AGENTS.md`
