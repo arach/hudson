@@ -45,6 +45,11 @@
       "import": "./dist/context-menu.js",
       "default": "./dist/context-menu.js"
     },
+    "./behaviors": {
+      "types": "./dist/behaviors.d.ts",
+      "import": "./dist/behaviors.js",
+      "default": "./dist/behaviors.js"
+    },
     "./canvas": {
       "types": "./dist/canvas.d.ts",
       "import": "./dist/canvas.js",
