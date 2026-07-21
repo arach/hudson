@@ -81,8 +81,10 @@ supplies the panel chrome, collapse toggle (`Cmd`/`Ctrl`+`[`), and resize.
   spine. Never accent: selection answers "where am I".
 - **Hover** — a subtle `bg-muted` wash.
 - **Live** — set `live` on a node. This is the *only* accent usage: a pulsing
-  accent dot, an accent count tone, and an accent left spine. It answers "what
-  is working right now", kept orthogonal to selection.
+  live-tone dot, a live count tone, and a live left spine. It answers "what
+  is working right now", kept orthogonal to selection. Colour comes from the
+  themeable `--hud-nav-live` token (defaults to accent); consumers retint by
+  setting the var on a wrapper — no `!important` fights with generated utilities.
 - **Disabled** — `disabled` dims the node and blocks interaction.
 
 ## Selection is yours

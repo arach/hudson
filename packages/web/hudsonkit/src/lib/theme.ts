@@ -82,6 +82,8 @@ export const SEMANTIC_TOKENS = {
   text: ['--hud-ink', '--hud-muted', '--hud-dim'],
   structure: ['--hud-border', '--hud-radius', '--hud-shadow-soft'],
   accent: ['--hud-accent', '--hud-accent-soft'],
+  /** HudSideNav live dot / count / spine — override to retint without utility fights. */
+  nav: ['--hud-nav-live'],
   status: ['--hud-status-ok', '--hud-status-warn', '--hud-status-error', '--hud-status-info'],
   fontFamily: ['--hud-font-sans', '--hud-font-mono', '--hud-font-serif'],
   textSize: [

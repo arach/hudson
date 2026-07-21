@@ -11,10 +11,9 @@
 import React from 'react';
 import type { LucideIcon } from 'lucide-react';
 import { ChevronRight, PanelLeft } from 'lucide-react';
-import { HudBadge } from '../primitives';
 import { cx } from '../patterns/utils';
 import { useHudSideNav } from './context';
-import { LiveDot, navRowBg, navSpine } from './shared';
+import { LiveCountBadge, LiveDot, navRowBg, navSpine } from './shared';
 
 /** Minimal Slot — merges nav props onto a single child element (for `asChild`). */
 function Slot({ children, ...props }: { children: React.ReactNode } & Record<string, unknown>) {
@@ -138,7 +137,12 @@ export function HudSideNavMenuButton({
   const content = iconCollapsed ? (
     <>
       {Icon ? <Icon size={18} className={isActive ? 'text-foreground' : 'text-muted-foreground'} /> : null}
-      {live && <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" />}
+      {live && (
+        <span
+          aria-hidden="true"
+          className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--hud-nav-live)]"
+        />
+      )}
       <span className="sr-only">{children}</span>
     </>
   ) : (
@@ -160,11 +164,7 @@ export function HudSideNavMenuButton({
       </span>
       {(typeof count === 'number' || badge || live) && (
         <span className="flex shrink-0 items-center gap-1.5">
-          {typeof count === 'number' && (
-            <HudBadge tone={live ? 'accent' : 'neutral'} density="compact">
-              {count}
-            </HudBadge>
-          )}
+          {typeof count === 'number' && <LiveCountBadge count={count} live={live} />}
           {badge}
           {live && <LiveDot />}
         </span>

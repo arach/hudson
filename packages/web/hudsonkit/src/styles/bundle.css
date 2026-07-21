@@ -97,6 +97,11 @@
   --hud-accent: rgb(16 185 129);          /* emerald-500 */
   --hud-accent-soft: rgb(16 185 129 / 0.08);
 
+  /* Nav live signal (HudSideNav live dot / count / spine). Defaults to
+   * accent so existing apps keep their look; consumers retint without
+   * fighting generated utilities — set --hud-nav-live on a wrapper. */
+  --hud-nav-live: var(--hud-accent);
+
   /* Status */
   --hud-status-ok: rgb(34 197 94);        /* emerald-600 */
   --hud-status-warn: rgb(245 158 11);     /* amber-500 */
