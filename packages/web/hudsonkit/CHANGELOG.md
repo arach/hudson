@@ -22,6 +22,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `HudSideNav` (both default off); `useRovingNav`; `useSnapCollapseAt` with
   hysteresis + pending-width hardening; minimal `HudBreadcrumb`; header/footer
   borders read the chrome edge ladder; `--hud-action-tint` token.
+### Changed
+
+- **package-03 amendment — `useSnapCollapseAt` 180ms anti-strand belt:**
+  `pendingProgrammaticWidth` still clears on settle (`Math.abs <= 1`), and now
+  also clears on a bounded ~180ms timeout (`PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS`)
+  with unmount cleanup. Prevents the B-guard from stranding forever when
+  AppShell clamps the requested natural width so drag-to-morph stays live.
+  (Iris client lane ee00367; adopted into kit after local glue deleted.)
 
 ## [0.4.1] - 2026-07-20
 

@@ -43,6 +43,7 @@ export type { HudBreadcrumbProps, HudBreadcrumbItem } from './HudBreadcrumb';
 export { useRovingNav, ROVING_FOCUS_EVAL } from './useRovingNav';
 export {
   useSnapCollapseAt,
+  PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS,
   HUD_CONTEXT_LIST_WIDTH,
   HUD_DESTINATION_COMPACT_WIDTH,
   HUD_DESTINATION_EXPANDED_WIDTH,
