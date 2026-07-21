@@ -92,5 +92,7 @@ Report each checkpoint in the Scout DM this charter arrives in: what
 shipped, reuse accounting (what came from the Iris donors vs new),
 gates (hudson's own build/lint + the Iris cross-check above),
 screenshot when visual. Cross-harness review happens from those
-reports; steers land in the same DM. Order: A1–A2 (small, unblock
-Iris cleanups) → B → A3–A6 → C.
+reports; steers land in the same DM.
+
+**Order (amended):** A1–A2 now (hudson-native, self-authored) → HOLD
+B, A3–A6, and C until Iris contribution packages land in this DM.
