@@ -19,14 +19,14 @@
 // Collapse is owned by HudSideNavProvider. HudSideNav self-provides one when it
 // is not already inside a provider, so the standalone API needs no wrapper.
 //
-// Two-tier accent rule (matches the rest of the kit): the accent colour is
-// spent ONLY on the live/active signal — the live dot, the live count tone, and
-// the live left-spine. Plain *selection* is a neutral filled chip, never accent,
-// so "where I am" and "what is live" stay legible as two separate channels.
+// Two-tier accent rule (matches the rest of the kit): the live signal is the
+// only place colour is spent — the live dot, the live count tone, and the live
+// left-spine all read `--hud-nav-live` (defaults to accent). Plain *selection*
+// is a neutral filled chip, never the live tone, so "where I am" and "what is
+// live" stay legible as two separate channels.
 
 import React, { useCallback, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
-import { HudBadge } from '../primitives';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
 import {
@@ -37,7 +37,7 @@ import {
   type HudSideNavSide,
 } from './context';
 import { HudSideNavRail, HudSideNavCaret } from './primitives';
-import { LiveDot, indentFor, navRowBg, navSpine } from './shared';
+import { LiveCountBadge, LiveDot, indentFor, navRowBg, navSpine } from './shared';
 
 /** A single navigation node. Nodes nest via `children` to form the tier tree. */
 export interface HudNavNode {
@@ -389,15 +389,13 @@ function HudNavRow({
   );
 }
 
-// Trailing metadata: count (accent tone only when live) → custom badge → live dot.
+// Trailing metadata: count (live token only when live) → custom badge → live dot.
 function TrailingCluster({ node, compact }: { node: HudNavNode; compact: boolean }) {
   if (typeof node.count !== 'number' && !node.badge && !node.live) return null;
   return (
     <span className="flex shrink-0 items-center gap-1.5">
       {typeof node.count === 'number' && (
-        <HudBadge tone={node.live ? 'accent' : 'neutral'} density="compact">
-          {node.count}
-        </HudBadge>
+        <LiveCountBadge count={node.count} live={node.live} />
       )}
       {node.badge}
       {node.live && <LiveDot compact={compact} />}
@@ -447,7 +445,10 @@ function CollapsedRail({
           >
             {Icon ? <Icon size={compact ? 16 : 18} /> : <span className="font-mono text-[11px] uppercase">{label?.slice(0, 2)}</span>}
             {node.live && (
-              <span aria-hidden="true" className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-accent" />
+              <span
+                aria-hidden="true"
+                className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--hud-nav-live)]"
+              />
             )}
           </button>
         );

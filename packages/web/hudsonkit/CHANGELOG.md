@@ -6,6 +6,14 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Added
+
+- Ship TypeScript declarations for the `./styles` and `./styles/tokens.css`
+  export subpaths (clears TS2882 under strict tsc for side-effect CSS imports).
+- Themeable `--hud-nav-live` token on `HudSideNav` live signal (dot, count
+  badge, left spine). Defaults to accent; consumers retint without `!important`
+  on generated utilities.
+
 ## [0.4.1] - 2026-07-20
 
 ### Added
