@@ -22,6 +22,20 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   `HudSideNav` (both default off); `useRovingNav`; `useSnapCollapseAt` with
   hysteresis + pending-width hardening; minimal `HudBreadcrumb`; header/footer
   borders read the chrome edge ladder; `--hud-action-tint` token.
+- Pack gate for sealed artifacts: `assert-dist` (pre-pack: dist must contain
+  `styles.css` + tokens + type decls) and `verify-pack` (post-pack: tarball
+  listing must include those paths). `bun run pack` runs both. tsup clean now
+  preserves CSS pipeline outputs so a JS-only rebuild cannot wipe
+  `dist/styles.css`.
+
+### Changed
+
+- **A6 edge shift (HUD-014):** `HudSideNav` header/footer borders now resolve
+  through `--hud-chrome-border` (via `color-mix(…, 70%, transparent)` with
+  `oklch(var(--border))` fallback) instead of bare Tailwind `border-border/70`.
+  Consumers who set `--hud-chrome-border` see that token win on those edges —
+  intentional; matches the chrome/menu edge ladder. Default (unset token)
+  still tracks the border channel at ~70% opacity.
 
 ## [0.4.1] - 2026-07-20
 

@@ -186,7 +186,8 @@
     "build": "bun run build:js && bun run build:css",
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
     "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css && cp src/styles/styles.d.ts dist/styles.d.ts && cp src/styles/styles-tokens.d.ts dist/styles-tokens.d.ts",
-    "pack": "bun run build && bun pm pack",
+    "assert-dist": "node bin/assert-dist.mjs",
+    "pack": "bun run build && bun run assert-dist && bun pm pack && node bin/verify-pack.mjs",
     "prepare": "node bin/prepare-check.mjs",
     "test": "vitest run --config ./vitest.config.ts"
   },
@@ -282,8 +283,12 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "jsdom": "^28.1.0",
     "tsup": "^8.0.0",
-    "typescript": "5.9.3"
+    "typescript": "5.9.3",
+    "vitest": "^4.0.18"
   },
   "publishConfig": {
     "access": "public"
