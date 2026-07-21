@@ -77,6 +77,15 @@ README. Starter apps follow the HudsonApp interface and repo rules
 - Commit in-lane per checkpoint: gitmoji summary, no co-author or
   generated-with footers.
 
+## Contribution model (owner amendment, 2026-07-20)
+
+Iris PACKAGES, Hudson JUDGES. Do not excavate the Iris repo. Workstream
+A items 1-2 are hudson-native — self-author them. Everything else
+arrives as prepared packages (code pre-translated to this repo's
+idioms, spec, rationale, acceptance test) under the Iris repo's
+`docs/handoffs/hudson-contrib/`, announced in the lane DM. Your role
+for those: maintainer judgment — fit, integrate, land, or push back.
+
 ## Working agreement
 
 Report each checkpoint in the Scout DM this charter arrives in: what
