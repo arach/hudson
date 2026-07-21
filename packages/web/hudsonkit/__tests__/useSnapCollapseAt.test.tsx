@@ -45,10 +45,16 @@ describe('useSnapCollapseAt — 180ms anti-strand belt', () => {
     vi.useFakeTimers();
   });
 
-  it('clears pendingProgrammaticWidth when clamped setWidth never settles, restoring drag-to-morph', () => {
+  it('clears pendingProgrammaticWidth when responsivePanelMax clamps below natural expanded (LIVE)', () => {
+    // LIVE edge case (Iris adoption review): responsivePanelMax: true on a
+    // narrow viewport where AppShell clamps max below natural expanded (396).
+    // setWidth(396) never settles → without the belt, pendingProgrammaticWidth
+    // stays armed and drag-to-morph silently disables until the next toggle.
+    // Iris's min/max config masks this; small windows hit it.
+    // Fixture: clamp max to 360 (< 396).
     const setOpen = vi.fn();
-    // Clamp: never apply the requested natural width.
     const setWidth = vi.fn();
+    const CLAMP_MAX = 360; // e.g. AppShell responsive cap below NATURAL.expanded
 
     const { rerender, unmount } = render(
       <Host expanded={false} setOpen={setOpen} width={292} setWidth={setWidth} />,
@@ -57,11 +63,12 @@ describe('useSnapCollapseAt — 180ms anti-strand belt', () => {
     // Explicit morph toggle (⌘B) arms pending for natural expanded width.
     rerender(<Host expanded={true} setOpen={setOpen} width={292} setWidth={setWidth} />);
     expect(setWidth).toHaveBeenCalledWith(NATURAL.expanded);
+    expect(NATURAL.expanded).toBe(396);
+    expect(CLAMP_MAX).toBeLessThan(NATURAL.expanded);
 
-    // AppShell clamp: live width stuck far from pending target (never settles).
-    const clamped = 320;
-    expect(Math.abs(clamped - NATURAL.expanded)).toBeGreaterThan(1);
-    rerender(<Host expanded={true} setOpen={setOpen} width={clamped} setWidth={setWidth} />);
+    // AppShell clamp: live width stuck at max — never reaches pending target.
+    expect(Math.abs(CLAMP_MAX - NATURAL.expanded)).toBeGreaterThan(1);
+    rerender(<Host expanded={true} setOpen={setOpen} width={CLAMP_MAX} setWidth={setWidth} />);
 
     // Drag below collapse threshold while guard is still armed — morph blocked.
     setOpen.mockClear();
@@ -81,10 +88,11 @@ describe('useSnapCollapseAt — 180ms anti-strand belt', () => {
     );
     expect(setOpen).not.toHaveBeenCalled();
 
-    // Cross the bound → guard clears; next width tick can drag-to-morph.
+    // Cross the bound → guard clears within PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS.
     act(() => {
       vi.advanceTimersByTime(1);
     });
+    // Subsequent drag still morphs.
     setOpen.mockClear();
     rerender(
       <Host expanded={true} setOpen={setOpen} width={collapseAt - 12} setWidth={setWidth} />,
