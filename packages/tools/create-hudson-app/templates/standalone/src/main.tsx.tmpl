@@ -1,0 +1,18 @@
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { AppShellFrame } from './AppShellFrame';
+import { applyThemeSeed, defaultSeed } from './theme-adapter';
+import 'hudsonkit/styles';
+import './styles.css';
+
+// Apply seed before first paint so borders never flash ink-as-edge.
+applyThemeSeed(defaultSeed);
+
+const root = document.getElementById('root');
+if (!root) throw new Error('#root missing');
+
+createRoot(root).render(
+  <StrictMode>
+    <AppShellFrame />
+  </StrictMode>,
+);

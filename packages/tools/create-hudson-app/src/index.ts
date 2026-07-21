@@ -23,30 +23,34 @@ async function main() {
   header();
 
   const opts = await promptInteractive(partial);
+  const isStandalone = opts.tier === 'standalone';
 
-  // Resolve project root (find where app/ directory lives)
+  // Resolve project root. Monorepo tiers walk up to the host with app/;
+  // standalone always scaffolds under cwd/<appId>/.
   let projectRoot = process.cwd();
 
-  // Walk up to find the project root with app/ directory
-  let current = projectRoot;
-  while (current !== '/') {
-    try {
-      const appStat = await stat(resolve(current, 'app'));
-      if (appStat.isDirectory()) {
-        projectRoot = current;
-        break;
+  if (!isStandalone) {
+    let current = projectRoot;
+    while (current !== '/') {
+      try {
+        const appStat = await stat(resolve(current, 'app'));
+        if (appStat.isDirectory()) {
+          projectRoot = current;
+          break;
+        }
+      } catch {
+        // not found, go up
       }
-    } catch {
-      // not found, go up
+      current = resolve(current, '..');
     }
-    current = resolve(current, '..');
   }
 
-  // Check if app already exists
-  const appDir = resolve(projectRoot, 'app', 'apps', opts.appId);
+  const appDir = isStandalone
+    ? resolve(projectRoot, opts.appId)
+    : resolve(projectRoot, 'app', 'apps', opts.appId);
   try {
     await stat(appDir);
-    error(`Directory already exists: app/apps/${opts.appId}`);
+    error(`Directory already exists: ${isStandalone ? opts.appId : `app/apps/${opts.appId}`}`);
     process.exit(1);
   } catch {
     // Good — directory doesn't exist
@@ -54,10 +58,9 @@ async function main() {
 
   const vars = buildVars(opts.appId, opts.description, opts.mode);
 
-  info(`Creating ${cyan(opts.appId)}...`);
+  info(`Creating ${cyan(opts.appId)}${isStandalone ? ' (standalone Vite consumer)' : ''}...`);
   console.log();
 
-  // Scaffold app files
   const appFiles = await scaffold({
     appId: opts.appId,
     tier: opts.tier,
@@ -65,14 +68,17 @@ async function main() {
     projectRoot,
   });
 
-  // Generate workspace
+  // Workspace files only apply to monorepo app tiers.
   let hasWorkspace = false;
-  if (!opts.noWorkspace) {
+  if (!opts.noWorkspace && !isStandalone) {
     await generateWorkspace(vars, projectRoot);
     hasWorkspace = true;
   }
 
   summary(opts.appId, appFiles.length, hasWorkspace);
+  if (isStandalone) {
+    info(`Private until green — run: cd ${opts.appId} && bun install && bun run check`);
+  }
 }
 
 main().catch(err => {

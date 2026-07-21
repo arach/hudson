@@ -1,0 +1,45 @@
+# __APP_DISPLAY_NAME__
+
+Standalone Hudson consumer client scaffolded by `create-hudson-app --tier standalone`.
+
+> **Scope:** Vite + TanStack Router for **standalone consumer clients** only.
+> Hudson monorepo product surfaces stay on Next.js. Do not treat this template
+> as the path for in-repo apps (`app/apps/*`).
+
+## Stack
+
+| Piece | Choice |
+|-------|--------|
+| Bundler | Vite (`base: './'` for file / WKWebView hosts) |
+| Router | TanStack Router SPA |
+| UI kit | `hudsonkit` AppShell + `hudsonkit/nav` + `hudsonkit/behaviors` |
+| Typecheck | `tsc --noEmit` **before** `vite build` (`bun run check`) |
+| Theme | Seed → full token set via `src/theme-adapter.ts` (edge ≠ ink) |
+
+## Commands
+
+```bash
+bun install
+bun run dev        # http://127.0.0.1:5173
+bun run typecheck
+bun run check      # typecheck && build
+bun run test       # theme adapter guard
+```
+
+## Layout
+
+- `/` — AppShell destinations rail + content (SPA)
+- `/embeds/*.html` — optional multi-entry embeds (uncomment in `vite.config.ts`)
+- `/broker/*` — Vite proxy to local broker (`HUDSON_BROKER_URL`, default `:43110`)
+
+Fetch the broker via same-origin `/broker/...` — never hit `:43110` from the browser (no CORS).
+
+## Theme rule (load-bearing)
+
+`--border` / `--input` **must** derive from edge channels, never ink.
+`src/theme-adapter.test.ts` fails the build story if that regression returns.
+
+## Private tier
+
+This template ships **private until green** (HUD-014). Stabilize with
+`bun run check` before treating it as the default consumer path.
