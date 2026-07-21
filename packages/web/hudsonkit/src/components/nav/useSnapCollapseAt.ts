@@ -29,6 +29,14 @@ export type UseSnapCollapseAtOptions = {
 };
 
 /**
+ * Max ms to wait for `setWidth` to settle before releasing the B-guard.
+ * Settle-only clear (`Math.abs(width - pending) <= 1`) can strand forever when
+ * AppShell clamps the requested natural width; this bounded timeout is the
+ * anti-strand belt (Iris package-03 amendment, ee00367).
+ */
+export const PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS = 180;
+
+/**
  * Couples AppShell left-panel width ↔ HudSideNav compact/expanded morph.
  *
  * Two effects:
@@ -37,6 +45,7 @@ export type UseSnapCollapseAtOptions = {
  *
  * Hardening (HUD-014 / package 03):
  *   - pendingProgrammaticWidth: ignore B while setWidth settles
+ *   - ~180ms anti-strand belt: clear pending if settle never arrives
  *   - snappedFromResize: skip A when morph came from B (preserve drag width)
  *   - hysteresis: expand/collapse thresholds differ (no threshold flicker)
  *
@@ -55,8 +64,38 @@ export function useSnapCollapseAt({
   const previousExpanded = useRef(expanded);
   const snappedFromResize = useRef(false);
   const pendingProgrammaticWidth = useRef<number | null>(null);
+  const pendingClearTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const natural = expanded ? naturalWidths.expanded : naturalWidths.collapsed;
+
+  const clearPendingProgrammaticWidth = () => {
+    pendingProgrammaticWidth.current = null;
+    if (pendingClearTimer.current !== null) {
+      clearTimeout(pendingClearTimer.current);
+      pendingClearTimer.current = null;
+    }
+  };
+
+  const armPendingProgrammaticWidth = (target: number) => {
+    pendingProgrammaticWidth.current = target;
+    if (pendingClearTimer.current !== null) {
+      clearTimeout(pendingClearTimer.current);
+    }
+    pendingClearTimer.current = setTimeout(() => {
+      pendingProgrammaticWidth.current = null;
+      pendingClearTimer.current = null;
+    }, PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS);
+  };
+
+  // Unmount: drop the anti-strand timer so it cannot fire into a dead fiber.
+  useEffect(() => {
+    return () => {
+      if (pendingClearTimer.current !== null) {
+        clearTimeout(pendingClearTimer.current);
+        pendingClearTimer.current = null;
+      }
+    };
+  }, []);
 
   // Effect A — morph → width (explicit toggle only).
   useEffect(() => {
@@ -66,7 +105,7 @@ export function useSnapCollapseAt({
       snappedFromResize.current = false;
       return;
     }
-    pendingProgrammaticWidth.current = natural;
+    armPendingProgrammaticWidth(natural);
     setWidth(natural);
   }, [expanded, natural, setWidth]);
 
@@ -74,7 +113,7 @@ export function useSnapCollapseAt({
   useEffect(() => {
     if (pendingProgrammaticWidth.current !== null) {
       if (Math.abs(width - pendingProgrammaticWidth.current) <= 1) {
-        pendingProgrammaticWidth.current = null;
+        clearPendingProgrammaticWidth();
       }
       return;
     }

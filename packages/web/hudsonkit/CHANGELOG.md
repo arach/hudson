@@ -30,6 +30,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- **package-03 amendment — `useSnapCollapseAt` 180ms anti-strand belt:**
+  `pendingProgrammaticWidth` still clears on settle (`Math.abs <= 1`), and now
+  also clears on a bounded ~180ms timeout (`PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS`)
+  with unmount cleanup. Prevents the B-guard from stranding forever when
+  AppShell clamps the requested natural width so drag-to-morph stays live.
+  (Iris client lane ee00367; adopted into kit after local glue deleted.)
 - **A6 edge shift (HUD-014):** `HudSideNav` header/footer borders now resolve
   through `--hud-chrome-border` (via `color-mix(…, 70%, transparent)` with
   `oklch(var(--border))` fallback) instead of bare Tailwind `border-border/70`.

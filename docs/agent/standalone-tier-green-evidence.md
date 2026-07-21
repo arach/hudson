@@ -68,4 +68,4 @@ bun run preview # http://127.0.0.1:4173 — SPA shell + destinations
 - **Owner publish** of create-hudson-app standalone tier + hudsonkit 0.4.1 to npm (not greened here as a release).
 - TanStack Router is a declared stack point (`src/router.tsx` stub); destinations currently use local view state under AppShell slots — intentional minimal SPA scaffold.
 - Headless browser DOM screenshot not collected (no playwright/chromium in agent env); preview HTTP + bundle markers used instead.
-- Iris **useSnapCollapseAt 180ms-belt** hardening proposal: still standing by (not part of this greening slice).
+- Iris **useSnapCollapseAt 180ms-belt** hardening proposal: integrated as package-03 amendment (`PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS` + unmount cleanup + clamp never-settle unit test).
