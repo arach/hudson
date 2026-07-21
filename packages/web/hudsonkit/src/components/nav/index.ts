@@ -34,3 +34,24 @@ export {
   HudSideNavCaret,
 } from './primitives';
 export type { HudSideNavRegionProps, HudSideNavMenuButtonProps } from './primitives';
+
+// Breadcrumb (minimal chrome).
+export { HudBreadcrumb } from './HudBreadcrumb';
+export type { HudBreadcrumbProps, HudBreadcrumbItem } from './HudBreadcrumb';
+
+// Opt-in behaviors (HUD-014 A3–A4).
+export { useRovingNav, ROVING_FOCUS_EVAL } from './useRovingNav';
+export {
+  useSnapCollapseAt,
+  HUD_CONTEXT_LIST_WIDTH,
+  HUD_DESTINATION_COMPACT_WIDTH,
+  HUD_DESTINATION_EXPANDED_WIDTH,
+  HUD_NAV_NATURAL_COLLAPSED,
+  HUD_NAV_NATURAL_EXPANDED,
+  HUD_NAV_SNAP_COLLAPSE_AT,
+  HUD_NAV_SNAP_HYSTERESIS,
+} from './useSnapCollapseAt';
+export type {
+  UseSnapCollapseAtOptions,
+  SnapCollapseNaturalWidths,
+} from './useSnapCollapseAt';

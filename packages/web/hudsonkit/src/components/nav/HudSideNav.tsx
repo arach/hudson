@@ -37,7 +37,8 @@ import {
   type HudSideNavSide,
 } from './context';
 import { HudSideNavRail, HudSideNavCaret } from './primitives';
-import { LiveCountBadge, LiveDot, indentFor, navRowBg, navSpine } from './shared';
+import { LiveCountBadge, LiveDot, indentFor, navRailSelectedBg, navRowBg, navSpine } from './shared';
+import { useRovingNav } from './useRovingNav';
 
 /** A single navigation node. Nodes nest via `children` to form the tier tree. */
 export interface HudNavNode {
@@ -104,6 +105,16 @@ export interface HudSideNavProps {
   footer?: React.ReactNode;
   /** Density register. Defaults to `default`. */
   density?: HudDensity;
+  /**
+   * Opt-in selection wash visible on all themes (action-tint + ink spine).
+   * Default off — keeps the legacy secondary chip for back-compat (HUD-014 A3).
+   */
+  selectionWash?: boolean;
+  /**
+   * Opt-in Arrow/Home/End roving focus across visible buttons in this nav.
+   * Default off (HUD-014 A3).
+   */
+  rovingFocus?: boolean;
   /** Accessible name for the <nav> landmark. Defaults to "Primary". */
   ariaLabel?: string;
   className?: string;
@@ -162,11 +173,14 @@ function HudSideNavView({
   header,
   footer,
   density = 'default',
+  selectionWash = false,
+  rovingFocus = false,
   ariaLabel = 'Primary',
   className,
   empty,
 }: HudSideNavProps) {
   const { state, collapsible, side } = useHudSideNav();
+  const rovingKeyDown = useRovingNav();
   const iconCollapsed = state === 'collapsed' && collapsible === 'icon';
   const offcanvasHidden = state === 'collapsed' && collapsible === 'offcanvas';
 
@@ -202,7 +216,13 @@ function HudSideNavView({
     items!.length === 0 && empty ? (
       <div className="px-3 py-4 text-[11px] text-muted-foreground">{empty}</div>
     ) : iconCollapsed ? (
-      <CollapsedRail items={items!} selectedId={selectedId} onSelect={onSelect} density={density} />
+      <CollapsedRail
+        items={items!}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        density={density}
+        selectionWash={selectionWash}
+      />
     ) : (
       <div className="flex flex-col gap-0.5">
         {items!.map(node => (
@@ -215,6 +235,7 @@ function HudSideNavView({
             onToggleExpanded={toggleExpanded}
             onSelect={onSelect}
             density={density}
+            selectionWash={selectionWash}
           />
         ))}
       </div>
@@ -229,17 +250,28 @@ function HudSideNavView({
       data-state={state}
       data-collapsible={collapsible === 'none' ? undefined : collapsible}
       data-side={side}
+      data-selection-wash={selectionWash ? '' : undefined}
+      onKeyDown={rovingFocus ? rovingKeyDown : undefined}
       className={cx('relative flex min-h-0 flex-col', offcanvasHidden && 'hidden', className)}
     >
       {header && (
-        <div className={cx('shrink-0 border-b border-border/70', density === 'compact' ? 'p-2' : 'p-3')}>
+        <div
+          className={cx(
+            'shrink-0 border-b border-[color-mix(in_srgb,var(--hud-chrome-border,oklch(var(--border)))_70%,transparent)]',
+            density === 'compact' ? 'p-2' : 'p-3',
+          )}
+        >
           {header}
         </div>
       )}
       <div className={cx('min-h-0 flex-1 overflow-y-auto frame-scrollbar', density === 'compact' ? 'py-1.5' : 'py-2')}>
         {body}
       </div>
-      {footer && <div className="shrink-0 border-t border-border/70 p-3">{footer}</div>}
+      {footer && (
+        <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--hud-chrome-border,oklch(var(--border)))_70%,transparent)] p-3">
+          {footer}
+        </div>
+      )}
       {rail && <HudSideNavRail />}
     </nav>
   );
@@ -256,6 +288,7 @@ interface HudNavRowProps {
   onToggleExpanded: (id: string) => void;
   onSelect?: (node: HudNavNode) => void;
   density: HudDensity;
+  selectionWash?: boolean;
 }
 
 function HudNavRow({
@@ -266,6 +299,7 @@ function HudNavRow({
   onToggleExpanded,
   onSelect,
   density,
+  selectionWash = false,
 }: HudNavRowProps) {
   const children = node.children ?? [];
   const hasChildren = children.length > 0;
@@ -314,6 +348,7 @@ function HudNavRow({
                 onToggleExpanded={onToggleExpanded}
                 onSelect={onSelect}
                 density={density}
+                selectionWash={selectionWash}
               />
             ))}
           </div>
@@ -337,8 +372,9 @@ function HudNavRow({
           'group flex w-full items-center gap-2 border-l-2 pr-2.5 text-left transition-colors',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
           compact ? 'py-1.5' : 'py-2',
-          navSpine(isSelected, node.live),
-          navRowBg(isSelected),
+          // When selectionWash draws its own inset spine, keep the border transparent.
+          selectionWash && isSelected && !node.live ? 'border-l-transparent' : navSpine(isSelected, node.live),
+          navRowBg(isSelected, selectionWash),
           node.disabled && 'pointer-events-none opacity-50',
         )}
       >
@@ -381,6 +417,7 @@ function HudNavRow({
               onToggleExpanded={onToggleExpanded}
               onSelect={onSelect}
               density={density}
+              selectionWash={selectionWash}
             />
           ))}
         </div>
@@ -411,11 +448,13 @@ function CollapsedRail({
   selectedId,
   onSelect,
   density,
+  selectionWash = false,
 }: {
   items: readonly HudNavNode[];
   selectedId?: string | null;
   onSelect?: (node: HudNavNode) => void;
   density: HudDensity;
+  selectionWash?: boolean;
 }) {
   const compact = density === 'compact';
   return (
@@ -438,7 +477,7 @@ function CollapsedRail({
               'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40',
               compact ? 'h-8 w-8' : 'h-9 w-9',
               isSelected
-                ? 'bg-secondary/80 text-foreground'
+                ? navRailSelectedBg(selectionWash)
                 : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
               node.disabled && 'pointer-events-none opacity-50',
             )}

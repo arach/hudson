@@ -102,6 +102,10 @@
    * fighting generated utilities — set --hud-nav-live on a wrapper. */
   --hud-nav-live: var(--hud-accent);
 
+  /* Selection wash (opt-in via HudSideNav selectionWash). Neutral on all
+   * themes; never use for live/accent. */
+  --hud-action-tint: color-mix(in srgb, var(--hud-ink) 10%, transparent);
+
   /* Status */
   --hud-status-ok: rgb(34 197 94);        /* emerald-600 */
   --hud-status-warn: rgb(245 158 11);     /* amber-500 */

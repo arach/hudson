@@ -22,8 +22,20 @@ export function navSpine(selected?: boolean, live?: boolean): string {
 }
 
 /** Row background: neutral filled chip when selected, muted wash on hover. */
-export function navRowBg(selected?: boolean): string {
-  return selected ? 'bg-secondary/70' : 'hover:bg-muted/40';
+export function navRowBg(selected?: boolean, selectionWash = false): string {
+  if (!selected) return 'hover:bg-muted/40';
+  // Opt-in wash (HUD-014 / package 02): action-tint is visible on all themes
+  // where surface ≈ panel; default stays secondary chip for back-compat.
+  return selectionWash
+    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_10%,transparent))] text-[var(--hud-ink)] shadow-[inset_2px_0_0_color-mix(in_srgb,var(--hud-ink)_42%,transparent)]'
+    : 'bg-secondary/70';
+}
+
+/** Collapsed-rail selection chip — wash or secondary. */
+export function navRailSelectedBg(selectionWash = false): string {
+  return selectionWash
+    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_10%,transparent))] text-[var(--hud-ink)] shadow-[inset_2px_0_0_color-mix(in_srgb,var(--hud-ink)_42%,transparent)]'
+    : 'bg-secondary/80 text-foreground';
 }
 
 /** Indentation ramps by depth but is capped so deep trees stay readable. */

@@ -77,6 +77,36 @@ describe('HudSideNav (data-driven)', () => {
     const nav = screen.getByRole('navigation', { name: 'Workspace' });
     expect(nav).toHaveAttribute('data-state', 'expanded');
   });
+
+  it('keeps selectionWash and rovingFocus off by default', () => {
+    render(<HudSideNav items={tree} selectedId="home" ariaLabel="Defaults" />);
+    const nav = screen.getByRole('navigation', { name: 'Defaults' });
+    expect(nav).not.toHaveAttribute('data-selection-wash');
+    // No roving handler means ArrowDown does not move focus — button still selected.
+    const home = screen.getByRole('button', { name: 'Home' });
+    home.focus();
+    fireEvent.keyDown(nav, { key: 'ArrowDown' });
+    expect(document.activeElement).toBe(home);
+  });
+
+  it('opts into selectionWash and rovingFocus when requested', () => {
+    render(
+      <HudSideNav
+        items={tree}
+        selectedId="home"
+        selectionWash
+        rovingFocus
+        ariaLabel="Opt-in"
+      />,
+    );
+    const nav = screen.getByRole('navigation', { name: 'Opt-in' });
+    expect(nav).toHaveAttribute('data-selection-wash');
+    const home = screen.getByRole('button', { name: 'Home' });
+    home.focus();
+    fireEvent.keyDown(nav, { key: 'ArrowDown' });
+    // Next visible enabled button is Agents (Docs is later / disabled skipped).
+    expect((document.activeElement as HTMLElement).textContent).toContain('Agents');
+  });
 });
 
 describe('HudSideNavProvider + primitives', () => {
