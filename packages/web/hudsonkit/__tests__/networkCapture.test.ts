@@ -5,6 +5,7 @@ import {
   formatHudsonNetworkEntryAsCurl,
   formatHudsonNetworkEntryForAgent,
   HudsonNetworkStore,
+  installHudsonFetchCapture,
   sanitizeHudsonNetworkEntry,
 } from '../src/observability/network';
 
@@ -203,5 +204,25 @@ describe('Hudson network capture', () => {
       'https://example.test/three',
       'https://example.test/two',
     ]);
+  });
+
+  it('restores the browser fetch implementation when capture stops', async () => {
+    const previousFetch = window.fetch;
+    const originalFetch = vi.fn(async () => new Response('ok'));
+    const store = new HudsonNetworkStore();
+    window.fetch = originalFetch as typeof window.fetch;
+
+    try {
+      const stop = installHudsonFetchCapture({ store, observability: createObservability() });
+      expect(window.fetch).not.toBe(originalFetch);
+
+      await window.fetch('https://example.test/captured');
+      expect(store.snapshot()).toHaveLength(1);
+
+      stop();
+      expect(window.fetch).toBe(originalFetch);
+    } finally {
+      window.fetch = previousFetch;
+    }
   });
 });
