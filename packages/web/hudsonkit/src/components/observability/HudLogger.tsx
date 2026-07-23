@@ -31,6 +31,7 @@ import type {
   HLogLevel,
   HObservation,
   HObservationKind,
+  HTraceSpan,
 } from '../../types/observability';
 
 type LevelFilter = HLogLevel | 'all';
@@ -134,12 +135,19 @@ export function useHudLoggerEvents(
 }
 
 export function summarizeHudLoggerEvents(events: readonly HObservation[]): HudLoggerSummary {
+  const spanStates = new Map<string, HTraceSpan['status']>();
+  for (const event of events) {
+    if (event.kind !== 'span') continue;
+    const current = spanStates.get(event.id);
+    if (!current || event.status !== 'active') spanStates.set(event.id, event.status);
+  }
+
   return {
     total: events.length,
     errors: events.filter((event) => event.kind === 'log' && event.level === 'error').length,
     warnings: events.filter((event) => event.kind === 'log' && event.level === 'warn').length,
     agentActions: events.filter(isAgentActionEvent).length,
-    activeSpans: events.filter((event) => event.kind === 'span' && event.status === 'active').length,
+    activeSpans: Array.from(spanStates.values()).filter(status => status === 'active').length,
     lastEvent: events[0] ?? null,
   };
 }
@@ -201,7 +209,7 @@ export function HudLogger({
     if (!replayEvents || replayEvents.length === 0) return liveEvents;
     return mergeReplayWithLive(replayEvents, liveEvents, maxEvents);
   }, [controlledEvents, replayEvents, liveEvents, maxEvents]);
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedEventKey, setSelectedEventKey] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [scopeFilter, setScopeFilter] = useState<HudLoggerScopeFilter>(initialScope);
@@ -246,9 +254,11 @@ export function HudLogger({
 
   const sortedEvents = useMemo(() => sortEvents(filteredEvents, sort), [filteredEvents, sort]);
   const effectiveTail = tail && sort.key === 'time' && sort.direction === 'desc';
-  const effectiveSelectedId = effectiveTail ? sortedEvents[0]?.id ?? null : selectedId;
+  const effectiveSelectedEventKey = effectiveTail
+    ? (sortedEvents[0] ? eventInstanceKey(sortedEvents[0]) : null)
+    : selectedEventKey;
   const selectedEvent =
-    sortedEvents.find((event) => event.id === effectiveSelectedId) ??
+    sortedEvents.find((event) => eventInstanceKey(event) === effectiveSelectedEventKey) ??
     sortedEvents[0] ??
     null;
   const selectedTraceId = selectedEvent ? agentActionTraceId(selectedEvent) ?? selectedEvent.id : null;
@@ -268,7 +278,7 @@ export function HudLogger({
 
   const selectEvent = useCallback((event: HObservation) => {
     setTail(false);
-    setSelectedId(event.id);
+    setSelectedEventKey(eventInstanceKey(event));
   }, []);
 
   const setTableSort = useCallback((key: EventSortKey) => {
@@ -483,9 +493,10 @@ export function HudLogger({
             </div>
             {sortedEvents.map((event) => {
               const targetAppId = eventTargetAppId(event);
+              const eventKey = eventInstanceKey(event);
               return (
                 <div
-                  key={`${event.id}-${eventTimestampLabel(event)}`}
+                  key={eventKey}
                   role="button"
                   tabIndex={0}
                   onClick={() => selectEvent(event)}
@@ -496,7 +507,7 @@ export function HudLogger({
                     }
                   }}
                   className={`grid min-h-[34px] w-full ${EVENT_TABLE_GRID} items-center border-b border-l-2 px-3 py-2 text-left transition-colors ${
-                    selectedEvent?.id === event.id
+                    (selectedEvent ? eventInstanceKey(selectedEvent) === eventKey : false)
                       ? 'border-b-border/40 border-l-accent bg-accent/[0.08]'
                       : 'border-b-border/40 border-l-transparent hover:bg-muted/30'
                   }`}
@@ -506,13 +517,13 @@ export function HudLogger({
                   aria-label={`copy row ${shortEventId(event.id)}`}
                   onClick={(clickEvent) => {
                     clickEvent.stopPropagation();
-                    void copyText(eventToCopyRow(event).join('\t'), event.id);
+                    void copyText(eventToCopyRow(event).join('\t'), `row:${eventKey}`);
                   }}
                   className={`sticky left-0 z-[1] justify-self-start rounded border border-border/70 px-1.5 py-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:border-accent/30 hover:text-accent ${
-                    selectedEvent?.id === event.id ? 'bg-accent/[0.08]' : 'bg-background'
+                    selectedEvent && eventInstanceKey(selectedEvent) === eventKey ? 'bg-accent/[0.08]' : 'bg-background'
                   }`}
                 >
-                  {copiedKey === event.id ? 'copied' : 'copy'}
+                  {copiedKey === `row:${eventKey}` ? 'copied' : 'copy'}
                 </button>
                 {targetAppId ? (
                   <button
@@ -577,10 +588,10 @@ export function HudLogger({
             className="flex w-full shrink-0 flex-col bg-background lg:w-[var(--inspector-width)]"
           >
             <PayloadInspector
-              copied={selectedEvent ? copiedKey === `inspector:${selectedEvent.id}` : false}
+              copied={selectedEvent ? copiedKey === `inspector:${eventInstanceKey(selectedEvent)}` : false}
               event={selectedEvent}
               relatedEvents={selectedRelatedEvents}
-              onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${event.id}`)}
+              onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${eventInstanceKey(event)}`)}
               onOpenTarget={openEventTarget}
             />
           </aside>
@@ -1073,6 +1084,13 @@ function formatTimestamp(timestamp: number) {
 
 function shortEventId(id: string) {
   return id.length > 10 ? id.slice(-10) : id;
+}
+
+function eventInstanceKey(event: HObservation) {
+  if (event.kind === 'span') {
+    return `${event.kind}:${event.id}:${event.status}:${event.endTime ?? 'active'}`;
+  }
+  return `${event.kind}:${event.id}:${event.timestamp}`;
 }
 
 function eventTimestampLabel(event: HObservation) {

@@ -1,6 +1,6 @@
 {
   "name": "hudsonkit",
-  "version": "0.3.3",
+  "version": "0.3.5",
   "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",

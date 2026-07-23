@@ -571,7 +571,7 @@ export function SettingsSlider({ label, value, min, max, step, format, onChange 
         className="flex-1 h-1 appearance-none bg-muted rounded-full cursor-pointer accent-accent
           [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:h-3
           [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-accent
-          [&::-webkit-slider-thumb]:shadow-[0_0_6px_oklch(var(--accent)/0.4)]"
+          [&::-webkit-slider-thumb]:shadow-[0_0_6px_oklch(var(--accent)_/_0.4)]"
       />
       <div className="text-[11px] font-mono text-foreground/84 w-[48px] text-right tabular-nums">{format(value)}</div>
     </div>
