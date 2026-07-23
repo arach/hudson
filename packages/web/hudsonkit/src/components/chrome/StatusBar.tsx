@@ -181,7 +181,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
                   ? 'text-accent'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
-              title="Toggle Terminal (Ctrl+`)"
+              title="Toggle Console (Ctrl+`)"
             >
               <span className="text-[10px]">{'>'}_</span>
               <span className="uppercase text-[9px] font-light tracking-[0.18em]">Console</span>

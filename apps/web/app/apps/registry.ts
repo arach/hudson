@@ -217,11 +217,6 @@ function getDeveloperModeApps(): WorkspaceAppConfig[] {
       defaultWindowBounds: { x: -480, y: 320, w: 620, h: 460 },
     },
     {
-      app: hudLoggerApp,
-      canvasMode: 'windowed',
-      defaultWindowBounds: { x: 180, y: 320, w: 760, h: 560 },
-    },
-    {
       app: codeEditorApp,
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 980, y: 320, w: 760, h: 560 },
@@ -271,7 +266,7 @@ export function getDeveloperModeWorkspace(): HudsonWorkspace {
     mode: 'canvas',
     apps: getDeveloperModeApps(),
     defaultFocusedAppId: 'services',
-    defaultActivatedAppIds: ['services', 'terminal', 'api-inspector', 'trace-viewer', 'hud-logger'],
+    defaultActivatedAppIds: ['services', 'terminal', 'api-inspector', 'trace-viewer'],
     defaultScale: 0.2,
     leftNavigation: 'hidden',
   };

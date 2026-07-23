@@ -5,6 +5,7 @@ import Canvas from '../canvas/Canvas';
 import ZoomControls from './ZoomControls';
 import { HudsonContextMenu } from '../overlays/ContextMenu';
 import type { ContextMenuEntry } from '../overlays/ContextMenu';
+import { SHELL_THEME } from '../../lib/theme';
 
 interface CanvasConfig {
   showGuides?: boolean;
@@ -227,7 +228,10 @@ const Frame: React.FC<FrameProps> = ({
         <div className="absolute inset-0 z-10 overflow-auto frame-scrollbar">
           {children}
         </div>
-        <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+        <div
+          className="fixed inset-0 pointer-events-none overflow-hidden"
+          style={{ zIndex: SHELL_THEME.zIndex.navigationStack }}
+        >
           {hud}
         </div>
       </div>
@@ -300,7 +304,10 @@ const Frame: React.FC<FrameProps> = ({
       )}
 
       {/* Layer 2: Static HUD chrome (fixed, never scales) */}
-      <div className="fixed inset-0 z-50 pointer-events-none overflow-hidden">
+      <div
+        className="fixed inset-0 pointer-events-none overflow-hidden"
+        style={{ zIndex: SHELL_THEME.zIndex.navigationStack }}
+      >
         {hud}
       </div>
     </div>

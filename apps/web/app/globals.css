@@ -1,9 +1,8 @@
 @import "tailwindcss";
-/* Source design tokens from the in-tree SDK. Bare specifier (not a relative
-   ../packages path) so it resolves through node_modules regardless of the
-   turbopack root — under HUDSON_TURBOPACK_PARENT the entry CSS's resolution
-   base is the parent dir, which breaks ../packages but not node_modules. */
-@import "hudsonkit/styles/tokens.css";
+/* Load the SDK's precompiled utilities and design tokens through its public
+   package entry. This keeps Hudson's in-tree host on the same sealed CSS path
+   as downstream consumers and includes classes used only by SDK components. */
+@import "hudsonkit/styles";
 
 :root {
   --background: 0.145 0 0;

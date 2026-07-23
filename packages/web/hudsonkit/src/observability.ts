@@ -6,6 +6,27 @@ export {
   HSpan,
   HTrace,
 } from './observability/core';
+export {
+  createHudsonFetchCapture,
+  formatHudsonNetworkEntryAsCurl,
+  formatHudsonNetworkEntryForAgent,
+  HudsonNetworkCaptureDefault,
+  HudsonNetworkStore,
+  installHudsonFetchCapture,
+  sanitizeHudsonNetworkEntry,
+} from './observability/network';
+export type {
+  HudsonCapturedBody,
+  HudsonFetchCaptureOptions,
+  HudsonFetch,
+  HudsonNetworkEntry,
+  HudsonNetworkListener,
+  HudsonNetworkRequest,
+  HudsonNetworkResponse,
+  HudsonNetworkStatus,
+  HudsonNetworkStoreOptions,
+  HudsonNetworkTiming,
+} from './observability/network';
 export type {
   HLogEvent,
   HLogInput,
@@ -33,6 +54,11 @@ export {
   useHudLoggerEvents,
   useHudLoggerSummary,
 } from './components/observability/HudLogger';
+export {
+  HudNetworkPanel,
+  useHudsonNetworkEntries,
+} from './components/observability/HudNetworkPanel';
+export type { HudNetworkPanelProps } from './components/observability/HudNetworkPanel';
 export {
   dispatchHudsonAgentAction,
   HUDSON_AGENT_ACTION_EVENT,

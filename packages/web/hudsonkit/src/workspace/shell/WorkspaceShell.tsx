@@ -277,68 +277,6 @@ function HudLoggerStatusButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 
-function HudLoggerOverlay({
-  open,
-  onClose,
-}: {
-  open: boolean;
-  onClose: () => void;
-}) {
-  useEffect(() => {
-    if (!open) return;
-
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (event.key === 'Escape') onClose();
-    };
-
-    window.addEventListener('keydown', onKeyDown);
-    return () => window.removeEventListener('keydown', onKeyDown);
-  }, [open, onClose]);
-
-  const replayEvents = useAgentActionLog({
-    limit: HUD_LOGGER_MAX_EVENTS,
-    refreshMs: 5000,
-    enabled: open,
-  });
-
-  if (!open) return null;
-
-  return (
-    <div
-      className="fixed inset-0 z-[70] flex bg-background/88 p-3 text-foreground backdrop-blur-md md:p-5"
-      role="dialog"
-      aria-modal="true"
-      aria-label="Agent Actions"
-    >
-      <div className="flex min-h-0 w-full flex-col">
-        <div className="flex h-10 shrink-0 items-center justify-between border border-border border-b-0 bg-card/95 px-3 shadow-[var(--hud-shadow-nav)]">
-          <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
-            Agent Actions
-          </div>
-          <button
-            type="button"
-            onClick={onClose}
-            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            title="Close Agent Actions"
-            aria-label="Close Agent Actions"
-          >
-            <X size={14} />
-          </button>
-        </div>
-        <HudLogger
-          observability={HObservabilityDefault}
-          replayEvents={replayEvents}
-          maxEvents={HUD_LOGGER_MAX_EVENTS}
-          title="agent actions"
-          className="min-h-0 flex-1 rounded-t-none"
-          emptyMessage="No agent actions yet."
-          initialScope="agent-actions"
-        />
-      </div>
-    </div>
-  );
-}
-
 function renderStatusRightItems(appRight: ReactNode | null, loggerButton: ReactNode | null) {
   if (!appRight && !loggerButton) return null;
 
@@ -573,6 +511,17 @@ export interface WorkspaceShellEnvironment {
    *  overrides). A hook because it composes app-side hooks; the shell calls it
    *  unconditionally with a stable identity. */
   useHudsonAISettingsEntry?: (config: WorkspaceAppConfig | null, workspaceId: string) => AppSettingsEntry | null;
+  /** Hook producing host-owned developer tools for the shared console drawer.
+   *  Keeping the tool body injectable lets Hudson own the chrome while a host
+   *  opts into diagnostics without pulling them into every consumer. */
+  useDeveloperTools?: () => readonly WorkspaceDeveloperTool[];
+}
+
+export interface WorkspaceDeveloperTool {
+  id: string;
+  label: string;
+  icon?: ReactNode;
+  render: () => ReactNode;
 }
 
 interface WorkspaceShellProps {
@@ -888,6 +837,11 @@ function useNoHudsonAISettingsEntry(): AppSettingsEntry | null {
   return null;
 }
 
+/** Stable fallback for hosts that do not provide developer tools. */
+function useNoDeveloperTools(): readonly WorkspaceDeveloperTool[] {
+  return [];
+}
+
 // ---------------------------------------------------------------------------
 // WorkspaceInner — renders inside all Providers, can call all app hooks
 // ---------------------------------------------------------------------------
@@ -948,6 +902,9 @@ function WorkspaceInner({
   // eslint-disable-next-line react-hooks/rules-of-hooks -- fullWorkspace.apps is a stable-length list (hooks run for every app, including disabled ones, per the note above), so mapping a hook over it keeps call order stable across renders
   const allAppHooksRaw: AppHookData[] = fullWorkspace.apps.map(config => useAppHooks(config));
   const allAppHooks = allAppHooksRaw.filter(h => !disabledAppIds.has(h.appId));
+
+  const resolveDeveloperTools = environment?.useDeveloperTools ?? useNoDeveloperTools;
+  const developerTools = resolveDeveloperTools();
 
   // --- Port bridge (registers output/input hooks with DataBus) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1226,7 +1183,6 @@ function WorkspaceInner({
   const dynamicCountRef = useRef(0);
   const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
   const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
-  const [showHudLogger, setShowHudLogger] = useState(false);
   const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
   const spawnTerminal = useCallback((
@@ -1508,7 +1464,7 @@ function WorkspaceInner({
     }, BOUNDS_FLUSH_MS);
   }, []);
 
-  // --- Console drawer state — single AI / Terminal toggle in the drawer header.
+  // --- Console drawer state — shared AI / Terminal / diagnostics surface.
   //
   // `consoleWorkspaceKind` is the universal "which mode am I in" — the body
   // routes to the focused app's Chat or Terminal slot if present, else the
@@ -1520,7 +1476,8 @@ function WorkspaceInner({
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
   const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
-  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
+  type ConsoleWorkspaceKind = 'ai' | 'terminal' | 'logs' | `developer:${string}`;
+  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<ConsoleWorkspaceKind>('ai');
   const initialFocusedChatApp = workspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
   const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>(
     initialFocusedChatApp ? 'app' : 'workspace',
@@ -1541,9 +1498,10 @@ function WorkspaceInner({
 
   const focusedConsoleApp = appsWithConsoleSurface.find(c => c.app.id === focusedAppId)?.app ?? null;
   const focusedChatApp = focusedConsoleApp?.slots.Chat ? focusedConsoleApp : null;
-  const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
+  const openWorkspaceConsole = useCallback((kind: ConsoleWorkspaceKind) => {
     setConsoleWorkspaceKind(kind);
-    setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
+    if (kind === 'ai') setActiveTerminalAppIdRaw(HUDSON_AI_ID);
+    if (kind === 'terminal') setActiveTerminalAppIdRaw(HUDSON_TERMINAL_ID);
     if (kind === 'ai' && focusedChatApp && !consoleAIKindUserSelected.current) {
       setConsoleAIKind('app');
     }
@@ -1693,7 +1651,6 @@ function WorkspaceInner({
       if (allAppIds.includes(appId)) {
         handleActivateApp(appId);
         setFullscreenAppId(detail?.fullscreen ? appId : null);
-        setShowHudLogger(false);
         setShowLauncher(false);
         playSound('thock');
         return;
@@ -1716,7 +1673,6 @@ function WorkspaceInner({
         window.location.hash = hash;
       }
       onSwitchWorkspace(targetWorkspace.id);
-      setShowHudLogger(false);
       setShowLauncher(false);
       playSound('thock');
     };
@@ -1726,12 +1682,18 @@ function WorkspaceInner({
   }, [allAppIds, handleActivateApp, onSwitchWorkspace, playSound, workspaces]);
 
   const openHudLogger = useCallback(() => {
-    setShowHudLogger(true);
+    setShowTerminal(true);
+    openWorkspaceConsole('logs');
     setShowLauncher(false);
     playSound('thock');
-  }, [playSound]);
-  const closeHudLogger = useCallback(() => setShowHudLogger(false), []);
+  }, [openWorkspaceConsole, playSound, setShowTerminal]);
   const hudLoggerStatusButton = <HudLoggerStatusButton onOpen={openHudLogger} />;
+
+  const replayEvents = useAgentActionLog({
+    limit: HUD_LOGGER_MAX_EVENTS,
+    refreshMs: 5000,
+    enabled: showTerminal && consoleWorkspaceKind === 'logs',
+  });
 
   const startVoicePrompt = useCallback(() => {
     setShowTerminal(true);
@@ -1954,6 +1916,24 @@ function WorkspaceInner({
         action: () => { setShowTerminal(t => !t); playSound('slideIn'); },
       },
       {
+        id: 'shell:open-logs',
+        label: 'Developer Tools: Logs',
+        icon: <Activity size={14} />,
+        action: () => {
+          setShowTerminal(true);
+          openWorkspaceConsole('logs');
+        },
+      },
+      ...developerTools.map(tool => ({
+        id: `shell:open-developer-tool:${tool.id}`,
+        label: `Developer Tools: ${tool.label}`,
+        icon: tool.icon ?? <Activity size={14} />,
+        action: () => {
+          setShowTerminal(true);
+          openWorkspaceConsole(`developer:${tool.id}`);
+        },
+      })),
+      {
         id: 'shell:start-voice',
         label: 'Start Voice Prompt',
         icon: <Mic size={14} />,
@@ -2056,12 +2036,14 @@ function WorkspaceInner({
       updateShellSettings,
       openSettings,
       openWorkspaceManager,
+      openWorkspaceConsole,
       startVoicePrompt,
       focused.appId,
       focusedApp?.code?.commandLabel,
       focusedApp?.code?.label,
       focusedCodeSurface,
       featureFlags,
+      developerTools,
     ],
   );
 
@@ -2905,17 +2887,18 @@ function WorkspaceInner({
       : `Record voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
   })();
 
-  // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
-  // Active tab in bright emerald with an underline + subtle bg tint for contrast;
+  // Drawer title — product consoles and diagnostics share one Hudson-native tab strip.
+  // Active tab uses the shell accent with an underline + subtle bg tint;
   // inactive in muted gray and clickable.
   const consoleTitle = (
     <div className="flex items-stretch -my-1.5 h-[34px]">
       <button
         type="button"
         onClick={() => openWorkspaceConsole('terminal')}
-        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+        aria-pressed={consoleWorkspaceKind === 'terminal'}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
           consoleWorkspaceKind === 'terminal'
-            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            ? 'text-accent border-accent bg-accent/[0.07]'
             : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
         }`}
         title="Terminal — app's Terminal slot if present, else system terminal"
@@ -2926,9 +2909,10 @@ function WorkspaceInner({
       <button
         type="button"
         onClick={() => openWorkspaceConsole('ai')}
-        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
+        aria-pressed={consoleWorkspaceKind === 'ai'}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
           consoleWorkspaceKind === 'ai'
-            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
+            ? 'text-accent border-accent bg-accent/[0.07]'
             : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
         }`}
         title="AI — app's Chat slot if present, else workspace AI"
@@ -2936,22 +2920,53 @@ function WorkspaceInner({
         <Sparkles size={13} />
         <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">AI</span>
       </button>
+      <button
+        type="button"
+        onClick={() => openWorkspaceConsole('logs')}
+        aria-pressed={consoleWorkspaceKind === 'logs'}
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+          consoleWorkspaceKind === 'logs'
+            ? 'text-accent border-accent bg-accent/[0.07]'
+            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+        }`}
+        title="Logs — app, shell, agent action, and trace events"
+      >
+        <Activity size={13} />
+        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">LOGS</span>
+      </button>
+      {developerTools.map(tool => (
+        <button
+          type="button"
+          key={tool.id}
+          onClick={() => openWorkspaceConsole(`developer:${tool.id}`)}
+          aria-pressed={consoleWorkspaceKind === `developer:${tool.id}`}
+          className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+            consoleWorkspaceKind === `developer:${tool.id}`
+              ? 'text-accent border-accent bg-accent/[0.07]'
+              : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
+          }`}
+          title={`Developer tool — ${tool.label}`}
+        >
+          {tool.icon ?? <Activity size={13} />}
+          <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">{tool.label}</span>
+        </button>
+      ))}
     </div>
   );
 
-  const terminalHeaderActions = (
+  const terminalHeaderActions = consoleWorkspaceKind === 'terminal' ? (
     <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={handleTermScreenshot}
         disabled={termSnapping}
-        className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
+        className="p-1 rounded text-muted-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30 transition-colors"
         title="Capture screenshot — copies file path to clipboard"
       >
         {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
       </button>
     </div>
-  );
+  ) : null;
 
   const terminalVoiceOverlay = consoleWorkspaceKind === 'terminal' ? (
     <div
@@ -3083,12 +3098,29 @@ function WorkspaceInner({
     </div>
   );
 
-  // Console body: routed by the AI / Terminal toggle in the drawer header.
+  // Console body: routed by the shared tab strip in the drawer header.
   // - AI mode    → workspace AI plus focused app AI when the app provides Chat
   // - Terminal   → focused app's Terminal slot if present, else system terminal
   const terminalContent = (() => {
     if (consoleWorkspaceKind === 'ai') {
       return aiConsoleNode;
+    }
+    if (consoleWorkspaceKind === 'logs') {
+      return (
+        <HudLogger
+          observability={HObservabilityDefault}
+          replayEvents={replayEvents}
+          maxEvents={HUD_LOGGER_MAX_EVENTS}
+          title="logs"
+          className="!h-full !min-h-0 !rounded-none !border-0"
+          emptyMessage="No events yet."
+        />
+      );
+    }
+    if (consoleWorkspaceKind.startsWith('developer:')) {
+      const toolId = consoleWorkspaceKind.slice('developer:'.length);
+      const tool = developerTools.find(candidate => candidate.id === toolId);
+      return tool ? tool.render() : null;
     }
     // Terminal kind
     if (focusedConsoleApp?.slots.Terminal) {
@@ -3755,10 +3787,6 @@ function WorkspaceInner({
         isOpen={showWorkspaceManager}
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
-      />
-      <HudLoggerOverlay
-        open={showHudLogger}
-        onClose={closeHudLogger}
       />
       {showTerminalSpawn && (
         <TerminalSpawnDialog
