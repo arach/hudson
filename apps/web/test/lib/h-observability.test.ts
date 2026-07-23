@@ -1,6 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
   HObservability,
+  summarizeHudLoggerEvents,
   type HMetricEvent,
   type HObservation,
   type HTraceSpan,
@@ -130,6 +131,16 @@ describe('HObservability', () => {
       error: { name: 'Error', message: 'Command failed' },
       durationMs: 1,
     });
+  });
+
+  it('counts only spans without a terminal record as active', () => {
+    const observability = createTestObservability();
+    observability.trace.start('completed').end();
+    observability.trace.start('still-running');
+
+    const summary = summarizeHudLoggerEvents(observability.snapshot().slice().reverse());
+
+    expect(summary.activeSpans).toBe(1);
   });
 
   it('supports filtered subscriptions and replay from the buffer', () => {

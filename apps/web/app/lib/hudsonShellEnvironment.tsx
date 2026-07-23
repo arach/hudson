@@ -1,10 +1,21 @@
-import { useMemo } from 'react';
+'use client';
+
+import { useLayoutEffect, useMemo, useState } from 'react';
 import type { WorkspaceAppConfig } from 'hudsonkit';
+import { Network } from 'lucide-react';
+import {
+  HudNetworkPanel,
+  installHudsonFetchCapture,
+} from 'hudsonkit/observability';
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
 import { useAIModelOptions } from './useAIModelOptions';
-import type { AppSettingsEntry, WorkspaceShellEnvironment } from 'hudsonkit/workspace';
+import type {
+  AppSettingsEntry,
+  WorkspaceDeveloperTool,
+  WorkspaceShellEnvironment,
+} from 'hudsonkit/workspace';
 
 /**
  * Hudson's concrete bindings for the host WorkspaceShell's injectable surfaces.
@@ -31,6 +42,33 @@ function useHudsonAISettingsEntry(
   };
 }
 
+function useHudsonDeveloperTools(): readonly WorkspaceDeveloperTool[] {
+  return useMemo(() => process.env.NODE_ENV === 'development' ? [
+    {
+      id: 'network',
+      label: 'Network',
+      icon: <Network size={13} />,
+      render: () => <HudsonNetworkTool />,
+    },
+  ] : [], []);
+}
+
+function HudsonNetworkTool() {
+  const [recording, setRecording] = useState(false);
+
+  useLayoutEffect(() => {
+    if (process.env.NODE_ENV !== 'development' || !recording) return;
+    return installHudsonFetchCapture();
+  }, [recording]);
+
+  return (
+    <HudNetworkPanel
+      recording={recording}
+      onRecordingChange={setRecording}
+    />
+  );
+}
+
 export const hudsonShellEnvironment: WorkspaceShellEnvironment = {
   routes: {
     agentActions: '/api/agent-actions',
@@ -53,4 +91,5 @@ export const hudsonShellEnvironment: WorkspaceShellEnvironment = {
   },
   renderTerminal: (opts) => <TerminalContent {...opts} />,
   useHudsonAISettingsEntry,
+  useDeveloperTools: useHudsonDeveloperTools,
 };
