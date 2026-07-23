@@ -376,7 +376,7 @@ function sanitizeHeaders(headers: Record<string, string>) {
 }
 
 function isExportRedactedField(key: string) {
-  return EXPORT_REDACTED_FIELDS.has(key.toLowerCase().replaceAll('-', '_'));
+  return EXPORT_REDACTED_FIELDS.has(key.toLowerCase().replace(/-/g, '_'));
 }
 
 function sanitizeStructuredValue(value: unknown): unknown {
@@ -472,7 +472,7 @@ export function formatHudsonNetworkEntryForAgent(entry: HudsonNetworkEntry) {
 }
 
 function shellQuote(value: string) {
-  return `'${value.replaceAll("'", `'\\''`)}'`;
+  return `'${value.replace(/'/g, `'\\''`)}'`;
 }
 
 export function formatHudsonNetworkEntryAsCurl(entry: HudsonNetworkEntry) {
