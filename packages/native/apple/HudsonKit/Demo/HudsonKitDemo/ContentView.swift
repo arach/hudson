@@ -113,17 +113,13 @@ struct ContentView: View {
 
     var body: some View {
         HudAppShell {
-            HudResizableNavigationSidebar(
+            HudNavigationSidebar(
                 selection: Binding(
                     get: { tab as DemoTab? },
                     set: { if let next = $0 { tab = next } }
                 ),
                 entries: sidebarEntries,
-                isCompact: Binding(
-                    get: { !navExpanded },
-                    set: { navExpanded = !$0 }
-                ),
-                labelWidth: $navLabelWidth,
+                isCompact: !navExpanded,
                 railHeader: {
                     HudsonKitMark()
                         .foregroundStyle(HudPalette.ink)
@@ -148,6 +144,13 @@ struct ContentView: View {
                 footer: {
                     variantPicker
                 }
+            )
+            .resizable(
+                isCompact: Binding(
+                    get: { !navExpanded },
+                    set: { navExpanded = !$0 }
+                ),
+                labelWidth: $navLabelWidth
             )
         } trailing: {
             HudInspector(isCollapsed: $inspectorCollapsed) {

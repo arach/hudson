@@ -1331,7 +1331,7 @@ public struct HudCanvasSurface: View {
     }
 
     private var navigationRail: some View {
-        HudResizableNavigationSidebar(
+        HudNavigationSidebar(
             selection: Binding(
                 get: { activeNavigationRailSelection },
                 set: { next in
@@ -1341,11 +1341,8 @@ public struct HudCanvasSurface: View {
                 }
             ),
             entries: navigationRailEntries,
-            isCompact: $navigationRailCompact,
-            labelWidth: $navigationRailLabelWidth,
+            isCompact: navigationRailCompact,
             accent: activeTheme.palette.statusInfo,
-            minLabelWidth: 112,
-            maxLabelWidth: 180,
             railHeader: {
                 HudsonKitMark()
                     .foregroundStyle(activeTheme.palette.ink)
@@ -1382,6 +1379,12 @@ public struct HudCanvasSurface: View {
                 }
                 .frame(height: HudLayout.rowHeightCompact, alignment: .leading)
             }
+        )
+        .resizable(
+            isCompact: $navigationRailCompact,
+            labelWidth: $navigationRailLabelWidth,
+            minLabelWidth: 112,
+            maxLabelWidth: 180
         )
         .environment(
             \.hudsonSidebarStyle,
