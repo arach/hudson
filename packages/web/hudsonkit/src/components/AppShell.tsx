@@ -73,6 +73,12 @@ export interface AppShellPanelBehavior {
    * Defaults to false.
    */
   inspectorPin?: boolean;
+  /**
+   * Keep one side panel open at a time. Opening the right panel yields the
+   * left panel; closing it restores the left panel when it was previously open.
+   * Defaults to false.
+   */
+  exclusive?: boolean;
 }
 
 export interface AppShellChromeOptions {
@@ -84,6 +90,9 @@ export interface AppShellChromeOptions {
   leftPanel?: boolean;
   /** Render the right side panel when the app is in panel layout. Defaults to true. */
   rightPanel?: boolean;
+  /** Keep app-owned side panels visible when the app uses canvas layout.
+   *  Defaults to false so existing canvas apps retain their full-bleed behavior. */
+  canvasPanels?: boolean;
   /** Enable the command palette chrome and Cmd/Ctrl+K shortcut. Defaults to true. */
   palette?: boolean;
   /** Enable the terminal/assistant drawer chrome and shortcuts. Defaults to true. */
@@ -100,6 +109,7 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   statusBar: true,
   leftPanel: true,
   rightPanel: true,
+  canvasPanels: false,
   palette: true,
   terminal: true,
   panelBehavior: {},
@@ -272,6 +282,7 @@ function AppShellInner({
   const panelBehavior = chrome.panelBehavior ?? {};
   const panelMode: AppShellPanelMode = panelBehavior.mode ?? 'push';
   const centerMinWidth = panelBehavior.centerMinWidth ?? DEFAULT_CENTER_MIN_WIDTH;
+  const exclusivePanels = panelBehavior.exclusive === true;
   // The pin toggle is meaningless in overlay mode (everything floats there).
   const inspectorPinEnabled = panelBehavior.inspectorPin === true && panelMode !== 'overlay';
   // Platform layout
@@ -282,6 +293,7 @@ function AppShellInner({
   const appStatus = app.hooks.useStatus();
   const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
   const appStatusRight = app.hooks.useStatusRight?.() ?? null;
+  const appViewport = app.hooks.useViewport?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
@@ -299,8 +311,14 @@ function AppShellInner({
   const TakeoverSlot = app.slots.Takeover;
 
   // Panel state
-  const [leftCollapsed, setLeftCollapsed] = usePersistentState(`appshell.${app.id}.left`, false);
-  const [rightCollapsed, setRightCollapsed] = usePersistentState(`appshell.${app.id}.right`, false);
+  const [leftCollapsed, setLeftCollapsed] = usePersistentState(
+    `appshell.${app.id}.left`,
+    app.layout?.left?.collapsed ?? false,
+  );
+  const [rightCollapsed, setRightCollapsed] = usePersistentState(
+    `appshell.${app.id}.right`,
+    app.layout?.right?.collapsed ?? false,
+  );
   const [leftWidth, setLeftWidth] = usePersistentState(
     `appshell.${app.id}.leftW`,
     app.layout?.leftWidth ?? 260,
@@ -345,6 +363,60 @@ function AppShellInner({
     setRightWidth((w) => clampPanelWidth(app, 'right', w, responsiveCap));
   }, [app, responsiveCap, setLeftWidth, setRightWidth]);
 
+  const leftWasOpenBeforeRightRef = useRef<boolean | null>(null);
+
+  const openRightPanel = useCallback(() => {
+    if (!rightCollapsed) return;
+    if (exclusivePanels) {
+      leftWasOpenBeforeRightRef.current = !leftCollapsed;
+      if (!leftCollapsed) setLeftCollapsed(true);
+    }
+    setRightCollapsed(false);
+  }, [exclusivePanels, leftCollapsed, rightCollapsed, setLeftCollapsed, setRightCollapsed]);
+
+  const closeRightPanel = useCallback(() => {
+    if (rightCollapsed) return;
+    setRightCollapsed(true);
+    if (exclusivePanels) {
+      const restoreLeft = leftWasOpenBeforeRightRef.current ?? !(app.layout?.left?.collapsed ?? false);
+      if (restoreLeft) setLeftCollapsed(false);
+      leftWasOpenBeforeRightRef.current = null;
+    }
+  }, [app.layout?.left?.collapsed, exclusivePanels, rightCollapsed, setLeftCollapsed, setRightCollapsed]);
+
+  const toggleRightPanel = useCallback(() => {
+    if (rightCollapsed) openRightPanel();
+    else closeRightPanel();
+  }, [closeRightPanel, openRightPanel, rightCollapsed]);
+
+  const openLeftPanel = useCallback(() => {
+    if (!leftCollapsed) return;
+    if (exclusivePanels && !rightCollapsed) {
+      setRightCollapsed(true);
+      leftWasOpenBeforeRightRef.current = null;
+    }
+    setLeftCollapsed(false);
+  }, [exclusivePanels, leftCollapsed, rightCollapsed, setLeftCollapsed, setRightCollapsed]);
+
+  const closeLeftPanel = useCallback(() => {
+    if (!leftCollapsed) setLeftCollapsed(true);
+  }, [leftCollapsed, setLeftCollapsed]);
+
+  const toggleLeftPanel = useCallback(() => {
+    if (leftCollapsed) openLeftPanel();
+    else closeLeftPanel();
+  }, [closeLeftPanel, leftCollapsed, openLeftPanel]);
+
+  const setLeftPanelCollapsed = useCallback((collapsed: boolean) => {
+    if (collapsed) closeLeftPanel();
+    else openLeftPanel();
+  }, [closeLeftPanel, openLeftPanel]);
+
+  const setRightPanelCollapsed = useCallback((collapsed: boolean) => {
+    if (collapsed) closeRightPanel();
+    else openRightPanel();
+  }, [closeRightPanel, openRightPanel]);
+
   const [codeWorkbenchSize, setCodeWorkbenchSize] = usePersistentState<HudsonCodeWorkbenchSize>(`appshell.${app.id}.codeWorkbenchSize`, 'half');
   const [codeWorkbenchEditorWidth, setCodeWorkbenchEditorWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchEditorWidth`, 420);
   const [codeWorkbenchChatWidth, setCodeWorkbenchChatWidth] = usePersistentState(`appshell.${app.id}.codeWorkbenchChatWidth`, 320);
@@ -352,10 +424,10 @@ function AppShellInner({
 
   useEffect(() => {
     if (codeWorkbenchOpen && !previousCodeWorkbenchOpenRef.current && !rightCollapsed) {
-      setRightCollapsed(true);
+      closeRightPanel();
     }
     previousCodeWorkbenchOpenRef.current = codeWorkbenchOpen;
-  }, [codeWorkbenchOpen, rightCollapsed, setRightCollapsed]);
+  }, [closeRightPanel, codeWorkbenchOpen, rightCollapsed]);
 
   // Canvas pan/zoom state
   const [panOffset, setPanOffset] = useState({ x: 0, y: 0 });
@@ -425,8 +497,9 @@ function AppShellInner({
     document.addEventListener('mouseup', onMouseUp);
   }, [app, leftWidth, rightWidth, responsiveCap, setLeftWidth, setRightWidth]);
 
-  // Whether side panels should be visible — canvas/focus modes hide them
-  const showPanels = layoutMode === 'panel';
+  // Canvas apps may opt into shell-owned rails without recreating Frame/chrome.
+  // Focus mode always stays rail-free.
+  const showPanels = layoutMode === 'panel' || (layoutMode === 'canvas' && chrome.canvasPanels);
   const showLeftPanel = chrome.leftPanel && showPanels;
   const showRightPanel = chrome.rightPanel && showPanels;
   // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
@@ -468,10 +541,10 @@ function AppShellInner({
 
     const cmds: CommandOption[] = [];
     if (chrome.leftPanel) {
-      cmds.push({ id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: () => setLeftCollapsed(c => !c) });
+      cmds.push({ id: 'shell:toggle-left', label: 'Toggle Left Panel', shortcut: 'Cmd+[', action: toggleLeftPanel });
     }
     if (chrome.rightPanel) {
-      cmds.push({ id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: () => setRightCollapsed(c => !c) });
+      cmds.push({ id: 'shell:toggle-right', label: 'Toggle Right Panel', shortcut: 'Cmd+]', action: toggleRightPanel });
     }
     if (chrome.rightPanel && inspectorPinEnabled) {
       cmds.push({ id: 'shell:toggle-right-overlay', label: 'Toggle Inspector Overlay', shortcut: 'Cmd+Shift+]', action: () => setRightOverlayPref(o => !o) });
@@ -511,7 +584,7 @@ function AppShellInner({
       );
     }
     return cmds;
-  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, inspectorPinEnabled, setActiveTab, setLeftCollapsed, setRightCollapsed, setRightOverlayPref, theme]);
+  }, [activeTab, app.code?.commandLabel, app.code?.label, app.id, assistantEnabled, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, codeSurface, inspectorPinEnabled, setActiveTab, setRightOverlayPref, theme, toggleLeftPanel, toggleRightPanel]);
 
   const allCommands = useMemo(() => [
     ...appCommands,
@@ -529,7 +602,7 @@ function AppShellInner({
       }
       if (chrome.leftPanel && (e.metaKey || e.ctrlKey) && e.key === '[') {
         e.preventDefault();
-        setLeftCollapsed(c => !c);
+        toggleLeftPanel();
       }
       if (chrome.rightPanel && (e.metaKey || e.ctrlKey) && e.key === ']') {
         e.preventDefault();
@@ -538,7 +611,7 @@ function AppShellInner({
         if (inspectorPinEnabled && e.shiftKey) {
           setRightOverlayPref(o => !o);
         } else {
-          setRightCollapsed(c => !c);
+          toggleRightPanel();
         }
       }
       if (chrome.terminal && e.ctrlKey && e.key === '`') {
@@ -553,7 +626,7 @@ function AppShellInner({
     };
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
-  }, [setLeftCollapsed, setRightCollapsed, setRightOverlayPref, assistantEnabled, inspectorPinEnabled, resolvedTab, setActiveTab, takeoverActive, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal]);
+  }, [setRightOverlayPref, assistantEnabled, inspectorPinEnabled, resolvedTab, setActiveTab, takeoverActive, chrome.leftPanel, chrome.palette, chrome.rightPanel, chrome.terminal, toggleLeftPanel, toggleRightPanel]);
 
   // Right panel content: Inspector + tools accordion
   const InspectorSlot = app.slots.Inspector;
@@ -770,10 +843,10 @@ function AppShellInner({
     isCollapsed: showLeftPanel ? leftCollapsed : true,
     width: leftWidth,
     isFloating: leftFloating,
-    toggle: () => setLeftCollapsed((c) => !c),
-    setCollapsed: (v) => setLeftCollapsed(v),
+    toggle: toggleLeftPanel,
+    setCollapsed: setLeftPanelCollapsed,
     setWidth: (px) => setLeftWidth(clampPanelWidth(app, 'left', px, responsiveCap)),
-  }), [app, showLeftPanel, leftCollapsed, leftWidth, leftFloating, responsiveCap, setLeftCollapsed, setLeftWidth]);
+  }), [app, showLeftPanel, leftCollapsed, leftWidth, leftFloating, responsiveCap, setLeftPanelCollapsed, setLeftWidth, toggleLeftPanel]);
 
   // Pin/float preference handle — only published when the toggle is enabled,
   // so `right.pin` doubles as the feature-detection flag for app code.
@@ -793,11 +866,11 @@ function AppShellInner({
     isCollapsed: showRightPanel ? rightCollapsed : true,
     width: rightWidth,
     isFloating: rightFloating,
-    toggle: () => setRightCollapsed((c) => !c),
-    setCollapsed: (v) => setRightCollapsed(v),
+    toggle: toggleRightPanel,
+    setCollapsed: setRightPanelCollapsed,
     setWidth: (px) => setRightWidth(clampPanelWidth(app, 'right', px, responsiveCap)),
     ...(rightPanelPin ? { pin: rightPanelPin } : {}),
-  }), [app, showRightPanel, rightCollapsed, rightWidth, rightFloating, rightPanelPin, responsiveCap, setRightCollapsed, setRightWidth]);
+  }), [app, showRightPanel, rightCollapsed, rightWidth, rightFloating, rightPanelPin, responsiveCap, setRightPanelCollapsed, setRightWidth, toggleRightPanel]);
 
   const controlsValue = useMemo<AppShellControlsContextValue>(() => ({
     drawer: drawerControls,
@@ -811,10 +884,13 @@ function AppShellInner({
     <div ref={backgroundRef} aria-hidden={takeoverActive ? true : undefined} style={{ display: 'contents' }}>
     <Frame
       mode={frameMode}
-      panOffset={panOffset}
-      scale={scale}
-      onPan={handlePan}
-      onZoom={handleZoom}
+      panOffset={appViewport?.pan ?? panOffset}
+      scale={appViewport?.zoom ?? scale}
+      onPan={appViewport?.onPan ?? handlePan}
+      onZoom={appViewport?.onZoom ?? handleZoom}
+      onViewportChange={appViewport?.onViewportChange}
+      canvasProps={{ gridOpacity: appViewport?.gridOpacity }}
+      zoomSensitivity={appViewport?.zoomSensitivity}
       zoomControlsRightOffset={showPanels && !rightCollapsed && !rightFloating ? rightWidth : 0}
       zoomControlsBottomOffset={terminalCanvasBottomOffset}
       showZoomControls={showCanvasZoomControls}
@@ -855,7 +931,7 @@ function AppShellInner({
               title={app.leftPanel?.title ?? 'Navigation'}
               icon={app.leftPanel?.icon}
               isCollapsed={leftCollapsed}
-              onToggleCollapse={() => setLeftCollapsed(!leftCollapsed)}
+              onToggleCollapse={toggleLeftPanel}
               width={leftWidth}
               onResizeStart={handleResizeStart('left')}
               floating={leftFloating}
@@ -877,7 +953,7 @@ function AppShellInner({
               title={app.rightPanel?.title ?? 'Inspector'}
               icon={app.rightPanel?.icon}
               isCollapsed={rightCollapsed}
-              onToggleCollapse={() => setRightCollapsed(!rightCollapsed)}
+              onToggleCollapse={toggleRightPanel}
               width={rightWidth}
               onResizeStart={handleResizeStart('right')}
               floating={rightFloating}
@@ -894,6 +970,15 @@ function AppShellInner({
               status={appStatus}
               left={appStatusLeft}
               right={appStatusRight}
+              viewport={
+                appViewport
+                  ? {
+                      pan: appViewport.pan,
+                      zoom: appViewport.zoom,
+                      canvasSize: appViewport.canvasSize,
+                    }
+                  : undefined
+              }
               onToggleTerminal={chrome.terminal ? () => setShowTerminal(t => !t) : undefined}
               isTerminalOpen={chrome.terminal ? showTerminal : false}
             />

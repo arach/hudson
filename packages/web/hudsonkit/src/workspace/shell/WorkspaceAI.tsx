@@ -51,6 +51,10 @@ type VoiceStatus =
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
+  inputDeviceId: '',
+  transcriptionModel: 'parakeet:v3',
+  transcriptionLanguage: 'en',
+  captureMode: 'push_to_talk',
   speakReplies: false,
   replyProvider: 'vox',
   replyModel: 'avspeech:system',
@@ -836,8 +840,10 @@ export function WorkspaceAI({
 
       const session = await voiceClient.startLiveSession({
         surface: 'hudson-ai',
-        language: 'en',
-        mode: 'push_to_talk',
+        language: voiceSettingsRef.current.transcriptionLanguage,
+        modelId: voiceSettingsRef.current.transcriptionModel,
+        mode: voiceSettingsRef.current.captureMode,
+        deviceId: voiceSettingsRef.current.inputDeviceId || undefined,
         metadata: {
           workspaceId: workspace.id,
         },

@@ -76,7 +76,7 @@ export function DraftingToolbar() {
         zIndex: 100,
         width: 232,
         background: 'var(--paper)',
-        border: '1.5px solid var(--ink)',
+        border: 'var(--stroke-w) solid var(--ink)',
         boxShadow: '0 4px 0 var(--paper-edge)',
         fontFamily: 'var(--font-mono)',
       }}

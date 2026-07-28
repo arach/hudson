@@ -25,6 +25,7 @@ apps/web/site/out/
 # production
 /build
 /dist
+packages/native/apple/HudsonKit/dist/
 
 # env & secrets — never commit these
 .env
@@ -53,6 +54,7 @@ appsettings.local.*
 .claude/
 
 # local app directory (developer-specific, auto-created on first run)
+app/local/
 apps/web/app/local/
 
 # OS files
@@ -123,9 +125,11 @@ local.db
 local.db-*
 
 # fonts (bundled locally, not committed)
+public/fonts/
 apps/web/public/fonts/
 
 # embed bundle (built artifact, see embed-worker/scripts/bundle-client.mjs)
+public/embed/
 apps/web/public/embed/
 
 # resend config
@@ -148,5 +152,7 @@ output/
 scripts/_beacon-render-body.mjs
 scripts/install-beacon-templates.mjs
 # Astro docs-site build output (generated; do not track)
+site/out/
+site/site/out/
 hudson-docs/dist/
 hudson-docs/.astro/

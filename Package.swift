@@ -8,13 +8,12 @@ import Foundation
 // split between this root manifest and the inner
 // `packages/native/apple/HudsonKit/Package.swift` dev/CI manifest.
 //
-// Optional heavy backends stay gated by env at manifest-eval time so light
-// consumers do not resolve dependencies they do not use:
+// Terminal remains gated because it adds the full PTY/canvas stack. Voice is a
+// stable product and is always present in the package graph; downloading the
+// Parakeet model is controlled at runtime by HudsonVoice instead.
 //   HUDSONKIT_WITH_TERMINAL=1  -> HudsonTerminal + Canvas surface
-//   HUDSONKIT_WITH_VOICE=0     -> opt out of HudsonVoice
 let environment = ProcessInfo.processInfo.environment
 let terminalEnabled = environment["HUDSONKIT_WITH_TERMINAL"] == "1"
-let voiceEnabled = environment["HUDSONKIT_WITH_VOICE"] != "0"
 let binaryDistributionEnabled = environment["HUDSONKIT_BINARY_DISTRIBUTION"] == "1"
 let hudsonLibraryType: Product.Library.LibraryType? = binaryDistributionEnabled ? .dynamic : nil
 
@@ -46,6 +45,11 @@ func appendGitDependency(
     branch defaultBranch: String = "main",
     envPrefix: String
 ) -> String {
+    if let path = nonEmptyEnv("\(envPrefix)_PATH") {
+        dependencies.append(.package(path: path))
+        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: defaultURL)
+    }
+
     let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultURL
 
     if let revision = nonEmptyEnv("\(envPrefix)_GIT_REVISION") {
@@ -67,6 +71,11 @@ let tst = "packages/native/apple/HudsonKit/Tests/"
 let demo = "packages/native/apple/HudsonKit/Demo/"
 
 var products: [Product] = [
+    // This quarantine product is the only entry point for mechanics still
+    // earning stable HudsonKit admission. Stable products must
+    // never depend on it; scripts/apple/check-experimental-boundary.py enforces
+    // that graph rule in CI.
+    hudsonLibrary(name: "HudsonKitExperimental", targets: ["HudsonKitExperimental"]),
     hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
     hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
     hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
@@ -87,10 +96,11 @@ var products: [Product] = [
 
 var dependencies: [Package.Dependency] = []
 
-var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell"]
+var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonVoice"]
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
+    .target(name: "HudsonKitExperimental", path: src + "HudsonKitExperimental"),
     .target(name: "HudsonObservability", path: src + "HudsonObservability"),
     .target(name: "HudsonLive", path: src + "HudsonLive"),
     .target(name: "HudsonDiff", path: src + "HudsonDiff"),
@@ -109,9 +119,15 @@ var targets: [Target] = [
     .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
+    .testTarget(
+        name: "HudsonKitExperimentalTests",
+        dependencies: ["HudsonKitExperimental"],
+        path: tst + "HudsonKitExperimentalTests"
+    ),
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
+    .testTarget(name: "HudsonShellTests", dependencies: ["HudsonShell"], path: tst + "HudsonShellTests"),
     .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"], path: tst + "HudsonUIWebTests"),
     .testTarget(
         name: "HudsonUITests",
@@ -128,27 +144,30 @@ var targets: [Target] = [
     ),
 ]
 
-if voiceEnabled {
-    let voxPackage = appendGitDependency(
-        to: &dependencies,
-        url: "https://github.com/arach/vox.git",
-        envPrefix: "HUDSON_VOX"
+let voxPackage = appendGitDependency(
+    to: &dependencies,
+    url: "https://github.com/arach/vox.git",
+    envPrefix: "HUDSON_VOX"
+)
+products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
+targets.append(
+    .target(
+        name: "HudsonVoice",
+        dependencies: [
+            "HudsonUI",
+            "HudsonObservability",
+            .product(name: "VoxEngine", package: voxPackage),
+        ],
+        path: src + "HudsonVoice"
     )
-    products.append(hudsonLibrary(name: "HudsonVoice", targets: ["HudsonVoice"]))
-    targets.append(
-        .target(
-            name: "HudsonVoice",
-            dependencies: [
-                "HudsonUI",
-                "HudsonObservability",
-                .product(name: "VoxEngine", package: voxPackage),
-            ],
-            path: src + "HudsonVoice"
-        )
+)
+targets.append(
+    .testTarget(
+        name: "HudsonVoiceTests",
+        dependencies: ["HudsonVoice"],
+        path: tst + "HudsonVoiceTests"
     )
-    demoDependencies.append("HudsonVoice")
-    demoSwiftSettings.append(.define("HUDSON_VOICE"))
-}
+)
 
 if terminalEnabled {
     products.append(hudsonLibrary(name: "HudsonTerminal", targets: ["HudsonTerminal"]))
@@ -164,6 +183,7 @@ if terminalEnabled {
             name: "HudsonTerminal",
             dependencies: [
                 "HudsonUI",
+                "HudsonUIKeyboard",
                 .product(name: "Termini", package: terminiPackage),
                 .product(name: "TerminiSSH", package: terminiPackage),
             ],
@@ -204,6 +224,9 @@ if terminalEnabled {
     targets.append(
         .testTarget(name: "HudsonCanvasTests", dependencies: ["HudsonCanvas", "HudsonCanvasSurface"], path: tst + "HudsonCanvasTests")
     )
+    targets.append(
+        .testTarget(name: "HudsonTerminalTests", dependencies: ["HudsonTerminal"], path: tst + "HudsonTerminalTests")
+    )
     demoDependencies.append("HudsonTerminal")
     demoDependencies.append("HudsonCanvasSurface")
     demoDependencies.append("HudsonCanvas")
@@ -217,6 +240,22 @@ targets.append(
         dependencies: demoDependencies,
         path: demo + "HudsonKitDemo",
         swiftSettings: demoSwiftSettings
+    )
+)
+
+targets.append(
+    .executableTarget(
+        name: "HudsonKitExperimentalDemo",
+        dependencies: ["HudsonKitExperimental"],
+        path: demo + "HudsonKitExperimentalDemo"
+    )
+)
+
+targets.append(
+    .executableTarget(
+        name: "HudsonKitExperimentalVisualDemo",
+        dependencies: ["HudsonKitExperimental"],
+        path: demo + "HudsonKitExperimentalVisualDemo"
     )
 )
 

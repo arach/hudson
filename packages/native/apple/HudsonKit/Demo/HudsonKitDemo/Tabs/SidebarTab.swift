@@ -39,18 +39,53 @@ enum DemoSidebarSection: String, Hashable, CaseIterable, Identifiable {
     }
 }
 
+// MARK: - Demo modes
+
+/// Fixed, compact, and resizable are *modes of the same component* —
+/// `HudNavigationSidebar` — not different sidebars.
+enum DemoSidebarMode: String, CaseIterable, Identifiable {
+    case scrub, compact, resizable
+    var id: String { rawValue }
+
+    var label: String {
+        switch self {
+        case .scrub:     return "Scrub"
+        case .compact:   return "Compact"
+        case .resizable: return "Resizable"
+        }
+    }
+
+    var blurb: String {
+        switch self {
+        case .scrub:
+            return "The `progress: Double` initializer. Scrub the slider to inspect the bounce-free label-column transition at any point — the contract design tooling uses."
+        case .compact:
+            return "The `isCompact: Bool` initializer with a fixed label width. Wrap the toggle in `withAnimation` at the call site to animate it."
+        case .resizable:
+            return "The same component with `.resizable(isCompact:labelWidth:)`. Drag the trailing edge to size it, drag left past the collapse width to compact it, drag right from compact to expand. Hudson owns the gesture; the app owns the two bindings."
+        }
+    }
+}
+
 // MARK: - SidebarTab
 
 /// Interactive demo for `HudNavigationSidebar`.
 ///
-/// The central feature: a `Slider` bound to `progress` so the bounce-free
-/// label-column transition can be scrubbed by hand. Pickers expose all four
-/// style axes so every variant is reachable without editing code.
+/// One component, three modes. Fixed and progress-scrubbing are initializers;
+/// resizing is a behavior opted into with `.resizable(...)`. Pickers expose all
+/// four style axes so every variant is reachable without editing code.
 struct SidebarTab: View {
     @Environment(\.hudsonAppManifest) private var manifest
 
     @State private var selection: DemoSidebarSection? = .home
+    @State private var mode: DemoSidebarMode = .scrub
     @State private var progress: Double = 0
+
+    // Resizable mode — bindings the *application* owns. Hudson never persists
+    // these; a real app would back `labelWidth` with @AppStorage.
+    @State private var isCompact = false
+    @State private var labelWidth: CGFloat = 200
+    @State private var isResizing = false
 
     // Style axes — each independently controllable
     @State private var surfaceStyle:   HudSidebarSurfaceStyle   = .base
@@ -101,10 +136,14 @@ struct SidebarTab: View {
             HStack(spacing: HudSpacing.md) {
                 HudSectionLabel("Sidebar · bounce-free nav", tint: manifest.accent)
                 Spacer()
-                HudBadge("PROGRESS \(Int(progress * 100))%", tint: manifest.accent)
+                if mode == .resizable {
+                    HudBadge(isResizing ? "RESIZING" : "WIDTH \(Int(labelWidth))", tint: manifest.accent)
+                } else {
+                    HudBadge("PROGRESS \(Int(effectiveProgress * 100))%", tint: manifest.accent)
+                }
             }
 
-            Text("HudNavigationSidebar uses two parallel columns — a fixed rail and an animated label column — so icons never move during expand/compact transitions. Scrub the slider below to inspect the transition at any point.")
+            Text("HudNavigationSidebar uses two parallel columns — a fixed rail and an animated label column — so icons never move during expand/compact transitions. Fixed, compact, and resizable are modes of this one component.")
                 .font(HudFont.ui(HudTextSize.sm))
                 .foregroundStyle(HudPalette.muted)
                 .fixedSize(horizontal: false, vertical: true)
@@ -114,11 +153,27 @@ struct SidebarTab: View {
 
     // MARK: Sidebar preview
 
+    /// Where `progress` currently comes from. Scrub mode drives it directly;
+    /// the other two modes derive it from the boolean.
+    private var effectiveProgress: Double {
+        switch mode {
+        case .scrub:                return progress
+        case .compact, .resizable:  return isCompact ? 1 : 0
+        }
+    }
+
+    /// One component, built once — only the mode-specific wrapper differs.
+    ///
+    /// `base` is deliberately a local `let` rather than a `some View` helper:
+    /// `.resizable(...)` is a method on `HudNavigationSidebar` itself, so it has
+    /// to be reachable on the concrete type.
+    @ViewBuilder
     private var sidebarPreview: some View {
-        HudNavigationSidebar(
+        let base = HudNavigationSidebar(
             selection: $selection,
             entries: entries,
-            progress: progress,
+            progress: effectiveProgress,
+            labelWidth: mode == .resizable ? labelWidth : HudSidebarLayout.labelWidth,
             railHeader: {
                 // Simple logo placeholder: accent dot
                 Circle()
@@ -137,50 +192,118 @@ struct SidebarTab: View {
                     .foregroundStyle(HudPalette.muted)
             }
         )
-        .background(
-            RoundedRectangle(cornerRadius: HudRadius.card)
-                .stroke(HudHairline.standard, lineWidth: 1)
-        )
-        .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+
+        switch mode {
+        case .scrub, .compact:
+            base
+                .background(previewBorder)
+                // Safe to clip: nothing draws outside the sidebar's own bounds.
+                .clipShape(RoundedRectangle(cornerRadius: HudRadius.card))
+
+        case .resizable:
+            base
+                .resizable(
+                    isCompact: $isCompact,
+                    labelWidth: $labelWidth,
+                    minLabelWidth: 120,
+                    maxLabelWidth: 280,
+                    onResizePhaseChange: { isResizing = $0 }
+                )
+                // No clip — the edge handle straddles the trailing edge, so
+                // clipping would eat half its hit area and its halo.
+                .background(previewBorder)
+        }
+    }
+
+    private var previewBorder: some View {
+        RoundedRectangle(cornerRadius: HudRadius.card)
+            .stroke(HudHairline.standard, lineWidth: 1)
     }
 
     // MARK: Controls column
 
     private var controlsColumn: some View {
         VStack(alignment: .leading, spacing: HudSpacing.huge) {
-            progressControl
+            modeControl
             styleControls
             selectionInfo
         }
     }
 
-    private var progressControl: some View {
+    private var modeControl: some View {
         HudCard {
             VStack(alignment: .leading, spacing: HudSpacing.lg) {
-                HudSectionLabel("Transition scrubber", tint: manifest.accent)
-                Text("Drag to inspect the bounce-free label-column animation at any point. Icons in the rail column never shift x-position regardless of progress.")
+                HudSectionLabel("Mode", tint: manifest.accent)
+
+                Picker("Mode", selection: $mode) {
+                    ForEach(DemoSidebarMode.allCases) {
+                        Text($0.label).tag($0)
+                    }
+                }
+                .pickerStyle(.segmented)
+
+                Text(mode.blurb)
                     .font(HudFont.ui(HudTextSize.xs))
                     .foregroundStyle(HudPalette.dim)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: HudSpacing.lg) {
-                    Text("expanded")
-                        .font(HudFont.mono(HudTextSize.xxs))
-                        .foregroundStyle(HudPalette.dim)
-                    Slider(value: $progress, in: 0...1)
-                        .tint(manifest.accent)
-                    Text("compact")
-                        .font(HudFont.mono(HudTextSize.xxs))
-                        .foregroundStyle(HudPalette.dim)
+                switch mode {
+                case .scrub:     scrubControls
+                case .compact:   compactControls
+                case .resizable: resizableControls
                 }
+            }
+        }
+    }
 
-                HStack(spacing: HudSpacing.xl) {
-                    HudButton("Expand", style: .secondary) {
-                        withAnimation(HudMotion.expandCollapse) { progress = 0 }
-                    }
-                    HudButton("Compact", style: .ghost) {
-                        withAnimation(HudMotion.expandCollapse) { progress = 1 }
-                    }
+    private var scrubControls: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HStack(spacing: HudSpacing.lg) {
+                Text("expanded")
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.dim)
+                Slider(value: $progress, in: 0...1)
+                    .tint(manifest.accent)
+                Text("compact")
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.dim)
+            }
+
+            HStack(spacing: HudSpacing.xl) {
+                HudButton("Expand", style: .secondary) {
+                    withAnimation(HudMotion.expandCollapse) { progress = 0 }
+                }
+                HudButton("Compact", style: .ghost) {
+                    withAnimation(HudMotion.expandCollapse) { progress = 1 }
+                }
+            }
+        }
+    }
+
+    private var compactControls: some View {
+        HStack(spacing: HudSpacing.xl) {
+            HudButton("Expand", style: .secondary) {
+                withAnimation(HudMotion.expandCollapse) { isCompact = false }
+            }
+            HudButton("Compact", style: .ghost) {
+                withAnimation(HudMotion.expandCollapse) { isCompact = true }
+            }
+        }
+    }
+
+    private var resizableControls: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            Text("Persistence is application-owned — Hudson defines no UserDefaults keys. A shipping app would declare `@AppStorage(\"sidebarLabelWidth\") var labelWidth = 156.0` and pass it straight in.")
+                .font(HudFont.ui(HudTextSize.xxs))
+                .foregroundStyle(HudPalette.dim)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HStack(spacing: HudSpacing.xl) {
+                HudButton(isCompact ? "Expand" : "Compact", style: .secondary) {
+                    withAnimation(HudMotion.expandCollapse) { isCompact.toggle() }
+                }
+                HudButton("Reset width", style: .ghost) {
+                    labelWidth = 200
                 }
             }
         }
@@ -235,8 +358,12 @@ struct SidebarTab: View {
             VStack(alignment: .leading, spacing: HudSpacing.md) {
                 HudSectionLabel("State", tint: HudPalette.muted)
                 HudKVRow("Selection", value: selection?.title ?? "none")
-                HudKVRow("Progress",  value: String(format: "%.3f", progress))
-                HudKVRow("Mode",      value: progress < 0.5 ? "expanded" : "compact")
+                HudKVRow("Progress",  value: String(format: "%.3f", effectiveProgress))
+                HudKVRow("Column",    value: effectiveProgress < 0.5 ? "expanded" : "compact")
+                if mode == .resizable {
+                    HudKVRow("Label width", value: String(format: "%.0f pt", labelWidth))
+                    HudKVRow("Resizing",    value: isResizing ? "yes" : "no")
+                }
             }
         }
     }

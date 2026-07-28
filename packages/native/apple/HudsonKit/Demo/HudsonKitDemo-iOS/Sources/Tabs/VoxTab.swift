@@ -1,4 +1,3 @@
-#if HUDSON_VOICE
 import SwiftUI
 import HudsonUI
 import HudsonVoice
@@ -30,30 +29,3 @@ struct VoxTab: View {
         }
     }
 }
-#else
-import SwiftUI
-import HudsonUI
-
-/// Stub when HudsonVoice isn't built into this binary. Rebuild with
-/// HUDSONKIT_WITH_VOICE=1 (set in shell env, then xcodegen + xcodebuild)
-/// to enable.
-struct VoxTab: View {
-    var body: some View {
-        VStack(alignment: .leading, spacing: HudSpacing.lg) {
-            HudSectionLabel("Voice · Vox")
-            HudCard {
-                VStack(alignment: .leading, spacing: HudSpacing.md) {
-                    Text("HudsonVoice is not built into this binary.")
-                        .font(HudFont.ui(HudTextSize.sm))
-                        .foregroundStyle(HudPalette.muted)
-                    Text("Rebuild with HUDSONKIT_WITH_VOICE=1 set in shell env (then re-run xcodegen) to opt in.")
-                        .font(HudFont.mono(HudTextSize.xxs))
-                        .foregroundStyle(HudPalette.dim)
-                }
-            }
-        }
-        .padding(.horizontal, HudSpacing.xl)
-        .padding(.top, HudSpacing.xl)
-    }
-}
-#endif

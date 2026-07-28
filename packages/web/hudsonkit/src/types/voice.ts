@@ -21,6 +21,14 @@ export type VoiceProvider = 'vox';
 export interface VoiceSettings {
   /** When a transcript is captured, auto-submit it instead of just filling the input. */
   autoSend: boolean;
+  /** Preferred Hudson Voice input device. Empty string means the runtime default. */
+  inputDeviceId: string;
+  /** Preferred Hudson Voice transcription model. Empty string means the runtime default. */
+  transcriptionModel: string;
+  /** Spoken language hint for capture. */
+  transcriptionLanguage: string;
+  /** Capture mode for Hudson Voice live sessions. */
+  captureMode: 'push_to_talk' | 'always_on';
   /** Speak the assistant's replies aloud after they finish streaming. */
   speakReplies: boolean;
   replyProvider: VoiceProvider;
@@ -37,6 +45,10 @@ export interface VoiceSettings {
 
 export const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
+  inputDeviceId: '',
+  transcriptionModel: 'parakeet:v3',
+  transcriptionLanguage: 'en',
+  captureMode: 'push_to_talk',
   speakReplies: false,
   replyProvider: 'vox',
   replyModel: 'avspeech:system',

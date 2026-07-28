@@ -7,12 +7,19 @@ import { useOptionalTheme } from '../../theme/ThemeProvider';
 
 export type DocumentLanguage = CodeLanguage | 'markdown';
 
+export interface CodeEditorSelection {
+  from: number;
+  to: number;
+  text: string;
+}
+
 export interface CodeEditorProps {
   code: string;
   language?: DocumentLanguage;
   filename?: string;
-  onSave?: (content: string) => void;
+  onSave?: (content: string) => void | boolean | Promise<void | boolean>;
   onChange?: (content: string) => void;
+  onSelectionChange?: (selection: CodeEditorSelection) => void;
   showLineNumbers?: boolean;
   readOnly?: boolean;
   className?: string;
@@ -23,7 +30,8 @@ type CodeMirrorStateValue = unknown;
 type CodeMirrorTag = unknown;
 
 interface CodeMirrorStateLike {
-  doc: { toString(): string };
+  doc: { toString(): string; sliceString(from: number, to: number): string };
+  selection: { main: { from: number; to: number } };
 }
 
 interface CodeMirrorViewLike {
@@ -34,6 +42,7 @@ interface CodeMirrorViewLike {
 
 interface CodeMirrorUpdateLike {
   docChanged: boolean;
+  selectionSet: boolean;
   state: CodeMirrorStateLike;
 }
 
@@ -388,6 +397,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   filename,
   onSave,
   onChange,
+  onSelectionChange,
   showLineNumbers = true,
   readOnly = false,
   className,
@@ -396,6 +406,7 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
   const viewRef = useRef<CodeMirrorViewLike | null>(null);
   const onChangeRef = useRef(onChange);
   const onSaveRef = useRef(onSave);
+  const onSelectionChangeRef = useRef(onSelectionChange);
   const [value, setValue] = useState(code);
   const [savedValue, setSavedValue] = useState(code);
   const [runtime, setRuntime] = useState<CodeMirrorRuntime | null>(null);
@@ -435,6 +446,10 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
     onSaveRef.current = onSave;
   }, [onSave]);
 
+  useEffect(() => {
+    onSelectionChangeRef.current = onSelectionChange;
+  }, [onSelectionChange]);
+
   const extensions = useMemo<CodeMirrorExtension[] | null>(() => {
     if (!runtime) return null;
     const { hudsonEditorTheme, hudsonEditorThemeLight } = createHudsonEditorThemes(runtime);
@@ -448,10 +463,19 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
       runtime.EditorView.lineWrapping,
       // eslint-disable-next-line react-hooks/refs -- ref is read inside a CodeMirror updateListener (invoked on editor changes, not during render); using a ref keeps the memoized extension set stable across onChange identity changes
       runtime.EditorView.updateListener.of(update => {
-        if (!update.docChanged) return;
-        const next = update.state.doc.toString();
-        setValue(next);
-        onChangeRef.current?.(next);
+        if (update.docChanged) {
+          const next = update.state.doc.toString();
+          setValue(next);
+          onChangeRef.current?.(next);
+        }
+        if (update.docChanged || update.selectionSet) {
+          const { from, to } = update.state.selection.main;
+          onSelectionChangeRef.current?.({
+            from,
+            to,
+            text: update.state.doc.sliceString(from, to),
+          });
+        }
       }),
       // eslint-disable-next-line react-hooks/refs -- ref is read inside a CodeMirror keymap handler (invoked on Mod-s, not during render); using a ref keeps the memoized extension set stable across onSave identity changes
       runtime.Prec.highest(runtime.keymap.of([{
@@ -459,8 +483,11 @@ export const CodeEditor: React.FC<CodeEditorProps> = ({
         preventDefault: true,
         run(view) {
           const next = view.state.doc.toString();
-          onSaveRef.current?.(next);
-          setSavedValue(next);
+          void Promise.resolve(onSaveRef.current?.(next)).then(saved => {
+            if (saved !== false) setSavedValue(next);
+          }).catch(() => {
+            // The document host owns save-error presentation; keep this buffer dirty.
+          });
           return true;
         },
       }])),

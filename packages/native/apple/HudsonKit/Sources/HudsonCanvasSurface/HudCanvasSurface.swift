@@ -1331,7 +1331,7 @@ public struct HudCanvasSurface: View {
     }
 
     private var navigationRail: some View {
-        HudResizableNavigationSidebar(
+        HudNavigationSidebar(
             selection: Binding(
                 get: { activeNavigationRailSelection },
                 set: { next in
@@ -1341,25 +1341,27 @@ public struct HudCanvasSurface: View {
                 }
             ),
             entries: navigationRailEntries,
-            isCompact: $navigationRailCompact,
-            labelWidth: $navigationRailLabelWidth,
+            isCompact: navigationRailCompact,
             accent: activeTheme.palette.statusInfo,
-            minLabelWidth: 112,
-            maxLabelWidth: 180,
             railHeader: {
-                Image(systemName: "square.grid.2x2.fill")
-                    .font(HudFont.ui(HudTextSize.lgm, weight: .semibold))
-                    .foregroundStyle(activeTheme.palette.statusInfo)
-                    .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.headerHeight)
+                HudsonKitMark()
+                    .foregroundStyle(activeTheme.palette.ink)
+                    .frame(width: HudIconSize.small, height: HudIconSize.small)
                     .accessibilityLabel("Toggle Canvas rail labels")
             },
             labelHeader: {
-                Text("Canvas")
-                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
-                    .foregroundStyle(activeTheme.palette.ink)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .accessibilityLabel("Toggle Canvas rail labels")
+                VStack(alignment: .leading, spacing: 1) {
+                    Text("HUDSONKIT")
+                        .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                        .tracking(1.2)
+                        .foregroundStyle(activeTheme.palette.ink)
+                    Text(presentationTitle)
+                        .font(HudFont.ui(HudTextSize.xxs, weight: .medium))
+                        .foregroundStyle(activeTheme.palette.muted)
+                }
+                .lineLimit(1)
+                .fixedSize(horizontal: true, vertical: false)
+                .accessibilityLabel("Toggle Canvas rail labels")
             },
             footer: {
                 HStack(spacing: 0) {
@@ -1377,6 +1379,12 @@ public struct HudCanvasSurface: View {
                 }
                 .frame(height: HudLayout.rowHeightCompact, alignment: .leading)
             }
+        )
+        .resizable(
+            isCompact: $navigationRailCompact,
+            labelWidth: $navigationRailLabelWidth,
+            minLabelWidth: 112,
+            maxLabelWidth: 180
         )
         .environment(
             \.hudsonSidebarStyle,

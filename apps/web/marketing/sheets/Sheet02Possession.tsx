@@ -22,7 +22,7 @@ const PARTS = [
   { n: '01', t: 'DECLARE', l: 'A typed object names your app.', b: 'id, mode, intents, ports — Hudson reads it like a blueprint.' },
   { n: '02', t: 'WIRE', l: 'Intents become voice + ⌘K.', b: 'Each entry is indexed for fuzzy match, hotkeys, and the assistant.' },
   { n: '03', t: 'COMPOSE', l: 'Drop in primitives.', b: 'Frame, Nav, Panel, Canvas, Status — same chrome every app inherits.' },
-  { n: '04', t: 'SHIP', l: 'Three surfaces, zero forks.', b: 'iOS through TestFlight, macOS notarized, Web via CDN. One command.' },
+  { n: '04', t: 'ADAPT', l: 'Carry the workspace language forward.', b: 'Use platform-native Hudson primitives wherever the product needs another surface.' },
 ];
 
 export function Sheet02Possession() {

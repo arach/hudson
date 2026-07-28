@@ -239,19 +239,37 @@ Use this to gate voice UI before the user tries to record — for example, showi
 
 ## Apple (HudsonVoice)
 
-Hudson's Apple SDK ships a Swift counterpart to `hudsonkit/voice` as the `HudsonVoice` target inside the `HudsonKit` Swift package. Like the web subpath, it is fully opt-in — voice code never compiles into your binary unless you flip a build flag.
+Hudson's Apple SDK ships a Swift counterpart to `hudsonkit/voice` as the `HudsonVoice` target inside the `HudsonKit` Swift package. The product is part of the default package graph, so app code can import it without changing SwiftPM manifest flags.
 
-### Build flag opt-in
+### Build-time code, runtime model
 
-Voice support follows the same env-gated pattern as `HudsonTerminal`. Pass `HUDSONKIT_WITH_VOICE=1` when resolving / building the package:
+Build Hudson normally:
 
 ```bash
-HUDSONKIT_WITH_VOICE=1 swift build
-# or, alongside the terminal target:
-HUDSONKIT_WITH_TERMINAL=1 HUDSONKIT_WITH_VOICE=1 swift build
+swift build
+# The terminal stack remains optional:
+HUDSONKIT_WITH_TERMINAL=1 swift build
 ```
 
-`Package.swift` reads the env var and conditionally adds the `HudsonVoice` product, so consumers without the flag pay zero compile-time or binary cost. For Xcode projects, set the env var in the shell before running `xcodegen` (and re-run xcodegen after toggling).
+`HudsonVoice` includes the engine integration code, but it does **not** embed the Parakeet model. Model data is acquired at runtime according to `HudVoiceModelDownloadPolicy`:
+
+| Policy | Automatic behavior |
+|--------|--------------------|
+| `.never` | Do not automatically download; use an installed model or Apple Speech fallback. |
+| `.onFirstUse` | Download and warm when dictation starts for the first time. This is the default. |
+| `.eager` | Download and warm when the host calls `activate()` for its voice surface. |
+
+```swift
+let dictation = HudDictation(modelDownloadPolicy: .onFirstUse)
+
+// Call when the surface appears. This only acquires the model for `.eager`.
+dictation.activate()
+
+// An explicit user action can always request acquisition directly.
+dictation.prepare()
+```
+
+Constructing `HudDictation`, importing `HudsonVoice`, and running package tests do not download model data.
 
 ### HudVoicePanel — SwiftUI primitive
 

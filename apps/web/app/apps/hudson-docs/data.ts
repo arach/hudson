@@ -32,6 +32,10 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   font: { fontSize: 13, fontFamily: 'system-ui' },
   voice: {
     autoSend: true,
+    inputDeviceId: '',
+    transcriptionModel: 'parakeet:v3',
+    transcriptionLanguage: 'en',
+    captureMode: 'push_to_talk',
     speakReplies: false,
     replyProvider: 'vox',
     replyModel: 'avspeech:system',

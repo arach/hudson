@@ -15,15 +15,15 @@ export function SplitArrow() {
             <path d="M0,0 L10,5 L0,10 z" fill="var(--ink)" />
           </marker>
         </defs>
-        <line x1="0" y1="100" x2="20" y2="100" stroke="var(--ink)" strokeWidth="1.5" />
-        <line x1="20" y1="40" x2="20" y2="160" stroke="var(--ink)" strokeWidth="1.5" />
+        <line x1="0" y1="100" x2="20" y2="100" stroke="var(--ink)" strokeWidth="1.25" />
+        <line x1="20" y1="40" x2="20" y2="160" stroke="var(--ink)" strokeWidth="1.25" />
         <line
           x1="20"
           y1="40"
           x2="55"
           y2="40"
           stroke="var(--ink)"
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           markerEnd="url(#sArr)"
         />
         <line
@@ -32,7 +32,7 @@ export function SplitArrow() {
           x2="55"
           y2="100"
           stroke="var(--ink)"
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           markerEnd="url(#sArr)"
         />
         <line
@@ -41,7 +41,7 @@ export function SplitArrow() {
           x2="55"
           y2="160"
           stroke="var(--ink)"
-          strokeWidth="1.5"
+          strokeWidth="1.25"
           markerEnd="url(#sArr)"
         />
       </svg>

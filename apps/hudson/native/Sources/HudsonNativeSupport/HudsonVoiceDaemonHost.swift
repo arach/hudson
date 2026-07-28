@@ -9,14 +9,22 @@ import VoxService
 public final class HudsonVoiceDaemonHost: ObservableObject {
     @Published public private(set) var lifecycle: HudsonVoiceDaemonLifecycle = .stopped
     @Published public private(set) var microphonePermission: HudsonMicrophonePermission = .unknown
-    @Published public private(set) var runtimeDetail = "Embedded Vox runtime has not started."
+    @Published public private(set) var runtimeDetail = "Hudson Voice embedded runtime has not started."
     @Published public private(set) var startedAt: Date?
+    @Published public private(set) var preferences: HudsonVoiceHostPreferences
+    @Published public private(set) var inputDevices: [HudsonVoiceHostAudioDevice] = []
+    @Published public private(set) var modelReadiness: HudsonVoiceModelReadiness = .placeholder(
+        modelId: HudsonVoiceHostPreferences.defaultTranscriptionModelId,
+        detail: "Model readiness is reported by the embedded runtime after it starts."
+    )
 
     private let bindAddress = "127.0.0.1"
     private let port: UInt16
     private let runtimeHomeURL: URL
     private let runtimeCapabilityURL: URL
     private let voxRuntimeURL: URL
+    private let preferencesURL: URL
+    private let embeddedVoxPreferencesURL: URL
     private var runtimeService: VoxRuntimeService?
 
     public init() {
@@ -24,7 +32,12 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         runtimeHomeURL = Self.defaultRuntimeHomeURL()
         runtimeCapabilityURL = runtimeHomeURL.appendingPathComponent("hudson-voice-runtime.json")
         voxRuntimeURL = runtimeHomeURL.appendingPathComponent("vox-runtime.json")
+        preferencesURL = Self.defaultPreferencesURL()
+        embeddedVoxPreferencesURL = runtimeHomeURL.appendingPathComponent("preferences.json")
+        preferences = (try? HudsonVoiceHostPreferences.load(from: preferencesURL)) ?? HudsonVoiceHostPreferences()
         refreshMicrophonePermission()
+        refreshInputDevices()
+        refreshModelReadinessPlaceholder()
     }
 
     deinit {
@@ -36,7 +49,7 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         case .running:
             return "Hudson Menu is holding the long-running voice host. \(runtimeDetail)"
         case .starting:
-            return "Hudson Menu is preparing the embedded Vox runtime."
+            return "Hudson Menu is preparing the Hudson Voice embedded runtime."
         case .unavailable:
             return runtimeDetail
         case .stopped:
@@ -50,6 +63,7 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         guard lifecycle != .running && lifecycle != .starting else { return }
 
         refreshMicrophonePermission()
+        refreshInputDevices()
         lifecycle = .starting
 
         guard microphonePermission == .granted else {
@@ -62,6 +76,7 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         do {
             let token = try Self.generateCapabilityToken()
             let startedAt = Date()
+            try persistPreferences()
             try configureVoxRuntimeEnvironment(authToken: token)
             let service = VoxRuntimeService(port: port, bindAddress: bindAddress, authToken: token)
             try service.start()
@@ -70,12 +85,13 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
             lifecycle = .running
             runtimeDetail = "Authenticated Hudson voice runtime is available through /api/hudson-voice."
             self.startedAt = startedAt
+            refreshModelReadinessPlaceholder()
         } catch {
             runtimeService?.stop()
             runtimeService = nil
             removeRuntimeCapability()
             lifecycle = .error
-            runtimeDetail = "Embedded Vox runtime failed to start: \(error.localizedDescription)"
+            runtimeDetail = "Hudson Voice embedded runtime failed to start: \(error.localizedDescription)"
             startedAt = nil
         }
     }
@@ -85,8 +101,9 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         runtimeService = nil
         removeRuntimeCapability()
         lifecycle = .stopped
-        runtimeDetail = "Embedded Vox runtime is stopped."
+        runtimeDetail = "Hudson Voice embedded runtime is stopped."
         startedAt = nil
+        refreshModelReadinessPlaceholder()
     }
 
     public func refreshMicrophonePermission() {
@@ -102,6 +119,65 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         @unknown default:
             microphonePermission = .unknown
         }
+    }
+
+    public func refreshInputDevices() {
+        let defaultDeviceId = AVCaptureDevice.default(for: .audio)?.uniqueID
+        inputDevices = AVCaptureDevice.DiscoverySession(
+            deviceTypes: [.microphone],
+            mediaType: .audio,
+            position: .unspecified
+        ).devices.map { device in
+            HudsonVoiceHostAudioDevice(
+                id: device.uniqueID,
+                name: device.localizedName,
+                isDefault: device.uniqueID == defaultDeviceId,
+                isSelected: preferences.preferredInputDeviceId == device.uniqueID
+            )
+        }
+        try? writeInputDeviceCache(defaultDeviceId: defaultDeviceId)
+    }
+
+    public func setPreferredInputDevice(_ deviceId: String?) {
+        let cleaned = Self.clean(deviceId)
+        if let cleaned, !inputDevices.contains(where: { $0.id == cleaned }) {
+            runtimeDetail = "Hudson Voice input device is no longer available."
+            return
+        }
+
+        preferences.preferredInputDeviceId = cleaned
+        do {
+            try persistPreferences()
+            refreshInputDevices()
+            runtimeDetail = lifecycle == .running
+                ? "Authenticated Hudson voice runtime is available through /api/hudson-voice."
+                : "Hudson Voice input preference was saved."
+        } catch {
+            runtimeDetail = "Hudson Voice could not save input preference: \(error.localizedDescription)"
+        }
+    }
+
+    public func setPreferredTranscriptionModel(_ modelId: String?) {
+        preferences.preferredTranscriptionModelId = Self.clean(modelId) ?? HudsonVoiceHostPreferences.defaultTranscriptionModelId
+        do {
+            try persistPreferences()
+            refreshModelReadinessPlaceholder()
+        } catch {
+            runtimeDetail = "Hudson Voice could not save model preference: \(error.localizedDescription)"
+        }
+    }
+
+    public var diagnostics: HudsonVoiceDaemonDiagnostics {
+        HudsonVoiceDaemonDiagnostics(
+            permission: microphonePermission,
+            runtimeCapabilityPath: runtimeCapabilityURL.path,
+            runtimeAlive: runtimeService != nil && lifecycle == .running,
+            selectedInputDevice: inputDevices.first(where: { $0.id == preferences.preferredInputDeviceId }),
+            defaultInputDevice: inputDevices.first(where: { $0.isDefault }),
+            selectedModelId: preferences.preferredTranscriptionModelId,
+            modelReadiness: modelReadiness,
+            lifecycle: lifecycle
+        )
     }
 
     public func requestMicrophonePermission() async {
@@ -132,6 +208,21 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
         setenv("VOX_PORT", String(port), 1)
         setenv("VOX_AUTH_TOKEN", authToken, 1)
         setenv("HUDSON_VOICE_RUNTIME_PATH", runtimeCapabilityURL.path, 1)
+    }
+
+    private func persistPreferences() throws {
+        let normalized = preferences.normalized()
+        preferences = normalized
+        try normalized.save(to: preferencesURL, mirrorToEmbeddedVox: embeddedVoxPreferencesURL)
+    }
+
+    private func refreshModelReadinessPlaceholder() {
+        modelReadiness = .placeholder(
+            modelId: preferences.preferredTranscriptionModelId ?? HudsonVoiceHostPreferences.defaultTranscriptionModelId,
+            detail: lifecycle == .running
+                ? "Use /api/hudson-voice/health for runtime warmup status."
+                : "Model warmup status is available after the embedded runtime starts."
+        )
     }
 
     private func writeRuntimeCapability(authToken: String, startedAt: Date) throws {
@@ -191,6 +282,213 @@ public final class HudsonVoiceDaemonHost: ObservableObject {
             .appendingPathComponent("Hudson", isDirectory: true)
             .appendingPathComponent("Vox", isDirectory: true)
     }
+
+    private static func defaultPreferencesURL() -> URL {
+        let base = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first
+            ?? FileManager.default.temporaryDirectory
+        return base
+            .appendingPathComponent("Hudson", isDirectory: true)
+            .appendingPathComponent("Voice", isDirectory: true)
+            .appendingPathComponent("preferences.json")
+    }
+
+    private func writeInputDeviceCache(defaultDeviceId: String?) throws {
+        let cacheURL = Self.defaultPreferencesURL()
+            .deletingLastPathComponent()
+            .appendingPathComponent("input-devices.json")
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: cacheURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: cacheURL.deletingLastPathComponent().path)
+
+        let cache = HudsonVoiceHostInputDeviceCache(
+            devices: inputDevices,
+            defaultDeviceId: defaultDeviceId,
+            updatedAt: ISO8601DateFormatter().string(from: Date())
+        )
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        let data = try encoder.encode(cache)
+        try data.write(to: cacheURL, options: .atomic)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: cacheURL.path)
+    }
+
+    private static func clean(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+}
+
+public struct HudsonVoiceHostPreferences: Codable, Equatable, Sendable {
+    public static let defaultTranscriptionModelId = "parakeet:v3"
+
+    public var schemaVersion: Int
+    public var preferredInputDeviceId: String?
+    public var preferredOutputDeviceId: String?
+    public var preferredTranscriptionModelId: String?
+    public var preferredSynthesisModelId: String?
+    public var preferredLanguage: String?
+    public var modelDownloadPolicy: String
+    public var mode: String
+
+    public init(
+        schemaVersion: Int = 1,
+        preferredInputDeviceId: String? = nil,
+        preferredOutputDeviceId: String? = nil,
+        preferredTranscriptionModelId: String? = defaultTranscriptionModelId,
+        preferredSynthesisModelId: String? = nil,
+        preferredLanguage: String? = "en",
+        modelDownloadPolicy: String = "on_first_use",
+        mode: String = "push_to_talk"
+    ) {
+        self.schemaVersion = schemaVersion
+        self.preferredInputDeviceId = Self.clean(preferredInputDeviceId)
+        self.preferredOutputDeviceId = Self.clean(preferredOutputDeviceId)
+        self.preferredTranscriptionModelId = Self.clean(preferredTranscriptionModelId)
+        self.preferredSynthesisModelId = Self.clean(preferredSynthesisModelId)
+        self.preferredLanguage = Self.clean(preferredLanguage)
+        self.modelDownloadPolicy = Self.normalizeModelDownloadPolicy(modelDownloadPolicy)
+        self.mode = Self.clean(mode) ?? "push_to_talk"
+    }
+
+    public init(from decoder: Decoder) throws {
+        let values = try decoder.container(keyedBy: CodingKeys.self)
+        self.init(
+            schemaVersion: try values.decodeIfPresent(Int.self, forKey: .schemaVersion) ?? 1,
+            preferredInputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredInputDeviceId),
+            preferredOutputDeviceId: try values.decodeIfPresent(String.self, forKey: .preferredOutputDeviceId),
+            preferredTranscriptionModelId: try values.decodeIfPresent(
+                String.self,
+                forKey: .preferredTranscriptionModelId
+            ) ?? Self.defaultTranscriptionModelId,
+            preferredSynthesisModelId: try values.decodeIfPresent(String.self, forKey: .preferredSynthesisModelId),
+            preferredLanguage: try values.decodeIfPresent(String.self, forKey: .preferredLanguage) ?? "en",
+            modelDownloadPolicy: try values.decodeIfPresent(String.self, forKey: .modelDownloadPolicy)
+                ?? "on_first_use",
+            mode: try values.decodeIfPresent(String.self, forKey: .mode) ?? "push_to_talk"
+        )
+    }
+
+    public static func load(from url: URL) throws -> HudsonVoiceHostPreferences {
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            return HudsonVoiceHostPreferences()
+        }
+        let data = try Data(contentsOf: url)
+        return try JSONDecoder().decode(HudsonVoiceHostPreferences.self, from: data).normalized()
+    }
+
+    public func save(to url: URL, mirrorToEmbeddedVox mirrorURL: URL) throws {
+        let normalized = normalized()
+        let fileManager = FileManager.default
+        try fileManager.createDirectory(at: url.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: url.deletingLastPathComponent().path)
+
+        let encoder = JSONEncoder()
+        encoder.outputFormatting = [.prettyPrinted, .sortedKeys]
+        try encoder.encode(normalized).write(to: url, options: .atomic)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: url.path)
+
+        try fileManager.createDirectory(at: mirrorURL.deletingLastPathComponent(), withIntermediateDirectories: true)
+        try? fileManager.setAttributes([.posixPermissions: 0o700], ofItemAtPath: mirrorURL.deletingLastPathComponent().path)
+        try encoder.encode(EmbeddedVoxPreferences(speech: .init(
+            preferredTranscriptionModelId: normalized.preferredTranscriptionModelId,
+            preferredSynthesisModelId: normalized.preferredSynthesisModelId,
+            preferredInputDeviceId: normalized.preferredInputDeviceId,
+            modelDownloadPolicy: normalized.modelDownloadPolicy
+        ))).write(to: mirrorURL, options: .atomic)
+        try? fileManager.setAttributes([.posixPermissions: 0o600], ofItemAtPath: mirrorURL.path)
+    }
+
+    public func normalized() -> HudsonVoiceHostPreferences {
+        HudsonVoiceHostPreferences(
+            schemaVersion: schemaVersion > 0 ? schemaVersion : 1,
+            preferredInputDeviceId: preferredInputDeviceId,
+            preferredOutputDeviceId: preferredOutputDeviceId,
+            preferredTranscriptionModelId: preferredTranscriptionModelId ?? Self.defaultTranscriptionModelId,
+            preferredSynthesisModelId: preferredSynthesisModelId,
+            preferredLanguage: preferredLanguage ?? "en",
+            modelDownloadPolicy: modelDownloadPolicy,
+            mode: mode
+        )
+    }
+
+    private static func clean(_ value: String?) -> String? {
+        let trimmed = value?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        return trimmed.isEmpty ? nil : trimmed
+    }
+
+    private static func normalizeModelDownloadPolicy(_ value: String) -> String {
+        switch clean(value) {
+        case "never": return "never"
+        case "eager": return "eager"
+        default: return "on_first_use"
+        }
+    }
+}
+
+private struct EmbeddedVoxPreferences: Codable {
+    var speech: EmbeddedVoxSpeechPreferences
+}
+
+private struct EmbeddedVoxSpeechPreferences: Codable {
+    var preferredTranscriptionModelId: String?
+    var preferredSynthesisModelId: String?
+    var preferredInputDeviceId: String?
+    var modelDownloadPolicy: String
+}
+
+public struct HudsonVoiceHostAudioDevice: Codable, Equatable, Sendable, Identifiable {
+    public let id: String
+    public let name: String
+    public let isDefault: Bool
+    public let isSelected: Bool
+}
+
+private struct HudsonVoiceHostInputDeviceCache: Encodable {
+    let schemaVersion = 1
+    let devices: [HudsonVoiceHostAudioDevice]
+    let defaultDeviceId: String?
+    let updatedAt: String
+}
+
+public enum HudsonVoiceModelReadiness: Equatable, Sendable {
+    case ready(modelId: String, detail: String)
+    case warming(modelId: String, detail: String)
+    case unavailable(modelId: String, detail: String)
+    case placeholder(modelId: String, detail: String)
+
+    public var modelId: String {
+        switch self {
+        case .ready(let modelId, _), .warming(let modelId, _), .unavailable(let modelId, _), .placeholder(let modelId, _):
+            return modelId
+        }
+    }
+
+    public var label: String {
+        switch self {
+        case .ready: return "READY"
+        case .warming: return "WARMING"
+        case .unavailable: return "UNAVAILABLE"
+        case .placeholder: return "DEFERRED"
+        }
+    }
+
+    public var detail: String {
+        switch self {
+        case .ready(_, let detail), .warming(_, let detail), .unavailable(_, let detail), .placeholder(_, let detail):
+            return detail
+        }
+    }
+}
+
+public struct HudsonVoiceDaemonDiagnostics: Equatable, Sendable {
+    public let permission: HudsonMicrophonePermission
+    public let runtimeCapabilityPath: String
+    public let runtimeAlive: Bool
+    public let selectedInputDevice: HudsonVoiceHostAudioDevice?
+    public let defaultInputDevice: HudsonVoiceHostAudioDevice?
+    public let selectedModelId: String?
+    public let modelReadiness: HudsonVoiceModelReadiness
+    public let lifecycle: HudsonVoiceDaemonLifecycle
 }
 
 private struct HudsonVoiceRuntimeCapability: Encodable {
@@ -216,7 +514,7 @@ private struct HudsonVoiceRuntimeCapability: Encodable {
     }
 }
 
-public enum HudsonVoiceDaemonLifecycle: Equatable {
+public enum HudsonVoiceDaemonLifecycle: Equatable, Sendable {
     case stopped
     case starting
     case running
@@ -244,7 +542,7 @@ public enum HudsonVoiceDaemonLifecycle: Equatable {
     }
 }
 
-public enum HudsonMicrophonePermission: Equatable {
+public enum HudsonMicrophonePermission: Equatable, Sendable {
     case unknown
     case notDetermined
     case granted

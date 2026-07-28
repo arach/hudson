@@ -1,7 +1,7 @@
 @import "tailwindcss";
-/* Load the SDK's precompiled utilities and design tokens through its public
-   package entry. This keeps Hudson's in-tree host on the same sealed CSS path
-   as downstream consumers and includes classes used only by SDK components. */
+/* Consume the SDK's sealed bundle so package-owned utilities are available
+   without scanning the HudsonKit source tree from this app. The bare specifier
+   also remains stable when Turbopack's root changes. */
 @import "hudsonkit/styles";
 
 :root {

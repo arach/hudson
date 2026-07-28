@@ -28,8 +28,8 @@ const FEATURE_CATALOG = {
     note: 'HudsonTerminal — terminal and PTY-backed surfaces',
   },
   voice: {
-    env: { HUDSONKIT_WITH_VOICE: '1' },
-    note: 'HudsonVoice — in-process dictation and VoxEngine transcription',
+    env: {},
+    note: 'HudsonVoice — included by default; model acquisition is runtime-controlled',
   },
 };
 
@@ -354,6 +354,10 @@ function resolveSigningIdentity(cliArgs, config) {
     ?? defaultSigningIdentity();
 }
 
+export function shouldUseDeepSigning(app) {
+  return (app.embeddedHelpers?.length ?? 0) === 0;
+}
+
 function signAppBundle(bundlePath, app, identity, options) {
   if (options.skipSign) {
     process.stdout.write(`==> Skipping app signing: ${displayPath(bundlePath)}\n`);
@@ -366,7 +370,7 @@ function signAppBundle(bundlePath, app, identity, options) {
 
   const entitlements = app.entitlementsPath;
   const args = ['--force', '--options', 'runtime'];
-  if ((app.embeddedHelpers?.length ?? 0) === 0) {
+  if (shouldUseDeepSigning(app)) {
     args.push('--deep');
   }
   if (identity) args.push('--timestamp');

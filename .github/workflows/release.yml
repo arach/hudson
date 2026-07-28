@@ -1,5 +1,7 @@
 name: Publish npm packages
 
+# Automatic Actions are paused while the account billing gate is unresolved.
+# Restore the push trigger after 2026-08-01; manual publishing stays available.
 on:
   workflow_dispatch:
 

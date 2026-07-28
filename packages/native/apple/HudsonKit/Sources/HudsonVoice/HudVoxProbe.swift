@@ -15,12 +15,17 @@ private struct HudVoxProbeResponse: Decodable {
 public enum HudVoxProbe {
     public static func health(
         endpoint: HudVoxEndpoint = HudVoxEndpoint(),
-        clientId: String = "HudsonKit"
+        clientId: String = "HudsonKit",
+        authToken: String? = nil
     ) async throws -> HudVoxHealth {
+        var params: [String: HudJSONValue] = ["clientId": .string(clientId)]
+        if let authToken, !authToken.isEmpty {
+            params["authToken"] = .string(authToken)
+        }
         let response = try await call(
             endpoint: endpoint,
             method: "health",
-            params: ["clientId": .string(clientId)]
+            params: params
         )
 
         return HudVoxHealth(

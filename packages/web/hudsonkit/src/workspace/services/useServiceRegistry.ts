@@ -34,6 +34,8 @@ export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
   const autoStartedRef = useRef<Set<string>>(new Set());
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const checkAllInFlightRef = useRef<Promise<void> | null>(null);
+  const checkAllAbortRef = useRef<AbortController | null>(null);
 
   const updateRecord = useCallback(
     (sid: string, patch: Partial<ServiceRecord>) => {
@@ -73,10 +75,12 @@ export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
     [setHistory],
   );
 
-  const fetchServiceStatuses = useCallback(async () => {
+  const fetchServiceStatuses = useCallback(async (signal?: AbortSignal) => {
     if (!servicesRoute) return [] as Array<{ id: string; status: ServiceStatus }>;
     const res = await fetch(servicesRoute, {
-      signal: AbortSignal.timeout(3_000),
+      signal: signal
+        ? AbortSignal.any([signal, AbortSignal.timeout(3_000)])
+        : AbortSignal.timeout(3_000),
     });
     if (!res.ok) {
       throw new Error(`Service status request failed (${res.status})`);
@@ -100,19 +104,44 @@ export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
     [fetchServiceStatuses, updateRecord],
   );
 
-  const checkAll = useCallback(async () => {
-    try {
-      const statuses = await fetchServiceStatuses();
-      for (const svc of SERVICE_CATALOG) {
-        const status = statuses.find((entry) => entry.id === svc.id)?.status ?? 'unknown';
-        updateRecord(svc.id, { status });
+  const checkAll = useCallback(() => {
+    if (checkAllInFlightRef.current) return checkAllInFlightRef.current;
+
+    const controller = new AbortController();
+    checkAllAbortRef.current = controller;
+
+    const refresh = (async () => {
+      try {
+        const statuses = await fetchServiceStatuses(controller.signal);
+        if (controller.signal.aborted) return;
+        for (const svc of SERVICE_CATALOG) {
+          const status = statuses.find((entry) => entry.id === svc.id)?.status ?? 'unknown';
+          updateRecord(svc.id, { status });
+        }
+      } catch {
+        if (controller.signal.aborted) return;
+        for (const svc of SERVICE_CATALOG) {
+          updateRecord(svc.id, { status: 'error', error: 'Failed to refresh service status.' });
+        }
       }
-    } catch {
-      for (const svc of SERVICE_CATALOG) {
-        updateRecord(svc.id, { status: 'error', error: 'Failed to refresh service status.' });
+    })();
+
+    checkAllInFlightRef.current = refresh;
+    const clearRefresh = () => {
+      if (checkAllInFlightRef.current === refresh) {
+        checkAllInFlightRef.current = null;
+        checkAllAbortRef.current = null;
       }
-    }
+    };
+    void refresh.then(clearRefresh, clearRefresh);
+    return refresh;
   }, [fetchServiceStatuses, updateRecord]);
+
+  const cancelCheckAll = useCallback(() => {
+    checkAllAbortRef.current?.abort();
+    checkAllAbortRef.current = null;
+    checkAllInFlightRef.current = null;
+  }, []);
 
   const executeAction = useCallback(
     async (
@@ -203,14 +232,38 @@ export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
 
   // Initial health check + polling (paused when tab hidden)
   useEffect(() => {
-    checkAll();
-    const start = () => { pollRef.current = setInterval(checkAll, POLL_INTERVAL); };
-    const stop = () => { if (pollRef.current) clearInterval(pollRef.current); };
-    const onVis = () => { stop(); if (document.visibilityState === 'visible') { checkAll(); start(); } };
-    start();
+    const start = () => {
+      if (document.visibilityState !== 'visible' || pollRef.current) return;
+      pollRef.current = setInterval(() => {
+        if (document.visibilityState === 'visible') void checkAll();
+      }, POLL_INTERVAL);
+    };
+    const stop = () => {
+      if (!pollRef.current) return;
+      clearInterval(pollRef.current);
+      pollRef.current = null;
+    };
+    const onVis = () => {
+      if (document.visibilityState !== 'visible') {
+        stop();
+        cancelCheckAll();
+        return;
+      }
+      void checkAll();
+      start();
+    };
+
+    if (document.visibilityState === 'visible') {
+      void checkAll();
+      start();
+    }
     document.addEventListener('visibilitychange', onVis);
-    return () => { stop(); document.removeEventListener('visibilitychange', onVis); };
-  }, [checkAll]);
+    return () => {
+      stop();
+      cancelCheckAll();
+      document.removeEventListener('visibilitychange', onVis);
+    };
+  }, [cancelCheckAll, checkAll]);
 
   // Auto-start services after initial health check
   const autoStartDone = useRef(false);
@@ -237,7 +290,6 @@ export function useServiceRegistry(routes?: WorkspaceHostRoutes) {
     }, 1500);
 
     return () => clearTimeout(timer);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [autoStartIds, executeAction, fetchServiceStatuses]);
 
   // Stop auto-started services on page unload (app quit)

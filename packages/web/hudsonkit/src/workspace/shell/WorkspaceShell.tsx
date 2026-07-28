@@ -453,6 +453,16 @@ function buildShellSettingsPatch(
         : null;
     case 'voice.replyModel':
       return typeof value === 'string' ? { voice: { ...current.voice, replyModel: value } } : null;
+    case 'voice.inputDeviceId':
+      return typeof value === 'string' ? { voice: { ...current.voice, inputDeviceId: value } } : null;
+    case 'voice.transcriptionModel':
+      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionModel: value } } : null;
+    case 'voice.transcriptionLanguage':
+      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionLanguage: value } } : null;
+    case 'voice.captureMode':
+      return value === 'push_to_talk' || value === 'always_on'
+        ? { voice: { ...current.voice, captureMode: value } }
+        : null;
     case 'voice.replyVoice':
       return typeof value === 'string' ? { voice: { ...current.voice, replyVoice: value } } : null;
     case 'voice.replyRate': {
@@ -1109,7 +1119,7 @@ function WorkspaceInner({
   const handleActivateApp = useCallback((appId: string) => {
     setActivatedAppIds(prev => new Set([...prev, appId]));
     setFocusedAppId(appId);
-  }, []);
+  }, [setActivatedAppIds, setFocusedAppId]);
 
   const handleToggleAppVisibility = useCallback((appId: string) => {
     setActivatedAppIds(prev => {
@@ -1123,7 +1133,7 @@ function WorkspaceInner({
       }
       return next;
     });
-  }, []);
+  }, [setActivatedAppIds]);
 
   // --- Disable/enable apps (removes from Provider tree entirely) ---
   const handleToggleAppDisabled = useCallback((appId: string) => {
@@ -1276,7 +1286,7 @@ function WorkspaceInner({
     if (persistSession) {
       saveSession(activeWorkspaceId);
     }
-  }, [workspace, activeWorkspaceId, activatedAppIds, tileWindowBounds, persistSession]);
+  }, [workspace, activeWorkspaceId, activatedAppIds, setActivatedAppIds, tileWindowBounds, persistSession]);
 
   // Auto fit-all on first load after launcher dismiss
   const pendingFitAllRef = useRef(false);
@@ -2033,11 +2043,19 @@ function WorkspaceInner({
       setRightCollapsed,
       setMinimapCollapsed,
       setShowTerminal,
+      setShowGuides,
+      setPanOffset,
+      setScale,
       updateShellSettings,
       openSettings,
       openWorkspaceManager,
       openWorkspaceConsole,
       startVoicePrompt,
+      enterFullscreen,
+      exitFullscreen,
+      focusedAppId,
+      fullscreenAppId,
+      handleAutoLayout,
       focused.appId,
       focusedApp?.code?.commandLabel,
       focusedApp?.code?.label,
@@ -2761,12 +2779,12 @@ function WorkspaceInner({
     pipes,
     pushPipe,
     serviceRegistry,
-    setFocusedAppId,
     updateShellSettings,
     workspaces,
     routes.fetchImage,
     routes.imageGeneration,
     routes.localEnvironment,
+    shellSettings,
   ]);
 
   // --- Terminal screenshot button ---

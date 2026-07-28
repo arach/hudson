@@ -156,6 +156,29 @@ describe('AppShell default push mode (characterization — must not change)', ()
   });
 });
 
+describe('AppShell canvas panels', () => {
+  it('keeps canvas rails hidden by default and renders them when explicitly enabled', () => {
+    const { app } = makeApp('canvas-panels');
+    const canvasApp = { ...app, mode: 'canvas' as const };
+    const { unmount } = render(<AppShell app={canvasApp} managedTheme={false} />);
+
+    expect(leftPanelEl()).toBeNull();
+    expect(rightPanelEl()).toBeNull();
+
+    unmount();
+    render(
+      <AppShell
+        app={canvasApp}
+        managedTheme={false}
+        chrome={{ canvasPanels: true }}
+      />,
+    );
+
+    expect(leftPanelEl()).not.toBeNull();
+    expect(rightPanelEl()).not.toBeNull();
+  });
+});
+
 describe('AppShell overlay mode', () => {
   const chrome = { panelBehavior: { mode: 'overlay' as const } };
 

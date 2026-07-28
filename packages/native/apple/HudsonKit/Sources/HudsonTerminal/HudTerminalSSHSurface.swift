@@ -1,7 +1,5 @@
 import SwiftUI
 import HudsonUI
-import Termini
-import TerminiSSH
 
 public struct HudTerminalSessionState: Equatable, Sendable {
     public var isConnected: Bool
@@ -25,18 +23,16 @@ public struct HudTerminalSessionState: Equatable, Sendable {
     }
 }
 
-/// Complete SSH-backed terminal surface for demos and simple host apps.
-///
-/// The workspace loads Termini's SSH demo environment configuration on appear
-/// and connects automatically when credentials are present. More advanced
-/// Hudson transports should keep using `HudTerminalSurface` directly.
+/// Complete SSH-backed terminal for simple hosts. Advanced hosts can create a
+/// `HudTerminalSSHSession`, perform their own provisioning, and pass that same
+/// session to this surface or `HudTerminalSurface` without importing Termini.
 public struct HudTerminalSSHSurface: View {
-    public static let defaultConnection = TerminiConnectionConfig(
+    public static let defaultConnection = HudTerminalSSHConnection(
         name: "Hudson Terminal",
-        startupCommand: "tmux new -A -s hudson"
+        startup: .shell(command: "tmux new -A -s hudson")
     )
 
-    @State private var workspace: TerminiSSHWorkspace
+    @State private var session: HudTerminalSSHSession
     @State private var didAttemptEnvironmentLoad = false
     @Environment(\.colorScheme) private var colorScheme
 
@@ -48,13 +44,29 @@ public struct HudTerminalSSHSurface: View {
 
     public init(
         hostLabel: String = "SSH host",
-        connection: TerminiConnectionConfig = Self.defaultConnection,
+        connection: HudTerminalSSHConnection = Self.defaultConnection,
         autoConnect: Bool = true,
         showsSystemKeyboard: Bool = true,
         appearance: HudTerminalAppearance = .default,
         onStateChange: @escaping (HudTerminalSessionState) -> Void = { _ in }
     ) {
-        self._workspace = State(initialValue: TerminiSSHWorkspace(connection: connection))
+        self._session = State(initialValue: HudTerminalSSHSession(connection: connection))
+        self.hostLabel = hostLabel
+        self.autoConnect = autoConnect
+        self.showsSystemKeyboard = showsSystemKeyboard
+        self.appearance = appearance
+        self.onStateChange = onStateChange
+    }
+
+    public init(
+        session: HudTerminalSSHSession,
+        hostLabel: String = "SSH host",
+        autoConnect: Bool = false,
+        showsSystemKeyboard: Bool = true,
+        appearance: HudTerminalAppearance = .default,
+        onStateChange: @escaping (HudTerminalSessionState) -> Void = { _ in }
+    ) {
+        self._session = State(initialValue: session)
         self.hostLabel = hostLabel
         self.autoConnect = autoConnect
         self.showsSystemKeyboard = showsSystemKeyboard
@@ -64,12 +76,12 @@ public struct HudTerminalSSHSurface: View {
 
     public var body: some View {
         HudTerminalSurface(
-            controller: workspace.controller,
+            session: session,
             showsSystemKeyboard: showsSystemKeyboard,
             appearance: resolvedAppearance
         )
         .overlay {
-            if !workspace.isConnected {
+            if !session.isConnected {
                 statusOverlay
             }
         }
@@ -77,33 +89,32 @@ public struct HudTerminalSSHSurface: View {
             guard autoConnect, !didAttemptEnvironmentLoad else { return }
             didAttemptEnvironmentLoad = true
 
-            if workspace.loadEnvironmentConfigurationIfAvailable() {
-                await workspace.connect()
+            if session.loadEnvironmentConfigurationIfAvailable() {
+                await session.connect()
             } else {
                 reportState()
             }
         }
-        .onChange(of: workspace.statusMessage) { _, _ in reportState() }
-        .onChange(of: workspace.terminalSize) { _, _ in reportState() }
+        .onChange(of: session.statusMessage) { _, _ in reportState() }
+        .onChange(of: session.snapshot.grid) { _, _ in reportState() }
     }
 
     private var statusOverlay: some View {
         ZStack {
-            // hudlint:disable next-line opacity
-            resolvedAppearance.backgroundColor.opacity(0.92)
+            HudSurface.statusOverlayBackdrop(resolvedAppearance.backgroundColor)
 
             VStack(spacing: HudSpacing.xl) {
                 HudStatusDot(
-                    color: workspace.isConnecting ? HudPalette.statusWarn : HudPalette.statusInfo,
+                    color: session.isConnecting ? HudPalette.statusWarn : HudPalette.statusInfo,
                     size: 8,
-                    pulses: workspace.isConnecting
+                    pulses: session.isConnecting
                 )
 
                 VStack(spacing: HudSpacing.sm) {
                     Text(hostLabel)
                         .font(HudFont.mono(12, weight: .semibold))
                         .foregroundStyle(HudPalette.ink)
-                    Text(workspace.statusMessage)
+                    Text(session.statusMessage)
                         .font(HudFont.mono(HudTextSize.xxs))
                         .multilineTextAlignment(.center)
                         .foregroundStyle(HudPalette.muted)
@@ -112,17 +123,17 @@ public struct HudTerminalSSHSurface: View {
 
                 HStack(spacing: HudSpacing.md) {
                     HudButton(
-                        workspace.isConnecting ? "Connecting" : "Connect",
+                        session.isConnecting ? "Connecting" : "Connect",
                         icon: "terminal",
                         style: .primary(.cyan)
                     ) {
-                        Task { await workspace.connect() }
+                        Task { await session.connect() }
                     }
-                    .disabled(!workspace.canConnect)
+                    .disabled(!session.canConnect)
 
                     HudButton("Load env", icon: "arrow.clockwise", style: .secondary) {
-                        if workspace.loadEnvironmentConfigurationIfAvailable() {
-                            Task { await workspace.connect() }
+                        if session.loadEnvironmentConfigurationIfAvailable() {
+                            Task { await session.connect() }
                         }
                     }
                 }
@@ -132,14 +143,14 @@ public struct HudTerminalSSHSurface: View {
     }
 
     private func reportState() {
-        let size = workspace.terminalSize
+        let snapshot = session.snapshot
         onStateChange(
             HudTerminalSessionState(
-                isConnected: workspace.isConnected,
-                isConnecting: workspace.isConnecting,
-                statusMessage: workspace.statusMessage,
-                columns: size?.columns,
-                rows: size?.rows
+                isConnected: snapshot.status == .connected,
+                isConnecting: snapshot.status == .connecting,
+                statusMessage: snapshot.statusMessage,
+                columns: snapshot.grid?.columns,
+                rows: snapshot.grid?.rows
             )
         )
     }
@@ -149,5 +160,4 @@ public struct HudTerminalSSHSurface: View {
             ? HudTerminalAppearance.hudsonDefault(for: colorScheme)
             : appearance
     }
-
 }
