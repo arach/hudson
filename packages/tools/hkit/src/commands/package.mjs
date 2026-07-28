@@ -278,6 +278,62 @@ function copyIcon(iconPath, resourcesDir, tempRoots) {
   return true;
 }
 
+function executableRpaths(executablePath) {
+  const output = execFileSync('otool', ['-l', executablePath], { encoding: 'utf8' });
+  return Array.from(output.matchAll(/^\s*path (.+) \(offset \d+\)$/gm), match => match[1]);
+}
+
+function embedFrameworks(app, contentsDir, executablePath, context) {
+  const frameworks = app.frameworks ?? [];
+  if (!Array.isArray(frameworks)) {
+    throw new Error(`frameworks for ${app.name ?? app.product ?? '<unnamed>'} must be an array of paths.`);
+  }
+  if (frameworks.length === 0) return;
+
+  const frameworksDir = join(contentsDir, 'Frameworks');
+  mkdirSync(frameworksDir, { recursive: true });
+
+  for (const [index, frameworkPath] of frameworks.entries()) {
+    if (typeof frameworkPath !== 'string' || !frameworkPath.trim()) {
+      throw new Error(`frameworks[${index}] for ${app.name ?? app.product ?? '<unnamed>'} must be a non-empty path.`);
+    }
+    const source = rel(context.configDir, frameworkPath);
+    if (!source || !existsSync(source)) {
+      throw new Error(`framework not found for ${app.name ?? app.product ?? '<unnamed>'}: ${source}`);
+    }
+    const destination = join(frameworksDir, basename(source));
+    rmSync(destination, { recursive: true, force: true });
+    // ditto preserves versioned-framework symlinks, resources, and nested code.
+    runCommand('ditto', [source, destination], { stdio: 'inherit' });
+  }
+
+  const frameworkRpath = '@executable_path/../Frameworks';
+  if (!executableRpaths(executablePath).includes(frameworkRpath)) {
+    runCommand('install_name_tool', ['-add_rpath', frameworkRpath, executablePath], { stdio: 'inherit' });
+  }
+}
+
+function signEmbeddedFrameworks(bundlePath, app, identity, options) {
+  if (options.skipSign) return;
+
+  for (const frameworkPath of app.frameworks ?? []) {
+    const frameworkBundle = join(bundlePath, 'Contents', 'Frameworks', basename(frameworkPath));
+    const args = [
+      '--force',
+      '--deep',
+      '--options',
+      'runtime',
+      '--preserve-metadata=identifier,entitlements,requirements,flags',
+    ];
+    if (identity) args.push('--timestamp');
+    args.push('--sign', identity || '-', frameworkBundle);
+
+    process.stdout.write(`==> Signing ${basename(frameworkBundle)} with ${identity || 'ad-hoc'}\n`);
+    runCommand('codesign', args, { stdio: 'inherit' });
+    runCommand('codesign', ['--verify', '--deep', '--strict', frameworkBundle], { stdio: 'inherit' });
+  }
+}
+
 function defaultSigningIdentity() {
   try {
     const identities = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -340,8 +396,9 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
   mkdirSync(macosDir, { recursive: true });
   mkdirSync(resourcesDir, { recursive: true });
 
-  cpSync(binarySource, join(macosDir, executableName));
-  chmodSync(join(macosDir, executableName), 0o755);
+  const executablePath = join(macosDir, executableName);
+  cpSync(binarySource, executablePath);
+  chmodSync(executablePath, 0o755);
 
   const plistPath = join(contentsDir, 'Info.plist');
   const template = rel(context.configDir, app.infoPlist);
@@ -356,6 +413,8 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
     setPlistValue(plistPath, 'CFBundleIconFile', 'string', 'AppIcon');
   }
 
+  embedFrameworks(app, contentsDir, executablePath, context);
+
   for (const helper of app.embeddedHelpers ?? []) {
     const helperBundleName = helper.bundleName ?? `${helper.name ?? helper.product}.app`;
     const destination = helper.destination ?? 'Contents/Library/LoginItems';
@@ -363,6 +422,7 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
     buildAppBundle(helper, helperBundlePath, args, context, tempRoots);
   }
 
+  signEmbeddedFrameworks(bundlePath, app, context.signingIdentity, args);
   const appForSigning = { ...app, executableName, entitlementsPath: rel(context.configDir, app.entitlements) };
   signAppBundle(bundlePath, appForSigning, context.signingIdentity, args);
   process.stdout.write(`==> Built ${displayPath(bundlePath)}\n`);
@@ -595,7 +655,9 @@ function createDmg(config, args, context, apps) {
 
   try {
     for (const app of apps) {
-      cpSync(app.bundlePath, join(staging, app.bundleName), { recursive: true });
+      // Preserve versioned-framework symlinks and nested bundle metadata while
+      // moving the signed app into the DMG staging tree.
+      runCommand('ditto', [app.bundlePath, join(staging, app.bundleName)], { stdio: 'inherit' });
     }
     execFileSync('ln', ['-s', '/Applications', join(staging, 'Applications')]);
 

@@ -59,6 +59,10 @@ public final class HudDictation {
     public private(set) var state: State = .idle
     /// Live, non-final transcript (from Apple) shown as a preview while listening.
     public private(set) var partialText: String = ""
+    /// Live input loudness (RMS, 0...1) while `listening`, for voice-reactive
+    /// meters/waveforms. Resets to `0` when capture stops. Instantaneous only —
+    /// consumers keep their own history for a scrolling waveform.
+    public private(set) var audioLevel: Float = 0
     /// Whether the preferred Parakeet model is downloaded and warm (in memory).
     public private(set) var modelReady: Bool = false
     /// Whether the Parakeet model files are present on disk (downloaded).
@@ -266,12 +270,19 @@ public final class HudDictation {
             }
         }
 
-        // One tap, two sinks: write every buffer to the file (for Parakeet) and
-        // stream it to Apple (for the live preview). Captures locals, not self,
-        // so the realtime audio thread never touches main-actor state.
-        input.installTap(onBus: 0, bufferSize: 1024, format: format) { buffer, _ in
+        // One tap, three sinks: write every buffer to the file (for Parakeet),
+        // stream it to Apple (for the live preview), and derive an input level
+        // (for voice-reactive meters). Everything on the realtime thread works
+        // from locals; the only main-actor state (`audioLevel`) is published via
+        // an explicit hop, so the audio thread never touches it directly.
+        input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             try? file.write(from: buffer)
             request?.append(buffer)
+            let level = HudDictation.rmsLevel(buffer)
+            Task { @MainActor [weak self] in
+                guard let self, self.isListening else { return }
+                self.audioLevel = level
+            }
         }
 
         audioEngine.prepare()
@@ -288,9 +299,25 @@ public final class HudDictation {
         speechRequest = nil
         speechTask = nil
         recordingFile = nil // finalizes the file
+        audioLevel = 0
         #if os(iOS)
         try? AVAudioSession.sharedInstance().setActive(false, options: .notifyOthersOnDeactivation)
         #endif
+    }
+
+    /// Instantaneous input loudness (RMS) of a capture buffer as a 0...1 value.
+    /// `nonisolated` so it runs on the realtime audio thread from locals only;
+    /// the raw RMS is amplified for visual response, matching the convention
+    /// used by voice-reactive meters.
+    nonisolated private static func rmsLevel(_ buffer: AVAudioPCMBuffer) -> Float {
+        guard let channelData = buffer.floatChannelData else { return 0 }
+        let samples = channelData.pointee
+        let n = Int(buffer.frameLength)
+        guard n > 0 else { return 0 }
+        var sum: Float = 0
+        for i in 0..<n { let s = samples[i]; sum += s * s }
+        let rms = (sum / Float(n)).squareRoot()
+        return min(1, rms * 8)
     }
 
     // MARK: - Permissions

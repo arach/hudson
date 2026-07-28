@@ -36,6 +36,12 @@ another app bundle should be built, signed, and nested inside the parent instead
 of shown as a separate installer item. Helpers default to
 `Contents/Library/LoginItems`.
 
+Apps may also declare a `frameworks` array of paths relative to the config file.
+The packager embeds each framework under `Contents/Frameworks`, adds
+`@executable_path/../Frameworks` to the executable's run paths when needed, and
+re-signs the framework's nested code with the app identity before sealing the
+assembled app bundle.
+
 Use `--local` for smoke builds that skip notarization and allow ad-hoc signing.
 Use `--sign-identity`, `--require-sign-identity`, and `--notary-profile` for
 release builds.
