@@ -270,9 +270,13 @@ public actor HudSpeechSynthesizer {
         return lent
     }
 
-    private static func cleanedCredentials(
+    static func cleanedCredentials(
         _ credentials: [HudSpeechProvider: String]
     ) -> [HudSpeechProvider: String] {
-        credentials.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
+        Dictionary(uniqueKeysWithValues: credentials.compactMap { provider, value in
+            let cleaned = value.trimmingCharacters(in: .whitespacesAndNewlines)
+            guard !cleaned.isEmpty else { return nil }
+            return (provider, cleaned)
+        })
     }
 }
