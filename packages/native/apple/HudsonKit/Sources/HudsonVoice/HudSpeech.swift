@@ -134,16 +134,17 @@ public actor HudSpeechSynthesizer {
     private var engine: TTSEngineManager
 
     public init(credentials: [HudSpeechProvider: String] = [:]) {
-        self.credentials = credentials
+        let cleaned = Self.cleanedCredentials(credentials)
+        self.credentials = cleaned
         self.engine = TTSEngineManager(
-            provider: TTSProviderRegistry(config: Self.config(credentials: credentials))
+            provider: TTSProviderRegistry(config: Self.config(credentials: cleaned))
         )
     }
 
     /// Replace the lent keys. Rebuilds the engine, because a backend that read
     /// its key at construction would otherwise keep using the old one.
     public func updateCredentials(_ next: [HudSpeechProvider: String]) {
-        let cleaned = next.filter { !$0.value.trimmingCharacters(in: .whitespaces).isEmpty }
+        let cleaned = Self.cleanedCredentials(next)
         guard cleaned != credentials else { return }
         credentials = cleaned
         engine = TTSEngineManager(
@@ -267,5 +268,11 @@ public actor HudSpeechSynthesizer {
             lent[envKey] = key
         }
         return lent
+    }
+
+    private static func cleanedCredentials(
+        _ credentials: [HudSpeechProvider: String]
+    ) -> [HudSpeechProvider: String] {
+        credentials.filter { !$0.value.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty }
     }
 }
