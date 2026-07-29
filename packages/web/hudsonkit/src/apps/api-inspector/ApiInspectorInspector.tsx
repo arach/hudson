@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2, Zap, FileText } from 'lucide-react';
+import { Trash2, Zap, FileText } from '../../icons';
 import { useApiInspector } from './ApiInspectorProvider';
 import { METHOD_COLORS, getStatusColor, formatMs, formatBytes } from './types';
 

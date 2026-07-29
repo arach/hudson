@@ -13,8 +13,8 @@ import {
   Library,
   Paintbrush,
   LayoutTemplate,
-  type LucideIcon,
-} from 'lucide-react';
+  type HudsonIcon,
+} from 'hudsonkit/icons';
 import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
 
 export const DEFAULT_SETTINGS: HudsonSettings = {
@@ -48,7 +48,7 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   },
 };
 
-export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
+export const NAV_ITEMS: { id: string; label: string; icon: HudsonIcon }[] = [
   { id: 'overview', label: 'Overview', icon: Compass },
   { id: 'reference', label: 'Reference', icon: Library },
   { id: 'guides', label: 'Guides', icon: BookOpen },

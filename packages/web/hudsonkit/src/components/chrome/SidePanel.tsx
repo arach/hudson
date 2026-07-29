@@ -1,5 +1,5 @@
 import React from 'react';
-import { PanelLeftClose, PanelRightClose, PanelLeftOpen, PanelRightOpen } from 'lucide-react';
+import { PanelLeftClose, PanelRightClose, PanelLeftOpen, PanelRightOpen } from '../../icons';
 import { usePlatformLayout } from '../../platform/usePlatformLayout';
 
 interface SidePanelProps {

@@ -1,6 +1,6 @@
 'use client';
 
-import { AlertCircle, Braces, FileCode2, Plus } from 'lucide-react';
+import { AlertCircle, Braces, FileCode2, Plus } from '../../icons';
 import { TextDocumentSurface } from '../../index';
 import { useCodeEditor } from './CodeEditorProvider';
 

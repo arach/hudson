@@ -27,7 +27,7 @@ import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { AppShellLayoutConfig, AppShellResponsivePanelMax, HudsonApp } from '../types/app';
 import type { HudsonCodeWorkbenchSize } from '../types/code';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight, Code2, Pin, PinOff, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Pin, PinOff, Terminal as TerminalIcon, Sparkles } from '../icons';
 import {
   HudsonThemeScript,
   ThemeProvider,

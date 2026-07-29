@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useCallback } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '../../icons';
 
 // ---------------------------------------------------------------------------
 // ParamSection — collapsible group

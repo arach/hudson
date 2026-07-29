@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo } from 'react';
-import { Terminal, MessageSquare, Brain, Wrench, Clock, Zap } from 'lucide-react';
+import { Terminal, MessageSquare, Brain, Wrench, Clock, Zap } from '../../icons';
 import { useTrace } from './TraceProvider';
 
 // ---------------------------------------------------------------------------

@@ -1,12 +1,12 @@
 'use client';
 
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { HudsonIcon } from '../../icons';
 import type { HudDensity, HudTone } from './types';
 import { toneClasses } from './types';
 
 export interface HudIconButtonProps {
-  icon: LucideIcon;
+  icon: HudsonIcon;
   label: string;
   tone?: HudTone;
   variant?: 'soft' | 'ghost';

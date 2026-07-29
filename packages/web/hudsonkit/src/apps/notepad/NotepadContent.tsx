@@ -1,6 +1,6 @@
 'use client';
 
-import { Plus, FileText, Eye, EyeOff } from 'lucide-react';
+import { Plus, FileText, Eye, EyeOff } from '../../icons';
 import { TextDocumentSurface, createHudsonTextDocument, type TextDocumentMode } from '../../index';
 import { useNotepad } from './NotepadProvider';
 

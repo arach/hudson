@@ -4,7 +4,7 @@ import { useRef, useEffect, useCallback } from 'react';
 import {
   Send, Loader2, ChevronDown, X, Plus, Check,
   ToggleLeft, ToggleRight, AlertCircle,
-} from 'lucide-react';
+} from '../../icons';
 import { useApiInspector } from './ApiInspectorProvider';
 import type { HttpMethod, KeyValuePair } from './types';
 import {

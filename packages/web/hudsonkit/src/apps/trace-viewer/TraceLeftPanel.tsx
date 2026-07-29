@@ -1,6 +1,6 @@
 'use client';
 
-import { Clock } from 'lucide-react';
+import { Clock } from '../../icons';
 import { useTrace } from './TraceProvider';
 
 function formatMs(ms: number): string {

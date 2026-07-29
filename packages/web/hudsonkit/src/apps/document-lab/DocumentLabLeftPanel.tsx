@@ -1,6 +1,6 @@
 'use client';
 
-import { Braces, FileCode2, FileText, Text } from 'lucide-react';
+import { Braces, FileCode2, FileText, Text } from '../../icons';
 import type { HudsonTextDocument } from '../../index';
 import { useDocumentLab } from './DocumentLabProvider';
 

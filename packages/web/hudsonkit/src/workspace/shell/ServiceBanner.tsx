@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { AlertTriangle, X } from 'lucide-react';
+import { AlertTriangle, X } from '../../icons';
 import { useServiceRegistryContext } from '../services/ServiceRegistryContext';
 import type { WorkspaceAppConfig } from '../../index';
 

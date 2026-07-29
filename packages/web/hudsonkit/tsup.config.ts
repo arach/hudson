@@ -5,7 +5,7 @@ import { join } from 'node:path';
 const sharedExternal = [
   'react',
   'react-dom',
-  'lucide-react',
+  'iconoir-react',
   // Optional peer deps — keep external so narrow subpaths/dynamic imports do
   // not inline heavy optional features into core chunks.
   '@codemirror/commands',
@@ -43,6 +43,7 @@ const clientEntries = {
   theme: 'src/theme.ts',
   terminal: 'src/terminal.ts',
   controls: 'src/controls.ts',
+  icons: 'src/icons.tsx',
   flags: 'src/flags.ts',
   cache: 'src/cache.ts',
   workflow: 'src/workflow/index.ts',

@@ -1,6 +1,6 @@
 'use client';
 
-import { Trash2, FileText } from 'lucide-react';
+import { Trash2, FileText } from '../../icons';
 import { useNotepad } from './NotepadProvider';
 
 function timeAgo(ts: number): string {

@@ -116,7 +116,6 @@ const singletonAliases = {
   "react-dom/client": join(rootNodeModules, "react-dom", "client.js"),
   "ai": join(rootNodeModules, "ai"),
   "@ai-sdk/react": join(rootNodeModules, "@ai-sdk", "react"),
-  "lucide-react": join(rootNodeModules, "lucide-react"),
 };
 const toTurbopackAliasPath = (target: string) => {
   const rel = relative(turbopackRoot, target).split(sep).join("/");

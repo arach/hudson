@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { Circle, FileCode2 } from 'lucide-react';
+import { Circle, FileCode2 } from '../../icons';
 import type { CodeLanguage } from './CodeViewer';
 import { useOptionalTheme } from '../../theme/ThemeProvider';
 

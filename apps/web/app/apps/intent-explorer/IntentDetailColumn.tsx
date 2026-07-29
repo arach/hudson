@@ -1,6 +1,6 @@
 'use client';
 
-import { ExternalLink, X } from 'lucide-react';
+import { ExternalLink, X } from 'hudsonkit/icons';
 import { useExplorer } from './IntentProvider';
 import { CATEGORY_COLORS } from './types';
 

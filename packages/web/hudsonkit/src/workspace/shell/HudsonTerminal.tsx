@@ -6,7 +6,7 @@ import type { HudsonWorkspace, IntentCatalog } from '../../index';
 import { useDataBus } from '../context/DataBusContext';
 import type { PortCatalogEntry } from '../context/DataBusContext';
 import type { PipeDefinition } from '../../index';
-import { Cloud, TerminalSquare } from 'lucide-react';
+import { Cloud, TerminalSquare } from '../../icons';
 import { useWorkspaceHostRoutes } from '../hostRoutes';
 
 // ---------------------------------------------------------------------------
