@@ -243,12 +243,16 @@ public actor HudSpeechSynthesizer {
 
     /// Providers that read their key at construction get it through `env`;
     /// those that accept a per-request key get it again in `providerCredentials`.
-    private static func config(credentials: [HudSpeechProvider: String]) -> ProvidersConfig {
+    static func config(credentials: [HudSpeechProvider: String]) -> ProvidersConfig {
         ProvidersConfig(
             providers: HudSpeechProvider.allCases.map { provider in
                 var env: [String: String] = [:]
-                if let key = provider.credentialEnvKey, let value = credentials[provider] {
-                    env[key] = value
+                if let key = provider.credentialEnvKey {
+                    // Vox providers otherwise fall back to process or on-disk
+                    // credentials. An explicit empty value keeps Hudson's
+                    // host-lent-only contract while making the provider report
+                    // unavailable until the host supplies a key.
+                    env[key] = credentials[provider] ?? ""
                 }
                 return ProviderEntry(
                     id: provider.providerId,

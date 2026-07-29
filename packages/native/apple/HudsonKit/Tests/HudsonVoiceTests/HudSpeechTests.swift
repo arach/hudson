@@ -27,7 +27,27 @@ struct HudSpeechTests {
         #expect(!providers.contains(.openAI))
         #expect(providers.contains(.elevenLabs))
         #expect(providers.contains(.system))
+    }
 
+    @Test("unlent providers suppress ambient credential fallback")
+    func unlentProvidersSuppressAmbientCredentials() {
+        let config = HudSpeechSynthesizer.config(credentials: [:])
+        let providers = Dictionary(uniqueKeysWithValues: config.providers.map { ($0.id, $0) })
+
+        #expect(providers["openai"]?.env?["OPENAI_API_KEY"] == "")
+        #expect(providers["elevenlabs"]?.env?["ELEVENLABS_API_KEY"] == "")
+        #expect(providers["minimax"]?.env?["MINIMAX_API_KEY"] == "")
+        #expect(providers["avspeech"]?.env == nil)
+    }
+
+    @Test("unlent provider models report unavailable")
+    func unlentProviderModelsAreUnavailable() async {
+        let models = await HudSpeechSynthesizer().models()
+        let remoteModels = models.filter { $0.provider.requiresCredential }
+
+        #expect(!remoteModels.isEmpty)
+        #expect(remoteModels.allSatisfy { !$0.available })
+        #expect(models.contains { $0.provider == .system && $0.available })
     }
 
     @Test("empty text fails before synthesis")
