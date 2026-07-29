@@ -128,7 +128,7 @@ public struct HudChromeShell<
             }
             .padding(.leading, Self.trafficLightClearance)
             .padding(.trailing, HudSpacing.lg)
-            .frame(height: 28)
+            .frame(height: HudLayout.rowHeightCompact)
             .frame(maxWidth: .infinity, alignment: .top)
             .ignoresSafeArea(.container, edges: .top)
         }
