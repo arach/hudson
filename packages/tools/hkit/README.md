@@ -45,5 +45,7 @@ re-signs the framework's nested code with the app identity before sealing the
 assembled app bundle.
 
 Use `--local` for smoke builds that skip notarization and allow ad-hoc signing.
+Ad-hoc app and framework signatures omit Hardened Runtime so macOS does not
+apply team-based library validation to binaries that have no Apple Team ID.
 Use `--sign-identity`, `--require-sign-identity`, and `--notary-profile` for
 release builds.

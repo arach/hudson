@@ -129,7 +129,6 @@ import {
   PathArrow as PathArrowGlyph,
   Wrench as WrenchGlyph,
   X as XGlyph,
-  Xmark as XmarkGlyph,
   XmarkCircle as XmarkCircleGlyph,
 } from 'iconoir-react';
 import * as React from 'react';
@@ -228,7 +227,6 @@ export const ChevronsUpDown = hudsonIcon(ArrowSeparateVerticalGlyph, 'ChevronsUp
 export const ChevronUp = hudsonIcon(NavArrowUpGlyph, 'ChevronUp');
 export const Circle = hudsonIcon(CircleGlyph, 'Circle');
 export const CircleDot = hudsonIcon(OnePointCircleGlyph, 'CircleDot');
-export const Close = hudsonIcon(XmarkGlyph, 'Close');
 export const Clipboard = hudsonIcon(PasteClipboardGlyph, 'Clipboard');
 export const Clock = hudsonIcon(ClockGlyph, 'Clock');
 export const Cloud = hudsonIcon(CloudGlyph, 'Cloud');

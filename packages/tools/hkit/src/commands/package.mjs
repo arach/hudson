@@ -318,17 +318,19 @@ function signEmbeddedFrameworks(bundlePath, app, identity, options) {
 
   for (const frameworkPath of app.frameworks ?? []) {
     const frameworkBundle = join(bundlePath, 'Contents', 'Frameworks', basename(frameworkPath));
+    const useHardenedRuntime = shouldUseHardenedRuntime(identity);
+    const signingIdentity = useHardenedRuntime ? identity : '-';
     const args = [
       '--force',
       '--deep',
-      '--options',
-      'runtime',
-      '--preserve-metadata=identifier,entitlements,requirements,flags',
+      `--preserve-metadata=${frameworkSigningMetadata(identity)}`,
     ];
-    if (identity) args.push('--timestamp');
-    args.push('--sign', identity || '-', frameworkBundle);
+    if (useHardenedRuntime) {
+      args.push('--options', 'runtime', '--timestamp');
+    }
+    args.push('--sign', signingIdentity, frameworkBundle);
 
-    process.stdout.write(`==> Signing ${basename(frameworkBundle)} with ${identity || 'ad-hoc'}\n`);
+    process.stdout.write(`==> Signing ${basename(frameworkBundle)} with ${useHardenedRuntime ? identity : 'ad-hoc'}\n`);
     runCommand('codesign', args, { stdio: 'inherit' });
     runCommand('codesign', ['--verify', '--deep', '--strict', frameworkBundle], { stdio: 'inherit' });
   }
@@ -358,6 +360,16 @@ export function shouldUseDeepSigning(app) {
   return (app.embeddedHelpers?.length ?? 0) === 0;
 }
 
+export function shouldUseHardenedRuntime(identity) {
+  return typeof identity === 'string' && identity.trim() !== '' && identity.trim() !== '-';
+}
+
+export function frameworkSigningMetadata(identity) {
+  return shouldUseHardenedRuntime(identity)
+    ? 'identifier,entitlements,requirements,flags'
+    : 'identifier';
+}
+
 function signAppBundle(bundlePath, app, identity, options) {
   if (options.skipSign) {
     process.stdout.write(`==> Skipping app signing: ${displayPath(bundlePath)}\n`);
@@ -369,16 +381,20 @@ function signAppBundle(bundlePath, app, identity, options) {
   rmSync(tempBinary, { force: true });
 
   const entitlements = app.entitlementsPath;
-  const args = ['--force', '--options', 'runtime'];
+  const useHardenedRuntime = shouldUseHardenedRuntime(identity);
+  const signingIdentity = useHardenedRuntime ? identity : '-';
+  const args = ['--force'];
   if (shouldUseDeepSigning(app)) {
     args.push('--deep');
   }
-  if (identity) args.push('--timestamp');
-  args.push('--sign', identity || '-');
+  if (useHardenedRuntime) {
+    args.push('--options', 'runtime', '--timestamp');
+  }
+  args.push('--sign', signingIdentity);
   if (entitlements && existsSync(entitlements)) args.push('--entitlements', entitlements);
   args.push('--identifier', app.bundleIdentifier, bundlePath);
 
-  process.stdout.write(`==> Signing ${basename(bundlePath)} with ${identity || 'ad-hoc'}\n`);
+  process.stdout.write(`==> Signing ${basename(bundlePath)} with ${useHardenedRuntime ? identity : 'ad-hoc'}\n`);
   runCommand('codesign', args, { stdio: 'inherit' });
   runCommand('codesign', ['--verify', '--deep', '--strict', bundlePath], { stdio: 'inherit' });
 }

@@ -156,6 +156,7 @@ targets.append(
         dependencies: [
             "HudsonUI",
             "HudsonObservability",
+            .product(name: "VoxCore", package: voxPackage),
             .product(name: "VoxEngine", package: voxPackage),
         ],
         path: src + "HudsonVoice"

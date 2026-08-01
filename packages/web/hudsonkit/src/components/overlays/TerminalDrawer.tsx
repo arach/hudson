@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
-import { Close, Maximize2, Minimize2, Terminal } from '../../icons';
+import { X, Maximize2, Minimize2, Terminal } from '../../icons';
 import { SHELL_THEME } from '../../lib/theme';
 import {
   HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR,
@@ -134,7 +134,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
             title="Close console"
             aria-label="Close console"
           >
-            <Close size={14} />
+            <X size={14} />
           </button>
         </div>
       </div>
