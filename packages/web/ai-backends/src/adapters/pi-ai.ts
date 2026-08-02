@@ -265,6 +265,8 @@ export interface PiAiUIRequest {
   defaultModels?: Record<string, string>;
   /** Max tool-call rounds. Defaults to {@link DEFAULT_MAX_STEPS}. */
   maxSteps?: number;
+  /** pi-ai reasoning effort — omit or 'off' to disable. */
+  effort?: 'off' | 'low' | 'medium' | 'high';
 }
 
 export interface PiAiBackend extends Backend<PiAiConfig, PiAiMeta> {
@@ -546,6 +548,11 @@ function streamUI(req: PiAiUIRequest): Response {
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       for (let step = 0; step < maxSteps; step++) {
+        const streamOptions: Record<string, unknown> = { apiKey };
+        if (req.effort && req.effort !== 'off') {
+          streamOptions.reasoning = req.effort;
+        }
+
         const assistantStream = piAiStream(
           piModel,
           {
@@ -553,7 +560,7 @@ function streamUI(req: PiAiUIRequest): Response {
             messages: piMessages,
             tools: piTools.length > 0 ? piTools : undefined,
           },
-          { apiKey } as never,
+          streamOptions as never,
         );
 
         let textPartId: string | null = null;
