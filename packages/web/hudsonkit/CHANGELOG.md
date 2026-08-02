@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+### Changed
+
+- Replaced Lucide with Hudson's shared Iconoir adapter and added the
+  `hudsonkit/icons` export.
+
 ## [0.3.3] - 2026-07-01
 
 ### Changed
