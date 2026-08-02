@@ -24,19 +24,37 @@ describe('hkit package signing', () => {
       label: 'ad-hoc',
       hardenedRuntime: false,
       timestamp: false,
+      preserveMetadata: 'identifier',
     });
     expect(signingPolicy('-')).toEqual({
       identity: '-',
       label: 'ad-hoc',
       hardenedRuntime: false,
       timestamp: false,
+      preserveMetadata: 'identifier',
     });
     expect(signingPolicy('DEVELOPER_ID')).toEqual({
       identity: 'DEVELOPER_ID',
       label: 'DEVELOPER_ID',
       hardenedRuntime: true,
       timestamp: true,
+      preserveMetadata: 'identifier,entitlements,requirements,flags',
     });
+  });
+
+  it('treats a whitespace-only identity as ad-hoc and trims a real one', () => {
+    expect(signingPolicy('   ')).toMatchObject({ identity: '-', label: 'ad-hoc' });
+    expect(signingPolicy(undefined)).toMatchObject({ identity: '-', label: 'ad-hoc' });
+    expect(signingPolicy('  DEVELOPER_ID  ')).toMatchObject({
+      identity: 'DEVELOPER_ID',
+      hardenedRuntime: true,
+    });
+  });
+
+  it('never preserves signature flags for an ad-hoc signature', () => {
+    // Preserving `flags` would re-apply Hardened Runtime to a binary with no
+    // Team ID, and macOS library validation then rejects embedded frameworks.
+    expect(signingPolicy('').preserveMetadata).not.toContain('flags');
   });
 });
 

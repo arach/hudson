@@ -448,7 +448,7 @@ function signEmbeddedFrameworks(bundlePath, app, identity, options) {
     const args = [
       '--force',
       '--deep',
-      '--preserve-metadata=identifier,entitlements,requirements,flags',
+      `--preserve-metadata=${signing.preserveMetadata}`,
     ];
     if (signing.hardenedRuntime) args.push('--options', 'runtime');
     if (signing.timestamp) args.push('--timestamp');
@@ -486,12 +486,18 @@ export function shouldUseDeepSigning(app) {
 }
 
 export function signingPolicy(identity) {
-  const adHoc = !identity || identity === '-';
+  const trimmed = typeof identity === 'string' ? identity.trim() : '';
+  const adHoc = trimmed === '' || trimmed === '-';
   return {
-    identity: adHoc ? '-' : identity,
-    label: adHoc ? 'ad-hoc' : identity,
+    identity: adHoc ? '-' : trimmed,
+    label: adHoc ? 'ad-hoc' : trimmed,
     hardenedRuntime: !adHoc,
     timestamp: !adHoc,
+    // An ad-hoc signature must not inherit the previous signature's flags:
+    // preserving `flags` re-applies Hardened Runtime, and macOS then enforces
+    // team-based library validation against a binary that has no Team ID —
+    // which rejects the embedded frameworks at load time.
+    preserveMetadata: adHoc ? 'identifier' : 'identifier,entitlements,requirements,flags',
   };
 }
 
