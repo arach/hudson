@@ -11,7 +11,7 @@ Standalone Hudson consumer client scaffolded by `create-hudson-app --tier standa
 | Piece | Choice |
 |-------|--------|
 | Bundler | Vite (`base: './'` for file / WKWebView hosts) |
-| Router | TanStack Router SPA |
+| Router | TanStack Router (scaffold point) |
 | UI kit | `hudsonkit` AppShell + `hudsonkit/nav` + `hudsonkit/behaviors` |
 | Typecheck | `tsc --noEmit` **before** `vite build` (`bun run check`) |
 | Theme | Seed → full token set via `src/theme-adapter.ts` (edge ≠ ink) |
@@ -48,9 +48,11 @@ version when that tarball is present (set `HUDSONKIT_TGZ=/path/to.tgz` to overri
 
 - `/` — AppShell destinations rail + content (SPA)
 - `/embeds/*.html` — optional multi-entry embeds (uncomment in `vite.config.ts`)
-- `/broker/*` — Vite proxy to local broker (`HUDSON_BROKER_URL`, default `:43110`)
+- `/broker/*` — Vite dev proxy to local broker (`HUDSON_BROKER_URL`, default `:43110`)
 
-Fetch the broker via same-origin `/broker/...` — never hit `:43110` from the browser (no CORS).
+During local development, fetch the broker via same-origin `/broker/...` —
+never hit `:43110` from the browser (no CORS). Configure an equivalent
+same-origin proxy in the production host; `vite preview` does not provide it.
 
 ## Theme rule (load-bearing)
 

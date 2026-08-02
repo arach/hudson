@@ -75,17 +75,11 @@ export function seedToCssVars(seed: ThemeSeed): Record<string, string> {
   };
 }
 
-/** Apply to :root and optional AppShell template host. */
+/** Apply to a root element; custom properties inherit into the AppShell host. */
 export function applyThemeSeed(seed: ThemeSeed, root: HTMLElement = document.documentElement): void {
   const vars = seedToCssVars(seed);
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value);
-  }
-  const host = document.querySelector<HTMLElement>('[data-hudson-template]');
-  if (host && host !== root) {
-    for (const [key, value] of Object.entries(vars)) {
-      host.style.setProperty(key, value);
-    }
   }
 }
 

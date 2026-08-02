@@ -1,8 +1,7 @@
-import { useState, type ReactNode } from 'react';
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
 import { Home, Settings } from 'lucide-react';
 import { AppShell } from 'hudsonkit/app-shell';
 import { HudSideNav } from 'hudsonkit/nav';
-import { HudTooltipProvider } from 'hudsonkit/behaviors';
 import type { HudsonApp } from 'hudsonkit';
 
 /**
@@ -16,29 +15,43 @@ import type { HudsonApp } from 'hudsonkit';
 
 type DestinationId = 'home' | 'settings';
 
-function DestinationsNav({
-  selectedId,
-  onSelect,
-}: {
-  selectedId: DestinationId;
-  onSelect: (id: DestinationId) => void;
-}) {
+interface DestinationState {
+  destination: DestinationId;
+  setDestination: (id: DestinationId) => void;
+}
+
+const DestinationContext = createContext<DestinationState | null>(null);
+
+function useDestination(): DestinationState {
+  const value = useContext(DestinationContext);
+  if (!value) throw new Error('useDestination must be used inside StandaloneProvider');
+  return value;
+}
+
+function StandaloneProvider({ children }: { children: ReactNode }) {
+  const [destination, setDestination] = useState<DestinationId>('home');
+  const value = useMemo(() => ({ destination, setDestination }), [destination]);
+
+  return <DestinationContext.Provider value={value}>{children}</DestinationContext.Provider>;
+}
+
+function DestinationsNav() {
+  const { destination, setDestination } = useDestination();
+
   return (
-    <HudTooltipProvider>
-      <HudSideNav
-        ariaLabel="Destinations"
-        collapsible="icon"
-        persistKey="__APP_ID__.destinations"
-        selectionWash
-        rovingFocus
-        selectedId={selectedId}
-        onSelect={(node) => onSelect(node.id as DestinationId)}
-        items={[
-          { id: 'home', label: 'Home', icon: Home },
-          { id: 'settings', label: 'Settings', icon: Settings },
-        ]}
-      />
-    </HudTooltipProvider>
+    <HudSideNav
+      ariaLabel="Destinations"
+      collapsible="icon"
+      persistKey="__APP_ID__.destinations"
+      selectionWash
+      rovingFocus
+      selectedId={destination}
+      onSelect={(node) => setDestination(node.id as DestinationId)}
+      items={[
+        { id: 'home', label: 'Home', icon: Home },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ]}
+    />
   );
 }
 
@@ -66,41 +79,32 @@ function SettingsPage() {
   );
 }
 
-function Content({ destination }: { destination: DestinationId }) {
+function Content() {
+  const { destination } = useDestination();
   return destination === 'settings' ? <SettingsPage /> : <HomePage />;
 }
 
-function buildApp(
-  destination: DestinationId,
-  setDestination: (id: DestinationId) => void,
-): HudsonApp {
-  return {
-    id: '__APP_ID__',
-    name: '__APP_DISPLAY_NAME__',
-    description: '__APP_DESCRIPTION__',
-    mode: 'panel',
-    leftPanel: { title: 'Navigate' },
-    Provider: ({ children }: { children: ReactNode }) => <>{children}</>,
-    slots: {
-      Content: () => <Content destination={destination} />,
-      LeftPanel: () => (
-        <DestinationsNav selectedId={destination} onSelect={setDestination} />
-      ),
-    },
-    hooks: {
-      useCommands: () => [],
-      useStatus: () => ({ label: 'READY', color: 'emerald' as const }),
-    },
-  };
-}
+const standaloneApp: HudsonApp = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: 'panel',
+  leftPanel: { title: 'Navigate' },
+  Provider: StandaloneProvider,
+  slots: {
+    Content,
+    LeftPanel: DestinationsNav,
+  },
+  hooks: {
+    useCommands: () => [],
+    useStatus: () => ({ label: 'READY', color: 'emerald' as const }),
+  },
+};
 
 export function AppShellFrame() {
-  const [destination, setDestination] = useState<DestinationId>('home');
-  const app = buildApp(destination, setDestination);
-
   return (
     <div data-hudson-template="__APP_ID__" className="h-full">
-      <AppShell app={app} assistant={false} />
+      <AppShell app={standaloneApp} assistant={false} />
     </div>
   );
 }
