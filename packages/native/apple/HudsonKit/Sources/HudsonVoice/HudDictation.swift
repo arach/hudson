@@ -109,6 +109,11 @@ public final class HudDictation {
     private var speechRequest: SFSpeechAudioBufferRecognitionRequest?
     private var speechTask: SFSpeechRecognitionTask?
     private var prepareTask: Task<Void, Never>?
+    /// Permission prompts make `start()` asynchronous. Keep that pending
+    /// interval distinct from `.listening` so a second tap cannot install a
+    /// duplicate input-node tap while the first start is still awaiting.
+    private var captureStartGate = HudDictationCaptureStartGate()
+    private var hasInputTap = false
 
     public init(
         modelId: String = HudsonVoicePreferences.defaultTranscriptionModelId,
@@ -193,22 +198,30 @@ public final class HudDictation {
     }
 
     public func start() {
-        guard !isListening else { return }
+        guard !isListening, let generation = captureStartGate.begin() else { return }
         prepareAutomatically(for: .firstUse)
         Task { [weak self] in
             guard let self else { return }
             guard await self.ensureMicPermission() else {
+                guard self.captureStartGate.finish(generation) else { return }
                 self.state = .unavailable("Microphone access denied")
                 return
             }
+            guard self.captureStartGate.isCurrent(generation) else { return }
             // Speech permission is only needed for the Apple preview/fallback;
             // a denial shouldn't block Parakeet-only capture.
             _ = await self.ensureSpeechPermission()
+            guard self.captureStartGate.isCurrent(generation) else { return }
             do {
                 try self.beginCapture()
+                guard self.captureStartGate.finish(generation) else {
+                    self.teardownCapture()
+                    return
+                }
                 self.state = .listening
             } catch {
                 self.teardownCapture()
+                guard self.captureStartGate.finish(generation) else { return }
                 self.state = .unavailable("Could not start the microphone")
                 self.log.error("beginCapture failed: \(error.localizedDescription)")
             }
@@ -221,6 +234,11 @@ public final class HudDictation {
     }
 
     public func stop() {
+        if captureStartGate.cancelIfStarting() {
+            // A permission callback may still arrive. Its generation check
+            // prevents it from installing a tap after the user stopped.
+            return
+        }
         guard isListening else { return }
         let url = recordingURL
         let applePreview = partialText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -243,6 +261,7 @@ public final class HudDictation {
     public func cancel() {
         prepareTask?.cancel()
         prepareTask = nil
+        captureStartGate.invalidate()
         if let url = recordingURL { try? FileManager.default.removeItem(at: url) }
         teardownCapture()
         partialText = ""
@@ -319,14 +338,16 @@ public final class HudDictation {
                 self.audioLevel = level
             }
         }
+        hasInputTap = true
 
         audioEngine.prepare()
         try audioEngine.start()
     }
 
     private func teardownCapture() {
-        if audioEngine.isRunning || audioEngine.inputNode.numberOfInputs > 0 {
+        if hasInputTap {
             audioEngine.inputNode.removeTap(onBus: 0)
+            hasInputTap = false
         }
         if audioEngine.isRunning { audioEngine.stop() }
         speechRequest?.endAudio()
