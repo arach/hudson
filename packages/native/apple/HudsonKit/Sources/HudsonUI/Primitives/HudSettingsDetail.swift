@@ -124,8 +124,9 @@ private struct HudSettingsDetailResponsiveLayout: Layout {
 }
 
 /// A two-column settings canvas with a fixed-width selection column and a
-/// flexible detail column. Apps own the data and navigation model; Hudson owns
-/// the spacing, divider, and responsive collapse behavior.
+/// flexible detail column. Apps own the data, navigation model, and spacing
+/// inside each slot; Hudson owns inter-slot spacing, the divider, and responsive
+/// collapse behavior.
 public struct HudSettingsDetail<Sidebar: View, Detail: View>: View {
     public var sidebarWidth: CGFloat
     public var collapseBelow: CGFloat
@@ -154,6 +155,7 @@ public struct HudSettingsDetail<Sidebar: View, Detail: View>: View {
                 sidebar()
             }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
+            // Keep this one-point hairline in sync with the layout arithmetic.
             Rectangle()
                 .fill(HudHairline.subtle)
                 .accessibilityHidden(true)

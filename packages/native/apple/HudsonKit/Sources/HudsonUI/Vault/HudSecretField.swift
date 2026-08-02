@@ -8,7 +8,6 @@ import UIKit
 
 enum HudSecretClipboard {
     struct Snapshot: Equatable, Sendable {
-        let text: String
         let changeCount: Int
     }
 
@@ -16,12 +15,7 @@ enum HudSecretClipboard {
         #if canImport(AppKit)
         copy(text, to: .general)
         #elseif canImport(UIKit)
-        let pasteboard = UIPasteboard.general
-        pasteboard.string = text
-        let changeCount = pasteboard.changeCount
-        guard pasteboard.changeCount == changeCount else { return nil }
-        guard pasteboard.string == text else { return nil }
-        return Snapshot(text: text, changeCount: changeCount)
+        copy(text, to: .general)
         #else
         return nil
         #endif
@@ -31,10 +25,7 @@ enum HudSecretClipboard {
         #if canImport(AppKit)
         clear(ifMatching: snapshot, from: .general)
         #elseif canImport(UIKit)
-        let pasteboard = UIPasteboard.general
-        guard pasteboard.changeCount == snapshot.changeCount else { return }
-        guard pasteboard.string == snapshot.text else { return }
-        pasteboard.string = ""
+        clear(ifMatching: snapshot, from: .general)
         #endif
     }
 
@@ -43,15 +34,25 @@ enum HudSecretClipboard {
         pasteboard.clearContents()
         guard pasteboard.setString(text, forType: .string) else { return nil }
         let changeCount = pasteboard.changeCount
-        guard pasteboard.changeCount == changeCount else { return nil }
         guard pasteboard.string(forType: .string) == text else { return nil }
-        return Snapshot(text: text, changeCount: changeCount)
+        return Snapshot(changeCount: changeCount)
     }
 
     static func clear(ifMatching snapshot: Snapshot, from pasteboard: NSPasteboard) {
         guard pasteboard.changeCount == snapshot.changeCount else { return }
-        guard pasteboard.string(forType: .string) == snapshot.text else { return }
         pasteboard.clearContents()
+    }
+    #elseif canImport(UIKit)
+    static func copy(_ text: String, to pasteboard: UIPasteboard) -> Snapshot? {
+        pasteboard.string = text
+        let changeCount = pasteboard.changeCount
+        guard pasteboard.string == text else { return nil }
+        return Snapshot(changeCount: changeCount)
+    }
+
+    static func clear(ifMatching snapshot: Snapshot, from pasteboard: UIPasteboard) {
+        guard pasteboard.changeCount == snapshot.changeCount else { return }
+        pasteboard.items = []
     }
     #endif
 }
@@ -105,6 +106,7 @@ public struct HudSecretField: View {
                         .foregroundStyle(HudPalette.muted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel(isRevealed ? "Hide secret" : "Reveal secret")
 
                 Button {
                     copy()
@@ -114,6 +116,8 @@ public struct HudSecretField: View {
                         .foregroundStyle(didCopy ? HudPalette.statusOk : HudPalette.muted)
                 }
                 .buttonStyle(.plain)
+                .accessibilityLabel("Copy secret")
+                .accessibilityValue(didCopy ? "Copied" : "")
             }
         }
         .padding(.horizontal, HudSpacing.lg)

@@ -72,6 +72,36 @@ struct HudSecretClipboardTests {
 }
 #endif
 
+#if os(iOS)
+import UIKit
+
+@Suite("HudSecretClipboard")
+struct HudSecretClipboardTests {
+    @Test("iOS clipboard clears only the exact copy generation")
+    func writesAndConditionallyClears() {
+        let pasteboard = UIPasteboard.withUniqueName()
+        defer { UIPasteboard.remove(withName: pasteboard.name) }
+
+        let firstCopy = HudSecretClipboard.copy("secret", to: pasteboard)
+        #expect(firstCopy != nil)
+        #expect(pasteboard.string == "secret")
+
+        let sameValueRecopy = HudSecretClipboard.copy("secret", to: pasteboard)
+        #expect(sameValueRecopy?.changeCount != firstCopy?.changeCount)
+        if let firstCopy {
+            HudSecretClipboard.clear(ifMatching: firstCopy, from: pasteboard)
+        }
+        #expect(pasteboard.string == "secret")
+
+        if let sameValueRecopy {
+            HudSecretClipboard.clear(ifMatching: sameValueRecopy, from: pasteboard)
+        }
+        #expect(pasteboard.items.isEmpty)
+        #expect(!pasteboard.hasStrings)
+    }
+}
+#endif
+
 @Suite("HudSettingsDetail")
 struct HudSettingsDetailTests {
     @Test("settings detail layout collapses below its configured threshold")
@@ -173,6 +203,31 @@ struct HudSettingsDetailTests {
         host.layoutSubtreeIfNeeded()
 
         #expect(measurement.size.width == 600)
+        #expect(measurement.size.height > 400)
+    }
+
+    @MainActor
+    @Test("settings detail contributes its column height inside a vertical scroll view")
+    func columnsSizeInsideVerticalScrollView() {
+        let measurement = HudSettingsDetailMeasurement()
+        let root = ScrollView(.vertical) {
+            HudSettingsDetailMeasurementLayout(measurement: measurement) {
+                HudSettingsDetail {
+                    Color.clear.frame(height: 100)
+                } detail: {
+                    Color.clear.frame(height: 500)
+                }
+            }
+        }
+        .frame(width: 1_000, height: 400)
+
+        let host = NSHostingView(rootView: root)
+        host.frame = NSRect(x: 0, y: 0, width: 1_000, height: 400)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        host.layoutSubtreeIfNeeded()
+
+        #expect(measurement.size.width == 1_000)
         #expect(measurement.size.height > 400)
     }
     #endif
