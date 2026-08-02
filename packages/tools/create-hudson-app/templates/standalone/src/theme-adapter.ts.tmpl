@@ -1,0 +1,95 @@
+/**
+ * Theme adapter — one seed → hud ladder + shadcn-layer tokens.
+ *
+ * Load-bearing rule (HUD-014 / Iris slice-1): edge channels never equal ink.
+ * Mapping `--border` to ink paints every kit hairline near-white on dark themes.
+ */
+
+export type ThemeSeed = {
+  bg: string;
+  surface: string;
+  ink: string;
+  muted: string;
+  dim: string;
+  accent: string;
+  accentSoft: string;
+  actionTint: string;
+  /** Structural edges — never the same as ink. */
+  edge: string;
+  edgeFaint: string;
+  radius?: string;
+};
+
+export const defaultSeed: ThemeSeed = {
+  bg: '0.145 0 0',
+  surface: '0.205 0 0',
+  ink: '0.922 0 0',
+  muted: '0.708 0 0',
+  dim: '0.556 0 0',
+  accent: '0.696 0.17 162.48',
+  accentSoft: '0.696 0.17 162.48 / 0.12',
+  actionTint: '0.922 0 0 / 0.10',
+  edge: '0.37 0 0 / 0.5',
+  edgeFaint: '0.37 0 0 / 0.35',
+  radius: '8px',
+};
+
+function oklch(channels: string): string {
+  return `oklch(${channels})`;
+}
+
+/** Build CSS custom properties. Borders always come from edge*, never ink. */
+export function seedToCssVars(seed: ThemeSeed): Record<string, string> {
+  const edge = oklch(seed.edge);
+  const ink = oklch(seed.ink);
+
+  return {
+    // Hud ladder uses complete CSS colors.
+    '--hud-bg': oklch(seed.bg),
+    '--hud-surface': oklch(seed.surface),
+    '--hud-panel': oklch(seed.surface),
+    '--hud-ink': ink,
+    '--hud-muted': oklch(seed.muted),
+    '--hud-dim': oklch(seed.dim),
+    '--hud-accent': oklch(seed.accent),
+    '--hud-accent-soft': oklch(seed.accentSoft),
+    '--hud-action-tint': oklch(seed.actionTint),
+    '--hud-border': edge,
+    '--hud-chrome-border': edge,
+    '--hud-nav-live': oklch(seed.accent),
+    '--hud-radius': seed.radius ?? '8px',
+
+    // HudsonKit's Tailwind bundle resolves these as oklch(var(--token)), so
+    // they must remain channel values rather than complete CSS color strings.
+    '--background': seed.bg,
+    '--foreground': seed.ink,
+    '--card': seed.surface,
+    '--popover': seed.surface,
+    '--primary': seed.accent,
+    '--accent': seed.accent,
+    '--muted-foreground': seed.muted,
+    '--border': seed.edge,
+    '--input': seed.edgeFaint,
+    '--ring': seed.accent,
+    '--radius': seed.radius ?? '8px',
+  };
+}
+
+/** Apply to :root and optional AppShell template host. */
+export function applyThemeSeed(seed: ThemeSeed, root: HTMLElement = document.documentElement): void {
+  const vars = seedToCssVars(seed);
+  for (const [key, value] of Object.entries(vars)) {
+    root.style.setProperty(key, value);
+  }
+  const host = document.querySelector<HTMLElement>('[data-hudson-template]');
+  if (host && host !== root) {
+    for (const [key, value] of Object.entries(vars)) {
+      host.style.setProperty(key, value);
+    }
+  }
+}
+
+/** Guard used by tests — true when border incorrectly tracks ink only. */
+export function isBorderMappedToInk(vars: Record<string, string>, seed: ThemeSeed): boolean {
+  return vars['--border'] === seed.ink || vars['--hud-border'] === oklch(seed.ink);
+}

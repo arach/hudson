@@ -1,0 +1,21 @@
+import { describe, expect, it } from 'vitest';
+import { defaultSeed, isBorderMappedToInk, seedToCssVars, type ThemeSeed } from './theme-adapter';
+
+describe('theme adapter (edge ≠ ink)', () => {
+  it('maps --border and --input from edge channels, never ink', () => {
+    const vars = seedToCssVars(defaultSeed);
+    expect(isBorderMappedToInk(vars, defaultSeed)).toBe(false);
+    expect(vars['--border']).toBe(defaultSeed.edge);
+    expect(vars['--input']).toBe(defaultSeed.edgeFaint);
+    expect(vars['--foreground']).toBe(defaultSeed.ink);
+    expect(vars['--hud-border']).toBe(`oklch(${defaultSeed.edge})`);
+    expect(vars['--hud-ink']).toBe(`oklch(${defaultSeed.ink})`);
+  });
+
+  it('fails the guard when a bad seed maps border to ink', () => {
+    const bad: ThemeSeed = { ...defaultSeed, edge: defaultSeed.ink };
+    const vars = seedToCssVars(bad);
+    // Explicit ink equality is the slice-1 failure mode.
+    expect(isBorderMappedToInk(vars, bad)).toBe(true);
+  });
+});

@@ -145,4 +145,6 @@ export function buildVars(
   };
 }
 
-export type Tier = 'minimal' | 'standard' | 'full';
+/** App tiers scaffold monorepo `app/apps/*`. `standalone` is a
+ *  Vite + TanStack consumer-client project (HUD-014) — not for in-repo apps. */
+export type Tier = 'minimal' | 'standard' | 'full' | 'standalone';
