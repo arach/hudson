@@ -40,6 +40,24 @@ struct HudTTSProviderTests {
         #expect(result.providerID == .groq)
     }
 
+    @MainActor
+    @Test("HudTTS preserves unknown-provider errors through generic routing")
+    func preservesUnknownProviderError() async {
+        let tts = HudTTS(
+            credentialSource: StaticTTSCredentialSource(),
+            adapters: []
+        )
+
+        do {
+            _ = try await tts.synthesize("Hello", providerID: "missing-provider")
+            Issue.record("Expected unknownProvider")
+        } catch let HudTTSError.unknownProvider(provider) {
+            #expect(provider == "missing-provider")
+        } catch {
+            Issue.record("Expected unknownProvider, got \(error)")
+        }
+    }
+
     @Test("OpenAI and ElevenLabs forward trimmed model overrides")
     func existingAdapterOverrides() async throws {
         let openAISession = HudTTSMockURLProtocol.session(body: Data([0x01]))
@@ -115,7 +133,7 @@ struct HudTTSProviderTests {
                 "content": [
                     "parts": [[
                         "inlineData": [
-                            "mimeType": "audio/L16;codec=pcm;rate=22050",
+                            "mimeType": "audio/L16;codec=pcm;rate=22050;channels=2",
                             "data": pcm.base64EncodedString(),
                         ],
                     ]],
@@ -154,9 +172,61 @@ struct HudTTSProviderTests {
 
         #expect(result.format == .wav)
         #expect(String(data: result.audioData.prefix(4), encoding: .utf8) == "RIFF")
+        #expect(littleEndianUInt16(in: result.audioData, at: 22) == 2)
         #expect(littleEndianUInt32(in: result.audioData, at: 24) == 22_050)
         #expect(littleEndianUInt32(in: result.audioData, at: 40) == UInt32(pcm.count))
         #expect(result.audioData.suffix(pcm.count) == pcm)
+    }
+
+    @Test("Gemini rejects malformed PCM metadata and incomplete frames")
+    func rejectsMalformedGeminiPCM() {
+        expectUnsupportedPCM(
+            Data([0x00, 0x01]),
+            mimeType: "audio/L16;codec=pcm;rate=not-a-number"
+        )
+        expectUnsupportedPCM(
+            Data([0x00, 0x01, 0x02]),
+            mimeType: "audio/L16;codec=pcm;rate=24000"
+        )
+        expectUnsupportedPCM(
+            Data([0x00, 0x01]),
+            mimeType: "audio/L16;codec=pcm;rate=24000;channels=0"
+        )
+    }
+
+    @Test("cloud adapters preserve provider HTTP error messages")
+    func providerHTTPErrorMessages() async {
+        let groqBody = Data("{\"error\":{\"message\":\"slow down\"}}".utf8)
+        let groqSession = HudTTSMockURLProtocol.session(status: 429, body: groqBody)
+        do {
+            _ = try await GroqHudTTSProvider().synthesize(
+                HudTTSRequest(text: "Hello"),
+                context: context(session: groqSession)
+            )
+            Issue.record("Expected Groq providerRejectedRequest")
+        } catch let HudTTSError.providerRejectedRequest(provider, status, message) {
+            #expect(provider == .groq)
+            #expect(status == 429)
+            #expect(message == "Groq TTS: slow down")
+        } catch {
+            Issue.record("Expected Groq providerRejectedRequest, got \(error)")
+        }
+
+        let geminiBody = Data("{\"error\":{\"message\":\"invalid voice\"}}".utf8)
+        let geminiSession = HudTTSMockURLProtocol.session(status: 400, body: geminiBody)
+        do {
+            _ = try await GeminiHudTTSProvider().synthesize(
+                HudTTSRequest(text: "Hello"),
+                context: context(session: geminiSession)
+            )
+            Issue.record("Expected Gemini providerRejectedRequest")
+        } catch let HudTTSError.providerRejectedRequest(provider, status, message) {
+            #expect(provider == .gemini)
+            #expect(status == 400)
+            #expect(message == "Gemini TTS: invalid voice")
+        } catch {
+            Issue.record("Expected Gemini providerRejectedRequest, got \(error)")
+        }
     }
 
     private func context(session: URLSession) -> HudTTSAdapterContext {
@@ -172,6 +242,21 @@ struct HudTTSProviderTests {
             | (UInt32(data[offset + 1]) << 8)
             | (UInt32(data[offset + 2]) << 16)
             | (UInt32(data[offset + 3]) << 24)
+    }
+
+    private func littleEndianUInt16(in data: Data, at offset: Int) -> UInt16 {
+        UInt16(data[offset]) | (UInt16(data[offset + 1]) << 8)
+    }
+
+    private func expectUnsupportedPCM(_ audio: Data, mimeType: String) {
+        do {
+            _ = try GeminiHudTTSProvider.pcmWAV(audio: audio, mimeType: mimeType)
+            Issue.record("Expected unsupported Gemini PCM metadata")
+        } catch let HudTTSError.synthesisFailed(provider, _) {
+            #expect(provider == .gemini)
+        } catch {
+            Issue.record("Expected synthesisFailed, got \(error)")
+        }
     }
 }
 

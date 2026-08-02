@@ -10,6 +10,8 @@ public struct GroqHudTTSProvider: HudTTSProviderAdapter {
     public var model: String
     public var endpoint: URL
 
+    /// Orpheus rejects longer inputs. Callers should split longer utterances;
+    /// this adapter truncates at the provider boundary as a final safeguard.
     static let maximumInputCharacters = 200
 
     public init(

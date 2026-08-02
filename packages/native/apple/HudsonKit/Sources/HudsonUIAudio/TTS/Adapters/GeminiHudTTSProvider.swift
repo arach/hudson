@@ -89,7 +89,11 @@ public struct GeminiHudTTSProvider: HudTTSProviderAdapter {
             )
         }
 
-        let output = mimeType.localizedCaseInsensitiveContains("wav")
+        let normalizedMIME = mimeType
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased()
+        let output = normalizedMIME.hasPrefix("audio/wav")
+            || normalizedMIME.hasPrefix("audio/x-wav")
             ? audio
             : try Self.pcmWAV(audio: audio, mimeType: mimeType)
         return HudTTSResult(
@@ -115,19 +119,24 @@ public struct GeminiHudTTSProvider: HudTTSProviderAdapter {
                 .lowercased()
             parameters[key] = pair[1].trimmingCharacters(in: .whitespacesAndNewlines)
         }
-        let sampleRate = UInt32(parameters["rate"] ?? "24000") ?? 24_000
-        let bitsPerSample: UInt16 = 16
-        let channelCount: UInt16 = 1
         guard
+            let sampleRate = UInt32(parameters["rate"] ?? "24000"),
+            let channelCount = UInt16(parameters["channels"] ?? "1"),
             (8_000...192_000).contains(sampleRate),
-            audio.count.isMultiple(of: Int(bitsPerSample / 8)),
+            (1...8).contains(channelCount)
+        else {
+            throw unsupportedAudioError()
+        }
+        let bitsPerSample: UInt16 = 16
+        let blockAlign = channelCount * bitsPerSample / 8
+        guard
+            audio.count.isMultiple(of: Int(blockAlign)),
             audio.count <= Int(UInt32.max) - 36
         else {
             throw unsupportedAudioError()
         }
 
         let byteRate = sampleRate * UInt32(channelCount) * UInt32(bitsPerSample) / 8
-        let blockAlign = channelCount * bitsPerSample / 8
         var wav = Data("RIFF".utf8)
         wav.appendLittleEndian(UInt32(36 + audio.count))
         wav.append(Data("WAVEfmt ".utf8))
