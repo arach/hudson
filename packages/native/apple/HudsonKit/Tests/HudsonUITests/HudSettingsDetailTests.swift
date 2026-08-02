@@ -4,6 +4,22 @@ import Testing
 
 @Suite("HudSettingsDetail")
 struct HudSettingsDetailTests {
+    @Test("settings detail layout collapses below its configured threshold")
+    func choosesResponsiveLayout() {
+        #expect(
+            HudSettingsDetailLayoutPolicy.layout(for: 759, collapseBelow: 760) == .stacked
+        )
+        #expect(
+            HudSettingsDetailLayoutPolicy.layout(for: 760, collapseBelow: 760) == .columns
+        )
+        #expect(
+            HudSettingsDetailLayoutPolicy.layout(for: 499, collapseBelow: 500) == .stacked
+        )
+        #expect(
+            HudSettingsDetailLayoutPolicy.layout(for: 500, collapseBelow: 500) == .columns
+        )
+    }
+
     @MainActor
     @Test("settings detail primitives construct with default and custom slots")
     func constructsSettingsPrimitives() {

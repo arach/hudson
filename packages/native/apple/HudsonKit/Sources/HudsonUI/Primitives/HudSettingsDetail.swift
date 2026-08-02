@@ -1,5 +1,16 @@
 import SwiftUI
 
+enum HudSettingsDetailLayout: Equatable, Sendable {
+    case stacked
+    case columns
+}
+
+enum HudSettingsDetailLayoutPolicy {
+    static func layout(for width: CGFloat, collapseBelow: CGFloat) -> HudSettingsDetailLayout {
+        width < collapseBelow ? .stacked : .columns
+    }
+}
+
 /// A two-column settings canvas with a fixed-width selection column and a
 /// flexible detail column. Apps own the data and navigation model; Hudson owns
 /// the spacing, divider, and responsive collapse behavior.
@@ -23,20 +34,28 @@ public struct HudSettingsDetail<Sidebar: View, Detail: View>: View {
 
     public var body: some View {
         GeometryReader { proxy in
-            if proxy.size.width < collapseBelow {
-                VStack(alignment: .leading, spacing: HudSpacing.xxl) {
-                    sidebar()
-                    HudDivider()
-                    detail()
-                }
-            } else {
-                HStack(alignment: .top, spacing: HudSpacing.xxl) {
-                    sidebar()
-                        .frame(width: sidebarWidth, alignment: .topLeading)
-                    HudDivider(axis: .vertical)
-                    detail()
-                        .frame(maxWidth: .infinity, alignment: .topLeading)
-                }
+            let layoutMode = HudSettingsDetailLayoutPolicy.layout(
+                for: proxy.size.width,
+                collapseBelow: collapseBelow
+            )
+            let layout = switch layoutMode {
+            case .stacked:
+                AnyLayout(VStackLayout(alignment: .leading, spacing: HudSpacing.xxl))
+            case .columns:
+                AnyLayout(HStackLayout(alignment: .top, spacing: HudSpacing.xxl))
+            }
+
+            layout {
+                sidebar()
+                    .frame(
+                        minWidth: layoutMode == .columns ? sidebarWidth : nil,
+                        idealWidth: layoutMode == .columns ? sidebarWidth : nil,
+                        maxWidth: layoutMode == .columns ? sidebarWidth : .infinity,
+                        alignment: .topLeading
+                    )
+                HudDivider(axis: layoutMode == .columns ? .vertical : .horizontal)
+                detail()
+                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
         }
     }
@@ -98,16 +117,11 @@ public struct HudSettingsNavigationRow<Trailing: View>: View {
 
                 VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                     Text(title)
-                        .font(
-                            HudFont.ui(
-                                HudTextSize.sm,
-                                weight: isSelected ? .semibold : .medium
-                            )
-                        )
+                        .hudFont(.sm, weight: isSelected ? .semibold : .medium)
                         .foregroundStyle(theme.palette.ink)
                     if let subtitle {
                         Text(subtitle)
-                            .font(HudFont.ui(HudTextSize.xs, weight: .light))
+                            .hudFont(.xs, weight: .light)
                             .foregroundStyle(theme.palette.muted)
                             .lineLimit(1)
                     }
@@ -117,7 +131,7 @@ public struct HudSettingsNavigationRow<Trailing: View>: View {
                 trailing()
             }
             .padding(.horizontal, HudSpacing.md)
-            .frame(height: HudLayout.rowHeightRegular + HudSpacing.md)
+            .frame(minHeight: HudLayout.rowHeightRegular + HudSpacing.md)
             .background(
                 RoundedRectangle(cornerRadius: theme.radius.standard)
                     .fill(
@@ -139,7 +153,6 @@ public struct HudSettingsNavigationRow<Trailing: View>: View {
         .buttonStyle(.plain)
         .onHover { isHovering = $0 }
         .accessibilityLabel(subtitle.map { "\(title), \($0)" } ?? title)
-        .accessibilityValue(isSelected ? "Selected" : "Not selected")
         .accessibilityAddTraits(isSelected ? .isSelected : [])
     }
 }
@@ -212,11 +225,11 @@ public struct HudCredentialSection: View {
 
                     VStack(alignment: .leading, spacing: HudSpacing.xxs) {
                         Text(title)
-                            .font(HudFont.ui(HudTextSize.md, weight: .semibold))
+                            .hudFont(.md, weight: .semibold)
                             .foregroundStyle(theme.palette.ink)
                         if let subtitle {
                             Text(subtitle)
-                                .font(HudFont.ui(HudTextSize.xs, weight: .light))
+                                .hudFont(.xs, weight: .light)
                                 .foregroundStyle(theme.palette.muted)
                         }
                     }
@@ -235,7 +248,8 @@ public struct HudCredentialSection: View {
                     HStack {
                         Spacer(minLength: 0)
                         Link(destinationTitle, destination: destinationURL)
-                            .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                            .hudFont(.xs, weight: .semibold)
+                            .tint(theme.palette.accent)
                     }
                 }
             }
