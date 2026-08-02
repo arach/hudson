@@ -136,7 +136,7 @@
     },
     "packages/web/hudsonkit": {
       "name": "hudsonkit",
-      "version": "0.3.5",
+      "version": "0.4.0",
       "bin": {
         "hudsonkit": "./bin/hudsonkit.mjs",
       },
@@ -150,8 +150,12 @@
       },
       "devDependencies": {
         "@tailwindcss/cli": "^4",
+        "@testing-library/jest-dom": "^6.9.1",
+        "@testing-library/react": "^16.3.2",
+        "jsdom": "^28.1.0",
         "tsup": "^8.0.0",
         "typescript": "5.9.3",
+        "vitest": "^4.0.18",
       },
       "peerDependencies": {
         "@codemirror/commands": "^6.10.3",

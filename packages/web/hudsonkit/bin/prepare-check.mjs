@@ -29,8 +29,32 @@ if (existsSync(distIndex) && existsSync(distStyles)) {
   process.exit(0);
 }
 
+function runBuild(script) {
+  process.stdout.write(`[hudsonkit] prepare: running \`bun run ${script}\`…\n`);
+  const result = spawnSync('bun', ['run', script], {
+    cwd: pkgRoot,
+    stdio: 'inherit',
+  });
+  if (result.error || result.status !== 0) {
+    process.stderr.write(
+      `\n[hudsonkit] prepare: \`${script}\` failed. ` +
+      'If you intended to depend on a Hudson source folder, run `bun run build` ' +
+      'inside the hudsonkit package once and retry your install, or switch to a ' +
+      'sealed tarball (`bun run pack` produces hudsonkit-X.Y.Z.tgz).\n',
+    );
+    process.exit(result.status ?? 1);
+  }
+}
+
+// JS present but CSS missing: common after a tsup clean wiped dist/styles.css.
+// Prefer a cheap CSS-only rebuild so consumers of `hudsonkit/styles` stay green.
+if (existsSync(distIndex) && !existsSync(distStyles)) {
+  runBuild('build:css');
+  if (existsSync(distStyles)) process.exit(0);
+}
+
 // Inside the Hudson monorepo workspace, bun typically skips `prepare`, but if
-// it ever doesn't, refuse to spin up the build during a Hudson workspace
+// it ever doesn't, refuse to spin up the full build during a Hudson workspace
 // install — that's an in-place rebuild while devs may be running watchers.
 // Heuristic: a `pnpm-workspace.yaml` or root `package.json` with a `workspaces`
 // entry pointing at us at a parent directory is the signal.
@@ -52,23 +76,10 @@ for (let i = 0; i < 6 && parent !== dirname(parent); i++) {
 if (foundWorkspaceRoot) {
   // We're being prepared inside someone's workspace (likely Hudson itself).
   // Don't auto-build. Devs are expected to run `bun run build` explicitly.
+  // (CSS-only recovery above still runs when styles.css is missing.)
   process.stdout.write('[hudsonkit] prepare: skipped (workspace install)\n');
   process.exit(0);
 }
 
 // Otherwise: file:/git install of a source folder. Build now.
-process.stdout.write('[hudsonkit] prepare: building dist/ (one-shot)…\n');
-const result = spawnSync('bun', ['run', 'build'], {
-  cwd: pkgRoot,
-  stdio: 'inherit',
-});
-
-if (result.error || result.status !== 0) {
-  process.stderr.write(
-    '\n[hudsonkit] prepare: build failed. ' +
-    'If you intended to depend on a Hudson source folder, run `bun run build` ' +
-    'inside the hudsonkit package once and retry your install, or switch to a ' +
-    'sealed tarball (`bun run pack` produces hudsonkit-X.Y.Z.tgz).\n',
-  );
-  process.exit(result.status ?? 1);
-}
+runBuild('build');

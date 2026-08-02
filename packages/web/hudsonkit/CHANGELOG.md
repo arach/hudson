@@ -21,11 +21,16 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   native `HudSelect`). Shared `menuChrome` (`OVERLAY_*`) is the single
   register for ContextMenu + behaviors — edges on the chrome/border ladder,
   accent only for highlight/selected.
+- Pack gate for sealed artifacts: `assert-dist` (pre-pack: dist must contain
+  `styles.css` + tokens + type decls) and `verify-pack` (post-pack: tarball
+  listing must include those paths). `bun run pack` runs both.
 
 ### Changed
 
 - Replaced Lucide with Hudson's shared Iconoir adapter and added the
   `hudsonkit/icons` export.
+- Preserve CSS pipeline outputs across JavaScript-only tsup cleans, and recover
+  missing styles with the cheaper CSS build during source-package preparation.
 - Clear `useSnapCollapseAt`'s pending programmatic-width guard after a bounded
   180ms timeout when host clamping prevents the requested width from settling.
 

@@ -1,5 +1,5 @@
 import { defineConfig } from 'tsup';
-import { readFile, writeFile } from 'node:fs/promises';
+import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const sharedExternal = [
@@ -72,15 +72,56 @@ async function markClientEntries() {
   }));
 }
 
+// dist/styles.css + tokens are produced by `build:css` (Tailwind), not tsup.
+// tsup's default `clean: true` rimrafs the whole outDir and drops those files,
+// so a JS-only rebuild leaves consumers (esp. pnpm file: installs that snapshot
+// dist/) without `hudsonkit/styles`. Preserve the CSS pipeline outputs across
+// JS cleans.
+const PRESERVE_DIST = new Set([
+  'styles.css',
+  'tokens.css',
+  'styles.d.ts',
+  'styles-tokens.d.ts',
+]);
+
+let cleanedDist = false;
+
+async function cleanDistPreserveCss() {
+  if (cleanedDist) return;
+  cleanedDist = true;
+  const distDir = 'dist';
+  let entries: string[];
+  try {
+    entries = await readdir(distDir);
+  } catch {
+    return;
+  }
+  await Promise.all(
+    entries.map(async (name) => {
+      if (PRESERVE_DIST.has(name)) return;
+      await rm(join(distDir, name), { recursive: true, force: true });
+    }),
+  );
+}
+
 export default defineConfig({
   entry: clientEntries,
   format: ['esm'],
   dts: true,
   splitting: true,
   treeshake: true,
-  clean: true,
+  // Custom clean — see cleanDistPreserveCss above.
+  clean: false,
   outDir: 'dist',
   external: sharedExternal,
+  plugins: [
+    {
+      name: 'clean-dist-preserve-css',
+      async buildStart() {
+        await cleanDistPreserveCss();
+      },
+    },
+  ],
   onSuccess: markClientEntries,
 });
 
