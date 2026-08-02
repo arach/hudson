@@ -1,6 +1,6 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
-import { Boxes, FileText, Home } from 'lucide-react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { Boxes, FileText, Home } from '../src/icons';
 import {
   HudBreadcrumb,
   HudSideNav,

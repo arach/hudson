@@ -25,8 +25,8 @@
 // is a neutral filled chip, never the live tone, so "where I am" and "what is
 // live" stay legible as two separate channels.
 
-import React, { useCallback, useEffect, useRef, useState } from 'react';
-import type { LucideIcon } from 'lucide-react';
+import React, { useCallback, useState } from 'react';
+import type { HudsonIcon } from '../../icons';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
 import {
@@ -55,9 +55,9 @@ export interface HudNavNode {
   label: React.ReactNode;
   /** Accessible/collapsed-rail label when `label` is not plain text. Falls back to `id`. */
   accessibilityLabel?: string;
-  /** Optional Lucide icon. Rendered on destinations and leaves, and it is the
+  /** Optional Hudson icon. Rendered on destinations and leaves, and it is the
    *  only affordance shown in collapsed (icons-only) mode. */
-  icon?: LucideIcon;
+  icon?: HudsonIcon;
   /** Convenience trailing count. Rendered as a badge; tone follows `live`. */
   count?: number;
   /** Arbitrary trailing content (custom badge, timestamp, …). Sits before the
@@ -193,36 +193,38 @@ function HudSideNavView({
   const iconCollapsed = state === 'collapsed' && collapsible === 'icon';
   const offcanvasHidden = state === 'collapsed' && collapsible === 'offcanvas';
 
-  const [internalExpanded, setInternalExpanded] = useState<Set<string>>(() => {
+  const [internalExpansion, setInternalExpansion] = useState(() => {
     const seed = new Set(defaultExpandedIds);
     if (selectedId && items) {
       for (const id of collectAncestors(items, selectedId) ?? []) seed.add(id);
     }
-    return seed;
+    return { ids: seed, revealedSelectedId: selectedId };
   });
+  if (
+    expandedIds === undefined &&
+    internalExpansion.revealedSelectedId !== selectedId
+  ) {
+    // React supports a guarded render-time state adjustment for prop changes.
+    // This reveals a newly selected node without a cascading effect render,
+    // while still allowing the user to collapse it again until selection moves.
+    const next = new Set(internalExpansion.ids);
+    if (selectedId && items) {
+      for (const id of collectAncestors(items, selectedId) ?? []) next.add(id);
+    }
+    setInternalExpansion({ ids: next, revealedSelectedId: selectedId });
+  }
+  const internalExpanded = internalExpansion.ids;
   const expanded = expandedIds ?? internalExpanded;
 
   const setExpanded = useCallback(
     (next: Set<string>) => {
-      if (!expandedIds) setInternalExpanded(next);
+      if (expandedIds === undefined) {
+        setInternalExpansion((current) => ({ ...current, ids: next }));
+      }
       onExpandedChange?.(next);
     },
     [expandedIds, onExpandedChange],
   );
-
-  const lastRevealedSelectedId = useRef(selectedId);
-  useEffect(() => {
-    // Controlled expansion remains fully consumer-owned. In uncontrolled mode,
-    // keep route/search-driven selection changes visible after the first paint.
-    const selectionChanged = lastRevealedSelectedId.current !== selectedId;
-    lastRevealedSelectedId.current = selectedId;
-    if (!selectionChanged || expandedIds !== undefined || !selectedId || !items) return;
-    const ancestors = collectAncestors(items, selectedId) ?? [];
-    if (!ancestors.some((id) => !internalExpanded.has(id))) return;
-    const next = new Set(internalExpanded);
-    for (const id of ancestors) next.add(id);
-    setExpanded(next);
-  }, [expandedIds, internalExpanded, items, selectedId, setExpanded]);
 
   const toggleExpanded = useCallback(
     (id: string) => {

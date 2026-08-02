@@ -22,6 +22,8 @@ export default defineConfig({
       // Worker tests run with their own vitest config (node env, own deps) in
       // CI's "Worker tests" step — don't double-run them under jsdom here.
       'packages/cloud/**',
+      // Release-policy tests use Bun's native test runner in their workflow.
+      'scripts/release/**/*.test.mjs',
       '**/.build/**',
       'packages/native/**/.build/**',
     ],

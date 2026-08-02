@@ -107,13 +107,11 @@ jobs:
           mkdir -p "$RUNNER_TEMP/npm-packages"
           bun pm pack \
             --cwd packages/web/hudsonkit \
-            --destination "$RUNNER_TEMP/npm-packages" \
-            --filename hudsonkit.tgz \
+            --filename "$RUNNER_TEMP/npm-packages/hudsonkit.tgz" \
             --quiet
           bun pm pack \
             --cwd packages/web/ai-backends \
-            --destination "$RUNNER_TEMP/npm-packages" \
-            --filename hudsonkit-ai.tgz \
+            --filename "$RUNNER_TEMP/npm-packages/hudsonkit-ai.tgz" \
             --quiet
 
       - name: Validate packed packages

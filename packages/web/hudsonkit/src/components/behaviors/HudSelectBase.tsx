@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Select } from '@base-ui-components/react/select';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '../../icons';
 import {
   chromeBorderStyle,
   OVERLAY_ITEM,

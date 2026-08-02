@@ -10,6 +10,7 @@ import {
   ArrowUnionVertical as ArrowUnionVerticalGlyph,
   ArrowUp as ArrowUpGlyph,
   Attachment as AttachmentGlyph,
+  BoxIso as BoxIsoGlyph,
   BookStack as BookStackGlyph,
   Brain as BrainGlyph,
   BrainElectricity as BrainElectricityGlyph,
@@ -51,6 +52,7 @@ import {
   GitBranch as GitBranchGlyph,
   GitCompare as GitCompareGlyph,
   Hashtag as HashtagGlyph,
+  Home as HomeGlyph,
   Globe as GlobeGlyph,
   InfoCircle as InfoCircleGlyph,
   KeyCommand as KeyCommandGlyph,
@@ -213,6 +215,7 @@ export const AudioLines = hudsonIcon(SoundHighGlyph, 'AudioLines');
 export const BookOpen = hudsonIcon(OpenBookGlyph, 'BookOpen');
 export const BookOpenText = hudsonIcon(OpenBookGlyph, 'BookOpenText');
 export const Bot = hudsonIcon(BrainElectricityGlyph, 'Bot');
+export const Boxes = hudsonIcon(BoxIsoGlyph, 'Boxes');
 export const Braces = hudsonIcon(CodeBracketsGlyph, 'Braces');
 export const Brackets = hudsonIcon(CodeBracketsSquareGlyph, 'Brackets');
 export const Brain = hudsonIcon(BrainGlyph, 'Brain');
@@ -257,6 +260,7 @@ export const Globe = hudsonIcon(GlobeGlyph, 'Globe');
 export const Hand = hudsonIcon(DragHandGestureGlyph, 'Hand');
 export const Hash = hudsonIcon(HashtagGlyph, 'Hash');
 export const History = hudsonIcon(ClockRotateRightGlyph, 'History');
+export const Home = hudsonIcon(HomeGlyph, 'Home');
 export const ImageIcon = hudsonIcon(MediaImageGlyph, 'ImageIcon');
 export const Image = hudsonIcon(MediaImageGlyph, 'Image');
 export const Inbox = hudsonIcon(DownloadSquareGlyph, 'Inbox');
