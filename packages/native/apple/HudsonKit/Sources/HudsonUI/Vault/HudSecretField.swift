@@ -1,8 +1,47 @@
 import SwiftUI
 
-#if canImport(UIKit)
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
 import UIKit
 #endif
+
+enum HudSecretClipboard {
+    @discardableResult
+    static func copy(_ text: String) -> Bool {
+        #if canImport(AppKit)
+        copy(text, to: .general)
+        #elseif canImport(UIKit)
+        UIPasteboard.general.string = text
+        return UIPasteboard.general.string == text
+        #else
+        return false
+        #endif
+    }
+
+    static func clear(ifMatching snapshot: String) {
+        #if canImport(AppKit)
+        clear(ifMatching: snapshot, from: .general)
+        #elseif canImport(UIKit)
+        if UIPasteboard.general.string == snapshot {
+            UIPasteboard.general.string = ""
+        }
+        #endif
+    }
+
+    #if canImport(AppKit)
+    @discardableResult
+    static func copy(_ text: String, to pasteboard: NSPasteboard) -> Bool {
+        pasteboard.clearContents()
+        return pasteboard.setString(text, forType: .string)
+    }
+
+    static func clear(ifMatching snapshot: String, from pasteboard: NSPasteboard) {
+        guard pasteboard.string(forType: .string) == snapshot else { return }
+        pasteboard.clearContents()
+    }
+    #endif
+}
 
 /// Masked input for entering a secret (API key, token, passphrase) — replaces
 /// raw `TextField` usage Talkie/Scout currently lean on for credential entry.
@@ -84,16 +123,14 @@ public struct HudSecretField: View {
     }
 
     private func copy() {
-        #if canImport(UIKit)
-        UIPasteboard.general.string = text
+        guard HudSecretClipboard.copy(text) else { return }
+
         // Clear the pasteboard after 30s so the secret doesn't linger.
         let snapshot = text
         DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            if UIPasteboard.general.string == snapshot {
-                UIPasteboard.general.string = ""
-            }
+            HudSecretClipboard.clear(ifMatching: snapshot)
         }
-        #endif
+
         didCopy = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
             didCopy = false
