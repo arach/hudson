@@ -129,7 +129,9 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         textView.backgroundColor = HudAppKitColor.editorBackground
         scrollView.backgroundColor = HudAppKitColor.editorBackground
         context.coordinator.editorPointSize = editorPointSize
-        textView.font = HudAppKitFont.editor(size: editorPointSize)
+        if textView.font?.pointSize != editorPointSize {
+            textView.font = HudAppKitFont.editor(size: editorPointSize)
+        }
 
         if showsLineNumbers {
             configureLineNumbers(on: scrollView, textView: textView)
