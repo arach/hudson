@@ -32,7 +32,7 @@ public struct HudConnectionRouteKind: RawRepresentable, Codable, Hashable, Senda
 /// One connectable route to a paired host, contributed by a route provider.
 public struct HudConnectionRoute: Codable, Equatable, Identifiable, Sendable {
     public var id: String {
-        "\(providerID)|\(kind.rawValue)|\(endpoint.url.absoluteString)"
+        endpoint.url.absoluteString
     }
 
     public var endpoint: HudPairingEndpoint
@@ -192,9 +192,13 @@ public struct HudConnectionSettings: Codable, Equatable, Sendable {
     }
 
     public func allows(_ route: HudConnectionRoute, default defaultValue: Bool) -> Bool {
-        if let enabled = routeEnabled[route.id] { return enabled }
-        if let enabled = providerEnabled[route.providerID] { return enabled }
-        if let enabled = routeKindEnabled[route.kind.rawValue] { return enabled }
+        let decisions = [
+            routeEnabled[route.id],
+            providerEnabled[route.providerID],
+            routeKindEnabled[route.kind.rawValue],
+        ].compactMap { $0 }
+        if decisions.contains(false) { return false }
+        if decisions.contains(true) { return true }
         return defaultValue
     }
 
@@ -206,6 +210,10 @@ public struct HudConnectionSettings: Codable, Equatable, Sendable {
 public protocol HudConnectionSettingsStore: Sendable {
     func load() async throws -> HudConnectionSettings
     func save(_ settings: HudConnectionSettings) async throws
+    @discardableResult
+    func update(
+        _ transform: @Sendable (inout HudConnectionSettings) -> Void
+    ) async throws -> HudConnectionSettings
 }
 
 public actor HudInMemoryConnectionSettingsStore: HudConnectionSettingsStore {
@@ -222,6 +230,14 @@ public actor HudInMemoryConnectionSettingsStore: HudConnectionSettingsStore {
     public func save(_ settings: HudConnectionSettings) async throws {
         self.settings = settings
     }
+
+    @discardableResult
+    public func update(
+        _ transform: @Sendable (inout HudConnectionSettings) -> Void
+    ) async throws -> HudConnectionSettings {
+        transform(&settings)
+        return settings
+    }
 }
 
 /// JSON-backed connection settings scoped to one app namespace in UserDefaults.
@@ -235,6 +251,24 @@ public actor HudUserDefaultsConnectionSettingsStore: HudConnectionSettingsStore 
     }
 
     public func load() async throws -> HudConnectionSettings {
+        try decodedSettings()
+    }
+
+    public func save(_ settings: HudConnectionSettings) async throws {
+        try persist(settings)
+    }
+
+    @discardableResult
+    public func update(
+        _ transform: @Sendable (inout HudConnectionSettings) -> Void
+    ) async throws -> HudConnectionSettings {
+        var settings = try decodedSettings()
+        transform(&settings)
+        try persist(settings)
+        return settings
+    }
+
+    private func decodedSettings() throws -> HudConnectionSettings {
         guard let data = userDefaults.data(forKey: key) else {
             return HudConnectionSettings()
         }
@@ -245,7 +279,7 @@ public actor HudUserDefaultsConnectionSettingsStore: HudConnectionSettingsStore 
         }
     }
 
-    public func save(_ settings: HudConnectionSettings) async throws {
+    private func persist(_ settings: HudConnectionSettings) throws {
         do {
             let encoder = JSONEncoder()
             encoder.outputFormatting = [.sortedKeys]
@@ -392,7 +426,7 @@ public struct HudConnectionCascade: Sendable {
         routes: [HudConnectionRoute],
         attempt: @escaping @Sendable (HudConnectionRoute) async throws -> Connection
     ) async throws -> HudConnectionResult<Connection> {
-        var settings = try await settingsStore.load()
+        let settings = try await settingsStore.load()
         let orderedRoutes = HudConnectionPlanner.orderedRoutes(
             routes,
             hostID: host.hostID,
@@ -418,11 +452,11 @@ public struct HudConnectionCascade: Sendable {
                         endedAt: endedAt
                     )
                 )
-                settings.recordSuccess(route, hostID: host.hostID)
-
                 var persistenceFailure: String?
                 do {
-                    try await settingsStore.save(settings)
+                    try await settingsStore.update { settings in
+                        settings.recordSuccess(route, hostID: host.hostID)
+                    }
                 } catch {
                     persistenceFailure = error.localizedDescription
                 }
@@ -461,17 +495,20 @@ public struct HudConnectionCascade: Sendable {
         _ route: HudConnectionRoute,
         operation: @escaping @Sendable (HudConnectionRoute) async throws -> Connection
     ) async throws -> Connection {
-        guard let timeout = policy.attemptTimeout, timeout > 0 else {
+        guard let timeout = policy.attemptTimeout, timeout.isFinite, timeout > 0 else {
             return try await operation(route)
         }
+
+        let maximumTimeoutSeconds = TimeInterval(UInt64.max / 1_000_000_000)
+        let boundedTimeout = min(timeout, maximumTimeoutSeconds)
+        let timeoutNanoseconds = UInt64(boundedTimeout * 1_000_000_000)
 
         return try await withThrowingTaskGroup(of: Connection.self) { group in
             group.addTask {
                 try await operation(route)
             }
             group.addTask {
-                let nanoseconds = UInt64(timeout * 1_000_000_000)
-                try await Task.sleep(nanoseconds: nanoseconds)
+                try await Task.sleep(nanoseconds: timeoutNanoseconds)
                 throw HudConnectionAttemptTimeout(routeID: route.id)
             }
 

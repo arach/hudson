@@ -65,7 +65,8 @@ a Hudson enum case.
 
 - `HudConnectionRouteKind`: extensible raw-value category. Hudson publishes
   built-ins; providers may publish their own values.
-- `HudConnectionRoute`: endpoint, kind, provider id, and diagnostic metadata.
+- `HudConnectionRoute`: endpoint, provider-independent route id, kind, provider
+  id, and diagnostic metadata.
 - `HudConnectionRouteProvider`: async route discovery for a paired host.
 - `HudConnectionInventory`: viable routes plus non-fatal provider failures.
 - `HudConnectionPolicy`: app defaults for order, timeout, and success promotion.
@@ -77,7 +78,8 @@ a Hudson enum case.
 
 ## Ordering rules
 
-1. Remove routes disabled explicitly by route id, provider id, or route kind.
+1. Remove routes disabled explicitly by route id, provider id, or route kind;
+   an explicit deny at any level wins over an allow at another level.
 2. Use user ordering when present; otherwise use app policy.
 3. Promote the last successful route for the host when policy permits.
 4. Preserve provider order within the same route-kind rank.
@@ -116,6 +118,8 @@ response bodies.
 
 The secure transport API should remain opaque to this layer so QR-pinned TLS,
 Noise, or a managed relay can satisfy the same connection attempt contract.
+Route kinds are ordering heuristics derived from provider input, not trust
+signals. Authentication remains the paired channel's responsibility.
 
 ## First adoption sequence
 

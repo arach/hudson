@@ -32,7 +32,7 @@ public struct HudPairingEndpoint: Codable, Equatable, Identifiable, Sendable {
         let host = rawHost.lowercased()
         guard !host.isEmpty else { return .manual }
 
-        if host == "localhost" || host == "::1" || host.hasPrefix("127.") {
+        if host == "localhost" || host == "::1" {
             return .loopback
         }
 
@@ -40,14 +40,16 @@ public struct HudPairingEndpoint: Codable, Equatable, Identifiable, Sendable {
             return .tailscale
         }
 
-        if host.hasSuffix(".local") || host.hasPrefix("169.254.") {
+        if host.hasSuffix(".local") {
             return .localNetwork
         }
 
-        // UInt8 parsing rejects malformed dotted quads such as 10.0.0.999
-        // instead of accidentally classifying them as private-network hosts.
-        let pieces = host.split(separator: ".").compactMap { UInt8($0) }
-        if pieces.count == 4 {
+        // Only classify an address-shaped host when the entire value is a
+        // canonical dotted quad. Dropping malformed or trailing labels here
+        // could promote an attacker-controlled hostname to a preferred route.
+        if let pieces = strictIPv4Octets(host) {
+            if pieces[0] == 127 { return .loopback }
+            if pieces[0] == 169 && pieces[1] == 254 { return .localNetwork }
             if pieces[0] == 10 { return .localNetwork }
             if pieces[0] == 192 && pieces[1] == 168 { return .localNetwork }
             if pieces[0] == 172 && (16...31).contains(pieces[1]) { return .localNetwork }
@@ -56,6 +58,24 @@ public struct HudPairingEndpoint: Codable, Equatable, Identifiable, Sendable {
         }
 
         return .remote
+    }
+
+    private static func strictIPv4Octets(_ host: String) -> [UInt8]? {
+        let labels = host.split(separator: ".", omittingEmptySubsequences: false)
+        guard labels.count == 4 else { return nil }
+
+        var octets: [UInt8] = []
+        octets.reserveCapacity(4)
+        for label in labels {
+            guard !label.isEmpty,
+                  (label.count == 1 || label.first != "0"),
+                  label.allSatisfy({ $0 >= "0" && $0 <= "9" }),
+                  let octet = UInt8(label) else {
+                return nil
+            }
+            octets.append(octet)
+        }
+        return octets
     }
 }
 

@@ -8,9 +8,46 @@ struct HudConnectionTests {
     func strictEndpointClassification() throws {
         let tailscale = HudPairingEndpoint(url: try testURL("http://100.100.10.20:8765"))
         let invalid = HudPairingEndpoint(url: try testURL("http://10.0.0.999:8765"))
+        let ambiguous = HudPairingEndpoint(url: try testURL("http://010.0.0.1:8765"))
+        let spoofedTailscale = HudPairingEndpoint(
+            url: try testURL("http://100.100.10.20.evil.com:8765")
+        )
+        let spoofedLAN = HudPairingEndpoint(url: try testURL("http://192.168.1.5.evil.com:8765"))
 
         #expect(tailscale.kind == .tailscale)
         #expect(invalid.kind == .remote)
+        #expect(ambiguous.kind == .remote)
+        #expect(spoofedTailscale.kind == .remote)
+        #expect(spoofedLAN.kind == .remote)
+    }
+
+    @Test("route consent and remembered success survive provider changes")
+    func providerIndependentRouteIdentity() throws {
+        let bonjour = route("http://blink.local:8765", kind: .localNetwork, provider: "bonjour")
+        let stored = route("http://blink.local:8765", kind: .localNetwork, provider: "paired-host")
+        #expect(bonjour.id == stored.id)
+
+        var settings = HudConnectionSettings(routeEnabled: [bonjour.id: false])
+        #expect(!settings.allows(stored, default: true))
+
+        settings = HudConnectionSettings(
+            routeKindEnabled: [HudConnectionRouteKind.localNetwork.rawValue: false],
+            providerEnabled: [stored.providerID: true]
+        )
+        #expect(!settings.allows(stored, default: true))
+
+        settings = HudConnectionSettings()
+        settings.recordSuccess(bonjour, hostID: "mac")
+        let ordered = HudConnectionPlanner.orderedRoutes(
+            [
+                route("https://blink.example.ts.net", kind: .tailscale, provider: "tailscale"),
+                stored,
+            ],
+            hostID: "mac",
+            policy: .tailscaleFirst,
+            settings: settings
+        )
+        #expect(ordered.first?.id == stored.id)
     }
 
     @Test("planner applies consent, app ordering, deduplication, and success promotion")
@@ -71,6 +108,65 @@ struct HudConnectionTests {
         #expect(saved.lastSuccessfulRouteByHostID["mac"] == tailscale.id)
     }
 
+    @Test("non-finite and oversized timeouts cannot trap")
+    func safeTimeoutConversion() async throws {
+        let lan = route("http://blink.local:8765", kind: .localNetwork, provider: "bonjour")
+        for timeout in [TimeInterval.infinity, TimeInterval.greatestFiniteMagnitude] {
+            let cascade = HudConnectionCascade(
+                policy: HudConnectionPolicy(
+                    preferredRouteKinds: [.localNetwork],
+                    attemptTimeout: timeout
+                ),
+                settingsStore: HudInMemoryConnectionSettingsStore()
+            )
+
+            let result = try await cascade.connect(
+                to: HudPairedHost(hostID: "mac", name: "Studio Mac"),
+                routes: [lan]
+            ) { route in
+                route.endpoint.url
+            }
+
+            #expect(result.route.id == lan.id)
+        }
+    }
+
+    @Test("success persistence does not overwrite a concurrent consent change")
+    func atomicSuccessPersistence() async throws {
+        let lan = route("http://blink.local:8765", kind: .localNetwork, provider: "bonjour")
+        let relay = route("https://relay.example.com", kind: .remote, provider: "relay")
+        let store = HudInMemoryConnectionSettingsStore()
+        let gate = AttemptGate()
+        let cascade = HudConnectionCascade(
+            policy: HudConnectionPolicy(
+                preferredRouteKinds: [.localNetwork],
+                attemptTimeout: nil
+            ),
+            settingsStore: store
+        )
+
+        let connectionTask = Task {
+            try await cascade.connect(
+                to: HudPairedHost(hostID: "mac", name: "Studio Mac"),
+                routes: [lan]
+            ) { route in
+                await gate.markStartedAndWait()
+                return route.endpoint.url
+            }
+        }
+
+        await gate.waitUntilStarted()
+        _ = try await store.update { settings in
+            settings.routeEnabled[relay.id] = false
+        }
+        await gate.release()
+        _ = try await connectionTask.value
+
+        let saved = try await store.load()
+        #expect(saved.routeEnabled[relay.id] == false)
+        #expect(saved.lastSuccessfulRouteByHostID["mac"] == lan.id)
+    }
+
     @Test("UserDefaults settings store round-trips custom provider policy")
     func settingsPersistence() async throws {
         let suiteName = "HudConnectionTests.\(UUID().uuidString)"
@@ -127,6 +223,28 @@ struct HudConnectionTests {
 
     private func testURL(_ value: String) throws -> URL {
         try #require(URL(string: value))
+    }
+}
+
+private actor AttemptGate {
+    private var started = false
+    private var released = false
+
+    func markStartedAndWait() async {
+        started = true
+        while !released {
+            await Task.yield()
+        }
+    }
+
+    func waitUntilStarted() async {
+        while !started {
+            await Task.yield()
+        }
+    }
+
+    func release() {
+        released = true
     }
 }
 
