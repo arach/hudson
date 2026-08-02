@@ -20,9 +20,17 @@ public struct HudPairingEndpoint: Codable, Equatable, Identifiable, Sendable {
     }
 
     public static func classify(_ url: URL) -> HudPairingEndpointKind {
-        guard let host = url.host?.lowercased(), !host.isEmpty else {
+        guard let host = url.host, !host.isEmpty else {
             return .manual
         }
+        return classify(host: host)
+    }
+
+    /// Classify a host without requiring providers to manufacture a URL. Shared
+    /// consumers such as OpenScout use this to keep one LAN/Tailscale boundary.
+    public static func classify(host rawHost: String) -> HudPairingEndpointKind {
+        let host = rawHost.lowercased()
+        guard !host.isEmpty else { return .manual }
 
         if host == "localhost" || host == "::1" || host.hasPrefix("127.") {
             return .loopback
@@ -36,11 +44,15 @@ public struct HudPairingEndpoint: Codable, Equatable, Identifiable, Sendable {
             return .localNetwork
         }
 
-        let pieces = host.split(separator: ".").compactMap { Int($0) }
+        // UInt8 parsing rejects malformed dotted quads such as 10.0.0.999
+        // instead of accidentally classifying them as private-network hosts.
+        let pieces = host.split(separator: ".").compactMap { UInt8($0) }
         if pieces.count == 4 {
             if pieces[0] == 10 { return .localNetwork }
             if pieces[0] == 192 && pieces[1] == 168 { return .localNetwork }
             if pieces[0] == 172 && (16...31).contains(pieces[1]) { return .localNetwork }
+            // Tailscale IPv4 addresses are allocated from CGNAT 100.64.0.0/10.
+            if pieces[0] == 100 && (64...127).contains(pieces[1]) { return .tailscale }
         }
 
         return .remote
