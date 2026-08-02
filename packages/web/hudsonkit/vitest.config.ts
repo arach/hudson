@@ -56,7 +56,6 @@ export default defineConfig({
       { find: 'react', replacement: reactRoot },
       { find: '@ai-sdk/react', replacement: pin('@ai-sdk/react') },
       { find: 'ai', replacement: pin('ai') },
-      { find: 'lucide-react', replacement: pin('lucide-react') },
       { find: 'motion', replacement: pin('motion') },
       {
         find: 'hudsonkit/workflow',

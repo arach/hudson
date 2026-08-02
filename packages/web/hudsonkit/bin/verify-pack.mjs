@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Fail the pack script if the sealed tarball is missing dist/styles.css.
+// Fail if a sealed tarball is missing dist/styles.css. With no argument this
+// checks the package script's default tarball; release automation may pass the
+// path of its immutable, explicitly named artifact.
 // Consumer installs (iris gates, pnpm file: deps, npm tgz) all resolve
 // `hudsonkit/styles` → dist/styles.css; a pack without it is a red gate.
 
 import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
@@ -18,14 +20,18 @@ const required = [
 ];
 
 const packageJson = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'));
-const tarball = `hudsonkit-${packageJson.version}.tgz`;
+const defaultTarball = `hudsonkit-${packageJson.version}.tgz`;
+const tarballPath = process.argv[2]
+  ? resolve(process.cwd(), process.argv[2])
+  : join(pkgRoot, defaultTarball);
+const tarball = basename(tarballPath);
 
-if (!existsSync(join(pkgRoot, tarball))) {
-  process.stderr.write(`[hudsonkit] verify-pack: expected ${tarball} in package root\n`);
+if (!existsSync(tarballPath)) {
+  process.stderr.write(`[hudsonkit] verify-pack: expected ${tarballPath}\n`);
   process.exit(1);
 }
 
-const listed = spawnSync('tar', ['-tzf', join(pkgRoot, tarball)], {
+const listed = spawnSync('tar', ['-tzf', tarballPath], {
   encoding: 'utf8',
 });
 
