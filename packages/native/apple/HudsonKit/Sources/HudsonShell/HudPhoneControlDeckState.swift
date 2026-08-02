@@ -20,8 +20,8 @@ public enum HudPhoneComplicationsPresentation: Equatable, Sendable {
 
 /// Timing policy for a summon-on-demand phone control deck.
 ///
-/// The shell suppresses the timeout while VoiceOver is running so controls do
-/// not disappear while a person is exploring them.
+/// The shell suppresses the timeout while an assistive control mode is active
+/// so controls do not disappear while a person is exploring them.
 public struct HudPhoneControlDeckPolicy: Equatable, Sendable {
     public var idleTimeout: Duration?
 
@@ -70,10 +70,10 @@ enum HudPhoneControlDeckReducer {
 
     static func timeout(
         policy: HudPhoneControlDeckPolicy,
-        voiceOverEnabled: Bool,
+        assistiveControlEnabled: Bool,
         activeModePickerCount: Int
     ) -> Duration? {
-        (voiceOverEnabled || activeModePickerCount > 0) ? nil : policy.idleTimeout
+        (assistiveControlEnabled || activeModePickerCount > 0) ? nil : policy.idleTimeout
     }
 }
 
@@ -135,7 +135,7 @@ final class HudPhoneControlDeckRuntime {
 
     @ObservationIgnored private var policy: HudPhoneControlDeckPolicy?
     @ObservationIgnored private var timeoutTask: Task<Void, Never>?
-    @ObservationIgnored private var voiceOverEnabled = false
+    @ObservationIgnored private var assistiveControlEnabled = false
     @ObservationIgnored private(set) var activeModePickerPositions: Set<HudPhoneComplications.Position> = []
 
     init(policy: HudPhoneControlDeckPolicy?) {
@@ -146,10 +146,13 @@ final class HudPhoneControlDeckRuntime {
         timeoutTask?.cancel()
     }
 
-    func synchronize(hasComplications: Bool, voiceOverEnabled: Bool) {
-        let voiceOverChanged = self.voiceOverEnabled != voiceOverEnabled
-        self.voiceOverEnabled = voiceOverEnabled
-        apply(.complicationsChanged(isEmpty: !hasComplications), refreshTimeout: voiceOverChanged)
+    func synchronize(hasComplications: Bool, assistiveControlEnabled: Bool) {
+        let assistiveControlChanged = self.assistiveControlEnabled != assistiveControlEnabled
+        self.assistiveControlEnabled = assistiveControlEnabled
+        apply(
+            .complicationsChanged(isEmpty: !hasComplications),
+            refreshTimeout: assistiveControlChanged
+        )
     }
 
     /// SwiftUI may preserve this `@State` object while the shell receives a
@@ -209,7 +212,7 @@ final class HudPhoneControlDeckRuntime {
         guard state == .expanded, let policy,
               let timeout = HudPhoneControlDeckReducer.timeout(
                 policy: policy,
-                voiceOverEnabled: voiceOverEnabled,
+                assistiveControlEnabled: assistiveControlEnabled,
                 activeModePickerCount: activeModePickerPositions.count
               )
         else { return }

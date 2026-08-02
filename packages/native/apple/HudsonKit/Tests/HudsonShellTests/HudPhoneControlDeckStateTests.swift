@@ -47,20 +47,20 @@ struct HudPhoneControlDeckStateTests {
         )
     }
 
-    @Test("VoiceOver suppresses idle dismissal")
-    func voiceOverSuppressesIdleDismissal() {
+    @Test("Assistive control suppresses idle dismissal")
+    func assistiveControlSuppressesIdleDismissal() {
         let policy = HudPhoneControlDeckPolicy(idleTimeout: .seconds(9))
         #expect(
             HudPhoneControlDeckReducer.timeout(
                 policy: policy,
-                voiceOverEnabled: false,
+                assistiveControlEnabled: false,
                 activeModePickerCount: 0
             ) == .seconds(9)
         )
         #expect(
             HudPhoneControlDeckReducer.timeout(
                 policy: policy,
-                voiceOverEnabled: true,
+                assistiveControlEnabled: true,
                 activeModePickerCount: 0
             ) == nil
         )
@@ -71,9 +71,17 @@ struct HudPhoneControlDeckStateTests {
         #expect(
             HudPhoneControlDeckReducer.timeout(
                 policy: .standard,
-                voiceOverEnabled: false,
+                assistiveControlEnabled: false,
                 activeModePickerCount: 2
             ) == nil
+        )
+    }
+
+    @Test("Presentation maps to the expected control-deck policy")
+    func presentationPolicyMapping() {
+        #expect(HudPhoneComplicationsPresentation.alwaysVisible.controlDeckPolicy == nil)
+        #expect(
+            HudPhoneComplicationsPresentation.summonOnDemand().controlDeckPolicy == .standard
         )
     }
 
@@ -99,6 +107,24 @@ struct HudPhoneControlDeckStateTests {
         runtime.setModePickerPresented(false, at: .topLeft)
 
         #expect(runtime.activeModePickerPositions == [.center])
+    }
+
+    @Test("Assistive control cancels and restarts the runtime timeout")
+    @MainActor
+    func assistiveControlReschedulesRuntimeTimeout() async throws {
+        let runtime = HudPhoneControlDeckRuntime(
+            policy: HudPhoneControlDeckPolicy(idleTimeout: .milliseconds(40))
+        )
+        runtime.synchronize(hasComplications: true, assistiveControlEnabled: false)
+        runtime.pivotTapped()
+        runtime.synchronize(hasComplications: true, assistiveControlEnabled: true)
+
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(runtime.state == .expanded)
+
+        runtime.synchronize(hasComplications: true, assistiveControlEnabled: false)
+        try await Task.sleep(for: .milliseconds(120))
+        #expect(runtime.state == .resting)
     }
 
     @Test("Minimal eligibility requires the center slot")

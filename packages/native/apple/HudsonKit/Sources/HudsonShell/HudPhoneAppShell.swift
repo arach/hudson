@@ -76,6 +76,7 @@ public struct HudPhoneAppShell<Root: View>: View {
     @State private var complications: HudPhoneComplications = .empty
     @State private var controlDeck: HudPhoneControlDeckRuntime
     @Environment(\.accessibilityVoiceOverEnabled) private var voiceOverEnabled
+    @Environment(\.accessibilitySwitchControlEnabled) private var switchControlEnabled
 
     /// Creates a shell using Hudson's stable dark appearance contract.
     ///
@@ -163,7 +164,7 @@ public struct HudPhoneAppShell<Root: View>: View {
                                 resolved,
                                 style: complicationsStyle
                             ),
-                            voiceOverEnabled: voiceOverEnabled
+                            assistiveControlEnabled: assistiveControlEnabled
                         )
                     }
                 }
@@ -173,7 +174,16 @@ public struct HudPhoneAppShell<Root: View>: View {
                             complications,
                             style: complicationsStyle
                         ),
-                        voiceOverEnabled: enabled
+                        assistiveControlEnabled: enabled || switchControlEnabled
+                    )
+                }
+                .onChange(of: switchControlEnabled) { _, enabled in
+                    controlDeck.synchronize(
+                        hasComplications: HudPhoneControlDeckEligibility.hasRenderableComplications(
+                            complications,
+                            style: complicationsStyle
+                        ),
+                        assistiveControlEnabled: voiceOverEnabled || enabled
                     )
                 }
                 .onChange(of: complicationsPresentation) { _, presentation in
@@ -183,7 +193,7 @@ public struct HudPhoneAppShell<Root: View>: View {
                             complications,
                             style: complicationsStyle
                         ),
-                        voiceOverEnabled: voiceOverEnabled
+                        assistiveControlEnabled: assistiveControlEnabled
                     )
                 }
                 .onChange(of: complicationsStyle) { _, style in
@@ -192,7 +202,7 @@ public struct HudPhoneAppShell<Root: View>: View {
                             complications,
                             style: style
                         ),
-                        voiceOverEnabled: voiceOverEnabled
+                        assistiveControlEnabled: assistiveControlEnabled
                     )
                 }
                 .modifier(
@@ -205,6 +215,10 @@ public struct HudPhoneAppShell<Root: View>: View {
                 )
         }
         .preferredColorScheme(appearance.preferredColorScheme)
+    }
+
+    private var assistiveControlEnabled: Bool {
+        voiceOverEnabled || switchControlEnabled
     }
 }
 

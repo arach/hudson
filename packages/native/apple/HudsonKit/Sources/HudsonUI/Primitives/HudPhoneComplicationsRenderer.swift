@@ -31,7 +31,7 @@ public enum HudPhoneComplicationsLayout {
     /// Shell-owned summonable-deck chrome. Kept beside the complication
     /// geometry so products never need to compensate for the pivot lane.
     public static var controlDeckPivotSize: CGFloat { 56 }
-    public static var controlDeckDismissSize: CGFloat { HudIconSize.xLarge }
+    public static var controlDeckDismissSize: CGFloat { HudLiquidBarMetrics.itemMinHeight }
     public static var controlDeckTopLaneHeight: CGFloat {
         primarySize + (HudSpacing.sm * 2)
     }
@@ -169,6 +169,7 @@ private struct HudComplicationSlotButton: View {
             .hudControlDeckDismissAccessibilityAction(onDeckDismiss)
             .onDisappear {
                 if modePickerVisible {
+                    modePickerVisible = false
                     onModePickerPresentationChanged?(position, false)
                 }
             }
