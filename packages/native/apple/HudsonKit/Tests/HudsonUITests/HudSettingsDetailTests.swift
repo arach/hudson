@@ -117,9 +117,36 @@ struct HudSettingsDetailTests {
         let root = ScrollView(.vertical) {
             HudSettingsDetailMeasurementLayout(measurement: measurement) {
                 HudSettingsDetail {
-                    Color.clear.frame(height: 200)
+                    Color.clear.frame(height: 100)
+                    Color.clear.frame(height: 100)
                 } detail: {
-                    Color.clear.frame(height: 300)
+                    Color.clear.frame(height: 150)
+                    Color.clear.frame(height: 150)
+                }
+            }
+        }
+        .frame(width: 600, height: 400)
+
+        let host = NSHostingView(rootView: root)
+        host.frame = NSRect(x: 0, y: 0, width: 600, height: 400)
+        host.layoutSubtreeIfNeeded()
+        RunLoop.main.run(until: Date().addingTimeInterval(0.1))
+        host.layoutSubtreeIfNeeded()
+
+        #expect(measurement.size.width == 600)
+        #expect(measurement.size.height > 400)
+    }
+
+    @MainActor
+    @Test("settings detail keeps an empty slot from collapsing the layout")
+    func emptySlotStillSizesInsideVerticalScrollView() {
+        let measurement = HudSettingsDetailMeasurement()
+        let root = ScrollView(.vertical) {
+            HudSettingsDetailMeasurementLayout(measurement: measurement) {
+                HudSettingsDetail {
+                    EmptyView()
+                } detail: {
+                    Color.clear.frame(height: 500)
                 }
             }
         }

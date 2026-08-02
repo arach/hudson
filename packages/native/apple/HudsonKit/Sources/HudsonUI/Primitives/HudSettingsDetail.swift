@@ -150,12 +150,16 @@ public struct HudSettingsDetail<Sidebar: View, Detail: View>: View {
             collapseBelow: collapseBelow,
             spacing: HudSpacing.xxl
         ) {
-            sidebar()
+            VStack(alignment: .leading, spacing: 0) {
+                sidebar()
+            }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
             Rectangle()
                 .fill(HudHairline.subtle)
                 .accessibilityHidden(true)
-            detail()
+            VStack(alignment: .leading, spacing: 0) {
+                detail()
+            }
                 .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
