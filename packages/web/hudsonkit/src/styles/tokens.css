@@ -19,6 +19,8 @@
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
   --hud-accent-line: oklch(var(--accent) / 0.42);
+  /* Live signal on HudSideNav — retint without !important on utilities. */
+  --hud-nav-live: oklch(var(--accent));
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
@@ -143,6 +145,7 @@
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
   --hud-accent-line: oklch(var(--accent) / 0.42);
+  --hud-nav-live: oklch(var(--accent));
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
@@ -233,6 +236,7 @@
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
   --hud-accent-line: oklch(var(--accent) / 0.42);
+  --hud-nav-live: oklch(var(--accent));
   --hud-status-ok: oklch(var(--success));
   --hud-status-warn: oklch(var(--warning));
   --hud-status-error: oklch(var(--destructive));
@@ -370,6 +374,7 @@
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
   --hud-accent-line: oklch(var(--accent) / 0.42);
+  --hud-nav-live: oklch(var(--accent));
   --destructive: 0.62 0.24 25;
   --destructive-foreground: 0.98 0 0;
   --warning: 0.8 0.17 75;
@@ -429,6 +434,7 @@
   --hud-accent: oklch(var(--accent));
   --hud-accent-soft: oklch(var(--accent) / 0.12);
   --hud-accent-line: oklch(var(--accent) / 0.42);
+  --hud-nav-live: oklch(var(--accent));
   --destructive: 0.54 0.19 25;
   --destructive-foreground: 0.99 0 0;
   --warning: 0.7 0.15 75;

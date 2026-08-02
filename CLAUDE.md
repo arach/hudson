@@ -24,7 +24,7 @@ bun run lint   # ESLint
 
 - Use **bun** as the package manager — never npm or pnpm
 - All UI components are custom-built — do not replace with library components
-- Use `@base-ui/react` for context menu only, `motion` sparingly
+- Use `@base-ui-components/react` as the sanctioned headless *behaviors* layer (tooltip, menu, popover, select, context menu) via opt-in subpaths (`hudsonkit/behaviors`, `hudsonkit/context-menu`); Hudson owns all visual register. Motion sparingly.
 - NEVER use purple in designs — prefer cyan/blue/teal/emerald
 - Every app must implement the `HudsonApp` interface from `hudsonkit`
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots

@@ -12,6 +12,7 @@ Every `hudsonkit` export, organized by subpath. Types are authoritative in [`pac
 | `hudsonkit/chrome`              | Chrome primitives: `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline` |
 | `hudsonkit/overlays`            | `CommandPalette`, `TerminalDrawer` (no `ContextMenu`)                |
 | `hudsonkit/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui-components/react`) |
+| `hudsonkit/behaviors`           | Base UI wrappers: `HudTooltip`(+Provider), `HudMenu`, `HudPopover`, `HudSelectBase` + shared `menuChrome` (opt-in; pulls `@base-ui-components/react`) |
 | `hudsonkit/canvas`              | `Canvas` (pan/zoom world)                                            |
 | `hudsonkit/windows`             | `AppWindow` (draggable/resizable window frame)                       |
 | `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |

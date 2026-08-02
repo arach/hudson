@@ -38,6 +38,7 @@ const clientEntries = {
   chrome: 'src/chrome.ts',
   overlays: 'src/overlays.ts',
   'context-menu': 'src/context-menu.ts',
+  behaviors: 'src/behaviors.ts',
   canvas: 'src/canvas.ts',
   windows: 'src/windows.ts',
   theme: 'src/theme.ts',
@@ -57,6 +58,7 @@ const clientEntries = {
   player: 'src/player.ts',
   primitives: 'src/primitives.ts',
   patterns: 'src/patterns.ts',
+  nav: 'src/nav.ts',
   apps: 'src/apps/index.ts',
 };
 

@@ -32,6 +32,26 @@ public enum HudMessageBarSize: Sendable {
     }
 }
 
+enum HudMessageBarCompactLayout: Equatable, Sendable {
+    case inline
+    case stacked
+}
+
+enum HudMessageBarExpandedLayout: Equatable, Sendable {
+    case inline
+    case stacked
+}
+
+enum HudMessageBarLayoutPolicy {
+    static func compactLayout(for dynamicTypeSize: DynamicTypeSize) -> HudMessageBarCompactLayout {
+        dynamicTypeSize.isAccessibilitySize ? .stacked : .inline
+    }
+
+    static func expandedLayout(for dynamicTypeSize: DynamicTypeSize) -> HudMessageBarExpandedLayout {
+        dynamicTypeSize.isAccessibilitySize ? .stacked : .inline
+    }
+}
+
 public struct HudMessageBarTarget: Equatable, Sendable {
     public var label: String
     public var contextLabel: String?
@@ -163,6 +183,8 @@ public struct HudMessageBar: View {
     public var blurSignal: Int
     public var compactPlaceholder: String
     public var expandedPlaceholder: String
+    public var inputAccessibilityLabel: String?
+    public var inputAccessibilityIdentifier: String?
     public var sendLabel: String
     public var escapeHint: String?
     public var hotkeyHint: String?
@@ -174,6 +196,9 @@ public struct HudMessageBar: View {
     @State private var width: CGFloat = 0
     @State private var suggestionSelection = HudMessageBarSuggestionSelectionState()
 
+    /// Original initializer retained as an explicit overload for binary and
+    /// source clients. It delegates to the accessibility-aware initializer
+    /// without changing the pre-existing message-field semantics.
     public init(
         text: Binding<String>,
         target: HudMessageBarTarget? = nil,
@@ -190,6 +215,48 @@ public struct HudMessageBar: View {
         onAcceptSuggestion: ((HudMessageBarSuggestion) -> Void)? = nil,
         onSubmit: @escaping () -> Void
     ) {
+        self.init(
+            text: text,
+            target: target,
+            isSending: isSending,
+            voice: voice,
+            focusSignal: focusSignal,
+            blurSignal: blurSignal,
+            compactPlaceholder: compactPlaceholder,
+            expandedPlaceholder: expandedPlaceholder,
+            inputAccessibilityLabel: nil,
+            inputAccessibilityIdentifier: nil,
+            sendLabel: sendLabel,
+            escapeHint: escapeHint,
+            hotkeyHint: hotkeyHint,
+            suggestions: suggestions,
+            onAcceptSuggestion: onAcceptSuggestion,
+            onSubmit: onSubmit
+        )
+    }
+
+    /// Creates a message bar with product-supplied assistive semantics.
+    ///
+    /// `inputAccessibilityLabel` is intentionally required so calls using the
+    /// original signature resolve unambiguously to the compatibility overload.
+    public init(
+        text: Binding<String>,
+        target: HudMessageBarTarget? = nil,
+        isSending: Bool = false,
+        voice: HudMessageBarVoiceConfiguration? = nil,
+        focusSignal: Int = 0,
+        blurSignal: Int = 0,
+        compactPlaceholder: String = "talk - / commands",
+        expandedPlaceholder: String = "talk to the assistant - / for commands",
+        inputAccessibilityLabel: String?,
+        inputAccessibilityIdentifier: String? = nil,
+        sendLabel: String = "SEND",
+        escapeHint: String? = "ESC",
+        hotkeyHint: String? = "⌃⌥⇧⌘H",
+        suggestions: [HudMessageBarSuggestion] = [],
+        onAcceptSuggestion: ((HudMessageBarSuggestion) -> Void)? = nil,
+        onSubmit: @escaping () -> Void
+    ) {
         self._text = text
         self.target = target
         self.isSending = isSending
@@ -198,6 +265,8 @@ public struct HudMessageBar: View {
         self.blurSignal = blurSignal
         self.compactPlaceholder = compactPlaceholder
         self.expandedPlaceholder = expandedPlaceholder
+        self.inputAccessibilityLabel = inputAccessibilityLabel
+        self.inputAccessibilityIdentifier = inputAccessibilityIdentifier
         self.sendLabel = sendLabel
         self.escapeHint = escapeHint
         self.hotkeyHint = hotkeyHint
@@ -220,6 +289,8 @@ public struct HudMessageBar: View {
                     voice: voice,
                     focused: $focused,
                     placeholder: compactPlaceholder,
+                    inputAccessibilityLabel: inputAccessibilityLabel,
+                    inputAccessibilityIdentifier: inputAccessibilityIdentifier,
                     sendLabel: sendLabel,
                     escapeHint: escapeHint,
                     hotkeyHint: hotkeyHint,
@@ -241,6 +312,8 @@ public struct HudMessageBar: View {
                     voice: voice,
                     focused: $focused,
                     placeholder: expandedPlaceholder,
+                    inputAccessibilityLabel: inputAccessibilityLabel,
+                    inputAccessibilityIdentifier: inputAccessibilityIdentifier,
                     sendLabel: sendLabel,
                     escapeHint: escapeHint,
                     hotkeyHint: hotkeyHint,
@@ -272,6 +345,17 @@ public struct HudMessageBar: View {
         .onChange(of: focused) { _, isFocused in
             if !isFocused { suggestionSelection.reset() }
         }
+    }
+
+    static func resolvedInputAccessibilityLabel(
+        _ preferredLabel: String?,
+        placeholder: String
+    ) -> String {
+        guard let preferredLabel,
+              !preferredLabel.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+            return placeholder
+        }
+        return preferredLabel
     }
 
     private var visibleSuggestions: [HudMessageBarSuggestion] {
@@ -331,6 +415,8 @@ private struct HudMessageBarCompact: View {
     let voice: HudMessageBarVoiceConfiguration?
     @FocusState.Binding var focused: Bool
     let placeholder: String
+    let inputAccessibilityLabel: String?
+    let inputAccessibilityIdentifier: String?
     let sendLabel: String
     let escapeHint: String?
     let hotkeyHint: String?
@@ -344,6 +430,7 @@ private struct HudMessageBarCompact: View {
     let onSend: () -> Void
 
     @Environment(\.hudTheme) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var showVoicePreview: Bool {
         guard let voice else { return false }
@@ -364,51 +451,14 @@ private struct HudMessageBarCompact: View {
                 .padding(.bottom, 5)
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
-            HStack(spacing: 8) {
-                if let voice {
-                    HudMessageMicButton(box: 20, glyph: 12, voice: voice)
-                }
-
-                if let target {
-                    HudMessageTargetChip(label: target.label)
-                    if let contextLabel = target.contextLabel {
-                        HudMessageContextPill(name: contextLabel)
-                    }
-                }
-
-                ZStack(alignment: .leading) {
-                    TextField(showVoicePreview ? "" : placeholder, text: $text)
-                        .textFieldStyle(.plain)
-                        .font(HudFont.mono(10))
-                        .foregroundStyle(theme.palette.ink)
-                        .focused($focused)
-                        .onSubmit(onFieldSubmit)
-                        .hudMessageBarSuggestionKeys(
-                            moveSelection: onMoveSuggestion,
-                            acceptSelection: onAcceptSuggestion
-                        )
-                    if showVoicePreview {
-                        HudMessageDictationPreview(text: voice?.partialText ?? "")
-                            .allowsHitTesting(false)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                HudMessageSendChip(
-                    small: true,
-                    label: sendLabel,
-                    dimmed: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending,
-                    onTap: onSend
-                )
-                if let escapeHint {
-                    HudMessageKeyChip(escapeHint)
-                }
-                if let hotkeyHint {
-                    HudMessageKeyChip(hotkeyHint, accentLastCharacter: true)
+            Group {
+                switch HudMessageBarLayoutPolicy.compactLayout(for: dynamicTypeSize) {
+                case .inline:
+                    inlineBar
+                case .stacked:
+                    stackedBar
                 }
             }
-            .padding(.horizontal, pad)
-            .frame(height: 32)
             .frame(maxWidth: .infinity)
             .background(theme.palette.bg)
             .overlay(alignment: .top) {
@@ -417,6 +467,128 @@ private struct HudMessageBarCompact: View {
                     .frame(height: 0.5)
             }
         }
+    }
+
+    private var inlineBar: some View {
+        HStack(spacing: 8) {
+            if let voice {
+                HudMessageMicButton(box: 20, glyph: 12, voice: voice)
+            }
+
+            targetContext
+            inlineMessageField
+
+            HudMessageSendChip(
+                small: true,
+                label: sendLabel,
+                dimmed: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending,
+                onTap: onSend
+            )
+            keyboardHints
+        }
+        .padding(.horizontal, pad)
+        .frame(minHeight: 32)
+    }
+
+    private var stackedBar: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            if voice != nil || target != nil {
+                HStack(spacing: HudSpacing.sm) {
+                    if let voice {
+                        HudMessageMicButton(box: 44, glyph: 18, voice: voice)
+                    }
+                    targetContext
+                    Spacer(minLength: 0)
+                }
+            }
+
+            stackedMessageField
+
+            HStack(spacing: HudSpacing.sm) {
+                keyboardHints
+                Spacer(minLength: 0)
+                HudMessageSendChip(
+                    small: false,
+                    label: sendLabel,
+                    dimmed: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending,
+                    minimumHitHeight: HudLiquidBarMetrics.itemMinHeight,
+                    onTap: onSend
+                )
+            }
+        }
+        .padding(.horizontal, pad)
+        .padding(.vertical, HudSpacing.sm)
+    }
+
+    @ViewBuilder
+    private var targetContext: some View {
+        if let target {
+            HudMessageTargetChip(label: target.label)
+            if let contextLabel = target.contextLabel {
+                HudMessageContextPill(name: contextLabel)
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var keyboardHints: some View {
+        if let escapeHint {
+            HudMessageKeyChip(escapeHint)
+        }
+        if let hotkeyHint {
+            HudMessageKeyChip(hotkeyHint, accentLastCharacter: true)
+        }
+    }
+
+    private var inlineMessageField: some View {
+        ZStack(alignment: .leading) {
+            TextField(showVoicePreview ? "" : placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .hudFont(.xxs, face: .mono)
+                .foregroundStyle(theme.palette.ink)
+                .focused($focused)
+                .accessibilityLabel(resolvedInputAccessibilityLabel)
+                .hudMessageBarAccessibilityIdentifier(inputAccessibilityIdentifier)
+                .onSubmit(onFieldSubmit)
+                .hudMessageBarSuggestionKeys(
+                    moveSelection: onMoveSuggestion,
+                    acceptSelection: onAcceptSuggestion
+                )
+            if showVoicePreview {
+                HudMessageDictationPreview(text: voice?.partialText ?? "")
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private var stackedMessageField: some View {
+        ZStack(alignment: .topLeading) {
+            TextField(showVoicePreview ? "" : placeholder, text: $text)
+                .textFieldStyle(.plain)
+                .hudFont(.xxs, face: .mono)
+                .foregroundStyle(theme.palette.ink)
+                .focused($focused)
+                .accessibilityLabel(resolvedInputAccessibilityLabel)
+                .hudMessageBarAccessibilityIdentifier(inputAccessibilityIdentifier)
+                .onSubmit(onFieldSubmit)
+                .hudMessageBarSuggestionKeys(
+                    moveSelection: onMoveSuggestion,
+                    acceptSelection: onAcceptSuggestion
+                )
+            if showVoicePreview {
+                HudMessageDictationPreview(text: voice?.partialText ?? "")
+                    .allowsHitTesting(false)
+            }
+        }
+        .frame(maxWidth: .infinity, minHeight: 44, alignment: .topLeading)
+    }
+
+    private var resolvedInputAccessibilityLabel: String {
+        HudMessageBar.resolvedInputAccessibilityLabel(
+            inputAccessibilityLabel,
+            placeholder: placeholder
+        )
     }
 }
 
@@ -428,6 +600,8 @@ private struct HudMessageBarExpanded: View {
     let voice: HudMessageBarVoiceConfiguration?
     @FocusState.Binding var focused: Bool
     let placeholder: String
+    let inputAccessibilityLabel: String?
+    let inputAccessibilityIdentifier: String?
     let sendLabel: String
     let escapeHint: String?
     let hotkeyHint: String?
@@ -441,12 +615,13 @@ private struct HudMessageBarExpanded: View {
     let onSend: () -> Void
 
     @Environment(\.hudTheme) private var theme
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     private var isLarge: Bool { size == .large }
     private var minInputHeight: CGFloat { isLarge ? 46 : 36 }
     private var micBox: CGFloat { isLarge ? 28 : 24 }
     private var micGlyph: CGFloat { isLarge ? 16 : 14 }
-    private var placeholderSize: CGFloat { isLarge ? 11.5 : 10.5 }
+    private var inputTextRole: HudTextRole { isLarge ? .xs : .xxs }
 
     private var showVoicePreview: Bool {
         guard let voice else { return false }
@@ -467,69 +642,139 @@ private struct HudMessageBarExpanded: View {
                 .transition(.move(edge: .bottom).combined(with: .opacity))
             }
 
-            HStack(alignment: .top, spacing: 10) {
-                if let voice {
-                    HudMessageMicButton(box: micBox, glyph: micGlyph, voice: voice)
+            Group {
+                switch HudMessageBarLayoutPolicy.expandedLayout(for: dynamicTypeSize) {
+                case .inline:
+                    inlineBar
+                case .stacked:
+                    stackedBar
                 }
-
-                if let target {
-                    HudMessageTargetChip(label: target.label)
-                        .padding(.top, isLarge ? 6 : 4)
-                    if let contextLabel = target.contextLabel {
-                        HudMessageContextPill(name: contextLabel)
-                            .padding(.top, isLarge ? 6 : 4)
-                    }
-                }
-
-                ZStack(alignment: .topLeading) {
-                    TextField(showVoicePreview ? "" : placeholder, text: $text, axis: .vertical)
-                        .textFieldStyle(.plain)
-                        .lineLimit(1...5)
-                        .font(HudFont.mono(placeholderSize))
-                        .foregroundStyle(theme.palette.ink)
-                        .focused($focused)
-                        .onSubmit(onFieldSubmit)
-                        .hudMessageBarSuggestionKeys(
-                            moveSelection: onMoveSuggestion,
-                            acceptSelection: onAcceptSuggestion
-                        )
-                    if showVoicePreview {
-                        HudMessageDictationPreview(text: voice?.partialText ?? "", fontSize: placeholderSize)
-                            .allowsHitTesting(false)
-                            .padding(.top, 1)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-                .padding(.top, isLarge ? 4 : 3)
-
-                HudMessageSendChip(
-                    small: false,
-                    label: sendLabel,
-                    dimmed: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending,
-                    onTap: onSend
-                )
-                .padding(.top, isLarge ? 6 : 4)
-
-                HStack(spacing: 8) {
-                    if let escapeHint {
-                        HudMessageKeyChip(escapeHint)
-                    }
-                    if let hotkeyHint {
-                        HudMessageKeyChip(hotkeyHint, accentLastCharacter: true)
-                    }
-                }
-                .padding(.leading, 4)
-                .padding(.top, isLarge ? 6 : 4)
             }
-            .padding(.horizontal, size.horizontalPadding)
-            .padding(.vertical, isLarge ? 6 : 4)
-            .frame(maxWidth: .infinity, minHeight: minInputHeight, alignment: .top)
         }
         .background(theme.palette.bg)
         .overlay(alignment: .top) {
             Rectangle()
                 .fill(theme.hairline.standard.opacity(0.75))
                 .frame(height: 0.5)
+        }
+    }
+
+    private var inlineBar: some View {
+        HStack(alignment: .top, spacing: 10) {
+            if let voice {
+                HudMessageMicButton(box: micBox, glyph: micGlyph, voice: voice)
+            }
+
+            if let target {
+                HudMessageTargetChip(label: target.label)
+                    .padding(.top, isLarge ? 6 : 4)
+                if let contextLabel = target.contextLabel {
+                    HudMessageContextPill(name: contextLabel)
+                        .padding(.top, isLarge ? 6 : 4)
+                }
+            }
+
+            messageField
+                .padding(.top, isLarge ? 4 : 3)
+
+            sendChip()
+                .padding(.top, isLarge ? 6 : 4)
+
+            HStack(spacing: 8) {
+                keyboardHints
+            }
+            .padding(.leading, 4)
+            .padding(.top, isLarge ? 6 : 4)
+        }
+        .padding(.horizontal, size.horizontalPadding)
+        .padding(.vertical, isLarge ? 6 : 4)
+        .frame(maxWidth: .infinity, minHeight: minInputHeight, alignment: .top)
+    }
+
+    private var stackedBar: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+            if voice != nil || target != nil {
+                HStack(alignment: .top, spacing: HudSpacing.sm) {
+                    if let voice {
+                        HudMessageMicButton(box: 44, glyph: 18, voice: voice)
+                    }
+
+                    if let target {
+                        VStack(alignment: .leading, spacing: HudSpacing.sm) {
+                            HudMessageTargetChip(label: target.label)
+                            if let contextLabel = target.contextLabel {
+                                HudMessageContextPill(name: contextLabel)
+                            }
+                        }
+                    }
+
+                    Spacer(minLength: 0)
+                }
+            }
+
+            messageField
+                .frame(minHeight: 44, alignment: .topLeading)
+
+            HStack(spacing: HudSpacing.sm) {
+                keyboardHints
+                Spacer(minLength: 0)
+                sendChip(minimumHitHeight: HudLiquidBarMetrics.itemMinHeight)
+            }
+        }
+        .padding(.horizontal, size.horizontalPadding)
+        .padding(.vertical, HudSpacing.sm)
+        .frame(maxWidth: .infinity, alignment: .topLeading)
+    }
+
+    private var messageField: some View {
+        ZStack(alignment: .topLeading) {
+            TextField(showVoicePreview ? "" : placeholder, text: $text, axis: .vertical)
+                .textFieldStyle(.plain)
+                .lineLimit(1...5)
+                .hudFont(inputTextRole, face: .mono)
+                .foregroundStyle(theme.palette.ink)
+                .focused($focused)
+                .accessibilityLabel(
+                    HudMessageBar.resolvedInputAccessibilityLabel(
+                        inputAccessibilityLabel,
+                        placeholder: placeholder
+                    )
+                )
+                .hudMessageBarAccessibilityIdentifier(inputAccessibilityIdentifier)
+                .onSubmit(onFieldSubmit)
+                .hudMessageBarSuggestionKeys(
+                    moveSelection: onMoveSuggestion,
+                    acceptSelection: onAcceptSuggestion
+                )
+            if showVoicePreview {
+                HudMessageDictationPreview(
+                    text: voice?.partialText ?? "",
+                    textRole: inputTextRole
+                )
+                .allowsHitTesting(false)
+                .padding(.top, 1)
+            }
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    private func sendChip(minimumHitHeight: CGFloat? = nil) -> some View {
+        HudMessageSendChip(
+            small: false,
+            label: sendLabel,
+            dimmed: text.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || isSending,
+            minimumHitHeight: minimumHitHeight,
+            onTap: onSend
+        )
+    }
+
+    @ViewBuilder
+    private var keyboardHints: some View {
+        if let escapeHint {
+            HudMessageKeyChip(escapeHint)
+        }
+        if let hotkeyHint {
+            HudMessageKeyChip(hotkeyHint, accentLastCharacter: true)
         }
     }
 }
@@ -584,18 +829,18 @@ private struct HudMessageSuggestionRow: View {
     var body: some View {
         HStack(spacing: 8) {
             Text(suggestion.badge ?? "")
-                .font(HudFont.mono(9, weight: .bold))
+                .hudFont(.micro, face: .mono, weight: .bold)
                 .foregroundStyle(selected ? theme.palette.accent : theme.palette.dim)
                 .frame(width: 18, alignment: .center)
 
             Text(suggestion.title)
-                .font(HudFont.mono(10.5, weight: .semibold))
+                .hudFont(.xs, face: .mono, weight: .semibold)
                 .foregroundStyle(selected ? theme.palette.ink : theme.palette.muted)
                 .lineLimit(1)
 
             if let subtitle = suggestion.subtitle, !subtitle.isEmpty {
                 Text(subtitle)
-                    .font(HudFont.mono(10))
+                    .hudFont(.xxs, face: .mono)
                     .foregroundStyle(theme.palette.dim)
                     .lineLimit(1)
             }
@@ -636,6 +881,15 @@ private enum HudMessageBarFieldSelection {
 }
 
 private extension View {
+    @ViewBuilder
+    func hudMessageBarAccessibilityIdentifier(_ identifier: String?) -> some View {
+        if let identifier, !identifier.isEmpty {
+            accessibilityIdentifier(identifier)
+        } else {
+            self
+        }
+    }
+
     func hudMessageBarSuggestionKeys(
         moveSelection: @escaping (Int) -> Bool,
         acceptSelection: @escaping () -> Bool
@@ -655,10 +909,12 @@ private extension View {
 
 private struct HudMessageDictationPreview: View {
     let text: String
-    var fontSize: CGFloat = 10
+    var textRole: HudTextRole = .xxs
 
     @State private var caretLit = false
+    @ScaledMetric(relativeTo: .caption2) private var caretHeight: CGFloat = 12
     @Environment(\.hudTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var displayText: String {
         text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -668,20 +924,28 @@ private struct HudMessageDictationPreview: View {
         HStack(spacing: 4) {
             if !displayText.isEmpty {
                 Text(displayText)
-                    .font(HudFont.mono(fontSize))
+                    .hudFont(textRole, face: .mono)
                     .foregroundStyle(theme.palette.muted)
                     .lineLimit(1)
                     .truncationMode(.tail)
             }
             RoundedRectangle(cornerRadius: 0.5, style: .continuous)
                 .fill(theme.palette.accent.opacity(caretLit ? 0.95 : 0.25))
-                .frame(width: 1, height: max(10, fontSize + 2))
+                .frame(width: 1, height: caretHeight)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .onAppear {
-            withAnimation(.easeInOut(duration: 0.48).repeatForever(autoreverses: true)) {
-                caretLit = true
-            }
+        .onAppear(perform: updateCaretAnimation)
+        .onChange(of: reduceMotion) { _, _ in updateCaretAnimation() }
+    }
+
+    private func updateCaretAnimation() {
+        caretLit = false
+        guard !reduceMotion else {
+            caretLit = true
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.48).repeatForever(autoreverses: true)) {
+            caretLit = true
         }
     }
 }
@@ -692,7 +956,7 @@ private struct HudMessageTargetChip: View {
 
     var body: some View {
         Text(label.hasPrefix("@") ? label : "@" + label)
-            .font(HudFont.mono(10, weight: .semibold))
+            .hudFont(.xxs, face: .mono, weight: .semibold)
             .foregroundStyle(theme.palette.accent)
             .padding(.horizontal, 6)
             .padding(.vertical, 2)
@@ -711,10 +975,10 @@ private struct HudMessageContextPill: View {
     var body: some View {
         HStack(spacing: 3) {
             Text("·")
-                .font(HudFont.mono(10, weight: .semibold))
+                .hudFont(.xxs, face: .mono, weight: .semibold)
                 .foregroundStyle(theme.palette.dim)
             Text(name)
-                .font(HudFont.mono(10))
+                .hudFont(.xxs, face: .mono)
                 .foregroundStyle(theme.palette.muted)
         }
         .fixedSize()
@@ -725,6 +989,7 @@ private struct HudMessageSendChip: View {
     let small: Bool
     let label: String
     let dimmed: Bool
+    var minimumHitHeight: CGFloat? = nil
     let onTap: () -> Void
 
     @State private var hovered = false
@@ -739,15 +1004,16 @@ private struct HudMessageSendChip: View {
         Button(action: onTap) {
             HStack(spacing: 4) {
                 Text("↵")
-                    .font(HudFont.mono(small ? 9 : 10, weight: .semibold))
+                    .hudFont(small ? .micro : .xxs, face: .mono, weight: .semibold)
                     .foregroundStyle(color)
                 Text(label)
-                    .font(HudFont.mono(small ? 9 : 10, weight: .semibold))
+                    .hudFont(small ? .micro : .xxs, face: .mono, weight: .semibold)
                     .tracking(HudTracking.widest)
                     .foregroundStyle(color)
             }
             .padding(.horizontal, 4)
             .padding(.vertical, 2)
+            .frame(minHeight: minimumHitHeight)
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
@@ -764,6 +1030,7 @@ private struct HudMessageMicButton: View {
 
     @State private var pulse = false
     @Environment(\.hudTheme) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     private var strokeColor: Color {
         if voice.state == .recording { return theme.palette.accent }
@@ -787,6 +1054,16 @@ private struct HudMessageMicButton: View {
             return "Transcribing"
         case .unavailable(let reason):
             return reason
+        }
+    }
+
+    private var accessibilityValue: String {
+        switch voice.state {
+        case .idle: return "Idle"
+        case .starting: return "Starting"
+        case .recording: return "Recording"
+        case .processing: return "Transcribing"
+        case .unavailable(let reason): return "Unavailable: \(reason)"
         }
     }
 
@@ -815,21 +1092,28 @@ private struct HudMessageMicButton: View {
             .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
+        .accessibilityLabel("Voice input")
+        .accessibilityValue(accessibilityValue)
         .help(tooltip)
         .onChange(of: voice.state) { _, newValue in
-            pulse = false
-            if newValue == .recording || newValue == .starting || newValue == .processing {
-                withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
-                    pulse = true
-                }
-            }
+            updatePulse(for: newValue)
         }
-        .onAppear {
-            if voice.state == .recording || voice.state == .starting || voice.state == .processing {
-                withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
-                    pulse = true
-                }
-            }
+        .onChange(of: reduceMotion) { _, _ in
+            updatePulse(for: voice.state)
+        }
+        .onAppear { updatePulse(for: voice.state) }
+    }
+
+    private func updatePulse(for state: HudMessageBarVoiceState) {
+        pulse = false
+        let shouldPulse = state == .recording || state == .starting || state.isProcessing
+        guard shouldPulse else { return }
+        guard !reduceMotion else {
+            pulse = true
+            return
+        }
+        withAnimation(.easeInOut(duration: 0.55).repeatForever(autoreverses: true)) {
+            pulse = true
         }
     }
 }
@@ -879,15 +1163,15 @@ private struct HudMessageKeyChip: View {
                 let prefix = String(label.dropLast())
                 if !prefix.isEmpty {
                     Text(prefix)
-                        .font(HudFont.mono(8, weight: .semibold))
+                        .hudFont(.micro, face: .mono, weight: .semibold)
                         .foregroundStyle(theme.palette.dim)
                 }
                 Text(String(last))
-                    .font(HudFont.mono(8, weight: .bold))
+                    .hudFont(.micro, face: .mono, weight: .bold)
                     .foregroundStyle(theme.palette.accent)
             } else {
                 Text(label)
-                    .font(HudFont.mono(8, weight: .bold))
+                    .hudFont(.micro, face: .mono, weight: .bold)
                     .tracking(0.5)
                     .foregroundStyle(theme.palette.dim)
             }

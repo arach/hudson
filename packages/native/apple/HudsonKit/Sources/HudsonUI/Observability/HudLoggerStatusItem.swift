@@ -3,7 +3,7 @@ import HudsonObservability
 
 /// Compact status-bar affordance for the live log inspector. Mirrors the web
 /// `HudLoggerStatusItem`: dot tone reflects error/warning presence, label stays
-/// monospace, and optional counts surface total/error pressure without opening
+/// monospace, and optional counts surface the highest active severity without opening
 /// the panel.
 @MainActor
 public struct HudLoggerStatusItem: View {
@@ -37,17 +37,16 @@ public struct HudLoggerStatusItem: View {
                 .tracking(1.2)
                 .foregroundStyle(HudPalette.muted)
 
-            if showCounts {
-                Text("\(summary.total)")
-                    .font(HudFont.mono(HudTextSize.xxs))
-                    .foregroundStyle(HudPalette.dim)
+            if showCounts, summary.errors > 0 {
+                Text("\(summary.errors) err")
+                    .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                    .foregroundStyle(HudPalette.statusError)
                     .monospacedDigit()
-                if summary.errors > 0 {
-                    Text("/\(summary.errors)")
-                        .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
-                        .foregroundStyle(HudPalette.statusError)
-                        .monospacedDigit()
-                }
+            } else if showCounts, summary.warnings > 0 {
+                Text("\(summary.warnings) warn")
+                    .font(HudFont.mono(HudTextSize.xxs))
+                    .foregroundStyle(HudPalette.statusWarn)
+                    .monospacedDigit()
             }
         }
         .accessibilityElement(children: .combine)

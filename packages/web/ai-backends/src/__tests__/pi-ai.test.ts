@@ -7,14 +7,16 @@ import type { StreamEvent } from '../types';
 // Mock @earendil-works/pi-ai before importing the adapter
 // ---------------------------------------------------------------------------
 
-const { mockStream, mockGetModel, mockGetEnvApiKey } = vi.hoisted(() => ({
+const { mockStream, mockStreamSimple, mockGetModel, mockGetEnvApiKey } = vi.hoisted(() => ({
   mockStream: vi.fn(),
+  mockStreamSimple: vi.fn(),
   mockGetModel: vi.fn(),
   mockGetEnvApiKey: vi.fn(),
 }));
 
 vi.mock('@earendil-works/pi-ai', () => ({
   stream: mockStream,
+  streamSimple: mockStreamSimple,
   getModel: mockGetModel,
   getEnvApiKey: mockGetEnvApiKey,
 }));
@@ -449,6 +451,66 @@ describe('streamUI() — schema compilation', () => {
     expect(context.tools[0].parameters).toMatchObject({
       type: 'object',
       properties: { commandId: { type: 'string' } },
+    });
+  });
+});
+
+describe('streamUI() — reasoning effort', () => {
+  it('preserves provider-stream behavior when effort is omitted', async () => {
+    mockStream.mockReturnValue(fakeEventStream([
+      { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'think' }] }],
+      toolset: 'none',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({ system: 'test', tools: {} }),
+    });
+
+    await response.text();
+
+    expect(mockStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { apiKey: 'test-key' },
+    );
+    expect(mockStreamSimple).not.toHaveBeenCalled();
+  });
+
+  it.each([
+    ['off', undefined],
+    ['low', 'low'],
+    ['medium', 'medium'],
+    ['high', 'high'],
+  ] as const)('maps explicit effort %s through pi-ai streamSimple', async (effort, reasoning) => {
+    mockStreamSimple.mockReturnValue(fakeEventStream([
+      { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'think' }] }],
+      toolset: 'none',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      effort,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({ system: 'test', tools: {} }),
+    });
+
+    await response.text();
+
+    expect(mockStreamSimple).toHaveBeenCalledOnce();
+    const options = mockStreamSimple.mock.calls[0]?.[2];
+    expect(options).toEqual({
+      apiKey: 'test-key',
+      ...(reasoning ? { reasoning } : {}),
     });
   });
 });
