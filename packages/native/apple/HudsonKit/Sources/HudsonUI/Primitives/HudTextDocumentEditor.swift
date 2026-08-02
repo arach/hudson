@@ -16,6 +16,8 @@ struct HudEditableTextDocumentView: View {
     var showsLineNumbers: Bool
     var backend: HudTextDocumentEditorBackend
 
+    @ScaledMetric(relativeTo: .caption) private var readableEditorSize = HudTextSize.sm
+
     var body: some View {
         #if os(macOS)
         if backend != .swiftUI {
@@ -24,7 +26,8 @@ struct HudEditableTextDocumentView: View {
                 kind: kind,
                 language: language,
                 isReadOnly: isReadOnly,
-                showsLineNumbers: showsLineNumbers
+                showsLineNumbers: showsLineNumbers,
+                editorPointSize: editorPointSize
             )
         } else {
             swiftUIEditor
@@ -36,7 +39,7 @@ struct HudEditableTextDocumentView: View {
 
     private var swiftUIEditor: some View {
         TextEditor(text: $text)
-            .font(editorFont)
+            .font(.system(size: editorPointSize, weight: .regular, design: .monospaced))
             .foregroundStyle(HudPalette.ink)
             .tint(HudPalette.statusInfo)
             .padding(HudSpacing.xl)
@@ -45,8 +48,10 @@ struct HudEditableTextDocumentView: View {
             .disabled(isReadOnly)
     }
 
-    private var editorFont: Font {
-        HudFont.mono(HudTextSize.sm)
+    private var editorPointSize: CGFloat {
+        HudTextDocumentTypographyPolicy.bodyTextRole(for: kind) == nil
+            ? HudTextSize.sm
+            : readableEditorSize
     }
 }
 
@@ -59,9 +64,10 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
     var language: String?
     var isReadOnly: Bool
     var showsLineNumbers: Bool
+    var editorPointSize: CGFloat
 
     func makeCoordinator() -> Coordinator {
-        Coordinator(text: $text)
+        Coordinator(text: $text, editorPointSize: editorPointSize)
     }
 
     func makeNSView(context: Context) -> NSScrollView {
@@ -70,14 +76,12 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         scrollView.backgroundColor = HudAppKitColor.editorBackground
         scrollView.borderType = .noBorder
         scrollView.hasVerticalScroller = true
-        scrollView.hasHorizontalScroller = true
-        scrollView.autohidesScrollers = false
         scrollView.scrollerStyle = .overlay
 
         let textView = NSTextView()
         textView.delegate = context.coordinator
         textView.string = text
-        textView.font = HudAppKitFont.editor
+        textView.font = HudAppKitFont.editor(size: editorPointSize)
         textView.textColor = HudAppKitColor.editorInk
         textView.insertionPointColor = HudAppKitColor.editorCaret
         textView.backgroundColor = HudAppKitColor.editorBackground
@@ -97,17 +101,11 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         textView.minSize = NSSize(width: 0, height: 0)
         textView.maxSize = NSSize(width: CGFloat.greatestFiniteMagnitude, height: CGFloat.greatestFiniteMagnitude)
         textView.isVerticallyResizable = true
-        textView.isHorizontallyResizable = true
-        textView.autoresizingMask = [.width]
         textView.textContainerInset = NSSize(width: HudSpacing.xl, height: HudSpacing.xl)
-        textView.textContainer?.widthTracksTextView = false
-        textView.textContainer?.containerSize = NSSize(
-            width: CGFloat.greatestFiniteMagnitude,
-            height: CGFloat.greatestFiniteMagnitude
-        )
 
         scrollView.documentView = textView
         configureLineNumbers(on: scrollView, textView: textView)
+        configureTextLayout(on: scrollView, textView: textView)
 
         context.coordinator.textView = textView
         context.coordinator.scrollView = scrollView
@@ -130,6 +128,10 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         textView.insertionPointColor = HudAppKitColor.editorCaret
         textView.backgroundColor = HudAppKitColor.editorBackground
         scrollView.backgroundColor = HudAppKitColor.editorBackground
+        context.coordinator.editorPointSize = editorPointSize
+        if textView.font?.pointSize != editorPointSize {
+            textView.font = HudAppKitFont.editor(size: editorPointSize)
+        }
 
         if showsLineNumbers {
             configureLineNumbers(on: scrollView, textView: textView)
@@ -138,6 +140,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
             scrollView.rulersVisible = false
             scrollView.verticalRulerView = nil
         }
+        configureTextLayout(on: scrollView, textView: textView)
 
         context.coordinator.applyPresentation(kind: kind, language: language)
         context.coordinator.highlight(kind: kind, language: language)
@@ -164,18 +167,34 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         scrollView.verticalRulerView = ruler
     }
 
+    private func configureTextLayout(on scrollView: NSScrollView, textView: NSTextView) {
+        let wrapsLines = HudTextDocumentTypographyPolicy.wrapsEditorLines(for: kind)
+        scrollView.hasHorizontalScroller = !wrapsLines
+        scrollView.autohidesScrollers = wrapsLines
+
+        textView.isHorizontallyResizable = !wrapsLines
+        textView.autoresizingMask = wrapsLines ? [.width] : []
+        textView.textContainer?.widthTracksTextView = wrapsLines
+        textView.textContainer?.containerSize = NSSize(
+            width: wrapsLines ? scrollView.contentSize.width : CGFloat.greatestFiniteMagnitude,
+            height: CGFloat.greatestFiniteMagnitude
+        )
+    }
+
     final class Coordinator: NSObject, NSTextViewDelegate {
         @Binding var text: String
         weak var textView: NSTextView?
         weak var scrollView: NSScrollView?
         private var isHighlighting = false
+        var editorPointSize: CGFloat
 
         var lineNumberRuler: HudLineNumberRulerView? {
             scrollView?.verticalRulerView as? HudLineNumberRulerView
         }
 
-        init(text: Binding<String>) {
+        init(text: Binding<String>, editorPointSize: CGFloat) {
             self._text = text
+            self.editorPointSize = editorPointSize
         }
 
         func textDidChange(_ notification: Notification) {
@@ -192,7 +211,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
         func applyPresentation(kind: HudTextDocumentKind, language: String?) {
             guard let textView else { return }
             textView.typingAttributes = [
-                .font: HudAppKitFont.editor,
+                .font: HudAppKitFont.editor(size: editorPointSize),
                 .foregroundColor: HudAppKitColor.editorInk,
             ]
 
@@ -242,7 +261,7 @@ private struct HudMacTextDocumentEditor: NSViewRepresentable {
 
         private var baseAttributes: [NSAttributedString.Key: Any] {
             [
-                .font: HudAppKitFont.editor,
+                .font: HudAppKitFont.editor(size: editorPointSize),
                 .foregroundColor: HudAppKitColor.editorInk,
             ]
         }
@@ -346,7 +365,10 @@ private enum HudAppKitColor {
 }
 
 private enum HudAppKitFont {
-    static let editor = NSFont.monospacedSystemFont(ofSize: HudTextSize.sm, weight: .regular)
+    static func editor(size: CGFloat) -> NSFont {
+        NSFont.monospacedSystemFont(ofSize: size, weight: .regular)
+    }
+
     static let lineNumber = NSFont.monospacedSystemFont(ofSize: HudTextSize.xxs, weight: .regular)
 }
 #endif
