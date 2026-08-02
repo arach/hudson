@@ -39,20 +39,34 @@ private struct HudSettingsDetailMeasurementLayout: Layout {
 
 @Suite("HudSecretClipboard")
 struct HudSecretClipboardTests {
-    @Test("macOS clipboard writes secrets and only clears the copied value")
+    @Test("macOS clipboard clears only the exact copy generation")
     func writesAndConditionallyClears() {
         let pasteboard = NSPasteboard(
             name: NSPasteboard.Name("HudSecretClipboardTests.\(UUID().uuidString)")
         )
 
-        #expect(HudSecretClipboard.copy("secret", to: pasteboard))
+        let firstCopy = HudSecretClipboard.copy("secret", to: pasteboard)
+        #expect(firstCopy != nil)
         #expect(pasteboard.string(forType: .string) == "secret")
 
-        #expect(HudSecretClipboard.copy("replacement", to: pasteboard))
-        HudSecretClipboard.clear(ifMatching: "secret", from: pasteboard)
+        let sameValueRecopy = HudSecretClipboard.copy("secret", to: pasteboard)
+        #expect(sameValueRecopy != nil)
+        #expect(sameValueRecopy?.changeCount != firstCopy?.changeCount)
+        if let firstCopy {
+            HudSecretClipboard.clear(ifMatching: firstCopy, from: pasteboard)
+        }
+        #expect(pasteboard.string(forType: .string) == "secret")
+
+        let replacement = HudSecretClipboard.copy("replacement", to: pasteboard)
+        #expect(replacement != nil)
+        if let sameValueRecopy {
+            HudSecretClipboard.clear(ifMatching: sameValueRecopy, from: pasteboard)
+        }
         #expect(pasteboard.string(forType: .string) == "replacement")
 
-        HudSecretClipboard.clear(ifMatching: "replacement", from: pasteboard)
+        if let replacement {
+            HudSecretClipboard.clear(ifMatching: replacement, from: pasteboard)
+        }
         #expect(pasteboard.string(forType: .string) == nil)
     }
 }
