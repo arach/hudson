@@ -55,8 +55,6 @@ export interface HudMenuProps {
   align?: 'start' | 'center' | 'end';
   sideOffset?: number;
   className?: string;
-  /** Accessible label for the popup. */
-  label?: string;
 }
 
 function isSeparator(entry: HudMenuEntry): entry is HudMenuSeparator {
@@ -126,7 +124,6 @@ export function HudMenu({
   align = 'start',
   sideOffset = 4,
   className = '',
-  label = 'Menu',
 }: HudMenuProps) {
   if (items.length === 0) return <>{children}</>;
 
@@ -139,9 +136,7 @@ export function HudMenu({
       <Menu.Trigger
         disabled={disabled}
         render={triggerEl}
-        nativeButton={
-          typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true
-        }
+        nativeButton={typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true}
       />
     ) : (
       <Menu.Trigger disabled={disabled} className={OVERLAY_ITEM}>
@@ -168,7 +163,6 @@ export function HudMenu({
           <Menu.Popup
             className={[OVERLAY_POPUP, className].filter(Boolean).join(' ')}
             style={chromeBorderStyle}
-            aria-label={label}
           >
             {renderEntries(items)}
           </Menu.Popup>
