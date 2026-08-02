@@ -193,7 +193,8 @@ with `HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
 | `rail`                                                                     | `boolean`                | Render a `HudSideNavRail` edge toggle.            |
 | `header` / `footer`                                                        | `ReactNode`              | Pinned above / below the tree.                    |
 | `density`                                                                  | `'compact' \| 'default'` |                                                   |
+| `selectionWash` / `rovingFocus`                                            | `boolean`                | Opt-in selection wash and keyboard roving.        |
 | `ariaLabel`                                                                | `string`                 | `<nav>` landmark name.                            |
 | `empty`                                                                    | `ReactNode`              | Shown when `items` is empty.                      |
 
-`HudNavNode`: `{ id, label, icon?, count?, badge?, live?, disabled?, children? }`.
+`HudNavNode`: `{ id, label, accessibilityLabel?, icon?, count?, badge?, live?, disabled?, children? }`.

@@ -25,7 +25,7 @@
 // is a neutral filled chip, never the live tone, so "where I am" and "what is
 // live" stay legible as two separate channels.
 
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
@@ -210,10 +210,13 @@ function HudSideNavView({
     [expandedIds, onExpandedChange],
   );
 
+  const lastRevealedSelectedId = useRef(selectedId);
   useEffect(() => {
     // Controlled expansion remains fully consumer-owned. In uncontrolled mode,
     // keep route/search-driven selection changes visible after the first paint.
-    if (expandedIds !== undefined || !selectedId || !items) return;
+    const selectionChanged = lastRevealedSelectedId.current !== selectedId;
+    lastRevealedSelectedId.current = selectedId;
+    if (!selectionChanged || expandedIds !== undefined || !selectedId || !items) return;
     const ancestors = collectAncestors(items, selectedId) ?? [];
     if (!ancestors.some((id) => !internalExpanded.has(id))) return;
     const next = new Set(internalExpanded);

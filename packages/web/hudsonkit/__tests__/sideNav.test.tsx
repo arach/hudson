@@ -59,6 +59,10 @@ describe('HudSideNav (data-driven)', () => {
 
     expect(screen.getByText('Atlas')).toBeInTheDocument();
     expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-expanded', 'true');
+
+    fireEvent.click(screen.getByRole('button', { name: /Agents/ }));
+    expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-expanded', 'false');
+    expect(screen.queryByText('Atlas')).not.toBeInTheDocument();
   });
 
   it('selects and toggles disclosure in one click', () => {
