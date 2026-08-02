@@ -8,7 +8,7 @@
 
 - Hudson uses bun as its package manager — never use npm or pnpm
 - All UI components are custom-built — do not replace with library components
-- Use @base-ui/react for context menu only, motion sparingly
+- Use `@base-ui-components/react` as the sanctioned headless *behaviors* layer (tooltip, menu, popover, select, context menu) via opt-in subpaths (`hudsonkit/behaviors`, `hudsonkit/context-menu`); Hudson owns all visual register. Motion sparingly.
 - Every app must implement the HudsonApp interface from hudsonkit
 - Apps do not manage shell chrome — the shell reads from app hooks and renders slots
 - State is owned by each app Provider via React context
@@ -1189,7 +1189,7 @@ Bottom slide-out panel, toggled via Cmd+`.
 
 ### HudsonContextMenu
 
-Right-click context menu (powered by @base-ui/react + motion).
+Right-click context menu (powered by `@base-ui-components/react` + motion).
 
 ```tsx
 <HudsonContextMenu entries={[

@@ -16,6 +16,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Themeable `--hud-nav-live` token on `HudSideNav` live signal (dot, count
   badge, left spine). Defaults to accent; consumers retint without `!important`
   on generated utilities.
+- Opt-in `hudsonkit/behaviors` subpath: Base UI wrappers `HudTooltip` (+
+  Provider), `HudMenu`, `HudPopover`, `HudSelectBase` (popup select alongside
+  native `HudSelect`). Shared `menuChrome` (`OVERLAY_*`) is the single
+  register for ContextMenu + behaviors — edges on the chrome/border ladder,
+  accent only for highlight/selected.
 
 ### Changed
 

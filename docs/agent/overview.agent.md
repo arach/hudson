@@ -118,5 +118,5 @@ apps/web/app/apps/{name}/
 - Use bun, never npm/pnpm
 - Never use purple in designs
 - All UI components are custom-built — don't use library components
-- Use @base-ui/react for context menu only
+- Use `@base-ui-components/react` for headless behaviors via opt-in subpaths (`hudsonkit/behaviors`, `hudsonkit/context-menu`); Hudson owns visual register
 - Apps must not manage shell chrome
