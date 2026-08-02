@@ -1,73 +1,182 @@
-name: Release
+name: Publish npm packages
 
-# Automatic Actions are paused while the account billing gate is unresolved.
-# Restore the push trigger after 2026-08-01; manual publishing stays available.
 on:
   workflow_dispatch:
+    inputs:
+      commit:
+        description: Exact main commit SHA to publish
+        required: true
+        type: string
+      hudsonkit_dist_tag:
+        description: npm dist-tag for hudsonkit (latest for stable releases)
+        required: true
+        default: latest
+        type: string
+      ai_dist_tag:
+        description: npm dist-tag for @hudsonkit/ai (latest for stable releases)
+        required: true
+        default: latest
+        type: string
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: publish-npm
   cancel-in-progress: false
 
 permissions:
-  contents: write
-  pull-requests: write
-  id-token: write
+  actions: read
+  contents: read
 
 jobs:
-  release:
-    name: Version and publish packages
+  verify-source:
+    name: Verify release source
     runs-on: ubuntu-latest
     steps:
+      - name: Verify exact main source and successful CI
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REQUESTED_COMMIT: ${{ inputs.commit }}
+        run: |
+          set -euo pipefail
+
+          if [ "$GITHUB_REF" != "refs/heads/main" ]; then
+            echo "Publishing is restricted to refs/heads/main"
+            exit 1
+          fi
+          if [ "$REQUESTED_COMMIT" != "$GITHUB_SHA" ]; then
+            echo "Requested commit $REQUESTED_COMMIT does not match checked-out commit $GITHUB_SHA"
+            exit 1
+          fi
+
+          ci_run_id="$(
+            gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
+              -f head_sha="$GITHUB_SHA" \
+              -f branch=main \
+              -f event=push \
+              -f status=completed \
+              -f per_page=100 \
+              --jq '[.workflow_runs[] | select(.conclusion == "success")][0].id // empty'
+          )"
+          if [ -z "$ci_run_id" ]; then
+            echo "No successful main push CI run found for $GITHUB_SHA"
+            exit 1
+          fi
+          echo "Verified CI run $ci_run_id for $GITHUB_SHA"
+
+  publish:
+    name: Build and publish
+    needs: verify-source
+    runs-on: ubuntu-latest
+    environment: npm-production
+    steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
       - uses: oven-sh/setup-bun@v2
         with:
           bun-version: latest
 
-      - name: Install dependencies
-        run: bun install --frozen-lockfile
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          registry-url: "https://registry.npmjs.org"
 
-      - name: AI backends build
-        run: bun run --filter @hudsonkit/ai build
-
-      - name: HudsonKit build
-        run: bun run --cwd packages/web/hudsonkit build
-
-      - name: Validate HudsonKit packed package
-        run: bun run validate:hudsonkit-package
-
-      - name: Detect npm publish eligibility
-        id: npm-token
+      - name: Check publish authorization
         env:
           NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
           ENABLE_NPM_PUBLISH: ${{ vars.ENABLE_NPM_PUBLISH }}
         run: |
-          if [ -n "${NPM_TOKEN:-}" ] && [ "${ENABLE_NPM_PUBLISH:-}" = "true" ]; then
-            echo "present=true" >> "$GITHUB_OUTPUT"
-            echo "NPM_TOKEN present and ENABLE_NPM_PUBLISH=true; changesets may publish packages after versioning."
-          else
-            echo "present=false" >> "$GITHUB_OUTPUT"
-            echo "npm publish disabled (requires both the NPM_TOKEN secret and the ENABLE_NPM_PUBLISH=true repository variable); changesets will only maintain the version PR."
+          set -euo pipefail
+          if [ -z "${NPM_TOKEN:-}" ] || [ "${ENABLE_NPM_PUBLISH:-}" != "true" ]; then
+            echo "npm publish disabled — set NPM_TOKEN and ENABLE_NPM_PUBLISH=true"
+            exit 1
           fi
 
-      - name: Version packages (npm publish disabled)
-        if: steps.npm-token.outputs.present != 'true'
-        uses: changesets/action@v1
-        with:
-          version: bun run version-packages
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
 
-      - name: Version and publish packages
-        if: steps.npm-token.outputs.present == 'true'
-        uses: changesets/action@v1
-        with:
-          version: bun run version-packages
-          publish: bun run release
+      - name: Test publish policy
+        run: bun test scripts/release/npm-publish-plan.test.mjs
+
+      - name: Build packages
+        run: |
+          bun run --filter @hudsonkit/ai build
+          bun run --cwd packages/web/hudsonkit build
+          bun run --cwd packages/web/hudsonkit assert-dist
+
+      - name: Pack immutable release artifacts
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/npm-packages"
+          bun pm pack \
+            --cwd packages/web/hudsonkit \
+            --filename "$RUNNER_TEMP/npm-packages/hudsonkit.tgz" \
+            --quiet
+          bun pm pack \
+            --cwd packages/web/ai-backends \
+            --filename "$RUNNER_TEMP/npm-packages/hudsonkit-ai.tgz" \
+            --quiet
+
+      - name: Validate packed packages
+        run: |
+          set -euo pipefail
+          node packages/web/hudsonkit/bin/verify-pack.mjs \
+            "$RUNNER_TEMP/npm-packages/hudsonkit.tgz"
+          bunx publint "$RUNNER_TEMP/npm-packages/hudsonkit.tgz"
+          bunx attw "$RUNNER_TEMP/npm-packages/hudsonkit.tgz" \
+            --profile esm-only \
+            --exclude-entrypoints hudsonkit/styles hudsonkit/styles/tokens.css
+          bunx publint "$RUNNER_TEMP/npm-packages/hudsonkit-ai.tgz"
+          bunx attw "$RUNNER_TEMP/npm-packages/hudsonkit-ai.tgz" --profile esm-only
+
+      - name: Plan package publication
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          NPM_TOKEN: ${{ secrets.NPM_TOKEN }}
+          HUDSONKIT_DIST_TAG: ${{ inputs.hudsonkit_dist_tag }}
+          AI_DIST_TAG: ${{ inputs.ai_dist_tag }}
+        run: |
+          set -euo pipefail
+          bun scripts/release/npm-publish-plan.mjs \
+            packages/web/hudsonkit hudsonkit "$HUDSONKIT_DIST_TAG" \
+            | tee "$RUNNER_TEMP/hudsonkit-publish-plan.json"
+          bun scripts/release/npm-publish-plan.mjs \
+            packages/web/ai-backends @hudsonkit/ai "$AI_DIST_TAG" \
+            | tee "$RUNNER_TEMP/hudsonkit-ai-publish-plan.json"
+
+      - name: Publish planned artifacts
+        env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
+          HUDSONKIT_DIST_TAG: ${{ inputs.hudsonkit_dist_tag }}
+          AI_DIST_TAG: ${{ inputs.ai_dist_tag }}
+        run: |
+          set -euo pipefail
+
+          publish_from_plan() {
+            local plan_file="$1"
+            local tarball="$2"
+            local dist_tag="$3"
+            local action package_name local_version reason
+            action="$(PLAN_FILE="$plan_file" bun -e 'console.log((await Bun.file(process.env.PLAN_FILE).json()).action)')"
+            package_name="$(PLAN_FILE="$plan_file" bun -e 'console.log((await Bun.file(process.env.PLAN_FILE).json()).packageName)')"
+            local_version="$(PLAN_FILE="$plan_file" bun -e 'console.log((await Bun.file(process.env.PLAN_FILE).json()).localVersion)')"
+            reason="$(PLAN_FILE="$plan_file" bun -e 'console.log((await Bun.file(process.env.PLAN_FILE).json()).reason)')"
+
+            if [ "$action" = "skip" ]; then
+              echo "SKIP $package_name@$local_version — $reason"
+              return 0
+            fi
+            if [ "$action" != "publish" ]; then
+              echo "Unknown publish action: $action"
+              exit 1
+            fi
+
+            echo "PUBLISH $package_name@$local_version with dist-tag $dist_tag — $reason"
+            bun publish --tag "$dist_tag" "$tarball"
+          }
+
+          publish_from_plan \
+            "$RUNNER_TEMP/hudsonkit-publish-plan.json" \
+            "$RUNNER_TEMP/npm-packages/hudsonkit.tgz" \
+            "$HUDSONKIT_DIST_TAG"
+          publish_from_plan \
+            "$RUNNER_TEMP/hudsonkit-ai-publish-plan.json" \
+            "$RUNNER_TEMP/npm-packages/hudsonkit-ai.tgz" \
+            "$AI_DIST_TAG"

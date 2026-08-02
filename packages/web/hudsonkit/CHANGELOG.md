@@ -27,6 +27,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Replaced Lucide with Hudson's shared Iconoir adapter and added the
+  `hudsonkit/icons` export.
 - Preserve CSS pipeline outputs across JavaScript-only tsup cleans, and recover
   missing styles with the cheaper CSS build during source-package preparation.
 - Clear `useSnapCollapseAt`'s pending programmatic-width guard after a bounded

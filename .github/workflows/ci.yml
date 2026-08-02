@@ -1,8 +1,10 @@
 name: CI
 
-# Automatic Actions are paused while the account billing gate is unresolved.
-# Restore the pull_request, push, and workflow_call triggers after 2026-08-01.
 on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
@@ -31,7 +33,7 @@ jobs:
   web:
     name: Web
     needs: changes
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.web == 'true' || needs.changes.outputs.cloud == 'true' }}
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -97,7 +99,7 @@ jobs:
   apple:
     name: Apple
     needs: changes
-    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.native == 'true' }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.native == 'true' }}
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v4

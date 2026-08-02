@@ -33,11 +33,11 @@ All three should pass clean.
 ## Changes to published packages
 
 If your change touches `packages/web/hudsonkit` or `packages/web/ai-backends`,
-add a changeset before opening the PR:
-
-```bash
-bun run changeset
-```
+update that package's `CHANGELOG.md`. Bump `version` in its `package.json` when
+you're ready to release, then merge to `main` and wait for the exact merge
+commit's push CI to pass. Run the **Publish npm packages** workflow from `main`,
+enter that full commit SHA, and keep `latest` for stable releases; prereleases
+must use an explicit non-`latest` dist-tag.
 
 ## Orientation
 

@@ -9,8 +9,7 @@
 // in `icon` mode labels/eyebrows fold away and only icons remain.
 
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
-import { ChevronRight, PanelLeft } from 'lucide-react';
+import { ChevronRight, PanelLeft, type HudsonIcon } from '../../icons';
 import { cx } from '../patterns/utils';
 import { useHudSideNav } from './context';
 import { LiveCountBadge, LiveDot, navRowBg, navSpine } from './shared';
@@ -123,7 +122,7 @@ export function HudSideNavMenuItem({ children, className }: HudSideNavRegionProp
 export interface HudSideNavMenuButtonProps {
   children: React.ReactNode;
   /** Leading icon — the only affordance shown in icon-collapsed mode. */
-  icon?: LucideIcon;
+  icon?: HudsonIcon;
   /** Marks the current destination/item. Neutral emphasis, never accent. */
   isActive?: boolean;
   /** Live/active work. The one accent usage: dot, accent count, accent spine. */

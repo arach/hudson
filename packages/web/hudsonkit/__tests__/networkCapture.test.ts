@@ -210,7 +210,7 @@ describe('Hudson network capture', () => {
     const previousFetch = window.fetch;
     const originalFetch = vi.fn(async () => new Response('ok'));
     const store = new HudsonNetworkStore();
-    window.fetch = originalFetch as typeof window.fetch;
+    window.fetch = originalFetch as unknown as typeof window.fetch;
 
     try {
       const stop = installHudsonFetchCapture({ store, observability: createObservability() });
