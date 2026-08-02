@@ -3,6 +3,9 @@ name: CI
 # Automatic Actions are paused while the account billing gate is unresolved.
 # Restore the pull_request, push, and workflow_call triggers after 2026-08-01.
 on:
+  push:
+    branches: [main]
+  workflow_call:
   workflow_dispatch:
 
 concurrency:
