@@ -842,14 +842,14 @@ function createDmg(config, args, context, apps) {
       runCommand('hdiutil', ['create', '-srcfolder', staging, '-volname', volumeName, '-format', 'UDZO', '-ov', dmgPath], { stdio: 'inherit' });
     }
 
-    if (!args.skipSign && context.signingIdentity) {
+    if (!args.skipSign && !context.adHocSigning) {
       runCommand('codesign', ['--force', '--timestamp', '--sign', context.signingIdentity, dmgPath], { stdio: 'inherit' });
     } else {
       process.stdout.write('==> Skipping DMG signing\n');
     }
 
     if (!args.skipNotarize) {
-      if (!context.signingIdentity) {
+      if (context.adHocSigning) {
         throw new Error('notarization requires a Developer ID signing identity');
       }
       if (!context.notaryProfile) {
@@ -898,7 +898,8 @@ async function runMacos(args) {
   const resolvedSigningIdentity = args.skipSign
     ? ''
     : resolveSigningIdentity(args, config);
-  const signingIdentity = signingPolicy(resolvedSigningIdentity).identity;
+  const signing = signingPolicy(resolvedSigningIdentity);
+  const signingIdentity = signing.identity;
   const requireIdentity = args.requireSignIdentity || (config.signing?.requireIdentity === true && !local);
 
   args.skipNotarize = args.skipNotarize || local || config.signing?.skipNotarize === true;
@@ -913,6 +914,8 @@ async function runMacos(args) {
     minimumSystemVersion: config.minimumSystemVersion ?? '14.0',
     distDir: rel(configDir, config.distDir ?? 'dist'),
     signingIdentity,
+    signingLabel: signing.label,
+    adHocSigning: !signing.hardenedRuntime,
     notaryProfile: args.notaryProfile
       ?? (config.signing?.notaryProfileEnv ? process.env[config.signing.notaryProfileEnv] : undefined)
       ?? process.env.HUDSONKIT_NOTARY_PROFILE
@@ -924,7 +927,7 @@ async function runMacos(args) {
   process.stdout.write(`==> Packaging ${context.productName} ${context.version}\n`);
   process.stdout.write(`==> Config: ${displayPath(configPath)}\n`);
   process.stdout.write(`==> Dist: ${displayPath(context.distDir)}\n`);
-  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingIdentity || 'ad-hoc'}\n`);
+  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingLabel}\n`);
 
   const apps = buildApps(config, args, context);
   createDmg(config, args, context, apps);
