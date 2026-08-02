@@ -101,11 +101,14 @@ struct HudTTSProviderTests {
         let adapter = GroqHudTTSProvider(
             endpoint: URL(string: "https://example.test/openai/v1/audio/speech")!
         )
-        let longInput = String(repeating: "a", count: 205)
+        let maximumInput = String(
+            repeating: "a",
+            count: GroqHudTTSProvider.maximumInputCharacters
+        )
 
         let result = try await adapter.synthesize(
             HudTTSRequest(
-                text: longInput,
+                text: maximumInput,
                 rate: 12,
                 model: "  canopylabs/orpheus-test  "
             ),
@@ -118,11 +121,37 @@ struct HudTTSProviderTests {
         #expect(sentRequest.value(forHTTPHeaderField: "Authorization") == "Bearer test-key")
         #expect(json["model"] as? String == "canopylabs/orpheus-test")
         #expect(json["voice"] as? String == "autumn")
-        #expect((json["input"] as? String)?.count == GroqHudTTSProvider.maximumInputCharacters)
-        #expect(json["response_format"] as? String == "mp3")
+        #expect(json["input"] as? String == maximumInput)
+        #expect(json["response_format"] as? String == "wav")
         #expect(json["speed"] as? Double == 5)
-        #expect(result.format == .mp3)
+        #expect(result.format == .wav)
         #expect(result.voice == "autumn")
+    }
+
+    @Test("Groq rejects over-limit text instead of silently truncating it")
+    func groqRejectsOverLimitInput() async {
+        let session = HudTTSMockURLProtocol.session(body: Data([0x03, 0x04]))
+        let adapter = GroqHudTTSProvider(
+            endpoint: URL(string: "https://example.test/openai/v1/audio/speech")!
+        )
+        let overLimitInput = String(
+            repeating: "a",
+            count: GroqHudTTSProvider.maximumInputCharacters + 1
+        )
+
+        do {
+            _ = try await adapter.synthesize(
+                HudTTSRequest(text: overLimitInput),
+                context: context(session: session)
+            )
+            Issue.record("Expected Groq synthesisFailed")
+        } catch let HudTTSError.synthesisFailed(provider, message) {
+            #expect(provider == .groq)
+            #expect(message.contains("at most 200 characters"))
+            #expect(HudTTSMockURLProtocol.lastRequest == nil)
+        } catch {
+            Issue.record("Expected Groq synthesisFailed, got \(error)")
+        }
     }
 
     @Test("Gemini authenticates by header and wraps returned PCM as WAV")

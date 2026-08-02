@@ -10,8 +10,7 @@ public struct GroqHudTTSProvider: HudTTSProviderAdapter {
     public var model: String
     public var endpoint: URL
 
-    /// Orpheus rejects longer inputs. Callers should split longer utterances;
-    /// this adapter truncates at the provider boundary as a final safeguard.
+    /// Orpheus rejects longer inputs. Callers should split longer utterances.
     static let maximumInputCharacters = 200
 
     public init(
@@ -32,6 +31,13 @@ public struct GroqHudTTSProvider: HudTTSProviderAdapter {
     ) async throws -> HudTTSResult {
         let text = request.text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !text.isEmpty else { throw HudTTSError.emptyInput }
+        guard text.count <= Self.maximumInputCharacters else {
+            throw HudTTSError.synthesisFailed(
+                provider: providerID,
+                message: "Groq Orpheus accepts at most \(Self.maximumInputCharacters) characters. "
+                    + "Split longer text before synthesis."
+            )
+        }
 
         let apiKey = try await context.apiKey(for: self)
         let voice = request.voice?.hudTrimmedNonEmpty ?? defaultVoice
@@ -47,8 +53,8 @@ public struct GroqHudTTSProvider: HudTTSProviderAdapter {
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: [
             "model": request.model?.hudTrimmedNonEmpty ?? model,
             "voice": voice,
-            "input": String(text.prefix(Self.maximumInputCharacters)),
-            "response_format": "mp3",
+            "input": text,
+            "response_format": "wav",
             "speed": speed,
         ])
 
@@ -56,7 +62,7 @@ public struct GroqHudTTSProvider: HudTTSProviderAdapter {
         try validate(response, data: data)
         return HudTTSResult(
             audioData: data,
-            format: .mp3,
+            format: .wav,
             providerID: providerID,
             voice: voice
         )
