@@ -51,10 +51,10 @@ describe('hkit package signing', () => {
     });
   });
 
-  it('never preserves signature flags for an ad-hoc signature', () => {
-    // Preserving `flags` would re-apply Hardened Runtime to a binary with no
-    // Team ID, and macOS library validation then rejects embedded frameworks.
-    expect(signingPolicy('').preserveMetadata).not.toContain('flags');
+  it('preserves only identifier metadata for an ad-hoc signature', () => {
+    // Identity-bound requirements and runtime flags from the previous
+    // signature can make macOS reject an otherwise valid ad-hoc framework.
+    expect(signingPolicy('').preserveMetadata).toBe('identifier');
   });
 });
 

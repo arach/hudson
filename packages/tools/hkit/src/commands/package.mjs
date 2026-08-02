@@ -493,10 +493,9 @@ export function signingPolicy(identity) {
     label: adHoc ? 'ad-hoc' : trimmed,
     hardenedRuntime: !adHoc,
     timestamp: !adHoc,
-    // An ad-hoc signature must not inherit the previous signature's flags:
-    // preserving `flags` re-applies Hardened Runtime, and macOS then enforces
-    // team-based library validation against a binary that has no Team ID —
-    // which rejects the embedded frameworks at load time.
+    // An ad-hoc signature must not inherit identity-bound requirements or
+    // runtime flags from the previous signature. Either can make macOS reject
+    // a framework that no longer has the original signature's Team ID.
     preserveMetadata: adHoc ? 'identifier' : 'identifier,entitlements,requirements,flags',
   };
 }
@@ -896,13 +895,14 @@ async function runMacos(args) {
   const config = raw.macos ?? raw;
   const version = resolveVersion(config, args, configDir);
   const local = args.local || config.local === true;
-  const signingIdentity = args.skipSign
+  const resolvedSigningIdentity = args.skipSign
     ? ''
     : resolveSigningIdentity(args, config);
+  const signingIdentity = signingPolicy(resolvedSigningIdentity).identity;
   const requireIdentity = args.requireSignIdentity || (config.signing?.requireIdentity === true && !local);
 
   args.skipNotarize = args.skipNotarize || local || config.signing?.skipNotarize === true;
-  if (requireIdentity && !signingIdentity) {
+  if (requireIdentity && (args.skipSign || signingIdentity === '-')) {
     throw new Error('No signing identity found. Pass --sign-identity, set the configured identity env var, or use --local.');
   }
 

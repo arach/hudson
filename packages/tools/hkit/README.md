@@ -62,7 +62,7 @@ Use `--local` for smoke builds that skip notarization and allow ad-hoc signing.
 Ad-hoc fallback omits hardened runtime so locally packaged frameworks can load
 without a Developer Team ID; identified release signing retains hardened runtime.
 An ad-hoc framework signature also preserves only `identifier` metadata, because
-carrying `flags` over from a previous identified signature would re-apply
-hardened runtime and re-introduce the library-validation failure it avoids.
+carrying identity-bound requirements or runtime flags over from a previous
+signature can re-introduce Team ID validation failures.
 Use `--sign-identity`, `--require-sign-identity`, and `--notary-profile` for
 release builds.
