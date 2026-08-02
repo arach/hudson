@@ -2,6 +2,7 @@ import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { Boxes, FileText, Home } from 'lucide-react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
+  HudBreadcrumb,
   HudSideNav,
   HudSideNavProvider,
   HudSideNavContent,
@@ -46,6 +47,18 @@ describe('HudSideNav (data-driven)', () => {
     expect(screen.getByText('Atlas')).toBeInTheDocument();
     const atlas = screen.getByText('Atlas').closest('button');
     expect(atlas).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-expanded', 'true');
+    expect(screen.getByRole('button', { name: 'Active' })).toHaveAttribute('aria-expanded', 'true');
+  });
+
+  it('reveals selected ancestors after uncontrolled selection changes', () => {
+    const { rerender } = render(<HudSideNav items={tree} selectedId="home" />);
+    expect(screen.queryByText('Atlas')).not.toBeInTheDocument();
+
+    rerender(<HudSideNav items={tree} selectedId="atlas" />);
+
+    expect(screen.getByText('Atlas')).toBeInTheDocument();
+    expect(screen.getByRole('button', { name: /Agents/ })).toHaveAttribute('aria-expanded', 'true');
   });
 
   it('selects and toggles disclosure in one click', () => {
@@ -96,6 +109,7 @@ describe('HudSideNav (data-driven)', () => {
         selectedId="home"
         selectionWash
         rovingFocus
+        rail
         ariaLabel="Opt-in"
       />,
     );
@@ -106,6 +120,25 @@ describe('HudSideNav (data-driven)', () => {
     fireEvent.keyDown(nav, { key: 'ArrowDown' });
     // Next visible enabled button is Agents (Docs is later / disabled skipped).
     expect((document.activeElement as HTMLElement).textContent).toContain('Agents');
+    fireEvent.keyDown(nav, { key: 'End' });
+    // The mouse-only edge rail is tabIndex=-1 and must not enter roving focus.
+    expect((document.activeElement as HTMLElement).textContent).toContain('Agents');
+  });
+
+  it('uses an explicit accessible label for rich collapsed labels', () => {
+    render(
+      <HudSideNav
+        items={[
+          {
+            id: 'canvas',
+            label: <span>Canvas</span>,
+            accessibilityLabel: 'Canvas workspace',
+          },
+        ]}
+        collapsed
+      />,
+    );
+    expect(screen.getByRole('button', { name: 'Canvas workspace' })).toHaveTextContent('Ca');
   });
 });
 
@@ -164,12 +197,44 @@ describe('HudSideNavProvider + primitives', () => {
     expect(screen.getByTestId('state')).toHaveTextContent('expanded');
   });
 
-  it('renders asChild menu buttons as the provided element', () => {
+  it('renders composed asChild rows inside the provided element', () => {
+    const onClick = vi.fn();
     render(
       <HudSideNavProvider>
         <HudSideNavMenu>
           <HudSideNavMenuItem>
-            <HudSideNavMenuButton asChild isActive>
+            <HudSideNavMenuButton
+              asChild
+              isActive
+              live
+              count={2}
+              icon={Boxes}
+              expanded
+              onClick={onClick}
+            >
+              <a href="#atlas">Atlas</a>
+            </HudSideNavMenuButton>
+          </HudSideNavMenuItem>
+        </HudSideNavMenu>
+      </HudSideNavProvider>,
+    );
+    const link = screen.getByRole('link', { name: /Atlas/ });
+    expect(link).toHaveAttribute('href', '#atlas');
+    expect(link).toHaveAttribute('data-active', '');
+    expect(link).toHaveAttribute('aria-expanded', 'true');
+    expect(link.querySelector('svg')).not.toBeNull();
+    expect(link).toHaveTextContent('2');
+    expect(link.querySelector('.animate-ping')).toHaveClass('motion-reduce:animate-none');
+    fireEvent.click(link);
+    expect(onClick).toHaveBeenCalledOnce();
+  });
+
+  it('folds asChild rows to icon plus accessible label in icon mode', () => {
+    render(
+      <HudSideNavProvider collapsible="icon" defaultOpen={false}>
+        <HudSideNavMenu>
+          <HudSideNavMenuItem>
+            <HudSideNavMenuButton asChild icon={Boxes} count={2}>
               <a href="/atlas">Atlas</a>
             </HudSideNavMenuButton>
           </HudSideNavMenuItem>
@@ -177,7 +242,24 @@ describe('HudSideNavProvider + primitives', () => {
       </HudSideNavProvider>,
     );
     const link = screen.getByRole('link', { name: 'Atlas' });
-    expect(link).toHaveAttribute('href', '/atlas');
-    expect(link).toHaveAttribute('data-active', '');
+    expect(link.querySelector('svg')).not.toBeNull();
+    expect(link.querySelector('.sr-only')).toHaveTextContent('Atlas');
+    expect(link).not.toHaveTextContent('2');
+  });
+});
+
+describe('HudBreadcrumb', () => {
+  it('renders links and marks the current page', () => {
+    render(
+      <HudBreadcrumb
+        items={[
+          { id: 'home', label: 'Home', href: '/' },
+          { id: 'settings', label: 'Settings', current: true },
+        ]}
+      />,
+    );
+    expect(screen.getByRole('navigation', { name: 'Breadcrumb' })).toBeInTheDocument();
+    expect(screen.getByRole('link', { name: 'Home' })).toHaveAttribute('href', '/');
+    expect(screen.getByText('Settings')).toHaveAttribute('aria-current', 'page');
   });
 });

@@ -11,17 +11,17 @@ section: Primitives
 
 `hudsonkit/nav` provides `HudSideNav`: the application-level side navigation a
 web app is organised around. It is distinct from `hudsonkit/patterns` — those
-are app-*interior* rails and lists for a surface's own content, whereas
+are app-_interior_ rails and lists for a surface's own content, whereas
 `HudSideNav` is the structural nav that drops into `AppShell`'s `slots.LeftPanel`
 and drives the app's top-level places.
 
 One data-driven tree renders up to three tiers inside a single panel:
 
-| Tier | Node | Renders as |
-|------|------|------------|
-| 1 — destinations | top-level `items` | icon + label rows; the primary rail |
-| 2 — sections | a child that itself has `children` | mono-eyebrow collapsible group |
-| 3 — items | leaf nodes | dense selectable rows |
+| Tier             | Node                               | Renders as                          |
+| ---------------- | ---------------------------------- | ----------------------------------- |
+| 1 — destinations | top-level `items`                  | icon + label rows; the primary rail |
+| 2 — sections     | a child that itself has `children` | mono-eyebrow collapsible group      |
+| 3 — items        | leaf nodes                         | dense selectable rows               |
 
 Two-level use is natural: give a destination leaf `children` (no nested groups)
 and you get destinations → items with no section headers.
@@ -29,39 +29,39 @@ and you get destinations → items with no section headers.
 ## Import
 
 ```tsx
-import { HudSideNav, type HudNavNode } from 'hudsonkit/nav';
+import { HudSideNav, type HudNavNode } from "hudsonkit/nav";
 ```
 
 ## Usage
 
 ```tsx
-import { HudSideNav, type HudNavNode } from 'hudsonkit/nav';
-import { Boxes, FileText, Home } from 'lucide-react';
+import { HudSideNav, type HudNavNode } from "hudsonkit/nav";
+import { Boxes, FileText, Home } from "lucide-react";
 
 const items: HudNavNode[] = [
-  { id: 'home', label: 'Home', icon: Home },
+  { id: "home", label: "Home", icon: Home },
   {
-    id: 'agents',
-    label: 'Agents',
+    id: "agents",
+    label: "Agents",
     icon: Boxes,
     count: 3,
     children: [
       {
-        id: 'active',
-        label: 'Active',              // a section (has children)
+        id: "active",
+        label: "Active", // a section (has children)
         children: [
-          { id: 'atlas', label: 'Atlas', live: true },
-          { id: 'echo', label: 'Echo' },
+          { id: "atlas", label: "Atlas", live: true },
+          { id: "echo", label: "Echo" },
         ],
       },
-      { id: 'archived', label: 'Archived' },
+      { id: "archived", label: "Archived" },
     ],
   },
-  { id: 'docs', label: 'Docs', icon: FileText },
+  { id: "docs", label: "Docs", icon: FileText },
 ];
 
 function Nav() {
-  const [selected, setSelected] = useState('atlas');
+  const [selected, setSelected] = useState("atlas");
   return (
     <HudSideNav
       items={items}
@@ -80,7 +80,7 @@ supplies the panel chrome, collapse toggle (`Cmd`/`Ctrl`+`[`), and resize.
 - **Selected** — a neutral filled chip (`bg-secondary`) plus a neutral left
   spine. Never accent: selection answers "where am I".
 - **Hover** — a subtle `bg-muted` wash.
-- **Live** — set `live` on a node. This is the *only* accent usage: a pulsing
+- **Live** — set `live` on a node. This is the _only_ accent usage: a pulsing
   live-tone dot, a live count tone, and a live left spine. It answers "what
   is working right now", kept orthogonal to selection. Colour comes from the
   themeable `--hud-nav-live` token (defaults to accent); consumers retint by
@@ -91,8 +91,10 @@ supplies the panel chrome, collapse toggle (`Cmd`/`Ctrl`+`[`), and resize.
 
 `HudSideNav` assumes no router. It reports `onSelect(node)` and reflects
 `selectedId`; wiring that to routes, tabs, or local state is the consumer's
-business. The ancestors of `selectedId` are revealed automatically so the
-current node is always visible.
+business. In uncontrolled expansion mode, the ancestors of `selectedId` are
+revealed automatically on initial render and later selection changes so the
+current node stays visible. With controlled `expandedIds`, the consumer owns
+that reveal policy.
 
 ## Collapse
 
@@ -112,17 +114,17 @@ For persisted collapse, a keyboard shortcut, or hand-composed navs, wrap in
 `HudSideNavProvider` and (optionally) read `useHudSideNav()`.
 
 ```tsx
-import { HudSideNavProvider, HudSideNav } from 'hudsonkit/nav';
+import { HudSideNavProvider, HudSideNav } from "hudsonkit/nav";
 
 <HudSideNavProvider
-  collapsible="icon"     // 'offcanvas' | 'icon' | 'none'
-  side="left"            // 'left' | 'right'
-  persistKey="app.nav"   // persists open state to localStorage
-  keyboardShortcut="b"   // Cmd/Ctrl+B toggles; false disables
+  collapsible="icon" // 'offcanvas' | 'icon' | 'none'
+  side="left" // 'left' | 'right'
+  persistKey="app.nav" // persists open state to localStorage
+  keyboardShortcut="b" // Cmd/Ctrl+B toggles; false disables
   defaultOpen
 >
   <HudSideNav items={items} selectedId={sel} onSelect={(n) => setSel(n.id)} />
-</HudSideNavProvider>
+</HudSideNavProvider>;
 ```
 
 `useHudSideNav()` returns `{ state, open, setOpen, toggle, collapsible, side }`.
@@ -136,13 +138,22 @@ share the same look and honor the provider's collapse mode:
 
 ```tsx
 import {
-  HudSideNavProvider, HudSideNav, HudSideNavHeader, HudSideNavContent,
-  HudSideNavFooter, HudSideNavGroup, HudSideNavGroupLabel, HudSideNavMenu,
-  HudSideNavMenuItem, HudSideNavMenuButton, HudSideNavRail,
-} from 'hudsonkit/nav';
+  HudSideNavProvider,
+  HudSideNav,
+  HudSideNavHeader,
+  HudSideNavContent,
+  HudSideNavFooter,
+  HudSideNavGroup,
+  HudSideNavGroupLabel,
+  HudSideNavMenu,
+  HudSideNavMenuItem,
+  HudSideNavMenuButton,
+  HudSideNavRail,
+} from "hudsonkit/nav";
 
 <HudSideNavProvider persistKey="app.nav">
-  <HudSideNav rail>{/* children mode: compose the body */}
+  <HudSideNav rail>
+    {/* children mode: compose the body */}
     <HudSideNavHeader>Acme</HudSideNavHeader>
     <HudSideNavContent>
       <HudSideNavGroup>
@@ -158,28 +169,31 @@ import {
     </HudSideNavContent>
     <HudSideNavFooter>…</HudSideNavFooter>
   </HudSideNav>
-</HudSideNavProvider>
+</HudSideNavProvider>;
 ```
 
 `HudSideNavMenuButton` takes `icon`, `isActive` (neutral emphasis),
-`live` (the only accent), `count`, `badge`, `asChild`, and `tooltip`. Nest with
-`HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
+`live` (the only accent), `count`, `badge`, `asChild`, `expanded`, and `tooltip`.
+`asChild` keeps the child element and routing props while Hudson composes its
+icon, collapsed label, live state, count, and badge inside it. Use `expanded`
+on hand-composed disclosure rows so the control exposes `aria-expanded`. Nest
+with `HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
 
 ## Props
 
-| Prop | Type | Notes |
-|------|------|-------|
-| `items` | `HudNavNode[]` | Level-1 destinations. |
-| `selectedId` | `string \| null` | Selected node id (any tier). |
-| `onSelect` | `(node) => void` | Row activation. |
-| `children` | `ReactNode` | Hand-composed body (ignored when `items` is set). |
-| `expandedIds` / `defaultExpandedIds` / `onExpandedChange` | | Controlled or seeded expansion. |
-| `collapsed` | `boolean` | Legacy shorthand for the icons-only rail. |
-| `collapsible` / `side` / `defaultOpen` / `persistKey` / `keyboardShortcut` | | Provider defaults, used only when self-providing. |
-| `rail` | `boolean` | Render a `HudSideNavRail` edge toggle. |
-| `header` / `footer` | `ReactNode` | Pinned above / below the tree. |
-| `density` | `'compact' \| 'default'` | |
-| `ariaLabel` | `string` | `<nav>` landmark name. |
-| `empty` | `ReactNode` | Shown when `items` is empty. |
+| Prop                                                                       | Type                     | Notes                                             |
+| -------------------------------------------------------------------------- | ------------------------ | ------------------------------------------------- |
+| `items`                                                                    | `HudNavNode[]`           | Level-1 destinations.                             |
+| `selectedId`                                                               | `string \| null`         | Selected node id (any tier).                      |
+| `onSelect`                                                                 | `(node) => void`         | Row activation.                                   |
+| `children`                                                                 | `ReactNode`              | Hand-composed body (ignored when `items` is set). |
+| `expandedIds` / `defaultExpandedIds` / `onExpandedChange`                  |                          | Controlled or seeded expansion.                   |
+| `collapsed`                                                                | `boolean`                | Legacy shorthand for the icons-only rail.         |
+| `collapsible` / `side` / `defaultOpen` / `persistKey` / `keyboardShortcut` |                          | Provider defaults, used only when self-providing. |
+| `rail`                                                                     | `boolean`                | Render a `HudSideNavRail` edge toggle.            |
+| `header` / `footer`                                                        | `ReactNode`              | Pinned above / below the tree.                    |
+| `density`                                                                  | `'compact' \| 'default'` |                                                   |
+| `ariaLabel`                                                                | `string`                 | `<nav>` landmark name.                            |
+| `empty`                                                                    | `ReactNode`              | Shown when `items` is empty.                      |
 
 `HudNavNode`: `{ id, label, icon?, count?, badge?, live?, disabled?, children? }`.

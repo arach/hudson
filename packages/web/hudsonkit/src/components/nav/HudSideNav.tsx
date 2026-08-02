@@ -25,7 +25,7 @@
 // is a neutral filled chip, never the live tone, so "where I am" and "what is
 // live" stay legible as two separate channels.
 
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import type { LucideIcon } from 'lucide-react';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
@@ -37,7 +37,14 @@ import {
   type HudSideNavSide,
 } from './context';
 import { HudSideNavRail, HudSideNavCaret } from './primitives';
-import { LiveCountBadge, LiveDot, indentFor, navRailSelectedBg, navRowBg, navSpine } from './shared';
+import {
+  LiveCountBadge,
+  LiveDot,
+  indentFor,
+  navRailSelectedBg,
+  navRowBg,
+  navSpine,
+} from './shared';
 import { useRovingNav } from './useRovingNav';
 
 /** A single navigation node. Nodes nest via `children` to form the tier tree. */
@@ -46,6 +53,8 @@ export interface HudNavNode {
   id: string;
   /** Row label. Plain text is ideal; any node is accepted. */
   label: React.ReactNode;
+  /** Accessible/collapsed-rail label when `label` is not plain text. Falls back to `id`. */
+  accessibilityLabel?: string;
   /** Optional Lucide icon. Rendered on destinations and leaves, and it is the
    *  only affordance shown in collapsed (icons-only) mode. */
   icon?: LucideIcon;
@@ -77,8 +86,8 @@ export interface HudSideNavProps {
   onSelect?: (node: HudNavNode) => void;
   /** Controlled expanded set. Omit to let HudSideNav own expansion. */
   expandedIds?: ReadonlySet<string>;
-  /** Initial expanded ids when uncontrolled. The ancestors of `selectedId` are
-   *  always revealed on top of this, so the current node is visible. */
+  /** Initial expanded ids when uncontrolled. In uncontrolled mode, ancestors
+   *  of `selectedId` are revealed on top of this as selection changes. */
   defaultExpandedIds?: Iterable<string>;
   /** Notified whenever the expanded set changes (both controlled + uncontrolled). */
   onExpandedChange?: (expandedIds: ReadonlySet<string>) => void;
@@ -201,6 +210,17 @@ function HudSideNavView({
     [expandedIds, onExpandedChange],
   );
 
+  useEffect(() => {
+    // Controlled expansion remains fully consumer-owned. In uncontrolled mode,
+    // keep route/search-driven selection changes visible after the first paint.
+    if (expandedIds !== undefined || !selectedId || !items) return;
+    const ancestors = collectAncestors(items, selectedId) ?? [];
+    if (!ancestors.some((id) => !internalExpanded.has(id))) return;
+    const next = new Set(internalExpanded);
+    for (const id of ancestors) next.add(id);
+    setExpanded(next);
+  }, [expandedIds, internalExpanded, items, selectedId, setExpanded]);
+
   const toggleExpanded = useCallback(
     (id: string) => {
       const next = new Set(expanded);
@@ -225,7 +245,7 @@ function HudSideNavView({
       />
     ) : (
       <div className="flex flex-col gap-0.5">
-        {items!.map(node => (
+        {items!.map((node) => (
           <HudNavRow
             key={node.id}
             node={node}
@@ -264,7 +284,12 @@ function HudSideNavView({
           {header}
         </div>
       )}
-      <div className={cx('min-h-0 flex-1 overflow-y-auto frame-scrollbar', density === 'compact' ? 'py-1.5' : 'py-2')}>
+      <div
+        className={cx(
+          'min-h-0 flex-1 overflow-y-auto frame-scrollbar',
+          density === 'compact' ? 'py-1.5' : 'py-2',
+        )}
+      >
         {body}
       </div>
       {footer && (
@@ -323,13 +348,16 @@ function HudNavRow({
         <button
           type="button"
           disabled={node.disabled}
+          aria-expanded={isExpanded}
           onClick={activate}
           style={{ paddingLeft: indentFor(depth, compact) }}
           className={cx(
             'group flex w-full items-center gap-1.5 pr-3 font-mono uppercase transition-colors',
             'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
             compact ? 'py-1 text-[9px] tracking-[0.16em]' : 'py-1.5 text-[10px] tracking-[0.18em]',
-            node.disabled ? 'pointer-events-none opacity-50' : 'text-muted-foreground hover:text-foreground',
+            node.disabled
+              ? 'pointer-events-none opacity-50'
+              : 'text-muted-foreground hover:text-foreground',
           )}
         >
           <HudSideNavCaret expanded={isExpanded} />
@@ -338,7 +366,7 @@ function HudNavRow({
         </button>
         {isExpanded && (
           <div className="flex flex-col">
-            {children.map(child => (
+            {children.map((child) => (
               <HudNavRow
                 key={child.id}
                 node={child}
@@ -366,6 +394,7 @@ function HudNavRow({
         type="button"
         disabled={node.disabled}
         aria-current={isSelected ? 'page' : undefined}
+        aria-expanded={hasChildren ? isExpanded : undefined}
         onClick={activate}
         style={{ paddingLeft: indentFor(depth, compact) }}
         className={cx(
@@ -373,7 +402,9 @@ function HudNavRow({
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
           compact ? 'py-1.5' : 'py-2',
           // When selectionWash draws its own inset spine, keep the border transparent.
-          selectionWash && isSelected && !node.live ? 'border-l-transparent' : navSpine(isSelected, node.live),
+          selectionWash && isSelected && !node.live
+            ? 'border-l-transparent'
+            : navSpine(isSelected, node.live),
           navRowBg(isSelected, selectionWash),
           node.disabled && 'pointer-events-none opacity-50',
         )}
@@ -395,8 +426,12 @@ function HudNavRow({
           className={cx(
             'min-w-0 flex-1 truncate',
             isDestination
-              ? compact ? 'text-[11px] font-medium' : 'text-[12px] font-medium'
-              : compact ? 'text-[10px]' : 'text-[11px]',
+              ? compact
+                ? 'text-[11px] font-medium'
+                : 'text-[12px] font-medium'
+              : compact
+              ? 'text-[10px]'
+              : 'text-[11px]',
             isSelected ? 'text-foreground' : 'text-foreground/78 group-hover:text-foreground',
           )}
         >
@@ -407,7 +442,7 @@ function HudNavRow({
 
       {hasChildren && isExpanded && (
         <div className="flex flex-col">
-          {children.map(child => (
+          {children.map((child) => (
             <HudNavRow
               key={child.id}
               node={child}
@@ -431,9 +466,7 @@ function TrailingCluster({ node, compact }: { node: HudNavNode; compact: boolean
   if (typeof node.count !== 'number' && !node.badge && !node.live) return null;
   return (
     <span className="flex shrink-0 items-center gap-1.5">
-      {typeof node.count === 'number' && (
-        <LiveCountBadge count={node.count} live={node.live} />
-      )}
+      {typeof node.count === 'number' && <LiveCountBadge count={node.count} live={node.live} />}
       {node.badge}
       {node.live && <LiveDot compact={compact} />}
     </span>
@@ -459,10 +492,11 @@ function CollapsedRail({
   const compact = density === 'compact';
   return (
     <div className="flex flex-col items-center gap-1 px-1.5">
-      {items.map(node => {
+      {items.map((node) => {
         const isSelected = selectedId === node.id;
         const Icon = node.icon;
-        const label = typeof node.label === 'string' ? node.label : undefined;
+        const label =
+          node.accessibilityLabel ?? (typeof node.label === 'string' ? node.label : node.id);
         return (
           <button
             key={node.id}
@@ -482,7 +516,11 @@ function CollapsedRail({
               node.disabled && 'pointer-events-none opacity-50',
             )}
           >
-            {Icon ? <Icon size={compact ? 16 : 18} /> : <span className="font-mono text-[11px] uppercase">{label?.slice(0, 2)}</span>}
+            {Icon ? (
+              <Icon size={compact ? 16 : 18} />
+            ) : (
+              <span className="font-mono text-[11px] uppercase">{label.slice(0, 2)}</span>
+            )}
             {node.live && (
               <span
                 aria-hidden="true"

@@ -15,14 +15,35 @@ import { cx } from '../patterns/utils';
 import { useHudSideNav } from './context';
 import { LiveCountBadge, LiveDot, navRowBg, navSpine } from './shared';
 
-/** Minimal Slot — merges nav props onto a single child element (for `asChild`). */
-function Slot({ children, ...props }: { children: React.ReactNode } & Record<string, unknown>) {
+/** Minimal Slot — merges nav props and composed row content onto one child. */
+function Slot({
+  children,
+  content,
+  ...props
+}: {
+  children: React.ReactNode;
+  content: React.ReactNode;
+} & Record<string, unknown>) {
   if (!React.isValidElement(children)) return null;
   const childProps = children.props as Record<string, unknown>;
+  const slotOnClick = props.onClick as React.MouseEventHandler<HTMLElement> | undefined;
+  const childOnClick = childProps.onClick as React.MouseEventHandler<HTMLElement> | undefined;
+  const onClick =
+    slotOnClick && childOnClick
+      ? (event: React.MouseEvent<HTMLElement>) => {
+          childOnClick(event);
+          if (!event.defaultPrevented) slotOnClick(event);
+        }
+      : childOnClick ?? slotOnClick;
   return React.cloneElement(children as React.ReactElement<Record<string, unknown>>, {
     ...props,
     ...childProps,
-    className: cx(props.className as string | undefined, childProps.className as string | undefined),
+    className: cx(
+      props.className as string | undefined,
+      childProps.className as string | undefined,
+    ),
+    onClick,
+    children: content,
   });
 }
 
@@ -47,7 +68,12 @@ export function HudSideNavHeader({ children, className }: HudSideNavRegionProps)
 /** Scrollable middle region between header and footer. */
 export function HudSideNavContent({ children, className }: HudSideNavRegionProps) {
   return (
-    <div className={cx('flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto frame-scrollbar py-2', className)}>
+    <div
+      className={cx(
+        'flex min-h-0 flex-1 flex-col gap-2 overflow-y-auto frame-scrollbar py-2',
+        className,
+      )}
+    >
       {children}
     </div>
   );
@@ -112,6 +138,8 @@ export interface HudSideNavMenuButtonProps {
   onClick?: () => void;
   /** Merge props onto a single child (e.g. an `<a>` or router `<Link>`). */
   asChild?: boolean;
+  /** Disclosure state for a hand-composed expandable row. */
+  expanded?: boolean;
   /** Tooltip / accessible label — also the icon-collapsed hover title. */
   tooltip?: string;
   className?: string;
@@ -128,22 +156,29 @@ export function HudSideNavMenuButton({
   disabled,
   onClick,
   asChild,
+  expanded,
   tooltip,
   className,
 }: HudSideNavMenuButtonProps) {
   const iconCollapsed = useIconCollapsed();
   const isDestination = size === 'destination';
+  const label =
+    asChild && React.isValidElement(children)
+      ? (children.props as { children?: React.ReactNode }).children
+      : children;
 
   const content = iconCollapsed ? (
     <>
-      {Icon ? <Icon size={18} className={isActive ? 'text-foreground' : 'text-muted-foreground'} /> : null}
+      {Icon ? (
+        <Icon size={18} className={isActive ? 'text-foreground' : 'text-muted-foreground'} />
+      ) : null}
       {live && (
         <span
           aria-hidden="true"
           className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--hud-nav-live)]"
         />
       )}
-      <span className="sr-only">{children}</span>
+      <span className="sr-only">{label}</span>
     </>
   ) : (
     <>
@@ -160,7 +195,7 @@ export function HudSideNavMenuButton({
           isActive ? 'text-foreground' : 'text-foreground/78 group-hover:text-foreground',
         )}
       >
-        {children}
+        {label}
       </span>
       {(typeof count === 'number' || badge || live) && (
         <span className="flex shrink-0 items-center gap-1.5">
@@ -176,7 +211,12 @@ export function HudSideNavMenuButton({
     'group relative flex w-full items-center gap-2 text-left transition-colors',
     'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
     iconCollapsed
-      ? cx('h-9 justify-center rounded-md', isActive ? 'bg-secondary/80 text-foreground' : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground')
+      ? cx(
+          'h-9 justify-center rounded-md',
+          isActive
+            ? 'bg-secondary/80 text-foreground'
+            : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+        )
       : cx('border-l-2 py-2 pl-2.5 pr-2.5', navSpine(isActive, live), navRowBg(isActive)),
     disabled && 'pointer-events-none opacity-50',
     className,
@@ -186,8 +226,12 @@ export function HudSideNavMenuButton({
     return (
       <Slot
         className={classes}
+        content={content}
         title={tooltip}
+        onClick={onClick}
         aria-current={isActive ? 'page' : undefined}
+        aria-expanded={expanded}
+        aria-disabled={disabled || undefined}
         data-active={isActive ? '' : undefined}
       >
         {children}
@@ -202,6 +246,7 @@ export function HudSideNavMenuButton({
       onClick={onClick}
       title={tooltip}
       aria-current={isActive ? 'page' : undefined}
+      aria-expanded={expanded}
       data-active={isActive ? '' : undefined}
       className={classes}
     >
@@ -214,7 +259,11 @@ export function HudSideNavMenuButton({
 export function HudSideNavMenuSub({ children, className }: HudSideNavRegionProps) {
   const iconCollapsed = useIconCollapsed();
   if (iconCollapsed) return null;
-  return <ul className={cx('ml-[18px] flex flex-col border-l border-border/45 pl-1', className)}>{children}</ul>;
+  return (
+    <ul className={cx('ml-[18px] flex flex-col border-l border-border/45 pl-1', className)}>
+      {children}
+    </ul>
+  );
 }
 
 export function HudSideNavMenuSubButton(props: Omit<HudSideNavMenuButtonProps, 'size'>) {
@@ -282,7 +331,10 @@ export function HudSideNavCaret({ expanded }: { expanded: boolean }) {
     <ChevronRight
       size={10}
       strokeWidth={2.5}
-      className={cx('shrink-0 text-muted-foreground/70 transition-transform duration-150', expanded && 'rotate-90')}
+      className={cx(
+        'shrink-0 text-muted-foreground/70 transition-transform duration-150',
+        expanded && 'rotate-90',
+      )}
     />
   );
 }

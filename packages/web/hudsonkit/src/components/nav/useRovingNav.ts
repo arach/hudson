@@ -36,6 +36,9 @@ export function useRovingNav() {
     const rows = [
       ...event.currentTarget.querySelectorAll<HTMLButtonElement>('button:not(:disabled)'),
     ].filter((row) => {
+      // Explicitly untabbable controls (such as the 3px edge rail) are mouse
+      // affordances, not stops in the keyboard navigation sequence.
+      if (row.tabIndex < 0) return false;
       // offsetParent is null for display:none (and often in jsdom). Prefer a
       // layout check that still works under test and collapses hidden rails.
       if (row.hidden || row.getAttribute('aria-hidden') === 'true') return false;
@@ -62,18 +65,10 @@ export function useRovingNav() {
       event.key === 'Home'
         ? 0
         : event.key === 'End'
-          ? rows.length - 1
-          : event.key === 'ArrowDown'
-            ? Math.min(rows.length - 1, current + 1)
-            : Math.max(0, (current < 0 ? rows.length : current) - 1);
+        ? rows.length - 1
+        : event.key === 'ArrowDown'
+        ? Math.min(rows.length - 1, current + 1)
+        : Math.max(0, (current < 0 ? rows.length : current) - 1);
     rows[next]?.focus();
   }, []);
 }
-
-/** Documented evaluation result for consumers and the upstream map. */
-export const ROVING_FOCUS_EVAL = {
-  baseUiComposite: 'internal-only; not a public container API',
-  decision: 'keep-useRovingNav' as const,
-  reason:
-    'Needs container-level Arrow/Home/End over mixed kit + hand-composed buttons without per-item CompositeItem registration.',
-} as const;
