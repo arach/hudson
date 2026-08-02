@@ -143,6 +143,7 @@ jobs:
       - name: Publish planned artifacts
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+          NPM_CONFIG_TOKEN: ${{ secrets.NPM_TOKEN }}
           HUDSONKIT_DIST_TAG: ${{ inputs.hudsonkit_dist_tag }}
           AI_DIST_TAG: ${{ inputs.ai_dist_tag }}
         run: |
