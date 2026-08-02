@@ -1,8 +1,60 @@
 import SwiftUI
 
-#if canImport(UIKit)
+#if canImport(AppKit)
+import AppKit
+#elseif canImport(UIKit)
 import UIKit
 #endif
+
+enum HudSecretClipboard {
+    struct Snapshot: Equatable, Sendable {
+        let text: String
+        let changeCount: Int
+    }
+
+    static func copy(_ text: String) -> Snapshot? {
+        #if canImport(AppKit)
+        copy(text, to: .general)
+        #elseif canImport(UIKit)
+        let pasteboard = UIPasteboard.general
+        pasteboard.string = text
+        let changeCount = pasteboard.changeCount
+        guard pasteboard.changeCount == changeCount else { return nil }
+        guard pasteboard.string == text else { return nil }
+        return Snapshot(text: text, changeCount: changeCount)
+        #else
+        return nil
+        #endif
+    }
+
+    static func clear(ifMatching snapshot: Snapshot) {
+        #if canImport(AppKit)
+        clear(ifMatching: snapshot, from: .general)
+        #elseif canImport(UIKit)
+        let pasteboard = UIPasteboard.general
+        guard pasteboard.changeCount == snapshot.changeCount else { return }
+        guard pasteboard.string == snapshot.text else { return }
+        pasteboard.string = ""
+        #endif
+    }
+
+    #if canImport(AppKit)
+    static func copy(_ text: String, to pasteboard: NSPasteboard) -> Snapshot? {
+        pasteboard.clearContents()
+        guard pasteboard.setString(text, forType: .string) else { return nil }
+        let changeCount = pasteboard.changeCount
+        guard pasteboard.changeCount == changeCount else { return nil }
+        guard pasteboard.string(forType: .string) == text else { return nil }
+        return Snapshot(text: text, changeCount: changeCount)
+    }
+
+    static func clear(ifMatching snapshot: Snapshot, from pasteboard: NSPasteboard) {
+        guard pasteboard.changeCount == snapshot.changeCount else { return }
+        guard pasteboard.string(forType: .string) == snapshot.text else { return }
+        pasteboard.clearContents()
+    }
+    #endif
+}
 
 /// Masked input for entering a secret (API key, token, passphrase) — replaces
 /// raw `TextField` usage Talkie/Scout currently lean on for credential entry.
@@ -15,6 +67,7 @@ public struct HudSecretField: View {
 
     @State private var isRevealed: Bool = false
     @State private var didCopy: Bool = false
+    @State private var copyGeneration: UInt = 0
 
     public init(
         _ placeholder: String,
@@ -84,18 +137,21 @@ public struct HudSecretField: View {
     }
 
     private func copy() {
-        #if canImport(UIKit)
-        UIPasteboard.general.string = text
-        // Clear the pasteboard after 30s so the secret doesn't linger.
-        let snapshot = text
-        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
-            if UIPasteboard.general.string == snapshot {
-                UIPasteboard.general.string = ""
-            }
+        copyGeneration &+= 1
+        let generation = copyGeneration
+        guard let snapshot = HudSecretClipboard.copy(text) else {
+            didCopy = false
+            return
         }
-        #endif
+
+        // Clear the pasteboard after 30s so the secret doesn't linger.
+        DispatchQueue.main.asyncAfter(deadline: .now() + 30) {
+            HudSecretClipboard.clear(ifMatching: snapshot)
+        }
+
         didCopy = true
         DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+            guard copyGeneration == generation else { return }
             didCopy = false
         }
     }

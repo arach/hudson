@@ -11,6 +11,118 @@ enum HudSettingsDetailLayoutPolicy {
     }
 }
 
+private struct HudSettingsDetailResponsiveLayout: Layout {
+    let sidebarWidth: CGFloat
+    let collapseBelow: CGFloat
+    let spacing: CGFloat
+
+    func sizeThatFits(
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) -> CGSize {
+        guard subviews.count == 3 else { return .zero }
+
+        let width = resolvedWidth(proposal.width)
+        let intrinsicHeight: CGFloat
+
+        switch HudSettingsDetailLayoutPolicy.layout(
+            for: width,
+            collapseBelow: collapseBelow
+        ) {
+        case .stacked:
+            let contentProposal = ProposedViewSize(width: width, height: nil)
+            let sidebarSize = subviews[0].sizeThatFits(contentProposal)
+            let detailSize = subviews[2].sizeThatFits(contentProposal)
+            intrinsicHeight = sidebarSize.height + spacing + 1 + spacing + detailSize.height
+
+        case .columns:
+            let detailWidth = max(width - sidebarWidth - 1 - (spacing * 2), 0)
+            let sidebarSize = subviews[0].sizeThatFits(
+                ProposedViewSize(width: sidebarWidth, height: nil)
+            )
+            let detailSize = subviews[2].sizeThatFits(
+                ProposedViewSize(width: detailWidth, height: nil)
+            )
+            intrinsicHeight = max(sidebarSize.height, detailSize.height)
+        }
+
+        return CGSize(
+            width: width,
+            height: resolvedHeight(proposal.height, intrinsicHeight: intrinsicHeight)
+        )
+    }
+
+    func placeSubviews(
+        in bounds: CGRect,
+        proposal: ProposedViewSize,
+        subviews: Subviews,
+        cache: inout ()
+    ) {
+        guard subviews.count == 3 else { return }
+
+        switch HudSettingsDetailLayoutPolicy.layout(
+            for: bounds.width,
+            collapseBelow: collapseBelow
+        ) {
+        case .stacked:
+            let contentProposal = ProposedViewSize(width: bounds.width, height: nil)
+            let sidebarSize = subviews[0].sizeThatFits(contentProposal)
+            let detailSize = subviews[2].sizeThatFits(contentProposal)
+            var y = bounds.minY
+
+            subviews[0].place(
+                at: CGPoint(x: bounds.minX, y: y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: bounds.width, height: sidebarSize.height)
+            )
+            y += sidebarSize.height + spacing
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX, y: y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: bounds.width, height: 1)
+            )
+            y += 1 + spacing
+            subviews[2].place(
+                at: CGPoint(x: bounds.minX, y: y),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: bounds.width, height: detailSize.height)
+            )
+
+        case .columns:
+            let detailWidth = max(bounds.width - sidebarWidth - 1 - (spacing * 2), 0)
+            subviews[0].place(
+                at: CGPoint(x: bounds.minX, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: sidebarWidth, height: nil)
+            )
+            subviews[1].place(
+                at: CGPoint(x: bounds.minX + sidebarWidth + spacing, y: bounds.minY),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: 1, height: bounds.height)
+            )
+            subviews[2].place(
+                at: CGPoint(
+                    x: bounds.minX + sidebarWidth + spacing + 1 + spacing,
+                    y: bounds.minY
+                ),
+                anchor: .topLeading,
+                proposal: ProposedViewSize(width: detailWidth, height: nil)
+            )
+        }
+    }
+
+    private func resolvedWidth(_ proposedWidth: CGFloat?) -> CGFloat {
+        guard let proposedWidth, proposedWidth.isFinite else { return collapseBelow }
+        return max(proposedWidth, 0)
+    }
+
+    private func resolvedHeight(_ proposedHeight: CGFloat?, intrinsicHeight: CGFloat) -> CGFloat {
+        guard let proposedHeight, proposedHeight.isFinite else { return intrinsicHeight }
+        return max(proposedHeight, 0)
+    }
+}
+
 /// A two-column settings canvas with a fixed-width selection column and a
 /// flexible detail column. Apps own the data and navigation model; Hudson owns
 /// the spacing, divider, and responsive collapse behavior.
@@ -33,30 +145,22 @@ public struct HudSettingsDetail<Sidebar: View, Detail: View>: View {
     }
 
     public var body: some View {
-        GeometryReader { proxy in
-            let layoutMode = HudSettingsDetailLayoutPolicy.layout(
-                for: proxy.size.width,
-                collapseBelow: collapseBelow
-            )
-            let layout = switch layoutMode {
-            case .stacked:
-                AnyLayout(VStackLayout(alignment: .leading, spacing: HudSpacing.xxl))
-            case .columns:
-                AnyLayout(HStackLayout(alignment: .top, spacing: HudSpacing.xxl))
-            }
-
-            layout {
+        HudSettingsDetailResponsiveLayout(
+            sidebarWidth: sidebarWidth,
+            collapseBelow: collapseBelow,
+            spacing: HudSpacing.xxl
+        ) {
+            VStack(alignment: .leading, spacing: 0) {
                 sidebar()
-                    .frame(
-                        minWidth: layoutMode == .columns ? sidebarWidth : nil,
-                        idealWidth: layoutMode == .columns ? sidebarWidth : nil,
-                        maxWidth: layoutMode == .columns ? sidebarWidth : .infinity,
-                        alignment: .topLeading
-                    )
-                HudDivider(axis: layoutMode == .columns ? .vertical : .horizontal)
-                detail()
-                    .frame(maxWidth: .infinity, alignment: .topLeading)
             }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
+            Rectangle()
+                .fill(HudHairline.subtle)
+                .accessibilityHidden(true)
+            VStack(alignment: .leading, spacing: 0) {
+                detail()
+            }
+                .frame(maxWidth: .infinity, alignment: .topLeading)
         }
     }
 }
