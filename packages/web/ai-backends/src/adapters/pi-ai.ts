@@ -267,7 +267,7 @@ export interface PiAiUIRequest {
   defaultModels?: Record<string, string>;
   /** Max tool-call rounds. Defaults to {@link DEFAULT_MAX_STEPS}. */
   maxSteps?: number;
-  /** pi-ai reasoning effort — omit or 'off' to disable. */
+  /** Omit to preserve provider defaults; use 'off' to explicitly disable reasoning. */
   effort?: 'off' | 'low' | 'medium' | 'high';
 }
 
@@ -555,15 +555,14 @@ function streamUI(req: PiAiUIRequest): Response {
           streamOptions.reasoning = req.effort;
         }
 
-        const assistantStream = piAiStreamSimple(
-          piModel,
-          {
-            systemPrompt: system,
-            messages: piMessages,
-            tools: piTools.length > 0 ? piTools : undefined,
-          },
-          streamOptions,
-        );
+        const piContext: Context = {
+          systemPrompt: system,
+          messages: piMessages,
+          tools: piTools.length > 0 ? piTools : undefined,
+        };
+        const assistantStream = req.effort === undefined
+          ? piAiStream(piModel, piContext, { apiKey })
+          : piAiStreamSimple(piModel, piContext, streamOptions);
 
         let textPartId: string | null = null;
         let finalMessage: AssistantMessage | null = null;

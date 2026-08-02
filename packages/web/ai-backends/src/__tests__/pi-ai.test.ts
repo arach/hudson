@@ -86,9 +86,6 @@ function makeRequest(input: string, overrides?: Partial<Parameters<ReturnType<ty
 
 beforeEach(() => {
   vi.clearAllMocks();
-  mockStreamSimple.mockImplementation((model, context, options) => (
-    mockStream(model, context, options)
-  ));
   mockGetModel.mockReturnValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-6' });
   mockGetEnvApiKey.mockReturnValue(undefined);
 });
@@ -459,14 +456,39 @@ describe('streamUI() — schema compilation', () => {
 });
 
 describe('streamUI() — reasoning effort', () => {
+  it('preserves provider-stream behavior when effort is omitted', async () => {
+    mockStream.mockReturnValue(fakeEventStream([
+      { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'think' }] }],
+      toolset: 'none',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({ system: 'test', tools: {} }),
+    });
+
+    await response.text();
+
+    expect(mockStream).toHaveBeenCalledWith(
+      expect.anything(),
+      expect.anything(),
+      { apiKey: 'test-key' },
+    );
+    expect(mockStreamSimple).not.toHaveBeenCalled();
+  });
+
   it.each([
-    [undefined, undefined],
     ['off', undefined],
     ['low', 'low'],
     ['medium', 'medium'],
     ['high', 'high'],
-  ] as const)('maps effort %s through pi-ai streamSimple', async (effort, reasoning) => {
-    mockStream.mockReturnValue(fakeEventStream([
+  ] as const)('maps explicit effort %s through pi-ai streamSimple', async (effort, reasoning) => {
+    mockStreamSimple.mockReturnValue(fakeEventStream([
       { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
     ]));
 

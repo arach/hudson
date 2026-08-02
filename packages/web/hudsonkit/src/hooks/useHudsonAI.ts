@@ -49,7 +49,7 @@ export interface UseHudsonAIOptions {
   provider?: string;
   /** Model ID override (e.g. 'MiniMax-M3', 'gpt-5.5', 'claude-sonnet-4-20250514') */
   model?: string;
-  /** pi-ai reasoning effort — 'off' omits reasoning; otherwise low/medium/high. */
+  /** Omit to preserve provider defaults; use 'off' to explicitly disable reasoning. */
   effort?: 'off' | 'low' | 'medium' | 'high';
   /** Called when the assistant response finishes streaming. */
   onFinish?: ChatOnFinishCallback<UIMessage>;
