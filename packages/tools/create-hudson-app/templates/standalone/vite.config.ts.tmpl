@@ -1,0 +1,43 @@
+import { defineConfig } from 'vitest/config';
+import react from '@vitejs/plugin-react';
+import tailwindcss from '@tailwindcss/vite';
+import { resolve } from 'node:path';
+import { fileURLToPath } from 'node:url';
+
+/**
+ * Standalone Hudson consumer client (Vite + TanStack Router).
+ * Scope: standalone consumer apps — not Hudson monorepo Next.js surfaces.
+ *
+ * - base: './' keeps relative assets for file: / WKWebView hosts
+ * - /broker proxy avoids CORS to a local OpenScout/Hudson broker
+ * - Multi-entry: SPA root + optional embeds under /embeds/
+ */
+const rootDir = fileURLToPath(new URL('.', import.meta.url));
+
+export default defineConfig({
+  plugins: [react(), tailwindcss()],
+  base: './',
+  server: {
+    host: '127.0.0.1',
+    port: 5173,
+    strictPort: true,
+    proxy: {
+      '/broker': {
+        target: process.env.HUDSON_BROKER_URL ?? 'http://127.0.0.1:43110',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/broker/, ''),
+      },
+    },
+  },
+  build: {
+    rollupOptions: {
+      input: {
+        main: resolve(rootDir, 'index.html'),
+        // editor: resolve(rootDir, 'embeds/editor.html'),
+      },
+    },
+  },
+  test: {
+    environment: 'node',
+  },
+});

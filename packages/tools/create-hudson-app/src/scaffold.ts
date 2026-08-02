@@ -55,18 +55,25 @@ export interface ScaffoldOptions {
 
 export async function scaffold(opts: ScaffoldOptions): Promise<string[]> {
   const { appId, tier, vars, projectRoot } = opts;
-  const appDir = resolve(projectRoot, 'app', 'apps', appId);
 
-  // Collect template files: shared + tier-specific
-  const sharedDir = join(TEMPLATES_DIR, 'shared');
+  // Standalone = full Vite consumer project at <cwd>/<appId>/ (not monorepo apps).
+  // Monorepo tiers write under app/apps/<id>/ and merge shared templates.
+  const isStandalone = tier === 'standalone';
+  const appDir = isStandalone
+    ? resolve(projectRoot, appId)
+    : resolve(projectRoot, 'app', 'apps', appId);
+
   const tierDir = join(TEMPLATES_DIR, tier);
-
-  const sharedFiles = await collectFiles(sharedDir, vars);
   const tierFiles = await collectFiles(tierDir, vars);
 
-  const allFiles = [...tierFiles, ...sharedFiles];
+  let allFiles: TemplateFile[] = tierFiles;
+  if (!isStandalone) {
+    const sharedDir = join(TEMPLATES_DIR, 'shared');
+    const sharedFiles = await collectFiles(sharedDir, vars);
+    // Tier files win over shared on dest collision.
+    allFiles = [...tierFiles, ...sharedFiles];
+  }
 
-  // De-duplicate by dest (tier files win over shared)
   const seen = new Set<string>();
   const uniqueFiles: TemplateFile[] = [];
   for (const f of allFiles) {
@@ -76,7 +83,6 @@ export async function scaffold(opts: ScaffoldOptions): Promise<string[]> {
     }
   }
 
-  // Write files
   const createdPaths: string[] = [];
 
   for (const file of uniqueFiles) {
@@ -90,7 +96,7 @@ export async function scaffold(opts: ScaffoldOptions): Promise<string[]> {
 
     await writeFile(destPath, content, 'utf-8');
 
-    const relPath = `app/apps/${appId}/${file.dest}`;
+    const relPath = isStandalone ? `${appId}/${file.dest}` : `app/apps/${appId}/${file.dest}`;
     fileCreated(relPath);
     createdPaths.push(relPath);
   }

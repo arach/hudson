@@ -1,0 +1,110 @@
+import { createContext, useContext, useMemo, useState, type ReactNode } from 'react';
+import { Home, Settings } from 'lucide-react';
+import { AppShell } from 'hudsonkit/app-shell';
+import { HudSideNav } from 'hudsonkit/nav';
+import type { HudsonApp } from 'hudsonkit';
+
+/**
+ * Minimal AppShell destinations scaffold for standalone consumers.
+ * ⌘B morph via HudSideNavProvider defaults; wire useSnapCollapseAt when
+ * panel width should couple to icon⇄label (optional — HUD-014 A4).
+ *
+ * Content is owned by the HudsonApp slots (AppShell has no children prop).
+ * Pages swap via local view state so TanStack can own the URL later.
+ */
+
+type DestinationId = 'home' | 'settings';
+
+interface DestinationState {
+  destination: DestinationId;
+  setDestination: (id: DestinationId) => void;
+}
+
+const DestinationContext = createContext<DestinationState | null>(null);
+
+function useDestination(): DestinationState {
+  const value = useContext(DestinationContext);
+  if (!value) throw new Error('useDestination must be used inside StandaloneProvider');
+  return value;
+}
+
+function StandaloneProvider({ children }: { children: ReactNode }) {
+  const [destination, setDestination] = useState<DestinationId>('home');
+  const value = useMemo(() => ({ destination, setDestination }), [destination]);
+
+  return <DestinationContext.Provider value={value}>{children}</DestinationContext.Provider>;
+}
+
+function DestinationsNav() {
+  const { destination, setDestination } = useDestination();
+
+  return (
+    <HudSideNav
+      ariaLabel="Destinations"
+      collapsible="icon"
+      persistKey="__APP_ID__.destinations"
+      selectionWash
+      rovingFocus
+      selectedId={destination}
+      onSelect={(node) => setDestination(node.id as DestinationId)}
+      items={[
+        { id: 'home', label: 'Home', icon: Home },
+        { id: 'settings', label: 'Settings', icon: Settings },
+      ]}
+    />
+  );
+}
+
+function HomePage() {
+  return (
+    <div className="flex h-full flex-col gap-3 p-6">
+      <h1 className="text-lg font-semibold tracking-tight text-foreground">
+        __APP_DISPLAY_NAME__
+      </h1>
+      <p className="max-w-prose text-sm text-muted-foreground">
+        Standalone Hudson consumer scaffold. Theme adapter keeps edges on the
+        edge ladder; typecheck is wired into{' '}
+        <code className="font-mono text-xs">bun run check</code>.
+      </p>
+    </div>
+  );
+}
+
+function SettingsPage() {
+  return (
+    <div className="flex h-full flex-col gap-3 p-6">
+      <h1 className="text-lg font-semibold tracking-tight text-foreground">Settings</h1>
+      <p className="text-sm text-muted-foreground">Stub destination — replace with your surface.</p>
+    </div>
+  );
+}
+
+function Content() {
+  const { destination } = useDestination();
+  return destination === 'settings' ? <SettingsPage /> : <HomePage />;
+}
+
+const standaloneApp: HudsonApp = {
+  id: '__APP_ID__',
+  name: '__APP_DISPLAY_NAME__',
+  description: '__APP_DESCRIPTION__',
+  mode: 'panel',
+  leftPanel: { title: 'Navigate' },
+  Provider: StandaloneProvider,
+  slots: {
+    Content,
+    LeftPanel: DestinationsNav,
+  },
+  hooks: {
+    useCommands: () => [],
+    useStatus: () => ({ label: 'READY', color: 'emerald' as const }),
+  },
+};
+
+export function AppShellFrame() {
+  return (
+    <div data-hudson-template="__APP_ID__" className="h-full">
+      <AppShell app={standaloneApp} assistant={false} />
+    </div>
+  );
+}
