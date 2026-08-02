@@ -1,4 +1,4 @@
-import { createPiAiBackend } from '@hudsonkit/ai/pi-ai';
+import { createPiAiBackend, type PiAiUIRequest } from '@hudsonkit/ai/pi-ai';
 import { streamFromCLI } from './cli';
 import { DEFAULT_MODELS, loadCredentials } from '../providers';
 import { loadToolset } from '../toolsets';
@@ -14,8 +14,35 @@ const CLI_CAPABLE_PROVIDERS = new Set(['anthropic', 'claude']);
 
 const piBackend = createPiAiBackend();
 
+type ReasoningEffort = NonNullable<PiAiUIRequest['effort']>;
+const REASONING_EFFORTS = new Set<ReasoningEffort>(['off', 'low', 'medium', 'high']);
+
+function parseReasoningEffort(value: unknown): ReasoningEffort | undefined | null {
+  if (value === undefined) return undefined;
+  if (typeof value === 'string' && REASONING_EFFORTS.has(value as ReasoningEffort)) {
+    return value as ReasoningEffort;
+  }
+  return null;
+}
+
 export async function POST(req: Request) {
-  const { messages, toolset, context = {}, mode: requestedMode, sessionId, provider, model } = await req.json();
+  const {
+    messages,
+    toolset,
+    context = {},
+    mode: requestedMode,
+    sessionId,
+    provider,
+    model,
+    effort: requestedEffort,
+  } = await req.json();
+  const effort = parseReasoningEffort(requestedEffort);
+  if (effort === null) {
+    return Response.json(
+      { error: 'Invalid reasoning effort. Expected off, low, medium, or high.' },
+      { status: 400 },
+    );
+  }
   const requested = requestedMode ?? process.env.AI_DEFAULT_MODE ?? 'api';
 
   // If the caller asked for CLI but their provider isn't CLI-capable, fall
@@ -40,6 +67,7 @@ export async function POST(req: Request) {
       context,
       provider,
       model,
+      effort,
       // Hudson's loadToolset returns Zod-schema-bearing tools shaped like
       // HudsonTool at runtime; the extra `toolPrompt` field is unused by
       // streamUI. Cast through unknown to bridge the structural mismatch.

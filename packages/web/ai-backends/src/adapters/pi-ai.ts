@@ -16,6 +16,7 @@
 
 import {
   stream as piAiStream,
+  streamSimple as piAiStreamSimple,
   getModel,
   getEnvApiKey,
   type AssistantMessage,
@@ -26,6 +27,7 @@ import {
   type AssistantMessage as PiAiAssistantMessage,
   type Tool as PiAiTool,
   type ToolCall,
+  type SimpleStreamOptions,
 } from '@earendil-works/pi-ai';
 import {
   asSchema,
@@ -548,19 +550,19 @@ function streamUI(req: PiAiUIRequest): Response {
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       for (let step = 0; step < maxSteps; step++) {
-        const streamOptions: Record<string, unknown> = { apiKey };
+        const streamOptions: SimpleStreamOptions = { apiKey };
         if (req.effort && req.effort !== 'off') {
           streamOptions.reasoning = req.effort;
         }
 
-        const assistantStream = piAiStream(
+        const assistantStream = piAiStreamSimple(
           piModel,
           {
             systemPrompt: system,
             messages: piMessages,
             tools: piTools.length > 0 ? piTools : undefined,
           },
-          streamOptions as never,
+          streamOptions,
         );
 
         let textPartId: string | null = null;

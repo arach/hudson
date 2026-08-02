@@ -7,14 +7,16 @@ import type { StreamEvent } from '../types';
 // Mock @earendil-works/pi-ai before importing the adapter
 // ---------------------------------------------------------------------------
 
-const { mockStream, mockGetModel, mockGetEnvApiKey } = vi.hoisted(() => ({
+const { mockStream, mockStreamSimple, mockGetModel, mockGetEnvApiKey } = vi.hoisted(() => ({
   mockStream: vi.fn(),
+  mockStreamSimple: vi.fn(),
   mockGetModel: vi.fn(),
   mockGetEnvApiKey: vi.fn(),
 }));
 
 vi.mock('@earendil-works/pi-ai', () => ({
   stream: mockStream,
+  streamSimple: mockStreamSimple,
   getModel: mockGetModel,
   getEnvApiKey: mockGetEnvApiKey,
 }));
@@ -84,6 +86,9 @@ function makeRequest(input: string, overrides?: Partial<Parameters<ReturnType<ty
 
 beforeEach(() => {
   vi.clearAllMocks();
+  mockStreamSimple.mockImplementation((model, context, options) => (
+    mockStream(model, context, options)
+  ));
   mockGetModel.mockReturnValue({ provider: 'anthropic', modelId: 'claude-sonnet-4-6' });
   mockGetEnvApiKey.mockReturnValue(undefined);
 });
@@ -449,6 +454,41 @@ describe('streamUI() — schema compilation', () => {
     expect(context.tools[0].parameters).toMatchObject({
       type: 'object',
       properties: { commandId: { type: 'string' } },
+    });
+  });
+});
+
+describe('streamUI() — reasoning effort', () => {
+  it.each([
+    [undefined, undefined],
+    ['off', undefined],
+    ['low', 'low'],
+    ['medium', 'medium'],
+    ['high', 'high'],
+  ] as const)('maps effort %s through pi-ai streamSimple', async (effort, reasoning) => {
+    mockStream.mockReturnValue(fakeEventStream([
+      { type: 'done', reason: 'stop', message: makeAssistantMessage('ok') },
+    ]));
+
+    const backend = createPiAiBackend();
+    const response = backend.streamUI({
+      messages: [{ role: 'user', parts: [{ type: 'text', text: 'think' }] }],
+      toolset: 'none',
+      provider: 'anthropic',
+      model: 'claude-sonnet-4-6',
+      maxSteps: 1,
+      effort,
+      loadCredentials: () => ({ anthropic: 'test-key' }),
+      loadToolset: () => ({ system: 'test', tools: {} }),
+    });
+
+    await response.text();
+
+    expect(mockStreamSimple).toHaveBeenCalledOnce();
+    const options = mockStreamSimple.mock.calls[0]?.[2];
+    expect(options).toEqual({
+      apiKey: 'test-key',
+      ...(reasoning ? { reasoning } : {}),
     });
   });
 });

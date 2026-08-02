@@ -59,6 +59,10 @@ export default defineConfig({
         replacement: resolve(repoRoot, 'packages/web/ai-backends/src/toolsets/index.ts'),
       },
       {
+        find: '@hudsonkit/ai/pi-ai',
+        replacement: resolve(repoRoot, 'packages/web/ai-backends/src/pi-ai.ts'),
+      },
+      {
         find: '@hudsonkit/ai',
         replacement: resolve(repoRoot, 'packages/web/ai-backends/src/index.ts'),
       },
