@@ -448,7 +448,7 @@ function signEmbeddedFrameworks(bundlePath, app, identity, options) {
     const args = [
       '--force',
       '--deep',
-      '--preserve-metadata=identifier,entitlements,requirements,flags',
+      `--preserve-metadata=${signing.preserveMetadata}`,
     ];
     if (signing.hardenedRuntime) args.push('--options', 'runtime');
     if (signing.timestamp) args.push('--timestamp');
@@ -486,12 +486,17 @@ export function shouldUseDeepSigning(app) {
 }
 
 export function signingPolicy(identity) {
-  const adHoc = !identity || identity === '-';
+  const trimmed = typeof identity === 'string' ? identity.trim() : '';
+  const adHoc = trimmed === '' || trimmed === '-';
   return {
-    identity: adHoc ? '-' : identity,
-    label: adHoc ? 'ad-hoc' : identity,
+    identity: adHoc ? '-' : trimmed,
+    label: adHoc ? 'ad-hoc' : trimmed,
     hardenedRuntime: !adHoc,
     timestamp: !adHoc,
+    // An ad-hoc signature must not inherit identity-bound requirements or
+    // runtime flags from the previous signature. Either can make macOS reject
+    // a framework that no longer has the original signature's Team ID.
+    preserveMetadata: adHoc ? 'identifier' : 'identifier,entitlements,requirements,flags',
   };
 }
 
@@ -837,14 +842,14 @@ function createDmg(config, args, context, apps) {
       runCommand('hdiutil', ['create', '-srcfolder', staging, '-volname', volumeName, '-format', 'UDZO', '-ov', dmgPath], { stdio: 'inherit' });
     }
 
-    if (!args.skipSign && context.signingIdentity) {
+    if (!args.skipSign && !context.adHocSigning) {
       runCommand('codesign', ['--force', '--timestamp', '--sign', context.signingIdentity, dmgPath], { stdio: 'inherit' });
     } else {
       process.stdout.write('==> Skipping DMG signing\n');
     }
 
     if (!args.skipNotarize) {
-      if (!context.signingIdentity) {
+      if (context.adHocSigning) {
         throw new Error('notarization requires a Developer ID signing identity');
       }
       if (!context.notaryProfile) {
@@ -890,13 +895,15 @@ async function runMacos(args) {
   const config = raw.macos ?? raw;
   const version = resolveVersion(config, args, configDir);
   const local = args.local || config.local === true;
-  const signingIdentity = args.skipSign
+  const resolvedSigningIdentity = args.skipSign
     ? ''
     : resolveSigningIdentity(args, config);
+  const signing = signingPolicy(resolvedSigningIdentity);
+  const signingIdentity = signing.identity;
   const requireIdentity = args.requireSignIdentity || (config.signing?.requireIdentity === true && !local);
 
   args.skipNotarize = args.skipNotarize || local || config.signing?.skipNotarize === true;
-  if (requireIdentity && !signingIdentity) {
+  if (requireIdentity && (args.skipSign || signingIdentity === '-')) {
     throw new Error('No signing identity found. Pass --sign-identity, set the configured identity env var, or use --local.');
   }
 
@@ -907,6 +914,8 @@ async function runMacos(args) {
     minimumSystemVersion: config.minimumSystemVersion ?? '14.0',
     distDir: rel(configDir, config.distDir ?? 'dist'),
     signingIdentity,
+    signingLabel: signing.label,
+    adHocSigning: !signing.hardenedRuntime,
     notaryProfile: args.notaryProfile
       ?? (config.signing?.notaryProfileEnv ? process.env[config.signing.notaryProfileEnv] : undefined)
       ?? process.env.HUDSONKIT_NOTARY_PROFILE
@@ -918,7 +927,7 @@ async function runMacos(args) {
   process.stdout.write(`==> Packaging ${context.productName} ${context.version}\n`);
   process.stdout.write(`==> Config: ${displayPath(configPath)}\n`);
   process.stdout.write(`==> Dist: ${displayPath(context.distDir)}\n`);
-  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingIdentity || 'ad-hoc'}\n`);
+  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingLabel}\n`);
 
   const apps = buildApps(config, args, context);
   createDmg(config, args, context, apps);
