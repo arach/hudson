@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, render, screen } from '@testing-library/react';
+import { cleanup, fireEvent, render, screen, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import {
   HudMenu,
@@ -37,6 +37,23 @@ describe('Hudson behavior wrappers', () => {
     expect(action).toHaveBeenCalledOnce();
   });
 
+  it('opens and runs menu actions from the keyboard', async () => {
+    const action = vi.fn();
+    render(
+      <HudMenu items={[{ id: 'run', label: 'Run agent', action }]}>
+        <button type="button">Actions</button>
+      </HudMenu>,
+    );
+
+    const trigger = screen.getByRole('button', { name: 'Actions' });
+    trigger.focus();
+    fireEvent.keyDown(trigger, { key: 'ArrowDown' });
+    const item = await screen.findByRole('menuitem', { name: 'Run agent' });
+    expect(item).toHaveFocus();
+    fireEvent.keyDown(item, { key: 'Enter' });
+    expect(action).toHaveBeenCalledOnce();
+  });
+
   it('renders structured popover content without replacing its trigger', async () => {
     render(
       <HudPopover defaultOpen title="Agent" description="Current runtime" content={<p>Fable</p>}>
@@ -70,7 +87,11 @@ describe('Hudson behavior wrappers', () => {
     expect(trigger).toHaveTextContent('Compact');
     trigger.focus();
     fireEvent.click(trigger);
-    const option = await screen.findByRole('option', { name: 'Comfortable' });
+    const selectedOption = await screen.findByRole('option', { name: 'Compact' });
+    const unselectedOption = screen.getByRole('option', { name: 'Comfortable' });
+    expect(within(selectedOption).getByText('✓')).toHaveClass('opacity-100');
+    expect(within(unselectedOption).getByText('✓')).toHaveClass('opacity-0');
+    const option = unselectedOption;
     fireEvent.mouseMove(option);
     fireEvent.click(option);
     expect(onValueChange).toHaveBeenCalledWith('comfortable');

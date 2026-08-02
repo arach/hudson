@@ -55,6 +55,8 @@ export interface HudMenuProps {
   align?: 'start' | 'center' | 'end';
   sideOffset?: number;
   className?: string;
+  /** Override when a composed custom trigger renders a non-button host (for example, a router Link). */
+  nativeButton?: boolean;
 }
 
 function isSeparator(entry: HudMenuEntry): entry is HudMenuSeparator {
@@ -124,6 +126,7 @@ export function HudMenu({
   align = 'start',
   sideOffset = 4,
   className = '',
+  nativeButton,
 }: HudMenuProps) {
   if (items.length === 0) return <>{children}</>;
 
@@ -136,7 +139,10 @@ export function HudMenu({
       <Menu.Trigger
         disabled={disabled}
         render={triggerEl}
-        nativeButton={typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true}
+        nativeButton={
+          nativeButton ??
+          (typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true)
+        }
       />
     ) : (
       <Menu.Trigger disabled={disabled} className={OVERLAY_ITEM}>
