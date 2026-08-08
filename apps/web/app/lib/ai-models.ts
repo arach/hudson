@@ -38,7 +38,7 @@ export const COPILOT_MODEL_OPTIONS: AISelectOption[] = [
   { label: 'GPT-5.2 Codex', value: 'gpt-5.2-codex', provider: 'copilot', contextWindow: 400_000 },
   { label: 'GPT-5.2', value: 'gpt-5.2', provider: 'copilot', contextWindow: 264_000 },
   { label: 'GPT-5 Mini', value: 'gpt-5-mini', provider: 'copilot', contextWindow: 264_000 },
-  { label: 'Claude Opus 4.7', value: 'claude-opus-4.7', provider: 'copilot', contextWindow: 200_000 },
+  { label: 'Claude Opus 5', value: 'claude-opus-5', provider: 'copilot', contextWindow: 1_000_000 },
   { label: 'Claude Opus 4.5', value: 'claude-opus-4.5', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Claude Sonnet 4.6', value: 'claude-sonnet-4.6', provider: 'copilot', contextWindow: 200_000 },
   { label: 'Claude Sonnet 4.5', value: 'claude-sonnet-4.5', provider: 'copilot', contextWindow: 200_000 },
