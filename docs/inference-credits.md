@@ -311,7 +311,7 @@ Each step ships independently; stop after any of them and the system is still co
 - **No cleanup jobs / cron** — hold expiry is projection-side (expired holds just stop counting).
 - **No per-request auth/quotas beyond the account policy** — one policy per account, three modes.
 - **No dollars anywhere in the hot path** — credits are integers; $/credit mapping is an offline spreadsheet concern.
-- **No admin UI** — `GET /v1/credits/entries` + `wallet` is the admin UI; `grant` via curl.
+- **No product-coupled admin UI inside the credits package** — operator views use [`admin-resources`](./admin-resources.md) (`@hudsonkit/admin`) with Zod-declared projections; hosts inject loaders. Curl/`GET /v1/…` remains valid.
 - **No cross-account transfers, refunds, or negative-balance recovery flows** — grants are the only credit-increasing op.
 - **No event streaming / webhooks** — poll the wallet; the gauge doesn't need push.
 

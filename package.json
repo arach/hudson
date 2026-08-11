@@ -36,6 +36,7 @@
     "packages/tools/hkit",
     "packages/services/hudson-relay",
     "packages/web/ai-backends",
+    "packages/web/admin",
     "packages/web/hudsonkit"
   ],
   "devDependencies": {
