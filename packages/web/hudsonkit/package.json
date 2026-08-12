@@ -1,6 +1,6 @@
 {
   "name": "hudsonkit",
-  "version": "0.4.1",
+  "version": "0.4.0",
   "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",
@@ -84,6 +84,11 @@
       "types": "./dist/controls.d.ts",
       "import": "./dist/controls.js",
       "default": "./dist/controls.js"
+    },
+    "./icons": {
+      "types": "./dist/icons.d.ts",
+      "import": "./dist/icons.js",
+      "default": "./dist/icons.js"
     },
     "./flags": {
       "types": "./dist/flags.d.ts",
@@ -195,13 +200,13 @@
     "@ai-sdk/react": "^3.0.0",
     "@base-ui-components/react": "^1.0.0-rc.0",
     "ai": "^6.0.0",
+    "iconoir-react": "^7.11.1",
     "motion": "^12.0.0",
     "server-only": "^0.0.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
-    "lucide-react": "^0.564.0 || ^0.574.0",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",

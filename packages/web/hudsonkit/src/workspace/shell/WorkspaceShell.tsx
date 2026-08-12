@@ -43,7 +43,7 @@ import {
   type HObservation,
 } from '../../observability';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, StatusState, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from '../../index';
-import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
+import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from '../../icons';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
@@ -514,6 +514,8 @@ function useWindowBounds(
 export interface WorkspaceShellEnvironment {
   /** Host-owned relative routes for optional server-backed shell features. */
   routes?: WorkspaceHostRoutes;
+  /** Label shown for the shared console drawer toggle. Defaults to 'Console'. */
+  terminalLabel?: string;
   /** Render the console for a dynamically-spawned terminal window. Injected so
    *  the shell never imports a specific terminal app. */
   renderTerminal?: (opts: { initialCwd: string; backend: 'pty' | 'tmux'; tmuxSession?: string }) => ReactNode;
@@ -3394,6 +3396,7 @@ function WorkspaceInner({
             status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
             onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
             isTerminalOpen={showTerminal}
+            terminalLabel={environment?.terminalLabel}
             right={renderStatusRightItems(
               allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusRight ?? null,
               hudLoggerStatusButton,
@@ -3654,6 +3657,7 @@ function WorkspaceInner({
                 }}
                 onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
                 isTerminalOpen={showTerminal}
+                terminalLabel={environment?.terminalLabel}
                 right={renderStatusRightItems(focused.statusRight, hudLoggerStatusButton)}
                 left={
                 <div className="flex items-center gap-4">

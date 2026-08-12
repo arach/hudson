@@ -34,13 +34,16 @@ public struct OpenAIHudTTSProvider: HudTTSProviderAdapter {
         urlRequest.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
 
-        let body: [String: Any] = [
-            "model": model,
+        var body: [String: Any] = [
+            "model": request.model?.hudTrimmedNonEmpty ?? model,
             "input": String(trimmed.prefix(4096)),
             "voice": voice,
             "response_format": "mp3",
             "speed": request.rate
         ]
+        if let instructions = request.instructions?.hudTrimmedNonEmpty {
+            body["instructions"] = instructions
+        }
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
 
         let (data, response) = try await context.urlSession.data(for: urlRequest)

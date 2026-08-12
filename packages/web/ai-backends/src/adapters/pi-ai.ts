@@ -16,6 +16,7 @@
 
 import {
   stream as piAiStream,
+  streamSimple as piAiStreamSimple,
   getModel,
   getEnvApiKey,
   type AssistantMessage,
@@ -26,6 +27,7 @@ import {
   type AssistantMessage as PiAiAssistantMessage,
   type Tool as PiAiTool,
   type ToolCall,
+  type SimpleStreamOptions,
 } from '@earendil-works/pi-ai';
 import {
   asSchema,
@@ -265,6 +267,8 @@ export interface PiAiUIRequest {
   defaultModels?: Record<string, string>;
   /** Max tool-call rounds. Defaults to {@link DEFAULT_MAX_STEPS}. */
   maxSteps?: number;
+  /** Omit to preserve provider defaults; use 'off' to explicitly disable reasoning. */
+  effort?: 'off' | 'low' | 'medium' | 'high';
 }
 
 export interface PiAiBackend extends Backend<PiAiConfig, PiAiMeta> {
@@ -546,15 +550,19 @@ function streamUI(req: PiAiUIRequest): Response {
   const stream = createUIMessageStream({
     execute: async ({ writer }) => {
       for (let step = 0; step < maxSteps; step++) {
-        const assistantStream = piAiStream(
-          piModel,
-          {
-            systemPrompt: system,
-            messages: piMessages,
-            tools: piTools.length > 0 ? piTools : undefined,
-          },
-          { apiKey } as never,
-        );
+        const streamOptions: SimpleStreamOptions = { apiKey };
+        if (req.effort && req.effort !== 'off') {
+          streamOptions.reasoning = req.effort;
+        }
+
+        const piContext: Context = {
+          systemPrompt: system,
+          messages: piMessages,
+          tools: piTools.length > 0 ? piTools : undefined,
+        };
+        const assistantStream = req.effort === undefined
+          ? piAiStream(piModel, piContext, { apiKey })
+          : piAiStreamSimple(piModel, piContext, streamOptions);
 
         let textPartId: string | null = null;
         let finalMessage: AssistantMessage | null = null;

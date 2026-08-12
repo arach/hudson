@@ -2,7 +2,7 @@
 
 **Status**: Accepted (owner, 2026-07-20) — integrating (B + A3–A5 + C landed; standalone **green** 2026-07-21 — evidence `docs/agent/standalone-tier-green-evidence.md`; still private until owner publish)
 **Owner**: Arach (proposed from the Iris web client build, 2026-07-20)
-**Depends on**: hudsonkit 0.4.1 (`hudsonkit/nav` HudSideNav provider + collapse modes)
+**Depends on**: hudsonkit 0.4.0 (`hudsonkit/nav` HudSideNav provider + collapse modes)
 **Targets**: `packages/web/hudsonkit` (behaviors, nav, app-shell, styles types), new `packages/create-hudson-app` (or `templates/web/`), `AGENTS.md`
 **Implementation packages**: `/Users/arach/dev/iris/docs/handoffs/hudson-contrib/` (01–04, each an engineering proposal: problem / solution / alternatives / validation, with code pre-translated to Hudson idioms)
 
@@ -67,7 +67,7 @@ Spinning up and hardening one real consumer app in one day produced:
    (optional prop + hysteresis); selection/roving **default-off**;
    breadcrumb minimal.
 4. **Starter location:** new `standalone` template tier inside existing
-   `packages/tools/create-hudson-app`, private until green.
+   `packages/tools/create-hudson-app`, initially private until green.
 
 **Integration order:** B (package 01) → A3–A6 (packages 02–03 +
 breadcrumb) → C (package 04 as standalone-tier input).

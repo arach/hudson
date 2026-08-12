@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Map, Maximize2 } from 'lucide-react';
+import { Clock, Map, Maximize2 } from '../../icons';
 import { PANEL_STYLES } from '../../lib/theme';
 import type { StatusState } from '../../types/app';
 
@@ -28,6 +28,8 @@ interface StatusBarProps {
   onToggleTerminal?: () => void;
   /** Whether the terminal is currently open */
   isTerminalOpen?: boolean;
+  /** Label for the terminal toggle (defaults to "Console") */
+  terminalLabel?: string;
 }
 
 const STATUS_COLORS = {
@@ -55,6 +57,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onStatusClick,
   onToggleTerminal,
   isTerminalOpen = false,
+  terminalLabel = 'Console',
 }) => {
   const [time, setTime] = useState(new Date());
   const [vpCopied, setVpCopied] = useState(false);
@@ -181,10 +184,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
                   ? 'text-accent'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
-              title="Toggle Console (Ctrl+`)"
+              title={`Toggle ${terminalLabel} (Ctrl+\`)`}
             >
               <span className="text-[10px]">{'>'}_</span>
-              <span className="uppercase text-[9px] font-light tracking-[0.18em]">Console</span>
+              <span className="uppercase text-[9px] font-light tracking-[0.18em]">{terminalLabel}</span>
             </button>
             <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
           </>

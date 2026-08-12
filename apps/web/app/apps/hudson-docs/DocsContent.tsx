@@ -2,7 +2,7 @@
 
 import { useDocs } from './DocsProvider';
 import { COMPONENTS, AGENT_DOCS } from './data';
-import { Bot } from 'lucide-react';
+import { Bot } from 'hudsonkit/icons';
 import { ComponentSheet, AgentDocSheet, ListView, TilesView } from './components';
 
 export function DocsContent() {

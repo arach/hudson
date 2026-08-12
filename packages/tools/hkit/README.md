@@ -38,6 +38,31 @@ another app bundle should be built, signed, and nested inside the parent instead
 of shown as a separate installer item. Helpers default to
 `Contents/Library/LoginItems`.
 
+Apps may also declare a `frameworks` array of paths relative to the config file:
+
+```json
+{
+  "name": "Hudson App",
+  "frameworks": ["Build/Release/HudsonRuntime.framework"]
+}
+```
+
+The packager embeds each framework under `Contents/Frameworks`, adds
+`@executable_path/../Frameworks` to the executable's run paths when needed, and
+signs the framework's nested code before sealing the assembled app bundle.
+If a linker leaves no room for another Mach-O load command, link that rpath into
+the executable up front or reserve space with `-headerpad_max_install_names`;
+`hkit` reports this condition with the required linker setting.
+Universal binaries must carry the framework rpath consistently in every slice.
+Framework `LC_ID_DYLIB` values and the app's matching `LC_LOAD_DYLIB` entries
+must use `@rpath`; `hkit` rejects absolute build paths before signing and names
+the `install_name_tool` repair required upstream.
+
 Use `--local` for smoke builds that skip notarization and allow ad-hoc signing.
+Ad-hoc fallback omits hardened runtime so locally packaged frameworks can load
+without a Developer Team ID; identified release signing retains hardened runtime.
+An ad-hoc framework signature also preserves only `identifier` metadata, because
+carrying identity-bound requirements or runtime flags over from a previous
+signature can re-introduce Team ID validation failures.
 Use `--sign-identity`, `--require-sign-identity`, and `--notary-profile` for
 release builds.

@@ -69,8 +69,8 @@ async function main() {
     projectRoot,
   });
 
-  // Pre-publish: wire monorepo pack (or HUDSONKIT_TGZ) so bun install works
-  // before hudsonkit 0.4.1 is on npm.
+  // Wire a monorepo pack (or HUDSONKIT_TGZ) when available so the generated
+  // client can validate against the exact local HudsonKit build.
   if (isStandalone) {
     const wired = await wireStandaloneHudsonkit(appDir, process.cwd());
     if (!wired) warnMissingMonorepoPack(process.cwd());
@@ -85,7 +85,7 @@ async function main() {
 
   summary(opts.appId, appFiles.length, hasWorkspace, { standalone: isStandalone });
   if (isStandalone) {
-    info(`Private until green — run: cd ${opts.appId} && bun install && bun run check`);
+    info(`Validate the standalone client: cd ${opts.appId} && bun install && bun run check`);
   }
 }
 

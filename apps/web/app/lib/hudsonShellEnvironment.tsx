@@ -2,7 +2,7 @@
 
 import { useLayoutEffect, useMemo, useState } from 'react';
 import type { WorkspaceAppConfig } from 'hudsonkit';
-import { Network } from 'lucide-react';
+import { Network } from 'hudsonkit/icons';
 import {
   HudNetworkPanel,
   installHudsonFetchCapture,

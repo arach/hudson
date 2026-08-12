@@ -17,8 +17,8 @@ export function navSpine(selected?: boolean, live?: boolean): string {
   return live
     ? 'border-l-[var(--hud-nav-live)]'
     : selected
-      ? 'border-l-foreground/30'
-      : 'border-l-transparent';
+    ? 'border-l-foreground/30'
+    : 'border-l-transparent';
 }
 
 /** Row background: neutral filled chip when selected, muted wash on hover. */
@@ -50,9 +50,12 @@ export function LiveDot({ compact }: { compact?: boolean }) {
   return (
     <span
       aria-hidden="true"
-      className={cx('relative inline-flex shrink-0 items-center justify-center', compact ? 'h-2 w-2' : 'h-2.5 w-2.5')}
+      className={cx(
+        'relative inline-flex shrink-0 items-center justify-center',
+        compact ? 'h-2 w-2' : 'h-2.5 w-2.5',
+      )}
     >
-      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color-mix(in_srgb,var(--hud-nav-live)_60%,transparent)]" />
+      <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-[color-mix(in_srgb,var(--hud-nav-live)_60%,transparent)] motion-reduce:animate-none" />
       <span
         className={cx(
           'relative inline-flex rounded-full bg-[var(--hud-nav-live)]',
@@ -64,13 +67,7 @@ export function LiveDot({ compact }: { compact?: boolean }) {
 }
 
 /** Compact count badge that follows `--hud-nav-live` when the row is live. */
-export function LiveCountBadge({
-  count,
-  live,
-}: {
-  count: number;
-  live?: boolean;
-}) {
+export function LiveCountBadge({ count, live }: { count: number; live?: boolean }) {
   return (
     <span
       className={cx(

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Copy } from 'lucide-react';
+import { Copy } from '../../icons';
 import type { ContextMenuAction } from '../overlays/ContextMenu';
 import { agentCopy, type AgentCopyOptions } from '../../lib/agentCopy';
 import { useCopyContextScope } from './CopyContextScope';

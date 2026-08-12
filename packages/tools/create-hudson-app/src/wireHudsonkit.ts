@@ -57,7 +57,7 @@ export async function wireStandaloneHudsonkit(appDir: string, fromDir?: string):
   await writeFile(pkgPath, `${JSON.stringify(pkg, null, 2)}\n`, 'utf-8');
 
   info(`Wired ${cyan('hudsonkit')} → ${dim(`file:${tgz}`)}`);
-  info(dim('(pre-publish greening; flip to ^0.4.1 on npm once published)'));
+  info(dim('(local validation pack; restore ^0.4.0 to use the published dependency)'));
   return tgz;
 }
 

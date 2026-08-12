@@ -83,7 +83,7 @@ export async function promptInteractive(partial: Partial<CLIOptions>): Promise<C
       console.log(`    ${cyan('1)')} Minimal    ${dim('— Provider + Content + basic hooks (monorepo app)')}`);
       console.log(`    ${cyan('2)')} Standard   ${dim('— + LeftPanel + Inspector + intents')}`);
       console.log(`    ${cyan('3)')} Full       ${dim('— + tools + Terminal + LeftFooter + manifest')}`);
-      console.log(`    ${cyan('4)')} Standalone ${dim('— private Vite+TanStack consumer client (HUD-014)')}`);
+      console.log(`    ${cyan('4)')} Standalone ${dim('— Vite+TanStack consumer client (HUD-014)')}`);
       const tierInput = await rl.question(`  ${dim('Choose [1/2/3/4]')}: `);
       const tierMap: Record<string, Tier> = {
         '1': 'minimal',
@@ -131,7 +131,7 @@ export function printHelp() {
   ${bold('Options:')}
     --tier ${dim('minimal|standard|full|standalone')}
                                     App complexity tier
-                                    ${dim('standalone = private Vite+TanStack consumer (not monorepo)')}
+                                    ${dim('standalone = Vite+TanStack consumer (not monorepo)')}
     --mode ${dim('panel|canvas')}             Layout mode (monorepo tiers)
     --description ${dim('"..."')}             App description
     --no-workspace                  Skip workspace file generation

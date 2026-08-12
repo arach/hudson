@@ -2,7 +2,7 @@
 
 import React, { useMemo } from 'react';
 import { Select } from '@base-ui-components/react/select';
-import { ChevronDown } from 'lucide-react';
+import { ChevronDown } from '../../icons';
 import {
   chromeBorderStyle,
   OVERLAY_ITEM,
@@ -129,9 +129,15 @@ export const HudSelectBase = React.forwardRef<HTMLButtonElement, HudSelectBasePr
                       value={option.value}
                       className={OVERLAY_ITEM}
                     >
-                      <span className={OVERLAY_ITEM_CHECK} aria-hidden="true">
+                      <Select.ItemIndicator
+                        keepMounted
+                        className={({ selected }) =>
+                          [OVERLAY_ITEM_CHECK, selected ? 'opacity-100' : 'opacity-0'].join(' ')
+                        }
+                        aria-hidden="true"
+                      >
                         ✓
-                      </span>
+                      </Select.ItemIndicator>
                       <Select.ItemText className="flex-1 min-w-0 overflow-hidden text-ellipsis whitespace-nowrap">
                         {option.label}
                       </Select.ItemText>

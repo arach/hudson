@@ -22,9 +22,6 @@
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/editor.js",
-    "changeset": "changeset",
-    "version-packages": "changeset version",
-    "release": "changeset publish",
     "validate:hudsonkit-package": "bun run --cwd packages/web/hudsonkit pack && tarball=\"$(ls -1 packages/web/hudsonkit/hudsonkit-*.tgz | tail -n 1)\" && publint \"$tarball\" && attw \"$tarball\" --profile esm-only --exclude-entrypoints hudsonkit/styles hudsonkit/styles/tokens.css && rm -f \"$tarball\""
   },
   "overrides": {
@@ -41,7 +38,6 @@
   ],
   "devDependencies": {
     "@arethetypeswrong/cli": "^0.18.4",
-    "@changesets/cli": "^2.31.0",
     "@types/bun": "^1.3.14",
     "@types/node": "^20",
     "eslint": "^9",

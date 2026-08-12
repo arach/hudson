@@ -3,9 +3,8 @@ import { existsSync } from 'node:fs';
 import { resolve } from 'path';
 
 // Package-scoped, self-contained vitest config.
-// Does NOT import a repo-root vitest.config (that file was removed when the
-// app suite moved under apps/web). Clean checkouts must be able to run
-// `bun run test` from this package without a monorepo-root config.
+// It deliberately does not import the web app config: package test behavior
+// should not change when the application suite moves or changes its aliases.
 const pkgRoot = __dirname;
 const repoRoot = resolve(pkgRoot, '../../..');
 
@@ -57,7 +56,6 @@ export default defineConfig({
       { find: 'react', replacement: reactRoot },
       { find: '@ai-sdk/react', replacement: pin('@ai-sdk/react') },
       { find: 'ai', replacement: pin('ai') },
-      { find: 'lucide-react', replacement: pin('lucide-react') },
       { find: 'motion', replacement: pin('motion') },
       {
         find: 'hudsonkit/workflow',

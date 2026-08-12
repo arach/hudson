@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '../../icons';
 import { cx } from '../patterns/utils';
 
 export interface HudBreadcrumbItem {

@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, type ReactNode } from 'react';
-import { RotateCcw, Settings, X } from 'lucide-react';
+import { RotateCcw, Settings, X } from '../../icons';
 import type { AppSettingsConfig } from '../../types/app';
 import type { AppSettingsValues } from '../../hooks/useAppSettings';
 import type { HudsonSettings } from './types';

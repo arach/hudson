@@ -9,16 +9,122 @@ import SwiftUI
 /// the web font stack (`ui-monospace` / `system-ui`). Apps wanting custom faces
 /// (JetBrains Mono, Hack Nerd, etc.) can override via HudAppManifest later.
 public enum HudFont {
+    /// A fixed-size monospaced system font.
+    ///
+    /// Use `View.hudFont(_:face:weight:)` for user-readable text that should
+    /// follow Dynamic Type. This helper remains fixed for geometry-bound
+    /// labels, symbols, canvases, and source-compatible call sites.
     public static func mono(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .monospaced)
     }
 
+    /// A fixed-size sans-serif system font. See `mono(_:weight:)`.
     public static func ui(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .default)
     }
 
+    /// A fixed-size serif system font. See `mono(_:weight:)`.
     public static func serif(_ size: CGFloat, weight: Font.Weight = .regular) -> Font {
         .system(size: size, weight: weight, design: .serif)
+    }
+}
+
+/// Hudson's scalable text roles. Each role preserves the existing Hudson base
+/// size at the system's default content-size category, then follows the
+/// platform's Dynamic Type curve relative to the nearest semantic text style.
+///
+/// Use these roles for readable UI copy. Continue to use fixed `HudFont`
+/// helpers or geometry tokens for symbols and spatial/canvas labels whose size
+/// is part of the layout contract.
+public enum HudTextRole: CaseIterable, Sendable {
+    case micro
+    case xxs
+    case xs
+    case sm
+    case base
+    case md
+    case lgm
+    case lg
+    case xl
+    case xxl
+    case xxxl
+    case hero
+
+    public var baseSize: CGFloat {
+        switch self {
+        case .micro: HudTextSize.micro
+        case .xxs: HudTextSize.xxs
+        case .xs: HudTextSize.xs
+        case .sm: HudTextSize.sm
+        case .base: HudTextSize.base
+        case .md: HudTextSize.md
+        case .lgm: HudTextSize.lgm
+        case .lg: HudTextSize.lg
+        case .xl: HudTextSize.xl
+        case .xxl: HudTextSize.xxl
+        case .xxxl: HudTextSize.xxxl
+        case .hero: HudTextSize.hero
+        }
+    }
+
+    var relativeTextStyle: Font.TextStyle {
+        switch self {
+        case .micro, .xxs, .xs: .caption2
+        case .sm: .caption
+        case .base: .footnote
+        case .md, .lgm: .subheadline
+        case .lg: .callout
+        case .xl: .headline
+        case .xxl: .title2
+        case .xxxl: .title
+        case .hero: .largeTitle
+        }
+    }
+}
+
+/// Typeface choices for scalable Hudson text.
+public enum HudFontFace: Sendable {
+    case ui
+    case mono
+    case serif
+
+    fileprivate var design: Font.Design {
+        switch self {
+        case .ui: .default
+        case .mono: .monospaced
+        case .serif: .serif
+        }
+    }
+}
+
+private struct HudScaledFontModifier: ViewModifier {
+    let face: HudFontFace
+    let weight: Font.Weight
+    @ScaledMetric private var size: CGFloat
+
+    init(role: HudTextRole, face: HudFontFace, weight: Font.Weight) {
+        self.face = face
+        self.weight = weight
+        self._size = ScaledMetric(
+            wrappedValue: role.baseSize,
+            relativeTo: role.relativeTextStyle
+        )
+    }
+
+    func body(content: Content) -> some View {
+        content.font(.system(size: size, weight: weight, design: face.design))
+    }
+}
+
+extension View {
+    /// Applies a Hudson type role that follows Dynamic Type while preserving
+    /// the established Hudson size, face, and weight at the default category.
+    public func hudFont(
+        _ role: HudTextRole,
+        face: HudFontFace = .ui,
+        weight: Font.Weight = .regular
+    ) -> some View {
+        modifier(HudScaledFontModifier(role: role, face: face, weight: weight))
     }
 }
 

@@ -13,7 +13,7 @@ import {
   ScanSearch,
   TerminalSquare,
   X,
-} from 'lucide-react';
+} from '../../icons';
 
 type AppLike = WorkspaceAppConfig['app'];
 export type ContextMenuMode = 'hudson-first' | 'chrome-first';

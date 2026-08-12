@@ -40,7 +40,7 @@ export { HudBreadcrumb } from './HudBreadcrumb';
 export type { HudBreadcrumbProps, HudBreadcrumbItem } from './HudBreadcrumb';
 
 // Opt-in behaviors (HUD-014 A3–A4).
-export { useRovingNav, ROVING_FOCUS_EVAL } from './useRovingNav';
+export { useRovingNav } from './useRovingNav';
 export {
   useSnapCollapseAt,
   PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS,
@@ -52,7 +52,4 @@ export {
   HUD_NAV_SNAP_COLLAPSE_AT,
   HUD_NAV_SNAP_HYSTERESIS,
 } from './useSnapCollapseAt';
-export type {
-  UseSnapCollapseAtOptions,
-  SnapCollapseNaturalWidths,
-} from './useSnapCollapseAt';
+export type { UseSnapCollapseAtOptions, SnapCollapseNaturalWidths } from './useSnapCollapseAt';

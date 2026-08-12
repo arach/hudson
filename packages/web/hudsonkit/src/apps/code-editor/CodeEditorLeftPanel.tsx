@@ -1,6 +1,6 @@
 'use client';
 
-import { Braces, FileCode2, FileText, Lock, Plus, Trash2 } from 'lucide-react';
+import { Braces, FileCode2, FileText, Lock, Plus, Trash2 } from '../../icons';
 import type { HudsonCodeDocument } from './types';
 import { useCodeEditor } from './CodeEditorProvider';
 

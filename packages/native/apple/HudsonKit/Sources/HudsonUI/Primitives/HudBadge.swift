@@ -22,7 +22,7 @@ public struct HudBadge: View {
                     .accessibilityHidden(true)
             }
             Text(text)
-                .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
+                .hudFont(.micro, face: .mono, weight: .semibold)
                 .tracking(0.8)
                 .textCase(.uppercase)
         }

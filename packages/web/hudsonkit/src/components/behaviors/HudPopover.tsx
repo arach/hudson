@@ -32,6 +32,8 @@ export interface HudPopoverProps {
    * unknown props); otherwise children is used, or wrapped in a button.
    */
   trigger?: React.ReactElement<Record<string, unknown>>;
+  /** Override when a composed custom trigger renders a non-button host (for example, a router Link). */
+  nativeButton?: boolean;
 }
 
 /**
@@ -53,6 +55,7 @@ export function HudPopover({
   modal = false,
   className = '',
   trigger,
+  nativeButton,
 }: HudPopoverProps) {
   const triggerEl: React.ReactElement<Record<string, unknown>> | null =
     trigger ??
@@ -67,7 +70,8 @@ export function HudPopover({
         disabled={disabled}
         render={triggerEl}
         nativeButton={
-          typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true
+          nativeButton ??
+          (typeof triggerEl.type === 'string' ? triggerEl.type === 'button' : true)
         }
       />
     ) : (

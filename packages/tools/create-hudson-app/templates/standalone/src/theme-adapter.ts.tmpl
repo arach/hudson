@@ -12,6 +12,7 @@ export type ThemeSeed = {
   muted: string;
   dim: string;
   accent: string;
+  accentSoft: string;
   actionTint: string;
   /** Structural edges — never the same as ink. */
   edge: string;
@@ -20,74 +21,69 @@ export type ThemeSeed = {
 };
 
 export const defaultSeed: ThemeSeed = {
-  bg: '10 10 10',
-  surface: '23 23 23',
-  ink: '229 229 229',
-  muted: '163 163 163',
-  dim: '115 115 115',
-  accent: '16 185 129',
-  actionTint: '229 229 229 / 0.10',
-  edge: '64 64 64 / 0.5',
-  edgeFaint: '64 64 64 / 0.35',
+  bg: '0.145 0 0',
+  surface: '0.205 0 0',
+  ink: '0.922 0 0',
+  muted: '0.708 0 0',
+  dim: '0.556 0 0',
+  accent: '0.696 0.17 162.48',
+  accentSoft: '0.696 0.17 162.48 / 0.12',
+  actionTint: '0.922 0 0 / 0.10',
+  edge: '0.37 0 0 / 0.5',
+  edgeFaint: '0.37 0 0 / 0.35',
   radius: '8px',
 };
 
-function rgb(channels: string): string {
-  return `rgb(${channels})`;
+function oklch(channels: string): string {
+  return `oklch(${channels})`;
 }
 
 /** Build CSS custom properties. Borders always come from edge*, never ink. */
 export function seedToCssVars(seed: ThemeSeed): Record<string, string> {
-  const edge = rgb(seed.edge);
-  const edgeFaint = rgb(seed.edgeFaint);
-  const ink = rgb(seed.ink);
+  const edge = oklch(seed.edge);
+  const ink = oklch(seed.ink);
 
   return {
-    // Hud ladder
-    '--hud-bg': rgb(seed.bg),
-    '--hud-surface': rgb(seed.surface),
-    '--hud-panel': rgb(seed.surface),
+    // Hud ladder uses complete CSS colors.
+    '--hud-bg': oklch(seed.bg),
+    '--hud-surface': oklch(seed.surface),
+    '--hud-panel': oklch(seed.surface),
     '--hud-ink': ink,
-    '--hud-muted': rgb(seed.muted),
-    '--hud-dim': rgb(seed.dim),
-    '--hud-accent': rgb(seed.accent),
-    '--hud-accent-soft': rgb(seed.actionTint),
-    '--hud-action-tint': rgb(seed.actionTint),
+    '--hud-muted': oklch(seed.muted),
+    '--hud-dim': oklch(seed.dim),
+    '--hud-accent': oklch(seed.accent),
+    '--hud-accent-soft': oklch(seed.accentSoft),
+    '--hud-action-tint': oklch(seed.actionTint),
     '--hud-border': edge,
     '--hud-chrome-border': edge,
-    '--hud-nav-live': rgb(seed.accent),
+    '--hud-nav-live': oklch(seed.accent),
     '--hud-radius': seed.radius ?? '8px',
 
-    // shadcn-layer (oklch-less rgb form for Vite consumers)
-    '--background': rgb(seed.bg),
-    '--foreground': ink,
-    '--card': rgb(seed.surface),
-    '--popover': rgb(seed.surface),
-    '--primary': rgb(seed.accent),
-    '--accent': rgb(seed.accent),
-    '--muted-foreground': rgb(seed.muted),
-    '--border': edge,
-    '--input': edgeFaint,
-    '--ring': rgb(seed.accent),
+    // HudsonKit's Tailwind bundle resolves these as oklch(var(--token)), so
+    // they must remain channel values rather than complete CSS color strings.
+    '--background': seed.bg,
+    '--foreground': seed.ink,
+    '--card': seed.surface,
+    '--popover': seed.surface,
+    '--primary': seed.accent,
+    '--accent': seed.accent,
+    '--muted-foreground': seed.muted,
+    '--border': seed.edge,
+    '--input': seed.edgeFaint,
+    '--ring': seed.accent,
     '--radius': seed.radius ?? '8px',
   };
 }
 
-/** Apply to :root and optional AppShell template host. */
+/** Apply to a root element; custom properties inherit into the AppShell host. */
 export function applyThemeSeed(seed: ThemeSeed, root: HTMLElement = document.documentElement): void {
   const vars = seedToCssVars(seed);
   for (const [key, value] of Object.entries(vars)) {
     root.style.setProperty(key, value);
   }
-  const host = document.querySelector<HTMLElement>('[data-hudson-template]');
-  if (host && host !== root) {
-    for (const [key, value] of Object.entries(vars)) {
-      host.style.setProperty(key, value);
-    }
-  }
 }
 
 /** Guard used by tests — true when border incorrectly tracks ink only. */
 export function isBorderMappedToInk(vars: Record<string, string>, seed: ThemeSeed): boolean {
-  return vars['--border'] === rgb(seed.ink) || vars['--hud-border'] === rgb(seed.ink);
+  return vars['--border'] === seed.ink || vars['--hud-border'] === oklch(seed.ink);
 }

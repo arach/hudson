@@ -1,11 +1,13 @@
 #!/usr/bin/env node
-// Fail the pack script if the sealed tarball is missing dist/styles.css.
+// Fail if a sealed tarball is missing dist/styles.css. With no argument this
+// checks the package script's default tarball; release automation may pass the
+// path of its immutable, explicitly named artifact.
 // Consumer installs (iris gates, pnpm file: deps, npm tgz) all resolve
 // `hudsonkit/styles` → dist/styles.css; a pack without it is a red gate.
 
-import { existsSync, readFileSync, readdirSync } from 'node:fs';
+import { existsSync, readFileSync } from 'node:fs';
 import { spawnSync } from 'node:child_process';
-import { dirname, join } from 'node:path';
+import { basename, dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import process from 'node:process';
 
@@ -17,31 +19,19 @@ const required = [
   'package/dist/styles-tokens.d.ts',
 ];
 
-// Prefer the exact version from package.json so a stale higher-version leftover
-// cannot win over the tarball `bun pm pack` just emitted (lexicographic last
-// is wrong when e.g. 0.4.0 and 0.3.9 coexist — or when a stray 9.x sits around).
-const pkgVersion = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8')).version;
-const expectedName = `hudsonkit-${pkgVersion}.tgz`;
-const expectedPath = join(pkgRoot, expectedName);
+const packageJson = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'));
+const defaultTarball = `hudsonkit-${packageJson.version}.tgz`;
+const tarballPath = process.argv[2]
+  ? resolve(process.cwd(), process.argv[2])
+  : join(pkgRoot, defaultTarball);
+const tarball = basename(tarballPath);
 
-let tarball = expectedName;
-if (!existsSync(expectedPath)) {
-  const tarballs = readdirSync(pkgRoot)
-    .filter((name) => /^hudsonkit-.*\.tgz$/.test(name))
-    .sort();
-  if (tarballs.length === 0) {
-    process.stderr.write(
-      `[hudsonkit] verify-pack: expected ${expectedName} (from package.json version ${pkgVersion}) — none found\n`,
-    );
-    process.exit(1);
-  }
-  process.stderr.write(
-    `[hudsonkit] verify-pack: ${expectedName} missing; falling back to lexicographically-last of ${tarballs.length} tarball(s)\n`,
-  );
-  tarball = tarballs[tarballs.length - 1];
+if (!existsSync(tarballPath)) {
+  process.stderr.write(`[hudsonkit] verify-pack: expected ${tarballPath}\n`);
+  process.exit(1);
 }
 
-const listed = spawnSync('tar', ['-tzf', join(pkgRoot, tarball)], {
+const listed = spawnSync('tar', ['-tzf', tarballPath], {
   encoding: 'utf8',
 });
 

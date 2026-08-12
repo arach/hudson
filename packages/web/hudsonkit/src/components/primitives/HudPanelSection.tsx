@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight } from '../../icons';
 import type { HudDensity } from './types';
 
 export interface HudPanelSectionProps {

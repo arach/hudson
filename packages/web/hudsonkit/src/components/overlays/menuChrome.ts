@@ -24,7 +24,7 @@ export const OVERLAY_POPUP =
 
 /** Select list popup (fills trigger width, scroll-capped). */
 export const OVERLAY_POPUP_SELECT =
-  'bg-popover/95 backdrop-blur-xl border rounded-lg shadow-2xl py-0.5 min-w-full max-h-[min(280px,50vh)] overflow-auto z-[200] outline-none';
+  'bg-popover/95 backdrop-blur-xl border rounded-lg shadow-2xl py-0.5 min-w-[var(--anchor-width)] max-h-[min(280px,50vh)] overflow-auto z-[200] outline-none';
 
 /** Popover body (slightly roomier padding). */
 export const OVERLAY_POPUP_POPOVER =
@@ -47,7 +47,7 @@ export const OVERLAY_ITEM_SHORTCUT =
   'text-muted-foreground text-[10px] ml-4 tracking-wider';
 
 export const OVERLAY_ITEM_CHECK =
-  'w-3 shrink-0 text-[10px] text-accent opacity-0 data-[selected]:opacity-100';
+  'w-3 shrink-0 text-[10px] text-accent';
 
 export const OVERLAY_GROUP_LABEL =
   'px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground';

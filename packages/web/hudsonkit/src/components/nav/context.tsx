@@ -11,7 +11,7 @@
 // `HudSideNav` self-provides one when it is not already inside a provider, so
 // the shipped standalone API keeps working with no wrapper.
 
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo } from 'react';
 import { usePersistentState } from '../../hooks/usePersistentState';
 
 export type HudSideNavCollapsible = 'offcanvas' | 'icon' | 'none';
@@ -89,9 +89,6 @@ export function HudSideNavProvider({
 
   const actualOpen = collapsible === 'none' ? true : controlled ? (open as boolean) : internalOpen;
 
-  const openRef = useRef(actualOpen);
-  openRef.current = actualOpen;
-
   const setOpen = useCallback(
     (next: boolean) => {
       if (collapsible === 'none') return;
@@ -101,7 +98,7 @@ export function HudSideNavProvider({
     [collapsible, controlled, onOpenChange, setInternalOpen],
   );
 
-  const toggle = useCallback(() => setOpen(!openRef.current), [setOpen]);
+  const toggle = useCallback(() => setOpen(!actualOpen), [actualOpen, setOpen]);
 
   useEffect(() => {
     if (keyboardShortcut === false || collapsible === 'none') return;

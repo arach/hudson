@@ -91,10 +91,6 @@ const singletonAliases = [
     find: "@ai-sdk/react",
     replacement: path.join(hudsonNodeModules, "@ai-sdk", "react"),
   },
-  {
-    find: "lucide-react",
-    replacement: path.join(hudsonNodeModules, "lucide-react"),
-  },
 ];
 
 // Surfaces filesystem mtimes for engineering markdown as `virtual:eng-mtimes`.

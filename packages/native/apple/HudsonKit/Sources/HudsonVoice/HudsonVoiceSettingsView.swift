@@ -114,6 +114,18 @@ public struct HudsonVoiceSettingsView: View {
 
             HudDivider()
 
+            // CC-BY-4.0 on the NVIDIA model makes attribution a license
+            // condition, so the credit ships with the surface that downloads it.
+            // See NOTICE.md.
+            VoiceSettingsRow(
+                icon: "info.circle",
+                iconColor: HudPalette.dim,
+                title: "Model Credits",
+                subtitle: "NVIDIA Parakeet TDT 0.6B v3 (CC-BY-4.0), Core ML build by FluidInference (Apache-2.0), run by Vox"
+            )
+
+            HudDivider()
+
             VoiceSettingsPickerRow(
                 title: "Model Download",
                 subtitle: "When Hudson may acquire the on-device voice model",

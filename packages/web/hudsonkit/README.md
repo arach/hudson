@@ -138,7 +138,7 @@ function AssetPreview({ id }: { id: string }) {
 
 - React 19+
 - Tailwind CSS v4
-- lucide-react ^0.564.0
+- Iconoir is included by HudsonKit; consumers do not install an icon peer.
 
 ## Design Philosophy
 

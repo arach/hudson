@@ -49,6 +49,8 @@ export interface UseHudsonAIOptions {
   provider?: string;
   /** Model ID override (e.g. 'MiniMax-M3', 'gpt-5.5', 'claude-sonnet-4-20250514') */
   model?: string;
+  /** Omit to preserve provider defaults; use 'off' to explicitly disable reasoning. */
+  effort?: 'off' | 'low' | 'medium' | 'high';
   /** Called when the assistant response finishes streaming. */
   onFinish?: ChatOnFinishCallback<UIMessage>;
   /** Called when the chat stream errors. */
@@ -69,6 +71,7 @@ function buildHudsonAIRequestBody(args: {
   modeRef: MutableRefObject<AIMode>;
   providerRef: MutableRefObject<string | undefined>;
   modelRef: MutableRefObject<string | undefined>;
+  effortRef: MutableRefObject<'off' | 'low' | 'medium' | 'high' | undefined>;
 }) {
   const resolved: Record<string, unknown> = {};
 
@@ -85,6 +88,7 @@ function buildHudsonAIRequestBody(args: {
     mode: args.modeRef.current,
     provider: args.providerRef.current,
     model: args.modelRef.current,
+    effort: args.effortRef.current,
   };
 }
 
@@ -197,6 +201,7 @@ export function useHudsonAI({
   attachments,
   provider,
   model,
+  effort,
   onFinish,
   onError,
   agentTrace,
@@ -230,6 +235,7 @@ export function useHudsonAI({
   const modeRef = useRef(resolvedMode);
   const providerRef = useRef(provider);
   const modelRef = useRef(model);
+  const effortRef = useRef(effort);
 
   useEffect(() => {
     onToolCallRef.current = onToolCall;
@@ -275,6 +281,10 @@ export function useHudsonAI({
     modelRef.current = model;
   }, [model]);
 
+  useEffect(() => {
+    effortRef.current = effort;
+  }, [effort]);
+
   // The chat transport must stay stable for the chat lifetime.
   // It reads fresh request data from refs at send time instead of being recreated.
   /* eslint-disable react-hooks/refs */
@@ -289,6 +299,7 @@ export function useHudsonAI({
         modeRef,
         providerRef,
         modelRef,
+        effortRef,
       }),
     }),
     [resolvedApi],

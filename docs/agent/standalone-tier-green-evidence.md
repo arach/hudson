@@ -1,7 +1,7 @@
 # Standalone tier greening evidence (HUD-014 C)
 
-**Date:** 2026-07-21  
-**Verdict:** **GREEN** (private template scaffolds → installs → typechecks → builds → serves destinations scaffold)  
+**Date:** 2026-07-21
+**Verdict:** **GREEN** (standalone tier scaffolds → installs → typechecks → builds → serves destinations scaffold)
 **Publish decision:** still owner (not taken here)
 
 ## Gate results
@@ -9,7 +9,7 @@
 | Step | Result | Notes |
 |------|--------|--------|
 | CLI scaffold `--tier standalone` | pass | 12 files under `<cwd>/<appId>/` |
-| Wire local pack | pass | Auto `file:` to monorepo `hudsonkit-0.4.1.tgz` (or `HUDSONKIT_TGZ`) |
+| Wire local pack | pass | Auto `file:` to monorepo `hudsonkit-0.4.0.tgz` (or `HUDSONKIT_TGZ`) |
 | `bun install` | pass | 158 packages; hudsonkit from local tgz |
 | `bun run typecheck` (`tsc --noEmit`) | pass | App `src/**` only |
 | `bun run build` (`vite build`) | pass | ~14s; main JS ~799 kB, CSS ~175 kB (includes `hudsonkit/styles`) |
@@ -22,11 +22,11 @@
 
 ```bash
 # requires monorepo pack present
-cd packages/web/hudsonkit && bun run pack   # hudsonkit-0.4.1.tgz
+cd packages/web/hudsonkit && bun run pack   # hudsonkit-0.4.0.tgz
 
 # from monorepo root (auto-wires file: pack) OR set HUDSONKIT_TGZ=/abs/path/to.tgz
 cd /tmp && mkdir -p standalone-green && cd standalone-green
-HUDSONKIT_TGZ=/Users/arach/dev/hudson/packages/web/hudsonkit/hudsonkit-0.4.1.tgz \
+HUDSONKIT_TGZ=/Users/arach/dev/hudson/packages/web/hudsonkit/hudsonkit-0.4.0.tgz \
   bun run /Users/arach/dev/hudson/packages/tools/create-hudson-app/src/index.ts green-check \
   --tier standalone \
   --description "Standalone greening evidence app" \
@@ -49,7 +49,7 @@ bun run preview # http://127.0.0.1:4173 — SPA shell + destinations
 | Change | Path |
 |--------|------|
 | Exclude vite config from app typecheck; ESM-safe root via `import.meta.url` | `templates/standalone/{tsconfig.json,vite.config.ts}.tmpl` |
-| Pin template dep `hudsonkit: ^0.4.1`; add `@types/node` | `templates/standalone/package.json.tmpl` |
+| Pin template dep `hudsonkit: ^0.4.0`; add `@types/node` | `templates/standalone/package.json.tmpl` |
 | Pre-publish `file:` wire (exact versioned tgz / `HUDSONKIT_TGZ`) | `src/wireHudsonkit.ts`, `src/index.ts` |
 | Standalone next-steps in CLI summary | `src/log.ts`, `src/index.ts` |
 | README pre-publish install path | `templates/standalone/README.md.tmpl` |
@@ -65,7 +65,7 @@ bun run preview # http://127.0.0.1:4173 — SPA shell + destinations
 
 ## Out of scope / remaining
 
-- **Owner publish** of create-hudson-app standalone tier + hudsonkit 0.4.1 to npm (not greened here as a release).
+- **Owner publish** of create-hudson-app standalone tier + hudsonkit 0.4.0 to npm (not greened here as a release).
 - TanStack Router is a declared stack point (`src/router.tsx` stub); destinations currently use local view state under AppShell slots — intentional minimal SPA scaffold.
 - Headless browser DOM screenshot not collected (no playwright/chromium in agent env); preview HTTP + bundle markers used instead.
-- Iris **useSnapCollapseAt 180ms-belt** hardening proposal: integrated as package-03 amendment (`PENDING_PROGRAMMATIC_WIDTH_CLEAR_MS` + unmount cleanup + clamp never-settle unit test).
+- Iris **useSnapCollapseAt 180ms-belt** hardening proposal: still standing by (not part of this greening slice).

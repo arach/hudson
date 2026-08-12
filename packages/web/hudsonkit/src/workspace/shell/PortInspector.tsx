@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { Activity, ArrowRight, Check, ChevronDown, ChevronRight, Inbox, Link2, Play, Send, Unlink, X } from 'lucide-react';
+import { Activity, ArrowRight, Check, ChevronDown, ChevronRight, Inbox, Link2, Play, Send, Unlink, X } from '../../icons';
 import type { AppInput, AppOutput, PipeDefinition } from '../../index';
 import { useDataBus, usePortActivity, type PortActivityEntry, type PortCatalogEntry } from '../context/DataBusContext';
 

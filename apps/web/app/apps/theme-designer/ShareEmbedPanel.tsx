@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useCallback } from 'react';
-import { Check, Copy, ExternalLink, Share2, Code2 } from 'lucide-react';
+import { Check, Copy, ExternalLink, Share2, Code2 } from 'hudsonkit/icons';
 import { useThemeDesigner } from './ThemeDesignerProvider';
 
 // ─────────────────────────────────────────────────────────────────────────────

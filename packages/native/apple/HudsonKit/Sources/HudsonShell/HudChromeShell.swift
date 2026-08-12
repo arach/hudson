@@ -16,6 +16,11 @@ public enum HudChromeTitlebarStyle: Sendable {
     /// Draw the titlebar inside the app content. Useful for platforms or
     /// surfaces that do not participate in a native window toolbar.
     case contentBar
+    /// No reserved titlebar strip at all: the app's column planes run to the
+    /// window's top edge (traffic lights overlay the surface) and the actions
+    /// float above the content at the top corners. Pair with a
+    /// `.hiddenTitleBar` window style.
+    case floating
 }
 
 public struct HudChromeTitlebarAction {
@@ -80,11 +85,55 @@ public struct HudChromeShell<
             systemToolbarShell
         case .contentBar:
             contentBarShell
+        case .floating:
+            floatingShell
         }
         #else
         contentBarShell
         #endif
     }
+
+    #if os(macOS)
+    /// macOS traffic lights occupy roughly the leading 70pt of a hidden
+    /// titlebar; floating actions start past them.
+    private static var trafficLightClearance: CGFloat { 84 }
+
+    private var floatingShell: some View {
+        HudAppShell {
+            leading
+        } trailing: {
+            trailing
+        } topDrawer: {
+            EmptyView()
+        } bottomDrawer: {
+            EmptyView()
+        } content: {
+            content
+        } statusBar: {
+            statusBar
+        }
+        .overlay(alignment: .top) {
+            // The actions belong on the traffic-light line, not in content:
+            // ignore the hidden-titlebar safe area so the row sits inside the
+            // light band (in fullscreen the inset collapses and the row rides
+            // at the content top, which is also correct).
+            HStack(spacing: HudSpacing.sm) {
+                ForEach(titlebarActions.filter { $0.placement == .leading }, id: \.id) { action in
+                    HudChromeTitlebarButton(action: action)
+                }
+                Spacer(minLength: 0)
+                ForEach(titlebarActions.filter { $0.placement == .trailing }, id: \.id) { action in
+                    HudChromeTitlebarButton(action: action)
+                }
+            }
+            .padding(.leading, Self.trafficLightClearance)
+            .padding(.trailing, HudSpacing.lg)
+            .frame(height: HudLayout.rowHeightCompact)
+            .frame(maxWidth: .infinity, alignment: .top)
+            .ignoresSafeArea(.container, edges: .top)
+        }
+    }
+    #endif
 
     private var contentBarShell: some View {
         HudAppShell {

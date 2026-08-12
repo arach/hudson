@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { LucideIcon } from 'lucide-react';
+import type { HudsonIcon } from '../../icons';
 import { HudBadge, HudPanelSection } from '../primitives';
 import type { HudDensity, HudTone } from '../primitives';
 import { cx } from './utils';
@@ -32,7 +32,7 @@ export interface HudContextSection {
 export interface HudContextPanelProps {
   title: React.ReactNode;
   subtitle?: React.ReactNode;
-  icon?: LucideIcon;
+  icon?: HudsonIcon;
   status?: React.ReactNode;
   statusTone?: HudTone;
   actions?: React.ReactNode;

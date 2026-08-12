@@ -4,7 +4,7 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import {
   X, Settings as SettingsIcon, LayoutGrid, AppWindow, RotateCcw,
   Maximize2, Eye, EyeOff, Crosshair, GripVertical, Power, Sliders,
-} from 'lucide-react';
+} from '../../../icons';
 import { useWorkspaceManager } from './WorkspaceManagerContext';
 import type { WindowBounds } from './WorkspaceManagerContext';
 import { safeLocalStorage } from '../../../index';

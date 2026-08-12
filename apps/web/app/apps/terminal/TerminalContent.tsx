@@ -2,7 +2,7 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import { useTerminalRelay, TerminalRelay, usePlatform } from 'hudsonkit';
-import { Plus, X } from 'lucide-react';
+import { Plus, X } from 'hudsonkit/icons';
 
 // ---------------------------------------------------------------------------
 // Single session — one relay + one TerminalRelay component

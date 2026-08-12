@@ -1,6 +1,6 @@
 'use client';
 
-import { RotateCcw } from 'lucide-react';
+import { RotateCcw } from 'hudsonkit/icons';
 import {
   TOKEN_GROUPS,
   parseOklchValue,

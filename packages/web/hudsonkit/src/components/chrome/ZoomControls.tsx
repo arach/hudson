@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useRef, useEffect, useCallback } from 'react';
-import { Plus, Minus } from 'lucide-react';
+import { Plus, Minus } from '../../icons';
 
 interface ZoomControlsProps {
   scale: number;

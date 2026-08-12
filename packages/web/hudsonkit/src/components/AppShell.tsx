@@ -27,7 +27,7 @@ import { usePlatformLayout } from '../platform/usePlatformLayout';
 import type { AppShellLayoutConfig, AppShellResponsivePanelMax, HudsonApp } from '../types/app';
 import type { HudsonCodeWorkbenchSize } from '../types/code';
 import type { CommandOption } from './overlays/CommandPalette';
-import { ChevronDown, ChevronRight, Code2, Pin, PinOff, Terminal as TerminalIcon, Sparkles } from 'lucide-react';
+import { ChevronDown, ChevronRight, Code2, Pin, PinOff, Terminal as TerminalIcon, Sparkles } from '../icons';
 import {
   HudsonThemeScript,
   ThemeProvider,
@@ -97,6 +97,8 @@ export interface AppShellChromeOptions {
   palette?: boolean;
   /** Enable the terminal/assistant drawer chrome and shortcuts. Defaults to true. */
   terminal?: boolean;
+  /** Label shown for the terminal/assistant drawer toggle. Defaults to 'Console'. */
+  terminalLabel?: string;
   /**
    * Side-panel space behavior: push (default), overlay, or auto, plus the
    * inspector pin toggle. Defaults to the classic push layout.
@@ -112,6 +114,7 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   canvasPanels: false,
   palette: true,
   terminal: true,
+  terminalLabel: 'Console',
   panelBehavior: {},
 };
 
@@ -981,6 +984,7 @@ function AppShellInner({
               }
               onToggleTerminal={chrome.terminal ? () => setShowTerminal(t => !t) : undefined}
               isTerminalOpen={chrome.terminal ? showTerminal : false}
+              terminalLabel={chrome.terminalLabel}
             />
           )}
 

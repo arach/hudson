@@ -44,7 +44,7 @@ public struct HudButton: View {
                         .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
                 }
                 Text(title)
-                    .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
+                    .hudFont(.xs, face: .mono, weight: .semibold)
                     .tracking(0)
             }
             .foregroundStyle(foreground)

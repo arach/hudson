@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Check, Copy, Pause, Play, Search, Trash2 } from 'lucide-react';
+import { Check, Copy, Pause, Play, Search, Trash2 } from '../../icons';
 import {
   formatHudsonNetworkEntryAsCurl,
   formatHudsonNetworkEntryForAgent,

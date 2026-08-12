@@ -12,7 +12,9 @@ public enum HudTTSProviders {
     public static func defaultCloudAdapters() -> [any HudTTSProviderAdapter] {
         [
             OpenAI(),
-            ElevenLabs()
+            ElevenLabs(),
+            Groq(),
+            Gemini()
         ]
     }
 }
@@ -20,4 +22,6 @@ public enum HudTTSProviders {
 extension HudTTSProviders {
     public typealias OpenAI = OpenAIHudTTSProvider
     public typealias ElevenLabs = ElevenLabsHudTTSProvider
+    public typealias Groq = GroqHudTTSProvider
+    public typealias Gemini = GeminiHudTTSProvider
 }
