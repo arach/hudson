@@ -5,19 +5,97 @@ import { defineConfig, type Plugin } from "vite";
 import react from "@vitejs/plugin-react";
 
 const hudsonRoot = fileURLToPath(new URL("../..", import.meta.url));
-const studioRoot = fileURLToPath(new URL("../../../studio", import.meta.url));
+const studioRoot = process.env.STUDIO_PACKAGE_ROOT
+  ? path.resolve(process.env.STUDIO_PACKAGE_ROOT)
+  : fileURLToPath(new URL("../../../studio", import.meta.url));
 const hudsonNodeModules = path.join(hudsonRoot, "node_modules");
-const singletonAliases = {
-  "studio": path.join(studioRoot, "src", "index.ts"),
-  "react": path.join(hudsonNodeModules, "react"),
-  "react/jsx-runtime": path.join(hudsonNodeModules, "react", "jsx-runtime.js"),
-  "react/jsx-dev-runtime": path.join(hudsonNodeModules, "react", "jsx-dev-runtime.js"),
-  "react-dom": path.join(hudsonNodeModules, "react-dom"),
-  "react-dom/client": path.join(hudsonNodeModules, "react-dom", "client.js"),
-  "ai": path.join(hudsonNodeModules, "ai"),
-  "@ai-sdk/react": path.join(hudsonNodeModules, "@ai-sdk", "react"),
-  "lucide-react": path.join(hudsonNodeModules, "lucide-react"),
-};
+// studio$ = exact package root only. A bare "studio" alias to index.ts breaks
+// CSS imports (studio/theme.css → index.ts/theme.css ENOTDIR).
+const singletonAliases = [
+  {
+    find: "studio/theme.css",
+    replacement: path.join(studioRoot, "src/theme/aliases.css"),
+  },
+  {
+    find: "studio/doc.css",
+    replacement: path.join(studioRoot, "src/doc/eng-doc.css"),
+  },
+  {
+    find: "studio/shell.css",
+    replacement: path.join(studioRoot, "src/shell/shell.css"),
+  },
+  {
+    find: "studio/injection.css",
+    replacement: path.join(studioRoot, "src/injection/styles.css"),
+  },
+  {
+    find: /^studio$/,
+    replacement: path.join(studioRoot, "src/index.ts"),
+  },
+  // Studio Flows imports hudsonkit primitives from source.
+  {
+    find: "hudsonkit/styles/tokens.css",
+    replacement: path.join(
+      hudsonRoot,
+      "packages/web/hudsonkit/src/styles/tokens.css",
+    ),
+  },
+  {
+    find: "hudsonkit/app-shell",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/app-shell.ts"),
+  },
+  {
+    find: "hudsonkit/canvas",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/canvas.ts"),
+  },
+  {
+    find: "hudsonkit/chrome",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/chrome.ts"),
+  },
+  {
+    find: "hudsonkit/primitives",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/primitives.ts"),
+  },
+  {
+    find: "hudsonkit/theme",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/theme.ts"),
+  },
+  {
+    find: "hudsonkit/overlays",
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/overlays.ts"),
+  },
+  {
+    find: /^hudsonkit$/,
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/index.ts"),
+  },
+  {
+    find: /^hudsonkit\/(.*)$/,
+    replacement: path.join(hudsonRoot, "packages/web/hudsonkit/src/$1"),
+  },
+  { find: "react", replacement: path.join(hudsonNodeModules, "react") },
+  {
+    find: "react/jsx-runtime",
+    replacement: path.join(hudsonNodeModules, "react", "jsx-runtime.js"),
+  },
+  {
+    find: "react/jsx-dev-runtime",
+    replacement: path.join(hudsonNodeModules, "react", "jsx-dev-runtime.js"),
+  },
+  { find: "react-dom", replacement: path.join(hudsonNodeModules, "react-dom") },
+  {
+    find: "react-dom/client",
+    replacement: path.join(hudsonNodeModules, "react-dom", "client.js"),
+  },
+  { find: "ai", replacement: path.join(hudsonNodeModules, "ai") },
+  {
+    find: "@ai-sdk/react",
+    replacement: path.join(hudsonNodeModules, "@ai-sdk", "react"),
+  },
+  {
+    find: "lucide-react",
+    replacement: path.join(hudsonNodeModules, "lucide-react"),
+  },
+];
 
 // Surfaces filesystem mtimes for engineering markdown as `virtual:eng-mtimes`.
 // import.meta.glob has no mtime channel; this plugin closes that gap so the
@@ -58,17 +136,36 @@ function engMtimesPlugin(): Plugin {
   };
 }
 
+const studioNodeModules = path.join(studioRoot, "node_modules");
+
 export default defineConfig({
   plugins: [react(), engMtimesPlugin()],
   resolve: {
-    preserveSymlinks: true,
+    // false so nested deps under studio/node_modules resolve correctly when
+    // following the linked studio package (codemirror / react-markdown tree).
+    preserveSymlinks: false,
     dedupe: ["react", "react-dom"],
     alias: singletonAliases,
   },
   server: {
     port: 3033,
     fs: {
-      allow: [hudsonRoot, studioRoot],
+      allow: [hudsonRoot, studioRoot, studioNodeModules],
+    },
+    proxy: {
+      // Studio Flows service + discuss, kept same-origin for the browser.
+      "/api": {
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
+        changeOrigin: true,
+      },
+      "/mcp": {
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
+        changeOrigin: true,
+      },
+      "/health": {
+        target: process.env.STUDIO_FLOWS_API_ORIGIN ?? "http://127.0.0.1:29982",
+        changeOrigin: true,
+      },
     },
   },
   optimizeDeps: {

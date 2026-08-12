@@ -104,8 +104,8 @@ if (process.env.HUDSON_TURBOPACK_PARENT === "1") {
   };
   linkIfMissing("tailwindcss");
   linkIfMissing("@tailwindcss");
-  // hudsonkit: app/globals.css imports its source design tokens via the bare
-  // specifier `hudsonkit/styles/tokens.css`, which must resolve from the parent.
+  // hudsonkit: app/globals.css imports the precompiled SDK styles via the bare
+  // specifier `hudsonkit/styles`, which must resolve from the parent.
   linkIfMissing("hudsonkit");
 }
 const singletonAliases = {

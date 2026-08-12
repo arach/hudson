@@ -243,6 +243,22 @@ export interface HudsonApp {
     useStatus: () => StatusState;
     useStatusLeft?: () => ReactNode | null;
     useStatusRight?: () => ReactNode | null;
+    /** When set, StatusBar renders the centered viewport strip (pan · size · zoom).
+     *  Canvas apps may also provide handlers to make their Provider the canonical
+     *  viewport owner while AppShell's Frame remains the renderer. */
+    useViewport?: () => {
+      pan: { x: number; y: number };
+      zoom: number;
+      canvasSize?: { w: number; h: number };
+      onPan?: (delta: { x: number; y: number }) => void;
+      onZoom?: (
+        zoom: number,
+        panAdjust?: { x: number; y: number },
+      ) => void;
+      onViewportChange?: (size: { width: number; height: number }) => void;
+      gridOpacity?: number;
+      zoomSensitivity?: number;
+    } | null;
     useSearch?: () => SearchConfig;
     useNavCenter?: () => ReactNode | null;
     useNavActions?: () => ReactNode | null;

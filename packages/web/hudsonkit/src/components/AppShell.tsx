@@ -90,6 +90,9 @@ export interface AppShellChromeOptions {
   leftPanel?: boolean;
   /** Render the right side panel when the app is in panel layout. Defaults to true. */
   rightPanel?: boolean;
+  /** Keep app-owned side panels visible when the app uses canvas layout.
+   *  Defaults to false so existing canvas apps retain their full-bleed behavior. */
+  canvasPanels?: boolean;
   /** Enable the command palette chrome and Cmd/Ctrl+K shortcut. Defaults to true. */
   palette?: boolean;
   /** Enable the terminal/assistant drawer chrome and shortcuts. Defaults to true. */
@@ -106,6 +109,7 @@ const DEFAULT_APP_SHELL_CHROME: Required<AppShellChromeOptions> = {
   statusBar: true,
   leftPanel: true,
   rightPanel: true,
+  canvasPanels: false,
   palette: true,
   terminal: true,
   panelBehavior: {},
@@ -289,6 +293,7 @@ function AppShellInner({
   const appStatus = app.hooks.useStatus();
   const appStatusLeft = app.hooks.useStatusLeft?.() ?? null;
   const appStatusRight = app.hooks.useStatusRight?.() ?? null;
+  const appViewport = app.hooks.useViewport?.() ?? null;
   const appSearch = app.hooks.useSearch?.() ?? null;
   const appNavCenter = app.hooks.useNavCenter?.() ?? null;
   const appNavActions = app.hooks.useNavActions?.() ?? null;
@@ -492,8 +497,9 @@ function AppShellInner({
     document.addEventListener('mouseup', onMouseUp);
   }, [app, leftWidth, rightWidth, responsiveCap, setLeftWidth, setRightWidth]);
 
-  // Whether side panels should be visible — canvas/focus modes hide them
-  const showPanels = layoutMode === 'panel';
+  // Canvas apps may opt into shell-owned rails without recreating Frame/chrome.
+  // Focus mode always stays rail-free.
+  const showPanels = layoutMode === 'panel' || (layoutMode === 'canvas' && chrome.canvasPanels);
   const showLeftPanel = chrome.leftPanel && showPanels;
   const showRightPanel = chrome.rightPanel && showPanels;
   // Focus mode: panel-style content rendering (no pan/zoom) but no sidebars
@@ -878,10 +884,13 @@ function AppShellInner({
     <div ref={backgroundRef} aria-hidden={takeoverActive ? true : undefined} style={{ display: 'contents' }}>
     <Frame
       mode={frameMode}
-      panOffset={panOffset}
-      scale={scale}
-      onPan={handlePan}
-      onZoom={handleZoom}
+      panOffset={appViewport?.pan ?? panOffset}
+      scale={appViewport?.zoom ?? scale}
+      onPan={appViewport?.onPan ?? handlePan}
+      onZoom={appViewport?.onZoom ?? handleZoom}
+      onViewportChange={appViewport?.onViewportChange}
+      canvasProps={{ gridOpacity: appViewport?.gridOpacity }}
+      zoomSensitivity={appViewport?.zoomSensitivity}
       zoomControlsRightOffset={showPanels && !rightCollapsed && !rightFloating ? rightWidth : 0}
       zoomControlsBottomOffset={terminalCanvasBottomOffset}
       showZoomControls={showCanvasZoomControls}
@@ -961,6 +970,15 @@ function AppShellInner({
               status={appStatus}
               left={appStatusLeft}
               right={appStatusRight}
+              viewport={
+                appViewport
+                  ? {
+                      pan: appViewport.pan,
+                      zoom: appViewport.zoom,
+                      canvasSize: appViewport.canvasSize,
+                    }
+                  : undefined
+              }
               onToggleTerminal={chrome.terminal ? () => setShowTerminal(t => !t) : undefined}
               isTerminalOpen={chrome.terminal ? showTerminal : false}
             />
