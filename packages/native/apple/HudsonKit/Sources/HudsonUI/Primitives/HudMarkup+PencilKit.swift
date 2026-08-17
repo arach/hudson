@@ -51,13 +51,23 @@ public extension HudMarkup {
             let path = stroke.path
             guard !path.isEmpty else { return nil }
 
-            // The nib width PencilKit actually drew with, made relative to the
-            // surface the same way a mark captured here would be.
-            let nib = Double(path.first?.size.width ?? CGFloat(instrument.points))
+            // The nib PencilKit drew with. Averaged over the stroke rather than
+            // taken from its first point: PencilKit's width varies with pressure,
+            // so the first sample is whatever the hand happened to be doing on
+            // touchdown — usually the lightest moment of the whole stroke — and
+            // every `w` after it would be measured against that accident.
+            let sizes = path.map { Double($0.size.width) }
+            let nib = sizes.isEmpty
+                ? instrument.points
+                : sizes.reduce(0, +) / Double(sizes.count)
+
+            // PencilKit keeps a stroke's geometry as a path plus a transform;
+            // reading the path alone puts every stroke of a transformed drawing
+            // in the wrong place.
+            let placement = stroke.transform
+                .concatenating(CGAffineTransform(translationX: -bounds.minX, y: -bounds.minY))
             let points: [HudMarkPoint] = path.map { element in
-                let located = element.location.applying(
-                    CGAffineTransform(translationX: -bounds.minX, y: -bounds.minY)
-                )
+                let located = element.location.applying(placement)
                 return HudMarkPoint(
                     x: min(max(Double(located.x) / width, 0), 1),
                     y: min(max(Double(located.y) / height, 0), 1),
