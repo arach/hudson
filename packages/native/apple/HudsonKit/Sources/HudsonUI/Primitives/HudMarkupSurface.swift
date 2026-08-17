@@ -87,10 +87,7 @@ public struct HudMarkupSurface: View {
         DragGesture(minimumDistance: 2, coordinateSpace: .local)
             .onChanged { value in
                 guard surfaceSize.width > 0, surfaceSize.height > 0 else { return }
-                let unit = HudMarkPoint(
-                    x: min(max(value.location.x / surfaceSize.width, 0), 1),
-                    y: min(max(value.location.y / surfaceSize.height, 0), 1)
-                )
+                let unit = unitPoint(value.location)
                 // The eraser rubs out as it is dragged rather than waiting for
                 // the hand to lift, which is what an eraser does — and the whole
                 // drag is one act, so taking back a sweep that caught too much
@@ -108,7 +105,13 @@ public struct HudMarkupSurface: View {
                     )
                     dragPath = [unit]
                 } else {
-                    if dragOrigin == nil { dragOrigin = unit }
+                    // The corner is where the hand went down, not where the
+                    // gesture first reported. A drag only becomes a drag after
+                    // it has moved a couple of points, so taking the first
+                    // sample would start every rectangle slightly inside the
+                    // corner somebody aimed at — and a flick quick enough to
+                    // report only once would draw nothing at all.
+                    if dragOrigin == nil { dragOrigin = unitPoint(value.startLocation) }
                     dragPath.append(unit)
                 }
             }
@@ -135,14 +138,29 @@ public struct HudMarkupSurface: View {
             }
     }
 
+    private func unitPoint(_ location: CGPoint) -> HudMarkPoint {
+        HudMarkPoint(
+            x: min(max(location.x / surfaceSize.width, 0), 1),
+            y: min(max(location.y / surfaceSize.height, 0), 1)
+        )
+    }
+
     /// The mark the current drag would leave if the hand lifted now — the same
     /// value used to draw it live and to keep it, so what is shown and what is
     /// stored cannot drift.
+    ///
+    /// A freehand mark needs two sampled points to be a line at all; a ruled one
+    /// needs only somewhere to have started and somewhere to be now, and it has
+    /// both from the first event.
     private var liveShape: HudMarkShape? {
         guard let kind = tool.shapeKind,
               let origin = dragOrigin,
-              let last = dragPath.last,
-              dragPath.count > 1 else { return nil }
+              let last = dragPath.last else { return nil }
+        if kind == .freehand {
+            guard dragPath.count > 1 else { return nil }
+            return .freehand(dragPath)
+        }
+        guard origin != last else { return nil }
         return .drawn(kind, from: origin, to: last, path: dragPath)
     }
 }
