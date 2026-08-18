@@ -45,7 +45,7 @@ if voiceHelperEnabled {
 let package = Package(
     name: "HudsonApp",
     platforms: [
-        .macOS(.v14),
+        .macOS("26.0"),
     ],
     dependencies: dependencies,
     targets: targets
