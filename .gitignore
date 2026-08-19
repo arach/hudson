@@ -156,3 +156,5 @@ site/out/
 site/site/out/
 hudson-docs/dist/
 hudson-docs/.astro/
+.swiftpm/
+.playwright-cli/
