@@ -127,12 +127,32 @@ public final class HudBrowser {
             self.policy = policy
         }
 
+        /// Schemes a sub-frame may use without being a *destination*.
+        ///
+        /// An ordinary page embeds `about:blank`, `data:` and `blob:` frames as
+        /// part of rendering itself. Judging those by the same rule as a
+        /// top-level navigation cancels them and breaks pages that have nothing
+        /// wrong with them.
+        private static let frameSchemes: Set<String> = ["about", "data", "blob"]
+
         func decidePolicy(
             for action: WebPage.NavigationAction,
             preferences: inout WebPage.NavigationPreferences
         ) async -> WKNavigationActionPolicy {
             guard let url = action.request.url else { return .cancel }
             let policy = self.policy
+
+            // The policy is about where the *reader* ends up, so it judges
+            // top-level navigations. A sub-frame is part of how a page draws
+            // itself: it may use the allowed schemes or the inert ones, and
+            // nothing else — but it never reaches `onBlocked`, because a hidden
+            // iframe must not be able to make the host act.
+            let isMainFrame = action.target?.isMainFrame ?? true
+            guard isMainFrame else {
+                let scheme = url.scheme?.lowercased() ?? ""
+                return policy.allows(url) || Self.frameSchemes.contains(scheme) ? .allow : .cancel
+            }
+
             guard policy.allows(url) else {
                 await MainActor.run { policy.onBlocked?(url, .page) }
                 return .cancel
