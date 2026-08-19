@@ -61,6 +61,12 @@ jobs:
       - name: AI backends build
         run: bun run --filter @hudsonkit/ai build
 
+      - name: Admin build
+        run: bun run --filter @hudsonkit/admin build
+
+      - name: Admin typecheck
+        run: bun run --cwd packages/web/admin typecheck
+
       - name: HudsonKit build
         run: bun run --cwd packages/web/hudsonkit build:js
 

@@ -5,7 +5,7 @@
   "scripts": {
     "dev": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && bun run --cwd apps/web dev",
     "dev:safe": "bun scripts/dev-guard.ts",
-    "build": "bun run --filter @hudsonkit/ai build && bun run --filter hudsonkit build && bun run --cwd apps/web build",
+    "build": "bun run --filter @hudsonkit/ai build && bun run --filter @hudsonkit/admin build && bun run --filter hudsonkit build && bun run --cwd apps/web build",
     "build:site": "bun run build && bun run --cwd apps/web embed:bundle && bun run --cwd apps/web export-pages",
     "deploy:hudsonkit": "bun run build:site && bun run --cwd apps/web cf:deploy",
     "upload:hudsonkit": "bun run build:site && bun run --cwd apps/web cf:upload",
@@ -15,14 +15,14 @@
     "embed:deploy": "bun run --cwd apps/web embed:deploy",
     "start": "bun run --cwd apps/web start",
     "lint": "eslint",
-    "typecheck": "bun run --cwd apps/web typecheck",
+    "typecheck": "bun run --cwd apps/web typecheck && bun run --cwd packages/web/admin typecheck",
     "test": "bun run test:ci-classifier && bun run --cwd apps/web test",
     "test:ci-classifier": "node --test scripts/ci/classify-changes.node-test.mjs",
     "test:watch": "bun run --cwd apps/web test:watch",
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/editor.js",
-    "validate:hudsonkit-package": "bun run --cwd packages/web/hudsonkit pack && tarball=\"$(ls -1 packages/web/hudsonkit/hudsonkit-*.tgz | tail -n 1)\" && publint \"$tarball\" && attw \"$tarball\" --profile esm-only --exclude-entrypoints hudsonkit/styles hudsonkit/styles/tokens.css && rm -f \"$tarball\""
+    "validate:hudsonkit-package": "node scripts/validate-hudsonkit-package.mjs"
   },
   "overrides": {
     "@earendil-works/pi-ai": "0.78.1"

@@ -39,6 +39,9 @@ commit's push CI to pass. Run the **Publish npm packages** workflow from `main`,
 enter that full commit SHA, and keep `latest` for stable releases; prereleases
 must use an explicit non-`latest` dist-tag.
 
+`packages/web/admin` is build- and typecheck-gated, but it does not yet have a
+release lane. Do not assume the npm publish workflow includes it.
+
 ## Orientation
 
 - [`docs/building-apps.md`](./docs/building-apps.md) — the `HudsonApp` contract
