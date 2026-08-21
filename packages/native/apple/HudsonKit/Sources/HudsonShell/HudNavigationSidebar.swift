@@ -339,7 +339,7 @@ public struct HudNavigationSidebar<
     /// looks like.
     private func sectionLabel(_ title: String) -> some View {
         Text(title.uppercased())
-            .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
+            .font(HudFont.mono(HudTextSize.xxs, weight: .regular))
             .tracking(HudTracking.wider)
             .foregroundStyle(theme.palette.dim)
             .lineLimit(1)
@@ -377,7 +377,7 @@ public struct HudNavigationSidebar<
         case .item(let item):
             let isSelected = selection == item.id
             Text(item.title)
-                .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .semibold : .medium))
+                .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .medium : .regular))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
@@ -722,7 +722,7 @@ private struct HudSidebarCompactHoverLabel: View {
                 .frame(width: HudSpacing.sm, height: HudSpacing.lg)
 
             Text(title)
-                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
                 .foregroundStyle(theme.palette.ink)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
