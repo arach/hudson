@@ -66,6 +66,15 @@ public enum HudSidebarLayout {
     /// Horizontal inset between the rail's trailing edge and the label text.
     public static var labelLeading: CGFloat { 4 }  // HudSpacing.xs
 
+    /// Inset for a section label hung off the column's *trailing* edge.
+    ///
+    /// Deliberately not `labelLeading`. That 4pt is a gutter between the rail and
+    /// the labels beside it — there is a 48pt icon column doing the visual work of
+    /// separating them. On the trailing side there is nothing: the label column's
+    /// right edge is the sidebar's own edge, so the same 4pt puts the text against
+    /// the divider rather than in a margin.
+    public static var sectionTrailingInset: CGFloat { 12 }  // HudSpacing.xl
+
     // ── Selection underlay ───────────────────────────────────────────────────
 
     public static var selectionCornerRadius: CGFloat { 6 }      // HudRadius.standard

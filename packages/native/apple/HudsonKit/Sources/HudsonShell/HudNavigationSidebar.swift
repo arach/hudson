@@ -374,7 +374,7 @@ public struct HudNavigationSidebar<
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
                     .padding(.leading, trailingAligned ? 0 : HudSidebarLayout.labelLeading)
-                    .padding(.trailing, trailingAligned ? HudSidebarLayout.labelLeading : 0)
+                    .padding(.trailing, trailingAligned ? HudSidebarLayout.sectionTrailingInset : 0)
                     .frame(
                         maxWidth: .infinity,
                         alignment: trailingAligned ? .bottomTrailing : .bottomLeading
