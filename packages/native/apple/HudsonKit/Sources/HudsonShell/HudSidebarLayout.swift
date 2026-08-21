@@ -75,6 +75,15 @@ public enum HudSidebarLayout {
     /// the divider rather than in a margin.
     public static var sectionTrailingInset: CGFloat { 12 }  // HudSpacing.xl
 
+    /// Leading inset for a section label sitting on the sidebar's own edge.
+    ///
+    /// Lines the text up with the left edge of the rail glyphs rather than with
+    /// the label column: `(railWidth - iconSize) / 2` is where an icon starts, and
+    /// a group name that starts anywhere else reads as a fourth column.
+    public static var sectionRailLeading: CGFloat {
+        ((railWidth - iconSize) / 2).rounded()
+    }
+
     // ── Selection underlay ───────────────────────────────────────────────────
 
     public static var selectionCornerRadius: CGFloat { 6 }      // HudRadius.standard

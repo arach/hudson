@@ -142,8 +142,14 @@ public struct HudLiquidGlassConfig: Equatable, Sendable {
 /// editorial rails, where the group name reads as a margin note against the
 /// column edge rather than as a heading stacked over its rows.
 public enum HudSidebarSectionAlignment: String, CaseIterable, Identifiable, Sendable {
+    /// On the label column's rule, directly over the rows the group names.
     case leading
+    /// Hung off the column's trailing edge.
     case trailing
+    /// On the *sidebar's* leading edge, out past the icon rail — so the group
+    /// names sit further left than anything they head and read as rules across
+    /// the column rather than as another item in it.
+    case railLeading
 
     public var id: String { rawValue }
 }
