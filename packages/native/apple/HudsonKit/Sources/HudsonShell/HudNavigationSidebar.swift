@@ -364,6 +364,7 @@ public struct HudNavigationSidebar<
                 }
 
         case .section(_, let title):
+            let trailingAligned = style.sectionAlignment == .trailing
             VStack(alignment: .leading, spacing: 0) {
                 Spacer().frame(height: HudSidebarLayout.sectionTopGap)
                 Text(title.uppercased())
@@ -372,8 +373,16 @@ public struct HudNavigationSidebar<
                     .foregroundStyle(theme.palette.dim)
                     .lineLimit(1)
                     .fixedSize(horizontal: true, vertical: false)
-                    .padding(.leading, HudSidebarLayout.labelLeading)
-                    .frame(height: HudSidebarLayout.sectionHeaderHeight, alignment: .bottomLeading)
+                    .padding(.leading, trailingAligned ? 0 : HudSidebarLayout.labelLeading)
+                    .padding(.trailing, trailingAligned ? HudSidebarLayout.labelLeading : 0)
+                    .frame(
+                        maxWidth: .infinity,
+                        alignment: trailingAligned ? .bottomTrailing : .bottomLeading
+                    )
+                    .frame(
+                        height: HudSidebarLayout.sectionHeaderHeight,
+                        alignment: trailingAligned ? .bottomTrailing : .bottomLeading
+                    )
             }
         }
     }
