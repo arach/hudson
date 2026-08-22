@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Boxes, FileText, Home } from '../src/icons';
@@ -15,9 +15,34 @@ import {
   HudSideNavMenuItem,
   HudSideNavTrigger,
   HudSideRail,
+  HUD_RAIL_DRAG_COLLAPSE_MARGIN,
+  HUD_RAIL_DRAG_EXPAND_TRAVEL,
+  resolveHudRailResizeCommit,
   useHudSideNav,
   type HudNavNode,
 } from '../src/components/nav';
+
+vi.mock('../src/components/behaviors/HudTooltip', () => ({
+  HudTooltip: ({
+    children,
+    content,
+    delay,
+    side,
+  }: {
+    children: ReactNode;
+    content: ReactNode;
+    delay?: number;
+    side?: string;
+  }) => (
+    <span
+      data-tooltip-content={typeof content === 'string' ? content : 'rich-content'}
+      data-tooltip-delay={delay}
+      data-tooltip-side={side}
+    >
+      {children}
+    </span>
+  ),
+}));
 
 afterEach(cleanup);
 
@@ -92,9 +117,11 @@ describe('HudSideNav (data-driven)', () => {
     expect(home).toHaveAttribute('aria-current', 'page');
   });
 
-  it('removes the instant browser title from compact rail labels', () => {
+  it('wires settled-hover labels without an instant browser title', () => {
     render(<HudSideNav items={[{ id: 'home', label: 'Home', icon: Home }]} collapsed />);
-    expect(screen.getByRole('button', { name: 'Home' })).not.toHaveAttribute('title');
+    const home = screen.getByRole('button', { name: 'Home' });
+    expect(home).not.toHaveAttribute('title');
+    expect(home.closest('[data-tooltip-delay]')).toHaveAttribute('data-tooltip-delay', '500');
   });
 
   it('uses compact header and footer overrides without changing expanded chrome', () => {
@@ -297,6 +324,32 @@ describe('HudSideNavProvider + primitives', () => {
     expect(link.querySelector('.sr-only')).toHaveTextContent('Atlas');
     expect(link).not.toHaveTextContent('2');
   });
+
+  it('passes delay and mirrored placement to composed compact labels', () => {
+    render(
+      <HudSideNavProvider
+        side="right"
+        collapsible="icon"
+        defaultOpen={false}
+        keyboardShortcut={false}
+        tooltipDelay={725}
+      >
+        <HudSideNavMenu>
+          <HudSideNavMenuItem>
+            <HudSideNavMenuButton icon={Boxes} tooltip="Agents">
+              Agents
+            </HudSideNavMenuButton>
+          </HudSideNavMenuItem>
+        </HudSideNavMenu>
+      </HudSideNavProvider>,
+    );
+
+    const agents = screen.getByRole('button', { name: 'Agents' });
+    const tooltipBoundary = agents.closest('[data-tooltip-delay]');
+    expect(tooltipBoundary).toHaveAttribute('data-tooltip-content', 'Agents');
+    expect(tooltipBoundary).toHaveAttribute('data-tooltip-delay', '725');
+    expect(tooltipBoundary).toHaveAttribute('data-tooltip-side', 'left');
+  });
 });
 
 describe('HudSideNavLayout + HudSideRail', () => {
@@ -402,6 +455,56 @@ describe('HudSideNavLayout + HudSideRail', () => {
     expect(rail).toHaveStyle({ width: '48px' });
   });
 
+  it('resizes, collapses, revives, and cancels through the pointer lifecycle', () => {
+    const { container } = render(<LayoutHarness />);
+    const layout = container.querySelector('[data-hud-side-nav-layout]');
+    const resize = screen.getByRole('separator', { name: 'Resize primary navigation' });
+
+    fireEvent.keyDown(resize, { key: 'ArrowRight' });
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '280px auto minmax(0, 1fr)',
+    });
+
+    fireEvent.pointerDown(resize, { button: 0, clientX: 280 });
+    expect(document.body.style.cursor).toBe('ew-resize');
+    expect(document.body.style.userSelect).toBe('none');
+    fireEvent.pointerMove(window, { clientX: 330 });
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '330px auto minmax(0, 1fr)',
+    });
+    fireEvent.pointerUp(window, { clientX: 330 });
+    expect(document.body.style.cursor).toBe('');
+    expect(document.body.style.userSelect).toBe('');
+
+    fireEvent.pointerDown(resize, { button: 0, clientX: 330 });
+    fireEvent.pointerMove(window, { clientX: 150 });
+    fireEvent.pointerUp(window, { clientX: 150 });
+    expect(layout).toHaveAttribute('data-state', 'collapsed');
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '48px auto minmax(0, 1fr)',
+    });
+
+    fireEvent.pointerDown(resize, { button: 0, clientX: 48 });
+    fireEvent.pointerMove(window, { clientX: 72 });
+    fireEvent.pointerUp(window, { clientX: 72 });
+    expect(layout).toHaveAttribute('data-state', 'expanded');
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '330px auto minmax(0, 1fr)',
+    });
+
+    fireEvent.pointerDown(resize, { button: 0, clientX: 330 });
+    fireEvent.pointerMove(window, { clientX: 300 });
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '300px auto minmax(0, 1fr)',
+    });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '330px auto minmax(0, 1fr)',
+    });
+    expect(document.body.style.cursor).toBe('');
+    expect(document.body.style.userSelect).toBe('');
+  });
+
   it('mirrors the anchored geometry for a right-side primary rail', () => {
     const { container } = render(
       <HudSideNavProvider
@@ -430,6 +533,66 @@ describe('HudSideNavLayout + HudSideRail', () => {
     });
     expect(topRow).toHaveStyle({ gridColumn: '1 / 3' });
     expect(navigation).toHaveStyle({ gridColumn: '3' });
+  });
+});
+
+describe('rail resize geometry', () => {
+  const geometry = {
+    rememberedExpandedWidth: 260,
+    collapsedWidth: 48,
+    minExpandedWidth: 200,
+    maxExpandedWidth: 360,
+  };
+
+  it('collapses only after dragging through the expanded minimum margin', () => {
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: false,
+        rawWidth: geometry.minExpandedWidth - HUD_RAIL_DRAG_COLLAPSE_MARGIN,
+      }),
+    ).toEqual({ kind: 'collapse' });
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: false,
+        rawWidth: geometry.minExpandedWidth - HUD_RAIL_DRAG_COLLAPSE_MARGIN + 1,
+      }),
+    ).toEqual({ kind: 'resize', width: geometry.minExpandedWidth });
+  });
+
+  it('requires deliberate outward travel before reviving a compact rail', () => {
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: true,
+        rawWidth: geometry.collapsedWidth + HUD_RAIL_DRAG_EXPAND_TRAVEL - 1,
+      }),
+    ).toEqual({ kind: 'none' });
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: true,
+        rawWidth: geometry.collapsedWidth + HUD_RAIL_DRAG_EXPAND_TRAVEL,
+      }),
+    ).toEqual({ kind: 'expand', width: geometry.rememberedExpandedWidth });
+  });
+
+  it('commits and clamps compact drag widths inside the resize band', () => {
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: true,
+        rawWidth: 312,
+      }),
+    ).toEqual({ kind: 'expand', width: 312 });
+    expect(
+      resolveHudRailResizeCommit({
+        ...geometry,
+        startedCollapsed: true,
+        rawWidth: 480,
+      }),
+    ).toEqual({ kind: 'expand', width: geometry.maxExpandedWidth });
   });
 });
 
