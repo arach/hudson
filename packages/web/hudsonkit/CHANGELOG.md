@@ -11,6 +11,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Add the `hudsonkit/nav` subpath with a data-driven `HudSideNav`, provider-
   backed composable primitives, icon/off-canvas collapse modes, persistence,
   breadcrumbs, roving focus, and responsive snap-collapse behavior.
+- Add `HudSideNavLayout` for full-height anchored navigation with an inset top
+  row, plus `HudSideRail` for a separate real-width compact context rail whose
+  expanded subtree remains mounted.
+- Add shared pointer and keyboard rail resizing with drag-through collapse,
+  compact-state revival, remembered widths, and double-click reset.
 - Ship TypeScript declarations for the `./styles` and `./styles/tokens.css`
   export subpaths (clears TS2882 under strict tsc for side-effect CSS imports).
 - Themeable `--hud-nav-live` token on `HudSideNav` live signal (dot, count
@@ -33,6 +38,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   missing styles with the cheaper CSS build during source-package preparation.
 - Clear `useSnapCollapseAt`'s pending programmatic-width guard after a bounded
   180ms timeout when host clamping prevents the requested width from settling.
+- Replace compact side-nav browser titles with Hudson Base UI tooltips using a
+  configurable `500ms` settled-hover delay.
+- Allow `HudSideNav` header and footer chrome to provide explicit compact
+  presentations instead of clipping expanded labels into the icon rail.
+- Align anchored logo, title, and contextual header bands at `48px`, and use
+  one directional-caret language for primary and contextual collapse controls.
 
 ## [0.3.3] - 2026-07-01
 

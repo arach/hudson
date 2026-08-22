@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { Boxes, FileText, Home } from '../src/icons';
@@ -5,6 +6,7 @@ import {
   HudBreadcrumb,
   HudSideNav,
   HudSideNavProvider,
+  HudSideNavLayout,
   HudSideNavContent,
   HudSideNavGroup,
   HudSideNavGroupLabel,
@@ -12,6 +14,7 @@ import {
   HudSideNavMenuButton,
   HudSideNavMenuItem,
   HudSideNavTrigger,
+  HudSideRail,
   useHudSideNav,
   type HudNavNode,
 } from '../src/components/nav';
@@ -89,6 +92,41 @@ describe('HudSideNav (data-driven)', () => {
     expect(home).toHaveAttribute('aria-current', 'page');
   });
 
+  it('removes the instant browser title from compact rail labels', () => {
+    render(<HudSideNav items={[{ id: 'home', label: 'Home', icon: Home }]} collapsed />);
+    expect(screen.getByRole('button', { name: 'Home' })).not.toHaveAttribute('title');
+  });
+
+  it('uses compact header and footer overrides without changing expanded chrome', () => {
+    const { rerender } = render(
+      <HudSideNav
+        items={[{ id: 'home', label: 'Home', icon: Home }]}
+        collapsed
+        header={<span>Expanded brand</span>}
+        collapsedHeader={<span>Compact brand</span>}
+        footer={<span>Expanded status</span>}
+        collapsedFooter={<span>Compact status</span>}
+      />,
+    );
+    expect(screen.getByText('Compact brand')).toBeInTheDocument();
+    expect(screen.getByText('Compact status')).toBeInTheDocument();
+    expect(screen.queryByText('Expanded brand')).not.toBeInTheDocument();
+
+    rerender(
+      <HudSideNav
+        items={[{ id: 'home', label: 'Home', icon: Home }]}
+        collapsed={false}
+        header={<span>Expanded brand</span>}
+        collapsedHeader={<span>Compact brand</span>}
+        footer={<span>Expanded status</span>}
+        collapsedFooter={<span>Compact status</span>}
+      />,
+    );
+    expect(screen.getByText('Expanded brand')).toBeInTheDocument();
+    expect(screen.getByText('Expanded status')).toBeInTheDocument();
+    expect(screen.queryByText('Compact brand')).not.toBeInTheDocument();
+  });
+
   it('exposes a nav landmark with data-state', () => {
     render(<HudSideNav items={tree} ariaLabel="Workspace" />);
     const nav = screen.getByRole('navigation', { name: 'Workspace' });
@@ -155,7 +193,7 @@ describe('HudSideNavProvider + primitives', () => {
     render(
       <HudSideNavProvider collapsible="icon" defaultOpen>
         <Probe />
-        <HudSideNavTrigger />
+        <HudSideNavTrigger>Hudson</HudSideNavTrigger>
         <HudSideNav>
           <HudSideNavContent>
             <HudSideNavGroup>
@@ -174,6 +212,11 @@ describe('HudSideNavProvider + primitives', () => {
     );
 
     expect(screen.getByTestId('state')).toHaveTextContent('expanded');
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toHaveAttribute(
+      'aria-expanded',
+      'true',
+    );
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toHaveTextContent('Hudson');
     // Group eyebrow visible while expanded.
     expect(screen.getByText('Agents')).toBeInTheDocument();
     const active = screen.getByText('Atlas').closest('button');
@@ -181,6 +224,10 @@ describe('HudSideNavProvider + primitives', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'Toggle sidebar' }));
     expect(screen.getByTestId('state')).toHaveTextContent('collapsed');
+    expect(screen.getByRole('button', { name: 'Toggle sidebar' })).toHaveAttribute(
+      'aria-expanded',
+      'false',
+    );
     // Eyebrow folds away in icon-collapsed mode.
     expect(screen.queryByText('Agents')).not.toBeInTheDocument();
   });
@@ -249,6 +296,140 @@ describe('HudSideNavProvider + primitives', () => {
     expect(link.querySelector('svg')).not.toBeNull();
     expect(link.querySelector('.sr-only')).toHaveTextContent('Atlas');
     expect(link).not.toHaveTextContent('2');
+  });
+});
+
+describe('HudSideNavLayout + HudSideRail', () => {
+  function LayoutHarness() {
+    const [contextCollapsed, setContextCollapsed] = useState(true);
+    return (
+      <HudSideNavProvider
+        collapsible="icon"
+        defaultOpen={false}
+        defaultExpandedWidth={280}
+        collapsedWidth={48}
+        keyboardShortcut={false}
+        tooltipDelay={0}
+      >
+        <HudSideNavLayout
+          resizable
+          navigation={
+            <HudSideNav
+              items={[{ id: 'home', label: 'Home', icon: Home }]}
+              selectedId="home"
+            />
+          }
+          contextRail={
+            <HudSideRail
+              label="Projects"
+              collapsed={contextCollapsed}
+              onCollapsedChange={setContextCollapsed}
+              resizable
+              collapsedContent={<span>Context compact</span>}
+              footer={<span>Context footer</span>}
+            >
+              <span data-testid="context-expanded">Expanded context</span>
+            </HudSideRail>
+          }
+          contextRailAriaLabel="Project context"
+          topRow={<div>Workspace header</div>}
+          bottomBar={<div>Ready</div>}
+          contentAriaLabel="Workspace"
+        >
+          <div>Canvas</div>
+        </HudSideNavLayout>
+      </HudSideNavProvider>
+    );
+  }
+
+  it('anchors full-height navigation beside a separate keep-alive context rail', () => {
+    const { container } = render(<LayoutHarness />);
+    const layout = container.querySelector('[data-hud-side-nav-layout]');
+    const rail = container.querySelector('[data-hud-side-rail]');
+    const expandedContext = screen.getByTestId('context-expanded');
+
+    expect(layout).toHaveAttribute('data-state', 'collapsed');
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '48px auto minmax(0, 1fr)',
+      gridTemplateRows: '48px minmax(0, 1fr) 28px',
+    });
+    expect(screen.getByRole('complementary', { name: 'Project context' })).toBeInTheDocument();
+    expect(screen.getByRole('main', { name: 'Workspace' })).toHaveTextContent('Canvas');
+    expect(screen.getByText('Workspace header')).toBeInTheDocument();
+    expect(screen.getByText('Ready')).toBeInTheDocument();
+    expect(rail).toHaveAttribute('data-state', 'collapsed');
+    expect(rail).toHaveStyle({ width: '48px' });
+    expect(expandedContext.closest('[hidden]')).not.toBeNull();
+
+    fireEvent.click(screen.getByRole('button', { name: 'Expand Projects' }));
+
+    expect(rail).toHaveAttribute('data-state', 'expanded');
+    expect(rail).toHaveStyle({ width: '240px' });
+    expect(screen.getByTestId('context-expanded')).toBe(expandedContext);
+    expect(expandedContext.closest('[hidden]')).toBeNull();
+    expect(screen.getByText('Context footer')).toBeVisible();
+  });
+
+  it('resizes and revives primary and context rails from the keyboard', () => {
+    const { container } = render(<LayoutHarness />);
+    const layout = container.querySelector('[data-hud-side-nav-layout]');
+    const rail = container.querySelector('[data-hud-side-rail]');
+    const primaryResize = screen.getByRole('separator', {
+      name: 'Resize primary navigation',
+    });
+    const contextResize = screen.getByRole('separator', { name: 'Resize Projects' });
+
+    fireEvent.keyDown(primaryResize, { key: 'ArrowRight' });
+    expect(layout).toHaveAttribute('data-state', 'expanded');
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '280px auto minmax(0, 1fr)',
+    });
+
+    fireEvent.keyDown(primaryResize, { key: 'End' });
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '360px auto minmax(0, 1fr)',
+    });
+    fireEvent.doubleClick(primaryResize);
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: '280px auto minmax(0, 1fr)',
+    });
+
+    fireEvent.keyDown(contextResize, { key: 'End' });
+    expect(rail).toHaveAttribute('data-state', 'expanded');
+    expect(rail).toHaveStyle({ width: '360px' });
+    fireEvent.keyDown(contextResize, { key: ' ' });
+    expect(rail).toHaveAttribute('data-state', 'collapsed');
+    expect(rail).toHaveStyle({ width: '48px' });
+  });
+
+  it('mirrors the anchored geometry for a right-side primary rail', () => {
+    const { container } = render(
+      <HudSideNavProvider
+        side="right"
+        collapsible="icon"
+        defaultOpen={false}
+        collapsedWidth={48}
+        keyboardShortcut={false}
+      >
+        <HudSideNavLayout
+          navigation={<HudSideNav items={[{ id: 'home', label: 'Home', icon: Home }]} />}
+          topRow={<span>Mirrored header</span>}
+          bottomBar={<span>Mirrored status</span>}
+        >
+          <span>Detail</span>
+        </HudSideNavLayout>
+      </HudSideNavProvider>,
+    );
+    const layout = container.querySelector('[data-hud-side-nav-layout]');
+    const topRow = container.querySelector('[data-hud-side-nav-slot=\"top-row\"]');
+    const navigation = container.querySelector('[data-hud-side-nav-slot=\"navigation\"]');
+
+    expect(layout).toHaveAttribute('data-side', 'right');
+    expect(layout).toHaveStyle({
+      gridTemplateColumns: 'minmax(0, 1fr) auto 48px',
+    });
+    expect(topRow).toHaveStyle({ gridColumn: '1 / 3' });
+    expect(navigation).toHaveStyle({ gridColumn: '3' });
   });
 });
 

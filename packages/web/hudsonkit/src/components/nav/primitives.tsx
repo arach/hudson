@@ -9,8 +9,9 @@
 // in `icon` mode labels/eyebrows fold away and only icons remain.
 
 import React from 'react';
-import { ChevronRight, PanelLeft, type HudsonIcon } from '../../icons';
+import { ChevronRight, type HudsonIcon } from '../../icons';
 import { cx } from '../patterns/utils';
+import { HudTooltip } from '../behaviors/HudTooltip';
 import { useHudSideNav } from './context';
 import { LiveCountBadge, LiveDot, navRowBg, navSpine } from './shared';
 
@@ -160,6 +161,7 @@ export function HudSideNavMenuButton({
   className,
 }: HudSideNavMenuButtonProps) {
   const iconCollapsed = useIconCollapsed();
+  const { side, tooltipDelay } = useHudSideNav();
   const isDestination = size === 'destination';
   const label =
     asChild && React.isValidElement(children)
@@ -221,29 +223,23 @@ export function HudSideNavMenuButton({
     className,
   );
 
-  if (asChild) {
-    return (
-      <Slot
-        className={classes}
-        content={content}
-        title={tooltip}
-        onClick={onClick}
-        aria-current={isActive ? 'page' : undefined}
-        aria-expanded={expanded}
-        aria-disabled={disabled || undefined}
-        data-active={isActive ? '' : undefined}
-      >
-        {children}
-      </Slot>
-    );
-  }
-
-  return (
+  const element = asChild ? (
+    <Slot
+      className={classes}
+      content={content}
+      onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
+      aria-expanded={expanded}
+      aria-disabled={disabled || undefined}
+      data-active={isActive ? '' : undefined}
+    >
+      {children}
+    </Slot>
+  ) : (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      title={tooltip}
       aria-current={isActive ? 'page' : undefined}
       aria-expanded={expanded}
       data-active={isActive ? '' : undefined}
@@ -251,6 +247,19 @@ export function HudSideNavMenuButton({
     >
       {content}
     </button>
+  );
+
+  if (!iconCollapsed || !tooltip) return element;
+
+  return (
+    <HudTooltip
+      content={tooltip}
+      side={side === 'left' ? 'right' : 'left'}
+      delay={tooltipDelay}
+      disabled={disabled}
+    >
+      {element}
+    </HudTooltip>
   );
 }
 
@@ -298,28 +307,39 @@ export function HudSideNavRail({ className }: { className?: string }) {
   );
 }
 
-/** Button that toggles the sidebar. Place inside or outside the sidebar. */
+export interface HudSideNavTriggerProps {
+  className?: string;
+  label?: string;
+  children?: React.ReactNode;
+}
+
+/** Caret toggle that can stand alone or terminate a brand/title row. */
 export function HudSideNavTrigger({
   className,
   label = 'Toggle sidebar',
-}: {
-  className?: string;
-  label?: string;
-}) {
-  const { toggle } = useHudSideNav();
+  children,
+}: HudSideNavTriggerProps) {
+  const { toggle, state, side } = useHudSideNav();
+  const pointsRight = side === 'left' ? state === 'collapsed' : state === 'expanded';
   return (
     <button
       type="button"
       aria-label={label}
-      title={label}
+      aria-expanded={state === 'expanded'}
       onClick={toggle}
       className={cx(
-        'inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors',
+        'inline-flex h-7 min-w-7 items-center justify-center gap-2 rounded-md px-1.5 text-muted-foreground transition-colors',
         'hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40',
         className,
       )}
     >
-      <PanelLeft size={16} />
+      {children}
+      <ChevronRight
+        size={14}
+        strokeWidth={2}
+        aria-hidden="true"
+        className={cx('shrink-0 transition-transform duration-150', !pointsRight && 'rotate-180')}
+      />
     </button>
   );
 }

@@ -20,12 +20,44 @@ export type HudSideNavState = 'expanded' | 'collapsed';
 
 /** The default key that toggles the sidebar with Cmd (macOS) / Ctrl. */
 export const HUD_SIDE_NAV_KEYBOARD_SHORTCUT = 'b';
+/** Default structural width of a full-height expanded primary navigation. */
+export const HUD_SIDE_NAV_EXPANDED_WIDTH = 260;
+/** Minimum expanded width accepted by the built-in resize behavior. */
+export const HUD_SIDE_NAV_MIN_EXPANDED_WIDTH = 200;
+/** Maximum expanded width accepted by the built-in resize behavior. */
+export const HUD_SIDE_NAV_MAX_EXPANDED_WIDTH = 360;
+/** Default structural width of the compact primary icon rail. */
+export const HUD_SIDE_NAV_COLLAPSED_WIDTH = 48;
+/** Settled-hover delay for compact rail labels. */
+export const HUD_SIDE_NAV_TOOLTIP_DELAY = 500;
+
+function clampExpandedWidth(width: number, min: number, max: number): number {
+  return Math.min(max, Math.max(min, width));
+}
 
 export interface HudSideNavContextValue {
   /** `expanded` | `collapsed`. Always `expanded` when `collapsible` is `none`. */
   state: HudSideNavState;
   /** Convenience mirror of `state === 'expanded'`. */
   open: boolean;
+  /** Resolved structural width for full-height sidebar compositions. */
+  width: number;
+  /** Configured expanded structural width. */
+  expandedWidth: number;
+  /** Configured default expanded width. */
+  defaultExpandedWidth: number;
+  /** Minimum expanded width accepted by resize controls. */
+  minExpandedWidth: number;
+  /** Maximum expanded width accepted by resize controls. */
+  maxExpandedWidth: number;
+  /** Update the remembered expanded width. */
+  setExpandedWidth: (width: number) => void;
+  /** Restore the configured default expanded width. */
+  resetExpandedWidth: () => void;
+  /** Configured compact structural width. */
+  collapsedWidth: number;
+  /** Hover-intent delay used by compact rail labels. */
+  tooltipDelay: number;
   /** Set the open state (no-op when `collapsible` is `none`). */
   setOpen: (open: boolean) => void;
   /** Toggle open/closed. */
@@ -66,6 +98,20 @@ export interface HudSideNavProviderProps {
   keyboardShortcut?: string | false;
   /** localStorage key to persist the open state (uncontrolled only). */
   persistKey?: string;
+  /** Initial structural width while expanded. Defaults to 260. */
+  defaultExpandedWidth?: number;
+  /** Controlled structural width while expanded. */
+  expandedWidth?: number;
+  /** Notified when resize controls update the expanded width. */
+  onExpandedWidthChange?: (width: number) => void;
+  /** Minimum expanded width. Defaults to 200. */
+  minExpandedWidth?: number;
+  /** Maximum expanded width. Defaults to 360. */
+  maxExpandedWidth?: number;
+  /** Structural width for `icon` collapse. Defaults to 48. */
+  collapsedWidth?: number;
+  /** Hover-intent delay for compact labels. Defaults to 500ms. */
+  tooltipDelay?: number;
 }
 
 export function HudSideNavProvider({
@@ -77,25 +123,70 @@ export function HudSideNavProvider({
   side = 'left',
   keyboardShortcut = HUD_SIDE_NAV_KEYBOARD_SHORTCUT,
   persistKey,
+  defaultExpandedWidth = HUD_SIDE_NAV_EXPANDED_WIDTH,
+  expandedWidth,
+  onExpandedWidthChange,
+  minExpandedWidth = HUD_SIDE_NAV_MIN_EXPANDED_WIDTH,
+  maxExpandedWidth = HUD_SIDE_NAV_MAX_EXPANDED_WIDTH,
+  collapsedWidth = HUD_SIDE_NAV_COLLAPSED_WIDTH,
+  tooltipDelay = HUD_SIDE_NAV_TOOLTIP_DELAY,
 }: HudSideNavProviderProps) {
-  const controlled = open !== undefined;
+  const openControlled = open !== undefined;
+  const widthControlled = expandedWidth !== undefined;
   // Always call the hook (rules of hooks); `enabled:false` makes it in-memory
   // useState, so no-persistKey and controlled cases never touch storage.
   const [internalOpen, setInternalOpen] = usePersistentState(
     persistKey ?? 'hud-sidenav.open',
     defaultOpen,
-    { enabled: Boolean(persistKey) && !controlled },
+    { enabled: Boolean(persistKey) && !openControlled },
+  );
+  const [internalExpandedWidth, setInternalExpandedWidth] = usePersistentState(
+    `${persistKey ?? 'hud-sidenav'}.width`,
+    defaultExpandedWidth,
+    { enabled: Boolean(persistKey) && !widthControlled },
+  );
+  const resolvedExpandedWidth = clampExpandedWidth(
+    widthControlled ? (expandedWidth as number) : internalExpandedWidth,
+    minExpandedWidth,
+    maxExpandedWidth,
   );
 
-  const actualOpen = collapsible === 'none' ? true : controlled ? (open as boolean) : internalOpen;
+  const actualOpen =
+    collapsible === 'none' ? true : openControlled ? (open as boolean) : internalOpen;
+  const width =
+    actualOpen || collapsible === 'none'
+      ? resolvedExpandedWidth
+      : collapsible === 'icon'
+        ? collapsedWidth
+        : 0;
 
   const setOpen = useCallback(
     (next: boolean) => {
       if (collapsible === 'none') return;
-      if (!controlled) setInternalOpen(next);
+      if (!openControlled) setInternalOpen(next);
       onOpenChange?.(next);
     },
-    [collapsible, controlled, onOpenChange, setInternalOpen],
+    [collapsible, openControlled, onOpenChange, setInternalOpen],
+  );
+
+  const setExpandedWidth = useCallback(
+    (next: number) => {
+      const clamped = clampExpandedWidth(next, minExpandedWidth, maxExpandedWidth);
+      if (!widthControlled) setInternalExpandedWidth(clamped);
+      onExpandedWidthChange?.(clamped);
+    },
+    [
+      maxExpandedWidth,
+      minExpandedWidth,
+      onExpandedWidthChange,
+      setInternalExpandedWidth,
+      widthControlled,
+    ],
+  );
+
+  const resetExpandedWidth = useCallback(
+    () => setExpandedWidth(defaultExpandedWidth),
+    [defaultExpandedWidth, setExpandedWidth],
   );
 
   const toggle = useCallback(() => setOpen(!actualOpen), [actualOpen, setOpen]);
@@ -127,12 +218,36 @@ export function HudSideNavProvider({
     () => ({
       state: actualOpen ? 'expanded' : 'collapsed',
       open: actualOpen,
+      width,
+      expandedWidth: resolvedExpandedWidth,
+      defaultExpandedWidth,
+      minExpandedWidth,
+      maxExpandedWidth,
+      setExpandedWidth,
+      resetExpandedWidth,
+      collapsedWidth,
+      tooltipDelay,
       setOpen,
       toggle,
       collapsible,
       side,
     }),
-    [actualOpen, setOpen, toggle, collapsible, side],
+    [
+      actualOpen,
+      width,
+      resolvedExpandedWidth,
+      defaultExpandedWidth,
+      collapsedWidth,
+      minExpandedWidth,
+      maxExpandedWidth,
+      tooltipDelay,
+      setExpandedWidth,
+      resetExpandedWidth,
+      setOpen,
+      toggle,
+      collapsible,
+      side,
+    ],
   );
 
   return <HudSideNavContext.Provider value={value}>{children}</HudSideNavContext.Provider>;
