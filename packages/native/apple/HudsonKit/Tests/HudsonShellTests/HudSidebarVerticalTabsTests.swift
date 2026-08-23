@@ -96,6 +96,41 @@ struct HudSidebarVerticalTabsTests {
         #expect(HudNavigationSidebarVariant.allCases == [.standard, .verticalTabs])
     }
 
+    @Test("Hidden sidebar previews across the reveal-control transfer, then pins")
+    func presentationLifecycle() {
+        var state = HudSidebarPresentationState(isPinned: false)
+        #expect(state.presentation == .hidden)
+        #expect(!state.isPresented)
+
+        state.setRevealControlHovered(true)
+        #expect(state.presentation == .preview)
+
+        state.setSidebarHovered(true)
+        state.setRevealControlHovered(false)
+        #expect(state.presentation == .preview)
+
+        state.togglePinned()
+        state.setSidebarHovered(false)
+        #expect(state.presentation == .pinned)
+
+        state.togglePinned()
+        #expect(state.presentation == .hidden)
+    }
+
+    @Test("Explicit dismissal clears pin and hover ownership")
+    func explicitDismissal() {
+        var state = HudSidebarPresentationState()
+        state.setRevealControlHovered(true)
+        state.setSidebarHovered(true)
+
+        state.dismiss()
+
+        #expect(state.presentation == .hidden)
+        #expect(!state.isRevealControlHovered)
+        #expect(!state.isSidebarHovered)
+        #expect(HudSidebarPresentation.allCases == [.hidden, .preview, .pinned])
+    }
+
     @Test("Full-height leading composition remains an explicit shell option")
     func fullHeightLeadingCompositionBuilds() {
         #expect(HudAppShellStatusBarSpan.allCases == [.fullWidth, .besideLeading])

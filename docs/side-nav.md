@@ -306,6 +306,27 @@ also clears any open compact label. Override `tooltipDelay` on the provider when
 the product has a measured reason; do not restore native `title` tooltips, which
 open immediately and cannot share Hudson's visual register.
 
+## Native full-height dismissal and reveal
+
+HudsonKit's native `HudNavigationSidebar` keeps compact mode available for apps
+that want a permanent icon rail. A full-height host can instead remove the
+leading column completely and model its interaction with
+`HudSidebarPresentationState`:
+
+- `.hidden` consumes zero width;
+- pointer ownership of the titlebar reveal control or sidebar produces
+  `.preview`;
+- clicking the reveal control produces `.pinned`.
+
+`HudCanvasSurface` uses this shape for `.verticalTabs`. Dragging the expanded
+sidebar below its collapse threshold dismisses the whole leading column rather
+than leaving a 48-point icon rail. The native titlebar control previews the
+sidebar on hover, preserves that preview while the pointer transfers into the
+sidebar, and pins it on click. A 160ms exit grace closes pointer-owned previews;
+reduced-motion mode removes the transition. The pinned/hidden choice is stored
+in `HudCanvasSurfaceLayoutSnapshot.navigationSidebarHidden`; hover preview is
+transient and is never persisted.
+
 ## Props
 
 | Prop                                                                       | Type                     | Notes                                             |

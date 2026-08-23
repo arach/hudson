@@ -582,6 +582,11 @@ private enum CanvasNavigationItem: String, Hashable {
     }
 }
 
+private enum CanvasSidebarHoverTarget {
+    case revealControl
+    case sidebar
+}
+
 private enum CanvasLensTarget: Hashable {
     case node(UUID)
 }
@@ -603,6 +608,7 @@ private struct CanvasPersistenceToken: Hashable {
     var canvasTool: CanvasTool
     var navigationFilter: CanvasNavigationFilter
     var navigationTagFilter: CanvasTag?
+    var navigationSidebarHidden: Bool
     var navigationCollapsed: Bool
     var navigationWidth: CGFloat
     var minimapCollapsed: Bool
@@ -934,6 +940,7 @@ public struct HudCanvasSurface: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.hudTheme) private var inheritedTheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
@@ -941,6 +948,8 @@ public struct HudCanvasSurface: View {
     @State private var navigationTagFilter: CanvasTag?
     @State private var navigationRailCompact = true
     @State private var navigationRailLabelWidth: CGFloat = 132
+    @State private var navigationSidebarPresentation = HudSidebarPresentationState()
+    @State private var navigationSidebarDismissTask: Task<Void, Never>?
     @State private var navigationRailSelection: CanvasNavigationItem? = .canvas
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
@@ -995,6 +1004,7 @@ public struct HudCanvasSurface: View {
 
     public init(configuration: HudCanvasConfiguration = .init()) {
         self.configuration = configuration
+        _navigationRailCompact = State(initialValue: configuration.navigationStyle == .standard)
         _controlAPI = StateObject(
             wrappedValue: HudCanvasControlAPI(
                 commandURL: configuration.commandURL,
@@ -1017,6 +1027,8 @@ public struct HudCanvasSurface: View {
         .onDisappear {
             pendingPersistTask?.cancel()
             pendingPersistTask = nil
+            navigationSidebarDismissTask?.cancel()
+            navigationSidebarDismissTask = nil
             pendingArtifactReloadTask?.cancel()
             pendingArtifactReloadTask = nil
             cancelDocumentWatchers()
@@ -1111,7 +1123,16 @@ public struct HudCanvasSurface: View {
 
     @ViewBuilder
     private var navigationShellSlot: some View {
-        canvasNavigationShell
+        if configuration.navigationStyle == .verticalTabs {
+            if navigationSidebarPresentation.isPresented {
+                canvasNavigationShell
+                    .contentShape(Rectangle())
+                    .onHover { updateNavigationSidebarHover(.sidebar, hovered: $0) }
+                    .transition(navigationSidebarTransition)
+            }
+        } else {
+            canvasNavigationShell
+        }
     }
 
     private var canvasNavigationShell: some View {
@@ -1121,6 +1142,82 @@ public struct HudCanvasSurface: View {
             if !isTerminalFocusActive {
                 navigationPanel
                     .zIndex(1)
+            }
+        }
+    }
+
+    private var navigationSidebarTransition: AnyTransition {
+        guard !reduceMotion else { return .identity }
+        return .move(edge: .leading).combined(with: .opacity)
+    }
+
+    private var navigationSidebarAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.15)
+    }
+
+    private func updateNavigationSidebarHover(
+        _ target: CanvasSidebarHoverTarget,
+        hovered: Bool
+    ) {
+        navigationSidebarDismissTask?.cancel()
+        navigationSidebarDismissTask = nil
+
+        if hovered {
+            withAnimation(navigationSidebarAnimation) {
+                setNavigationSidebarHover(target, hovered: true)
+            }
+            return
+        }
+
+        navigationSidebarDismissTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 160_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(navigationSidebarAnimation) {
+                setNavigationSidebarHover(target, hovered: false)
+            }
+            navigationSidebarDismissTask = nil
+        }
+    }
+
+    private func setNavigationSidebarHover(
+        _ target: CanvasSidebarHoverTarget,
+        hovered: Bool
+    ) {
+        switch target {
+        case .revealControl:
+            navigationSidebarPresentation.setRevealControlHovered(hovered)
+        case .sidebar:
+            navigationSidebarPresentation.setSidebarHovered(hovered)
+        }
+    }
+
+    private func toggleNavigationSidebarPinned() {
+        navigationSidebarDismissTask?.cancel()
+        navigationSidebarDismissTask = nil
+        withAnimation(navigationSidebarAnimation) {
+            navigationSidebarPresentation.togglePinned()
+        }
+        controlStatus = navigationSidebarPresentation.isPinned
+            ? "Navigator pinned"
+            : "Navigator hidden"
+    }
+
+    private func dismissNavigationSidebar() {
+        navigationSidebarDismissTask?.cancel()
+        navigationSidebarDismissTask = nil
+        navigationRailCompact = false
+        withAnimation(navigationSidebarAnimation) {
+            navigationSidebarPresentation.dismiss()
+        }
+        controlStatus = "Navigator hidden"
+    }
+
+    private func toggleNavigationRailHeader() {
+        if configuration.navigationStyle == .verticalTabs {
+            toggleNavigationSidebarPinned()
+        } else {
+            withAnimation(HudMotion.chromeSpring) {
+                navigationRailCompact.toggle()
             }
         }
     }
@@ -1157,6 +1254,8 @@ public struct HudCanvasSurface: View {
             canvasTool: canvasTool,
             navigationFilter: navigationFilter,
             navigationTagFilter: navigationTagFilter,
+            navigationSidebarHidden: configuration.navigationStyle == .verticalTabs
+                && !navigationSidebarPresentation.isPinned,
             navigationCollapsed: navigationCollapsed,
             navigationWidth: navigationWidth,
             minimapCollapsed: minimapCollapsed,
@@ -1415,6 +1514,7 @@ public struct HudCanvasSurface: View {
             variant: navigationSidebarVariant,
             accent: navigationSidebarAccent,
             labelWidth: navigationRailLabelWidth,
+            onHeaderTap: toggleNavigationRailHeader,
             railHeader: {
                 HudsonKitMark()
                     .foregroundStyle(activeTheme.palette.ink)
@@ -1473,6 +1573,11 @@ public struct HudCanvasSurface: View {
             maxLabelWidth: 180
         )
         .environment(\.hudsonSidebarStyle, navigationSidebarStyle)
+        .onChange(of: navigationRailCompact) { _, isCompact in
+            if configuration.navigationStyle == .verticalTabs, isCompact {
+                dismissNavigationSidebar()
+            }
+        }
     }
 
     private var activeNavigationRailSelection: CanvasNavigationItem? {
@@ -1687,7 +1792,19 @@ public struct HudCanvasSurface: View {
             controlStatus = "Selection cleared"
         case .toggleNavigator:
             if !isTerminalFocusActive {
-                navigationCollapsed.toggle()
+                if configuration.navigationStyle == .verticalTabs {
+                    toggleNavigationSidebarPinned()
+                } else {
+                    navigationCollapsed.toggle()
+                }
+            }
+        case .beginNavigatorPreview:
+            if configuration.navigationStyle == .verticalTabs {
+                updateNavigationSidebarHover(.revealControl, hovered: true)
+            }
+        case .endNavigatorPreview:
+            if configuration.navigationStyle == .verticalTabs {
+                updateNavigationSidebarHover(.revealControl, hovered: false)
             }
         case .toggleInspector:
             if !isTerminalFocusActive {
@@ -4165,6 +4282,13 @@ public struct HudCanvasSurface: View {
         if let tag = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:)) {
             navigationTagFilter = tag
         }
+        if configuration.navigationStyle == .verticalTabs,
+           let navigationSidebarHidden = layout.navigationSidebarHidden {
+            navigationRailCompact = false
+            navigationSidebarPresentation = HudSidebarPresentationState(
+                isPinned: !navigationSidebarHidden
+            )
+        }
         if let navigationCollapsed = layout.navigationCollapsed {
             self.navigationCollapsed = navigationCollapsed
         }
@@ -5461,6 +5585,9 @@ public struct HudCanvasSurface: View {
                 canvasTool: canvasTool.rawValue,
                 navigationFilter: navigationFilter.rawValue,
                 navigationTagFilter: navigationTagFilter?.rawValue,
+                navigationSidebarHidden: configuration.navigationStyle == .verticalTabs
+                    ? !navigationSidebarPresentation.isPinned
+                    : nil,
                 navigationCollapsed: navigationCollapsed,
                 navigationWidth: Double(navigationWidth),
                 minimapCollapsed: minimapCollapsed,
@@ -5507,6 +5634,13 @@ public struct HudCanvasSurface: View {
         }
         navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
 
+        if configuration.navigationStyle == .verticalTabs,
+           let navigationSidebarHidden = layout.navigationSidebarHidden {
+            navigationRailCompact = false
+            navigationSidebarPresentation = HudSidebarPresentationState(
+                isPinned: !navigationSidebarHidden
+            )
+        }
         navigationCollapsed = layout.navigationCollapsed
         if let restoredMinimapCollapsed = layout.minimapCollapsed {
             minimapCollapsed = restoredMinimapCollapsed

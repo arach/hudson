@@ -63,6 +63,70 @@ public enum HudNavigationSidebarVariant: String, CaseIterable, Identifiable, Sen
     public var id: String { rawValue }
 }
 
+// MARK: - HudSidebarPresentationState
+
+/// The three observable presentation states of a dismissible sidebar.
+///
+/// A hidden sidebar may preview while the pointer crosses either its reveal
+/// control or the revealed sidebar itself. Clicking the control pins that
+/// preview; clicking again returns it to pointer-owned preview until the
+/// pointer leaves. The caller owns any dismissal grace period.
+public enum HudSidebarPresentation: String, CaseIterable, Identifiable, Sendable {
+    case hidden
+    case preview
+    case pinned
+
+    public var id: String { rawValue }
+}
+
+/// Caller-owned interaction state for a sidebar that can dismiss completely,
+/// preview on hover, and be pinned back into the layout.
+public struct HudSidebarPresentationState: Equatable, Sendable {
+    public private(set) var isPinned: Bool
+    public private(set) var isRevealControlHovered = false
+    public private(set) var isSidebarHovered = false
+
+    public init(isPinned: Bool = true) {
+        self.isPinned = isPinned
+    }
+
+    public var presentation: HudSidebarPresentation {
+        if isPinned {
+            return .pinned
+        }
+        if isRevealControlHovered || isSidebarHovered {
+            return .preview
+        }
+        return .hidden
+    }
+
+    public var isPresented: Bool {
+        presentation != .hidden
+    }
+
+    public mutating func setRevealControlHovered(_ hovered: Bool) {
+        isRevealControlHovered = hovered
+    }
+
+    public mutating func setSidebarHovered(_ hovered: Bool) {
+        isSidebarHovered = hovered
+    }
+
+    public mutating func togglePinned() {
+        isPinned.toggle()
+    }
+
+    public mutating func pin() {
+        isPinned = true
+    }
+
+    public mutating func dismiss() {
+        isPinned = false
+        isRevealControlHovered = false
+        isSidebarHovered = false
+    }
+}
+
 
 // MARK: - HudNavigationSidebar
 

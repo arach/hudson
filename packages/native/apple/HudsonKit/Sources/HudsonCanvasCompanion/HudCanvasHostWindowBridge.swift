@@ -52,6 +52,43 @@ private struct HudCanvasTitlebarChromeInstaller: NSViewRepresentable {
     }
 }
 
+private final class HudCanvasNavigatorAccessoryButton: NSButton {
+    private var hoverTrackingArea: NSTrackingArea?
+
+    override func updateTrackingAreas() {
+        super.updateTrackingAreas()
+        if let hoverTrackingArea {
+            removeTrackingArea(hoverTrackingArea)
+        }
+        let nextTrackingArea = NSTrackingArea(
+            rect: bounds,
+            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
+            owner: self,
+            userInfo: nil
+        )
+        addTrackingArea(nextTrackingArea)
+        hoverTrackingArea = nextTrackingArea
+    }
+
+    override func mouseEntered(with event: NSEvent) {
+        super.mouseEntered(with: event)
+        CanvasHostCommandCenter.post(.beginNavigatorPreview)
+    }
+
+    override func mouseExited(with event: NSEvent) {
+        super.mouseExited(with: event)
+        CanvasHostCommandCenter.post(.endNavigatorPreview)
+    }
+
+    override func viewDidMoveToWindow() {
+        super.viewDidMoveToWindow()
+        if window == nil {
+            CanvasHostCommandCenter.post(.endNavigatorPreview)
+        }
+    }
+}
+
+
 private final class HudCanvasTitlebarChromeView: NSView {
     private static let accessoryMarker = "com.hudsonkit.canvas.titlebar-accessory"
     private var installationScheduled = false
@@ -134,6 +171,15 @@ private final class HudCanvasTitlebarChromeView: NSView {
             window.titlebarAppearsTransparent = true
             window.styleMask.insert(.fullSizeContentView)
             window.toolbar?.isVisible = false
+            window.addTitlebarAccessoryViewController(
+                titlebarButtonAccessory(
+                    placement: .left,
+                    label: "Toggle Navigator",
+                    symbolName: "sidebar.left",
+                    action: #selector(toggleNavigator),
+                    previewsNavigatorOnHover: true
+                )
+            )
         }
     }
 
@@ -141,13 +187,23 @@ private final class HudCanvasTitlebarChromeView: NSView {
         placement: NSLayoutConstraint.Attribute,
         label: String,
         symbolName: String,
-        action: Selector
+        action: Selector,
+        previewsNavigatorOnHover: Bool = false
     ) -> NSTitlebarAccessoryViewController {
-        let button = NSButton(
-            image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
-            target: self,
-            action: action
-        )
+        let button: NSButton
+        if previewsNavigatorOnHover {
+            button = HudCanvasNavigatorAccessoryButton(
+                image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
+                target: self,
+                action: action
+            )
+        } else {
+            button = NSButton(
+                image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
+                target: self,
+                action: action
+            )
+        }
         button.translatesAutoresizingMaskIntoConstraints = false
         button.bezelStyle = .texturedRounded
         button.imagePosition = .imageOnly

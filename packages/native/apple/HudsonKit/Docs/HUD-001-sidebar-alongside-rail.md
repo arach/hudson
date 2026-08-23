@@ -31,6 +31,7 @@ Add a new component family in `HudsonShell` and supporting primitives in `Hudson
    `HudNavigationSidebarVariant`, `HudSidebarVerticalTab<Selection>`,
    `HudSidebarVerticalTabs<Selection>`, `HudSidebarItem<Selection>`,
    `HudSidebarEntry<Selection>` (`.item` or `.section`),
+   `HudSidebarPresentation`, `HudSidebarPresentationState`,
    `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum),
    `HudSidebarMotion` (token enum), and `HudAppShellStatusBarSpan`. The
    `.verticalTabs` variant adds a scrollable middle tab region without
@@ -44,6 +45,12 @@ Add a new component family in `HudsonShell` and supporting primitives in `Hudson
 8. **Drag-resizable is opt-in per column.** `HSplitView` declares each column as `.locked`, `.snap(min:max:)`, or `.draggable(min:max:)`. The sidebar column is `.locked` to its intrinsic width (sized by `HudSidebarLayout.intrinsicWidth(progress:)`).
 9. **Instrumentation via `HudInstrumentation.ui`.** New event/span names: `Sidebar.select`, `Sidebar.toggle`, `SecondaryNav.select`, `SplitView.collapse`, `SplitView.dragResize`, `Surface.measure`. Same `HudInstrumentation.ui.event(...)` / `HudInstrumentation.ui.span(...)` shape as the existing rail (`HudNavigationRail.swift:80-83`).
 10. **`Sendable` + `public init` conventions match `HudRailItem`.** `HudSidebarItem<Selection>` is `Identifiable, Equatable, Sendable` when `Selection: Sendable`; `HudSidebarEntry<Selection>` is `Identifiable`. `public init` everywhere.
+11. **Complete dismissal is distinct from compact mode.**
+    `HudSidebarPresentationState` models `.hidden`, pointer-owned `.preview`,
+    and click-owned `.pinned` states while leaving hover-grace timing and
+    persistence to the host. The native Canvas host uses this model with its
+    titlebar accessory: dragging below the sidebar minimum dismisses the whole
+    leading column, hover previews it in layout, and click pins it again.
 
 ## Build order
 
