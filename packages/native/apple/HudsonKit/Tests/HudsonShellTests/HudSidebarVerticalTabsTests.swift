@@ -79,6 +79,21 @@ private struct FullHeightSymmetricShellHarness: View {
     }
 }
 
+private struct FullHeightTrailingPanelHarness: View {
+    @State private var width: CGFloat = 280
+
+    var body: some View {
+        HudSidebarPanel(
+            width: $width,
+            edge: .trailing,
+            widthRange: 250...440,
+            extendsBackgroundIntoTopSafeArea: true
+        ) {
+            Text("Inspector")
+        }
+    }
+}
+
 @Suite("HudNavigationSidebar vertical tabs")
 struct HudSidebarVerticalTabsTests {
     @Test("Vertical-tabs variant composes with typed targets, tabs, and resizing")
@@ -157,5 +172,10 @@ struct HudSidebarVerticalTabsTests {
     @Test("Symmetric composition gives both sidebars the full-height shell edge")
     func fullHeightSymmetricCompositionBuilds() {
         _ = FullHeightSymmetricShellHarness()
+    }
+
+    @Test("Trailing panel can extend its surface beneath the titlebar")
+    func fullHeightTrailingPanelBuilds() {
+        _ = FullHeightTrailingPanelHarness()
     }
 }
