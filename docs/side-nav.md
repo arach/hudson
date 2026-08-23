@@ -181,11 +181,13 @@ import {
 ```
 
 `HudSideNavMenuButton` takes `icon`, `isActive` (neutral emphasis),
-`live` (the only accent), `count`, `badge`, `asChild`, `expanded`, and `tooltip`.
-`asChild` keeps the child element and routing props while Hudson composes its
-icon, collapsed label, live state, count, and badge inside it. Use `expanded`
-on hand-composed disclosure rows so the control exposes `aria-expanded`. Nest
-with `HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
+`selectionWash`, `live` (the only accent), `count`, `badge`, `asChild`,
+`expanded`, and `tooltip`. `icon` accepts either a Hudson icon component or a
+preconfigured React icon element, matching `HudsonApp.icon`. `asChild` keeps the
+child element and routing props while Hudson composes its icon, collapsed
+label, live state, count, and badge inside it. Use `expanded` on hand-composed
+disclosure rows so the control exposes `aria-expanded`. Nest with
+`HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
 
 ## Full-height navigation with a separate context rail
 
@@ -200,12 +202,21 @@ next-generation anchored-L anatomy rather than a single `AppShell` left panel:
 - the bottom bar spans all columns.
 
 The repository includes a live example at [`/demo/side-nav`](/demo/side-nav).
+The production `/app` route uses the same composition through
+`<WorkspaceShell sideNavMode="anchored" />`. In that mode the shell derives
+primary destinations from workspace apps, keeps Home as the launcher entry,
+places the focused app's `LeftPanel` in the contextual rail, embeds the existing
+navigation/status chrome in the anchored rows, and leaves right-side inspectors
+unchanged. `sideNavMode` defaults to `legacy`, so other consumers do not change
+until they opt in.
 
 The layout reads and resizes the primary width through `HudSideNavProvider`.
-`HudSideRail` owns its independent expanded/compact width. Its expanded subtree
-stays mounted while compact, so reopening a live list does not remount or
-refetch it. Hidden remains different from compact: omit `contextRail` to consume
-zero width.
+`HudSideRail` owns its independent expanded/compact width unless the host
+controls it. Primary and contextual expanded/compact presentations stay mounted
+while inactive, preserving scroll/expansion state and preventing live lists
+from refetching. Inactive panes are `inert` and `aria-hidden`, so they do not
+leak into roving focus. Hidden remains different from compact: omit
+`contextRail` to consume zero width.
 
 ```tsx
 import {
@@ -266,18 +277,28 @@ function WorkspaceChrome() {
 }
 ```
 
-The default geometry is a shared `48px` logo/top/header band, `28px` bottom bar,
-`260px` expanded primary nav, `48px` primary icon rail, `240px` expanded context
-rail, and `48px` compact context rail. Every value is configurable. Right-side
+The default geometry uses the exported `HUD_SIDE_NAV_HEADER_HEIGHT` (`48px`) for
+the logo, top, and contextual-header bands, a `28px` bottom bar, `260px`
+expanded primary nav, `48px` primary icon rail, `240px` expanded context rail,
+and `48px` compact context rail. `topRowHeight` publishes a scoped CSS variable,
+so custom heights also move the contextual header and resize seam. Right-side
 primary navigation is mirrored automatically through
 `HudSideNavProvider side="right"`.
 
 Set `resizable` on `HudSideNavLayout` and/or `HudSideRail` for the shared resize
-behavior. Pointer drag resizes live. Dragging inward through the minimum-width
-margin collapses without overwriting the remembered expanded width; dragging
-out from compact revives the rail after deliberate travel. Double-click resets
-to the configured default. The separator is keyboard reachable: Left/Right
+separator. Pointer capture drives live resizing without width animation lag.
+Dragging inward through the minimum-width margin collapses without overwriting
+the remembered expanded width; dragging out from compact revives the rail after
+deliberate travel. A plain separator click does not commit a width. Double-click
+resets to the configured default. Escape cancels only the active drag and
+restores its starting width. The separator is keyboard reachable: Left/Right
 resize, Home/End choose min/max, and Enter/Space toggles compact state.
+
+Discrete expand/collapse changes animate width for `180ms`; pointer drags
+disable that transition so the edge remains under the cursor. Expanded content
+uses a fixed inner width while the outer rail clips it, preventing label reflow
+jitter. Collapse fades labels before narrowing; expansion fades them in after
+the rail opens. Reduced-motion mode shortens these transitions to `1ms`.
 
 Compact destination labels use Hudson's Base UI tooltip behavior with a `500ms`
 settled-hover delay. The tooltip mounts only in icon mode, so expanding the rail
@@ -306,3 +327,4 @@ open immediately and cannot share Hudson's visual register.
 | `empty`                                                                    | `ReactNode`              | Shown when `items` is empty.                      |
 
 `HudNavNode`: `{ id, label, accessibilityLabel?, icon?, count?, badge?, live?, disabled?, children? }`.
+`icon` may be a Hudson icon component or a preconfigured React icon element.

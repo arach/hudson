@@ -14,6 +14,7 @@ import {
   HudSideNavMenuButton,
   HudSideNavMenuItem,
   HudSideNavTrigger,
+  HudRailResizeHandle,
   HudSideRail,
   HUD_RAIL_DRAG_COLLAPSE_MARGIN,
   HUD_RAIL_DRAG_EXPAND_TRAVEL,
@@ -109,12 +110,34 @@ describe('HudSideNav (data-driven)', () => {
     expect(onSelect).not.toHaveBeenCalled();
   });
 
-  it('renders an icons-only rail via the legacy `collapsed` prop', () => {
-    render(<HudSideNav items={tree} collapsed selectedId="home" ariaLabel="Rail" />);
-    // Deeper tiers never render collapsed.
-    expect(screen.queryByText('Agents')).not.toBeInTheDocument();
+  it('keeps the expanded tree mounted behind the accessible compact rail', () => {
+    const { container } = render(
+      <HudSideNav items={tree} collapsed selectedId="home" ariaLabel="Rail" />,
+    );
+    const expandedPane = container.querySelector('[data-rail-content="expanded"]');
+    expect(expandedPane).toHaveAttribute('aria-hidden', 'true');
+    expect(expandedPane).toHaveAttribute('inert');
     const home = screen.getByRole('button', { name: 'Home' });
     expect(home).toHaveAttribute('aria-current', 'page');
+    expect(screen.getByRole('button', { name: 'Agents' })).toBeVisible();
+  });
+
+  it('accepts preconfigured React icon elements from Hudson app metadata', () => {
+    render(
+      <HudSideNav
+        items={[
+          {
+            id: 'home',
+            label: 'Home',
+            icon: <Home data-testid="app-nav-icon" />,
+          },
+        ]}
+      />,
+    );
+    expect(screen.getAllByTestId('app-nav-icon').map(icon => icon.getAttribute('width')).sort()).toEqual([
+      '16',
+      '18',
+    ]);
   });
 
   it('wires settled-hover labels without an instant browser title', () => {
@@ -404,22 +427,23 @@ describe('HudSideNavLayout + HudSideRail', () => {
     expect(layout).toHaveAttribute('data-state', 'collapsed');
     expect(layout).toHaveStyle({
       gridTemplateColumns: '48px auto minmax(0, 1fr)',
-      gridTemplateRows: '48px minmax(0, 1fr) 28px',
+      gridTemplateRows: 'var(--hud-side-nav-header-height) minmax(0, 1fr) 28px',
     });
+    expect((layout as HTMLElement).style.getPropertyValue('--hud-side-nav-header-height')).toBe('48px');
     expect(screen.getByRole('complementary', { name: 'Project context' })).toBeInTheDocument();
     expect(screen.getByRole('main', { name: 'Workspace' })).toHaveTextContent('Canvas');
     expect(screen.getByText('Workspace header')).toBeInTheDocument();
     expect(screen.getByText('Ready')).toBeInTheDocument();
     expect(rail).toHaveAttribute('data-state', 'collapsed');
     expect(rail).toHaveStyle({ width: '48px' });
-    expect(expandedContext.closest('[hidden]')).not.toBeNull();
+    expect(expandedContext.closest('[data-rail-content="expanded"]')).toHaveAttribute('inert');
 
     fireEvent.click(screen.getByRole('button', { name: 'Expand Projects' }));
 
     expect(rail).toHaveAttribute('data-state', 'expanded');
     expect(rail).toHaveStyle({ width: '240px' });
     expect(screen.getByTestId('context-expanded')).toBe(expandedContext);
-    expect(expandedContext.closest('[hidden]')).toBeNull();
+    expect(expandedContext.closest('[data-rail-content="expanded"]')).not.toHaveAttribute('inert');
     expect(screen.getByText('Context footer')).toBeVisible();
   });
 
@@ -466,6 +490,7 @@ describe('HudSideNavLayout + HudSideRail', () => {
     });
 
     fireEvent.pointerDown(resize, { button: 0, clientX: 280 });
+    expect(layout).toHaveAttribute('data-resizing');
     expect(document.body.style.cursor).toBe('ew-resize');
     expect(document.body.style.userSelect).toBe('none');
     fireEvent.pointerMove(window, { clientX: 330 });
@@ -473,6 +498,7 @@ describe('HudSideNavLayout + HudSideRail', () => {
       gridTemplateColumns: '330px auto minmax(0, 1fr)',
     });
     fireEvent.pointerUp(window, { clientX: 330 });
+    expect(layout).not.toHaveAttribute('data-resizing');
     expect(document.body.style.cursor).toBe('');
     expect(document.body.style.userSelect).toBe('');
 
@@ -503,6 +529,76 @@ describe('HudSideNavLayout + HudSideRail', () => {
     });
     expect(document.body.style.cursor).toBe('');
     expect(document.body.style.userSelect).toBe('');
+  });
+
+  it('derives every header and resize seam from a custom top-row height', () => {
+    const { container } = render(
+      <HudSideNavProvider collapsible="icon" keyboardShortcut={false}>
+        <HudSideNavLayout
+          topRowHeight={56}
+          resizable
+          navigation={<HudSideNav items={[{ id: 'home', label: 'Home', icon: Home }]} />}
+          contextRail={
+            <HudSideRail
+              label="Projects"
+              collapsed={false}
+              onCollapsedChange={() => {}}
+              resizable
+            >
+              Context
+            </HudSideRail>
+          }
+          topRow="Header"
+        >
+          Canvas
+        </HudSideNavLayout>
+      </HudSideNavProvider>,
+    );
+    const layout = container.querySelector<HTMLElement>('[data-hud-side-nav-layout]')!;
+    const contextHeader = container.querySelector<HTMLElement>('[data-hud-side-rail] > div')!;
+    const contextResize = screen.getByRole('separator', { name: 'Resize Projects' });
+    expect(layout.style.getPropertyValue('--hud-side-nav-header-height')).toBe('56px');
+    expect(contextHeader.style.height).toContain('var(--hud-side-nav-header-height');
+    expect(contextResize.style.top).toContain('var(--hud-side-nav-header-height');
+  });
+
+  it('does not commit a width on plain separator clicks and traps drag Escape', () => {
+    const onCollapsedChange = vi.fn();
+    const onExpandedWidthChange = vi.fn();
+    const onResizingChange = vi.fn();
+    const leakedEscape = vi.fn();
+    render(
+      <div id="rail-under-test">
+        <HudRailResizeHandle
+          side="left"
+          collapsed={false}
+          expandedWidth={260}
+          collapsedWidth={48}
+          defaultExpandedWidth={260}
+          minExpandedWidth={200}
+          maxExpandedWidth={360}
+          onCollapsedChange={onCollapsedChange}
+          onExpandedWidthChange={onExpandedWidthChange}
+          onResizingChange={onResizingChange}
+          controls="rail-under-test"
+        />
+      </div>,
+    );
+    const resize = screen.getByRole('separator', { name: 'Resize navigation' });
+    expect(resize).toHaveAttribute('aria-controls', 'rail-under-test');
+    expect(resize).toHaveAttribute('aria-valuemin', '48');
+
+    fireEvent.pointerDown(resize, { button: 0, clientX: 260, pointerId: 1 });
+    fireEvent.pointerUp(window, { clientX: 260, pointerId: 1 });
+    expect(onExpandedWidthChange).not.toHaveBeenCalled();
+    expect(onCollapsedChange).not.toHaveBeenCalled();
+    expect(onResizingChange.mock.calls.map(([value]) => value)).toEqual([true, false]);
+
+    window.addEventListener('keydown', leakedEscape);
+    fireEvent.pointerDown(resize, { button: 0, clientX: 260, pointerId: 2 });
+    fireEvent.keyDown(window, { key: 'Escape' });
+    expect(leakedEscape).not.toHaveBeenCalled();
+    window.removeEventListener('keydown', leakedEscape);
   });
 
   it('mirrors the anchored geometry for a right-side primary rail', () => {
@@ -568,7 +664,7 @@ describe('rail resize geometry', () => {
         startedCollapsed: true,
         rawWidth: geometry.collapsedWidth + HUD_RAIL_DRAG_EXPAND_TRAVEL - 1,
       }),
-    ).toEqual({ kind: 'none' });
+    ).toEqual({ kind: 'revert' });
     expect(
       resolveHudRailResizeCommit({
         ...geometry,

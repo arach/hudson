@@ -9,7 +9,7 @@ export const HUD_RAIL_DRAG_EXPAND_TRAVEL = 24;
 export const HUD_RAIL_KEYBOARD_RESIZE_STEP = 8;
 
 type HudRailResizeCommit =
-  | { kind: 'none' }
+  | { kind: 'revert' }
   | { kind: 'collapse' }
   | { kind: 'expand'; width: number }
   | { kind: 'resize'; width: number };
@@ -38,7 +38,7 @@ export function resolveHudRailResizeCommit({
   expandTravel?: number;
 }): HudRailResizeCommit {
   if (startedCollapsed) {
-    if (rawWidth < collapsedWidth + expandTravel) return { kind: 'none' };
+    if (rawWidth < collapsedWidth + expandTravel) return { kind: 'revert' };
     return {
       kind: 'expand',
       width:
@@ -65,6 +65,8 @@ export interface HudRailResizeHandleProps {
   maxExpandedWidth: number;
   onCollapsedChange: (collapsed: boolean) => void;
   onExpandedWidthChange: (width: number) => void;
+  onResizingChange?: (resizing: boolean) => void;
+  controls?: string;
   label?: string;
   className?: string;
   style?: React.CSSProperties;
@@ -86,6 +88,8 @@ export function HudRailResizeHandle({
   maxExpandedWidth,
   onCollapsedChange,
   onExpandedWidthChange,
+  onResizingChange,
+  controls,
   label = 'Resize navigation',
   className,
   style,
@@ -101,6 +105,9 @@ export function HudRailResizeHandle({
       event.stopPropagation();
       cleanupRef.current?.();
 
+      const captureTarget = event.currentTarget;
+      const pointerId = event.pointerId;
+      captureTarget.setPointerCapture?.(pointerId);
       const startX = event.clientX;
       const startedCollapsed = collapsed;
       const startExpandedWidth = expandedWidth;
@@ -109,6 +116,7 @@ export function HudRailResizeHandle({
       const previousUserSelect = document.body.style.userSelect;
       let rawWidth = startWidth;
       let revived = false;
+      let moved = false;
       let settled = false;
 
       document.body.style.cursor = 'ew-resize';
@@ -118,19 +126,21 @@ export function HudRailResizeHandle({
         window.removeEventListener('pointermove', handleMove);
         window.removeEventListener('pointerup', handlePointerUp);
         window.removeEventListener('pointercancel', handleCancel);
-        window.removeEventListener('keydown', handleKeyDown);
+        window.removeEventListener('keydown', handleKeyDown, true);
+        if (captureTarget.hasPointerCapture?.(pointerId)) {
+          captureTarget.releasePointerCapture(pointerId);
+        }
         document.body.style.cursor = previousCursor;
         document.body.style.userSelect = previousUserSelect;
         cleanupRef.current = null;
+        onResizingChange?.(false);
       };
 
       const cancel = () => {
         if (settled) return;
         settled = true;
         onExpandedWidthChange(startExpandedWidth);
-        if (startedCollapsed !== collapsed || revived) {
-          onCollapsedChange(startedCollapsed);
-        }
+        if (revived) onCollapsedChange(startedCollapsed);
         cleanup();
       };
 
@@ -138,6 +148,7 @@ export function HudRailResizeHandle({
         const delta =
           side === 'left' ? pointerEvent.clientX - startX : startX - pointerEvent.clientX;
         rawWidth = startWidth + delta;
+        if (!moved && Math.abs(delta) > 2) moved = true;
 
         if (startedCollapsed) {
           if (!revived && rawWidth >= collapsedWidth + HUD_RAIL_DRAG_EXPAND_TRAVEL) {
@@ -164,6 +175,10 @@ export function HudRailResizeHandle({
       function handlePointerUp() {
         if (settled) return;
         settled = true;
+        if (!moved) {
+          cleanup();
+          return;
+        }
         const commit = resolveHudRailResizeCommit({
           startedCollapsed,
           rawWidth,
@@ -185,7 +200,7 @@ export function HudRailResizeHandle({
           case 'resize':
             onExpandedWidthChange(commit.width);
             break;
-          case 'none':
+          case 'revert':
             onExpandedWidthChange(startExpandedWidth);
             onCollapsedChange(true);
             break;
@@ -200,14 +215,16 @@ export function HudRailResizeHandle({
       function handleKeyDown(keyEvent: KeyboardEvent) {
         if (keyEvent.key !== 'Escape') return;
         keyEvent.preventDefault();
+        keyEvent.stopPropagation();
         cancel();
       }
 
+      onResizingChange?.(true);
       cleanupRef.current = cleanup;
       window.addEventListener('pointermove', handleMove);
       window.addEventListener('pointerup', handlePointerUp, { once: true });
       window.addEventListener('pointercancel', handleCancel, { once: true });
-      window.addEventListener('keydown', handleKeyDown);
+      window.addEventListener('keydown', handleKeyDown, { capture: true });
     },
     [
       collapsed,
@@ -216,6 +233,7 @@ export function HudRailResizeHandle({
       maxExpandedWidth,
       minExpandedWidth,
       onCollapsedChange,
+      onResizingChange,
       onExpandedWidthChange,
       side,
     ],
@@ -271,7 +289,8 @@ export function HudRailResizeHandle({
     ],
   );
 
-  const resetWidth = useCallback(() => {
+  const resetWidth = useCallback((event: React.MouseEvent<HTMLDivElement>) => {
+    event.stopPropagation();
     onExpandedWidthChange(defaultExpandedWidth);
     if (collapsed) onCollapsedChange(false);
   }, [collapsed, defaultExpandedWidth, onCollapsedChange, onExpandedWidthChange]);
@@ -280,8 +299,9 @@ export function HudRailResizeHandle({
     <div
       role="separator"
       aria-label={label}
+      aria-controls={controls}
       aria-orientation="vertical"
-      aria-valuemin={collapsed ? collapsedWidth : minExpandedWidth}
+      aria-valuemin={collapsedWidth}
       aria-valuemax={maxExpandedWidth}
       aria-valuenow={collapsed ? collapsedWidth : Math.round(expandedWidth)}
       aria-valuetext={
@@ -294,7 +314,8 @@ export function HudRailResizeHandle({
       onDoubleClick={resetWidth}
       onKeyDown={handleKeyboardResize}
       className={cx(
-        'group/resize touch-none cursor-ew-resize outline-none',
+        'group/resize relative touch-none cursor-ew-resize outline-none',
+        "before:absolute before:inset-y-0 before:-left-2 before:-right-2 before:content-['']",
         'focus-visible:ring-1 focus-visible:ring-ring/60 focus-visible:ring-inset',
         className,
       )}

@@ -20,10 +20,21 @@ interface NavigationBarProps {
     onChange: (value: string) => void;
     placeholder?: string;
   };
+  /** Position inside an anchored shell row instead of against the viewport. */
+  embedded?: boolean;
+  /** Render the Hudson mark beside the title. Defaults to true. */
+  showMark?: boolean;
 }
 
 const NavigationBar: React.FC<NavigationBarProps> = ({
-  title, subtitle, center, actions, onTitleClick, search,
+  title,
+  subtitle,
+  center,
+  actions,
+  onTitleClick,
+  search,
+  embedded = false,
+  showMark = true,
 }) => {
   const { dragRegionProps, onInteractiveMouseDown } = usePlatform();
   const { navTotalHeight } = usePlatformLayout();
@@ -32,12 +43,19 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   return (
     <div
       data-frame-panel="navigation"
-      className="fixed top-0 left-0 right-0 z-50 pointer-events-auto"
+      className={`${embedded ? 'relative h-full w-full' : 'fixed left-0 right-0 top-0'} z-50 pointer-events-auto`}
       {...dragRegionProps}
     >
       <div
-        className="bg-background/95 border-b shadow-[var(--hud-shadow-nav)] flex items-end px-4"
-        style={{ height: navTotalHeight, borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
+        className={`flex items-end bg-background/95 px-4 ${
+          embedded ? '' : 'border-b shadow-[var(--hud-shadow-nav)]'
+        }`}
+        style={{
+          height: embedded ? '100%' : navTotalHeight,
+          borderColor: embedded
+            ? undefined
+            : 'var(--hud-chrome-border, oklch(var(--border) / 0.8))',
+        }}
       >
         {/* Left: Branding */}
         <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
@@ -46,7 +64,13 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             aria-label={title}
             className="group flex items-center gap-[7px] text-foreground/85 hover:text-foreground transition-colors bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-sm px-0.5 -mx-0.5 leading-none"
           >
-            <HudsonKitLockup markSize={15} wordmark={title} gap={7} />
+            {showMark ? (
+              <HudsonKitLockup markSize={15} wordmark={title} gap={7} />
+            ) : (
+              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em]">
+                {title}
+              </span>
+            )}
           </button>
           {subtitle && (
             <span className="text-xs font-mono font-light text-muted-foreground">{subtitle}</span>

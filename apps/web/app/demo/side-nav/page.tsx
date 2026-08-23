@@ -31,20 +31,14 @@ const destinations: HudNavNode[] = [
 const projects = ['HudsonKit', 'Canvas runtime', 'Native shell', 'Theme system'];
 
 function PrimaryBrandToggle({ compact = false }: { compact?: boolean }) {
-  const { state, side, toggle } = useHudSideNav();
+  const { state } = useHudSideNav();
   const collapsed = state === 'collapsed';
-  const pointsRight = side === 'left' ? collapsed : !collapsed;
   const label = `${collapsed ? 'Expand' : 'Collapse'} primary navigation`;
 
   return (
-    <button
-      type="button"
-      aria-label={label}
-      aria-expanded={!collapsed}
-      onClick={toggle}
-      className={`relative flex h-7 w-full items-center rounded-md text-muted-foreground transition-colors hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50 ${
-        compact ? 'justify-center' : 'gap-2 px-1'
-      }`}
+    <HudSideNavTrigger
+      label={label}
+      className={`w-full ${compact ? 'px-0' : 'justify-start px-1'}`}
     >
       <span className="flex size-6 shrink-0 items-center justify-center rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300">
         <Boxes size={15} aria-hidden="true" />
@@ -54,15 +48,7 @@ function PrimaryBrandToggle({ compact = false }: { compact?: boolean }) {
           Hudson
         </span>
       ) : null}
-      <ChevronRight
-        size={compact ? 9 : 12}
-        strokeWidth={2}
-        aria-hidden="true"
-        className={`shrink-0 transition-transform duration-150 ${
-          pointsRight ? '' : 'rotate-180'
-        } ${compact ? 'absolute -bottom-0.5 -right-0.5' : ''}`}
-      />
-    </button>
+    </HudSideNavTrigger>
   );
 }
 
@@ -151,8 +137,6 @@ export default function SideNavDemoPage() {
           contextRailAriaLabel="Project context"
           topRow={
             <div className="flex h-full min-w-0 items-center gap-3 px-3">
-              <HudSideNavTrigger label="Toggle primary navigation" />
-              <div className="h-4 w-px bg-border" aria-hidden="true" />
               <span className="truncate text-[12px] font-semibold">{selectedId}</span>
               <div className="ml-auto flex items-center gap-1" aria-label="Workspace views">
                 {['Overview', 'Timeline', 'Files'].map((view, index) => (
@@ -203,7 +187,7 @@ export default function SideNavDemoPage() {
                   Try it
                 </p>
                 <ul className="mt-3 space-y-3 text-[12px] leading-5 text-muted-foreground">
-                  <li>Press Cmd/Ctrl+B or use the top-row control to expand destination labels.</li>
+                  <li>Press Cmd/Ctrl+B or use the Hudson brand control to expand destination labels.</li>
                   <li>Collapse Projects; its expanded list stays mounted behind the 48px rail.</li>
                   <li>Settle over a compact destination to reveal its Hudson tooltip.</li>
                   <li>Use Arrow keys after focusing a destination to exercise roving focus.</li>

@@ -1,22 +1,21 @@
 'use client';
 
 import React from 'react';
-import { ChevronRight } from '../../icons';
 import { HudTooltip } from '../behaviors/HudTooltip';
 import { cx } from '../patterns/utils';
 import { useHudSideNav } from './context';
 import { HudRailResizeHandle } from './HudRailResizeHandle';
+import { HudSideNavToggleCaret } from './primitives';
+import { HUD_SIDE_NAV_HEADER_HEIGHT } from './shared';
 
 /** Permanent top row used by the anchored-L shell composition. */
-export const HUD_SIDE_NAV_TOP_ROW_HEIGHT = 48;
 /** Permanent bottom chrome row; matches Hudson's status-bar register. */
 export const HUD_SIDE_NAV_BOTTOM_BAR_HEIGHT = 28;
 /** Default contextual rail width beside the primary destination rail. */
 export const HUD_SIDE_RAIL_EXPANDED_WIDTH = 240;
 /** Real compact rail width. Hidden remains a separate zero-width state. */
 export const HUD_SIDE_RAIL_COLLAPSED_WIDTH = 48;
-/** Header band shared by expanded and collapsed contextual rails. */
-export const HUD_SIDE_RAIL_HEADER_HEIGHT = 48;
+/** Header bands use `HUD_SIDE_NAV_HEADER_HEIGHT` across the whole composition. */
 
 type HudChromeLength = number | string;
 
@@ -46,6 +45,8 @@ export interface HudSideNavLayoutProps {
   /** Add drag, double-click, and keyboard resizing to the primary rail. */
   resizable?: boolean;
   resizeLabel?: string;
+  /** Overlay only the chrome while an existing frame continues to own the surface. */
+  overlay?: boolean;
   className?: string;
   style?: React.CSSProperties;
 }
@@ -65,12 +66,13 @@ export function HudSideNavLayout({
   topRow,
   bottomBar,
   children,
-  topRowHeight = HUD_SIDE_NAV_TOP_ROW_HEIGHT,
+  topRowHeight = HUD_SIDE_NAV_HEADER_HEIGHT,
   bottomBarHeight = HUD_SIDE_NAV_BOTTOM_BAR_HEIGHT,
   contextRailAriaLabel = 'Context',
   contentAriaLabel,
   resizable = false,
   resizeLabel = 'Resize primary navigation',
+  overlay = false,
   className,
   style,
 }: HudSideNavLayoutProps) {
@@ -87,6 +89,8 @@ export function HudSideNavLayout({
     maxExpandedWidth,
     setExpandedWidth,
   } = useHudSideNav();
+  const [resizing, setResizing] = React.useState(false);
+  const navigationId = React.useId();
   const navigationOnLeft = side === 'left';
   const navigationColumn = navigationOnLeft ? '1' : '3';
   const contentColumn = navigationOnLeft ? '3' : '1';
@@ -95,22 +99,33 @@ export function HudSideNavLayout({
   return (
     <div
       data-hud-side-nav-layout=""
+      data-resizing={resizing ? '' : undefined}
       data-state={state}
       data-side={side}
-      className={cx('relative isolate grid h-full min-h-0 w-full overflow-hidden bg-background', className)}
+      className={cx(
+        'relative isolate grid h-full min-h-0 w-full overflow-hidden',
+        'transition-[grid-template-columns] duration-[180ms] ease-[cubic-bezier(0.32,0.72,0,1)]',
+        'motion-reduce:duration-[1ms]',
+        resizing && 'transition-none',
+        overlay ? 'pointer-events-none fixed inset-0 bg-transparent' : 'bg-background',
+        className,
+      )}
       style={{
+        '--hud-side-nav-header-height': cssLength(topRowHeight),
         gridTemplateColumns: navigationOnLeft
           ? `${navigationWidth}px auto minmax(0, 1fr)`
           : `minmax(0, 1fr) auto ${navigationWidth}px`,
-        gridTemplateRows: `${cssLength(topRowHeight)} minmax(0, 1fr) ${cssLength(bottomBarHeight)}`,
+        gridTemplateRows: `var(--hud-side-nav-header-height) minmax(0, 1fr) ${cssLength(bottomBarHeight)}`,
         ...style,
-      }}
+      } as React.CSSProperties}
     >
       <div
+        id={navigationId}
         data-hud-side-nav-slot="navigation"
         className={cx(
           'relative row-[1/3] flex min-h-0 flex-col overflow-hidden bg-card/95',
           navigationOnLeft ? 'border-r border-border/70' : 'border-l border-border/70',
+          overlay && 'pointer-events-auto',
           '[&>nav]:h-full',
         )}
         style={{ gridColumn: navigationColumn }}
@@ -129,8 +144,10 @@ export function HudSideNavLayout({
           maxExpandedWidth={maxExpandedWidth}
           onCollapsedChange={(collapsed) => setOpen(!collapsed)}
           onExpandedWidthChange={setExpandedWidth}
+          controls={navigationId}
+          onResizingChange={setResizing}
           label={resizeLabel}
-          className="absolute z-40 w-2"
+          className="pointer-events-auto absolute z-40 w-2"
           style={{
             top: cssLength(topRowHeight),
             bottom: cssLength(bottomBarHeight),
@@ -144,7 +161,10 @@ export function HudSideNavLayout({
       {topRow ? (
         <header
           data-hud-side-nav-slot="top-row"
-          className="min-w-0 overflow-hidden border-b border-border/70 bg-background/95"
+          className={cx(
+            'min-w-0 overflow-hidden border-b border-border/70 bg-background/95',
+            overlay && 'pointer-events-auto',
+          )}
           style={{ gridColumn: topRowColumns, gridRow: '1' }}
         >
           {topRow}
@@ -158,6 +178,7 @@ export function HudSideNavLayout({
           className={cx(
             'min-h-0 overflow-hidden bg-card/95',
             navigationOnLeft ? 'border-r border-border/70' : 'border-l border-border/70',
+            overlay && 'pointer-events-auto',
           )}
           style={{ gridColumn: '2', gridRow: '2' }}
         >
@@ -168,7 +189,7 @@ export function HudSideNavLayout({
       <main
         aria-label={contentAriaLabel}
         data-hud-side-nav-slot="content"
-        className="min-h-0 min-w-0 overflow-hidden"
+        className={cx('min-h-0 min-w-0 overflow-hidden', overlay && 'pointer-events-none')}
         style={{ gridColumn: contentColumn, gridRow: '2' }}
       >
         {children}
@@ -177,7 +198,10 @@ export function HudSideNavLayout({
       {bottomBar ? (
         <footer
           data-hud-side-nav-slot="bottom-bar"
-          className="col-[1/4] row-[3] min-w-0 overflow-hidden border-t border-border/70 bg-background/95"
+          className={cx(
+            'col-[1/4] row-[3] min-w-0 overflow-hidden border-t border-border/70 bg-background/95',
+            overlay && 'pointer-events-auto',
+          )}
         >
           {bottomBar}
         </footer>
@@ -243,6 +267,8 @@ export function HudSideRail({
   const [internalExpandedWidth, setInternalExpandedWidth] = React.useState(
     defaultExpandedWidth,
   );
+  const [resizing, setResizing] = React.useState(false);
+  const railId = React.useId();
   const resolvedExpandedWidth = clampWidth(
     widthControlled ? expandedWidth : internalExpandedWidth,
     minExpandedWidth,
@@ -254,16 +280,21 @@ export function HudSideRail({
     onExpandedWidthChange?.(clamped);
   };
   const toggleLabel = `${collapsed ? 'Expand' : 'Collapse'} ${label}`;
-  const pointsRight = side === 'left' ? collapsed : !collapsed;
-
   const toggle = () => onCollapsedChange?.(!collapsed);
 
   return (
     <div
+      id={railId}
       data-hud-side-rail=""
       data-state={collapsed ? 'collapsed' : 'expanded'}
       data-side={side}
-      className={cx('relative flex h-full min-h-0 flex-col overflow-hidden', className)}
+      data-resizing={resizing ? '' : undefined}
+      className={cx(
+        'relative flex h-full min-h-0 flex-col overflow-hidden',
+        'transition-[width] duration-[180ms] ease-[cubic-bezier(0.32,0.72,0,1)] motion-reduce:duration-[1ms]',
+        resizing && 'transition-none',
+        className,
+      )}
       style={{
         width: collapsed ? collapsedWidth : resolvedExpandedWidth,
         ...style,
@@ -271,7 +302,7 @@ export function HudSideRail({
       onDoubleClick={(event) => {
         if (!collapsed || !onCollapsedChange) return;
         const target = event.target as HTMLElement;
-        if (target.closest('button, a, input, select, textarea, [role="button"]')) return;
+        if (target.closest('button, a, input, select, textarea, [role="button"], [role="separator"]')) return;
         onCollapsedChange(false);
       }}
     >
@@ -280,7 +311,7 @@ export function HudSideRail({
           'flex shrink-0 items-center border-b border-border/70 px-2',
           collapsed ? 'justify-center' : 'gap-2',
         )}
-        style={{ height: HUD_SIDE_RAIL_HEADER_HEIGHT }}
+        style={{ height: `var(--hud-side-nav-header-height, ${HUD_SIDE_NAV_HEADER_HEIGHT}px)` }}
       >
         {!collapsed ? (
           <div className="min-w-0 flex-1 truncate font-mono text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
@@ -303,15 +334,7 @@ export function HudSideRail({
                 'hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/50',
               )}
             >
-              <ChevronRight
-                size={14}
-                strokeWidth={2}
-                aria-hidden="true"
-                className={cx(
-                  'transition-transform duration-150',
-                  !pointsRight && 'rotate-180',
-                )}
-              />
+              <HudSideNavToggleCaret expanded={!collapsed} side={side} />
             </button>
           </HudTooltip>
         ) : null}
@@ -329,26 +352,41 @@ export function HudSideRail({
           onCollapsedChange={onCollapsedChange}
           onExpandedWidthChange={setExpandedWidth}
           label={`Resize ${label}`}
+          controls={railId}
+          onResizingChange={setResizing}
           className={cx(
-            'absolute bottom-0 top-12 z-30 w-2',
+            'absolute bottom-0 z-30 w-2',
             side === 'left' ? 'right-0' : 'left-0',
           )}
+          style={{ top: `var(--hud-side-nav-header-height, ${HUD_SIDE_NAV_HEADER_HEIGHT}px)` }}
         />
       ) : null}
-
       <div className="relative min-h-0 flex-1 overflow-hidden">
         <div
-          hidden={collapsed}
+          data-rail-content="expanded"
           aria-hidden={collapsed}
-          className="absolute inset-0 flex min-h-0 flex-col"
+          inert={collapsed}
+          className={cx(
+            'absolute inset-0 flex min-h-0 flex-col transition-opacity motion-reduce:delay-0 motion-reduce:duration-[1ms]',
+            collapsed
+              ? 'pointer-events-none opacity-0 duration-[90ms] ease-linear'
+              : 'opacity-100 delay-[90ms] duration-[120ms] ease-out',
+          )}
+          style={{ width: resolvedExpandedWidth }}
         >
           <div className="min-h-0 flex-1 overflow-y-auto frame-scrollbar">{children}</div>
           {footer ? <div className="shrink-0 border-t border-border/70">{footer}</div> : null}
         </div>
         <div
-          hidden={!collapsed}
+          data-rail-content="collapsed"
           aria-hidden={!collapsed}
-          className="absolute inset-0 overflow-y-auto frame-scrollbar"
+          inert={!collapsed}
+          className={cx(
+            'absolute inset-0 overflow-y-auto frame-scrollbar transition-opacity motion-reduce:delay-0 motion-reduce:duration-[1ms]',
+            collapsed
+              ? 'opacity-100 delay-[90ms] duration-[120ms] ease-out'
+              : 'pointer-events-none opacity-0 duration-[90ms] ease-linear',
+          )}
         >
           {collapsedContent}
         </div>

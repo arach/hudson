@@ -36,10 +36,12 @@ export {
   HudSideNavMenuSubButton,
   HudSideNavRail,
   HudSideNavTrigger,
+  HudSideNavToggleCaret,
   HudSideNavCaret,
 } from './primitives';
 export type {
   HudSideNavRegionProps,
+  HudSideNavHeaderProps,
   HudSideNavMenuButtonProps,
   HudSideNavTriggerProps,
 } from './primitives';
@@ -48,13 +50,13 @@ export type {
 export {
   HudSideNavLayout,
   HudSideRail,
-  HUD_SIDE_NAV_TOP_ROW_HEIGHT,
   HUD_SIDE_NAV_BOTTOM_BAR_HEIGHT,
   HUD_SIDE_RAIL_EXPANDED_WIDTH,
   HUD_SIDE_RAIL_COLLAPSED_WIDTH,
-  HUD_SIDE_RAIL_HEADER_HEIGHT,
 } from './HudSideNavLayout';
 export type { HudSideNavLayoutProps, HudSideRailProps } from './HudSideNavLayout';
+export { HUD_SIDE_NAV_HEADER_HEIGHT } from './shared';
+export type { HudNavIcon } from './shared';
 
 // Shared pointer/keyboard resize behavior for custom rail compositions.
 export {

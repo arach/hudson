@@ -30,6 +30,8 @@ interface StatusBarProps {
   isTerminalOpen?: boolean;
   /** Label for the terminal toggle (defaults to "Console") */
   terminalLabel?: string;
+  /** Position inside an anchored shell row instead of against the viewport. */
+  embedded?: boolean;
 }
 
 const STATUS_COLORS = {
@@ -58,6 +60,7 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onToggleTerminal,
   isTerminalOpen = false,
   terminalLabel = 'Console',
+  embedded = false,
 }) => {
   const [time, setTime] = useState(new Date());
   const [vpCopied, setVpCopied] = useState(false);
@@ -90,10 +93,14 @@ const StatusBar: React.FC<StatusBarProps> = ({
     } catch { /* ignore */ }
   };
 
+  const surfaceClassName = embedded
+    ? 'relative h-full w-full bg-card/95 backdrop-blur-xl'
+    : PANEL_STYLES.statusBar;
+
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[9px] md:text-[10px] text-foreground pointer-events-auto overflow-hidden`}
+      className={`${surfaceClassName} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[9px] md:text-[10px] text-foreground pointer-events-auto overflow-hidden`}
       style={chromeBorderStyle}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
