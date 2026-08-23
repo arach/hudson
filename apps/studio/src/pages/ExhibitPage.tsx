@@ -7,6 +7,7 @@ import { NotFoundPage } from "./NotFoundPage";
 // breadcrumb / source affordances if it wants them.
 const FULL_BLEED_EXHIBITS = new Set<string>([
   "canvas-terminals",
+  "canvas-craft",
   "candidate-orientation",
 ]);
 
