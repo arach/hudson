@@ -40,7 +40,7 @@ enum HudCanvasMetrics {
     static let statusBarHeight = HudLayout.statusBarHeight + HudSpacing.sm
     static let canvasControlSize = HudIconSize.small
     static let canvasControlGap = HudSpacing.xs
-    static let canvasControlPadding = HudSpacing.xxs
+    static let canvasControlHitSize = HudIconSize.medium
     static let canvasControlDividerHeight = HudIconSize.micro
     static let zoomLabelWidth = HudIconSize.medium + HudSpacing.xs
     static let zoomControlShadowRadius = HudSpacing.xxl
@@ -10334,6 +10334,11 @@ private struct CommandKeyButton: View {
             .background(RoundedRectangle(cornerRadius: theme.radius.tight).fill(theme.canvasControlFill))
             .overlay(RoundedRectangle(cornerRadius: theme.radius.tight).stroke(theme.hairline.subtle))
         }
+        .frame(
+            width: HudCanvasMetrics.canvasControlHitSize,
+            height: HudCanvasMetrics.canvasControlHitSize
+        )
+        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .help("Command palette")
         .accessibilityLabel("Command palette")
@@ -10971,7 +10976,6 @@ private struct CanvasActionToolbar: View {
             )
         }
         .padding(.horizontal, HudSpacing.xs)
-        .padding(.vertical, HudCanvasMetrics.canvasControlPadding)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.standard)
                 .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
@@ -11029,6 +11033,11 @@ private struct CanvasToolbarIconButton: View {
                         .stroke(theme.hairline.subtle)
                 )
         }
+        .frame(
+            width: HudCanvasMetrics.canvasControlHitSize,
+            height: HudCanvasMetrics.canvasControlHitSize
+        )
+        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .help(help)
@@ -11106,7 +11115,6 @@ private struct CanvasZoomTool: View {
             )
         }
         .padding(.horizontal, HudSpacing.xs)
-        .padding(.vertical, HudCanvasMetrics.canvasControlPadding)
         .background(
             RoundedRectangle(cornerRadius: theme.radius.standard)
                 .fill(theme.palette.bg.opacity(HudOpacity.emphatic))
@@ -11149,6 +11157,11 @@ private struct CanvasIconButton: View {
                         .stroke(border)
                 )
         }
+        .frame(
+            width: HudCanvasMetrics.canvasControlHitSize,
+            height: HudCanvasMetrics.canvasControlHitSize
+        )
+        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(help)

@@ -10,14 +10,15 @@ struct HudCanvasPresentationMetricsTests {
         #expect(HudCanvasMetrics.terminalTrafficLightSize < HudCanvasMetrics.terminalTitleBarHeight / 2)
     }
 
-    @Test("floating controls fit inside terminal chrome height")
+    @Test("floating controls keep compact visuals inside full titlebar hit targets")
     func compactFloatingControls() {
-        let controlHeight = HudCanvasMetrics.canvasControlSize
-            + HudCanvasMetrics.canvasControlPadding * 2
-
         #expect(HudCanvasMetrics.canvasControlSize >= 20)
-        #expect(controlHeight <= HudCanvasMetrics.terminalTitleBarHeight)
-        #expect(HudCanvasMetrics.canvasControlDividerHeight < HudCanvasMetrics.canvasControlSize)
+        #expect(HudCanvasMetrics.canvasControlSize < HudCanvasMetrics.canvasControlHitSize)
+        #expect(HudCanvasMetrics.canvasControlHitSize <= HudCanvasMetrics.terminalTitleBarHeight)
+        #expect(
+            HudCanvasMetrics.canvasControlDividerHeight
+                < HudCanvasMetrics.canvasControlHitSize
+        )
     }
 
     @Test("zoom and command readouts do not dominate compact controls")
