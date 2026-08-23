@@ -26,7 +26,15 @@ Both shapes are legitimate. The rail is the right answer for app-icon-stripe chr
 
 Add a new component family in `HudsonShell` and supporting primitives in `HudsonUI`, leaving the existing rail untouched:
 
-1. **New public types in `HudsonShell`:** `HudNavigationSidebar<Selection: Hashable, RailHeader, LabelHeader, Footer>`, `HudSidebarItem<Selection>`, `HudSidebarEntry<Selection>` (`.item` or `.section`), `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum), `HudSidebarMotion` (token enum).
+1. **New public types in `HudsonShell`:**
+   `HudNavigationSidebar<Selection: Hashable, RailHeader, LabelHeader, Footer>`,
+   `HudNavigationSidebarVariant`, `HudSidebarVerticalTab<Selection>`,
+   `HudSidebarVerticalTabs<Selection>`, `HudSidebarItem<Selection>`,
+   `HudSidebarEntry<Selection>` (`.item` or `.section`),
+   `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum), and
+   `HudSidebarMotion` (token enum). The `.verticalTabs` variant adds a
+   scrollable middle tab region without replacing the standard
+   destination-only composition.
 2. **New public types in `HudsonShell` for split layouts:** `HSplitView<Sidebar, Secondary, Detail>`, `HudSecondaryNav<Selection: Hashable, Item, Header, Footer>`. These are independent of the sidebar — apps that want a split layout with the existing rail in the leading slot can use `HSplitView` too.
 3. **New public types in `HudsonUI`:** `HudSurface` (modifier + view), `HudSelectionUnderlay`, `HudResizableDivider`. `HudResizableDivider` is genuinely new — it does not replace the existing private `HudShellVRule` (which stays where it is, used by `HudAppShell`).
 4. **Implementer chooses.** `HudAppShell`'s leading slot accepts any `View`. `HudNavigationRail`, `HudNavigationSidebar`, or anything custom all drop into the same slot. No internal change to `HudAppShell` is required for this ADR.

@@ -36,7 +36,8 @@ struct HudsonApp: App {
             configuration: .hostApplication(
                 workspaceID: "hudson-canvas",
                 launchSetupURL: HudsonAppResources.practiceSetupURL,
-                workingDirectoryURL: HudsonAppResources.repositoryRoot
+                workingDirectoryURL: HudsonAppResources.repositoryRoot,
+                navigationStyle: .verticalTabs
             ),
             identity: HudCanvasHostIdentity(
                 appName: "Hudson",

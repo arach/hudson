@@ -86,6 +86,7 @@ public struct HudResizableNavigationSidebar<
             entries: entries,
             isCompact: isCompact,
             labelWidth: labelWidth,
+            variant: .standard,
             accent: accent,
             geometry: geometry,
             leadingInset: leadingInset,
@@ -93,6 +94,7 @@ public struct HudResizableNavigationSidebar<
             onResizePhaseChange: onResizePhaseChange,
             railHeader: railHeader,
             labelHeader: labelHeader,
+            verticalTabs: nil,
             footer: footer
         )
     }

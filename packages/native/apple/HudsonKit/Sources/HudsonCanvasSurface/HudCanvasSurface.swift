@@ -731,7 +731,7 @@ private struct CanvasPresentationState: Hashable {
     }
 }
 
-private struct CanvasSceneTab: Identifiable, Equatable {
+struct CanvasSceneTab: Identifiable, Equatable {
     let manifestPath: String?
     let title: String
     let subtitle: String?
@@ -766,6 +766,16 @@ private struct CanvasSceneTab: Identifiable, Equatable {
             accent: presentation?.accent ?? presentation?.theme,
             appliedAt: Date()
         )
+    }
+
+    static func promoting(
+        _ tab: CanvasSceneTab,
+        in tabs: [CanvasSceneTab],
+        limit: Int = recentsCap
+    ) -> [CanvasSceneTab] {
+        var promoted = tabs.filter { $0.id != tab.id }
+        promoted.insert(tab, at: 0)
+        return Array(promoted.prefix(limit))
     }
 }
 
@@ -1330,8 +1340,66 @@ public struct HudCanvasSurface: View {
         )
     }
 
+    private var navigationSidebarVariant: HudNavigationSidebarVariant {
+        switch configuration.navigationStyle {
+        case .standard:     .standard
+        case .verticalTabs: .verticalTabs
+        }
+    }
+
+    private var navigationSidebarAccent: Color {
+        configuration.navigationStyle == .verticalTabs
+            ? activeTheme.palette.ink
+            : activeTheme.palette.statusInfo
+    }
+
+    private var navigationSidebarStyle: HudSidebarStyle {
+        guard configuration.navigationStyle == .verticalTabs else {
+            return HudSidebarStyle(
+                surface: .base,
+                indicator: .kinetic,
+                icon: .kinetic,
+                motion: .kinetic
+            )
+        }
+        return HudSidebarStyle(
+            surface: .glass,
+            indicator: .base,
+            icon: .editorial,
+            motion: .base
+        )
+    }
+
+    private var verticalSceneTabs: [HudSidebarVerticalTab<String>] {
+        sceneTabs.map { tab in
+            HudSidebarVerticalTab(
+                id: tab.id,
+                title: tab.title,
+                subtitle: tab.subtitle,
+                badge: tab.badge,
+                icon: tab.manifestPath == nil ? "square.dashed" : "rectangle.stack"
+            )
+        }
+    }
+
+    private var activeSceneTabBinding: Binding<String?> {
+        Binding(
+            get: { activeSceneTabID },
+            set: { nextID in
+                guard let nextID,
+                      nextID != activeSceneTabID,
+                      let tab = sceneTabs.first(where: { $0.id == nextID })
+                else {
+                    return
+                }
+                applySceneTab(tab)
+            }
+        )
+    }
+
     private var navigationRail: some View {
-        HudNavigationSidebar(
+        let tabProgress = navigationRailCompact ? 1.0 : 0.0
+        return HudNavigationSidebar(
             selection: Binding(
                 get: { activeNavigationRailSelection },
                 set: { next in
@@ -1342,7 +1410,9 @@ public struct HudCanvasSurface: View {
             ),
             entries: navigationRailEntries,
             isCompact: navigationRailCompact,
-            accent: activeTheme.palette.statusInfo,
+            variant: navigationSidebarVariant,
+            accent: navigationSidebarAccent,
+            labelWidth: navigationRailLabelWidth,
             railHeader: {
                 HudsonKitMark()
                     .foregroundStyle(activeTheme.palette.ink)
@@ -1362,6 +1432,20 @@ public struct HudCanvasSurface: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityLabel("Toggle Canvas rail labels")
+            },
+            verticalTabs: {
+                if configuration.navigationStyle == .verticalTabs {
+                    HudSidebarVerticalTabs(
+                        selection: activeSceneTabBinding,
+                        tabs: verticalSceneTabs,
+                        progress: tabProgress,
+                        labelWidth: navigationRailLabelWidth,
+                        accent: activeTheme.palette.statusInfo,
+                        title: "Workspaces",
+                        createLabel: "New workspace",
+                        onCreate: createBlankWorkspace
+                    )
+                }
             },
             footer: {
                 HStack(spacing: 0) {
@@ -1386,15 +1470,7 @@ public struct HudCanvasSurface: View {
             minLabelWidth: 112,
             maxLabelWidth: 180
         )
-        .environment(
-            \.hudsonSidebarStyle,
-            HudSidebarStyle(
-                surface: .base,
-                indicator: .kinetic,
-                icon: .kinetic,
-                motion: .kinetic
-            )
-        )
+        .environment(\.hudsonSidebarStyle, navigationSidebarStyle)
     }
 
     private var activeNavigationRailSelection: CanvasNavigationItem? {
@@ -1846,7 +1922,12 @@ public struct HudCanvasSurface: View {
     }
 
     private var terminalCanvasShell: some View {
-        canvasViewport
+        VStack(spacing: 0) {
+            if configuration.navigationStyle == .standard {
+                sceneTabBar
+            }
+            canvasViewport
+        }
     }
 
     private var sceneTabBar: some View {
@@ -1894,9 +1975,10 @@ public struct HudCanvasSurface: View {
 
     private func sceneTabButton(_ tab: CanvasSceneTab) -> some View {
         let isActive = tab.id == activeSceneTabID
-        let isClickable = tab.manifestPath != nil
         return Button {
-            applySceneTab(tab)
+            if !isActive {
+                applySceneTab(tab)
+            }
         } label: {
             HStack(spacing: HudSpacing.xs) {
                 HudStatusDot(
@@ -1938,9 +2020,11 @@ public struct HudCanvasSurface: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(!isClickable)
         .help(tab.subtitle ?? tab.title)
+        .accessibilityValue(isActive ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
+
 
     private var canvasViewport: some View {
         GeometryReader { proxy in
@@ -3823,11 +3907,7 @@ public struct HudCanvasSurface: View {
             fallbackTitle: configuration.surfaceTitle
         )
         if let path, !path.isEmpty {
-            sceneTabs.removeAll { $0.manifestPath == path }
-            sceneTabs.insert(tab, at: 0)
-            if sceneTabs.count > CanvasSceneTab.recentsCap {
-                sceneTabs = Array(sceneTabs.prefix(CanvasSceneTab.recentsCap))
-            }
+            sceneTabs = CanvasSceneTab.promoting(tab, in: sceneTabs)
         }
         triggerSceneAnnounce(tab)
     }
@@ -3859,7 +3939,7 @@ public struct HudCanvasSurface: View {
             )
             _ = applySetupCommand(command)
         } else {
-            switchToBlankWorkspace(named: tab.title)
+            activateBlankWorkspace(tab)
         }
     }
 
@@ -3870,33 +3950,34 @@ public struct HudCanvasSurface: View {
     }
 
     private func switchToBlankWorkspace(named title: String) {
+        activateBlankWorkspace(
+            CanvasSceneTab(
+                manifestPath: nil,
+                title: title,
+                subtitle: nil,
+                badge: nil,
+                accent: nil,
+                appliedAt: Date()
+            )
+        )
+    }
+
+    private func activateBlankWorkspace(_ tab: CanvasSceneTab) {
         stopAllNodes()
-        activeWorkspaceID = GraphitePath.slugify(title, fallback: configuration.workspaceID)
+        activeWorkspaceID = GraphitePath.slugify(tab.title, fallback: configuration.workspaceID)
         activeHandoffID = nil
         presentationState = CanvasPresentationState(
-            title: title,
-            subtitle: nil,
-            badge: nil,
+            title: tab.title,
+            subtitle: tab.subtitle,
+            badge: tab.badge,
             cobrand: nil,
             productName: nil,
             hostName: nil,
             icon: nil,
             theme: nil,
-            accent: nil
+            accent: tab.accent
         )
-        let tab = CanvasSceneTab(
-            manifestPath: nil,
-            title: title,
-            subtitle: nil,
-            badge: nil,
-            accent: nil,
-            appliedAt: Date()
-        )
-        sceneTabs.removeAll { $0.id == tab.id }
-        sceneTabs.insert(tab, at: 0)
-        if sceneTabs.count > CanvasSceneTab.recentsCap {
-            sceneTabs = Array(sceneTabs.prefix(CanvasSceneTab.recentsCap))
-        }
+        sceneTabs = CanvasSceneTab.promoting(tab, in: sceneTabs)
         triggerSceneAnnounce(tab)
         schedulePersistStateIfConfigured()
     }
