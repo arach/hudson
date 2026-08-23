@@ -121,15 +121,23 @@ import { HudSideNavProvider, HudSideNav } from "hudsonkit/nav";
   side="left" // 'left' | 'right'
   persistKey="app.nav" // persists open state to localStorage
   keyboardShortcut="b" // Cmd/Ctrl+B toggles; false disables
+  defaultExpandedWidth={260} // persisted resize width when persistKey is set
+  collapsedWidth={48} // real icon rail; offcanvas resolves to 0
+  tooltipDelay={500} // settled-hover labels in compact mode
   defaultOpen
 >
   <HudSideNav items={items} selectedId={sel} onSelect={(n) => setSel(n.id)} />
 </HudSideNavProvider>;
 ```
 
-`useHudSideNav()` returns `{ state, open, setOpen, toggle, collapsible, side }`.
-The `<nav>` reflects state as `data-state` / `data-collapsible` / `data-side`.
-`HudSideNavTrigger` (a button) and `HudSideNavRail` (an edge strip) both toggle.
+`useHudSideNav()` returns collapse state plus structural width controls:
+`{ state, open, setOpen, toggle, collapsible, side, width, expandedWidth,
+defaultExpandedWidth, minExpandedWidth, maxExpandedWidth, setExpandedWidth,
+resetExpandedWidth, collapsedWidth, tooltipDelay }`. The resolved `width` is the
+expanded width while open, compact width in `icon` mode, and `0` when an
+`offcanvas` sidebar is closed. The `<nav>` reflects state as `data-state` /
+`data-collapsible` / `data-side`. `HudSideNavTrigger` is the shared directional
+caret; it accepts children when the whole brand/title row should toggle.
 
 ## Composable primitives
 
@@ -173,11 +181,151 @@ import {
 ```
 
 `HudSideNavMenuButton` takes `icon`, `isActive` (neutral emphasis),
-`live` (the only accent), `count`, `badge`, `asChild`, `expanded`, and `tooltip`.
-`asChild` keeps the child element and routing props while Hudson composes its
-icon, collapsed label, live state, count, and badge inside it. Use `expanded`
-on hand-composed disclosure rows so the control exposes `aria-expanded`. Nest
-with `HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
+`selectionWash`, `live` (the only accent), `count`, `badge`, `asChild`,
+`expanded`, and `tooltip`. `icon` accepts either a Hudson icon component or a
+preconfigured React icon element, matching `HudsonApp.icon`. `asChild` keeps the
+child element and routing props while Hudson composes its icon, collapsed
+label, live state, count, and badge inside it. Use `expanded` on hand-composed
+disclosure rows so the control exposes `aria-expanded`. Nest with
+`HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
+
+## Full-height navigation with a separate context rail
+
+`HudSideNavLayout` is the additive shell composition for products that need the
+next-generation anchored-L anatomy rather than a single `AppShell` left panel:
+
+- primary navigation owns the full-height top corner;
+- one app-wide top row begins beside it;
+- contextual content lives in a separate `HudSideRail`, not in the destination
+  tree;
+- context and main content begin below the top row;
+- the bottom bar spans all columns.
+
+The repository includes a live example at [`/demo/side-nav`](/demo/side-nav).
+`WorkspaceShell` exposes the same composition as an optional navigation style
+through `<WorkspaceShell sideNavMode="anchored" />`. The style derives primary
+destinations from workspace apps, keeps Home as the launcher entry, places the
+focused app's `LeftPanel` in the contextual rail, embeds the existing
+navigation/status chrome in the anchored rows, and leaves right-side inspectors
+unchanged. `sideNavMode` defaults to `legacy`, so the production shell and
+downstream consumers retain their existing navigation until they opt in.
+
+The layout reads and resizes the primary width through `HudSideNavProvider`.
+`HudSideRail` owns its independent expanded/compact width unless the host
+controls it. Primary and contextual expanded/compact presentations stay mounted
+while inactive, preserving scroll/expansion state and preventing live lists
+from refetching. Inactive panes are `inert` and `aria-hidden`, so they do not
+leak into roving focus. Hidden remains different from compact: omit
+`contextRail` to consume zero width.
+
+```tsx
+import {
+  HudSideNav,
+  HudSideNavLayout,
+  HudSideNavProvider,
+  HudSideNavTrigger,
+  HudSideRail,
+} from "hudsonkit/nav";
+
+function WorkspaceChrome() {
+  const [selected, setSelected] = useState("home");
+  const [contextCollapsed, setContextCollapsed] = useState(false);
+
+  return (
+    <HudSideNavProvider
+      collapsible="icon"
+      defaultOpen={false}
+      persistKey="acme.primary-nav"
+      defaultExpandedWidth={260}
+      collapsedWidth={48}
+    >
+      <HudSideNavLayout
+        resizable
+        navigation={
+          <HudSideNav
+            items={items}
+            selectedId={selected}
+            onSelect={(node) => setSelected(node.id)}
+            header={<HudSideNavTrigger label="Toggle Acme navigation"><AcmeMark /> Acme</HudSideNavTrigger>}
+            collapsedHeader={<HudSideNavTrigger label="Toggle Acme navigation"><AcmeMark /></HudSideNavTrigger>}
+            footer={<GlobalActions />}
+            collapsedFooter={<GlobalActionIcons />}
+            rovingFocus
+          />
+        }
+        contextRail={
+          <HudSideRail
+            label="Projects"
+            collapsed={contextCollapsed}
+            onCollapsedChange={setContextCollapsed}
+            resizable
+            collapsedContent={<ProjectGlyphs />}
+            footer={<ProjectSummary />}
+          >
+            <ProjectList />
+          </HudSideRail>
+        }
+        contextRailAriaLabel="Project context"
+        topRow={<WorkspaceHeader />}
+        bottomBar={<WorkspaceStatus />}
+        contentAriaLabel="Workspace"
+      >
+        <WorkspaceSurface />
+      </HudSideNavLayout>
+    </HudSideNavProvider>
+  );
+}
+```
+
+The default geometry uses the exported `HUD_SIDE_NAV_HEADER_HEIGHT` (`48px`) for
+the logo, top, and contextual-header bands, a `28px` bottom bar, `260px`
+expanded primary nav, `48px` primary icon rail, `240px` expanded context rail,
+and `48px` compact context rail. `topRowHeight` publishes a scoped CSS variable,
+so custom heights also move the contextual header and resize seam. Right-side
+primary navigation is mirrored automatically through
+`HudSideNavProvider side="right"`.
+
+Set `resizable` on `HudSideNavLayout` and/or `HudSideRail` for the shared resize
+separator. Pointer capture drives live resizing without width animation lag.
+Dragging inward through the minimum-width margin collapses without overwriting
+the remembered expanded width; dragging out from compact revives the rail after
+deliberate travel. A plain separator click does not commit a width. Double-click
+resets to the configured default. Escape cancels only the active drag and
+restores its starting width. The separator is keyboard reachable: Left/Right
+resize, Home/End choose min/max, and Enter/Space toggles compact state.
+
+Discrete expand/collapse changes animate width for `180ms`; pointer drags
+disable that transition so the edge remains under the cursor. Expanded content
+uses a fixed inner width while the outer rail clips it, preventing label reflow
+jitter. Collapse fades labels before narrowing; expansion fades them in after
+the rail opens. Reduced-motion mode shortens these transitions to `1ms`.
+
+Compact destination labels use Hudson's Base UI tooltip behavior with a `500ms`
+settled-hover delay. The tooltip mounts only in icon mode, so expanding the rail
+also clears any open compact label. Override `tooltipDelay` on the provider when
+the product has a measured reason; do not restore native `title` tooltips, which
+open immediately and cannot share Hudson's visual register.
+
+## Native full-height dismissal and reveal
+
+HudsonKit's native `HudNavigationSidebar` keeps compact mode available for apps
+that want a permanent icon rail. A full-height host can instead remove the
+leading column completely and model its interaction with
+`HudSidebarPresentationState`:
+
+- `.hidden` consumes zero width;
+- pointer ownership of the titlebar reveal control or sidebar produces
+  `.preview`;
+- clicking the reveal control produces `.pinned`.
+
+`HudCanvasSurface` uses this shape for `.verticalTabs`. Dragging the expanded
+sidebar below its collapse threshold dismisses the whole leading column rather
+than leaving a 48-point icon rail. The native titlebar control previews the
+sidebar on hover, preserves that preview while the pointer transfers into the
+sidebar, and pins it on click. A 160ms exit grace closes pointer-owned previews;
+reduced-motion mode removes the transition. The pinned/hidden choice is stored
+in `HudCanvasSurfaceLayoutSnapshot.navigationSidebarHidden`; hover preview is
+transient and is never persisted.
 
 ## Props
 
@@ -190,11 +338,14 @@ with `HudSideNavMenuSub` / `HudSideNavMenuSubButton`.
 | `expandedIds` / `defaultExpandedIds` / `onExpandedChange`                  |                          | Controlled or seeded expansion.                   |
 | `collapsed`                                                                | `boolean`                | Legacy shorthand for the icons-only rail.         |
 | `collapsible` / `side` / `defaultOpen` / `persistKey` / `keyboardShortcut` |                          | Provider defaults, used only when self-providing. |
+| `defaultExpandedWidth` / `expandedWidth` / `onExpandedWidthChange`          | `number` / callback      | Uncontrolled or controlled structural width.     |
+| `minExpandedWidth` / `maxExpandedWidth` / `collapsedWidth` / `tooltipDelay` | `number`                | Resize bounds, compact width, and label intent.   |
 | `rail`                                                                     | `boolean`                | Render a `HudSideNavRail` edge toggle.            |
-| `header` / `footer`                                                        | `ReactNode`              | Pinned above / below the tree.                    |
+| `header` / `footer` / `collapsedHeader` / `collapsedFooter`                | `ReactNode`              | Pinned chrome with optional compact overrides.    |
 | `density`                                                                  | `'compact' \| 'default'` |                                                   |
 | `selectionWash` / `rovingFocus`                                            | `boolean`                | Opt-in selection wash and keyboard roving.        |
 | `ariaLabel`                                                                | `string`                 | `<nav>` landmark name.                            |
 | `empty`                                                                    | `ReactNode`              | Shown when `items` is empty.                      |
 
 `HudNavNode`: `{ id, label, accessibilityLabel?, icon?, count?, badge?, live?, disabled?, children? }`.
+`icon` may be a Hudson icon component or a preconfigured React icon element.

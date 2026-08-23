@@ -53,6 +53,11 @@ The native host includes:
 - Dock icon generated from `scripts/generate-app-icon.swift`
 - Standard macOS menus (`Workspace`, `Canvas`, `Appearance`)
 - Settings window (`Cmd+,`) for Canvas
+- Next-generation leading navigation with the existing Canvas destinations,
+  resizable scrollable workspace tabs, and a true full-window edge beside the
+  titlebar, Canvas, and status chrome. Dragging below the minimum dismisses the
+  column completely; hovering the titlebar control previews it, and clicking
+  pins it back into the layout.
 - About panel with control-path copy/reveal helpers
 
 Menu actions post into `HudCanvasSurface` through `CanvasHostCommandCenter`.

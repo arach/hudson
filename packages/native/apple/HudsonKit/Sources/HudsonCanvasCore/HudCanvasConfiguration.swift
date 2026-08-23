@@ -1,5 +1,13 @@
 import Foundation
 
+/// Leading-navigation presentation for an embeddable Canvas host.
+public enum HudCanvasNavigationStyle: String, CaseIterable, Identifiable, Sendable {
+    case standard
+    case verticalTabs
+
+    public var id: String { rawValue }
+}
+
 /// Configuration for an embeddable Hudson Canvas.
 ///
 /// A Canvas is a spatial operating surface for live runtimes and artifacts.
@@ -16,6 +24,7 @@ public struct HudCanvasConfiguration: Sendable {
     public var workingDirectoryURL: URL?
     public var followsSystemColorScheme: Bool
     public var restoresStateOnLaunch: Bool
+    public var navigationStyle: HudCanvasNavigationStyle
 
     public init(
         workspaceID: String = "canvas",
@@ -27,7 +36,8 @@ public struct HudCanvasConfiguration: Sendable {
         launchSetupURL: URL? = nil,
         workingDirectoryURL: URL? = nil,
         followsSystemColorScheme: Bool = true,
-        restoresStateOnLaunch: Bool = false
+        restoresStateOnLaunch: Bool = false,
+        navigationStyle: HudCanvasNavigationStyle = .standard
     ) {
         self.workspaceID = Self.slugify(workspaceID, fallback: "canvas")
         self.surfaceTitle = surfaceTitle
@@ -39,6 +49,7 @@ public struct HudCanvasConfiguration: Sendable {
         self.workingDirectoryURL = workingDirectoryURL
         self.followsSystemColorScheme = followsSystemColorScheme
         self.restoresStateOnLaunch = restoresStateOnLaunch
+        self.navigationStyle = navigationStyle
     }
 
     private static func slugify(_ input: String, fallback: String) -> String {

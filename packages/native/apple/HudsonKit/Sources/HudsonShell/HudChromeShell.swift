@@ -99,7 +99,7 @@ public struct HudChromeShell<
     private static var trafficLightClearance: CGFloat { 84 }
 
     private var floatingShell: some View {
-        HudAppShell {
+        HudAppShell(statusBarSpan: .besideLeading) {
             leading
         } trailing: {
             trailing

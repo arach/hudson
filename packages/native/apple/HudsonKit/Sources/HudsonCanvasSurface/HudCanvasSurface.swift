@@ -582,6 +582,101 @@ private enum CanvasNavigationItem: String, Hashable {
     }
 }
 
+enum CanvasSidebarHoverTarget: Equatable, Sendable {
+    case revealControl
+    case sidebar
+}
+
+struct CanvasSidebarHoverExit: Equatable, Sendable {
+    let target: CanvasSidebarHoverTarget
+    let generation: Int
+}
+
+struct CanvasSidebarHoverCoordinator: Equatable, Sendable {
+    private(set) var state: HudSidebarPresentationState
+    private var revealControlGeneration = 0
+    private var sidebarGeneration = 0
+
+    init(isPinned: Bool = true) {
+        state = HudSidebarPresentationState(isPinned: isPinned)
+    }
+
+    var presentation: HudSidebarPresentation {
+        state.presentation
+    }
+
+    var isPresented: Bool {
+        state.isPresented
+    }
+
+    var isPinned: Bool {
+        state.isPinned
+    }
+
+    mutating func pointerEntered(_ target: CanvasSidebarHoverTarget) {
+        invalidateExit(for: target)
+        setHovered(true, for: target)
+    }
+
+    mutating func beginPointerExit(
+        _ target: CanvasSidebarHoverTarget
+    ) -> CanvasSidebarHoverExit {
+        invalidateExit(for: target)
+        return CanvasSidebarHoverExit(
+            target: target,
+            generation: generation(for: target)
+        )
+    }
+
+    @discardableResult
+    mutating func completePointerExit(_ exit: CanvasSidebarHoverExit) -> Bool {
+        guard generation(for: exit.target) == exit.generation else {
+            return false
+        }
+        invalidateExit(for: exit.target)
+        setHovered(false, for: exit.target)
+        return true
+    }
+
+    mutating func togglePinned() {
+        state.togglePinned()
+    }
+
+    mutating func dismiss() {
+        invalidateExit(for: .revealControl)
+        invalidateExit(for: .sidebar)
+        state.dismiss()
+    }
+
+    private func generation(for target: CanvasSidebarHoverTarget) -> Int {
+        switch target {
+        case .revealControl: revealControlGeneration
+        case .sidebar: sidebarGeneration
+        }
+    }
+
+    private mutating func invalidateExit(for target: CanvasSidebarHoverTarget) {
+        switch target {
+        case .revealControl:
+            revealControlGeneration += 1
+        case .sidebar:
+            sidebarGeneration += 1
+        }
+    }
+
+    private mutating func setHovered(
+        _ hovered: Bool,
+        for target: CanvasSidebarHoverTarget
+    ) {
+        switch target {
+        case .revealControl:
+            state.setRevealControlHovered(hovered)
+        case .sidebar:
+            state.setSidebarHovered(hovered)
+        }
+    }
+}
+
 private enum CanvasLensTarget: Hashable {
     case node(UUID)
 }
@@ -603,6 +698,7 @@ private struct CanvasPersistenceToken: Hashable {
     var canvasTool: CanvasTool
     var navigationFilter: CanvasNavigationFilter
     var navigationTagFilter: CanvasTag?
+    var navigationSidebarHidden: Bool
     var navigationCollapsed: Bool
     var navigationWidth: CGFloat
     var minimapCollapsed: Bool
@@ -731,7 +827,7 @@ private struct CanvasPresentationState: Hashable {
     }
 }
 
-private struct CanvasSceneTab: Identifiable, Equatable {
+struct CanvasSceneTab: Identifiable, Equatable {
     let manifestPath: String?
     let title: String
     let subtitle: String?
@@ -766,6 +862,16 @@ private struct CanvasSceneTab: Identifiable, Equatable {
             accent: presentation?.accent ?? presentation?.theme,
             appliedAt: Date()
         )
+    }
+
+    static func promoting(
+        _ tab: CanvasSceneTab,
+        in tabs: [CanvasSceneTab],
+        limit: Int = recentsCap
+    ) -> [CanvasSceneTab] {
+        var promoted = tabs.filter { $0.id != tab.id }
+        promoted.insert(tab, at: 0)
+        return Array(promoted.prefix(limit))
     }
 }
 
@@ -924,6 +1030,7 @@ public struct HudCanvasSurface: View {
 
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.hudTheme) private var inheritedTheme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var nodes: [TerminalNode] = []
     @State private var selectedIDs: Set<UUID> = []
@@ -931,6 +1038,9 @@ public struct HudCanvasSurface: View {
     @State private var navigationTagFilter: CanvasTag?
     @State private var navigationRailCompact = true
     @State private var navigationRailLabelWidth: CGFloat = 132
+    @State private var navigationSidebarCoordinator = CanvasSidebarHoverCoordinator()
+    @State private var navigationRevealControlDismissTask: Task<Void, Never>?
+    @State private var navigationSidebarDismissTask: Task<Void, Never>?
     @State private var navigationRailSelection: CanvasNavigationItem? = .canvas
     @State private var navigationCollapsed = false
     @State private var navigationWidth: CGFloat = 254
@@ -985,6 +1095,7 @@ public struct HudCanvasSurface: View {
 
     public init(configuration: HudCanvasConfiguration = .init()) {
         self.configuration = configuration
+        _navigationRailCompact = State(initialValue: configuration.navigationStyle == .standard)
         _controlAPI = StateObject(
             wrappedValue: HudCanvasControlAPI(
                 commandURL: configuration.commandURL,
@@ -1007,6 +1118,10 @@ public struct HudCanvasSurface: View {
         .onDisappear {
             pendingPersistTask?.cancel()
             pendingPersistTask = nil
+            navigationRevealControlDismissTask?.cancel()
+            navigationRevealControlDismissTask = nil
+            navigationSidebarDismissTask?.cancel()
+            navigationSidebarDismissTask = nil
             pendingArtifactReloadTask?.cancel()
             pendingArtifactReloadTask = nil
             cancelDocumentWatchers()
@@ -1071,22 +1186,24 @@ public struct HudCanvasSurface: View {
         .background(
             HudWindowChrome(
                 colorScheme: .dark,
-                titleVisibility: .visible,
-                titlebarAppearsTransparent: false,
-                usesFullSizeContentView: false,
+                titleVisibility: configuration.navigationStyle == .verticalTabs ? .hidden : .visible,
+                titlebarAppearsTransparent: configuration.navigationStyle == .verticalTabs,
+                usesFullSizeContentView: configuration.navigationStyle == .verticalTabs,
                 isMovableByWindowBackground: false,
-                hidesToolbar: false
+                hidesToolbar: configuration.navigationStyle == .verticalTabs
             )
         )
         #if os(macOS)
-        .toolbarBackground(.visible, for: .windowToolbar)
+        .toolbarBackground(configuration.navigationStyle == .verticalTabs ? .hidden : .visible, for: .windowToolbar)
         .toolbarBackground(Color.black, for: .windowToolbar)
         .toolbarColorScheme(.dark, for: .windowToolbar)
         #endif
     }
 
     private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
-        HudAppShell {
+        HudAppShell(
+            statusBarSpan: configuration.navigationStyle == .verticalTabs ? .besideLeading : .fullWidth
+        ) {
             AnyView(navigationShellSlot)
         } trailing: {
             AnyView(inspectorShellSlot)
@@ -1099,7 +1216,16 @@ public struct HudCanvasSurface: View {
 
     @ViewBuilder
     private var navigationShellSlot: some View {
-        canvasNavigationShell
+        if configuration.navigationStyle == .verticalTabs {
+            if navigationSidebarCoordinator.isPresented {
+                canvasNavigationShell
+                    .contentShape(Rectangle())
+                    .onHover { updateNavigationSidebarHover(.sidebar, hovered: $0) }
+                    .transition(navigationSidebarTransition)
+            }
+        } else {
+            canvasNavigationShell
+        }
     }
 
     private var canvasNavigationShell: some View {
@@ -1109,6 +1235,98 @@ public struct HudCanvasSurface: View {
             if !isTerminalFocusActive {
                 navigationPanel
                     .zIndex(1)
+            }
+        }
+    }
+
+    private var navigationSidebarTransition: AnyTransition {
+        guard !reduceMotion else { return .identity }
+        return .move(edge: .leading).combined(with: .opacity)
+    }
+
+    private var navigationSidebarAnimation: Animation? {
+        reduceMotion ? nil : .easeOut(duration: 0.15)
+    }
+
+    private func updateNavigationSidebarHover(
+        _ target: CanvasSidebarHoverTarget,
+        hovered: Bool
+    ) {
+        cancelNavigationSidebarHoverExit(for: target)
+
+        if hovered {
+            withAnimation(navigationSidebarAnimation) {
+                navigationSidebarCoordinator.pointerEntered(target)
+            }
+            return
+        }
+
+        let exit = navigationSidebarCoordinator.beginPointerExit(target)
+        let task = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: 160_000_000)
+            guard !Task.isCancelled else { return }
+            withAnimation(navigationSidebarAnimation) {
+                _ = navigationSidebarCoordinator.completePointerExit(exit)
+            }
+            clearNavigationSidebarHoverExitTask(for: target)
+        }
+        switch target {
+        case .revealControl:
+            navigationRevealControlDismissTask = task
+        case .sidebar:
+            navigationSidebarDismissTask = task
+        }
+    }
+
+    private func cancelNavigationSidebarHoverExit(
+        for target: CanvasSidebarHoverTarget
+    ) {
+        switch target {
+        case .revealControl:
+            navigationRevealControlDismissTask?.cancel()
+            navigationRevealControlDismissTask = nil
+        case .sidebar:
+            navigationSidebarDismissTask?.cancel()
+            navigationSidebarDismissTask = nil
+        }
+    }
+
+    private func clearNavigationSidebarHoverExitTask(
+        for target: CanvasSidebarHoverTarget
+    ) {
+        switch target {
+        case .revealControl:
+            navigationRevealControlDismissTask = nil
+        case .sidebar:
+            navigationSidebarDismissTask = nil
+        }
+    }
+
+    private func toggleNavigationSidebarPinned() {
+        withAnimation(navigationSidebarAnimation) {
+            navigationSidebarCoordinator.togglePinned()
+        }
+        controlStatus = navigationSidebarCoordinator.isPinned
+            ? "Navigator pinned"
+            : "Navigator hidden"
+    }
+
+    private func dismissNavigationSidebar() {
+        cancelNavigationSidebarHoverExit(for: .revealControl)
+        cancelNavigationSidebarHoverExit(for: .sidebar)
+        navigationRailCompact = false
+        withAnimation(navigationSidebarAnimation) {
+            navigationSidebarCoordinator.dismiss()
+        }
+        controlStatus = "Navigator hidden"
+    }
+
+    private func toggleNavigationRailHeader() {
+        if configuration.navigationStyle == .verticalTabs {
+            toggleNavigationSidebarPinned()
+        } else {
+            withAnimation(HudMotion.chromeSpring) {
+                navigationRailCompact.toggle()
             }
         }
     }
@@ -1145,6 +1363,8 @@ public struct HudCanvasSurface: View {
             canvasTool: canvasTool,
             navigationFilter: navigationFilter,
             navigationTagFilter: navigationTagFilter,
+            navigationSidebarHidden: configuration.navigationStyle == .verticalTabs
+                && !navigationSidebarCoordinator.isPinned,
             navigationCollapsed: navigationCollapsed,
             navigationWidth: navigationWidth,
             minimapCollapsed: minimapCollapsed,
@@ -1330,8 +1550,66 @@ public struct HudCanvasSurface: View {
         )
     }
 
+    private var navigationSidebarVariant: HudNavigationSidebarVariant {
+        switch configuration.navigationStyle {
+        case .standard:     .standard
+        case .verticalTabs: .verticalTabs
+        }
+    }
+
+    private var navigationSidebarAccent: Color {
+        configuration.navigationStyle == .verticalTabs
+            ? activeTheme.palette.ink
+            : activeTheme.palette.statusInfo
+    }
+
+    private var navigationSidebarStyle: HudSidebarStyle {
+        guard configuration.navigationStyle == .verticalTabs else {
+            return HudSidebarStyle(
+                surface: .base,
+                indicator: .kinetic,
+                icon: .kinetic,
+                motion: .kinetic
+            )
+        }
+        return HudSidebarStyle(
+            surface: .glass,
+            indicator: .base,
+            icon: .editorial,
+            motion: .base
+        )
+    }
+
+    private var verticalSceneTabs: [HudSidebarVerticalTab<String>] {
+        sceneTabs.map { tab in
+            HudSidebarVerticalTab(
+                id: tab.id,
+                title: tab.title,
+                subtitle: tab.subtitle,
+                badge: tab.badge,
+                icon: tab.manifestPath == nil ? "square.dashed" : "rectangle.stack"
+            )
+        }
+    }
+
+    private var activeSceneTabBinding: Binding<String?> {
+        Binding(
+            get: { activeSceneTabID },
+            set: { nextID in
+                guard let nextID,
+                      nextID != activeSceneTabID,
+                      let tab = sceneTabs.first(where: { $0.id == nextID })
+                else {
+                    return
+                }
+                applySceneTab(tab)
+            }
+        )
+    }
+
     private var navigationRail: some View {
-        HudNavigationSidebar(
+        let tabProgress = navigationRailCompact ? 1.0 : 0.0
+        return HudNavigationSidebar(
             selection: Binding(
                 get: { activeNavigationRailSelection },
                 set: { next in
@@ -1342,7 +1620,10 @@ public struct HudCanvasSurface: View {
             ),
             entries: navigationRailEntries,
             isCompact: navigationRailCompact,
-            accent: activeTheme.palette.statusInfo,
+            variant: navigationSidebarVariant,
+            accent: navigationSidebarAccent,
+            labelWidth: navigationRailLabelWidth,
+            onHeaderTap: toggleNavigationRailHeader,
             railHeader: {
                 HudsonKitMark()
                     .foregroundStyle(activeTheme.palette.ink)
@@ -1362,6 +1643,20 @@ public struct HudCanvasSurface: View {
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .accessibilityLabel("Toggle Canvas rail labels")
+            },
+            verticalTabs: {
+                if configuration.navigationStyle == .verticalTabs {
+                    HudSidebarVerticalTabs(
+                        selection: activeSceneTabBinding,
+                        tabs: verticalSceneTabs,
+                        progress: tabProgress,
+                        labelWidth: navigationRailLabelWidth,
+                        accent: activeTheme.palette.statusInfo,
+                        title: "Workspaces",
+                        createLabel: "New workspace",
+                        onCreate: createBlankWorkspace
+                    )
+                }
             },
             footer: {
                 HStack(spacing: 0) {
@@ -1386,15 +1681,12 @@ public struct HudCanvasSurface: View {
             minLabelWidth: 112,
             maxLabelWidth: 180
         )
-        .environment(
-            \.hudsonSidebarStyle,
-            HudSidebarStyle(
-                surface: .base,
-                indicator: .kinetic,
-                icon: .kinetic,
-                motion: .kinetic
-            )
-        )
+        .environment(\.hudsonSidebarStyle, navigationSidebarStyle)
+        .onChange(of: navigationRailCompact) { _, isCompact in
+            if configuration.navigationStyle == .verticalTabs, isCompact {
+                dismissNavigationSidebar()
+            }
+        }
     }
 
     private var activeNavigationRailSelection: CanvasNavigationItem? {
@@ -1609,7 +1901,19 @@ public struct HudCanvasSurface: View {
             controlStatus = "Selection cleared"
         case .toggleNavigator:
             if !isTerminalFocusActive {
-                navigationCollapsed.toggle()
+                if configuration.navigationStyle == .verticalTabs {
+                    toggleNavigationSidebarPinned()
+                } else {
+                    navigationCollapsed.toggle()
+                }
+            }
+        case .beginNavigatorPreview:
+            if configuration.navigationStyle == .verticalTabs {
+                updateNavigationSidebarHover(.revealControl, hovered: true)
+            }
+        case .endNavigatorPreview:
+            if configuration.navigationStyle == .verticalTabs {
+                updateNavigationSidebarHover(.revealControl, hovered: false)
             }
         case .toggleInspector:
             if !isTerminalFocusActive {
@@ -1846,7 +2150,12 @@ public struct HudCanvasSurface: View {
     }
 
     private var terminalCanvasShell: some View {
-        canvasViewport
+        VStack(spacing: 0) {
+            if configuration.navigationStyle == .standard {
+                sceneTabBar
+            }
+            canvasViewport
+        }
     }
 
     private var sceneTabBar: some View {
@@ -1894,9 +2203,10 @@ public struct HudCanvasSurface: View {
 
     private func sceneTabButton(_ tab: CanvasSceneTab) -> some View {
         let isActive = tab.id == activeSceneTabID
-        let isClickable = tab.manifestPath != nil
         return Button {
-            applySceneTab(tab)
+            if !isActive {
+                applySceneTab(tab)
+            }
         } label: {
             HStack(spacing: HudSpacing.xs) {
                 HudStatusDot(
@@ -1938,9 +2248,11 @@ public struct HudCanvasSurface: View {
             )
         }
         .buttonStyle(.plain)
-        .disabled(!isClickable)
         .help(tab.subtitle ?? tab.title)
+        .accessibilityValue(isActive ? "Selected" : "Not selected")
+        .accessibilityAddTraits(isActive ? .isSelected : [])
     }
+
 
     private var canvasViewport: some View {
         GeometryReader { proxy in
@@ -3823,11 +4135,7 @@ public struct HudCanvasSurface: View {
             fallbackTitle: configuration.surfaceTitle
         )
         if let path, !path.isEmpty {
-            sceneTabs.removeAll { $0.manifestPath == path }
-            sceneTabs.insert(tab, at: 0)
-            if sceneTabs.count > CanvasSceneTab.recentsCap {
-                sceneTabs = Array(sceneTabs.prefix(CanvasSceneTab.recentsCap))
-            }
+            sceneTabs = CanvasSceneTab.promoting(tab, in: sceneTabs)
         }
         triggerSceneAnnounce(tab)
     }
@@ -3859,7 +4167,7 @@ public struct HudCanvasSurface: View {
             )
             _ = applySetupCommand(command)
         } else {
-            switchToBlankWorkspace(named: tab.title)
+            activateBlankWorkspace(tab)
         }
     }
 
@@ -3870,33 +4178,34 @@ public struct HudCanvasSurface: View {
     }
 
     private func switchToBlankWorkspace(named title: String) {
+        activateBlankWorkspace(
+            CanvasSceneTab(
+                manifestPath: nil,
+                title: title,
+                subtitle: nil,
+                badge: nil,
+                accent: nil,
+                appliedAt: Date()
+            )
+        )
+    }
+
+    private func activateBlankWorkspace(_ tab: CanvasSceneTab) {
         stopAllNodes()
-        activeWorkspaceID = GraphitePath.slugify(title, fallback: configuration.workspaceID)
+        activeWorkspaceID = GraphitePath.slugify(tab.title, fallback: configuration.workspaceID)
         activeHandoffID = nil
         presentationState = CanvasPresentationState(
-            title: title,
-            subtitle: nil,
-            badge: nil,
+            title: tab.title,
+            subtitle: tab.subtitle,
+            badge: tab.badge,
             cobrand: nil,
             productName: nil,
             hostName: nil,
             icon: nil,
             theme: nil,
-            accent: nil
+            accent: tab.accent
         )
-        let tab = CanvasSceneTab(
-            manifestPath: nil,
-            title: title,
-            subtitle: nil,
-            badge: nil,
-            accent: nil,
-            appliedAt: Date()
-        )
-        sceneTabs.removeAll { $0.id == tab.id }
-        sceneTabs.insert(tab, at: 0)
-        if sceneTabs.count > CanvasSceneTab.recentsCap {
-            sceneTabs = Array(sceneTabs.prefix(CanvasSceneTab.recentsCap))
-        }
+        sceneTabs = CanvasSceneTab.promoting(tab, in: sceneTabs)
         triggerSceneAnnounce(tab)
         schedulePersistStateIfConfigured()
     }
@@ -4081,6 +4390,13 @@ public struct HudCanvasSurface: View {
         }
         if let tag = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:)) {
             navigationTagFilter = tag
+        }
+        if configuration.navigationStyle == .verticalTabs,
+           let navigationSidebarHidden = layout.navigationSidebarHidden {
+            navigationRailCompact = false
+            navigationSidebarCoordinator = CanvasSidebarHoverCoordinator(
+                isPinned: !navigationSidebarHidden
+            )
         }
         if let navigationCollapsed = layout.navigationCollapsed {
             self.navigationCollapsed = navigationCollapsed
@@ -5378,6 +5694,9 @@ public struct HudCanvasSurface: View {
                 canvasTool: canvasTool.rawValue,
                 navigationFilter: navigationFilter.rawValue,
                 navigationTagFilter: navigationTagFilter?.rawValue,
+                navigationSidebarHidden: configuration.navigationStyle == .verticalTabs
+                    ? !navigationSidebarCoordinator.isPinned
+                    : nil,
                 navigationCollapsed: navigationCollapsed,
                 navigationWidth: Double(navigationWidth),
                 minimapCollapsed: minimapCollapsed,
@@ -5424,6 +5743,13 @@ public struct HudCanvasSurface: View {
         }
         navigationTagFilter = layout.navigationTagFilter.flatMap(CanvasTag.init(rawValue:))
 
+        if configuration.navigationStyle == .verticalTabs,
+           let navigationSidebarHidden = layout.navigationSidebarHidden {
+            navigationRailCompact = false
+            navigationSidebarCoordinator = CanvasSidebarHoverCoordinator(
+                isPinned: !navigationSidebarHidden
+            )
+        }
         navigationCollapsed = layout.navigationCollapsed
         if let restoredMinimapCollapsed = layout.minimapCollapsed {
             minimapCollapsed = restoredMinimapCollapsed

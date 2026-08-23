@@ -9,10 +9,20 @@
 // in `icon` mode labels/eyebrows fold away and only icons remain.
 
 import React from 'react';
-import { ChevronRight, PanelLeft, type HudsonIcon } from '../../icons';
+import { ChevronRight } from '../../icons';
 import { cx } from '../patterns/utils';
-import { useHudSideNav } from './context';
-import { LiveCountBadge, LiveDot, navRowBg, navSpine } from './shared';
+import { HudTooltip } from '../behaviors/HudTooltip';
+import { useHudSideNav, type HudSideNavSide } from './context';
+import {
+  HUD_SIDE_NAV_HEADER_HEIGHT,
+  LiveCountBadge,
+  LiveDot,
+  navRailSelectedBg,
+  navRowBg,
+  navSpine,
+  renderHudNavIcon,
+  type HudNavIcon,
+} from './shared';
 
 /** Minimal Slot — merges nav props and composed row content onto one child. */
 function Slot({
@@ -59,9 +69,23 @@ export interface HudSideNavRegionProps {
   className?: string;
 }
 
+export interface HudSideNavHeaderProps extends HudSideNavRegionProps {
+  style?: React.CSSProperties;
+}
+
 /** Sticky top region — branding, workspace switcher, search. */
-export function HudSideNavHeader({ children, className }: HudSideNavRegionProps) {
-  return <div className={cx('shrink-0 border-b border-border/70 p-3', className)}>{children}</div>;
+export function HudSideNavHeader({ children, className, style }: HudSideNavHeaderProps) {
+  return (
+    <div
+      className={cx('flex shrink-0 items-center border-b border-border/70 px-3', className)}
+      style={{
+        height: `var(--hud-side-nav-header-height, ${HUD_SIDE_NAV_HEADER_HEIGHT}px)`,
+        ...style,
+      }}
+    >
+      {children}
+    </div>
+  );
 }
 
 /** Scrollable middle region between header and footer. */
@@ -122,9 +146,11 @@ export function HudSideNavMenuItem({ children, className }: HudSideNavRegionProp
 export interface HudSideNavMenuButtonProps {
   children: React.ReactNode;
   /** Leading icon — the only affordance shown in icon-collapsed mode. */
-  icon?: HudsonIcon;
+  icon?: HudNavIcon;
   /** Marks the current destination/item. Neutral emphasis, never accent. */
   isActive?: boolean;
+  /** Use the stronger Hudson selection surface in both compact and expanded states. */
+  selectionWash?: boolean;
   /** Live/active work. The one accent usage: dot, accent count, accent spine. */
   live?: boolean;
   /** Convenience trailing count badge. Accent tone only when `live`. */
@@ -146,8 +172,9 @@ export interface HudSideNavMenuButtonProps {
 
 export function HudSideNavMenuButton({
   children,
-  icon: Icon,
+  icon,
   isActive,
+  selectionWash = false,
   live,
   count,
   badge,
@@ -160,17 +187,26 @@ export function HudSideNavMenuButton({
   className,
 }: HudSideNavMenuButtonProps) {
   const iconCollapsed = useIconCollapsed();
+  const { side, tooltipDelay } = useHudSideNav();
   const isDestination = size === 'destination';
   const label =
     asChild && React.isValidElement(children)
       ? (children.props as { children?: React.ReactNode }).children
       : children;
+  const compactIcon = renderHudNavIcon(
+    icon,
+    18,
+    isActive ? 'text-foreground' : 'text-muted-foreground',
+  );
+  const expandedIcon = renderHudNavIcon(
+    icon,
+    isDestination ? 16 : 14,
+    cx('shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground'),
+  );
 
   const content = iconCollapsed ? (
     <>
-      {Icon ? (
-        <Icon size={18} className={isActive ? 'text-foreground' : 'text-muted-foreground'} />
-      ) : null}
+      {compactIcon}
       {live && (
         <span
           aria-hidden="true"
@@ -181,12 +217,7 @@ export function HudSideNavMenuButton({
     </>
   ) : (
     <>
-      {Icon && (
-        <Icon
-          size={isDestination ? 16 : 14}
-          className={cx('shrink-0', isActive ? 'text-foreground' : 'text-muted-foreground')}
-        />
-      )}
+      {expandedIcon}
       <span
         className={cx(
           'min-w-0 flex-1 truncate',
@@ -213,37 +244,35 @@ export function HudSideNavMenuButton({
       ? cx(
           'h-9 justify-center rounded-md',
           isActive
-            ? 'bg-secondary/80 text-foreground'
+            ? navRailSelectedBg(selectionWash)
             : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
         )
-      : cx('border-l-2 py-2 pl-2.5 pr-2.5', navSpine(isActive, live), navRowBg(isActive)),
+      : cx(
+          'border-l-2 py-2 pl-2.5 pr-2.5',
+          navSpine(isActive, live),
+          navRowBg(isActive, selectionWash),
+        ),
     disabled && 'pointer-events-none opacity-50',
     className,
   );
 
-  if (asChild) {
-    return (
-      <Slot
-        className={classes}
-        content={content}
-        title={tooltip}
-        onClick={onClick}
-        aria-current={isActive ? 'page' : undefined}
-        aria-expanded={expanded}
-        aria-disabled={disabled || undefined}
-        data-active={isActive ? '' : undefined}
-      >
-        {children}
-      </Slot>
-    );
-  }
-
-  return (
+  const element = asChild ? (
+    <Slot
+      className={classes}
+      content={content}
+      onClick={onClick}
+      aria-current={isActive ? 'page' : undefined}
+      aria-expanded={expanded}
+      aria-disabled={disabled || undefined}
+      data-active={isActive ? '' : undefined}
+    >
+      {children}
+    </Slot>
+  ) : (
     <button
       type="button"
       disabled={disabled}
       onClick={onClick}
-      title={tooltip}
       aria-current={isActive ? 'page' : undefined}
       aria-expanded={expanded}
       data-active={isActive ? '' : undefined}
@@ -251,6 +280,19 @@ export function HudSideNavMenuButton({
     >
       {content}
     </button>
+  );
+
+  if (!iconCollapsed || !tooltip) return element;
+
+  return (
+    <HudTooltip
+      content={tooltip}
+      side={side === 'left' ? 'right' : 'left'}
+      delay={tooltipDelay}
+      disabled={disabled}
+    >
+      {element}
+    </HudTooltip>
   );
 }
 
@@ -298,28 +340,60 @@ export function HudSideNavRail({ className }: { className?: string }) {
   );
 }
 
-/** Button that toggles the sidebar. Place inside or outside the sidebar. */
+export interface HudSideNavTriggerProps {
+  className?: string;
+  label?: string;
+  children?: React.ReactNode;
+}
+
+/** Directional expand/collapse caret shared by primary and contextual rails. */
+export function HudSideNavToggleCaret({
+  expanded,
+  side,
+  compact = false,
+}: {
+  expanded: boolean;
+  side: HudSideNavSide;
+  compact?: boolean;
+}) {
+  const pointsRight = side === 'left' ? !expanded : expanded;
+  return (
+    <ChevronRight
+      size={compact ? 9 : 14}
+      strokeWidth={2}
+      aria-hidden="true"
+      className={cx(
+        'shrink-0 transition-transform duration-150 motion-reduce:transition-none',
+        !pointsRight && 'rotate-180',
+        compact && 'absolute -bottom-0.5 -right-0.5',
+      )}
+    />
+  );
+}
+
+/** Caret toggle that can stand alone or terminate a brand/title row. */
 export function HudSideNavTrigger({
   className,
   label = 'Toggle sidebar',
-}: {
-  className?: string;
-  label?: string;
-}) {
-  const { toggle } = useHudSideNav();
+  children,
+}: HudSideNavTriggerProps) {
+  const { toggle, state, side, collapsible } = useHudSideNav();
+  const expanded = state === 'expanded';
+  const compact = !expanded && collapsible === 'icon';
   return (
     <button
       type="button"
       aria-label={label}
-      title={label}
+      aria-expanded={expanded}
       onClick={toggle}
       className={cx(
-        'inline-flex items-center justify-center rounded-md p-1.5 text-muted-foreground transition-colors',
+        'relative inline-flex h-7 min-w-7 items-center justify-center gap-2 rounded-md px-1.5 text-muted-foreground transition-colors',
         'hover:bg-muted/40 hover:text-foreground focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40',
         className,
       )}
     >
-      <PanelLeft size={16} />
+      {children}
+      <HudSideNavToggleCaret expanded={expanded} side={side} compact={compact} />
     </button>
   );
 }

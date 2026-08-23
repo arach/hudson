@@ -17,7 +17,7 @@ struct HudsonApp: App {
     var body: some Scene {
         Window("Hudson", id: "main") {
             HudCanvasHostRootView(model: model)
-                .hudCanvasHostWindowBridge()
+                .hudCanvasHostWindowBridge(style: .fullHeightSidebar)
         }
         .defaultSize(width: 1180, height: 780)
         .commands {
@@ -36,7 +36,8 @@ struct HudsonApp: App {
             configuration: .hostApplication(
                 workspaceID: "hudson-canvas",
                 launchSetupURL: HudsonAppResources.practiceSetupURL,
-                workingDirectoryURL: HudsonAppResources.repositoryRoot
+                workingDirectoryURL: HudsonAppResources.repositoryRoot,
+                navigationStyle: .verticalTabs
             ),
             identity: HudCanvasHostIdentity(
                 appName: "Hudson",

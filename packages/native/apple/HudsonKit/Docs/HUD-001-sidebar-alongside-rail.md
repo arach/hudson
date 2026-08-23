@@ -26,16 +26,31 @@ Both shapes are legitimate. The rail is the right answer for app-icon-stripe chr
 
 Add a new component family in `HudsonShell` and supporting primitives in `HudsonUI`, leaving the existing rail untouched:
 
-1. **New public types in `HudsonShell`:** `HudNavigationSidebar<Selection: Hashable, RailHeader, LabelHeader, Footer>`, `HudSidebarItem<Selection>`, `HudSidebarEntry<Selection>` (`.item` or `.section`), `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum), `HudSidebarMotion` (token enum).
+1. **New public types in `HudsonShell`:**
+   `HudNavigationSidebar<Selection: Hashable, RailHeader, LabelHeader, Footer>`,
+   `HudNavigationSidebarVariant`, `HudSidebarVerticalTab<Selection>`,
+   `HudSidebarVerticalTabs<Selection>`, `HudSidebarItem<Selection>`,
+   `HudSidebarEntry<Selection>` (`.item` or `.section`),
+   `HudSidebarPresentation`, `HudSidebarPresentationState`,
+   `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum),
+   `HudSidebarMotion` (token enum), and `HudAppShellStatusBarSpan`. The
+   `.verticalTabs` variant adds a scrollable middle tab region without
+   replacing the standard destination-only composition.
 2. **New public types in `HudsonShell` for split layouts:** `HSplitView<Sidebar, Secondary, Detail>`, `HudSecondaryNav<Selection: Hashable, Item, Header, Footer>`. These are independent of the sidebar — apps that want a split layout with the existing rail in the leading slot can use `HSplitView` too.
 3. **New public types in `HudsonUI`:** `HudSurface` (modifier + view), `HudSelectionUnderlay`, `HudResizableDivider`. `HudResizableDivider` is genuinely new — it does not replace the existing private `HudShellVRule` (which stays where it is, used by `HudAppShell`).
-4. **Implementer chooses.** `HudAppShell`'s leading slot accepts any `View`. `HudNavigationRail`, `HudNavigationSidebar`, or anything custom all drop into the same slot. No internal change to `HudAppShell` is required for this ADR.
+4. **Implementer chooses.** `HudAppShell`'s leading slot accepts any `View`. `HudNavigationRail`, `HudNavigationSidebar`, or anything custom all drop into the same slot. `statusBarSpan` defaults to `.fullWidth`; `.besideLeading` is the explicit full-height composition that lets the leading column own the top-left and bottom-left window corners while drawers, content, trailing chrome, and status remain in the sibling column.
 5. **Theming via existing patterns.** New components read brand from `@Environment(\.hudsonAppManifest)` (`HudsonUI/Manifest/HudAppManifest.swift:61-65`). Motion consumes `HudMotion.chromeSpring` (`HudsonUI/Tokens/HudMotion.swift:6`). Tokens stay per-domain — `HudSidebarLayout` is a new enum in the per-component-family pattern that `HudSpacing`/`HudLayout` already use. No unified `HudStyle` umbrella.
 6. **Solid surface is default.** `HudSurface(style: .solid)` is the default; `.vibrant` is opt-in. Existing `HudPalette.chrome` is documented as solid-by-design (`HudPalette.swift:13-16`) — that comment stays the source of truth.
 7. **Animations gated on reduce-motion.** All new components follow the existing pattern from `HudNavigationRail.swift:148-164` and `HudInspector.swift`: read `@Environment(\.accessibilityReduceMotion)` and either skip `withAnimation` or pass `nil` to `.animation(_:value:)` when reduced.
 8. **Drag-resizable is opt-in per column.** `HSplitView` declares each column as `.locked`, `.snap(min:max:)`, or `.draggable(min:max:)`. The sidebar column is `.locked` to its intrinsic width (sized by `HudSidebarLayout.intrinsicWidth(progress:)`).
 9. **Instrumentation via `HudInstrumentation.ui`.** New event/span names: `Sidebar.select`, `Sidebar.toggle`, `SecondaryNav.select`, `SplitView.collapse`, `SplitView.dragResize`, `Surface.measure`. Same `HudInstrumentation.ui.event(...)` / `HudInstrumentation.ui.span(...)` shape as the existing rail (`HudNavigationRail.swift:80-83`).
 10. **`Sendable` + `public init` conventions match `HudRailItem`.** `HudSidebarItem<Selection>` is `Identifiable, Equatable, Sendable` when `Selection: Sendable`; `HudSidebarEntry<Selection>` is `Identifiable`. `public init` everywhere.
+11. **Complete dismissal is distinct from compact mode.**
+    `HudSidebarPresentationState` models `.hidden`, pointer-owned `.preview`,
+    and click-owned `.pinned` states while leaving hover-grace timing and
+    persistence to the host. The native Canvas host uses this model with its
+    titlebar accessory: dragging below the sidebar minimum dismisses the whole
+    leading column, hover previews it in layout, and click pins it again.
 
 ## Build order
 

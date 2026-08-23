@@ -56,6 +56,8 @@ export interface TestAppOptions {
   name?: string;
   /** Add an app-level Chat slot (console AI routing). */
   withChatSlot?: boolean;
+  /** Add a contextual left-panel slot. */
+  withLeftPanel?: boolean;
 }
 
 export interface TestApp {
@@ -63,7 +65,12 @@ export interface TestApp {
   spy: ProviderSpy;
 }
 
-export function makeTestApp({ id, name, withChatSlot = false }: TestAppOptions): TestApp {
+export function makeTestApp({
+  id,
+  name,
+  withChatSlot = false,
+  withLeftPanel = false,
+}: TestAppOptions): TestApp {
   const spy = createProviderSpy(id);
 
   function Provider({
@@ -94,13 +101,25 @@ export function makeTestApp({ id, name, withChatSlot = false }: TestAppOptions):
       }
     : undefined;
 
+  const LeftPanel = withLeftPanel
+    ? function LeftPanel() {
+        return <div data-testid={`left-panel-${id}`}>left-panel:{id}</div>;
+      }
+    : undefined;
+
   const app: HudsonApp = {
     id,
     name: name ?? `Test ${id}`,
     mode: 'canvas',
+    ...(LeftPanel ? {
+      leftPanel: {
+        title: `${name ?? `Test ${id}`} context`,
+      },
+    } : {}),
     Provider,
     slots: {
       Content,
+      ...(LeftPanel ? { LeftPanel } : {}),
       ...(Chat ? { Chat } : {}),
     },
     hooks: {
@@ -133,7 +152,7 @@ export interface TestWorkspaceFixture {
 export function makeTestWorkspace(
   overrides: Partial<Omit<HudsonWorkspace, 'apps'>> = {},
 ): TestWorkspaceFixture {
-  const alpha = makeTestApp({ id: 'alpha' });
+  const alpha = makeTestApp({ id: 'alpha', withLeftPanel: true });
   const beta = makeTestApp({ id: 'beta' });
   const gamma = makeTestApp({ id: 'gamma', withChatSlot: true });
 
