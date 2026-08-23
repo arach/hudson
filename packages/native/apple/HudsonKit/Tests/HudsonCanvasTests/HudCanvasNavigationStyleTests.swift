@@ -17,6 +17,12 @@ struct HudCanvasNavigationStyleTests {
         #expect(configuration.navigationStyle == .verticalTabs)
     }
 
+    @Test("Full-height Canvas hosts use an explicit native window treatment")
+    func fullHeightWindowStyle() {
+        #expect(HudCanvasHostWindowStyle.allCases == [.standard, .fullHeightSidebar])
+        _ = HudCanvasHostWindowBridge(style: .fullHeightSidebar)
+    }
+
     @Test("Selecting a recent scene promotes it without duplicating it")
     func scenePromotion() {
         let alpha = tab(id: "/tmp/alpha.json", title: "Alpha", timestamp: 1)

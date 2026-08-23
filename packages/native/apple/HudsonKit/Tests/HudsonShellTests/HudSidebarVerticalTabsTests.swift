@@ -51,6 +51,20 @@ private struct VerticalTabsSidebarHarness: View {
     }
 }
 
+private struct FullHeightLeadingShellHarness: View {
+    var body: some View {
+        HudAppShell(statusBarSpan: .besideLeading) {
+            Text("Sidebar")
+        } trailing: {
+            Text("Inspector")
+        } content: {
+            Text("Content")
+        } statusBar: {
+            Text("Status")
+        }
+    }
+}
+
 @Suite("HudNavigationSidebar vertical tabs")
 struct HudSidebarVerticalTabsTests {
     @Test("Vertical-tabs variant composes with typed targets, tabs, and resizing")
@@ -80,5 +94,11 @@ struct HudSidebarVerticalTabsTests {
     @Test("Sidebar variants remain additive")
     func variantsRemainAdditive() {
         #expect(HudNavigationSidebarVariant.allCases == [.standard, .verticalTabs])
+    }
+
+    @Test("Full-height leading composition remains an explicit shell option")
+    func fullHeightLeadingCompositionBuilds() {
+        #expect(HudAppShellStatusBarSpan.allCases == [.fullWidth, .besideLeading])
+        _ = FullHeightLeadingShellHarness()
     }
 }

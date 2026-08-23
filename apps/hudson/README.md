@@ -54,7 +54,8 @@ The native host includes:
 - Standard macOS menus (`Workspace`, `Canvas`, `Appearance`)
 - Settings window (`Cmd+,`) for Canvas
 - Next-generation leading navigation with the existing Canvas destinations,
-  a resizable compact rail, and scrollable vertical workspace tabs
+  a resizable compact rail, scrollable vertical workspace tabs, and a true
+  full-window edge beside the titlebar, Canvas, and status chrome
 - About panel with control-path copy/reveal helpers
 
 Menu actions post into `HudCanvasSurface` through `CanvasHostCommandCenter`.

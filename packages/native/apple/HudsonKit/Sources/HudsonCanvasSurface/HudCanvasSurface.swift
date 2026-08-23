@@ -1081,22 +1081,24 @@ public struct HudCanvasSurface: View {
         .background(
             HudWindowChrome(
                 colorScheme: .dark,
-                titleVisibility: .visible,
-                titlebarAppearsTransparent: false,
-                usesFullSizeContentView: false,
+                titleVisibility: configuration.navigationStyle == .verticalTabs ? .hidden : .visible,
+                titlebarAppearsTransparent: configuration.navigationStyle == .verticalTabs,
+                usesFullSizeContentView: configuration.navigationStyle == .verticalTabs,
                 isMovableByWindowBackground: false,
-                hidesToolbar: false
+                hidesToolbar: configuration.navigationStyle == .verticalTabs
             )
         )
         #if os(macOS)
-        .toolbarBackground(.visible, for: .windowToolbar)
+        .toolbarBackground(configuration.navigationStyle == .verticalTabs ? .hidden : .visible, for: .windowToolbar)
         .toolbarBackground(Color.black, for: .windowToolbar)
         .toolbarColorScheme(.dark, for: .windowToolbar)
         #endif
     }
 
     private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
-        HudAppShell {
+        HudAppShell(
+            statusBarSpan: configuration.navigationStyle == .verticalTabs ? .besideLeading : .fullWidth
+        ) {
             AnyView(navigationShellSlot)
         } trailing: {
             AnyView(inspectorShellSlot)

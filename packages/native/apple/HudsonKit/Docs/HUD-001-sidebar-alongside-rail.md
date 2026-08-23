@@ -31,13 +31,13 @@ Add a new component family in `HudsonShell` and supporting primitives in `Hudson
    `HudNavigationSidebarVariant`, `HudSidebarVerticalTab<Selection>`,
    `HudSidebarVerticalTabs<Selection>`, `HudSidebarItem<Selection>`,
    `HudSidebarEntry<Selection>` (`.item` or `.section`),
-   `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum), and
-   `HudSidebarMotion` (token enum). The `.verticalTabs` variant adds a
-   scrollable middle tab region without replacing the standard
-   destination-only composition.
+   `HudSidebarTransition` (env value), `HudSidebarLayout` (token enum),
+   `HudSidebarMotion` (token enum), and `HudAppShellStatusBarSpan`. The
+   `.verticalTabs` variant adds a scrollable middle tab region without
+   replacing the standard destination-only composition.
 2. **New public types in `HudsonShell` for split layouts:** `HSplitView<Sidebar, Secondary, Detail>`, `HudSecondaryNav<Selection: Hashable, Item, Header, Footer>`. These are independent of the sidebar — apps that want a split layout with the existing rail in the leading slot can use `HSplitView` too.
 3. **New public types in `HudsonUI`:** `HudSurface` (modifier + view), `HudSelectionUnderlay`, `HudResizableDivider`. `HudResizableDivider` is genuinely new — it does not replace the existing private `HudShellVRule` (which stays where it is, used by `HudAppShell`).
-4. **Implementer chooses.** `HudAppShell`'s leading slot accepts any `View`. `HudNavigationRail`, `HudNavigationSidebar`, or anything custom all drop into the same slot. No internal change to `HudAppShell` is required for this ADR.
+4. **Implementer chooses.** `HudAppShell`'s leading slot accepts any `View`. `HudNavigationRail`, `HudNavigationSidebar`, or anything custom all drop into the same slot. `statusBarSpan` defaults to `.fullWidth`; `.besideLeading` is the explicit full-height composition that lets the leading column own the top-left and bottom-left window corners while drawers, content, trailing chrome, and status remain in the sibling column.
 5. **Theming via existing patterns.** New components read brand from `@Environment(\.hudsonAppManifest)` (`HudsonUI/Manifest/HudAppManifest.swift:61-65`). Motion consumes `HudMotion.chromeSpring` (`HudsonUI/Tokens/HudMotion.swift:6`). Tokens stay per-domain — `HudSidebarLayout` is a new enum in the per-component-family pattern that `HudSpacing`/`HudLayout` already use. No unified `HudStyle` umbrella.
 6. **Solid surface is default.** `HudSurface(style: .solid)` is the default; `.vibrant` is opt-in. Existing `HudPalette.chrome` is documented as solid-by-design (`HudPalette.swift:13-16`) — that comment stays the source of truth.
 7. **Animations gated on reduce-motion.** All new components follow the existing pattern from `HudNavigationRail.swift:148-164` and `HudInspector.swift`: read `@Environment(\.accessibilityReduceMotion)` and either skip `withAnimation` or pass `nil` to `.animation(_:value:)` when reduced.
