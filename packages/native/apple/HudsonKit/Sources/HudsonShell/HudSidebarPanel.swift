@@ -2,6 +2,9 @@ import SwiftUI
 import HudsonUI
 
 /// Resizable sidebar/inspector column with Hudson sidebar surface treatment.
+///
+/// `extendsBackgroundIntoTopSafeArea` extends only the surface and inner edge
+/// rule beneath native titlebar chrome; panel content keeps its safe-area inset.
 public struct HudSidebarPanel<Content: View>: View {
     public enum Edge: Sendable {
         case leading
@@ -12,6 +15,7 @@ public struct HudSidebarPanel<Content: View>: View {
     private let edge: Edge
     private let widthRange: ClosedRange<CGFloat>
     private let resizeHitWidth: CGFloat
+    private let extendsBackgroundIntoTopSafeArea: Bool
     private let content: Content
 
     @Environment(\.hudsonSidebarStyle) private var style
@@ -21,12 +25,14 @@ public struct HudSidebarPanel<Content: View>: View {
         width: Binding<CGFloat>,
         edge: Edge,
         widthRange: ClosedRange<CGFloat>,
+        extendsBackgroundIntoTopSafeArea: Bool = false,
         resizeHitWidth: CGFloat = 10,
         @ViewBuilder content: () -> Content
     ) {
         self._width = width
         self.edge = edge
         self.widthRange = widthRange
+        self.extendsBackgroundIntoTopSafeArea = extendsBackgroundIntoTopSafeArea
         self.resizeHitWidth = resizeHitWidth
         self.content = content()
     }
@@ -49,13 +55,35 @@ public struct HudSidebarPanel<Content: View>: View {
         content
             .frame(width: width, alignment: .topLeading)
             .frame(maxHeight: .infinity)
-            .background(HudSidebarSurfaceBackground(style: style.surface))
+            .background {
+                panelBackground
+            }
             .overlay(alignment: edgeRuleAlignment) {
-                HudSidebarEdgeRule(style: style.surface)
+                panelEdgeRule
             }
             .overlay(alignment: edgeRuleAlignment) {
                 innerResizeHandle
             }
+    }
+
+    @ViewBuilder
+    private var panelBackground: some View {
+        if extendsBackgroundIntoTopSafeArea {
+            HudSidebarSurfaceBackground(style: style.surface)
+                .ignoresSafeArea(.container, edges: .top)
+        } else {
+            HudSidebarSurfaceBackground(style: style.surface)
+        }
+    }
+
+    @ViewBuilder
+    private var panelEdgeRule: some View {
+        if extendsBackgroundIntoTopSafeArea {
+            HudSidebarEdgeRule(style: style.surface)
+                .ignoresSafeArea(.container, edges: .top)
+        } else {
+            HudSidebarEdgeRule(style: style.surface)
+        }
     }
 
     private var outerResizeHandle: some View {

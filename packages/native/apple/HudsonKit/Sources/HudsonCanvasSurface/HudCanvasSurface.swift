@@ -1815,7 +1815,8 @@ public struct HudCanvasSurface: View {
             HudSidebarPanel(
                 width: $inspectorWidth,
                 edge: .trailing,
-                widthRange: 250...440
+                widthRange: 250...440,
+                extendsBackgroundIntoTopSafeArea: configuration.navigationStyle == .verticalTabs
             ) {
                 CanvasInspectorPanel(
                     selectedNodes: selectedNodes,

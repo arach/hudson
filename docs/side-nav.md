@@ -330,9 +330,11 @@ transient and is never persisted.
 For symmetric desktop chrome, `HudAppShell(statusBarSpan: .betweenSidebars)`
 places both leading navigation and the trailing inspector outside the center
 column. Each rail owns its complete window edge; top/bottom drawers, Canvas,
-and status chrome stay between them. Native Canvas `.verticalTabs` hosts use
-this composition, while `.fullWidth` and `.besideLeading` remain additive
-options for existing consumers.
+and footer status chrome stay between them instead of continuing beneath either
+rail. Native Canvas `.verticalTabs` hosts use this composition. Their trailing
+panel extends only its surface and inner edge rule beneath the titlebar, keeping
+inspector content inside the safe area. `.fullWidth` and `.besideLeading`
+remain additive options for existing consumers.
 
 ## Props
 
