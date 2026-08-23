@@ -327,6 +327,13 @@ reduced-motion mode removes the transition. The pinned/hidden choice is stored
 in `HudCanvasSurfaceLayoutSnapshot.navigationSidebarHidden`; hover preview is
 transient and is never persisted.
 
+For symmetric desktop chrome, `HudAppShell(statusBarSpan: .betweenSidebars)`
+places both leading navigation and the trailing inspector outside the center
+column. Each rail owns its complete window edge; top/bottom drawers, Canvas,
+and status chrome stay between them. Native Canvas `.verticalTabs` hosts use
+this composition, while `.fullWidth` and `.besideLeading` remain additive
+options for existing consumers.
+
 ## Props
 
 | Prop                                                                       | Type                     | Notes                                             |

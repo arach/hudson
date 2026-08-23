@@ -1,14 +1,15 @@
 import SwiftUI
 import HudsonUI
 
-/// Controls whether the status bar spans beneath the leading column.
+/// Controls which side columns the status bar spans beneath.
 ///
 /// `.fullWidth` preserves the original shell anatomy. `.besideLeading` gives
-/// the leading column the complete window edge while top/bottom drawers,
-/// content, trailing chrome, and the status bar form the sibling column.
+/// only the leading column the complete window edge. `.betweenSidebars` gives
+/// both side columns the complete edge and keeps the status bar in the center.
 public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendable {
     case fullWidth
     case besideLeading
+    case betweenSidebars
 
     public var id: String { rawValue }
 }
@@ -48,6 +49,20 @@ public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendab
 /// |      +---------------------------+
 /// |      | statusBar                  |
 /// +------+---------------------------+
+/// ```
+///
+/// With `statusBarSpan: .betweenSidebars`, both side columns own the full
+/// height while drawers, content, and status form the center column:
+/// ```
+/// +------+----------------------+----------+
+/// |      | topDrawer            |          |
+/// |      +----------------------|          |
+/// | lead | content              | trailing |
+/// |      +----------------------|          |
+/// |      | bottomDrawer         |          |
+/// |      +----------------------|          |
+/// |      | statusBar            |          |
+/// +------+----------------------+----------+
 /// ```
 ///
 /// In compact size class the trailing slot is hidden by the shell; the leading
@@ -127,6 +142,29 @@ public struct HudAppShell<
                     statusBarRegion
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
+
+        case .betweenSidebars:
+            HStack(spacing: 0) {
+                leading
+                    .frame(maxHeight: .infinity, alignment: .top)
+                VStack(spacing: 0) {
+                    topDrawer
+                    content
+                        .frame(
+                            maxWidth: .infinity,
+                            maxHeight: .infinity,
+                            alignment: .topLeading
+                        )
+                    bottomDrawer
+                    statusBarRegion
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                if !isCompact {
+                    trailing
+                        .frame(maxHeight: .infinity, alignment: .top)
+                }
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
         }

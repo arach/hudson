@@ -1202,7 +1202,7 @@ public struct HudCanvasSurface: View {
 
     private var shellView: HudAppShell<AnyView, AnyView, EmptyView, EmptyView, AnyView, AnyView> {
         HudAppShell(
-            statusBarSpan: configuration.navigationStyle == .verticalTabs ? .besideLeading : .fullWidth
+            statusBarSpan: configuration.navigationStyle == .verticalTabs ? .betweenSidebars : .fullWidth
         ) {
             AnyView(navigationShellSlot)
         } trailing: {

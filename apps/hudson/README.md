@@ -57,7 +57,8 @@ The native host includes:
   resizable scrollable workspace tabs, and a true full-window edge beside the
   titlebar, Canvas, and status chrome. Dragging below the minimum dismisses the
   column completely; hovering the titlebar control previews it, and clicking
-  pins it back into the layout.
+  pins it back into the layout. The trailing inspector owns the matching
+  full-height right edge, leaving Canvas and status chrome between both rails.
 - About panel with control-path copy/reveal helpers
 
 Menu actions post into `HudCanvasSurface` through `CanvasHostCommandCenter`.
