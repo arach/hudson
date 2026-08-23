@@ -17,6 +17,29 @@ struct HudCanvasNavigationStyleTests {
         #expect(configuration.navigationStyle == .verticalTabs)
     }
 
+    @Test("Pointer transfer clears reveal-control and sidebar ownership independently")
+    func pointerTransferClearsBothHoverOwners() {
+        var coordinator = CanvasSidebarHoverCoordinator(isPinned: false)
+
+        coordinator.pointerEntered(.revealControl)
+        let revealControlExit = coordinator.beginPointerExit(.revealControl)
+        coordinator.pointerEntered(.sidebar)
+
+        let revealControlCleared = coordinator.completePointerExit(revealControlExit)
+        #expect(revealControlCleared)
+        #expect(coordinator.presentation == .preview)
+
+        let staleSidebarExit = coordinator.beginPointerExit(.sidebar)
+        coordinator.pointerEntered(.sidebar)
+        let staleSidebarCleared = coordinator.completePointerExit(staleSidebarExit)
+        #expect(!staleSidebarCleared)
+
+        let sidebarExit = coordinator.beginPointerExit(.sidebar)
+        let sidebarCleared = coordinator.completePointerExit(sidebarExit)
+        #expect(sidebarCleared)
+        #expect(coordinator.presentation == .hidden)
+    }
+
     @Test("Full-height Canvas hosts use an explicit native window treatment")
     func fullHeightWindowStyle() {
         #expect(HudCanvasHostWindowStyle.allCases == [.standard, .fullHeightSidebar])
