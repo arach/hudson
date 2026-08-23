@@ -202,13 +202,13 @@ next-generation anchored-L anatomy rather than a single `AppShell` left panel:
 - the bottom bar spans all columns.
 
 The repository includes a live example at [`/demo/side-nav`](/demo/side-nav).
-The production `/app` route uses the same composition through
-`<WorkspaceShell sideNavMode="anchored" />`. In that mode the shell derives
-primary destinations from workspace apps, keeps Home as the launcher entry,
-places the focused app's `LeftPanel` in the contextual rail, embeds the existing
+`WorkspaceShell` exposes the same composition as an optional navigation style
+through `<WorkspaceShell sideNavMode="anchored" />`. The style derives primary
+destinations from workspace apps, keeps Home as the launcher entry, places the
+focused app's `LeftPanel` in the contextual rail, embeds the existing
 navigation/status chrome in the anchored rows, and leaves right-side inspectors
-unchanged. `sideNavMode` defaults to `legacy`, so other consumers do not change
-until they opt in.
+unchanged. `sideNavMode` defaults to `legacy`, so the production shell and
+downstream consumers retain their existing navigation until they opt in.
 
 The layout reads and resizes the primary width through `HudSideNavProvider`.
 `HudSideRail` owns its independent expanded/compact width unless the host

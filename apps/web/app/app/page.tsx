@@ -10,7 +10,6 @@ export default function AppPage() {
       workspaces={allWorkspaces}
       defaultWorkspaceId="hudson-os"
       bootMode="none"
-      sideNavMode="anchored"
       environment={hudsonShellEnvironment}
     />
   );
