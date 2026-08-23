@@ -594,11 +594,11 @@ describe('HudSideNavLayout + HudSideRail', () => {
     expect(onCollapsedChange).not.toHaveBeenCalled();
     expect(onResizingChange.mock.calls.map(([value]) => value)).toEqual([true, false]);
 
-    window.addEventListener('keydown', leakedEscape);
     fireEvent.pointerDown(resize, { button: 0, clientX: 260, pointerId: 2 });
+    window.addEventListener('keydown', leakedEscape, { capture: true });
     fireEvent.keyDown(window, { key: 'Escape' });
     expect(leakedEscape).not.toHaveBeenCalled();
-    window.removeEventListener('keydown', leakedEscape);
+    window.removeEventListener('keydown', leakedEscape, { capture: true });
   });
 
   it('mirrors the anchored geometry for a right-side primary rail', () => {

@@ -215,7 +215,7 @@ export function HudRailResizeHandle({
       function handleKeyDown(keyEvent: KeyboardEvent) {
         if (keyEvent.key !== 'Escape') return;
         keyEvent.preventDefault();
-        keyEvent.stopPropagation();
+        keyEvent.stopImmediatePropagation();
         cancel();
       }
 
