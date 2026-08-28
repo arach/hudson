@@ -17,11 +17,20 @@ public final class HudSpeechPlayer: NSObject {
         super.init()
     }
 
-    public func play(data: Data, completion: (() -> Void)? = nil) throws {
+    public func play(
+        data: Data,
+        format: HudTTSAudioFormat? = nil,
+        completion: (() -> Void)? = nil
+    ) throws {
         stop()
         configureAudioSession()
 
-        let player = try AVAudioPlayer(data: data)
+        let player: AVAudioPlayer
+        if let hint = Self.fileTypeHint(for: format) {
+            player = try AVAudioPlayer(data: data, fileTypeHint: hint)
+        } else {
+            player = try AVAudioPlayer(data: data)
+        }
         try start(player: player, completion: completion)
     }
 
@@ -31,6 +40,15 @@ public final class HudSpeechPlayer: NSObject {
 
         let player = try AVAudioPlayer(contentsOf: fileURL)
         try start(player: player, completion: completion)
+    }
+
+    private static func fileTypeHint(for format: HudTTSAudioFormat?) -> String? {
+        switch format {
+        case .mp3: AVFileType.mp3.rawValue
+        case .wav: AVFileType.wav.rawValue
+        case .caf: AVFileType.caf.rawValue
+        case nil: nil
+        }
     }
 
     private func start(player: AVAudioPlayer, completion: (() -> Void)?) throws {

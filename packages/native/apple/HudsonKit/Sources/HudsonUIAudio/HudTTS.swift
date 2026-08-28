@@ -157,7 +157,7 @@ public final class HudTTS {
                 providerID: providerID
             )
             activePlayback = .cloud
-            try speechPlayer.play(data: result.audioData) { [weak self] in
+            try speechPlayer.play(data: result.audioData, format: result.format) { [weak self] in
                 Task { @MainActor in
                     guard let self else { return }
                     self.activePlayback = .none

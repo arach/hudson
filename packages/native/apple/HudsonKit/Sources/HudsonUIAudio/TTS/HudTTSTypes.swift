@@ -19,6 +19,7 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
     public static let elevenlabs = HudTTSProviderID(rawValue: "elevenlabs")
     public static let groq = HudTTSProviderID(rawValue: "groq")
     public static let gemini = HudTTSProviderID(rawValue: "gemini")
+    public static let edgeReadAloud = HudTTSProviderID(rawValue: "edge-read-aloud")
 }
 
 public enum HudTTSAudioFormat: String, Sendable {
@@ -51,22 +52,40 @@ public struct HudTTSRequest: Equatable, Sendable {
     }
 }
 
+public struct HudTTSWordTiming: Equatable, Sendable {
+    public var word: String
+    /// Seconds from the start of the returned audio.
+    public var start: TimeInterval
+    public var end: TimeInterval
+
+    public init(word: String, start: TimeInterval, end: TimeInterval) {
+        self.word = word
+        self.start = start
+        self.end = end
+    }
+}
+
 public struct HudTTSResult: Equatable, Sendable {
     public var audioData: Data
     public var format: HudTTSAudioFormat
     public var providerID: HudTTSProviderID
     public var voice: String
+    /// Word-level timings, when the provider produced them. Nil is normal:
+    /// most providers return none, and callers must not require it.
+    public var wordTimings: [HudTTSWordTiming]?
 
     public init(
         audioData: Data,
         format: HudTTSAudioFormat,
         providerID: HudTTSProviderID,
-        voice: String
+        voice: String,
+        wordTimings: [HudTTSWordTiming]? = nil
     ) {
         self.audioData = audioData
         self.format = format
         self.providerID = providerID
         self.voice = voice
+        self.wordTimings = wordTimings
     }
 }
 
