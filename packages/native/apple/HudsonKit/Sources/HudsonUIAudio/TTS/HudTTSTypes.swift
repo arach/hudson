@@ -28,6 +28,27 @@ public enum HudTTSAudioFormat: String, Sendable {
     case caf
 }
 
+/// Provider-neutral expressive controls. Adapters use the values they support
+/// and ignore the rest without changing the spoken text.
+public struct HudTTSVoiceSettings: Equatable, Sendable {
+    public var stability: Double?
+    public var similarityBoost: Double?
+    public var style: Double?
+    public var useSpeakerBoost: Bool?
+
+    public init(
+        stability: Double? = nil,
+        similarityBoost: Double? = nil,
+        style: Double? = nil,
+        useSpeakerBoost: Bool? = nil
+    ) {
+        self.stability = stability
+        self.similarityBoost = similarityBoost
+        self.style = style
+        self.useSpeakerBoost = useSpeakerBoost
+    }
+}
+
 public struct HudTTSRequest: Equatable, Sendable {
     public var text: String
     public var voice: String?
@@ -36,19 +57,22 @@ public struct HudTTSRequest: Equatable, Sendable {
     public var model: String?
     /// Optional natural-language delivery guidance for adapters that support it.
     public var instructions: String?
+    public var voiceSettings: HudTTSVoiceSettings?
 
     public init(
         text: String,
         voice: String? = nil,
         rate: Double = 1.0,
         model: String? = nil,
-        instructions: String? = nil
+        instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil
     ) {
         self.text = text
         self.voice = voice
         self.rate = rate
         self.model = model
         self.instructions = instructions
+        self.voiceSettings = voiceSettings
     }
 }
 

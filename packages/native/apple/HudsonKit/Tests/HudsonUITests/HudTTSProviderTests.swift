@@ -204,6 +204,51 @@ struct HudTTSProviderTests {
         #expect(elevenLabsJSON["model_id"] as? String == "eleven_flash_v2_5")
     }
 
+    @Test("ElevenLabs can request assembler-ready 16 kHz WAV")
+    func elevenLabsWAVOutput() async throws {
+        let session = HudTTSMockURLProtocol.session(body: Data([0x52, 0x49, 0x46, 0x46]))
+        let elevenLabs = ElevenLabsHudTTSProvider(outputFormat: .wav_16000)
+        let result = try await elevenLabs.synthesize(
+            HudTTSRequest(text: "Hello", voice: "voice-id"),
+            context: context(session: session)
+        )
+
+        let request = try #require(HudTTSMockURLProtocol.lastRequest)
+        let url = try #require(request.url)
+        let components = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
+        #expect(components.queryItems?.contains(URLQueryItem(name: "output_format", value: "wav_16000")) == true)
+        #expect(request.value(forHTTPHeaderField: "Accept") == "audio/wav")
+        #expect(result.format == .wav)
+    }
+
+    @Test("ElevenLabs honors expressive voice settings and exact requested pace")
+    func elevenLabsVoiceSettings() async throws {
+        let session = HudTTSMockURLProtocol.session(body: Data([0x01]))
+        let elevenLabs = ElevenLabsHudTTSProvider()
+        _ = try await elevenLabs.synthesize(
+            HudTTSRequest(
+                text: "Move this explanation along.",
+                rate: 1.12,
+                voiceSettings: HudTTSVoiceSettings(
+                    stability: 0.42,
+                    similarityBoost: 0.81,
+                    style: 0.24,
+                    useSpeakerBoost: false
+                )
+            ),
+            context: context(session: session)
+        )
+
+        let body = try #require(HudTTSMockURLProtocol.lastBody)
+        let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let settings = try #require(json["voice_settings"] as? [String: Any])
+        #expect(settings["stability"] as? Double == 0.42)
+        #expect(settings["similarity_boost"] as? Double == 0.81)
+        #expect(settings["style"] as? Double == 0.24)
+        #expect(settings["use_speaker_boost"] as? Bool == false)
+        #expect(settings["speed"] as? Double == 1.12)
+    }
+
     @Test("Groq uses current Orpheus constraints and request fields")
     func groqRequestContract() async throws {
         let session = HudTTSMockURLProtocol.session(body: Data([0x03, 0x04]))
