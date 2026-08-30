@@ -14,7 +14,8 @@ public enum HudTTSProviders {
             OpenAI(),
             ElevenLabs(),
             Groq(),
-            Gemini()
+            Gemini(),
+            EdgeReadAloud()
         ]
     }
 }
@@ -24,4 +25,5 @@ extension HudTTSProviders {
     public typealias ElevenLabs = ElevenLabsHudTTSProvider
     public typealias Groq = GroqHudTTSProvider
     public typealias Gemini = GeminiHudTTSProvider
+    public typealias EdgeReadAloud = EdgeReadAloudHudTTSProvider
 }

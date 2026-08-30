@@ -84,6 +84,7 @@ public final class HudTTS {
         rate: Double = 1.0,
         model: String? = nil,
         instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws -> HudTTSResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,7 +113,8 @@ public final class HudTTS {
                     voice: voice,
                     rate: rate,
                     model: model,
-                    instructions: instructions
+                    instructions: instructions,
+                    voiceSettings: voiceSettings
                 ),
                 providerID: providerID
             )
@@ -126,6 +128,7 @@ public final class HudTTS {
         rate: Double = 1.0,
         model: String? = nil,
         instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -152,12 +155,13 @@ public final class HudTTS {
                     voice: voice,
                     rate: rate,
                     model: model,
-                    instructions: instructions
+                    instructions: instructions,
+                    voiceSettings: voiceSettings
                 ),
                 providerID: providerID
             )
             activePlayback = .cloud
-            try speechPlayer.play(data: result.audioData) { [weak self] in
+            try speechPlayer.play(data: result.audioData, format: result.format) { [weak self] in
                 Task { @MainActor in
                     guard let self else { return }
                     self.activePlayback = .none

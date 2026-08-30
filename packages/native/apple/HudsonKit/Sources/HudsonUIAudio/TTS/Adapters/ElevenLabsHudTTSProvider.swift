@@ -1,17 +1,39 @@
 import Foundation
 
 public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
+    public enum OutputFormat: String, Sendable {
+        case mp3_44100_128
+        case wav_16000
+
+        var hudFormat: HudTTSAudioFormat {
+            switch self {
+            case .mp3_44100_128: .mp3
+            case .wav_16000: .wav
+            }
+        }
+
+        var acceptHeader: String {
+            switch self {
+            case .mp3_44100_128: "audio/mpeg"
+            case .wav_16000: "audio/wav"
+            }
+        }
+    }
+
     public var providerID: HudTTSProviderID { .elevenlabs }
     public var displayName: String { "ElevenLabs" }
     public var credentialKey: String? { "elevenlabs_key" }
     public var defaultVoice: String { "9BWtsMINqrJLrRacOk9x" }
 
-    private static let readingSpeed = 0.92
-
     public var modelID: String
+    public var outputFormat: OutputFormat
 
-    public init(modelID: String = "eleven_multilingual_v2") {
+    public init(
+        modelID: String = "eleven_multilingual_v2",
+        outputFormat: OutputFormat = .mp3_44100_128
+    ) {
         self.modelID = modelID
+        self.outputFormat = outputFormat
     }
 
     public func isAvailable(context: HudTTSAdapterContext) async -> Bool {
@@ -25,7 +47,13 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
         let apiKey = try await context.apiKey(for: self)
         let voiceID = resolvedVoice(request.voice)
 
-        guard let endpoint = URL(string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)") else {
+        guard var components = URLComponents(
+            string: "https://api.elevenlabs.io/v1/text-to-speech/\(voiceID)"
+        ) else {
+            throw HudTTSError.synthesisFailed(provider: providerID, message: "Could not build the ElevenLabs request URL.")
+        }
+        components.queryItems = [URLQueryItem(name: "output_format", value: outputFormat.rawValue)]
+        guard let endpoint = components.url else {
             throw HudTTSError.synthesisFailed(provider: providerID, message: "Could not build the ElevenLabs request URL.")
         }
 
@@ -34,17 +62,18 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
         urlRequest.timeoutInterval = context.requestTimeout
         urlRequest.setValue(apiKey, forHTTPHeaderField: "xi-api-key")
         urlRequest.setValue("application/json", forHTTPHeaderField: "Content-Type")
-        urlRequest.setValue("audio/mpeg", forHTTPHeaderField: "Accept")
+        urlRequest.setValue(outputFormat.acceptHeader, forHTTPHeaderField: "Accept")
 
+        let settings = request.voiceSettings
         let body: [String: Any] = [
             "text": String(trimmed.prefix(5000)),
             "model_id": request.model?.hudTrimmedNonEmpty ?? modelID,
             "voice_settings": [
-                "stability": 0.58,
-                "similarity_boost": 0.78,
-                "style": 0.04,
-                "use_speaker_boost": true,
-                "speed": Self.clamp(request.rate * Self.readingSpeed, min: 0.7, max: 1.2)
+                "stability": Self.clamp(settings?.stability ?? 0.58, min: 0, max: 1),
+                "similarity_boost": Self.clamp(settings?.similarityBoost ?? 0.78, min: 0, max: 1),
+                "style": Self.clamp(settings?.style ?? 0.04, min: 0, max: 1),
+                "use_speaker_boost": settings?.useSpeakerBoost ?? true,
+                "speed": Self.clamp(request.rate, min: 0.7, max: 1.2)
             ]
         ]
         urlRequest.httpBody = try JSONSerialization.data(withJSONObject: body)
@@ -66,7 +95,7 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
 
         return HudTTSResult(
             audioData: data,
-            format: .mp3,
+            format: outputFormat.hudFormat,
             providerID: providerID,
             voice: voiceID
         )

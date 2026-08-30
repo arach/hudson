@@ -19,12 +19,34 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
     public static let elevenlabs = HudTTSProviderID(rawValue: "elevenlabs")
     public static let groq = HudTTSProviderID(rawValue: "groq")
     public static let gemini = HudTTSProviderID(rawValue: "gemini")
+    public static let edgeReadAloud = HudTTSProviderID(rawValue: "edge-read-aloud")
 }
 
 public enum HudTTSAudioFormat: String, Sendable {
     case mp3
     case wav
     case caf
+}
+
+/// Provider-neutral expressive controls. Adapters use the values they support
+/// and ignore the rest without changing the spoken text.
+public struct HudTTSVoiceSettings: Equatable, Sendable {
+    public var stability: Double?
+    public var similarityBoost: Double?
+    public var style: Double?
+    public var useSpeakerBoost: Bool?
+
+    public init(
+        stability: Double? = nil,
+        similarityBoost: Double? = nil,
+        style: Double? = nil,
+        useSpeakerBoost: Bool? = nil
+    ) {
+        self.stability = stability
+        self.similarityBoost = similarityBoost
+        self.style = style
+        self.useSpeakerBoost = useSpeakerBoost
+    }
 }
 
 public struct HudTTSRequest: Equatable, Sendable {
@@ -35,19 +57,35 @@ public struct HudTTSRequest: Equatable, Sendable {
     public var model: String?
     /// Optional natural-language delivery guidance for adapters that support it.
     public var instructions: String?
+    public var voiceSettings: HudTTSVoiceSettings?
 
     public init(
         text: String,
         voice: String? = nil,
         rate: Double = 1.0,
         model: String? = nil,
-        instructions: String? = nil
+        instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil
     ) {
         self.text = text
         self.voice = voice
         self.rate = rate
         self.model = model
         self.instructions = instructions
+        self.voiceSettings = voiceSettings
+    }
+}
+
+public struct HudTTSWordTiming: Equatable, Sendable {
+    public var word: String
+    /// Seconds from the start of the returned audio.
+    public var start: TimeInterval
+    public var end: TimeInterval
+
+    public init(word: String, start: TimeInterval, end: TimeInterval) {
+        self.word = word
+        self.start = start
+        self.end = end
     }
 }
 
@@ -56,17 +94,22 @@ public struct HudTTSResult: Equatable, Sendable {
     public var format: HudTTSAudioFormat
     public var providerID: HudTTSProviderID
     public var voice: String
+    /// Word-level timings, when the provider produced them. Nil is normal:
+    /// most providers return none, and callers must not require it.
+    public var wordTimings: [HudTTSWordTiming]?
 
     public init(
         audioData: Data,
         format: HudTTSAudioFormat,
         providerID: HudTTSProviderID,
-        voice: String
+        voice: String,
+        wordTimings: [HudTTSWordTiming]? = nil
     ) {
         self.audioData = audioData
         self.format = format
         self.providerID = providerID
         self.voice = voice
+        self.wordTimings = wordTimings
     }
 }
 
