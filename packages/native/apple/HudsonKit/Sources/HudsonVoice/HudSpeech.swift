@@ -21,6 +21,9 @@ public enum HudSpeechProvider: String, CaseIterable, Identifiable, Sendable {
     case miniMax
     /// The OS voice. Always available, needs no credential.
     case system
+    case nvidia
+    case groq
+    case gemini
 
     public var id: String { rawValue }
 
@@ -30,6 +33,9 @@ public enum HudSpeechProvider: String, CaseIterable, Identifiable, Sendable {
         case .elevenLabs: return "ElevenLabs"
         case .miniMax: return "MiniMax"
         case .system: return "System"
+        case .nvidia: return "NVIDIA"
+        case .groq: return "Groq"
+        case .gemini: return "Gemini"
         }
     }
 
@@ -44,15 +50,25 @@ public enum HudSpeechProvider: String, CaseIterable, Identifiable, Sendable {
         case .elevenLabs: return "elevenlabs"
         case .miniMax: return "minimax"
         case .system: return "avspeech"
+        case .nvidia: return "nvidia"
+        case .groq: return "groq"
+        case .gemini: return "gemini"
         }
     }
 
-    fileprivate var credentialEnvKey: String? {
+    /// Env keys Vox consults for this backend, including aliases.
+    ///
+    /// Config always writes every key — either the host-lent secret or an
+    /// explicit blank — so Vox will not fall through to process environment.
+    fileprivate var credentialEnvKeys: [String] {
         switch self {
-        case .openAI: return "OPENAI_API_KEY"
-        case .elevenLabs: return "ELEVENLABS_API_KEY"
-        case .miniMax: return "MINIMAX_API_KEY"
-        case .system: return nil
+        case .openAI: return ["OPENAI_API_KEY"]
+        case .elevenLabs: return ["ELEVENLABS_API_KEY"]
+        case .miniMax: return ["MINIMAX_API_KEY"]
+        case .nvidia: return ["NV_API_KEY", "NVIDIA_API_KEY"]
+        case .groq: return ["GROQ_API_KEY"]
+        case .gemini: return ["GEMINI_API_KEY", "GOOGLE_API_KEY", "GOOGLE_GENAI_API_KEY"]
+        case .system: return []
         }
     }
 
@@ -62,12 +78,30 @@ public enum HudSpeechProvider: String, CaseIterable, Identifiable, Sendable {
         case .elevenLabs: return ElevenLabsTTSProvider.supportedModelIDs
         case .miniMax: return MiniMaxTTSProvider.supportedModelIDs
         case .system: return [AVSpeechSynthesizerProvider.modelID]
+        case .nvidia: return NVIDIAMagpieTTSProvider.supportedModelIDs
+        case .groq: return GroqTTSProvider.supportedModelIDs
+        case .gemini: return GeminiTTSProvider.supportedModelIDs
         }
     }
 
     /// Which backend owns a model id, for hosts that persist the id alone.
     public static func owning(modelId: String) -> HudSpeechProvider? {
         allCases.first { $0.modelIds.contains(modelId) }
+    }
+
+    /// Resolve the backend that actually handled a playback event. The model
+    /// id is authoritative when it is one of Hudson's canonical ids; the Vox
+    /// backend is the fallback for providers that return an aliased model id.
+    static func resolving(modelId: String, backend: String?) -> HudSpeechProvider? {
+        if let owner = owning(modelId: modelId) {
+            return owner
+        }
+        guard let backend = backend?.trimmingCharacters(in: .whitespacesAndNewlines).lowercased(),
+              !backend.isEmpty
+        else {
+            return nil
+        }
+        return allCases.first { $0.providerId == backend }
     }
 }
 
@@ -247,7 +281,7 @@ public actor HudSpeechSynthesizer {
         ProvidersConfig(
             providers: HudSpeechProvider.allCases.map { provider in
                 var env: [String: String] = [:]
-                if let key = provider.credentialEnvKey {
+                for key in provider.credentialEnvKeys {
                     // Vox providers otherwise fall back to process or on-disk
                     // credentials. An explicit empty value keeps Hudson's
                     // host-lent-only contract while making the provider report
@@ -265,11 +299,12 @@ public actor HudSpeechSynthesizer {
         )
     }
 
-    private static func lentCredentials(_ credentials: [HudSpeechProvider: String]) -> [String: String] {
+    static func lentCredentials(_ credentials: [HudSpeechProvider: String]) -> [String: String] {
         var lent: [String: String] = [:]
         for (provider, key) in credentials {
-            guard let envKey = provider.credentialEnvKey else { continue }
-            lent[envKey] = key
+            for envKey in provider.credentialEnvKeys {
+                lent[envKey] = key
+            }
         }
         return lent
     }
