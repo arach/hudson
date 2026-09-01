@@ -136,25 +136,46 @@ public struct HudLiquidGlassConfig: Equatable, Sendable {
 /// All four style axes bundled together.
 /// Propagated via `\.hudsonSidebarStyle` so the entire sidebar subtree
 /// can be restyled with a single `.environment(\.hudsonSidebarStyle, ...)`.
+/// Which edge a section's eyebrow label hangs from.
+///
+/// Leading is the default and what every existing host gets. Trailing suits
+/// editorial rails, where the group name reads as a margin note against the
+/// column edge rather than as a heading stacked over its rows.
+public enum HudSidebarSectionAlignment: String, CaseIterable, Identifiable, Sendable {
+    /// On the label column's rule, directly over the rows the group names.
+    case leading
+    /// Hung off the column's trailing edge.
+    case trailing
+    /// On the *sidebar's* leading edge, out past the icon rail — so the group
+    /// names sit further left than anything they head and read as rules across
+    /// the column rather than as another item in it.
+    case railLeading
+
+    public var id: String { rawValue }
+}
+
 public struct HudSidebarStyle: Equatable, Sendable {
     public var surface: HudSidebarSurfaceStyle
     public var indicator: HudSidebarIndicatorStyle
     public var icon: HudSidebarIconStyle
     public var motion: HudSidebarMotionStyle
     public var liquidGlass: HudLiquidGlassConfig
+    public var sectionAlignment: HudSidebarSectionAlignment
 
     public init(
         surface: HudSidebarSurfaceStyle = .base,
         indicator: HudSidebarIndicatorStyle = .base,
         icon: HudSidebarIconStyle = .base,
         motion: HudSidebarMotionStyle = .base,
-        liquidGlass: HudLiquidGlassConfig = .default
+        liquidGlass: HudLiquidGlassConfig = .default,
+        sectionAlignment: HudSidebarSectionAlignment = .leading
     ) {
         self.surface = surface
         self.indicator = indicator
         self.icon = icon
         self.motion = motion
         self.liquidGlass = liquidGlass
+        self.sectionAlignment = sectionAlignment
     }
 
     public static var `default`: HudSidebarStyle { HudSidebarStyle() }

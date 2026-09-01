@@ -3,8 +3,20 @@ import AVFoundation
 import Observation
 
 @MainActor
+protocol HudSpeechPlaying: AnyObject {
+    var isPlaying: Bool { get }
+    var currentTime: TimeInterval { get }
+    var duration: TimeInterval { get }
+
+    func play(data: Data, format: HudTTSAudioFormat?, completion: (() -> Void)?) throws
+    func pauseOrResume()
+    func seek(to time: TimeInterval) -> Bool
+    func stop()
+}
+
+@MainActor
 @Observable
-public final class HudSpeechPlayer: NSObject {
+public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
     private var audioPlayer: AVAudioPlayer?
     private var completionHandler: (() -> Void)?
     private var progressTimer: Timer?
@@ -17,11 +29,20 @@ public final class HudSpeechPlayer: NSObject {
         super.init()
     }
 
-    public func play(data: Data, completion: (() -> Void)? = nil) throws {
+    public func play(
+        data: Data,
+        format: HudTTSAudioFormat? = nil,
+        completion: (() -> Void)? = nil
+    ) throws {
         stop()
         configureAudioSession()
 
-        let player = try AVAudioPlayer(data: data)
+        let player: AVAudioPlayer
+        if let hint = Self.fileTypeHint(for: format) {
+            player = try AVAudioPlayer(data: data, fileTypeHint: hint)
+        } else {
+            player = try AVAudioPlayer(data: data)
+        }
         try start(player: player, completion: completion)
     }
 
@@ -33,19 +54,33 @@ public final class HudSpeechPlayer: NSObject {
         try start(player: player, completion: completion)
     }
 
+    private static func fileTypeHint(for format: HudTTSAudioFormat?) -> String? {
+        switch format {
+        case .mp3: AVFileType.mp3.rawValue
+        case .wav: AVFileType.wav.rawValue
+        case .caf: AVFileType.caf.rawValue
+        case nil: nil
+        }
+    }
+
     private func start(player: AVAudioPlayer, completion: (() -> Void)?) throws {
         player.delegate = self
         player.prepareToPlay()
         guard player.play() else {
+            player.stop()
             throw HudTTSError.playbackFailed(message: "Speech audio could not be played.")
         }
 
+        adopt(player, completion: completion)
+        startProgressTimer()
+    }
+
+    func adopt(_ player: AVAudioPlayer, completion: (() -> Void)?) {
         audioPlayer = player
         completionHandler = completion
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = true
-        startProgressTimer()
     }
 
     public func pauseOrResume() {
@@ -112,16 +147,20 @@ public final class HudSpeechPlayer: NSObject {
 extension HudSpeechPlayer: AVAudioPlayerDelegate {
     nonisolated public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            if self.audioPlayer === player {
-                self.stopProgressTimer()
-                self.currentTime = player.duration
-                self.duration = player.duration
-                self.audioPlayer = nil
-            }
-            self.isPlaying = false
-            self.completionHandler?()
-            self.completionHandler = nil
+            self.finishIfCurrent(player)
         }
+    }
+
+    func finishIfCurrent(_ player: AVAudioPlayer) {
+        guard audioPlayer === player else { return }
+        stopProgressTimer()
+        currentTime = player.duration
+        duration = player.duration
+        audioPlayer = nil
+        isPlaying = false
+        let completion = completionHandler
+        completionHandler = nil
+        completion?()
     }
 }
 
