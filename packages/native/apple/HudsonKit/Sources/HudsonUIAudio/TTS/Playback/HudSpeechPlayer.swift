@@ -3,8 +3,20 @@ import AVFoundation
 import Observation
 
 @MainActor
+protocol HudSpeechPlaying: AnyObject {
+    var isPlaying: Bool { get }
+    var currentTime: TimeInterval { get }
+    var duration: TimeInterval { get }
+
+    func play(data: Data, format: HudTTSAudioFormat?, completion: (() -> Void)?) throws
+    func pauseOrResume()
+    func seek(to time: TimeInterval) -> Bool
+    func stop()
+}
+
+@MainActor
 @Observable
-public final class HudSpeechPlayer: NSObject {
+public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
     private var audioPlayer: AVAudioPlayer?
     private var completionHandler: (() -> Void)?
     private var progressTimer: Timer?
@@ -55,6 +67,7 @@ public final class HudSpeechPlayer: NSObject {
         player.delegate = self
         player.prepareToPlay()
         guard player.play() else {
+            player.stop()
             throw HudTTSError.playbackFailed(message: "Speech audio could not be played.")
         }
 

@@ -4,9 +4,17 @@ import Foundation
 /// Experimental, credential-free access to Microsoft Edge's consumer Read
 /// Aloud transport.
 ///
-/// This is not Azure Speech and carries no service guarantee. It exists as a
-/// bounded fallback for short generated replies; callers must retain an
-/// on-device fallback and disclose that text is sent to Microsoft.
+/// This is **not** Azure Speech. It uses an unofficial, unsupported Microsoft
+/// consumer WebSocket
+/// (`wss://speech.platform.bing.com/consumer/speech/synthesize/readaloud/edge/v1`).
+/// Spoken text leaves the device and is processed by that endpoint. There is
+/// no service, privacy, SLA, or compatibility guarantee; Microsoft may change
+/// or withdraw the transport without notice.
+///
+/// **Opt-in only.** `HudTTSProviders.defaultCloudAdapters()` does not include
+/// this adapter, so it is not part of default selectable TTS behavior. Hosts
+/// that enable it must register `HudTTSProviders.EdgeReadAloud()` explicitly,
+/// disclose the off-device processing, and keep an on-device fallback.
 public struct EdgeReadAloudHudTTSProvider: HudTTSProviderAdapter {
     public var providerID: HudTTSProviderID { .edgeReadAloud }
     public var displayName: String { "Microsoft Read Aloud · Experimental" }
@@ -66,13 +74,8 @@ public struct EdgeReadAloudHudTTSProvider: HudTTSProviderAdapter {
                     HudTTSWordTiming(word: $0.word, start: $0.start + elapsed, end: $0.end + elapsed)
                 })
             }
-        } catch let error as HudTTSError {
-            throw error
         } catch {
-            throw HudTTSError.networkUnavailable(
-                provider: providerID,
-                message: "Microsoft Read Aloud was unavailable: \(error.localizedDescription) [\(String(reflecting: error))]"
-            )
+            throw Self.mappedSynthesisError(error)
         }
 
         guard !audio.isEmpty else {
@@ -99,6 +102,22 @@ public struct EdgeReadAloudHudTTSProvider: HudTTSProviderAdapter {
     /// constant 48 kbit/s = 6_000 bytes per second of audio.
     static func estimatedSeconds(ofAudioBytes count: Int) -> TimeInterval {
         TimeInterval(count) / 6_000
+    }
+
+    /// Cancellation must stay `CancellationError` so callers can distinguish
+    /// stop/cancel from a transport failure. HudTTS errors pass through;
+    /// everything else becomes `networkUnavailable`.
+    static func mappedSynthesisError(_ error: Error) -> Error {
+        if error is CancellationError {
+            return error
+        }
+        if error is HudTTSError {
+            return error
+        }
+        return HudTTSError.networkUnavailable(
+            provider: .edgeReadAloud,
+            message: "Microsoft Read Aloud was unavailable: \(error.localizedDescription) [\(String(reflecting: error))]"
+        )
     }
 
     private func synthesizeChunk(

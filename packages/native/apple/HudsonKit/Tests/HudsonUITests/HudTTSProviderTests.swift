@@ -4,13 +4,78 @@ import Testing
 
 @Suite("HudTTS providers", .serialized)
 struct HudTTSProviderTests {
-    @Test("default cloud registry includes every built-in adapter once")
-    func defaultAdapterRegistry() {
+    @Test("default cloud registry excludes Edge Read Aloud")
+    func defaultAdapterRegistryExcludesEdgeReadAloud() {
         let adapters = HudTTSProviders.defaultCloudAdapters()
         let providerIDs = adapters.map { $0.providerID }
 
-        #expect(providerIDs == [.openai, .elevenlabs, .groq, .gemini, .edgeReadAloud])
+        #expect(providerIDs == [.openai, .elevenlabs, .groq, .gemini])
+        #expect(!providerIDs.contains(.edgeReadAloud))
         #expect(Set(providerIDs).count == providerIDs.count)
+    }
+
+    @Test("Edge Read Aloud is available only by explicit opt-in")
+    func edgeReadAloudIsExplicitOptIn() {
+        let optedIn = HudTTSProviders.defaultCloudAdapters() + [HudTTSProviders.EdgeReadAloud()]
+        #expect(optedIn.map(\.providerID).contains(.edgeReadAloud))
+        #expect(optedIn.filter { $0.providerID == .edgeReadAloud }.count == 1)
+    }
+
+    @MainActor
+    @Test("default HudTTS selectable providers omit Edge Read Aloud")
+    func defaultHudTTSDoesNotSelectEdgeReadAloud() async {
+        let tts = HudTTS(credentialSource: StaticTTSCredentialSource())
+        let statuses = await tts.providerStatuses()
+        #expect(!statuses.contains { $0.id == .edgeReadAloud })
+    }
+
+    @Test("Edge synthesis error mapping preserves CancellationError")
+    func edgeReadAloudMappedErrorPreservesCancellation() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(CancellationError())
+        #expect(mapped is CancellationError)
+    }
+
+    @Test("Edge synthesis error mapping does not wrap HudTTSError")
+    func edgeReadAloudMappedErrorPreservesHudTTSError() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(HudTTSError.emptyInput)
+        guard case .emptyInput = mapped as? HudTTSError else {
+            Issue.record("Expected emptyInput, got \(mapped)")
+            return
+        }
+    }
+
+    @Test("Edge synthesis error mapping wraps unexpected errors as networkUnavailable")
+    func edgeReadAloudMappedErrorWrapsUnexpected() {
+        struct Boom: Error {}
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(Boom())
+        guard case let .networkUnavailable(provider, message) = mapped as? HudTTSError else {
+            Issue.record("Expected networkUnavailable, got \(mapped)")
+            return
+        }
+        #expect(provider == .edgeReadAloud)
+        #expect(message.contains("unavailable"))
+    }
+
+    @Test("Edge Read Aloud cancelled synthesis stays CancellationError")
+    func edgeReadAloudPreservesCancellation() async {
+        let task = Task {
+            try await EdgeReadAloudHudTTSProvider().synthesize(
+                HudTTSRequest(text: "Hello"),
+                context: context(session: .shared)
+            )
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected: cancellation must not become networkUnavailable.
+        } catch let HudTTSError.networkUnavailable(_, message) {
+            Issue.record("Cancellation was translated into networkUnavailable: \(message)")
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
     }
 
     @Test("Edge Read Aloud chunks stay UTF-8 and XML safe")

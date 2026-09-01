@@ -19,6 +19,8 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
     public static let elevenlabs = HudTTSProviderID(rawValue: "elevenlabs")
     public static let groq = HudTTSProviderID(rawValue: "groq")
     public static let gemini = HudTTSProviderID(rawValue: "gemini")
+    /// Unofficial Microsoft consumer Read Aloud. Not included in
+    /// `HudTTSProviders.defaultCloudAdapters()`; opt in explicitly.
     public static let edgeReadAloud = HudTTSProviderID(rawValue: "edge-read-aloud")
 }
 
