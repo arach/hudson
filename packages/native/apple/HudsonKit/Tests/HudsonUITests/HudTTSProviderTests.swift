@@ -35,6 +35,19 @@ struct HudTTSProviderTests {
         #expect(mapped is CancellationError)
     }
 
+    @Test("Edge synthesis error mapping normalizes URLError cancelled")
+    func edgeReadAloudMappedErrorNormalizesURLErrorCancelled() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(URLError(.cancelled))
+        #expect(mapped is CancellationError)
+    }
+
+    @Test("Edge synthesis error mapping normalizes NSURLErrorCancelled")
+    func edgeReadAloudMappedErrorNormalizesNSURLErrorCancelled() {
+        let nsError = NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(nsError)
+        #expect(mapped is CancellationError)
+    }
+
     @Test("Edge synthesis error mapping does not wrap HudTTSError")
     func edgeReadAloudMappedErrorPreservesHudTTSError() {
         let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(HudTTSError.emptyInput)
@@ -75,6 +88,27 @@ struct HudTTSProviderTests {
             Issue.record("Cancellation was translated into networkUnavailable: \(message)")
         } catch {
             Issue.record("Expected CancellationError, got \(error)")
+        }
+    }
+
+    @Test("Edge in-flight URLSession cancellation stays CancellationError")
+    func edgeReadAloudInFlightURLSessionCancellation() async {
+        let session = HudTTSMockURLProtocol.hangingSession()
+        let task = Task {
+            try await session.data(from: URL(string: "https://example.test/readaloud")!)
+        }
+        await HudTTSMockURLProtocol.waitUntilStarted()
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected in-flight URLSession cancellation to throw")
+        } catch {
+            let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(error)
+            #expect(
+                mapped is CancellationError,
+                "in-flight URLSession error \(error) mapped to \(mapped)"
+            )
         }
     }
 
@@ -556,17 +590,53 @@ private final class HudTTSMockURLProtocol: URLProtocol {
     nonisolated(unsafe) static var contentType = "application/json"
     nonisolated(unsafe) static var lastRequest: URLRequest?
     nonisolated(unsafe) static var lastBody: Data?
+    nonisolated(unsafe) static var hangUntilCancelled = false
+    nonisolated(unsafe) static var didStartLoading = false
+    nonisolated(unsafe) static var startedContinuation: CheckedContinuation<Void, Never>?
+    private static let lock = NSLock()
 
     static func session(
         status: Int = 200,
         body: Data,
         contentType: String = "application/json"
     ) -> URLSession {
+        resetHangState()
         self.status = status
         self.body = body
         self.contentType = contentType
         self.lastRequest = nil
         self.lastBody = nil
+        return makeSession()
+    }
+
+    static func hangingSession() -> URLSession {
+        resetHangState()
+        hangUntilCancelled = true
+        return makeSession()
+    }
+
+    static func waitUntilStarted() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if didStartLoading {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                startedContinuation = continuation
+                lock.unlock()
+            }
+        }
+    }
+
+    private static func resetHangState() {
+        lock.lock()
+        hangUntilCancelled = false
+        didStartLoading = false
+        startedContinuation = nil
+        lock.unlock()
+    }
+
+    private static func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [HudTTSMockURLProtocol.self]
         return URLSession(configuration: configuration)
@@ -576,6 +646,15 @@ private final class HudTTSMockURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        if Self.hangUntilCancelled {
+            Self.lock.lock()
+            Self.didStartLoading = true
+            let continuation = Self.startedContinuation
+            Self.startedContinuation = nil
+            Self.lock.unlock()
+            continuation?.resume()
+            return
+        }
         Self.lastRequest = request
         Self.lastBody = request.httpBody ?? request.httpBodyStream.flatMap(Self.read)
         let response = HTTPURLResponse(
@@ -589,7 +668,10 @@ private final class HudTTSMockURLProtocol: URLProtocol {
         client?.urlProtocolDidFinishLoading(self)
     }
 
-    override func stopLoading() {}
+    override func stopLoading() {
+        guard Self.hangUntilCancelled else { return }
+        client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
+    }
 
     private static func read(_ stream: InputStream) -> Data {
         stream.open()

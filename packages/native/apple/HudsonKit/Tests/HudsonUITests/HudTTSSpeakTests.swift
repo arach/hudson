@@ -112,6 +112,28 @@ struct HudTTSSpeakTests {
         #expect(!tts.isSpeaking)
         #expect(player.playCount == 0)
     }
+
+    @Test("onSpeakingChanged(true) stop does not resume the stopped request")
+    func reentrantStopOnSpeakingChangedDoesNotResume() async throws {
+        let player = RecordingSpeechPlayer()
+        let adapter = ImmediateTTSAdapter()
+        let tts = HudTTS(
+            credentialSource: StaticSpeakCredentialSource(),
+            adapters: [adapter],
+            speechPlayer: player
+        )
+        tts.onSpeakingChanged = { speaking in
+            if speaking {
+                tts.stop()
+            }
+        }
+
+        try await tts.speak("Hello", providerID: .groq)
+
+        #expect(!tts.isSpeaking)
+        #expect(player.playCount == 0)
+        #expect(adapter.synthesizeCount == 0)
+    }
 }
 
 private struct StaticSpeakCredentialSource: HudTTSCredentialSource {
@@ -173,7 +195,9 @@ private struct HoldingTTSAdapter: HudTTSProviderAdapter {
     }
 }
 
-private struct ImmediateTTSAdapter: HudTTSProviderAdapter {
+private final class ImmediateTTSAdapter: HudTTSProviderAdapter, @unchecked Sendable {
+    private(set) var synthesizeCount = 0
+
     var providerID: HudTTSProviderID { .groq }
     var displayName: String { "Immediate" }
     var credentialKey: String? { nil }
@@ -185,7 +209,8 @@ private struct ImmediateTTSAdapter: HudTTSProviderAdapter {
         _ request: HudTTSRequest,
         context: HudTTSAdapterContext
     ) async throws -> HudTTSResult {
-        HudTTSResult(
+        synthesizeCount += 1
+        return HudTTSResult(
             audioData: Data(request.text.utf8),
             format: .mp3,
             providerID: providerID,

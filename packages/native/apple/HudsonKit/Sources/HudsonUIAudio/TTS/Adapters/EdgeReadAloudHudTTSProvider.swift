@@ -111,6 +111,9 @@ public struct EdgeReadAloudHudTTSProvider: HudTTSProviderAdapter {
         if error is CancellationError {
             return error
         }
+        if isURLSessionCancellation(error) {
+            return CancellationError()
+        }
         if error is HudTTSError {
             return error
         }
@@ -118,6 +121,14 @@ public struct EdgeReadAloudHudTTSProvider: HudTTSProviderAdapter {
             provider: .edgeReadAloud,
             message: "Microsoft Read Aloud was unavailable: \(error.localizedDescription) [\(String(reflecting: error))]"
         )
+    }
+
+    private static func isURLSessionCancellation(_ error: Error) -> Bool {
+        if let urlError = error as? URLError, urlError.code == .cancelled {
+            return true
+        }
+        let nsError = error as NSError
+        return nsError.domain == NSURLErrorDomain && nsError.code == NSURLErrorCancelled
     }
 
     private func synthesizeChunk(

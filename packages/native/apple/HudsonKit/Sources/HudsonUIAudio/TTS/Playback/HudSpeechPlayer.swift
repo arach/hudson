@@ -71,12 +71,16 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
             throw HudTTSError.playbackFailed(message: "Speech audio could not be played.")
         }
 
+        adopt(player, completion: completion)
+        startProgressTimer()
+    }
+
+    func adopt(_ player: AVAudioPlayer, completion: (() -> Void)?) {
         audioPlayer = player
         completionHandler = completion
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = true
-        startProgressTimer()
     }
 
     public func pauseOrResume() {
@@ -143,16 +147,20 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
 extension HudSpeechPlayer: AVAudioPlayerDelegate {
     nonisolated public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            if self.audioPlayer === player {
-                self.stopProgressTimer()
-                self.currentTime = player.duration
-                self.duration = player.duration
-                self.audioPlayer = nil
-            }
-            self.isPlaying = false
-            self.completionHandler?()
-            self.completionHandler = nil
+            self.finishIfCurrent(player)
         }
+    }
+
+    func finishIfCurrent(_ player: AVAudioPlayer) {
+        guard audioPlayer === player else { return }
+        stopProgressTimer()
+        currentTime = player.duration
+        duration = player.duration
+        audioPlayer = nil
+        isPlaying = false
+        let completion = completionHandler
+        completionHandler = nil
+        completion?()
     }
 }
 

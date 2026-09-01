@@ -14,6 +14,7 @@ public final class HudSystemSpeechSynthesizer: NSObject {
     }
 
     private let synthesizer = AVSpeechSynthesizer()
+    private var activeUtterance: AVSpeechUtterance?
     private var completionHandler: (() -> Void)?
 
     public private(set) var isSpeaking = false
@@ -49,9 +50,14 @@ public final class HudSystemSpeechSynthesizer: NSObject {
         utterance.preUtteranceDelay = 0.05
         utterance.postUtteranceDelay = 0.1
 
+        adopt(utterance, completion: completion)
+        synthesizer.speak(utterance)
+    }
+
+    func adopt(_ utterance: AVSpeechUtterance, completion: (() -> Void)?) {
+        activeUtterance = utterance
         completionHandler = completion
         isSpeaking = true
-        synthesizer.speak(utterance)
     }
 
     public func speakAsync(_ text: String, voiceIdentifier: String? = nil) async {
@@ -143,28 +149,42 @@ public final class HudSystemSpeechSynthesizer: NSObject {
     }
 
     public func stop() {
+        activeUtterance = nil
+        completionHandler = nil
+        isSpeaking = false
         if synthesizer.isSpeaking || synthesizer.isPaused {
             synthesizer.stopSpeaking(at: .immediate)
         }
-        isSpeaking = false
-        completionHandler = nil
     }
 }
 
 extension HudSystemSpeechSynthesizer: AVSpeechSynthesizerDelegate {
     nonisolated public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didFinish utterance: AVSpeechUtterance) {
         Task { @MainActor in
-            self.isSpeaking = false
-            self.completionHandler?()
-            self.completionHandler = nil
+            self.finishIfCurrent(utterance)
         }
     }
 
     nonisolated public func speechSynthesizer(_ synthesizer: AVSpeechSynthesizer, didCancel utterance: AVSpeechUtterance) {
         Task { @MainActor in
-            self.isSpeaking = false
-            self.completionHandler = nil
+            self.cancelIfCurrent(utterance)
         }
+    }
+
+    func finishIfCurrent(_ utterance: AVSpeechUtterance) {
+        guard activeUtterance === utterance else { return }
+        activeUtterance = nil
+        isSpeaking = false
+        let completion = completionHandler
+        completionHandler = nil
+        completion?()
+    }
+
+    func cancelIfCurrent(_ utterance: AVSpeechUtterance) {
+        guard activeUtterance === utterance else { return }
+        activeUtterance = nil
+        isSpeaking = false
+        completionHandler = nil
     }
 }
 

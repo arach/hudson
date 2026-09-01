@@ -157,10 +157,10 @@ public final class HudTTS {
         guard !trimmed.isEmpty else { return }
 
         let generation = beginSpeak()
+        guard isCurrentSpeak(generation) else { return }
         do {
             switch providerID {
             case .system:
-                guard isCurrentSpeak(generation) else { return }
                 activePlayback = .system
                 systemSpeech.speak(trimmed, voiceIdentifier: systemVoiceIdentifier ?? voice) { [weak self] in
                     Task { @MainActor in
@@ -227,8 +227,9 @@ public final class HudTTS {
     private func beginSpeak() -> UInt64 {
         stop()
         speakGeneration &+= 1
+        let generation = speakGeneration
         isSpeaking = true
-        return speakGeneration
+        return generation
     }
 
     private func isCurrentSpeak(_ generation: UInt64) -> Bool {
