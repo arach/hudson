@@ -47,7 +47,7 @@ func appendGitDependency(
 ) -> String {
     if let path = nonEmptyEnv("\(envPrefix)_PATH") {
         dependencies.append(.package(path: path))
-        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: defaultURL)
+        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: path)
     }
 
     let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultURL
@@ -165,6 +165,7 @@ targets.append(
             "HudsonObservability",
             .product(name: "VoxCore", package: voxPackage),
             .product(name: "VoxEngine", package: voxPackage),
+            .product(name: "VoxAppleSpeech", package: voxPackage),
         ],
         path: src + "HudsonVoice"
     )
@@ -172,7 +173,11 @@ targets.append(
 targets.append(
     .testTarget(
         name: "HudsonVoiceTests",
-        dependencies: ["HudsonVoice"],
+        dependencies: [
+            "HudsonVoice",
+            .product(name: "VoxEngine", package: voxPackage),
+            .product(name: "VoxAppleSpeech", package: voxPackage),
+        ],
         path: tst + "HudsonVoiceTests"
     )
 )
