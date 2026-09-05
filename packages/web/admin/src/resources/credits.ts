@@ -10,7 +10,7 @@
  */
 import { z } from "zod";
 import { defineAction, defineAdmin, defineResource } from "../define";
-import type { AdminContext, StatCard } from "../types";
+import { StatCardSchema, type AdminContext } from "../types";
 
 export const WalletRow = z.object({
   userId: z.string(),
@@ -56,8 +56,13 @@ export function creditsWalletsResource() {
       { key: "held", label: "Held", format: "int" },
       { key: "lifetimeSpent", label: "Lifetime", format: "int" },
     ],
-    list: async (ctx: AdminContext) => {
-      const rows = await ctx.load<WalletRow[]>("credits.wallets");
+    list: async (ctx: AdminContext, query) => {
+      const rows = await ctx.load("credits.wallets", {
+        cursor: query.cursor,
+        limit: query.limit,
+        search: query.search,
+        filters: query.filters,
+      });
       return Array.isArray(rows) ? rows : [];
     },
   });
@@ -78,8 +83,13 @@ export function creditsEntriesResource() {
       { key: "surface", label: "Surface", format: "muted" },
       { key: "gauge", label: "Gauge", format: "muted" },
     ],
-    list: async (ctx: AdminContext) => {
-      const rows = await ctx.load<unknown>("credits.entries");
+    list: async (ctx: AdminContext, query) => {
+      const rows = await ctx.load("credits.entries", {
+        cursor: query.cursor,
+        limit: query.limit,
+        search: query.search,
+        filters: query.filters,
+      });
       // Flatten op/kind display: keep separate columns; freeReason folds into op via host if desired
       return (Array.isArray(rows) ? rows : []).flatMap((row) => {
         const parsed = EntryRow.safeParse(row);
@@ -152,8 +162,12 @@ export function defineCreditsAdmin(opts: CreditsAdminOptions = {}) {
     resources: [creditsWalletsResource(), creditsEntriesResource()],
     actions: [creditsGrantAction()],
     stats: async (ctx) => {
-      const cards = await ctx.load<StatCard[]>("credits.stats");
-      return Array.isArray(cards) ? cards : [];
+      const cards = await ctx.load("credits.stats");
+      if (!Array.isArray(cards)) return [];
+      return cards.flatMap((card) => {
+        const parsed = StatCardSchema.safeParse(card);
+        return parsed.success ? [parsed.data] : [];
+      });
     },
   });
 }

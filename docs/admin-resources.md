@@ -109,7 +109,7 @@ Canonical implementation: [`packages/web/admin`](../packages/web/admin) → npm 
 |--------|---------|
 | `defineResource` / `defineAction` / `defineAdmin` | Declaration helpers |
 | `renderAdminHtml` | Zero-React HTML page for Workers / edge |
-| `handleAdminRequest` | GET list + POST action routing |
+| `handleAdminRequest` | GET list, GET `/:resourceId/:id` detail, POST action routing |
 | `defineCreditsAdmin` | Optional adapter: Zod shapes for wallets/entries/grant (loaders still host-owned) |
 
 ## What admin must not do
@@ -129,8 +129,24 @@ React/`HudTable` binding is a later surface over the same declarations.
 4. Credits adapter declarations (shapes only)
 5. Linea host: `admin.uselinea.com` mounts credits via loaders on `CREDITS_DB`
 
+## Slice 1 (shell primitives)
+
+- Column formats: `badge`, `status`, `currency`, `bytes` (flat, no pill chrome)
+- `search` + `filters` on `defineResource`
+- Cursor/limit pagination (`{resourceId}.cursor`, `{resourceId}.limit`)
+- Detail routes: `GET /:resourceId/:id` when the resource declares `get`
+- `AdminContext.load(name, params?)` returns `unknown` — callers parse; params carry `id`, cursor, limit, search, filters
+
+## Slice 2 (levers + prepare)
+
+- Action fields: `select`, `toggle` (flat radios, no pill chrome)
+- Per-row actions (`perRow` + `beside`) for on-row levers
+- `defineCapabilitiesAdmin` — mode off/observe/soft/hard, caps, rate override
+- `definePrepareAdmin` — list + filters + `GET /events/:id` dumps
+
+HTML responses from `handleAdminRequest` set CSP (`default-src 'none'; style-src 'unsafe-inline'; form-action 'self'; frame-ancestors 'none'`), `nosniff`, `X-Frame-Options: DENY`, and `Referrer-Policy: no-referrer`.
+
 ## Later
 
 - React panel over the same `defineResource` output
-- Prepare / flags / auth as additional resource packs
 - Multi-account switcher as host chrome, not shell core

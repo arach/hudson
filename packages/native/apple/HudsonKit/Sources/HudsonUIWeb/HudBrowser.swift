@@ -42,49 +42,52 @@ public struct HudBrowserPolicy: Sendable {
 
 /// A browsing surface a host can drive.
 ///
-/// `WebPage` already publishes everything worth reading — url, title, loading,
-/// progress, history — and it is `@Observable`, so this deliberately mirrors
-/// none of it. Duplicated state is the part that goes stale. What it adds is
-/// the two things `WebPage` leaves to every caller: navigation *commands* in
-/// the vocabulary a chrome bar actually needs (`goBack`, not "load the last
-/// item of the back list"), and a scheme policy applied before the load rather
-/// than after it.
+/// The browser owns one long-lived `WKWebView`: closing and reopening its pane
+/// must preserve the page and history, and replacing its document must not
+/// briefly attach one web session to two SwiftUI trees. WebKit state is mirrored
+/// here only at the chrome boundary, where Observation needs stable values.
 @MainActor
 @Observable
 public final class HudBrowser {
-    public let page: WebPage
-
     /// The most recent failure, cleared by the next successful navigation.
     public private(set) var failure: String?
+    public private(set) var url: URL?
+    public private(set) var title = ""
+    public private(set) var isLoading = false
+    public private(set) var progress = 0.0
+    public private(set) var canGoBack = false
+    public private(set) var canGoForward = false
 
-    private let decider: Decider
+    @ObservationIgnored let platformView: WKWebView
+    @ObservationIgnored private let driver: Driver
 
     public init(policy: HudBrowserPolicy = .web) {
-        let decider = Decider(policy: policy)
-        self.decider = decider
-        self.page = WebPage(navigationDecider: decider)
+        let driver = Driver(policy: policy)
+        let configuration = WKWebViewConfiguration()
+        configuration.defaultWebpagePreferences.allowsContentJavaScript = true
+        let webView = WKWebView(frame: .zero, configuration: configuration)
+        webView.allowsBackForwardNavigationGestures = true
+
+        self.driver = driver
+        self.platformView = webView
+        driver.browser = self
+        driver.attach(to: webView)
+        publish(webView)
     }
 
     public var policy: HudBrowserPolicy {
-        get { decider.policy }
-        set { decider.policy = newValue }
+        get { driver.policy }
+        set { driver.policy = newValue }
     }
-
-    public var url: URL? { page.url }
-    public var title: String { page.title }
-    public var isLoading: Bool { page.isLoading }
-    public var progress: Double { page.estimatedProgress }
-    public var canGoBack: Bool { !page.backForwardList.backList.isEmpty }
-    public var canGoForward: Bool { !page.backForwardList.forwardList.isEmpty }
 
     /// A short, human name for where we are — the host, without `www.`. What a
     /// tab strip shows before a title arrives.
     public var displayHost: String? {
-        guard let host = page.url?.host() else { return nil }
+        guard let host = url?.host() else { return nil }
         return host.hasPrefix("www.") ? String(host.dropFirst(4)) : host
     }
 
-    /// Point the browser somewhere. Refused schemes never reach `WebPage`; they
+    /// Point the browser somewhere. Refused schemes never reach WebKit; they
     /// go to the policy's `onBlocked` so the host can hand them on.
     public func open(_ url: URL) {
         guard policy.allows(url) else {
@@ -92,36 +95,55 @@ public final class HudBrowser {
             return
         }
         failure = nil
-        page.load(URLRequest(url: url))
+        platformView.load(URLRequest(url: url))
     }
 
     public func goBack() {
-        guard let item = page.backForwardList.backList.last else { return }
-        page.load(item)
+        guard platformView.canGoBack else { return }
+        failure = nil
+        platformView.goBack()
     }
 
     public func goForward() {
-        guard let item = page.backForwardList.forwardList.first else { return }
-        page.load(item)
+        guard platformView.canGoForward else { return }
+        failure = nil
+        platformView.goForward()
     }
 
     public func reload() {
+        guard platformView.url != nil else { return }
         failure = nil
-        page.reload()
+        platformView.reload()
     }
 
     public func stop() {
-        page.stopLoading()
+        platformView.stopLoading()
+        publish(platformView)
     }
 
     public func note(failure message: String?) {
         failure = message
     }
 
-    /// Holds the policy so it can change without rebuilding the `WebPage` — a
-    /// new page would lose the history the chrome is showing.
-    private final class Decider: WebPage.NavigationDeciding {
+    fileprivate func publish(_ webView: WKWebView) {
+        url = webView.url
+        title = webView.title ?? ""
+        isLoading = webView.isLoading
+        progress = webView.estimatedProgress
+        canGoBack = webView.canGoBack
+        canGoForward = webView.canGoForward
+    }
+
+    /// Owns WebKit's imperative callbacks while the browser remains a small,
+    /// observable command surface for SwiftUI.
+    private final class Driver: NSObject, WKNavigationDelegate {
         var policy: HudBrowserPolicy
+        weak var browser: HudBrowser?
+
+        private var progressObservation: NSKeyValueObservation?
+        private var titleObservation: NSKeyValueObservation?
+        private var urlObservation: NSKeyValueObservation?
+        private var loadingObservation: NSKeyValueObservation?
 
         init(policy: HudBrowserPolicy) {
             self.policy = policy
@@ -135,11 +157,35 @@ public final class HudBrowser {
         /// wrong with them.
         private static let frameSchemes: Set<String> = ["about", "data", "blob"]
 
-        func decidePolicy(
-            for action: WebPage.NavigationAction,
-            preferences: inout WebPage.NavigationPreferences
-        ) async -> WKNavigationActionPolicy {
-            guard let url = action.request.url else { return .cancel }
+        func attach(to webView: WKWebView) {
+            webView.navigationDelegate = self
+            progressObservation = webView.observe(\.estimatedProgress, options: [.new]) { [weak self, weak webView] _, _ in
+                guard let webView else { return }
+                Task { @MainActor in self?.browser?.publish(webView) }
+            }
+            titleObservation = webView.observe(\.title, options: [.new]) { [weak self, weak webView] _, _ in
+                guard let webView else { return }
+                Task { @MainActor in self?.browser?.publish(webView) }
+            }
+            urlObservation = webView.observe(\.url, options: [.new]) { [weak self, weak webView] _, _ in
+                guard let webView else { return }
+                Task { @MainActor in self?.browser?.publish(webView) }
+            }
+            loadingObservation = webView.observe(\.isLoading, options: [.new]) { [weak self, weak webView] _, _ in
+                guard let webView else { return }
+                Task { @MainActor in self?.browser?.publish(webView) }
+            }
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            decidePolicyFor action: WKNavigationAction,
+            decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
+        ) {
+            guard let url = action.request.url else {
+                decisionHandler(.cancel)
+                return
+            }
             let policy = self.policy
 
             // The policy is about where the *reader* ends up, so it judges
@@ -147,17 +193,51 @@ public final class HudBrowser {
             // itself: it may use the allowed schemes or the inert ones, and
             // nothing else — but it never reaches `onBlocked`, because a hidden
             // iframe must not be able to make the host act.
-            let isMainFrame = action.target?.isMainFrame ?? true
+            let isMainFrame = action.targetFrame?.isMainFrame ?? true
             guard isMainFrame else {
                 let scheme = url.scheme?.lowercased() ?? ""
-                return policy.allows(url) || Self.frameSchemes.contains(scheme) ? .allow : .cancel
+                decisionHandler(policy.allows(url) || Self.frameSchemes.contains(scheme) ? .allow : .cancel)
+                return
             }
 
             guard policy.allows(url) else {
-                await MainActor.run { policy.onBlocked?(url, .page) }
-                return .cancel
+                policy.onBlocked?(url, .page)
+                decisionHandler(.cancel)
+                return
             }
-            return .allow
+            decisionHandler(.allow)
+        }
+
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            browser?.failure = nil
+            browser?.publish(webView)
+        }
+
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) {
+            fail(error, in: webView)
+        }
+
+        func webView(
+            _ webView: WKWebView,
+            didFailProvisionalNavigation navigation: WKNavigation!,
+            withError error: Error
+        ) {
+            fail(error, in: webView)
+        }
+
+        func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
+            browser?.failure = "Page stopped responding"
+            browser?.publish(webView)
+        }
+
+        private func fail(_ error: Error, in webView: WKWebView) {
+            let nsError = error as NSError
+            if nsError.domain == NSURLErrorDomain, nsError.code == NSURLErrorCancelled {
+                browser?.publish(webView)
+                return
+            }
+            browser?.failure = error.localizedDescription
+            browser?.publish(webView)
         }
     }
 }

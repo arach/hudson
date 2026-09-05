@@ -39,7 +39,7 @@ public struct HudBrowserPane<Accessory: View>: View {
             chrome
             Divider()
             ZStack(alignment: .top) {
-                WebView(browser.page)
+                HudBrowserPageView(browser)
                 progressHairline
             }
         }
@@ -79,25 +79,36 @@ public struct HudBrowserPane<Accessory: View>: View {
     /// be typed into.
     private func addressField(submit: @escaping (String) -> Void) -> some View {
         VStack(alignment: .leading, spacing: 1) {
-            TextField("Search or enter address", text: $addressDraft)
-                .textFieldStyle(.plain)
-                .font(.system(size: 11, weight: .medium, design: .monospaced))
-                .focused($addressFocused)
-                .onSubmit {
-                    let trimmed = addressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
-                    guard !trimmed.isEmpty else { return }
-                    addressFocused = false
-                    submit(trimmed)
+            HStack(spacing: 4) {
+                TextField("Search or enter address", text: $addressDraft)
+                    .textFieldStyle(.plain)
+                    .font(.system(size: 11, weight: .medium, design: .monospaced))
+                    .focused($addressFocused)
+                    .onSubmit { submitDraft(with: submit) }
+                    .onAppear {
+                        addressDraft = browser.url?.absoluteString ?? ""
+                        if browser.url == nil { addressFocused = true }
+                    }
+                    .onChange(of: browser.url) { _, url in
+                        guard !addressFocused else { return }
+                        addressDraft = url?.absoluteString ?? ""
+                    }
+                    .accessibilityLabel("Address and search")
+
+                Button {
+                    submitDraft(with: submit)
+                } label: {
+                    Image(systemName: "arrow.right")
+                        .font(.system(size: 10, weight: .semibold))
+                        .frame(width: 18, height: 18)
+                        .contentShape(Rectangle())
                 }
-                .onAppear {
-                    addressDraft = browser.url?.absoluteString ?? ""
-                    if browser.url == nil { addressFocused = true }
-                }
-                .onChange(of: browser.url) { _, url in
-                    guard !addressFocused else { return }
-                    addressDraft = url?.absoluteString ?? ""
-                }
-                .accessibilityLabel("Address and search")
+                .buttonStyle(.plain)
+                .disabled(trimmedAddressDraft.isEmpty)
+                .opacity(trimmedAddressDraft.isEmpty ? 0.3 : 1)
+                .help("Go")
+                .accessibilityLabel("Go to address")
+            }
 
             if let failure = browser.failure {
                 Text(failure)
@@ -114,6 +125,16 @@ public struct HudBrowserPane<Accessory: View>: View {
             }
         }
         .padding(.leading, 4)
+    }
+
+    private var trimmedAddressDraft: String {
+        addressDraft.trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
+    private func submitDraft(with submit: (String) -> Void) {
+        guard !trimmedAddressDraft.isEmpty else { return }
+        addressFocused = false
+        submit(trimmedAddressDraft)
     }
 
     /// Host first, title underneath. The host is the part that answers "where
