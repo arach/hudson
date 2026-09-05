@@ -181,21 +181,45 @@ React, agent-transport, or editor dependency.
 
 For the surrounding hybrid layout, `hudsonkit/agent-workspace` provides named
 DOM slots for navigation, conversation history, composer, artifact editor, and
-results. Its editor slot accepts any host-owned editor, including Monaco:
+results. Its optional tool surface keeps the conversation fixed while arbitrary
+host-owned results, editor, and terminal nodes switch in the right column or
+share it as a split pane:
 
 ```ts
 import { createAgentWorkspace } from 'hudsonkit/agent-workspace';
 import 'hudsonkit/agent-workspace/styles';
 
-const workspace = createAgentWorkspace(document.querySelector('#app')!, {
-  navigation: behaviorList,
-  conversation: history,
-  composer: composer.element,
-  editor: monacoHost,
-  results: runHistory,
+const workspace = createAgentWorkspace(
+  document.querySelector('#app')!,
+  {
+    navigation: behaviorList,
+    conversation: history,
+    composer: composer.element,
+  },
+  {
+    tools: [
+      { id: 'tests', label: 'Test', content: runHistory },
+      { id: 'editor', label: 'IDE', content: monacoHost },
+      { id: 'terminal', label: 'Terminal', content: terminalHost },
+    ],
+    selectedToolId: 'tests',
+    onToolSelect: (id, pane) => saveToolSelection({ id, pane }),
+    onToolLayoutChange: (layout) => saveToolLayout(layout),
+  },
+);
+
+workspace.update({
+  navigationVisible: false,
+  selectedToolId: 'editor',
+  secondaryToolId: 'terminal',
+  toolLayout: 'split',
+  toolSplitPercent: 58,
 });
-workspace.update({ artifactVisible: Boolean(activeArtifact) });
 ```
+
+The original `editor` and `results` slots remain available for fixed layouts.
+Calling `createAgentWorkspace(host, slots)` without tools preserves the original
+two-argument behavior.
 
 ## Requirements
 

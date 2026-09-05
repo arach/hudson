@@ -13,7 +13,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
   runtime-picker APIs for attachments, context actions, send/queue/steer/stop,
   IME-safe shortcuts, custom models, and runtime selection.
 - Add the framework-free `hudsonkit/agent-workspace` slot shell for hybrid
-  navigation, conversation/composer, editor, and results surfaces.
+  navigation, conversation/composer, editor, and results surfaces, including
+  accessible host-owned tool tabs and optional split panes.
 
 - Add the `hudsonkit/nav` subpath with a data-driven `HudSideNav`, provider-
   backed composable primitives, icon/off-canvas collapse modes, persistence,
