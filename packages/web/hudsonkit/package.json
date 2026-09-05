@@ -105,6 +105,24 @@
       "import": "./dist/workflow.js",
       "default": "./dist/workflow.js"
     },
+    "./agent-composer": {
+      "types": "./dist/agent-composer.d.ts",
+      "import": "./dist/agent-composer.js",
+      "default": "./dist/agent-composer.js"
+    },
+    "./agent-composer/styles": {
+      "types": "./dist/agent-composer-styles.d.ts",
+      "default": "./dist/agent-composer.css"
+    },
+    "./agent-workspace": {
+      "types": "./dist/agent-workspace.d.ts",
+      "import": "./dist/agent-workspace.js",
+      "default": "./dist/agent-workspace.js"
+    },
+    "./agent-workspace/styles": {
+      "types": "./dist/agent-workspace-styles.d.ts",
+      "default": "./dist/agent-workspace.css"
+    },
     "./observability": {
       "types": "./dist/observability.d.ts",
       "import": "./dist/observability.js",
@@ -190,7 +208,7 @@
   "scripts": {
     "build": "bun run build:js && bun run build:css",
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
-    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css && cp src/styles/styles.d.ts dist/styles.d.ts && cp src/styles/styles-tokens.d.ts dist/styles-tokens.d.ts",
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css && cp src/styles/styles.d.ts dist/styles.d.ts && cp src/styles/styles-tokens.d.ts dist/styles-tokens.d.ts && cp src/styles/agent-composer.css dist/agent-composer.css && cp src/styles/agent-composer-styles.d.ts dist/agent-composer-styles.d.ts && cp src/styles/agent-workspace.css dist/agent-workspace.css && cp src/styles/agent-workspace-styles.d.ts dist/agent-workspace-styles.d.ts",
     "assert-dist": "node bin/assert-dist.mjs",
     "pack": "bun run build && bun run assert-dist && bun pm pack && node bin/verify-pack.mjs",
     "prepare": "node bin/prepare-check.mjs",

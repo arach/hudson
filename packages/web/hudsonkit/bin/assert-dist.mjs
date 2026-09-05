@@ -21,6 +21,14 @@ const required = [
   { path: join(dist, 'styles.d.ts'), minBytes: 1 },
   { path: join(dist, 'tokens.css'), minBytes: 1 },
   { path: join(dist, 'styles-tokens.d.ts'), minBytes: 1 },
+  { path: join(dist, 'agent-composer.js'), minBytes: 1 },
+  { path: join(dist, 'agent-composer.d.ts'), minBytes: 1 },
+  { path: join(dist, 'agent-composer.css'), minBytes: 1024 },
+  { path: join(dist, 'agent-composer-styles.d.ts'), minBytes: 1 },
+  { path: join(dist, 'agent-workspace.js'), minBytes: 1 },
+  { path: join(dist, 'agent-workspace.d.ts'), minBytes: 1 },
+  { path: join(dist, 'agent-workspace.css'), minBytes: 1024 },
+  { path: join(dist, 'agent-workspace-styles.d.ts'), minBytes: 1 },
 ];
 
 const missing = [];

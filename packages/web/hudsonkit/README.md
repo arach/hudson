@@ -134,6 +134,69 @@ function AssetPreview({ id }: { id: string }) {
 }
 ```
 
+### Framework-free agent composer
+
+`hudsonkit/agent-composer` is a DOM-native, controlled composer for agent and
+code-workflow surfaces. It keeps transport and product state in the host while
+standardizing attachments, context chips, send/queue/steer/stop behavior,
+IME-safe keyboard submission, and runtime/model/effort selection.
+
+```ts
+import {
+  createAgentComposer,
+  createAgentRuntimePicker,
+} from 'hudsonkit/agent-composer';
+import 'hudsonkit/agent-composer/styles';
+
+const composer = createAgentComposer(document.querySelector('#composer')!, {
+  onChange: (value) => saveDraft(value),
+  onSubmit: (action, value) => invokeAgent({ action, value }),
+  onStop: () => stopAgent(),
+  onFiles: (files) => stageFiles(files),
+});
+
+const picker = createAgentRuntimePicker(composer.tools, {
+  catalog: liveRuntimeCatalog,
+  value: savedRuntime,
+  onChange: persistRuntime,
+});
+
+composer.update({
+  value: draft,
+  active: agentIsRunning,
+  steerSupported: activeHarness === 'codex',
+  attachments,
+  contextItems: [{ id: 'recording', label: recordingName ?? 'Choose recording' }],
+});
+```
+
+For sibling-repository development, build a sealed artifact with
+`bun run pack` in `packages/web/hudsonkit`, copy the resulting `.tgz` into the
+consumer repository, and use a repository-relative `file:` dependency. Do not
+depend on HudsonKit's source directory or require a Hudson checkout at runtime.
+
+The interaction structure is adapted from OpenScout's web MessageComposer and
+RuntimePicker under Apache-2.0. The HudsonKit implementation has no OpenScout,
+React, agent-transport, or editor dependency.
+
+For the surrounding hybrid layout, `hudsonkit/agent-workspace` provides named
+DOM slots for navigation, conversation history, composer, artifact editor, and
+results. Its editor slot accepts any host-owned editor, including Monaco:
+
+```ts
+import { createAgentWorkspace } from 'hudsonkit/agent-workspace';
+import 'hudsonkit/agent-workspace/styles';
+
+const workspace = createAgentWorkspace(document.querySelector('#app')!, {
+  navigation: behaviorList,
+  conversation: history,
+  composer: composer.element,
+  editor: monacoHost,
+  results: runHistory,
+});
+workspace.update({ artifactVisible: Boolean(activeArtifact) });
+```
+
 ## Requirements
 
 - React 19+

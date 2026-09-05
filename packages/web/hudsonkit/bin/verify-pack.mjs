@@ -17,6 +17,14 @@ const required = [
   'package/dist/tokens.css',
   'package/dist/styles.d.ts',
   'package/dist/styles-tokens.d.ts',
+  'package/dist/agent-composer.js',
+  'package/dist/agent-composer.d.ts',
+  'package/dist/agent-composer.css',
+  'package/dist/agent-composer-styles.d.ts',
+  'package/dist/agent-workspace.js',
+  'package/dist/agent-workspace.d.ts',
+  'package/dist/agent-workspace.css',
+  'package/dist/agent-workspace-styles.d.ts',
 ];
 
 const packageJson = JSON.parse(readFileSync(join(pkgRoot, 'package.json'), 'utf8'));
