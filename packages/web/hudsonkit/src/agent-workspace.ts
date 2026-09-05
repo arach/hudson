@@ -1,5 +1,19 @@
 /** Framework-free presentation shell for hybrid agent/code workflows. */
 
+import {
+  createAgentPanelLayout,
+  type AgentWorkspacePanel,
+  type AgentWorkspacePanelLayoutChangeReason,
+  type AgentWorkspacePanelLayoutState,
+} from './agent-panel-layout';
+
+export type {
+  AgentWorkspacePanel,
+  AgentWorkspacePanelArrangement,
+  AgentWorkspacePanelLayoutChangeReason,
+  AgentWorkspacePanelLayoutState,
+} from './agent-panel-layout';
+
 export type AgentWorkspaceSlot =
   | 'navigationHeader'
   | 'navigation'
@@ -53,6 +67,12 @@ export interface AgentWorkspaceOptions {
   toolSplitPercent?: number;
   onToolSelect?: (id: string, pane: AgentWorkspaceToolPane) => void;
   onToolLayoutChange?: (layout: AgentWorkspaceToolLayout) => void;
+  panels?: readonly AgentWorkspacePanel[];
+  panelLayout?: Partial<AgentWorkspacePanelLayoutState>;
+  onPanelLayoutChange?: (
+    state: AgentWorkspacePanelLayoutState,
+    reason: AgentWorkspacePanelLayoutChangeReason,
+  ) => void;
 }
 
 export interface AgentWorkspaceController {
@@ -60,12 +80,20 @@ export interface AgentWorkspaceController {
   readonly navigation: HTMLElement;
   readonly conversation: HTMLElement;
   readonly artifact: HTMLElement;
+  readonly panelLayout: HTMLElement;
   readonly toolTabs: HTMLElement;
   readonly primaryToolPane: HTMLElement;
   readonly secondaryToolPane: HTMLElement;
   readonly slots: Readonly<Record<AgentWorkspaceSlot, HTMLElement>>;
   setSlot(name: AgentWorkspaceSlot, content: Node | null): void;
   setTools(tools: readonly AgentWorkspaceTool[]): void;
+  setPanels(panels: readonly AgentWorkspacePanel[]): void;
+  getPanelLayout(): AgentWorkspacePanelLayoutState;
+  setPanelLayout(layout: Partial<AgentWorkspacePanelLayoutState>): void;
+  showPanel(id: string): void;
+  hidePanel(id: string): void;
+  focusPanel(id: string): void;
+  movePanel(id: string, toIndex: number): void;
   update(state: AgentWorkspaceState): void;
   destroy(): void;
 }
@@ -100,6 +128,11 @@ export function createAgentWorkspace(
   const toolBody = element('div', 'hk-agent-workspace__tool-body');
   const primaryToolPane = element('div', 'hk-agent-workspace__tool-pane hk-agent-workspace__tool-pane--primary');
   const secondaryToolPane = element('div', 'hk-agent-workspace__tool-pane hk-agent-workspace__tool-pane--secondary');
+  const peerLayout = createAgentPanelLayout({
+    panels: options.panels,
+    layout: options.panelLayout,
+    onChange: options.onPanelLayoutChange,
+  });
   const slotNodes: Record<AgentWorkspaceSlot, HTMLElement> = {
     navigationHeader: element('header', 'hk-agent-workspace__navigation-header'),
     navigation: element('div', 'hk-agent-workspace__navigation-body'),
@@ -132,7 +165,7 @@ export function createAgentWorkspace(
   conversation.append(slotNodes.conversationHeader, slotNodes.conversation, slotNodes.composer);
   artifact.append(slotNodes.artifactHeader, slotNodes.editor, slotNodes.results, toolChrome, toolBody);
   work.append(conversation, artifact);
-  main.append(notice, work);
+  main.append(notice, work, peerLayout.element);
   root.append(navigation, main);
   host.replaceChildren(root);
 
@@ -264,6 +297,14 @@ export function createAgentWorkspace(
     renderTools();
   };
 
+  const setPanels = (panels: readonly AgentWorkspacePanel[]) => {
+    peerLayout.setPanels(panels);
+    const visible = panels.length > 0;
+    root.dataset.peerPanelsVisible = String(visible);
+    work.hidden = visible;
+    peerLayout.element.hidden = !visible;
+  };
+
   const update = (state: AgentWorkspaceState) => {
     if (state.artifactVisible !== undefined) {
       artifact.hidden = !state.artifactVisible;
@@ -292,6 +333,7 @@ export function createAgentWorkspace(
   };
 
   renderTools();
+  setPanels(options.panels ?? []);
   update({
     artifactVisible: Boolean(initialSlots.editor || initialSlots.results || tools.length),
     navigationVisible: true,
@@ -302,12 +344,20 @@ export function createAgentWorkspace(
     navigation,
     conversation,
     artifact,
+    panelLayout: peerLayout.element,
     toolTabs,
     primaryToolPane,
     secondaryToolPane,
     slots: slotNodes,
     setSlot,
     setTools,
+    setPanels,
+    getPanelLayout: peerLayout.getLayout,
+    setPanelLayout: peerLayout.setLayout,
+    showPanel: peerLayout.showPanel,
+    hidePanel: peerLayout.hidePanel,
+    focusPanel: peerLayout.focusPanel,
+    movePanel: peerLayout.movePanel,
     update,
     destroy: () => root.remove(),
   };
