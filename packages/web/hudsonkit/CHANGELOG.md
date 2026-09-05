@@ -15,6 +15,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Add the framework-free `hudsonkit/agent-workspace` slot shell for hybrid
   navigation, conversation/composer, editor, and results surfaces, including
   accessible host-owned tool tabs and optional split panes.
+- Add an optional peer-panel mode to `hudsonkit/agent-workspace`. Hosts can keep
+  arbitrary DOM content mounted while users show, focus, reorder, resize, and
+  arrange panels as a single surface, columns, rows, or a grid. The layout state
+  is JSON-serializable for host persistence.
 
 - Add the `hudsonkit/nav` subpath with a data-driven `HudSideNav`, provider-
   backed composable primitives, icon/off-canvas collapse modes, persistence,

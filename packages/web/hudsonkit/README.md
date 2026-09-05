@@ -221,6 +221,37 @@ The original `editor` and `results` slots remain available for fixed layouts.
 Calling `createAgentWorkspace(host, slots)` without tools preserves the original
 two-argument behavior.
 
+For workflows where conversation, tests, an IDE, and a terminal are equivalent
+work surfaces, pass `panels` instead of `tools`. Hudson keeps every panel's DOM
+node mounted while the caller changes visibility, focus, order, or arrangement:
+
+```ts
+const workspace = createAgentWorkspace(document.querySelector('#app')!, {}, {
+  panels: [
+    { id: 'details', label: 'Details', content: detailsView },
+    { id: 'test', label: 'Test', content: testView },
+    { id: 'ide', label: 'IDE', content: monacoHost },
+    { id: 'terminal', label: 'Terminal', content: terminalHost },
+    { id: 'chat', label: 'Chat', content: conversationView },
+  ],
+  panelLayout: savedLayout ?? {
+    arrangement: 'single',
+    focusedPanelId: 'details',
+    hiddenPanelIds: ['test', 'ide', 'terminal', 'chat'],
+  },
+  onPanelLayoutChange: (layout) => saveLayout(layout),
+});
+
+workspace.showPanel('test');
+workspace.setPanelLayout({ arrangement: 'columns' });
+```
+
+`AgentWorkspacePanelLayoutState` is JSON-serializable. It records the
+arrangement, panel order, hidden panel IDs, focused panel ID, grid column count,
+and row or column sizes. Users can reorder panels by dragging a panel heading,
+pressing `Alt+Arrow`, or using the panel action menu. Separators support pointer
+dragging and arrow-key resizing.
+
 ## Requirements
 
 - React 19+

@@ -100,4 +100,137 @@ describe('agent workspace', () => {
     tabs[0]?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
     expect(document.activeElement).toBe(tabs[2]);
   });
+
+  it('uses peer panels instead of the fixed conversation rail when provided', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const details = document.createElement('article');
+    const test = document.createElement('output');
+    const workspace = createAgentWorkspace(host, { conversation: document.createElement('ol') }, {
+      panels: [
+        { id: 'details', label: 'Details', content: details },
+        { id: 'test', label: 'Test', content: test },
+      ],
+      panelLayout: {
+        arrangement: 'single',
+        focusedPanelId: 'details',
+        hiddenPanelIds: ['test'],
+      },
+    });
+
+    expect(workspace.conversation.parentElement?.hidden).toBe(true);
+    expect(workspace.panelLayout.hidden).toBe(false);
+    expect(details.isConnected).toBe(true);
+    expect(test.isConnected).toBe(true);
+    expect(workspace.getPanelLayout().focusedPanelId).toBe('details');
+  });
+
+  it('retains panel DOM nodes while showing, focusing, arranging, and reordering', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const details = document.createElement('article');
+    const editor = document.createElement('div');
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: [
+        { id: 'details', label: 'Details', content: details },
+        { id: 'editor', label: 'IDE', content: editor },
+      ],
+      panelLayout: { hiddenPanelIds: ['editor'] },
+    });
+    const detailsMount = details.parentElement;
+    const editorMount = editor.parentElement;
+
+    workspace.showPanel('editor');
+    workspace.setPanelLayout({ arrangement: 'columns' });
+    workspace.movePanel('editor', 0);
+    workspace.focusPanel('details');
+
+    expect(details.isConnected).toBe(true);
+    expect(editor.isConnected).toBe(true);
+    expect(details.parentElement).toBe(detailsMount);
+    expect(editor.parentElement).toBe(editorMount);
+    expect(workspace.getPanelLayout().order).toEqual(['editor', 'details']);
+    expect(workspace.getPanelLayout().focusedPanelId).toBe('details');
+  });
+
+  it('emits serializable layout changes for show, hide, focus, and arrangement', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const changes: [string, string][] = [];
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: ['details', 'test', 'terminal'].map((id) => ({
+        id,
+        label: id,
+        content: document.createElement('div'),
+      })),
+      panelLayout: { hiddenPanelIds: ['test'] },
+      onPanelLayoutChange: (state, reason) => {
+        changes.push([reason, JSON.stringify(state)]);
+      },
+    });
+
+    workspace.showPanel('test');
+    workspace.setPanelLayout({ arrangement: 'grid', gridColumns: 2 });
+    workspace.hidePanel('terminal');
+    workspace.focusPanel('details');
+
+    expect(changes.map(([reason]) => reason)).toEqual(['show', 'state', 'hide', 'focus']);
+    expect(JSON.parse(changes[2]![1]).hiddenPanelIds).toEqual(['terminal']);
+  });
+
+  it('reorders from the keyboard and resizes tracks through separators', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const changes: string[] = [];
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: ['details', 'test', 'terminal'].map((id) => ({
+        id,
+        label: id,
+        content: document.createElement('div'),
+      })),
+      panelLayout: { arrangement: 'columns' },
+      onPanelLayoutChange: (_state, reason) => changes.push(reason),
+    });
+
+    const firstHandle = workspace.panelLayout.querySelector<HTMLButtonElement>('[data-panel-id="details"] .hk-agent-workspace__panel-handle');
+    firstHandle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', altKey: true, bubbles: true }));
+    expect(workspace.getPanelLayout().order).toEqual(['test', 'details', 'terminal']);
+
+    const separator = workspace.panelLayout.querySelector<HTMLElement>('[role="separator"]');
+    separator?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }));
+    const sizes = workspace.getPanelLayout().columnSizes!;
+    expect(sizes[0]).toBeCloseTo(38.33, 2);
+    expect(sizes[1]).toBeCloseTo(28.33, 2);
+    expect(sizes[2]).toBeCloseTo(33.33, 2);
+    expect(changes).toContain('reorder');
+    expect(changes).toContain('resize');
+  });
+
+  it('reorders and hides panels from each panel action menu', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: ['details', 'test', 'terminal'].map((id) => ({
+        id,
+        label: id,
+        content: document.createElement('div'),
+      })),
+      panelLayout: { arrangement: 'rows' },
+    });
+    const details = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="details"]')!;
+    const actions = details.querySelectorAll<HTMLButtonElement>('.hk-agent-workspace__panel-action');
+    actions[1]?.click();
+    expect(workspace.getPanelLayout().order).toEqual(['test', 'details', 'terminal']);
+
+    actions[2]?.click();
+    expect(workspace.getPanelLayout().hiddenPanelIds).toEqual(['details']);
+  });
+
+  it('rejects duplicate panel ids and keeps at least one panel visible', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: [{ id: 'details', label: 'Details', content: document.createElement('div') }],
+    });
+    workspace.hidePanel('details');
+    expect(workspace.getPanelLayout().hiddenPanelIds).toEqual([]);
+    expect(() => workspace.setPanels([
+      { id: 'same', label: 'One', content: document.createElement('div') },
+      { id: 'same', label: 'Two', content: document.createElement('div') },
+    ])).toThrow('Agent workspace panel ids must be unique');
+  });
 });
