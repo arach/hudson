@@ -93,6 +93,8 @@ export function createAgentPanelLayout(
   const frames = new Map<string, HTMLElement>();
   let panels = [...(options.panels ?? [])];
   let draggedPanelId: string | null = null;
+  let dropTargetPanelId: string | null = null;
+  let dragPreview: HTMLElement | null = null;
   let state: AgentWorkspacePanelLayoutState = {
     arrangement: options.layout?.arrangement ?? 'single',
     order: [...(options.layout?.order ?? panels.map((panel) => panel.id))],
@@ -204,6 +206,46 @@ export function createAgentPanelLayout(
     notify('hide');
   };
 
+  const clearDropTarget = () => {
+    if (dropTargetPanelId) frames.get(dropTargetPanelId)?.removeAttribute('data-drop-target');
+    dropTargetPanelId = null;
+  };
+
+  const setDropTarget = (id: string) => {
+    if (!draggedPanelId || draggedPanelId === id || dropTargetPanelId === id) return;
+    clearDropTarget();
+    dropTargetPanelId = id;
+    frames.get(id)?.setAttribute('data-drop-target', 'true');
+  };
+
+  const clearDragState = () => {
+    clearDropTarget();
+    if (draggedPanelId) frames.get(draggedPanelId)?.removeAttribute('data-drag-source');
+    draggedPanelId = null;
+    dragPreview?.remove();
+    dragPreview = null;
+    body.removeAttribute('data-dragging');
+    root.removeAttribute('data-dragging-panel');
+  };
+
+  const createDragPreview = (label: string) => {
+    dragPreview?.remove();
+    const preview = element('div', 'hk-agent-workspace__panel-drag-preview');
+    preview.textContent = label;
+    preview.setAttribute('aria-hidden', 'true');
+    document.body.append(preview);
+    dragPreview = preview;
+    return preview;
+  };
+
+  const hideDragPreviewAfterCapture = (preview: HTMLElement) => {
+    const hide = () => {
+      if (dragPreview === preview) preview.hidden = true;
+    };
+    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(hide);
+    else setTimeout(hide, 0);
+  };
+
   const createFrame = (id: string) => {
     const frame = element('article', 'hk-agent-workspace__peer-panel');
     const header = element('header', 'hk-agent-workspace__peer-panel-header');
@@ -248,21 +290,31 @@ export function createAgentPanelLayout(
         return;
       }
       draggedPanelId = id;
+      frame.dataset.dragSource = 'true';
+      body.dataset.dragging = 'true';
+      root.dataset.draggingPanel = id;
       event.dataTransfer?.setData('text/plain', id);
-      if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move';
+      if (event.dataTransfer) {
+        event.dataTransfer.effectAllowed = 'move';
+        const preview = createDragPreview(panelById(id)?.label ?? id);
+        event.dataTransfer.setDragImage?.(preview, 16, 16);
+        hideDragPreviewAfterCapture(preview);
+      }
     });
+    frame.addEventListener('dragenter', () => setDropTarget(id));
     frame.addEventListener('dragover', (event) => {
       if (!draggedPanelId || draggedPanelId === id) return;
       event.preventDefault();
+      setDropTarget(id);
       if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
     });
     frame.addEventListener('drop', (event) => {
       event.preventDefault();
       const source = draggedPanelId ?? event.dataTransfer?.getData('text/plain');
-      draggedPanelId = null;
+      clearDragState();
       if (source && source !== id) movePanel(source, orderedIds().indexOf(id));
     });
-    handle.addEventListener('dragend', () => { draggedPanelId = null; });
+    handle.addEventListener('dragend', clearDragState);
     earlier.addEventListener('click', () => {
       movePanel(id, orderedIds().indexOf(id) - 1);
       actions.open = false;
@@ -278,6 +330,16 @@ export function createAgentPanelLayout(
     frames.set(id, frame);
     return frame;
   };
+
+  body.addEventListener('dragleave', (event) => {
+    const rect = body.getBoundingClientRect();
+    if (
+      event.clientX <= rect.left
+      || event.clientX >= rect.right
+      || event.clientY <= rect.top
+      || event.clientY >= rect.bottom
+    ) clearDropTarget();
+  });
 
   const resizeTracks = (axis: 'column' | 'row', index: number, delta: number) => {
     const key = axis === 'column' ? 'columnSizes' : 'rowSizes';
@@ -414,6 +476,8 @@ export function createAgentPanelLayout(
     const ids = nextPanels.map((panel) => panel.id);
     if (new Set(ids).size !== ids.length) throw new Error('Agent workspace panel ids must be unique');
     panels = [...nextPanels];
+    if (draggedPanelId && !ids.includes(draggedPanelId)) clearDragState();
+    else if (dropTargetPanelId && !ids.includes(dropTargetPanelId)) clearDropTarget();
     for (const [id, frame] of frames) {
       if (!ids.includes(id)) {
         frame.remove();
@@ -446,6 +510,9 @@ export function createAgentPanelLayout(
     hidePanel,
     focusPanel,
     movePanel,
-    destroy: () => root.remove(),
+    destroy: () => {
+      clearDragState();
+      root.remove();
+    },
   };
 }
