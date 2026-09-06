@@ -1,5 +1,7 @@
 /** Framework-free peer-panel layout used by AgentWorkspace. */
 
+const PANEL_DRAG_THRESHOLD = 5;
+
 export interface AgentWorkspacePanel {
   id: string;
   label: string;
@@ -95,6 +97,10 @@ export function createAgentPanelLayout(
   let draggedPanelId: string | null = null;
   let dropTargetPanelId: string | null = null;
   let dragPreview: HTMLElement | null = null;
+  let dragPointerId: number | null = null;
+  let dragPointerHandle: HTMLElement | null = null;
+  let dragStart = { x: 0, y: 0 };
+  let suppressNextHandleClick = false;
   let state: AgentWorkspacePanelLayoutState = {
     arrangement: options.layout?.arrangement ?? 'single',
     order: [...(options.layout?.order ?? panels.map((panel) => panel.id))],
@@ -219,6 +225,8 @@ export function createAgentPanelLayout(
   };
 
   const clearDragState = () => {
+    const pointerId = dragPointerId;
+    const pointerHandle = dragPointerHandle;
     clearDropTarget();
     if (draggedPanelId) frames.get(draggedPanelId)?.removeAttribute('data-drag-source');
     draggedPanelId = null;
@@ -226,6 +234,12 @@ export function createAgentPanelLayout(
     dragPreview = null;
     body.removeAttribute('data-dragging');
     root.removeAttribute('data-dragging-panel');
+    dragPointerId = null;
+    dragPointerHandle = null;
+    if (pointerId !== null && pointerHandle?.hasPointerCapture?.(pointerId)) {
+      pointerHandle.releasePointerCapture?.(pointerId);
+    }
+    root.ownerDocument.defaultView?.removeEventListener('keydown', cancelDragOnEscape);
   };
 
   const createDragPreview = (label: string) => {
@@ -238,12 +252,22 @@ export function createAgentPanelLayout(
     return preview;
   };
 
-  const hideDragPreviewAfterCapture = (preview: HTMLElement) => {
-    const hide = () => {
-      if (dragPreview === preview) preview.hidden = true;
-    };
-    if (typeof requestAnimationFrame === 'function') requestAnimationFrame(hide);
-    else setTimeout(hide, 0);
+  const positionDragPreview = (x: number, y: number) => {
+    if (!dragPreview) return;
+    dragPreview.style.left = `${x + 14}px`;
+    dragPreview.style.top = `${y + 14}px`;
+  };
+
+  const panelIdAtPoint = (x: number, y: number) => {
+    const hit = root.ownerDocument.elementFromPoint?.(x, y);
+    const frame = hit?.closest<HTMLElement>('[data-panel-id]');
+    return frame && body.contains(frame) ? frame.dataset.panelId ?? null : null;
+  };
+
+  function cancelDragOnEscape(event: KeyboardEvent) {
+    if (event.key !== 'Escape' || !draggedPanelId) return;
+    event.preventDefault();
+    clearDragState();
   };
 
   const createFrame = (id: string) => {
@@ -261,7 +285,6 @@ export function createAgentPanelLayout(
     frame.dataset.panelId = id;
     frame.setAttribute('role', 'region');
     handle.type = 'button';
-    handle.draggable = true;
     handle.title = 'Drag to reorder; Alt+Arrow keys move this panel';
     summary.textContent = 'Actions';
     summary.setAttribute('aria-label', 'Panel actions');
@@ -276,7 +299,14 @@ export function createAgentPanelLayout(
     header.append(handle, actions);
     frame.append(header, content);
 
-    handle.addEventListener('click', () => focusPanel(id));
+    handle.addEventListener('click', (event) => {
+      if (suppressNextHandleClick) {
+        suppressNextHandleClick = false;
+        event.preventDefault();
+        return;
+      }
+      focusPanel(id);
+    });
     handle.addEventListener('keydown', (event) => {
       if (!event.altKey || !['ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown'].includes(event.key)) return;
       event.preventDefault();
@@ -284,37 +314,41 @@ export function createAgentPanelLayout(
       const backwards = event.key === 'ArrowLeft' || event.key === 'ArrowUp';
       movePanel(id, index + (backwards ? -1 : 1));
     });
-    handle.addEventListener('dragstart', (event) => {
-      if (panelById(id)?.disabled) {
-        event.preventDefault();
-        return;
-      }
-      draggedPanelId = id;
-      frame.dataset.dragSource = 'true';
-      body.dataset.dragging = 'true';
-      root.dataset.draggingPanel = id;
-      event.dataTransfer?.setData('text/plain', id);
-      if (event.dataTransfer) {
-        event.dataTransfer.effectAllowed = 'move';
-        const preview = createDragPreview(panelById(id)?.label ?? id);
-        event.dataTransfer.setDragImage?.(preview, 16, 16);
-        hideDragPreviewAfterCapture(preview);
-      }
+    handle.addEventListener('pointerdown', (event) => {
+      if (event.button !== 0 || panelById(id)?.disabled || dragPointerId !== null) return;
+      dragPointerId = event.pointerId;
+      dragPointerHandle = handle;
+      dragStart = { x: event.clientX, y: event.clientY };
+      handle.setPointerCapture?.(event.pointerId);
     });
-    frame.addEventListener('dragenter', () => setDropTarget(id));
-    frame.addEventListener('dragover', (event) => {
-      if (!draggedPanelId || draggedPanelId === id) return;
+    handle.addEventListener('pointermove', (event) => {
+      if (dragPointerId !== event.pointerId) return;
+      if (!draggedPanelId) {
+        if (Math.hypot(event.clientX - dragStart.x, event.clientY - dragStart.y) < PANEL_DRAG_THRESHOLD) return;
+        draggedPanelId = id;
+        frame.dataset.dragSource = 'true';
+        body.dataset.dragging = 'true';
+        root.dataset.draggingPanel = id;
+        createDragPreview(panelById(id)?.label ?? id);
+        root.ownerDocument.defaultView?.addEventListener('keydown', cancelDragOnEscape);
+      }
       event.preventDefault();
-      setDropTarget(id);
-      if (event.dataTransfer) event.dataTransfer.dropEffect = 'move';
+      positionDragPreview(event.clientX, event.clientY);
+      const targetId = panelIdAtPoint(event.clientX, event.clientY);
+      if (targetId && targetId !== draggedPanelId) setDropTarget(targetId);
+      else clearDropTarget();
     });
-    frame.addEventListener('drop', (event) => {
-      event.preventDefault();
-      const source = draggedPanelId ?? event.dataTransfer?.getData('text/plain');
+    const finishPointerDrag = (event: PointerEvent, commit: boolean) => {
+      if (dragPointerId !== event.pointerId) return;
+      const source = draggedPanelId;
+      const target = dropTargetPanelId;
+      if (source && commit) suppressNextHandleClick = true;
       clearDragState();
-      if (source && source !== id) movePanel(source, orderedIds().indexOf(id));
-    });
-    handle.addEventListener('dragend', clearDragState);
+      if (commit && source && target && source !== target) movePanel(source, orderedIds().indexOf(target));
+    };
+    handle.addEventListener('pointerup', (event) => finishPointerDrag(event, true));
+    handle.addEventListener('pointercancel', (event) => finishPointerDrag(event, false));
+    handle.addEventListener('lostpointercapture', (event) => finishPointerDrag(event, false));
     earlier.addEventListener('click', () => {
       movePanel(id, orderedIds().indexOf(id) - 1);
       actions.open = false;
@@ -330,16 +364,6 @@ export function createAgentPanelLayout(
     frames.set(id, frame);
     return frame;
   };
-
-  body.addEventListener('dragleave', (event) => {
-    const rect = body.getBoundingClientRect();
-    if (
-      event.clientX <= rect.left
-      || event.clientX >= rect.right
-      || event.clientY <= rect.top
-      || event.clientY >= rect.bottom
-    ) clearDropTarget();
-  });
 
   const resizeTracks = (axis: 'column' | 'row', index: number, delta: number) => {
     const key = axis === 'column' ? 'columnSizes' : 'rowSizes';

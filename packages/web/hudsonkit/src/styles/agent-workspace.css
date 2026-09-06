@@ -187,15 +187,15 @@
 }
 .hk-agent-workspace__peer-panel[data-drop-target="true"]::after { opacity: 1; }
 .hk-agent-workspace__peer-panel-header { display: flex; flex: none; align-items: center; gap: 8px; min-width: 0; min-height: 38px; padding: 3px 6px 3px 10px; border-bottom: 1px solid var(--hk-agent-workspace-line); background: var(--hk-agent-workspace-surface); }
-.hk-agent-workspace__panel-handle { min-width: 0; min-height: 32px; flex: 1; padding: 0; overflow: hidden; color: var(--hk-agent-workspace-ink); font-weight: 600; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: grab; }
+.hk-agent-workspace__panel-handle { min-width: 0; min-height: 32px; flex: 1; padding: 0; overflow: hidden; color: var(--hk-agent-workspace-ink); font-weight: 600; text-align: left; text-overflow: ellipsis; white-space: nowrap; cursor: grab; touch-action: none; }
 .hk-agent-workspace__panel-handle:active { cursor: grabbing; }
 .hk-agent-workspace__panel-actions { flex: none; }
 .hk-agent-workspace__peer-panel-content { flex: 1; min-width: 0; min-height: 0; overflow: auto; }
 .hk-agent-workspace__panel-drag-preview {
   position: fixed;
   z-index: 2147483647;
-  top: 8px;
-  left: 8px;
+  top: 0;
+  left: 0;
   max-width: 180px;
   min-width: 96px;
   min-height: 34px;

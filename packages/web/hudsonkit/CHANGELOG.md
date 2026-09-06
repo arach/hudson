@@ -48,9 +48,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
-- Make peer-panel drag placement explicit with a compact labeled drag image, a
-  dim accent fill on the prospective destination panel, and a stable
-  `data-dragging-panel` bridge signal for native overlays.
+- Make peer-panel drag placement explicit with a compact labeled pointer proxy,
+  a dim accent fill on the prospective destination panel, and a stable
+  `data-dragging-panel` bridge signal for native overlays. The component-local
+  pointer gesture avoids exporting internal layout drags to native drop systems.
 - Replaced Lucide with Hudson's shared Iconoir adapter and added the
   `hudsonkit/icons` export.
 - Preserve CSS pipeline outputs across JavaScript-only tsup cleans, and recover
