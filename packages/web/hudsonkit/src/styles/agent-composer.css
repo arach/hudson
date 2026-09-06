@@ -82,6 +82,8 @@
 .hk-agent-runtime input { font: inherit; }
 .hk-agent-composer__icon-button,
 .hk-agent-composer__secondary,
+.hk-agent-composer__voice,
+.hk-agent-composer__voice-cancel,
 .hk-agent-composer__tool,
 .hk-agent-composer__attachment,
 .hk-agent-composer__send,
@@ -97,8 +99,18 @@
 .hk-agent-composer__icon-button,
 .hk-agent-composer__send { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; }
 .hk-agent-composer__secondary,
+.hk-agent-composer__voice,
+.hk-agent-composer__voice-cancel,
 .hk-agent-composer__tool,
 .hk-agent-composer__attachment { min-height: 28px; padding: 4px 8px; border-radius: 999px; font-size: 11px; }
+.hk-agent-composer__voice { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding-inline: 10px; border-color: color-mix(in srgb, var(--hk-agent-accent) 70%, var(--hk-agent-line)); color: var(--hk-agent-ink); font-weight: 600; }
+.hk-agent-composer__voice[data-voice-status="idle"],
+.hk-agent-composer__voice[data-voice-status="error"] { background: var(--hk-agent-selection); }
+.hk-agent-composer__voice[data-voice-status="recording"] { border-color: #ef4444; background: rgb(239 68 68 / 0.12); color: #fca5a5; }
+.hk-agent-composer__voice-cancel { border-color: transparent; }
+.hk-agent-composer__voice[hidden],
+.hk-agent-composer__voice-cancel[hidden] { display: none; }
+.hk-agent-composer__voice-progress { width: 12px; height: 12px; border: 2px solid color-mix(in srgb, currentColor 28%, transparent); border-top-color: currentColor; border-radius: 999px; animation: hk-agent-composer-spin 800ms linear infinite; }
 .hk-agent-composer__attachment { color: var(--hk-agent-ink); }
 .hk-agent-composer__send { border-color: var(--hk-agent-accent); background: var(--hk-agent-accent); color: #07130f; }
 .hk-agent-composer__send[data-action="queue"] { width: auto; padding: 0 9px; border-radius: 999px; gap: 4px; }
@@ -111,6 +123,7 @@
 .hk-agent-runtime input:focus-visible,
 .hk-agent-composer__input:focus-visible { outline: 2px solid var(--hk-agent-accent); outline-offset: 2px; }
 .hk-agent-composer button:disabled { cursor: not-allowed; opacity: 0.45; }
+.hk-agent-composer__voice[aria-busy="true"] { cursor: wait; opacity: 0.72; }
 .hk-agent-composer__status { padding: 0 12px 8px; color: var(--hk-agent-dim); font-size: 11px; }
 .hk-agent-composer__status[data-tone="error"] { color: #ef4444; }
 
@@ -161,4 +174,7 @@
 
 @media (prefers-reduced-motion: reduce) {
   .hk-agent-composer__shell { transition: none; }
+  .hk-agent-composer__voice-progress { animation: none; }
 }
+
+@keyframes hk-agent-composer-spin { to { transform: rotate(360deg); } }

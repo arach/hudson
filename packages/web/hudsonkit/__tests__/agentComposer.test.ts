@@ -82,6 +82,51 @@ describe('agent composer', () => {
     expect(composer.tools.firstChild).toBe(tool);
     expect(composer.tools.nextElementSibling).toHaveClass('hk-agent-composer__secondary');
   });
+
+  it('renders host-controlled dictation states and dispatches typed voice actions', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const onVoiceAction = vi.fn();
+    const composer = createAgentComposer(host, { onSubmit: vi.fn(), onVoiceAction });
+    const voice = composer.element.querySelector<HTMLButtonElement>('[data-voice-action="start"]')!;
+    const cancel = composer.element.querySelector<HTMLButtonElement>('[data-voice-action="cancel"]')!;
+
+    expect(voice.hidden).toBe(false);
+    expect(voice.textContent).toBe('Dictate');
+    expect(voice.getAttribute('aria-label')).toBe('Dictate');
+    voice.click();
+    expect(onVoiceAction).toHaveBeenLastCalledWith('start');
+
+    composer.update({ voice: { status: 'preparing', canCancel: true } });
+    expect(voice.textContent).toBe('Preparing…');
+    expect(voice.disabled).toBe(true);
+    expect(voice.getAttribute('aria-busy')).toBe('true');
+    expect(cancel.hidden).toBe(false);
+    cancel.click();
+    expect(onVoiceAction).toHaveBeenLastCalledWith('cancel');
+
+    composer.update({ voice: { status: 'recording' } });
+    expect(voice.textContent).toBe('Stop dictation');
+    expect(voice.dataset.voiceAction).toBe('stop');
+    expect(voice.getAttribute('aria-pressed')).toBe('true');
+    voice.click();
+    expect(onVoiceAction).toHaveBeenLastCalledWith('stop');
+
+    composer.update({ voice: { status: 'transcribing' } });
+    expect(voice.textContent).toBe('Transcribing…');
+    expect(cancel.hidden).toBe(true);
+
+    composer.update({ voice: { status: 'error', message: 'Microphone unavailable' } });
+    expect(voice.textContent).toBe('Dictate');
+    expect(voice.title).toBe('Microphone unavailable');
+    voice.click();
+    expect(onVoiceAction).toHaveBeenLastCalledWith('start');
+  });
+
+  it('keeps dictation controls absent when the host does not provide voice actions', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const composer = createAgentComposer(host, { onSubmit: vi.fn() });
+    expect(composer.element.querySelector<HTMLButtonElement>('.hk-agent-composer__voice')?.hidden).toBe(true);
+  });
 });
 
 describe('agent runtime picker', () => {
