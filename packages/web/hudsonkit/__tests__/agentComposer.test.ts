@@ -96,13 +96,16 @@ describe('agent composer', () => {
     expect(voice.hidden).toBe(false);
     expect(voice.parentElement).toBe(send.parentElement);
     expect(voice.nextElementSibling).toBe(send);
-    expect(voice.textContent).toBe('Dictate');
+    expect(voice.textContent).toBe('');
     expect(voice.getAttribute('aria-label')).toBe('Dictate');
+    expect(voice.title).toBe('Dictate');
+    expect(voice.dataset.iconOnly).toBe('true');
     voice.click();
     expect(onVoiceAction).toHaveBeenLastCalledWith('start');
 
     composer.update({ voice: { status: 'preparing', canCancel: true } });
     expect(voice.textContent).toBe('Preparing…');
+    expect(voice.dataset.iconOnly).toBe('false');
     expect(voice.disabled).toBe(true);
     expect(voice.getAttribute('aria-busy')).toBe('true');
     expect(cancel.hidden).toBe(false);
@@ -111,6 +114,7 @@ describe('agent composer', () => {
 
     composer.update({ voice: { status: 'recording' } });
     expect(voice.textContent).toBe('Stop dictation');
+    expect(voice.dataset.iconOnly).toBe('false');
     expect(voice.dataset.voiceAction).toBe('stop');
     expect(voice.getAttribute('aria-pressed')).toBe('true');
     voice.click();
@@ -121,7 +125,9 @@ describe('agent composer', () => {
     expect(cancel.hidden).toBe(true);
 
     composer.update({ voice: { status: 'error', message: 'Microphone unavailable' } });
-    expect(voice.textContent).toBe('Dictate');
+    expect(voice.textContent).toBe('');
+    expect(voice.getAttribute('aria-label')).toBe('Dictate');
+    expect(voice.dataset.iconOnly).toBe('true');
     expect(voice.title).toBe('Microphone unavailable');
     voice.click();
     expect(onVoiceAction).toHaveBeenLastCalledWith('start');
