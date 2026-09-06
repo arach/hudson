@@ -1,7 +1,10 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAgentWorkspace } from '../src/agent-workspace';
 
-afterEach(() => document.body.replaceChildren());
+afterEach(() => {
+  document.body.replaceChildren();
+  delete (document as Document & { elementFromPoint?: Document['elementFromPoint'] }).elementFromPoint;
+});
 
 describe('agent workspace', () => {
   it('mounts host-owned content into stable presentation slots', () => {
@@ -221,7 +224,7 @@ describe('agent workspace', () => {
     expect(workspace.getPanelLayout().hiddenPanelIds).toEqual(['details']);
   });
 
-  it('uses a compact drag image and marks the prospective drop panel', () => {
+  it('uses a compact pointer proxy and commits the prospective drop panel', () => {
     const host = document.body.appendChild(document.createElement('div'));
     const changes: string[] = [];
     const workspace = createAgentWorkspace(host, {}, {
@@ -236,35 +239,32 @@ describe('agent workspace', () => {
     const source = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="details"]')!;
     const target = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="terminal"]')!;
     const handle = source.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
-    const setDragImage = vi.fn((preview: HTMLElement) => {
-      expect(preview.hidden).toBe(false);
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: vi.fn(() => target),
     });
-    const dataTransfer = {
-      effectAllowed: 'none',
-      dropEffect: 'none',
-      setData: vi.fn(),
-      getData: vi.fn(() => 'details'),
-      setDragImage,
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+      Object.defineProperty(event, 'pointerId', { value: 7 });
+      return event;
     };
-    const dragStart = new Event('dragstart', { bubbles: true, cancelable: true });
-    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
-    handle.dispatchEvent(dragStart);
+    handle.dispatchEvent(pointer('pointerdown', 10, 10));
+
+    handle.dispatchEvent(pointer('pointermove', 12, 12));
+    expect(document.querySelector('.hk-agent-workspace__panel-drag-preview')).toBeNull();
+
+    handle.dispatchEvent(pointer('pointermove', 30, 40));
 
     const preview = document.body.querySelector<HTMLElement>('.hk-agent-workspace__panel-drag-preview');
     expect(preview?.textContent).toBe('Details');
     expect(preview?.getAttribute('aria-hidden')).toBe('true');
-    expect(setDragImage).toHaveBeenCalledWith(preview, 16, 16);
+    expect(preview?.style.left).toBe('44px');
+    expect(preview?.style.top).toBe('54px');
     expect(source.dataset.dragSource).toBe('true');
     expect(workspace.panelLayout.dataset.draggingPanel).toBe('details');
-
-    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
-    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
-    expect(target.dispatchEvent(dragOver)).toBe(false);
     expect(target.dataset.dropTarget).toBe('true');
 
-    const drop = new Event('drop', { bubbles: true, cancelable: true });
-    Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
-    target.dispatchEvent(drop);
+    handle.dispatchEvent(pointer('pointerup', 30, 40));
     expect(workspace.getPanelLayout().order).toEqual(['test', 'terminal', 'details']);
     expect(source.dataset.dragSource).toBeUndefined();
     expect(target.dataset.dropTarget).toBeUndefined();
@@ -273,7 +273,7 @@ describe('agent workspace', () => {
     expect(changes).toContain('reorder');
   });
 
-  it('clears drag affordances when a drag is cancelled', () => {
+  it('clears pointer drag affordances when Escape cancels the gesture', () => {
     const host = document.body.appendChild(document.createElement('div'));
     const workspace = createAgentWorkspace(host, {}, {
       panels: ['details', 'test'].map((id) => ({
@@ -286,19 +286,18 @@ describe('agent workspace', () => {
     const source = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="details"]')!;
     const target = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="test"]')!;
     const handle = source.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
-    const dataTransfer = {
-      effectAllowed: 'none',
-      dropEffect: 'none',
-      setData: vi.fn(),
-      getData: vi.fn(),
-      setDragImage: vi.fn(),
+    Object.defineProperty(document, 'elementFromPoint', {
+      configurable: true,
+      value: vi.fn(() => target),
+    });
+    const pointer = (type: string, x: number, y: number) => {
+      const event = new MouseEvent(type, { bubbles: true, cancelable: true, clientX: x, clientY: y, button: 0 });
+      Object.defineProperty(event, 'pointerId', { value: 3 });
+      return event;
     };
-    for (const [node, type] of [[handle, 'dragstart'], [target, 'dragover']] as const) {
-      const event = new Event(type, { bubbles: true, cancelable: true });
-      Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
-      node.dispatchEvent(event);
-    }
-    handle.dispatchEvent(new Event('dragend', { bubbles: true }));
+    handle.dispatchEvent(pointer('pointerdown', 0, 0));
+    handle.dispatchEvent(pointer('pointermove', 20, 20));
+    window.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }));
 
     expect(source.dataset.dragSource).toBeUndefined();
     expect(target.dataset.dropTarget).toBeUndefined();
