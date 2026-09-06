@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vitest';
+import { afterEach, describe, expect, it, vi } from 'vitest';
 import { createAgentWorkspace } from '../src/agent-workspace';
 
 afterEach(() => document.body.replaceChildren());
@@ -219,6 +219,92 @@ describe('agent workspace', () => {
 
     actions[2]?.click();
     expect(workspace.getPanelLayout().hiddenPanelIds).toEqual(['details']);
+  });
+
+  it('uses a compact drag image and marks the prospective drop panel', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const changes: string[] = [];
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: ['details', 'test', 'terminal'].map((id) => ({
+        id,
+        label: id[0]!.toUpperCase() + id.slice(1),
+        content: document.createElement('div'),
+      })),
+      panelLayout: { arrangement: 'columns' },
+      onPanelLayoutChange: (_state, reason) => changes.push(reason),
+    });
+    const source = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="details"]')!;
+    const target = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="terminal"]')!;
+    const handle = source.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
+    const setDragImage = vi.fn((preview: HTMLElement) => {
+      expect(preview.hidden).toBe(false);
+    });
+    const dataTransfer = {
+      effectAllowed: 'none',
+      dropEffect: 'none',
+      setData: vi.fn(),
+      getData: vi.fn(() => 'details'),
+      setDragImage,
+    };
+    const dragStart = new Event('dragstart', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragStart, 'dataTransfer', { value: dataTransfer });
+    handle.dispatchEvent(dragStart);
+
+    const preview = document.body.querySelector<HTMLElement>('.hk-agent-workspace__panel-drag-preview');
+    expect(preview?.textContent).toBe('Details');
+    expect(preview?.getAttribute('aria-hidden')).toBe('true');
+    expect(setDragImage).toHaveBeenCalledWith(preview, 16, 16);
+    expect(source.dataset.dragSource).toBe('true');
+    expect(workspace.panelLayout.dataset.draggingPanel).toBe('details');
+
+    const dragOver = new Event('dragover', { bubbles: true, cancelable: true });
+    Object.defineProperty(dragOver, 'dataTransfer', { value: dataTransfer });
+    expect(target.dispatchEvent(dragOver)).toBe(false);
+    expect(target.dataset.dropTarget).toBe('true');
+
+    const drop = new Event('drop', { bubbles: true, cancelable: true });
+    Object.defineProperty(drop, 'dataTransfer', { value: dataTransfer });
+    target.dispatchEvent(drop);
+    expect(workspace.getPanelLayout().order).toEqual(['test', 'terminal', 'details']);
+    expect(source.dataset.dragSource).toBeUndefined();
+    expect(target.dataset.dropTarget).toBeUndefined();
+    expect(workspace.panelLayout.dataset.draggingPanel).toBeUndefined();
+    expect(document.querySelector('.hk-agent-workspace__panel-drag-preview')).toBeNull();
+    expect(changes).toContain('reorder');
+  });
+
+  it('clears drag affordances when a drag is cancelled', () => {
+    const host = document.body.appendChild(document.createElement('div'));
+    const workspace = createAgentWorkspace(host, {}, {
+      panels: ['details', 'test'].map((id) => ({
+        id,
+        label: id,
+        content: document.createElement('div'),
+      })),
+      panelLayout: { arrangement: 'columns' },
+    });
+    const source = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="details"]')!;
+    const target = workspace.panelLayout.querySelector<HTMLElement>('[data-panel-id="test"]')!;
+    const handle = source.querySelector<HTMLButtonElement>('.hk-agent-workspace__panel-handle')!;
+    const dataTransfer = {
+      effectAllowed: 'none',
+      dropEffect: 'none',
+      setData: vi.fn(),
+      getData: vi.fn(),
+      setDragImage: vi.fn(),
+    };
+    for (const [node, type] of [[handle, 'dragstart'], [target, 'dragover']] as const) {
+      const event = new Event(type, { bubbles: true, cancelable: true });
+      Object.defineProperty(event, 'dataTransfer', { value: dataTransfer });
+      node.dispatchEvent(event);
+    }
+    handle.dispatchEvent(new Event('dragend', { bubbles: true }));
+
+    expect(source.dataset.dragSource).toBeUndefined();
+    expect(target.dataset.dropTarget).toBeUndefined();
+    expect(workspace.panelLayout.dataset.draggingPanel).toBeUndefined();
+    expect(document.querySelector('.hk-agent-workspace__panel-drag-preview')).toBeNull();
+    expect(workspace.getPanelLayout().order).toEqual(['details', 'test']);
   });
 
   it('rejects duplicate panel ids and keeps at least one panel visible', () => {
