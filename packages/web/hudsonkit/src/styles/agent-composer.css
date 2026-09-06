@@ -104,6 +104,7 @@
 .hk-agent-composer__tool,
 .hk-agent-composer__attachment { min-height: 28px; padding: 4px 8px; border-radius: 999px; font-size: 11px; }
 .hk-agent-composer__voice { display: inline-flex; align-items: center; gap: 6px; min-height: 30px; padding-inline: 10px; border-color: color-mix(in srgb, var(--hk-agent-accent) 70%, var(--hk-agent-line)); color: var(--hk-agent-ink); font-weight: 600; }
+.hk-agent-composer__voice[data-icon-only="true"] { justify-content: center; width: 30px; height: 30px; padding: 0; border-radius: 8px; }
 .hk-agent-composer__voice[data-voice-status="idle"],
 .hk-agent-composer__voice[data-voice-status="error"] { background: var(--hk-agent-selection); }
 .hk-agent-composer__voice[data-voice-status="recording"] { border-color: #ef4444; background: rgb(239 68 68 / 0.12); color: #fca5a5; }

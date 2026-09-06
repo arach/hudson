@@ -177,7 +177,8 @@ composer.update({
 
 Voice is deliberately host-owned: Hudson renders the control and emits typed
 `start`, `stop`, and `cancel` requests, but does not select a provider, capture
-audio, or transcribe it. Omit `voice` when dictation is unavailable. When a
+audio, or transcribe it. The idle action is an icon-only button beside Send,
+with an accessible label and tooltip. Omit `voice` when dictation is unavailable. When a
 transcript completes, the host appends it to its draft and calls
 `composer.update({ value: nextDraft, voice: { status: 'idle' } })`.
 

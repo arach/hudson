@@ -280,9 +280,11 @@ export function createAgentComposer(
         : voiceStatus === 'transcribing'
           ? 'Transcribing…'
           : 'Dictate';
+    const voiceIconOnly = voiceStatus === 'idle' || voiceStatus === 'error';
     voice.hidden = !voiceAvailable;
     voice.disabled = Boolean(state.disabled || voiceBusy);
     voice.dataset.voiceStatus = voiceStatus;
+    voice.dataset.iconOnly = String(voiceIconOnly);
     voice.dataset.voiceAction = voiceRecording ? 'stop' : 'start';
     voice.setAttribute('aria-label', voiceLabel);
     voice.setAttribute('aria-pressed', String(voiceRecording));
@@ -297,9 +299,11 @@ export function createAgentComposer(
     } else {
       voice.insertAdjacentHTML('afterbegin', voiceRecording ? STOP_ICON : MIC_ICON);
     }
-    const voiceText = element('span');
-    voiceText.textContent = voiceLabel;
-    voice.append(voiceText);
+    if (!voiceIconOnly) {
+      const voiceText = element('span');
+      voiceText.textContent = voiceLabel;
+      voice.append(voiceText);
+    }
     voiceCancel.hidden = !(voiceAvailable && voiceBusy && voiceState?.canCancel);
     voiceCancel.disabled = Boolean(state.disabled);
     const canSend = state.canSend ?? textarea.value.trim().length > 0;
