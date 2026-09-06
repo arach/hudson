@@ -89,8 +89,13 @@ describe('agent composer', () => {
     const composer = createAgentComposer(host, { onSubmit: vi.fn(), onVoiceAction });
     const voice = composer.element.querySelector<HTMLButtonElement>('[data-voice-action="start"]')!;
     const cancel = composer.element.querySelector<HTMLButtonElement>('[data-voice-action="cancel"]')!;
+    const send = composer.element.querySelector<HTMLButtonElement>('[data-action="send"]')!;
 
+    expect(voice.hidden).toBe(true);
+    composer.update({ voice: { status: 'idle' } });
     expect(voice.hidden).toBe(false);
+    expect(voice.parentElement).toBe(send.parentElement);
+    expect(voice.nextElementSibling).toBe(send);
     expect(voice.textContent).toBe('Dictate');
     expect(voice.getAttribute('aria-label')).toBe('Dictate');
     voice.click();
@@ -120,12 +125,17 @@ describe('agent composer', () => {
     expect(voice.title).toBe('Microphone unavailable');
     voice.click();
     expect(onVoiceAction).toHaveBeenLastCalledWith('start');
+
+    composer.update({ voice: undefined });
+    expect(voice.hidden).toBe(true);
   });
 
   it('keeps dictation controls absent when the host does not provide voice actions', () => {
     const host = document.body.appendChild(document.createElement('div'));
     const composer = createAgentComposer(host, { onSubmit: vi.fn() });
-    expect(composer.element.querySelector<HTMLButtonElement>('.hk-agent-composer__voice')?.hidden).toBe(true);
+    const voice = composer.element.querySelector<HTMLButtonElement>('.hk-agent-composer__voice')!;
+    composer.update({ voice: { status: 'idle' } });
+    expect(voice.hidden).toBe(true);
   });
 });
 

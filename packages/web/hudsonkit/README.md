@@ -175,6 +175,12 @@ composer.update({
 });
 ```
 
+Voice is deliberately host-owned: Hudson renders the control and emits typed
+`start`, `stop`, and `cancel` requests, but does not select a provider, capture
+audio, or transcribe it. Omit `voice` when dictation is unavailable. When a
+transcript completes, the host appends it to its draft and calls
+`composer.update({ value: nextDraft, voice: { status: 'idle' } })`.
+
 For sibling-repository development, build a sealed artifact with
 `bun run pack` in `packages/web/hudsonkit`, copy the resulting `.tgz` into the
 consumer repository, and use a repository-relative `file:` dependency. Do not

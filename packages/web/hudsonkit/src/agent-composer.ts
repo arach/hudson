@@ -39,6 +39,7 @@ export interface AgentComposerState {
   canSend?: boolean;
   attachments?: readonly AgentComposerAttachment[];
   contextItems?: readonly AgentComposerContextItem[];
+  /** Host-owned capture state. Omit when dictation is unavailable. */
   voice?: AgentComposerVoiceState;
   status?: string | null;
   statusTone?: 'muted' | 'error';
@@ -60,6 +61,10 @@ export interface AgentComposerOptions {
   onFiles?: (files: File[], source: AgentComposerFileSource) => void;
   onRemoveAttachment?: (attachment: AgentComposerAttachment) => void;
   onContextAction?: (item: AgentComposerContextItem) => void;
+  /**
+   * Requests a host-owned voice lifecycle action. Hudson does not capture,
+   * transcribe, or insert transcripts; the host writes results through `value`.
+   */
   onVoiceAction?: (action: AgentComposerVoiceAction) => void;
 }
 
@@ -145,7 +150,7 @@ export function createAgentComposer(
 
   voice.type = 'button';
   voice.dataset.voiceAction = 'start';
-  voice.hidden = !options.onVoiceAction;
+  voice.hidden = true;
 
   voiceCancel.type = 'button';
   voiceCancel.textContent = 'Cancel';
@@ -180,18 +185,15 @@ export function createAgentComposer(
   header.hidden = true;
   status.hidden = true;
   body.append(textarea);
-  leadingTools.append(voice, voiceCancel, attach);
-  toolbarEnd.append(tools, steer, stop, send);
+  leadingTools.append(attach);
+  toolbarEnd.append(tools, steer, stop, voiceCancel, voice, send);
   toolbar.append(leadingTools, toolbarEnd);
   shell.append(header, body, toolbar, status);
   frame.append(shell);
   root.append(frame, fileInput);
   host.replaceChildren(root);
 
-  let state: AgentComposerState = {
-    value: textarea.value,
-    voice: options.onVoiceAction ? { status: 'idle' } : undefined,
-  };
+  let state: AgentComposerState = { value: textarea.value };
   const disposers: Array<() => void> = [];
   const listen = <K extends keyof HTMLElementEventMap>(
     target: HTMLElement,
@@ -225,7 +227,7 @@ export function createAgentComposer(
   listen(steer, 'click', () => submit('steer'));
   listen(stop, 'click', () => options.onStop?.());
   listen(voice, 'click', () => {
-    const voiceStatus = state.voice?.status ?? 'idle';
+    const voiceStatus = state.voice?.status;
     if (voiceStatus === 'recording') options.onVoiceAction?.('stop');
     else if (voiceStatus === 'idle' || voiceStatus === 'error') options.onVoiceAction?.('start');
   });
@@ -266,25 +268,27 @@ export function createAgentComposer(
     textarea.disabled = disabled;
     attach.disabled = disabled;
     stop.disabled = Boolean(state.disabled);
-    const voiceState = state.voice ?? { status: 'idle' as const };
-    const voiceBusy = voiceState.status === 'preparing' || voiceState.status === 'transcribing';
-    const voiceRecording = voiceState.status === 'recording';
+    const voiceState = state.voice;
+    const voiceAvailable = Boolean(options.onVoiceAction && voiceState);
+    const voiceStatus = voiceState?.status ?? 'idle';
+    const voiceBusy = voiceStatus === 'preparing' || voiceStatus === 'transcribing';
+    const voiceRecording = voiceStatus === 'recording';
     const voiceLabel = voiceRecording
       ? 'Stop dictation'
-      : voiceState.status === 'preparing'
+      : voiceStatus === 'preparing'
         ? 'Preparing…'
-        : voiceState.status === 'transcribing'
+        : voiceStatus === 'transcribing'
           ? 'Transcribing…'
           : 'Dictate';
-    voice.hidden = !options.onVoiceAction;
+    voice.hidden = !voiceAvailable;
     voice.disabled = Boolean(state.disabled || voiceBusy);
-    voice.dataset.voiceStatus = voiceState.status;
+    voice.dataset.voiceStatus = voiceStatus;
     voice.dataset.voiceAction = voiceRecording ? 'stop' : 'start';
     voice.setAttribute('aria-label', voiceLabel);
     voice.setAttribute('aria-pressed', String(voiceRecording));
     if (voiceBusy) voice.setAttribute('aria-busy', 'true');
     else voice.removeAttribute('aria-busy');
-    voice.title = voiceState.message || voiceLabel;
+    voice.title = voiceState?.message || voiceLabel;
     voice.replaceChildren();
     if (voiceBusy) {
       const progress = element('span', 'hk-agent-composer__voice-progress');
@@ -296,7 +300,7 @@ export function createAgentComposer(
     const voiceText = element('span');
     voiceText.textContent = voiceLabel;
     voice.append(voiceText);
-    voiceCancel.hidden = !(options.onVoiceAction && voiceBusy && voiceState.canCancel);
+    voiceCancel.hidden = !(voiceAvailable && voiceBusy && voiceState?.canCancel);
     voiceCancel.disabled = Boolean(state.disabled);
     const canSend = state.canSend ?? textarea.value.trim().length > 0;
     send.disabled = disabled || !canSend;
@@ -360,7 +364,7 @@ export function createAgentComposer(
     update,
     setLeadingTools: (content) => {
       replaceSlot(leadingTools, content);
-      leadingTools.append(voice, voiceCancel, attach);
+      leadingTools.append(attach);
     },
     setTools: (content) => {
       replaceSlot(tools, content);
