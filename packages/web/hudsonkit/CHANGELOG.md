@@ -11,7 +11,7 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 - Add the framework-free `hudsonkit/agent-composer` and
   `hudsonkit/agent-composer/styles` subpaths, with controlled composer and
   runtime-picker APIs for attachments, context actions, send/queue/steer/stop,
-  IME-safe shortcuts, custom models, and runtime selection.
+  host-owned dictation, IME-safe shortcuts, custom models, and runtime selection.
 - Add the framework-free `hudsonkit/agent-workspace` slot shell for hybrid
   navigation, conversation/composer, editor, and results surfaces, including
   accessible host-owned tool tabs and optional split panes.

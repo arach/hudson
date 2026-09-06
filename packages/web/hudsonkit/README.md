@@ -139,7 +139,8 @@ function AssetPreview({ id }: { id: string }) {
 `hudsonkit/agent-composer` is a DOM-native, controlled composer for agent and
 code-workflow surfaces. It keeps transport and product state in the host while
 standardizing attachments, context chips, send/queue/steer/stop behavior,
-IME-safe keyboard submission, and runtime/model/effort selection.
+host-controlled dictation, IME-safe keyboard submission, and
+runtime/model/effort selection.
 
 ```ts
 import {
@@ -153,6 +154,7 @@ const composer = createAgentComposer(document.querySelector('#composer')!, {
   onSubmit: (action, value) => invokeAgent({ action, value }),
   onStop: () => stopAgent(),
   onFiles: (files) => stageFiles(files),
+  onVoiceAction: (action) => nativeDictation.perform(action),
 });
 
 const picker = createAgentRuntimePicker(composer.tools, {
@@ -166,7 +168,10 @@ composer.update({
   active: agentIsRunning,
   steerSupported: activeHarness === 'codex',
   attachments,
-  contextItems: [{ id: 'recording', label: recordingName ?? 'Choose recording' }],
+  voice: {
+    status: nativeDictation.status,
+    canCancel: nativeDictation.status === 'preparing' || nativeDictation.status === 'transcribing',
+  },
 });
 ```
 

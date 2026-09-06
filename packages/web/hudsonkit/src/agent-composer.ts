@@ -8,6 +8,14 @@
 
 export type AgentComposerAction = 'submit' | 'queue' | 'steer';
 export type AgentComposerFileSource = 'picker' | 'paste' | 'drop';
+export type AgentComposerVoiceAction = 'start' | 'stop' | 'cancel';
+export type AgentComposerVoiceStatus = 'idle' | 'preparing' | 'recording' | 'transcribing' | 'error';
+
+export interface AgentComposerVoiceState {
+  status: AgentComposerVoiceStatus;
+  canCancel?: boolean;
+  message?: string | null;
+}
 
 export interface AgentComposerAttachment {
   id: string;
@@ -31,6 +39,7 @@ export interface AgentComposerState {
   canSend?: boolean;
   attachments?: readonly AgentComposerAttachment[];
   contextItems?: readonly AgentComposerContextItem[];
+  voice?: AgentComposerVoiceState;
   status?: string | null;
   statusTone?: 'muted' | 'error';
 }
@@ -51,6 +60,7 @@ export interface AgentComposerOptions {
   onFiles?: (files: File[], source: AgentComposerFileSource) => void;
   onRemoveAttachment?: (attachment: AgentComposerAttachment) => void;
   onContextAction?: (item: AgentComposerContextItem) => void;
+  onVoiceAction?: (action: AgentComposerVoiceAction) => void;
 }
 
 export interface AgentComposerController {
@@ -70,6 +80,7 @@ export interface AgentComposerController {
 const SEND_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 19V5"/><path d="m5 12 7-7 7 7"/></svg>';
 const STOP_ICON = '<svg width="14" height="14" viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><rect x="4" y="4" width="16" height="16" rx="2"/></svg>';
 const ATTACH_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M21.44 11.05 12.05 20.44a5.5 5.5 0 0 1-7.78-7.78l9.19-9.19a3.5 3.5 0 0 1 4.95 4.95l-9.2 9.19a1.5 1.5 0 0 1-2.12-2.12l8.49-8.48"/></svg>';
+const MIC_ICON = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3M9 21h6"/></svg>';
 
 function element<K extends keyof HTMLElementTagNameMap>(tag: K, className?: string) {
   const node = document.createElement(tag);
@@ -115,6 +126,8 @@ export function createAgentComposer(
   const tools = element('div', 'hk-agent-composer__tools');
   const status = element('div', 'hk-agent-composer__status');
   const fileInput = element('input');
+  const voice = element('button', 'hk-agent-composer__voice');
+  const voiceCancel = element('button', 'hk-agent-composer__voice-cancel');
   const attach = element('button', 'hk-agent-composer__icon-button');
   const steer = element('button', 'hk-agent-composer__secondary');
   const stop = element('button', 'hk-agent-composer__send hk-agent-composer__send--stop');
@@ -129,6 +142,17 @@ export function createAgentComposer(
   fileInput.hidden = true;
   fileInput.multiple = options.multiple ?? true;
   fileInput.accept = options.accept ?? 'image/*,video/*,text/plain,text/markdown,.txt,.md,.markdown';
+
+  voice.type = 'button';
+  voice.dataset.voiceAction = 'start';
+  voice.hidden = !options.onVoiceAction;
+
+  voiceCancel.type = 'button';
+  voiceCancel.textContent = 'Cancel';
+  voiceCancel.title = 'Cancel dictation';
+  voiceCancel.setAttribute('aria-label', 'Cancel dictation');
+  voiceCancel.dataset.voiceAction = 'cancel';
+  voiceCancel.hidden = true;
 
   attach.type = 'button';
   attach.innerHTML = ATTACH_ICON;
@@ -156,7 +180,7 @@ export function createAgentComposer(
   header.hidden = true;
   status.hidden = true;
   body.append(textarea);
-  leadingTools.append(attach);
+  leadingTools.append(voice, voiceCancel, attach);
   toolbarEnd.append(tools, steer, stop, send);
   toolbar.append(leadingTools, toolbarEnd);
   shell.append(header, body, toolbar, status);
@@ -164,7 +188,10 @@ export function createAgentComposer(
   root.append(frame, fileInput);
   host.replaceChildren(root);
 
-  let state: AgentComposerState = { value: textarea.value };
+  let state: AgentComposerState = {
+    value: textarea.value,
+    voice: options.onVoiceAction ? { status: 'idle' } : undefined,
+  };
   const disposers: Array<() => void> = [];
   const listen = <K extends keyof HTMLElementEventMap>(
     target: HTMLElement,
@@ -197,6 +224,12 @@ export function createAgentComposer(
   listen(send, 'click', () => submit(state.active ? 'queue' : 'submit'));
   listen(steer, 'click', () => submit('steer'));
   listen(stop, 'click', () => options.onStop?.());
+  listen(voice, 'click', () => {
+    const voiceStatus = state.voice?.status ?? 'idle';
+    if (voiceStatus === 'recording') options.onVoiceAction?.('stop');
+    else if (voiceStatus === 'idle' || voiceStatus === 'error') options.onVoiceAction?.('start');
+  });
+  listen(voiceCancel, 'click', () => options.onVoiceAction?.('cancel'));
   listen(attach, 'click', () => fileInput.click());
   listen(fileInput, 'change', () => {
     const files = [...(fileInput.files ?? [])];
@@ -233,6 +266,38 @@ export function createAgentComposer(
     textarea.disabled = disabled;
     attach.disabled = disabled;
     stop.disabled = Boolean(state.disabled);
+    const voiceState = state.voice ?? { status: 'idle' as const };
+    const voiceBusy = voiceState.status === 'preparing' || voiceState.status === 'transcribing';
+    const voiceRecording = voiceState.status === 'recording';
+    const voiceLabel = voiceRecording
+      ? 'Stop dictation'
+      : voiceState.status === 'preparing'
+        ? 'Preparing…'
+        : voiceState.status === 'transcribing'
+          ? 'Transcribing…'
+          : 'Dictate';
+    voice.hidden = !options.onVoiceAction;
+    voice.disabled = Boolean(state.disabled || voiceBusy);
+    voice.dataset.voiceStatus = voiceState.status;
+    voice.dataset.voiceAction = voiceRecording ? 'stop' : 'start';
+    voice.setAttribute('aria-label', voiceLabel);
+    voice.setAttribute('aria-pressed', String(voiceRecording));
+    if (voiceBusy) voice.setAttribute('aria-busy', 'true');
+    else voice.removeAttribute('aria-busy');
+    voice.title = voiceState.message || voiceLabel;
+    voice.replaceChildren();
+    if (voiceBusy) {
+      const progress = element('span', 'hk-agent-composer__voice-progress');
+      progress.setAttribute('aria-hidden', 'true');
+      voice.append(progress);
+    } else {
+      voice.insertAdjacentHTML('afterbegin', voiceRecording ? STOP_ICON : MIC_ICON);
+    }
+    const voiceText = element('span');
+    voiceText.textContent = voiceLabel;
+    voice.append(voiceText);
+    voiceCancel.hidden = !(options.onVoiceAction && voiceBusy && voiceState.canCancel);
+    voiceCancel.disabled = Boolean(state.disabled);
     const canSend = state.canSend ?? textarea.value.trim().length > 0;
     send.disabled = disabled || !canSend;
     steer.disabled = disabled || !canSend;
@@ -295,7 +360,7 @@ export function createAgentComposer(
     update,
     setLeadingTools: (content) => {
       replaceSlot(leadingTools, content);
-      leadingTools.append(attach);
+      leadingTools.append(voice, voiceCancel, attach);
     },
     setTools: (content) => {
       replaceSlot(tools, content);
