@@ -1,0 +1,12 @@
+---
+description: Launch OMP agent sessions in Herdr, never Terminal.app
+alwaysApply: true
+---
+
+# OMP launches go through Herdr
+
+When spinning up a new or resumed **OMP** session in this repo:
+
+- **Do** start it in **Herdr** (`herdr pane split` → `herdr agent start --kind omp` → `herdr agent prompt`).
+- **Do not** use Terminal.app / `osascript` for owned OMP work.
+- Helper script: `scripts/omp-next-gen-sidebar.sh`
