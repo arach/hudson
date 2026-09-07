@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Eye, EyeOff, Settings as GearIcon } from '../../icons';
+import { ChevronDown, ChevronRight, Eye, EyeOff, Settings as GearIcon } from 'lucide-react';
 import type { ServiceStatus } from '../../index';
 
 const SVC_DOT_COLORS: Record<ServiceStatus, string> = {

@@ -11,9 +11,7 @@ const hudsonkitPackage = JSON.parse(
     resolve(__dirname, '../../../../packages/web/hudsonkit/package.json'),
     'utf8',
   ),
-) as {
-  exports?: Record<string, string | { types?: string; default?: string }>;
-};
+) as { exports?: Record<string, string> };
 
 describe('HudsonKit stylesheet consumption', () => {
   it('consumes the sealed stylesheet bundle instead of package source', () => {
@@ -23,9 +21,6 @@ describe('HudsonKit stylesheet consumption', () => {
   });
 
   it('keeps the public stylesheet export wired to the built artifact', () => {
-    expect(hudsonkitPackage.exports?.['./styles']).toEqual({
-      types: './dist/styles.d.ts',
-      default: './dist/styles.css',
-    });
+    expect(hudsonkitPackage.exports?.['./styles']).toBe('./dist/styles.css');
   });
 });

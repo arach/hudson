@@ -1,8 +1,8 @@
 'use client';
 
 import React, { useCallback, useMemo, useState } from 'react';
-import type { HudsonIcon } from '../../icons';
-import { ChevronRight } from '../../icons';
+import type { LucideIcon } from 'lucide-react';
+import { ChevronRight } from 'lucide-react';
 import { HudListItem } from '../primitives';
 import type { HudDensity } from '../primitives';
 import { cx } from './utils';
@@ -11,7 +11,7 @@ export interface HudTreeNode {
   id: string;
   title: React.ReactNode;
   description?: React.ReactNode;
-  icon?: HudsonIcon;
+  icon?: LucideIcon;
   trailing?: React.ReactNode;
   badge?: React.ReactNode;
   disabled?: boolean;

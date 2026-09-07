@@ -30,25 +30,14 @@ export function fileCreated(path: string) {
   console.log(`  ${green('+')} ${path}`);
 }
 
-export function summary(
-  appId: string,
-  fileCount: number,
-  hasWorkspace: boolean,
-  opts?: { standalone?: boolean },
-) {
+export function summary(appId: string, fileCount: number, hasWorkspace: boolean) {
   console.log();
   console.log(`  ${green('Done!')} Created ${bold(appId)} with ${fileCount} files${hasWorkspace ? ' + workspace' : ''}.`);
   console.log();
   console.log(`  ${bold('Next steps:')}`);
-  if (opts?.standalone) {
-    console.log(`    1. ${cyan(`cd ${appId} && bun install`)}`);
-    console.log(`    2. ${cyan('bun run check')}  ${dim('# typecheck && build')}`);
-    console.log(`    3. ${cyan('bun run dev')}    ${dim('# http://127.0.0.1:5173')}`);
-  } else {
-    console.log(`    1. Import workspace in ${cyan('app/page.tsx')}`);
-    console.log(`    2. ${cyan('bun dev')}`);
-    console.log(`    3. Open ${cyan('http://localhost:3500')}`);
-  }
+  console.log(`    1. Import workspace in ${cyan('app/page.tsx')}`);
+  console.log(`    2. ${cyan('bun dev')}`);
+  console.log(`    3. Open ${cyan('http://localhost:3500')}`);
   console.log();
 }
 

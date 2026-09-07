@@ -1,7 +1,7 @@
 'use client';
 
 import { useCallback, useEffect, useState, type ReactNode } from 'react';
-import { Eye, EyeOff, FileText, LockKeyhole, ShieldCheck } from '../../icons';
+import { Eye, EyeOff, FileText, LockKeyhole, ShieldCheck } from 'lucide-react';
 import { ServiceActionButton } from '../settings/components';
 import { useWorkspaceHostRoutes } from '../hostRoutes';
 

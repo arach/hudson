@@ -22,13 +22,7 @@ public enum HudWebSurfaceLifecycle: String, Equatable, Sendable {
 /// Stable locator for a web-backed native surface.
 public enum HudWebSurfaceLocation: Equatable, Sendable {
     /// Load `indexFile` from a resource directory in the app bundle.
-    /// `readAccessDirectory` defaults to `directory`. Set it to a shared parent
-    /// only when sibling bundled surfaces intentionally share hashed assets.
-    case bundled(
-        directory: String,
-        indexFile: String = "index.html",
-        readAccessDirectory: String? = nil
-    )
+    case bundled(directory: String, indexFile: String = "index.html")
     /// Load from a paired or local server, such as a Mac running Hudson dev.
     case paired(URL)
     /// Load from a deployed Hudson web route.
@@ -55,7 +49,7 @@ public enum HudWebSurfaceLocation: Equatable, Sendable {
     }
 
     public func bundledIndexURL(in bundle: Bundle = .main) -> URL? {
-        guard case .bundled(let directory, let indexFile, _) = self else { return nil }
+        guard case .bundled(let directory, let indexFile) = self else { return nil }
         let normalizedDirectory = directory.trimmingCharacters(in: CharacterSet(charactersIn: "/"))
         let fileURL = URL(fileURLWithPath: indexFile)
         let resourceName = fileURL.deletingPathExtension().lastPathComponent
@@ -67,35 +61,11 @@ public enum HudWebSurfaceLocation: Equatable, Sendable {
         )
     }
 
-    public func bundledReadAccessURL(in bundle: Bundle = .main) -> URL? {
-        guard case .bundled(let directory, _, let readAccessDirectory) = self,
-              let resources = bundle.resourceURL
-        else { return nil }
-        let requested = (readAccessDirectory ?? directory)
-            .trimmingCharacters(in: CharacterSet(charactersIn: "/"))
-        guard !requested.isEmpty,
-              !requested.split(separator: "/").contains("..")
-        else { return nil }
-        let root = resources
-            .appendingPathComponent(requested, isDirectory: true)
-            .standardizedFileURL
-            .resolvingSymlinksInPath()
-        var isDirectory: ObjCBool = false
-        guard FileManager.default.fileExists(atPath: root.path, isDirectory: &isDirectory),
-              isDirectory.boolValue
-        else { return nil }
-        return root
-    }
-
     public func webViewSource(in bundle: Bundle = .main) -> HudWebViewSource? {
         switch self {
         case .bundled:
-            guard let indexURL = bundledIndexURL(in: bundle)?.standardizedFileURL.resolvingSymlinksInPath(),
-                  let readAccessRoot = bundledReadAccessURL(in: bundle)
-            else { return nil }
-            let rootPath = readAccessRoot.path.hasSuffix("/") ? readAccessRoot.path : readAccessRoot.path + "/"
-            guard indexURL.path == readAccessRoot.path || indexURL.path.hasPrefix(rootPath) else { return nil }
-            return .file(indexURL, readAccessRoot: readAccessRoot)
+            guard let url = bundledIndexURL(in: bundle) else { return nil }
+            return .url(url)
         case .paired(let url), .hosted(let url):
             return .url(url)
         }
@@ -136,8 +106,6 @@ public struct HudWebSurface<Placeholder: View>: View {
     private let bundle: Bundle
     @Binding private var state: HudWebViewState
     private let configuration: HudWebViewConfiguration
-    private let integration: HudWebViewIntegration?
-    private let activity: HudWebViewActivity
     private let placeholder: (HudWebSurfaceDescriptor) -> Placeholder
 
     public init(
@@ -145,29 +113,19 @@ public struct HudWebSurface<Placeholder: View>: View {
         bundle: Bundle = .main,
         state: Binding<HudWebViewState> = .constant(HudWebViewState()),
         configuration: HudWebViewConfiguration = HudWebViewConfiguration(),
-        integration: HudWebViewIntegration? = nil,
-        activity: HudWebViewActivity = .visible,
         @ViewBuilder placeholder: @escaping (HudWebSurfaceDescriptor) -> Placeholder
     ) {
         self.descriptor = descriptor
         self.bundle = bundle
         self._state = state
         self.configuration = configuration
-        self.integration = integration
-        self.activity = activity
         self.placeholder = placeholder
     }
 
     public var body: some View {
         Group {
             if let source = descriptor.webViewSource(in: bundle) {
-                HudWebView(
-                    source,
-                    state: $state,
-                    configuration: configuration,
-                    integration: integration,
-                    activity: activity
-                )
+                HudWebView(source, state: $state, configuration: configuration)
             } else {
                 placeholder(descriptor)
             }
@@ -180,17 +138,13 @@ public extension HudWebSurface where Placeholder == HudWebSurfaceUnavailableView
         _ descriptor: HudWebSurfaceDescriptor,
         bundle: Bundle = .main,
         state: Binding<HudWebViewState> = .constant(HudWebViewState()),
-        configuration: HudWebViewConfiguration = HudWebViewConfiguration(),
-        integration: HudWebViewIntegration? = nil,
-        activity: HudWebViewActivity = .visible
+        configuration: HudWebViewConfiguration = HudWebViewConfiguration()
     ) {
         self.init(
             descriptor,
             bundle: bundle,
             state: state,
-            configuration: configuration,
-            integration: integration,
-            activity: activity
+            configuration: configuration
         ) { descriptor in
             HudWebSurfaceUnavailableView(descriptor: descriptor)
         }

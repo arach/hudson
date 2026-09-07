@@ -30,7 +30,7 @@ if terminalEnabled {
 let package = Package(
     name: "CanvasApp",
     platforms: [
-        .macOS("26.0"),
+        .macOS(.v14),
     ],
     dependencies: [
         .package(name: "Hudson", path: "../.."),

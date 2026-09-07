@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useCallback } from 'react';
-import { ChevronDown, ChevronRight, AlertTriangle } from 'hudsonkit/icons';
+import { ChevronDown, ChevronRight, AlertTriangle } from 'lucide-react';
 import type { AppIntent } from 'hudsonkit';
 import { useExplorer } from './IntentProvider';
 import { CATEGORY_COLORS } from './types';

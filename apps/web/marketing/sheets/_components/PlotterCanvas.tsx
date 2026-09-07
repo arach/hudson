@@ -302,10 +302,10 @@ export function PlotterCanvas({
     >
       <defs>
         <pattern id="hpMinor" width="14" height="14" patternUnits="userSpaceOnUse">
-          <path d="M14 0H0V14" fill="none" stroke="oklch(0.86 0.01 240 / 0.32)" strokeWidth="0.5" />
+          <path d="M14 0H0V14" fill="none" stroke="oklch(0.86 0.01 240 / 0.55)" strokeWidth="1" />
         </pattern>
         <pattern id="hpMajor" width="84" height="84" patternUnits="userSpaceOnUse">
-          <path d="M84 0H0V84" fill="none" stroke="oklch(0.78 0.012 240 / 0.46)" strokeWidth="0.65" />
+          <path d="M84 0H0V84" fill="none" stroke="oklch(0.78 0.012 240 / 0.7)" strokeWidth="1" />
         </pattern>
         <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6" markerHeight="6" orient="auto-start-reverse">
           <path d="M0 0 L10 5 L0 10 Z" fill="var(--ink, #1c1f24)" />
@@ -322,7 +322,7 @@ export function PlotterCanvas({
         height={H - PAD}
         fill="none"
         stroke="var(--ink, #1c1f24)"
-        strokeWidth="1"
+        strokeWidth="1.5"
       />
 
       <g>
@@ -334,7 +334,7 @@ export function PlotterCanvas({
             x2={PAD / 2 + i * 14}
             y2={PAD / 2 + (i % 6 === 0 ? 8 : 4)}
             stroke="var(--ink, #1c1f24)"
-            strokeWidth="0.7"
+            strokeWidth="1"
           />
         ))}
       </g>
@@ -373,7 +373,7 @@ export function PlotterCanvas({
                 key={i}
                 d={d.d}
                 stroke="var(--accent-deep, oklch(0.50 0.16 162))"
-                strokeWidth="0.65"
+                strokeWidth="0.9"
                 fill="none"
               />
             );
@@ -401,7 +401,7 @@ export function PlotterCanvas({
                 key={i}
                 d={d.d}
                 stroke="var(--ink, #1c1f24)"
-                strokeWidth="0.65"
+                strokeWidth="0.9"
                 fill="none"
                 markerStart="url(#arrow)"
               />
@@ -435,10 +435,10 @@ export function PlotterCanvas({
           height="60"
           fill="var(--paper, #f3f3ee)"
           stroke="var(--ink, #1c1f24)"
-          strokeWidth="0.9"
+          strokeWidth="1.4"
         />
-        <line x1="0" y1="20" x2="230" y2="20" stroke="var(--ink, #1c1f24)" strokeWidth="0.6" />
-        <line x1="115" y1="20" x2="115" y2="60" stroke="var(--ink, #1c1f24)" strokeWidth="0.6" />
+        <line x1="0" y1="20" x2="230" y2="20" stroke="var(--ink, #1c1f24)" strokeWidth="0.8" />
+        <line x1="115" y1="20" x2="115" y2="60" stroke="var(--ink, #1c1f24)" strokeWidth="0.8" />
         <text x="6" y="14" fontFamily="var(--font-mono, monospace)" fontSize="9" letterSpacing="2.5">
           PLOT · PHRASE SPECIMEN
         </text>

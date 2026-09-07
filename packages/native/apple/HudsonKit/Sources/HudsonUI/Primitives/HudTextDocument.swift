@@ -35,29 +35,6 @@ public enum HudTextDocumentMode: String, CaseIterable, Identifiable, Sendable {
     }
 }
 
-enum HudTextDocumentTypographyPolicy {
-    static func bodyTextRole(for kind: HudTextDocumentKind) -> HudTextRole? {
-        switch kind {
-        case .text, .markdown:
-            .sm
-        case .code, .raw:
-            nil
-        }
-    }
-
-    static let markdownPreviewRole: HudTextRole = .base
-
-    static func wrapsEditorLines(for kind: HudTextDocumentKind) -> Bool {
-        bodyTextRole(for: kind) != nil
-    }
-}
-
-enum HudTextDocumentHeaderLayoutPolicy {
-    static func stacksControls(isCompact: Bool, isAccessibilitySize: Bool) -> Bool {
-        isCompact || isAccessibilitySize
-    }
-}
-
 public struct HudTextDocument: Identifiable, Equatable, Sendable {
     public var id: String
     public var title: String
@@ -201,9 +178,6 @@ public struct HudTextDocumentSurface: View {
     @Binding private var document: HudTextDocument
     @Binding private var mode: HudTextDocumentMode
 
-    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
-    @Environment(\.horizontalSizeClass) private var horizontalSizeClass
-
     private var showHeader: Bool
     private var showsLineNumbers: Bool
     private var editorBackend: HudTextDocumentEditorBackend
@@ -242,34 +216,20 @@ public struct HudTextDocumentSurface: View {
     }
 
     private var header: some View {
-        headerContent
-            .padding(.horizontal, HudSpacing.xxl)
-            .padding(.vertical, HudSpacing.xl)
-            .background(HudSurface.chrome)
-    }
-
-    @ViewBuilder
-    private var headerContent: some View {
-        if usesStackedHeader {
-            VStack(alignment: .leading, spacing: HudSpacing.xl) {
-                headerIdentity
-
-                HStack(spacing: HudSpacing.xl) {
-                    HudBadge(document.kind.label, tint: kindTint)
-                    Spacer(minLength: HudSpacing.xl)
-                    saveButton
-                }
-
-                modePicker
-            }
-        } else {
-            inlineHeader
-        }
-    }
-
-    private var inlineHeader: some View {
         HStack(spacing: HudSpacing.xl) {
-            headerIdentity
+            VStack(alignment: .leading, spacing: HudSpacing.xs) {
+                Text(document.title)
+                    .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                    .foregroundStyle(HudPalette.ink)
+                    .lineLimit(1)
+
+                if let uri = document.uri {
+                    Text(uri)
+                        .font(HudFont.mono(HudTextSize.xxs))
+                        .foregroundStyle(HudPalette.dim)
+                        .lineLimit(1)
+                }
+            }
 
             Spacer(minLength: HudSpacing.xl)
 
@@ -277,33 +237,15 @@ public struct HudTextDocumentSurface: View {
 
             modePicker
 
-            saveButton
-        }
-    }
-
-    private var headerIdentity: some View {
-        VStack(alignment: .leading, spacing: HudSpacing.xs) {
-            Text(document.title)
-                .hudFont(.base, weight: .semibold)
-                .foregroundStyle(HudPalette.ink)
-                .lineLimit(usesStackedHeader ? 2 : 1)
-
-            if let uri = document.uri {
-                Text(uri)
-                    .hudFont(.xxs, face: .mono)
-                    .foregroundStyle(HudPalette.dim)
-                    .lineLimit(usesStackedHeader ? 2 : 1)
+            if let onSave {
+                HudButton("Save", icon: "square.and.arrow.down", style: .ghost) {
+                    onSave(document)
+                }
             }
         }
-    }
-
-    @ViewBuilder
-    private var saveButton: some View {
-        if let onSave {
-            HudButton("Save", icon: "square.and.arrow.down", style: .ghost) {
-                onSave(document)
-            }
-        }
+        .padding(.horizontal, HudSpacing.xxl)
+        .padding(.vertical, HudSpacing.xl)
+        .background(HudSurface.chrome)
     }
 
     private var modePicker: some View {
@@ -313,14 +255,10 @@ public struct HudTextDocumentSurface: View {
                     mode = candidate
                 } label: {
                     Text(candidate.label)
-                        .hudFont(.xxs, face: .mono, weight: .semibold)
+                        .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
                         .foregroundStyle(mode == candidate ? HudPalette.ink : HudPalette.muted)
                         .padding(.horizontal, HudSpacing.md)
-                        .padding(.vertical, HudSpacing.sm)
-                        .frame(
-                            maxWidth: usesStackedHeader ? .infinity : nil,
-                            minHeight: HudLayout.textDocumentModeButtonHeight
-                        )
+                        .frame(height: HudLayout.textDocumentModeButtonHeight)
                         .background(
                             RoundedRectangle(cornerRadius: HudRadius.tight)
                                 .fill(mode == candidate ? HudSurface.tintFill(HudPalette.statusInfo) : .clear)
@@ -332,20 +270,11 @@ public struct HudTextDocumentSurface: View {
                 }
                 .buttonStyle(.plain)
                 .disabled(candidate == .edit && document.isReadOnly)
-                .frame(maxWidth: usesStackedHeader ? .infinity : nil)
             }
         }
-        .frame(maxWidth: usesStackedHeader ? .infinity : nil)
         .padding(HudSpacing.xs)
         .background(RoundedRectangle(cornerRadius: HudRadius.standard).fill(HudSurface.control))
         .overlay(RoundedRectangle(cornerRadius: HudRadius.standard).stroke(HudHairline.subtle, lineWidth: 1))
-    }
-
-    private var usesStackedHeader: Bool {
-        HudTextDocumentHeaderLayoutPolicy.stacksControls(
-            isCompact: horizontalSizeClass == .compact,
-            isAccessibilitySize: dynamicTypeSize.isAccessibilitySize
-        )
     }
 
     @ViewBuilder
@@ -363,7 +292,7 @@ public struct HudTextDocumentSurface: View {
     private var markdownPreview: some View {
         ScrollView {
             Text(markdownAttributedString)
-                .hudFont(HudTextDocumentTypographyPolicy.markdownPreviewRole)
+                .font(HudFont.ui(HudTextSize.base))
                 .foregroundStyle(HudPalette.ink)
                 .lineSpacing(4)
                 .frame(maxWidth: .infinity, alignment: .leading)
@@ -384,10 +313,9 @@ public struct HudTextDocumentSurface: View {
         )
     }
 
-    @ViewBuilder
     private var readSurface: some View {
-        if document.kind == .code || document.kind == .raw {
-            ScrollView([.vertical, .horizontal]) {
+        ScrollView([.vertical, .horizontal]) {
+            if document.kind == .code || document.kind == .raw {
                 HudCodeText(
                     source: document.value,
                     language: document.language,
@@ -395,22 +323,16 @@ public struct HudTextDocumentSurface: View {
                 )
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(HudSpacing.xxl)
-            }
-            .background(HudSurface.base)
-        } else {
-            ScrollView(.vertical) {
+            } else {
                 Text(document.value)
-                    .hudFont(
-                        HudTextDocumentTypographyPolicy.bodyTextRole(for: document.kind) ?? .sm,
-                        face: .mono
-                    )
+                    .font(editorFont)
                     .foregroundStyle(HudPalette.ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .padding(HudSpacing.xxl)
                     .textSelection(.enabled)
             }
-            .background(HudSurface.base)
         }
+        .background(HudSurface.base)
     }
 
     private var valueBinding: Binding<String> {
@@ -435,6 +357,12 @@ public struct HudTextDocumentSurface: View {
         if mode == .edit && document.isReadOnly { return .read }
         if mode == .preview && document.kind != .markdown { return .read }
         return mode
+    }
+
+    private var editorFont: Font {
+        document.kind == .markdown
+            ? HudFont.mono(HudTextSize.sm)
+            : HudFont.mono(HudTextSize.sm)
     }
 
     private var kindTint: Color {

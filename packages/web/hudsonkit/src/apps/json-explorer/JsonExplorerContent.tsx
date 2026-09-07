@@ -4,7 +4,7 @@ import { useCallback, useRef } from 'react';
 import {
   ChevronRight, ChevronDown, Braces, Brackets, Type, Hash,
   ToggleLeft, CircleDot, Clipboard, Upload, X, Search, ChevronsUpDown, ChevronsDownUp,
-} from '../../icons';
+} from 'lucide-react';
 import { useJsonExplorer } from './JsonExplorerProvider';
 import { getNodeType, getChildCount, getPreview, TYPE_COLORS, TYPE_BADGES } from './types';
 import type { JsonNodeType } from './types';

@@ -1,3 +1,4 @@
+#if HUDSON_VOICE
 import SwiftUI
 import HudsonUI
 import HudsonVoice
@@ -15,9 +16,6 @@ struct VoiceTab: View {
                 spacing: HudSpacing.xl
             ) {
                 HudVoicePanel(options: HudVoxLiveSessionOptions(clientId: "hudsonkit-demo"))
-                    .frame(maxWidth: HudLayout.dialogWidth)
-
-                HudsonVoiceSettingsView(appName: "HudsonKit Demo")
                     .frame(maxWidth: HudLayout.dialogWidth)
 
                 contractCard
@@ -68,7 +66,7 @@ struct VoiceTab: View {
 
                 HudDivider()
 
-                Text("HudsonVoice is part of the default package graph. Vox engine code ships with the app, while the Parakeet model is acquired at runtime according to the selected download policy.")
+                Text("The Swift package dependency stays optional. HudsonKit speaks the same stable contract as Vox's clients, so the kit does not inherit Vox's current macOS 26 / Swift 6.2 floor.")
                     .font(HudFont.ui(HudTextSize.sm))
                     .foregroundStyle(HudPalette.muted)
                     .fixedSize(horizontal: false, vertical: true)
@@ -97,3 +95,28 @@ private struct ContractRow: View {
         }
     }
 }
+#else
+import SwiftUI
+import HudsonUI
+
+/// Stub when HudsonVoice isn't built. Rebuild with HUDSONKIT_WITH_VOICE=1
+/// (set in shell env or via `make voice` from the kit dir) to enable.
+struct VoiceTab: View {
+    var body: some View {
+        VStack(alignment: .leading, spacing: HudSpacing.lg) {
+            HudSectionLabel("Voice · Vox")
+            HudCard {
+                VStack(alignment: .leading, spacing: HudSpacing.md) {
+                    Text("HudsonVoice is not built into this binary.")
+                        .font(HudFont.ui(HudTextSize.sm))
+                        .foregroundStyle(HudPalette.muted)
+                    Text("Rebuild with HUDSONKIT_WITH_VOICE=1 swift build (or make voice in packages/native/apple/HudsonKit) to opt in.")
+                        .font(HudFont.mono(HudTextSize.xxs))
+                        .foregroundStyle(HudPalette.dim)
+                }
+            }
+            .frame(maxWidth: HudLayout.dialogWidth)
+        }
+    }
+}
+#endif

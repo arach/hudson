@@ -119,7 +119,7 @@ extension HudPhoneComplications: Equatable {
 
 // MARK: - Rendering style
 
-public enum HudPhoneComplicationsStyle: Sendable, Equatable {
+public enum HudPhoneComplicationsStyle: Sendable {
     /// Bottom three slots grouped in a glass tray; top two attached to chrome.
     /// Default for `HudPhoneAppShell`. Talkie-derived shape.
     case tray

@@ -140,28 +140,9 @@ private struct HudsonMenuSettingsView: View {
                 }
             }
 
-            Section("Hudson Voice") {
-                Picker("Input Device", selection: inputDeviceBinding) {
-                    Text("System Default").tag("")
-                    ForEach(voiceHost.inputDevices) { device in
-                        Text(deviceLabel(device)).tag(device.id)
-                    }
-                }
-                .onAppear {
-                    voiceHost.refreshInputDevices()
-                }
-
-                LabeledContent("Selected Input", value: selectedInputLabel)
-                LabeledContent("Default Input", value: defaultInputLabel)
-                LabeledContent("Engine", value: "Hudson Voice embedded runtime")
-                LabeledContent("Model", value: voiceHost.preferences.preferredTranscriptionModelId ?? "Default")
-                LabeledContent("Model Readiness", value: "\(voiceHost.modelReadiness.label) - \(voiceHost.modelReadiness.detail)")
-            }
-
             Section("Daemon") {
                 LabeledContent("Lifecycle", value: voiceHost.lifecycle.label)
                 LabeledContent("Runtime", value: voiceHost.runtimeDetail)
-                LabeledContent("Capability", value: voiceHost.diagnostics.runtimeCapabilityPath)
                 if let startedAt = voiceHost.startedAt {
                     LabeledContent("Started", value: startedAt.formatted(date: .abbreviated, time: .standard))
                 }
@@ -175,32 +156,7 @@ private struct HudsonMenuSettingsView: View {
         }
         .formStyle(.grouped)
         .padding()
-        .frame(width: 720, height: 520)
-    }
-
-    private var inputDeviceBinding: Binding<String> {
-        Binding(
-            get: { voiceHost.preferences.preferredInputDeviceId ?? "" },
-            set: { voiceHost.setPreferredInputDevice($0.isEmpty ? nil : $0) }
-        )
-    }
-
-    private var selectedInputLabel: String {
-        guard let id = voiceHost.preferences.preferredInputDeviceId else {
-            return "System Default"
-        }
-        return voiceHost.inputDevices.first(where: { $0.id == id })?.name ?? "Unavailable"
-    }
-
-    private var defaultInputLabel: String {
-        voiceHost.inputDevices.first(where: { $0.isDefault })?.name ?? "System Default"
-    }
-
-    private func deviceLabel(_ device: HudsonVoiceHostAudioDevice) -> String {
-        if device.isDefault {
-            return "\(device.name) (Default)"
-        }
-        return device.name
+        .frame(width: 640, height: 380)
     }
 }
 

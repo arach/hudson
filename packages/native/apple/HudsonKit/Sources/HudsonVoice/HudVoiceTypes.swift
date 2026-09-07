@@ -116,50 +116,36 @@ public struct HudVoxHealth: Equatable, Sendable {
 
 public struct HudVoxLiveSessionOptions: Equatable, Sendable {
     public var clientId: String
-    public var modelId: String?
+    public var modelId: String
     public var language: String?
     public var mode: HudVoiceMode
     public var metadata: [String: String]
-    public var authToken: String?
-    public var deviceId: String?
 
     public init(
         clientId: String = "HudsonKit",
-        modelId: String? = nil,
+        modelId: String = "parakeet:v3",
         language: String? = nil,
         mode: HudVoiceMode = .pushToTalk,
-        metadata: [String: String] = [:],
-        authToken: String? = nil,
-        deviceId: String? = nil
+        metadata: [String: String] = [:]
     ) {
         self.clientId = clientId
         self.modelId = modelId
         self.language = language
         self.mode = mode
         self.metadata = metadata
-        self.authToken = authToken
-        self.deviceId = deviceId
     }
 
     var rpcParams: [String: HudJSONValue] {
         var params: [String: HudJSONValue] = [
             "clientId": .string(clientId),
+            "modelId": .string(modelId),
             "mode": .string(mode.rawValue)
         ]
-        if let modelId, !modelId.isEmpty {
-            params["modelId"] = .string(modelId)
-        }
         if let language {
             params["language"] = .string(language)
         }
         if !metadata.isEmpty {
             params["metadata"] = .object(metadata.mapValues(HudJSONValue.string))
-        }
-        if let authToken, !authToken.isEmpty {
-            params["authToken"] = .string(authToken)
-        }
-        if let deviceId, !deviceId.isEmpty {
-            params["deviceId"] = .string(deviceId)
         }
         return params
     }

@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { HudsonIcon } from '../../icons';
+import type { LucideIcon } from 'lucide-react';
 import type { HudDensity } from './types';
 
 export interface HudListItemProps {
@@ -9,7 +9,7 @@ export interface HudListItemProps {
   selected?: boolean;
   active?: boolean;
   disabled?: boolean;
-  icon?: HudsonIcon;
+  icon?: LucideIcon;
   description?: React.ReactNode;
   trailing?: React.ReactNode;
   trailingBehavior?: 'hover' | 'always';

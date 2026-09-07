@@ -113,44 +113,34 @@ struct ContentView: View {
 
     var body: some View {
         HudAppShell {
-            HudNavigationSidebar(
+            HudResizableNavigationSidebar(
                 selection: Binding(
                     get: { tab as DemoTab? },
                     set: { if let next = $0 { tab = next } }
                 ),
                 entries: sidebarEntries,
-                isCompact: !navExpanded,
-                railHeader: {
-                    HudsonKitMark()
-                        .foregroundStyle(HudPalette.ink)
-                        .frame(width: HudIconSize.small, height: HudIconSize.small)
-                        .contentShape(Rectangle())
-                        .accessibilityLabel("Toggle navigation")
-                },
-                labelHeader: {
-                    VStack(alignment: .leading, spacing: 1) {
-                        Text("HUDSONKIT")
-                            .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
-                            .tracking(1.2)
-                            .foregroundStyle(HudPalette.ink)
-                        Text(variant.manifest.name)
-                            .font(HudFont.ui(HudTextSize.xxs, weight: .medium))
-                            .foregroundStyle(HudPalette.muted)
-                    }
-                    .lineLimit(1)
-                    .contentShape(Rectangle())
-                    .accessibilityLabel("Toggle navigation")
-                },
-                footer: {
-                    variantPicker
-                }
-            )
-            .resizable(
                 isCompact: Binding(
                     get: { !navExpanded },
                     set: { navExpanded = !$0 }
                 ),
-                labelWidth: $navLabelWidth
+                labelWidth: $navLabelWidth,
+                railHeader: {
+                    HudStatusDot(color: variant.manifest.accent)
+                        .frame(width: HudIconSize.micro, height: HudIconSize.micro)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Toggle navigation")
+                },
+                labelHeader: {
+                    Text(variant.manifest.name)
+                        .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+                        .foregroundStyle(HudPalette.ink)
+                        .lineLimit(1)
+                        .contentShape(Rectangle())
+                        .accessibilityLabel("Toggle navigation")
+                },
+                footer: {
+                    variantPicker
+                }
             )
         } trailing: {
             HudInspector(isCollapsed: $inspectorCollapsed) {
@@ -563,7 +553,9 @@ struct ContentView: View {
     private var statusBar: some View {
         HStack(spacing: HudSpacing.xl) {
             HudStatusDot(color: variant.manifest.accent, pulses: true)
-            HudsonKitLockup(markSize: 10, wordmarkSize: HudTextSize.xxs, spacing: 5)
+            Text("HUDSON·KIT")
+                .font(HudFont.mono(HudTextSize.xxs, weight: .bold))
+                .tracking(1.5)
                 .foregroundStyle(HudPalette.muted)
 
             statusSeparator

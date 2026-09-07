@@ -1,7 +1,7 @@
 'use client';
 
 import { createElement, useMemo } from 'react';
-import { Braces, FileCode2, Save } from '../../icons';
+import { Braces, FileCode2, Save } from 'lucide-react';
 import type { CommandOption, StatusColor } from '../../index';
 import { useCodeEditor } from './CodeEditorProvider';
 

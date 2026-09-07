@@ -38,10 +38,6 @@ export function useAssistantVoice(options: UseAssistantVoiceOptions): AssistantV
 
   const voiceInput = useVoiceInput({
     surface: 'hudson-assistant',
-    language: voiceSettings.transcriptionLanguage,
-    mode: voiceSettings.captureMode,
-    modelId: voiceSettings.transcriptionModel,
-    deviceId: voiceSettings.inputDeviceId || undefined,
     metadata: { appId },
     onTranscript: (transcript) => {
       transcriptCallbackRef.current?.(transcript);

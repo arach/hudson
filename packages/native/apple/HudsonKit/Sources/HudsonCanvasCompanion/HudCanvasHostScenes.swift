@@ -19,11 +19,7 @@ public struct HudCanvasHostScenes<Content: View>: Scene {
     public var body: some Scene {
         WindowGroup(model.identity.windowTitle, id: "main") {
             content()
-                .hudCanvasHostWindowBridge(
-                    style: model.configuration.navigationStyle == .verticalTabs
-                        ? .fullHeightSidebar
-                        : .standard
-                )
+                .hudCanvasHostWindowBridge()
                 .background {
                     HudCanvasHostMenuBarCoordinator(model: model)
                 }

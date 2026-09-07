@@ -2,11 +2,7 @@
 @import "./tokens.css";
 @source "../**/*.{ts,tsx}";
 
-/* Keep semantic utilities pointed at the --color-* variables so downstream
- * apps can override the resolved colors on their provider root. `inline`
- * bakes expressions such as oklch(var(--border)) into .border-border, which
- * breaks consumers whose legacy --border alias is already a complete color. */
-@theme {
+@theme inline {
   --color-background: oklch(var(--background));
   --color-foreground: oklch(var(--foreground));
   --color-card: oklch(var(--card));
@@ -96,15 +92,6 @@
   /* Accent */
   --hud-accent: rgb(16 185 129);          /* emerald-500 */
   --hud-accent-soft: rgb(16 185 129 / 0.08);
-
-  /* Nav live signal (HudSideNav live dot / count / spine). Defaults to
-   * accent so existing apps keep their look; consumers retint without
-   * fighting generated utilities — set --hud-nav-live on a wrapper. */
-  --hud-nav-live: var(--hud-accent);
-
-  /* Selection wash (opt-in via HudSideNav selectionWash). Neutral on all
-   * themes; never use for live/accent. */
-  --hud-action-tint: color-mix(in srgb, var(--hud-ink) 10%, transparent);
 
   /* Status */
   --hud-status-ok: rgb(34 197 94);        /* emerald-600 */

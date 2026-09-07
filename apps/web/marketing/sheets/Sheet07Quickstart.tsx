@@ -8,19 +8,19 @@ const STEPS = [
     n: '01',
     t: 'INSTALL',
     cmd: '$ bun add hudsonkit',
-    caption: 'Add the workspace layer without replacing the product code your team owns.',
+    caption: 'One package. SDK, primitives, and voice in the same import surface.',
   },
   {
     n: '02',
-    t: 'DEFINE',
+    t: 'SCAFFOLD',
     cmd: '$ hudson new my-app',
-    caption: 'Generate the app contract: provider, slots, hooks, commands, and intents.',
+    caption: 'Manifest, app folder, primitives wired up. Ready to run.',
   },
   {
     n: '03',
-    t: 'BUILD',
+    t: 'RUN',
     cmd: '$ bun dev',
-    caption: 'Implement your model, renderer, and interactions inside the normal dev loop.',
+    caption: 'Your standard dev server. Hudson runs alongside whatever you already use.',
   },
 ];
 
@@ -32,25 +32,25 @@ const FOOTER_COLS = [
 ];
 
 const WORKSPACE_URL = 'https://app.hudsonkit.com';
-const GITHUB_URL = 'https://github.com/arach/hudson';
+const GITHUB_URL = 'https://github.com/arach/hudsonos';
 
 export function Sheet07Quickstart() {
   return (
     <Sheet
       id="quickstart"
       num="08"
-      slugTitle="IMPLEMENT"
-      slugSub="install · define · build"
-      sheetTitle="Product Implementation Spec"
+      slugTitle="QUICKSTART"
+      slugSub="install · scaffold · build"
+      sheetTitle="Quickstart — End Sheet"
       footer={{
         left: ['SHEET', '08 / 08'],
-        mid: 'HUDSONKIT — PRODUCT SPEC → WORKING WORKSPACE',
+        mid: 'HUDSONKIT — END OF DRAWING SET',
         right: ['LICENSE', 'MINE'],
       }}
     >
       <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
-          <Eyebrow>08 / Implementation · from spec to product</Eyebrow>
+          <Eyebrow>08 / Quickstart · the page turns</Eyebrow>
         </div>
 
         <div
@@ -63,12 +63,12 @@ export function Sheet07Quickstart() {
           }}
         >
           <h2 className="h-section">
-            From product <em>spec</em> to working workspace.
+            End of our drawing. <em>Start</em> of yours.
           </h2>
           <p className="subhead" style={{ fontSize: 16 }}>
-            The boundary is straightforward: your team owns the domain model, renderer, and
-            interactions. Hudson provides the canvas, rails, commands, persistence, logging, and
-            agent context around them. Three commands get that contract running.
+            Eight sheets in, you&rsquo;ve seen the shape of a Hudson app: manifest, primitives, voice
+            loop, the whole drawing set. Now the drawing ends and the build begins. Three commands
+            and the docs are waiting.
           </p>
         </div>
 
@@ -119,7 +119,7 @@ export function Sheet07Quickstart() {
                 </span>
               </div>
               <pre className="code" style={{ margin: 0, fontSize: 12, padding: 12 }}>
-                <span className="str">{s.cmd}</span>
+                <span style={{ color: 'var(--accent)' }}>{s.cmd}</span>
               </pre>
               <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-1)', lineHeight: 1.55 }}>
                 {s.caption}
@@ -147,10 +147,13 @@ export function Sheet07Quickstart() {
         </div>
 
         <div
-          className="hud-card implementation-cta"
+          className="hud-card"
           data-cal
           data-cal-label="final CTA banner"
           style={{
+            border: 'var(--stroke-w) solid var(--ink)',
+            background: 'var(--ink)',
+            color: 'var(--paper)',
             padding: '40px 48px',
             marginBottom: 64,
             display: 'flex',
@@ -169,7 +172,7 @@ export function Sheet07Quickstart() {
                 marginBottom: 12,
               }}
             >
-              PRODUCT BOUNDARY · READY TO IMPLEMENT
+              ⸻ Last sheet · first commit
             </div>
             <p
               style={{
@@ -177,10 +180,10 @@ export function Sheet07Quickstart() {
                 fontFamily: 'var(--font-display)',
                 fontSize: 34,
                 lineHeight: 1.15,
-                color: 'var(--ink)',
+                color: 'var(--paper)',
               }}
             >
-              Build what makes the product <em>distinct</em>. Keep the workspace solved.
+              Build software the way you&apos;d <em>draw</em> it.
             </p>
           </div>
           <div style={{ display: 'flex', flexDirection: 'column', gap: 10, minWidth: 240 }}>
@@ -191,8 +194,8 @@ export function Sheet07Quickstart() {
               className="btn"
               style={{
                 background: 'transparent',
-                color: 'var(--ink)',
-                borderColor: 'var(--line-strong)',
+                color: 'var(--paper)',
+                borderColor: 'var(--ink-2)',
               }}
               href={GITHUB_URL}
               target="_blank"

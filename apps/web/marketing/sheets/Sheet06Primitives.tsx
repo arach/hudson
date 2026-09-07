@@ -36,12 +36,12 @@ export function Sheet06Primitives() {
           style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, marginBottom: 56 }}
         >
           <h2 className="h-section">
-            The workspace around your tool, <em>already handled</em>.
+            The whole kit, <em>itemized</em>.
           </h2>
           <p className="subhead" style={{ fontSize: 17, alignSelf: 'end' }}>
-            Eight foundational components establish the workspace vocabulary. They compose and
-            nest into the shell patterns Hudson apps share. If you&apos;ve used one Hudson workspace,
-            the interaction model is already familiar.
+            Eight components do every job. They compose, they nest, and they obey the same
+            dimensions on every surface. If you&apos;ve used one Hudson app, the rest are already
+            familiar.
           </p>
         </div>
 

@@ -1,6 +1,6 @@
 {
   "name": "hudsonkit",
-  "version": "0.4.0",
+  "version": "0.3.3",
   "description": "HudsonKit SDK for building apps with Provider + Slots + Hooks.",
   "license": "FSL-1.1-MIT",
   "type": "module",
@@ -45,11 +45,6 @@
       "import": "./dist/context-menu.js",
       "default": "./dist/context-menu.js"
     },
-    "./behaviors": {
-      "types": "./dist/behaviors.d.ts",
-      "import": "./dist/behaviors.js",
-      "default": "./dist/behaviors.js"
-    },
     "./canvas": {
       "types": "./dist/canvas.d.ts",
       "import": "./dist/canvas.js",
@@ -84,11 +79,6 @@
       "types": "./dist/controls.d.ts",
       "import": "./dist/controls.js",
       "default": "./dist/controls.js"
-    },
-    "./icons": {
-      "types": "./dist/icons.d.ts",
-      "import": "./dist/icons.js",
-      "default": "./dist/icons.js"
     },
     "./flags": {
       "types": "./dist/flags.d.ts",
@@ -155,24 +145,13 @@
       "import": "./dist/patterns.js",
       "default": "./dist/patterns.js"
     },
-    "./nav": {
-      "types": "./dist/nav.d.ts",
-      "import": "./dist/nav.js",
-      "default": "./dist/nav.js"
-    },
     "./apps": {
       "types": "./dist/apps.d.ts",
       "import": "./dist/apps.js",
       "default": "./dist/apps.js"
     },
-    "./styles": {
-      "types": "./dist/styles.d.ts",
-      "default": "./dist/styles.css"
-    },
-    "./styles/tokens.css": {
-      "types": "./dist/styles-tokens.d.ts",
-      "default": "./dist/tokens.css"
-    }
+    "./styles": "./dist/styles.css",
+    "./styles/tokens.css": "./dist/tokens.css"
   },
   "files": [
     "dist",
@@ -190,9 +169,8 @@
   "scripts": {
     "build": "bun run build:js && bun run build:css",
     "build:js": "tsup && tsup --config tsup.theme.config.ts && tsup --config tsup.server.config.ts",
-    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css && cp src/styles/styles.d.ts dist/styles.d.ts && cp src/styles/styles-tokens.d.ts dist/styles-tokens.d.ts",
-    "assert-dist": "node bin/assert-dist.mjs",
-    "pack": "bun run build && bun run assert-dist && bun pm pack && node bin/verify-pack.mjs",
+    "build:css": "tailwindcss -i src/styles/bundle.css -o dist/styles.css --minify && cp src/styles/tokens.css dist/tokens.css",
+    "pack": "bun run build && bun pm pack",
     "prepare": "node bin/prepare-check.mjs",
     "test": "vitest run --config ./vitest.config.ts"
   },
@@ -200,13 +178,13 @@
     "@ai-sdk/react": "^3.0.0",
     "@base-ui-components/react": "^1.0.0-rc.0",
     "ai": "^6.0.0",
-    "iconoir-react": "^7.11.1",
     "motion": "^12.0.0",
     "server-only": "^0.0.1"
   },
   "peerDependencies": {
     "react": "^19.0.0",
     "react-dom": "^19.0.0",
+    "lucide-react": "^0.564.0 || ^0.574.0",
     "@codemirror/commands": "^6.10.3",
     "@codemirror/lang-css": "^6.3.1",
     "@codemirror/lang-html": "^6.4.11",
@@ -288,12 +266,8 @@
   },
   "devDependencies": {
     "@tailwindcss/cli": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "jsdom": "^28.1.0",
     "tsup": "^8.0.0",
-    "typescript": "5.9.3",
-    "vitest": "^4.0.18"
+    "typescript": "5.9.3"
   },
   "publishConfig": {
     "access": "public"

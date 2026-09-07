@@ -149,7 +149,6 @@ struct ComplicationsTab: View {
         return .init(
             icon: icon,
             role: role,
-            label: positionLabel(pos),
             longPressModes: pos == .center ? rendererStyleModes : nil,
             action: onTap
         )

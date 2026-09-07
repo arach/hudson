@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import type { HudsonIcon } from '../../icons';
-import { Search } from '../../icons';
+import type { LucideIcon } from 'lucide-react';
+import { Search } from 'lucide-react';
 import { HudGroupedList } from './HudGroupedList';
 import type { HudGroupedListGroup } from './HudGroupedList';
 import type { HudDensity, HudTone } from '../primitives';
@@ -13,7 +13,7 @@ export interface HudRailItem {
   id: string;
   title: React.ReactNode;
   subtitle?: React.ReactNode;
-  icon?: HudsonIcon;
+  icon?: LucideIcon;
   avatar?: React.ReactNode;
   badge?: React.ReactNode;
   trailing?: React.ReactNode;

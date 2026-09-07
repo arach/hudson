@@ -28,8 +28,8 @@ const FEATURE_CATALOG = {
     note: 'HudsonTerminal — terminal and PTY-backed surfaces',
   },
   voice: {
-    env: {},
-    note: 'HudsonVoice — included by default; model acquisition is runtime-controlled',
+    env: { HUDSONKIT_WITH_VOICE: '1' },
+    note: 'HudsonVoice — in-process dictation and VoxEngine transcription',
   },
 };
 
@@ -278,188 +278,6 @@ function copyIcon(iconPath, resourcesDir, tempRoots) {
   return true;
 }
 
-export function normalizeFrameworkPaths(app) {
-  const frameworks = app.frameworks ?? [];
-  if (!Array.isArray(frameworks)) {
-    throw new Error(`frameworks for ${app.name ?? app.product ?? '<unnamed>'} must be an array of paths.`);
-  }
-  return frameworks.map((frameworkPath, index) => {
-    if (typeof frameworkPath !== 'string' || !frameworkPath.trim()) {
-      throw new Error(`frameworks[${index}] for ${app.name ?? app.product ?? '<unnamed>'} must be a non-empty path.`);
-    }
-    return frameworkPath.trim();
-  });
-}
-
-export function parseExecutableRpaths(output) {
-  return Array.from(
-    String(output).matchAll(/^\s*path (.+) \(offset \d+\)$/gm),
-    match => match[1],
-  );
-}
-
-export function parseArchitectureRpaths(output) {
-  const text = String(output);
-  const headers = Array.from(text.matchAll(/^.+ \(architecture ([^)]+)\):\s*$/gm));
-  if (headers.length === 0) {
-    return [{ architecture: 'single', rpaths: parseExecutableRpaths(text) }];
-  }
-
-  return headers.map((header, index) => {
-    const start = header.index + header[0].length;
-    const end = headers[index + 1]?.index ?? text.length;
-    return {
-      architecture: header[1],
-      rpaths: parseExecutableRpaths(text.slice(start, end)),
-    };
-  });
-}
-
-export function parseInstallNames(output) {
-  return String(output)
-    .split('\n')
-    .map(line => line.trim())
-    .filter(line => line && !line.endsWith(':'));
-}
-
-export function parseLinkedLibraries(output) {
-  return String(output)
-    .split('\n')
-    .map(line => line.match(/^\s*(.+?) \(compatibility version /)?.[1])
-    .filter(Boolean);
-}
-
-export function frameworkLinkageIssues(frameworkName, installNames, linkedLibraries) {
-  const frameworkMarker = `/${frameworkName}/`;
-  const portableInstallPrefix = `@rpath/${frameworkName}/`;
-  const frameworkLoads = linkedLibraries.filter(path => (
-    path.includes(frameworkMarker) || path.startsWith(`${frameworkName}/`)
-  ));
-  return {
-    installNames: installNames.filter(path => !path.startsWith(portableInstallPrefix)),
-    linkedLibraries: frameworkLoads.filter(path => !path.startsWith('@rpath/')),
-  };
-}
-
-function executableRpaths(executablePath) {
-  const output = execFileSync('otool', ['-l', executablePath], { encoding: 'utf8' });
-  return parseArchitectureRpaths(output);
-}
-
-function assertPortableFrameworkLinkage(executablePath, frameworkBundle) {
-  const frameworkName = basename(frameworkBundle);
-  const frameworkExecutable = join(
-    frameworkBundle,
-    frameworkName.slice(0, -'.framework'.length),
-  );
-  if (!existsSync(frameworkExecutable)) {
-    throw new Error(`framework executable not found: ${frameworkExecutable}`);
-  }
-
-  const installNames = parseInstallNames(
-    execFileSync('otool', ['-D', frameworkExecutable], { encoding: 'utf8' }),
-  );
-  if (installNames.length === 0) {
-    throw new Error(`framework has no LC_ID_DYLIB install name: ${frameworkExecutable}`);
-  }
-  const linkedLibraries = parseLinkedLibraries(
-    execFileSync('otool', ['-L', executablePath], { encoding: 'utf8' }),
-  );
-  const issues = frameworkLinkageIssues(frameworkName, installNames, linkedLibraries);
-
-  if (issues.installNames.length > 0) {
-    throw new Error(
-      `${frameworkName} has a non-portable LC_ID_DYLIB (${issues.installNames.join(', ')}); relink it with an @rpath install name or repair it with install_name_tool -id before packaging`,
-    );
-  }
-  if (issues.linkedLibraries.length > 0) {
-    throw new Error(
-      `${basename(executablePath)} references ${frameworkName} through a non-portable LC_LOAD_DYLIB (${issues.linkedLibraries.join(', ')}); relink against its @rpath install name or repair it with install_name_tool -change before packaging`,
-    );
-  }
-}
-
-function embedFrameworks(app, contentsDir, executablePath, context) {
-  const frameworks = normalizeFrameworkPaths(app);
-  if (frameworks.length === 0) return;
-
-  const frameworksDir = join(contentsDir, 'Frameworks');
-  const embeddedNames = new Set();
-  mkdirSync(frameworksDir, { recursive: true });
-
-  for (const frameworkPath of frameworks) {
-    const source = rel(context.configDir, frameworkPath);
-    if (!source || !existsSync(source)) {
-      throw new Error(`framework not found for ${app.name ?? app.product ?? '<unnamed>'}: ${source}`);
-    }
-
-    const frameworkName = basename(source);
-    if (!frameworkName.endsWith('.framework')) {
-      throw new Error(`framework path must reference a .framework bundle: ${source}`);
-    }
-    if (embeddedNames.has(frameworkName)) {
-      throw new Error(`duplicate embedded framework name for ${app.name ?? app.product ?? '<unnamed>'}: ${frameworkName}`);
-    }
-    embeddedNames.add(frameworkName);
-
-    const destination = join(frameworksDir, frameworkName);
-    rmSync(destination, { recursive: true, force: true });
-    // ditto preserves versioned-framework symlinks, resources, and nested code.
-    runCommand('ditto', [source, destination], { stdio: 'inherit' });
-    assertPortableFrameworkLinkage(executablePath, destination);
-  }
-
-  const frameworkRpath = '@executable_path/../Frameworks';
-  const slices = executableRpaths(executablePath);
-  const missingArchitectures = slices
-    .filter(slice => !slice.rpaths.includes(frameworkRpath))
-    .map(slice => slice.architecture);
-  if (missingArchitectures.length > 0 && missingArchitectures.length < slices.length) {
-    throw new Error(
-      `${frameworkRpath} is missing from only some executable architectures (${missingArchitectures.join(', ')}); relink every slice with the same rpath`,
-    );
-  }
-
-  if (missingArchitectures.length > 0) {
-    try {
-      runCommand('install_name_tool', ['-add_rpath', frameworkRpath, executablePath], { stdio: 'inherit' });
-    } catch (error) {
-      throw new Error(
-        `could not add ${frameworkRpath} to ${executablePath}; relink the executable with that rpath or with -headerpad_max_install_names`,
-        { cause: error },
-      );
-    }
-
-    const remaining = executableRpaths(executablePath)
-      .filter(slice => !slice.rpaths.includes(frameworkRpath))
-      .map(slice => slice.architecture);
-    if (remaining.length > 0) {
-      throw new Error(`${frameworkRpath} was not added to executable architectures: ${remaining.join(', ')}`);
-    }
-  }
-}
-
-function signEmbeddedFrameworks(bundlePath, app, identity, options) {
-  if (options.skipSign) return;
-
-  const signing = signingPolicy(identity);
-  for (const frameworkPath of normalizeFrameworkPaths(app)) {
-    const frameworkBundle = join(bundlePath, 'Contents', 'Frameworks', basename(frameworkPath));
-    const args = [
-      '--force',
-      '--deep',
-      `--preserve-metadata=${signing.preserveMetadata}`,
-    ];
-    if (signing.hardenedRuntime) args.push('--options', 'runtime');
-    if (signing.timestamp) args.push('--timestamp');
-    args.push('--sign', signing.identity, frameworkBundle);
-
-    process.stdout.write(`==> Signing ${basename(frameworkBundle)} with ${signing.label}\n`);
-    runCommand('codesign', args, { stdio: 'inherit' });
-    runCommand('codesign', ['--verify', '--deep', '--strict', frameworkBundle], { stdio: 'inherit' });
-  }
-}
-
 function defaultSigningIdentity() {
   try {
     const identities = execFileSync('security', ['find-identity', '-v', '-p', 'codesigning'], { encoding: 'utf8', stdio: ['ignore', 'pipe', 'ignore'] });
@@ -480,26 +298,6 @@ function resolveSigningIdentity(cliArgs, config) {
     ?? defaultSigningIdentity();
 }
 
-export function shouldUseDeepSigning(app) {
-  return (app.embeddedHelpers?.length ?? 0) === 0
-    && normalizeFrameworkPaths(app).length === 0;
-}
-
-export function signingPolicy(identity) {
-  const trimmed = typeof identity === 'string' ? identity.trim() : '';
-  const adHoc = trimmed === '' || trimmed === '-';
-  return {
-    identity: adHoc ? '-' : trimmed,
-    label: adHoc ? 'ad-hoc' : trimmed,
-    hardenedRuntime: !adHoc,
-    timestamp: !adHoc,
-    // An ad-hoc signature must not inherit identity-bound requirements or
-    // runtime flags from the previous signature. Either can make macOS reject
-    // a framework that no longer has the original signature's Team ID.
-    preserveMetadata: adHoc ? 'identifier' : 'identifier,entitlements,requirements,flags',
-  };
-}
-
 function signAppBundle(bundlePath, app, identity, options) {
   if (options.skipSign) {
     process.stdout.write(`==> Skipping app signing: ${displayPath(bundlePath)}\n`);
@@ -511,18 +309,13 @@ function signAppBundle(bundlePath, app, identity, options) {
   rmSync(tempBinary, { force: true });
 
   const entitlements = app.entitlementsPath;
-  const signing = signingPolicy(identity);
-  const args = ['--force'];
-  if (shouldUseDeepSigning(app)) {
-    args.push('--deep');
-  }
-  if (signing.hardenedRuntime) args.push('--options', 'runtime');
-  if (signing.timestamp) args.push('--timestamp');
-  args.push('--sign', signing.identity);
+  const args = ['--force', '--options', 'runtime', '--deep'];
+  if (identity) args.push('--timestamp');
+  args.push('--sign', identity || '-');
   if (entitlements && existsSync(entitlements)) args.push('--entitlements', entitlements);
   args.push('--identifier', app.bundleIdentifier, bundlePath);
 
-  process.stdout.write(`==> Signing ${basename(bundlePath)} with ${signing.label}\n`);
+  process.stdout.write(`==> Signing ${basename(bundlePath)} with ${identity || 'ad-hoc'}\n`);
   runCommand('codesign', args, { stdio: 'inherit' });
   runCommand('codesign', ['--verify', '--deep', '--strict', bundlePath], { stdio: 'inherit' });
 }
@@ -544,9 +337,8 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
   mkdirSync(macosDir, { recursive: true });
   mkdirSync(resourcesDir, { recursive: true });
 
-  const executablePath = join(macosDir, executableName);
-  cpSync(binarySource, executablePath);
-  chmodSync(executablePath, 0o755);
+  cpSync(binarySource, join(macosDir, executableName));
+  chmodSync(join(macosDir, executableName), 0o755);
 
   const plistPath = join(contentsDir, 'Info.plist');
   const template = rel(context.configDir, app.infoPlist);
@@ -561,8 +353,6 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
     setPlistValue(plistPath, 'CFBundleIconFile', 'string', 'AppIcon');
   }
 
-  embedFrameworks(app, contentsDir, executablePath, context);
-
   for (const helper of app.embeddedHelpers ?? []) {
     const helperBundleName = helper.bundleName ?? `${helper.name ?? helper.product}.app`;
     const destination = helper.destination ?? 'Contents/Library/LoginItems';
@@ -570,7 +360,6 @@ function buildAppBundle(app, bundlePath, args, context, tempRoots) {
     buildAppBundle(helper, helperBundlePath, args, context, tempRoots);
   }
 
-  signEmbeddedFrameworks(bundlePath, app, context.signingIdentity, args);
   const appForSigning = { ...app, executableName, entitlementsPath: rel(context.configDir, app.entitlements) };
   signAppBundle(bundlePath, appForSigning, context.signingIdentity, args);
   process.stdout.write(`==> Built ${displayPath(bundlePath)}\n`);
@@ -803,9 +592,7 @@ function createDmg(config, args, context, apps) {
 
   try {
     for (const app of apps) {
-      // Preserve versioned-framework symlinks and nested bundle metadata while
-      // moving the signed app into the DMG staging tree.
-      runCommand('ditto', [app.bundlePath, join(staging, app.bundleName)], { stdio: 'inherit' });
+      cpSync(app.bundlePath, join(staging, app.bundleName), { recursive: true });
     }
     execFileSync('ln', ['-s', '/Applications', join(staging, 'Applications')]);
 
@@ -842,14 +629,14 @@ function createDmg(config, args, context, apps) {
       runCommand('hdiutil', ['create', '-srcfolder', staging, '-volname', volumeName, '-format', 'UDZO', '-ov', dmgPath], { stdio: 'inherit' });
     }
 
-    if (!args.skipSign && !context.adHocSigning) {
+    if (!args.skipSign && context.signingIdentity) {
       runCommand('codesign', ['--force', '--timestamp', '--sign', context.signingIdentity, dmgPath], { stdio: 'inherit' });
     } else {
       process.stdout.write('==> Skipping DMG signing\n');
     }
 
     if (!args.skipNotarize) {
-      if (context.adHocSigning) {
+      if (!context.signingIdentity) {
         throw new Error('notarization requires a Developer ID signing identity');
       }
       if (!context.notaryProfile) {
@@ -895,15 +682,13 @@ async function runMacos(args) {
   const config = raw.macos ?? raw;
   const version = resolveVersion(config, args, configDir);
   const local = args.local || config.local === true;
-  const resolvedSigningIdentity = args.skipSign
+  const signingIdentity = args.skipSign
     ? ''
     : resolveSigningIdentity(args, config);
-  const signing = signingPolicy(resolvedSigningIdentity);
-  const signingIdentity = signing.identity;
   const requireIdentity = args.requireSignIdentity || (config.signing?.requireIdentity === true && !local);
 
   args.skipNotarize = args.skipNotarize || local || config.signing?.skipNotarize === true;
-  if (requireIdentity && (args.skipSign || signingIdentity === '-')) {
+  if (requireIdentity && !signingIdentity) {
     throw new Error('No signing identity found. Pass --sign-identity, set the configured identity env var, or use --local.');
   }
 
@@ -914,8 +699,6 @@ async function runMacos(args) {
     minimumSystemVersion: config.minimumSystemVersion ?? '14.0',
     distDir: rel(configDir, config.distDir ?? 'dist'),
     signingIdentity,
-    signingLabel: signing.label,
-    adHocSigning: !signing.hardenedRuntime,
     notaryProfile: args.notaryProfile
       ?? (config.signing?.notaryProfileEnv ? process.env[config.signing.notaryProfileEnv] : undefined)
       ?? process.env.HUDSONKIT_NOTARY_PROFILE
@@ -927,7 +710,7 @@ async function runMacos(args) {
   process.stdout.write(`==> Packaging ${context.productName} ${context.version}\n`);
   process.stdout.write(`==> Config: ${displayPath(configPath)}\n`);
   process.stdout.write(`==> Dist: ${displayPath(context.distDir)}\n`);
-  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingLabel}\n`);
+  if (!args.skipSign) process.stdout.write(`==> Signing: ${context.signingIdentity || 'ad-hoc'}\n`);
 
   const apps = buildApps(config, args, context);
   createDmg(config, args, context, apps);

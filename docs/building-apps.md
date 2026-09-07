@@ -201,7 +201,7 @@ export function useCounterStatus(): { label: string; color: StatusColor } {
 ```ts
 // index.ts
 import { createElement } from 'react';
-import { Hash } from 'hudsonkit/icons';
+import { Hash } from 'lucide-react';
 import type { HudsonApp } from 'hudsonkit';
 import { CounterProvider } from './MyAppProvider';
 import { MyAppContent } from './MyAppContent';
@@ -291,7 +291,7 @@ Example — a **Layers** tool that reads from the counter context:
 // tools.tsx
 'use client';
 import { createElement } from 'react';
-import { Layers } from 'hudsonkit/icons';
+import { Layers } from 'lucide-react';
 import type { AppTool } from 'hudsonkit';
 import { useCounter } from './MyAppProvider';
 

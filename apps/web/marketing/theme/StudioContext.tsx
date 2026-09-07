@@ -2,7 +2,6 @@
 
 import { createContext, useCallback, useContext, useEffect, useState, type ReactNode } from 'react';
 import { DEFAULTS, STUDIO_COOKIE, type StudioState } from './defaults';
-import { migrateStudioState } from './migrate';
 
 interface StudioContextValue {
   state: StudioState;
@@ -40,12 +39,8 @@ export function StudioProvider({
   useEffect(() => {
     const fromCookie = readStudioCookie();
     if (fromCookie) {
-      // Migrate persisted former-default state (see migrate.ts) before
-      // merging. StudioConsole's hydrated effect then strips the pre-paint
-      // boot style and rewrites the cookie with the migrated state.
-      const { state: migrated } = migrateStudioState(fromCookie);
       // eslint-disable-next-line react-hooks/set-state-in-effect -- one-time rehydration of studio prefs from the cookie after mount to avoid an SSR hydration mismatch (see comment above); runs once, not a cascade
-      setStateInternal((prev) => ({ ...prev, ...migrated }));
+      setStateInternal((prev) => ({ ...prev, ...fromCookie }));
     }
     setHydrated(true);
   }, []);

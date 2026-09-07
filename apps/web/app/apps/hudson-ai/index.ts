@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Sparkles, Radar } from 'hudsonkit/icons';
+import { Sparkles, Radar } from 'lucide-react';
 import type { HudsonApp, AppManifest } from 'hudsonkit';
 import { HudsonAIProvider } from './HudsonAIProvider';
 import { HudsonAIContent } from './HudsonAIContent';

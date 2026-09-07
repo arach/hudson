@@ -243,7 +243,6 @@ public struct HudCanvasSetupLayout: Codable, Hashable, Sendable {
     public var canvasTool: String?
     public var navigationFilter: String?
     public var navigationTagFilter: String?
-    public var navigationSidebarHidden: Bool?
     public var navigationCollapsed: Bool?
     public var navigationWidth: Double?
     public var minimapCollapsed: Bool?
@@ -254,7 +253,6 @@ public struct HudCanvasSetupLayout: Codable, Hashable, Sendable {
         canvasTool: String? = nil,
         navigationFilter: String? = nil,
         navigationTagFilter: String? = nil,
-        navigationSidebarHidden: Bool? = nil,
         navigationCollapsed: Bool? = nil,
         navigationWidth: Double? = nil,
         minimapCollapsed: Bool? = nil,
@@ -264,7 +262,6 @@ public struct HudCanvasSetupLayout: Codable, Hashable, Sendable {
         self.canvasTool = canvasTool
         self.navigationFilter = navigationFilter
         self.navigationTagFilter = navigationTagFilter
-        self.navigationSidebarHidden = navigationSidebarHidden
         self.navigationCollapsed = navigationCollapsed
         self.navigationWidth = navigationWidth
         self.minimapCollapsed = minimapCollapsed

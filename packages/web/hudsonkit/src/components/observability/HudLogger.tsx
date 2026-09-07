@@ -10,7 +10,7 @@ import {
   type PointerEvent as ReactPointerEvent,
   type ReactNode,
 } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from '../../icons';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { HObservability, HObservabilityDefault } from '../../observability/core';
 import {
   agentActionCommand,
@@ -31,7 +31,6 @@ import type {
   HLogLevel,
   HObservation,
   HObservationKind,
-  HTraceSpan,
 } from '../../types/observability';
 
 type LevelFilter = HLogLevel | 'all';
@@ -98,20 +97,14 @@ export interface HudLoggerStatusItemProps {
 const LEVELS: HLogLevel[] = ['debug', 'info', 'warn', 'error'];
 const KINDS: HObservationKind[] = ['log', 'metric', 'span'];
 const HUDSON_OPEN_APP_EVENT = 'hudson:open-app';
-const INSPECTOR_MIN_WIDTH = 340;
-const INSPECTOR_DEFAULT_WIDTH = 440;
+const INSPECTOR_MIN_WIDTH = 280;
+const INSPECTOR_DEFAULT_WIDTH = 380;
 const INSPECTOR_MAX_WIDTH = 900;
 const MAIN_MIN_WIDTH = 420;
 const INSPECTOR_WIDTH_STORAGE_KEY = 'hudson.hud-logger.inspector-width';
-const INSPECTOR_WIDTH_STORAGE_VERSION = 1;
 const DEFAULT_EVENT_SORT: EventSort = { key: 'time', direction: 'desc' };
 const EVENT_TABLE_GRID =
   'grid-cols-[62px_64px_76px_58px_72px_112px_128px_minmax(260px,1fr)_92px]';
-
-function migrateInspectorWidth(stored: unknown) {
-  if (typeof stored !== 'number') return INSPECTOR_DEFAULT_WIDTH;
-  return stored === 380 ? INSPECTOR_DEFAULT_WIDTH : stored;
-}
 
 export function useHudLoggerEvents(
   observability: HObservability = HObservabilityDefault,
@@ -135,19 +128,12 @@ export function useHudLoggerEvents(
 }
 
 export function summarizeHudLoggerEvents(events: readonly HObservation[]): HudLoggerSummary {
-  const spanStates = new Map<string, HTraceSpan['status']>();
-  for (const event of events) {
-    if (event.kind !== 'span') continue;
-    const current = spanStates.get(event.id);
-    if (!current || event.status !== 'active') spanStates.set(event.id, event.status);
-  }
-
   return {
     total: events.length,
     errors: events.filter((event) => event.kind === 'log' && event.level === 'error').length,
     warnings: events.filter((event) => event.kind === 'log' && event.level === 'warn').length,
     agentActions: events.filter(isAgentActionEvent).length,
-    activeSpans: Array.from(spanStates.values()).filter(status => status === 'active').length,
+    activeSpans: events.filter((event) => event.kind === 'span' && event.status === 'active').length,
     lastEvent: events[0] ?? null,
   };
 }
@@ -181,11 +167,12 @@ export function HudLoggerStatusItem({
     >
       <span className={`h-1.5 w-1.5 rounded-full ${statusItemDotClass(tone)}`} />
       <span>{label}</span>
-      {showCounts && summary.errors > 0 ? (
-        <span className="tabular-nums font-semibold">{summary.errors} err</span>
-      ) : showCounts && summary.warnings > 0 ? (
-        <span className="tabular-nums">{summary.warnings} warn</span>
-      ) : null}
+      {showCounts && (
+        <>
+          <span className="tabular-nums">{summary.total}</span>
+          <span className="tabular-nums">/{summary.errors}</span>
+        </>
+      )}
     </span>
   );
 }
@@ -209,7 +196,7 @@ export function HudLogger({
     if (!replayEvents || replayEvents.length === 0) return liveEvents;
     return mergeReplayWithLive(replayEvents, liveEvents, maxEvents);
   }, [controlledEvents, replayEvents, liveEvents, maxEvents]);
-  const [selectedEventKey, setSelectedEventKey] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(null);
   const [levelFilter, setLevelFilter] = useState<LevelFilter>('all');
   const [kindFilter, setKindFilter] = useState<KindFilter>('all');
   const [scopeFilter, setScopeFilter] = useState<HudLoggerScopeFilter>(initialScope);
@@ -223,10 +210,6 @@ export function HudLogger({
   const [inspectorWidth, setInspectorWidth] = usePersistentState<number>(
     INSPECTOR_WIDTH_STORAGE_KEY,
     INSPECTOR_DEFAULT_WIDTH,
-    {
-      version: INSPECTOR_WIDTH_STORAGE_VERSION,
-      migrate: migrateInspectorWidth,
-    },
   );
   const sectionRef = useRef<HTMLElement>(null);
   const asideRef = useRef<HTMLElement>(null);
@@ -254,11 +237,9 @@ export function HudLogger({
 
   const sortedEvents = useMemo(() => sortEvents(filteredEvents, sort), [filteredEvents, sort]);
   const effectiveTail = tail && sort.key === 'time' && sort.direction === 'desc';
-  const effectiveSelectedEventKey = effectiveTail
-    ? (sortedEvents[0] ? eventInstanceKey(sortedEvents[0]) : null)
-    : selectedEventKey;
+  const effectiveSelectedId = effectiveTail ? sortedEvents[0]?.id ?? null : selectedId;
   const selectedEvent =
-    sortedEvents.find((event) => eventInstanceKey(event) === effectiveSelectedEventKey) ??
+    sortedEvents.find((event) => event.id === effectiveSelectedId) ??
     sortedEvents[0] ??
     null;
   const selectedTraceId = selectedEvent ? agentActionTraceId(selectedEvent) ?? selectedEvent.id : null;
@@ -278,7 +259,7 @@ export function HudLogger({
 
   const selectEvent = useCallback((event: HObservation) => {
     setTail(false);
-    setSelectedEventKey(eventInstanceKey(event));
+    setSelectedId(event.id);
   }, []);
 
   const setTableSort = useCallback((key: EventSortKey) => {
@@ -377,9 +358,9 @@ export function HudLogger({
       ref={sectionRef}
       className={`flex min-h-[520px] flex-col overflow-hidden rounded-md border border-border bg-background text-foreground lg:flex-row ${className}`}
     >
-      <main className="flex min-h-0 min-w-0 flex-col border-b border-border/70 lg:flex-1 lg:border-b-0">
+      <main className="flex min-h-0 min-w-0 flex-col border-b border-border lg:flex-1 lg:border-b-0">
         {showHeader && (
-          <div className="shrink-0 border-b border-border/70 bg-card/80 px-3 py-2.5">
+          <div className="shrink-0 border-b border-border bg-card/80 px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <CopyButton
                 ariaLabel="copy filtered table"
@@ -388,7 +369,7 @@ export function HudLogger({
                 label="copy all"
                 onClick={() => void copyText(eventsToCopyTable(sortedEvents), 'table')}
               />
-              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[11px] font-normal uppercase tracking-[0.14em] text-muted-foreground">
+              <div className="flex flex-wrap items-center gap-x-3 gap-y-1 font-mono text-[10px] font-light uppercase tracking-[0.16em] text-muted-foreground">
                 <span>{title}</span>
                 <span className="text-accent">{sortedEvents.length} shown</span>
                 <span>{summary.total} buffered</span>
@@ -403,7 +384,7 @@ export function HudLogger({
                 )}
               </div>
             </div>
-            <label className="mt-2 flex min-w-0 items-center gap-2 rounded-md border border-border/70 bg-muted/20 px-2.5 py-2 font-mono text-[13px] font-normal text-accent transition-colors focus-within:border-accent/40 focus-within:bg-muted/30">
+            <label className="mt-2 flex min-w-0 items-center gap-2 border border-border bg-muted/20 px-2 py-1.5 font-mono text-[12px] font-light text-accent">
               <span className="shrink-0 text-success">$</span>
               <input
                 value={query}
@@ -413,10 +394,10 @@ export function HudLogger({
               />
             </label>
             <details className="mt-2 text-left">
-              <summary className="cursor-pointer font-mono text-[11px] font-normal uppercase tracking-[0.14em] text-muted-foreground hover:text-foreground">
+              <summary className="cursor-pointer font-mono text-[10px] font-light uppercase tracking-[0.16em] text-muted-foreground hover:text-foreground">
                 filters / controls
               </summary>
-              <div className="mt-3 grid gap-3 border-t border-border/60 pt-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
+              <div className="mt-3 grid gap-3 border-t border-border pt-3 md:grid-cols-[1fr_1fr_1fr_1fr_auto]">
                 <FilterGroup label="Scope">
                   <FilterButton active={scopeFilter === 'all'} onClick={() => setScopeFilter('all')}>
                     all
@@ -464,10 +445,10 @@ export function HudLogger({
                   <button
                     type="button"
                     onClick={toggleTail}
-                    className={`rounded-md border px-2.5 py-1.5 font-mono text-[11px] font-normal uppercase tracking-[0.12em] transition-colors ${
+                    className={`border px-2.5 py-1.5 font-mono text-[10px] font-light uppercase tracking-[0.14em] ${
                       tail
                         ? 'border-accent/30 bg-accent/10 text-accent'
-                        : 'border-border/70 bg-muted/20 text-muted-foreground hover:border-border hover:text-foreground'
+                        : 'border-border bg-muted/20 text-muted-foreground'
                     }`}
                   >
                     tail {tail ? 'on' : 'off'}
@@ -479,8 +460,8 @@ export function HudLogger({
         )}
 
         <div className="max-h-[650px] overflow-auto lg:max-h-none lg:flex-1 lg:min-h-0">
-          <div className="min-w-[980px] font-mono text-[11px] font-normal">
-            <div className={`sticky top-0 z-10 grid min-h-8 ${EVENT_TABLE_GRID} items-center border-b border-border/70 bg-card px-3 py-1.5 font-medium uppercase tracking-[0.12em] text-muted-foreground`}>
+          <div className="min-w-[980px] font-mono text-[10px] font-light">
+            <div className={`sticky top-0 z-10 grid ${EVENT_TABLE_GRID} border-b border-border bg-card px-3 py-1.5 font-light uppercase tracking-[0.14em] text-muted-foreground`}>
               <span className="sticky left-0 bg-card pr-2">Copy</span>
               <span>Open</span>
               <SortableHeader column="time" label="Time" sort={sort} onSort={setTableSort} />
@@ -493,10 +474,9 @@ export function HudLogger({
             </div>
             {sortedEvents.map((event) => {
               const targetAppId = eventTargetAppId(event);
-              const eventKey = eventInstanceKey(event);
               return (
                 <div
-                  key={eventKey}
+                  key={`${event.id}-${eventTimestampLabel(event)}`}
                   role="button"
                   tabIndex={0}
                   onClick={() => selectEvent(event)}
@@ -506,10 +486,10 @@ export function HudLogger({
                       selectEvent(event);
                     }
                   }}
-                  className={`grid min-h-[34px] w-full ${EVENT_TABLE_GRID} items-center border-b border-l-2 px-3 py-2 text-left transition-colors ${
-                    (selectedEvent ? eventInstanceKey(selectedEvent) === eventKey : false)
-                      ? 'border-b-border/40 border-l-accent bg-accent/[0.08]'
-                      : 'border-b-border/40 border-l-transparent hover:bg-muted/30'
+                  className={`grid w-full ${EVENT_TABLE_GRID} items-center border-b px-3 py-1 text-left transition ${
+                    selectedEvent?.id === event.id
+                      ? 'border-accent/30 bg-accent/10'
+                      : 'border-border hover:bg-muted/35'
                   }`}
                 >
                 <button
@@ -517,13 +497,13 @@ export function HudLogger({
                   aria-label={`copy row ${shortEventId(event.id)}`}
                   onClick={(clickEvent) => {
                     clickEvent.stopPropagation();
-                    void copyText(eventToCopyRow(event).join('\t'), `row:${eventKey}`);
+                    void copyText(eventToCopyRow(event).join('\t'), event.id);
                   }}
-                  className={`sticky left-0 z-[1] justify-self-start rounded border border-border/70 px-1.5 py-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:border-accent/30 hover:text-accent ${
-                    selectedEvent && eventInstanceKey(selectedEvent) === eventKey ? 'bg-accent/[0.08]' : 'bg-background'
+                  className={`sticky left-0 z-[1] justify-self-start border border-border px-1.5 py-0.5 font-mono text-[9px] font-light uppercase tracking-[0.12em] text-muted-foreground hover:border-accent/30 hover:text-accent ${
+                    selectedEvent?.id === event.id ? 'bg-accent/10' : 'bg-background'
                   }`}
                 >
-                  {copiedKey === `row:${eventKey}` ? 'copied' : 'copy'}
+                  {copiedKey === event.id ? 'copied' : 'copy'}
                 </button>
                 {targetAppId ? (
                   <button
@@ -533,7 +513,7 @@ export function HudLogger({
                       clickEvent.stopPropagation();
                       openEventTarget(event);
                     }}
-                    className="justify-self-start rounded border border-border/70 bg-muted/20 px-1.5 py-0.5 font-mono text-[10px] font-normal uppercase tracking-[0.1em] text-muted-foreground transition-colors hover:border-accent/30 hover:text-accent"
+                    className="justify-self-start border border-border bg-muted/20 px-1.5 py-0.5 font-mono text-[9px] font-light uppercase tracking-[0.12em] text-muted-foreground hover:border-accent/30 hover:text-accent"
                   >
                     open
                   </button>
@@ -545,14 +525,14 @@ export function HudLogger({
                 <span className={`uppercase tracking-[0.13em] ${eventSignalClass(event)}`}>{eventSignalLabel(event)}</span>
                 <span className="truncate uppercase tracking-[0.13em] text-muted-foreground">{event.category ?? '-'}</span>
                 <span className="truncate font-sans text-[12px] font-normal normal-case tracking-normal text-muted-foreground">{eventTargetLabel(event)}</span>
-                <span className="truncate font-sans text-[13px] font-normal normal-case tracking-normal text-foreground">{eventLabel(event)}</span>
+                <span className="truncate font-sans text-[12px] font-normal normal-case tracking-normal text-foreground">{eventLabel(event)}</span>
                 <span className="truncate text-muted-foreground">{shortEventId(event.id)}</span>
                 </div>
               );
             })}
 
             {sortedEvents.length === 0 && (
-              <div className="border-b border-border/40 px-3 py-5 font-sans text-[13px] text-muted-foreground">
+              <div className="border-b border-border px-3 py-5 font-sans text-[13px] text-muted-foreground">
                 {emptyMessage}
               </div>
             )}
@@ -588,10 +568,10 @@ export function HudLogger({
             className="flex w-full shrink-0 flex-col bg-background lg:w-[var(--inspector-width)]"
           >
             <PayloadInspector
-              copied={selectedEvent ? copiedKey === `inspector:${eventInstanceKey(selectedEvent)}` : false}
+              copied={selectedEvent ? copiedKey === `inspector:${selectedEvent.id}` : false}
               event={selectedEvent}
               relatedEvents={selectedRelatedEvents}
-              onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${eventInstanceKey(event)}`)}
+              onCopyRow={(event) => void copyText(eventToCopyRow(event).join('\t'), `inspector:${event.id}`)}
               onOpenTarget={openEventTarget}
             />
           </aside>
@@ -618,8 +598,8 @@ function PayloadInspector({
 
   return (
     <div className="flex min-h-0 flex-1 flex-col">
-      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border/70 bg-card/40 px-3 py-2.5 lg:px-4">
-        <div className="font-mono text-[11px] font-medium uppercase tracking-[0.15em] text-foreground/80">
+      <div className="flex shrink-0 items-center justify-between gap-2 border-b border-border bg-background px-3 py-2.5 lg:px-4">
+        <div className="font-mono text-[10px] font-light uppercase tracking-[0.18em] text-muted-foreground">
           Payload inspector
         </div>
         {event ? (
@@ -628,7 +608,7 @@ function PayloadInspector({
               <button
                 type="button"
                 onClick={() => onOpenTarget(event)}
-                className="rounded-md border border-border/70 bg-muted/20 px-2 py-1 font-mono text-[11px] font-normal uppercase tracking-[0.11em] text-muted-foreground transition hover:border-accent/30 hover:text-accent"
+                className="border border-border bg-muted/20 px-2 py-1 font-mono text-[9px] font-light uppercase tracking-[0.14em] text-muted-foreground transition hover:border-accent/30 hover:text-accent"
               >
                 open app
               </button>
@@ -636,11 +616,11 @@ function PayloadInspector({
             <button
               type="button"
               onClick={() => onCopyRow(event)}
-              className="rounded-md border border-border/70 bg-muted/20 px-2 py-1 font-mono text-[11px] font-normal uppercase tracking-[0.11em] text-muted-foreground transition hover:border-accent/30 hover:text-accent"
+              className="border border-border bg-muted/20 px-2 py-1 font-mono text-[9px] font-light uppercase tracking-[0.14em] text-muted-foreground transition hover:border-accent/30 hover:text-accent"
             >
               {copied ? 'copied' : 'copy row'}
             </button>
-            <div className={`font-mono text-[11px] uppercase tracking-[0.12em] ${eventSignalClass(event)}`}>
+            <div className={`font-mono text-[10px] uppercase tracking-[0.14em] ${eventSignalClass(event)}`}>
               {eventSignalLabel(event)}
             </div>
           </div>
@@ -649,15 +629,15 @@ function PayloadInspector({
       <div className="min-h-0 flex-1 overflow-y-auto px-3 py-3 lg:px-4 lg:py-4">
         {event ? (
           <div className="grid gap-3">
-            <div className="overflow-hidden rounded-md border border-accent/25 bg-accent/[0.07]">
-              <div className="flex flex-wrap items-center gap-2 border-b border-accent/15 px-3 py-2">
+            <div className="border border-accent/30 bg-accent/10">
+              <div className="flex flex-wrap items-center gap-2 border-b border-accent/20 px-3 py-2">
                 <EventPill event={event} />
-                <span className="font-mono text-[11px] uppercase tracking-[0.12em] text-muted-foreground">
+                <span className="font-mono text-[10px] uppercase tracking-[0.14em] text-muted-foreground">
                   {event.kind}
                 </span>
               </div>
               <div className="px-3 py-2">
-                <div className="font-mono text-[11px] font-medium uppercase tracking-[0.13em] text-accent">
+                <div className="font-mono text-[10px] font-light uppercase tracking-[0.16em] text-accent">
                   selected event
                 </div>
                 <div className="mt-1 break-words text-[14px] font-normal leading-5 text-foreground">
@@ -681,7 +661,7 @@ function PayloadInspector({
             ) : null}
           </div>
         ) : (
-          <div className="rounded-md border border-border/60 bg-muted/20 p-4 text-[13px] leading-6 text-muted-foreground">
+          <div className="border border-border bg-muted/20 p-4 text-[13px] leading-6 text-muted-foreground">
             No event selected.
           </div>
         )}
@@ -693,7 +673,7 @@ function PayloadInspector({
 function FilterGroup({ label, children }: { label: string; children: ReactNode }) {
   return (
     <div>
-      <div className="font-mono text-[11px] uppercase tracking-[0.14em] text-muted-foreground">
+      <div className="font-mono text-[10px] uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </div>
       <div className="mt-2 flex flex-wrap gap-2">{children}</div>
@@ -714,10 +694,10 @@ function FilterButton({
     <button
       type="button"
       onClick={onClick}
-      className={`rounded-md border px-2 py-1 font-mono text-[11px] uppercase tracking-[0.1em] transition-colors ${
+      className={`border px-2 py-1 font-mono text-[10px] uppercase tracking-[0.12em] ${
         active
           ? 'border-accent/30 bg-accent/10 text-accent'
-          : 'border-border/70 bg-muted/20 text-muted-foreground hover:border-border hover:text-foreground'
+          : 'border-border bg-muted/20 text-muted-foreground'
       }`}
     >
       {children}
@@ -775,7 +755,7 @@ function CopyButton({
       aria-label={ariaLabel}
       disabled={disabled}
       onClick={onClick}
-      className="rounded-md border border-border/70 bg-muted/20 px-2 py-1 font-mono text-[11px] font-normal uppercase tracking-[0.11em] text-muted-foreground transition hover:border-accent/30 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
+      className="border border-border bg-muted/20 px-2 py-1 font-mono text-[10px] font-light uppercase tracking-[0.14em] text-muted-foreground transition hover:border-accent/30 hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
     >
       {copied ? 'copied' : label}
     </button>
@@ -795,7 +775,7 @@ function EventPill({ event }: { event: HObservation }) {
           : 'border-accent/30 bg-accent/10 text-accent';
 
   return (
-    <span className={`rounded-full border px-2 py-0.5 font-mono text-[10px] uppercase tracking-[0.11em] ${toneClass}`}>
+    <span className={`rounded-full border px-1.5 py-px font-mono text-[8.5px] uppercase tracking-[0.13em] ${toneClass}`}>
       {label}
     </span>
   );
@@ -803,11 +783,11 @@ function EventPill({ event }: { event: HObservation }) {
 
 function InspectorSection({ section }: { section: InspectorSectionData }) {
   return (
-    <section className="overflow-hidden rounded-md border border-border/60 bg-muted/15">
-      <div className="border-b border-border/50 bg-muted/30 px-3 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/70">
+    <section className="border border-border bg-muted/20">
+      <div className="border-b border-border bg-muted/30 px-3 py-1.5 font-mono text-[9px] font-light uppercase tracking-[0.16em] text-muted-foreground">
         {section.title}
       </div>
-      <div className="divide-y divide-border/40">
+      <div className="divide-y divide-border/80">
         {section.rows.map((row) => (
           <InspectorRow key={`${section.title}-${row.label}`} row={row} />
         ))}
@@ -826,16 +806,16 @@ function TraceTimeline({
   if (events.length <= 1) return null;
 
   return (
-    <section className="overflow-hidden rounded-md border border-border/60 bg-muted/15">
-      <div className="flex items-center justify-between border-b border-border/50 bg-muted/30 px-3 py-2">
-        <div className="font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/70">
+    <section className="border border-border bg-muted/20">
+      <div className="flex items-center justify-between border-b border-border bg-muted/30 px-3 py-1.5">
+        <div className="font-mono text-[9px] font-light uppercase tracking-[0.16em] text-muted-foreground">
           Trace lines
         </div>
-        <div className="font-mono text-[10px] font-light uppercase tracking-[0.12em] text-muted-foreground">
+        <div className="font-mono text-[9px] font-light uppercase tracking-[0.14em] text-muted-foreground">
           {events.length}
         </div>
       </div>
-      <div className="divide-y divide-border/40">
+      <div className="divide-y divide-border/80">
         {events.map((traceEvent) => {
           const commandLabel = summarizeAgentActionCommand(agentActionCommand(traceEvent));
           return (
@@ -845,10 +825,10 @@ function TraceTimeline({
                 traceEvent.id === selectedId ? 'bg-accent/10' : ''
               }`}
             >
-              <span className="font-mono text-[10px] tabular-nums text-muted-foreground">
+              <span className="font-mono text-[9.5px] tabular-nums text-muted-foreground">
                 {eventTimestampLabel(traceEvent)}
               </span>
-              <span className={`font-mono text-[10px] uppercase tracking-[0.11em] ${eventSignalClass(traceEvent)}`}>
+              <span className={`font-mono text-[9.5px] uppercase tracking-[0.13em] ${eventSignalClass(traceEvent)}`}>
                 {eventSignalLabel(traceEvent)}
               </span>
               <span className="min-w-0 truncate text-[12px] text-foreground/80">
@@ -864,8 +844,8 @@ function TraceTimeline({
 
 function InspectorRow({ row }: { row: InspectorRowData }) {
   return (
-    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 px-3 py-2">
-      <div className="font-mono text-[10px] font-light uppercase tracking-[0.12em] text-muted-foreground">
+    <div className="grid grid-cols-[96px_minmax(0,1fr)] items-start gap-3 px-3 py-1.5">
+      <div className="font-mono text-[9.5px] font-light uppercase tracking-[0.14em] text-muted-foreground">
         {row.label}
       </div>
       <div className={`min-w-0 break-words text-[12px] leading-5 ${row.mono ? 'font-mono tabular-nums' : 'font-sans'} ${inspectorToneClass(row.tone)}`}>
@@ -877,11 +857,11 @@ function InspectorRow({ row }: { row: InspectorRowData }) {
 
 function JsonBlock({ label, value }: { label: string; value: unknown }) {
   return (
-    <div className="overflow-hidden rounded-md border border-border/60 bg-muted/15">
-      <div className="border-b border-border/50 bg-muted/30 px-3 py-2 font-mono text-[10px] font-medium uppercase tracking-[0.14em] text-foreground/70">
+    <div className="border border-border bg-muted/20">
+      <div className="border-b border-border bg-muted/30 px-3 py-1.5 font-mono text-[9px] font-light uppercase tracking-[0.16em] text-muted-foreground">
         {label}
       </div>
-      <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[12px] font-light leading-5 text-foreground/80 lg:max-h-none lg:overflow-x-auto">
+      <pre className="max-h-[360px] overflow-auto whitespace-pre-wrap break-words p-3 font-mono text-[11px] font-light leading-5 text-foreground/75 lg:max-h-none lg:overflow-x-auto">
         {JSON.stringify(value, null, 2)}
       </pre>
     </div>
@@ -1084,13 +1064,6 @@ function formatTimestamp(timestamp: number) {
 
 function shortEventId(id: string) {
   return id.length > 10 ? id.slice(-10) : id;
-}
-
-function eventInstanceKey(event: HObservation) {
-  if (event.kind === 'span') {
-    return `${event.kind}:${event.id}:${event.status}:${event.endTime ?? 'active'}`;
-  }
-  return `${event.kind}:${event.id}:${event.timestamp}`;
 }
 
 function eventTimestampLabel(event: HObservation) {

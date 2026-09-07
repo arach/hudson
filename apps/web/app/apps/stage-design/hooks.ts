@@ -2,7 +2,7 @@
 
 import { createElement } from 'react';
 import type { CommandOption } from 'hudsonkit';
-import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw, Save } from 'hudsonkit/icons';
+import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, RotateCcw, Save } from 'lucide-react';
 import { useWorkspaceDecor } from 'hudsonkit/workspace';
 import { StageDesignHeaderActions, StageDesignNavCenter } from './StageDesignChrome';
 

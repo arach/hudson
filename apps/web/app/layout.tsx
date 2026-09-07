@@ -153,21 +153,20 @@ export const viewport: Viewport = {
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://hudsonkit.com"),
-  title: "HudsonKit — Build the tool. Hudson provides the workspace.",
-  description:
-    "Canvas, side rails, commands, persistence, logging, and agent-ready infrastructure for application teams.",
+  title: "HudsonKit — workspace framework, drawn to spec",
+  description: "HudsonKit. Open-source workspace framework. Drawn to spec.",
   openGraph: {
-    title: "HudsonKit — Build the tool. Hudson provides the workspace.",
+    title: "HudsonKit — workspace framework, drawn to spec",
     description:
-      "Build the product-specific tool. Hudson provides the workspace systems around it.",
+      "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
     images: [{ url: "/og.png", width: 1200, height: 630 }],
     type: "website",
   },
   twitter: {
     card: "summary_large_image",
-    title: "HudsonKit — Build the tool. Hudson provides the workspace.",
+    title: "HudsonKit — workspace framework, drawn to spec",
     description:
-      "Build the product-specific tool. Hudson provides the workspace systems around it.",
+      "Build apps with Provider + Slots + Hooks. Compose them into spatial workspaces with pan, zoom, and windowing.",
     images: ["/og.png"],
   },
 };

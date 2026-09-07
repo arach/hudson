@@ -1,5 +1,5 @@
 import { createElement, type FC } from "react";
-import { Compass } from "hudsonkit/icons";
+import { Compass } from "lucide-react";
 import { AppShell } from "hudsonkit/app-shell";
 import type { HudsonApp } from "hudsonkit";
 import { ThemeProvider } from "hudsonkit/theme";
@@ -10,10 +10,8 @@ import type { Status } from "./registry";
 import { buildEngExtraPages } from "./content";
 import { HomePage } from "./pages/HomePage";
 import { ExhibitPage } from "./pages/ExhibitPage";
-import { EmbedPage } from "./pages/EmbedPage";
 import { DocPage } from "./pages/DocPage";
 import { NotFoundPage } from "./pages/NotFoundPage";
-import { flowsApp } from "./flows/FlowsApp";
 
 // Studio sidebar — drops studio's RegistryNav into hudsonkit's SidePanel.
 // Path B: hudsonkit owns the panel chrome, studio owns the nav contents.
@@ -40,7 +38,6 @@ const StudioLeftPanel: FC = () => (
 );
 
 // Content slot — reads current route and dispatches to a page.
-// /flows switches to the native canvas app below; embeds remain full-bleed.
 const StudioContent: FC = () => {
   const { path, route } = useRoute();
   switch (route.kind) {
@@ -48,10 +45,6 @@ const StudioContent: FC = () => {
       return <HomePage />;
     case "exhibit":
       return <ExhibitPage slug={route.slug} />;
-    case "embed":
-      return <EmbedPage slug={route.slug} />;
-    case "flows":
-      return <NotFoundPage path={path} />;
     case "doc":
       return <DocPage slug={route.slug} />;
     case "not-found":
@@ -89,29 +82,17 @@ export default function StudioApp() {
   return (
     <ThemeProvider>
       <StudioRouterProvider router={spaRouter}>
-        <StudioShell />
+        <AppShell
+          app={studioApp}
+          assistant={false}
+          managedTheme
+          chrome={{
+            palette: true,
+            terminal: false,
+            rightPanel: false,
+          }}
+        />
       </StudioRouterProvider>
     </ThemeProvider>
-  );
-}
-
-function StudioShell() {
-  const { route } = useRoute();
-  const isFlows = route.kind === "flows";
-  const app = isFlows ? flowsApp : studioApp;
-
-  return (
-    <AppShell
-      key={app.id}
-      app={app}
-      assistant={false}
-      managedTheme
-      chrome={{
-        palette: true,
-        terminal: false,
-        rightPanel: isFlows,
-        canvasPanels: isFlows,
-      }}
-    />
   );
 }

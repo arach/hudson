@@ -66,7 +66,7 @@ export function PlotterControls({
   return (
     <aside
       style={{
-        border: 'var(--stroke-w) solid var(--ink)',
+        border: '1.5px solid var(--ink)',
         background: 'var(--paper)',
         padding: 18,
         display: 'flex',
@@ -193,7 +193,7 @@ export function PlotterControls({
         <SegRow
           options={[
             { id: 'ink', label: 'Graphite' },
-            { id: 'accent', label: 'Accent' },
+            { id: 'accent', label: 'Emerald' },
           ]}
           value={accent}
           onChange={(v) => setAccent(v as PlotterAccent)}

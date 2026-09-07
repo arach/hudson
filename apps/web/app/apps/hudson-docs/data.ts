@@ -13,8 +13,8 @@ import {
   Library,
   Paintbrush,
   LayoutTemplate,
-  type HudsonIcon,
-} from 'hudsonkit/icons';
+  type LucideIcon,
+} from 'lucide-react';
 import type { AgentDocEntry, ComponentEntry, HudsonSettings } from './types';
 
 export const DEFAULT_SETTINGS: HudsonSettings = {
@@ -32,10 +32,6 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   font: { fontSize: 13, fontFamily: 'system-ui' },
   voice: {
     autoSend: true,
-    inputDeviceId: '',
-    transcriptionModel: 'parakeet:v3',
-    transcriptionLanguage: 'en',
-    captureMode: 'push_to_talk',
     speakReplies: false,
     replyProvider: 'vox',
     replyModel: 'avspeech:system',
@@ -48,7 +44,7 @@ export const DEFAULT_SETTINGS: HudsonSettings = {
   },
 };
 
-export const NAV_ITEMS: { id: string; label: string; icon: HudsonIcon }[] = [
+export const NAV_ITEMS: { id: string; label: string; icon: LucideIcon }[] = [
   { id: 'overview', label: 'Overview', icon: Compass },
   { id: 'reference', label: 'Reference', icon: Library },
   { id: 'guides', label: 'Guides', icon: BookOpen },

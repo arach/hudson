@@ -38,7 +38,7 @@ public struct ElevenLabsHudTTSProvider: HudTTSProviderAdapter {
 
         let body: [String: Any] = [
             "text": String(trimmed.prefix(5000)),
-            "model_id": request.model?.hudTrimmedNonEmpty ?? modelID,
+            "model_id": modelID,
             "voice_settings": [
                 "stability": 0.58,
                 "similarity_boost": 0.78,

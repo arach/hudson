@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { ScanSearch } from '../../icons';
+import { ScanSearch } from 'lucide-react';
 import type { HudsonApp } from '../../index';
 import { JsonExplorerProvider } from './JsonExplorerProvider';
 import { JsonExplorerContent } from './JsonExplorerContent';

@@ -17,8 +17,6 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
     public static let system = HudTTSProviderID(rawValue: "system")
     public static let openai = HudTTSProviderID(rawValue: "openai")
     public static let elevenlabs = HudTTSProviderID(rawValue: "elevenlabs")
-    public static let groq = HudTTSProviderID(rawValue: "groq")
-    public static let gemini = HudTTSProviderID(rawValue: "gemini")
 }
 
 public enum HudTTSAudioFormat: String, Sendable {
@@ -31,23 +29,11 @@ public struct HudTTSRequest: Equatable, Sendable {
     public var text: String
     public var voice: String?
     public var rate: Double
-    /// Optional provider model override. A blank value uses the adapter default.
-    public var model: String?
-    /// Optional natural-language delivery guidance for adapters that support it.
-    public var instructions: String?
 
-    public init(
-        text: String,
-        voice: String? = nil,
-        rate: Double = 1.0,
-        model: String? = nil,
-        instructions: String? = nil
-    ) {
+    public init(text: String, voice: String? = nil, rate: Double = 1.0) {
         self.text = text
         self.voice = voice
         self.rate = rate
-        self.model = model
-        self.instructions = instructions
     }
 }
 
@@ -114,12 +100,5 @@ public struct HudTTSProviderStatus: Equatable, Sendable, Identifiable {
         self.label = label
         self.isAvailable = isAvailable
         self.defaultVoice = defaultVoice
-    }
-}
-
-extension String {
-    var hudTrimmedNonEmpty: String? {
-        let trimmed = trimmingCharacters(in: .whitespacesAndNewlines)
-        return trimmed.isEmpty ? nil : trimmed
     }
 }

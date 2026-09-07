@@ -20,7 +20,7 @@ var targets: [Target] = [
 
 if voiceHelperEnabled {
     dependencies.append(
-        .package(name: "Vox", path: "../../../../vox")
+        .package(name: "Vox", path: "../../../../vox/swift")
     )
     targets.append(
         .target(
@@ -45,7 +45,7 @@ if voiceHelperEnabled {
 let package = Package(
     name: "HudsonApp",
     platforms: [
-        .macOS("26.0"),
+        .macOS(.v14),
     ],
     dependencies: dependencies,
     targets: targets

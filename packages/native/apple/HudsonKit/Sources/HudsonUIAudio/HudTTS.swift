@@ -82,8 +82,6 @@ public final class HudTTS {
         providerID: HudTTSProviderID,
         voice: String? = nil,
         rate: Double = 1.0,
-        model: String? = nil,
-        instructions: String? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws -> HudTTSResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -105,17 +103,14 @@ public final class HudTTS {
                 voice: voiceIdentifier ?? HudSystemSpeechDefaults.defaultVoiceIdentifier
             )
 
-        default:
+        case .openai, .elevenlabs:
             return try await client.synthesize(
-                HudTTSRequest(
-                    text: trimmed,
-                    voice: voice,
-                    rate: rate,
-                    model: model,
-                    instructions: instructions
-                ),
+                HudTTSRequest(text: trimmed, voice: voice, rate: rate),
                 providerID: providerID
             )
+
+        default:
+            throw HudTTSError.unknownProvider(providerID.rawValue)
         }
     }
 
@@ -124,8 +119,6 @@ public final class HudTTS {
         providerID: HudTTSProviderID,
         voice: String? = nil,
         rate: Double = 1.0,
-        model: String? = nil,
-        instructions: String? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -145,15 +138,9 @@ public final class HudTTS {
                 }
             }
 
-        default:
+        case .openai, .elevenlabs:
             let result = try await client.synthesize(
-                HudTTSRequest(
-                    text: trimmed,
-                    voice: voice,
-                    rate: rate,
-                    model: model,
-                    instructions: instructions
-                ),
+                HudTTSRequest(text: trimmed, voice: voice, rate: rate),
                 providerID: providerID
             )
             activePlayback = .cloud
@@ -166,6 +153,8 @@ public final class HudTTS {
             }
             isSpeaking = speechPlayer.isPlaying
 
+        default:
+            throw HudTTSError.unknownProvider(providerID.rawValue)
         }
     }
 

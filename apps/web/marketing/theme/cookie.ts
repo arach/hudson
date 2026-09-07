@@ -1,7 +1,6 @@
 import 'server-only';
 import { cookies } from 'next/headers';
 import { DEFAULTS, STUDIO_COOKIE, type StudioState } from './defaults';
-import { migrateStudioState } from './migrate';
 
 export async function readStudioState(): Promise<StudioState> {
   const store = await cookies();
@@ -9,7 +8,7 @@ export async function readStudioState(): Promise<StudioState> {
   if (!raw) return { ...DEFAULTS };
   try {
     const parsed = JSON.parse(raw) as Partial<StudioState>;
-    return { ...DEFAULTS, ...migrateStudioState(parsed).state };
+    return { ...DEFAULTS, ...parsed };
   } catch {
     return { ...DEFAULTS };
   }

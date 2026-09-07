@@ -25,8 +25,9 @@
       "ai/*": ["../../node_modules/ai/*"],
       "@ai-sdk/react": ["../../node_modules/@ai-sdk/react"],
       "@ai-sdk/react/*": ["../../node_modules/@ai-sdk/react/*"],
+      "lucide-react": ["../../node_modules/lucide-react"],
+      "lucide-react/*": ["../../node_modules/lucide-react/*"],
       "hudsonkit": ["../../node_modules/hudsonkit/src/index.ts"],
-      "hudsonkit/icons": ["../../node_modules/hudsonkit/src/icons.tsx"],
       "hudsonkit/workflow": ["../../node_modules/hudsonkit/src/workflow/index.ts"],
       "hudsonkit/apps": ["../../node_modules/hudsonkit/src/apps/index.ts"],
       "hudsonkit/*": ["../../node_modules/hudsonkit/src/*.ts"]

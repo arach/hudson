@@ -77,44 +77,6 @@ HudNavigationSidebar(
 
 Restyle the subtree with `.environment(\.hudsonSidebarStyle, ...)` — see `HudSidebarStyle` below.
 
-### Resizing
-
-Resizing is a *behavior* of `HudNavigationSidebar`, not a second component. Opt in with `.resizable(...)` and the same rendering path gains an edge handle, preview-then-commit drag resizing, drag-left-to-collapse, drag-right-to-expand from compact, and a double-click toggle.
-
-```swift
-@AppStorage("sidebarLabelWidth") private var labelWidth = 156.0
-@State private var isCompact = false
-
-HudNavigationSidebar(
-    selection: $section,
-    entries: entries,
-    isCompact: isCompact,
-    railHeader: { HudAppLogo() },
-    labelHeader: { HudAppWordmark() }
-)
-.resizable(
-    isCompact: $isCompact,
-    labelWidth: $labelWidth,
-    minLabelWidth: 120,
-    maxLabelWidth: 280
-)
-```
-
-| Param | Type | Purpose |
-|---|---|---|
-| `isCompact` | `Binding<Bool>` | Caller-owned collapsed state |
-| `labelWidth` | `Binding<CGFloat>` | Caller-owned expanded label-column width |
-| `minLabelWidth` / `maxLabelWidth` | `CGFloat` | Committed width bounds (default `100` / `360`) |
-| `collapseLabelWidth` | `CGFloat` | Drag left past this to collapse (default `44`) |
-| `activationDistance` | `CGFloat` | Travel before a drag counts as resize (default `6`) |
-| `onResizePhaseChange` | `(Bool) -> Void` | `true` on drag start, `false` on drag end |
-
-**Persistence is application-owned.** Hudson defines no `UserDefaults` keys — every committed resize writes through `labelWidth`, every collapse/expand writes through `isCompact`, and where those land is the app's choice. Preview widths during a drag may fall below `minLabelWidth`; committed widths never do, so re-expanding always returns to a usable size.
-
-Two placement rules: `.resizable(...)` is a method on the component, so apply it directly to the sidebar expression before any type-erasing modifier (`.environment(...)` goes after); and don't clip the result — the edge handle straddles the trailing edge.
-
-`HudResizableNavigationSidebar` is the previous, separate-component form. It still builds as sugar over the same internal host but is **deprecated** — migrate to `.resizable(...)`.
-
 ## HudInspector + HudInspectorToggle
 
 `HudInspector` is the trailing-slot panel — 280pt wide (`HudLayout.panelWidth`) when expanded, removed from layout when collapsed. `HudInspectorToggle` lives wherever app-owned chrome makes sense (status bar, toolbar) — intentionally separate so the affordance isn't locked to one location.

@@ -9,7 +9,7 @@ section: "iOS Apps"
 
 ## Overview
 
-`HudPhoneAppShell` is the iPhone-first sibling of `HudAppShell`. Where the macOS/iPad-regular chassis ships a leading rail, trailing inspector, and drawers, the phone shell wraps your root view in a `NavigationStack` and coordinates a five-zone HUD of programmable affordances called **complications**. Its default `.hudson` appearance also keeps system-drawn chrome in the dark color scheme used by Hudson's stable palette, independent of the device appearance.
+`HudPhoneAppShell` is the iPhone-first sibling of `HudAppShell`. Where the macOS/iPad-regular chassis ships a leading rail, trailing inspector, and drawers, the phone shell wraps your root view in a `NavigationStack` and coordinates a five-zone HUD of programmable affordances called **complications**.
 
 The architecture mirrors Hudson's web shell: **Provider + Slots + Hooks**. Pages own state; the shell renders chrome. Pages publish complications via `View.hudComplications(_:)`; the shell reads the preference and dispatches to the chosen renderer. Native `.sheet` / `.fullScreenCover` / `.toolbar` modifiers stay available — the shell doesn't own modal presentation.
 
@@ -37,10 +37,7 @@ struct RootView: View {
 |------|------|---------|-------------|
 | `complicationsStyle` | `HudPhoneComplicationsStyle` | `.tray` | Which renderer dispatches the published complications. |
 | `background` | `Color` | `HudPalette.bg` | Fills the safe area behind `root`. |
-| `appearance` | `HudPhoneAppShellAppearance` | `.hudson` | `.hudson` matches native navigation, toolbar, sheet, dialog, and control chrome to the stable dark palette. `.system` removes the shell override, inherits any enclosing preference, and requires scheme-adaptive hosted content. |
 | `root` | `() -> Root` | — | The page content; should publish complications via `.hudComplications(_:)`. |
-
-The preference is applied by the shell, so presentations and controls launched from the hosted root inherit the same scheme. Adopters using the stable static palette should keep the default instead of repeating `.preferredColorScheme(.dark)` at each app root.
 
 ## HudPhoneComplications
 

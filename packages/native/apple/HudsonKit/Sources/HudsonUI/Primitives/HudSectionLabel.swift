@@ -14,7 +14,7 @@ public struct HudSectionLabel: View {
 
     public var body: some View {
         Text(text.uppercased())
-            .hudFont(.micro, face: .mono, weight: .bold)
+            .font(HudFont.mono(9, weight: .bold))
             .tracking(2.0)
             .foregroundStyle(tint)
             .accessibilityLabel(text)

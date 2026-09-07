@@ -1,11 +1,11 @@
 import { defineConfig } from 'tsup';
-import { readdir, readFile, rm, writeFile } from 'node:fs/promises';
+import { readFile, writeFile } from 'node:fs/promises';
 import { join } from 'node:path';
 
 const sharedExternal = [
   'react',
   'react-dom',
-  'iconoir-react',
+  'lucide-react',
   // Optional peer deps — keep external so narrow subpaths/dynamic imports do
   // not inline heavy optional features into core chunks.
   '@codemirror/commands',
@@ -38,13 +38,11 @@ const clientEntries = {
   chrome: 'src/chrome.ts',
   overlays: 'src/overlays.ts',
   'context-menu': 'src/context-menu.ts',
-  behaviors: 'src/behaviors.ts',
   canvas: 'src/canvas.ts',
   windows: 'src/windows.ts',
   theme: 'src/theme.ts',
   terminal: 'src/terminal.ts',
   controls: 'src/controls.ts',
-  icons: 'src/icons.tsx',
   flags: 'src/flags.ts',
   cache: 'src/cache.ts',
   workflow: 'src/workflow/index.ts',
@@ -58,7 +56,6 @@ const clientEntries = {
   player: 'src/player.ts',
   primitives: 'src/primitives.ts',
   patterns: 'src/patterns.ts',
-  nav: 'src/nav.ts',
   apps: 'src/apps/index.ts',
 };
 
@@ -72,56 +69,15 @@ async function markClientEntries() {
   }));
 }
 
-// dist/styles.css + tokens are produced by `build:css` (Tailwind), not tsup.
-// tsup's default `clean: true` rimrafs the whole outDir and drops those files,
-// so a JS-only rebuild leaves consumers (esp. pnpm file: installs that snapshot
-// dist/) without `hudsonkit/styles`. Preserve the CSS pipeline outputs across
-// JS cleans.
-const PRESERVE_DIST = new Set([
-  'styles.css',
-  'tokens.css',
-  'styles.d.ts',
-  'styles-tokens.d.ts',
-]);
-
-let cleanedDist = false;
-
-async function cleanDistPreserveCss() {
-  if (cleanedDist) return;
-  cleanedDist = true;
-  const distDir = 'dist';
-  let entries: string[];
-  try {
-    entries = await readdir(distDir);
-  } catch {
-    return;
-  }
-  await Promise.all(
-    entries.map(async (name) => {
-      if (PRESERVE_DIST.has(name)) return;
-      await rm(join(distDir, name), { recursive: true, force: true });
-    }),
-  );
-}
-
 export default defineConfig({
   entry: clientEntries,
   format: ['esm'],
   dts: true,
   splitting: true,
   treeshake: true,
-  // Custom clean — see cleanDistPreserveCss above.
-  clean: false,
+  clean: true,
   outDir: 'dist',
   external: sharedExternal,
-  plugins: [
-    {
-      name: 'clean-dist-preserve-css',
-      async buildStart() {
-        await cleanDistPreserveCss();
-      },
-    },
-  ],
   onSuccess: markClientEntries,
 });
 

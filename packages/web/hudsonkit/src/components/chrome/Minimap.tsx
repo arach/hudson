@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
-import { ChevronDown, ChevronUp, Maximize, Map, LayoutGrid } from '../../icons';
+import { ChevronDown, ChevronUp, Maximize, Map, LayoutGrid } from 'lucide-react';
 
 interface MinimapProps {
   pan: { x: number; y: number };

@@ -1,7 +1,9 @@
 import SwiftUI
 import HudsonAI
 import HudsonUI
+#if HUDSON_VOICE
 import HudsonVoice
+#endif
 
 struct HudAITab: View {
     @State private var apiKey: String = ""
@@ -13,10 +15,10 @@ struct HudAITab: View {
     @State private var sendTask: Task<Void, Never>? = nil
     @FocusState private var promptFocused: Bool
 
-    @State private var dictation = HudDictation(
-        preferences: (try? HudsonVoicePreferences.load()) ?? HudsonVoicePreferences()
-    )
+    #if HUDSON_VOICE
+    @State private var dictation = HudDictation()
     @State private var micPulse = false
+    #endif
 
     private let vault = HudVault(service: "com.hudsonkit.demoios.ai")
     private let credentialKey = "anthropic_key"
@@ -37,19 +39,25 @@ struct HudAITab: View {
         .background(HudPalette.bg)
         .onAppear {
             loadKey()
-            dictation.activate()
+            #if HUDSON_VOICE
+            dictation.prepare()
+            #endif
         }
         .onDisappear {
             sendTask?.cancel()
             sendTask = nil
+            #if HUDSON_VOICE
             if dictation.isListening { dictation.cancel() }
+            #endif
         }
+        #if HUDSON_VOICE
         .onChange(of: dictation.finalCount) { _, _ in
             appendDictation(dictation.finalText)
         }
         .onChange(of: dictation.state) { _, state in
             updatePulse(for: state)
         }
+        #endif
     }
 
     private var intro: some View {
@@ -109,6 +117,7 @@ struct HudAITab: View {
     }
 
     private var composerPlaceholder: String {
+        #if HUDSON_VOICE
         switch dictation.state {
         case .listening:
             let partial = dictation.partialText.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -122,16 +131,24 @@ struct HudAITab: View {
         case .idle:
             return "Dictate or type a prompt…"
         }
+        #else
+        return "Ask HudAI…"
+        #endif
     }
 
     private var composerEffortLabel: String? {
+        #if HUDSON_VOICE
         if dictation.modelReady { return "dictation ready" }
         if dictation.modelInstalled { return "dictation installed" }
         return "voice input"
+        #else
+        return nil
+        #endif
     }
 
     @ViewBuilder
     private var dictationAccessory: some View {
+        #if HUDSON_VOICE
         Button {
             dictation.toggle()
         } label: {
@@ -153,10 +170,18 @@ struct HudAITab: View {
         .buttonStyle(.plain)
         .disabled(isSending)
         .help("Dictate prompt")
+        #else
+        Image(systemName: "mic.slash")
+            .font(HudFont.ui(HudTextSize.base, weight: .semibold))
+            .foregroundStyle(HudPalette.dim)
+            .frame(width: HudIconSize.medium, height: HudIconSize.medium)
+            .help("Build with HUDSON_VOICE to enable dictation")
+        #endif
     }
 
     @ViewBuilder
     private var dictationStatus: some View {
+        #if HUDSON_VOICE
         if let status = dictationStatusLine {
             HStack(spacing: HudSpacing.sm) {
                 HudStatusDot(color: dictationStatusColor, size: HudDotSize.small, pulses: dictation.isListening)
@@ -166,8 +191,17 @@ struct HudAITab: View {
                     .lineLimit(2)
             }
         }
+        #else
+        HStack(spacing: HudSpacing.sm) {
+            HudStatusDot(color: HudPalette.statusWarn, size: HudDotSize.small)
+            Text("Voice dictation is not compiled into this build.")
+                .font(HudFont.mono(HudTextSize.xs))
+                .foregroundStyle(HudPalette.dim)
+        }
+        #endif
     }
 
+    #if HUDSON_VOICE
     private var dictationIconName: String {
         switch dictation.state {
         case .listening:
@@ -222,6 +256,7 @@ struct HudAITab: View {
             return dictation.modelReady ? "Dictation ready." : nil
         }
     }
+    #endif
 
     private var response: some View {
         HudInset {
@@ -350,6 +385,7 @@ struct HudAITab: View {
         status = "Cancelled."
     }
 
+    #if HUDSON_VOICE
     private func appendDictation(_ text: String) {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
@@ -370,6 +406,7 @@ struct HudAITab: View {
             }
         }
     }
+    #endif
 
     @MainActor
     private func handle(_ event: HudAIStreamEvent) {

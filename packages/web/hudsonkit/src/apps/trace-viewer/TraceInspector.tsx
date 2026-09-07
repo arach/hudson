@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { ChevronDown, ChevronRight, Clock, Zap, Wrench, MessageSquare, Brain } from '../../icons';
+import { ChevronDown, ChevronRight, Clock, Zap, Wrench, MessageSquare, Brain } from 'lucide-react';
 import { useTrace } from './TraceProvider';
 
 // ---------------------------------------------------------------------------

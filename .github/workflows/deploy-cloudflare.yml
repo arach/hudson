@@ -1,8 +1,10 @@
 name: Deploy Site
 
-# Automatic Actions are paused while the account billing gate is unresolved.
-# Restore the workflow_run trigger after 2026-08-01; manual deploy stays available.
 on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
   workflow_dispatch:
 
 concurrency:

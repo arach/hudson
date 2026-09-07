@@ -49,84 +49,6 @@ public enum HudSidebarEntry<Selection: Hashable>: Identifiable {
         }
     }
 }
-// MARK: - HudNavigationSidebarVariant
-
-/// Structural presentation for `HudNavigationSidebar`.
-///
-/// `standard` preserves the destination-only sidebar. `verticalTabs` reserves
-/// the flexible middle region for a caller-supplied vertical-tab list while
-/// keeping the same typed destinations, compact rail, header, and footer.
-public enum HudNavigationSidebarVariant: String, CaseIterable, Identifiable, Sendable {
-    case standard
-    case verticalTabs
-
-    public var id: String { rawValue }
-}
-
-// MARK: - HudSidebarPresentationState
-
-/// The three observable presentation states of a dismissible sidebar.
-///
-/// A hidden sidebar may preview while the pointer crosses either its reveal
-/// control or the revealed sidebar itself. Clicking the control pins that
-/// preview; clicking again returns it to pointer-owned preview until the
-/// pointer leaves. The caller owns any dismissal grace period.
-public enum HudSidebarPresentation: String, CaseIterable, Identifiable, Sendable {
-    case hidden
-    case preview
-    case pinned
-
-    public var id: String { rawValue }
-}
-
-/// Caller-owned interaction state for a sidebar that can dismiss completely,
-/// preview on hover, and be pinned back into the layout.
-public struct HudSidebarPresentationState: Equatable, Sendable {
-    public private(set) var isPinned: Bool
-    public private(set) var isRevealControlHovered = false
-    public private(set) var isSidebarHovered = false
-
-    public init(isPinned: Bool = true) {
-        self.isPinned = isPinned
-    }
-
-    public var presentation: HudSidebarPresentation {
-        if isPinned {
-            return .pinned
-        }
-        if isRevealControlHovered || isSidebarHovered {
-            return .preview
-        }
-        return .hidden
-    }
-
-    public var isPresented: Bool {
-        presentation != .hidden
-    }
-
-    public mutating func setRevealControlHovered(_ hovered: Bool) {
-        isRevealControlHovered = hovered
-    }
-
-    public mutating func setSidebarHovered(_ hovered: Bool) {
-        isSidebarHovered = hovered
-    }
-
-    public mutating func togglePinned() {
-        isPinned.toggle()
-    }
-
-    public mutating func pin() {
-        isPinned = true
-    }
-
-    public mutating func dismiss() {
-        isPinned = false
-        isRevealControlHovered = false
-        isSidebarHovered = false
-    }
-}
-
 
 // MARK: - HudNavigationSidebar
 
@@ -156,10 +78,8 @@ public struct HudNavigationSidebar<
     public let accent: Color?           // nil = use manifest.accent
     public let labelWidth: CGFloat      // expanded label-column width; defaults to HudSidebarLayout.labelWidth
     public let onHeaderTap: (() -> Void)?
-    public let variant: HudNavigationSidebarVariant
     public let railHeader: RailHeader
     public let labelHeader: LabelHeader
-    let verticalTabs: AnyView?
     public let footer: Footer
 
     @Environment(\.hudsonAppManifest) private var manifest
@@ -180,73 +100,15 @@ public struct HudNavigationSidebar<
         @ViewBuilder labelHeader: () -> LabelHeader,
         @ViewBuilder footer: () -> Footer
     ) {
-        self.init(
-            selection: selection,
-            entries: entries,
-            progress: progress,
-            variant: .standard,
-            accent: accent,
-            labelWidth: labelWidth,
-            onHeaderTap: onHeaderTap,
-            railHeader: railHeader(),
-            labelHeader: labelHeader(),
-            verticalTabs: nil,
-            footer: footer()
-        )
-    }
-
-    public init<Tabs: View>(
-        selection: Binding<Selection?>,
-        entries: [HudSidebarEntry<Selection>],
-        progress: Double,
-        variant: HudNavigationSidebarVariant = .verticalTabs,
-        accent: Color? = nil,
-        labelWidth: CGFloat = HudSidebarLayout.labelWidth,
-        onHeaderTap: (() -> Void)? = nil,
-        @ViewBuilder railHeader: () -> RailHeader,
-        @ViewBuilder labelHeader: () -> LabelHeader,
-        @ViewBuilder verticalTabs: () -> Tabs,
-        @ViewBuilder footer: () -> Footer
-    ) {
-        self.init(
-            selection: selection,
-            entries: entries,
-            progress: progress,
-            variant: variant,
-            accent: accent,
-            labelWidth: labelWidth,
-            onHeaderTap: onHeaderTap,
-            railHeader: railHeader(),
-            labelHeader: labelHeader(),
-            verticalTabs: AnyView(verticalTabs()),
-            footer: footer()
-        )
-    }
-
-    init(
-        selection: Binding<Selection?>,
-        entries: [HudSidebarEntry<Selection>],
-        progress: Double,
-        variant: HudNavigationSidebarVariant,
-        accent: Color?,
-        labelWidth: CGFloat,
-        onHeaderTap: (() -> Void)?,
-        railHeader: RailHeader,
-        labelHeader: LabelHeader,
-        verticalTabs: AnyView?,
-        footer: Footer
-    ) {
         self._selection = selection
         self.entries = entries
         self.progress = progress
         self.accent = accent
         self.labelWidth = labelWidth
         self.onHeaderTap = onHeaderTap
-        self.variant = variant
-        self.railHeader = railHeader
-        self.labelHeader = labelHeader
-        self.verticalTabs = verticalTabs
-        self.footer = footer
+        self.railHeader = railHeader()
+        self.labelHeader = labelHeader()
+        self.footer = footer()
     }
 
     // MARK: Resolved accent
@@ -316,13 +178,7 @@ public struct HudNavigationSidebar<
 
         return VStack(spacing: 0) {
             sidebarBody
-            if variant == .verticalTabs, let verticalTabs {
-                HudDivider(color: theme.hairline.subtle)
-                verticalTabs
-                    .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            } else {
-                Spacer(minLength: 0)
-            }
+            Spacer(minLength: 0)
             footerBlock
         }
         // Self-size to intrinsic width so the whole sidebar narrows as `progress` goes 0→1.
@@ -358,18 +214,12 @@ public struct HudNavigationSidebar<
                     .padding(inset)
                     .allowsHitTesting(false)
                 #endif
-            } else if variant == .verticalTabs {
-                SidebarSurface(style: style.surface)
-                    .ignoresSafeArea(.container, edges: .top)
             } else {
                 SidebarSurface(style: style.surface)
             }
         }
         .overlay(alignment: .trailing) {
-            if !isLiquid, variant == .verticalTabs {
-                SidebarTrailingRule(style: style.surface)
-                    .ignoresSafeArea(.container, edges: .top)
-            } else if !isLiquid {
+            if !isLiquid {
                 SidebarTrailingRule(style: style.surface)
             }
         }
@@ -734,40 +584,18 @@ extension HudNavigationSidebar where Footer == EmptyView {
             footer: { EmptyView() }
         )
     }
-
-    public init<Tabs: View>(
-        selection: Binding<Selection?>,
-        entries: [HudSidebarEntry<Selection>],
-        progress: Double,
-        variant: HudNavigationSidebarVariant = .verticalTabs,
-        accent: Color? = nil,
-        labelWidth: CGFloat = HudSidebarLayout.labelWidth,
-        onHeaderTap: (() -> Void)? = nil,
-        @ViewBuilder railHeader: () -> RailHeader,
-        @ViewBuilder labelHeader: () -> LabelHeader,
-        @ViewBuilder verticalTabs: () -> Tabs
-    ) {
-        self.init(
-            selection: selection,
-            entries: entries,
-            progress: progress,
-            variant: variant,
-            accent: accent,
-            labelWidth: labelWidth,
-            onHeaderTap: onHeaderTap,
-            railHeader: railHeader,
-            labelHeader: labelHeader,
-            verticalTabs: verticalTabs,
-            footer: { EmptyView() }
-        )
-    }
 }
 
-// MARK: - isCompact convenience initializers
+// MARK: - Convenience init (isCompact: Bool — friendlier for the common case)
+//
+// `progress: Double` is the advanced contract for design-tool scrubbing and
+// continuous animation control. Most consumers want a simple boolean and let
+// the caller wrap the toggle in `withAnimation(...)`.
 
 extension HudNavigationSidebar {
     /// Convenience init taking `isCompact: Bool`. `false` = expanded (progress 0),
-    /// `true` = compact (progress 1).
+    /// `true` = compact (progress 1). Wrap the toggle in
+    /// `withAnimation(HudMotion.chromeSpring)` at the call site to animate.
     public init(
         selection: Binding<Selection?>,
         entries: [HudSidebarEntry<Selection>],
@@ -788,34 +616,6 @@ extension HudNavigationSidebar {
             onHeaderTap: onHeaderTap,
             railHeader: railHeader,
             labelHeader: labelHeader,
-            footer: footer
-        )
-    }
-
-    public init<Tabs: View>(
-        selection: Binding<Selection?>,
-        entries: [HudSidebarEntry<Selection>],
-        isCompact: Bool,
-        variant: HudNavigationSidebarVariant = .verticalTabs,
-        accent: Color? = nil,
-        labelWidth: CGFloat = HudSidebarLayout.labelWidth,
-        onHeaderTap: (() -> Void)? = nil,
-        @ViewBuilder railHeader: () -> RailHeader,
-        @ViewBuilder labelHeader: () -> LabelHeader,
-        @ViewBuilder verticalTabs: () -> Tabs,
-        @ViewBuilder footer: () -> Footer
-    ) {
-        self.init(
-            selection: selection,
-            entries: entries,
-            progress: isCompact ? 1.0 : 0.0,
-            variant: variant,
-            accent: accent,
-            labelWidth: labelWidth,
-            onHeaderTap: onHeaderTap,
-            railHeader: railHeader,
-            labelHeader: labelHeader,
-            verticalTabs: verticalTabs,
             footer: footer
         )
     }
@@ -836,7 +636,7 @@ extension HudNavigationSidebar where Footer == EmptyView {
         self.init(
             selection: selection,
             entries: entries,
-            isCompact: isCompact,
+            progress: isCompact ? 1.0 : 0.0,
             accent: accent,
             labelWidth: labelWidth,
             onHeaderTap: onHeaderTap,
@@ -921,7 +721,6 @@ private struct HudSidebarCompactHoverArrow: Shape {
 private struct SidebarSurface: View {
     let style: HudSidebarSurfaceStyle
     @Environment(\.hudTheme) private var theme
-    @Environment(\.accessibilityReduceTransparency) private var reduceTransparency
 
     var body: some View {
         switch style {
@@ -939,32 +738,18 @@ private struct SidebarSurface: View {
             .allowsHitTesting(false)
 
         case .glass:
-            if reduceTransparency {
-                theme.palette.chrome
-                    .allowsHitTesting(false)
-            } else {
-                ZStack {
-                    #if os(macOS)
-                    HudVisualEffectView(
-                        material: .sidebar,
-                        blendingMode: .behindWindow,
-                        state: .active,
-                        isEmphasized: true
-                    )
-                    #else
-                    Rectangle().fill(.ultraThinMaterial)
-                    #endif
-                    theme.palette.chrome.opacity(HudOpacity.muted)
-                    LinearGradient(
-                        // hudlint:disable next-line palette,opacity
-                        colors: [Color.white.opacity(0.040), Color.white.opacity(0.018), Color.black.opacity(0.060)],
-                        startPoint: .top,
-                        endPoint: .bottom
-                    )
-                }
-                .allowsHitTesting(false)
-                .accessibilityHidden(true)
+            // Liquid-glass surface stack: ultraThinMaterial scrim plus a
+            // three-stop gradient. Stops are calibrated to read as glass at any tint.
+            ZStack {
+                // hudlint:disable next-line opacity
+                Rectangle().fill(.ultraThinMaterial).opacity(0.55)
+                LinearGradient(
+                    // hudlint:disable next-line palette,opacity
+                    colors: [Color.white.opacity(0.040), Color.white.opacity(0.018), Color.black.opacity(0.060)],
+                    startPoint: .top, endPoint: .bottom
+                )
             }
+            .allowsHitTesting(false)
 
         case .editorial:
             // Flat, slightly lighter than chrome — "print" surface.

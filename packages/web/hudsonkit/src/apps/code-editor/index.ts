@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { FileCode2 } from '../../icons';
+import { FileCode2 } from 'lucide-react';
 import type { HudsonApp } from '../../index';
 import { CodeEditorContent } from './CodeEditorContent';
 import { CodeEditorLeftPanel } from './CodeEditorLeftPanel';

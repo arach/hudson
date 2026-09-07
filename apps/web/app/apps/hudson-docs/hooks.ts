@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, type ReactNode, createElement } from 'react';
-import { Move, LayoutList, LayoutGrid } from 'hudsonkit/icons';
+import { Move, LayoutList, LayoutGrid } from 'lucide-react';
 import type { CommandOption } from 'hudsonkit';
 import type { StatusColor, SearchConfig } from 'hudsonkit';
 import { useDocs } from './DocsProvider';

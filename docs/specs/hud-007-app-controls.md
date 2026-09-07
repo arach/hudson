@@ -94,8 +94,8 @@ interface HudButtonProps {
   tone?: HudTone;                    // default: 'neutral'
   variant?: 'solid' | 'soft' | 'ghost';  // default: 'soft'
   density?: HudDensity;
-  icon?: HudsonIcon;                 // leading icon
-  iconAfter?: HudsonIcon;           // trailing icon
+  icon?: LucideIcon;                 // leading icon
+  iconAfter?: LucideIcon;           // trailing icon
   selected?: boolean;               // toggle/tab state
   disabled?: boolean;
   loading?: boolean;                 // shows spinner, disables
@@ -119,7 +119,7 @@ Icon-only variant. Replaces the bare `<button className="rounded p-1.5 text-mute
 
 ```ts
 interface HudIconButtonProps {
-  icon: HudsonIcon;
+  icon: LucideIcon;
   label: string;                     // accessible label (aria-label)
   tone?: HudTone;
   variant?: 'soft' | 'ghost';       // default: 'ghost'
@@ -156,7 +156,7 @@ Text input. Replaces inline `<input className="border border-border bg-backgroun
 ```ts
 interface HudInputProps extends Omit<InputHTMLAttributes<HTMLInputElement>, 'className'> {
   density?: HudDensity;
-  icon?: HudsonIcon;                 // leading icon inside field
+  icon?: LucideIcon;                 // leading icon inside field
   invalid?: boolean;
   className?: string;
 }
@@ -235,7 +235,7 @@ interface HudListItemProps {
   selected?: boolean;
   active?: boolean;                  // keyboard focus / current
   disabled?: boolean;
-  icon?: HudsonIcon;
+  icon?: LucideIcon;
   description?: ReactNode;          // secondary line
   trailing?: ReactNode;             // right-side slot (badge, icon button, timestamp)
   density?: HudDensity;

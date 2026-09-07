@@ -1,13 +1,13 @@
 'use client';
 
 import React from 'react';
-import type { HudsonIcon } from '../../icons';
+import type { LucideIcon } from 'lucide-react';
 import type { HudDensity } from './types';
 
 export interface HudInputProps
   extends Omit<React.InputHTMLAttributes<HTMLInputElement>, 'className'> {
   density?: HudDensity;
-  icon?: HudsonIcon;
+  icon?: LucideIcon;
   invalid?: boolean;
   className?: string;
 }

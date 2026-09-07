@@ -42,7 +42,6 @@ export type { AppSettingsEntry } from './workspace/settings/components';
 export { WorkspaceShell } from './workspace/shell/WorkspaceShell';
 export type {
   WorkspaceShellEnvironment,
-  WorkspaceDeveloperTool,
   WorkspaceShellInitialState,
   WindowBounds,
 } from './workspace/shell/WorkspaceShell';

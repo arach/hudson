@@ -1,4 +1,4 @@
-import { Zap, ScanSearch } from 'hudsonkit/icons';
+import { Zap, ScanSearch } from 'lucide-react';
 import { createElement } from 'react';
 import type { HudsonApp } from 'hudsonkit';
 import { IntentProvider } from './IntentProvider';

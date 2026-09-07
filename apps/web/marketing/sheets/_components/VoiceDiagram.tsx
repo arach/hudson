@@ -77,7 +77,7 @@ export function VoiceDiagram() {
               rx="3"
               fill={s.accent ? 'var(--accent)' : 'oklch(0.18 0 0)'}
               stroke={s.accent ? 'var(--accent)' : 'oklch(0.4 0 0)'}
-              strokeWidth="1.25"
+              strokeWidth="1.5"
             />
             <text
               x="0"
@@ -110,7 +110,7 @@ export function VoiceDiagram() {
             d={d}
             fill="none"
             stroke="var(--accent)"
-            strokeWidth="1.2"
+            strokeWidth="1.4"
             strokeDasharray="4 4"
             markerEnd="url(#vArr)"
             opacity="0.85"

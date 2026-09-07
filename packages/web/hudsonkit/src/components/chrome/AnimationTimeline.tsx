@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { Play, Pause, SkipBack } from '../../icons';
+import { Play, Pause, SkipBack } from 'lucide-react';
 
 interface AnimationTimelineProps {
   isPlaying: boolean;

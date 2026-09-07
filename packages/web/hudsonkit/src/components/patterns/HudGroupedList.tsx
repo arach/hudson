@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import type { HudsonIcon } from '../../icons';
+import type { LucideIcon } from 'lucide-react';
 import { HudBadge, HudListItem } from '../primitives';
 import type { HudDensity, HudTone } from '../primitives';
 import { cx } from './utils';
@@ -25,7 +25,7 @@ export interface HudGroupedListProps<Item> {
   renderTitle: (item: Item) => React.ReactNode;
   renderDescription?: (item: Item) => React.ReactNode;
   renderTrailing?: (item: Item) => React.ReactNode;
-  renderIcon?: (item: Item) => HudsonIcon | undefined;
+  renderIcon?: (item: Item) => LucideIcon | undefined;
   renderBadge?: (item: Item) => React.ReactNode;
   itemDisabled?: (item: Item) => boolean;
   trailingBehavior?: 'hover' | 'always';

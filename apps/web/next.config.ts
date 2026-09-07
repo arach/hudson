@@ -104,8 +104,8 @@ if (process.env.HUDSON_TURBOPACK_PARENT === "1") {
   };
   linkIfMissing("tailwindcss");
   linkIfMissing("@tailwindcss");
-  // hudsonkit: app/globals.css imports the precompiled SDK styles via the bare
-  // specifier `hudsonkit/styles`, which must resolve from the parent.
+  // hudsonkit: app/globals.css imports its source design tokens via the bare
+  // specifier `hudsonkit/styles/tokens.css`, which must resolve from the parent.
   linkIfMissing("hudsonkit");
 }
 const singletonAliases = {
@@ -116,6 +116,7 @@ const singletonAliases = {
   "react-dom/client": join(rootNodeModules, "react-dom", "client.js"),
   "ai": join(rootNodeModules, "ai"),
   "@ai-sdk/react": join(rootNodeModules, "@ai-sdk", "react"),
+  "lucide-react": join(rootNodeModules, "lucide-react"),
 };
 const toTurbopackAliasPath = (target: string) => {
   const rel = relative(turbopackRoot, target).split(sep).join("/");

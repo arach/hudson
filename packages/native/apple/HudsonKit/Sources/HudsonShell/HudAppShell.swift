@@ -1,18 +1,6 @@
 import SwiftUI
 import HudsonUI
 
-/// Controls whether the status bar spans beneath the leading column.
-///
-/// `.fullWidth` preserves the original shell anatomy. `.besideLeading` gives
-/// the leading column the complete window edge while top/bottom drawers,
-/// content, trailing chrome, and the status bar form the sibling column.
-public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendable {
-    case fullWidth
-    case besideLeading
-
-    public var id: String { rawValue }
-}
-
 /// Top-level app chassis for HudsonKit.
 ///
 /// `HudAppShell` composes the chrome of a Hudson app: a leading rail, a
@@ -36,20 +24,6 @@ public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendab
 /// +----------------------------------+
 /// ```
 ///
-/// With `statusBarSpan: .besideLeading`, the leading column owns the complete
-/// window edge and the remaining chrome forms its sibling column:
-/// ```
-/// +------+---------------------------+
-/// |      | topDrawer                 |
-/// |      +---------------------------+
-/// | lead | content        | trailing |
-/// |      +---------------------------+
-/// |      | bottomDrawer               |
-/// |      +---------------------------+
-/// |      | statusBar                  |
-/// +------+---------------------------+
-/// ```
-///
 /// In compact size class the trailing slot is hidden by the shell; the leading
 /// slot is rendered as-is and the rail itself decides whether to collapse to a
 /// hamburger.
@@ -61,7 +35,6 @@ public struct HudAppShell<
     Content: View,
     StatusBar: View
 >: View {
-    private let statusBarSpan: HudAppShellStatusBarSpan
     private let leading: Leading
     private let trailing: Trailing
     private let topDrawer: TopDrawer
@@ -76,7 +49,6 @@ public struct HudAppShell<
     #endif
 
     public init(
-        statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder topDrawer: () -> TopDrawer,
@@ -84,7 +56,6 @@ public struct HudAppShell<
         @ViewBuilder content: () -> Content,
         @ViewBuilder statusBar: () -> StatusBar
     ) {
-        self.statusBarSpan = statusBarSpan
         self.leading = leading()
         self.trailing = trailing()
         self.topDrawer = topDrawer()
@@ -96,57 +67,28 @@ public struct HudAppShell<
     public var body: some View {
         ZStack {
             theme.palette.bg.ignoresSafeArea()
-            shellContent
-        }
-    }
 
-    @ViewBuilder
-    private var shellContent: some View {
-        switch statusBarSpan {
-        case .fullWidth:
             VStack(spacing: 0) {
                 topDrawer
+
                 HStack(spacing: 0) {
                     leading
-                    mainContentRow
+
+                    content
+                        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+
+                    if !isCompact {
+                        trailing
+                    }
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+
                 bottomDrawer
-                statusBarRegion
+
+                HudDivider(color: theme.hairline.subtle)
+                statusBar
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
-
-        case .besideLeading:
-            HStack(spacing: 0) {
-                leading
-                    .frame(maxHeight: .infinity)
-                VStack(spacing: 0) {
-                    topDrawer
-                    mainContentRow
-                    bottomDrawer
-                    statusBarRegion
-                }
-                .frame(maxWidth: .infinity, maxHeight: .infinity)
-            }
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-        }
-    }
-
-    private var mainContentRow: some View {
-        HStack(spacing: 0) {
-            content
-                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            if !isCompact {
-                trailing
-            }
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private var statusBarRegion: some View {
-        VStack(spacing: 0) {
-            HudDivider(color: theme.hairline.subtle)
-            statusBar
         }
     }
 
@@ -164,14 +106,12 @@ public struct HudAppShell<
 extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
     /// Shell without top/bottom drawer slots — the common case for M3a.
     public init(
-        statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content,
         @ViewBuilder statusBar: () -> StatusBar
     ) {
         self.init(
-            statusBarSpan: statusBarSpan,
             leading: leading,
             trailing: trailing,
             topDrawer: { EmptyView() },

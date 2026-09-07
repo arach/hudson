@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { Palette } from 'hudsonkit/icons';
+import { Palette } from 'lucide-react';
 import type { HudsonApp } from 'hudsonkit';
 import { ThemeDesignerContent } from './ThemeDesignerContent';
 import { ThemeDesignerInspector } from './ThemeDesignerInspector';

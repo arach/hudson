@@ -12,8 +12,6 @@ public enum CanvasHostCommand: String, Sendable, CaseIterable {
     case saveWorkspace
     case clearSelection
     case toggleNavigator
-    case beginNavigatorPreview
-    case endNavigatorPreview
     case toggleInspector
 }
 

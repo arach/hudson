@@ -3,27 +3,16 @@ import AppKit
 import SwiftUI
 import HudsonCanvasCore
 
-/// Native window treatment paired with the Canvas shell composition.
-public enum HudCanvasHostWindowStyle: String, CaseIterable, Identifiable, Sendable {
-    case standard
-    case fullHeightSidebar
-
-    public var id: String { rawValue }
-}
-
 /// Bridges AppKit menu-bar actions and title-bar accessories into SwiftUI hosts.
 public struct HudCanvasHostWindowBridge: View {
     @Environment(\.openWindow) private var openWindow
-    private let style: HudCanvasHostWindowStyle
 
-    public init(style: HudCanvasHostWindowStyle = .standard) {
-        self.style = style
-    }
+    public init() {}
 
     public var body: some View {
         Color.clear
             .frame(width: .zero, height: .zero)
-            .background(HudCanvasTitlebarChromeInstaller(style: style))
+            .background(HudCanvasTitlebarChromeInstaller())
             .onReceive(NotificationCenter.default.publisher(for: .canvasHostShowMainWindow)) { _ in
                 openWindow(id: "main")
                 NSApp.activate(ignoringOtherApps: true)
@@ -32,86 +21,27 @@ public struct HudCanvasHostWindowBridge: View {
 }
 
 extension View {
-    public func hudCanvasHostWindowBridge(
-        style: HudCanvasHostWindowStyle = .standard
-    ) -> some View {
-        background(HudCanvasHostWindowBridge(style: style))
+    public func hudCanvasHostWindowBridge() -> some View {
+        background(HudCanvasHostWindowBridge())
     }
 }
 
 private struct HudCanvasTitlebarChromeInstaller: NSViewRepresentable {
-    let style: HudCanvasHostWindowStyle
-
     func makeNSView(context: Context) -> HudCanvasTitlebarChromeView {
-        HudCanvasTitlebarChromeView(style: style)
+        HudCanvasTitlebarChromeView()
     }
 
     func updateNSView(_ view: HudCanvasTitlebarChromeView, context: Context) {
-        view.setStyle(style)
         view.installIfPossible()
     }
 }
 
-private final class HudCanvasNavigatorAccessoryButton: NSButton {
-    private var hoverTrackingArea: NSTrackingArea?
-
-    override func updateTrackingAreas() {
-        super.updateTrackingAreas()
-        if let hoverTrackingArea {
-            removeTrackingArea(hoverTrackingArea)
-        }
-        let nextTrackingArea = NSTrackingArea(
-            rect: bounds,
-            options: [.mouseEnteredAndExited, .activeInKeyWindow, .inVisibleRect],
-            owner: self,
-            userInfo: nil
-        )
-        addTrackingArea(nextTrackingArea)
-        hoverTrackingArea = nextTrackingArea
-    }
-
-    override func mouseEntered(with event: NSEvent) {
-        super.mouseEntered(with: event)
-        CanvasHostCommandCenter.post(.beginNavigatorPreview)
-    }
-
-    override func mouseExited(with event: NSEvent) {
-        super.mouseExited(with: event)
-        CanvasHostCommandCenter.post(.endNavigatorPreview)
-    }
-
-    override func viewDidMoveToWindow() {
-        super.viewDidMoveToWindow()
-        if window == nil {
-            CanvasHostCommandCenter.post(.endNavigatorPreview)
-        }
-    }
-}
-
-
 private final class HudCanvasTitlebarChromeView: NSView {
     private static let accessoryMarker = "com.hudsonkit.canvas.titlebar-accessory"
     private var installationScheduled = false
-    private var style: HudCanvasHostWindowStyle
-
-    init(style: HudCanvasHostWindowStyle) {
-        self.style = style
-        super.init(frame: .zero)
-    }
-
-    required init?(coder: NSCoder) {
-        self.style = .standard
-        super.init(coder: coder)
-    }
 
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
-        installIfPossible()
-    }
-
-    func setStyle(_ style: HudCanvasHostWindowStyle) {
-        guard self.style != style else { return }
-        self.style = style
         installIfPossible()
     }
 
@@ -129,6 +59,9 @@ private final class HudCanvasTitlebarChromeView: NSView {
     }
 
     private func performInstall(in window: NSWindow) {
+        window.titleVisibility = .visible
+        window.titlebarAppearsTransparent = false
+        window.styleMask.remove(.fullSizeContentView)
         window.titlebarSeparatorStyle = .none
         window.isMovableByWindowBackground = false
 
@@ -142,68 +75,36 @@ private final class HudCanvasTitlebarChromeView: NSView {
             }
         }
 
-        switch style {
-        case .standard:
-            window.titleVisibility = .visible
-            window.titlebarAppearsTransparent = false
-            window.styleMask.remove(.fullSizeContentView)
-            window.toolbar?.isVisible = true
-            window.toolbarStyle = .unified
-            window.addTitlebarAccessoryViewController(
-                titlebarButtonAccessory(
-                    placement: .left,
-                    label: "Toggle Navigator",
-                    symbolName: "sidebar.left",
-                    action: #selector(toggleNavigator)
-                )
+        window.toolbarStyle = .unified
+        window.addTitlebarAccessoryViewController(
+            titlebarButtonAccessory(
+                placement: .left,
+                label: "Toggle Navigator",
+                symbolName: "sidebar.left",
+                action: #selector(toggleNavigator)
             )
-            window.addTitlebarAccessoryViewController(
-                titlebarButtonAccessory(
-                    placement: .right,
-                    label: "Toggle Inspector",
-                    symbolName: "sidebar.right",
-                    action: #selector(toggleInspector)
-                )
+        )
+        window.addTitlebarAccessoryViewController(
+            titlebarButtonAccessory(
+                placement: .right,
+                label: "Toggle Inspector",
+                symbolName: "sidebar.right",
+                action: #selector(toggleInspector)
             )
-
-        case .fullHeightSidebar:
-            window.titleVisibility = .hidden
-            window.titlebarAppearsTransparent = true
-            window.styleMask.insert(.fullSizeContentView)
-            window.toolbar?.isVisible = false
-            window.addTitlebarAccessoryViewController(
-                titlebarButtonAccessory(
-                    placement: .left,
-                    label: "Toggle Navigator",
-                    symbolName: "sidebar.left",
-                    action: #selector(toggleNavigator),
-                    previewsNavigatorOnHover: true
-                )
-            )
-        }
+        )
     }
 
     private func titlebarButtonAccessory(
         placement: NSLayoutConstraint.Attribute,
         label: String,
         symbolName: String,
-        action: Selector,
-        previewsNavigatorOnHover: Bool = false
+        action: Selector
     ) -> NSTitlebarAccessoryViewController {
-        let button: NSButton
-        if previewsNavigatorOnHover {
-            button = HudCanvasNavigatorAccessoryButton(
-                image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
-                target: self,
-                action: action
-            )
-        } else {
-            button = NSButton(
-                image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
-                target: self,
-                action: action
-            )
-        }
+        let button = NSButton(
+            image: NSImage(systemSymbolName: symbolName, accessibilityDescription: label) ?? NSImage(),
+            target: self,
+            action: action
+        )
         button.translatesAutoresizingMaskIntoConstraints = false
         button.bezelStyle = .texturedRounded
         button.imagePosition = .imageOnly

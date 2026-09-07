@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react';
-import { Folder, Image } from 'hudsonkit/icons';
+import { Folder, Image } from 'lucide-react';
 import { describe, expect, it, vi } from 'vitest';
 import {
   HudCardGrid,

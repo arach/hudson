@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Check, Copy } from '../../icons';
+import { Check, Copy } from 'lucide-react';
 import { agentCopy, type AgentCopyOptions } from '../../lib/agentCopy';
 import { useCopyContextScope } from './CopyContextScope';
 

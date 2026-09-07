@@ -1,7 +1,7 @@
 'use client';
 
 import { useEffect, useMemo, useState, type CSSProperties } from 'react';
-import { CheckCircle2, Info, AlertTriangle, XCircle, Focus, Type, Grid3X3 } from 'hudsonkit/icons';
+import { CheckCircle2, Info, AlertTriangle, XCircle, Focus, Type, Grid3X3 } from 'lucide-react';
 import { effectiveTokens, tokenSwatchValue, type ThemeMode } from './model';
 import { useThemeDesigner } from './ThemeDesignerProvider';
 

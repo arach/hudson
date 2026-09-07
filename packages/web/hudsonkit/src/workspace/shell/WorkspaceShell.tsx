@@ -1,6 +1,6 @@
 'use client';
 
-import { isValidElement, useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
+import { useState, useCallback, useEffect, useRef, useMemo, type ReactNode } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { BootSplash, phaseAtLeast } from './BootSplash';
 import type { BootPhase } from './BootSplash';
@@ -43,17 +43,7 @@ import {
   type HObservation,
 } from '../../observability';
 import type { HudsonWorkspace, WorkspaceAppConfig, CommandOption, StatusColor, StatusState, SearchConfig, HudsonCodeSurfaceState, HudsonCodeWorkbenchSize } from '../../index';
-import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X, Home } from '../../icons';
-import { HudsonKitMark } from '../../components/brand';
-import {
-  HudSideNav,
-  HudSideNavLayout,
-  HudSideNavProvider,
-  HudSideNavTrigger,
-  HudSideRail,
-  HUD_SIDE_NAV_COLLAPSED_WIDTH,
-  type HudNavNode,
-} from '../../components/nav';
+import { Volume2, VolumeX, Settings, Maximize2, Minimize2, RotateCcw, BookOpen, TerminalSquare, PanelLeftOpen, PanelLeftClose, PanelRightOpen, PanelRightClose, Activity, Sparkles, Camera, Loader2, LayoutGrid, Mic, Square, CornerDownLeft, Code2, ExternalLink, Keyboard, MousePointer2, ScanSearch, X } from 'lucide-react';
 import { WorkspaceSwitcher } from './WorkspaceSwitcher';
 import { SidebarSection } from './SidebarSection';
 import { ToolAccordion } from './ToolAccordion';
@@ -287,6 +277,68 @@ function HudLoggerStatusButton({ onOpen }: { onOpen: () => void }) {
   );
 }
 
+function HudLoggerOverlay({
+  open,
+  onClose,
+}: {
+  open: boolean;
+  onClose: () => void;
+}) {
+  useEffect(() => {
+    if (!open) return;
+
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') onClose();
+    };
+
+    window.addEventListener('keydown', onKeyDown);
+    return () => window.removeEventListener('keydown', onKeyDown);
+  }, [open, onClose]);
+
+  const replayEvents = useAgentActionLog({
+    limit: HUD_LOGGER_MAX_EVENTS,
+    refreshMs: 5000,
+    enabled: open,
+  });
+
+  if (!open) return null;
+
+  return (
+    <div
+      className="fixed inset-0 z-[70] flex bg-background/88 p-3 text-foreground backdrop-blur-md md:p-5"
+      role="dialog"
+      aria-modal="true"
+      aria-label="Agent Actions"
+    >
+      <div className="flex min-h-0 w-full flex-col">
+        <div className="flex h-10 shrink-0 items-center justify-between border border-border border-b-0 bg-card/95 px-3 shadow-[var(--hud-shadow-nav)]">
+          <div className="min-w-0 font-mono text-[11px] font-semibold uppercase tracking-[0.18em] text-foreground">
+            Agent Actions
+          </div>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded p-1 text-muted-foreground transition-colors hover:bg-muted/70 hover:text-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            title="Close Agent Actions"
+            aria-label="Close Agent Actions"
+          >
+            <X size={14} />
+          </button>
+        </div>
+        <HudLogger
+          observability={HObservabilityDefault}
+          replayEvents={replayEvents}
+          maxEvents={HUD_LOGGER_MAX_EVENTS}
+          title="agent actions"
+          className="min-h-0 flex-1 rounded-t-none"
+          emptyMessage="No agent actions yet."
+          initialScope="agent-actions"
+        />
+      </div>
+    </div>
+  );
+}
+
 function renderStatusRightItems(appRight: ReactNode | null, loggerButton: ReactNode | null) {
   if (!appRight && !loggerButton) return null;
 
@@ -298,30 +350,6 @@ function renderStatusRightItems(appRight: ReactNode | null, loggerButton: ReactN
       )}
       {loggerButton}
     </div>
-  );
-}
-
-function WorkspacePrimaryNavBrand({
-  title,
-  compact,
-}: {
-  title: string;
-  compact?: boolean;
-}) {
-  return (
-    <HudSideNavTrigger
-      label="Toggle primary navigation"
-      className={`w-full ${compact ? 'px-0' : 'justify-start px-1'}`}
-    >
-      <span className="flex size-6 shrink-0 items-center justify-center rounded bg-cyan-500/15 text-cyan-600 dark:text-cyan-300">
-        <HudsonKitMark size={15} />
-      </span>
-      {!compact ? (
-        <span className="min-w-0 flex-1 truncate text-left font-mono text-[11px] font-semibold uppercase tracking-[0.14em] text-foreground">
-          {title}
-        </span>
-      ) : null}
-    </HudSideNavTrigger>
   );
 }
 
@@ -487,16 +515,6 @@ function buildShellSettingsPatch(
         : null;
     case 'voice.replyModel':
       return typeof value === 'string' ? { voice: { ...current.voice, replyModel: value } } : null;
-    case 'voice.inputDeviceId':
-      return typeof value === 'string' ? { voice: { ...current.voice, inputDeviceId: value } } : null;
-    case 'voice.transcriptionModel':
-      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionModel: value } } : null;
-    case 'voice.transcriptionLanguage':
-      return typeof value === 'string' ? { voice: { ...current.voice, transcriptionLanguage: value } } : null;
-    case 'voice.captureMode':
-      return value === 'push_to_talk' || value === 'always_on'
-        ? { voice: { ...current.voice, captureMode: value } }
-        : null;
     case 'voice.replyVoice':
       return typeof value === 'string' ? { voice: { ...current.voice, replyVoice: value } } : null;
     case 'voice.replyRate': {
@@ -548,8 +566,6 @@ function useWindowBounds(
 export interface WorkspaceShellEnvironment {
   /** Host-owned relative routes for optional server-backed shell features. */
   routes?: WorkspaceHostRoutes;
-  /** Label shown for the shared console drawer toggle. Defaults to 'Console'. */
-  terminalLabel?: string;
   /** Render the console for a dynamically-spawned terminal window. Injected so
    *  the shell never imports a specific terminal app. */
   renderTerminal?: (opts: { initialCwd: string; backend: 'pty' | 'tmux'; tmuxSession?: string }) => ReactNode;
@@ -557,17 +573,6 @@ export interface WorkspaceShellEnvironment {
    *  overrides). A hook because it composes app-side hooks; the shell calls it
    *  unconditionally with a stable identity. */
   useHudsonAISettingsEntry?: (config: WorkspaceAppConfig | null, workspaceId: string) => AppSettingsEntry | null;
-  /** Hook producing host-owned developer tools for the shared console drawer.
-   *  Keeping the tool body injectable lets Hudson own the chrome while a host
-   *  opts into diagnostics without pulling them into every consumer. */
-  useDeveloperTools?: () => readonly WorkspaceDeveloperTool[];
-}
-
-export interface WorkspaceDeveloperTool {
-  id: string;
-  label: string;
-  icon?: ReactNode;
-  render: () => ReactNode;
 }
 
 interface WorkspaceShellProps {
@@ -577,8 +582,6 @@ interface WorkspaceShellProps {
   bootMode?: 'full' | 'condensed' | 'none';
   persistSession?: boolean;
   initialState?: WorkspaceShellInitialState;
-  /** Application-level navigation composition. Defaults to legacy floating panels. */
-  sideNavMode?: 'legacy' | 'anchored';
   /** Concrete bindings for app-specific surfaces (terminal, …). */
   environment?: WorkspaceShellEnvironment;
 }
@@ -605,7 +608,6 @@ export function WorkspaceShell({
   bootMode = 'none',
   persistSession = true,
   initialState,
-  sideNavMode = 'legacy',
   environment,
 }: WorkspaceShellProps) {
   const routes = environment?.routes;
@@ -778,7 +780,6 @@ export function WorkspaceShell({
       onProviderRuntimeChange={handleProviderRuntimeChange}
       persistSession={persistSession}
       initialState={activeInitialState}
-      sideNavMode={sideNavMode}
       environment={environment}
     />
   );
@@ -887,11 +888,6 @@ function useNoHudsonAISettingsEntry(): AppSettingsEntry | null {
   return null;
 }
 
-/** Stable fallback for hosts that do not provide developer tools. */
-function useNoDeveloperTools(): readonly WorkspaceDeveloperTool[] {
-  return [];
-}
-
 // ---------------------------------------------------------------------------
 // WorkspaceInner — renders inside all Providers, can call all app hooks
 // ---------------------------------------------------------------------------
@@ -910,7 +906,6 @@ function WorkspaceInner({
   onProviderRuntimeChange,
   persistSession,
   initialState,
-  sideNavMode,
   environment,
 }: {
   workspace: HudsonWorkspace;
@@ -928,7 +923,6 @@ function WorkspaceInner({
   onProviderRuntimeChange: (next: ProviderRuntimeState) => void;
   persistSession: boolean;
   initialState?: WorkspaceShellInitialState;
-  sideNavMode: 'legacy' | 'anchored';
   environment?: WorkspaceShellEnvironment;
 }) {
   const routes = useWorkspaceHostRoutes();
@@ -954,9 +948,6 @@ function WorkspaceInner({
   // eslint-disable-next-line react-hooks/rules-of-hooks -- fullWorkspace.apps is a stable-length list (hooks run for every app, including disabled ones, per the note above), so mapping a hook over it keeps call order stable across renders
   const allAppHooksRaw: AppHookData[] = fullWorkspace.apps.map(config => useAppHooks(config));
   const allAppHooks = allAppHooksRaw.filter(h => !disabledAppIds.has(h.appId));
-
-  const resolveDeveloperTools = environment?.useDeveloperTools ?? useNoDeveloperTools;
-  const developerTools = resolveDeveloperTools();
 
   // --- Port bridge (registers output/input hooks with DataBus) ---
   // eslint-disable-next-line react-hooks/rules-of-hooks
@@ -1235,6 +1226,7 @@ function WorkspaceInner({
   const dynamicCountRef = useRef(0);
   const [showDevtoolsWelcome, setShowDevtoolsWelcome] = useState(false);
   const [showTerminalSpawn, setShowTerminalSpawn] = useState(false);
+  const [showHudLogger, setShowHudLogger] = useState(false);
   const { notice: settingChangedNotice, setNotice: setSettingChangedNotice } = useSettingChangedNotice();
 
   const spawnTerminal = useCallback((
@@ -1362,17 +1354,6 @@ function WorkspaceInner({
   );
   const [leftWidth, setLeftWidth] = usePersistentState(`hudson.ws.${workspace.id}.leftW`, DEFAULTS.leftWidth, { enabled: persistSession });
   const [rightWidth, setRightWidth] = usePersistentState(`hudson.ws.${workspace.id}.rightW`, DEFAULTS.rightWidth, { enabled: persistSession });
-  const anchoredSideNav = sideNavMode === 'anchored';
-  const [primaryNavOpen, setPrimaryNavOpen] = usePersistentState(
-    `hudson.ws.${workspace.id}.primaryNavOpen`,
-    false,
-    { enabled: persistSession && anchoredSideNav },
-  );
-  const [primaryNavWidth, setPrimaryNavWidth] = usePersistentState(
-    `hudson.ws.${workspace.id}.primaryNavW`,
-    DEFAULTS.leftWidth,
-    { enabled: persistSession && anchoredSideNav },
-  );
 
   const [panOffset, setPanOffset] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.pan`, workspace.defaultPan ?? DEFAULTS.pan, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
   const [scale, setScale] = useDebouncedPersistentState(`hudson.ws.${workspace.id}.zoom`, workspace.defaultScale ?? DEFAULTS.zoom, PERSIST_DEBOUNCE_MS, { enabled: persistSession });
@@ -1472,31 +1453,6 @@ function WorkspaceInner({
 
   const singleApp = isSingleApp ? workspace.apps[0].app : null;
   const focusedApp = isSingleApp ? singleApp : workspace.apps.find(c => c.app.id === focusedAppId)?.app ?? null;
-  const primaryNavItems = useMemo<HudNavNode[]>(() => [
-    { id: '__hudson_home__', label: 'Home', icon: Home },
-    ...workspace.apps.map(({ app }) => {
-      const icon = app.icon ?? app.leftPanel?.icon ?? app.rightPanel?.icon;
-      return {
-        id: app.id,
-        label: app.name,
-        ...(isValidElement(icon) ? { icon } : {}),
-      };
-    }),
-  ], [workspace.apps]);
-  const anchoredContextVisible = anchoredSideNav && Boolean(focusedApp?.slots.LeftPanel);
-  const anchoredPrimaryWidth = primaryNavOpen
-    ? primaryNavWidth
-    : HUD_SIDE_NAV_COLLAPSED_WIDTH;
-  const anchoredContextWidth = anchoredContextVisible
-    ? leftCollapsed
-      ? HUD_SIDE_NAV_COLLAPSED_WIDTH
-      : leftWidth
-    : 0;
-  const effectiveLeftWidth = anchoredSideNav
-    ? anchoredPrimaryWidth + anchoredContextWidth
-    : showLeftNavigation && !leftCollapsed
-      ? leftWidth
-      : 0;
   const focusedCodeSurface = focused.codeSurface;
   const focusedCodePlacement = focusedCodeSurface?.placement ?? focusedApp?.code?.placement ?? 'workbench';
   const focusedCodeAvailable = Boolean(focusedCodeSurface?.object);
@@ -1552,7 +1508,7 @@ function WorkspaceInner({
     }, BOUNDS_FLUSH_MS);
   }, []);
 
-  // --- Console drawer state — shared AI / Terminal / diagnostics surface.
+  // --- Console drawer state — single AI / Terminal toggle in the drawer header.
   //
   // `consoleWorkspaceKind` is the universal "which mode am I in" — the body
   // routes to the focused app's Chat or Terminal slot if present, else the
@@ -1564,8 +1520,7 @@ function WorkspaceInner({
   const HUDSON_TERMINAL_ID = '__hudson__';
   const HUDSON_AI_ID = '__hudson-ai__';
   const appsWithConsoleSurface = workspace.apps.filter(c => c.app.slots.Chat || c.app.slots.Terminal);
-  type ConsoleWorkspaceKind = 'ai' | 'terminal' | 'logs' | `developer:${string}`;
-  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<ConsoleWorkspaceKind>('ai');
+  const [consoleWorkspaceKind, setConsoleWorkspaceKind] = useState<'ai' | 'terminal'>('ai');
   const initialFocusedChatApp = workspace.apps.find(c => c.app.id === focusedAppId && c.app.slots.Chat)?.app ?? null;
   const [consoleAIKind, setConsoleAIKind] = useState<'workspace' | 'app'>(
     initialFocusedChatApp ? 'app' : 'workspace',
@@ -1586,10 +1541,9 @@ function WorkspaceInner({
 
   const focusedConsoleApp = appsWithConsoleSurface.find(c => c.app.id === focusedAppId)?.app ?? null;
   const focusedChatApp = focusedConsoleApp?.slots.Chat ? focusedConsoleApp : null;
-  const openWorkspaceConsole = useCallback((kind: ConsoleWorkspaceKind) => {
+  const openWorkspaceConsole = useCallback((kind: 'ai' | 'terminal') => {
     setConsoleWorkspaceKind(kind);
-    if (kind === 'ai') setActiveTerminalAppIdRaw(HUDSON_AI_ID);
-    if (kind === 'terminal') setActiveTerminalAppIdRaw(HUDSON_TERMINAL_ID);
+    setActiveTerminalAppIdRaw(kind === 'ai' ? HUDSON_AI_ID : HUDSON_TERMINAL_ID);
     if (kind === 'ai' && focusedChatApp && !consoleAIKindUserSelected.current) {
       setConsoleAIKind('app');
     }
@@ -1739,6 +1693,7 @@ function WorkspaceInner({
       if (allAppIds.includes(appId)) {
         handleActivateApp(appId);
         setFullscreenAppId(detail?.fullscreen ? appId : null);
+        setShowHudLogger(false);
         setShowLauncher(false);
         playSound('thock');
         return;
@@ -1761,6 +1716,7 @@ function WorkspaceInner({
         window.location.hash = hash;
       }
       onSwitchWorkspace(targetWorkspace.id);
+      setShowHudLogger(false);
       setShowLauncher(false);
       playSound('thock');
     };
@@ -1770,18 +1726,12 @@ function WorkspaceInner({
   }, [allAppIds, handleActivateApp, onSwitchWorkspace, playSound, workspaces]);
 
   const openHudLogger = useCallback(() => {
-    setShowTerminal(true);
-    openWorkspaceConsole('logs');
+    setShowHudLogger(true);
     setShowLauncher(false);
     playSound('thock');
-  }, [openWorkspaceConsole, playSound, setShowTerminal]);
+  }, [playSound]);
+  const closeHudLogger = useCallback(() => setShowHudLogger(false), []);
   const hudLoggerStatusButton = <HudLoggerStatusButton onOpen={openHudLogger} />;
-
-  const replayEvents = useAgentActionLog({
-    limit: HUD_LOGGER_MAX_EVENTS,
-    refreshMs: 5000,
-    enabled: showTerminal && consoleWorkspaceKind === 'logs',
-  });
 
   const startVoicePrompt = useCallback(() => {
     setShowTerminal(true);
@@ -2004,24 +1954,6 @@ function WorkspaceInner({
         action: () => { setShowTerminal(t => !t); playSound('slideIn'); },
       },
       {
-        id: 'shell:open-logs',
-        label: 'Developer Tools: Logs',
-        icon: <Activity size={14} />,
-        action: () => {
-          setShowTerminal(true);
-          openWorkspaceConsole('logs');
-        },
-      },
-      ...developerTools.map(tool => ({
-        id: `shell:open-developer-tool:${tool.id}`,
-        label: `Developer Tools: ${tool.label}`,
-        icon: tool.icon ?? <Activity size={14} />,
-        action: () => {
-          setShowTerminal(true);
-          openWorkspaceConsole(`developer:${tool.id}`);
-        },
-      })),
-      {
         id: 'shell:start-voice',
         label: 'Start Voice Prompt',
         icon: <Mic size={14} />,
@@ -2127,7 +2059,6 @@ function WorkspaceInner({
       updateShellSettings,
       openSettings,
       openWorkspaceManager,
-      openWorkspaceConsole,
       startVoicePrompt,
       enterFullscreen,
       exitFullscreen,
@@ -2139,7 +2070,6 @@ function WorkspaceInner({
       focusedApp?.code?.label,
       focusedCodeSurface,
       featureFlags,
-      developerTools,
     ],
   );
 
@@ -2237,43 +2167,27 @@ function WorkspaceInner({
   // --- Shell layout context ---
   const shellLayout = useMemo(
     () => ({
-      leftWidth: effectiveLeftWidth,
+      leftWidth: showLeftNavigation && !leftCollapsed ? leftWidth : 0,
       rightWidth: effectiveRightWidth,
-      leftCollapsed: anchoredSideNav
-        ? !primaryNavOpen && (!anchoredContextVisible || leftCollapsed)
-        : !showLeftNavigation || leftCollapsed,
+      leftCollapsed: !showLeftNavigation || leftCollapsed,
       rightCollapsed: !showRightRail || rightCollapsed,
       isTerminalOpen: showTerminal,
       terminalHeight,
       isTerminalMaximized,
     }),
-    [
-      effectiveLeftWidth,
-      effectiveRightWidth,
-      anchoredSideNav,
-      primaryNavOpen,
-      anchoredContextVisible,
-      showLeftNavigation,
-      leftCollapsed,
-      showRightRail,
-      rightCollapsed,
-      showTerminal,
-      terminalHeight,
-      isTerminalMaximized,
-    ],
+    [showLeftNavigation, leftWidth, effectiveRightWidth, leftCollapsed, showRightRail, rightCollapsed, showTerminal, terminalHeight, isTerminalMaximized],
   );
   const terminalCanvasBottomOffset = showTerminal && !isTerminalMaximized ? terminalHeight : 0;
   const canvasHeightAboveTerminal = viewport.height - SHELL_THEME.layout.statusBarHeight - terminalCanvasBottomOffset;
   const showCanvasZoomControls = !showTerminal
     || (!isTerminalMaximized && (viewport.height === 0 || canvasHeightAboveTerminal >= 160));
 
-  const leftFooterApp = anchoredSideNav ? focusedApp : isSingleApp ? singleApp : null;
   // --- Left panel footer ---
   const leftFooter = (
     <>
-      {leftFooterApp?.slots.LeftFooter && (
-        <AppSlotErrorBoundary appName={leftFooterApp.name} slotName="LeftFooter">
-          <leftFooterApp.slots.LeftFooter />
+      {isSingleApp && singleApp?.slots.LeftFooter && (
+        <AppSlotErrorBoundary appName={singleApp.name} slotName="LeftFooter">
+          <singleApp.slots.LeftFooter />
         </AppSlotErrorBoundary>
       )}
       {isCanvasMode && (
@@ -2356,21 +2270,6 @@ function WorkspaceInner({
       );
     })
   );
-
-  const FocusedLeftHeaderActions = focusedApp?.leftPanel?.headerActions;
-  const anchoredContextLabel = focusedApp?.leftPanel?.title ?? focusedApp?.name ?? 'Context';
-  const anchoredContextHeader = (
-    <div className="flex min-w-0 items-center gap-2">
-      <span className="min-w-0 flex-1 truncate">{anchoredContextLabel}</span>
-      {FocusedLeftHeaderActions ? <FocusedLeftHeaderActions /> : null}
-    </div>
-  );
-  const anchoredContextContent = focusedApp?.slots.LeftPanel ? (
-    <AppSlotErrorBoundary appName={focusedApp.name} slotName="LeftPanel">
-      <focusedApp.slots.LeftPanel />
-    </AppSlotErrorBoundary>
-  ) : null;
-  const anchoredContextIcon = focusedApp?.leftPanel?.icon ?? focusedApp?.icon;
 
   // --- Right panel content: app inspector, tools, and ports ---
   const rightPanelContent = focusedApp ? (
@@ -3014,18 +2913,17 @@ function WorkspaceInner({
       : `Record voice prompt (${TERMINAL_VOICE_SHORTCUT_LABEL})`;
   })();
 
-  // Drawer title — product consoles and diagnostics share one Hudson-native tab strip.
-  // Active tab uses the shell accent with an underline + subtle bg tint;
+  // Drawer title — TERMINAL and AI rendered as sibling tabs in the header chrome.
+  // Active tab in bright emerald with an underline + subtle bg tint for contrast;
   // inactive in muted gray and clickable.
   const consoleTitle = (
     <div className="flex items-stretch -my-1.5 h-[34px]">
       <button
         type="button"
         onClick={() => openWorkspaceConsole('terminal')}
-        aria-pressed={consoleWorkspaceKind === 'terminal'}
-        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
           consoleWorkspaceKind === 'terminal'
-            ? 'text-accent border-accent bg-accent/[0.07]'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
             : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
         }`}
         title="Terminal — app's Terminal slot if present, else system terminal"
@@ -3036,10 +2934,9 @@ function WorkspaceInner({
       <button
         type="button"
         onClick={() => openWorkspaceConsole('ai')}
-        aria-pressed={consoleWorkspaceKind === 'ai'}
-        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
+        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors ${
           consoleWorkspaceKind === 'ai'
-            ? 'text-accent border-accent bg-accent/[0.07]'
+            ? 'text-emerald-300 border-emerald-400 bg-emerald-500/[0.07]'
             : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
         }`}
         title="AI — app's Chat slot if present, else workspace AI"
@@ -3047,53 +2944,22 @@ function WorkspaceInner({
         <Sparkles size={13} />
         <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">AI</span>
       </button>
-      <button
-        type="button"
-        onClick={() => openWorkspaceConsole('logs')}
-        aria-pressed={consoleWorkspaceKind === 'logs'}
-        className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-          consoleWorkspaceKind === 'logs'
-            ? 'text-accent border-accent bg-accent/[0.07]'
-            : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
-        }`}
-        title="Logs — app, shell, agent action, and trace events"
-      >
-        <Activity size={13} />
-        <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">LOGS</span>
-      </button>
-      {developerTools.map(tool => (
-        <button
-          type="button"
-          key={tool.id}
-          onClick={() => openWorkspaceConsole(`developer:${tool.id}`)}
-          aria-pressed={consoleWorkspaceKind === `developer:${tool.id}`}
-          className={`flex items-center gap-1.5 px-2.5 border-b-2 -mb-px transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-ring ${
-            consoleWorkspaceKind === `developer:${tool.id}`
-              ? 'text-accent border-accent bg-accent/[0.07]'
-              : 'text-muted-foreground/55 border-transparent hover:text-foreground/80'
-          }`}
-          title={`Developer tool — ${tool.label}`}
-        >
-          {tool.icon ?? <Activity size={13} />}
-          <span className="text-[10px] font-medium tracking-[0.18em] font-mono uppercase">{tool.label}</span>
-        </button>
-      ))}
     </div>
   );
 
-  const terminalHeaderActions = consoleWorkspaceKind === 'terminal' ? (
+  const terminalHeaderActions = (
     <div className="flex items-center gap-1">
       <button
         type="button"
         onClick={handleTermScreenshot}
         disabled={termSnapping}
-        className="p-1 rounded text-muted-foreground hover:text-accent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring disabled:opacity-30 transition-colors"
+        className="p-1 rounded text-muted-foreground hover:text-accent disabled:opacity-30 transition-colors"
         title="Capture screenshot — copies file path to clipboard"
       >
         {termSnapping ? <Loader2 size={12} className="animate-spin" /> : <Camera size={12} />}
       </button>
     </div>
-  ) : null;
+  );
 
   const terminalVoiceOverlay = consoleWorkspaceKind === 'terminal' ? (
     <div
@@ -3225,29 +3091,12 @@ function WorkspaceInner({
     </div>
   );
 
-  // Console body: routed by the shared tab strip in the drawer header.
+  // Console body: routed by the AI / Terminal toggle in the drawer header.
   // - AI mode    → workspace AI plus focused app AI when the app provides Chat
   // - Terminal   → focused app's Terminal slot if present, else system terminal
   const terminalContent = (() => {
     if (consoleWorkspaceKind === 'ai') {
       return aiConsoleNode;
-    }
-    if (consoleWorkspaceKind === 'logs') {
-      return (
-        <HudLogger
-          observability={HObservabilityDefault}
-          replayEvents={replayEvents}
-          maxEvents={HUD_LOGGER_MAX_EVENTS}
-          title="logs"
-          className="!h-full !min-h-0 !rounded-none !border-0"
-          emptyMessage="No events yet."
-        />
-      );
-    }
-    if (consoleWorkspaceKind.startsWith('developer:')) {
-      const toolId = consoleWorkspaceKind.slice('developer:'.length);
-      const tool = developerTools.find(candidate => candidate.id === toolId);
-      return tool ? tool.render() : null;
     }
     // Terminal kind
     if (focusedConsoleApp?.slots.Terminal) {
@@ -3366,129 +3215,6 @@ function WorkspaceInner({
     workspace,
     workspaceAIToolContext,
   ]);
-
-  const renderShellNavigationBar = (embedded = false) => (
-    <NavigationBar
-      embedded={embedded}
-      showMark={!embedded}
-      title={embedded ? focusedApp?.name ?? workspace.name : shellTitle}
-      subtitle={
-        <WorkspaceSwitcher
-          workspaces={workspaces}
-          activeId={activeWorkspaceId}
-          onSwitch={onSwitchWorkspace}
-        />
-      }
-      search={focused.search ?? undefined}
-      center={(isSingleApp || isCanvasFocusMode) ? focused.navCenter : undefined}
-      actions={
-        <>
-          {focused.navActions}
-          {focusedCodeSurface?.object && focusedApp?.code?.navAction === true && (
-            <button
-              type="button"
-              onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
-              className={`p-1.5 rounded border transition-colors ${
-                focusedCodeSurface.open
-                  ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
-                  : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
-              }`}
-              title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
-              aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
-            >
-              <Code2 size={14} />
-            </button>
-          )}
-          {isCanvasFocusMode && (
-            <button
-              onClick={exitFullscreen}
-              className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
-              title="Exit Focus Mode"
-              aria-label="Exit Focus Mode"
-            >
-              <Minimize2 size={14} />
-            </button>
-          )}
-          <a
-            href="/docs"
-            target="_blank"
-            className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
-            title="Documentation"
-            aria-label="Documentation"
-          >
-            <BookOpen size={14} />
-          </a>
-          <button
-            onClick={handleToggleMute}
-            className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
-            title={muted ? 'Unmute' : 'Mute'}
-            aria-label={muted ? 'Unmute' : 'Mute'}
-          >
-            {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
-          </button>
-        </>
-      }
-    />
-  );
-
-  const renderShellStatusBar = (embedded = false) => (
-    <StatusBar
-      embedded={embedded}
-      status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
-      viewport={{
-        pan: panOffset,
-        zoom: scale,
-        canvasSize: { w: viewport.width, h: viewport.height },
-      }}
-      onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
-      isTerminalOpen={showTerminal}
-      terminalLabel={environment?.terminalLabel}
-      right={renderStatusRightItems(focused.statusRight, hudLoggerStatusButton)}
-      left={
-        <div className="flex items-center gap-4">
-          {focused.statusLeft}
-          {focused.statusLeft && (
-            <div className="h-3 w-px bg-border" />
-          )}
-          {workspaceServiceIds.length > 0 && (
-            <>
-              <ServiceStatusIndicator
-                registry={serviceRegistry}
-                onOpenSettings={openWorkspaceManager}
-                serviceIds={workspaceServiceIds}
-              />
-              <div className="h-3 w-px bg-border" />
-            </>
-          )}
-          <button
-            onClick={startVoicePrompt}
-            className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
-            title="Start Voice Prompt"
-          >
-            <Mic size={10} />
-            <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
-          </button>
-          <div className="h-3 w-px bg-border" />
-          <button
-            onClick={() => openSettings()}
-            className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground transition-colors"
-            title="Settings (⌘,)"
-          >
-            <Settings size={10} />
-            <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
-          </button>
-          {showSaved && (
-            <>
-              <div className="h-3 w-px bg-border" />
-              <span className="text-[10px] font-semibold tracking-wider uppercase text-success animate-pulse">
-                Saved
-              </span>
-            </>
-          )}
-        </div>
-      }
-    />
-  );
 
   return (
     <HudsonAIRuntimeProvider value={hudsonAIRuntime}>
@@ -3626,7 +3352,6 @@ function WorkspaceInner({
             status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
             onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
             isTerminalOpen={showTerminal}
-            terminalLabel={environment?.terminalLabel}
             right={renderStatusRightItems(
               allAppHooksRaw.find(h => h.appId === fullscreenAppId)?.statusRight ?? null,
               hudLoggerStatusButton,
@@ -3763,98 +3488,93 @@ function WorkspaceInner({
         } : {})}
         hud={
           <>
-            {anchoredSideNav ? (
-              <HudSideNavProvider
-                open={primaryNavOpen}
-                onOpenChange={setPrimaryNavOpen}
-                collapsible="icon"
-                keyboardShortcut="b"
-                expandedWidth={primaryNavWidth}
-                onExpandedWidthChange={setPrimaryNavWidth}
-                collapsedWidth={HUD_SIDE_NAV_COLLAPSED_WIDTH}
-              >
-                <HudSideNavLayout
-                  overlay
-                  resizable
-                  navigation={
-                    <HudSideNav
-                      items={primaryNavItems}
-                      selectedId={showLauncher ? '__hudson_home__' : focusedAppId}
-                      onSelect={(node) => {
-                        if (node.id === '__hudson_home__') {
-                          setShowLauncher(true);
-                          return;
-                        }
-                        setShowLauncher(false);
-                        handleActivateApp(node.id);
-                      }}
-                      selectionWash
-                      rovingFocus
-                      ariaLabel="Workspace destinations"
-                      header={<WorkspacePrimaryNavBrand title={shellTitle} />}
-                      collapsedHeader={<WorkspacePrimaryNavBrand title={shellTitle} compact />}
-                    />
-                  }
-                  contextRail={anchoredContextVisible ? (
-                    <HudSideRail
-                      label={anchoredContextLabel}
-                      header={anchoredContextHeader}
-                      collapsed={leftCollapsed}
-                      onCollapsedChange={setLeftCollapsed}
-                      expandedWidth={leftWidth}
-                      onExpandedWidthChange={setLeftWidth}
-                      maxExpandedWidth={500}
-                      resizable
-                      collapsedContent={
-                        <div className="flex justify-center py-2 text-muted-foreground">
-                          {anchoredContextIcon}
-                        </div>
-                      }
-                      footer={leftFooter}
+            <motion.div
+              initial={bootMode === 'none' ? false : { y: -48, opacity: 0 }}
+              animate={chromeVisible ? { y: 0, opacity: 1 } : { y: -48, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            >
+              <NavigationBar
+                title={shellTitle}
+                subtitle={
+                  <WorkspaceSwitcher
+                    workspaces={workspaces}
+                    activeId={activeWorkspaceId}
+                    onSwitch={onSwitchWorkspace}
+                  />
+                }
+                search={focused.search ?? undefined}
+                center={(isSingleApp || isCanvasFocusMode) ? focused.navCenter : undefined}
+                actions={
+                  <>
+                    {focused.navActions}
+                    {focusedCodeSurface?.object && focusedApp?.code?.navAction === true && (
+                      <button
+                        type="button"
+                        onClick={() => focusedCodeSurface.setOpen(!focusedCodeSurface.open)}
+                        className={`p-1.5 rounded border transition-colors ${
+                          focusedCodeSurface.open
+                            ? 'border-cyan-700/25 bg-cyan-700/10 text-cyan-700 dark:border-cyan-300/20 dark:bg-cyan-400/10 dark:text-cyan-200'
+                            : 'border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border'
+                        }`}
+                        title={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                        aria-label={focusedCodeSurface.open ? 'Hide code' : (focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'View code')}
+                      >
+                        <Code2 size={14} />
+                      </button>
+                    )}
+                    {isCanvasFocusMode && (
+                      <button
+                        onClick={exitFullscreen}
+                        className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
+                        title="Exit Focus Mode"
+                        aria-label="Exit Focus Mode"
+                      >
+                        <Minimize2 size={14} />
+                      </button>
+                    )}
+                    <a
+                      href="/docs"
+                      target="_blank"
+                      className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
+                      title="Documentation"
+                      aria-label="Documentation"
                     >
-                      {anchoredContextContent}
-                    </HudSideRail>
-                  ) : undefined}
-                  contextRailAriaLabel={anchoredContextLabel}
-                  topRow={renderShellNavigationBar(true)}
-                  bottomBar={renderShellStatusBar(true)}
-                >
-                  {null}
-                </HudSideNavLayout>
-              </HudSideNavProvider>
-            ) : (
-              <motion.div
-                initial={bootMode === 'none' ? false : { y: -48, opacity: 0 }}
-                animate={chromeVisible ? { y: 0, opacity: 1 } : { y: -48, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-              >
-                {renderShellNavigationBar()}
-              </motion.div>
-            )}
+                      <BookOpen size={14} />
+                    </a>
+                    <button
+                      onClick={handleToggleMute}
+                      className="p-1.5 rounded border border-transparent text-foreground/70 hover:bg-muted hover:text-foreground hover:border-border transition-colors"
+                      title={muted ? 'Unmute' : 'Mute'}
+                      aria-label={muted ? 'Unmute' : 'Mute'}
+                    >
+                      {muted ? <VolumeX size={14} /> : <Volume2 size={14} />}
+                    </button>
+                  </>
+                }
+              />
+            </motion.div>
 
-            {!anchoredSideNav && (
-              <motion.div
-                initial={bootMode === 'none' ? false : { x: -leftWidth, opacity: 0 }}
-                animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-              >
-                {showLeftNavigation && (
-                  <SidePanel
-                    side="left"
-                    title={leftPanelTitle}
-                    icon={leftPanelIcon}
-                    isCollapsed={leftCollapsed}
-                    onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
-                    width={leftWidth}
-                    onResizeStart={handleResizeStart('left')}
-                    footer={leftFooter}
-                    headerActions={leftHeaderActions}
-                  >
-                    {leftPanelContent}
-                  </SidePanel>
-                )}
-              </motion.div>
-            )}
+            <motion.div
+              initial={bootMode === 'none' ? false : { x: -leftWidth, opacity: 0 }}
+              animate={panelsVisible ? { x: 0, opacity: 1 } : { x: -leftWidth, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            >
+              {showLeftNavigation && (
+                <SidePanel
+                  side="left"
+                  title={leftPanelTitle}
+                  icon={leftPanelIcon}
+                  isCollapsed={leftCollapsed}
+                  onToggleCollapse={() => { setLeftCollapsed(!leftCollapsed); playSound('thock'); }}
+                  width={leftWidth}
+                  onResizeStart={handleResizeStart('left')}
+                  footer={leftFooter}
+                  headerActions={leftHeaderActions}
+                >
+                  {leftPanelContent}
+                </SidePanel>
+              )}
+            </motion.div>
 
             <motion.div
               initial={bootMode === 'none' ? false : { x: rightWidth, opacity: 0 }}
@@ -3878,22 +3598,73 @@ function WorkspaceInner({
               )}
             </motion.div>
 
-            {!anchoredSideNav && (
-              <motion.div
-                initial={bootMode === 'none' ? false : { y: 28, opacity: 0 }}
-                animate={chromeVisible ? { y: 0, opacity: 1 } : { y: 28, opacity: 0 }}
-                transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
-              >
-                {renderShellStatusBar()}
-              </motion.div>
-            )}
+            <motion.div
+              initial={bootMode === 'none' ? false : { y: 28, opacity: 0 }}
+              animate={chromeVisible ? { y: 0, opacity: 1 } : { y: 28, opacity: 0 }}
+              transition={{ duration: 0.35, ease: [0.25, 1, 0.5, 1] }}
+            >
+              <StatusBar
+                status={getWorkspaceServiceStatus(workspace, serviceRegistry)}
+                viewport={{
+                  pan: panOffset,
+                  zoom: scale,
+                  canvasSize: { w: viewport.width, h: viewport.height },
+                }}
+                onToggleTerminal={() => { setShowTerminal(t => !t); playSound('slideIn'); }}
+                isTerminalOpen={showTerminal}
+                right={renderStatusRightItems(focused.statusRight, hudLoggerStatusButton)}
+                left={
+                <div className="flex items-center gap-4">
+                  {focused.statusLeft}
+                  {focused.statusLeft && (
+                    <div className="h-3 w-px bg-border" />
+                  )}
+                  {workspaceServiceIds.length > 0 && (
+                    <>
+                      <ServiceStatusIndicator
+                        registry={serviceRegistry}
+                        onOpenSettings={openWorkspaceManager}
+                        serviceIds={workspaceServiceIds}
+                      />
+                      <div className="h-3 w-px bg-border" />
+                    </>
+                  )}
+                  <button
+                    onClick={startVoicePrompt}
+                    className="flex items-center gap-1.5 text-foreground/70 hover:text-accent transition-colors"
+                    title="Start Voice Prompt"
+                  >
+                    <Mic size={10} />
+                    <span className="uppercase text-[10px] font-semibold tracking-wider">Voice</span>
+                  </button>
+                  <div className="h-3 w-px bg-border" />
+                  <button
+                    onClick={() => openSettings()}
+                    className="flex items-center gap-1.5 text-foreground/70 hover:text-foreground transition-colors"
+                    title="Settings (⌘,)"
+                  >
+                      <Settings size={10} />
+                      <span className="uppercase text-[10px] font-semibold tracking-wider">Settings</span>
+                    </button>
+                    {showSaved && (
+                      <>
+                        <div className="h-3 w-px bg-border" />
+                        <span className="text-[10px] font-semibold tracking-wider uppercase text-success animate-pulse">
+                          Saved
+                        </span>
+                      </>
+                    )}
+                  </div>
+                }
+              />
+            </motion.div>
 
             {/* Terminal — inset between panels */}
             <div
               className="pointer-events-none"
               style={{
                 position: 'fixed',
-                left: effectiveLeftWidth,
+                left: showLeftNavigation && !leftCollapsed ? leftWidth : 0,
                 right: effectiveRightWidth,
                 bottom: 0,
                 top: 0,
@@ -3936,7 +3707,11 @@ function WorkspaceInner({
               <div
                 className="pointer-events-none fixed bottom-7 top-12 z-[44]"
                 style={{
-                  left: codeWorkbenchSize === 'full' ? 0 : effectiveLeftWidth,
+                  left: codeWorkbenchSize === 'full'
+                    ? 0
+                    : showLeftNavigation && !leftCollapsed
+                      ? leftWidth
+                      : 0,
                   right: codeWorkbenchSize === 'full' ? 0 : effectiveRightWidth,
                 }}
                 aria-label={focusedApp?.code?.label ?? focusedCodeSurface.label ?? 'Object code'}
@@ -3988,6 +3763,10 @@ function WorkspaceInner({
         isOpen={showWorkspaceManager}
         onClose={() => setShowWorkspaceManager(false)}
         defaultTab={workspaceEditorTab}
+      />
+      <HudLoggerOverlay
+        open={showHudLogger}
+        onClose={closeHudLogger}
       />
       {showTerminalSpawn && (
         <TerminalSpawnDialog

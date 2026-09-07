@@ -5,8 +5,7 @@
   "type": "module",
   "description": "Internal exploration lab for Hudson. Dogfoods hudsonkit primitives via the shared studio package.",
   "scripts": {
-    "dev": "bun scripts/dev.mjs",
-    "dev:ui": "vite --port 3033",
+    "dev": "vite --port 3033",
     "build": "tsc -b && vite build",
     "preview": "vite preview --port 3033",
     "typecheck": "tsc --noEmit"

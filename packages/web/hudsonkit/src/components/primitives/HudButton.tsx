@@ -1,8 +1,8 @@
 'use client';
 
 import React from 'react';
-import { Loader2 } from '../../icons';
-import type { HudsonIcon } from '../../icons';
+import { Loader2 } from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import type { HudDensity, HudTone } from './types';
 import { toneClasses } from './types';
 
@@ -11,8 +11,8 @@ export interface HudButtonProps {
   tone?: HudTone;
   variant?: 'solid' | 'soft' | 'ghost';
   density?: HudDensity;
-  icon?: HudsonIcon;
-  iconAfter?: HudsonIcon;
+  icon?: LucideIcon;
+  iconAfter?: LucideIcon;
   selected?: boolean;
   disabled?: boolean;
   loading?: boolean;

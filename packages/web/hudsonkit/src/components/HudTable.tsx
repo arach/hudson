@@ -1,7 +1,7 @@
 'use client';
 
 import { useMemo, useState, type ReactNode } from 'react';
-import { ArrowDown, ArrowUp, ArrowUpDown } from '../icons';
+import { ArrowDown, ArrowUp, ArrowUpDown } from 'lucide-react';
 import { useResizableColumns } from '../hooks/useResizableColumns';
 
 /**

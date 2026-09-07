@@ -1,5 +1,5 @@
 import { createElement } from 'react';
-import { List, ScanSearch } from '../../icons';
+import { List, ScanSearch } from 'lucide-react';
 import type { HudsonApp, AppManifest } from '../../index';
 import { TraceProvider } from './TraceProvider';
 import { TraceContent } from './TraceContent';

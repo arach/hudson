@@ -7,7 +7,6 @@ import { scaffold } from './scaffold';
 import { generateWorkspace } from './workspace';
 import { buildVars } from './utils';
 import { header, summary, error, info, cyan } from './log';
-import { wireStandaloneHudsonkit, warnMissingMonorepoPack } from './wireHudsonkit';
 
 // ---------------------------------------------------------------------------
 // Main
@@ -24,34 +23,30 @@ async function main() {
   header();
 
   const opts = await promptInteractive(partial);
-  const isStandalone = opts.tier === 'standalone';
 
-  // Resolve project root. Monorepo tiers walk up to the host with app/;
-  // standalone always scaffolds under cwd/<appId>/.
+  // Resolve project root (find where app/ directory lives)
   let projectRoot = process.cwd();
 
-  if (!isStandalone) {
-    let current = projectRoot;
-    while (current !== '/') {
-      try {
-        const appStat = await stat(resolve(current, 'app'));
-        if (appStat.isDirectory()) {
-          projectRoot = current;
-          break;
-        }
-      } catch {
-        // not found, go up
+  // Walk up to find the project root with app/ directory
+  let current = projectRoot;
+  while (current !== '/') {
+    try {
+      const appStat = await stat(resolve(current, 'app'));
+      if (appStat.isDirectory()) {
+        projectRoot = current;
+        break;
       }
-      current = resolve(current, '..');
+    } catch {
+      // not found, go up
     }
+    current = resolve(current, '..');
   }
 
-  const appDir = isStandalone
-    ? resolve(projectRoot, opts.appId)
-    : resolve(projectRoot, 'app', 'apps', opts.appId);
+  // Check if app already exists
+  const appDir = resolve(projectRoot, 'app', 'apps', opts.appId);
   try {
     await stat(appDir);
-    error(`Directory already exists: ${isStandalone ? opts.appId : `app/apps/${opts.appId}`}`);
+    error(`Directory already exists: app/apps/${opts.appId}`);
     process.exit(1);
   } catch {
     // Good — directory doesn't exist
@@ -59,9 +54,10 @@ async function main() {
 
   const vars = buildVars(opts.appId, opts.description, opts.mode);
 
-  info(`Creating ${cyan(opts.appId)}${isStandalone ? ' (standalone Vite consumer)' : ''}...`);
+  info(`Creating ${cyan(opts.appId)}...`);
   console.log();
 
+  // Scaffold app files
   const appFiles = await scaffold({
     appId: opts.appId,
     tier: opts.tier,
@@ -69,24 +65,14 @@ async function main() {
     projectRoot,
   });
 
-  // Wire a monorepo pack (or HUDSONKIT_TGZ) when available so the generated
-  // client can validate against the exact local HudsonKit build.
-  if (isStandalone) {
-    const wired = await wireStandaloneHudsonkit(appDir, process.cwd());
-    if (!wired) warnMissingMonorepoPack(process.cwd());
-  }
-
-  // Workspace files only apply to monorepo app tiers.
+  // Generate workspace
   let hasWorkspace = false;
-  if (!opts.noWorkspace && !isStandalone) {
+  if (!opts.noWorkspace) {
     await generateWorkspace(vars, projectRoot);
     hasWorkspace = true;
   }
 
-  summary(opts.appId, appFiles.length, hasWorkspace, { standalone: isStandalone });
-  if (isStandalone) {
-    info(`Validate the standalone client: cd ${opts.appId} && bun install && bun run check`);
-  }
+  summary(opts.appId, appFiles.length, hasWorkspace);
 }
 
 main().catch(err => {

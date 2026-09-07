@@ -14,14 +14,11 @@
 /* Studio editorial typography + code-block styles for EngMarkdown. */
 @import "studio/doc.css";
 
-/* Studio-owned journey canvas styles + Tailwind source registration. */
-@import "studio/flows/styles.css";
-
 /* Scan hudsonkit + studio source so Tailwind v4 generates every utility
    class their components reference. Skip these and classes work in dev
    but disappear in prod — every consumer hits this once. */
 @source "../../../../packages/web/hudsonkit/src/**/*.{ts,tsx}";
-@source "../../node_modules/studio/src/**/*.{ts,tsx}";
+@source "../../../../../studio/src/**/*.{ts,tsx}";
 
 /* Register studio's CSS vars as Tailwind v4 color tokens so utility
    classes like bg-studio-canvas / text-studio-ink work natively. */

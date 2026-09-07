@@ -53,15 +53,10 @@ scripts/apple/build-xcframeworks.sh \
 
 ## What the script does
 
-- Stages each module in an isolated Swift package and compiles it as a dynamic
-  library. Previously built Hudson dependencies are consumed as binary targets,
-  ensuring that `HudsonUI` and `HudsonObservability` are linked rather than
-  copied into `HudsonShell`.
+- Enables `HUDSONKIT_BINARY_DISTRIBUTION=1`, which makes the package products
+  dynamic only for this packaging run.
 - Archives with `BUILD_LIBRARY_FOR_DISTRIBUTION=YES` so each framework contains
   stable `.swiftinterface` files.
-- Verifies every declared `@rpath` dependency and fails if a framework defines
-  Swift symbols owned by one of its dependency modules. This prevents duplicate
-  Objective-C runtime classes when an app loads the complete framework set.
 - Builds macOS `arm64` and `x86_64` slices by default.
 - Creates `.xcframework` bundles, zips them with the expected root layout, and
   computes `swift package compute-checksum` values.

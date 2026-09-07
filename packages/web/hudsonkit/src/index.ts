@@ -91,27 +91,17 @@ export {
   HObservabilityDefault,
   HSpan,
   HTrace,
-  createHudsonFetchCapture,
   dispatchHudsonAgentAction,
-  formatHudsonNetworkEntryAsCurl,
-  formatHudsonNetworkEntryForAgent,
   HUDSON_AGENT_ACTION_EVENT,
   HudLogger,
   HudLoggerStatusItem,
-  HudNetworkPanel,
-  HudsonNetworkCaptureDefault,
-  HudsonNetworkStore,
-  installHudsonFetchCapture,
   logHudsonAgentAction,
   redactAgentActionValue,
-  sanitizeHudsonNetworkEntry,
   summarizeHudLoggerEvents,
   useHudLoggerEvents,
   useHudLoggerSummary,
-  useHudsonNetworkEntries,
 } from './observability';
 export type {
-  HudNetworkPanelProps,
   HudLoggerProps,
   HudLoggerScopeFilter,
   HudLoggerStatusItemProps,
@@ -119,16 +109,6 @@ export type {
   HudLoggerUseEventsOptions,
   HudsonAgentActionInput,
   HudsonAgentActionStatus,
-  HudsonCapturedBody,
-  HudsonFetchCaptureOptions,
-  HudsonFetch,
-  HudsonNetworkEntry,
-  HudsonNetworkListener,
-  HudsonNetworkRequest,
-  HudsonNetworkResponse,
-  HudsonNetworkStatus,
-  HudsonNetworkStoreOptions,
-  HudsonNetworkTiming,
   HLogEvent,
   HLogInput,
   HLogLevel,
@@ -226,9 +206,7 @@ export type {
   HudsonVoiceLiveEvent,
   HudsonVoiceLiveSession,
   HudsonVoiceLiveSessionRequest,
-  HudsonVoiceModelDownloadPolicy,
   HudsonVoiceMode,
-  HudsonVoicePreferencesPayload,
   HudsonVoiceProbeClient,
   HudsonVoicePermissionStatus,
   HudsonVoiceRuntimeHealth,
@@ -283,8 +261,6 @@ export type { PlatformAdapter, PlatformLayout } from './platform';
 export { WEB_ADAPTER, PlatformProvider, usePlatform, usePlatformLayout } from './platform';
 
 // Reusable widgets
-export { HudsonKitLockup, HudsonKitMark } from './components/brand';
-export type { HudsonKitLockupProps, HudsonKitMarkProps } from './components/brand';
 export { ZoomControls } from './components/chrome';
 export { CanvasToolDock, PanZoomViewport } from './components/canvas';
 export type { ViewportPan } from './components/canvas';

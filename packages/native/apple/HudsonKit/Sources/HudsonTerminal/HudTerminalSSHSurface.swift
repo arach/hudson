@@ -101,7 +101,7 @@ public struct HudTerminalSSHSurface: View {
 
     private var statusOverlay: some View {
         ZStack {
-            HudSurface.statusOverlayBackdrop(resolvedAppearance.backgroundColor)
+            resolvedAppearance.backgroundColor.opacity(0.92)
 
             VStack(spacing: HudSpacing.xl) {
                 HudStatusDot(

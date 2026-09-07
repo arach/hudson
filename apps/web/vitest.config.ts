@@ -22,9 +22,8 @@ export default defineConfig({
       // Worker tests run with their own vitest config (node env, own deps) in
       // CI's "Worker tests" step — don't double-run them under jsdom here.
       'packages/cloud/**',
-      // Release-policy tests use Bun's native test runner in their workflow.
-      'scripts/release/**/*.test.mjs',
       '**/.build/**',
+      'examples/**/.build/**',
       'packages/native/**/.build/**',
     ],
   },
@@ -40,7 +39,7 @@ export default defineConfig({
       { find: 'react', replacement: resolve(rootNodeModules, 'react') },
       { find: 'ai', replacement: resolve(rootNodeModules, 'ai') },
       { find: '@ai-sdk/react', replacement: resolve(rootNodeModules, '@ai-sdk/react') },
-      { find: 'hudsonkit/icons', replacement: resolve(hudsonkitSrc, 'icons.tsx') },
+      { find: 'lucide-react', replacement: resolve(rootNodeModules, 'lucide-react') },
       { find: 'server-only', replacement: resolve(appDir, 'test/mocks/server-only.ts') },
       {
         find: 'hudsonkit/workflow',
@@ -58,10 +57,6 @@ export default defineConfig({
       {
         find: '@hudsonkit/ai/toolsets',
         replacement: resolve(repoRoot, 'packages/web/ai-backends/src/toolsets/index.ts'),
-      },
-      {
-        find: '@hudsonkit/ai/pi-ai',
-        replacement: resolve(repoRoot, 'packages/web/ai-backends/src/pi-ai.ts'),
       },
       {
         find: '@hudsonkit/ai',

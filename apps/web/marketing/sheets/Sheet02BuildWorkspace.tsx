@@ -11,8 +11,8 @@ import {
   Save,
   Terminal,
   Waypoints,
-} from 'hudsonkit/icons';
-import type { HudsonIcon } from 'hudsonkit/icons';
+} from 'lucide-react';
+import type { LucideIcon } from 'lucide-react';
 import { Eyebrow } from '@/marketing/primitives/Eyebrow';
 import { Sheet } from '@/marketing/primitives/Sheet';
 
@@ -31,7 +31,7 @@ type StoryStep = {
     layer: string;
     ux: string;
   };
-  icon: HudsonIcon;
+  icon: LucideIcon;
   activeNodes: string[];
   activeEdges: string[];
 };
@@ -45,7 +45,7 @@ type StoryNode = {
   w: number;
   h: number;
   kind: 'canvas' | 'layer' | 'ux' | 'app';
-  icon: HudsonIcon;
+  icon: LucideIcon;
 };
 
 const STEPS: StoryStep[] = [

@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import { Download, FileCode2, Save, Upload, Clipboard, Link2, CopyPlus, Share2, ChevronDown, ChevronRight } from 'hudsonkit/icons';
+import { Download, FileCode2, Save, Upload, Clipboard, Link2, CopyPlus, Share2, ChevronDown, ChevronRight } from 'lucide-react';
 import { BUILT_IN_TEMPLATE_IDS, THEME_MODES, templateLabel } from './model';
 import { useThemeDesigner } from './ThemeDesignerProvider';
 import { ShareEmbedPanel } from './ShareEmbedPanel';

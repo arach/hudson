@@ -1,5 +1,4 @@
 import SwiftUI
-import HudsonUI
 
 // MARK: - HudSidebarMotion
 //
@@ -18,14 +17,6 @@ public enum HudSidebarMotion {
     /// Kept deliberately quick so toolbar/sidebar toggles feel immediate while
     /// rail icons remain locked to the leading edge.
     public static var expandCollapse: Animation { .easeOut(duration: 0.14) }
-
-    /// `expandCollapse`, or `nil` under Reduce Motion so the state change lands
-    /// without an animated transition. Collapse and expand must still happen —
-    /// only the motion is suppressed.
-    public static func expandCollapse(reduceMotion: Bool) -> Animation? {
-        let animation: Animation = expandCollapse
-        return HudMotion.ifAllowed(animation, reduceMotion: reduceMotion)
-    }
 
     // MARK: Label / underlay opacity modes
 

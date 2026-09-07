@@ -1,5 +1,5 @@
 import React from 'react';
-import { Search } from '../../icons';
+import { Search } from 'lucide-react';
 
 interface CommandDockProps {
   onOpenCommandPalette: () => void;

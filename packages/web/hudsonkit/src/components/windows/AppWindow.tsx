@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Minus, Maximize2, Minimize2, X } from '../../icons';
+import { Minus, Maximize2, Minimize2, X } from 'lucide-react';
 import { HudsonContextMenu } from '../overlays/ContextMenu';
 import type { ContextMenuEntry } from '../overlays/ContextMenu';
 

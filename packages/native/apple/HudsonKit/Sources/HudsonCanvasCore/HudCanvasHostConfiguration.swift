@@ -16,8 +16,7 @@ public extension HudCanvasConfiguration {
         launchSetupURL: URL? = nil,
         workingDirectoryURL: URL? = nil,
         restoresStateOnLaunch: Bool = true,
-        followsSystemColorScheme: Bool = false,
-        navigationStyle: HudCanvasNavigationStyle = .standard
+        followsSystemColorScheme: Bool = false
     ) -> HudCanvasConfiguration {
         let title = surfaceTitle ?? "Canvas"
         let supportRoot = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask)
@@ -42,8 +41,7 @@ public extension HudCanvasConfiguration {
             launchSetupURL: launchSetupURL,
             workingDirectoryURL: workingDirectoryURL,
             followsSystemColorScheme: followsSystemColorScheme,
-            restoresStateOnLaunch: restoresStateOnLaunch,
-            navigationStyle: navigationStyle
+            restoresStateOnLaunch: restoresStateOnLaunch
         )
     }
 }

@@ -19,7 +19,7 @@ import {
   Wand2,
   Workflow,
   Wrench,
-} from 'hudsonkit/icons';
+} from 'lucide-react';
 import type { VoiceSettings } from '../hudson-docs/types';
 import { useHudsonAIRuntime } from 'hudsonkit/workspace';
 import { useWorkspaceManager } from 'hudsonkit/workspace';

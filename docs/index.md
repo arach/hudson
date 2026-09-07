@@ -44,8 +44,6 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Observability](./observability.md)** — logs, metrics, traces (web `hudsonkit/observability` + Apple `HudsonObservability`)
 - **[Table](./table.md)** — tabular data primitive on both surfaces
 - **[Patterns](./patterns.md)** — optional app-interior rails, trees, grouped lists, cards, and context panels
-- **[Admin resources](./admin-resources.md)** — schema-driven operator admin (Zod resources; not coupled to credits)
-- **[Inference credits](./inference-credits.md)** — user-level credit ledger for TTS / ASR / LLM
 
 ## Proposals
 

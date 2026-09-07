@@ -192,10 +192,7 @@ function Footer() {
 // ─── Styles ──────────────────────────────────────────────────────────────────
 
 const ROOT: CSSProperties = {
-  // Fill the iframe viewport. A percentage min-height does not resolve from
-  // the route wrapper's own min-height, which left its light page background
-  // exposed beneath shorter topic content.
-  minHeight: '100vh',
+  minHeight: '100%',
   width: '100%',
   background: 'var(--hud-bg, oklch(0.18 0.02 240))',
   color: 'var(--hud-ink, oklch(0.94 0.005 240))',

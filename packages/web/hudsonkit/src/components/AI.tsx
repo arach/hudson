@@ -1,7 +1,7 @@
 'use client';
 
 import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent, type ReactNode } from 'react';
-import { Square, Trash2, AlertCircle, Paperclip } from '../icons';
+import { Square, Trash2, AlertCircle, Paperclip } from 'lucide-react';
 import { isToolUIPart, getToolName } from 'ai';
 import type { HudsonAIChat } from '../hooks/useHudsonAI';
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, LoaderCircle, Save } from 'hudsonkit/icons';
+import { Type, Image as ImageIcon, Globe, Hash, Eye, EyeOff, LoaderCircle, Save } from 'lucide-react';
 import { useWorkspaceDecor } from 'hudsonkit/workspace';
 import type { DecorationType } from 'hudsonkit/workspace';
 

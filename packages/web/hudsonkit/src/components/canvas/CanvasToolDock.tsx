@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { Hand, RotateCcw } from '../../icons';
+import { Hand, RotateCcw } from 'lucide-react';
 import ZoomControls from '../chrome/ZoomControls';
 
 interface CanvasToolDockProps {

@@ -3,7 +3,6 @@ import WebKit
 
 public enum HudWebViewSource: Equatable, Sendable {
     case url(URL)
-    case file(URL, readAccessRoot: URL)
     case html(String, baseURL: URL?)
 }
 
@@ -62,31 +61,24 @@ public struct HudWebView: UIViewRepresentable {
     private let source: HudWebViewSource
     @Binding private var state: HudWebViewState
     private let configuration: HudWebViewConfiguration
-    private let integration: HudWebViewIntegration?
-    private let activity: HudWebViewActivity
 
     public init(
         _ source: HudWebViewSource,
         state: Binding<HudWebViewState> = .constant(HudWebViewState()),
-        configuration: HudWebViewConfiguration = HudWebViewConfiguration(),
-        integration: HudWebViewIntegration? = nil,
-        activity: HudWebViewActivity = .visible
+        configuration: HudWebViewConfiguration = HudWebViewConfiguration()
     ) {
         self.source = source
         self._state = state
         self.configuration = configuration
-        self.integration = integration
-        self.activity = activity
     }
 
     public func makeCoordinator() -> HudWebViewCoordinator {
-        HudWebViewCoordinator(state: $state, integration: integration)
+        HudWebViewCoordinator(state: $state)
     }
 
     public func makeUIView(context: Context) -> WKWebView {
-        let webView = HudWebViewPlatform.makeWebView(configuration, coordinator: context.coordinator)
+        let webView = HudWebViewPlatform.makeWebView(configuration)
         context.coordinator.attach(to: webView)
-        context.coordinator.setActivity(activity)
         context.coordinator.load(source, in: webView)
         return webView
     }
@@ -94,7 +86,6 @@ public struct HudWebView: UIViewRepresentable {
     public func updateUIView(_ webView: WKWebView, context: Context) {
         context.coordinator.state = $state
         HudWebViewPlatform.apply(configuration, to: webView)
-        context.coordinator.setActivity(activity)
         context.coordinator.load(source, in: webView)
     }
 
@@ -107,31 +98,24 @@ public struct HudWebView: NSViewRepresentable {
     private let source: HudWebViewSource
     @Binding private var state: HudWebViewState
     private let configuration: HudWebViewConfiguration
-    private let integration: HudWebViewIntegration?
-    private let activity: HudWebViewActivity
 
     public init(
         _ source: HudWebViewSource,
         state: Binding<HudWebViewState> = .constant(HudWebViewState()),
-        configuration: HudWebViewConfiguration = HudWebViewConfiguration(),
-        integration: HudWebViewIntegration? = nil,
-        activity: HudWebViewActivity = .visible
+        configuration: HudWebViewConfiguration = HudWebViewConfiguration()
     ) {
         self.source = source
         self._state = state
         self.configuration = configuration
-        self.integration = integration
-        self.activity = activity
     }
 
     public func makeCoordinator() -> HudWebViewCoordinator {
-        HudWebViewCoordinator(state: $state, integration: integration)
+        HudWebViewCoordinator(state: $state)
     }
 
     public func makeNSView(context: Context) -> WKWebView {
-        let webView = HudWebViewPlatform.makeWebView(configuration, coordinator: context.coordinator)
+        let webView = HudWebViewPlatform.makeWebView(configuration)
         context.coordinator.attach(to: webView)
-        context.coordinator.setActivity(activity)
         context.coordinator.load(source, in: webView)
         return webView
     }
@@ -139,7 +123,6 @@ public struct HudWebView: NSViewRepresentable {
     public func updateNSView(_ webView: WKWebView, context: Context) {
         context.coordinator.state = $state
         HudWebViewPlatform.apply(configuration, to: webView)
-        context.coordinator.setActivity(activity)
         context.coordinator.load(source, in: webView)
     }
 
@@ -149,68 +132,38 @@ public struct HudWebView: NSViewRepresentable {
 }
 #endif
 
-@MainActor
-public final class HudWebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDelegate, WKScriptMessageHandlerWithReply {
+public final class HudWebViewCoordinator: NSObject, WKNavigationDelegate {
     var state: Binding<HudWebViewState>
-    private let integration: HudWebViewIntegration?
     private var lastSource: HudWebViewSource?
-    private var activity: HudWebViewActivity?
-    private var outstandingReplies: [UUID: HudWebViewReply] = [:]
     private var progressObservation: NSKeyValueObservation?
     private var titleObservation: NSKeyValueObservation?
     private var urlObservation: NSKeyValueObservation?
     private var loadingObservation: NSKeyValueObservation?
 
-    init(state: Binding<HudWebViewState>, integration: HudWebViewIntegration?) {
+    init(state: Binding<HudWebViewState>) {
         self.state = state
-        self.integration = integration
-    }
-
-    func install(in controller: WKUserContentController) {
-        guard let integration else { return }
-        for script in integration.userScripts {
-            controller.addUserScript(WKUserScript(
-                source: script.source,
-                injectionTime: script.injectionTime.webKitValue,
-                forMainFrameOnly: script.forMainFrameOnly,
-                in: .page
-            ))
-        }
-        for registration in integration.messageHandlers {
-            controller.addScriptMessageHandler(self, contentWorld: .page, name: registration.name)
-        }
     }
 
     func attach(to webView: WKWebView) {
         webView.navigationDelegate = self
-        webView.uiDelegate = self
         observe(webView)
         publish(webView)
     }
 
     func load(_ source: HudWebViewSource, in webView: WKWebView) {
         guard source != lastSource else { return }
-        if lastSource != nil {
-            cancelOutstandingReplies()
-            integration?.onReset?(.sourceChanged)
-        }
         lastSource = source
         state.wrappedValue.errorMessage = nil
 
         switch source {
         case .url(let url):
             webView.load(URLRequest(url: url))
-        case .file(let url, let readAccessRoot):
-            webView.loadFileURL(url, allowingReadAccessTo: readAccessRoot)
         case .html(let html, let baseURL):
             webView.loadHTMLString(html, baseURL: baseURL)
         }
     }
 
     func tearDown(_ webView: WKWebView) {
-        cancelOutstandingReplies()
-        integration?.onReset?(.dismantled)
-        uninstall(from: webView.configuration.userContentController)
         progressObservation?.invalidate()
         titleObservation?.invalidate()
         urlObservation?.invalidate()
@@ -224,119 +177,6 @@ public final class HudWebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDe
         webView.uiDelegate = nil
         webView.loadHTMLString("", baseURL: nil)
         lastSource = nil
-    }
-
-    func setActivity(_ next: HudWebViewActivity) {
-        guard next != activity else { return }
-        activity = next
-        integration?.onActivityChange?(next)
-    }
-
-    private func uninstall(from controller: WKUserContentController) {
-        guard let integration else { return }
-        for registration in integration.messageHandlers {
-            controller.removeScriptMessageHandler(forName: registration.name, contentWorld: .page)
-        }
-        controller.removeAllUserScripts()
-    }
-
-    private func cancelOutstandingReplies() {
-        let replies = Array(outstandingReplies.values)
-        outstandingReplies.removeAll()
-        for reply in replies { reply.cancel() }
-    }
-
-    public func userContentController(
-        _ userContentController: WKUserContentController,
-        didReceive message: WKScriptMessage,
-        replyHandler: @escaping (Any?, String?) -> Void
-    ) {
-        guard let registration = integration?.messageHandlers.first(where: { $0.name == message.name }) else {
-            replyHandler(nil, "unsupported_handler")
-            return
-        }
-        let id = UUID()
-        let reply = HudWebViewReply(completion: replyHandler) { [weak self] in
-            self?.outstandingReplies.removeValue(forKey: id)
-        }
-        outstandingReplies[id] = reply
-        registration.handler(message.body, reply)
-    }
-
-    public func webViewWebContentProcessDidTerminate(_ webView: WKWebView) {
-        guard let source = lastSource else { return }
-        cancelOutstandingReplies()
-        integration?.onReset?(.processTerminated)
-        uninstall(from: webView.configuration.userContentController)
-        install(in: webView.configuration.userContentController)
-        lastSource = nil
-        load(source, in: webView)
-    }
-
-    public func webView(
-        _ webView: WKWebView,
-        decidePolicyFor navigationAction: WKNavigationAction,
-        decisionHandler: @escaping (WKNavigationActionPolicy) -> Void
-    ) {
-        guard let url = navigationAction.request.url else {
-            decisionHandler(.cancel)
-            return
-        }
-        guard case .file(_, let root) = lastSource else {
-            decisionHandler(.allow)
-            return
-        }
-        if url.isFileURL {
-            let candidate = url.standardizedFileURL.resolvingSymlinksInPath().path
-            let rootPath = root.standardizedFileURL.resolvingSymlinksInPath().path
-            let prefix = rootPath.hasSuffix("/") ? rootPath : rootPath + "/"
-            decisionHandler(candidate == rootPath || candidate.hasPrefix(prefix) ? .allow : .cancel)
-            return
-        }
-        if url.scheme?.lowercased() == "https" {
-            integration?.onOpenExternalURL?(url)
-        }
-        decisionHandler(.cancel)
-    }
-
-    public func webView(
-        _ webView: WKWebView,
-        createWebViewWith configuration: WKWebViewConfiguration,
-        for navigationAction: WKNavigationAction,
-        windowFeatures: WKWindowFeatures
-    ) -> WKWebView? {
-        if let url = navigationAction.request.url, url.scheme?.lowercased() == "https" {
-            integration?.onOpenExternalURL?(url)
-        }
-        return nil
-    }
-
-    public func webView(
-        _ webView: WKWebView,
-        runJavaScriptAlertPanelWithMessage message: String,
-        initiatedByFrame frame: WKFrameInfo,
-        completionHandler: @escaping () -> Void
-    ) {
-        completionHandler()
-    }
-
-    public func webView(
-        _ webView: WKWebView,
-        runJavaScriptConfirmPanelWithMessage message: String,
-        initiatedByFrame frame: WKFrameInfo,
-        completionHandler: @escaping (Bool) -> Void
-    ) {
-        completionHandler(false)
-    }
-
-    public func webView(
-        _ webView: WKWebView,
-        runJavaScriptTextInputPanelWithPrompt prompt: String,
-        defaultText: String?,
-        initiatedByFrame frame: WKFrameInfo,
-        completionHandler: @escaping (String?) -> Void
-    ) {
-        completionHandler(nil)
     }
 
     public func webView(_ webView: WKWebView, didStartProvisionalNavigation navigation: WKNavigation!) {
@@ -389,17 +229,12 @@ public final class HudWebViewCoordinator: NSObject, WKNavigationDelegate, WKUIDe
 }
 
 private enum HudWebViewPlatform {
-    @MainActor
-    static func makeWebView(
-        _ configuration: HudWebViewConfiguration,
-        coordinator: HudWebViewCoordinator
-    ) -> WKWebView {
+    static func makeWebView(_ configuration: HudWebViewConfiguration) -> WKWebView {
         let webConfiguration = WKWebViewConfiguration()
         webConfiguration.defaultWebpagePreferences.allowsContentJavaScript = configuration.allowsJavaScript
         if configuration.usesNonPersistentDataStore {
             webConfiguration.websiteDataStore = .nonPersistent()
         }
-        coordinator.install(in: webConfiguration.userContentController)
 
         let webView = WKWebView(frame: .zero, configuration: webConfiguration)
         apply(configuration, to: webView)

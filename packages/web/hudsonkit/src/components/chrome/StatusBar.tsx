@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect } from 'react';
-import { Clock, Map, Maximize2 } from '../../icons';
+import { Clock, Map, Maximize2 } from 'lucide-react';
 import { PANEL_STYLES } from '../../lib/theme';
 import type { StatusState } from '../../types/app';
 
@@ -28,10 +28,6 @@ interface StatusBarProps {
   onToggleTerminal?: () => void;
   /** Whether the terminal is currently open */
   isTerminalOpen?: boolean;
-  /** Label for the terminal toggle (defaults to "Console") */
-  terminalLabel?: string;
-  /** Position inside an anchored shell row instead of against the viewport. */
-  embedded?: boolean;
 }
 
 const STATUS_COLORS = {
@@ -59,8 +55,6 @@ const StatusBar: React.FC<StatusBarProps> = ({
   onStatusClick,
   onToggleTerminal,
   isTerminalOpen = false,
-  terminalLabel = 'Console',
-  embedded = false,
 }) => {
   const [time, setTime] = useState(new Date());
   const [vpCopied, setVpCopied] = useState(false);
@@ -93,14 +87,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
     } catch { /* ignore */ }
   };
 
-  const surfaceClassName = embedded
-    ? 'relative h-full w-full bg-card/95 backdrop-blur-xl'
-    : PANEL_STYLES.statusBar;
-
   return (
     <div
       data-frame-panel="status-bar"
-      className={`${surfaceClassName} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[9px] md:text-[10px] text-foreground pointer-events-auto overflow-hidden`}
+      className={`${PANEL_STYLES.statusBar} h-7 flex items-center justify-between gap-3 px-3 select-none font-mono text-[9px] md:text-[10px] text-foreground pointer-events-auto overflow-hidden`}
       style={chromeBorderStyle}
     >
       {/* LEFT: Minimap toggle + Status indicator + App-specific */}
@@ -191,10 +181,10 @@ const StatusBar: React.FC<StatusBarProps> = ({
                   ? 'text-accent'
                   : 'text-muted-foreground hover:text-foreground'
               }`}
-              title={`Toggle ${terminalLabel} (Ctrl+\`)`}
+              title="Toggle Terminal (Ctrl+`)"
             >
               <span className="text-[10px]">{'>'}_</span>
-              <span className="uppercase text-[9px] font-light tracking-[0.18em]">{terminalLabel}</span>
+              <span className="uppercase text-[9px] font-light tracking-[0.18em]">Console</span>
             </button>
             <span aria-hidden="true" className="text-muted-foreground/40 select-none">·</span>
           </>

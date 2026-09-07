@@ -17,12 +17,6 @@ The primitive is deliberately narrow:
 
 HudPairing is not a session manager, app sync engine, WebRTC layer, Bonjour wrapper, or device-to-device mesh.
 
-Route discovery, user route preferences, LAN/Tailscale/managed-relay fallback,
-and winning-route persistence belong to the adjacent
-[`HudConnection` orchestration layer](./hud-connection-orchestration.md).
-Pairing establishes identity and trust; connection orchestration selects a
-trusted route without hardcoding any one app's cascade.
-
 ## Reference pattern harvested
 
 Talkie and `talkie-companion-poc` provide the reference implementation. The canonical production shape is:

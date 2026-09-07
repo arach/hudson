@@ -1,6 +1,6 @@
 'use client';
 
-import { Database, Layers3 } from '../../icons';
+import { Database, Layers3 } from 'lucide-react';
 import { useWorkflowLab } from './WorkflowLabProvider';
 
 export function WorkflowLabLeftPanel() {

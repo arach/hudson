@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ChevronDown } from '../../icons';
+import { ChevronDown } from 'lucide-react';
 import type { HudDensity } from './types';
 
 export interface HudSelectProps

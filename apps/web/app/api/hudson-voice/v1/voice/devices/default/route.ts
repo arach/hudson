@@ -1,59 +1,24 @@
 import {
   assertHudsonVoiceSameOriginRequest,
   jsonHudsonVoiceError,
+  readHudsonVoiceRuntimeCapability,
 } from '@/app/lib/hudsonVoiceRuntime';
-import {
-  buildHudsonVoiceDeviceList,
-  readHudsonVoiceInputDeviceCache,
-} from '@/app/lib/hudsonVoiceDeviceCache';
-import { writeHudsonVoicePreferences } from '@/app/lib/hudsonVoicePreferences';
 
 export const runtime = 'nodejs';
 
 export async function PUT(request: Request) {
   try {
     assertHudsonVoiceSameOriginRequest(request);
+    readHudsonVoiceRuntimeCapability();
     const body = await request.json().catch(() => ({}));
-    const deviceId = readDeviceId(body);
-    const cache = readHudsonVoiceInputDeviceCache();
-    if (
-      deviceId
-      && cache?.devices.length
-      && !cache.devices.some(device => device.id === deviceId)
-    ) {
-      return Response.json(
-        { error: `Hudson Voice input device was not found: ${deviceId}` },
-        { status: 400 },
-      );
-    }
-    const preferences = writeHudsonVoicePreferences({
-      preferredInputDeviceId: deviceId,
-    });
-    const { devices, defaultDeviceId, source } = buildHudsonVoiceDeviceList(preferences.preferredInputDeviceId);
-
+    const deviceId = body && typeof body === 'object' && 'deviceId' in body
+      ? (body as { deviceId?: unknown }).deviceId
+      : undefined;
     return Response.json({
-      devices,
-      selectedDeviceId: preferences.preferredInputDeviceId,
-      defaultDeviceId,
-      source,
-      settings: preferences,
-      input: {
-        selectedDeviceId: preferences.preferredInputDeviceId,
-        selectedDeviceName: devices.find(device => device.id === preferences.preferredInputDeviceId)?.name ?? null,
-        defaultDeviceId,
-      },
+      devices: [],
+      selectedDeviceId: typeof deviceId === 'string' ? deviceId : null,
     });
   } catch (error) {
     return jsonHudsonVoiceError(error);
   }
-}
-
-function readDeviceId(body: unknown): string | null {
-  if (!body || typeof body !== 'object') return null;
-  const record = body as Record<string, unknown>;
-  const value = record.deviceId ?? record.inputDeviceId;
-  if (value === null) return null;
-  if (typeof value !== 'string') return null;
-  const trimmed = value.trim();
-  return trimmed ? trimmed : null;
 }

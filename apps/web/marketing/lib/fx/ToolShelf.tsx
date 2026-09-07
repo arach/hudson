@@ -73,7 +73,7 @@ export function ToolShelf({ note }: { note?: string }) {
         marginLeft: 'auto',
         width: 88,
         alignSelf: 'start',
-        border: 'var(--stroke-w) solid var(--ink)',
+        border: '1.5px solid var(--ink)',
         background: 'var(--paper)',
         boxShadow: '0 4px 0 var(--paper-edge)',
         fontFamily: 'var(--font-mono)',
@@ -89,7 +89,7 @@ export function ToolShelf({ note }: { note?: string }) {
           textTransform: 'uppercase',
           padding: '6px 8px',
           textAlign: 'center',
-          borderBottom: 'var(--stroke-w) solid var(--ink)',
+          borderBottom: '1.5px solid var(--ink)',
         }}
       >
         Toolkit
@@ -136,7 +136,7 @@ export function ToolShelf({ note }: { note?: string }) {
         <div
           style={{
             background: 'var(--paper-2)',
-            borderTop: 'var(--stroke-w) solid var(--ink)',
+            borderTop: '1.5px solid var(--ink)',
             padding: '6px 7px',
             fontSize: 8,
             letterSpacing: '0.14em',

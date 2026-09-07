@@ -8,10 +8,6 @@ import {
   readHudsonVoiceRuntimeCapability,
   type HudsonVoiceRpcEnvelope,
 } from '@/app/lib/hudsonVoiceRuntime';
-import {
-  createHudsonVoiceSessionDefaults,
-  readHudsonVoicePreferences,
-} from '@/app/lib/hudsonVoicePreferences';
 
 export const runtime = 'nodejs';
 
@@ -25,13 +21,8 @@ export async function POST(request: Request) {
   try {
     assertHudsonVoiceSameOriginRequest(request);
     const body = await readJsonObject(request);
-    const preferences = readHudsonVoicePreferences();
-    const params = {
-      ...createHudsonVoiceSessionDefaults(preferences),
-      ...cleanLiveSessionRequest(body),
-    };
     const runtimeCapability = readHudsonVoiceRuntimeCapability();
-    const rpc = createHudsonVoiceRpcPayload(runtimeCapability, 'transcribe.startSession', params);
+    const rpc = createHudsonVoiceRpcPayload(runtimeCapability, 'transcribe.startSession', body);
     const encoder = new TextEncoder();
     const socket = openHudsonVoiceRuntimeSocket(runtimeCapability);
     let cleanupOnCancel = () => {
@@ -148,18 +139,6 @@ export async function POST(request: Request) {
   } catch (error) {
     return jsonHudsonVoiceError(error);
   }
-}
-
-function cleanLiveSessionRequest(body: Record<string, unknown>): Record<string, unknown> {
-  const next = { ...body };
-  for (const key of ['deviceId', 'modelId', 'language', 'mode']) {
-    if (typeof next[key] === 'string' && next[key].trim()) {
-      next[key] = next[key].trim();
-    } else {
-      delete next[key];
-    }
-  }
-  return next;
 }
 
 async function readJsonObject(request: Request): Promise<Record<string, unknown>> {

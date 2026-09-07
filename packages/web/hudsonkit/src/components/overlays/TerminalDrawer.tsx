@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useCallback, useRef } from 'react';
-import { X, Maximize2, Minimize2, Terminal } from '../../icons';
+import { X, Maximize2, Minimize2, Terminal } from 'lucide-react';
 import { SHELL_THEME } from '../../lib/theme';
 import {
   HUDSON_TERMINAL_DRAWER_CONTENT_SELECTOR,
@@ -128,12 +128,7 @@ const TerminalDrawer: React.FC<TerminalDrawerProps> = ({
           <button onClick={onToggleMaximize} className="p-1.5 rounded hover:bg-accent/10 text-muted-foreground hover:text-foreground transition-colors" title={isMaximized ? "Restore" : "Maximize"}>
             {isMaximized ? <Minimize2 size={14} /> : <Maximize2 size={14} />}
           </button>
-          <button
-            onClick={onClose}
-            className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors"
-            title="Close console"
-            aria-label="Close console"
-          >
+          <button onClick={onClose} className="p-1.5 rounded hover:bg-destructive/10 text-muted-foreground hover:text-destructive transition-colors" title="Close">
             <X size={14} />
           </button>
         </div>

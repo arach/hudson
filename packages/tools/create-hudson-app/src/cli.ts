@@ -30,7 +30,7 @@ export function parseArgs(argv: string[]): Partial<CLIOptions> & { help?: boolea
       opts.help = true;
     } else if (arg === '--tier' && args[i + 1]) {
       const t = args[++i];
-      if (t === 'minimal' || t === 'standard' || t === 'full' || t === 'standalone') {
+      if (t === 'minimal' || t === 'standard' || t === 'full') {
         opts.tier = t;
       }
     } else if (arg === '--mode' && args[i + 1]) {
@@ -80,21 +80,11 @@ export async function promptInteractive(partial: Partial<CLIOptions>): Promise<C
     let tier = partial.tier;
     if (!tier) {
       console.log(`  ${bold('?')} Tier:`);
-      console.log(`    ${cyan('1)')} Minimal    ${dim('— Provider + Content + basic hooks (monorepo app)')}`);
-      console.log(`    ${cyan('2)')} Standard   ${dim('— + LeftPanel + Inspector + intents')}`);
-      console.log(`    ${cyan('3)')} Full       ${dim('— + tools + Terminal + LeftFooter + manifest')}`);
-      console.log(`    ${cyan('4)')} Standalone ${dim('— Vite+TanStack consumer client (HUD-014)')}`);
-      const tierInput = await rl.question(`  ${dim('Choose [1/2/3/4]')}: `);
-      const tierMap: Record<string, Tier> = {
-        '1': 'minimal',
-        '2': 'standard',
-        '3': 'full',
-        '4': 'standalone',
-        minimal: 'minimal',
-        standard: 'standard',
-        full: 'full',
-        standalone: 'standalone',
-      };
+      console.log(`    ${cyan('1)')} Minimal   ${dim('— Provider + Content + basic hooks (5 files)')}`);
+      console.log(`    ${cyan('2)')} Standard  ${dim('— + LeftPanel + Inspector + intents (8 files)')}`);
+      console.log(`    ${cyan('3)')} Full      ${dim('— + tools + Terminal + LeftFooter + manifest (12 files)')}`);
+      const tierInput = await rl.question(`  ${dim('Choose [1/2/3]')}: `);
+      const tierMap: Record<string, Tier> = { '1': 'minimal', '2': 'standard', '3': 'full', 'minimal': 'minimal', 'standard': 'standard', 'full': 'full' };
       tier = tierMap[tierInput.trim()] ?? 'minimal';
     }
 
@@ -129,10 +119,8 @@ export function printHelp() {
     bun run packages/tools/create-hudson-app/src/index.ts ${cyan('<app-name>')} [options]
 
   ${bold('Options:')}
-    --tier ${dim('minimal|standard|full|standalone')}
-                                    App complexity tier
-                                    ${dim('standalone = Vite+TanStack consumer (not monorepo)')}
-    --mode ${dim('panel|canvas')}             Layout mode (monorepo tiers)
+    --tier ${dim('minimal|standard|full')}    App complexity tier
+    --mode ${dim('panel|canvas')}             Layout mode
     --description ${dim('"..."')}             App description
     --no-workspace                  Skip workspace file generation
     -h, --help                      Show this help
@@ -140,6 +128,5 @@ export function printHelp() {
   ${bold('Examples:')}
     bun run packages/tools/create-hudson-app/src/index.ts my-browser
     bun run packages/tools/create-hudson-app/src/index.ts my-editor --tier full --mode canvas
-    bun run packages/tools/create-hudson-app/src/index.ts my-client --tier standalone --no-workspace
 `);
 }

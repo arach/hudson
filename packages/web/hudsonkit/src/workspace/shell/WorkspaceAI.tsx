@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
-import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from '../../icons';
+import { Send, Sparkles, Loader2, Bot, ImageIcon, X, Camera, Mic, Square, AlertTriangle } from 'lucide-react';
 import Markdown from 'react-markdown';
 import {
   HudsonVoiceClientError,
@@ -51,10 +51,6 @@ type VoiceStatus =
 
 const DEFAULT_VOICE_SETTINGS: VoiceSettings = {
   autoSend: true,
-  inputDeviceId: '',
-  transcriptionModel: 'parakeet:v3',
-  transcriptionLanguage: 'en',
-  captureMode: 'push_to_talk',
   speakReplies: false,
   replyProvider: 'vox',
   replyModel: 'avspeech:system',
@@ -840,10 +836,8 @@ export function WorkspaceAI({
 
       const session = await voiceClient.startLiveSession({
         surface: 'hudson-ai',
-        language: voiceSettingsRef.current.transcriptionLanguage,
-        modelId: voiceSettingsRef.current.transcriptionModel,
-        mode: voiceSettingsRef.current.captureMode,
-        deviceId: voiceSettingsRef.current.inputDeviceId || undefined,
+        language: 'en',
+        mode: 'push_to_talk',
         metadata: {
           workspaceId: workspace.id,
         },

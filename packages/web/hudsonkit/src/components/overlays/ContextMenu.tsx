@@ -3,18 +3,6 @@
 import React, { useRef } from 'react';
 import { ContextMenu } from '@base-ui-components/react/context-menu';
 import { motion, AnimatePresence } from 'motion/react';
-import {
-  chromeBorderStyle,
-  chromeDividerStyle,
-  OVERLAY_GROUP_LABEL,
-  OVERLAY_ITEM,
-  OVERLAY_ITEM_ICON,
-  OVERLAY_ITEM_LABEL,
-  OVERLAY_ITEM_SHORTCUT,
-  OVERLAY_POPUP,
-  OVERLAY_POSITIONER,
-  OVERLAY_SEPARATOR,
-} from './menuChrome';
 
 // ---------------------------------------------------------------------------
 // Types
@@ -65,18 +53,26 @@ function isGroup(entry: ContextMenuEntry): entry is ContextMenuGroup {
   return 'type' in entry && entry.type === 'group';
 }
 
+const chromeBorderStyle = {
+  borderColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
+const chromeDividerStyle = {
+  backgroundColor: 'var(--hud-chrome-border, oklch(var(--border)))',
+} satisfies React.CSSProperties;
+
 function MenuItemRow({ item }: { item: ContextMenuAction }) {
   return (
     <ContextMenu.Item
       disabled={item.disabled}
       onClick={item.action}
       label={item.label}
-      className={OVERLAY_ITEM}
+      className="flex items-center gap-3 px-3 py-1.5 text-[12px] font-mono text-popover-foreground outline-none select-none data-[highlighted]:bg-accent/10 data-[highlighted]:text-accent data-[disabled]:opacity-40 data-[disabled]:pointer-events-none cursor-default"
     >
-      {item.icon && <span className={OVERLAY_ITEM_ICON}>{item.icon}</span>}
-      <span className={OVERLAY_ITEM_LABEL}>{item.label}</span>
+      {item.icon && <span className="w-4 h-4 flex items-center justify-center text-muted-foreground">{item.icon}</span>}
+      <span className="flex-1">{item.label}</span>
       {item.shortcut && (
-        <span className={OVERLAY_ITEM_SHORTCUT}>{item.shortcut}</span>
+        <span className="text-muted-foreground text-[10px] ml-4 tracking-wider">{item.shortcut}</span>
       )}
     </ContextMenu.Item>
   );
@@ -92,24 +88,18 @@ const PopupContent = React.forwardRef<HTMLDivElement, { items: ContextMenuEntry[
       transition={{ duration: 0.1, ease: 'easeOut' }}
     >
       <ContextMenu.Popup
-        className={OVERLAY_POPUP}
+        className="bg-popover/95 backdrop-blur-xl border rounded-lg shadow-2xl py-1 min-w-[180px] z-[200] outline-none"
         style={chromeBorderStyle}
         aria-label="Context menu"
       >
         {items.map((entry, idx) => {
           if (isSeparator(entry)) {
-            return (
-              <ContextMenu.Separator
-                key={`sep-${idx}`}
-                className={OVERLAY_SEPARATOR}
-                style={chromeDividerStyle}
-              />
-            );
+            return <ContextMenu.Separator key={`sep-${idx}`} className="h-px my-1" style={chromeDividerStyle} />;
           }
           if (isGroup(entry)) {
             return (
               <ContextMenu.Group key={`grp-${idx}`}>
-                <ContextMenu.GroupLabel className={OVERLAY_GROUP_LABEL}>
+                <ContextMenu.GroupLabel className="px-3 py-1 text-[10px] font-mono uppercase tracking-widest text-muted-foreground">
                   {entry.label}
                 </ContextMenu.GroupLabel>
                 {entry.items.map(item => (
@@ -203,7 +193,7 @@ export function HudsonContextMenu({
         {children}
       </ContextMenu.Trigger>
       <ContextMenu.Portal>
-        <ContextMenu.Positioner className={OVERLAY_POSITIONER} sideOffset={4}>
+        <ContextMenu.Positioner className="z-[200]" sideOffset={4}>
           <AnimatePresence>
             <PopupContent items={items} />
           </AnimatePresence>

@@ -15,7 +15,11 @@
     "resolveJsonModule": true,
     "isolatedModules": true,
     "verbatimModuleSyntax": true,
-    "allowImportingTsExtensions": true,
+    "baseUrl": ".",
+    "paths": {
+      "studio": ["../../../studio/src/index.ts"],
+      "studio/*": ["../../../studio/src/*"]
+    },
     "noEmit": true,
     "useDefineForClassFields": true,
     "types": ["vite/client", "node"]

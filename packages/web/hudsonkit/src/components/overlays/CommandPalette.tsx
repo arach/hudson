@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, useId, useRef } from 'react';
-import { Search, CornerDownLeft } from '../../icons';
+import { Search, CornerDownLeft } from 'lucide-react';
 import { HObservabilityDefault } from '../../observability';
 import type { FeatureFlagGate } from '../../flags/types';
 

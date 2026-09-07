@@ -1,8 +1,7 @@
 import React from 'react';
-import { Search, X } from '../../icons';
+import { Search, X } from 'lucide-react';
 import { usePlatform } from '../../platform/PlatformContext';
 import { usePlatformLayout } from '../../platform/usePlatformLayout';
-import { HudsonKitLockup } from '../brand';
 
 interface NavigationBarProps {
   /** App title/branding */
@@ -20,21 +19,42 @@ interface NavigationBarProps {
     onChange: (value: string) => void;
     placeholder?: string;
   };
-  /** Position inside an anchored shell row instead of against the viewport. */
-  embedded?: boolean;
-  /** Render the Hudson mark beside the title. Defaults to true. */
-  showMark?: boolean;
 }
 
+/**
+ * Drafting-style mark — a 14px registration glyph (square + crosshair + tick)
+ * intended to read as a title-block stamp from an engineering drawing.
+ * Strokes use `currentColor` so it themes through `text-foreground` or accent.
+ */
+const HudsonMark: React.FC<{ title: string }> = ({ title }) => (
+  <svg
+    width="14"
+    height="14"
+    viewBox="0 0 14 14"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="0.75"
+    strokeLinecap="square"
+    aria-hidden="true"
+    focusable="false"
+    role="img"
+    style={{ flex: 'none' }}
+  >
+    <title>{title}</title>
+    {/* Outer registration box */}
+    <rect x="1" y="1" width="12" height="12" />
+    {/* Crosshair */}
+    <line x1="7" y1="3.25" x2="7" y2="10.75" />
+    <line x1="3.25" y1="7" x2="10.75" y2="7" />
+    {/* Center pin — small filled accent dot */}
+    <circle cx="7" cy="7" r="0.9" fill="var(--hud-accent, currentColor)" stroke="none" />
+    {/* Title-block tick on bottom edge */}
+    <line x1="1" y1="11.25" x2="13" y2="11.25" strokeWidth="0.5" opacity="0.55" />
+  </svg>
+);
+
 const NavigationBar: React.FC<NavigationBarProps> = ({
-  title,
-  subtitle,
-  center,
-  actions,
-  onTitleClick,
-  search,
-  embedded = false,
-  showMark = true,
+  title, subtitle, center, actions, onTitleClick, search,
 }) => {
   const { dragRegionProps, onInteractiveMouseDown } = usePlatform();
   const { navTotalHeight } = usePlatformLayout();
@@ -43,19 +63,12 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
   return (
     <div
       data-frame-panel="navigation"
-      className={`${embedded ? 'relative h-full w-full' : 'fixed left-0 right-0 top-0'} z-50 pointer-events-auto`}
+      className="fixed top-0 left-0 right-0 z-50 pointer-events-auto"
       {...dragRegionProps}
     >
       <div
-        className={`flex items-end bg-background/95 px-4 ${
-          embedded ? '' : 'border-b shadow-[var(--hud-shadow-nav)]'
-        }`}
-        style={{
-          height: embedded ? '100%' : navTotalHeight,
-          borderColor: embedded
-            ? undefined
-            : 'var(--hud-chrome-border, oklch(var(--border) / 0.8))',
-        }}
+        className="bg-background/95 border-b shadow-[var(--hud-shadow-nav)] flex items-end px-4"
+        style={{ height: navTotalHeight, borderColor: 'var(--hud-chrome-border, oklch(var(--border) / 0.8))' }}
       >
         {/* Left: Branding */}
         <div className="absolute left-4 bottom-0 h-12 z-10 flex items-center gap-3 select-none" onMouseDown={onInteractiveMouseDown}>
@@ -64,13 +77,10 @@ const NavigationBar: React.FC<NavigationBarProps> = ({
             aria-label={title}
             className="group flex items-center gap-[7px] text-foreground/85 hover:text-foreground transition-colors bg-transparent border-none cursor-pointer focus-visible:ring-2 focus-visible:ring-ring focus-visible:outline-none rounded-sm px-0.5 -mx-0.5 leading-none"
           >
-            {showMark ? (
-              <HudsonKitLockup markSize={15} wordmark={title} gap={7} />
-            ) : (
-              <span className="font-mono text-[11px] font-semibold uppercase tracking-[0.14em]">
-                {title}
-              </span>
-            )}
+            <HudsonMark title={title} />
+            <span className="font-mono text-[11px] tracking-[0.06em] lowercase leading-none">
+              {title}
+            </span>
           </button>
           {subtitle && (
             <span className="text-xs font-mono font-light text-muted-foreground">{subtitle}</span>

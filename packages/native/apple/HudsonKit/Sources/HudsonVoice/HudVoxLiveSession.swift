@@ -78,9 +78,6 @@ public final class HudVoxLiveSession: @unchecked Sendable {
         if let currentId {
             params["sessionId"] = .string(currentId)
         }
-        if let authToken = options.authToken, !authToken.isEmpty {
-            params["authToken"] = .string(authToken)
-        }
         try await send(method: "transcribe.stopSession", params: params)
     }
 
@@ -89,9 +86,6 @@ public final class HudVoxLiveSession: @unchecked Sendable {
         var params: [String: HudJSONValue] = ["clientId": .string(options.clientId)]
         if let currentId {
             params["sessionId"] = .string(currentId)
-        }
-        if let authToken = options.authToken, !authToken.isEmpty {
-            params["authToken"] = .string(authToken)
         }
         try await send(method: "transcribe.cancelSession", params: params)
         close()

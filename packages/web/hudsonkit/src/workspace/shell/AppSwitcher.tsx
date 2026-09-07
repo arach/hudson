@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useRef, useEffect } from 'react';
-import { ChevronDown, Check } from '../../icons';
+import { ChevronDown, Check } from 'lucide-react';
 import type { HudsonApp } from '../../index';
 
 interface AppSwitcherProps {

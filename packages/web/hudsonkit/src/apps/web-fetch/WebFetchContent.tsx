@@ -1,6 +1,6 @@
 'use client';
 
-import { Search, Loader2, Download, ImageIcon, ArrowRight, Trash2, Clock } from '../../icons';
+import { Search, Loader2, Download, ImageIcon, ArrowRight, Trash2, Clock } from 'lucide-react';
 import { useWebFetch } from './WebFetchProvider';
 
 function formatSize(bytes: number): string {

@@ -23,7 +23,7 @@ import {
   Sparkles,
   SwatchBook,
   Type,
-} from 'hudsonkit/icons';
+} from 'lucide-react';
 
 type PreviewSection = 'overview' | 'surfaces' | 'typography';
 type PreviewDensity = 'calm' | 'compact';

@@ -1,6 +1,6 @@
 'use client';
 
-import { ChevronRight } from '../../icons';
+import { ChevronRight } from 'lucide-react';
 import type { AppTool } from '../../index';
 
 interface ToolAccordionProps {

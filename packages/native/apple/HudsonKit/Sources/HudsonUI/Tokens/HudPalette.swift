@@ -111,12 +111,6 @@ public enum HudSurface {
     public static func tintStrong(_ color: Color)  -> Color { color.opacity(0.60) }
     public static func tintFocus(_ color: Color)   -> Color { color.opacity(0.85) }
 
-    /// Near-opaque backdrop for a transient status overlay, retaining a small
-    /// amount of the underlying surface context.
-    public static func statusOverlayBackdrop(_ color: Color) -> Color {
-        color.opacity(0.92)
-    }
-
     // Scrim helpers — replace `Color.black.opacity(0.X)` for sheets / overlays.
     public static var scrim: Color { Color.black.opacity(0.45) }
     public static var scrimHeavy: Color { Color.black.opacity(0.55) }

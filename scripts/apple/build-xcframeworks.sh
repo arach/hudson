@@ -22,9 +22,8 @@ Options:
   --keep-intermediates    Keep archives, DerivedData, and xcodebuild logs.
   -h, --help              Show this help.
 
-Each target is staged in an isolated Swift package. Previously built dependencies
-are consumed as binary targets, so downstream frameworks link them dynamically
-instead of copying their implementations into every XCFramework.
+The script always builds with HUDSONKIT_BINARY_DISTRIBUTION=1 so Package.swift
+emits dynamic library products suitable for framework archives.
 USAGE
 }
 
@@ -86,135 +85,6 @@ product_target_closure() {
       printf '%s\n' "$1"
       ;;
   esac
-}
-
-target_dependencies() {
-  case "$1" in
-    HudsonUI)
-      printf '%s\n' HudsonLive HudsonObservability
-      ;;
-    HudsonShell)
-      # HudsonLive is a public-interface dependency of HudsonUI, so it must be
-      # available while compiling HudsonShell even though Shell does not import it directly.
-      printf '%s\n' HudsonLive HudsonObservability HudsonUI
-      ;;
-  esac
-}
-
-write_isolated_package() {
-  local target="$1"
-  local package_dir="$2"
-  local source_dir="$repo_root/packages/native/apple/HudsonKit/Sources/$target"
-  local dependency
-  local -a target_deps=()
-
-  [[ -d "$source_dir" ]] || die "missing source directory for $target at $source_dir"
-  mkdir -p "$package_dir/Sources/$target" "$package_dir/Artifacts"
-  ditto "$source_dir" "$package_dir/Sources/$target"
-
-  while IFS= read -r dependency; do
-    [[ -n "$dependency" ]] || continue
-    [[ -d "$output_dir/$dependency.xcframework" ]] || \
-      die "$target requires $dependency.xcframework to be built first"
-    ditto "$output_dir/$dependency.xcframework" "$package_dir/Artifacts/$dependency.xcframework"
-    target_deps+=("$dependency")
-  done < <(target_dependencies "$target")
-
-  {
-    echo "// swift-tools-version: 5.9"
-    echo "import PackageDescription"
-    echo
-    echo "let package = Package("
-    echo "    name: \"${target}BinaryBuild\","
-    echo "    platforms: [.macOS(.v14)],"
-    echo "    products: ["
-    echo "        .library(name: \"$target\", type: .dynamic, targets: [\"$target\"]),"
-    echo "    ],"
-    echo "    targets: ["
-    if [[ ${#target_deps[@]} -gt 0 ]]; then
-      for dependency in "${target_deps[@]}"; do
-        echo "        .binaryTarget(name: \"$dependency\", path: \"Artifacts/$dependency.xcframework\"),"
-      done
-    fi
-    printf '        .target(name: "%s", dependencies: ' "$target"
-    if [[ ${#target_deps[@]} -gt 0 ]]; then
-      swift_array_literal "${target_deps[@]}"
-    else
-      printf '[]'
-    fi
-    echo ", path: \"Sources/$target\"),"
-    echo "    ]"
-    echo ")"
-  } > "$package_dir/Package.swift"
-}
-
-framework_binary() {
-  local framework_path="$1"
-  local target="$2"
-  if [[ -f "$framework_path/Versions/A/$target" ]]; then
-    printf '%s' "$framework_path/Versions/A/$target"
-  else
-    printf '%s' "$framework_path/$target"
-  fi
-}
-
-verify_dynamic_dependencies() {
-  local target="$1"
-  local framework_path="$2"
-  local binary
-  local dependency
-  local dependency_binary
-  local dependency_path
-  local arch
-  local class_violations
-  local ownership_violations
-
-  binary="$(framework_binary "$framework_path" "$target")"
-  [[ -f "$binary" ]] || die "missing framework binary for $target at $binary"
-  if ! lipo "$binary" -verify_arch "${macos_archs[@]}"; then
-    die "$target does not contain every requested architecture: ${macos_archs[*]}"
-  fi
-
-  while IFS= read -r dependency; do
-    [[ -n "$dependency" ]] || continue
-    dependency_binary="$(
-      find "$output_dir/$dependency.xcframework" -type f -name "$dependency" -print -quit
-    )"
-    [[ -f "$dependency_binary" ]] || \
-      die "missing dependency framework binary for $dependency"
-    dependency_path="@rpath/$dependency.framework/Versions/A/$dependency"
-    if ! otool -L "$binary" | grep -Fq "$dependency_path"; then
-      otool -L "$binary" >&2
-      die "$target does not dynamically link $dependency"
-    fi
-
-    for arch in "${macos_archs[@]}"; do
-      ownership_violations="$(
-        nm -arch "$arch" -U "$binary" \
-          | awk '{print $3}' \
-          | xcrun swift-demangle --compact \
-          | grep -E "^${dependency}\\." \
-          | head -n 20 \
-          || true
-      )"
-      if [[ -n "$ownership_violations" ]]; then
-        echo "$ownership_violations" >&2
-        die "$target ($arch) contains definitions owned by dependency $dependency"
-      fi
-
-      class_violations="$(
-        comm -12 \
-          <(otool -arch "$arch" -v -s __TEXT __objc_classname "$binary" \
-              | awk '$2 ~ /^[_A-Za-z]/ { print $2 }' | sort -u) \
-          <(otool -arch "$arch" -v -s __TEXT __objc_classname "$dependency_binary" \
-              | awk '$2 ~ /^[_A-Za-z]/ { print $2 }' | sort -u)
-      )"
-      if [[ -n "$class_violations" ]]; then
-        echo "$class_violations" >&2
-        die "$target ($arch) duplicates Objective-C classes from $dependency"
-      fi
-    done
-  done < <(target_dependencies "$target")
 }
 
 append_unique() {
@@ -358,9 +228,6 @@ echo "Building targets: ${build_targets[*]}"
 echo "macOS ARCHS: $archs"
 
 for target in "${build_targets[@]}"; do
-  archive_scheme="${target}BinaryBuild"
-  package_dir="$run_dir/packages/$target"
-  target_derived_data_dir="$derived_data_dir/$target"
   archive_path="$archive_dir/$target.xcarchive"
   xcframework_path="$output_dir/$target.xcframework"
   zip_path="$output_dir/$target-$version.xcframework.zip"
@@ -368,17 +235,18 @@ for target in "${build_targets[@]}"; do
 
   rm -rf "$archive_path" "$xcframework_path" "$zip_path"
 
-  write_isolated_package "$target" "$package_dir"
-
   echo "Archiving $target..."
   if ! (
-    cd "$package_dir"
+    cd "$repo_root"
+    HUDSONKIT_BINARY_DISTRIBUTION=1 \
+    HUDSONKIT_WITH_TERMINAL=0 \
+    HUDSONKIT_WITH_VOICE=0 \
     xcodebuild archive \
-      -scheme "$archive_scheme" \
+      -scheme "$target" \
       -configuration Release \
       -destination "generic/platform=macOS" \
       -archivePath "$archive_path" \
-      -derivedDataPath "$target_derived_data_dir" \
+      -derivedDataPath "$derived_data_dir" \
       SKIP_INSTALL=NO \
       BUILD_LIBRARY_FOR_DISTRIBUTION=YES \
       ONLY_ACTIVE_ARCH=NO \
@@ -400,11 +268,10 @@ for target in "${build_targets[@]}"; do
     die "expected one $target.framework in $archive_path, found ${#frameworks[@]}"
   fi
 
-  module_source="$target_derived_data_dir/Build/Intermediates.noindex/ArchiveIntermediates/$archive_scheme/BuildProductsPath/Release/$target.swiftmodule"
+  module_source="$derived_data_dir/Build/Intermediates.noindex/ArchiveIntermediates/$target/BuildProductsPath/Release/$target.swiftmodule"
   [[ -d "$module_source" ]] || die "missing Swift module files for $target at $module_source"
 
   framework_path="${frameworks[0]}"
-  verify_dynamic_dependencies "$target" "$framework_path"
   if [[ -d "$framework_path/Versions/A" ]]; then
     modules_parent="$framework_path/Versions/A/Modules"
     mkdir -p "$modules_parent"
@@ -431,10 +298,6 @@ for target in "${build_targets[@]}"; do
   checksum_targets+=("$target")
   checksum_values+=("$checksum")
   printf '%s  %s\n' "$checksum" "$(basename "$zip_path")" >> "$checksums_file"
-
-  if [[ $keep_intermediates -eq 0 ]]; then
-    rm -rf "$archive_path" "$target_derived_data_dir" "$package_dir"
-  fi
 done
 
 package_manifest="$output_dir/Package.swift"

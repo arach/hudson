@@ -8,7 +8,7 @@
  * changed key wipes users' saved layouts (risk R1 in the plan).
  */
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen, within } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 // NOTE: imported through the real package path (not the `hudsonkit` alias):
 // esbuild skips tsconfig discovery under node_modules, which breaks the
@@ -39,10 +39,7 @@ afterEach(() => {
   fetchMock.restore();
 });
 
-async function mountShell(options: {
-  persistSession?: boolean;
-  sideNavMode?: 'legacy' | 'anchored';
-} = {}) {
+async function mountShell(options: { persistSession?: boolean } = {}) {
   const fixture = makeTestWorkspace();
   const utils = render(
     <WorkspaceShell
@@ -50,7 +47,6 @@ async function mountShell(options: {
       defaultWorkspaceId="test"
       bootMode="none"
       persistSession={options.persistSession ?? true}
-      sideNavMode={options.sideNavMode}
     />,
   );
   // Flush post-mount microtasks (mocked fetch resolutions → setState).
@@ -199,34 +195,6 @@ describe('WorkspaceShell persistence keys (golden)', () => {
     // Terminal height + minimap ARE gated off.
     expect(keys).not.toContain('hudson.termH');
     expect(keys).not.toContain('hudson.minimap');
-  });
-});
-
-describe('WorkspaceShell anchored side navigation', () => {
-  it('keeps primary destinations and focused-app context in separate rails', async () => {
-    await mountShell({ sideNavMode: 'anchored' });
-
-    const primary = screen.getByRole('navigation', { name: 'Workspace destinations' });
-    expect(within(primary).getByRole('button', { name: 'Home' })).toBeInTheDocument();
-    expect(within(primary).getByRole('button', { name: 'Test alpha' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.getByRole('complementary', { name: 'Test alpha context' })).toBeInTheDocument();
-    expect(screen.getByTestId('left-panel-alpha')).toBeVisible();
-
-    const primaryToggle = screen.getByRole('button', { name: 'Toggle primary navigation' });
-    expect(screen.getAllByRole('button', { name: 'Toggle primary navigation' })).toHaveLength(1);
-    expect(primaryToggle).toHaveAttribute('aria-expanded', 'false');
-    fireEvent.click(primaryToggle);
-    expect(primaryToggle).toHaveAttribute('aria-expanded', 'true');
-
-    fireEvent.click(within(primary).getByRole('button', { name: 'Test beta' }));
-    expect(within(primary).getByRole('button', { name: 'Test beta' })).toHaveAttribute(
-      'aria-current',
-      'page',
-    );
-    expect(screen.queryByRole('complementary', { name: 'Test alpha context' })).not.toBeInTheDocument();
   });
 });
 

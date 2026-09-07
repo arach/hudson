@@ -22,7 +22,7 @@ export function Sheet02HalfPlotter() {
   const [phrase, setPhrase] = useState('DRAWN TO SPEC');
   const [draftPhrase, setDraftPhrase] = useState('DRAWN TO SPEC');
   const [speed, setSpeed] = useState(420);
-  const [weight, setWeight] = useState(0.7);
+  const [weight, setWeight] = useState(0.9);
   const [jitter, setJitter] = useState(0.4);
   const [accent, setAccent] = useState<PlotterAccent>('ink');
   const [paperTone, setPaperTone] = useState('var(--paper, oklch(0.96 0.005 200))');
