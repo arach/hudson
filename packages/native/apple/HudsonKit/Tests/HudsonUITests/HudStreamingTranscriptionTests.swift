@@ -200,3 +200,45 @@ struct HudStreamingTranscriptionTests {
     }
     #endif
 }
+
+#if canImport(Speech) && canImport(AVFAudio) && !os(watchOS) && compiler(>=6.2)
+@Suite("HudTranscriptionSampleClock")
+struct HudTranscriptionSampleClockTests {
+    @Test("Long streams preserve exact contiguous samples with nonzero source origins")
+    func contiguousAudio() throws {
+        for rate in [16_000, 24_000, 44_100, 48_000] {
+            for origin in [0, 7, 3_600] {
+                let chunkSize = rate / 10
+                var mismatches = 0
+                for index in 0..<3_000 {
+                    let seconds = Double(origin) + Double(index * chunkSize) / Double(rate)
+                    let time = try HudTranscriptionSampleClock.time(seconds: seconds, sampleRate: Double(rate))
+                    if time.value != Int64(origin * rate + index * chunkSize) { mismatches += 1 }
+                }
+                #expect(mismatches == 0)
+            }
+        }
+    }
+
+    @Test("Quantization preserves a genuine one-sample overlap or gap")
+    func distinctBoundaries() throws {
+        let rate = 24_000.0
+        let expected = 196_800.0
+        let overlap = try HudTranscriptionSampleClock.time(seconds: (expected - 1) / rate, sampleRate: rate)
+        let contiguous = try HudTranscriptionSampleClock.time(seconds: expected / rate, sampleRate: rate)
+        let gap = try HudTranscriptionSampleClock.time(seconds: (expected + 1) / rate, sampleRate: rate)
+        #expect(overlap.value == 196_799)
+        #expect(contiguous.value == 196_800)
+        #expect(gap.value == 196_801)
+    }
+
+    @Test("Sample clock rejects timestamps outside representable audio time")
+    func invalidTimes() {
+        for seconds in [Double.nan, .infinity, -1, .greatestFiniteMagnitude] {
+            #expect(throws: HudStreamingTranscriptionError.invalidTimeRange) {
+                try HudTranscriptionSampleClock.time(seconds: seconds, sampleRate: 24_000)
+            }
+        }
+    }
+}
+#endif

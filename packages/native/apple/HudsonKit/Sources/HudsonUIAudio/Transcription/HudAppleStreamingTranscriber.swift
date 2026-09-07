@@ -4,6 +4,22 @@ import CoreMedia
 @preconcurrency import AVFAudio
 import Speech
 
+/// Convert floating-point seconds once, rounding to the nearest source sample.
+/// CMTime(seconds:preferredTimescale:) may truncate an inexact Double one sample
+/// below its intended boundary, falsely rejecting contiguous chunks as overlap.
+enum HudTranscriptionSampleClock {
+    static func time(seconds: Double, sampleRate: Double) throws -> CMTime {
+        let ticks = (seconds * sampleRate).rounded()
+        guard seconds.isFinite, seconds >= 0, sampleRate.isFinite,
+              sampleRate >= 1, sampleRate <= 192_000,
+              sampleRate.rounded() == sampleRate,
+              ticks.isFinite, ticks >= 0, ticks < Double(Int64.max) else {
+            throw HudStreamingTranscriptionError.invalidTimeRange
+        }
+        return CMTime(value: Int64(ticks), timescale: CMTimeScale(sampleRate))
+    }
+}
+
 /// Continuous on-device recognition using Apple's long-form SpeechTranscriber.
 /// Owns no microphone, audio session, file, transcript history, or cloud service.
 /// Available hardware and languages are checked during explicit preparation.
@@ -285,7 +301,7 @@ private struct AppleInputSequence: AsyncSequence, Sendable {
             }
             // Quantize to an actual source sample, rather than introducing a
             // different timebase whose rounding can imply overlapping buffers.
-            let start = CMTime(seconds: chunk.startTime, preferredTimescale: CMTimeScale(chunk.sampleRate))
+            let start = try HudTranscriptionSampleClock.time(seconds: chunk.startTime, sampleRate: chunk.sampleRate)
             let end = start + CMTime(value: Int64(chunk.samples.count), timescale: CMTimeScale(chunk.sampleRate))
             guard start.isNumeric, end.isNumeric else {
                 throw HudStreamingTranscriptionError.invalidTimeRange

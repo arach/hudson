@@ -145,6 +145,25 @@ Parakeet/Nemotron/Qwen adapters; those engines are not bundled or implemented he
 Consumers must select a Hudson revision containing this change. No downstream
 dependency pins or application flows were changed by this work.
 
+## Current-main and narrated-book follow-up
+
+The primitive was moved onto shared main `4b607852` after a read-only comparison
+with art-mini's Canvas/sidebar work. Current main requires VoxAppleSpeech; local
+SwiftPM resolution was refreshed to Vox main `0989a05`.
+
+A 70-second Peter Yearsley / LibriVox Alice chapter excerpt exposed a sample-clock
+bug missed by the original short fixture: `CMTime(seconds:preferredTimescale:)`
+can truncate floating-point seconds one sample below the intended boundary.
+Explicit nearest-sample conversion fixes false overlap errors while preserving
+whole-sample overlaps and gaps. Deterministic tests cover five-minute sequences
+at four sample rates and three source origins, plus genuine overlap/gap boundaries
+and invalid timestamps.
+
+With the fix, all 181 HudsonUITests across 39 suites pass. The same 70-second
+human narration streamed at real time completes with 12 finalized segments and
+176 source-timed spans, followed by successful cancellation and engine reuse.
+This is a longer integration check, not an hours-long performance benchmark.
+
 ## References
 
 - [Apple SpeechAnalyzer introduction and timed-result sample](https://developer.apple.com/videos/play/wwdc2025/277/)
