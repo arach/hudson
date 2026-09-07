@@ -55,7 +55,7 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.74.0",
-    "ai": ">=6.0.0"
+    "ai": ">=6.0.0 <8.0.0"
   },
   "peerDependenciesMeta": {
     "@earendil-works/pi-ai": {
@@ -67,7 +67,7 @@
   },
   "devDependencies": {
     "@earendil-works/pi-ai": "^0.74.0",
-    "ai": "^6.0.0",
+    "ai": "^7.0.0",
     "tsup": "^8.0.0",
     "vitest": "^4.0.0"
   }

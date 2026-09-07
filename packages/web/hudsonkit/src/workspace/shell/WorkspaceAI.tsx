@@ -277,6 +277,7 @@ export function WorkspaceAI({
   const replySpeechPendingRef = useRef(false);
   const speechRequestIdRef = useRef(0);
   const pendingWorkspaceLoadIdRef = useRef<string | null>(null);
+  const hasSyncedInitialMessagesRef = useRef(false);
   const { pipes, getPortCatalog } = useDataBus();
 
   attachmentsRef.current = attachments;
@@ -922,6 +923,13 @@ export function WorkspaceAI({
   // Auto-scroll on new messages or generated images
   const messages = chat.messages;
   useEffect(() => {
+    // AI SDK 7 echoes the initial message array after mount. Do not turn that
+    // hydration echo into a new storage key; subsequent edits and clears still
+    // persist normally.
+    if (!hasSyncedInitialMessagesRef.current) {
+      hasSyncedInitialMessagesRef.current = true;
+      return;
+    }
     setPersistedMessages(messages);
   }, [messages, setPersistedMessages]);
 

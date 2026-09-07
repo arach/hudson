@@ -1,7 +1,7 @@
 'use client';
 
 import React, { useRef } from 'react';
-import { ContextMenu } from '@base-ui-components/react/context-menu';
+import { ContextMenu } from '@base-ui/react/context-menu';
 import { motion, AnimatePresence } from 'motion/react';
 
 // ---------------------------------------------------------------------------

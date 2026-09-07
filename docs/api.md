@@ -11,7 +11,7 @@ Every `hudsonkit` export, organized by subpath. Types are authoritative in [`pac
 | `hudsonkit/shell`               | `WorkspaceShell` + all chrome/overlays/canvas/windows (back-compat barrel) |
 | `hudsonkit/chrome`              | Chrome primitives: `Frame`, `NavigationBar`, `SidePanel`, `StatusBar`, `CommandDock`, `Minimap`, `ZoomControls`, `AnimationTimeline` |
 | `hudsonkit/overlays`            | `CommandPalette`, `TerminalDrawer` (no `ContextMenu`)                |
-| `hudsonkit/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui-components/react`) |
+| `hudsonkit/context-menu`        | `HudsonContextMenu` (opt-in; pulls `motion` + `@base-ui/react`) |
 | `hudsonkit/canvas`              | `Canvas` (pan/zoom world)                                            |
 | `hudsonkit/windows`             | `AppWindow` (draggable/resizable window frame)                       |
 | `hudsonkit/theme`               | Design tokens: `SHELL_THEME`, `PANEL_STYLES`, `Z_LAYERS`, `LAYOUT`, etc. |
@@ -105,7 +105,7 @@ All of: `WorkspaceShell`, `AppShell`, `Frame`, `NavigationBar`, `SidePanel`, `St
 
 ### From `hudsonkit/context-menu`
 
-- `HudsonContextMenu` — right-click menu component. Pulls `motion/react` + `@base-ui-components/react`.
+- `HudsonContextMenu` — right-click menu component. Pulls `motion/react` + `@base-ui/react`.
 
 ## Theme (from `hudsonkit`)
 
