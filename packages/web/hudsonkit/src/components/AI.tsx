@@ -4,6 +4,13 @@ import { useRef, useEffect, useState, type FormEvent, type KeyboardEvent, type R
 import { Square, Trash2, AlertCircle, Paperclip } from '../icons';
 import { isToolUIPart, getToolName } from 'ai';
 import type { HudsonAIChat } from '../hooks/useHudsonAI';
+import {
+  RuntimePicker,
+  type RuntimeEffort,
+  type RuntimeHarness,
+  type RuntimeMarkRenderer,
+  type RuntimeSelection,
+} from './RuntimePicker';
 
 interface AIProps {
   chat: HudsonAIChat;
@@ -15,6 +22,22 @@ interface AIProps {
   /** External input value override — pairs with onInputChange to let the host control the field (e.g. inject voice transcripts). */
   inputValue?: string;
   onInputChange?: (value: string) => void;
+  /**
+   * The runtime this composer sends on — harness · model · effort — rendered as
+   * a chip in the input bar that opens the runtime picker. Omit it and the bar
+   * is unchanged, so every existing caller keeps its current shape.
+   */
+  runtime?: {
+    harnesses: RuntimeHarness[];
+    /** Omit where the host has no reasoning-effort setting; the ladder disappears. */
+    efforts?: RuntimeEffort[];
+    value: RuntimeSelection;
+    onChange: (next: RuntimeSelection) => void;
+    /** Host brand artwork; return null for a harness you have no mark for. */
+    mark?: RuntimeMarkRenderer;
+    /** Show the runtime as identity only, with no picker. */
+    readOnly?: boolean;
+  };
 }
 
 export function AI({
@@ -24,6 +47,7 @@ export function AI({
   inputStatus,
   inputValue,
   onInputChange,
+  runtime,
 }: AIProps) {
   const {
     messages, sendMessage, stop, status, clearChat, error,
@@ -163,6 +187,16 @@ export function AI({
           </div>
         )}
         <form onSubmit={onSubmit} className="flex items-center gap-2 rounded-lg border border-border bg-muted/60 px-3 py-2 focus-within:border-accent/40 transition-colors">
+          {runtime && (
+            <RuntimePicker
+              harnesses={runtime.harnesses}
+              efforts={runtime.efforts}
+              value={runtime.value}
+              onChange={runtime.onChange}
+              mark={runtime.mark}
+              readOnly={runtime.readOnly}
+            />
+          )}
           {inputExtras}
           {messages.length > 0 && (
             <button
