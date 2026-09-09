@@ -112,19 +112,22 @@ struct HudPhoneControlDeckStateTests {
     @Test("Assistive control cancels and restarts the runtime timeout")
     @MainActor
     func assistiveControlReschedulesRuntimeTimeout() async throws {
+        let idleTimeout = Duration.milliseconds(40)
         let runtime = HudPhoneControlDeckRuntime(
-            policy: HudPhoneControlDeckPolicy(idleTimeout: .milliseconds(40))
+            policy: HudPhoneControlDeckPolicy(idleTimeout: idleTimeout)
         )
         runtime.synchronize(hasComplications: true, assistiveControlEnabled: false)
         runtime.pivotTapped()
         runtime.synchronize(hasComplications: true, assistiveControlEnabled: true)
 
-        try await Task.sleep(for: .milliseconds(120))
-        #expect(runtime.state == .expanded)
+        try await expect(
+            runtime,
+            remains: .expanded,
+            forAtLeast: idleTimeout * 3
+        )
 
         runtime.synchronize(hasComplications: true, assistiveControlEnabled: false)
-        try await Task.sleep(for: .milliseconds(120))
-        #expect(runtime.state == .resting)
+        try await expect(runtime, becomes: .resting, within: .seconds(1))
     }
 
     @Test("Minimal eligibility requires the center slot")
@@ -168,4 +171,37 @@ struct HudPhoneControlDeckStateTests {
             )
         )
     }
+}
+
+@MainActor
+private func expect(
+    _ runtime: HudPhoneControlDeckRuntime,
+    remains expected: HudPhoneControlDeckState,
+    forAtLeast duration: Duration,
+    poll: Duration = .milliseconds(5)
+) async throws {
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: duration)
+    while clock.now < deadline {
+        #expect(runtime.state == expected)
+        guard runtime.state == expected else { return }
+        try await Task.sleep(for: poll)
+    }
+    #expect(runtime.state == expected)
+}
+
+@MainActor
+private func expect(
+    _ runtime: HudPhoneControlDeckRuntime,
+    becomes expected: HudPhoneControlDeckState,
+    within duration: Duration,
+    poll: Duration = .milliseconds(5)
+) async throws {
+    let clock = ContinuousClock()
+    let deadline = clock.now.advanced(by: duration)
+    while runtime.state != expected {
+        guard clock.now < deadline else { break }
+        try await Task.sleep(for: poll)
+    }
+    #expect(runtime.state == expected)
 }

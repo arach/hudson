@@ -29,6 +29,14 @@ const singletonAliases = [
     replacement: path.join(studioRoot, "src/injection/styles.css"),
   },
   {
+    find: "studio/flows/styles.css",
+    replacement: path.join(studioRoot, "src/flows/styles.css"),
+  },
+  {
+    find: "studio/flows",
+    replacement: path.join(studioRoot, "src/flows/index.ts"),
+  },
+  {
     find: /^studio$/,
     replacement: path.join(studioRoot, "src/index.ts"),
   },

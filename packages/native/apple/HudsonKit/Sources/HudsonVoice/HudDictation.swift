@@ -21,6 +21,10 @@ import VoxEngine
 /// (Parakeet transcribes it on stop, when warm) and simultaneously streamed to
 /// `SFSpeechRecognizer` for an instant partial preview. Whichever engine yields
 /// the better final wins — Parakeet when ready, Apple otherwise.
+///
+/// Hosts that want one engine and one result set `parakeetOnly`. Apple Speech
+/// then never runs, and an utterance spoken before the model is warm is held on
+/// disk rather than resolved by a second engine or dropped — see `queuedCount`.
 @MainActor
 @Observable
 public final class HudDictation {
@@ -60,10 +64,6 @@ public final class HudDictation {
     public private(set) var state: State = .idle
     /// Live, non-final transcript (from Apple) shown as a preview while listening.
     public private(set) var partialText: String = ""
-    /// Live input loudness (RMS, 0...1) while `listening`, for voice-reactive
-    /// meters/waveforms. Resets to `0` when capture stops. Instantaneous only —
-    /// consumers keep their own history for a scrolling waveform.
-    public private(set) var audioLevel: Float = 0
     /// Whether the preferred Parakeet model is downloaded and warm (in memory).
     public private(set) var modelReady: Bool = false
     /// Whether the Parakeet model files are present on disk (downloaded).
@@ -73,6 +73,34 @@ public final class HudDictation {
 
     /// Engine choice for transcription and fallback behavior.
     public var preference: Preference = .auto
+
+    /// Strict on-device Parakeet, overriding `preference`.
+    ///
+    /// Apple Speech does not run at all: no live preview, no fallback final, and
+    /// no speech-recognition permission prompt. An utterance captured before the
+    /// model is warm — or one whose transcription fails — is held on disk and
+    /// transcribed, in capture order, as soon as Parakeet is ready. Hosts that
+    /// promise "your dictation is never lost" want this.
+    public var parakeetOnly: Bool = false
+
+    /// Utterances captured but not yet transcribed, waiting on the model. Only
+    /// ever non-zero under `parakeetOnly`. Survives app launches.
+    public private(set) var queuedCount: Int = 0
+
+    /// Host-defined tag describing what the *next* capture is for — a thread, a
+    /// lane, a document. Snapshotted when capture starts and stored alongside
+    /// held audio, so an utterance transcribed minutes later still knows where
+    /// it was headed. Limited to letters, digits and `:_-.`; 64 characters.
+    public var captureContext: String?
+
+    /// The `captureContext` that was in force when the most recent final was
+    /// captured. Read this inside `onFinal` — for a held utterance it is the
+    /// context from capture time, not whatever the host is doing now.
+    public private(set) var lastFinalContext: String?
+
+    /// Instantaneous microphone energy, 0...1, while listening; 0 otherwise.
+    /// Published raw — consumers own any smoothing or history.
+    public private(set) var audioLevel: Double = 0
 
     /// When Hudson may automatically download and warm the Parakeet model.
     /// Defaults to first use so constructing a dictation object or compiling
@@ -100,6 +128,10 @@ public final class HudDictation {
     private let asr = EngineManager() // Vox Parakeet (defaults to ParakeetProvider)
     private let recognizer: SFSpeechRecognizer?
     private let log = Logger(subsystem: "com.hudson.voice", category: "dictation")
+    private let heldUtterances = HudPendingUtteranceStore()
+    private var drainTask: Task<Void, Never>?
+    /// `captureContext` as it was when the in-flight capture began.
+    private var contextAtCapture: String?
 
     // MARK: Capture state
 
@@ -123,6 +155,8 @@ public final class HudDictation {
         self.modelId = modelId
         self.modelDownloadPolicy = modelDownloadPolicy
         self.recognizer = SFSpeechRecognizer(locale: locale)
+        // Speech held across a previous launch is still owed to the host.
+        self.queuedCount = heldUtterances.count
     }
 
     public convenience init(
@@ -143,7 +177,7 @@ public final class HudDictation {
     /// operator/user action and therefore remains available for every automatic
     /// download policy. No-op once `modelReady`.
     public func prepare() {
-        guard preference != .apple else { return } // Apple-only: never download Parakeet
+        guard parakeetOnly || preference != .apple else { return } // Apple-only: never download Parakeet
         guard !modelReady, prepareTask == nil else { return }
         if case .preparing = state { return }
         state = .preparing(progress: 0)
@@ -162,6 +196,7 @@ public final class HudDictation {
                 self.modelInstalled = true
                 if case .preparing = self.state { self.state = .idle }
                 self.log.info("Parakeet warm and ready")
+                self.drainHeldUtterances()
             } catch {
                 // Non-fatal: Apple Speech remains available as the fallback.
                 self.modelReady = false
@@ -184,7 +219,52 @@ public final class HudDictation {
         let models = await asr.models()
         let info = models.first { $0.id == modelId } ?? models.first
         modelInstalled = info?.installed ?? false
-        if info?.preloaded == true { modelReady = true }
+        if info?.preloaded == true {
+            modelReady = true
+            drainHeldUtterances()
+        }
+        queuedCount = heldUtterances.count
+    }
+
+    /// Transcribe everything held on disk, oldest first, and deliver each as a
+    /// normal final. Runs whenever the model becomes ready — including a launch
+    /// that inherits utterances from a previous run.
+    ///
+    /// A failure re-holds the recording rather than dropping it: the next warm
+    /// model tries again. Only a real transcript retires a recording.
+    private func drainHeldUtterances() {
+        guard modelReady, drainTask == nil else { return }
+        let held = heldUtterances.pending()
+        guard !held.isEmpty else {
+            queuedCount = 0
+            return
+        }
+
+        queuedCount = held.count
+        log.notice("Transcribing \(held.count) held utterance(s)")
+        drainTask = Task { [weak self] in
+            guard let self else { return }
+            defer { self.drainTask = nil }
+            for held in held {
+                guard !Task.isCancelled else { return }
+                do {
+                    let output = try await self.asr.transcribe(url: held.url, modelId: self.modelId)
+                    let text = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                    self.heldUtterances.discard(held.url)
+                    self.queuedCount = max(0, self.queuedCount - 1)
+                    guard !text.isEmpty else { continue }
+                    self.lastEngine = .parakeet
+                    self.lastFinalContext = held.context
+                    self.finalText = text
+                    self.finalCount += 1
+                    self.onFinal?(text)
+                } catch {
+                    // Leave it on disk. Losing speech is worse than retrying it.
+                    self.log.error("Held utterance still not transcribable: \(error.localizedDescription)")
+                    return
+                }
+            }
+        }
     }
 
     // MARK: - Capture
@@ -199,6 +279,7 @@ public final class HudDictation {
 
     public func start() {
         guard !isListening, let generation = captureStartGate.begin() else { return }
+        contextAtCapture = captureContext
         prepareAutomatically(for: .firstUse)
         Task { [weak self] in
             guard let self else { return }
@@ -209,9 +290,12 @@ public final class HudDictation {
             }
             guard self.captureStartGate.isCurrent(generation) else { return }
             // Speech permission is only needed for the Apple preview/fallback;
-            // a denial shouldn't block Parakeet-only capture.
-            _ = await self.ensureSpeechPermission()
-            guard self.captureStartGate.isCurrent(generation) else { return }
+            // a denial shouldn't block Parakeet-only capture, and a host that
+            // never uses Apple shouldn't see the prompt at all.
+            if !self.parakeetOnly {
+                _ = await self.ensureSpeechPermission()
+                guard self.captureStartGate.isCurrent(generation) else { return }
+            }
             do {
                 try self.beginCapture()
                 guard self.captureStartGate.finish(generation) else {
@@ -244,6 +328,16 @@ public final class HudDictation {
         let applePreview = partialText.trimmingCharacters(in: .whitespacesAndNewlines)
         teardownCapture()
         state = .transcribing
+
+        if parakeetOnly {
+            Task { [weak self] in
+                guard let self else { return }
+                await self.resolveWithParakeetOnly(fileURL: url)
+                self.state = .idle
+            }
+            return
+        }
+
         Task { [weak self] in
             guard let self else { return }
             let final = await self.resolveFinal(fileURL: url, applePreview: applePreview)
@@ -269,6 +363,48 @@ public final class HudDictation {
     }
 
     // MARK: - Engine selection
+
+    /// The `parakeetOnly` path: transcribe now when the model is warm and
+    /// nothing is already waiting, otherwise hold the recording so it is
+    /// delivered later, in the order it was spoken. There is no second engine
+    /// and no discard — the audio always outlives the attempt.
+    private func resolveWithParakeetOnly(fileURL: URL?) async {
+        guard let fileURL else { return }
+
+        // Jumping the queue would reorder someone's dictation.
+        if modelReady, queuedCount == 0, drainTask == nil {
+            do {
+                let output = try await asr.transcribe(url: fileURL, modelId: modelId)
+                let text = output.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                try? FileManager.default.removeItem(at: fileURL)
+                guard !text.isEmpty else { return }
+                lastEngine = .parakeet
+                lastFinalContext = contextAtCapture
+                finalText = text
+                finalCount += 1
+                onFinal?(text)
+                return
+            } catch {
+                log.error("Parakeet transcribe failed; holding the utterance: \(error.localizedDescription)")
+            }
+        }
+
+        hold(fileURL)
+    }
+
+    /// Move a recording into durable storage and make sure a model is on its way.
+    private func hold(_ url: URL) {
+        do {
+            _ = try heldUtterances.adopt(url, context: contextAtCapture)
+            queuedCount += 1
+            prepare()
+            drainHeldUtterances()
+        } catch {
+            // The recording stays in the temporary directory rather than being
+            // deleted — a worse place to keep it, but still not a silent loss.
+            log.error("Could not hold an utterance: \(error.localizedDescription)")
+        }
+    }
 
     /// Parakeet is authoritative when warm; otherwise fall back to the Apple
     /// live preview as the final.
@@ -309,7 +445,7 @@ public final class HudDictation {
 
         // Live Apple preview (best-effort — only if speech is authorized/available).
         var request: SFSpeechAudioBufferRecognitionRequest?
-        if let recognizer, recognizer.isAvailable,
+        if !parakeetOnly, let recognizer, recognizer.isAvailable,
            SFSpeechRecognizer.authorizationStatus() == .authorized {
             let req = SFSpeechAudioBufferRecognitionRequest()
             req.shouldReportPartialResults = true
@@ -324,15 +460,25 @@ public final class HudDictation {
             }
         }
 
-        // One tap, three sinks: write every buffer to the file (for Parakeet),
-        // stream it to Apple (for the live preview), and derive an input level
-        // (for voice-reactive meters). Everything on the realtime thread works
-        // from locals; the only main-actor state (`audioLevel`) is published via
-        // an explicit hop, so the audio thread never touches it directly.
+        // One tap, two sinks: write every buffer to the file (for Parakeet) and
+        // stream it to Apple (for the live preview). Captures locals, not self,
+        // so the realtime audio thread never touches main-actor state.
+        // AVAudioEngine permits one tap per bus and raises an Objective-C
+        // exception (rather than a Swift error) when that invariant is broken.
+        // The state gate above prevents normal duplicate starts; removing a
+        // stale tap here makes recovery from an interrupted prior capture safe.
+        input.removeTap(onBus: 0)
+        let meter = LevelThrottle()
         input.installTap(onBus: 0, bufferSize: 1024, format: format) { [weak self] buffer, _ in
             try? file.write(from: buffer)
             request?.append(buffer)
-            let level = HudDictation.rmsLevel(buffer)
+
+            // Metering is a display concern: 30 Hz is smooth to the eye and
+            // leaves the audio thread alone the rest of the time.
+            let now = ProcessInfo.processInfo.systemUptime
+            guard now - meter.lastPublish >= 1.0 / 30.0 else { return }
+            meter.lastPublish = now
+            let level = Self.normalizedLevel(in: buffer)
             Task { @MainActor [weak self] in
                 guard let self, self.isListening else { return }
                 self.audioLevel = level
@@ -342,6 +488,30 @@ public final class HudDictation {
 
         audioEngine.prepare()
         try audioEngine.start()
+    }
+
+    /// Convert the microphone's RMS energy into a perceptual 0...1 meter.
+    /// Roughly -55 dB reads as silence and -10 dB as full scale.
+    private nonisolated static func normalizedLevel(in buffer: AVAudioPCMBuffer) -> Double {
+        guard let channels = buffer.floatChannelData,
+              buffer.frameLength > 0,
+              buffer.format.channelCount > 0 else { return 0 }
+
+        let frameCount = Int(buffer.frameLength)
+        let channelCount = Int(buffer.format.channelCount)
+        var sum: Float = 0
+        for channel in 0..<channelCount {
+            let samples = channels[channel]
+            for frame in 0..<frameCount {
+                let sample = samples[frame]
+                sum += sample * sample
+            }
+        }
+
+        let rms = sqrt(sum / Float(frameCount * channelCount))
+        let decibels = 20 * log10(max(rms, 0.000_01))
+        let linear = min(1, max(0, (decibels + 55) / 45))
+        return Double(pow(linear, 0.72))
     }
 
     private func teardownCapture() {
@@ -361,20 +531,6 @@ public final class HudDictation {
         #endif
     }
 
-    /// Instantaneous input loudness (RMS) of a capture buffer as a 0...1 value.
-    /// `nonisolated` so it runs on the realtime audio thread from locals only;
-    /// the raw RMS is amplified for visual response, matching the convention
-    /// used by voice-reactive meters.
-    nonisolated private static func rmsLevel(_ buffer: AVAudioPCMBuffer) -> Float {
-        guard let channelData = buffer.floatChannelData else { return 0 }
-        let samples = channelData.pointee
-        let n = Int(buffer.frameLength)
-        guard n > 0 else { return 0 }
-        var sum: Float = 0
-        for i in 0..<n { let s = samples[i]; sum += s * s }
-        let rms = (sum / Float(n)).squareRoot()
-        return min(1, rms * 8)
-    }
 
     // MARK: - Permissions
 
@@ -405,6 +561,13 @@ public final class HudDictation {
         @unknown default: return false
         }
     }
+}
+
+/// The audio tap is invoked serially on one thread, so an unsynchronized box is
+/// enough to rate-limit metering without reaching for main-actor state. Kept at
+/// file scope so it never inherits `HudDictation`'s main-actor isolation.
+private final class LevelThrottle: @unchecked Sendable {
+    var lastPublish: Double = 0
 }
 
 enum HudVoiceAutomaticPreparationTrigger {

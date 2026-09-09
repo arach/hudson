@@ -9,7 +9,32 @@
 // on generated utilities.
 
 import React from 'react';
+import type { HudsonIcon } from '../../icons';
 import { cx } from '../patterns/utils';
+
+/** One header register shared by primary navigation, app chrome, and contextual rails. */
+export const HUD_SIDE_NAV_HEADER_HEIGHT = 48;
+
+/** Navigation icons may be Hudson icon components or preconfigured React elements. */
+export type HudNavIcon = HudsonIcon | React.ReactElement;
+
+/** Render either icon representation through one size and color contract. */
+export function renderHudNavIcon(
+  icon: HudNavIcon | undefined,
+  size: number,
+  className?: string,
+): React.ReactNode {
+  if (!icon) return null;
+  if (React.isValidElement(icon)) {
+    const element = icon as React.ReactElement<{ size?: number; className?: string }>;
+    return React.cloneElement(element, {
+      size,
+      className: cx(element.props.className, className),
+    });
+  }
+  const Icon = icon;
+  return <Icon size={size} className={className} />;
+}
 
 /** Left spine colour. Live wins the live token; plain selection keeps a neutral
  *  spine; everything else is transparent. Live tone is spent on live ONLY. */
@@ -24,17 +49,17 @@ export function navSpine(selected?: boolean, live?: boolean): string {
 /** Row background: neutral filled chip when selected, muted wash on hover. */
 export function navRowBg(selected?: boolean, selectionWash = false): string {
   if (!selected) return 'hover:bg-muted/40';
-  // Opt-in wash (HUD-014 / package 02): action-tint is visible on all themes
-  // where surface ≈ panel; default stays secondary chip for back-compat.
+  // Selection is one uninterrupted surface. A left-edge inset conflicts with
+  // rounded rows and makes compact destinations look clipped.
   return selectionWash
-    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_10%,transparent))] text-[var(--hud-ink)] shadow-[inset_2px_0_0_color-mix(in_srgb,var(--hud-ink)_42%,transparent)]'
+    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_10%,transparent))] text-[var(--hud-ink)]'
     : 'bg-secondary/70';
 }
 
 /** Collapsed-rail selection chip — wash or secondary. */
 export function navRailSelectedBg(selectionWash = false): string {
   return selectionWash
-    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_10%,transparent))] text-[var(--hud-ink)] shadow-[inset_2px_0_0_color-mix(in_srgb,var(--hud-ink)_42%,transparent)]'
+    ? 'bg-[var(--hud-action-tint,color-mix(in_srgb,var(--hud-ink)_12%,transparent))] text-[var(--hud-ink)]'
     : 'bg-secondary/80 text-foreground';
 }
 

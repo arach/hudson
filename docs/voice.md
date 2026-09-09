@@ -278,10 +278,46 @@ The downloaded model is not Hudson's. Three layers, three owners:
 | Layer | Source | License |
 |-------|--------|---------|
 | Model | [nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) — 600M-parameter FastConformer encoder + TDT decoder, built with NVIDIA NeMo, trained on the Granary corpus | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) |
-| Weights | [FluidInference/parakeet-tdt-0.6b-v3-coreml](https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml) — the Core ML conversion Vox fetches (~460 MB), from the [FluidAudio](https://github.com/FluidInference/FluidAudio) project | Apache-2.0 |
+| Weights | [FluidInference/parakeet-tdt-0.6b-v3-coreml](https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml) — the Core ML conversion Vox fetches (~460 MB), from the [FluidAudio](https://github.com/FluidInference/FluidAudio) project | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) |
 | Runtime | [Vox](https://github.com/arach/vox) (`VoxEngine`) — downloads, caches, and runs the Core ML model on-device; the inference code is Vox's own | see repository |
 
 Attribution is a condition of CC-BY-4.0, and an app shipping `HudsonVoice` is what causes those weights to land on a user's device — the condition follows the app, not just this repo. `HudsonVoiceSettingsView` renders the three names on-screen; [`NOTICE.md`](../NOTICE.md) is the written form to copy into your own credits.
+
+### HudSpeechPlayback — Apple spoken output
+
+`HudSpeechPlayback` is a thin Hudson facade over one Vox `AppleSpeechOutputController` per audible surface. It speaks canonical Vox synthesis requests and forwards truthful lifecycle/route events. Product policy — opt-in gating, dedupe, text shaping, fallback copy, credential storage — stays in the host.
+
+Credentials are host-lent and snapshotted at initialization. Unlent providers are configured with explicit blank env keys so Vox cannot pick up ambient process secrets. There is no shared singleton and no pause/seek state. The event callback is not main-actor isolated; hop if you need to update UI.
+
+Canonical system speech is `avspeech:system`. UI aliases such as `system` belong at the product boundary, not in this API.
+
+```swift
+import HudsonVoice
+
+let playback = HudSpeechPlayback(
+    credentials: [
+        .openAI: openAIKey,   // omit or leave blank to keep the provider fenced
+    ],
+    onEvent: { event in
+        // Not MainActor-bound.
+        print(event.phase, event.requestId, event.modelId, event.provider?.label ?? "Unknown")
+    }
+)
+
+let requestId = await playback.speak(
+    "Hello from Hudson",
+    modelId: "avspeech:system"
+)
+
+await playback.stop()
+await playback.cancel()
+```
+
+The same credential snapshot backs `models()` and `voices(modelId:)`, so a
+surface can populate its picker without constructing a second public facade.
+Recreate the surface after a credential change.
+
+`HudSpeechSynthesizer` remains the generation-only path that returns audio bytes. `HudTTS` is unchanged.
 
 ### HudVoicePanel — SwiftUI primitive
 

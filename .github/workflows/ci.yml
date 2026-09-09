@@ -61,6 +61,12 @@ jobs:
       - name: AI backends build
         run: bun run --filter @hudsonkit/ai build
 
+      - name: Admin build
+        run: bun run --filter @hudsonkit/admin build
+
+      - name: Admin typecheck
+        run: bun run --cwd packages/web/admin typecheck
+
       - name: HudsonKit build
         run: bun run --cwd packages/web/hudsonkit build:js
 
@@ -101,6 +107,11 @@ jobs:
     needs: changes
     if: ${{ github.event_name == 'push' || github.event_name == 'workflow_call' || github.event_name == 'workflow_dispatch' || needs.changes.outputs.workflows == 'true' || needs.changes.outputs.native == 'true' }}
     runs-on: macos-latest
+    env:
+      # HudsonVoice consumes the provider-aware Vox Apple playback product.
+      # Pin it so a restored branch-based SwiftPM cache cannot select a
+      # pre-VoxAppleSpeech main revision.
+      HUDSON_VOX_GIT_REVISION: 0989a058e04da9a5b012d38a577c772d13906745
     steps:
       - uses: actions/checkout@v4
 

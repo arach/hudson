@@ -151,6 +151,22 @@ export type {
 
 // AI
 export { AI } from './components/AI';
+export {
+  RuntimePicker,
+  RuntimeChip,
+  RUNTIME_EFFORT_AUTO,
+  runtimeModelDisplayName,
+  resolveRuntimeSelection,
+} from './components/RuntimePicker';
+export type {
+  RuntimeModel,
+  RuntimeHarness,
+  RuntimeEffort,
+  RuntimeSelection,
+  RuntimeMarkRenderer,
+  RuntimeChipProps,
+  RuntimePickerProps,
+} from './components/RuntimePicker';
 export { Assistant } from './components/Assistant';
 export {
   TerminalRelay,

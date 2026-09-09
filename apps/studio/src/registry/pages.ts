@@ -52,6 +52,20 @@ export const STUDIO_PAGES: readonly Page[] = [
     ],
   },
   {
+    href: "/exhibits/canvas-craft",
+    label: "Canvas · Visual lift",
+    bucket: "compositions",
+    surface: "native",
+    status: "draft",
+    blurb:
+      "Before/after craft study for the native Canvas shell — fixed structure, stronger hierarchy, focus, depth, and inspector rhythm.",
+    source: [
+      "apps/studio/src/exhibits/canvas-craft/CanvasCraftExhibit.tsx",
+      "packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/HudCanvasSurface.swift",
+      "packages/native/apple/HudsonKit/Sources/HudsonShell/HudAppShell.swift",
+    ],
+  },
+  {
     href: "/flows?file=file_f63343493b36",
     label: "Fieldwork · Flows",
     bucket: "compositions",

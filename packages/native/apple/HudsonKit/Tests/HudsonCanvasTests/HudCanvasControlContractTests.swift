@@ -394,6 +394,7 @@ final class HudCanvasControlContractTests: XCTestCase {
                 canvasTool: "hand",
                 navigationFilter: "selected",
                 navigationTagFilter: "focus",
+                navigationSidebarHidden: true,
                 navigationCollapsed: true,
                 navigationWidth: 288,
                 minimapCollapsed: true,
@@ -457,6 +458,7 @@ final class HudCanvasControlContractTests: XCTestCase {
         XCTAssertEqual(decoded.layout?.canvasTool, "hand")
         XCTAssertEqual(decoded.layout?.navigationFilter, "selected")
         XCTAssertEqual(decoded.layout?.navigationTagFilter, "focus")
+        XCTAssertEqual(decoded.layout?.navigationSidebarHidden, true)
         XCTAssertEqual(decoded.layout?.navigationCollapsed, true)
         XCTAssertEqual(decoded.layout?.minimapCollapsed, true)
         XCTAssertEqual(decoded.layout?.inspectorWidth, 336)
