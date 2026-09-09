@@ -10333,12 +10333,12 @@ private struct CommandKeyButton: View {
             )
             .background(RoundedRectangle(cornerRadius: theme.radius.tight).fill(theme.canvasControlFill))
             .overlay(RoundedRectangle(cornerRadius: theme.radius.tight).stroke(theme.hairline.subtle))
+            .frame(
+                width: HudCanvasMetrics.canvasControlHitSize,
+                height: HudCanvasMetrics.canvasControlHitSize
+            )
+            .contentShape(Rectangle())
         }
-        .frame(
-            width: HudCanvasMetrics.canvasControlHitSize,
-            height: HudCanvasMetrics.canvasControlHitSize
-        )
-        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .help("Command palette")
         .accessibilityLabel("Command palette")
@@ -11032,12 +11032,12 @@ private struct CanvasToolbarIconButton: View {
                     RoundedRectangle(cornerRadius: theme.radius.tight)
                         .stroke(theme.hairline.subtle)
                 )
+            .frame(
+                width: HudCanvasMetrics.canvasControlHitSize,
+                height: HudCanvasMetrics.canvasControlHitSize
+            )
+            .contentShape(Rectangle())
         }
-        .frame(
-            width: HudCanvasMetrics.canvasControlHitSize,
-            height: HudCanvasMetrics.canvasControlHitSize
-        )
-        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .disabled(isDisabled)
         .help(help)
@@ -11156,12 +11156,12 @@ private struct CanvasIconButton: View {
                     RoundedRectangle(cornerRadius: theme.radius.standard)
                         .stroke(border)
                 )
+            .frame(
+                width: HudCanvasMetrics.canvasControlHitSize,
+                height: HudCanvasMetrics.canvasControlHitSize
+            )
+            .contentShape(Rectangle())
         }
-        .frame(
-            width: HudCanvasMetrics.canvasControlHitSize,
-            height: HudCanvasMetrics.canvasControlHitSize
-        )
-        .contentShape(Rectangle())
         .buttonStyle(.plain)
         .help(help)
         .accessibilityLabel(help)
