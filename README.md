@@ -103,3 +103,4 @@ React 19 · Next.js 16 · Tailwind v4 · bun · TypeScript
 - [Building apps](./docs/building-apps.md) — the `HudsonApp` contract in detail
 - [Perf patterns](./docs/perf-drag-resize-patterns.md) — drag/resize/pan tricks worth reusing
 - [For agents](./docs/agent/overview.agent.md) — LLM-oriented reference
+- [Notice](./NOTICE.md) — third-party terms Hudson pulls in, including the NVIDIA / FluidInference Parakeet weights `HudsonVoice` downloads at runtime

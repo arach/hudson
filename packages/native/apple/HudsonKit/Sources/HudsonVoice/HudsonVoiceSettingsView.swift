@@ -121,7 +121,7 @@ public struct HudsonVoiceSettingsView: View {
                 icon: "info.circle",
                 iconColor: HudPalette.dim,
                 title: "Model Credits",
-                subtitle: "NVIDIA Parakeet TDT 0.6B v3 (CC-BY-4.0), Core ML build by FluidInference (Apache-2.0), run by Vox"
+                subtitle: "NVIDIA Parakeet TDT 0.6B v3 (CC-BY-4.0), Core ML build by FluidInference (CC-BY-4.0), run by Vox"
             )
 
             HudDivider()

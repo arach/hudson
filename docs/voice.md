@@ -271,6 +271,18 @@ dictation.prepare()
 
 Constructing `HudDictation`, importing `HudsonVoice`, and running package tests do not download model data.
 
+### Model attribution
+
+The downloaded model is not Hudson's. Three layers, three owners:
+
+| Layer | Source | License |
+|-------|--------|---------|
+| Model | [nvidia/parakeet-tdt-0.6b-v3](https://huggingface.co/nvidia/parakeet-tdt-0.6b-v3) — 600M-parameter FastConformer encoder + TDT decoder, built with NVIDIA NeMo, trained on the Granary corpus | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Weights | [FluidInference/parakeet-tdt-0.6b-v3-coreml](https://huggingface.co/FluidInference/parakeet-tdt-0.6b-v3-coreml) — the Core ML conversion Vox fetches (~460 MB), from the [FluidAudio](https://github.com/FluidInference/FluidAudio) project | [CC-BY-4.0](https://creativecommons.org/licenses/by/4.0/) |
+| Runtime | [Vox](https://github.com/arach/vox) (`VoxEngine`) — downloads, caches, and runs the Core ML model on-device; the inference code is Vox's own | see repository |
+
+Attribution is a condition of CC-BY-4.0, and an app shipping `HudsonVoice` is what causes those weights to land on a user's device — the condition follows the app, not just this repo. `HudsonVoiceSettingsView` renders the three names on-screen; [`NOTICE.md`](../NOTICE.md) is the written form to copy into your own credits.
+
 ### HudSpeechPlayback — Apple spoken output
 
 `HudSpeechPlayback` is a thin Hudson facade over one Vox `AppleSpeechOutputController` per audible surface. It speaks canonical Vox synthesis requests and forwards truthful lifecycle/route events. Product policy — opt-in gating, dedupe, text shaping, fallback copy, credential storage — stays in the host.
