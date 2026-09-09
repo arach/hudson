@@ -146,3 +146,18 @@ All failures surface as `HudAIError`. Each case carries the `provider`; rejectio
 | `.providerProtocolError` | Stream produced unexpected payload. |
 
 `error.isRetryable` flags transient cases. `error.httpStatus` and `error.providerRequestID` extract details for logging.
+
+## Keeping model catalogs current
+
+Hudson tracks `@earendil-works/pi-ai` through `latest`, without a root version
+override. Run `bun run update:models` at the repository root to refresh the
+runtime and lockfile. The lockfile records the tested installation; a frozen
+install alone does not fetch newer releases.
+
+The web model endpoint reads the runtime registry for all supported providers.
+Copilot discovery narrows that registry to account-visible chat models when
+available. Settings and developer pickers refresh on window focus, without a
+Hudson model allowlist. Saved model preferences remain host-owned.
+
+The adapter uses pi-ai's supported `compat` entrypoint for its existing stream
+API, requiring pi-ai 0.85.1 or newer.

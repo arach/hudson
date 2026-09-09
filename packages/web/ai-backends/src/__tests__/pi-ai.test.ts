@@ -14,7 +14,7 @@ const { mockStream, mockStreamSimple, mockGetModel, mockGetEnvApiKey } = vi.hois
   mockGetEnvApiKey: vi.fn(),
 }));
 
-vi.mock('@earendil-works/pi-ai', () => ({
+vi.mock('@earendil-works/pi-ai/compat', () => ({
   stream: mockStream,
   streamSimple: mockStreamSimple,
   getModel: mockGetModel,

@@ -2,7 +2,7 @@
 // Credential resolution types
 // ---------------------------------------------------------------------------
 
-import { getEnvApiKey } from '@earendil-works/pi-ai';
+import { getEnvApiKey } from '@earendil-works/pi-ai/compat';
 
 /** Injected credential resolver — backends are credential-agnostic. */
 export type CredentialResolver = (ctx: {

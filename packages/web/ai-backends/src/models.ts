@@ -7,7 +7,7 @@
 // populate a model picker instead of re-deriving it per app.
 // ---------------------------------------------------------------------------
 
-import { getProviders, getModels, getEnvApiKey } from '@earendil-works/pi-ai';
+import { getProviders, getModels, getEnvApiKey } from '@earendil-works/pi-ai/compat';
 
 export interface AvailableModel {
   /** pi-ai provider id, e.g. `minimax`, `openai-codex`, `anthropic`, `openrouter`. */

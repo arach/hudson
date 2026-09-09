@@ -22,10 +22,8 @@
     "relay": "node --no-warnings --import tsx packages/services/hudson-relay/src/index.ts",
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/editor.js",
-    "validate:hudsonkit-package": "node scripts/validate-hudsonkit-package.mjs"
-  },
-  "overrides": {
-    "@earendil-works/pi-ai": "0.78.1"
+    "validate:hudsonkit-package": "node scripts/validate-hudsonkit-package.mjs",
+    "update:models": "bun update --filter @hudsonkit/ai @earendil-works/pi-ai"
   },
   "workspaces": [
     "apps/web",

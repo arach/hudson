@@ -19,6 +19,7 @@ import {
   DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
   DEFAULT_HUDSON_AI_DEV_MODEL_PRESET_ID,
   HUDSON_AI_DEV_MODEL_PRESETS,
+  type AIModelPreset,
 } from '../lib/ai-models';
 import { useDataBus } from '../context/DataBusContext';
 import { createHudsonSpokenReply, getHudsonMessageDisplayText } from './voiceReply';
@@ -242,6 +243,32 @@ export function WorkspaceAI({
 }: WorkspaceAIProps) {
   const isDevModelPickerVisible = process.env.NODE_ENV === 'development';
   const canUseDevModelPicker = isDevModelPickerVisible && !provider && !model;
+  const [catalogPresets, setCatalogPresets] = useState<AIModelPreset[] | null>(null);
+  useEffect(() => {
+    if (!routes?.aiModels) return;
+    const controller = new AbortController();
+    const refresh = async () => {
+      try {
+        const response = await fetch(routes.aiModels!, { cache: 'no-store', signal: controller.signal });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted && Array.isArray(data.options)) {
+          setCatalogPresets(data.options.flatMap((option: { value?: unknown; provider?: unknown; label?: unknown }) =>
+            typeof option.value === 'string' && typeof option.provider === 'string'
+              ? [{ value: `${option.provider}:${option.value}`, model: option.value,
+                  provider: option.provider, label: `${option.provider} / ${typeof option.label === 'string' ? option.label : option.value}` }]
+              : []));
+        }
+      } catch { /* Keep the last successful discovery result. */ }
+    };
+    void refresh();
+    window.addEventListener('focus', refresh);
+    return () => { controller.abort(); window.removeEventListener('focus', refresh); };
+  }, [routes?.aiModels]);
+  const modelPresets = useMemo(
+    () => catalogPresets ?? (routes?.aiModels ? [] : HUDSON_AI_DEV_MODEL_PRESETS),
+    [catalogPresets, routes?.aiModels],
+  );
   const resolvedVoiceSettings = voiceSettings ?? DEFAULT_VOICE_SETTINGS;
   const [input, setInput] = useState('');
   const [attachments, setAttachments] = useState<FileAttachment[]>([]);
@@ -404,9 +431,9 @@ export function WorkspaceAI({
   }, [context, isLiveScope, scopedWorkspace, workspace.id, workspace.name, workspaceCatalog]);
   const devModelPreset = useMemo(
     () =>
-      HUDSON_AI_DEV_MODEL_PRESETS.find(preset => preset.value === devModelPresetId)
-      ?? DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
-    [devModelPresetId],
+      modelPresets.find(preset => preset.value === devModelPresetId)
+      ?? modelPresets[0] ?? DEFAULT_HUDSON_AI_DEV_MODEL_PRESET,
+    [devModelPresetId, modelPresets],
   );
   const activeModelPreset = canUseDevModelPicker ? devModelPreset : DEFAULT_HUDSON_AI_DEV_MODEL_PRESET;
   const activeProvider = provider ?? activeModelPreset.provider;
@@ -1034,7 +1061,7 @@ export function WorkspaceAI({
                 className="max-w-[190px] bg-transparent text-[10px] font-mono text-muted-foreground outline-none disabled:cursor-not-allowed disabled:opacity-45"
                 title={`${devModelPreset.provider}/${devModelPreset.model}`}
               >
-                {HUDSON_AI_DEV_MODEL_PRESETS.map(preset => (
+                {modelPresets.map(preset => (
                   <option key={preset.value} value={preset.value}>
                     {preset.label}
                   </option>

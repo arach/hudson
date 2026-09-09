@@ -28,7 +28,7 @@ import {
   type Tool as PiAiTool,
   type ToolCall,
   type SimpleStreamOptions,
-} from '@earendil-works/pi-ai';
+} from '@earendil-works/pi-ai/compat';
 import {
   asSchema,
   createUIMessageStream,

@@ -12,7 +12,7 @@ const { mockGetEnvApiKey, mockGetProviders, mockGetModels } = vi.hoisted(() => (
   mockGetModels: vi.fn(),
 }));
 
-vi.mock('@earendil-works/pi-ai', () => ({
+vi.mock('@earendil-works/pi-ai/compat', () => ({
   getEnvApiKey: mockGetEnvApiKey,
   getProviders: mockGetProviders,
   getModels: mockGetModels,

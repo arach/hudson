@@ -10,6 +10,7 @@ import {
 import { TerminalContent } from '../apps/terminal/TerminalContent';
 import { useHudsonAISettings } from '../apps/hudson-ai/useHudsonAISettings';
 import { createHudsonAISettings } from '../apps/hudson-ai/settings';
+import { AI_MODELS_PATH } from './ai-models';
 import { useAIModelOptions } from './useAIModelOptions';
 import type {
   AppSettingsEntry,
@@ -73,6 +74,7 @@ export const hudsonShellEnvironment: WorkspaceShellEnvironment = {
   routes: {
     agentActions: '/api/agent-actions',
     aiChat: '/api/ai/chat',
+    aiModels: AI_MODELS_PATH,
     apiProxy: '/api/proxy',
     fetchImage: '/api/fetch-image',
     imageGeneration: '/api/ai/generate-image',
