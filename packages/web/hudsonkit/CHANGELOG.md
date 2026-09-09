@@ -8,6 +8,19 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Add the framework-free `hudsonkit/agent-composer` and
+  `hudsonkit/agent-composer/styles` subpaths, with controlled composer and
+  runtime-picker APIs for attachments, context actions, send/queue/steer/stop,
+  host-owned icon-only dictation beside the primary send action, IME-safe shortcuts,
+  custom models, and runtime selection.
+- Add the framework-free `hudsonkit/agent-workspace` slot shell for hybrid
+  navigation, conversation/composer, editor, and results surfaces, including
+  accessible host-owned tool tabs and optional split panes.
+- Add an optional peer-panel mode to `hudsonkit/agent-workspace`. Hosts can keep
+  arbitrary DOM content mounted while users show, focus, reorder, resize, and
+  arrange panels as a single surface, columns, rows, or a grid. The layout state
+  is JSON-serializable for host persistence.
+
 - Add the `hudsonkit/nav` subpath with a data-driven `HudSideNav`, provider-
   backed composable primitives, icon/off-canvas collapse modes, persistence,
   breadcrumbs, roving focus, and responsive snap-collapse behavior.
@@ -36,6 +49,10 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Make peer-panel drag placement explicit with a compact labeled pointer proxy,
+  a dim accent fill on the prospective destination panel, and a stable
+  `data-dragging-panel` bridge signal for native overlays. The component-local
+  pointer gesture avoids exporting internal layout drags to native drop systems.
 - Replaced Lucide with Hudson's shared Iconoir adapter and added the
   `hudsonkit/icons` export.
 - Preserve CSS pipeline outputs across JavaScript-only tsup cleans, and recover

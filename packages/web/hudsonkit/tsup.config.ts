@@ -48,6 +48,8 @@ const clientEntries = {
   flags: 'src/flags.ts',
   cache: 'src/cache.ts',
   workflow: 'src/workflow/index.ts',
+  'agent-composer': 'src/agent-composer.ts',
+  'agent-workspace': 'src/agent-workspace.ts',
   observability: 'src/observability.ts',
   voice: 'src/voice.ts',
   vault: 'src/vault.ts',
@@ -82,6 +84,10 @@ const PRESERVE_DIST = new Set([
   'tokens.css',
   'styles.d.ts',
   'styles-tokens.d.ts',
+  'agent-composer.css',
+  'agent-composer-styles.d.ts',
+  'agent-workspace.css',
+  'agent-workspace-styles.d.ts',
 ]);
 
 let cleanedDist = false;

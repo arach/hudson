@@ -456,15 +456,44 @@ public struct HudNavigationSidebar<
             )
             .frame(width: HudSidebarLayout.railWidth, height: HudSidebarLayout.rowHeight)
 
-        case .section:
-            // Empty rail cell — same height as the label column's section header
-            // so the two columns stay y-aligned.
+        case .section(_, let title):
+            // Same height as the label column's section header so the two columns
+            // stay y-aligned. Usually empty — but a `railLeading` group name is
+            // drawn from here, since this is the column whose leading edge it
+            // wants. It is an overlay rather than a child so the text can run past
+            // the rail's 48pt into the label column's space: a parent `frame` sizes
+            // an overlay's anchor, it does not clip what the overlay draws.
             Color.clear
                 .frame(
                     width: HudSidebarLayout.railWidth,
                     height: HudSidebarLayout.sectionTopGap + HudSidebarLayout.sectionHeaderHeight
                 )
+                .overlay(alignment: .bottomLeading) {
+                    if style.sectionAlignment == .railLeading {
+                        sectionLabel(title)
+                            .padding(.leading, HudSidebarLayout.sectionRailLeading)
+                            .frame(height: HudSidebarLayout.sectionHeaderHeight, alignment: .bottomLeading)
+                            // Fades with the label column it overhangs. Without this
+                            // a collapsing sidebar would keep the group names, and
+                            // they would be the only thing left sticking out of a
+                            // 48pt rail.
+                            .opacity(labelOpacity)
+                            .animation(nil, value: labelsSettled)
+                            .allowsHitTesting(false)
+                    }
+                }
         }
+    }
+
+    /// The group name itself, so the two places that can draw it agree on what it
+    /// looks like.
+    private func sectionLabel(_ title: String) -> some View {
+        Text(title.uppercased())
+            .font(HudFont.mono(HudTextSize.xxs, weight: .regular))
+            .tracking(HudTracking.wider)
+            .foregroundStyle(theme.palette.dim)
+            .lineLimit(1)
+            .fixedSize(horizontal: true, vertical: false)
     }
 
     // MARK: Label column
@@ -498,7 +527,7 @@ public struct HudNavigationSidebar<
         case .item(let item):
             let isSelected = selection == item.id
             Text(item.title)
-                .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .semibold : .medium))
+                .font(HudFont.ui(HudTextSize.base, weight: isSelected ? .medium : .regular))
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)
                 .foregroundStyle(isSelected ? theme.palette.ink : theme.palette.muted)
@@ -514,16 +543,28 @@ public struct HudNavigationSidebar<
                 }
 
         case .section(_, let title):
+            let alignment = style.sectionAlignment
+            let trailingAligned = alignment == .trailing
             VStack(alignment: .leading, spacing: 0) {
                 Spacer().frame(height: HudSidebarLayout.sectionTopGap)
-                Text(title.uppercased())
-                    .font(HudFont.mono(HudTextSize.xxs, weight: .semibold))
-                    .tracking(HudTracking.wider)
-                    .foregroundStyle(theme.palette.dim)
-                    .lineLimit(1)
-                    .fixedSize(horizontal: true, vertical: false)
-                    .padding(.leading, HudSidebarLayout.labelLeading)
-                    .frame(height: HudSidebarLayout.sectionHeaderHeight, alignment: .bottomLeading)
+                // `railLeading` draws its name from the rail column instead; this
+                // slot still reserves the height so the rows below stay put.
+                if alignment == .railLeading {
+                    Color.clear
+                        .frame(height: HudSidebarLayout.sectionHeaderHeight)
+                } else {
+                    sectionLabel(title)
+                        .padding(.leading, trailingAligned ? 0 : HudSidebarLayout.labelLeading)
+                        .padding(.trailing, trailingAligned ? HudSidebarLayout.sectionTrailingInset : 0)
+                        .frame(
+                            maxWidth: .infinity,
+                            alignment: trailingAligned ? .bottomTrailing : .bottomLeading
+                        )
+                        .frame(
+                            height: HudSidebarLayout.sectionHeaderHeight,
+                            alignment: trailingAligned ? .bottomTrailing : .bottomLeading
+                        )
+                }
             }
         }
     }
@@ -881,7 +922,7 @@ private struct HudSidebarCompactHoverLabel: View {
                 .frame(width: HudSpacing.sm, height: HudSpacing.lg)
 
             Text(title)
-                .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
+                .font(HudFont.ui(HudTextSize.xs, weight: .medium))
                 .foregroundStyle(theme.palette.ink)
                 .lineLimit(1)
                 .fixedSize(horizontal: true, vertical: false)

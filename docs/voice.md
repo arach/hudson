@@ -271,6 +271,42 @@ dictation.prepare()
 
 Constructing `HudDictation`, importing `HudsonVoice`, and running package tests do not download model data.
 
+### HudSpeechPlayback — Apple spoken output
+
+`HudSpeechPlayback` is a thin Hudson facade over one Vox `AppleSpeechOutputController` per audible surface. It speaks canonical Vox synthesis requests and forwards truthful lifecycle/route events. Product policy — opt-in gating, dedupe, text shaping, fallback copy, credential storage — stays in the host.
+
+Credentials are host-lent and snapshotted at initialization. Unlent providers are configured with explicit blank env keys so Vox cannot pick up ambient process secrets. There is no shared singleton and no pause/seek state. The event callback is not main-actor isolated; hop if you need to update UI.
+
+Canonical system speech is `avspeech:system`. UI aliases such as `system` belong at the product boundary, not in this API.
+
+```swift
+import HudsonVoice
+
+let playback = HudSpeechPlayback(
+    credentials: [
+        .openAI: openAIKey,   // omit or leave blank to keep the provider fenced
+    ],
+    onEvent: { event in
+        // Not MainActor-bound.
+        print(event.phase, event.requestId, event.modelId, event.provider?.label ?? "Unknown")
+    }
+)
+
+let requestId = await playback.speak(
+    "Hello from Hudson",
+    modelId: "avspeech:system"
+)
+
+await playback.stop()
+await playback.cancel()
+```
+
+The same credential snapshot backs `models()` and `voices(modelId:)`, so a
+surface can populate its picker without constructing a second public facade.
+Recreate the surface after a credential change.
+
+`HudSpeechSynthesizer` remains the generation-only path that returns audio bytes. `HudTTS` is unchanged.
+
 ### HudVoicePanel — SwiftUI primitive
 
 `HudVoicePanel` is a drop-in SwiftUI view that renders the full Vox listen / stop / cancel UI in Hudson's design language (HudCard, HudButton, HudBadge, HudStatusDot). It owns its own `HudVoxLiveSession`, transcript buffer, and health probe lifecycle.

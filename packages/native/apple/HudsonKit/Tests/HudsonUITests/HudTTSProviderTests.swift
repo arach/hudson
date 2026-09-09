@@ -4,13 +4,221 @@ import Testing
 
 @Suite("HudTTS providers", .serialized)
 struct HudTTSProviderTests {
-    @Test("default cloud registry includes every built-in adapter once")
-    func defaultAdapterRegistry() {
+    @Test("default cloud registry excludes Edge Read Aloud")
+    func defaultAdapterRegistryExcludesEdgeReadAloud() {
         let adapters = HudTTSProviders.defaultCloudAdapters()
         let providerIDs = adapters.map { $0.providerID }
 
         #expect(providerIDs == [.openai, .elevenlabs, .groq, .gemini])
+        #expect(!providerIDs.contains(.edgeReadAloud))
         #expect(Set(providerIDs).count == providerIDs.count)
+    }
+
+    @Test("Edge Read Aloud is available only by explicit opt-in")
+    func edgeReadAloudIsExplicitOptIn() {
+        let optedIn = HudTTSProviders.defaultCloudAdapters() + [HudTTSProviders.EdgeReadAloud()]
+        #expect(optedIn.map(\.providerID).contains(.edgeReadAloud))
+        #expect(optedIn.filter { $0.providerID == .edgeReadAloud }.count == 1)
+    }
+
+    @MainActor
+    @Test("default HudTTS selectable providers omit Edge Read Aloud")
+    func defaultHudTTSDoesNotSelectEdgeReadAloud() async {
+        let tts = HudTTS(credentialSource: StaticTTSCredentialSource())
+        let statuses = await tts.providerStatuses()
+        #expect(!statuses.contains { $0.id == .edgeReadAloud })
+    }
+
+    @Test("Edge synthesis error mapping preserves CancellationError")
+    func edgeReadAloudMappedErrorPreservesCancellation() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(CancellationError())
+        #expect(mapped is CancellationError)
+    }
+
+    @Test("Edge synthesis error mapping normalizes URLError cancelled")
+    func edgeReadAloudMappedErrorNormalizesURLErrorCancelled() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(URLError(.cancelled))
+        #expect(mapped is CancellationError)
+    }
+
+    @Test("Edge synthesis error mapping normalizes NSURLErrorCancelled")
+    func edgeReadAloudMappedErrorNormalizesNSURLErrorCancelled() {
+        let nsError = NSError(domain: NSURLErrorDomain, code: NSURLErrorCancelled)
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(nsError)
+        #expect(mapped is CancellationError)
+    }
+
+    @Test("Edge synthesis error mapping does not wrap HudTTSError")
+    func edgeReadAloudMappedErrorPreservesHudTTSError() {
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(HudTTSError.emptyInput)
+        guard case .emptyInput = mapped as? HudTTSError else {
+            Issue.record("Expected emptyInput, got \(mapped)")
+            return
+        }
+    }
+
+    @Test("Edge synthesis error mapping wraps unexpected errors as networkUnavailable")
+    func edgeReadAloudMappedErrorWrapsUnexpected() {
+        struct Boom: Error {}
+        let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(Boom())
+        guard case let .networkUnavailable(provider, message) = mapped as? HudTTSError else {
+            Issue.record("Expected networkUnavailable, got \(mapped)")
+            return
+        }
+        #expect(provider == .edgeReadAloud)
+        #expect(message.contains("unavailable"))
+    }
+
+    @Test("Edge Read Aloud cancelled synthesis stays CancellationError")
+    func edgeReadAloudPreservesCancellation() async {
+        let task = Task {
+            try await EdgeReadAloudHudTTSProvider().synthesize(
+                HudTTSRequest(text: "Hello"),
+                context: context(session: .shared)
+            )
+        }
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected CancellationError")
+        } catch is CancellationError {
+            // Expected: cancellation must not become networkUnavailable.
+        } catch let HudTTSError.networkUnavailable(_, message) {
+            Issue.record("Cancellation was translated into networkUnavailable: \(message)")
+        } catch {
+            Issue.record("Expected CancellationError, got \(error)")
+        }
+    }
+
+    @Test("Edge in-flight URLSession cancellation stays CancellationError")
+    func edgeReadAloudInFlightURLSessionCancellation() async {
+        let session = HudTTSMockURLProtocol.hangingSession()
+        let task = Task {
+            try await session.data(from: URL(string: "https://example.test/readaloud")!)
+        }
+        await HudTTSMockURLProtocol.waitUntilStarted()
+        task.cancel()
+
+        do {
+            _ = try await task.value
+            Issue.record("Expected in-flight URLSession cancellation to throw")
+        } catch {
+            let mapped = EdgeReadAloudHudTTSProvider.mappedSynthesisError(error)
+            #expect(
+                mapped is CancellationError,
+                "in-flight URLSession error \(error) mapped to \(mapped)"
+            )
+        }
+    }
+
+    @Test("Edge Read Aloud chunks stay UTF-8 and XML safe")
+    func edgeReadAloudChunking() {
+        let text = String(repeating: "Résumé & analysis <evidence> ", count: 400)
+        let chunks = EdgeReadAloudHudTTSProvider.escapedChunks(text)
+
+        #expect(chunks.count > 1)
+        #expect(chunks.allSatisfy { $0.utf8.count <= EdgeReadAloudHudTTSProvider.maximumTextBytes })
+        #expect(chunks.allSatisfy { chunk in
+            !chunk.contains("&") || chunk.split(separator: "&").dropFirst().allSatisfy { $0.contains(";") }
+        })
+        #expect(chunks.joined().contains("Résumé &amp; analysis &lt;evidence&gt;"))
+    }
+
+    @Test("Edge Read Aloud parses binary audio frames")
+    func edgeReadAloudBinaryFrame() throws {
+        let headers = Data("Path:audio\r\nContent-Type:audio/mpeg".utf8)
+        let payload = Data([0x49, 0x44, 0x33, 0x04])
+        let length = UInt16(headers.count + 2)
+        var frame = Data([UInt8(length >> 8), UInt8(length & 0xff)])
+        frame.append(headers)
+        frame.append(Data("\r\n".utf8))
+        frame.append(payload)
+
+        let parsed = try EdgeReadAloudHudTTSProvider.parseBinaryFrame(frame)
+        #expect(parsed.path == "audio")
+        #expect(parsed.contentType == "audio/mpeg")
+        #expect(parsed.payload == payload)
+    }
+
+    @Test("Edge Read Aloud security token is stable inside a five-minute window")
+    func edgeReadAloudGECTimeBucket() {
+        let start = Date(timeIntervalSince1970: 1_700_000_001)
+        let sameBucket = Date(timeIntervalSince1970: 1_700_000_099)
+        let laterBucket = Date(timeIntervalSince1970: 1_700_000_401)
+
+        let first = EdgeReadAloudHudTTSProvider.secMSGEC(at: start)
+        #expect(first.count == 64)
+        #expect(first.allSatisfy { $0.isHexDigit && (!$0.isLetter || $0.isUppercase) })
+        #expect(EdgeReadAloudHudTTSProvider.secMSGEC(at: sameBucket) == first)
+        #expect(EdgeReadAloudHudTTSProvider.secMSGEC(at: laterBucket) != first)
+    }
+
+    @MainActor
+    @Test("Edge Read Aloud manual live latency probe")
+    func edgeReadAloudLiveProbe() async throws {
+        guard ProcessInfo.processInfo.environment["HUDSON_EDGE_TTS_LIVE"] == "1" else {
+            return
+        }
+        let text = "The passage argues that expertise changes as markets, technologies, and founders change."
+        let started = Date()
+        let result = try await EdgeReadAloudHudTTSProvider().synthesize(
+            HudTTSRequest(text: text),
+            context: context(session: .shared)
+        )
+        let elapsedMilliseconds = Int(Date().timeIntervalSince(started) * 1_000)
+        print("HUDSON_EDGE_TTS_LIVE latency_ms=\(elapsedMilliseconds) bytes=\(result.audioData.count)")
+        #expect(result.format == .mp3)
+        #expect(result.audioData.count > 1_000)
+
+        let timings = try #require(result.wordTimings)
+        let spokenWords = text
+            .components(separatedBy: .whitespaces)
+            .map { $0.trimmingCharacters(in: .punctuationCharacters) }
+            .filter { !$0.isEmpty }
+        #expect(timings.map(\.word) == spokenWords)
+        #expect(timings.allSatisfy { $0.start >= 0 && $0.end >= $0.start })
+        #expect(zip(timings, timings.dropFirst()).allSatisfy { $0.start <= $1.start })
+        for timing in timings {
+            print("HUDSON_EDGE_TTS_LIVE word=\(timing.word) start=\(timing.start) end=\(timing.end)")
+        }
+        if let dumpDirectory = ProcessInfo.processInfo.environment["HUDSON_EDGE_TTS_DUMP_DIR"] {
+            let url = URL(fileURLWithPath: dumpDirectory).appendingPathComponent("edge-live-probe.mp3")
+            try result.audioData.write(to: url)
+            print("HUDSON_EDGE_TTS_LIVE audio=\(url.path)")
+        }
+
+        let player = HudSpeechPlayer()
+        try player.play(data: result.audioData, format: result.format)
+        #expect(player.isPlaying)
+        player.stop()
+    }
+
+    @Test("Edge Read Aloud parses word boundaries from metadata frames")
+    func edgeReadAloudWordBoundaryMetadata() {
+        // Frame recorded from a real Read Aloud session (2026-08-27), body
+        // reformatted onto one line; the service pretty-prints the JSON.
+        let frame = "X-RequestId:86B8A25408E04BC59A2DB79FD5138DD6\r\n"
+            + "Content-Type:application/json; charset=utf-8\r\n"
+            + "Path:audio.metadata\r\n"
+            + "\r\n"
+            + #"{"Metadata":[{"Type":"WordBoundary","Data":{"Offset":1000000,"Duration":750000,"text":{"Text":"The","Length":3,"BoundaryType":"WordBoundary"}}},{"Type":"WordBoundary","Data":{"Offset":1875000,"Duration":5000000,"text":{"Text":"passage","Length":7,"BoundaryType":"WordBoundary"}}},{"Type":"SentenceBoundary","Data":{"Offset":1000000,"Duration":5875000,"text":{"Text":"The passage","Length":11,"BoundaryType":"SentenceBoundary"}}}]}"#
+
+        let timings = EdgeReadAloudHudTTSProvider.wordTimings(fromMetadataFrame: frame)
+
+        #expect(timings == [
+            HudTTSWordTiming(word: "The", start: 0.1, end: 0.175),
+            HudTTSWordTiming(word: "passage", start: 0.1875, end: 0.6875),
+        ])
+    }
+
+    @Test("Edge Read Aloud metadata parsing is lenient about malformed frames")
+    func edgeReadAloudMalformedMetadata() {
+        #expect(EdgeReadAloudHudTTSProvider.wordTimings(fromMetadataFrame: "Path:audio.metadata\r\n\r\nnot json").isEmpty)
+        #expect(EdgeReadAloudHudTTSProvider.wordTimings(fromMetadataFrame: "no header boundary").isEmpty)
+        #expect(EdgeReadAloudHudTTSProvider.wordTimings(
+            fromMetadataFrame: "Path:audio.metadata\r\n\r\n{\"Metadata\":[{\"Type\":\"WordBoundary\"}]}"
+        ).isEmpty)
     }
 
     @MainActor
@@ -93,6 +301,51 @@ struct HudTTSProviderTests {
             JSONSerialization.jsonObject(with: elevenLabsBody) as? [String: Any]
         )
         #expect(elevenLabsJSON["model_id"] as? String == "eleven_flash_v2_5")
+    }
+
+    @Test("ElevenLabs can request assembler-ready 16 kHz WAV")
+    func elevenLabsWAVOutput() async throws {
+        let session = HudTTSMockURLProtocol.session(body: Data([0x52, 0x49, 0x46, 0x46]))
+        let elevenLabs = ElevenLabsHudTTSProvider(outputFormat: .wav_16000)
+        let result = try await elevenLabs.synthesize(
+            HudTTSRequest(text: "Hello", voice: "voice-id"),
+            context: context(session: session)
+        )
+
+        let request = try #require(HudTTSMockURLProtocol.lastRequest)
+        let url = try #require(request.url)
+        let components = try #require(URLComponents(url: url, resolvingAgainstBaseURL: false))
+        #expect(components.queryItems?.contains(URLQueryItem(name: "output_format", value: "wav_16000")) == true)
+        #expect(request.value(forHTTPHeaderField: "Accept") == "audio/wav")
+        #expect(result.format == .wav)
+    }
+
+    @Test("ElevenLabs honors expressive voice settings and exact requested pace")
+    func elevenLabsVoiceSettings() async throws {
+        let session = HudTTSMockURLProtocol.session(body: Data([0x01]))
+        let elevenLabs = ElevenLabsHudTTSProvider()
+        _ = try await elevenLabs.synthesize(
+            HudTTSRequest(
+                text: "Move this explanation along.",
+                rate: 1.12,
+                voiceSettings: HudTTSVoiceSettings(
+                    stability: 0.42,
+                    similarityBoost: 0.81,
+                    style: 0.24,
+                    useSpeakerBoost: false
+                )
+            ),
+            context: context(session: session)
+        )
+
+        let body = try #require(HudTTSMockURLProtocol.lastBody)
+        let json = try #require(JSONSerialization.jsonObject(with: body) as? [String: Any])
+        let settings = try #require(json["voice_settings"] as? [String: Any])
+        #expect(settings["stability"] as? Double == 0.42)
+        #expect(settings["similarity_boost"] as? Double == 0.81)
+        #expect(settings["style"] as? Double == 0.24)
+        #expect(settings["use_speaker_boost"] as? Bool == false)
+        #expect(settings["speed"] as? Double == 1.12)
     }
 
     @Test("Groq uses current Orpheus constraints and request fields")
@@ -337,17 +590,53 @@ private final class HudTTSMockURLProtocol: URLProtocol {
     nonisolated(unsafe) static var contentType = "application/json"
     nonisolated(unsafe) static var lastRequest: URLRequest?
     nonisolated(unsafe) static var lastBody: Data?
+    nonisolated(unsafe) static var hangUntilCancelled = false
+    nonisolated(unsafe) static var didStartLoading = false
+    nonisolated(unsafe) static var startedContinuation: CheckedContinuation<Void, Never>?
+    private static let lock = NSLock()
 
     static func session(
         status: Int = 200,
         body: Data,
         contentType: String = "application/json"
     ) -> URLSession {
+        resetHangState()
         self.status = status
         self.body = body
         self.contentType = contentType
         self.lastRequest = nil
         self.lastBody = nil
+        return makeSession()
+    }
+
+    static func hangingSession() -> URLSession {
+        resetHangState()
+        hangUntilCancelled = true
+        return makeSession()
+    }
+
+    static func waitUntilStarted() async {
+        await withCheckedContinuation { continuation in
+            lock.lock()
+            if didStartLoading {
+                lock.unlock()
+                continuation.resume()
+            } else {
+                startedContinuation = continuation
+                lock.unlock()
+            }
+        }
+    }
+
+    private static func resetHangState() {
+        lock.lock()
+        hangUntilCancelled = false
+        didStartLoading = false
+        startedContinuation = nil
+        lock.unlock()
+    }
+
+    private static func makeSession() -> URLSession {
         let configuration = URLSessionConfiguration.ephemeral
         configuration.protocolClasses = [HudTTSMockURLProtocol.self]
         return URLSession(configuration: configuration)
@@ -357,6 +646,15 @@ private final class HudTTSMockURLProtocol: URLProtocol {
     override class func canonicalRequest(for request: URLRequest) -> URLRequest { request }
 
     override func startLoading() {
+        if Self.hangUntilCancelled {
+            Self.lock.lock()
+            Self.didStartLoading = true
+            let continuation = Self.startedContinuation
+            Self.startedContinuation = nil
+            Self.lock.unlock()
+            continuation?.resume()
+            return
+        }
         Self.lastRequest = request
         Self.lastBody = request.httpBody ?? request.httpBodyStream.flatMap(Self.read)
         let response = HTTPURLResponse(
@@ -370,7 +668,10 @@ private final class HudTTSMockURLProtocol: URLProtocol {
         client?.urlProtocolDidFinishLoading(self)
     }
 
-    override func stopLoading() {}
+    override func stopLoading() {
+        guard Self.hangUntilCancelled else { return }
+        client?.urlProtocol(self, didFailWithError: URLError(.cancelled))
+    }
 
     private static func read(_ stream: InputStream) -> Data {
         stream.open()
