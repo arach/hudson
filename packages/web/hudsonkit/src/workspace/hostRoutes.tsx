@@ -5,6 +5,8 @@ import { createContext, useContext, type ReactNode } from 'react';
 export interface WorkspaceHostRoutes {
   agentActions?: string;
   aiChat?: string;
+  /** Host model discovery endpoint returning provider, value, and label options. */
+  aiModels?: string;
   apiProxy?: string;
   fetchImage?: string;
   imageGeneration?: string;

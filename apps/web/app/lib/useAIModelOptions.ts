@@ -1,51 +1,31 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
-import {
-  AI_MODEL_OPTIONS,
-  mergeCopilotModelOptions,
-  type AISelectOption,
-} from './ai-models';
-
-interface AIModelsRouteResponse {
-  source?: string;
-  options?: AISelectOption[];
-}
+import { useEffect, useState } from 'react';
+import { AI_MODELS_PATH, type AISelectOption } from './ai-models';
 
 export function useAIModelOptions() {
-  const [liveOptions, setLiveOptions] = useState<AISelectOption[] | null>(null);
-  const [source, setSource] = useState<'static' | 'live'>('static');
+  const [modelOptions, setModelOptions] = useState<AISelectOption[]>([]);
+  const [source, setSource] = useState<'registry' | 'live'>('registry');
 
   useEffect(() => {
     const controller = new AbortController();
-
-    void fetch('/api/ai/models?provider=copilot', {
-      cache: 'no-store',
-      signal: controller.signal,
-    })
-      .then(async response => {
-        if (!response.ok) throw new Error(`HTTP ${response.status}`);
-        return response.json() as Promise<AIModelsRouteResponse>;
-      })
-      .then(data => {
-        if (Array.isArray(data.options) && data.options.length > 0) {
-          setLiveOptions(data.options.filter(option => option.provider === 'copilot'));
-          setSource(data.source === 'live' ? 'live' : 'static');
+    const refresh = async () => {
+      try {
+        const response = await fetch(AI_MODELS_PATH, {
+          cache: 'no-store', signal: controller.signal,
+        });
+        if (!response.ok) return;
+        const data = await response.json();
+        if (!controller.signal.aborted && Array.isArray(data.options)) {
+          setModelOptions(data.options);
+          setSource(data.source === 'live' ? 'live' : 'registry');
         }
-      })
-      .catch(error => {
-        if (error instanceof DOMException && error.name === 'AbortError') return;
-        setLiveOptions(null);
-        setSource('static');
-      });
-
-    return () => controller.abort();
+      } catch { /* Retain the last successful catalog until the next refresh. */ }
+    };
+    void refresh();
+    window.addEventListener('focus', refresh);
+    return () => { controller.abort(); window.removeEventListener('focus', refresh); };
   }, []);
-
-  const modelOptions = useMemo(
-    () => liveOptions ? mergeCopilotModelOptions(liveOptions) : AI_MODEL_OPTIONS,
-    [liveOptions],
-  );
 
   return { modelOptions, source };
 }
