@@ -41,7 +41,7 @@ export function useRovingNav() {
       if (row.tabIndex < 0) return false;
       // offsetParent is null for display:none (and often in jsdom). Prefer a
       // layout check that still works under test and collapses hidden rails.
-      if (row.hidden || row.getAttribute('aria-hidden') === 'true') return false;
+      if (row.closest('[hidden], [inert]') || row.getAttribute('aria-hidden') === 'true') return false;
       const style = typeof getComputedStyle === 'function' ? getComputedStyle(row) : null;
       if (style && (style.display === 'none' || style.visibility === 'hidden')) return false;
       if (row.offsetParent === null) {

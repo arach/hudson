@@ -75,6 +75,7 @@ public extension HudNavigationSidebar {
             entries: entries,
             isCompact: isCompact,
             labelWidth: labelWidth,
+            variant: variant,
             accent: accent,
             geometry: HudSidebarResizeGeometry(
                 minLabelWidth: minLabelWidth,
@@ -87,6 +88,7 @@ public extension HudNavigationSidebar {
             onResizePhaseChange: onResizePhaseChange,
             railHeader: railHeader,
             labelHeader: labelHeader,
+            verticalTabs: verticalTabs,
             footer: footer
         )
     }
@@ -114,6 +116,7 @@ struct HudSidebarResizeHost<
     @Binding private var labelWidth: CGFloat
 
     private let entries: [HudSidebarEntry<Selection>]
+    private let variant: HudNavigationSidebarVariant
     private let accent: Color?
     private let geometry: HudSidebarResizeGeometry
     private let leadingInset: CGFloat
@@ -121,6 +124,7 @@ struct HudSidebarResizeHost<
     private let onResizePhaseChange: (Bool) -> Void
     private let railHeader: RailHeader
     private let labelHeader: LabelHeader
+    private let verticalTabs: AnyView?
     private let footer: Footer
 
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -132,6 +136,7 @@ struct HudSidebarResizeHost<
         entries: [HudSidebarEntry<Selection>],
         isCompact: Binding<Bool>,
         labelWidth: Binding<CGFloat>,
+        variant: HudNavigationSidebarVariant,
         accent: Color?,
         geometry: HudSidebarResizeGeometry,
         leadingInset: CGFloat,
@@ -139,12 +144,14 @@ struct HudSidebarResizeHost<
         onResizePhaseChange: @escaping (Bool) -> Void,
         railHeader: RailHeader,
         labelHeader: LabelHeader,
+        verticalTabs: AnyView?,
         footer: Footer
     ) {
         self._selection = selection
         self._isCompact = isCompact
         self._labelWidth = labelWidth
         self.entries = entries
+        self.variant = variant
         self.accent = accent
         self.geometry = geometry
         self.leadingInset = leadingInset
@@ -152,6 +159,7 @@ struct HudSidebarResizeHost<
         self.onResizePhaseChange = onResizePhaseChange
         self.railHeader = railHeader
         self.labelHeader = labelHeader
+        self.verticalTabs = verticalTabs
         self.footer = footer
     }
 
@@ -204,12 +212,14 @@ struct HudSidebarResizeHost<
             selection: $selection,
             entries: entries,
             progress: progress,
+            variant: variant,
             accent: accent,
             labelWidth: effectiveLabelWidth,
             onHeaderTap: headerTapAction,
-            railHeader: { railHeader },
-            labelHeader: { labelHeader },
-            footer: { footer }
+            railHeader: railHeader,
+            labelHeader: labelHeader,
+            verticalTabs: verticalTabs,
+            footer: footer
         )
         .frame(maxHeight: .infinity, alignment: .top)
     }

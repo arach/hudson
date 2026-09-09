@@ -8,6 +8,10 @@ import Observation
 /// on-device speech through `AVSpeechSynthesizer` and cloud providers through
 /// the adapter layer in `TTS/Adapters`.
 ///
+/// Default construction uses `HudTTSProviders.defaultCloudAdapters()`, which
+/// does not include Microsoft Edge Read Aloud. That unofficial consumer
+/// endpoint is opt-in only; see `HudTTSProviders.EdgeReadAloud`.
+///
 /// ```swift
 /// let tts = HudTTS(credentialSource: vault)
 /// try await tts.speak("Hello", providerID: .openai, voice: "alloy")
@@ -45,7 +49,8 @@ public final class HudTTS {
 
     private let client: HudTTSClient
     private let systemSpeech = HudSystemSpeechSynthesizer.shared
-    private let speechPlayer = HudSpeechPlayer()
+    private let speechPlayer: any HudSpeechPlaying
+    private var speakGeneration: UInt64 = 0
 
     private enum ActivePlayback {
         case none
@@ -55,11 +60,27 @@ public final class HudTTS {
 
     private var activePlayback: ActivePlayback = .none
 
-    public init(
+    public convenience init(
         credentialSource: any HudTTSCredentialSource,
         urlSession: URLSession = .shared,
         requestTimeout: TimeInterval = 60,
         adapters: [any HudTTSProviderAdapter] = HudTTSProviders.defaultCloudAdapters()
+    ) {
+        self.init(
+            credentialSource: credentialSource,
+            urlSession: urlSession,
+            requestTimeout: requestTimeout,
+            adapters: adapters,
+            speechPlayer: HudSpeechPlayer()
+        )
+    }
+
+    init(
+        credentialSource: any HudTTSCredentialSource,
+        urlSession: URLSession = .shared,
+        requestTimeout: TimeInterval = 60,
+        adapters: [any HudTTSProviderAdapter] = HudTTSProviders.defaultCloudAdapters(),
+        speechPlayer: any HudSpeechPlaying
     ) {
         self.client = HudTTSClient(
             credentialSource: credentialSource,
@@ -67,6 +88,7 @@ public final class HudTTS {
             requestTimeout: requestTimeout,
             adapters: adapters
         )
+        self.speechPlayer = speechPlayer
     }
 
     public func providerStatuses() async -> [HudTTSProviderStatus] {
@@ -84,6 +106,7 @@ public final class HudTTS {
         rate: Double = 1.0,
         model: String? = nil,
         instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws -> HudTTSResult {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
@@ -112,7 +135,8 @@ public final class HudTTS {
                     voice: voice,
                     rate: rate,
                     model: model,
-                    instructions: instructions
+                    instructions: instructions,
+                    voiceSettings: voiceSettings
                 ),
                 providerID: providerID
             )
@@ -126,46 +150,49 @@ public final class HudTTS {
         rate: Double = 1.0,
         model: String? = nil,
         instructions: String? = nil,
+        voiceSettings: HudTTSVoiceSettings? = nil,
         systemVoiceIdentifier: String? = nil
     ) async throws {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else { return }
 
-        stop()
-        isSpeaking = true
-
-        switch providerID {
-        case .system:
-            activePlayback = .system
-            systemSpeech.speak(trimmed, voiceIdentifier: systemVoiceIdentifier ?? voice) { [weak self] in
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.activePlayback = .none
-                    self.isSpeaking = false
+        let generation = beginSpeak()
+        guard isCurrentSpeak(generation) else { return }
+        do {
+            switch providerID {
+            case .system:
+                activePlayback = .system
+                systemSpeech.speak(trimmed, voiceIdentifier: systemVoiceIdentifier ?? voice) { [weak self] in
+                    Task { @MainActor in
+                        self?.finishSpeak(generation)
+                    }
                 }
-            }
 
-        default:
-            let result = try await client.synthesize(
-                HudTTSRequest(
-                    text: trimmed,
-                    voice: voice,
-                    rate: rate,
-                    model: model,
-                    instructions: instructions
-                ),
-                providerID: providerID
-            )
-            activePlayback = .cloud
-            try speechPlayer.play(data: result.audioData) { [weak self] in
-                Task { @MainActor in
-                    guard let self else { return }
-                    self.activePlayback = .none
-                    self.isSpeaking = false
+            default:
+                let result = try await client.synthesize(
+                    HudTTSRequest(
+                        text: trimmed,
+                        voice: voice,
+                        rate: rate,
+                        model: model,
+                        instructions: instructions,
+                        voiceSettings: voiceSettings
+                    ),
+                    providerID: providerID
+                )
+                guard isCurrentSpeak(generation) else { return }
+                activePlayback = .cloud
+                try speechPlayer.play(data: result.audioData, format: result.format) { [weak self] in
+                    Task { @MainActor in
+                        self?.finishSpeak(generation)
+                    }
                 }
+                guard isCurrentSpeak(generation) else { return }
+                isSpeaking = speechPlayer.isPlaying
             }
-            isSpeaking = speechPlayer.isPlaying
-
+        } catch {
+            failSpeak(generation)
+            throw error
         }
     }
 
@@ -193,6 +220,34 @@ public final class HudTTS {
     }
 
     public func stop() {
+        speakGeneration &+= 1
+        haltPlayback()
+    }
+
+    private func beginSpeak() -> UInt64 {
+        stop()
+        speakGeneration &+= 1
+        let generation = speakGeneration
+        isSpeaking = true
+        return generation
+    }
+
+    private func isCurrentSpeak(_ generation: UInt64) -> Bool {
+        generation == speakGeneration
+    }
+
+    private func finishSpeak(_ generation: UInt64) {
+        guard isCurrentSpeak(generation) else { return }
+        activePlayback = .none
+        isSpeaking = false
+    }
+
+    private func failSpeak(_ generation: UInt64) {
+        guard isCurrentSpeak(generation) else { return }
+        haltPlayback()
+    }
+
+    private func haltPlayback() {
         systemSpeech.stop()
         speechPlayer.stop()
         activePlayback = .none

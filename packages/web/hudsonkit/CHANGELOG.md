@@ -8,9 +8,31 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Added
 
+- Add the framework-free `hudsonkit/agent-composer` and
+  `hudsonkit/agent-composer/styles` subpaths, with controlled composer and
+  runtime-picker APIs for attachments, context actions, send/queue/steer/stop,
+  host-owned icon-only dictation beside the primary send action, IME-safe shortcuts,
+  custom models, and runtime selection.
+- Add the framework-free `hudsonkit/agent-workspace` slot shell for hybrid
+  navigation, conversation/composer, editor, and results surfaces, including
+  accessible host-owned tool tabs and optional split panes.
+- Add an optional peer-panel mode to `hudsonkit/agent-workspace`. Hosts can keep
+  arbitrary DOM content mounted while users show, focus, reorder, resize, and
+  arrange panels as a single surface, columns, rows, or a grid. The layout state
+  is JSON-serializable for host persistence.
+
 - Add the `hudsonkit/nav` subpath with a data-driven `HudSideNav`, provider-
   backed composable primitives, icon/off-canvas collapse modes, persistence,
   breadcrumbs, roving focus, and responsive snap-collapse behavior.
+- Add `HudSideNavLayout` for full-height anchored navigation with an inset top
+  row, plus `HudSideRail` for a separate real-width compact context rail whose
+  expanded subtree remains mounted.
+- Add shared pointer-capture and keyboard rail resizing with drag-through
+  collapse, compact-state revival, remembered widths, plain-click protection,
+  Escape cancellation, and double-click reset.
+- Add opt-in anchored navigation to `WorkspaceShell`; Hudson's `/app` route now
+  uses workspace apps as primary destinations and the focused app's left panel
+  as independent contextual navigation.
 - Ship TypeScript declarations for the `./styles` and `./styles/tokens.css`
   export subpaths (clears TS2882 under strict tsc for side-effect CSS imports).
 - Themeable `--hud-nav-live` token on `HudSideNav` live signal (dot, count
@@ -27,12 +49,29 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 
+- Make peer-panel drag placement explicit with a compact labeled pointer proxy,
+  a dim accent fill on the prospective destination panel, and a stable
+  `data-dragging-panel` bridge signal for native overlays. The component-local
+  pointer gesture avoids exporting internal layout drags to native drop systems.
 - Replaced Lucide with Hudson's shared Iconoir adapter and added the
   `hudsonkit/icons` export.
 - Preserve CSS pipeline outputs across JavaScript-only tsup cleans, and recover
   missing styles with the cheaper CSS build during source-package preparation.
 - Clear `useSnapCollapseAt`'s pending programmatic-width guard after a bounded
   180ms timeout when host clamping prevents the requested width from settling.
+- Replace compact side-nav browser titles with Hudson Base UI tooltips using a
+  configurable `500ms` settled-hover delay.
+- Allow `HudSideNav` header and footer chrome to provide explicit compact
+  presentations instead of clipping expanded labels into the icon rail.
+- Animate discrete primary/context rail expansion while keeping pointer resizing
+  transition-free; keep both presentations mounted and use asymmetric content
+  fades with fixed inner widths to prevent clipped-label reflow.
+- Use one `HUD_SIDE_NAV_HEADER_HEIGHT` register for the primary brand, app top
+  row, contextual header, and resize seam, including custom top-row heights.
+- Remove the compact selected-item edge strip in favor of one uninterrupted
+  rounded selection surface.
+- Align anchored logo, title, and contextual header bands at `48px`, and use
+  one directional-caret language for primary and contextual collapse controls.
 
 ## [0.3.3] - 2026-07-01
 

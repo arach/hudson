@@ -8,6 +8,11 @@ export {
   useHudSideNav,
   useOptionalHudSideNav,
   HUD_SIDE_NAV_KEYBOARD_SHORTCUT,
+  HUD_SIDE_NAV_EXPANDED_WIDTH,
+  HUD_SIDE_NAV_MIN_EXPANDED_WIDTH,
+  HUD_SIDE_NAV_MAX_EXPANDED_WIDTH,
+  HUD_SIDE_NAV_COLLAPSED_WIDTH,
+  HUD_SIDE_NAV_TOOLTIP_DELAY,
 } from './context';
 export type {
   HudSideNavProviderProps,
@@ -31,9 +36,37 @@ export {
   HudSideNavMenuSubButton,
   HudSideNavRail,
   HudSideNavTrigger,
+  HudSideNavToggleCaret,
   HudSideNavCaret,
 } from './primitives';
-export type { HudSideNavRegionProps, HudSideNavMenuButtonProps } from './primitives';
+export type {
+  HudSideNavRegionProps,
+  HudSideNavHeaderProps,
+  HudSideNavMenuButtonProps,
+  HudSideNavTriggerProps,
+} from './primitives';
+
+// Full-height anchored-L composition + separate contextual rail.
+export {
+  HudSideNavLayout,
+  HudSideRail,
+  HUD_SIDE_NAV_BOTTOM_BAR_HEIGHT,
+  HUD_SIDE_RAIL_EXPANDED_WIDTH,
+  HUD_SIDE_RAIL_COLLAPSED_WIDTH,
+} from './HudSideNavLayout';
+export type { HudSideNavLayoutProps, HudSideRailProps } from './HudSideNavLayout';
+export { HUD_SIDE_NAV_HEADER_HEIGHT } from './shared';
+export type { HudNavIcon } from './shared';
+
+// Shared pointer/keyboard resize behavior for custom rail compositions.
+export {
+  HudRailResizeHandle,
+  resolveHudRailResizeCommit,
+  HUD_RAIL_DRAG_COLLAPSE_MARGIN,
+  HUD_RAIL_DRAG_EXPAND_TRAVEL,
+  HUD_RAIL_KEYBOARD_RESIZE_STEP,
+} from './HudRailResizeHandle';
+export type { HudRailResizeHandleProps } from './HudRailResizeHandle';
 
 // Breadcrumb (minimal chrome).
 export { HudBreadcrumb } from './HudBreadcrumb';

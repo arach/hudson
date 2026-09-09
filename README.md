@@ -68,6 +68,7 @@ apps/web/app/apps/                 # Web app examples (hudson-docs, stage-design
 apps/canvas/                       # Native Canvas macOS product (CanvasApp host)
 packages/web/hudsonkit/            # Shell + primitives — published as `hudsonkit`
 packages/web/ai-backends/          # Provider-neutral AI backends — published as `@hudsonkit/ai`
+packages/web/admin/                # Schema-driven operator admin package
 packages/tools/create-hudson-app/  # `create-hudson-app` scaffolder
 packages/tools/hkit/               # `@hudsonkit/hkit` design & diagnostics CLI
 packages/native/apple/HudsonKit/   # Apple-native Swift package
@@ -102,3 +103,4 @@ React 19 · Next.js 16 · Tailwind v4 · bun · TypeScript
 - [Building apps](./docs/building-apps.md) — the `HudsonApp` contract in detail
 - [Perf patterns](./docs/perf-drag-resize-patterns.md) — drag/resize/pan tricks worth reusing
 - [For agents](./docs/agent/overview.agent.md) — LLM-oriented reference
+- [Notice](./NOTICE.md) — third-party terms Hudson pulls in, including the NVIDIA / FluidInference Parakeet weights `HudsonVoice` downloads at runtime

@@ -25,10 +25,10 @@
 // is a neutral filled chip, never the live tone, so "where I am" and "what is
 // live" stay legible as two separate channels.
 
-import React, { useCallback, useState } from 'react';
-import type { HudsonIcon } from '../../icons';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import type { HudDensity } from '../primitives';
 import { cx } from '../patterns/utils';
+import { HudTooltip } from '../behaviors/HudTooltip';
 import {
   HudSideNavProvider,
   useHudSideNav,
@@ -38,12 +38,15 @@ import {
 } from './context';
 import { HudSideNavRail, HudSideNavCaret } from './primitives';
 import {
+  HUD_SIDE_NAV_HEADER_HEIGHT,
   LiveCountBadge,
   LiveDot,
   indentFor,
   navRailSelectedBg,
   navRowBg,
   navSpine,
+  renderHudNavIcon,
+  type HudNavIcon,
 } from './shared';
 import { useRovingNav } from './useRovingNav';
 
@@ -55,9 +58,9 @@ export interface HudNavNode {
   label: React.ReactNode;
   /** Accessible/collapsed-rail label when `label` is not plain text. Falls back to `id`. */
   accessibilityLabel?: string;
-  /** Optional Hudson icon. Rendered on destinations and leaves, and it is the
-   *  only affordance shown in collapsed (icons-only) mode. */
-  icon?: HudsonIcon;
+  /** Optional Hudson icon component or preconfigured icon element. Rendered on
+   *  destinations and leaves, and it is the only affordance shown in compact mode. */
+  icon?: HudNavIcon;
   /** Convenience trailing count. Rendered as a badge; tone follows `live`. */
   count?: number;
   /** Arbitrary trailing content (custom badge, timestamp, …). Sits before the
@@ -106,12 +109,25 @@ export interface HudSideNavProps {
   persistKey?: string;
   /** Cmd/Ctrl shortcut key, or `false` to disable (self-provided provider only). */
   keyboardShortcut?: string | false;
+  /** Structural width defaults used when this nav self-provides. */
+  defaultExpandedWidth?: number;
+  expandedWidth?: number;
+  onExpandedWidthChange?: (width: number) => void;
+  minExpandedWidth?: number;
+  maxExpandedWidth?: number;
+  collapsedWidth?: number;
+  /** Settled-hover delay for compact labels when this nav self-provides. */
+  tooltipDelay?: number;
   /** Render a rail toggle strip along the sidebar's inner edge. */
   rail?: boolean;
   /** Optional content pinned above the tree (brand row, workspace switch, …). */
   header?: React.ReactNode;
+  /** Compact override for `header`. Falls back to `header` when omitted. */
+  collapsedHeader?: React.ReactNode;
   /** Optional content pinned below the tree (account, status, actions, …). */
   footer?: React.ReactNode;
+  /** Compact override for `footer`. Falls back to `footer` when omitted. */
+  collapsedFooter?: React.ReactNode;
   /** Density register. Defaults to `default`. */
   density?: HudDensity;
   /**
@@ -155,7 +171,21 @@ export function HudSideNav(props: HudSideNavProps) {
 
   // Standalone — self-provide. The legacy `collapsed` prop maps to a controlled
   // `icon`-mode provider so the shipped behavior is byte-identical.
-  const { collapsed, defaultOpen, collapsible, side, persistKey, keyboardShortcut } = props;
+  const {
+    collapsed,
+    defaultOpen,
+    collapsible,
+    side,
+    persistKey,
+    keyboardShortcut,
+    defaultExpandedWidth,
+    expandedWidth,
+    onExpandedWidthChange,
+    minExpandedWidth,
+    maxExpandedWidth,
+    collapsedWidth,
+    tooltipDelay,
+  } = props;
   return (
     <HudSideNavProvider
       {...(collapsed !== undefined ? { open: !collapsed } : {})}
@@ -164,6 +194,13 @@ export function HudSideNav(props: HudSideNavProps) {
       side={side ?? 'left'}
       persistKey={persistKey}
       keyboardShortcut={keyboardShortcut}
+      defaultExpandedWidth={defaultExpandedWidth}
+      expandedWidth={expandedWidth}
+      onExpandedWidthChange={onExpandedWidthChange}
+      minExpandedWidth={minExpandedWidth}
+      maxExpandedWidth={maxExpandedWidth}
+      collapsedWidth={collapsedWidth}
+      tooltipDelay={tooltipDelay}
     >
       <HudSideNavView {...props} />
     </HudSideNavProvider>
@@ -181,6 +218,8 @@ function HudSideNavView({
   rail,
   header,
   footer,
+  collapsedHeader,
+  collapsedFooter,
   density = 'default',
   selectionWash = false,
   rovingFocus = false,
@@ -188,10 +227,11 @@ function HudSideNavView({
   className,
   empty,
 }: HudSideNavProps) {
-  const { state, collapsible, side } = useHudSideNav();
+  const { state, collapsible, side, expandedWidth, collapsedWidth } = useHudSideNav();
   const rovingKeyDown = useRovingNav();
   const iconCollapsed = state === 'collapsed' && collapsible === 'icon';
   const offcanvasHidden = state === 'collapsed' && collapsible === 'offcanvas';
+  const navRef = useRef<HTMLElement>(null);
 
   const [internalExpansion, setInternalExpansion] = useState(() => {
     const seed = new Set(defaultExpandedIds);
@@ -237,17 +277,9 @@ function HudSideNavView({
   );
 
   const dataDriven = items !== undefined;
-  const body = dataDriven ? (
-    items!.length === 0 && empty ? (
-      <div className="px-3 py-4 text-[11px] text-muted-foreground">{empty}</div>
-    ) : iconCollapsed ? (
-      <CollapsedRail
-        items={items!}
-        selectedId={selectedId}
-        onSelect={onSelect}
-        density={density}
-        selectionWash={selectionWash}
-      />
+  const expandedBody = dataDriven ? (
+    items!.length === 0 ? (
+      empty ? <div className="px-3 py-4 text-[11px] text-muted-foreground">{empty}</div> : null
     ) : (
       <div className="flex flex-col gap-0.5">
         {items!.map((node) => (
@@ -265,12 +297,44 @@ function HudSideNavView({
         ))}
       </div>
     )
-  ) : (
-    children
-  );
+  ) : children;
+  const collapsedBody = dataDriven ? (
+    items!.length === 0 ? (
+      empty ? <div className="px-2 py-4 text-center text-[10px] text-muted-foreground">{empty}</div> : null
+    ) : (
+      <CollapsedRail
+        items={items!}
+        selectedId={selectedId}
+        onSelect={onSelect}
+        density={density}
+        selectionWash={selectionWash}
+      />
+    )
+  ) : children;
+  const keepBothPresentations = dataDriven && collapsible === 'icon';
+  const visibleHeader = iconCollapsed ? (collapsedHeader ?? header) : header;
+  const visibleFooter = iconCollapsed ? (collapsedFooter ?? footer) : footer;
+
+  useEffect(() => {
+    const nav = navRef.current;
+    const active = document.activeElement;
+    if (!nav || !(active instanceof HTMLElement) || !nav.contains(active)) return;
+    if (!active.closest('[data-rail-content]')) return;
+
+    const pane = nav.querySelector<HTMLElement>(
+      `[data-rail-content="${iconCollapsed ? 'collapsed' : 'expanded'}"]`,
+    );
+    const target =
+      pane?.querySelector<HTMLElement>('[aria-current="page"]') ??
+      pane?.querySelector<HTMLElement>('button:not(:disabled)');
+    if (!target) return;
+    const frame = requestAnimationFrame(() => target.focus());
+    return () => cancelAnimationFrame(frame);
+  }, [iconCollapsed, selectedId]);
 
   return (
     <nav
+      ref={navRef}
       aria-label={ariaLabel}
       data-state={state}
       data-collapsible={collapsible === 'none' ? undefined : collapsible}
@@ -279,27 +343,69 @@ function HudSideNavView({
       onKeyDown={rovingFocus ? rovingKeyDown : undefined}
       className={cx('relative flex min-h-0 flex-col', offcanvasHidden && 'hidden', className)}
     >
-      {header && (
+      {visibleHeader && (
         <div
           className={cx(
-            'shrink-0 border-b border-[color-mix(in_srgb,var(--hud-chrome-border,oklch(var(--border)))_70%,transparent)]',
-            density === 'compact' ? 'p-2' : 'p-3',
+            'flex shrink-0 items-center border-b border-[color-mix(in_srgb,var(--hud-chrome-border,oklch(var(--border)))_70%,transparent)]',
+            density === 'compact' ? 'px-2' : 'px-3',
           )}
+          style={{ height: `var(--hud-side-nav-header-height, ${HUD_SIDE_NAV_HEADER_HEIGHT}px)` }}
         >
-          {header}
+          {visibleHeader}
         </div>
       )}
-      <div
-        className={cx(
-          'min-h-0 flex-1 overflow-y-auto frame-scrollbar',
-          density === 'compact' ? 'py-1.5' : 'py-2',
-        )}
-      >
-        {body}
-      </div>
-      {footer && (
+      {keepBothPresentations ? (
+        <div className="relative min-h-0 flex-1 overflow-hidden">
+          <div
+            data-rail-content="expanded"
+            aria-hidden={iconCollapsed}
+            inert={iconCollapsed}
+            className={cx(
+              'absolute inset-0 overflow-y-auto frame-scrollbar transition-opacity motion-reduce:delay-0 motion-reduce:duration-[1ms]',
+              iconCollapsed
+                ? 'pointer-events-none opacity-0 duration-[90ms] ease-linear'
+                : 'opacity-100 delay-[90ms] duration-[120ms] ease-out',
+            )}
+          >
+            <div
+              className={density === 'compact' ? 'py-1.5' : 'py-2'}
+              style={{ width: expandedWidth }}
+            >
+              {expandedBody}
+            </div>
+          </div>
+          <div
+            data-rail-content="collapsed"
+            aria-hidden={!iconCollapsed}
+            inert={!iconCollapsed}
+            className={cx(
+              'absolute inset-0 overflow-y-auto frame-scrollbar transition-opacity motion-reduce:delay-0 motion-reduce:duration-[1ms]',
+              iconCollapsed
+                ? 'opacity-100 delay-[90ms] duration-[120ms] ease-out'
+                : 'pointer-events-none opacity-0 duration-[90ms] ease-linear',
+            )}
+          >
+            <div
+              className={density === 'compact' ? 'py-1.5' : 'py-2'}
+              style={{ width: collapsedWidth }}
+            >
+              {collapsedBody}
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div
+          className={cx(
+            'min-h-0 flex-1 overflow-y-auto frame-scrollbar',
+            density === 'compact' ? 'py-1.5' : 'py-2',
+          )}
+        >
+          {expandedBody}
+        </div>
+      )}
+      {visibleFooter && (
         <div className="shrink-0 border-t border-[color-mix(in_srgb,var(--hud-chrome-border,oklch(var(--border)))_70%,transparent)] p-3">
-          {footer}
+          {visibleFooter}
         </div>
       )}
       {rail && <HudSideNavRail />}
@@ -390,8 +496,12 @@ function HudNavRow({
     );
   }
 
-  const Icon = node.icon;
   const isDestination = depth === 0;
+  const renderedIcon = renderHudNavIcon(
+    node.icon,
+    isDestination ? (compact ? 15 : 16) : compact ? 13 : 14,
+    cx('shrink-0', isSelected ? 'text-foreground' : 'text-muted-foreground'),
+  );
 
   return (
     <div className="flex flex-col">
@@ -406,20 +516,12 @@ function HudNavRow({
           'group flex w-full items-center gap-2 border-l-2 pr-2.5 text-left transition-colors',
           'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40 focus-visible:ring-inset',
           compact ? 'py-1.5' : 'py-2',
-          // When selectionWash draws its own inset spine, keep the border transparent.
-          selectionWash && isSelected && !node.live
-            ? 'border-l-transparent'
-            : navSpine(isSelected, node.live),
+          navSpine(isSelected, node.live),
           navRowBg(isSelected, selectionWash),
           node.disabled && 'pointer-events-none opacity-50',
         )}
       >
-        {Icon ? (
-          <Icon
-            size={isDestination ? (compact ? 15 : 16) : compact ? 13 : 14}
-            className={cx('shrink-0', isSelected ? 'text-foreground' : 'text-muted-foreground')}
-          />
-        ) : (
+        {renderedIcon ?? (
           !isDestination && <span className="w-1 shrink-0" aria-hidden="true" />
         )}
         {hasChildren && (
@@ -477,7 +579,6 @@ function TrailingCluster({ node, compact }: { node: HudNavNode; compact: boolean
     </span>
   );
 }
-
 // ---------------------------------------------------------------------------
 // Collapsed rail — icons-only level-1 destinations. Deeper tiers are hidden.
 // ---------------------------------------------------------------------------
@@ -495,44 +596,49 @@ function CollapsedRail({
   selectionWash?: boolean;
 }) {
   const compact = density === 'compact';
+  const { side, tooltipDelay } = useHudSideNav();
   return (
     <div className="flex flex-col items-center gap-1 px-1.5">
       {items.map((node) => {
         const isSelected = selectedId === node.id;
-        const Icon = node.icon;
+        const renderedIcon = renderHudNavIcon(node.icon, compact ? 16 : 18);
         const label =
           node.accessibilityLabel ?? (typeof node.label === 'string' ? node.label : node.id);
         return (
-          <button
+          <HudTooltip
             key={node.id}
-            type="button"
+            content={label}
+            side={side === 'left' ? 'right' : 'left'}
+            delay={tooltipDelay}
             disabled={node.disabled}
-            title={label}
-            aria-label={label}
-            aria-current={isSelected ? 'page' : undefined}
-            onClick={() => !node.disabled && onSelect?.(node)}
-            className={cx(
-              'relative flex items-center justify-center rounded-md transition-colors',
-              'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40',
-              compact ? 'h-8 w-8' : 'h-9 w-9',
-              isSelected
-                ? navRailSelectedBg(selectionWash)
-                : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
-              node.disabled && 'pointer-events-none opacity-50',
-            )}
           >
-            {Icon ? (
-              <Icon size={compact ? 16 : 18} />
-            ) : (
-              <span className="font-mono text-[11px] uppercase">{label.slice(0, 2)}</span>
-            )}
-            {node.live && (
-              <span
-                aria-hidden="true"
-                className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--hud-nav-live)]"
-              />
-            )}
-          </button>
+            <button
+              type="button"
+              disabled={node.disabled}
+              aria-label={label}
+              aria-current={isSelected ? 'page' : undefined}
+              onClick={() => !node.disabled && onSelect?.(node)}
+              className={cx(
+                'relative flex items-center justify-center rounded-md transition-colors',
+                'focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring/40',
+                compact ? 'h-8 w-8' : 'h-9 w-9',
+                isSelected
+                  ? navRailSelectedBg(selectionWash)
+                  : 'text-muted-foreground hover:bg-muted/40 hover:text-foreground',
+                node.disabled && 'pointer-events-none opacity-50',
+              )}
+            >
+              {renderedIcon ?? (
+                <span className="font-mono text-[11px] uppercase">{label.slice(0, 2)}</span>
+              )}
+              {node.live && (
+                <span
+                  aria-hidden="true"
+                  className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-[var(--hud-nav-live)]"
+                />
+              )}
+            </button>
+          </HudTooltip>
         );
       })}
     </div>

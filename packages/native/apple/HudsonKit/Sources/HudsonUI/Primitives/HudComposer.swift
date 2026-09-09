@@ -53,15 +53,28 @@ public struct HudComposerAttachment: Identifiable, Equatable, Sendable {
     }
 }
 
-/// Active model and (optional) reasoning effort, shown in the control row.
-/// Providing `onTapModel` makes it tappable - the hook for a model/effort picker.
+/// The runtime the next message will run on, shown in the control row as a
+/// `HudRuntimeChip`. Providing `onTapModel` makes it the trigger for the
+/// runtime picker (`.hudRuntimePicker(...)`); without it the chip renders as a
+/// read-only identity.
+///
+/// `harness` and `effort` are both optional because neither is real on every
+/// surface: a host with one provider has no harness to name, and a host with no
+/// reasoning-effort setting leaves that segment off rather than showing a
+/// control that changes nothing.
 public struct HudComposerModelInfo: Equatable, Sendable {
     public var model: String
     public var effort: String?
+    /// Harness id — selects the mark. Nil where the surface has only one.
+    public var harness: String?
+    /// Typographic stand-in when no mark is installed for `harness`.
+    public var monogram: String
 
-    public init(model: String, effort: String? = nil) {
+    public init(model: String, effort: String? = nil, harness: String? = nil, monogram: String = "") {
         self.model = model
         self.effort = effort
+        self.harness = harness
+        self.monogram = monogram
     }
 }
 
@@ -678,39 +691,27 @@ private struct HudComposerAttachButton: View {
     }
 }
 
-// MARK: - Model / effort label
+// MARK: - Runtime readout
 
+/// The control row's runtime readout. This was a flat `model / effort` string
+/// with a bare `onTap`; it is now `HudRuntimeChip`, so the same hook opens the
+/// real picker and the resting state reads as one control instead of two runs
+/// of dim text. The chip's lit state is not threaded through here: it reads
+/// `\.hudRuntimeIsPicking`, which the `.hudRuntimePicker` presenter sets on
+/// the container the composer sits in.
 private struct HudComposerModelLabel: View {
     let info: HudComposerModelInfo
     let onTap: (() -> Void)?
 
-    @Environment(\.hudTheme) private var theme
-
-    private var labelContent: some View {
-        HStack(spacing: HudSpacing.xs) {
-            Text(info.model)
-                .foregroundStyle(theme.palette.muted)
-            if let effort = info.effort {
-                Text("/")
-                    .foregroundStyle(theme.palette.dim)
-                Text(effort)
-                    .foregroundStyle(theme.palette.dim)
-            }
-        }
-        .font(HudFont.mono(HudTextSize.xxs))
-        .lineLimit(1)
-    }
-
     var body: some View {
-        Group {
-            if let onTap {
-                Button(action: onTap) { labelContent }
-                    .buttonStyle(.plain)
-            } else {
-                labelContent
-            }
-        }
-        .help("Model / reasoning effort")
+        HudRuntimeChip(
+            harness: info.harness,
+            monogram: info.monogram,
+            model: info.model,
+            effort: info.effort,
+            onPick: onTap
+        )
+        .help("Runtime - harness, model and reasoning effort")
     }
 }
 

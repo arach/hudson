@@ -47,7 +47,7 @@ func appendGitDependency(
 ) -> String {
     if let path = nonEmptyEnv("\(envPrefix)_PATH") {
         dependencies.append(.package(path: path))
-        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: defaultURL)
+        return nonEmptyEnv("\(envPrefix)_PACKAGE") ?? packageIdentity(forGitURL: path)
     }
 
     let url = nonEmptyEnv("\(envPrefix)_GIT_URL") ?? defaultURL
@@ -79,6 +79,7 @@ var products: [Product] = [
     hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
     hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
     hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
+    hudsonLibrary(name: "HudsonMarkup", targets: ["HudsonMarkup"]),
     hudsonLibrary(name: "HudsonUI", targets: ["HudsonUI"]),
     hudsonLibrary(name: "HudsonUIPermissions", targets: ["HudsonUIPermissions"]),
     hudsonLibrary(name: "HudsonUIAudio", targets: ["HudsonUIAudio"]),
@@ -104,7 +105,12 @@ var targets: [Target] = [
     .target(name: "HudsonObservability", path: src + "HudsonObservability"),
     .target(name: "HudsonLive", path: src + "HudsonLive"),
     .target(name: "HudsonDiff", path: src + "HudsonDiff"),
-    .target(name: "HudsonUI", dependencies: ["HudsonLive", "HudsonObservability"], path: src + "HudsonUI"),
+    .target(name: "HudsonMarkup", path: src + "HudsonMarkup"),
+    .target(
+        name: "HudsonUI",
+        dependencies: ["HudsonLive", "HudsonObservability", "HudsonMarkup"],
+        path: src + "HudsonUI"
+    ),
     .target(name: "HudsonUIPermissions", dependencies: ["HudsonUI"], path: src + "HudsonUIPermissions"),
     .target(name: "HudsonUIAudio", dependencies: ["HudsonUI", "HudsonUIPermissions"], path: src + "HudsonUIAudio"),
     .target(name: "HudsonUICapture", dependencies: ["HudsonUI"], path: src + "HudsonUICapture"),
@@ -119,6 +125,7 @@ var targets: [Target] = [
     .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
+    .testTarget(name: "HudsonMarkupTests", dependencies: ["HudsonMarkup"], path: tst + "HudsonMarkupTests"),
     .testTarget(
         name: "HudsonKitExperimentalTests",
         dependencies: ["HudsonKitExperimental"],
@@ -158,6 +165,7 @@ targets.append(
             "HudsonObservability",
             .product(name: "VoxCore", package: voxPackage),
             .product(name: "VoxEngine", package: voxPackage),
+            .product(name: "VoxAppleSpeech", package: voxPackage),
         ],
         path: src + "HudsonVoice"
     )
@@ -165,7 +173,11 @@ targets.append(
 targets.append(
     .testTarget(
         name: "HudsonVoiceTests",
-        dependencies: ["HudsonVoice"],
+        dependencies: [
+            "HudsonVoice",
+            .product(name: "VoxEngine", package: voxPackage),
+            .product(name: "VoxAppleSpeech", package: voxPackage),
+        ],
         path: tst + "HudsonVoiceTests"
     )
 )
@@ -263,8 +275,8 @@ targets.append(
 let package = Package(
     name: "Hudson",
     platforms: [
-        .iOS(.v17),
-        .macOS(.v14),
+        .iOS("26.0"),
+        .macOS("26.0"),
     ],
     products: products,
     dependencies: dependencies,
