@@ -16,6 +16,8 @@ public final class HudSystemSpeechSynthesizer: NSObject {
     private let synthesizer = AVSpeechSynthesizer()
     private var activeUtterance: AVSpeechUtterance?
     private var completionHandler: (() -> Void)?
+    private var pendingPieces: [String] = []
+    private var currentVoice: AVSpeechSynthesisVoice?
 
     public private(set) var isSpeaking = false
     public var selectedVoiceIdentifier: String?
@@ -37,20 +39,23 @@ public final class HudSystemSpeechSynthesizer: NSObject {
         stop()
         configureAudioSession()
 
-        let utterance = AVSpeechUtterance(string: trimmed)
-        if let voiceIdentifier, !voiceIdentifier.isEmpty,
-           let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
-            utterance.voice = voice
-        } else if let selectedVoiceIdentifier,
-                  let voice = AVSpeechSynthesisVoice(identifier: selectedVoiceIdentifier) {
-            utterance.voice = voice
-        }
+        let voiceID = voiceIdentifier ?? selectedVoiceIdentifier
+        currentVoice = voiceID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
+        pendingPieces = HudSystemSpeechChunking.pieces(trimmed, voiceIdentifier: voiceID)
+        completionHandler = completion
+        speakNextPiece()
+    }
+
+    private func speakNextPiece() {
+        guard !pendingPieces.isEmpty else { return }
+        let utterance = AVSpeechUtterance(string: pendingPieces.removeFirst())
+        utterance.voice = currentVoice
         utterance.rate = speechRate
         utterance.prefersAssistiveTechnologySettings = true
         utterance.preUtteranceDelay = 0.05
         utterance.postUtteranceDelay = 0.1
-
-        adopt(utterance, completion: completion)
+        activeUtterance = utterance
+        isSpeaking = true
         synthesizer.speak(utterance)
     }
 
@@ -149,6 +154,8 @@ public final class HudSystemSpeechSynthesizer: NSObject {
     }
 
     public func stop() {
+        pendingPieces = []
+        currentVoice = nil
         activeUtterance = nil
         completionHandler = nil
         isSpeaking = false
@@ -173,6 +180,10 @@ extension HudSystemSpeechSynthesizer: AVSpeechSynthesizerDelegate {
 
     func finishIfCurrent(_ utterance: AVSpeechUtterance) {
         guard activeUtterance === utterance else { return }
+        if !pendingPieces.isEmpty {
+            speakNextPiece()
+            return
+        }
         activeUtterance = nil
         isSpeaking = false
         let completion = completionHandler
