@@ -5,6 +5,16 @@ import HudsonUIPermissions
 @preconcurrency import Speech
 #endif
 
+/// An original recognizer segment; some locales return multiword segments.
+public struct HudAudioTranscriptionSpan: Codable, Equatable, Sendable {
+    public var text: String
+    public var start: TimeInterval
+    public var duration: TimeInterval
+    public init(text: String, start: TimeInterval, duration: TimeInterval) {
+        self.text = text; self.start = start; self.duration = duration
+    }
+}
+
 public struct HudAudioTranscriptionUpdate: Equatable, Sendable {
     public var transcript: String
     public var isFinal: Bool
@@ -18,10 +28,12 @@ public struct HudAudioTranscriptionUpdate: Equatable, Sendable {
 public struct HudAudioTranscriptionResult: Equatable, Sendable {
     public var transcript: String
     public var transcribedAt: Date
+    public var spans: [HudAudioTranscriptionSpan]
 
-    public init(transcript: String, transcribedAt: Date = Date()) {
+    public init(transcript: String, transcribedAt: Date = Date(), spans: [HudAudioTranscriptionSpan] = []) {
         self.transcript = transcript
         self.transcribedAt = transcribedAt
+        self.spans = spans
     }
 }
 
@@ -91,6 +103,8 @@ public final class HudAudioFileTranscriber {
     #endif
     private var continuation: CheckedContinuation<HudAudioTranscriptionResult, Error>?
     private var updateHandler: UpdateHandler?
+    private var timeoutTask: Task<Void, Never>?
+    private var recognitionID: UUID?
 
     public init(locale: Locale = .autoupdatingCurrent) {
         self.locale = locale
@@ -100,6 +114,7 @@ public final class HudAudioFileTranscriber {
         #if canImport(Speech)
         recognitionTask?.cancel()
         #endif
+        timeoutTask?.cancel()
     }
 
     public func cancel() {
@@ -136,12 +151,21 @@ public final class HudAudioFileTranscriber {
             request.addsPunctuation = true
         }
 
+        try Task.checkCancellation()
         updateHandler = onUpdate
+        let id = UUID()
+        recognitionID = id
 
         return try await withCheckedThrowingContinuation { continuation in
             self.continuation = continuation
+            timeoutTask = Task { @MainActor [weak self] in
+                do { try await Task.sleep(for: .seconds(120)) } catch { return }
+                guard self?.recognitionID == id else { return }
+                self?.resume(throwing: HudAudioTranscriptionError.recognitionFailed("Speech recognition timed out. Retry this audio segment."))
+            }
             recognitionTask = recognizer.recognitionTask(with: request) { [weak self] result, error in
                 Task { @MainActor in
+                    guard self?.recognitionID == id else { return }
                     self?.handleRecognitionUpdate(result: result, error: error)
                 }
             }
@@ -167,7 +191,9 @@ public final class HudAudioFileTranscriber {
                 )
             }
             if result.isFinal {
-                finish(transcript: transcript)
+                finish(transcript: transcript, spans: result.bestTranscription.segments.map {
+                    HudAudioTranscriptionSpan(text: $0.substring, start: $0.timestamp, duration: $0.duration)
+                })
                 return
             }
         }
@@ -177,7 +203,7 @@ public final class HudAudioFileTranscriber {
         }
     }
 
-    private func finish(transcript: String) {
+    private func finish(transcript: String, spans: [HudAudioTranscriptionSpan]) {
         let resolvedTranscript = transcript.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !resolvedTranscript.isEmpty else {
             resume(throwing: HudAudioTranscriptionError.emptyTranscript)
@@ -185,7 +211,7 @@ public final class HudAudioFileTranscriber {
         }
 
         resume(
-            returning: HudAudioTranscriptionResult(transcript: resolvedTranscript),
+            returning: HudAudioTranscriptionResult(transcript: resolvedTranscript, spans: spans),
             cancelTask: false
         )
     }
@@ -218,5 +244,8 @@ public final class HudAudioFileTranscriber {
         #endif
         continuation = nil
         updateHandler = nil
+        recognitionID = nil
+        timeoutTask?.cancel()
+        timeoutTask = nil
     }
 }
