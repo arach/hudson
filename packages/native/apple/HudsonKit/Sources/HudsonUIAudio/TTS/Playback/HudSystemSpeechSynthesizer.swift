@@ -39,7 +39,7 @@ public final class HudSystemSpeechSynthesizer: NSObject {
         stop()
         configureAudioSession()
 
-        let voiceID = voiceIdentifier ?? selectedVoiceIdentifier
+        let voiceID = voiceIdentifier.flatMap { $0.isEmpty ? nil : $0 } ?? selectedVoiceIdentifier
         currentVoice = voiceID.flatMap { AVSpeechSynthesisVoice(identifier: $0) }
         pendingPieces = HudSystemSpeechChunking.pieces(trimmed, voiceIdentifier: voiceID)
         completionHandler = completion
@@ -73,7 +73,7 @@ public final class HudSystemSpeechSynthesizer: NSObject {
         }
     }
 
-    public func synthesizeAudioData(_ text: String, voiceIdentifier: String? = nil) async throws -> Data {
+    public func synthesizeAudioData(_ text: String, voiceIdentifier: String? = nil, rate: Double? = nil) async throws -> Data {
         let trimmed = text.trimmingCharacters(in: .whitespacesAndNewlines)
         guard !trimmed.isEmpty else {
             throw HudTTSError.emptyInput
@@ -81,7 +81,7 @@ public final class HudSystemSpeechSynthesizer: NSObject {
 
         stop()
 
-        let utterance = AVSpeechUtterance(string: trimmed)
+        let utterance = AVSpeechUtterance(string: text)
         if let voiceIdentifier, !voiceIdentifier.isEmpty,
            let voice = AVSpeechSynthesisVoice(identifier: voiceIdentifier) {
             utterance.voice = voice
@@ -89,8 +89,8 @@ public final class HudSystemSpeechSynthesizer: NSObject {
                   let voice = AVSpeechSynthesisVoice(identifier: selectedVoiceIdentifier) {
             utterance.voice = voice
         }
-        utterance.rate = speechRate
-        utterance.prefersAssistiveTechnologySettings = true
+        utterance.rate = try Self.audioRate(multiplier: rate, defaultRate: speechRate)
+        utterance.prefersAssistiveTechnologySettings = rate == nil
 
         let outputURL = FileManager.default.temporaryDirectory
             .appendingPathComponent("hudson-system-tts-\(UUID().uuidString)")
@@ -138,6 +138,17 @@ public final class HudSystemSpeechSynthesizer: NSObject {
                 }
             }
         }
+    }
+
+    /// Explicit rates are multipliers of the standard speech rate; legacy
+    /// callers without a rate retain their configured playback preference.
+    static func audioRate(multiplier: Double?, defaultRate: Float) throws -> Float {
+        guard let multiplier else { return defaultRate }
+        guard multiplier.isFinite, multiplier > 0 else {
+            throw HudTTSError.synthesisFailed(provider: .system, message: "Speech rate must be finite and positive.")
+        }
+        let value = Double(AVSpeechUtteranceDefaultSpeechRate) * multiplier
+        return Float(min(max(value, Double(AVSpeechUtteranceMinimumSpeechRate)), Double(AVSpeechUtteranceMaximumSpeechRate)))
     }
 
     public func pauseOrResume() {

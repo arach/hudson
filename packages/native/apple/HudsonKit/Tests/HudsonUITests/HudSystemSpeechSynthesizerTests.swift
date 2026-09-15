@@ -6,6 +6,20 @@ import Testing
 @Suite("HudSystemSpeechSynthesizer identity")
 @MainActor
 struct HudSystemSpeechSynthesizerTests {
+    @Test("explicit audio rate overrides mutable preferences and rejects invalid numbers")
+    func explicitAudioRate() throws {
+        let baseline = try HudSystemSpeechSynthesizer.audioRate(multiplier: 1, defaultRate: 0.2)
+        let slower = try HudSystemSpeechSynthesizer.audioRate(multiplier: 0.5, defaultRate: 0.8)
+        #expect(baseline == AVSpeechUtteranceDefaultSpeechRate)
+        #expect(slower < baseline)
+        #expect(try HudSystemSpeechSynthesizer.audioRate(multiplier: nil, defaultRate: 0.2) == 0.2)
+        for invalid in [Double.nan, Double.infinity, 0, -1] {
+            #expect(throws: (any Error).self) {
+                try HudSystemSpeechSynthesizer.audioRate(multiplier: invalid, defaultRate: 0.2)
+            }
+        }
+    }
+
     @Test("stale didFinish does not complete a newer utterance")
     func staleFinishDoesNotCompleteNewerUtterance() {
         let synthesizer = HudSystemSpeechSynthesizer()

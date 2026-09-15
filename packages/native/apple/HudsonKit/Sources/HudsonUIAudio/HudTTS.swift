@@ -118,8 +118,9 @@ public final class HudTTS {
         case .system:
             let voiceIdentifier = systemVoiceIdentifier ?? voice ?? systemSpeech.selectedVoiceIdentifier
             let audioData = try await systemSpeech.synthesizeAudioData(
-                trimmed,
-                voiceIdentifier: voiceIdentifier
+                text,
+                voiceIdentifier: voiceIdentifier,
+                rate: rate
             )
             return HudTTSResult(
                 audioData: audioData,
@@ -131,7 +132,7 @@ public final class HudTTS {
         default:
             return try await client.synthesize(
                 HudTTSRequest(
-                    text: trimmed,
+                    text: text,
                     voice: voice,
                     rate: rate,
                     model: model,
@@ -162,7 +163,7 @@ public final class HudTTS {
             switch providerID {
             case .system:
                 activePlayback = .system
-                systemSpeech.speak(trimmed, voiceIdentifier: systemVoiceIdentifier ?? voice) { [weak self] in
+                systemSpeech.speak(text, voiceIdentifier: systemVoiceIdentifier ?? voice) { [weak self] in
                     Task { @MainActor in
                         self?.finishSpeak(generation)
                     }
@@ -171,7 +172,7 @@ public final class HudTTS {
             default:
                 let result = try await client.synthesize(
                     HudTTSRequest(
-                        text: trimmed,
+                        text: text,
                         voice: voice,
                         rate: rate,
                         model: model,
@@ -182,7 +183,15 @@ public final class HudTTS {
                 )
                 guard isCurrentSpeak(generation) else { return }
                 activePlayback = .cloud
-                try speechPlayer.play(data: result.audioData, format: result.format) { [weak self] in
+                try speechPlayer.play(
+                    data: result.audioData,
+                    format: result.format,
+                    failure: { [weak self] _ in
+                        Task { @MainActor in
+                            self?.failSpeak(generation)
+                        }
+                    }
+                ) { [weak self] in
                     Task { @MainActor in
                         self?.finishSpeak(generation)
                     }

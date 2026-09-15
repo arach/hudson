@@ -24,7 +24,7 @@ public struct HudTTSProviderID: RawRepresentable, Codable, Hashable, Sendable, E
     public static let edgeReadAloud = HudTTSProviderID(rawValue: "edge-read-aloud")
 }
 
-public enum HudTTSAudioFormat: String, Sendable {
+public enum HudTTSAudioFormat: String, Sendable, Codable {
     case mp3
     case wav
     case caf
@@ -32,7 +32,7 @@ public enum HudTTSAudioFormat: String, Sendable {
 
 /// Provider-neutral expressive controls. Adapters use the values they support
 /// and ignore the rest without changing the spoken text.
-public struct HudTTSVoiceSettings: Equatable, Sendable {
+public struct HudTTSVoiceSettings: Equatable, Hashable, Sendable, Codable {
     public var stability: Double?
     public var similarityBoost: Double?
     public var style: Double?
@@ -78,7 +78,7 @@ public struct HudTTSRequest: Equatable, Sendable {
     }
 }
 
-public struct HudTTSWordTiming: Equatable, Sendable {
+public struct HudTTSWordTiming: Equatable, Sendable, Codable {
     public var word: String
     /// Seconds from the start of the returned audio.
     public var start: TimeInterval
@@ -99,19 +99,23 @@ public struct HudTTSResult: Equatable, Sendable {
     /// Word-level timings, when the provider produced them. Nil is normal:
     /// most providers return none, and callers must not require it.
     public var wordTimings: [HudTTSWordTiming]?
+    /// True when `HudSpeechCache` returned this payload from disk.
+    public var cached: Bool
 
     public init(
         audioData: Data,
         format: HudTTSAudioFormat,
         providerID: HudTTSProviderID,
         voice: String,
-        wordTimings: [HudTTSWordTiming]? = nil
+        wordTimings: [HudTTSWordTiming]? = nil,
+        cached: Bool = false
     ) {
         self.audioData = audioData
         self.format = format
         self.providerID = providerID
         self.voice = voice
         self.wordTimings = wordTimings
+        self.cached = cached
     }
 }
 
