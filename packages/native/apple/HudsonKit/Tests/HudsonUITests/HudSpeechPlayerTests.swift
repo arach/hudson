@@ -26,6 +26,89 @@ struct HudSpeechPlayerTests {
         #expect(!hud.isPlaying)
         #expect(completions == 1)
     }
+
+    @Test("unsuccessful finish calls failure and not completion")
+    func unsuccessfulFinishCallsFailure() throws {
+        let hud = HudSpeechPlayer()
+        let wav = silentWAV()
+        let player = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+        var completions = 0
+        var failures = 0
+        var failureMessage: String?
+
+        hud.adopt(
+            player,
+            completion: { completions += 1 },
+            failure: { error in
+                failures += 1
+                failureMessage = error.localizedDescription
+            }
+        )
+        hud.failIfCurrent(
+            player,
+            error: HudTTSError.playbackFailed(message: "Speech audio did not finish playing.")
+        )
+
+        #expect(!hud.isPlaying)
+        #expect(completions == 0)
+        #expect(failures == 1)
+        #expect(failureMessage == "Speech audio did not finish playing.")
+    }
+
+    @Test("decode error calls failure and not completion")
+    func decodeErrorCallsFailure() throws {
+        let hud = HudSpeechPlayer()
+        let wav = silentWAV()
+        let player = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+        var completions = 0
+        var failures = 0
+
+        hud.adopt(player, completion: { completions += 1 }, failure: { _ in failures += 1 })
+        hud.failIfCurrent(
+            player,
+            error: HudTTSError.playbackFailed(message: "Speech audio could not be decoded.")
+        )
+
+        #expect(!hud.isPlaying)
+        #expect(completions == 0)
+        #expect(failures == 1)
+    }
+
+    @Test("stale unsuccessful finish does not fail a newer player")
+    func staleFailureDoesNotFailNewerPlayer() throws {
+        let hud = HudSpeechPlayer()
+        let wav = silentWAV()
+        let first = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+        let second = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+        var completions = 0
+        var failures = 0
+
+        hud.adopt(first, completion: { completions += 1 }, failure: { _ in failures += 1 })
+        hud.adopt(second, completion: { completions += 1 }, failure: { _ in failures += 1 })
+
+        hud.failIfCurrent(first, error: HudTTSError.playbackFailed(message: "stale"))
+        #expect(hud.isPlaying)
+        #expect(completions == 0)
+        #expect(failures == 0)
+
+        hud.finishIfCurrent(second)
+        #expect(!hud.isPlaying)
+        #expect(completions == 1)
+        #expect(failures == 0)
+    }
+
+    @Test("existing completion-only callers still succeed")
+    func completionOnlyCallersStillSucceed() throws {
+        let hud = HudSpeechPlayer()
+        let wav = silentWAV()
+        let player = try AVAudioPlayer(data: wav, fileTypeHint: AVFileType.wav.rawValue)
+        var completions = 0
+
+        hud.adopt(player, completion: { completions += 1 })
+        hud.finishIfCurrent(player)
+        #expect(completions == 1)
+        #expect(!hud.isPlaying)
+    }
 }
 
 private func silentWAV(sampleCount: Int = 32) -> Data {

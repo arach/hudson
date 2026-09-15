@@ -5,6 +5,18 @@ import Testing
 @Suite("HudTTS speak lifecycle")
 @MainActor
 struct HudTTSSpeakTests {
+    @Test("synthesis preserves exact text passed to the adapter")
+    func synthesisPreservesExactText() async throws {
+        let tts = HudTTS(
+            credentialSource: StaticSpeakCredentialSource(),
+            adapters: [ImmediateTTSAdapter()],
+            speechPlayer: RecordingSpeechPlayer()
+        )
+        let text = "  Hello.\n\n"
+        let result = try await tts.synthesize(text, providerID: .groq)
+        #expect(result.audioData == Data(text.utf8))
+    }
+
     @Test("generation failure clears speaking state")
     func generationFailureClearsSpeakingState() async {
         let player = RecordingSpeechPlayer()
@@ -246,12 +258,18 @@ private final class RecordingSpeechPlayer: HudSpeechPlaying {
     var currentTime: TimeInterval = 0
     var duration: TimeInterval = 1
 
-    func play(data: Data, format: HudTTSAudioFormat?, completion: (() -> Void)?) throws {
+    func play(
+        data: Data,
+        format: HudTTSAudioFormat?,
+        failure: ((Error) -> Void)?,
+        completion: (() -> Void)?
+    ) throws {
         if let playError {
             throw playError
         }
         playCount += 1
         completionHandler = completion
+        _ = failure
         isPlaying = true
     }
 

@@ -8,7 +8,12 @@ protocol HudSpeechPlaying: AnyObject {
     var currentTime: TimeInterval { get }
     var duration: TimeInterval { get }
 
-    func play(data: Data, format: HudTTSAudioFormat?, completion: (() -> Void)?) throws
+    func play(
+        data: Data,
+        format: HudTTSAudioFormat?,
+        failure: ((Error) -> Void)?,
+        completion: (() -> Void)?
+    ) throws
     func pauseOrResume()
     func seek(to time: TimeInterval) -> Bool
     func stop()
@@ -19,6 +24,7 @@ protocol HudSpeechPlaying: AnyObject {
 public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
     private var audioPlayer: AVAudioPlayer?
     private var completionHandler: (() -> Void)?
+    private var failureHandler: ((Error) -> Void)?
     private var progressTimer: Timer?
 
     public private(set) var isPlaying = false
@@ -32,6 +38,7 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
     public func play(
         data: Data,
         format: HudTTSAudioFormat? = nil,
+        failure: ((Error) -> Void)? = nil,
         completion: (() -> Void)? = nil
     ) throws {
         stop()
@@ -43,15 +50,19 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
         } else {
             player = try AVAudioPlayer(data: data)
         }
-        try start(player: player, completion: completion)
+        try start(player: player, completion: completion, failure: failure)
     }
 
-    public func play(fileURL: URL, completion: (() -> Void)? = nil) throws {
+    public func play(
+        fileURL: URL,
+        failure: ((Error) -> Void)? = nil,
+        completion: (() -> Void)? = nil
+    ) throws {
         stop()
         configureAudioSession()
 
         let player = try AVAudioPlayer(contentsOf: fileURL)
-        try start(player: player, completion: completion)
+        try start(player: player, completion: completion, failure: failure)
     }
 
     private static func fileTypeHint(for format: HudTTSAudioFormat?) -> String? {
@@ -63,7 +74,11 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
         }
     }
 
-    private func start(player: AVAudioPlayer, completion: (() -> Void)?) throws {
+    private func start(
+        player: AVAudioPlayer,
+        completion: (() -> Void)?,
+        failure: ((Error) -> Void)?
+    ) throws {
         player.delegate = self
         player.prepareToPlay()
         guard player.play() else {
@@ -71,13 +86,18 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
             throw HudTTSError.playbackFailed(message: "Speech audio could not be played.")
         }
 
-        adopt(player, completion: completion)
+        adopt(player, completion: completion, failure: failure)
         startProgressTimer()
     }
 
-    func adopt(_ player: AVAudioPlayer, completion: (() -> Void)?) {
+    func adopt(
+        _ player: AVAudioPlayer,
+        completion: (() -> Void)?,
+        failure: ((Error) -> Void)? = nil
+    ) {
         audioPlayer = player
         completionHandler = completion
+        failureHandler = failure
         currentTime = player.currentTime
         duration = player.duration
         isPlaying = true
@@ -112,6 +132,7 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
         audioPlayer?.stop()
         audioPlayer = nil
         completionHandler = nil
+        failureHandler = nil
         isPlaying = false
         currentTime = 0
         duration = 0
@@ -147,7 +168,25 @@ public final class HudSpeechPlayer: NSObject, HudSpeechPlaying {
 extension HudSpeechPlayer: AVAudioPlayerDelegate {
     nonisolated public func audioPlayerDidFinishPlaying(_ player: AVAudioPlayer, successfully flag: Bool) {
         Task { @MainActor in
-            self.finishIfCurrent(player)
+            if flag {
+                self.finishIfCurrent(player)
+            } else {
+                self.failIfCurrent(
+                    player,
+                    error: HudTTSError.playbackFailed(message: "Speech audio did not finish playing.")
+                )
+            }
+        }
+    }
+
+    nonisolated public func audioPlayerDecodeErrorDidOccur(_ player: AVAudioPlayer, error: Error?) {
+        Task { @MainActor in
+            self.failIfCurrent(
+                player,
+                error: HudTTSError.playbackFailed(
+                    message: error?.localizedDescription ?? "Speech audio could not be decoded."
+                )
+            )
         }
     }
 
@@ -160,7 +199,21 @@ extension HudSpeechPlayer: AVAudioPlayerDelegate {
         isPlaying = false
         let completion = completionHandler
         completionHandler = nil
+        failureHandler = nil
         completion?()
+    }
+
+    func failIfCurrent(_ player: AVAudioPlayer, error: Error) {
+        guard audioPlayer === player else { return }
+        stopProgressTimer()
+        currentTime = player.currentTime
+        duration = player.duration
+        audioPlayer = nil
+        isPlaying = false
+        let failure = failureHandler
+        completionHandler = nil
+        failureHandler = nil
+        failure?(error)
     }
 }
 
