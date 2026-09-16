@@ -1,0 +1,8 @@
+{
+  "providerID": "gemini-live-input",
+  "modelID": "gemini-3.8-live",
+  "credentialReference": {
+    "identifier": "gemini"
+  },
+  "options": {}
+}

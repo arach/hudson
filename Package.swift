@@ -77,6 +77,8 @@ var products: [Product] = [
     // that graph rule in CI.
     hudsonLibrary(name: "HudsonKitExperimental", targets: ["HudsonKitExperimental"]),
     hudsonLibrary(name: "HudsonObservability", targets: ["HudsonObservability"]),
+    hudsonLibrary(name: "HudsonTranscription", targets: ["HudsonTranscription"]),
+    hudsonLibrary(name: "HudsonTranscriptionUI", targets: ["HudsonTranscriptionUI"]),
     hudsonLibrary(name: "HudsonLive", targets: ["HudsonLive"]),
     hudsonLibrary(name: "HudsonDiff", targets: ["HudsonDiff"]),
     hudsonLibrary(name: "HudsonMarkup", targets: ["HudsonMarkup"]),
@@ -97,12 +99,25 @@ var products: [Product] = [
 
 var dependencies: [Package.Dependency] = []
 
+// Direct local inference remains independent from the existing Vox runtime.
+dependencies.append(.package(url: "https://github.com/FluidInference/FluidAudio.git", exact: "0.15.6"))
+products.append(hudsonLibrary(name: "HudsonTranscriptionCloud", targets: ["HudsonTranscriptionCloud"]))
+products.append(hudsonLibrary(name: "HudsonTranscriptionFluidAudio", targets: ["HudsonTranscriptionFluidAudio"]))
+
+// A public-contract local reference; selecting it never downloads a model.
+dependencies.append(.package(url: "https://github.com/argmaxinc/WhisperKit.git", from: "0.18.0"))
+// Already a WhisperKit dependency; declare its local tokenizer API directly.
+dependencies.append(.package(url: "https://github.com/huggingface/swift-transformers.git", .upToNextMinor(from: "1.1.6")))
+products.append(hudsonLibrary(name: "HudsonTranscriptionWhisperKit", targets: ["HudsonTranscriptionWhisperKit"]))
+
 var demoDependencies: [Target.Dependency] = ["HudsonUI", "HudsonShell", "HudsonVoice"]
 var demoSwiftSettings: [SwiftSetting] = []
 
 var targets: [Target] = [
     .target(name: "HudsonKitExperimental", path: src + "HudsonKitExperimental"),
     .target(name: "HudsonObservability", path: src + "HudsonObservability"),
+    .target(name: "HudsonTranscription", path: src + "HudsonTranscription"),
+    .target(name: "HudsonTranscriptionUI", dependencies: ["HudsonTranscription"], path: src + "HudsonTranscriptionUI"),
     .target(name: "HudsonLive", path: src + "HudsonLive"),
     .target(name: "HudsonDiff", path: src + "HudsonDiff"),
     .target(name: "HudsonMarkup", path: src + "HudsonMarkup"),
@@ -134,6 +149,11 @@ var targets: [Target] = [
     .testTarget(name: "HudsonBridgeTests", dependencies: ["HudsonBridge"], path: tst + "HudsonBridgeTests"),
     .testTarget(name: "HudsonDiffTests", dependencies: ["HudsonDiff"], path: tst + "HudsonDiffTests"),
     .testTarget(name: "HudsonLiveTests", dependencies: ["HudsonLive"], path: tst + "HudsonLiveTests"),
+    .testTarget(
+        name: "HudsonTranscriptionTests",
+        dependencies: ["HudsonTranscription"],
+        path: tst + "HudsonTranscriptionTests"
+    ),
     .testTarget(name: "HudsonShellTests", dependencies: ["HudsonShell"], path: tst + "HudsonShellTests"),
     .testTarget(name: "HudsonUIWebTests", dependencies: ["HudsonUIWeb"], path: tst + "HudsonUIWebTests"),
     .testTarget(
@@ -150,6 +170,18 @@ var targets: [Target] = [
         path: tst + "HudsonUITests"
     ),
 ]
+
+targets.append(.target(name: "HudsonTranscriptionCloud", dependencies: ["HudsonTranscription"], path: src + "HudsonTranscriptionCloud"))
+targets.append(.target(name: "HudsonTranscriptionFluidAudio", dependencies: ["HudsonTranscription", .product(name: "FluidAudio", package: "FluidAudio")], path: src + "HudsonTranscriptionFluidAudio"))
+targets.append(.testTarget(name: "HudsonTranscriptionCloudTests", dependencies: ["HudsonTranscriptionCloud"], path: tst + "HudsonTranscriptionCloudTests"))
+targets.append(.testTarget(name: "HudsonTranscriptionFluidAudioTests", dependencies: ["HudsonTranscriptionFluidAudio"], path: tst + "HudsonTranscriptionFluidAudioTests"))
+
+products.append(hudsonLibrary(name: "HudsonTranscriptionElevenLabs", targets: ["HudsonTranscriptionElevenLabs"]))
+targets.append(.target(name: "HudsonTranscriptionElevenLabs", dependencies: ["HudsonTranscription", "HudsonTranscriptionCloud"], path: src + "HudsonTranscriptionElevenLabs"))
+targets.append(.testTarget(name: "HudsonTranscriptionElevenLabsTests", dependencies: ["HudsonTranscriptionElevenLabs"], path: tst + "HudsonTranscriptionElevenLabsTests"))
+
+targets.append(.target(name: "HudsonTranscriptionWhisperKit", dependencies: ["HudsonTranscription", .product(name: "WhisperKit", package: "WhisperKit"), .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], path: src + "HudsonTranscriptionWhisperKit"))
+targets.append(.testTarget(name: "HudsonTranscriptionWhisperKitTests", dependencies: ["HudsonTranscriptionWhisperKit"], path: tst + "HudsonTranscriptionWhisperKitTests"))
 
 let voxPackage = appendGitDependency(
     to: &dependencies,
