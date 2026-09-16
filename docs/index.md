@@ -34,6 +34,7 @@ Hudson is a shell + primitives library for building app-like interfaces across w
 - **[Native canvas workspace](./native-canvas-workspace.md)** — draft extraction spec for pan/zoom, selection, persistence, and workspace-hostable native apps
 - **[tmux + Graphite workspaces](./tmux-graphite-workspaces.md)** — durable terminal identity, searchable path names, group actions, and offshoot canvases
 - **[Native terminal canvas roadmap](./native-terminal-canvas-roadmap.md)** — phased implementation plan for sample hardening, canvas extraction, tmux orchestration, and offshoot workspaces
+- **[Native terminal isolation](./native-terminal-isolation.md)** — Hudson-owned terminal core, XPC boundary and shared-frame migration gates
 - **[Terminal](./terminal.md)** — `HudTerminalSurface` and local terminal runtime behavior
 
 ## Cross-platform primitives
