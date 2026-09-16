@@ -17,9 +17,12 @@ private struct TerminalPresentationContext: @unchecked Sendable {
     public private(set) var isRunning = false
     public private(set) var lastErrorMessage: String?
     public var presentationEnabled = true { didSet { geometryChanged() } }
+    public var acceptsInput: Bool { identifier != nil }
     public var controller: HudTerminalIPCSession { self }
     @ObservationIgnored public lazy var view = HudTerminalIPCView(session: self)
     @ObservationIgnored private var identifier: String?
+    @ObservationIgnored private var teardownProxy: HudTerminalWorkerService?
+    @ObservationIgnored private var configurationRetries = 0
     @ObservationIgnored private var presenter: HudTerminalIPCPresenter?
     @ObservationIgnored private var inputSequence: UInt64 = 0
     @ObservationIgnored private var revision: UInt64 = 0
@@ -31,49 +34,66 @@ private struct TerminalPresentationContext: @unchecked Sendable {
     @ObservationIgnored private var sentConfiguration: Configuration?
     private struct Configuration: Equatable { var width: Int; var height: Int; var scale: Double; var visible: Bool; var focused: Bool }
     public init(processSpec: HudTerminalProcessSpecification = .init()) { self.processSpec = processSpec }
+    #if HUDSON_TERMINAL_IPC_TESTING
+    static func installTestService(_ service: HudTerminalWorkerService) { HudTerminalIPCHub.shared.proxy = service }
+    var queuedInputCount: Int { inputQueue.count }
+    #endif
     public func start() {
         stop()
         let id = UUID().uuidString; identifier = id
         statusMessage = "Starting terminal"; lastErrorMessage = nil
-        do {
-            let hub = try HudTerminalIPCHub.shared.connect()
-            hub.sessions[id] = self
-            let data = try JSONEncoder().encode(processSpec)
-            hub.proxy?.open(id, specification: data) { [weak self] error in
-                Task { @MainActor in
-                    guard let self, self.identifier == id else { return }
-                    if let error { self.fail(error); return }
-                    guard let proxy = hub.proxy else { self.fail("Terminal helper disconnected"); return }
-                    let context = TerminalPresentationContext(layer: self.view.metalLayer, proxy: proxy)
-                    // Shader/pipeline preparation can invoke the Metal compiler.
-                    // It must not hold up Scout's main thread on a new pane.
-                    DispatchQueue.global(qos: .userInitiated).async { [weak self] in
-                        do {
-                            let presenter = try HudTerminalIPCPresenter(layer: context.layer, proxy: context.proxy, identifier: id) { [weak self] message in
-                                Task { @MainActor in guard self?.identifier == id else { return }; self?.fail(message) }
+        Task { @MainActor [weak self] in
+            guard let self else { return }
+            do {
+                let hub = try await HudTerminalIPCHub.shared.connect()
+                guard self.identifier == id else { return }
+                self.teardownProxy = hub.proxy
+                hub.sessions[id] = WeakTerminalSession(self)
+                let data = try JSONEncoder().encode(processSpec)
+                hub.proxy?.open(id, specification: data) { [weak self] error in
+                    Task { @MainActor in
+                        guard let self, self.identifier == id else { return }
+                        if let error { self.fail(error); return }
+                        guard let proxy = hub.proxy else { self.fail("Terminal helper disconnected"); return }
+                        let context = TerminalPresentationContext(layer: self.view.metalLayer, proxy: proxy)
+                        // Shader/pipeline preparation can invoke the Metal compiler.
+                        // It must not hold up Scout's main thread on a new pane.
+                        DispatchQueue.global(qos: .userInitiated).async { [weak self] in
+                            do {
+                                let presenter = try HudTerminalIPCPresenter(layer: context.layer, proxy: context.proxy, identifier: id) { [weak self] message in
+                                    Task { @MainActor in guard self?.identifier == id else { return }; self?.fail(message) }
+                                }
+                                Task { @MainActor in
+                                    guard let self, self.identifier == id else { presenter.stop {}; return }
+                                    self.presenter = presenter
+                                    self.isRunning = true; self.statusMessage = "Running"
+                                    self.drainInput()
+                                    self.geometryChanged()
+                                }
+                            } catch {
+                                Task { @MainActor in guard self?.identifier == id else { return }; self?.fail(error.localizedDescription) }
                             }
-                            Task { @MainActor in
-                                guard let self, self.identifier == id else { presenter.stop {}; return }
-                                self.presenter = presenter
-                                self.isRunning = true; self.statusMessage = "Running"
-                                self.geometryChanged()
-                            }
-                        } catch {
-                            Task { @MainActor in guard self?.identifier == id else { return }; self?.fail(error.localizedDescription) }
                         }
                     }
                 }
-            }
-        } catch { fail(error.localizedDescription) }
+            } catch { if self.identifier == id { self.fail(error.localizedDescription) } }
+        }
+    }
+    deinit {
+        guard let id = identifier else { return }
+        let proxy = teardownProxy
+        if let presenter { presenter.stop { proxy?.close(id) {} } }
+        else { proxy?.close(id) {} }
+        Task { @MainActor in HudTerminalIPCHub.shared.sessions.removeValue(forKey: id) }
     }
     public func stop() {
         guard let id = identifier else { return }
         identifier = nil; isRunning = false; statusMessage = "Stopped"
         inputQueue.removeAll(); inputBytes = 0; inputPending = false; inputSequence = 0
-        configurationPending = false; desiredConfiguration = nil; sentConfiguration = nil; revision = 0
+        configurationPending = false; configurationRetries = 0; desiredConfiguration = nil; sentConfiguration = nil; revision = 0
         let old = presenter; presenter = nil
         // Close only after consumer GPU completion; helper teardown never races a lease.
-        let proxy = HudTerminalIPCHub.shared.proxy
+        let proxy = teardownProxy; teardownProxy = nil
         HudTerminalIPCHub.shared.sessions.removeValue(forKey: id)
         if let old { old.stop { proxy?.close(id) {} } } else { proxy?.close(id) {} }
     }
@@ -90,7 +110,7 @@ private struct TerminalPresentationContext: @unchecked Sendable {
     }
     private func sendText(_ text: String) { var event = HudTerminalInputEvent(kind: "text"); event.text = text; sendEvent(event) }
     func sendEvent(_ event: HudTerminalInputEvent) {
-        guard isRunning, let data = try? JSONEncoder().encode(event) else { return }
+        guard acceptsInput, let data = try? JSONEncoder().encode(event) else { return }
         guard data.count <= 65536, inputBytes + data.count <= 1_048_576 else {
             statusMessage = "Input was not sent: terminal input queue limit exceeded"
             lastErrorMessage = statusMessage
@@ -99,7 +119,7 @@ private struct TerminalPresentationContext: @unchecked Sendable {
         inputQueue.append(data); inputBytes += data.count; drainInput()
     }
     private func drainInput() {
-        guard !inputPending, let id = identifier, let data = inputQueue.first, let proxy = HudTerminalIPCHub.shared.proxy else { return }
+        guard isRunning, !inputPending, let id = identifier, let data = inputQueue.first, let proxy = HudTerminalIPCHub.shared.proxy else { return }
         inputPending = true; inputSequence += 1
         proxy.input(id, sequence: inputSequence, event: data) { [weak self] accepted in
             Task { @MainActor in
@@ -123,8 +143,10 @@ private struct TerminalPresentationContext: @unchecked Sendable {
         guard isRunning else { return }
         let scale = view.window?.backingScaleFactor ?? 1
         let visible = presentationEnabled && view.window != nil && !view.isHiddenOrHasHiddenAncestor && (view.window?.occlusionState.contains(.visible) ?? false) && view.bounds.width > 0 && view.bounds.height > 0
-        desiredConfiguration = Configuration(width: max(1, Int(view.bounds.width * scale)), height: max(1, Int(view.bounds.height * scale)),
+        let next = Configuration(width: max(1, Int(view.bounds.width * scale)), height: max(1, Int(view.bounds.height * scale)),
             scale: scale, visible: visible, focused: view.window?.isKeyWindow == true && view.window?.firstResponder === view)
+        if next != desiredConfiguration { configurationRetries = 0 }
+        desiredConfiguration = next
         sendConfiguration()
     }
     private func sendConfiguration() {
@@ -137,7 +159,19 @@ private struct TerminalPresentationContext: @unchecked Sendable {
             Task { @MainActor in
                 guard let self, self.identifier == id else { return }
                 self.configurationPending = false
-                if let error { self.statusMessage = error; self.desiredConfiguration = self.sentConfiguration; return }
+                if let error {
+                    self.statusMessage = error
+                    if self.desiredConfiguration != next { self.sendConfiguration(); return }
+                    guard self.configurationRetries < 2 else { return }
+                    self.configurationRetries += 1
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) { [weak self] in
+                        guard let self, self.identifier == id else { return }
+                        self.sendConfiguration()
+                    }
+                    return
+                }
+                self.configurationRetries = 0
+                self.statusMessage = "Running"
                 self.sentConfiguration = next
                 self.presenter?.setVisible(next.visible)
                 self.sendConfiguration()
@@ -147,22 +181,38 @@ private struct TerminalPresentationContext: @unchecked Sendable {
     fileprivate func fail(_ message: String) { stop(); statusMessage = message; lastErrorMessage = message == "Terminal process exited" ? nil : message }
 }
 
+private final class WeakTerminalSession {
+    weak var session: HudTerminalIPCSession?
+    init(_ session: HudTerminalIPCSession) { self.session = session }
+}
+
 @MainActor private final class HudTerminalIPCHub: NSObject, HudTerminalHostEvents {
     static let shared = HudTerminalIPCHub()
-    var sessions: [String: HudTerminalIPCSession] = [:]
+    var sessions: [String: WeakTerminalSession] = [:]
     var proxy: HudTerminalWorkerService?
     private var connection: NSXPCConnection?
-    func connect() throws -> HudTerminalIPCHub {
-        if proxy != nil { return self }
-        let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/XPCServices/HudsonTerminalWorker.xpc")
+    private var requirementTask: Task<String, Error>?
+    nonisolated private static func requirement(for helper: URL) throws -> String {
         var code: SecStaticCode?; var requirement: SecRequirement?; var requirementText: CFString?
         guard SecStaticCodeCreateWithPath(helper as CFURL, [], &code) == errSecSuccess, let code,
               SecCodeCopyDesignatedRequirement(code, [], &requirement) == errSecSuccess, let requirement,
               SecRequirementCopyString(requirement, [], &requirementText) == errSecSuccess, let requirementText else {
             throw NSError(domain: "HudsonTerminal", code: 1, userInfo: [NSLocalizedDescriptionKey: "Signed terminal helper is missing"])
         }
+        return requirementText as String
+    }
+    func connect() async throws -> HudTerminalIPCHub {
+        if proxy != nil { return self }
+        if requirementTask == nil {
+            let helper = Bundle.main.bundleURL.appendingPathComponent("Contents/XPCServices/HudsonTerminalWorker.xpc")
+            requirementTask = Task.detached(priority: .userInitiated) { try Self.requirement(for: helper) }
+        }
+        let requirement: String
+        do { requirement = try await requirementTask!.value }
+        catch { requirementTask = nil; throw error }
+        if proxy != nil { return self }
         let connection = NSXPCConnection(serviceName: HudTerminalIPCWire.serviceName)
-        connection.setCodeSigningRequirement(requirementText as String)
+        connection.setCodeSigningRequirement(requirement)
         connection.remoteObjectInterface = HudTerminalIPCWire.interface()
         connection.exportedInterface = NSXPCInterface(with: HudTerminalHostEvents.self)
         connection.exportedObject = self
@@ -182,12 +232,12 @@ private struct TerminalPresentationContext: @unchecked Sendable {
         return self
     }
     private func disconnected() {
-        let active = Array(sessions.values)
+        let active = sessions.values.compactMap { $0.session }
         let old = connection; connection = nil; proxy = nil; sessions.removeAll(); old?.invalidate()
         for session in active { session.fail("Terminal helper disconnected — restart the terminal explicitly") }
     }
     nonisolated func ended(_ identifier: String, message: String) {
-        Task { @MainActor in sessions[identifier]?.fail(message) }
+        Task { @MainActor in sessions[identifier]?.session?.fail(message) }
     }
 }
 #endif

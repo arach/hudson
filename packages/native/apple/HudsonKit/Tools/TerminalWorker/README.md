@@ -27,11 +27,14 @@ coalesced or discarded. The cap covers export buffers, not engine/GPU/PTY memory
 Input uses ordered sequence numbers and one acknowledged request at a time per
 session. The host bounds queued input to 1 MiB; individual wire messages are
 bounded to 64 KiB. Oversized input is explicitly rejected without killing the
-session. Clipboard reads happen only for explicit host paste, and clipboard
+session. Input arriving during startup is buffered under the same caps and
+flushed only after the helper and presentation pipeline are ready. Clipboard reads happen only for explicit host paste, and clipboard
 writes happen only for explicit host copy. Arbitrary terminal clipboard escape
 sequences do not access the system clipboard.
 
-A retained session survives view reparenting and navigation. Hidden sessions
+A retained session survives view reparenting and navigation. The hub retains
+only weak host session references; dropping the last owner closes the worker
+session after outstanding GPU work drains. Hidden sessions
 continue processing PTY output but stop exporting frames. Helper interruption
 reports a stopped session; commands are never automatically reexecuted.
 
@@ -47,3 +50,13 @@ The initial integration uses the startup font preferences; runtime font/theme
 updates and full terminal-content accessibility need follow-up. IME candidate
 placement currently anchors to the terminal view. No performance parity or
 scanout-latency claim follows from these correctness checks.
+
+
+### Session lifecycle regression
+
+Compile `SessionTests.swift` with the four IPC source files using
+`-D HUDSON_TERMINAL_IPC_TESTING -parse-as-library`, then run the result.
+This injects an in-memory service only in that test build: it opens no PTYs or
+XPC helpers. It delays startup to check ordered input buffering, releases the
+last owner to check worker-close delivery, and stops before a late open reply
+to ensure queued text is discarded. Normal library builds exclude the hooks.
