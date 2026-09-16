@@ -40,6 +40,7 @@ struct FrameLeases {
 // streamed into the host's presentation path.
 @objc(HudTerminalEngineProbeService)
 protocol TerminalProbeService: ProbeService {
+    func setPresentationActive(_ active: Bool, reply: @escaping () -> Void)
     func frameStatistics(reply: @escaping (UInt64, UInt64) -> Void)
     func processID(reply: @escaping (Int32) -> Void)
     func writeInput(_ data: Data, reply: @escaping (Bool) -> Void)

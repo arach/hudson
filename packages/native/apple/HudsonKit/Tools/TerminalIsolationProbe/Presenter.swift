@@ -35,15 +35,18 @@ final class ProbePresenter {
     private let commands: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
     private let verifySyntheticPixel: Bool
+    private let syntheticCadence: Bool
     private let readback: MTLBuffer
     private var running = false
     private var inFlight = false
     private var completed = 0
+    private var requested = 0
     private var failures: [String] = []
     private var stopReply: (() -> Void)?
 
     init(layer: CAMetalLayer, proxy: ProbeService, verifySyntheticPixel: Bool = true) throws {
         self.verifySyntheticPixel = verifySyntheticPixel
+        self.syntheticCadence = verifySyntheticPixel
         self.layer = layer; self.proxy = proxy
         guard let device = layer.device, let commands = device.makeCommandQueue(),
               let readback = device.makeBuffer(length: 256, options: .storageModeShared) else {
@@ -71,7 +74,9 @@ final class ProbePresenter {
     }
     func start() { work.async { self.running = true; self.nextFrame() } }
     // Only the test coordinator uses sync; never called by the AppKit main thread.
-    func snapshot() -> (completed: Int, failures: [String]) { work.sync { (completed, failures) } }
+    func snapshot() -> (completed: Int, failures: [String], requested: Int) {
+        work.sync { (completed, failures, requested) }
+    }
     func stop(completion: @escaping () -> Void) {
         work.async {
             self.running = false
@@ -84,6 +89,7 @@ final class ProbePresenter {
     private func nextFrame() {
         guard running, !inFlight else { return }
         inFlight = true
+        requested += 1
         proxy.acquireFrame { surface, sequence in
             self.work.async {
                 guard let surface, sequence > 0 else {
@@ -145,6 +151,13 @@ final class ProbePresenter {
         if let reply = stopReply { stopReply = nil; reply() }
         // Synthetic source cadence only. A real terminal must wake on dirty
         // state/display demand, not poll idle panes at this fixture cadence.
-        if running { work.asyncAfter(deadline: .now() + .milliseconds(16)) { self.nextFrame() } }
+        guard running else { return }
+        if syntheticCadence {
+            work.asyncAfter(deadline: .now() + .milliseconds(16)) { self.nextFrame() }
+        } else {
+            // The engine keeps one request pending until a dirty frame exists.
+            // Do not add a second clock (and a frame of latency) in the host.
+            work.async { self.nextFrame() }
+        }
     }
 }

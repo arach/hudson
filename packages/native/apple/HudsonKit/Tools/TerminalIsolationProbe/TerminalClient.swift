@@ -74,6 +74,30 @@ import IOSurface
                 Thread.sleep(forTimeInterval: 0.05)
             } while Date() < echoDeadline
             require(text.contains("HUDSON_ECHO:ipc-input-verified"), "Round-trip PTY input/output")
+            // Hiding a pane must stop presentation work without suspending
+            // ordered PTY processing. The pending request survives reveal.
+            let _: Bool = reply { done in proxy.setPresentationActive(false) { done(true) } }
+            Thread.sleep(forTimeInterval: 0.1) // drain already-submitted GPU work
+            let idleStart = presenter.snapshot()
+            let hiddenInput: Bool = reply { proxy.writeInput(Data("hidden-input\r".utf8), reply: $0) }
+            require(hiddenInput, "Hidden terminal accepts input")
+            let hiddenDeadline = Date().addingTimeInterval(3)
+            repeat {
+                text = reply { proxy.readScreen(reply: $0) }
+                if text.contains("HUDSON_ECHO:hidden-input") { break }
+                Thread.sleep(forTimeInterval: 0.02)
+            } while Date() < hiddenDeadline
+            require(text.contains("HUDSON_ECHO:hidden-input"), "Hidden terminal keeps parsing PTY output")
+            Thread.sleep(forTimeInterval: 0.3)
+            let idleEnd = presenter.snapshot()
+            require(idleEnd.requested == idleStart.requested && idleEnd.completed == idleStart.completed,
+                "Hidden terminal holds pending frame demand without polling or replay")
+            let _: Bool = reply { done in proxy.setPresentationActive(true) { done(true) } }
+            let revealDeadline = Date().addingTimeInterval(3)
+            while presenter.snapshot().completed == idleEnd.completed && Date() < revealDeadline {
+                Thread.sleep(forTimeInterval: 0.02)
+            }
+            require(presenter.snapshot().completed > idleEnd.completed, "Reveal resumes current-state presentation")
             let stopped = DispatchSemaphore(value: 0)
             presenter.stop { stopped.signal() }
             require(stopped.wait(timeout: .now() + 5) == .success, "Presenter cancels pending frame and drains GPU")
@@ -145,9 +169,9 @@ import IOSurface
             require(kill(terminalPID, 0) == -1 && errno == ESRCH, "PTY process reaped after shutdown")
             let result: [String: Any] = ["status": "PASS", "clientPID": getpid(), "workerPID": identity.0,
                 "terminalPID": terminalPID, "engine": "Patched Ghostty 07d31666e", "protocolVersion": 2,
-                "glyphPixels": glyphPixels, "skippedExportsWhileBackpressured": fullCounts.1 - initialCounts.1, "completedFrames": snapshot.completed,
+                "glyphPixels": glyphPixels, "skippedExportsWhileBackpressured": fullCounts.1 - initialCounts.1, "completedFrames": snapshot.completed, "frameRequestsWhileHidden": idleEnd.requested - idleStart.requested,
                 "gpuCompletionsDuringMainStall": during - before, "sampleWithinStallMS": 300,
-                "checks": ["real worker PTY", "Ghostty glyph rendering", "IOSurface GPU export", "AppKit Metal presentation", "presentation during host main stall", "PTY input/output round trip", "bounded frame backpressure without lost PTY output", "idle credit recovery", "held-buffer immutability", "explicit terminal shutdown and PTY reap"],
+                "checks": ["real worker PTY", "Ghostty glyph rendering", "IOSurface GPU export", "AppKit Metal presentation", "presentation during host main stall", "PTY input/output round trip", "hidden pane stops frames while PTY parsing continues", "reveal resumes presentation", "bounded frame backpressure without lost PTY output", "idle credit recovery", "held-buffer immutability", "explicit terminal shutdown and PTY reap"],
                 "limits": ["Fixed-size diagnostic fixture; no full keyboard/IME/selection/AX or resize recovery", "GPU completion does not measure scanout"]]
             print(String(data: try! JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
             DispatchQueue.main.async {

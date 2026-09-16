@@ -74,6 +74,16 @@ is committed. A cheap credit callback skips GPU frame encoding when the pool is
 full, retaining dirty state. Returning credit schedules a fresh frame even after
 output becomes idle. Ready frames coalesce; terminal bytes are never dropped.
 The host requests a frame asynchronously and can cancel an idle pending request.
+Real-engine presentation immediately renews demand after GPU completion and lease
+release; only the synthetic producer retains its 16 ms fixture clock. There is
+no host timer between real terminal frames.
+
+Presentation visibility is independent of PTY lifetime. Hiding suppresses export,
+discards an unconsumed ready frame, and leaves the pending host request asleep.
+Input and parsing continue; reveal requests current state. A visibility generation
+rejects GPU completions that began before hide/reveal. Returning their credits
+also wakes a pending refresh, so rapid visibility changes cannot strand demand.
+This is a fixture contract, not yet connected to Scout navigation.
 
 The helper uses the `NSRunLoop` XPC run-loop mode so AppKit work executes on its
 actual main thread. Its NSView is an offscreen platform anchor, with no hidden
@@ -82,7 +92,8 @@ engine's resize mailbox. The fixture keeps a single fixed viewport.
 
 `TerminalClient.swift` checks actual glyph pixels, GPU drawable pixel integrity,
 presentation within a verified host main-thread stall, PTY input/output round
-trip, continued parsing with all three frame credits held, held-buffer integrity,
+trip, no frame requests while hidden despite new PTY output, reveal recovery,
+continued parsing with all three frame credits held, held-buffer integrity,
 recovery after idle credit return, stale ACK rejection, and explicit PTY reap.
 It saves one recovered GPU frame as `terminal-frame.png` for visual inspection;
 that one-time CPU image export is diagnostic evidence, outside the frame path.
@@ -123,3 +134,18 @@ Xcode 27 is not required to build the engine.
 - `Presenter.swift`: AppKit view and dedicated asynchronous Metal presenter.
 - `Client.swift`: contract checks, window fixture and stalled-main-thread check.
 - `run.ts`: bounded build/run, signing, evidence and cleanup.
+
+## Demand and visibility follow-up (2026-09-16)
+
+The real-engine follow-up passed with 124 presented frames, 10 GPU completions
+inside the 300 ms stalled-main sample, and zero new host frame requests during
+the hidden-pane interval while a new input/output round trip completed. Helper
+and PTY teardown passed. These are correctness/progress observations, not an
+end-to-end latency comparison or evidence of integration into Scout.
+
+An initial assertion that a visible terminal with no new text would produce no
+frames failed: one additional frame arrived in a 300 ms sample. Its source is
+not established; cursor/timer activity remains a profiling question. Visibility
+suppression is tested separately and does not establish zero CPU use or zero
+visible-idle work. Resize generations, multi-session lifecycle and the normal
+keyboard/IME/selection/accessibility contract still precede Scout integration.

@@ -16,6 +16,8 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
     private var exported: UInt64 = 0
     private var skipped: UInt64 = 0
     private var stopped = false
+    private var presentationActive = true
+    private var presentationGeneration: UInt64 = 1
     private var config: ghostty_config_t?
     private var app: ghostty_app_t?
     private var surface: ghostty_surface_t?
@@ -84,6 +86,7 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
     private func hasCredit() -> Bool {
         lock.lock(); defer { lock.unlock() }
         guard !stopped else { return false }
+        guard presentationActive else { needsRefresh = true; return false }
         if !leases.hasFreeSlot { needsRefresh = true; skipped += 1; return false }
         return true
     }
@@ -91,11 +94,12 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
         guard source.width == ProbeFrame.width, source.height == ProbeFrame.height,
               source.pixelFormat == .bgra8Unorm else { return }
         lock.lock()
-        guard !stopped else { lock.unlock(); return }
+        guard !stopped, presentationActive else { lock.unlock(); return }
         guard let lease = leases.acquire() else { needsRefresh = true; skipped += 1; lock.unlock(); return }
+        let generation = presentationGeneration
         lock.unlock()
         guard let blit = command.makeBlitCommandEncoder() else {
-            lock.lock(); _ = leases.release(lease.sequence); lock.unlock(); return
+            _ = releaseLease(lease.sequence); return
         }
         blit.copy(from: source, sourceSlice: 0, sourceLevel: 0, sourceOrigin: MTLOrigin(),
             sourceSize: MTLSize(width: ProbeFrame.width, height: ProbeFrame.height, depth: 1),
@@ -103,8 +107,9 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
         blit.endEncoding()
         command.addCompletedHandler { command in
             self.lock.lock()
-            guard !self.stopped, command.status == .completed, lease.sequence > self.latestCompleted else {
-                _ = self.leases.release(lease.sequence); self.lock.unlock(); return
+            guard !self.stopped, self.presentationActive, generation == self.presentationGeneration,
+                  command.status == .completed, lease.sequence > self.latestCompleted else {
+                self.lock.unlock(); _ = self.releaseLease(lease.sequence); return
             }
             self.latestCompleted = lease.sequence
             self.exported += 1
@@ -130,13 +135,16 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
         lock.unlock()
     }
     func releaseFrame(_ sequence: UInt64, reply: @escaping (Bool) -> Void) {
+        reply(releaseLease(sequence))
+    }
+    private func releaseLease(_ sequence: UInt64) -> Bool {
         lock.lock()
         let accepted = leases.release(sequence)
-        let refresh = accepted && needsRefresh && !stopped
+        let refresh = accepted && needsRefresh && !stopped && presentationActive
         if refresh { needsRefresh = false }
         lock.unlock()
-        reply(accepted)
         if refresh { DispatchQueue.main.async { if let surface = self.surface { ghostty_surface_request_frame_export(surface) } } }
+        return accepted
     }
     func cancelFrameRequest(reply: @escaping () -> Void) {
         lock.lock(); let pending = waiting; waiting = nil; lock.unlock()
@@ -144,6 +152,29 @@ final class GhosttyWorker: NSObject, TerminalProbeService {
     }
     func heartbeat(reply: @escaping (UInt64) -> Void) {
         lock.lock(); let count = exported; lock.unlock(); reply(count)
+    }
+    // Visibility changes affect frame production, never the PTY or parser.
+    // Keep a pending host request so reveal delivers current state directly.
+    func setPresentationActive(_ active: Bool, reply: @escaping () -> Void) {
+        DispatchQueue.main.async {
+            self.lock.lock()
+            if self.presentationActive != active { self.presentationGeneration += 1 }
+            self.presentationActive = active
+            if !active, let ready = self.ready {
+                _ = self.leases.release(ready.1)
+                self.ready = nil
+            }
+            self.needsRefresh = !active
+            let stopped = self.stopped
+            self.lock.unlock()
+            if !stopped, let surface = self.surface {
+                // Ghostty's API takes visibility, despite its occlusion name.
+                ghostty_surface_set_occlusion(surface, active)
+                ghostty_surface_set_focus(surface, active)
+                if active { ghostty_surface_request_frame_export(surface) }
+            }
+            reply()
+        }
     }
     func frameStatistics(reply: @escaping (UInt64, UInt64) -> Void) {
         lock.lock(); let counts = (exported, skipped); lock.unlock(); reply(counts.0, counts.1)
