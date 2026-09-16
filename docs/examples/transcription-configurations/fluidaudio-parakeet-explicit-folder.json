@@ -1,0 +1,8 @@
+{
+  "providerID": "fluidaudio",
+  "modelID": "parakeet-v3",
+  "localModel": {
+    "location": "/Users/EXAMPLE/Library/Application Support/FluidAudio/Models/parakeet-tdt-0.6b-v3-coreml"
+  },
+  "options": {}
+}
