@@ -58,6 +58,12 @@ HUDSON_TERMINAL_PROBE_OUTPUT=/absolute/path/to/evidence \
   bun packages/native/apple/HudsonKit/Tools/TerminalIsolationProbe/run.ts --terminal
 ```
 
+Optionally set `HUDSON_GHOSTTY_BUILD_PROVENANCE` to the compiler validation
+artifact’s `provenance.json`. The runner requires a successful build record and
+verifies its library SHA-256 against the exact archive linked into the helper.
+It copies that record into the evidence and includes it in the result; without
+it, engine build qualification is explicitly unspecified.
+
 This needs the native XCFramework built with Termini's experimental
 `ghostty-terminal-frame-export.patch`, based on Ghostty `07d31666e`. The runner
 links the engine into the helper only. The host imports no Ghostty module.
@@ -85,9 +91,11 @@ The test shell is a fixed trusted workload. `readScreen` returns a bounded
 viewport snapshot only for test assertions; no terminal transcript stream is
 used for host rendering. No per-pane host polling or SwiftUI rendering is involved.
 
-The 2026-09-16 local engine build used a private SDK libSystem stub compatibility
-overlay for Zig 0.15.2. Installed SDKs were unchanged. This is proof-build evidence,
-not release qualification; see the architecture document and Termini patch notes.
+The initial 2026-09-16 engine build used a private SDK compatibility overlay.
+The subsequent clean build used Xcode 26.3, stock macOS 26.2 SDK and Zig 0.15.2;
+its checksum-matched framework passed this fixture locally. See the architecture
+document and Termini patch notes for the CI record and remaining platform gates.
+Xcode 27 is not required to build the engine.
 
 ## Deliberate limits
 

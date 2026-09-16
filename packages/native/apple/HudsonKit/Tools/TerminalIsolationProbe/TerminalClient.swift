@@ -148,7 +148,7 @@ import IOSurface
                 "glyphPixels": glyphPixels, "skippedExportsWhileBackpressured": fullCounts.1 - initialCounts.1, "completedFrames": snapshot.completed,
                 "gpuCompletionsDuringMainStall": during - before, "sampleWithinStallMS": 300,
                 "checks": ["real worker PTY", "Ghostty glyph rendering", "IOSurface GPU export", "AppKit Metal presentation", "presentation during host main stall", "PTY input/output round trip", "bounded frame backpressure without lost PTY output", "idle credit recovery", "held-buffer immutability", "explicit terminal shutdown and PTY reap"],
-                "limits": ["Fixed-size diagnostic fixture; no full keyboard/IME/selection/AX or resize recovery", "GPU completion does not measure scanout", "Engine built with local SDK compatibility overlay; not release qualification"]]
+                "limits": ["Fixed-size diagnostic fixture; no full keyboard/IME/selection/AX or resize recovery", "GPU completion does not measure scanout"]]
             print(String(data: try! JSONSerialization.data(withJSONObject: result, options: [.prettyPrinted, .sortedKeys]), encoding: .utf8)!)
             DispatchQueue.main.async {
                 window.orderOut(nil); app.stop(nil)

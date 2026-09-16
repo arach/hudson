@@ -1,14 +1,18 @@
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { createReadStream } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 if (process.platform !== 'darwin') throw new Error('This probe requires macOS');
 const terminal = process.argv.includes('--terminal');
 const engine = process.env.HUDSON_GHOSTTY_XCFRAMEWORK;
+const provenancePath = process.env.HUDSON_GHOSTTY_BUILD_PROVENANCE;
 if (terminal && !engine) throw new Error('--terminal requires HUDSON_GHOSTTY_XCFRAMEWORK');
 const output = resolve(process.env.HUDSON_TERMINAL_PROBE_OUTPUT ?? join(import.meta.dir, 'results'));
 await mkdir(output, { recursive: true });
 await rm(join(output, 'result.json'), { force: true });
+await rm(join(output, 'engine-build.json'), { force: true });
 const cache = join(homedir(), 'Library/Caches/codex-builds');
 await mkdir(cache, { recursive: true });
 const scratch = await mkdtemp(join(cache, 'hudson-terminal-ipc-'));
@@ -43,6 +47,16 @@ try {
   const swift = '/Library/Developer/CommandLineTools/usr/bin/swiftc';
   const shared = ['-parse-as-library', '-sdk', '/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk', '-target', `${process.arch === 'arm64' ? 'arm64' : 'x86_64'}-apple-macos14.0`, '-framework', 'IOSurface', '-framework', 'Metal', join(import.meta.dir, 'Protocol.swift'), join(import.meta.dir, 'GPU.swift')];
   const engineDir = engine ? join(engine, process.arch === 'arm64' ? 'macos-arm64' : 'macos-x86_64') : '';
+  let engineBuild: Record<string, unknown> | undefined;
+  if (terminal && provenancePath) {
+    engineBuild = await Bun.file(provenancePath).json();
+    const hash = createHash('sha256');
+    for await (const chunk of createReadStream(join(engineDir, 'libghostty-internal-fat.a'))) hash.update(chunk);
+    if (engineBuild?.status !== 'PASS' || engineBuild.librarySHA256 !== hash.digest('hex')) {
+      throw new Error('Engine build provenance does not match the linked library');
+    }
+    await Bun.write(join(output, 'engine-build.json'), JSON.stringify(engineBuild, null, 2));
+  }
   const workerArgs = terminal ? [join(import.meta.dir, 'GhosttyWorker.swift'), '-I', join(engineDir, 'Headers'),
     join(engineDir, 'libghostty-internal-fat.a'), '-lc++', '-framework', 'AppKit', '-framework', 'Carbon', '-framework', 'CoreText',
     '-framework', 'CoreGraphics', '-framework', 'QuartzCore', '-framework', 'IOKit', '-framework', 'CoreVideo']
@@ -53,6 +67,7 @@ try {
   await run(['/usr/bin/codesign', '--force', '--sign', '-', app]);
   const result = await run([clientBinary, ...(process.argv.includes('--window') ? ['--window'] : [])], terminal ? 30_000 : 20_000);
   const parsed = JSON.parse(result);
+  if (terminal) parsed.engineBuild = engineBuild ?? { qualification: 'Unspecified; no engine build provenance supplied' };
   workerPID = parsed.workerPID;
   if (parsed.status !== 'PASS') throw new Error('Probe did not pass');
   // Observe only our returned worker PID; never kill a name-matched process.
@@ -68,7 +83,7 @@ try {
     throw new Error(`Owned helper ${workerPID} did not exit; preserving ${scratch} for diagnosis`);
   }
   await Bun.write(join(output, 'result.json'), JSON.stringify(parsed, null, 2));
-  console.log(result);
+  console.log(JSON.stringify(parsed, null, 2));
 } finally {
   if (!preserveScratch) await rm(scratch, { recursive: true, force: true });
   await Bun.write(join(output, 'cleanup.json'), JSON.stringify({ removed: preserveScratch ? null : scratch, preserved: preserveScratch ? scratch : null, workerPID, workerExited, evidence: output }, null, 2));

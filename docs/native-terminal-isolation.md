@@ -213,7 +213,7 @@ and wakeups, total RSS, startup and 1/4/8-pane behavior. Repeat after sustained
 output and long-session soak. IPC and an extra presentation pass have real costs;
 keep the in-process path available until the isolated path clears those gates.
 
-## Local proof and remaining build gate — 2026-09-16
+## Local proof and compiler validation — 2026-09-16
 
 The windowed probe on this Mac mini passed all lease and pixel-integrity checks.
 It completed 17 frames during a 300 ms observation interval entirely inside a
@@ -248,8 +248,23 @@ Xcode's license prerequisite was resolved by the operator, and Metal Toolchain
 known newer-SDK libSystem stub incompatibility. A private SDK overlay added
 `arm64-macos` to `arm64e-macos` target groups in that text stub; installed SDKs
 were unchanged. The source hash and transformation are preserved in local proof
-evidence. This native build **does not qualify the release toolchain**. Use a
-supported SDK/compiler combination before publishing the engine binary.
+evidence. That first overlay build was diagnostic only.
+
+A subsequent clean arm64 build used **Xcode 26.3 (17C529), stock macOS 26.2 SDK,
+Zig 0.15.2 and Apple Metal 32023.864**, with no SDK overlay:
+[compiler validation](https://github.com/arach/Termini/actions/runs/35129139473).
+The runner downloaded the exact framework, matched its library SHA-256 against
+the CI build record, then repeated the real terminal checks locally. All passed:
+122 presentations, 8 GPU completions within the stalled-main sample, bounded
+backpressure, parsing progress, immutable buffers, idle credit recovery and
+PTY/helper cleanup. These frame counts are progress checks, not comparative
+performance measurements.
+
+The native arm64 engine compiler gate is now closed. Xcode 27 is not required.
+The local host fixture still uses the installed CLT and macOS 26.5 SDK with a
+macOS 14 deployment target. Intel, universal/iOS builds and runtime tests across
+the supported OS range remain separate qualification gates. No release binary
+or production consumer changed.
 
 The next product gates remain a reusable session/view API, complete AppKit
 keyboard/IME/selection/accessibility, resize generations and bounded retirement,
