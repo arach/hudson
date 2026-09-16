@@ -1,7 +1,7 @@
 # Native terminal core and process isolation
 
 Status: architecture direction accepted by the operator, 2026-09-16; bounded
-XPC/IOSurface/Metal probe implemented and checked locally. Production migration is not implemented.
+XPC/IOSurface/Metal probe and real Ghostty worker proof implemented and checked locally. Production migration is not implemented.
 Owner: Hudson native terminal lane. First consumer: Scout. Review before stable API promotion.
 
 Operator constraints: performance first; AppKit/Metal, no SwiftUI in the terminal
@@ -80,9 +80,11 @@ supports cross-process sharing, and the macOS 26.5 SDK declares `IOSurface`
 conformant to `NSSecureCoding`, allowing the object on an NSXPC interface.
 
 The inspected Ghostty source already has IOSurface-backed Metal render targets.
-Its current embedding API does not provide a supported remote-frame lease
-contract. That is an implementation gate, not something a Swift wrapper can
-assume away.
+The upstream embedding API has no external frame lease contract. The Termini
+proof patch adds an explicit pre-commit GPU export callback and credit check;
+Hudson copies into its own bounded pool within the same command buffer. Engine
+target reuse waits for that copy. A public direct-target lease API remains a
+possible later optimization, not an assumption of this implementation.
 
 Required producer/consumer rules:
 
@@ -220,25 +222,39 @@ The helper and client had separate PIDs; the three shared 512×256 BGRA buffers
 occupied 1.5 MiB. The runner verified helper exit and removed its build bundle.
 This is feasibility evidence, not a comparison with Ghostty, xterm or wterm.
 
-The current worker produces synthetic GPU colors, with no terminal parser or
-PTY. The source remains under `Tools/TerminalIsolationProbe`, outside the stable
-SwiftPM graph. Headless mode verifies the IPC/pool contract; `--window` adds the
-AppKit presenter and the within-stall GPU check. `README.md` records exact limits.
+The fixture now has two modes: the default synthetic producer and `--terminal`,
+which links a source-built Ghostty engine into the helper. Real-engine checks
+cover glyph rendering, GPU drawable pixels, PTY input/output, frame progression
+within the main-thread stall, parsing while all three export credits are held,
+immutable held buffers, idle credit recovery, stale ACK rejection and PTY reap.
+The final real-engine run completed 121 presented frames, including 9 GPU
+completions within the 300 ms stalled-main sample. It observed four skipped frame
+attempts while all export credits were held, then recovered a current frame after
+credit returned. These counts validate progress and credit behavior; they do not
+measure maximum throughput or input-to-visible latency.
+The source remains under `Tools/TerminalIsolationProbe`, outside stable products.
+No production Scout consumer has been switched.
 
-The inspected Ghostty renderer completes its local frame immediately after
-`Metal.present`; its public C API has no export/release hook that keeps a buffer
-leased to another process. Production integration must explicitly extend this
-contract and handle offscreen sizing/occlusion. Do not ship the probe as if it
-already isolates Scout terminals.
+The Termini proof patch preserves existing configuration ABI and adds private
+`ghostty_surface_new_with_frame_export` / `ghostty_surface_request_frame_export`
+entry points. The callback appends a copy after terminal render passes and before
+commit. A credit check skips GPU encoding before acquiring a renderer target when
+exports are full. On credit return the worker requests the latest state without
+a main-thread synchronous draw. The helper uses a real NSRunLoop for AppKit and
+explicit renderer viewport dimensions, with no hidden worker window.
 
-Local engine-build prerequisites are incomplete: the CLT SDK has no offline
-`metal` utility, and the full Xcode `metal --version` shim reports a missing Metal
-Toolchain component. Full Xcode also reports an unaccepted license. The probe
-compiles its small presenter shader through the runtime Metal API, which does
-not establish that a modified Ghostty library can be built. Complete Xcode's
-operator-controlled setup, install the required Metal component, then use a
-pinned Zig toolchain (the inspected source requires 0.15.2) for the engine gate.
-No legal terms were accepted and no system toolchain was changed by this work.
+Xcode's license prerequisite was resolved by the operator, and Metal Toolchain
+27A266a was downloaded and verified. The pinned Zig 0.15.2 linker then hit the
+known newer-SDK libSystem stub incompatibility. A private SDK overlay added
+`arm64-macos` to `arm64e-macos` target groups in that text stub; installed SDKs
+were unchanged. The source hash and transformation are preserved in local proof
+evidence. This native build **does not qualify the release toolchain**. Use a
+supported SDK/compiler combination before publishing the engine binary.
+
+The next product gates remain a reusable session/view API, complete AppKit
+keyboard/IME/selection/accessibility, resize generations and bounded retirement,
+worker crash/reconnect behavior, signing/peer checks, isolated Scout adoption and
+a second consumer. Compare full-app performance and soak behavior before cutover.
 
 ## Evidence and sources
 
@@ -249,5 +265,5 @@ No legal terms were accepted and no system toolchain was changed by this work.
 - [Apple XPC services](https://developer.apple.com/library/archive/documentation/MacOSX/Conceptual/BPSystemStartup/Chapters/CreatingXPCServices.html): asynchronous process boundary and secure-coding contract.
 - Inspected local Ghostty source: `src/renderer/metal/Target.zig`,
   `Frame.zig`, `IOSurfaceLayer.zig`, and `src/renderer/Metal.zig`.
-  The local source's identity relative to the distributed binary remains unproven;
-  source inspection establishes a design lead, not a supported binary export API.
+  The proof builds the pinned source plus recorded Termini patches. This does
+  not establish source identity of the older distributed binary.

@@ -8,6 +8,7 @@ protocol ProbeService {
     func hello(reply: @escaping (Int32, Int) -> Void)
     func acquireFrame(reply: @escaping (IOSurface?, UInt64) -> Void)
     func releaseFrame(_ sequence: UInt64, reply: @escaping (Bool) -> Void)
+    func cancelFrameRequest(reply: @escaping () -> Void)
     func heartbeat(reply: @escaping (UInt64) -> Void)
 }
 
@@ -22,6 +23,7 @@ func serviceInterface() -> NSXPCInterface {
 struct FrameLeases {
     private var slots: [UInt64?] = Array(repeating: nil, count: 3)
     private var next: UInt64 = 1
+    var hasFreeSlot: Bool { next < UInt64.max && slots.contains(where: { $0 == nil }) }
     mutating func acquire() -> (slot: Int, sequence: UInt64)? {
         guard let slot = slots.firstIndex(where: { $0 == nil }), next < UInt64.max else { return nil }
         let sequence = next; next += 1; slots[slot] = sequence
@@ -32,4 +34,20 @@ struct FrameLeases {
         slots[slot] = nil
         return true
     }
+}
+
+// Terminal-only diagnostic extension. Screen text is requested by tests, never
+// streamed into the host's presentation path.
+@objc(HudTerminalEngineProbeService)
+protocol TerminalProbeService: ProbeService {
+    func frameStatistics(reply: @escaping (UInt64, UInt64) -> Void)
+    func processID(reply: @escaping (Int32) -> Void)
+    func writeInput(_ data: Data, reply: @escaping (Bool) -> Void)
+    func readScreen(reply: @escaping (String) -> Void)
+    func shutdown(reply: @escaping () -> Void)
+}
+func terminalServiceInterface() -> NSXPCInterface {
+    let interface = NSXPCInterface(with: TerminalProbeService.self)
+    interface.setClasses(NSSet(object: IOSurface.self) as! Set<AnyHashable>, for: #selector(ProbeService.acquireFrame(reply:)), argumentIndex: 0, ofReply: true)
+    return interface
 }

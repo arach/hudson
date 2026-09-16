@@ -3,6 +3,9 @@ import { join, resolve } from 'node:path';
 import { homedir } from 'node:os';
 
 if (process.platform !== 'darwin') throw new Error('This probe requires macOS');
+const terminal = process.argv.includes('--terminal');
+const engine = process.env.HUDSON_GHOSTTY_XCFRAMEWORK;
+if (terminal && !engine) throw new Error('--terminal requires HUDSON_GHOSTTY_XCFRAMEWORK');
 const output = resolve(process.env.HUDSON_TERMINAL_PROBE_OUTPUT ?? join(import.meta.dir, 'results'));
 await mkdir(output, { recursive: true });
 await rm(join(output, 'result.json'), { force: true });
@@ -17,7 +20,7 @@ const logs: unknown[] = [];
 let workerPID: number | undefined;
 let workerExited = false;
 let preserveScratch = false;
-const env = { ...process.env, DEVELOPER_DIR: '/Library/Developer/CommandLineTools' };
+const env = { ...process.env, HUDSON_TERMINAL_PROBE_OUTPUT: output, DEVELOPER_DIR: '/Library/Developer/CommandLineTools' };
 async function run(command: string[], timeoutMs = 30_000) {
   const child = Bun.spawn(command, { env, stdout: 'pipe', stderr: 'pipe' });
   let timedOut = false;
@@ -36,14 +39,19 @@ try {
   await mkdir(join(app, 'Contents/MacOS'), { recursive: true });
   await mkdir(join(service, 'Contents/MacOS'), { recursive: true });
   await Bun.write(join(app, 'Contents/Info.plist'), plist('dev.hudson.TerminalIsolationProbe', 'HudsonTerminalIsolationProbe', 'APPL', '<key>LSUIElement</key><true/>'));
-  await Bun.write(join(service, 'Contents/Info.plist'), plist('dev.hudson.TerminalIsolationProbe.Worker', 'Worker', 'XPC!', '<key>XPCService</key><dict><key>ServiceType</key><string>Application</string></dict>'));
+  await Bun.write(join(service, 'Contents/Info.plist'), plist('dev.hudson.TerminalIsolationProbe.Worker', 'Worker', 'XPC!', '<key>XPCService</key><dict><key>ServiceType</key><string>Application</string><key>RunLoopType</key><string>NSRunLoop</string></dict>'));
   const swift = '/Library/Developer/CommandLineTools/usr/bin/swiftc';
   const shared = ['-parse-as-library', '-sdk', '/Library/Developer/CommandLineTools/SDKs/MacOSX26.5.sdk', '-target', `${process.arch === 'arm64' ? 'arm64' : 'x86_64'}-apple-macos14.0`, '-framework', 'IOSurface', '-framework', 'Metal', join(import.meta.dir, 'Protocol.swift'), join(import.meta.dir, 'GPU.swift')];
-  await run([swift, ...shared, join(import.meta.dir, 'Worker.swift'), '-o', workerBinary]);
-  await run([swift, ...shared, join(import.meta.dir, 'Client.swift'), join(import.meta.dir, 'Presenter.swift'), '-framework', 'AppKit', '-framework', 'QuartzCore', '-o', clientBinary]);
+  const engineDir = engine ? join(engine, process.arch === 'arm64' ? 'macos-arm64' : 'macos-x86_64') : '';
+  const workerArgs = terminal ? [join(import.meta.dir, 'GhosttyWorker.swift'), '-I', join(engineDir, 'Headers'),
+    join(engineDir, 'libghostty-internal-fat.a'), '-lc++', '-framework', 'AppKit', '-framework', 'Carbon', '-framework', 'CoreText',
+    '-framework', 'CoreGraphics', '-framework', 'QuartzCore', '-framework', 'IOKit', '-framework', 'CoreVideo']
+    : [join(import.meta.dir, 'Worker.swift')];
+  await run([swift, ...shared, ...workerArgs, '-o', workerBinary], 60_000);
+  await run([swift, ...shared, join(import.meta.dir, terminal ? 'TerminalClient.swift' : 'Client.swift'), join(import.meta.dir, 'Checks.swift'), join(import.meta.dir, 'Presenter.swift'), '-framework', 'AppKit', '-framework', 'QuartzCore', '-o', clientBinary]);
   await run(['/usr/bin/codesign', '--force', '--sign', '-', service]);
   await run(['/usr/bin/codesign', '--force', '--sign', '-', app]);
-  const result = await run([clientBinary, ...(process.argv.includes('--window') ? ['--window'] : [])], 20_000);
+  const result = await run([clientBinary, ...(process.argv.includes('--window') ? ['--window'] : [])], terminal ? 30_000 : 20_000);
   const parsed = JSON.parse(result);
   workerPID = parsed.workerPID;
   if (parsed.status !== 'PASS') throw new Error('Probe did not pass');

@@ -34,6 +34,7 @@ final class ProbePresenter {
     private let device: MTLDevice
     private let commands: MTLCommandQueue
     private let pipeline: MTLRenderPipelineState
+    private let verifySyntheticPixel: Bool
     private let readback: MTLBuffer
     private var running = false
     private var inFlight = false
@@ -41,7 +42,8 @@ final class ProbePresenter {
     private var failures: [String] = []
     private var stopReply: (() -> Void)?
 
-    init(layer: CAMetalLayer, proxy: ProbeService) throws {
+    init(layer: CAMetalLayer, proxy: ProbeService, verifySyntheticPixel: Bool = true) throws {
+        self.verifySyntheticPixel = verifySyntheticPixel
         self.layer = layer; self.proxy = proxy
         guard let device = layer.device, let commands = device.makeCommandQueue(),
               let readback = device.makeBuffer(length: 256, options: .storageModeShared) else {
@@ -73,7 +75,10 @@ final class ProbePresenter {
     func stop(completion: @escaping () -> Void) {
         work.async {
             self.running = false
-            if self.inFlight { self.stopReply = completion } else { completion() }
+            if self.inFlight {
+                self.stopReply = completion
+                self.proxy.cancelFrameRequest { }
+            } else { completion() }
         }
     }
     private func nextFrame() {
@@ -82,7 +87,7 @@ final class ProbePresenter {
         proxy.acquireFrame { surface, sequence in
             self.work.async {
                 guard let surface, sequence > 0 else {
-                    self.failures.append("Frame unavailable"); self.running = false; self.finish(); return
+                    if self.running { self.failures.append("Frame unavailable"); self.running = false }; self.finish(); return
                 }
                 guard self.running else { self.release(sequence); return }
                 guard let texture = ProbeFrame.texture(surface, device: self.device),
@@ -91,6 +96,7 @@ final class ProbePresenter {
                     self.failures.append("Invalid frame or unavailable drawable"); self.running = false
                     self.release(sequence); return
                 }
+                let expectedPixel = self.verifySyntheticPixel ? ProbeFrame.pixel(sequence) : pixel(surface)
                 let pass = MTLRenderPassDescriptor()
                 pass.colorAttachments[0].texture = drawable.texture
                 pass.colorAttachments[0].loadAction = .dontCare
@@ -115,7 +121,7 @@ final class ProbePresenter {
                         // Retain imported storage through GPU completion. Only now
                         // may the helper overwrite this lease's shared texture.
                         withExtendedLifetime((surface, texture, drawable)) {
-                            if command.status != .completed || self.readback.contents().load(as: UInt32.self) != ProbeFrame.pixel(sequence) {
+                            if command.status != .completed || self.readback.contents().load(as: UInt32.self) != expectedPixel {
                                 self.failures.append("GPU completion or drawable pixel integrity"); self.running = false
                             } else { self.completed += 1 }
                             self.release(sequence)

@@ -32,6 +32,7 @@ final class Worker: NSObject, ProbeService {
     func releaseFrame(_ sequence: UInt64, reply: @escaping (Bool) -> Void) {
         queue.async { reply(self.leases.release(sequence)) }
     }
+    func cancelFrameRequest(reply: @escaping () -> Void) { reply() }
     func heartbeat(reply: @escaping (UInt64) -> Void) { queue.async { reply(self.ticks) } }
 }
 
