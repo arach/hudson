@@ -240,7 +240,8 @@ struct HudTTSProviderTests {
         )
         let request = try #require(await recorder.lastRequest())
 
-        #expect(request.text == "Hello Hudson")
+        // HudTTS preserves exact input; provider adapters own any normalization.
+        #expect(request.text == "  Hello Hudson  ")
         #expect(request.voice == "autumn")
         #expect(request.rate == 1.25)
         #expect(request.model == "orpheus-test")
