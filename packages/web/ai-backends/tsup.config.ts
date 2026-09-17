@@ -6,6 +6,7 @@ export default defineConfig({
     'pi-ai': 'src/pi-ai.ts',
     'vercel-ai': 'src/adapters/vercel-ai.ts',
     toolsets: 'src/toolsets/index.ts',
+    conversation: 'src/conversation/index.ts',
   },
   format: ['esm'],
   dts: true,

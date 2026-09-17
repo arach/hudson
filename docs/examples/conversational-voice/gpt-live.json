@@ -1,0 +1,13 @@
+{
+  "providerID": "openai-gpt-live",
+  "modelID": "gpt-live-1",
+  "instructions": "You are a concise voice assistant. Keep answers short.",
+  "inputAudio": {
+    "sampleRate": 24000
+  },
+  "credentialReference": {
+    "identifier": "openai"
+  },
+  "credentialKind": "apiKey",
+  "options": {}
+}

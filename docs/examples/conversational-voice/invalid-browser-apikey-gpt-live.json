@@ -1,0 +1,8 @@
+{
+  "providerID": "openai-gpt-live",
+  "modelID": "gpt-live-1",
+  "inputAudio": { "sampleRate": 24000 },
+  "credentialReference": { "identifier": "session-grant" },
+  "credentialKind": "ephemeralToken",
+  "options": {}
+}
