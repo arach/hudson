@@ -39,6 +39,20 @@ public actor HudConversationSpeaker: HudConversationAudioOutput {
             engine.attach(player)
             attached = true
         }
+        // AVAudioEngine raises an uncatchable NSException from prepare() when an
+        // attached node has no connection ("inputNode != nullptr ||
+        // outputNode != nullptr"), so connect at the provider's documented
+        // output rate now; play() reconnects if a chunk arrives at another rate.
+        if connectedRate == nil {
+            let rate = Double(HudConversationAudioFormat.pcm24k.sampleRate)
+            guard let format = AVAudioFormat(
+                commonFormat: .pcmFormatFloat32, sampleRate: rate, channels: 1, interleaved: false) else {
+                throw HudConversationError.invalidConfiguration("Playback format is unavailable.")
+            }
+            engine.disconnectNodeOutput(player)
+            engine.connect(player, to: engine.mainMixerNode, format: format)
+            connectedRate = rate
+        }
         engine.prepare()
         running = true
     }
