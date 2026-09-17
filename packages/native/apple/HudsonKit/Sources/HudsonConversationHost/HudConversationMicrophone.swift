@@ -72,6 +72,13 @@ public actor HudConversationMicrophone: HudConversationAudioInput {
             guard let converter = AVAudioConverter(from: source, to: target) else {
                 throw HudConversationError.invalidConfiguration("Capture conversion is unavailable.")
             }
+            // macOS voice processing presents a multichannel input (7 channels,
+            // all carrying the processed voice). Its layout gives the converter
+            // no mono mapping, so the default channelMap is [-1] and every
+            // converted buffer is silence. Take the first channel explicitly.
+            if source.channelCount > 1 {
+                converter.channelMap = [0]
+            }
             let (stream, continuation) = AsyncStream<Data>.makeStream(bufferingPolicy: .bufferingNewest(64))
             self.continuation = continuation
             input.installTap(onBus: 0, bufferSize: 4096, format: source) { buffer, _ in
