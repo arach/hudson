@@ -32,6 +32,7 @@ import { intentExplorerApp } from './intent-explorer';
 import { themeDesignerApp } from './theme-designer';
 import { stageDesignApp } from './stage-design';
 import { hudLoggerApp } from './hud-logger';
+import { hudsonVoiceApp } from './hudson-voice';
 import { servicesApp } from './services';
 import { terminalApp } from './terminal';
 
@@ -91,6 +92,7 @@ function getAppById(id: string): HudsonApp | null {
     'stage-design': stageDesignApp,
     'workflow-lab': workflowLabApp,
     'hud-logger': hudLoggerApp,
+    'hudson-voice': hudsonVoiceApp,
     'services': servicesApp,
     'terminal': terminalApp,
   };
@@ -186,6 +188,11 @@ function getCoreApps(): WorkspaceAppConfig[] {
       canvasMode: 'windowed',
       defaultWindowBounds: { x: 260, y: 360, w: 760, h: 560 },
     },
+    {
+      app: hudsonVoiceApp,
+      canvasMode: 'windowed',
+      defaultWindowBounds: { x: 1060, y: 360, w: 720, h: 560 },
+    },
   ];
 }
 
@@ -246,7 +253,7 @@ export function getHudsonKitWorkspace(): HudsonWorkspace {
   return {
     id: 'hudson-os',
     name: 'HudsonKit Docs',
-    description: 'Documentation, AI, intents, theming, and code surfaces for HudsonKit',
+    description: 'Documentation, AI, voice, intents, theming, and code surfaces for HudsonKit',
     mode: 'canvas',
     apps: getCoreApps(),
     defaultFocusedAppId: 'hudson-docs',

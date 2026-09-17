@@ -3280,8 +3280,18 @@ function WorkspaceInner({
     </ServiceBanner>
   ) : null;
   const focusedCanvasContentNode = canvasFocusContentNode ?? singleContentNode;
+  const { navTotalHeight: panelNavHeight } = usePlatformLayout();
   const worldContent = (
-    <div data-hudson-world className={frameMode === 'panel' ? 'h-full min-h-0' : undefined}>
+    <div
+      data-hudson-world
+      className={frameMode === 'panel' ? 'absolute min-h-0 min-w-0 overflow-hidden' : undefined}
+      style={frameMode === 'panel' ? {
+        top: panelNavHeight,
+        bottom: SHELL_THEME.layout.statusBarHeight + terminalCanvasBottomOffset,
+        left: effectiveLeftWidth,
+        right: effectiveRightWidth,
+      } : undefined}
+    >
       {focusedCanvasContentNode ? (
         isCanvasMode ? (
           <div className="pointer-events-auto" style={{ transform: 'translate(-50%, -50%)' }}>

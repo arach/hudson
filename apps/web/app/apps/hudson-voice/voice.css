@@ -1,0 +1,54 @@
+/* Hudson Voice — layout and surface details Tailwind utilities can't express. */
+
+/* The main split responds to the app window's width, not the viewport. */
+.voice-main {
+  container-type: inline-size;
+}
+
+.voice-split {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  height: 100%;
+  min-height: 0;
+}
+
+.voice-split .voice-rail {
+  border-top: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+  max-height: 180px;
+}
+
+@container (min-width: 680px) {
+  .voice-split.voice-split--rail {
+    grid-template-columns: minmax(0, 1fr) 232px;
+    grid-template-rows: minmax(0, 1fr);
+  }
+  .voice-split .voice-rail {
+    border-top: none;
+    border-left: 1px solid color-mix(in srgb, var(--border) 60%, transparent);
+    max-height: none;
+  }
+}
+
+/* Keyboard focus carries the accent, not the browser default. */
+.voice-root button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--info) 75%, transparent);
+  outline-offset: 1px;
+}
+
+/* Live-session pulse, quiet and reduced-motion safe. */
+@keyframes voice-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.4; }
+}
+
+.voice-live-dot {
+  animation: voice-pulse 2.4s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .voice-live-dot,
+  .voice-root .animate-spin {
+    animation: none;
+  }
+}
