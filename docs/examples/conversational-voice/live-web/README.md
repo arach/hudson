@@ -18,7 +18,7 @@ runner. Do not put the value in this directory, the browser, or a command argume
 Open `http://127.0.0.1:4318`. `HUDSON_VOICE_PORT` changes the port. Without both
 server variables the page opens but connection is disabled; no provider call occurs.
 
-1. Select **Connect microphone** and grant microphone access.
+1. Select **Refresh microphones** to grant permission and show device names, then choose a microphone. Select **Connect microphone**. The page shows the input actually in use. You can change the microphone during a session; a failed switch keeps the previous input.
 2. Say: “Count the words in blue birds fly home, using your local tool, and
    tell me the result.” Observe the local-tool event and listen for the answer.
 3. Ask for a longer answer. Select **Interrupt playback** while it is audible.
