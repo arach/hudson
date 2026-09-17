@@ -183,6 +183,23 @@ targets.append(.testTarget(name: "HudsonTranscriptionElevenLabsTests", dependenc
 targets.append(.target(name: "HudsonTranscriptionWhisperKit", dependencies: ["HudsonTranscription", .product(name: "WhisperKit", package: "WhisperKit"), .product(name: "Tokenizers", package: "swift-transformers"), .product(name: "Hub", package: "swift-transformers")], path: src + "HudsonTranscriptionWhisperKit"))
 targets.append(.testTarget(name: "HudsonTranscriptionWhisperKitTests", dependencies: ["HudsonTranscriptionWhisperKit"], path: tst + "HudsonTranscriptionWhisperKitTests"))
 
+// Conversational voice: reusable two-way spoken assistant sessions. This stack
+// is distinct from the transcription targets above; conversational output must
+// never route through the transcription-only adapters.
+products.append(hudsonLibrary(name: "HudsonConversation", targets: ["HudsonConversation"]))
+products.append(hudsonLibrary(name: "HudsonConversationOpenAI", targets: ["HudsonConversationOpenAI"]))
+products.append(hudsonLibrary(name: "HudsonConversationGemini", targets: ["HudsonConversationGemini"]))
+products.append(hudsonLibrary(name: "HudsonConversationHost", targets: ["HudsonConversationHost"]))
+targets.append(.target(name: "HudsonConversation", path: src + "HudsonConversation"))
+targets.append(.target(name: "HudsonConversationOpenAI", dependencies: ["HudsonConversation"], path: src + "HudsonConversationOpenAI"))
+targets.append(.target(name: "HudsonConversationGemini", dependencies: ["HudsonConversation"], path: src + "HudsonConversationGemini"))
+targets.append(.target(name: "HudsonConversationHost", dependencies: ["HudsonConversation", "HudsonConversationOpenAI", "HudsonConversationGemini"], path: src + "HudsonConversationHost"))
+targets.append(.testTarget(name: "HudsonConversationTests", dependencies: ["HudsonConversation"], path: tst + "HudsonConversationTests"))
+targets.append(.testTarget(name: "HudsonConversationOpenAITests", dependencies: ["HudsonConversationOpenAI"], path: tst + "HudsonConversationOpenAITests"))
+targets.append(.testTarget(name: "HudsonConversationGeminiTests", dependencies: ["HudsonConversationGemini"], path: tst + "HudsonConversationGeminiTests"))
+targets.append(.testTarget(name: "HudsonConversationHostTests", dependencies: ["HudsonConversationHost", "HudsonConversationOpenAI", "HudsonConversationGemini"], path: tst + "HudsonConversationHostTests"))
+
+
 let voxPackage = appendGitDependency(
     to: &dependencies,
     url: "https://github.com/arach/vox.git",

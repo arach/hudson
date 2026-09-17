@@ -39,6 +39,11 @@
       "types": "./dist/toolsets.d.ts",
       "import": "./dist/toolsets.js",
       "default": "./dist/toolsets.js"
+    },
+    "./conversation": {
+      "types": "./dist/conversation.d.ts",
+      "import": "./dist/conversation.js",
+      "default": "./dist/conversation.js"
     }
   },
   "files": [

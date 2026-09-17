@@ -1,0 +1,13 @@
+{
+  "providerID": "gemini-live-conversation",
+  "modelID": "gemini-3.8-live",
+  "instructions": "You are a concise voice assistant. Keep answers short.",
+  "inputAudio": {
+    "sampleRate": 16000
+  },
+  "credentialReference": {
+    "identifier": "gemini"
+  },
+  "credentialKind": "apiKey",
+  "options": {}
+}

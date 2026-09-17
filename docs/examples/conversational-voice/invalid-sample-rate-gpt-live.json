@@ -1,0 +1,8 @@
+{
+  "providerID": "openai-gpt-live",
+  "modelID": "gpt-live-1",
+  "inputAudio": { "sampleRate": 44100 },
+  "credentialReference": { "identifier": "openai" },
+  "credentialKind": "apiKey",
+  "options": {}
+}
