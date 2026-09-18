@@ -5,6 +5,8 @@ export type AppCardData = {
   lede: string;
   body: string;
   accent: string;
+  source?: string;
+  href?: string;
 };
 
 export function AppCard({ app, index }: { app: AppCardData; index: number }) {
@@ -107,29 +109,45 @@ export function AppCard({ app, index }: { app: AppCardData; index: number }) {
         <p style={{ margin: 0, fontSize: 13, color: 'var(--ink-1)', lineHeight: 1.55 }}>
           {app.body}
         </p>
-        <div
-          style={{
-            marginTop: 'auto',
-            paddingTop: 8,
-            display: 'flex',
-            alignItems: 'center',
-            gap: 8,
-          }}
-        >
-          <span className="tag tag--accent">view source</span>
-          <span style={{ flex: 1 }} />
-          <span
+        {(app.source || app.href) && (
+          <div
             style={{
-              fontFamily: 'var(--font-mono)',
-              fontSize: 10,
-              color: 'var(--ink-2)',
-              letterSpacing: '0.12em',
-              textTransform: 'uppercase',
+              marginTop: 'auto',
+              paddingTop: 8,
+              display: 'flex',
+              alignItems: 'center',
+              gap: 8,
             }}
           >
-            ▸ open
-          </span>
-        </div>
+            {app.source && (
+              <a
+                className="tag tag--accent"
+                href={app.source}
+                target="_blank"
+                rel="noopener noreferrer"
+              >
+                view source
+              </a>
+            )}
+            <span style={{ flex: 1 }} />
+            {app.href && (
+              <a
+                href={app.href}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{
+                  fontFamily: 'var(--font-mono)',
+                  fontSize: 10,
+                  color: 'var(--ink)',
+                  letterSpacing: '0.12em',
+                  textTransform: 'uppercase',
+                }}
+              >
+                ▸ open
+              </a>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );

@@ -998,6 +998,14 @@
   box-shadow: inset 4px 0 0 var(--accent);
 }
 
+/* Footer link columns on the end sheet — quiet until hovered, then the
+   accent-deep + underline reads as an interactive list item. */
+.hudson-site .footer-link:hover {
+  color: var(--accent-deep);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
 /* ─── Responsive ─── */
 
 @media (max-width: 1180px) {

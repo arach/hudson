@@ -24,15 +24,46 @@ const STEPS = [
   },
 ];
 
-const FOOTER_COLS = [
-  { h: 'Project', links: ['GitHub', 'Changelog', 'Roadmap', 'Discord'] },
-  { h: 'Docs', links: ['Quickstart', 'Manifest', 'Primitives', 'Voice / AI'] },
-  { h: 'Apps', links: ['Talkie', 'Scout', 'Linea', 'Lattices', 'Vox'] },
-  { h: 'Legal', links: ['License (MINE)', 'Contributing', 'Code of Conduct', 'Security'] },
-];
-
 const WORKSPACE_URL = 'https://app.hudsonkit.com';
 const GITHUB_URL = 'https://github.com/arach/hudson';
+
+const FOOTER_COLS: { h: string; links: { label: string; href: string }[] }[] = [
+  {
+    h: 'Project',
+    links: [
+      { label: 'GitHub', href: GITHUB_URL },
+      { label: 'Releases', href: `${GITHUB_URL}/releases` },
+      { label: 'Roadmap', href: `${GITHUB_URL}/issues` },
+      { label: 'Workspace', href: WORKSPACE_URL },
+    ],
+  },
+  {
+    h: 'Docs',
+    links: [
+      { label: 'Quickstart', href: '/docs/guides/quickstart' },
+      { label: 'Building Apps', href: '/docs/building-apps' },
+      { label: 'Voice / AI', href: '/docs/guides/voice' },
+      { label: 'API', href: '/docs/api' },
+    ],
+  },
+  {
+    h: 'Apps',
+    links: [
+      { label: 'Talkie', href: 'https://usetalkie.com' },
+      { label: 'Scout', href: 'https://github.com/arach/scout' },
+      { label: 'Lattices', href: 'https://github.com/arach/lattices' },
+      { label: 'Vox', href: 'https://github.com/arach/vox' },
+    ],
+  },
+  {
+    h: 'Legal',
+    links: [
+      { label: 'License (MINE)', href: '/license' },
+      { label: 'Contributing', href: `${GITHUB_URL}/blob/main/CONTRIBUTING.md` },
+      { label: 'Security', href: `${GITHUB_URL}/security` },
+    ],
+  },
+];
 
 export function Sheet07Quickstart() {
   return (
@@ -237,16 +268,18 @@ export function Sheet07Quickstart() {
                 }}
               >
                 {c.links.map((l) => {
-                  const href =
-                    l === 'License (MINE)'
-                      ? '/license'
-                      : l === 'GitHub'
-                        ? GITHUB_URL
-                        : '#';
+                  const external = l.href.startsWith('http');
                   return (
-                    <li key={l}>
-                      <a href={href} style={{ fontSize: 13, color: 'var(--ink)' }}>
-                        {l}
+                    <li key={l.label}>
+                      <a
+                        className="footer-link"
+                        href={l.href}
+                        {...(external
+                          ? { target: '_blank', rel: 'noopener noreferrer' }
+                          : {})}
+                        style={{ fontSize: 13, color: 'var(--ink)' }}
+                      >
+                        {l.label}
                       </a>
                     </li>
                   );

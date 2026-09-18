@@ -10,21 +10,24 @@ const APPS: AppCardData[] = [
     lede: 'Voice notes, transcribed.',
     body: 'A canvas of audio clips. Long-press to record, drag to arrange, ⌘K to find anything you said three weeks ago.',
     accent: 'oklch(0.62 0.16 162)',
+    source: 'https://github.com/arach/usetalkie.com',
+    href: 'https://usetalkie.com',
   },
   {
     id: 'scout',
     name: 'Scout',
     tag: 'macos · web',
     lede: 'Field notes that file themselves.',
-    body: 'TODO — replace with the real Scout pitch.',
+    body: 'Local-first dictation built for agents. Speak, and the transcript lands wherever your tools are listening.',
     accent: 'oklch(0.66 0.18 50)',
+    source: 'https://github.com/arach/scout',
   },
   {
     id: 'linea',
     name: 'Linea',
     tag: 'macos · web',
     lede: 'A line, finely drawn.',
-    body: 'TODO — replace with the real Linea pitch.',
+    body: 'A drafting surface for precise strokes — bezier curves, dimensions, and marks over a millimetric grid.',
     accent: 'oklch(0.55 0.18 250)',
   },
   {
@@ -32,8 +35,9 @@ const APPS: AppCardData[] = [
     name: 'Lattices',
     tag: 'macos',
     lede: 'Structure, made visible.',
-    body: 'TODO — replace with the real Lattices pitch.',
+    body: 'The agentic window manager. Tiles windows, runs tmux sessions, indexes screen text — a desktop API your AI can drive.',
     accent: 'oklch(0.60 0.20 18)',
+    source: 'https://github.com/arach/lattices',
   },
 ];
 
