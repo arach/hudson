@@ -15,8 +15,8 @@
      responsive cascade can shrink it on phones without per-sheet overrides.
      The sticky header reads the X token to compute its negative margins
      so its rule extends edge-to-edge regardless of padding. */
-  --sheet-pad-x: 64px;
-  --sheet-pad-bottom: 72px;
+  --sheet-pad-x: 96px;
+  --sheet-pad-bottom: 120px;
 
   /* Slate paper — dark, cool, faintly blue-grey */
   --paper:        oklch(0.20 0.02 240);
@@ -1300,7 +1300,7 @@
 
 .hudson-site .sheet-header__tools { min-width: 0; }
 
-.hudson-site .sheet-body { padding-top: 56px; }
+.hudson-site .sheet-body { padding-top: 84px; }
 
 /* ─── Studio — collapsed trigger in the bar's right slot ─── */
 

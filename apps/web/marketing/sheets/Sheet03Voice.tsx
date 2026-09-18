@@ -37,7 +37,7 @@ export function Sheet03Voice() {
         right: ['LATENCY', '< 80 ms'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>04 / Voice loop · sub-80ms</Eyebrow>
         </div>
@@ -46,9 +46,9 @@ export function Sheet03Voice() {
           style={{
             display: 'grid',
             gridTemplateColumns: '1.4fr 1fr',
-            gap: 64,
+            gap: 80,
             alignItems: 'start',
-            marginBottom: 56,
+            marginBottom: 72,
           }}
         >
           <h2 className="h-section">
@@ -67,7 +67,7 @@ export function Sheet03Voice() {
             gridTemplateColumns: '1fr 360px',
             gap: 40,
             alignItems: 'start',
-            marginBottom: 56,
+            marginBottom: 72,
           }}
         >
           <div data-cal data-cal-label="voice setup" style={{ position: 'relative' }}>

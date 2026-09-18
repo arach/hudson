@@ -47,7 +47,7 @@ export function Sheet01Hero() {
         right: ['STATUS', 'shipped'],
       }}
     >
-      <div style={{ maxWidth: 1100, margin: '60px auto 0', position: 'relative' }}>
+      <div style={{ maxWidth: 1100, margin: '96px auto 0', position: 'relative' }}>
         <div style={{ marginBottom: 28 }}>
           <Eyebrow>HudsonKit / open-source app shell + workspace</Eyebrow>
         </div>
@@ -69,7 +69,7 @@ export function Sheet01Hero() {
           the product yours.
         </p>
 
-        <div style={{ display: 'flex', gap: 12, marginBottom: 64 }} data-cal data-cal-label="hero CTAs">
+        <div style={{ display: 'flex', gap: 12, marginBottom: 80 }} data-cal data-cal-label="hero CTAs">
           <button
             type="button"
             className="btn btn--accent"

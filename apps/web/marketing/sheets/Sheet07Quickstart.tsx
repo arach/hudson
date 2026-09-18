@@ -79,7 +79,7 @@ export function Sheet07Quickstart() {
         right: ['LICENSE', 'MINE'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>08 / Implementation · from spec to product</Eyebrow>
         </div>
@@ -88,9 +88,9 @@ export function Sheet07Quickstart() {
           style={{
             display: 'grid',
             gridTemplateColumns: '1.4fr 1fr',
-            gap: 64,
+            gap: 80,
             alignItems: 'end',
-            marginBottom: 56,
+            marginBottom: 72,
           }}
         >
           <h2 className="h-section">
@@ -110,7 +110,7 @@ export function Sheet07Quickstart() {
             display: 'grid',
             gridTemplateColumns: 'repeat(3, 1fr)',
             gap: 24,
-            marginBottom: 64,
+            marginBottom: 80,
           }}
         >
           {STEPS.map((s) => (
@@ -159,7 +159,7 @@ export function Sheet07Quickstart() {
           ))}
         </div>
 
-        <div data-cal data-cal-label="docs preview" style={{ position: 'relative', marginBottom: 64 }}>
+        <div data-cal data-cal-label="docs preview" style={{ position: 'relative', marginBottom: 80 }}>
           <div className="embed-plate__caption">
             <span className="live" />
             EMBED · app = hudson/docs · status: live
@@ -183,7 +183,7 @@ export function Sheet07Quickstart() {
           data-cal-label="final CTA banner"
           style={{
             padding: '40px 48px',
-            marginBottom: 64,
+            marginBottom: 80,
             display: 'flex',
             alignItems: 'center',
             gap: 36,

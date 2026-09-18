@@ -218,7 +218,7 @@ export function Sheet02BuildWorkspace() {
         right: ['STATUS', activeStep.verb],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>02½ / Story diagram · workspace grammar</Eyebrow>
         </div>
