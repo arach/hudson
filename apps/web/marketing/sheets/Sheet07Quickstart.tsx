@@ -40,9 +40,9 @@ const FOOTER_COLS: { h: string; links: { label: string; href: string }[] }[] = [
   {
     h: 'Docs',
     links: [
-      { label: 'Quickstart', href: '/docs/guides/quickstart' },
+      { label: 'Quickstart', href: '/docs/quickstart' },
       { label: 'Building Apps', href: '/docs/building-apps' },
-      { label: 'Voice / AI', href: '/docs/guides/voice' },
+      { label: 'Voice / AI', href: '/docs/voice' },
       { label: 'API', href: '/docs/api' },
     ],
   },
