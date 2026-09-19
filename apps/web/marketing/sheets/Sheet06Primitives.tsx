@@ -27,13 +27,13 @@ export function Sheet06Primitives() {
         right: ['LOC', '~ 2,400'],
       }}
     >
-      <div style={{ maxWidth: 1300, margin: '60px auto 0' }}>
+      <div style={{ maxWidth: 1300, margin: '96px auto 0' }}>
         <div style={{ marginBottom: 24 }}>
           <Eyebrow>07 / Primitives · the kit</Eyebrow>
         </div>
 
         <div
-          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 64, marginBottom: 56 }}
+          style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 80, marginBottom: 72 }}
         >
           <h2 className="h-section">
             The workspace around your tool, <em>already handled</em>.
