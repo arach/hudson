@@ -169,7 +169,7 @@ export function strokeLengthOfPolyline(pts: GlyphPoint[]): number {
   for (let i = 1; i < pts.length; i++) {
     const dx = pts[i][0] - pts[i - 1][0];
     const dy = pts[i][1] - pts[i - 1][1];
-    L += Math.hypot(dx, dy);
+    L += Math.sqrt(dx * dx + dy * dy);
   }
   return L;
 }
