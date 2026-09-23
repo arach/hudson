@@ -14,6 +14,22 @@ public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendab
     public var id: String { rawValue }
 }
 
+/// How the shell presents its center column against the window.
+///
+/// `.flush` is the original anatomy: one background fills the window and the
+/// columns meet at square seams. `.card` sets the center column into the
+/// window as a card: the shell paints its background only inside that column,
+/// clips it to a rounded top-leading corner, and draws a hairline along its
+/// top and leading edges. Everything outside the card — the titlebar band
+/// and the side columns — shows whatever the host puts behind the shell, so
+/// a host that extends its sidebar material there gets one L-shaped frame
+/// around the stage, and the traffic lights sit on a single surface instead
+/// of a seam.
+public enum HudAppShellStage: Equatable, Sendable {
+    case flush
+    case card(radius: CGFloat)
+}
+
 /// Top-level app chassis for HudsonKit.
 ///
 /// `HudAppShell` composes the chrome of a Hudson app: a leading rail, a
@@ -77,6 +93,7 @@ public struct HudAppShell<
     StatusBar: View
 >: View {
     private let statusBarSpan: HudAppShellStatusBarSpan
+    private let stage: HudAppShellStage
     private let leading: Leading
     private let trailing: Trailing
     private let topDrawer: TopDrawer
@@ -92,6 +109,7 @@ public struct HudAppShell<
 
     public init(
         statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
+        stage: HudAppShellStage = .flush,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder topDrawer: () -> TopDrawer,
@@ -100,6 +118,7 @@ public struct HudAppShell<
         @ViewBuilder statusBar: () -> StatusBar
     ) {
         self.statusBarSpan = statusBarSpan
+        self.stage = stage
         self.leading = leading()
         self.trailing = trailing()
         self.topDrawer = topDrawer()
@@ -110,7 +129,9 @@ public struct HudAppShell<
 
     public var body: some View {
         ZStack {
-            theme.palette.bg.ignoresSafeArea()
+            if stage == .flush {
+                theme.palette.bg.ignoresSafeArea()
+            }
             shellContent
         }
     }
@@ -124,6 +145,7 @@ public struct HudAppShell<
                 HStack(spacing: 0) {
                     leading
                     mainContentRow
+                        .modifier(HudAppShellStageSurface(stage: stage))
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
                 bottomDrawer
@@ -142,6 +164,7 @@ public struct HudAppShell<
                     statusBarRegion
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .modifier(HudAppShellStageSurface(stage: stage))
             }
             .frame(maxWidth: .infinity, maxHeight: .infinity)
 
@@ -161,6 +184,7 @@ public struct HudAppShell<
                     statusBarRegion
                 }
                 .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .modifier(HudAppShellStageSurface(stage: stage))
                 if !isCompact {
                     trailing
                         .frame(maxHeight: .infinity, alignment: .top)
@@ -203,6 +227,7 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
     /// Shell without top/bottom drawer slots — the common case for M3a.
     public init(
         statusBarSpan: HudAppShellStatusBarSpan = .fullWidth,
+        stage: HudAppShellStage = .flush,
         @ViewBuilder leading: () -> Leading,
         @ViewBuilder trailing: () -> Trailing,
         @ViewBuilder content: () -> Content,
@@ -210,6 +235,7 @@ extension HudAppShell where TopDrawer == EmptyView, BottomDrawer == EmptyView {
     ) {
         self.init(
             statusBarSpan: statusBarSpan,
+            stage: stage,
             leading: leading,
             trailing: trailing,
             topDrawer: { EmptyView() },
@@ -232,6 +258,54 @@ extension HudAppShell where Leading == EmptyView, Trailing == EmptyView, TopDraw
             content: content,
             statusBar: { EmptyView() }
         )
+    }
+}
+
+// MARK: - Stage surface
+
+/// Paints and clips the center column for `HudAppShellStage.card`; a no-op
+/// for `.flush`, where the shell's full-window background already sits behind.
+private struct HudAppShellStageSurface: ViewModifier {
+    let stage: HudAppShellStage
+    @Environment(\.hudTheme) private var theme
+
+    func body(content: Content) -> some View {
+        switch stage {
+        case .flush:
+            content
+        case .card(let radius):
+            content
+                .background(theme.palette.bg)
+                .clipShape(UnevenRoundedRectangle(topLeadingRadius: radius, style: .circular))
+                .overlay {
+                    HudStageCardEdge(radius: radius)
+                        .stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.standard)
+                        .allowsHitTesting(false)
+                }
+        }
+    }
+}
+
+/// The card's top and leading edges with the rounded corner between them.
+/// The trailing and bottom edges meet other chrome (the inspector, the window
+/// edge) and carry no line of their own. Inset half a stroke so the 1pt line
+/// lands inside the clip.
+private struct HudStageCardEdge: Shape {
+    let radius: CGFloat
+
+    func path(in rect: CGRect) -> Path {
+        let r = rect.insetBy(dx: HudStrokeWidth.standard / 2, dy: HudStrokeWidth.standard / 2)
+        let radius = min(radius, r.width / 2, r.height / 2)
+        var path = Path()
+        path.move(to: CGPoint(x: r.minX, y: r.maxY))
+        path.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
+        path.addArc(
+            tangent1End: CGPoint(x: r.minX, y: r.minY),
+            tangent2End: CGPoint(x: r.minX + radius, y: r.minY),
+            radius: radius
+        )
+        path.addLine(to: CGPoint(x: r.maxX, y: r.minY))
+        return path
     }
 }
 
