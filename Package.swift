@@ -95,6 +95,9 @@ var products: [Product] = [
     hudsonLibrary(name: "HudsonAI", targets: ["HudsonAI"]),
     hudsonLibrary(name: "HudsonCanvasCore", targets: ["HudsonCanvasCore"]),
     hudsonLibrary(name: "HudsonCanvasCompanion", targets: ["HudsonCanvasCompanion"]),
+    hudsonLibrary(name: "HudsonNotchCore", targets: ["HudsonNotchCore"]),
+    hudsonLibrary(name: "HudsonNotch", targets: ["HudsonNotch"]),
+    .executable(name: "hudson-notch", targets: ["HudsonNotchCLI"]),
 ]
 
 var dependencies: [Package.Dependency] = []
@@ -138,6 +141,10 @@ var targets: [Target] = [
     .target(name: "HudsonAI", dependencies: ["HudsonUI"], path: src + "HudsonAI"),
     .target(name: "HudsonCanvasCore", dependencies: ["HudsonUI"], path: src + "HudsonCanvasCore"),
     .target(name: "HudsonCanvasCompanion", dependencies: ["HudsonUI", "HudsonCanvasCore"], path: src + "HudsonCanvasCompanion"),
+    .target(name: "HudsonNotchCore", path: src + "HudsonNotchCore"),
+    .target(name: "HudsonNotch", dependencies: ["HudsonUI", "HudsonShell", "HudsonNotchCore"], path: src + "HudsonNotch"),
+    .executableTarget(name: "HudsonNotchCLI", dependencies: ["HudsonNotchCore"], path: src + "HudsonNotchCLI"),
+    .testTarget(name: "HudsonNotchCoreTests", dependencies: ["HudsonNotchCore"], path: tst + "HudsonNotchCoreTests"),
 
     .testTarget(name: "HudsonAITests", dependencies: ["HudsonAI"], path: tst + "HudsonAITests"),
     .testTarget(name: "HudsonMarkupTests", dependencies: ["HudsonMarkup"], path: tst + "HudsonMarkupTests"),
@@ -302,6 +309,14 @@ targets.append(
         dependencies: demoDependencies,
         path: demo + "HudsonKitDemo",
         swiftSettings: demoSwiftSettings
+    )
+)
+
+targets.append(
+    .executableTarget(
+        name: "HudsonNotchDemo",
+        dependencies: ["HudsonNotch", "HudsonNotchCore", "HudsonUI"],
+        path: demo + "HudsonNotchDemo"
     )
 )
 
