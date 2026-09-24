@@ -151,34 +151,6 @@ A v3 folder must contain the preprocessor, the int8 encoder, the decoder, the v3
 joint, and the vocabulary file; `HudFluidAudioLocalModels.requiredFiles(version:)`
 is the authority.
 
-### WhisperKit, local (optional DIY reference)
-
-Provider `whisperkit-reference`. Models `openai_whisper-tiny`,
-`openai_whisper-base`, `openai_whisper-small`,
-`distil-whisper_distil-large-v3`. **File transcription only** — it rejects live
-PCM rather than pretending to stream — word timing, no speaker labels.
-
-`localModel` is **required** here: there is no default cache fallback. The folder
-must hold `MelSpectrogram`, `AudioEncoder`, and `TextDecoder` as `.mlmodelc` or
-`.mlpackage`, plus readable `tokenizer.json` and `tokenizer_config.json`. The
-runtime builds the tokenizer locally and bypasses the SDK loader that would
-otherwise download missing assets. Changed assets invalidate preparation, because
-the resource key includes a fingerprint of the config and tokenizer content.
-
-Parakeet stays the preferred local engine; registering WhisperKit changes no
-existing selection.
-
-```json
-{
-  "providerID": "whisperkit-reference",
-  "modelID": "openai_whisper-base",
-  "localModel": { "location": "/Users/EXAMPLE/Library/Application Support/Talkie/Models/whisperkit/openai_whisper-base" },
-  "options": {}
-}
-```
-
-`sha256:a16a00bb2f8281cd8d007c1ffb8496cc15fb7808f328675442db4d130af7fabc`
-
 ### MAI-Transcribe-2 via OpenRouter
 
 Provider `openrouter-mai`, model `microsoft/mai-transcribe-2`. One adapter type
@@ -341,7 +313,6 @@ Shipped schemas:
 | Provider | Required | Optional |
 | --- | --- | --- |
 | `fluidaudio` | — | `localModel` |
-| `whisperkit-reference` | `localModel` | — |
 | `openrouter-mai` | `credentialReference` | — |
 | `microsoft-mai` | `endpoint`, `credentialReference` | — |
 | `gemini-file`, `gemini-live-transcription`, `gemini-live-input` | `credentialReference` | — |
@@ -381,8 +352,8 @@ adapter returns `ready` with the reason "Configured locally. Account access is
 checked on submission." A readiness check never sends audio — diagnostic audio
 from a credential probe is explicitly out of bounds.
 
-`prepare(configuration:)` defaults to readiness. FluidAudio and WhisperKit
-override it to load model files into the shared
+`prepare(configuration:)` defaults to readiness. FluidAudio overrides it to load
+model files into the shared
 `HudTranscriptionLocalResources` owner, which holds one prepared model and an
 exclusive lease. Preparing a second model while a lease is held reports
 `preparing` rather than loading both.

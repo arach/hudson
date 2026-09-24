@@ -16,8 +16,6 @@ The table below preserves earlier, separately scoped acceptance runs.
 | --- | --- | --- |
 | Core, cloud, ElevenLabs current-source harness | 38 tests across 6 suites passed | Injected transports; no vendor audio requests |
 | Direct FluidAudio harness | 6 tests passed | Lifecycle/runtime fixtures |
-| WhisperKit harness | 16 fixtures passed; opt-in native test skipped by default | Fixture coverage alone does not prove inference |
-| WhisperKit with network denied | All 17 tests passed, including tiny-model prepare and inference | One generated sentence and installed tiny assets; not a quality benchmark |
 | Native Parakeet V3 | File and caller-fed live inference passed on a generated sentence | Does not prove physical microphone or product insertion behavior |
 | TalkieTranscription host | 27 reported tests passed; native opt-in skipped | Includes two parameterized completion tests, four cases each; read-only activity inspection; fixed capture routing |
 | TalkieAgent | 6 tests previously passed | Routing fixtures, not physical capture acceptance |
@@ -35,7 +33,6 @@ historical and are superseded by later runs.
 | [HudsonTranscriptionTests](../../packages/native/apple/HudsonKit/Tests/HudsonTranscriptionTests/) | Duplicate registration, unknown saved IDs, fingerprints, optional annotations, unsupported/unverified compatibility, accepted IDs, cancellation distinctions, partial replacement, bounded PCM and terminal events |
 | [HudsonTranscriptionCloudTests](../../packages/native/apple/HudsonKit/Tests/HudsonTranscriptionCloudTests/) | MAI model/options/normalization/no retry; Gemini upload ownership and cleanup, option rejection, dedicated versus conversational input, ordered PCM, drain timeout and remote uncertainty |
 | [ElevenLabsAdapterTests](../../packages/native/apple/HudsonKit/Tests/HudsonTranscriptionElevenLabsTests/ElevenLabsAdapterTests.swift) | Public-contract registration and submission, words/speakers/provenance, unsupported hints before upload |
-| [WhisperKitAdapterTests](../../packages/native/apple/HudsonKit/Tests/HudsonTranscriptionWhisperKitTests/WhisperKitAdapterTests.swift) | Assets, tokenizer content changes, invalid native tokenizer rejection, model identity, normalization, cancellation, queued deadlines, optional native inference |
 | TalkieTranscription `WorkspaceTests` and `LiveWorkspaceTests` | Consent, saved selection/run recovery, ordered audio, result identity, contradictory completion payloads, separate meeting-track recovery without duplicate upload |
 
 The acceptance matrix below remains a requirements checklist. Presence in that
@@ -51,8 +48,6 @@ It excludes native SDK targets. Run native checks separately.
 ```sh
 swift test --package-path "$HOME/Library/Caches/codex-builds/hudson-transcription-contract-harness" \
   --scratch-path "$HOME/Library/Caches/codex-builds/hudson-transcription-contract-check"
-
-swift test --package-path "$HOME/Library/Caches/codex-builds/hudson-whisperkit-reference"
 ```
 
 For Talkie's host suite, run from the isolated Talkie worktree:
@@ -63,16 +58,10 @@ HUDSON_PACKAGE_PATH=/Users/arach/dev/hudson-worktrees/transcription-adapters \
   --scratch-path "$HOME/Library/Caches/codex-builds/talkie-transcription-host"
 ```
 
-Native WhisperKit acceptance requires a local model folder and an authorized
-recording. Set `HUDSON_WHISPERKIT_MODEL_DIR` and
-`HUDSON_TRANSCRIPTION_ACCEPTANCE_AUDIO`. The recorded offline run used a process
-sandbox that denied all network access. SwiftPM's nested sandbox was disabled
-for that invocation; the outer network restriction remained active. The tiny
-asset download manifest records resolved source commits and file hashes.
-
-Native Parakeet acceptance uses `HUDSON_PARAKEET_MODEL_DIR` with the same audio
-environment variable. Neither native acceptance test records a microphone or
-sends audio to a cloud service.
+Native Parakeet acceptance requires a local model folder and an authorized
+recording. Set `HUDSON_PARAKEET_MODEL_DIR` and
+`HUDSON_TRANSCRIPTION_ACCEPTANCE_AUDIO`. The test does not record a microphone or
+send audio to a cloud service.
 
 ## Historical HudsonVoice baseline
 
@@ -167,12 +156,10 @@ Evaluate the whole request, including duration and feature combinations, before 
 | ID | Setup | Action | Observable result |
 | --- | --- | --- | --- |
 | C-EXT-1 | Example remote package (ElevenLabs file) | Compile against the public contract only | No TalkieKit or Hudson core source change |
-| C-EXT-2 | Example local package (WhisperKit file, batch only) | Compile against the public contract only | Same as C-EXT-1. Streaming not published |
+| C-EXT-2 | Example local package (file, batch only) | Compile against the public contract only | Same as C-EXT-1. Streaming not published |
 | C-EXT-3 | Both example packages registered at app composition | Render picker and result viewer | New rows appear from registration. No provider-specific branches |
 | C-EXT-4 | Conformance fixtures from C-NORM through C-CAN | Run against each example package | Same fixture set, no core edits |
 | C-EXT-5 | Future Vox adapter attempt that only starts `transcribe.startSession` | Feed a Talkie meeting track | Must fail the caller-fed file/PCM requirement. Starting a second microphone is not a pass |
-
-WhisperKit streaming remains unpublished until its chunk, partial, and final semantics are implemented and these live-session tests pass against that adapter.
 
 ## Live provider acceptance
 
@@ -190,7 +177,6 @@ Required named targets:
 | Gemini 3.8 Live input transcription | `gemini-3.8-live` | Live PCM evaluation | Required as its own target. Not a replacement for dedicated Transcribe Live |
 | FluidAudio local | the shipped dependency's model | File and, if verified, stream | Direct adapter, no Vox hop |
 | ElevenLabs reference | vendor file model | Batch file | Example package |
-| WhisperKit reference | local file model | Batch file | Example package. Streaming only after C-LIVE is implemented and verified on that adapter |
 | Talkie ElevenLabs / Deepgram | current meeting providers | Meeting tracks | Preserve existing product paths |
 
 MAI Voice Live is a separate implementation path. Leave it unverified until its contract is checked. Do not copy MAI file capabilities onto it.
@@ -202,7 +188,7 @@ Gemini 3.8 Live captions-only evaluation must record response behavior, transcri
 | Case | Input | Expected behavior | Required evidence |
 | --- | --- | --- | --- |
 | Dictation | Short push-to-talk recording | Batch-on-release is valid and labeled honestly. A separate live path shows replaceable partials and one final utterance | Captured audio, transcript, latency, stop/cancel, no duplicate insertion |
-| Existing recording | Several-minute user-approved fixture with names and punctuation | Compare MAI-Transcribe-2, Gemini 3.5 file, local FluidAudio, and both reference adapters on the same file | Same input digest, exact options, output, provenance, measured time, vendor usage where supplied, human-checked errors |
+| Existing recording | Several-minute user-approved fixture with names and punctuation | Compare MAI-Transcribe-2, Gemini 3.5 file, local FluidAudio, and the ElevenLabs reference adapter on the same file | Same input digest, exact options, output, provenance, measured time, vendor usage where supplied, human-checked errors |
 | Meeting | Short multi-speaker fixture plus a 45-minute fixture | Preserve mic and system track origins. Reject unsupported long input before upload. No false speaker continuity. Original recording is not lost | Speaker/timing evaluation only on supported paths. 45-minute rejection evidence on constrained models |
 
 ## Remaining product acceptance
@@ -268,7 +254,6 @@ Use keyboard-operable native controls and text explanations. Do not encode state
 - Silent local-to-remote fallback
 - Quality ranking without the recording-fixture measurements
 - MAI live, until its contract is checked and tested
-- WhisperKit streaming, until C-LIVE is implemented and verified on that adapter
 - Switching existing `HudDictation` or Vox daemon callers onto the new contract in the same change that introduces the contract
 
 ## Longer native Parakeet file acceptance
