@@ -56,6 +56,7 @@ public final class HudNotchController: ObservableObject {
     public var onResponse: ((HudNotchResponse) -> Void)?
 
     public let copy: Copy
+    public let theme: HudNotchTheme
     private let persistenceKey: String?
     private var panel: HudOverlayPanel?
     private var server: HudNotchSocketServer?
@@ -70,10 +71,12 @@ public final class HudNotchController: ObservableObject {
         configuration: HudNotchConfiguration = .default,
         persistenceKey: String? = nil,
         capacity: Int = 8,
-        copy: Copy = Copy()
+        copy: Copy = Copy(),
+        theme: HudNotchTheme = .hudson
     ) {
         self.persistenceKey = persistenceKey
         self.copy = copy
+        self.theme = theme
         self.stage = HudNotchStage(capacity: capacity)
         let persisted = persistenceKey.flatMap(Self.persistedConfiguration(key:))
         self.configuration = (persisted ?? configuration).normalized()

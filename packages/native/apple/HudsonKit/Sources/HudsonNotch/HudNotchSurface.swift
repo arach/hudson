@@ -62,6 +62,8 @@ public struct HudNotchSurface: View {
         .frame(width: controller.panelSize.width, height: controller.panelSize.height, alignment: .top)
     }
 
+    private var theme: HudNotchTheme { controller.theme }
+
     private var showsCard: Bool { controller.isPresented && controller.isExpanded }
     private var showsPill: Bool { controller.isPresented && !controller.isExpanded }
 
@@ -126,7 +128,7 @@ public struct HudNotchSurface: View {
             // Cut out of its own shape, so a see-through body never shows
             // its shadow from inside.
             outline
-                .fill(Color.black)
+                .fill(theme.body)
                 .shadow(
                     color: Color.black.opacity(controller.isPresented ? look.shadowOpacity : 0),
                     radius: look.shadowRadius,
@@ -139,7 +141,7 @@ public struct HudNotchSurface: View {
                 .opacity(look.fillOpacity < 1 ? look.blur : 0)
                 .clipShape(outline)
 
-            outline.fill(Color.black.opacity(look.fillOpacity))
+            outline.fill(theme.body.opacity(look.fillOpacity))
 
             outline.stroke(rimStyle(look), lineWidth: look.borderWidth)
         }
@@ -185,10 +187,10 @@ public struct HudNotchSurface: View {
         if let headline = controller.stage.headline {
             if controller.renderStyle == .island {
                 HStack(spacing: HudSpacing.sm) {
-                    HudNotchPulseDot(color: tint(headline.tone), isPulsing: true, size: 6)
+                    statusMark(color: tint(headline.tone), isPulsing: true)
                     Text(headline.title)
                         .font(HudFont.ui(HudTextSize.xs, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .foregroundStyle(theme.ink)
                         .lineLimit(1)
                     Spacer(minLength: 0)
                     trailingIndicator(for: headline)
@@ -197,14 +199,14 @@ public struct HudNotchSurface: View {
                 .transition(.notchReveal(insertion: HudNotchMotion.pillIn, anchor: .center, reduceMotion: reduceMotion))
             } else {
                 wings {
-                    HudNotchPulseDot(color: tint(headline.tone), isPulsing: true, size: 6)
+                    statusMark(color: tint(headline.tone), isPulsing: true)
                 } trailing: {
                     trailingIndicator(for: headline)
                 }
                 .transition(.notchReveal(insertion: HudNotchMotion.pillIn, anchor: .center, reduceMotion: reduceMotion))
             }
         } else {
-            HudNotchPulseDot(color: controller.isPinned ? HudPalette.statusWarn : HudPalette.accent, isPulsing: false, size: 6)
+            HudNotchPulseDot(color: controller.isPinned ? tint(.warning) : theme.accent, isPulsing: false, size: 6)
                 .opacity(controller.renderStyle == .island ? 1 : 0)
         }
     }
@@ -243,14 +245,14 @@ public struct HudNotchSurface: View {
     private var expandedHeader: some View {
         let focused = controller.stage.focused
         let eyebrow = Text(focused.map { $0.source.uppercased() } ?? controller.copy.name.uppercased())
-            .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
+            .font(theme.eyebrowFont)
             .tracking(0.8)
-            .foregroundStyle(focused.map { tint($0.tone) } ?? HudPalette.muted)
+            .foregroundStyle(focused.map { tint($0.tone) } ?? theme.muted)
             .lineLimit(1)
 
         if controller.renderStyle == .island {
             HStack(spacing: HudSpacing.sm) {
-                HudNotchPulseDot(color: focused.map { tint($0.tone) } ?? HudPalette.accent, isPulsing: focused?.state.isOngoing ?? false, size: 6)
+                statusMark(color: focused.map { tint($0.tone) } ?? theme.accent, isPulsing: focused?.state.isOngoing ?? false)
                 eyebrow
                 Spacer(minLength: 0)
                 pager
@@ -259,7 +261,7 @@ public struct HudNotchSurface: View {
         } else {
             wings {
                 HStack(spacing: HudSpacing.sm) {
-                    HudNotchPulseDot(color: focused.map { tint($0.tone) } ?? HudPalette.accent, isPulsing: focused?.state.isOngoing ?? false, size: 6)
+                    statusMark(color: focused.map { tint($0.tone) } ?? theme.accent, isPulsing: focused?.state.isOngoing ?? false)
                     eyebrow
                 }
             } trailing: {
@@ -278,7 +280,7 @@ public struct HudNotchSurface: View {
             } label: {
                 Text("\(index + 1)/\(count)")
                     .font(HudFont.mono(HudTextSize.micro, weight: .semibold))
-                    .foregroundStyle(HudPalette.muted)
+                    .foregroundStyle(theme.muted)
                     .contentTransition(.numericText())
             }
             .buttonStyle(.plain)
@@ -314,14 +316,14 @@ public struct HudNotchSurface: View {
             HStack(alignment: .firstTextBaseline, spacing: HudSpacing.md) {
                 VStack(alignment: .leading, spacing: 3) {
                     Text(activity.title)
-                        .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
-                        .foregroundStyle(HudPalette.ink)
+                        .font(theme.titleFont)
+                        .foregroundStyle(theme.ink)
                         .lineLimit(1)
 
                     if let detail = activity.detail {
                         Text(detail)
-                            .font(HudFont.ui(HudTextSize.xs))
-                            .foregroundStyle(HudPalette.muted)
+                            .font(theme.detailFont)
+                            .foregroundStyle(theme.muted)
                             .lineLimit(2)
                             .contentTransition(.opacity)
                     }
@@ -341,7 +343,7 @@ public struct HudNotchSurface: View {
                     } label: {
                         Image(systemName: "xmark")
                             .font(.system(size: 9, weight: .bold))
-                            .foregroundStyle(HudPalette.dim)
+                            .foregroundStyle(theme.dim)
                             .frame(width: 18, height: 18)
                             .contentShape(Rectangle())
                     }
@@ -381,23 +383,55 @@ public struct HudNotchSurface: View {
             }
 
             ForEach(activity.choices) { choice in
-                HudButton(choice.title, style: buttonStyle(for: choice.role)) {
-                    controller.choose(choice, for: activity.id)
-                }
-                .fixedSize()
+                choiceButton(choice, key: shortcutNumber(for: choice, in: activity.choices), activityID: activity.id)
             }
+        }
+    }
+
+    /// ⌘1…⌘9 for the choices that aren't a cancel, in order.
+    private func shortcutNumber(for choice: HudNotchChoice, in choices: [HudNotchChoice]) -> Int? {
+        guard choice.role != .cancel else { return nil }
+        let answers = choices.filter { $0.role != .cancel }
+        guard let index = answers.firstIndex(where: { $0.id == choice.id }), index < 9 else { return nil }
+        return index + 1
+    }
+
+    @ViewBuilder
+    private func choiceButton(_ choice: HudNotchChoice, key: Int?, activityID: String) -> some View {
+        let choose = { controller.choose(choice, for: activityID) }
+        Group {
+            if theme.action != nil {
+                HudNotchThemedChoice(title: choice.title, key: key, role: choice.role, theme: theme, action: choose)
+            } else {
+                HudButton(choice.title, style: buttonStyle(for: choice.role), action: choose)
+            }
+        }
+        .fixedSize()
+        .modifier(HudNotchChoiceShortcut(key: key, isCancel: choice.role == .cancel))
+    }
+
+    /// The host's mark when the theme has one, otherwise a status dot.
+    @ViewBuilder
+    private func statusMark(color: Color, isPulsing: Bool) -> some View {
+        if let mark = theme.mark {
+            mark
+                .foregroundStyle(color)
+                .frame(width: 11, height: 11)
+                .accessibilityHidden(true)
+        } else {
+            HudNotchPulseDot(color: color, isPulsing: isPulsing, size: 6)
         }
     }
 
     private var idleCard: some View {
         VStack(alignment: .leading, spacing: 3) {
             Text(controller.copy.idleTitle)
-                .font(HudFont.ui(HudTextSize.sm, weight: .semibold))
-                .foregroundStyle(HudPalette.ink)
+                .font(theme.titleFont)
+                .foregroundStyle(theme.ink)
                 .lineLimit(1)
             Text(controller.copy.idleDetail)
-                .font(HudFont.ui(HudTextSize.xs))
-                .foregroundStyle(HudPalette.muted)
+                .font(theme.detailFont)
+                .foregroundStyle(theme.muted)
                 .lineLimit(1)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -482,12 +516,7 @@ public struct HudNotchSurface: View {
     }
 
     private func tint(_ tone: HudNotchTone) -> Color {
-        switch tone {
-        case .info: return HudPalette.statusInfo
-        case .success: return HudPalette.statusOk
-        case .warning: return HudPalette.statusWarn
-        case .error: return HudPalette.statusError
-        }
+        theme.color(for: tone)
     }
 }
 
@@ -519,6 +548,75 @@ struct HudNotchBackdrop: NSViewRepresentable {
     }
 
     func updateNSView(_ view: NSVisualEffectView, context: Context) {}
+}
+
+// MARK: - Choices
+
+/// A choice drawn in the host theme's colors, with its key legend.
+struct HudNotchThemedChoice: View {
+    var title: String
+    var key: Int?
+    var role: HudNotchChoice.Role
+    var theme: HudNotchTheme
+    var action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            HStack(spacing: 6) {
+                if let key {
+                    Text("⌘\(key)")
+                        .font(.system(size: 10, weight: .semibold, design: .monospaced))
+                        .foregroundStyle(role == .primary ? theme.actionInk.opacity(0.6) : theme.muted)
+                }
+                Text(title)
+                    .font(.system(size: 12, weight: .semibold))
+                    .foregroundStyle(labelColor)
+            }
+            .padding(.horizontal, role == .cancel ? 4 : 10)
+            .padding(.vertical, 6)
+            .background(background)
+            .contentShape(Rectangle())
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var labelColor: Color {
+        switch role {
+        case .primary: return theme.actionInk
+        case .normal: return theme.ink
+        case .cancel: return theme.muted
+        }
+    }
+
+    @ViewBuilder
+    private var background: some View {
+        let shape = RoundedRectangle(cornerRadius: 7, style: .continuous)
+        switch role {
+        case .primary:
+            shape.fill(theme.action ?? theme.accent)
+        case .normal:
+            shape.fill(Color.white.opacity(0.06)).overlay(shape.stroke(Color.white.opacity(0.16)))
+        case .cancel:
+            Color.clear
+        }
+    }
+}
+
+/// ⌘ and a number for an answer, Escape for a cancel. They work once the
+/// person has clicked into the notch, since it never takes focus by itself.
+struct HudNotchChoiceShortcut: ViewModifier {
+    var key: Int?
+    var isCancel: Bool
+
+    func body(content: Content) -> some View {
+        if isCancel {
+            content.keyboardShortcut(.cancelAction)
+        } else if let key, let character = String(key).first {
+            content.keyboardShortcut(KeyEquivalent(character), modifiers: .command)
+        } else {
+            content
+        }
+    }
 }
 
 // MARK: - Indicators
