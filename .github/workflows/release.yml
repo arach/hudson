@@ -51,13 +51,12 @@ jobs:
             gh api --method GET "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs" \
               -f head_sha="$GITHUB_SHA" \
               -f branch=main \
-              -f event=push \
               -f status=completed \
               -f per_page=100 \
               --jq '[.workflow_runs[] | select(.conclusion == "success")][0].id // empty'
           )"
           if [ -z "$ci_run_id" ]; then
-            echo "No successful main push CI run found for $GITHUB_SHA"
+            echo "No successful main CI run found for $GITHUB_SHA; run CI on main from the Actions tab first"
             exit 1
           fi
           echo "Verified CI run $ci_run_id for $GITHUB_SHA"
