@@ -16,6 +16,19 @@ public enum HudNotchMotion {
     /// Width and height changes while the state stays the same: hover
     /// reach, a live activity widening the pill, a taller card for a question.
     public static let resize = Animation.spring(response: 0.38, dampingFraction: 0.78)
+    /// Width has its own, springier curve, so the shape stretches sideways
+    /// past its size and settles while its height stays calm.
+    public static let widthOpen = Animation.spring(response: 0.5, dampingFraction: 0.56)
+    public static let widthResize = Animation.spring(response: 0.42, dampingFraction: 0.6)
+    /// The width's curve for a change animated with `animation`.
+    static func widthCurve(for animation: Animation?) -> Animation? {
+        switch animation {
+        case open: return widthOpen
+        case resize: return widthResize
+        default: return animation
+        }
+    }
+
     /// A small stretch when something new arrives while the card is open.
     public static let nudgeOut = Animation.spring(response: 0.16, dampingFraction: 0.7)
     public static let nudgeBack = Animation.spring(response: 0.42, dampingFraction: 0.5)

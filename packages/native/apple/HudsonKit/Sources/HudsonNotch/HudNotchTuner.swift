@@ -6,6 +6,7 @@ import SwiftUI
 public struct HudNotchTuner: View {
     @ObservedObject private var controller: HudNotchController
     @State private var previewState: PreviewState = .rest
+    @State private var lookState: LookState = .pill
 
     public init(controller: HudNotchController) {
         self.controller = controller
@@ -20,6 +21,7 @@ public struct HudNotchTuner: View {
                 VStack(alignment: .leading, spacing: HudSpacing.xxl) {
                     previewSection
                     shapeSection
+                    appearanceSection
                     timingSection
                     panelSection
                 }
@@ -224,6 +226,126 @@ public struct HudNotchTuner: View {
         }
     }
 
+    private var appearanceSection: some View {
+        HudSettingsSection("Appearance") {
+            HudSettingsControlRow(
+                title: "Preset",
+                subtitle: "Sets both states at once",
+                value: presetName ?? "Custom",
+                icon: "circle.lefthalf.filled"
+            ) {
+                HStack(spacing: HudSpacing.sm) {
+                    ForEach(HudNotchAppearance.presets, id: \.name) { preset in
+                        HudButton(preset.name, style: preset.name == presetName ? .primary(.teal) : .secondary) {
+                            var configuration = controller.configuration
+                            configuration.appearance = preset.appearance
+                            controller.setConfiguration(configuration)
+                        }
+                    }
+                }
+            }
+            rowDivider
+
+            HudSettingsControlRow(
+                title: "State",
+                subtitle: "Pin the notch open to see the card",
+                value: lookState.label,
+                icon: "square.stack"
+            ) {
+                Picker("State", selection: $lookState) {
+                    ForEach(LookState.allCases, id: \.self) { state in
+                        Text(state.label).tag(state)
+                    }
+                }
+                .labelsHidden()
+                .pickerStyle(.segmented)
+                .frame(width: 160)
+            }
+            rowDivider
+
+            slider(
+                "Fill",
+                subtitle: "Opacity of the black body",
+                icon: "drop",
+                keyPath: lookPath.appending(path: \.fillOpacity),
+                range: 0...1,
+                valueSuffix: "%"
+            )
+            rowDivider
+
+            slider(
+                "Backdrop blur",
+                subtitle: "Frosts what shows through the fill",
+                icon: "aqi.medium",
+                keyPath: lookPath.appending(path: \.blur),
+                range: 0...1,
+                valueSuffix: "%"
+            )
+            rowDivider
+
+            slider(
+                "Rim width",
+                subtitle: "Lights the sides and bottom",
+                icon: "square.dashed",
+                keyPath: lookPath.appending(path: \.borderWidth),
+                range: 0...3,
+                step: 0.5,
+                valueSuffix: "pt"
+            )
+            rowDivider
+
+            slider(
+                "Rim brightness",
+                subtitle: "White rim opacity",
+                icon: "sun.min",
+                keyPath: lookPath.appending(path: \.borderOpacity),
+                range: 0...0.6,
+                valueSuffix: "%"
+            )
+            rowDivider
+
+            slider(
+                "Shadow",
+                subtitle: "Shadow opacity",
+                icon: "shadow",
+                keyPath: lookPath.appending(path: \.shadowOpacity),
+                range: 0...1,
+                valueSuffix: "%"
+            )
+            rowDivider
+
+            slider(
+                "Shadow radius",
+                subtitle: "How far the shadow spreads",
+                icon: "circle.dotted",
+                keyPath: lookPath.appending(path: \.shadowRadius),
+                range: 0...40,
+                valueSuffix: "pt"
+            )
+            rowDivider
+
+            slider(
+                "Shadow drop",
+                subtitle: "Downward offset",
+                icon: "arrow.down",
+                keyPath: lookPath.appending(path: \.shadowY),
+                range: 0...24,
+                valueSuffix: "pt"
+            )
+        }
+    }
+
+    private var lookPath: WritableKeyPath<HudNotchConfiguration, HudNotchLook> {
+        switch lookState {
+        case .pill: return \.appearance.pill
+        case .card: return \.appearance.card
+        }
+    }
+
+    private var presetName: String? {
+        HudNotchAppearance.presets.first { $0.appearance == controller.configuration.appearance }?.name
+    }
+
     private var timingSection: some View {
         HudSettingsSection("Timing") {
             HudSettingsControlRow(
@@ -425,9 +547,27 @@ public struct HudNotchTuner: View {
         if suffix == "s" {
             return String(format: "%.2f%@", value, suffix)
         }
+        if suffix == "%" {
+            return "\(Int((value * 100).rounded()))%"
+        }
+        if value.rounded() != value {
+            return String(format: "%.1f%@", value, suffix)
+        }
         return "\(Int(value.rounded()))\(suffix)"
     }
 
+}
+
+private enum LookState: String, CaseIterable {
+    case pill
+    case card
+
+    var label: String {
+        switch self {
+        case .pill: return "Pill"
+        case .card: return "Card"
+        }
+    }
 }
 
 private enum PreviewState: String, CaseIterable {

@@ -31,7 +31,7 @@ public enum HudNotchDisplayMode: String, CaseIterable, Codable, Equatable, Hasha
     }
 }
 
-/// Everything a host can tune about the notch's shape and timing.
+/// Everything a host can tune about the notch's shape, timing and look.
 /// `normalized()` keeps values in ranges the shapes can draw.
 public struct HudNotchConfiguration: Codable, Equatable, Sendable {
     public var displayMode: HudNotchDisplayMode
@@ -54,6 +54,8 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
     public var panelSidePadding: CGFloat
     public var hoverActivationDelaySeconds: Double
     public var collapseDelaySeconds: Double
+    /// Fill, backdrop, rim and shadow for the pill and the open card.
+    public var appearance: HudNotchAppearance
 
     public init(
         displayMode: HudNotchDisplayMode = .automatic,
@@ -70,7 +72,8 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
         inputContentHeight: CGFloat = 150,
         panelSidePadding: CGFloat = 42,
         hoverActivationDelaySeconds: Double = 0.18,
-        collapseDelaySeconds: Double = 0.24
+        collapseDelaySeconds: Double = 0.24,
+        appearance: HudNotchAppearance = .solid
     ) {
         self.displayMode = displayMode
         self.restPokeOut = restPokeOut
@@ -87,6 +90,7 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
         self.panelSidePadding = panelSidePadding
         self.hoverActivationDelaySeconds = hoverActivationDelaySeconds
         self.collapseDelaySeconds = collapseDelaySeconds
+        self.appearance = appearance
     }
 
     public static let `default` = HudNotchConfiguration()
@@ -110,7 +114,8 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
             inputContentHeight: try c.decodeIfPresent(CGFloat.self, forKey: .inputContentHeight) ?? d.inputContentHeight,
             panelSidePadding: try c.decodeIfPresent(CGFloat.self, forKey: .panelSidePadding) ?? d.panelSidePadding,
             hoverActivationDelaySeconds: try c.decodeIfPresent(Double.self, forKey: .hoverActivationDelaySeconds) ?? d.hoverActivationDelaySeconds,
-            collapseDelaySeconds: try c.decodeIfPresent(Double.self, forKey: .collapseDelaySeconds) ?? d.collapseDelaySeconds
+            collapseDelaySeconds: try c.decodeIfPresent(Double.self, forKey: .collapseDelaySeconds) ?? d.collapseDelaySeconds,
+            appearance: try c.decodeIfPresent(HudNotchAppearance.self, forKey: .appearance) ?? d.appearance
         )
     }
 
@@ -130,6 +135,7 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
         copy.panelSidePadding = copy.panelSidePadding.clamped(to: 20...96)
         copy.hoverActivationDelaySeconds = copy.hoverActivationDelaySeconds.clamped(to: 0...0.8)
         copy.collapseDelaySeconds = copy.collapseDelaySeconds.clamped(to: 0...1.2)
+        copy.appearance = copy.appearance.normalized()
         return copy
     }
 

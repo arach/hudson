@@ -139,10 +139,25 @@ The notch is one black silhouette, `HudNotchSilhouetteShape`, drawn at different
 - Opening and appearing use an underdamped spring (`open`), so the card stretches a few points past its size and settles.
 - Closing and hiding use a tighter spring (`close`), so the shape tucks back without wobbling against the housing. `hide()` waits `retractSeconds` for it before ordering the panel out.
 - Size changes within a state, such as hover reach or a taller card for a question, use `resize`.
+- Width runs on its own, springier curves (`widthOpen`, `widthResize`), so an open or a resize stretches a few points sideways and settles while the height stays calm. Closing keeps `close` for both.
 - Content fades in with a light blur and lift about 90 ms after the shape starts. On close it fades while the shrinking silhouette masks it, so it reads as drawn back into the housing.
 - Something new arriving while the card is open gives it a small stretch (`nudgeOut`, then `nudgeBack`) along with the tinted outline flash.
 
 With Reduce Motion on, state changes happen without springs and content only fades.
+
+## Appearance
+
+`HudNotchConfiguration.appearance` sets how the body is drawn, with one `HudNotchLook` for the pill and one for the card. The tucked state uses the pill's look. Every value animates with the state change.
+
+| Field | Range | What it does |
+| --- | --- | --- |
+| `fillOpacity` | 0–1 | Opacity of the black body. Below 1 the desktop shows through. |
+| `blur` | 0–1 | Strength of the frosted backdrop under the body. Only visible when the fill is see-through. |
+| `borderWidth` | 0–3 pt | Width of the rim. |
+| `borderOpacity` | 0–1 | Brightness of the white rim. In notch style it fades out toward the top, so it never outlines the edge that meets the menu bar. |
+| `shadowOpacity`, `shadowRadius`, `shadowY` | 0–1, 0–40 pt, 0–24 pt | The shadow. It is cut out of the body, so a see-through body never shows it from inside. |
+
+There are three presets: `solid` (the default, opaque like the housing), `smoked` and `glass`. The Tuner's Appearance section applies a preset and edits either state's look. Saved configurations without an appearance decode as `solid`.
 
 ## Tests
 

@@ -20,17 +20,8 @@ public struct HudNotchSurface: View {
     public var body: some View {
         let shape = silhouette
         ZStack(alignment: .top) {
-            HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
-                .fill(Color.black)
-                .overlay(
-                    HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
-                        .stroke(surfaceStroke, lineWidth: 1)
-                )
-                .frame(width: shape.width, height: shape.height)
-                .shadow(
-                    color: Color.black.opacity(controller.isPresented ? (controller.isExpanded ? 0.36 : 0.30) : 0),
-                    radius: controller.isExpanded ? 14 : 5
-                )
+            silhouetteBody(shape)
+                .silhouetteFrame(width: shape.width, height: shape.height)
                 .onTapGesture {
                     if !controller.isExpanded { controller.expand() }
                 }
@@ -46,14 +37,14 @@ public struct HudNotchSurface: View {
             expandedContent
                 .mask(alignment: .top) {
                     HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
-                        .frame(width: shape.width, height: shape.height)
+                        .silhouetteFrame(width: shape.width, height: shape.height)
                 }
                 .modifier(HudNotchReveal(amount: showsCard ? 0 : 1, reduceMotion: reduceMotion))
                 .animation(showsCard ? HudNotchMotion.contentIn : HudNotchMotion.contentOut, value: showsCard)
                 .allowsHitTesting(showsCard)
                 .accessibilityHidden(!showsCard)
         }
-        .frame(width: shape.width, height: shape.height, alignment: .top)
+        .silhouetteFrame(width: shape.width, height: shape.height, alignment: .top)
         .opacity(shape.opacity)
         .contentShape(Rectangle())
         .onHover { controller.setHovered($0) }
@@ -123,6 +114,58 @@ public struct HudNotchSurface: View {
             height: height,
             shoulder: config.topOuterRadius,
             bottom: config.bottomRadius
+        )
+    }
+
+    /// The body: a shadow that stays outside the outline, an optional
+    /// frosted backdrop, the black fill and a rim that fades toward the top.
+    private func silhouetteBody(_ shape: Silhouette) -> some View {
+        let outline = HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
+        let look = self.look
+        return ZStack {
+            // Cut out of its own shape, so a see-through body never shows
+            // its shadow from inside.
+            outline
+                .fill(Color.black)
+                .shadow(
+                    color: Color.black.opacity(controller.isPresented ? look.shadowOpacity : 0),
+                    radius: look.shadowRadius,
+                    y: look.shadowY
+                )
+                .overlay(outline.fill(Color.black).blendMode(.destinationOut))
+                .compositingGroup()
+
+            HudNotchBackdrop()
+                .opacity(look.fillOpacity < 1 ? look.blur : 0)
+                .clipShape(outline)
+
+            outline.fill(Color.black.opacity(look.fillOpacity))
+
+            outline.stroke(rimStyle(look), lineWidth: look.borderWidth)
+        }
+    }
+
+    /// The look for the state being shown. Tucked uses the pill's look, so
+    /// the pill emerges already dressed.
+    private var look: HudNotchLook {
+        let appearance = controller.configuration.appearance
+        return showsCard ? appearance.card : appearance.pill
+    }
+
+    private func rimStyle(_ look: HudNotchLook) -> LinearGradient {
+        let color: Color
+        if isFlashing, let focused = controller.stage.focused {
+            color = tint(focused.tone).opacity(0.8)
+        } else {
+            color = Color.white.opacity(look.borderOpacity)
+        }
+        // In notch style the top edge meets the menu bar and the housing, so
+        // the rim lights only the sides and bottom.
+        let top = controller.renderStyle == .island ? color : color.opacity(0)
+        return LinearGradient(
+            stops: [.init(color: top, location: 0), .init(color: color, location: 0.55)],
+            startPoint: .top,
+            endPoint: .bottom
         )
     }
 
@@ -377,17 +420,6 @@ public struct HudNotchSurface: View {
         }
     }
 
-    private var surfaceStroke: Color {
-        if isFlashing, let focused = controller.stage.focused {
-            return tint(focused.tone).opacity(0.8)
-        }
-        // The pill blends into the housing; the card and the island get a hairline.
-        if controller.isExpanded || controller.renderStyle == .island {
-            return Color.white.opacity(0.11)
-        }
-        return Color.white.opacity(0)
-    }
-
     private var expandedSurfaceWidth: CGFloat {
         min(controller.panelSize.width - 28, max(controller.shellWidth, 430))
     }
@@ -457,6 +489,36 @@ public struct HudNotchSurface: View {
         case .error: return HudPalette.statusError
         }
     }
+}
+
+// MARK: - Silhouette frame
+
+private extension View {
+    /// Frames the silhouette with width on its own springier curve: an open
+    /// or a resize stretches sideways and settles, a close stays calm.
+    func silhouetteFrame(width: CGFloat, height: CGFloat, alignment: Alignment = .center) -> some View {
+        self
+            .transaction { transaction in
+                transaction.animation = HudNotchMotion.widthCurve(for: transaction.animation)
+            } body: { content in
+                content.frame(width: width)
+            }
+            .frame(height: height, alignment: alignment)
+    }
+}
+
+/// A frosted view of whatever is behind the notch.
+struct HudNotchBackdrop: NSViewRepresentable {
+    func makeNSView(context: Context) -> NSVisualEffectView {
+        let view = NSVisualEffectView()
+        view.material = .hudWindow
+        view.blendingMode = .behindWindow
+        view.state = .active
+        view.appearance = NSAppearance(named: .darkAqua)
+        return view
+    }
+
+    func updateNSView(_ view: NSVisualEffectView, context: Context) {}
 }
 
 // MARK: - Indicators
