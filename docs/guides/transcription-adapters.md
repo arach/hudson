@@ -1,10 +1,11 @@
 # Transcription adapters
 
 Status: Implemented in isolated worktrees; not released. Source and evidence
-reconciled September 16, 2026. Native Parakeet and WhisperKit sample inference
-passed. Remote provider acceptance and native product interaction checks remain
-open. The [acceptance audit](../reports/transcription-acceptance-audit.md) records
-those limits separately from builds and fixture tests.
+reconciled September 16, 2026. Native Parakeet sample inference passed. Remote
+provider acceptance and native product interaction checks remain open. The
+[acceptance audit](../reports/transcription-acceptance-audit.md) records those
+limits separately from builds and fixture tests. The WhisperKit reference adapter
+was removed on September 24, 2026; reports written before then still describe it.
 
 Audience: developers adding an engine or integrating the contract into a host.
 
@@ -23,8 +24,7 @@ Audience: developers adding an engine or integrating the contract into a host.
 - [HudsonTranscriptionFluidAudio](../../packages/native/apple/HudsonKit/Sources/HudsonTranscriptionFluidAudio/)
   supplies direct local Parakeet. Existing embedded Vox consumers remain intact.
 - [HudsonTranscriptionElevenLabs](../../packages/native/apple/HudsonKit/Sources/HudsonTranscriptionElevenLabs/)
-  and [HudsonTranscriptionWhisperKit](../../packages/native/apple/HudsonKit/Sources/HudsonTranscriptionWhisperKit/)
-  demonstrate remote and local reference adapters through the same contract.
+  demonstrates a remote reference adapter through the same contract.
 
 Talkie's separate TalkieTranscription package composes these implementations.
 Its TranscriptionHost creates app and agent registries, a shared selection file,
@@ -74,16 +74,9 @@ an inference task that ignores cancellation retains the lease until native work
 actually returns. A terminal event alone is not proof that model resources are
 idle. Callers must serialize native calls within an individual session lease.
 
-Talkie creates one owner per transcription workspace and injects it into both
-FluidAudio and WhisperKit. WhisperKit retains its per-adapter inference queue,
-then acquires exclusive ownership when a queued call starts. Its resource key also
-includes the local configuration and tokenizer fingerprint, so changed assets
-require preparation again. A competing engine reports a busy preparation state
-without loading another model while a lease is active.
-
-This coordination applies to these two adapters within one workspace. Separate
-app and agent processes have independent owners; legacy Vox paths do not acquire
-these leases. This is not a cross-process memory budget.
+Talkie creates one owner per transcription workspace and injects it into
+FluidAudio. Separate app and agent processes have independent owners; legacy Vox
+paths do not acquire these leases. This is not a cross-process memory budget.
 
 ## Existing model installation
 
@@ -98,25 +91,6 @@ supported. Adapter preparation loads existing files; missing assets return
 Hudson does not add a second model installer, repository manifest resolver, or
 installation-plan requirement to the adapter contract. Hosts retain their existing
 SDK-backed installation and cache ownership.
-
-## Local WhisperKit reference
-
-Link the HudsonTranscriptionWhisperKit product and register
-HudWhisperKitTranscriptionAdapter with the registry. Its provider ID is
-`whisperkit-reference`. Ask `models(configuration:)` for supported model IDs;
-set the chosen configuration's localModel location to an existing model folder.
-Readiness checks local assets, and explicit preparation loads them with native
-WhisperKit downloads disabled. Submission never installs or downloads a model.
-
-This reference supports file transcription with native segment/word annotations.
-It rejects live input and unsupported features rather than pretending to stream.
-Cancellation and deadline expiry produce one terminal outcome; late inference
-results cannot replace it. The caller retains audio ownership. All 17 reference tests passed with network access denied, including actual
-tiny-model preparation and inference on a generated sentence. This is a sample
-acceptance result, not a model quality or latency benchmark. Both tokenizer JSON
-files are read locally; the native runtime constructs the tokenizer directly
-and bypasses the SDK loader that can download missing assets. Parakeet remains the preferred local choice; registering WhisperKit
-does not change an existing selection.
 
 Audience: a developer adding or wrapping a transcription engine for Hudson and Talkie.
 
@@ -202,8 +176,8 @@ Its members are `descriptor`, `models(configuration:)`,
 implements it. The default preparation method performs readiness only.
 
 See the [source-linked reference walkthrough](../examples/transcription-reference-walkthrough.md)
-for the executable ElevenLabs public-API example and the local WhisperKit path.
-Use those compiled examples instead of a separate pseudocode API.
+for the executable ElevenLabs public-API example. Use that compiled example
+instead of a separate pseudocode API.
 
 Capabilities are not a Boolean set. A file model that can label speakers can still reject a long meeting. Unknown limits must not be treated as unlimited.
 
@@ -254,9 +228,8 @@ Keep provider, model, and API-version identifiers in run provenance. Do not free
 Remote adapters receive credentials from an injected resolver. The host can back that resolver with `HudVault` or its existing Keychain store. Migration must not copy secrets into JSON.
 
 Current local adapters prepare existing model assets. Submission does not install
-a model. WhisperKit checks both tokenizer files, validates native BPE data, and
-serializes inference through its runtime. A complete shared installer, unload
-control, and cross-adapter memory arbiter are not implemented by this contract.
+a model. A complete shared installer, unload control, and cross-adapter memory
+arbiter are not implemented by this contract.
 If an installer is added, cancellation must not mark partial assets installed,
 and it must not remove assets in use.
 
@@ -333,11 +306,11 @@ Talkie already has ElevenLabs and Deepgram meeting providers. Do not remove them
 
 Cancellation after submit must report cancellation requested, cancelled, or remote outcome unknown. A timeout after accept must not resubmit on its own.
 
-## Add a local engine: WhisperKit file reference
+## Add a local engine
 
-This is the first reference local adapter. Talkie already uses WhisperKit. The example package wraps file transcription behind the same public contract. Start with batch only. Publish streaming only after implementing and verifying its actual semantics. Vox is a further process/service example. It is not a prerequisite for this proof.
+HudsonTranscriptionFluidAudio is the local adapter Hudson ships. Another local runtime goes behind the same public contract. Start with batch only. Publish streaming only after implementing and verifying its actual semantics. Vox is a further process/service example. It is not a prerequisite.
 
-1. Create a separate example package. Do not add a WhisperKit dependency to the contract target.
+1. Create a separate package. Do not add the engine's SDK to the contract target.
 2. Describe the provider as local. Configuration holds a model location or installation reference, not a secret.
 3. Implement readiness and explicit preparation for existing local assets. Keep installation outside submission. If adding download support, verify incomplete-asset and cancellation behavior separately.
 4. Serialize access to the runtime. Avoid loading a second runtime for the same job. A shared cross-adapter resource owner remains a follow-up.
@@ -347,7 +320,7 @@ This is the first reference local adapter. Talkie already uses WhisperKit. The e
 8. Register the package in the app's adapter list. Custom origin is secondary metadata. It must not create a second workflow.
 9. Leave streaming unpublished until chunk, partial, and final semantics are verified.
 
-Do not route WhisperKit through Vox to "make it look like the daemon." A direct adapter means no mandatory daemon hop.
+Do not route a local engine through Vox to "make it look like the daemon." A direct adapter means no mandatory daemon hop.
 
 ## Adding an engine without changing core or Talkie
 

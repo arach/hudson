@@ -1,8 +1,0 @@
-{
-  "providerID": "whisperkit-reference",
-  "modelID": "openai_whisper-base",
-  "localModel": {
-    "location": "/Users/EXAMPLE/Library/Application Support/Talkie/Models/whisperkit/openai_whisper-base"
-  },
-  "options": {}
-}

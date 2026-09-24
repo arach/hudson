@@ -28,7 +28,7 @@ and conversational voice. Local execution does not imply speaker labels:
 
 | Capability | Module | Purpose |
 | --- | --- | --- |
-| Local file transcription | `HudsonTranscriptionFluidAudio` (Parakeet), `HudsonTranscriptionWhisperKit` (reference) | On-device text from recorded audio. Neither shipped adapter labels speakers |
+| Local file transcription | `HudsonTranscriptionFluidAudio` (Parakeet) | On-device text from recorded audio. The shipped adapter does not label speakers |
 | Diarized file transcription | `HudsonTranscriptionCloud` (MAI through Azure or OpenRouter, Gemini file), `HudsonTranscriptionElevenLabs` (reference) | Remote file transcription with requested speaker labels, subject to each adapter’s limits and feature constraints |
 | Live speech-to-text | `HudsonTranscriptionFluidAudio` (Parakeet), `HudsonTranscriptionCloud` (Gemini dedicated live transcription or conversational input transcription) | Text from caller-fed streaming audio. These shipped paths do not label speakers |
 | **Conversational voice** | `HudsonConversation` | A spoken exchange: the model talks back |
