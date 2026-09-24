@@ -11,47 +11,130 @@ public struct HudNotchSurface: View {
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
     @State private var replyText = ""
     @State private var isFlashing = false
+    @State private var nudgeAmount: CGFloat = 0
 
     public init(controller: HudNotchController) {
         self.controller = controller
     }
 
     public var body: some View {
+        let shape = silhouette
         ZStack(alignment: .top) {
-            if controller.isExpanded {
-                expandedSurface
-                    .transition(.opacity)
-            } else {
-                shell
-                    .transition(.opacity)
-            }
+            HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
+                .fill(Color.black)
+                .overlay(
+                    HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
+                        .stroke(surfaceStroke, lineWidth: 1)
+                )
+                .frame(width: shape.width, height: shape.height)
+                .shadow(
+                    color: Color.black.opacity(controller.isPresented ? (controller.isExpanded ? 0.36 : 0.30) : 0),
+                    radius: controller.isExpanded ? 14 : 5
+                )
+                .onTapGesture {
+                    if !controller.isExpanded { controller.expand() }
+                }
+
+            // Both layers stay mounted and cross on explicit timing, so the
+            // card's content is still fading while the shape shrinks over it.
+            collapsedContent
+                .modifier(HudNotchReveal(amount: showsPill ? 0 : 1, anchor: .center, reduceMotion: reduceMotion))
+                .animation(showsPill ? HudNotchMotion.pillIn : HudNotchMotion.contentOut, value: showsPill)
+                .allowsHitTesting(showsPill)
+                .accessibilityHidden(!showsPill)
+
+            expandedContent
+                .mask(alignment: .top) {
+                    HudNotchSilhouetteShape(shoulder: shape.shoulder, bottomRadius: shape.bottom)
+                        .frame(width: shape.width, height: shape.height)
+                }
+                .modifier(HudNotchReveal(amount: showsCard ? 0 : 1, reduceMotion: reduceMotion))
+                .animation(showsCard ? HudNotchMotion.contentIn : HudNotchMotion.contentOut, value: showsCard)
+                .allowsHitTesting(showsCard)
+                .accessibilityHidden(!showsCard)
         }
+        .frame(width: shape.width, height: shape.height, alignment: .top)
+        .opacity(shape.opacity)
         .contentShape(Rectangle())
         .onHover { controller.setHovered($0) }
+        .padding(.top, shellTopInset)
         .onChange(of: controller.attentionSerial) { _, _ in flash() }
+        .onChange(of: controller.nudgeSerial) { _, _ in nudge() }
         .onChange(of: controller.stage.focused?.id) { _, _ in replyText = "" }
         .onChange(of: replyText) { _, text in controller.setComposing(!text.isEmpty) }
-        .animation(HudMotion.ifAllowed(.smooth(duration: 0.22), reduceMotion: reduceMotion), value: controller.isExpanded)
-        .animation(HudMotion.ifAllowed(.smooth(duration: 0.20), reduceMotion: reduceMotion), value: controller.currentPokeOut)
-        .animation(HudMotion.ifAllowed(HudMotion.chromeSpring, reduceMotion: reduceMotion), value: controller.contentHeight)
+        // The first modifier is innermost and wins when several values change
+        // together: presenting beats opening, and both beat a plain resize.
+        .animation(HudMotion.ifAllowed(controller.isPresented ? HudNotchMotion.open : HudNotchMotion.close, reduceMotion: reduceMotion), value: controller.isPresented)
+        .animation(HudMotion.ifAllowed(controller.isExpanded ? HudNotchMotion.open : HudNotchMotion.close, reduceMotion: reduceMotion), value: controller.isExpanded)
+        .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.currentPokeOut)
+        .animation(HudMotion.ifAllowed(HudNotchMotion.resize, reduceMotion: reduceMotion), value: controller.contentHeight)
         .frame(width: controller.panelSize.width, height: controller.panelSize.height, alignment: .top)
+    }
+
+    private var showsCard: Bool { controller.isPresented && controller.isExpanded }
+    private var showsPill: Bool { controller.isPresented && !controller.isExpanded }
+
+    // MARK: Silhouette
+
+    private struct Silhouette {
+        var width: CGFloat
+        var height: CGFloat
+        var shoulder: CGFloat
+        var bottom: CGFloat
+        var opacity: Double = 1
+    }
+
+    /// The outline for the current state. Every state is the same shape at
+    /// different sizes, so each change animates as one continuous morph.
+    private var silhouette: Silhouette {
+        let island = controller.renderStyle == .island
+        let config = controller.configuration
+        let height = controller.shellHeight
+
+        guard controller.isPresented else {
+            if island {
+                let tucked = height * 0.7
+                return Silhouette(width: controller.notchGap * 0.45, height: tucked, shoulder: -tucked / 2, bottom: tucked / 2, opacity: 0)
+            }
+            // Tucked inside the housing, where the hardware hides it.
+            return Silhouette(
+                width: controller.notchGap,
+                height: controller.notchInfo.notchHeight,
+                shoulder: 0,
+                bottom: config.bottomRadius,
+                opacity: controller.notchInfo.isVirtual ? 0 : 1
+            )
+        }
+
+        if controller.isExpanded {
+            return Silhouette(
+                width: expandedSurfaceWidth + nudgeAmount * 14,
+                height: expandedSurfaceHeight + nudgeAmount * 6,
+                shoulder: island ? -20 : config.topOuterRadius,
+                bottom: 22
+            )
+        }
+
+        if island {
+            return Silhouette(width: controller.shellWidth, height: height, shoulder: -height / 2, bottom: height / 2)
+        }
+        return Silhouette(
+            width: controller.notchGap + controller.currentPokeOut * 2,
+            height: height,
+            shoulder: config.topOuterRadius,
+            bottom: config.bottomRadius
+        )
     }
 
     // MARK: Collapsed
 
-    private var shell: some View {
-        ZStack {
-            shellBackground
-            collapsedForeground
-        }
-        .frame(width: controller.shellWidth, height: controller.shellHeight)
-        .padding(.top, shellTopInset)
-        .shadow(color: Color.black.opacity(0.30), radius: 5, x: 0, y: 0)
-        .onTapGesture { controller.expand() }
-        .accessibilityElement(children: .combine)
-        .accessibilityLabel(accessibilitySummary)
-        .accessibilityAddTraits(.isButton)
-        .accessibilityAction { controller.expand() }
+    private var collapsedContent: some View {
+        collapsedForeground
+            .frame(width: controller.shellWidth, height: controller.shellHeight)
+            .accessibilityElement(children: .combine)
+            .accessibilityLabel(accessibilitySummary)
+            .accessibilityAddTraits(.isButton)
+            .accessibilityAction { controller.expand() }
     }
 
     @ViewBuilder
@@ -68,14 +151,14 @@ public struct HudNotchSurface: View {
                     trailingIndicator(for: headline)
                 }
                 .padding(.horizontal, HudSpacing.xl)
-                .transition(.opacity)
+                .transition(.notchReveal(insertion: HudNotchMotion.pillIn, anchor: .center, reduceMotion: reduceMotion))
             } else {
                 wings {
                     HudNotchPulseDot(color: tint(headline.tone), isPulsing: true, size: 6)
                 } trailing: {
                     trailingIndicator(for: headline)
                 }
-                .transition(.opacity)
+                .transition(.notchReveal(insertion: HudNotchMotion.pillIn, anchor: .center, reduceMotion: reduceMotion))
             }
         } else {
             HudNotchPulseDot(color: controller.isPinned ? HudPalette.statusWarn : HudPalette.accent, isPulsing: false, size: 6)
@@ -101,27 +184,16 @@ public struct HudNotchSurface: View {
 
     // MARK: Expanded
 
-    private var expandedSurface: some View {
-        ZStack(alignment: .top) {
-            HudNotchPopoutShape(topRadius: expandedTopRadius, bottomRadius: 22)
-                .fill(Color.black)
-                .overlay(
-                    HudNotchPopoutShape(topRadius: expandedTopRadius, bottomRadius: 22)
-                        .stroke(surfaceStroke, lineWidth: 1)
-                )
+    private var expandedContent: some View {
+        VStack(spacing: 0) {
+            expandedHeader
+                .frame(width: controller.shellWidth, height: controller.shellHeight)
 
-            VStack(spacing: 0) {
-                expandedHeader
-                    .frame(width: controller.shellWidth, height: controller.shellHeight)
-
-                card
-                    .frame(width: expandedSurfaceWidth, height: controller.contentHeight, alignment: .top)
-                    .clipped()
-            }
+            card
+                .frame(width: expandedSurfaceWidth, height: controller.contentHeight, alignment: .top)
+                .clipped()
         }
         .frame(width: expandedSurfaceWidth, height: expandedSurfaceHeight, alignment: .top)
-        .padding(.top, shellTopInset)
-        .shadow(color: Color.black.opacity(0.36), radius: 14, x: 0, y: 0)
     }
 
     @ViewBuilder
@@ -178,14 +250,14 @@ public struct HudNotchSurface: View {
 
     @ViewBuilder
     private var card: some View {
-        Group {
+        ZStack(alignment: .topLeading) {
             if let activity = controller.stage.focused {
                 activityCard(activity)
                     .id(activity.id)
-                    .transition(.opacity.combined(with: .scale(scale: 0.98, anchor: .top)))
+                    .transition(.notchReveal(insertion: HudNotchMotion.contentIn, reduceMotion: reduceMotion))
             } else {
                 idleCard
-                    .transition(.opacity)
+                    .transition(.notchReveal(reduceMotion: reduceMotion))
             }
         }
         .padding(.horizontal, 24)
@@ -305,43 +377,15 @@ public struct HudNotchSurface: View {
         }
     }
 
-    @ViewBuilder
-    private var shellBackground: some View {
-        if controller.renderStyle == .island {
-            RoundedRectangle(cornerRadius: controller.shellHeight / 2, style: .continuous)
-                .fill(Color.black)
-                .overlay(
-                    RoundedRectangle(cornerRadius: controller.shellHeight / 2, style: .continuous)
-                        .stroke(surfaceStroke, lineWidth: 1)
-                )
-        } else {
-            ZStack(alignment: .top) {
-                if controller.needsSyntheticNotchFill {
-                    HudNotchPhysicalShape(bottomRadius: controller.configuration.bottomRadius)
-                        .fill(Color.black)
-                        .frame(width: controller.notchGap, height: controller.shellHeight)
-                }
-
-                HudNotchWingPairShape(
-                    pokeOut: controller.currentPokeOut,
-                    notchGap: controller.notchGap,
-                    leftTopOuterRadius: controller.configuration.topOuterRadius,
-                    rightTopOuterRadius: controller.configuration.topOuterRadius,
-                    topInnerRadius: controller.configuration.topInnerRadius,
-                    bottomRadius: controller.configuration.bottomRadius,
-                    notchOverlap: controller.configuration.notchOverlap,
-                    minimumNotchOverlap: controller.configuration.minimumNotchOverlap
-                )
-                .fill(Color.black)
-            }
-        }
-    }
-
     private var surfaceStroke: Color {
         if isFlashing, let focused = controller.stage.focused {
             return tint(focused.tone).opacity(0.8)
         }
-        return Color.white.opacity(0.11)
+        // The pill blends into the housing; the card and the island get a hairline.
+        if controller.isExpanded || controller.renderStyle == .island {
+            return Color.white.opacity(0.11)
+        }
+        return Color.white.opacity(0)
     }
 
     private var expandedSurfaceWidth: CGFloat {
@@ -350,10 +394,6 @@ public struct HudNotchSurface: View {
 
     private var expandedSurfaceHeight: CGFloat {
         controller.shellHeight + controller.contentHeight + HudSpacing.sm
-    }
-
-    private var expandedTopRadius: CGFloat {
-        controller.renderStyle == .island ? 20 : 10
     }
 
     private var shellTopInset: CGFloat {
@@ -378,6 +418,16 @@ public struct HudNotchSurface: View {
         Task { @MainActor in
             try? await Task.sleep(for: .seconds(0.6))
             withAnimation(.easeOut(duration: 0.5)) { isFlashing = false }
+        }
+    }
+
+    /// Stretches the open card a little past its size and lets it spring back.
+    private func nudge() {
+        guard !reduceMotion else { return }
+        withAnimation(HudNotchMotion.nudgeOut) { nudgeAmount = 1 }
+        Task { @MainActor in
+            try? await Task.sleep(for: .seconds(0.11))
+            withAnimation(HudNotchMotion.nudgeBack) { nudgeAmount = 0 }
         }
     }
 

@@ -124,6 +124,26 @@ Give each host its own socket URL so two notch apps never share one. If a socket
 
 `HudNotchTuner(controller:)` is a settings view for the shape: pokeout, radii, overlap, card heights, timing and display mode (automatic, notch or island). Changes persist under the `persistenceKey`.
 
+## Motion
+
+The notch is one black silhouette, `HudNotchSilhouetteShape`, drawn at different sizes for each state, so every change is a morph rather than a crossfade:
+
+| State | Silhouette |
+| --- | --- |
+| Tucked in | The size of the camera housing, where the hardware hides it. On a display without one it starts faded out. |
+| Pill | The housing plus the wings, with concave shoulders against the top of the screen. The island is a capsule. |
+| Card | The open card, with the same shoulders and 22 pt bottom corners. |
+
+`HudNotchMotion` holds the timing:
+
+- Opening and appearing use an underdamped spring (`open`), so the card stretches a few points past its size and settles.
+- Closing and hiding use a tighter spring (`close`), so the shape tucks back without wobbling against the housing. `hide()` waits `retractSeconds` for it before ordering the panel out.
+- Size changes within a state, such as hover reach or a taller card for a question, use `resize`.
+- Content fades in with a light blur and lift about 90 ms after the shape starts. On close it fades while the shrinking silhouette masks it, so it reads as drawn back into the housing.
+- Something new arriving while the card is open gives it a small stretch (`nudgeOut`, then `nudgeBack`) along with the tinted outline flash.
+
+With Reduce Motion on, state changes happen without springs and content only fades.
+
 ## Tests
 
 ```bash

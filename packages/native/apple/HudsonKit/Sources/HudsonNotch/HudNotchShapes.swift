@@ -291,6 +291,66 @@ public struct HudNotchPhysicalShape: Shape {
         return p
     }
 }
+/// The notch's one continuous outline, from the tucked-in state through the
+/// pill to the open card, so every state change is a morph rather than a swap.
+///
+/// A positive `shoulder` flares the top corners outward as concave ears that
+/// meet the top edge of the screen, like the wing pair's shoulders. A negative
+/// one rounds them convexly, for the island.
+public struct HudNotchSilhouetteShape: Shape {
+    public var shoulder: CGFloat
+    public var bottomRadius: CGFloat
+
+    public init(shoulder: CGFloat, bottomRadius: CGFloat) {
+        self.shoulder = shoulder
+        self.bottomRadius = bottomRadius
+    }
+
+    public var animatableData: AnimatablePair<CGFloat, CGFloat> {
+        get { AnimatablePair(shoulder, bottomRadius) }
+        set {
+            shoulder = newValue.first
+            bottomRadius = newValue.second
+        }
+    }
+
+    public func path(in rect: CGRect) -> Path {
+        let w = rect.width
+        let h = rect.height
+        guard w > 0, h > 0 else { return Path() }
+
+        let maxDrop = shoulder >= 0 ? h / 2 : min(w, h) / 2
+        let drop = min(abs(shoulder), maxDrop)
+        let concave = shoulder > 0
+        let br = max(0, min(bottomRadius, w / 2, h - drop))
+
+        var p = Path()
+        if drop > 0 {
+            p.move(to: CGPoint(x: 0, y: drop))
+            if concave {
+                p.addArc(center: CGPoint(x: -drop, y: drop), radius: drop, startAngle: .degrees(0), endAngle: .degrees(-90), clockwise: true)
+                p.addLine(to: CGPoint(x: w + drop, y: 0))
+                p.addArc(center: CGPoint(x: w + drop, y: drop), radius: drop, startAngle: .degrees(-90), endAngle: .degrees(-180), clockwise: true)
+            } else {
+                p.addArc(center: CGPoint(x: drop, y: drop), radius: drop, startAngle: .degrees(180), endAngle: .degrees(-90), clockwise: false)
+                p.addLine(to: CGPoint(x: w - drop, y: 0))
+                p.addArc(center: CGPoint(x: w - drop, y: drop), radius: drop, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+            }
+        } else {
+            p.move(to: .zero)
+            p.addLine(to: CGPoint(x: w, y: 0))
+        }
+
+        p.addLine(to: CGPoint(x: w, y: h - br))
+        p.addQuadCurve(to: CGPoint(x: w - br, y: h), control: CGPoint(x: w, y: h))
+        p.addLine(to: CGPoint(x: br, y: h))
+        p.addQuadCurve(to: CGPoint(x: 0, y: h - br), control: CGPoint(x: 0, y: h))
+        p.closeSubpath()
+
+        return p.applying(CGAffineTransform(translationX: rect.minX, y: rect.minY))
+    }
+}
+
 /// The open card: small top corners that meet the menu bar, larger bottom ones.
 public struct HudNotchPopoutShape: Shape {
     public var topRadius: CGFloat

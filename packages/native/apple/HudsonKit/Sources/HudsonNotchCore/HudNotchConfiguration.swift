@@ -40,7 +40,8 @@ public struct HudNotchConfiguration: Codable, Equatable, Sendable {
     public var hoverPokeOut: CGFloat
     public var activePokeOut: CGFloat
     public var shellHeight: CGFloat
-    /// Positive rounds the outer shoulder; negative makes it concave.
+    /// Positive flares the outer shoulder into a concave ear against the top
+    /// of the screen; negative rounds it convexly.
     public var topOuterRadius: CGFloat
     public var topInnerRadius: CGFloat
     public var bottomRadius: CGFloat

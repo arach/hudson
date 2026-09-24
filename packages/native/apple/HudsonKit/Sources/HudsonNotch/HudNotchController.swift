@@ -34,6 +34,9 @@ public final class HudNotchController: ObservableObject {
 
     @Published public private(set) var notchInfo = HudNotchInfo.effective()
     @Published public private(set) var isVisible = false
+    /// The silhouette is out of the housing. False while the panel is
+    /// ordered in but the shape has not grown yet, and while it tucks away.
+    @Published public private(set) var isPresented = false
     @Published public private(set) var isHovered = false
     @Published public private(set) var isHoverActivated = false
     @Published public private(set) var isExpanded = false
@@ -42,6 +45,9 @@ public final class HudNotchController: ObservableObject {
     @Published public private(set) var isComposing = false
     /// Bumps each time something asks for attention; the surface flashes on it.
     @Published public private(set) var attentionSerial = 0
+    /// Bumps when something asks for attention while the card is already
+    /// open; the surface gives the card a small stretch.
+    @Published public private(set) var nudgeSerial = 0
     @Published public private(set) var stage: HudNotchStage
     @Published public private(set) var configuration: HudNotchConfiguration
 
@@ -56,6 +62,7 @@ public final class HudNotchController: ObservableObject {
     private var screenObserver: NSObjectProtocol?
     private var hoverActivationTask: Task<Void, Never>?
     private var collapseTask: Task<Void, Never>?
+    private var retractTask: Task<Void, Never>?
 
     /// - Parameter persistenceKey: a `UserDefaults` key for tuned
     ///   configuration. Nil keeps tuning in memory only.
@@ -171,24 +178,40 @@ public final class HudNotchController: ObservableObject {
                 ),
                 rootView: HudNotchSurface(controller: self)
             )
-            panel.alphaValue = 0
             self.panel = panel
             updatePanelFrame(animated: false)
         }
 
         guard let panel else { return }
-        // Never activate the app or take key: the notch must not steal focus.
-        HudOverlayPanelShell.present(panel, activate: false, makeKey: false, orderFrontRegardless: true)
-        HudOverlayPanelShell.fadeIn(panel, duration: 0.12)
+        retractTask?.cancel()
+        retractTask = nil
         isVisible = true
+        guard !isPresented else { return }
+
+        // Never activate the app or take key: the notch must not steal focus.
+        panel.alphaValue = 1
+        HudOverlayPanelShell.present(panel, activate: false, makeKey: false, orderFrontRegardless: true)
+        // Let the tucked-in shape render once so the next frame grows it
+        // out of the housing instead of popping in.
+        DispatchQueue.main.async { [weak self] in
+            guard let self, self.isVisible else { return }
+            self.isPresented = true
+        }
     }
 
+    /// Folds the card, tucks the shape back into the housing, then orders
+    /// the panel out.
     public func hide() {
-        guard let panel, panel.isVisible else { return }
-        HudOverlayPanelShell.fadeOut(panel, duration: 0.12) { [weak self] in
-            self?.panel?.orderOut(nil)
-            self?.isVisible = false
-            self?.setExpanded(false)
+        guard let panel, panel.isVisible, isVisible else { return }
+        isVisible = false
+        collapseTask?.cancel()
+        setExpanded(false)
+        isPresented = false
+        retractTask?.cancel()
+        retractTask = Task { [weak self] in
+            try? await Task.sleep(for: .seconds(HudNotchMotion.retractSeconds))
+            guard !Task.isCancelled, let self, !self.isVisible else { return }
+            self.panel?.orderOut(nil)
         }
     }
 
@@ -212,6 +235,7 @@ public final class HudNotchController: ObservableObject {
     public func post(_ activity: HudNotchActivity) {
         let change = stage.post(activity)
         guard change.wantsAttention else { return }
+        if isExpanded { nudgeSerial += 1 }
         attentionSerial += 1
         show()
         setExpanded(true)
@@ -267,6 +291,7 @@ public final class HudNotchController: ObservableObject {
 
     /// Opens briefly without new content.
     public func pulse() {
+        if isExpanded { nudgeSerial += 1 }
         attentionSerial += 1
         show()
         setExpanded(true)
