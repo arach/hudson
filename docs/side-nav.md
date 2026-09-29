@@ -306,6 +306,120 @@ also clears any open compact label. Override `tooltipDelay` on the provider when
 the product has a measured reason; do not restore native `title` tooltips, which
 open immediately and cannot share Hudson's visual register.
 
+## Window frame (macOS overlay title bar)
+
+`HudWindowFrame` is for a macOS window with a transparent title bar (Tauri
+`titleBarStyle: "Overlay"`, Electron `titleBarStyle: "hiddenInset"`, a
+WKWebView with `fullSizeContentView`), where the traffic lights sit over the
+page and the sidebar owns the top-left corner.
+
+- **Open:** the sidebar's top strip (`sidebarInset`, 44px) holds the lights and
+  drags the window. The sheet's left edge is the only line.
+- **Folded to the icon rail:** the rail is too narrow for the lights, so a
+  title bar grows across the window (0 → `titleBarHeight`, 38px) with the
+  lights and `brand` after them. It drags the window. The bar and the rail form
+  an L in the chrome color, and the page becomes an inset sheet with a curved
+  top-left corner. The bar and rail draw no border; the sheet's edge is the
+  only line.
+- The bar height, rail width, handle position and sheet corner all use one
+  curve. Transitions are off while the edge is being dragged.
+- The resize handle runs the full height below the title bar (the full window
+  height when open). Its hairline shows only on hover or focus
+  (`resizeLineVisibility="hover"`), because the sheet already draws the edge.
+
+The frame owns the sidebar state like `HudSideNav` does. It self-provides a
+`HudSideNavProvider` when there isn't one, so pass the state to the frame, not
+to the nav. The nav is on the left only.
+
+```tsx
+import { HudSideNav, HudWindowFrame } from "hudsonkit/nav";
+
+<HudWindowFrame
+  open={!collapsed}
+  onOpenChange={(open) => setCollapsed(!open)}
+  expandedWidth={navWidth}
+  onExpandedWidthChange={setNavWidth}
+  defaultExpandedWidth={196}
+  minExpandedWidth={132}
+  maxExpandedWidth={300}
+  collapsedWidth={52}
+  keyboardShortcut={false}
+  resizable
+  brand={<><Mark /> fab</>}
+  trafficLights={{ preview: !inApp }}
+  contentAriaLabel={pageTitle}
+  navigation={
+    <HudSideNav
+      items={items}
+      selectedId={page}
+      onSelect={select}
+      header={<Eyebrow>Settings</Eyebrow>}
+      footer={<Brand version={version} />}
+      collapsedHeader={false}
+      collapsedFooter={false}
+    />
+  }
+>
+  <Page />
+</HudWindowFrame>
+```
+
+`collapsedHeader={false}` / `collapsedFooter={false}` are the supported way to
+say "no header or footer while collapsed". Omitting them (or passing `null`)
+reuses `header` / `footer` on the icon rail.
+
+`trafficLights` sets the geometry: `{ x = 10, centerY = 16, reserve = 84,
+preview = false }`. `x` and `centerY` place the lights. The brand starts at
+`reserve` and is centered on `centerY`. `preview` draws stand-in lights for a
+browser preview; the native lights are never drawn by the page. Pass
+`trafficLights={false}` for a window without them. Interactive controls inside
+`brand` need `style={{ WebkitAppRegion: "no-drag" }}`, because the bar drags
+the window.
+
+### Styling through a template
+
+The frame reads its colors and motion from tokens, so a Hudson template can
+restyle it without props:
+
+| Token                         | Used for                    | Default                                       |
+| ----------------------------- | --------------------------- | --------------------------------------------- |
+| `--hud-window-frame-chrome`   | title bar + rail (the L)    | `oklch(var(--card))`                          |
+| `--hud-window-frame-sheet`    | content sheet               | `oklch(var(--background))`                    |
+| `--hud-window-frame-edge`     | the sheet's edge            | `var(--hud-chrome-border, oklch(var(--border)))` |
+| `--hud-window-frame-radius`   | the sheet's curved corner   | `10px`                                        |
+| `--hud-window-frame-duration` | fold timing                 | `180ms`                                       |
+| `--hud-window-frame-ease`     | fold curve                  | `cubic-bezier(0.32, 0.72, 0, 1)`              |
+
+fab's Settings look (paper-2 frame, paper sheet, a hairline edge, and a 300ms
+expo fold) is five lines in its template:
+
+```css
+[data-hudson-template="fab"] {
+  --hud-window-frame-chrome: var(--paper-2);
+  --hud-window-frame-sheet: var(--paper);
+  --hud-window-frame-edge: var(--rule);
+  --hud-window-frame-duration: 300ms;
+  --hud-window-frame-ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+```
+
+The default geometry (38px bar, lights at 10/16, brand at 84, 44px open strip,
+10px corner) is fab's, so it needs no geometry props.
+
+### Resize handle notes
+
+- **Position is the caller's.** If `className` has an unprefixed position
+  utility (`absolute`, `fixed`, `sticky`, `static`, `relative`) or
+  `style.position` is set, `HudRailResizeHandle` adds no `relative` of its
+  own. You don't need `absolute!`.
+- **Hairline:** `lineVisibility="always" | "hover" | "never"`. The line is
+  `[data-hud-rail-resize-line]` and the root has `data-line-visibility`, so a
+  theme can restyle either without `!important`. The hover color is the accent
+  at 55%.
+- **Focus:** a click that doesn't drag focuses the handle, so Enter/Space
+  (fold/unfold), arrows, and Home/End work right after it. A drag leaves focus
+  where it was. Tab reaches the handle in DOM order.
+
 ## Native full-height dismissal and reveal
 
 HudsonKit's native `HudNavigationSidebar` keeps compact mode available for apps
@@ -350,7 +464,7 @@ remain additive options for existing consumers.
 | `defaultExpandedWidth` / `expandedWidth` / `onExpandedWidthChange`          | `number` / callback      | Uncontrolled or controlled structural width.     |
 | `minExpandedWidth` / `maxExpandedWidth` / `collapsedWidth` / `tooltipDelay` | `number`                | Resize bounds, compact width, and label intent.   |
 | `rail`                                                                     | `boolean`                | Render a `HudSideNavRail` edge toggle.            |
-| `header` / `footer` / `collapsedHeader` / `collapsedFooter`                | `ReactNode`              | Pinned chrome with optional compact overrides.    |
+| `header` / `footer` / `collapsedHeader` / `collapsedFooter`                | `ReactNode` (`false` on collapsed*) | Pinned chrome with optional compact overrides; `false` = none while collapsed. |
 | `density`                                                                  | `'compact' \| 'default'` |                                                   |
 | `selectionWash` / `rovingFocus`                                            | `boolean`                | Opt-in selection wash and keyboard roving.        |
 | `ariaLabel`                                                                | `string`                 | `<nav>` landmark name.                            |
