@@ -1,4 +1,7 @@
 import SwiftUI
+#if os(macOS)
+import AppKit
+#endif
 
 // MARK: - Public model
 
@@ -53,6 +56,17 @@ public struct HudComposerAttachment: Identifiable, Equatable, Sendable {
     }
 }
 
+/// How the composer draws its frame.
+///
+/// - `filled`: an inset surface with a soft rim and rounded (capsule) buttons.
+/// - `hairline`: no fill, a one-device-pixel border, square buttons and a
+///   plain-text runtime trigger. Built to hold a hard edge on 1x displays; set
+///   `fieldCornerRadius` to 4 or less with it.
+public enum HudComposerChrome: Equatable, Sendable {
+    case filled
+    case hairline
+}
+
 /// The runtime the next message will run on, shown in the control row as a
 /// `HudRuntimeChip`. Providing `onTapModel` makes it the trigger for the
 /// runtime picker (`.hudRuntimePicker(...)`); without it the chip renders as a
@@ -100,31 +114,71 @@ public enum HudComposerAction: Equatable, Sendable {
 public struct HudComposerStyle: Equatable, Sendable {
     public var placeholder: String
     public var fontSize: CGFloat
+    /// Field font. `nil` keeps the default `HudFont.mono(fontSize)`.
+    public var font: Font?
     public var lineLimit: ClosedRange<Int>
     public var fieldHorizontalPadding: CGFloat
     public var fieldVerticalPadding: CGFloat
     public var fieldCornerRadius: CGFloat
     public var controlSize: CGFloat
+    public var chrome: HudComposerChrome
+    /// Typeface for the hairline field's AppKit input, which takes a face
+    /// rather than a SwiftUI `Font`.
+    public var face: HudComposerFace
 
     public init(
         placeholder: String = "Message...",
         fontSize: CGFloat = 13,
+        font: Font? = nil,
         lineLimit: ClosedRange<Int> = 1...8,
         fieldHorizontalPadding: CGFloat = 14,
         fieldVerticalPadding: CGFloat = 10,
         fieldCornerRadius: CGFloat = 12,
-        controlSize: CGFloat = 30
+        controlSize: CGFloat = 30,
+        chrome: HudComposerChrome = .filled,
+        face: HudComposerFace = .mono
     ) {
         self.placeholder = placeholder
         self.fontSize = fontSize
+        self.font = font
         self.lineLimit = lineLimit
         self.fieldHorizontalPadding = fieldHorizontalPadding
         self.fieldVerticalPadding = fieldVerticalPadding
         self.fieldCornerRadius = fieldCornerRadius
         self.controlSize = controlSize
+        self.chrome = chrome
+        self.face = face
+    }
+
+    /// The crisp preset: hairline chrome, 4pt corners, 26pt square controls.
+    public static func hairline(
+        placeholder: String = "Message...",
+        fontSize: CGFloat = 13,
+        font: Font? = nil,
+        face: HudComposerFace = .mono,
+        lineLimit: ClosedRange<Int> = 1...8
+    ) -> HudComposerStyle {
+        HudComposerStyle(
+            placeholder: placeholder,
+            fontSize: fontSize,
+            font: font,
+            lineLimit: lineLimit,
+            fieldHorizontalPadding: 12,
+            fieldVerticalPadding: 10,
+            fieldCornerRadius: 4,
+            controlSize: 26,
+            chrome: .hairline,
+            face: face
+        )
     }
 
     public static var `default`: HudComposerStyle { HudComposerStyle() }
+}
+
+/// The hairline field's typeface.
+public enum HudComposerFace: Equatable, Sendable {
+    case mono
+    case system
 }
 
 // MARK: - Action resolver (pure, testable)
@@ -216,6 +270,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
     private let onTapModel: (() -> Void)?
 
     @Environment(\.hudTheme) private var theme
+    @Environment(\.displayScale) private var displayScale
 
     public init(
         text: Binding<String>,
@@ -283,7 +338,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
             HStack(alignment: .center, spacing: HudSpacing.lg) {
                 leadingAccessory()
 
-                applyFocus(to: field)
+                fieldView
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 turnActionCluster
@@ -317,7 +372,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
                 hairline
             }
 
-            applyFocus(to: field)
+            fieldView
                 .frame(maxWidth: .infinity, alignment: .leading)
                 .padding(.horizontal, style.fieldHorizontalPadding)
                 .padding(.top, style.fieldVerticalPadding)
@@ -333,7 +388,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
 
             controlRow
                 .padding(.horizontal, style.fieldHorizontalPadding)
-                .padding(.vertical, HudSpacing.lg)
+                .padding(.vertical, style.chrome == .hairline ? HudSpacing.sm : HudSpacing.lg)
         }
         .background(fieldChrome)
     }
@@ -341,7 +396,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
     private var controlRow: some View {
         HStack(alignment: .center, spacing: HudSpacing.md) {
             if let onAddAttachment {
-                HudComposerAttachButton(onTap: onAddAttachment)
+                HudComposerAttachButton(chrome: style.chrome, onTap: onAddAttachment)
             }
 
             leadingAccessory()
@@ -349,7 +404,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
             Spacer(minLength: HudSpacing.md)
 
             if let model {
-                HudComposerModelLabel(info: model, onTap: onTapModel)
+                HudComposerModelLabel(info: model, chrome: style.chrome, onTap: onTapModel)
             }
 
             turnActionCluster
@@ -359,13 +414,14 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
     private var hairline: some View {
         Rectangle()
             .fill(theme.hairline.subtle)
-            .frame(height: HudStrokeWidth.thin)
+            .frame(height: style.chrome == .hairline ? HudPixel.hairline(displayScale) : HudStrokeWidth.thin)
     }
 
     private var primaryButton: some View {
         HudComposerPrimaryButton(
             kind: HudComposerActionResolver.primaryKind(phase: phase, hasText: hasText),
             size: style.controlSize,
+            chrome: style.chrome,
             onTap: {
                 if let action = HudComposerActionResolver.primaryAction(phase: phase, hasText: hasText) {
                     onAction(action)
@@ -383,7 +439,7 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
             trailingAccessory()
 
             if showsSteerButton {
-                HudComposerSteerButton(size: style.controlSize) {
+                HudComposerSteerButton(size: style.controlSize, chrome: style.chrome) {
                     onAction(.steer)
                 }
             }
@@ -392,11 +448,59 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
         }
     }
 
+    /// The hairline chrome on macOS types into `HudOpaqueTextInput`, whose
+    /// solid ground gets the glyphs full font smoothing. Everything else keeps
+    /// SwiftUI's `TextField`.
+    @ViewBuilder
+    private var fieldView: some View {
+        #if os(macOS)
+        if style.chrome == .hairline {
+            opaqueField
+        } else {
+            applyFocus(to: field)
+        }
+        #else
+        applyFocus(to: field)
+        #endif
+    }
+
+    #if os(macOS)
+    private var opaqueField: some View {
+        HudOpaqueTextInput(
+            text: $text,
+            placeholder: style.placeholder,
+            font: style.face == .mono
+                ? NSFont.monospacedSystemFont(ofSize: style.fontSize, weight: .regular)
+                : NSFont.systemFont(ofSize: style.fontSize, weight: .regular),
+            ink: NSColor(theme.palette.ink),
+            placeholderInk: NSColor(theme.palette.muted),
+            ground: NSColor(theme.palette.bg),
+            lineLimit: style.lineLimit,
+            focus: focus,
+            onReturn: {
+                guard let action = HudComposerActionResolver.returnAction(phase: phase, hasText: hasText) else { return true }
+                onAction(action)
+                return true
+            },
+            onCommandReturn: {
+                guard let action = HudComposerActionResolver.commandReturnAction(phase: phase, hasText: hasText) else { return false }
+                onAction(action)
+                return true
+            },
+            onEscape: {
+                guard let action = HudComposerActionResolver.escapeAction(phase: phase) else { return false }
+                onAction(action)
+                return true
+            }
+        )
+    }
+    #endif
+
     private var field: some View {
         TextField(style.placeholder, text: $text, axis: .vertical)
             .textFieldStyle(.plain)
             .lineLimit(style.lineLimit)
-            .font(HudFont.mono(style.fontSize))
+            .font(style.font ?? HudFont.mono(style.fontSize))
             .foregroundStyle(theme.palette.ink)
             .onSubmit {
                 if let action = HudComposerActionResolver.returnAction(phase: phase, hasText: hasText) {
@@ -429,7 +533,27 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
         }
     }
 
+    @ViewBuilder
     private var fieldChrome: some View {
+        switch style.chrome {
+        case .filled: filledChrome
+        case .hairline: hairlineChrome
+        }
+    }
+
+    /// Filled with the page colour, the same solid ground the input paints
+    /// under its glyphs. The rim is a quiet hairline that steps up one notch
+    /// on focus; the caret carries the rest.
+    private var hairlineChrome: some View {
+        RoundedRectangle(cornerRadius: style.fieldCornerRadius, style: .continuous)
+            .fill(theme.palette.bg)
+            .hudPixelBorder(
+                radius: style.fieldCornerRadius,
+                color: isFocused ? theme.hairline.standard : theme.hairline.subtle
+            )
+    }
+
+    private var filledChrome: some View {
         RoundedRectangle(cornerRadius: style.fieldCornerRadius, style: .continuous)
             .fill(HudSurface.inset)
             .overlay(
@@ -447,9 +571,12 @@ public struct HudComposer<Leading: View, Trailing: View>: View {
 private struct HudComposerPrimaryButton: View {
     let kind: HudComposerPrimaryKind
     let size: CGFloat
+    var chrome: HudComposerChrome = .filled
     let onTap: () -> Void
 
     @Environment(\.hudTheme) private var theme
+
+    @State private var hovering = false
 
     private var enabled: Bool { kind != .sendDisabled }
 
@@ -474,6 +601,10 @@ private struct HudComposerPrimaryButton: View {
     }
 
     private var discFill: Color {
+        if chrome == .hairline {
+            // No fill: the hairline composer's controls are bare glyphs.
+            return .clear
+        }
         switch kind {
         case .sendDisabled: return theme.palette.ink.opacity(HudOpacity.ghost)
         case .send, .queue: return theme.palette.accent
@@ -482,6 +613,10 @@ private struct HudComposerPrimaryButton: View {
     }
 
     private var iconColor: Color {
+        if chrome == .hairline {
+            // One ink, no hue: live is ink, disabled is dim.
+            return kind == .sendDisabled ? theme.palette.dim : theme.palette.ink
+        }
         switch kind {
         case .sendDisabled: return theme.palette.dim
         case .send, .queue: return theme.palette.bg
@@ -498,11 +633,17 @@ private struct HudComposerPrimaryButton: View {
         }
     }
 
+    private var shape: AnyShape {
+        chrome == .hairline
+            ? AnyShape(RoundedRectangle(cornerRadius: HudRadius.tight, style: .continuous))
+            : AnyShape(Capsule(style: .continuous))
+    }
+
     var body: some View {
         Button(action: onTap) {
             HStack(spacing: HudSpacing.xs) {
                 Image(systemName: icon)
-                    .font(.system(size: iconSize, weight: .bold))
+                    .font(.system(size: iconSize, weight: chrome == .hairline ? .semibold : .bold))
 
                 if let label {
                     Text(label)
@@ -513,30 +654,39 @@ private struct HudComposerPrimaryButton: View {
             .frame(height: size)
             .frame(width: label == nil ? size : nil)
             .padding(.horizontal, label == nil ? 0 : HudSpacing.md)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(discFill)
-                    .overlay(
-                        Capsule(style: .continuous).strokeBorder(
-                            kind == .sendDisabled ? theme.hairline.standard : Color.clear,
-                            lineWidth: HudStrokeWidth.thin
+            .background {
+                if chrome == .hairline {
+                    shape.fill(hovering && enabled ? HudSurface.hover : Color.clear)
+                } else {
+                    Capsule(style: .continuous)
+                        .fill(discFill)
+                        .overlay(
+                            Capsule(style: .continuous).strokeBorder(
+                                kind == .sendDisabled ? theme.hairline.standard : Color.clear,
+                                lineWidth: HudStrokeWidth.thin
+                            )
                         )
-                    )
-            )
-            .contentShape(Capsule(style: .continuous))
+                }
+            }
+            .contentShape(shape)
         }
         .buttonStyle(.plain)
         .disabled(!enabled)
         .help(help)
         .animation(.easeInOut(duration: 0.15), value: kind)
+        #if os(macOS)
+        .onHover { hovering = $0 }
+        #endif
     }
 }
 
 private struct HudComposerSteerButton: View {
     let size: CGFloat
+    var chrome: HudComposerChrome = .filled
     let onTap: () -> Void
 
     @Environment(\.hudTheme) private var theme
+    @State private var hovering = false
 
     var body: some View {
         Button(action: onTap) {
@@ -546,21 +696,29 @@ private struct HudComposerSteerButton: View {
                 Text("Steer")
                     .font(HudFont.mono(HudTextSize.xs, weight: .semibold))
             }
-            .foregroundStyle(theme.palette.accent)
+            .foregroundStyle(chrome == .hairline ? theme.palette.ink : theme.palette.accent)
             .frame(height: size)
             .padding(.horizontal, HudSpacing.md)
-            .background(
-                Capsule(style: .continuous)
-                    .fill(theme.palette.accent.opacity(HudOpacity.subtle))
-                    .overlay(
-                        Capsule(style: .continuous)
-                            .strokeBorder(theme.palette.accent.opacity(HudOpacity.soft), lineWidth: HudStrokeWidth.thin)
-                    )
-            )
-            .contentShape(Capsule(style: .continuous))
+            .background {
+                if chrome == .hairline {
+                    RoundedRectangle(cornerRadius: HudRadius.tight, style: .continuous)
+                        .fill(hovering ? HudSurface.hover : Color.clear)
+                } else {
+                    Capsule(style: .continuous)
+                        .fill(theme.palette.accent.opacity(HudOpacity.subtle))
+                        .overlay(
+                            Capsule(style: .continuous)
+                                .strokeBorder(theme.palette.accent.opacity(HudOpacity.soft), lineWidth: HudStrokeWidth.thin)
+                        )
+                }
+            }
+            .contentShape(Rectangle())
         }
         .buttonStyle(.plain)
         .help("Steer now (Cmd-Return)")
+        #if os(macOS)
+        .onHover { hovering = $0 }
+        #endif
     }
 }
 
@@ -667,11 +825,20 @@ private struct HudComposerQueueRow: View {
 // MARK: - Attach button
 
 private struct HudComposerAttachButton: View {
+    var chrome: HudComposerChrome = .filled
     let onTap: () -> Void
 
     @Environment(\.hudTheme) private var theme
 
     var body: some View {
+        if chrome == .hairline {
+            HudSquareIconButton(symbol: "plus", help: "Attach", size: 24, iconSize: 12, action: onTap)
+        } else {
+            filled
+        }
+    }
+
+    private var filled: some View {
         Button(action: onTap) {
             Image(systemName: "plus")
                 .font(HudFont.ui(HudTextSize.base, weight: .semibold))
@@ -701,6 +868,7 @@ private struct HudComposerAttachButton: View {
 /// the container the composer sits in.
 private struct HudComposerModelLabel: View {
     let info: HudComposerModelInfo
+    var chrome: HudComposerChrome = .filled
     let onTap: (() -> Void)?
 
     var body: some View {
@@ -709,6 +877,7 @@ private struct HudComposerModelLabel: View {
             monogram: info.monogram,
             model: info.model,
             effort: info.effort,
+            presentation: chrome == .hairline ? .text : .chip,
             onPick: onTap
         )
         .help("Runtime - harness, model and reasoning effort")
