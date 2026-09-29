@@ -19,15 +19,16 @@ public enum HudAppShellStatusBarSpan: String, CaseIterable, Identifiable, Sendab
 /// `.flush` is the original anatomy: one background fills the window and the
 /// columns meet at square seams. `.card` sets the center column into the
 /// window as a card: the shell paints its background only inside that column,
-/// clips it to a rounded top-leading corner, and draws a hairline along its
-/// top and leading edges. Everything outside the card — the titlebar band
+/// clips it to a rounded top-leading corner (and, with `bottomRadius`, a
+/// matching bottom-leading one), and draws a hairline along its top and
+/// leading edges. Everything outside the card — the titlebar band
 /// and the side columns — shows whatever the host puts behind the shell, so
 /// a host that extends its sidebar material there gets one L-shaped frame
 /// around the stage, and the traffic lights sit on a single surface instead
 /// of a seam.
 public enum HudAppShellStage: Equatable, Sendable {
     case flush
-    case card(radius: CGFloat)
+    case card(radius: CGFloat, bottomRadius: CGFloat = 0)
 }
 
 /// Top-level app chassis for HudsonKit.
@@ -273,12 +274,16 @@ private struct HudAppShellStageSurface: ViewModifier {
         switch stage {
         case .flush:
             content
-        case .card(let radius):
+        case .card(let radius, let bottomRadius):
             content
                 .background(theme.palette.bg)
-                .clipShape(UnevenRoundedRectangle(topLeadingRadius: radius, style: .circular))
+                .clipShape(UnevenRoundedRectangle(
+                    topLeadingRadius: radius,
+                    bottomLeadingRadius: bottomRadius,
+                    style: .circular
+                ))
                 .overlay {
-                    HudStageCardEdge(radius: radius)
+                    HudStageCardEdge(radius: radius, bottomRadius: bottomRadius)
                         .stroke(theme.hairline.subtle, lineWidth: HudStrokeWidth.standard)
                         .allowsHitTesting(false)
                 }
@@ -286,18 +291,30 @@ private struct HudAppShellStageSurface: ViewModifier {
     }
 }
 
-/// The card's top and leading edges with the rounded corner between them.
-/// The trailing and bottom edges meet other chrome (the inspector, the window
+/// The card's top and leading edges with the rounded corner between them,
+/// plus the bottom-leading arc when the card rounds that corner too. The
+/// trailing and bottom edges meet other chrome (the inspector, the window
 /// edge) and carry no line of their own. Inset half a stroke so the 1pt line
 /// lands inside the clip.
 private struct HudStageCardEdge: Shape {
     let radius: CGFloat
+    var bottomRadius: CGFloat = 0
 
     func path(in rect: CGRect) -> Path {
         let r = rect.insetBy(dx: HudStrokeWidth.standard / 2, dy: HudStrokeWidth.standard / 2)
         let radius = min(radius, r.width / 2, r.height / 2)
+        let bottomRadius = min(bottomRadius, r.width / 2, r.height / 2)
         var path = Path()
-        path.move(to: CGPoint(x: r.minX, y: r.maxY))
+        if bottomRadius > 0 {
+            path.move(to: CGPoint(x: r.minX + bottomRadius, y: r.maxY))
+            path.addArc(
+                tangent1End: CGPoint(x: r.minX, y: r.maxY),
+                tangent2End: CGPoint(x: r.minX, y: r.maxY - bottomRadius),
+                radius: bottomRadius
+            )
+        } else {
+            path.move(to: CGPoint(x: r.minX, y: r.maxY))
+        }
         path.addLine(to: CGPoint(x: r.minX, y: r.minY + radius))
         path.addArc(
             tangent1End: CGPoint(x: r.minX, y: r.minY),
