@@ -1,7 +1,7 @@
 {
   "name": "@hudsonkit/ai",
   "version": "0.2.2",
-  "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai and vercel-ai adapters.",
+  "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai, vercel-ai and scout (local agent harness) adapters.",
   "keywords": [
     "hudsonkit",
     "ai",
@@ -35,6 +35,11 @@
       "import": "./dist/vercel-ai.js",
       "default": "./dist/vercel-ai.js"
     },
+    "./scout": {
+      "types": "./dist/scout.d.ts",
+      "import": "./dist/scout.js",
+      "default": "./dist/scout.js"
+    },
     "./toolsets": {
       "types": "./dist/toolsets.d.ts",
       "import": "./dist/toolsets.js",
@@ -60,9 +65,13 @@
   },
   "peerDependencies": {
     "@earendil-works/pi-ai": ">=0.85.1",
-    "ai": ">=6.0.0"
+    "ai": ">=6.0.0",
+    "@openscout/agent-sessions": ">=0.2.78"
   },
   "peerDependenciesMeta": {
+    "@openscout/agent-sessions": {
+      "optional": true
+    },
     "@earendil-works/pi-ai": {
       "optional": true
     },

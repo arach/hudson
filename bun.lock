@@ -139,10 +139,12 @@
       },
       "peerDependencies": {
         "@earendil-works/pi-ai": ">=0.85.1",
+        "@openscout/agent-sessions": ">=0.2.78",
         "ai": ">=6.0.0",
       },
       "optionalPeers": [
         "@earendil-works/pi-ai",
+        "@openscout/agent-sessions",
         "ai",
       ],
     },
