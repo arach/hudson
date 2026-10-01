@@ -1,6 +1,6 @@
 {
   "name": "@hudsonkit/ai",
-  "version": "0.2.2",
+  "version": "0.3.0",
   "description": "Provider-neutral Backend interface, multi-step tool execution loop, and portable toolset registry for Hudson AI surfaces. Ships pi-ai, vercel-ai and scout (local agent harness) adapters.",
   "keywords": [
     "hudsonkit",
