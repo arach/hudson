@@ -28,6 +28,7 @@ const PRODUCTS = [
     buildEnv: {
       ARC_BASE: '/arc/',
       SITE_URL: 'https://hudsonkit.com/arc',
+      GA_MEASUREMENT_ID: 'G-SEDXMKVG9K',
     },
     buildCommand: ['bun', 'run', 'build:site'],
     distDir: 'dist',
