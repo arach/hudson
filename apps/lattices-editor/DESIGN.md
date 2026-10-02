@@ -1,27 +1,7 @@
 ---
 name: Lattices Editor
 description: Read-only configuration inspection in the Hudson peer-panel shell.
-colors:
-  background: "#0a0f12"
-  ink: "#e5edf0"
-  muted: "#a6b9c2"
-  border: "#2c3c43"
-  accent: "#67e8f9"
-  selected-row: "#164e63"
-  surface: "#10191d"
-  text-selection: "#155e75"
-  selected-ink: "#ecfeff"
-  selected-secondary: "#cffafe"
-  selected-outline: "#36849a"
-  scrollbar: "#47616c"
-  notice-ink: "#fcd34d"
-  notice-background: "#241e12"
-  surface-band: "#142128"
-  hover: "#172a33"
-  chip: "#18333e"
-  glyph-slate: "#263b46"
-  glyph-blue: "#203e56"
-  glyph-teal: "#1d4547"
+colors: "inherits hudsonkit tokens (hudson dark); emerald accent; semantic amber warning"
 typography:
   title:
     fontSize: "14px"
@@ -44,17 +24,17 @@ typography:
 
 The pinned direction is Operate: expand the existing Hudson agent-workspace
 language, not a new brand. The built surface uses a dark native-host shell,
-custom Hudson chrome, cyan selection and a flat grid of peer panels.
+custom Hudson chrome, emerald selection and a flat grid of peer panels.
 
 ## Colors
 
 Dark backgrounds and muted blue-gray dividers keep configuration content
-primary. Light ink carries labels; muted ink carries secondary context. Cyan
+primary. Light ink carries labels; muted ink carries secondary context. emerald
 marks focus and selection. Amber notices distinguish stale or failed reads.
 Surface bands, hover fills and chips provide quiet grouping; deterministic
 slate, blue and teal glyph fills distinguish app initials without adding new
 accents. Selection uses separate fill, outline, primary and secondary ink
-colors; text selection has its own cyan-toned fill. Scrollbars stay muted.
+colors; text selection has its own emerald-toned fill. Scrollbars stay muted.
 
 ## Typography
 
@@ -89,7 +69,7 @@ monospace JSON with line numbers and syntax highlighting.
 ## Elevation & Depth
 
 Peer panels are flat, separated by borders rather than raised cards. Selected
-Preview rows use a cyan-toned fill and inset outline. Do not animate data
+Preview rows use a emerald-toned fill and inset outline. Do not animate data
 refreshes; preserve panel mounts and the existing Source editor.
 
 ## Shapes
@@ -133,7 +113,7 @@ Preview rows and group bands 3px, and context chips and the disabled composer
 
 ## Do's and Don'ts
 
-- Do preserve the dark Hudson shell, cyan selection and flat peer grid.
+- Do preserve the dark Hudson shell, emerald selection and flat peer grid.
 - Do describe actual loading, unavailable, empty, ambiguous and stale states.
 - Do keep read-only and unavailable capabilities explicit.
 - Don't add purple, decorative motion or a replacement visual identity.
@@ -169,8 +149,11 @@ surface, checked against the desktop and narrow design-evidence captures.
 - **G · History:** verbose empty state and hashes → one useful empty line,
   newest-first relative timestamps with absolute tooltips and short revisions.
 - **H · Copy:** implementation terms → concrete window/configuration language.
-  Dark Hudson surfaces and cyan selection/focus remain; no decorative motion.
+  Dark Hudson surfaces and emerald selection/focus remain; no decorative motion.
 
 Additional tokens: surface-band #142128, hover #172a33, chip #18333e;
 glyph slate #263b46, blue #203e56, teal #1d4547. These are quiet content
 grouping surfaces, not new accent colors.
+
+## Operator correction: kit register
+Before: custom palette, list, chips and header controls. After: inherits hudsonkit tokens; HudGroupedList/HudListItem and count HudBadge; HudButton/HudToolbar header, dotted Read only HudBadge; createAgentComposer contextItems with disabled input; unchanged 32px peer controls; chrome StatusBar carries selection and live/revision status; CodeViewer owns the stable read-only selection surface. editor.css contains layout only. A–H behavior remains unchanged. Reference canvas could not be fetched; explicit operator mapping and local kit are authoritative.
