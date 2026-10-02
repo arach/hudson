@@ -14,7 +14,7 @@ test('StrictMode portals retain Provider and state across hide/move/show; teardo
   function Counter() { const value = useContext(Ctx); const [n, set] = useState(0); return <button id="counter" onClick={() => set(n + 1)}>{value}:{n}</button>; }
   let controller: AgentWorkspaceController | null = null;
   const readiness: boolean[] = [], saves: unknown[] = [];
-  const panels = [{ id:'one', label:'One', content:<Counter /> }, { id:'two',label:'Two',content:<p>Two</p> }];
+  const panels = [{ id:'one', label:'One', showActions:false, content:<Counter /> }, { id:'two',label:'Two',content:<p>Two</p> }];
   const root = createRoot(dom.window.document.getElementById('root')!);
   try {
     await act(async () => root.render(<StrictMode><Ctx.Provider value="shared"><EditorPanels panels={panels}
@@ -24,6 +24,8 @@ test('StrictMode portals retain Provider and state across hide/move/show; teardo
     expect(readiness).toEqual([true,false,true]);
     expect(controller!.getPanelLayout().hiddenPanelIds).toEqual(['two']);
     expect(saves).toHaveLength(0);
+    expect((dom.window.document.querySelector('[data-panel-id="one"] .hk-agent-workspace__panel-actions') as HTMLElement).hidden).toBe(true);
+    expect((dom.window.document.querySelector('[data-panel-id="two"] .hk-agent-workspace__panel-actions') as HTMLElement).hidden).toBe(false);
     await act(async () => dom.window.document.getElementById('counter')!.click());
     expect(dom.window.document.getElementById('counter')?.textContent).toBe('shared:1');
     await act(async () => { controller!.hidePanel('one'); controller!.showPanel('two'); controller!.movePanel('one',1); controller!.showPanel('one'); });
