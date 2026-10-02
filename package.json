@@ -23,7 +23,10 @@
     "dev:studio": "bun run --filter hudsonkit build && bun --cwd apps/studio dev",
     "build:native-editor": "mkdir -p packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor && cp packages/web/hudsonkit/src/native/code-editor-webview.html packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/index.html && bun build packages/web/hudsonkit/src/native/code-editor-webview.ts --target=browser --format=iife --minify --outfile=packages/native/apple/HudsonKit/Sources/HudsonCanvasSurface/Resources/HudsonCodeEditor/editor.js",
     "validate:hudsonkit-package": "node scripts/validate-hudsonkit-package.mjs",
-    "update:models": "bun update --filter @hudsonkit/ai @earendil-works/pi-ai"
+    "update:models": "bun update --filter @hudsonkit/ai @earendil-works/pi-ai",
+    "build:lattices-editor": "bun apps/lattices-editor/build.ts",
+    "test:lattices-editor": "bun test apps/lattices-editor/tests",
+    "typecheck:lattices-editor": "bun x tsc -p apps/lattices-editor/tsconfig.json"
   },
   "workspaces": [
     "apps/web",
