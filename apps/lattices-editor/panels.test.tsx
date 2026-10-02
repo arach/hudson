@@ -39,3 +39,25 @@ test('StrictMode portals retain Provider and state across hide/move/show; teardo
     for (const [key, descriptor] of descriptors) { if (descriptor) Object.defineProperty(globalThis, key, descriptor); else Reflect.deleteProperty(globalThis, key); }
   }
 });
+
+test('disabled composer keeps opt-in context removal available, never send', async () => {
+  const { createAgentComposer } = await import('../../packages/web/hudsonkit/src/agent-composer');
+  const dom = new JSDOM('<div id="composer"></div>');
+  const old = Object.getOwnPropertyDescriptor(globalThis, 'document');
+  Object.defineProperty(globalThis, 'document', { configurable: true, value: dom.window.document });
+  const removed: string[] = [];
+  const composer = createAgentComposer(dom.window.document.getElementById('composer')!, { onSubmit: () => { throw new Error('Must not send'); }, onContextAction: item => removed.push(item.id) });
+  try {
+    composer.update({ disabled: true, contextItems: [{ id:'one', label:'Window', title:'Remove Window' }] });
+    const chip = () => dom.window.document.querySelector<HTMLButtonElement>('[data-hk-context-item]')!;
+    expect(chip().disabled).toBe(true);
+    composer.update({ contextActionsEnabled: true });
+    expect(chip().disabled).toBe(false);
+    chip().click(); expect(removed).toEqual(['one']);
+    expect(composer.textarea.disabled).toBe(true);
+    expect(dom.window.document.querySelector<HTMLButtonElement>('[data-action="send"]')!.disabled).toBe(true);
+  } finally {
+    composer.destroy(); dom.window.close();
+    if (old) Object.defineProperty(globalThis,'document',old); else Reflect.deleteProperty(globalThis,'document');
+  }
+});
